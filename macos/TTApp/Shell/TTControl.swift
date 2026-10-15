@@ -34,7 +34,7 @@ enum TTControlLaunch {
 
 struct TTControlRequest: Encodable, Equatable {
     enum Op: String, Encodable {
-        case reveal, acknowledge, done, capture, complete, preview, quit, appearance, view, undo
+        case reveal, acknowledge, done, capture, complete, preview, quit, appearance, view, undo, edit
         case deferTask = "defer"
     }
 
@@ -44,6 +44,8 @@ struct TTControlRequest: Encodable, Equatable {
     var task: String?
     var text: String?
     var minutes: Int?
+
+    static func edit(_ action: String) -> Self { Self(op: .edit, text: action) }
 
     static func reveal(_ task: TTTaskID) -> Self {
         Self(op: .reveal, project: task.project, task: task.task)
@@ -162,6 +164,11 @@ struct TTTaskID: Equatable, Hashable {
     let task: String
 }
 
+struct TTTextSelection: Decodable, Equatable {
+    let start: Int
+    let length: Int
+}
+
 struct TTControlReply: Decodable, Equatable {
     let reply: Int
     let ok: Bool
@@ -171,10 +178,11 @@ struct TTControlReply: Decodable, Equatable {
     let preview: String?
     /// A successful `capture` reply's committed transaction, the one `undo` names.
     let transaction: String?
+    let selection: TTTextSelection?
 
     init(
         reply: Int, ok: Bool, message: String?, completion: TTCompletion? = nil, preview: String? = nil,
-        transaction: String? = nil
+        transaction: String? = nil, selection: TTTextSelection? = nil
     ) {
         self.reply = reply
         self.ok = ok
@@ -182,6 +190,7 @@ struct TTControlReply: Decodable, Equatable {
         self.completion = completion
         self.preview = preview
         self.transaction = transaction
+        self.selection = selection
     }
 
     /// What the app says when it could not ask: no tt, or a dropped connection.
@@ -262,7 +271,14 @@ struct TTArrival: Decodable, Equatable {
     }
 }
 
+struct TTEditing: Decodable, Equatable {
+    let undo: String
+    let redo: String
+    let search: Bool
+}
+
 enum TTControlEvent: Equatable {
+    case editing(TTEditing)
     case pulse(TTPulse)
     /// `title` and `body` word the whole batch as one notification.
     case arrivals([TTArrival], title: String, body: String)
@@ -281,7 +297,9 @@ enum TTControlLine: Equatable {
         let completion: TTCompletion?
         let preview: String?
         let transaction: String?
+        let selection: TTTextSelection?
         let event: String?
+        let editing: TTEditing?
         let pulse: TTPulse?
         let arrivals: [TTArrival]?
         let title: String?
@@ -292,9 +310,11 @@ enum TTControlLine: Equatable {
         guard let raw = try? JSONDecoder().decode(Raw.self, from: data) else { return nil }
         if let id = raw.reply {
             return .reply(TTControlReply(reply: id, ok: raw.ok ?? false, message: raw.message, completion: raw.completion, preview: raw.preview,
-                transaction: raw.transaction))
+                transaction: raw.transaction, selection: raw.selection))
         }
         switch raw.event {
+        case "editing":
+            return raw.editing.map { .event(.editing($0)) }
         case "pulse":
             return raw.pulse.map { .event(.pulse($0)) }
         case "arrivals":

@@ -21,7 +21,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     /// Sends one line to tt, calls `written` once tt has the request, which
     /// starts the reply timeout, and calls back with whether it was captured,
     /// what tt said, and the committed transaction a later undo names.
-    var submit: ((String, _ written: @escaping () -> Void, _ done: @escaping (Bool, String, String?) -> Void) -> Void)?
+    var submit: ((String, _ written: @escaping () -> Void, _ done: @escaping (Bool, String, String?, TTTextSelection?) -> Void) -> Void)?
     /// Asks tt to undo the named capture transaction, calls `written` once tt
     /// has the request, and calls back with whether it did and what tt said.
     var undo: ((String, _ written: @escaping () -> Void, _ done: @escaping (Bool, String) -> Void) -> Void)?
@@ -73,6 +73,11 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
 
     private(set) lazy var panel: NSPanel = makePanel()
     private let field = NSTextField()
+    var quitBlockReason: String? {
+        if sending { return "Your quick capture is still being saved." }
+        return field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? nil : "Your quick-capture draft has not been saved."
+    }
     private let status = NSTextField(labelWithString: QuickCapturePanel.hint)
     private let routeLabel = NSTextField(wrappingLabelWithString: "")
     private let suggestionTable = NSTableView()
@@ -85,6 +90,11 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     private var dismissalGeneration = 0
     private var previewGeneration = 0
     private var pendingPreviewHeight: CGFloat = 0
+    /// Debounce requests and defer the busy label; stale timers cannot publish.
+    var schedulePreview: (TimeInterval, @escaping () -> Void) -> Void = { delay, action in
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: action)
+    }
+    private var previewPending = false
 
     /// What the list shows, and the caret it was asked for. A reply is kept only
     /// if neither the draft nor the caret has changed since it was asked.
@@ -333,12 +343,12 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
 
     private func capture(keepOpen: Bool) {
         clearCompletion()
-        let text = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = field.stringValue
         if let reason = unavailableReason() {
             setStatus(reason, error: true)
             return
         }
-        guard !sending, !text.isEmpty, let submit else { return }
+        guard !sending, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, let submit else { return }
         let generation = dismissalGeneration
         clearPreview()
         sending = true
@@ -348,7 +358,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         setStatus("Capturing…", error: false)
         submit(text, { [weak self] in
             self?.armTimeout(for: request, message: Self.captureTimeoutMessage)
-        }) { [weak self] ok, message, transaction in
+        }) { [weak self] ok, message, transaction, selection in
             guard let self else { return }
             guard request == self.requestGeneration else {
                 self.lateCaptureReply(ok: ok, message: message, text: text, transaction: transaction)
@@ -376,6 +386,15 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
             } else {
                 self.setStatus(message.isEmpty ? "tt refused the capture" : message, error: true)
                 self.panel.makeFirstResponder(self.field)
+                if let selection, let editor = self.field.currentEditor() as? NSTextView,
+                   self.field.stringValue == text, selection.start >= 0, selection.length >= 0,
+                   selection.start <= (text as NSString).length,
+                   selection.length <= (text as NSString).length - selection.start {
+                    let range = NSRange(location: selection.start, length: selection.length)
+                    editor.setSelectedRange(range)
+                    editor.scrollRangeToVisible(range)
+                    self.rememberSelection()
+                }
             }
         }
     }
@@ -386,7 +405,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     private func lateCaptureReply(ok: Bool, message: String, text: String, transaction: String?) {
         guard ok else { return }
         lastCaptureTransaction = transaction
-        if field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines) == text {
+        if field.stringValue == text {
             savedSelection = nil
             field.stringValue = ""
         }
@@ -486,6 +505,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
 
     private func clearPreview() {
         previewGeneration += 1
+        previewPending = false
         pendingPreviewHeight = 0
         routeLabel.stringValue = ""
         routeLabel.isHidden = true
@@ -500,19 +520,30 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
             clearPreview()
             return
         }
-        // Keep the occupied rows while tt answers, so every keystroke does not
-        // shrink and regrow the panel. The old draft's route is no longer shown.
+        previewPending = true
+        // Erase stale routing immediately, but retain its geometry. Quick
+        // responses replace this blank without ever flashing a busy message.
         if !routeLabel.isHidden {
             pendingPreviewHeight = max(pendingPreviewHeight, wrappedHeight(routeLabel, width: panel.frame.width - 40))
-            routeLabel.stringValue = "Previewing…"
+            routeLabel.stringValue = ""
             fitToContent()
         }
-        preview(text) { [weak self] summary in
-            guard let self, generation == self.previewGeneration, self.isVisible,
-                  text == self.field.stringValue else { return }
-            self.pendingPreviewHeight = 0
-            self.routeLabel.stringValue = summary ?? ""
-            self.routeLabel.isHidden = summary?.isEmpty ?? true
+        schedulePreview(0.12) { [weak self] in
+            guard let self, self.previewGeneration == generation, self.previewPending, self.isVisible else { return }
+            preview(text) { [weak self] summary in
+                guard let self, generation == self.previewGeneration, self.isVisible,
+                      text == self.field.stringValue else { return }
+                self.previewPending = false
+                self.pendingPreviewHeight = 0
+                self.routeLabel.stringValue = summary ?? ""
+                self.routeLabel.isHidden = summary?.isEmpty ?? true
+                self.fitToContent()
+            }
+        }
+        schedulePreview(0.35) { [weak self] in
+            guard let self, self.previewGeneration == generation, self.previewPending, self.isVisible else { return }
+            self.routeLabel.stringValue = "Previewing…"
+            self.routeLabel.isHidden = false
             self.fitToContent()
         }
     }

@@ -287,21 +287,16 @@ func TestControlQuitTakesTheQuitPath(t *testing.T) {
 	}
 }
 
-// TestControlQuitRefusesWhileTheUserIsMidInteraction: an open draft, picker,
-// or editor is never thrown away by a host's quit.
-func TestControlQuitRefusesWhileTheUserIsMidInteraction(t *testing.T) {
+func TestControlQuitAllowsCleanNavigation(t *testing.T) {
 	env := controlEnv(t, reviewSettledTask(t, 1, "kept"))
 	setTestPresentationPath(env.model, presentation.ViewCrossProjectOutliner, presentation.ViewNotes)
 	replies := make(chan control.Reply, 1)
 	_, cmd := env.model.handleControlMessage(controlRequestMsg{request: control.Request{Op: control.OpQuit}, reply: replies})
-	if reply := <-replies; reply.OK || reply.Message != "tt is busy: finish what is open in tt first" {
+	if reply := <-replies; !reply.OK {
 		t.Fatalf("reply = %+v", reply)
 	}
-	if cmd != nil {
-		t.Fatal("a refused quit still produced a command")
-	}
-	if env.model.lifecycle.quitting {
-		t.Fatal("a refused quit marked the session quitting")
+	if cmd == nil {
+		t.Fatal("clean navigation prevented quit")
 	}
 }
 
@@ -456,7 +451,7 @@ func TestControlViewSwitchesModeAsTheJumpDoes(t *testing.T) {
 	}
 
 	searchRankedList(env.outliner, "kept")
-	if reply := env.request(t, control.Request{Op: control.OpView, Text: "inbox"}); reply.OK || reply.Message != "tt is busy: finish what is open in tt first" {
+	if reply := env.request(t, control.Request{Op: control.OpView, Text: "inbox"}); reply.OK || reply.Message != "tt is busy: Close search in tt, then try again." {
 		t.Fatalf("view under the ranked list answered %+v", reply)
 	}
 	if env.outliner.PrimaryMode != chrome.ModeDue {
@@ -465,7 +460,7 @@ func TestControlViewSwitchesModeAsTheJumpDoes(t *testing.T) {
 	env.outliner.ClearSearch()
 
 	setTestPresentationPath(env.model, presentation.ViewCrossProjectOutliner, presentation.ViewNotes)
-	if reply := env.request(t, control.Request{Op: control.OpView, Text: "inbox"}); reply.OK || reply.Message != "tt is busy: finish what is open in tt first" {
+	if reply := env.request(t, control.Request{Op: control.OpView, Text: "inbox"}); reply.OK || reply.Message != "tt is busy: Close the current panel in tt, then try again." {
 		t.Fatalf("view mid-interaction answered %+v", reply)
 	}
 	if env.outliner.PrimaryMode != chrome.ModeDue {

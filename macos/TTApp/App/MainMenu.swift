@@ -20,8 +20,10 @@ enum MainMenu {
     static let redo = Selector(("redo:"))
     static let cut = #selector(NSText.cut(_:))
     /// Edits only a text field answers. The terminal surface never runs these
-    /// items: its own keys reach tt, which owns undo and every other edit.
-    static let textOnlyEditActions: Set<Selector> = [undo, redo, cut]
+    /// items. Undo, Redo, and Find instead route to tt over the control socket.
+    static let textOnlyEditActions: Set<Selector> = [cut]
+    static let find = #selector(Ghostty.SurfaceView.findTasks(_:))
+    static let terminalEditActions: Set<Selector> = [undo, redo, find]
     /// tt's repository, which the guide and issue links are read from.
     static let repositoryURL = URL(string: "https://github.com/sglavoie/tt")!
     /// The user guide, read on GitHub: an installed app carries no docs tree.
@@ -55,8 +57,8 @@ enum MainMenu {
         appItem.submenu = appMenu
         main.addItem(appItem)
 
-        // Undo, Redo, and Cut serve text fields alone; in the terminal they
-        // stay disabled and their keys go to tt, which owns every other edit.
+        // Native fields use AppKit editing; the terminal asks tt to edit its
+        // focused draft or run the workspace history operation.
         let editItem = NSMenuItem()
         let editMenu = NSMenu(title: "Edit")
         editMenu.addItem(withTitle: "Undo", action: undo, keyEquivalent: "z")
@@ -67,6 +69,8 @@ enum MainMenu {
         editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
         editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
         editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editMenu.addItem(.separator())
+        editMenu.addItem(withTitle: "Find…", action: find, keyEquivalent: "f")
         editItem.submenu = editMenu
         main.addItem(editItem)
 

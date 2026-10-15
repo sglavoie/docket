@@ -21,7 +21,7 @@
     { "type": "key", "label": "open Peek on the overlong detail; this frame is short enough to hold the dock at its seven-row floor, so the window is five content rows", "key": "b" },
     { "type": "assert", "label": "the body leads with the resume note", "assert": "contains", "value": "Resume: RESUMESTART" },
     { "type": "assert", "label": "the note wraps rather than being cut at the dock", "assert": "contains", "value": "w013" },
-    { "type": "assert", "label": "the position row names what is off screen in both directions", "assert": "contains", "value": "0 above · 3 below" },
+    { "type": "assert", "label": "the position row names what is off screen in both directions", "assert": "contains", "value": "0 above · 4 below" },
     { "type": "assert", "label": "so the tail of the body waits for a page turn", "assert": "not_contains", "value": "Tags: #backend #security" },
     { "type": "assert", "assert": "no_layout_issues" },
 
@@ -29,19 +29,19 @@
     { "type": "assert", "label": "a page is one row short of the window, so the row it ended on is carried over", "assert": "contains", "value": "RESUMEEND" },
     { "type": "assert", "label": "and the rows the first page had no room for are readable in full", "assert": "contains", "value": "Context: [platform]" },
     { "type": "assert", "assert": "contains", "value": "Tags: #backend #security" },
-    { "type": "assert", "label": "this document ends inside one page, so the turn clamps there", "assert": "contains", "value": "3 above · 0 below" },
+    { "type": "assert", "label": "this document ends inside one page, so the turn clamps there", "assert": "contains", "value": "4 above · 0 below" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "a second page turn holds at the end rather than overshooting it", "key": "ctrl+f" },
-    { "type": "assert", "assert": "contains", "value": "3 above · 0 below" },
+    { "type": "assert", "assert": "contains", "value": "4 above · 0 below" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "paging back returns the page it started on", "key": "ctrl+b" },
     { "type": "assert", "assert": "contains", "value": "Resume: RESUMESTART" },
-    { "type": "assert", "assert": "contains", "value": "0 above · 3 below" },
+    { "type": "assert", "assert": "contains", "value": "0 above · 4 below" },
 
     { "type": "key", "label": "read to the end again, then change the layout under it", "key": "ctrl+f" },
-    { "type": "assert", "assert": "contains", "value": "3 above · 0 below" },
+    { "type": "assert", "assert": "contains", "value": "4 above · 0 below" },
     { "type": "resize", "width": 60, "height": 20 },
     { "type": "assert", "label": "a resize resets to the first page rather than keeping a stale one", "assert": "contains", "value": "Resume: RESUMESTART" },
     { "type": "assert", "label": "and the minimum terminal draws the dock inside its own budget", "assert": "no_layout_issues" },

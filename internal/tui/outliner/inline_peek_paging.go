@@ -188,6 +188,9 @@ func (m *OutlinerModel) peekDockPreferredRows() int {
 	if m == nil || !m.PeekMode {
 		return 0
 	}
+	if m.PeekExpanded {
+		return max(m.Height()*2/3, peekDockPreferredMinRows)
+	}
 	return min(max(max(m.Height(), 0)/peekDockFrameDivisor, peekDockPreferredMinRows), peekDockPreferredMaxRows)
 }
 
@@ -403,12 +406,14 @@ func (m *OutlinerModel) inlinePeekDocumentForRow(
 	}
 	index := m.dependencyIndex()
 	excerpt := m.peekSearchExcerpt(row)
+	projectSlug, _ := m.projectSlugForRow(row)
 	return inlinePeekDocumentFor(inlinePeekOptions{
 		Task:             row.Task,
 		Indent:           indent,
 		Width:            rowWidth,
 		Window:           geometry,
 		Breadcrumb:       row.Breadcrumb,
+		ProjectSlug:      projectSlug,
 		SearchExcerpt:    excerpt,
 		SearchExcerptKey: m.searchTextQuery() + "\x1e" + excerpt,
 		Planning:         m.peekPlanningMembership(row),

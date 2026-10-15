@@ -111,14 +111,15 @@ const discardTextPromptAction = "discard-prompt"
 // rather than chosen from a list. It sits at the same overlay depth as the value
 // picker and returns the same selection and cancellation messages.
 type OperationTextPromptModel struct {
-	request  operation.OperationExecutionRequest
-	input    textinput.Model
-	area     textarea.Model
-	title    string
-	subtitle string
-	notice   string
-	options  OperationTextPromptOptions
-	confirm  chrome.ConfirmDialog
+	initialValue string
+	request      operation.OperationExecutionRequest
+	input        textinput.Model
+	area         textarea.Model
+	title        string
+	subtitle     string
+	notice       string
+	options      OperationTextPromptOptions
+	confirm      chrome.ConfirmDialog
 	// submitted is what makes double submission impossible rather than merely
 	// unlikely: the prompt emits one selection and then answers every later
 	// submit key with nothing, until Restore reopens it for a retry. A shell
@@ -136,10 +137,11 @@ func NewOperationTextPromptModel(
 	options OperationTextPromptOptions,
 ) *OperationTextPromptModel {
 	model := &OperationTextPromptModel{
-		request:  request,
-		title:    title,
-		subtitle: subtitle,
-		options:  options,
+		request:      request,
+		initialValue: current,
+		title:        title,
+		subtitle:     subtitle,
+		options:      options,
 	}
 	if options.Multiline {
 		area := textarea.New()
@@ -388,4 +390,25 @@ func (model *OperationTextPromptModel) exitHint() string {
 // promises a question only where one exists.
 func (model *OperationTextPromptModel) raisesDiscard() bool {
 	return model.options.DiscardPrompt != "" && strings.TrimSpace(model.bufferValue()) != ""
+}
+
+// QuitBlockReason names content a desktop quit would abandon.
+func (model *OperationTextPromptModel) QuitBlockReason() string {
+	if model.submitted {
+		return "Your " + model.title + " change is still being applied."
+	}
+	if model.bufferValue() != model.initialValue {
+		return "Your " + model.title + " draft has not been saved."
+	}
+	return ""
+}
+
+func (m *OperationTextPromptModel) DesktopTextBuffer() *chrome.DesktopTextBuffer {
+	if m.submitted || m.confirm.IsActive() {
+		return nil
+	}
+	if m.options.Multiline {
+		return chrome.DesktopTextarea(&m.area, nil)
+	}
+	return chrome.DesktopInput(&m.input, nil)
 }

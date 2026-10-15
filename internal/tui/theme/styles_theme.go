@@ -310,6 +310,20 @@ func makeDueBadgeStyle(tone dueBadgeTone) lipgloss.Style {
 		Padding(0, 1)
 }
 
+// newRelationMarkerStyle is the hidden-family chip: `‹` and `›N` on a fill of
+// their own rather than accent text, which shared its amber with the pin, the
+// due-soon text and a blocked reference and read as one more of them. The fill
+// sits in the magenta gap every section fill and both chip families leave, at
+// least 26° from each in both themes, so it reads as a relation and never as a
+// section header; it is emphasized, so its ink meets the enhanced ratio.
+func newRelationMarkerStyle() lipgloss.Style {
+	return makeDueBadgeStyle(dueBadgeTone{
+		darkFill: "#862a82", darkInk: "#fdf4ff",
+		lightFill: "#f9c8f0", lightInk: "#4a044e",
+		emphasized: true,
+	})
+}
+
 // makeLensAccentStyle creates a foreground-only accent in the tone the active
 // theme calls readable. It is the counterpart of makeViewModeStyle and
 // makeDueBadgeStyle for text that carries no chip: a lens name is ordinary list

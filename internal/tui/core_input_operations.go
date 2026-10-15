@@ -288,6 +288,10 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 				message = notes.ShowNotesManagerMsg{Scope: route.AllNotesScope(), Focus: identity}
 			}
 		}
+	case operation.OperationCorePeekSize:
+		if out, ok := m.outlinerPrimary(); ok {
+			out.PeekExpanded = !out.PeekExpanded
+		}
 	case operation.OperationCorePeek:
 		if out, ok := m.outlinerPrimary(); ok {
 			out.TogglePeek()

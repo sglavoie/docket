@@ -4,6 +4,8 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
@@ -116,3 +118,18 @@ func (m *TaskAttachmentsModel) GetHelpItems() []operation.HelpItem {
 }
 
 func (m *TaskAttachmentsModel) StatusBarLabel() string { return "Attachments" }
+
+// QuitBlockReason names content a desktop quit would abandon.
+func (m *TaskAttachmentsModel) QuitBlockReason() string {
+	if m.AddMode && m.TextInput.Value() != "" {
+		return "Your attachment entry has not been saved."
+	}
+	return ""
+}
+
+func (m *TaskAttachmentsModel) DesktopTextBuffer() *chrome.DesktopTextBuffer {
+	if m.AddMode {
+		return chrome.DesktopInput(&m.TextInput, nil)
+	}
+	return nil
+}

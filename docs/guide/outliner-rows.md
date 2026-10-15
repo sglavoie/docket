@@ -275,8 +275,16 @@ root, again keeping the cursor where it was, until the focus root is a root task
 and the next press leaves Focus entirely. A press after that is an ordinary
 entry once more, focusing the cursor task's parent.
 
+Project labels keep their distinguishing suffix when shortened names would
+otherwise collide. Peek always names the full project slug.
+
+`B` switches an open Peek between compact and expanded sizes. Expanded Peek
+uses roughly two thirds of the outline's height while preserving list rows.
+The choice lasts for the session, including after closing and reopening Peek;
+cursor movement never changes it.
+
 `b` toggles a session-only Peek in a pane docked below the list, whether the
-cursor is on a task or on a project header. Its height is a share of the terminal
+cursor is on a task or on a project header. Its compact height is a share of the terminal
 — about a third of the outline's own room, never fewer than seven rows and never
 more than twelve — counted off the list once when you open it, so a taller
 terminal reads more of a long detail at a time. What the pane never reads is the
@@ -289,7 +297,8 @@ the divider, one line of detail, and the position row, the pane stays closed
 rather than being drawn cut off. On a row with no detail to show, a section
 heading or a checklist item, the pane stays where it is and reads `No detail to
 show for this row.`; `b` closes it again from any row. On a task, Peek
-follows navigation and reads, in this order: the task's whole title, the ancestor
+follows navigation and reads, in this order: the task's whole title, its full
+project slug, the ancestor
 chain of a promoted row as `Parent: Launch platform › User authentication`, a
 status line reading
 `Plan: Today · Status: Doing 4h · Priority: 1 high · Pinned · Review`

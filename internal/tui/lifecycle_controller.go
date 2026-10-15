@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf16"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -482,7 +484,9 @@ type controlPublisher interface {
 type controlState struct {
 	publisher controlPublisher
 	// published is the last pulse sent, so an unchanged pulse is never resent.
-	published *pulse.WorkspacePulse
+	published   *pulse.WorkspacePulse
+	editing     *control.Editing
+	textHistory map[any]*desktopTextHistory
 }
 
 // WithControlPublisher connects the session to a control socket's events.
@@ -545,6 +549,8 @@ func (m *AppModel) handleControlMessage(msg tea.Msg) (bool, tea.Cmd) {
 
 func (m *AppModel) answerControlRequest(request control.Request, reply chan<- control.Reply) tea.Cmd {
 	switch request.Op {
+	case control.OpEdit:
+		return m.controlEdit(request.Text, reply)
 	case control.OpComplete:
 		// Ahead of the busy guard: a completion reads the workspace and commits
 		// nothing, so there is nothing for an open picker or editor to lose.
@@ -563,19 +569,34 @@ func (m *AppModel) answerControlRequest(request control.Request, reply chan<- co
 		applySessionTheme(request.Text)
 		answer(reply, true, "Theme: "+request.Text)
 		return nil
-	case control.OpReveal, control.OpAcknowledge, control.OpDefer, control.OpCapture, control.OpQuit, control.OpView, control.OpUndo, control.OpDone:
+	case control.OpQuit:
+		if reason := m.quitBlockReason(); reason != "" {
+			answer(reply, false, "tt is busy: "+reason)
+			return nil
+		}
+		answer(reply, true, "quitting")
+		return func() tea.Msg { return status.QuitMsg{} }
+	case control.OpReveal, control.OpAcknowledge, control.OpDefer, control.OpCapture, control.OpView, control.OpUndo, control.OpDone:
 	default:
 		answer(reply, false, fmt.Sprintf("unknown operation %q", request.Op))
 		return nil
 	}
 	if !m.safeToAdoptExternalChange() {
-		answer(reply, false, "tt is busy: finish what is open in tt first")
+		reason := "finish what is open in tt first"
+		if request.Op == control.OpReveal || request.Op == control.OpView {
+			switch {
+			case m.quitBlockReason() != "":
+				reason = m.quitBlockReason() + " Save or cancel it before navigating."
+			case m.crossOutliner != nil && (m.crossOutliner.IsSearchMode() || m.crossOutliner.HasSearchProjection()):
+				reason = "Close search in tt, then try again."
+			case m.crossOutliner != nil && m.crossOutliner.MultiSelectMode:
+				reason = "Clear the selection in tt, then try again."
+			default:
+				reason = "Close the current panel in tt, then try again."
+			}
+		}
+		answer(reply, false, "tt is busy: "+reason)
 		return nil
-	}
-	if request.Op == control.OpQuit {
-		// The quit key's own path, so view and filter state are saved.
-		answer(reply, true, "quitting")
-		return func() tea.Msg { return status.QuitMsg{} }
 	}
 	if request.Op == control.OpView {
 		// A mode change reads the workspace it already holds and commits
@@ -770,7 +791,7 @@ func (m *AppModel) controlCapture(text string, reply chan<- control.Reply) tea.C
 	}
 	reqs, lineErrors := taskform.ParseCaptureText(preset, m.domain.runtime, text)
 	if len(lineErrors) > 0 {
-		answer(reply, false, controlLineErrors(lineErrors, strings.Count(strings.TrimSpace(text), "\n") > 0))
+		reply <- control.Reply{OK: false, Message: controlLineErrors(lineErrors, strings.Count(strings.TrimSpace(text), "\n") > 0), Selection: captureErrorSelection(text, lineErrors[0])}
 		return nil
 	}
 	cmd := m.features.Capture.CaptureBulk(reqs, false)
@@ -1163,4 +1184,28 @@ func (m *AppModel) pollExternalWorkspaceChanges() {
 		m.externalReload.owed = true
 		m.externalReload.quiet = true
 	}
+}
+
+// Capture columns are runes; native text fields index UTF-16. Convert against
+// the unchanged source and never search for a token that could appear twice.
+func captureErrorSelection(text string, problem grammar.LineError) *control.TextSelection {
+	lines := strings.Split(text, "\n")
+	if problem.Line < 1 || problem.Line > len(lines) {
+		return nil
+	}
+	line := []rune(lines[problem.Line-1])
+	start := problem.Column
+	if start < 0 || start >= len(line) || !strings.ContainsRune("!@#%$^*=>~&;", line[start]) {
+		return nil
+	}
+	end := start + 1
+	for end < len(line) && !unicode.IsSpace(line[end]) {
+		end++
+	}
+	prefix := strings.Join(lines[:problem.Line-1], "\n")
+	if problem.Line > 1 {
+		prefix += "\n"
+	}
+	prefix += string(line[:start])
+	return &control.TextSelection{Start: len(utf16.Encode([]rune(prefix))), Length: len(utf16.Encode(line[start:end]))}
 }

@@ -140,6 +140,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationCoreActivateGroup, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 13, FooterLabel: "open", SharedKey: true},
 			{OperationID: OperationCoreOpenNote, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 13, FooterLabel: "open note", SharedKey: true},
 			{OperationID: OperationCoreFocusParent, Keys: []string{"shift+enter"}, DisplayKey: "Shift+Enter"},
+			{OperationID: OperationCorePeekSize, Keys: []string{"B"}, DisplayKey: "B"},
 			{OperationID: OperationCorePeek, Keys: []string{"b"}, DisplayKey: "b", FooterRank: 5, FooterLabel: "peek"},
 			// Ctrl+F/B page the detail document a whole window at a time, exactly as
 			// they do beside the Hub's preview, and they own their keys outright

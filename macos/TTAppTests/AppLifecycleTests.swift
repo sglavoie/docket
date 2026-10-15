@@ -67,7 +67,7 @@ final class MainMenuTests: XCTestCase {
         for title in ["About tt", "Settings…", "Relaunch tt", "Hide tt", "Quit tt"] {
             XCTAssertTrue(app.contains(title), "\(title) missing from \(app)")
         }
-        XCTAssertEqual(titles(submenu(main, "Edit")), ["Undo", "Redo", "Cut", "Copy", "Paste", "Select All"])
+        XCTAssertEqual(titles(submenu(main, "Edit")), ["Undo", "Redo", "Cut", "Copy", "Paste", "Select All", "Find…"])
         XCTAssertEqual(main.items.compactMap { $0.submenu?.title }, ["", "Edit", "View", "Window", "Help"])
     }
 
@@ -121,7 +121,7 @@ final class MainMenuTests: XCTestCase {
 
     /// Undo, Redo, and Cut are text-field edits: the surface keeps their keys,
     /// while Copy, Paste, and Select All stay the menu's.
-    func testUndoRedoAndCutAreTheTextFieldsAlone() throws {
+    func testTerminalEditingRoutesThroughTheResponderChain() throws {
         let edit = try XCTUnwrap(submenu(MainMenu.make(), "Edit"))
         let undo = try XCTUnwrap(edit.item(withTitle: "Undo"))
         let redo = try XCTUnwrap(edit.item(withTitle: "Redo"))
@@ -129,8 +129,8 @@ final class MainMenuTests: XCTestCase {
         XCTAssertNil(undo.target)
         XCTAssertEqual([undo.action, redo.action, cut.action], [Selector(("undo:")), Selector(("redo:")), #selector(NSText.cut(_:))])
         let main = MainMenu.make()
-        XCTAssertTrue(MainMenu.isTextOnlyEdit(MainMenu.item(in: main, key: "z", modifiers: .command)))
-        XCTAssertTrue(MainMenu.isTextOnlyEdit(MainMenu.item(in: main, key: "z", modifiers: [.shift, .command])))
+        XCTAssertFalse(MainMenu.isTextOnlyEdit(MainMenu.item(in: main, key: "z", modifiers: .command)))
+        XCTAssertFalse(MainMenu.isTextOnlyEdit(MainMenu.item(in: main, key: "z", modifiers: [.shift, .command])))
         XCTAssertTrue(MainMenu.isTextOnlyEdit(MainMenu.item(in: main, key: "x", modifiers: .command)))
         for key in ["c", "v", "a", "q"] {
             let item = MainMenu.item(in: main, key: key, modifiers: .command)
@@ -138,8 +138,10 @@ final class MainMenuTests: XCTestCase {
             XCTAssertFalse(MainMenu.isTextOnlyEdit(item), key)
         }
 
-        // A field editor cuts and its window undoes; the terminal surface
-        // answers none of the three, so the items stay disabled over it.
+        // Fields keep their native editing; the terminal answers Undo, Redo, Find.
+        for action in MainMenu.terminalEditActions {
+            XCTAssertTrue(Ghostty.SurfaceView.instancesRespond(to: action))
+        }
         XCTAssertTrue(NSTextView.instancesRespond(to: MainMenu.cut))
         XCTAssertTrue(NSWindow.instancesRespond(to: MainMenu.undo))
         XCTAssertTrue(NSWindow.instancesRespond(to: MainMenu.redo))
@@ -233,7 +235,10 @@ final class LaunchErrorTests: XCTestCase {
     func testABusyQuitAsksBeforeQuittingAnyway() {
         let delegate = AppDelegate()
         var asked = 0
-        delegate.confirmQuitAnyway = { asked += 1; return false }
+        delegate.confirmQuitAnyway = { reason in
+            XCTAssertEqual(reason, "tt is busy: finish what is open in tt first")
+            asked += 1; return false
+        }
         delegate.finishQuit(.busy("tt is busy: finish what is open in tt first"))
         XCTAssertEqual(asked, 1)
     }
@@ -677,6 +682,95 @@ final class TerminalWindowControllerTests: XCTestCase {
         XCTAssertEqual(controller.window.contentResizeIncrements.width, bigger.width, accuracy: 1)
         XCTAssertEqual(controller.window.contentResizeIncrements.height, bigger.height, accuracy: 1)
         XCTAssertEqual(controller.window.contentMinSize, TerminalWindowController.minimumContentSize(cell: bigger))
+    }
+
+    func testFullScreenIntentSurvivesRepeatedHideAndRapidShow() throws {
+        try start()
+        var fullScreen = true
+        var toggles = 0
+        controller.isFullScreen = { fullScreen }
+        controller.toggleFullScreen = { toggles += 1 }
+        let exited = Notification(name: NSWindow.didExitFullScreenNotification)
+        controller.hide()
+        controller.hide()
+        XCTAssertEqual(toggles, 1, "hiding twice must not reverse the transition")
+        fullScreen = false
+        controller.windowDidExitFullScreen(exited)
+        XCTAssertFalse(controller.window.isVisible)
+        controller.hide()
+        XCTAssertTrue(controller.restoresFullScreen)
+        controller.show()
+        XCTAssertEqual(toggles, 2)
+        fullScreen = true
+        controller.windowDidEnterFullScreen(Notification(name: NSWindow.didEnterFullScreenNotification))
+        controller.hide()
+        controller.show()
+        fullScreen = false
+        controller.windowDidExitFullScreen(exited)
+        XCTAssertTrue(controller.window.isVisible)
+        XCTAssertEqual(toggles, 4, "show during exit returns to full screen after exit")
+    }
+
+    func testHiddenDuringFullScreenEntryWaitsForBothTransitions() throws {
+        try start()
+        var fullScreen = false
+        var toggles = 0
+        controller.isFullScreen = { fullScreen }
+        controller.toggleFullScreen = { toggles += 1 }
+        controller.windowWillEnterFullScreen(Notification(name: NSWindow.willEnterFullScreenNotification))
+        controller.hide()
+        XCTAssertEqual(toggles, 0)
+        fullScreen = true
+        controller.windowDidEnterFullScreen(Notification(name: NSWindow.didEnterFullScreenNotification))
+        XCTAssertEqual(toggles, 1)
+        fullScreen = false
+        controller.windowDidExitFullScreen(Notification(name: NSWindow.didExitFullScreenNotification))
+        XCTAssertFalse(controller.window.isVisible)
+        XCTAssertTrue(controller.restoresFullScreen)
+    }
+
+    func testMissingDisplayFrameFitsTheRemainingScreen() {
+        let visible = NSRect(x: -1440, y: 24, width: 1440, height: 876)
+        let fitted = TerminalWindowController.frame(NSRect(x: 3000, y: -500, width: 1800, height: 1100), fitting: visible)
+        XCTAssertEqual(fitted, visible)
+        let small = TerminalWindowController.frame(NSRect(x: 3000, y: -500, width: 800, height: 600), fitting: visible)
+        XCTAssertTrue(visible.contains(small))
+        XCTAssertEqual(small.size, NSSize(width: 800, height: 600))
+    }
+
+    func testNavigationNoticeKeepsTheSessionAndFocus() throws {
+        try start()
+        let surface = controller.surfaceView
+        let responder = controller.window.firstResponder
+        controller.showNotice("Close search in tt, then try opening Today again.")
+        XCTAssertEqual(controller.notice?.stringValue, "Close search in tt, then try opening Today again.")
+        XCTAssertTrue(controller.surfaceView === surface)
+        XCTAssertTrue(controller.window.firstResponder === responder)
+    }
+
+    func testNativeEditMenuUsesTUIAvailabilityAndLabels() throws {
+        try start()
+        let surface = try XCTUnwrap(controller.surfaceView)
+        var edits: [String] = []
+        controller.onDesktopEdit = { edits.append($0) }
+        surface.onDesktopEdit = controller.onDesktopEdit
+        surface.desktopEditing = TTEditing(undo: "Typing", redo: "", search: false)
+        let undo = NSMenuItem(title: "Undo", action: MainMenu.undo, keyEquivalent: "z")
+        let redo = NSMenuItem(title: "Redo", action: MainMenu.redo, keyEquivalent: "z")
+        let find = NSMenuItem(title: "Find…", action: MainMenu.find, keyEquivalent: "f")
+        XCTAssertTrue(surface.validateMenuItem(undo))
+        XCTAssertEqual(undo.title, "Undo: Typing")
+        XCTAssertFalse(surface.validateMenuItem(redo))
+        XCTAssertFalse(surface.validateMenuItem(find))
+        surface.undo(nil)
+        XCTAssertEqual(edits, ["undo"])
+        surface.desktopEditing = TTEditing(undo: "Complete task", redo: "", search: true)
+        XCTAssertTrue(surface.validateMenuItem(undo))
+        XCTAssertEqual(undo.title, "Undo: Complete task")
+        XCTAssertTrue(surface.validateMenuItem(find))
+        surface.desktopEditing = nil
+        XCTAssertFalse(surface.validateMenuItem(undo))
+        XCTAssertEqual(undo.title, "Undo")
     }
 
     func testOnlyAPlainReturnOrEnterRelaunches() {

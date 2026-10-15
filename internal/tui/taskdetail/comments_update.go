@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
+
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
 
@@ -654,4 +656,28 @@ func (m *CommentsModel) cancelEditMode() {
 	m.EditMode = false
 	m.EditTextInput.Reset()
 	m.forgetRetainedDraft(commentMutationEdit)
+}
+
+// QuitBlockReason names content a desktop quit would abandon.
+func (m *CommentsModel) QuitBlockReason() string {
+	if m.pending != nil {
+		return "A comment change is still being saved."
+	}
+	if (m.AddMode && m.hasUnsavedAddText()) || (m.EditMode && m.hasUnsavedEditChanges()) {
+		return "Your comment draft has not been saved."
+	}
+	return ""
+}
+
+func (m *CommentsModel) DesktopTextBuffer() *chrome.DesktopTextBuffer {
+	if m.pending != nil || m.Confirm.IsActive() || m.ExpandedView || m.composerReadOnly() {
+		return nil
+	}
+	if m.AddMode {
+		return chrome.DesktopTextarea(&m.TextInput, nil)
+	}
+	if m.EditMode {
+		return chrome.DesktopTextarea(&m.EditTextInput, nil)
+	}
+	return nil
 }

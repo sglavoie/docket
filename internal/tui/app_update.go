@@ -25,6 +25,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 	// under LIFO, before recovery and before outCmd is assigned.
 	msg, origin, interactive := m.beginCommandOriginUpdate(msg)
 	statusBefore := m.captureFooterFlashProbe()
+	textBefore := m.desktopTextBuffer()
 	defer func() {
 		if r := recover(); r != nil {
 			m.retireInteraction()
@@ -69,6 +70,8 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		// And the one place every refresh this update made has landed, so a
 		// host on the control socket hears each changed pulse exactly once.
 		m.publishControlPulse()
+		m.observeDesktopText(textBefore, msg)
+		m.publishDesktopEditing()
 	}()
 
 	if command, ok := msg.(originTaggedCommandMsg); ok {

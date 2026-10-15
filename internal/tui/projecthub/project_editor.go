@@ -435,3 +435,27 @@ func (m *ProjectEditorModel) ShouldCaptureEsc() bool { return true }
 func (m *ProjectEditorModel) IsFullHeight() bool     { return false }
 
 func (m *ProjectEditorModel) StatusBarLabel() string { return "Edit Project" }
+
+// QuitBlockReason names content a desktop quit would abandon.
+func (m *ProjectEditorModel) QuitBlockReason() string {
+	if m.checkChanges() {
+		return "Your project edits have not been saved."
+	}
+	return ""
+}
+
+func (m *ProjectEditorModel) DesktopTextBuffer() *chrome.DesktopTextBuffer {
+	if m.ConfirmDiscard {
+		return nil
+	}
+	changed := func() { m.hasChanges = m.checkChanges() }
+	switch m.focusIndex { //nolint:exhaustive // Only editable fields expose a text buffer.
+	case projectEditorFieldName:
+		return chrome.DesktopInput(&m.nameInput, changed)
+	case projectEditorFieldDescription:
+		return chrome.DesktopInput(&m.descriptionInput, changed)
+	case projectEditorFieldTags:
+		return chrome.DesktopInput(&m.tagsInput, changed)
+	}
+	return nil
+}

@@ -774,3 +774,17 @@ focus request still in flight is abandoned even so: it has adopted nothing to
 retain and would push a scope of its own over the destination. Every ordinary way
 of leaving a focus still sheds it, the return's own scope pop included, and an
 origin that really did vanish still unwinds to the base scope and says so.
+
+### Desktop editing and quit
+
+The control `edit` operation routes native Undo/Redo to the focused
+`chrome.DesktopTextBuffer`; draft histories are bounded and independent of the
+workspace ledger. Without a text owner, existing undo/redo descriptors remain
+authoritative. The `editing` event publishes availability and labels and is
+replayed on reconnect. Native Find uses the existing scope-search descriptor.
+A draft with no history must never fall through to workspace undo.
+
+Desktop quit checks unsaved content along the entire presentation path through
+`QuitBlockReason`, including content behind an overlay. Navigation state alone
+is clean. Capture parse errors report source-relative UTF-16 selections to the
+native host; the parser's rune positions remain unchanged.

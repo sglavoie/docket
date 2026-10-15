@@ -31,10 +31,40 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
     /// Set while full screen is being left, by hide() or a show() that
     /// interrupted it, until AppKit says it has ended.
     private var exitingFullScreen = false
+    private var enteringFullScreen = false
+    private var hidesAfterEnteringFullScreen = false
+    private var hiddenScreenNumber: NSNumber?
+    lazy var isFullScreen: () -> Bool = { [weak self] in self?.window.styleMask.contains(.fullScreen) ?? false }
+    lazy var toggleFullScreen: () -> Void = { [weak self] in self?.window.toggleFullScreen(nil) }
+
     /// The window was full screen when last hidden, so the next show
     /// returns to it.
     private(set) var restoresFullScreen = false
     private let container = NSStackView()
+    private(set) var notice: NSTextField?
+    private var noticeGeneration = 0
+
+    /// A refused desktop navigation remains visible beside the intact TUI.
+    /// This does not take keyboard focus or require dismissal.
+    func showNotice(_ message: String) {
+        noticeGeneration += 1
+        let generation = noticeGeneration
+        if notice == nil {
+            let label = NSTextField(wrappingLabelWithString: "")
+            label.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+            label.textColor = .secondaryLabelColor
+            container.addArrangedSubview(label)
+            notice = label
+        }
+        notice?.stringValue = message
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak self] in
+            guard let self, self.noticeGeneration == generation, let notice = self.notice else { return }
+            self.container.removeArrangedSubview(notice)
+            notice.removeFromSuperview()
+            self.notice = nil
+        }
+    }
+
     private(set) var failureBanner: NSView?
     /// While the banner shows, Return relaunches even with the dead surface
     /// focused (it stays focusable so its output can be selected and copied).
@@ -57,6 +87,12 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
     private var presentsPendingStart = false
     /// Called on the main thread with each title the running tt sets.
     var onTitleChange: ((String) -> Void)?
+    var onDesktopEdit: ((String) -> Void)? {
+        didSet { surfaceView?.onDesktopEdit = onDesktopEdit }
+    }
+    var desktopEditing: TTEditing? {
+        didSet { surfaceView?.desktopEditing = desktopEditing }
+    }
     /// Set once tt has exited on the current surface, so a later close request
     /// from that dead surface decides nothing.
     private(set) var exitAction: TTExitAction?
@@ -117,6 +153,7 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
     /// Brings the window forward, first starting tt if no session is live.
     func show() {
         hidesAfterFullScreen = false
+        hidesAfterEnteringFullScreen = false
         if surfaceView == nil {
             startSession()
         }
@@ -130,6 +167,7 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
 
     private func present() {
         NSApp.activate(ignoringOtherApps: true)
+        restoreVisibleFrameIfNeeded()
         window.makeKeyAndOrderFront(nil)
         if let surfaceView {
             window.makeFirstResponder(surfaceView)
@@ -140,10 +178,10 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
     /// A window hidden from full screen goes back to it once shown; while the
     /// exit that hiding began is still running, its end does this instead.
     private func reenterFullScreenIfHiddenFromIt() {
-        guard restoresFullScreen, !exitingFullScreen, window.isVisible else { return }
+        guard restoresFullScreen, !exitingFullScreen, !enteringFullScreen, window.isVisible else { return }
         restoresFullScreen = false
-        if !window.styleMask.contains(.fullScreen) {
-            window.toggleFullScreen(nil)
+        if !isFullScreen() {
+            toggleFullScreen()
         }
     }
 
@@ -154,17 +192,50 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
     /// it has ended.
     func hide() {
         presentsPendingStart = false
-        if window.styleMask.contains(.fullScreen) {
+        if window.isVisible {
+            hiddenScreenNumber = window.screen?.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber
+        }
+        if enteringFullScreen {
+            restoresFullScreen = true
+            hidesAfterEnteringFullScreen = true
+            return
+        }
+        if exitingFullScreen {
+            hidesAfterFullScreen = true
+            return
+        }
+        if isFullScreen() {
             restoresFullScreen = true
             hidesAfterFullScreen = true
             exitingFullScreen = true
-            window.toggleFullScreen(nil)
+            toggleFullScreen()
             return
         }
-        if !exitingFullScreen {
-            restoresFullScreen = false
-        }
+        // A repeated hide of an already hidden window must not erase its intent.
+        if window.isVisible { restoresFullScreen = false }
         finishHide()
+    }
+
+    private func restoreVisibleFrameIfNeeded() {
+        guard !isFullScreen(), !exitingFullScreen, !enteringFullScreen else { return }
+        let screens = NSScreen.screens
+        let previous = screens.first {
+            ($0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber) == hiddenScreenNumber
+        }
+        if hiddenScreenNumber != nil, previous == nil, let fallback = NSScreen.main ?? screens.first {
+            window.setFrame(Self.frame(window.frame, fitting: fallback.visibleFrame), display: false)
+        } else if !screens.contains(where: { $0.visibleFrame.intersects(window.frame) }),
+                  let fallback = NSScreen.main ?? screens.first {
+            window.setFrame(Self.frame(window.frame, fitting: fallback.visibleFrame), display: false)
+        }
+        hiddenScreenNumber = nil
+    }
+
+    static func frame(_ frame: NSRect, fitting visible: NSRect) -> NSRect {
+        let size = NSSize(width: min(frame.width, visible.width), height: min(frame.height, visible.height))
+        return NSRect(x: min(max(frame.minX, visible.minX), visible.maxX-size.width),
+                      y: min(max(frame.minY, visible.minY), visible.maxY-size.height),
+                      width: size.width, height: size.height)
     }
 
     private func finishHide() {
@@ -256,6 +327,8 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
         window.title = "tt"
 
         let surfaceView = Ghostty.SurfaceView(app: app)
+        surfaceView.desktopEditing = desktopEditing
+        surfaceView.onDesktopEdit = { [weak self] action in self?.onDesktopEdit?(action) }
         surfaceView.onTitleChange = { [weak self, weak window] title in
             window?.title = title.isEmpty ? "tt" : title
             self?.onTitleChange?(title)
@@ -372,6 +445,32 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         hide()
         return false
+    }
+
+    func windowWillEnterFullScreen(_ notification: Notification) {
+        enteringFullScreen = true
+    }
+
+    func windowDidEnterFullScreen(_ notification: Notification) {
+        enteringFullScreen = false
+        if hidesAfterEnteringFullScreen {
+            hidesAfterEnteringFullScreen = false
+            hide()
+        }
+    }
+
+    func windowDidFailToEnterFullScreen(_ window: NSWindow) {
+        enteringFullScreen = false
+        restoresFullScreen = false
+        if hidesAfterEnteringFullScreen {
+            hidesAfterEnteringFullScreen = false
+            finishHide()
+        }
+    }
+
+    func windowDidFailToExitFullScreen(_ window: NSWindow) {
+        exitingFullScreen = false
+        if hidesAfterFullScreen { finishHide() }
     }
 
     func windowDidExitFullScreen(_ notification: Notification) {

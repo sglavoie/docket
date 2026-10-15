@@ -6,6 +6,18 @@ import UserNotifications
 /// The wire is `internal/control` in the Go tree; these pin the lines tt.app
 /// writes and reads.
 final class ControlWireTests: XCTestCase {
+    func testEditingAndErrorSelectionWireFormat() throws {
+        let line = #"{"event":"editing","editing":{"undo":"Complete task","redo":"","search":true}}"#
+        XCTAssertEqual(TTControlLine.decode(Data(line.utf8)),
+                       .event(.editing(TTEditing(undo: "Complete task", redo: "", search: true))))
+        let refusal = #"{"reply":7,"ok":false,"message":"Unknown project","selection":{"start":14,"length":8}}"#
+        XCTAssertEqual(TTControlLine.decode(Data(refusal.utf8)),
+                       .reply(TTControlReply(reply: 7, ok: false, message: "Unknown project", selection: TTTextSelection(start: 14, length: 8))))
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(TTControlRequest.edit("undo"))) as? [String: Any])
+        XCTAssertEqual(object["op"] as? String, "edit")
+        XCTAssertEqual(object["text"] as? String, "undo")
+    }
+
     func testCapturePreviewWireFormat() throws {
         let summary = "Project: Web · Plan: Today · Status: Backlog"
         let line = #"{"reply":7,"ok":true,"preview":"Project: Web · Plan: Today · Status: Backlog"}"#
@@ -432,9 +444,59 @@ final class ControlClientTests: XCTestCase {
 }
 
 final class QuickCapturePanelTests: XCTestCase {
+    func testPreviewDebouncesTypingAndOnlyShowsBusyForASlowReply() throws {
+        let panel = QuickCapturePanel()
+        var timers: [(Double, () -> Void)] = []
+        var requests: [(String, (String?) -> Void)] = []
+        panel.schedulePreview = { timers.append(($0, $1)) }
+        panel.preview = { requests.append(($0, $1)) }
+        panel.show()
+        defer { panel.close() }
+        let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
+        let editor = try XCTUnwrap(field.currentEditor() as? NSTextView)
+        editor.insertText("Buy", replacementRange: editor.selectedRange())
+        editor.insertText(" milk", replacementRange: editor.selectedRange())
+        XCTAssertTrue(requests.isEmpty)
+        let scheduled = timers
+        timers.removeAll()
+        scheduled.filter { $0.0 < 0.2 }.forEach { $0.1() }
+        XCTAssertEqual(requests.map(\.0), ["Buy milk"])
+        requests[0].1("Project: Unfiled")
+        scheduled.filter { $0.0 > 0.2 }.forEach { $0.1() }
+        XCTAssertFalse(panel.panel.contentView!.descendants(of: NSTextField.self).contains { $0.stringValue == "Previewing…" })
+        editor.insertText(" tomorrow", replacementRange: editor.selectedRange())
+        timers.forEach { $0.1() }
+        XCTAssertTrue(panel.panel.contentView!.descendants(of: NSTextField.self).contains { $0.stringValue == "Previewing…" })
+        requests.last?.1("Project: Unfiled · Plan: Tomorrow")
+        XCTAssertFalse(panel.panel.contentView!.descendants(of: NSTextField.self).contains { $0.stringValue == "Previewing…" })
+    }
+
+    func testRefusedCaptureSelectsTheExactTokenAndKeepsTheDraft() throws {
+        let panel = QuickCapturePanel()
+        panel.submit = { text, written, done in
+            XCTAssertEqual(text, "  Buy 🥛 milk %missing")
+            written()
+            done(false, "Unknown project", nil, TTTextSelection(start: 14, length: 8))
+        }
+        panel.show()
+        defer { panel.close() }
+        let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
+        XCTAssertNil(panel.quitBlockReason)
+        field.stringValue = "  Buy 🥛 milk %missing"
+        XCTAssertNotNil(panel.quitBlockReason)
+        field.sendAction(field.action, to: field.target)
+        let editor = try XCTUnwrap(field.currentEditor() as? NSTextView)
+        XCTAssertEqual(editor.selectedRange(), NSRange(location: 14, length: 8))
+        XCTAssertEqual(editor.string, "  Buy 🥛 milk %missing")
+        panel.close()
+        XCTAssertNotNil(panel.quitBlockReason, "a hidden draft is still unsaved")
+        panel.show()
+        XCTAssertEqual((field.currentEditor() as? NSTextView)?.selectedRange(), NSRange(location: 14, length: 8))
+    }
+
     func testControlNCapturesRepeatedlyAndKeepsRefusedDrafts() throws {
         let panel = QuickCapturePanel()
-        var callbacks: [(Bool, String, String?) -> Void] = []
+        var callbacks: [(Bool, String, String?, TTTextSelection?) -> Void] = []
         var submitted: [String] = []
         var dismissals = 0
         panel.scheduleDismissal = { _ in dismissals += 1 }
@@ -449,18 +511,18 @@ final class QuickCapturePanelTests: XCTestCase {
         XCTAssertTrue(panel.panel.performKeyEquivalent(with: key))
         XCTAssertTrue(panel.panel.performKeyEquivalent(with: key))
         XCTAssertEqual(submitted, ["First"], "an in-flight request cannot be duplicated")
-        callbacks[0](true, "Captured", "tx-1")
+        callbacks[0](true, "Captured", "tx-1", nil)
         XCTAssertEqual(field.stringValue, "")
         XCTAssertTrue(panel.isVisible)
         XCTAssertEqual(dismissals, 0)
         field.stringValue = "Second"
         XCTAssertTrue(panel.panel.performKeyEquivalent(with: key))
-        callbacks[1](false, "Please fix this", nil)
+        callbacks[1](false, "Please fix this", nil, nil)
         XCTAssertEqual(field.stringValue, "Second")
         XCTAssertTrue(panel.isVisible)
         XCTAssertEqual(dismissals, 0)
         XCTAssertTrue(panel.panel.performKeyEquivalent(with: key))
-        callbacks[2](true, "Captured", "tx-2")
+        callbacks[2](true, "Captured", "tx-2", nil)
         XCTAssertEqual(field.stringValue, "")
         XCTAssertEqual(submitted, ["First", "Second", "Second"])
     }
@@ -494,7 +556,7 @@ final class QuickCapturePanelTests: XCTestCase {
     func testSuccessfulCaptureClearsTheRememberedSelection() throws {
         let panel = QuickCapturePanel()
         panel.scheduleDismissal = { _ in }
-        panel.submit = { _, written, done in written(); done(true, "Captured", "tx") }
+        panel.submit = { _, written, done in written(); done(true, "Captured", "tx", nil) }
         panel.show()
         defer { panel.close() }
         let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
@@ -516,6 +578,7 @@ final class QuickCapturePanelTests: XCTestCase {
     func testPreviewUsesTheWholeDraftAndRejectsOldReplies() throws {
         let panel = QuickCapturePanel()
         var requests: [(String, (String?) -> Void)] = []
+        panel.schedulePreview = { delay, action in if delay < 0.2 { action() } }
         panel.preview = { text, done in requests.append((text, done)) }
         panel.show()
         defer { panel.close() }
@@ -551,7 +614,7 @@ final class QuickCapturePanelTests: XCTestCase {
         let panel = QuickCapturePanel()
         var dismiss: (() -> Void)?
         panel.scheduleDismissal = { dismiss = $0 }
-        panel.submit = { _, written, done in written(); done(true, "Captured", "tx") }
+        panel.submit = { _, written, done in written(); done(true, "Captured", "tx", nil) }
         panel.show()
         defer { panel.close() }
         let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
@@ -572,7 +635,7 @@ final class QuickCapturePanelTests: XCTestCase {
     func testLongRefusalsGrowThePanelAndTheNextOpeningShrinksIt() throws {
         let panel = QuickCapturePanel()
         let reason = String(repeating: "The selected project is unavailable; choose an existing project. ", count: 8)
-        panel.submit = { _, written, done in written(); done(false, reason, nil) }
+        panel.submit = { _, written, done in written(); done(false, reason, nil, nil) }
         panel.show()
         defer { panel.close() }
         let originalHeight = panel.panel.frame.height
@@ -617,7 +680,7 @@ final class QuickCapturePanelTests: XCTestCase {
     func testCommandZUndoesTheLastCaptureOnlyFromAnEmptyField() throws {
         let panel = QuickCapturePanel()
         panel.scheduleDismissal = { _ in }
-        panel.submit = { _, written, done in written(); done(true, "Captured: Buy milk", "tx-1") }
+        panel.submit = { _, written, done in written(); done(true, "Captured: Buy milk", "tx-1", nil) }
         var undone: [String] = []
         var undoReplies: [(Bool, String) -> Void] = []
         panel.undo = { transaction, written, done in written(); undone.append(transaction); undoReplies.append(done) }
@@ -664,7 +727,7 @@ final class QuickCapturePanelTests: XCTestCase {
     func testAnUnansweredCaptureTimesOutKeepingTheDraft() throws {
         let panel = QuickCapturePanel()
         var timeouts: [(TimeInterval, () -> Void)] = []
-        var replies: [(Bool, String, String?) -> Void] = []
+        var replies: [(Bool, String, String?, TTTextSelection?) -> Void] = []
         var announced: [String] = []
         panel.scheduleDismissal = { _ in }
         panel.scheduleTimeout = { delay, action in timeouts.append((delay, action)) }
@@ -689,7 +752,7 @@ final class QuickCapturePanelTests: XCTestCase {
         XCTAssertEqual(announced.last, QuickCapturePanel.captureTimeoutMessage)
 
         // A late refusal leaves the kept draft alone.
-        replies[0](false, "refused late", nil)
+        replies[0](false, "refused late", nil, nil)
         XCTAssertEqual(field.stringValue, "Buy milk")
         XCTAssertFalse(labels.contains { $0.stringValue == "refused late" })
 
@@ -697,7 +760,7 @@ final class QuickCapturePanelTests: XCTestCase {
         field.sendAction(field.action, to: field.target)
         XCTAssertEqual(replies.count, 2)
         timeouts[1].1()
-        replies[1](true, "Captured: Buy milk", "tx-late")
+        replies[1](true, "Captured: Buy milk", "tx-late", nil)
         XCTAssertEqual(field.stringValue, "")
         XCTAssertEqual(panel.lastCaptureTransaction, "tx-late")
         XCTAssertTrue(labels.contains { $0.stringValue == "Captured: Buy milk" })
@@ -705,7 +768,7 @@ final class QuickCapturePanelTests: XCTestCase {
         // A timeout firing after its answer arrived does nothing.
         field.stringValue = "Next"
         field.sendAction(field.action, to: field.target)
-        replies[2](true, "Captured: Next", "tx-3")
+        replies[2](true, "Captured: Next", "tx-3", nil)
         timeouts[2].1()
         XCTAssertTrue(labels.contains { $0.stringValue == "Captured: Next" })
         XCTAssertFalse(labels.contains { $0.stringValue == QuickCapturePanel.captureTimeoutMessage })
@@ -718,7 +781,7 @@ final class QuickCapturePanelTests: XCTestCase {
         let panel = QuickCapturePanel()
         var timeouts: [() -> Void] = []
         var written: (() -> Void)?
-        var reply: ((Bool, String, String?) -> Void)?
+        var reply: ((Bool, String, String?, TTTextSelection?) -> Void)?
         panel.scheduleDismissal = { _ in }
         panel.scheduleTimeout = { _, action in timeouts.append(action) }
         panel.announce = { _ in }
@@ -737,7 +800,7 @@ final class QuickCapturePanelTests: XCTestCase {
 
         try XCTUnwrap(written)()
         XCTAssertEqual(timeouts.count, 1, "the clock starts once tt has the request")
-        try XCTUnwrap(reply)(true, "Captured: Buy milk", "tx-1")
+        try XCTUnwrap(reply)(true, "Captured: Buy milk", "tx-1", nil)
         for timeout in timeouts { timeout() }
         XCTAssertEqual(field.stringValue, "")
         XCTAssertEqual(panel.lastCaptureTransaction, "tx-1")
@@ -748,7 +811,7 @@ final class QuickCapturePanelTests: XCTestCase {
         field.stringValue = "Next"
         field.sendAction(field.action, to: field.target)
         let lateWritten = try XCTUnwrap(written)
-        try XCTUnwrap(reply)(true, "Captured: Next", "tx-2")
+        try XCTUnwrap(reply)(true, "Captured: Next", "tx-2", nil)
         lateWritten()
         XCTAssertEqual(timeouts.count, 1)
     }
@@ -757,7 +820,7 @@ final class QuickCapturePanelTests: XCTestCase {
     /// the draft for the next opening, which can send it again.
     func testCancellingAPendingCaptureKeepsTheDraft() throws {
         let panel = QuickCapturePanel()
-        var replies: [(Bool, String, String?) -> Void] = []
+        var replies: [(Bool, String, String?, TTTextSelection?) -> Void] = []
         panel.scheduleTimeout = { _, _ in }
         panel.announce = { _ in }
         panel.submit = { _, written, done in written(); replies.append(done) }
@@ -771,7 +834,7 @@ final class QuickCapturePanelTests: XCTestCase {
         panel.panel.cancelOperation(nil)
         XCTAssertFalse(panel.isVisible)
         XCTAssertFalse(panel.sending)
-        replies[0](false, "tt is busy", nil)
+        replies[0](false, "tt is busy", nil, nil)
 
         panel.show()
         XCTAssertEqual(field.stringValue, "Buy milk")
@@ -788,7 +851,7 @@ final class QuickCapturePanelTests: XCTestCase {
         panel.announce = { announced.append($0) }
         panel.scheduleDismissal = { _ in }
         panel.scheduleTimeout = { _, _ in }
-        panel.submit = { _, written, done in written(); done(false, "Unknown project %nope", nil) }
+        panel.submit = { _, written, done in written(); done(false, "Unknown project %nope", nil, nil) }
         panel.show()
         defer { panel.close() }
         XCTAssertFalse(panel.panel.isMovableByWindowBackground)

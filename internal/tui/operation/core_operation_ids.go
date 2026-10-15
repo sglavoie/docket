@@ -46,6 +46,7 @@ const (
 	OperationCoreZoomSection        OperationID = "tui.core.zoom-section"
 	OperationCoreOpenNote           OperationID = "tui.core.open-note"
 	OperationCorePeek               OperationID = "tui.core.peek"
+	OperationCorePeekSize           OperationID = "tui.core.peek-size"
 	OperationCorePeekHalfPageDown   OperationID = "tui.core.peek-half-page-down"
 	OperationCorePeekHalfPageUp     OperationID = "tui.core.peek-half-page-up"
 	OperationCorePeekPageDown       OperationID = "tui.core.peek-page-down"

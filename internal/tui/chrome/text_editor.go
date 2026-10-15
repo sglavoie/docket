@@ -260,3 +260,21 @@ type TextEditorExternalDoneMsg struct {
 }
 
 func (m *TextEditorModel) StatusBarLabel() string { return textEditorHeader(m.fieldName) }
+
+// QuitBlockReason names content a desktop quit would abandon.
+func (m *TextEditorModel) QuitBlockReason() string {
+	if m.ExternalEdit {
+		return "An external editor is still open."
+	}
+	if m.hasDraft() {
+		return "The " + textEditorHeader(m.fieldName) + " draft has unsaved changes."
+	}
+	return ""
+}
+
+func (m *TextEditorModel) DesktopTextBuffer() *DesktopTextBuffer {
+	if m.ConfirmDiscard || m.ExternalEdit {
+		return nil
+	}
+	return DesktopTextarea(&m.textarea, nil)
+}

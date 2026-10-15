@@ -128,8 +128,9 @@ type inlinePeekOptions struct {
 	// own paging arithmetic and the render agree about the height on screen. It
 	// is the frame's answer and never the document's: a long body and a short one
 	// are drawn in the same window.
-	Window     peekDockGeometry
-	Breadcrumb string
+	Window      peekDockGeometry
+	Breadcrumb  string
+	ProjectSlug string
 	// SearchExcerpt explains a non-title search hit without replacing the detail.
 	SearchExcerpt    string
 	SearchExcerptKey string
@@ -210,6 +211,7 @@ func inlinePeekBodySections(opts inlinePeekOptions, width int) []inlinePeekSecti
 	// a bare `‹`. A reader who opened Peek on a clipped row is looking for the
 	// rest of that title, so nothing precedes it.
 	add("title:"+task.Title, inlinePeekTitleLines(task, opts.Indent, width))
+	add("project:"+opts.ProjectSlug, inlinePeekStyledLines(theme.MutedStyle.Render("Project: "), opts.ProjectSlug, opts.Indent, width))
 	add("parent:"+opts.Breadcrumb, inlinePeekParentLines(opts.Breadcrumb, opts.Indent, width))
 	add("match:"+opts.SearchExcerptKey, inlinePeekStyledLines(theme.MutedStyle.Render("Match: "), opts.SearchExcerpt, opts.Indent, width))
 

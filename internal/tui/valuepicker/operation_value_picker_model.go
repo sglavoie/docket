@@ -21,11 +21,12 @@ const (
 
 // OperationValuePickerModel is the shared ListSurface value-picker control.
 type OperationValuePickerModel struct {
-	surface  *listsurface.ListSurfaceModel
-	request  operation.OperationExecutionRequest
-	provider operation.ValueProviderID
-	title    string
-	subtitle string
+	initialSelection []listsurface.ListItemID
+	surface          *listsurface.ListSurfaceModel
+	request          operation.OperationExecutionRequest
+	provider         operation.ValueProviderID
+	title            string
+	subtitle         string
 	// contextLine is one muted line under the title stating what the targets
 	// hold now, for a picker whose rows cannot show it. It wraps rather than
 	// truncates, and RenderWithin reserves the rows it wraps to.
@@ -92,12 +93,13 @@ func NewOperationValuePickerModel(
 		}
 	}
 	model := &OperationValuePickerModel{
-		surface:  surface,
-		request:  request,
-		provider: provider,
-		title:    title,
-		subtitle: subtitle,
-		multi:    multi,
+		initialSelection: append([]listsurface.ListItemID(nil), selected...),
+		surface:          surface,
+		request:          request,
+		provider:         provider,
+		title:            title,
+		subtitle:         subtitle,
+		multi:            multi,
 	}
 	if provider.TagEntry() {
 		model.tagAdder = listsurface.NewTagAdder()

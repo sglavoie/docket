@@ -102,7 +102,9 @@ func (m *OutlinerModel) taskRelationMarker(row OutlinerRow) string {
 	if marker == "" {
 		return ""
 	}
-	return theme.RelationMarkerStyle.Render("  " + marker)
+	// One unstyled space, then the chip, whose own padding supplies the second
+	// space the marker always led with.
+	return " " + theme.RelationMarkerStyle.Render(marker)
 }
 
 // rankedProjectLabelMaxSlug bounds the slug a ranked row spells: an eighth of
@@ -134,7 +136,7 @@ func (m *OutlinerModel) rankedProjectSlug(row OutlinerRow, rowWidth int) string 
 		return ""
 	}
 	slug, _ := m.projectSlugForRow(row)
-	return textfit.TruncateToVisualWidth(slug, rankedProjectLabelMaxSlug(rowWidth))
+	return m.abbreviatedProjectSlug(slug, rankedProjectLabelMaxSlug(rowWidth))
 }
 
 // taskProjectLabel is the `[slug]` the project header would have drawn, in the

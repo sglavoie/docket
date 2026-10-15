@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
+
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
@@ -310,4 +312,30 @@ func (m *NotesViewModel) StartRename() {
 	m.renameInput = ti
 	m.renameTarget = row.Identity()
 	m.renaming = true
+}
+
+// QuitBlockReason names content a desktop quit would abandon.
+func (m *NotesViewModel) QuitBlockReason() string {
+	if m.renaming {
+		row := m.rowByIdentity(m.renameTarget)
+		if row == nil || strings.TrimSpace(m.renameInput.Value()) != row.Note.Title {
+			return "Your note rename has not been saved."
+		}
+	}
+	return ""
+}
+
+func (m *NotesViewModel) DesktopTextBuffer() *chrome.DesktopTextBuffer {
+	if m.confirmDiscard || m.Confirm.IsActive() || m.LocationPicker != nil {
+		return nil
+	}
+	if m.renaming {
+		buffer := chrome.DesktopInput(&m.renameInput, nil)
+		buffer.Key = [2]any{buffer.Key, m.renameTarget}
+		return buffer
+	}
+	if m.searchEditing {
+		return chrome.DesktopInput(&m.searchInput, m.RederiveVisibleRows)
+	}
+	return nil
 }

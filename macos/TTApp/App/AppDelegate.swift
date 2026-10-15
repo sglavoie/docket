@@ -37,7 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     /// Watches macOS's appearance for tt's theme.
     private var appearanceObserver: NSKeyValueObservation?
     /// Asks whether to quit over what tt has open; true quits anyway.
-    var confirmQuitAnyway: () -> Bool = AppDelegate.runBusyQuitAlert
+    var confirmQuitAnyway: (String) -> Bool = AppDelegate.runBusyQuitAlert
 
     /// A hosted test bundle launches this app too; it must not spawn tt.
     private static var isRunningTests: Bool {
@@ -117,7 +117,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         controller.onWillStartSession = { [weak self] ready in self?.prepareSession(then: ready) }
         controller.onSessionEnd = { [weak self, weak model] in
             model?.sessionEnvironment = nil
-            self?.quitHandshake?.ttEnded()
+            self?.terminal?.desktopEditing = nil
+                self?.quitHandshake?.ttEnded()
             self?.control?.disconnect()
             self?.lastPulse = nil
             self?.showTitle("")
@@ -182,6 +183,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     /// to know the request, it ends at once and tt takes the hangup below.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard quitHandshake == nil else { return .terminateCancel }
+        if let reason = quickCapture.quitBlockReason, !confirmQuitAnyway(reason) {
+            quickCapture.show()
+            return .terminateCancel
+        }
         guard let control, control.isConnected else { return .terminateNow }
         let handshake = TTQuitHandshake { [weak self] outcome in self?.finishQuit(outcome) }
         quitHandshake = handshake
@@ -197,22 +202,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         switch outcome {
         case .quit:
             NSApp.reply(toApplicationShouldTerminate: true)
-        case .busy:
+        case .busy(let reason):
             terminal?.show()
-            NSApp.reply(toApplicationShouldTerminate: confirmQuitAnyway())
+            NSApp.reply(toApplicationShouldTerminate: confirmQuitAnyway(reason))
         }
     }
 
-    /// The busy alert. tt refuses for an open draft, picker, or editor, and
-    /// also for a selection or a search, so it says busy rather than unsaved.
-    private static func runBusyQuitAlert() -> Bool {
+    /// Unsaved content is named by its owner; navigation alone never prompts.
+    static func runBusyQuitAlert(_ reason: String) -> Bool {
         let alert = NSAlert()
-        alert.messageText = "tt is busy."
-        alert.informativeText = "Something is open in tt, such as a draft, a picker, or a selection. "
-            + "Finish it in tt, or quit anyway and lose it."
+        alert.messageText = "Quit with unfinished work?"
+        alert.informativeText = reason.replacingOccurrences(of: TTQuitHandshake.busyPrefix + ": ", with: "")
+            + " Finish it in tt, or quit and discard the unfinished work."
+        alert.addButton(withTitle: "Keep Editing")
         alert.addButton(withTitle: "Quit Anyway")
-        alert.addButton(withTitle: "Cancel")
-        return alert.runModal() == .alertFirstButtonReturn
+        return alert.runModal() == .alertSecondButtonReturn
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -408,6 +412,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         control.disconnect()
         try? FileManager.default.removeItem(atPath: control.path)
         self.control = nil
+        terminal?.desktopEditing = nil
         lastPulse = nil
         refreshBadge()
     }
@@ -419,10 +424,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             if connected {
                 self?.sendAppearance()
             } else {
+                self?.terminal?.desktopEditing = nil
                 self?.quitHandshake?.ttEnded()
             }
         }
         control = client
+        terminal?.onDesktopEdit = { [weak self] action in
+            self?.control?.send(.edit(action)) { [weak self] reply in
+                if !reply.ok { self?.terminal?.showNotice(reply.message ?? "That action is unavailable here.") }
+            }
+        }
 
         notifications.onReveal = { [weak self] task in self?.reveal(task) }
         notifications.onAcknowledge = { [weak self] task in
@@ -444,6 +455,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
 
     private func handle(_ event: TTControlEvent) {
         switch event {
+        case .editing(let editing):
+            terminal?.desktopEditing = editing
         case .pulse(let pulse):
             lastPulse = pulse
             refreshBadge()
@@ -463,9 +476,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     /// A notification naming a task was clicked: bring tt forward on it.
     private func reveal(_ task: TTTaskID) {
         terminal?.show()
-        control?.send(.reveal(task)) { reply in
-            if !reply.ok { NSLog("tt: reveal: %@", reply.message ?? "refused") }
-        }
+        navigate(.reveal(task), destination: "that task")
     }
 
     /// A notification action: tt acts without coming forward, and says so
@@ -477,9 +488,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
     }
 
-    private func capture(_ text: String, written: @escaping () -> Void, done: @escaping (Bool, String, String?) -> Void) {
+    private func capture(_ text: String, written: @escaping () -> Void, done: @escaping (Bool, String, String?, TTTextSelection?) -> Void) {
         guard let control, let terminal else {
-            done(false, "This tt has no control socket. Update it (just install) to capture from here.", nil)
+            done(false, "This tt has no control socket. Update it (just install) to capture from here.", nil, nil)
             return
         }
         // A tt that exited cleanly starts again; the request waits for it.
@@ -488,7 +499,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
         // The reply clock starts once tt has the request, not while it starts.
         control.send(.capture(text), onWritten: written) { reply in
-            done(reply.ok, reply.message ?? "", reply.transaction)
+            done(reply.ok, reply.message ?? "", reply.transaction, reply.selection)
         }
     }
 
@@ -757,8 +768,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             return
         }
         terminal.show()
-        control?.send(.view(view)) { reply in
-            if !reply.ok { NSLog("tt: view: %@", reply.message ?? "refused") }
+        navigate(.view(view), destination: view == .due ? "Overdue" : view.rawValue.capitalized)
+    }
+
+    private func navigate(_ request: TTControlRequest, destination: String) {
+        guard let control else {
+            terminal?.showNotice("Couldn’t open \(destination): this tt has no control connection.")
+            return
+        }
+        control.send(request) { [weak self] reply in
+            guard !reply.ok else { return }
+            self?.terminal?.showNotice("Couldn’t open \(destination): " + (reply.message ?? "tt did not answer."))
         }
     }
 

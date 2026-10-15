@@ -163,6 +163,8 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 	visiblePeek := func(ctx CommandContext) bool {
 		return CoreOutlinerApplicability(ctx) && ctx.Peek.Visible
 	}
+	peekSize := core(OperationCorePeekSize, "Expand / Compact Peek", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "resize preview")
+	peekSize.Applicability = visiblePeek
 	peekHalfPageDown := withEntityTarget(core(
 		OperationCorePeekHalfPageDown,
 		"Scroll Peek Down",
@@ -382,6 +384,7 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		activateGroup,
 		openNote,
 		peek,
+		peekSize,
 		peekHalfPageDown,
 		peekHalfPageUp,
 		peekPageDown,

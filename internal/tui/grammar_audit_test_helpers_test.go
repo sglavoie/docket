@@ -100,6 +100,7 @@ func parityAuditApp(t *testing.T) *AppModel {
 // list cursor, so this map is also what tells the audit which of the two
 // meanings each binding is being resolved for.
 var peekPagingGrammar = map[operation.OperationID]bool{
+	operation.OperationCorePeekSize:         true,
 	operation.OperationCorePeekHalfPageDown: true,
 	operation.OperationCorePeekHalfPageUp:   true,
 	operation.OperationCorePeekPageDown:     true,

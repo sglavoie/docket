@@ -745,3 +745,17 @@ func CaptureCompletions(preset TaskComposerPreset, runtime *config.RuntimeState,
 	}
 	return set
 }
+
+// QuitBlockReason names content a desktop quit would abandon.
+func (m *TaskComposerModel) QuitBlockReason() string {
+	if m.SubmissionInFlight {
+		return "A capture is still being saved."
+	}
+	if m.Mode == ComposerExpanded && m.Expanded != nil {
+		return m.Expanded.QuitBlockReason()
+	}
+	if m.HasDraft() {
+		return "Your capture draft has not been saved."
+	}
+	return ""
+}

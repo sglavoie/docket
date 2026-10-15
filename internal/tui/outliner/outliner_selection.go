@@ -245,3 +245,17 @@ func (m *OutlinerModel) pruneSelectionsOutsideLoadedProjects() {
 		m.FreezeRangeSelection()
 	}
 }
+
+// QuitBlockReason names content a desktop quit would abandon.
+func (m *OutlinerModel) QuitBlockReason() string {
+	if m.QuickEdit != nil && m.QuickEdit.IsActive() {
+		if m.QuickEdit.Pending {
+			return "Your task edit is still being saved."
+		}
+		task := m.QuickEdit.GetTask()
+		if task == nil || m.QuickEdit.Input.Value() != task.Title {
+			return "Your task title edit has not been saved."
+		}
+	}
+	return ""
+}

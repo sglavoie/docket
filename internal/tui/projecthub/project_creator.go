@@ -196,3 +196,18 @@ func renderProjectSlugPreview(slug string, width int, indent, suffix string) str
 	}
 	return line
 }
+
+// QuitBlockReason names content a desktop quit would abandon.
+func (m *ProjectCreatorModel) QuitBlockReason() string {
+	if m.hasDraft() {
+		return "Your new project has not been saved."
+	}
+	return ""
+}
+
+func (m *ProjectCreatorModel) DesktopTextBuffer() *chrome.DesktopTextBuffer {
+	if m.ConfirmDiscard {
+		return nil
+	}
+	return chrome.DesktopInput(&m.nameInput, nil)
+}

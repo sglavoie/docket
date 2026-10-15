@@ -647,6 +647,11 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		// the columns a second copy of the same sentence used to spend go to the
 		// scrolling offers below it.
 		hints := chrome.RequiredGuidanceHints(peekKey + "/" + m.EscHint())
+		sizeAction := "expand Peek"
+		if m.PeekExpanded {
+			sizeAction = "compact Peek"
+		}
+		hints = append(hints, chrome.NewGuidanceHint(m.peekOperationKey(operation.OperationCorePeekSize, "B")+" "+sizeAction, 1, true))
 		// The four scrolling keys are offered only in the direction the document
 		// can actually move: a detail that fits its budget advertises no movement
 		// at all. Their descriptors are applicable on a wider fact — a visible

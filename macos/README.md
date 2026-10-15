@@ -203,9 +203,10 @@ one shows the error instead of a window.
 
 Quitting tt.app asks tt to quit first, the way `q` does, so it saves its view
 and filter state. The app ends once tt has, or after three seconds. If tt is
-busy, because a draft, a picker, an editor, a selection, or a search is open in
-it, the window comes forward with a "tt is busy." alert offering Quit Anyway or
-Cancel. With no socket, or a tt too old to know the request, tt.app quits at
+holding unsaved content or still saving, the window comes forward with a
+"Quit with unfinished work?" alert naming the draft and offering Keep Editing
+or Quit Anyway. A quick-capture draft is protected even while its panel is
+hidden. Search, selection, and unchanged pickers do not require confirmation. With no socket, or a tt too old to know the request, tt.app quits at
 once and tt gets a hangup, as a closed terminal would give it.
 
 ### Quick capture
@@ -259,7 +260,9 @@ task with the same title in the destination project adds the terminal composer's
 save. It reads the whole
 draft through the running tt's composer, so moving the caret to complete a
 token does not change the preview's meaning. Invalid drafts hide the preview;
-Enter reports the refusal and keeps the text. Refusals wrap in full and the
+Enter reports the refusal, keeps the text, and selects the offending token
+when the parser can locate it. Preview requests wait for a brief pause in typing;
+"Previewing…" appears only when the response takes longer. Refusals wrap in full and the
 panel grows to fit them. A preview never starts tt, and is simply absent with
 an older tt that does not support it. Reopening the panel cancels a previous
 capture's pending automatic dismissal.
@@ -338,10 +341,12 @@ session only, so a tt started from a terminal keeps the theme it saved, and
 
 ### Menus
 
-Edit has Undo, Redo, Cut, Copy, Paste, and Select All. Undo, Redo, and Cut
-serve text fields, in Settings and quick capture; in the terminal they stay
-disabled and `Cmd+Z`, `Shift+Cmd+Z`, and `Cmd+X` go to tt as before, since tt
-owns every edit there, undo included, through its own keys. View names the
+Edit has Undo, Redo, Cut, Copy, Paste, Select All, and Find. In the terminal,
+`Cmd+Z` and `Shift+Cmd+Z` undo and redo the focused draft; while browsing,
+they use tt’s workspace history. The menu names the available action and
+disables it when unavailable. `Cmd+F` opens Outliner search. Native fields
+in Settings and quick capture retain AppKit editing; Cut remains a native
+text-field action. View names the
 zoom keys (Actual Size, Zoom In, Zoom Out) and Enter Full Screen
 (`Ctrl+Cmd+F`); Window has Minimize, Zoom, Close, and Bring All to Front; and
 Help has tt Guide, which opens the user guide on GitHub, and Report an Issue…,
@@ -432,3 +437,9 @@ Staying pinned is fine; upgrade deliberately:
      keeps the session; `q` follows the exit preference.
    - Each global shortcut fires once with tt in front, and once from the open
      status menu, whose items show them.
+
+Desktop navigation refusals appear briefly beneath the terminal without taking
+keyboard focus. They explain what to close, save, or cancel before trying again.
+Full-screen show/hide requests preserve the last requested visibility through
+transitions; a window whose display disappeared returns within a remaining
+display’s visible bounds.

@@ -117,7 +117,9 @@ func TestGuideDocumentsPeekAndBulkSemantics(t *testing.T) {
 		"`Shift+Enter` widens in the other direction",
 		"`b` toggles a session-only Peek in a pane docked below the list, whether the\n" +
 			"cursor is on a task or on a project header",
-		"Its height is a share of the terminal\n" +
+		"`B` switches an open Peek between compact and expanded sizes",
+		"Peek always names the full project slug",
+		"Its compact height is a share of the terminal\n" +
 			"— about a third of the outline's own room, never fewer than seven rows and never\n" +
 			"more than twelve — counted off the list once when you open it",
 		"What the pane never reads is the\nrow you are on",

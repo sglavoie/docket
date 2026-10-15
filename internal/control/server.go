@@ -37,11 +37,12 @@ type Server struct {
 	dispatch     Dispatch
 	replyTimeout time.Duration
 
-	mu        sync.Mutex
-	conns     map[*conn]struct{}
-	lastPulse []byte
-	closed    bool
-	wg        sync.WaitGroup
+	mu          sync.Mutex
+	conns       map[*conn]struct{}
+	lastPulse   []byte
+	lastEditing []byte
+	closed      bool
+	wg          sync.WaitGroup
 }
 
 type conn struct {
@@ -136,6 +137,9 @@ func (s *Server) Publish(event Event) {
 	if s.closed {
 		return
 	}
+	if event.Event == EventEditing {
+		s.lastEditing = line
+	}
 	if event.Event == EventPulse {
 		s.lastPulse = line
 	}
@@ -163,6 +167,9 @@ func (s *Server) accept() {
 			return
 		}
 		s.conns[c] = struct{}{}
+		if s.lastEditing != nil {
+			c.out <- s.lastEditing
+		}
 		if s.lastPulse != nil {
 			c.out <- s.lastPulse
 		}

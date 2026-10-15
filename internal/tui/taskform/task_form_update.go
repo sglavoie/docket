@@ -256,3 +256,19 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	return m, nil
 }
+
+// QuitBlockReason names content a desktop quit would abandon.
+func (m *TaskFormModel) QuitBlockReason() string {
+	if m.activeOverlay == formOverlayCheckIn && m.checkInEditor != nil {
+		if reason := m.checkInEditor.QuitBlockReason(); reason != "" {
+			return reason
+		}
+	}
+	if m.submissionInFlight {
+		return "A task is still being saved."
+	}
+	if m.hasChanges || m.titleInput.Value() != "" || m.checklistItemInput.Value() != "" || m.subtaskItemInput.Value() != "" || m.commentItemInput.Value() != "" || m.attachmentItemInput.Value() != "" {
+		return "Your task form contains an unsaved draft."
+	}
+	return ""
+}

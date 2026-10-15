@@ -19,6 +19,8 @@ extension Ghostty {
 
         /// Called on the main thread whenever `title` changes.
         var onTitleChange: ((String) -> Void)?
+        var onDesktopEdit: ((String) -> Void)?
+        var desktopEditing: TTEditing?
 
         /// Whether the surface was last told it has focus.
         private(set) var focused: Bool = false

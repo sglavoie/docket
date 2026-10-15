@@ -159,7 +159,8 @@ type OutlinerModel struct {
 	openChildCounts map[taskref.TaskIdentity]int
 	// hiddenLayout is what this projection's folds hide from the row layout,
 	// rebuilt with the rows so a fold opening moves no title.
-	hiddenLayout hiddenRowLayout
+	hiddenLayout  hiddenRowLayout
+	projectLabels projectLabelCache
 
 	// dependencyIndexCache is the row-rebuild pass's reading of the soft
 	// reference graph over the loaded population. It is a cache and never
@@ -172,6 +173,8 @@ type OutlinerModel struct {
 
 	// Peek mode follows the cursor and shows additive task detail inline.
 	PeekMode bool
+	// PeekExpanded is a session preference, independent of cursor and open state.
+	PeekExpanded bool
 
 	// peek is the one page of that detail Peek is showing. It is session-only
 	// and self-invalidating: inline_peek_paging.go owns the cluster, and the key

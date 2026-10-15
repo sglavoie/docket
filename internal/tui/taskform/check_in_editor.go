@@ -55,17 +55,18 @@ type CheckInEditorModel struct {
 	title    string
 	subtitle string
 
-	dateInput    textinput.Model
-	repeatInput  textinput.Model
-	focus        int
-	picker       checkInPicker
-	pickerCursor int
-	notice       string
-	clear        bool
-	explicit     bool
-	submitted    bool
-	setup        bool
-	now          func() time.Time
+	initialDate, initialRepeat string
+	dateInput                  textinput.Model
+	repeatInput                textinput.Model
+	focus                      int
+	picker                     checkInPicker
+	pickerCursor               int
+	notice                     string
+	clear                      bool
+	explicit                   bool
+	submitted                  bool
+	setup                      bool
+	now                        func() time.Time
 }
 
 // NewCheckInEditorModel creates either a prefilled single-task editor or a
@@ -98,6 +99,7 @@ func NewCheckInEditorModel(
 		model.repeatInput.SetValue(repeatDisplay(schedule.RepeatDays))
 		model.explicit = schedule.Next != nil
 	}
+	model.initialDate, model.initialRepeat = model.dateInput.Value(), model.repeatInput.Value()
 	model.syncFocus()
 	return model
 }
@@ -453,4 +455,15 @@ func (model *CheckInEditorModel) guidanceSpec() chrome.GuidanceSpec {
 		return chrome.GuidanceSpec{Hints: append(chrome.RequiredGuidanceHints("Enter select", "Esc back"), chrome.OptionalGuidanceHints(10, "j/k navigate")...)}
 	}
 	return chrome.GuidanceSpec{Hints: append(chrome.RequiredGuidanceHints("Ctrl+S save", "Esc cancel"), chrome.OptionalGuidanceHints(10, "Tab/Shift+Tab fields", "Enter presets")...)}
+}
+
+// QuitBlockReason names content a desktop quit would abandon.
+func (model *CheckInEditorModel) QuitBlockReason() string {
+	if model.submitted {
+		return "Your check-in is still being saved."
+	}
+	if model.dateInput.Value() != model.initialDate || model.repeatInput.Value() != model.initialRepeat || model.clear {
+		return "Your check-in changes have not been saved."
+	}
+	return ""
 }

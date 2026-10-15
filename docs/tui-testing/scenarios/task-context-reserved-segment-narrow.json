@@ -9,10 +9,10 @@
     { "type": "key", "label": "select the long-context task", "key": "end" },
     { "type": "key", "label": "Peek carries the complete context beyond the row budget", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "Context: [distributed-systems]" },
-    { "type": "assert", "label": "and the position row names the tail the window has no room for", "assert": "contains", "value": "0 above · 1 below" },
+    { "type": "assert", "label": "and the position row names the tail the window has no room for", "assert": "contains", "value": "0 above · 2 below" },
     { "type": "key", "label": "page to the end of the document", "key": "ctrl+f" },
     { "type": "assert", "label": "the context is still readable whole a page in", "assert": "contains", "value": "Context: [distributed-systems]" },
-    { "type": "assert", "assert": "contains", "value": "1 above · 0 below" },
+    { "type": "assert", "assert": "contains", "value": "2 above · 0 below" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

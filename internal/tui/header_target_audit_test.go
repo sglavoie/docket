@@ -77,6 +77,7 @@ var headerTargetAudit = map[operation.OperationID]string{
 	"tui.core.notes":                  "target-free",
 	"tui.core.open-note":              "target-free",
 	"tui.core.outline-editor":         "target-free",
+	"tui.core.peek-size":              "target-free",
 	"tui.core.peek":                   "project",
 	"tui.core.peek-half-page-down":    "project",
 	"tui.core.peek-half-page-up":      "project",

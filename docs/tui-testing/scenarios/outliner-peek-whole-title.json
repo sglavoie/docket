@@ -12,11 +12,11 @@
     { "type": "assert", "assert": "contains", "value": "project archives over slow connections" },
     { "type": "assert", "label": "the summary line names the status and priority the row abbreviates", "assert": "contains", "value": "Status: Backlog · Priority: 1" },
     { "type": "assert", "label": "the context the row truncated gets a line of its own", "assert": "contains", "value": "Context: [distributed-systems]" },
-    { "type": "assert", "label": "a title this long costs document rows, so the tail waits below the window", "assert": "contains", "value": "0 above · 1 below" },
+    { "type": "assert", "label": "a title this long costs document rows, so the tail waits below the window", "assert": "contains", "value": "0 above · 2 below" },
 
     { "type": "key", "label": "the rest of the document is a page turn away", "key": "ctrl+f" },
     { "type": "assert", "label": "every tag the row abbreviated to +1 is named in full", "assert": "contains", "value": "Tags: #infrastructure #reliability #sync" },
-    { "type": "assert", "label": "the window clamps at the document end", "assert": "contains", "value": "1 above · 0 below" },
+    { "type": "assert", "label": "the window clamps at the document end", "assert": "contains", "value": "2 above · 0 below" },
 
     { "type": "key", "label": "Esc dismisses Peek before Outliner navigation", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "project archives over slow connections" },

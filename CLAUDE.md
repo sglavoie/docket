@@ -269,7 +269,7 @@ One key is one act on every entity surface, pane layout keys aside:
 | `@` `-`/`+` | due/defer/check-in · step deadline earlier/later |
 | `&` `;` `C` `~` | attachments · comments · add comment · dependencies |
 | `u`/`Ctrl+R` `gg`/`G` `Esc` `?` | undo/redo · ends · unwind · help |
-| `b` `Ctrl+D`/`Ctrl+U` `Ctrl+F`/`Ctrl+B` | Peek · scroll it · page it |
+| `b` `B` `Ctrl+D`/`Ctrl+U` `Ctrl+F`/`Ctrl+B` | Peek · expand/compact · scroll it · page it |
 | `Space` | menu: destructive and rare operations only |
 
 Transient input overlays are exempt: composer, project editor/creator, text
@@ -671,7 +671,10 @@ Row and Peek budget:
   constant. That total is
   `min(peekDockPreferredRows, peekDockAvailableRows)` — preferred is
   `clamp(floor(H/3), peekDockPreferredMinRows, peekDockPreferredMaxRows)` over the
-  Outliner's own height, available is what `ContentHeight` leaves after the
+  Outliner's own height in compact mode; `PeekExpanded` uses `max(2*H/3,
+  peekDockPreferredMinRows)`. `B` changes that session preference through
+  `OperationCorePeekSize`, even on a placeholder row, and toggling the dock
+  preserves it. Available is what `ContentHeight` leaves after the
   measured footer, the status strip, and `peekDockListFloorRows` — and a total
   under `peekDockMinRows` draws no dock at all rather than a clipped one. Both
   halves read the frame and never the cursor, the document, or a draft, so a
@@ -1208,3 +1211,7 @@ Guessable addresses are omitted; do not restore them.
 | Keys, registry, executor, providers | `outliner-keys.md` | `operation-grammar` |
 | Filters, search, Focus, Peek, selection, `Ctrl+T` | `search-and-lenses.md`; `outliner-rows.md` | `search-filters-and-sorting`; `selection-and-project-tags` |
 | Storage layout, migration chain | `storage.md` | `persistence-and-transactions`; `migration` |
+
+Desktop `edit` uses focused draft history before workspace history; an empty
+draft never falls through. Quit guards unsaved content across covered views,
+not navigation. See docs/architecture/tui-architecture.md.

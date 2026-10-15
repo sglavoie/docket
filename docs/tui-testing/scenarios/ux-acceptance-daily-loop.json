@@ -144,7 +144,7 @@
       "type": "assert",
       "label": "and names the rest of the document rather than ending",
       "assert": "contains",
-      "value": "0 above · 3 below"
+      "value": "0 above · 4 below"
     },
     {
       "type": "key",
@@ -154,7 +154,7 @@
     {
       "type": "assert",
       "assert": "contains",
-      "value": "3 above · 0 below"
+      "value": "4 above · 0 below"
     },
     {
       "type": "assert",

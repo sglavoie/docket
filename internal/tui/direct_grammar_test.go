@@ -262,6 +262,7 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		// page turns spell the same pair every other pageable body on the product
 		// answers to.
 		"b":      operation.OperationCorePeek,
+		"B":      operation.OperationCorePeekSize,
 		"ctrl+f": operation.OperationCorePeekPageDown,
 		"ctrl+b": operation.OperationCorePeekPageUp,
 		// The half page is shared with the list below; the full page is not,

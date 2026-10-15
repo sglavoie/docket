@@ -145,8 +145,13 @@ extension Ghostty.SurfaceView {
         // hierarchy rather than the first responder.
         guard focused, let surface else { return false }
 
-        // Undo, Redo, and Cut are the Edit menu's only for text fields: here
-        // their keys stay the terminal's, as they were before the menu had them.
+        if let menu = NSApp.mainMenu, let item = MainMenu.item(in: menu, matching: event),
+           let action = item.action, MainMenu.terminalEditActions.contains(action) {
+            _ = MainMenu.performShortcut(for: event, in: menu)
+            return true
+        }
+
+        // Cut is a text-field edit; terminal copy/paste keep Ghostty's selection.
         let textOnlyEdit = NSApp.mainMenu.map { MainMenu.isTextOnlyEdit(MainMenu.item(in: $0, matching: event)) } ?? false
 
         var keyEvent = event.ghosttyKeyEvent(GHOSTTY_ACTION_PRESS)
@@ -430,8 +435,22 @@ extension Ghostty.SurfaceView {
 }
 
 extension Ghostty.SurfaceView: NSMenuItemValidation {
+    @objc func undo(_ sender: Any?) { onDesktopEdit?("undo") }
+    @objc func redo(_ sender: Any?) { onDesktopEdit?("redo") }
+    @objc func findTasks(_ sender: Any?) { onDesktopEdit?("search") }
+
     func validateMenuItem(_ item: NSMenuItem) -> Bool {
         switch item.action {
+        case MainMenu.undo:
+            let label = desktopEditing?.undo ?? ""
+            item.title = label.isEmpty ? "Undo" : "Undo: " + label
+            return !label.isEmpty && onDesktopEdit != nil
+        case MainMenu.redo:
+            let label = desktopEditing?.redo ?? ""
+            item.title = label.isEmpty ? "Redo" : "Redo: " + label
+            return !label.isEmpty && onDesktopEdit != nil
+        case MainMenu.find:
+            return desktopEditing?.search == true && onDesktopEdit != nil
         case #selector(copy(_:)):
             guard let surface else { return false }
             return ghostty_surface_has_selection(surface)

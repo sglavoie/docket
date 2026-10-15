@@ -15,7 +15,7 @@
 // every event, and a new connection hears the latest pulse at once.
 //
 // OpQuit is how a host ends the session it hosts: tt quits as its quit key
-// would, or refuses while something is open. A host treats the connection
+// would, or refuses while content is unsaved or a save is pending. A host treats the connection
 // ending as the OK it may never read, and falls back to a hangup for a tt that
 // answers "unknown operation".
 package control
@@ -41,8 +41,8 @@ const (
 	// OpPreview describes the full capture draft without writing anything.
 	OpPreview = "preview"
 	// OpQuit ends the session the way the quit key does, saving view and
-	// filter state, and is refused while the user is mid-interaction so an
-	// open draft, picker, or editor is never thrown away. The OK reply may
+	// filter state, and is refused while content is unsaved or a save is pending.
+	// Clean searches and pickers may quit without confirmation. The OK reply may
 	// not outlive the exit, so a host reads the connection closing as the
 	// same answer.
 	OpQuit = "quit"
@@ -59,12 +59,15 @@ const (
 	// still the newest undo entry, so a host never takes back something newer
 	// the user did in tt. It is refused while the user is mid-interaction.
 	OpUndo = "undo"
+	// OpEdit acts on the focused draft or the existing workspace undo/search operation.
+	OpEdit = "edit"
 )
 
 // The events tt reports.
 const (
 	// EventPulse carries the workspace pulse whenever it changes.
-	EventPulse = "pulse"
+	EventPulse   = "pulse"
+	EventEditing = "editing"
 	// EventArrivals carries the tasks that crossed into needing attention since
 	// the last periodic tick.
 	EventArrivals = "arrivals"
@@ -96,12 +99,13 @@ type Request struct {
 // Transaction answers a successful OpCapture with the committed transaction's
 // ID, the one OpUndo names.
 type Reply struct {
-	ID          int         `json:"reply"`
-	OK          bool        `json:"ok"`
-	Message     string      `json:"message,omitempty"`
-	Completion  *Completion `json:"completion,omitempty"`
-	Preview     string      `json:"preview,omitempty"`
-	Transaction string      `json:"transaction,omitempty"`
+	ID          int            `json:"reply"`
+	OK          bool           `json:"ok"`
+	Message     string         `json:"message,omitempty"`
+	Completion  *Completion    `json:"completion,omitempty"`
+	Preview     string         `json:"preview,omitempty"`
+	Transaction string         `json:"transaction,omitempty"`
+	Selection   *TextSelection `json:"selection,omitempty"`
 }
 
 // Completion is what the composer would offer for the token ending at the
@@ -148,8 +152,23 @@ type Arrival struct {
 // event as one notification, the way --notify would.
 type Event struct {
 	Event    string    `json:"event"`
+	Editing  *Editing  `json:"editing,omitempty"`
 	Pulse    *Pulse    `json:"pulse,omitempty"`
 	Arrivals []Arrival `json:"arrivals,omitempty"`
 	Title    string    `json:"title,omitempty"`
 	Body     string    `json:"body,omitempty"`
+}
+
+// TextSelection addresses a refused capture in UTF-16 code units, the native
+// text field's indexing. It refers to the exact submitted draft.
+type TextSelection struct {
+	Start  int `json:"start"`
+	Length int `json:"length"`
+}
+
+// Editing describes native menu availability; blank labels mean unavailable.
+type Editing struct {
+	Undo   string `json:"undo"`
+	Redo   string `json:"redo"`
+	Search bool   `json:"search"`
 }

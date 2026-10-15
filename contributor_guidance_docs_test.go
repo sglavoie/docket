@@ -1353,7 +1353,10 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// of its own first. The mechanism lives in
 	// docs/architecture/capture-and-outline-editor.md. No rule elsewhere was
 	// trimmed to pay for it.
-	const budget = 76980
+	// Raise from 76980 to 77480 for desktop draft ownership, content-aware
+	// quit, and the explicit Peek size preference. Detailed protocol and
+	// history behavior lives in docs/architecture/tui-architecture.md.
+	const budget = 77480
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

@@ -214,6 +214,7 @@ func viewMenuEntries(activeMode chrome.OutlinerModeID, menuBarVisible, advisorie
 		// target-free, acting on the view's fold state alone.
 		menuEntrySpec{OperationID: operation.OperationCoreClearFolds},
 		menuEntrySpec{OperationID: operation.OperationCorePeek, Label: "Peek"},
+		menuEntrySpec{OperationID: operation.OperationCorePeekSize},
 		menuEntrySpec{OperationID: operation.OperationCoreQueryReadout},
 		menuEntrySpec{OperationID: operation.OperationCoreClearSearchHistory},
 		menuSeparator(),
