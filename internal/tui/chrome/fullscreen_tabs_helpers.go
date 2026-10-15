@@ -40,9 +40,9 @@ func renderWrappingTabBarColored(tabs []string, activeIdx int, tabColors []color
 	if activeIdx < 0 || activeIdx >= len(tabs) {
 		activeIdx = 0
 	}
-	padding, gap := 1, 0
-	if spacing == TabSpacingCompact {
-		padding, gap = 0, 1
+	padding, gap := 0, 1
+	if spacing == TabSpacingDefault {
+		padding, gap = 1, 0
 	}
 	plainStyle := lipgloss.NewStyle().Padding(0, padding)
 	active := ActiveTabStyle(padding, true, accent...)
