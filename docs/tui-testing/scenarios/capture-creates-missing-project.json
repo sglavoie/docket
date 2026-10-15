@@ -1,0 +1,55 @@
+{
+  "name": "capture-creates-missing-project",
+  "fixture": "fresh",
+  "size": "80x24",
+  "actions": [
+    { "type": "key", "label": "a opens capture", "key": "a" },
+    { "type": "text", "text": "Plant the beans %garden" },
+    { "type": "key", "label": "Enter is refused: no project holds the slug", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "assert", "assert": "contains", "value": "project not found: 'garden'" },
+    { "type": "assert", "label": "the refusal is a canonical slug, so capture offers to create it", "assert": "contains", "value": "Create project garden and capture?" },
+    { "type": "assert", "assert": "contains", "value": "y confirm" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "n returns to the draft with the refusal still shown", "key": "n" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "assert", "assert": "not_contains", "value": "Create project garden and capture?" },
+    { "type": "assert", "assert": "contains", "value": "project not found: 'garden'" },
+    { "type": "assert", "assert": "contains", "value": "Plant the beans %garden" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "the offer fits the narrowest supported terminal", "width": 60, "height": 20 },
+    { "type": "key", "label": "Enter asks again", "key": "enter" },
+    { "type": "assert", "label": "the dialog wraps the question inside its box", "assert": "contains", "value": "Create project garden and" },
+    { "type": "assert", "assert": "contains", "value": "y confirm · n/Esc cancel" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "y creates the project and captures the task in one transaction", "key": "y" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "Plant the beans" },
+    { "type": "assert", "assert": "contains", "value": "garden" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "one undo removes the task and the project together", "key": "u" },
+    { "type": "wait", "duration": "6s" },
+    { "type": "assert", "assert": "not_contains", "value": "Plant the beans" },
+    { "type": "assert", "assert": "not_contains", "value": "garden" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "redo restores both", "key": "ctrl+r" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Plant the beans" },
+    { "type": "assert", "assert": "contains", "value": "garden" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "width": 80, "height": 24 },
+    { "type": "key", "label": "a non-canonical project is refused as before, with no offer", "key": "a" },
+    { "type": "text", "text": "Weed the rows %Orchard" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "project not found: 'Orchard'" },
+    { "type": "assert", "assert": "not_contains", "value": "and capture?" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

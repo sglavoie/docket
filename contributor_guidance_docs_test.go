@@ -1345,7 +1345,15 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// list's label, and that project keys wait for the header. The mechanism
 	// lives in docs/architecture/tui-architecture.md. No rule elsewhere was
 	// trimmed to pay for it.
-	const budget = 76680
+	// Raise from 76680 to 76980 for capture creating its missing project. 300
+	// bytes buy the rule the offer is held to: only the composer asks, only
+	// when every refusal is an unknown slug already canonical and unheld, and
+	// a yes is one transaction and one undo entry covering the projects, the
+	// catalog, and the tasks, so no surface may create the project in a commit
+	// of its own first. The mechanism lives in
+	// docs/architecture/capture-and-outline-editor.md. No rule elsewhere was
+	// trimmed to pay for it.
+	const budget = 76980
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

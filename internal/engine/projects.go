@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 
@@ -39,14 +38,6 @@ type ProjectImpact struct {
 	Attachments int
 }
 
-// CloneCatalog copies a catalog deeply enough that upserting or removing a
-// project on the copy leaves the original untouched.
-func CloneCatalog(catalog *config.WorkspaceCatalog) *config.WorkspaceCatalog {
-	cp := *catalog
-	cp.Projects = slices.Clone(catalog.Projects)
-	return &cp
-}
-
 // ClonePlanning copies planning state so a membership edit on the copy leaves
 // the original untouched.
 func ClonePlanning(planning *config.PlanningState) *config.PlanningState {
@@ -58,22 +49,6 @@ func ClonePlanning(planning *config.PlanningState) *config.PlanningState {
 
 func projectInput(field, reason string) error {
 	return &app.InvalidInputError{Field: field, Reason: reason}
-}
-
-// projectSlug validates a project name and returns the slug it would take,
-// refusing one another project already holds.
-func projectSlug(state *config.RuntimeState, name, selfID string) (string, error) {
-	if name == "" {
-		return "", projectInput("project name", "name cannot be empty")
-	}
-	slug := models.Slugify(name)
-	if slug == "" {
-		return "", projectInput("project name", "name must contain at least one ASCII letter or digit")
-	}
-	if existing := state.GetProject(slug); existing != nil && existing.ID != selfID {
-		return "", projectInput("project name", fmt.Sprintf("project with slug '%s' already exists", slug))
-	}
-	return slug, nil
 }
 
 // catalogArtifacts renders the catalog alone, stamped with the revision the
@@ -102,43 +77,17 @@ func domainArtifacts(state *config.RuntimeState, catalog *config.WorkspaceCatalo
 // CreateProject creates an empty project and its catalog record as one
 // transaction. id is the new project's identity.
 func CreateProject(state *config.RuntimeState, service *app.Service, id, name string) (ProjectChange, error) {
-	name = strings.TrimSpace(name)
-	slug, err := projectSlug(state, name, "")
+	creation, err := app.PrepareProjectCreation(state, []app.NewProject{{ID: id, Name: name}})
 	if err != nil {
 		return ProjectChange{}, err
 	}
-	project, err := models.NewProject(id, name, state.ProjectPath(slug))
-	if err != nil {
-		return ProjectChange{}, projectInput("project", err.Error())
-	}
-	if ensureErr := state.EnsureDataDir(); ensureErr != nil {
-		return ProjectChange{}, ensureErr
-	}
-	catalog := CloneCatalog(state.Catalog())
-	if upsertErr := catalog.UpsertProject(project); upsertErr != nil {
-		return ProjectChange{}, upsertErr
-	}
-	artifacts, err := catalogArtifacts(state, catalog)
+	project := creation.Projects[0]
+	tasks, err := app.EmptyTasksArtifact(project)
 	if err != nil {
 		return ProjectChange{}, err
 	}
-	document, err := storage.CanonicalProjectDocument(project, nil)
-	if err != nil {
-		return ProjectChange{}, err
-	}
-	content, err := document.WriteCurrent()
-	if err != nil {
-		return ProjectChange{}, err
-	}
-	requireAbsent := ""
-	artifacts = append(artifacts, storage.ArtifactChange{
-		Path:             storage.TasksFilePath(project.Path),
-		Data:             []byte(content),
-		Mode:             storage.FilePermissions,
-		ExpectedRevision: &requireAbsent,
-	})
 	transactionID, err := service.CommitProjectMutationResult(storage.OpsCommitRequest{
-		Artifacts:   artifacts,
+		Artifacts:   []storage.ArtifactChange{creation.Catalog, tasks},
 		ProjectIDs:  []string{project.ID},
 		UndoAction:  "Create Project",
 		UndoContext: project.Name,
@@ -181,7 +130,7 @@ func EditProject(state *config.RuntimeState, service *app.Service, project *mode
 	}
 	newSlug := project.Slug
 	if name != project.Name {
-		if newSlug, err = projectSlug(state, name, project.ID); err != nil {
+		if newSlug, err = app.ProjectSlug(state, name, project.ID); err != nil {
 			return ProjectChange{}, err
 		}
 	}
@@ -206,7 +155,7 @@ func EditProject(state *config.RuntimeState, service *app.Service, project *mode
 		tasksMarkdown = []byte(content)
 		tasksExpectedRevision = expected
 	}
-	catalog := CloneCatalog(state.Catalog())
+	catalog := app.CloneCatalog(state.Catalog())
 	if upsertErr := catalog.UpsertProject(&updated); upsertErr != nil {
 		return ProjectChange{}, upsertErr
 	}
@@ -266,7 +215,7 @@ func SetProjectTags(state *config.RuntimeState, service *app.Service, project *m
 
 // commitCatalogProject writes one project's catalog record alone.
 func commitCatalogProject(state *config.RuntimeState, service *app.Service, updated *models.Project, action string) (ProjectChange, error) {
-	catalog := CloneCatalog(state.Catalog())
+	catalog := app.CloneCatalog(state.Catalog())
 	if err := catalog.UpsertProject(updated); err != nil {
 		return ProjectChange{}, err
 	}
@@ -317,7 +266,7 @@ func ArchiveProject(state *config.RuntimeState, service *app.Service, project *m
 			archived = append(archived, config.ProjectTaskLocator{ProjectID: updated.ID, TaskID: task.ID})
 		}
 	}
-	catalog := CloneCatalog(state.Catalog())
+	catalog := app.CloneCatalog(state.Catalog())
 	planning := ClonePlanning(state.Planning())
 	if upsertErr := catalog.UpsertProject(updated); upsertErr != nil {
 		return ProjectChange{}, upsertErr
@@ -389,7 +338,7 @@ func DeleteProject(state *config.RuntimeState, service *app.Service, project *mo
 	if err != nil {
 		return ProjectChange{}, err
 	}
-	domains := &config.Domains{Catalog: CloneCatalog(state.Catalog()), Planning: ClonePlanning(state.Planning())}
+	domains := &config.Domains{Catalog: app.CloneCatalog(state.Catalog()), Planning: ClonePlanning(state.Planning())}
 	if _, removeErr := domains.RemoveProject(updated.ID, updated.Slug); removeErr != nil {
 		return ProjectChange{}, removeErr
 	}

@@ -38,6 +38,9 @@ func newQuickCaptureParser(input string, project *models.Project, allProjects []
 type CaptureTokenError struct {
 	Column  int // zero-based; includes leading whitespace in the supplied input
 	Message string
+	// UnknownProject is the %project value the refusal names when no available
+	// project holds it, and empty for every other refusal.
+	UnknownProject string
 }
 
 func (e *CaptureTokenError) Error() string { return e.Message }

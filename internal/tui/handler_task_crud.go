@@ -61,8 +61,13 @@ func (m *AppModel) handleTaskCreated(msg coordinator.TaskCreatedMsg) (bool, tea.
 	// the task by ID. The shared navigation/status/open-after logic below then runs
 	// off the reloaded pointers exactly as it did for the legacy in-place save.
 	planningRefreshed := false
-	if msg.PlanningChanged {
+	// A capture that created its projects changed the catalog too, and the
+	// reload below can only find a project the runtime already knows.
+	if msg.PlanningChanged || msg.ProjectsCreated {
 		planningRefreshed = m.refreshRuntime()
+	}
+	if msg.ProjectsCreated {
+		m.refreshProjectHubIfActive()
 	}
 	// A multi-line capture can span projects, and the planning rebuild below
 	// resolves membership against the loaded tasks, so every project the commit

@@ -76,6 +76,7 @@ func lineRequest(number int, raw, line string, source *models.Project, allProjec
 		if errors.As(err, &tokenError) {
 			leadingBytes := len(raw) - len(strings.TrimLeftFunc(raw, unicode.IsSpace))
 			problem.Column = utf8.RuneCountInString(raw[:leadingBytes]) + tokenError.Column
+			problem.UnknownProject = tokenError.UnknownProject
 		}
 		return app.CaptureRequest{}, &problem
 	}

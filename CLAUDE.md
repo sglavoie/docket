@@ -469,6 +469,11 @@ Capture's footer sheds by `Priority`, moving no drawn entry: it keeps `Ctrl+N`,
 Capture completion and syntax help follow the caret; feedback recall holds 20
 session events. Details: `docs/architecture/capture-and-outline-editor.md`.
 
+Only the composer offers a missing project: when every refusal is an unknown
+`%slug` already canonical and held by no project, it confirms `Create project
+<slug> and capture?`, and Yes commits projects, catalog, and tasks as one
+`CaptureManyCreatingProjects` transaction and undo entry; No keeps the refusal.
+
 The full task form windows rather than clips. `formBodyBuilder` records each
 focusable field once, where it starts, so its extent is the next declaration;
 `formViewportOffset` is the pure window authority, scrolling the focused field in

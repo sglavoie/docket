@@ -269,6 +269,9 @@ type stubMutator struct {
 	// outline records the last outline plan the coordinator submitted.
 	outline app.OutlinePlanRequest
 	add     app.AddTaskRequest
+	// creation and captured record the last capture that created projects.
+	creation app.ProjectCreation
+	captured []app.CaptureRequest
 }
 
 func (s *stubMutator) Capture(app.CaptureRequest) (app.TaskResult, error) {
@@ -281,6 +284,10 @@ func (s *stubMutator) CaptureMany([]app.CaptureRequest) ([]app.TaskResult, error
 		return nil, s.err
 	}
 	return []app.TaskResult{s.result}, nil
+}
+func (s *stubMutator) CaptureManyCreatingProjects(creation app.ProjectCreation, reqs []app.CaptureRequest) ([]app.TaskResult, error) {
+	s.creation, s.captured = creation, reqs
+	return s.CaptureMany(reqs)
 }
 func (s *stubMutator) AddTaskWithChildren(req app.AddTaskRequest) (app.FormCreateResult, error) {
 	s.calls++

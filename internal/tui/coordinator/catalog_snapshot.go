@@ -1,8 +1,8 @@
 package coordinator
 
 import (
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/engine"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -17,7 +17,7 @@ import (
 // CloneWorkspaceCatalog returns a defensive copy of a catalog snapshot whose
 // project slice can be rewritten without mutating the runtime's own view.
 func CloneWorkspaceCatalog(c *config.WorkspaceCatalog) *config.WorkspaceCatalog {
-	return engine.CloneCatalog(c)
+	return app.CloneCatalog(c)
 }
 
 // CatalogDomainArtifact renders only workspace.json for a project metadata

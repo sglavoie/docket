@@ -14,6 +14,14 @@ import (
 	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
+// SetAllProjects replaces the projects a line may route to, for a composer
+// that stays open across a commit which created one, and rebuilds the caches
+// that read them.
+func (q *QuickCaptureInput) SetAllProjects(projects []*models.Project) {
+	q.allProjects = projects
+	q.InitCaches()
+}
+
 // InitCaches builds tag, context, and project caches for autocomplete. Parent
 // and child candidates are deliberately absent: they follow the draft's effective
 // %project, which changes while the user types, so caching them here is what

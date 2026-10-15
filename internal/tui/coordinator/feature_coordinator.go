@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -40,6 +41,10 @@ type FeatureMutator interface {
 	// CaptureMany creates routed tasks across one or more projects as one
 	// transaction (multiline capture).
 	CaptureMany(reqs []app.CaptureRequest) ([]app.TaskResult, error)
+	// CaptureManyCreatingProjects is CaptureMany for a batch filing into
+	// projects the same transaction creates (a composer capture naming a
+	// project nobody holds, after its confirmation).
+	CaptureManyCreatingProjects(creation app.ProjectCreation, reqs []app.CaptureRequest) ([]app.TaskResult, error)
 	// AddTaskWithChildren creates a parent task plus subtasks in one ChangeSet
 	// (the create task form).
 	AddTaskWithChildren(req app.AddTaskRequest) (app.FormCreateResult, error)
@@ -228,6 +233,38 @@ func (c CaptureCoordinator) CaptureBulk(reqs []app.CaptureRequest, closeOnSucces
 			return msg
 		}
 		return TasksCapturedMsg{Results: results, PlanningChanged: captureRequestsChangePlanning(reqs)}
+	}
+}
+
+// CaptureCreatingProjects commits a composer capture together with the
+// projects its lines name and nobody holds. The creation is prepared when the
+// command runs, against the catalog revision the runtime holds then, so a
+// project another writer created since the confirmation refuses the whole
+// commit rather than being created twice. Success is a TaskCreatedMsg like any
+// capture's, marked so the shell refreshes the catalog before it reloads.
+func (c CaptureCoordinator) CaptureCreatingProjects(state *config.RuntimeState, projects []app.NewProject, reqs []app.CaptureRequest, openContent bool) tea.Cmd {
+	mutator := c.mutator
+	return func() tea.Msg {
+		creation, err := app.PrepareProjectCreation(state, projects)
+		if err != nil {
+			return status.ErrorMsg{Err: err}
+		}
+		results, err := mutator.CaptureManyCreatingProjects(creation, reqs)
+		if err != nil {
+			return status.ErrorMsg{Err: err}
+		}
+		msg := TaskCreatedMsg{
+			CreatedCount:    len(results),
+			Results:         results,
+			OpenContent:     openContent && len(results) == 1,
+			PlanningChanged: captureRequestsChangePlanning(reqs),
+			ProjectsCreated: true,
+		}
+		if len(results) > 0 {
+			result := results[0]
+			msg.Result = &result
+		}
+		return msg
 	}
 }
 

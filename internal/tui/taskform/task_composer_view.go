@@ -253,6 +253,9 @@ func (m *TaskComposerModel) GetConfirmDialog() *chrome.ConfirmDialog {
 	if m.Mode == ComposerExpanded && m.Expanded != nil {
 		return m.Expanded.GetConfirmDialog()
 	}
+	if m.projectOffer != nil {
+		return m.projectOfferDialog()
+	}
 	return m.DiscardConfirmState.GetConfirmDialog()
 }
 
@@ -278,6 +281,9 @@ func (m *TaskComposerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 			spec = chrome.RequiredExitGuidanceSpec("←/→ match", "Esc return to capture", "↑/↓ scroll", "y copy reference", "PgUp/PgDn page", "Ctrl+O return to capture")
 		}
 		return spec, true
+	}
+	if m.projectOffer != nil {
+		return chrome.ConfirmationGuidanceSpec(), true
 	}
 	spec := chrome.CaptureGuidanceSpec(
 		m.ConfirmDiscard,

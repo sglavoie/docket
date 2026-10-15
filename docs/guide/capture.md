@@ -86,6 +86,15 @@ validated before one atomic transaction is committed.
   including parent and child completion errors. For example, `%weeb` suggests
   `%web`. Correct the token and submit again; a suggestion never changes the
   draft or chooses the project for you.
+- When every problem in a refused capture is a `%project` that no project
+  holds, already spelled as a canonical slug (`%garden`, not `%Garden`), the
+  capture panel asks `Create project garden and capture?`, naming every such
+  slug together. `y` creates the projects, named by their slugs, and captures
+  the tasks in one transaction, so one `u` takes back both; `n` or `Esc`
+  returns to the draft with the refusal still shown. `Enter`, `Ctrl+E`, and
+  `Ctrl+N` all ask. A draft with any other problem, a slug an archived project
+  holds, inline editing, search, and the outline buffer refuse exactly as
+  before.
 - `>parent` resolves inside the selected project after project routing.
 - `<child` adopts a task that already exists, and may be repeated. `>parent`
   stays singleton because a task has one parent, while a task can gain many

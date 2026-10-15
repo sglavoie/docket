@@ -570,6 +570,37 @@ one as description text. Saving the reopened buffer with the title unchanged is
 the loop guard: it abandons the edit, reports the original refusal, and removes
 the buffer.
 
+#### Creating a missing project from capture
+
+The unknown-project refusal is typed: `capturetext.CaptureTokenError` and
+`LineError` carry the `%project` value in `UnknownProject`, and
+`LineError.CreatableProject` answers whether that value is already a canonical
+slug (`models.Slugify(s) == s` and a valid slug), so `%Work` is never one. The
+composer reads only that field. After a refused submit, whether from `Enter`,
+`Ctrl+E`, or `Ctrl+N`, `offerProjectCreation` arms a `composerProjectOffer` only
+when every refusal is creatable, no runtime or preset project (archived ones
+included) holds the slug, and the draft parses whole once placeholder projects
+with fresh identities stand in for the missing ones. A draft with any other
+problem therefore refuses exactly as before, and the offer holds the requests
+that parse produced, so the draft text is never rewritten.
+
+The offer is the composer's `GetConfirmDialog`, which the shell already renders
+for the discard question, and its footer is `ConfirmationGuidanceSpec`. `y`
+dispatches `CaptureCoordinator.CaptureCreatingProjects`; `n` and `Esc` drop the
+offer and keep the refusal. The command runs `app.PrepareProjectCreation` when
+it executes — the same validation and catalog rendering `engine.CreateProject`
+uses, checked against the catalog revision the runtime holds then — and hands
+the result to `Service.CaptureManyCreatingProjects`. That use case refuses a
+project the snapshot already holds by identity or slug and a created project
+receiving no task, commits each new project as a changeset with no expected
+revision and no base, and rides the catalog artifact on the batch's first
+changeset, so the projects, the catalog, and every task are one transaction and
+one undo entry. A slug another writer took after the confirmation fails the
+catalog's revision check and writes nothing. The resulting `TaskCreatedMsg`
+carries `ProjectsCreated`, so the shell refreshes the runtime catalog before it
+reloads the touched projects, and a composer kept open by `Ctrl+N` adopts the
+created projects so its next line resolves them.
+
 ### Outline editor
 
 `O` is the one operation that leaves the TUI to collect its input. It dumps the

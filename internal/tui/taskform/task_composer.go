@@ -155,6 +155,12 @@ type TaskComposerModel struct {
 	matchingTaskTexts      []string
 	matchingTaskReferences []string
 	matchingTaskIndex      int
+	// projectOffer is the armed question a refused submit asks when every
+	// refusal is a project nobody holds yet; nil when none is asked.
+	projectOffer *composerProjectOffer
+	// pendingCreatedProjects are the projects an in-flight submit creates, kept
+	// so a composer that stays open can route to them once it lands.
+	pendingCreatedProjects []*models.Project
 	chrome.DiscardConfirmState
 }
 
@@ -260,9 +266,12 @@ func (m *TaskComposerModel) updateSubmission(msg tea.Msg) bool {
 			m.batchInvalidLines = 0
 			m.UpdatePreview()
 			m.syncInputHeight()
+			m.adoptCreatedProjects()
 		}
+		m.pendingCreatedProjects = nil
 		m.SubmissionInFlight = false
 	case coordinator.TasksCapturedMsg, status.ErrorMsg:
+		m.pendingCreatedProjects = nil
 		m.SubmissionInFlight = false
 	}
 	if m.SubmissionInFlight {
@@ -293,6 +302,10 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if m.matchingTaskPreview != nil {
 		return m, m.updateMatchingTaskPreview(msg)
+	}
+
+	if m.projectOffer != nil {
+		return m.updateProjectOffer(msg)
 	}
 
 	if m.ConfirmDiscard {
@@ -433,6 +446,7 @@ func (m *TaskComposerModel) createCompact(openContent, keepOpen bool) tea.Cmd {
 	if !ok {
 		m.validateOnEdit = true
 		m.focusFirstCaptureError()
+		m.offerProjectCreation(openContent, keepOpen)
 		return nil
 	}
 	var cmd tea.Cmd
@@ -441,21 +455,27 @@ func (m *TaskComposerModel) createCompact(openContent, keepOpen bool) tea.Cmd {
 	} else {
 		cmd = m.capture.CaptureBulk(reqs, true)
 	}
-	if cmd != nil {
-		m.SubmissionInFlight = true
-		if keepOpen {
-			capture := cmd
-			cmd = func() tea.Msg {
-				result := capture()
-				if created, ok := result.(coordinator.TaskCreatedMsg); ok {
-					created.KeepComposerOpen = true
-					return created
-				}
-				return result
-			}
-		}
+	if cmd == nil {
+		return nil
 	}
-	return cmd
+	return m.markSubmission(cmd, keepOpen)
+}
+
+// markSubmission freezes input until the capture's result arrives and, for
+// Ctrl+N, marks a success as one that keeps the composer open.
+func (m *TaskComposerModel) markSubmission(cmd tea.Cmd, keepOpen bool) tea.Cmd {
+	m.SubmissionInFlight = true
+	if !keepOpen {
+		return cmd
+	}
+	return func() tea.Msg {
+		result := cmd()
+		if created, ok := result.(coordinator.TaskCreatedMsg); ok {
+			created.KeepComposerOpen = true
+			return created
+		}
+		return result
+	}
 }
 
 // focusFirstCaptureError runs only after an explicit submit. Walking visual

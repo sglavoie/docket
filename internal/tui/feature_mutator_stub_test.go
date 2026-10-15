@@ -34,6 +34,9 @@ func (s *stubMutator) CaptureMany([]app.CaptureRequest) ([]app.TaskResult, error
 	}
 	return []app.TaskResult{s.result}, nil
 }
+func (s *stubMutator) CaptureManyCreatingProjects(_ app.ProjectCreation, reqs []app.CaptureRequest) ([]app.TaskResult, error) {
+	return s.CaptureMany(reqs)
+}
 func (s *stubMutator) AddTaskWithChildren(app.AddTaskRequest) (app.FormCreateResult, error) {
 	s.calls++
 	return app.FormCreateResult{Task: s.result}, s.err

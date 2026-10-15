@@ -1,6 +1,7 @@
 package capturetext
 
 import (
+	"errors"
 	"slices"
 	"strings"
 	"time"
@@ -286,6 +287,10 @@ func (p *quickCaptureParser) parseProjectTokens(tokens []textgrammar.Token) {
 		if target == nil {
 			hint := ProjectSlugHint(token.Value, p.allProjects)
 			if p.failTokenf(token, "project not found: '%s' (%s)", token.Value, hint) {
+				var tokenErr *CaptureTokenError
+				if errors.As(p.err, &tokenErr) {
+					tokenErr.UnknownProject = token.Value
+				}
 				return
 			}
 			continue

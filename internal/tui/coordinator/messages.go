@@ -28,6 +28,7 @@ type TaskCreatedMsg struct {
 	OpenTaskID       string          // when set, navigate/open this task instead of Result.TaskID (task-form open-after-subtask)
 	OpenContent      bool            // open description editor after creation
 	KeepComposerOpen bool            // clear the committed compact draft and capture another
+	ProjectsCreated  bool            // commit created the projects its tasks were filed into; refresh the runtime catalog
 }
 
 // TasksCapturedMsg refreshes a successful subset while the composer retains

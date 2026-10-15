@@ -177,11 +177,32 @@ func (s *Service) Capture(req CaptureRequest) (TaskResult, error) {
 // batch is resolved and validated before any project is mutated. Prepended tasks
 // land at the front of each owning project in request order.
 func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
+	return s.captureMany(reqs, ProjectCreation{})
+}
+
+// CaptureManyCreatingProjects is CaptureMany for a batch that files tasks into
+// projects the workspace does not hold yet. The new projects, the catalog that
+// records them, and every task commit as the same one transaction and undo
+// entry, so undoing the capture takes the projects with it. Each created
+// project must receive at least one task, and none may share an identity or a
+// slug with a project the snapshot holds.
+func (s *Service) CaptureManyCreatingProjects(creation ProjectCreation, reqs []CaptureRequest) ([]TaskResult, error) {
+	if len(creation.Projects) == 0 {
+		return nil, invalidInput("project", "no projects to create")
+	}
+	return s.captureMany(reqs, creation)
+}
+
+func (s *Service) captureMany(reqs []CaptureRequest, creation ProjectCreation) ([]TaskResult, error) {
 	if len(reqs) == 0 {
 		return nil, invalidInput("capture", "no tasks to create")
 	}
 
 	snap, err := s.repo.Snapshot()
+	if err != nil {
+		return nil, err
+	}
+	created, err := createdCaptureProjects(snap, creation)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +217,7 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 	seenProjects := make(map[string]bool)
 	claimedChildren := make(map[string]int)
 	for i, req := range reqs {
-		project := snap.ProjectByID(req.ProjectID)
+		project := captureProject(snap, created, req.ProjectID)
 		if project == nil {
 			return nil, captureRequestError(req, i, fmt.Errorf("%w: %s", ErrProjectNotFound, req.ProjectID))
 		}
@@ -221,6 +242,10 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 			seenProjects[project.ID] = true
 			projectOrder = append(projectOrder, project)
 		}
+	}
+
+	if unfiledErr := requireCreatedProjectsReceiveTasks(creation, seenProjects); unfiledErr != nil {
+		return nil, unfiledErr
 	}
 
 	before := cloneSnapshot(snap)
@@ -308,6 +333,7 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 			attachmentOps:    attachmentOpsByProject[project.ID],
 		}
 	}
+	artifacts = creation.withCatalog(artifacts)
 	if len(commits) > 0 {
 		commits[0].artifacts = artifacts
 	}
@@ -326,6 +352,71 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 		)
 	}
 	return results, nil
+}
+
+// createdCaptureProjects indexes the projects a capture creates by identity,
+// each a copy holding no task, after refusing one the snapshot already holds by
+// identity or by slug: the creation was prepared against an earlier read, and a
+// project minted since then is the race that read could not see.
+func createdCaptureProjects(snap Snapshot, creation ProjectCreation) (map[string]*models.Project, error) {
+	if len(creation.Projects) == 0 {
+		return nil, nil
+	}
+	if creation.Catalog.Path == "" || creation.Catalog.ExpectedRevision == nil {
+		return nil, fmt.Errorf("app: created projects carry no checked catalog artifact")
+	}
+	held := make(map[string]bool)
+	for _, project := range snap.Projects() {
+		if project != nil {
+			held[project.Slug] = true
+		}
+	}
+	created := make(map[string]*models.Project, len(creation.Projects))
+	for _, project := range creation.Projects {
+		if project == nil || project.ID == "" {
+			return nil, invalidInput("project", "a new project needs an identity")
+		}
+		if snap.ProjectByID(project.ID) != nil || created[project.ID] != nil {
+			return nil, invalidInput("project", fmt.Sprintf("project %s already exists", project.ID))
+		}
+		if held[project.Slug] {
+			return nil, invalidInput("project name", fmt.Sprintf("project with slug '%s' already exists", project.Slug))
+		}
+		held[project.Slug] = true
+		clone := *project
+		clone.Tasks = nil
+		created[project.ID] = &clone
+	}
+	return created, nil
+}
+
+// captureProject resolves a request's project from the snapshot, else from
+// the projects this capture creates.
+func captureProject(snap Snapshot, created map[string]*models.Project, projectID string) *models.Project {
+	if project := snap.ProjectByID(projectID); project != nil {
+		return project
+	}
+	return created[projectID]
+}
+
+// requireCreatedProjectsReceiveTasks refuses a created project no request
+// files into: the catalog would record it with no tasks.md written.
+func requireCreatedProjectsReceiveTasks(creation ProjectCreation, filed map[string]bool) error {
+	for _, project := range creation.Projects {
+		if !filed[project.ID] {
+			return invalidInput("project", fmt.Sprintf("new project %s receives no task", project.Slug))
+		}
+	}
+	return nil
+}
+
+// withCatalog adds the creation's catalog to a commit's artifacts when it
+// creates anything.
+func (c ProjectCreation) withCatalog(artifacts []storage.ArtifactChange) []storage.ArtifactChange {
+	if len(c.Projects) == 0 {
+		return artifacts
+	}
+	return append(artifacts, c.Catalog)
 }
 
 func captureRequestError(req CaptureRequest, index int, err error) error {
