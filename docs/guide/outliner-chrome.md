@@ -105,7 +105,9 @@ runs the highlighted entry rather than closing it.
 
 Whether the bar is drawn is remembered for this machine, the way the light or
 dark theme is: it survives quitting and reopening `tt`, and it does not follow
-you to another computer that opens the same workspace. Chrome belongs to the
+you to another computer that opens the same workspace. tt.app can match the
+theme to macOS's appearance instead, for that session only, without changing
+the saved one. Chrome belongs to the
 terminal you are sitting at. The View menu lists the toggle itself, checked when
 `M` is keeping the bar rather than when a menu is only borrowing its row,
 because the key that shows the bar is the one thing you cannot read off the bar

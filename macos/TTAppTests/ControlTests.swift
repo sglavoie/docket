@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 import UserNotifications
 @testable import tt
@@ -52,6 +53,18 @@ final class ControlWireTests: XCTestCase {
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(TTControlRequest.complete("Buy %cl"))) as? [String: Any])
         XCTAssertEqual(object["op"] as? String, "complete")
         XCTAssertEqual(object["text"] as? String, "Buy %cl")
+    }
+
+    func testAppearanceEncodesTheThemeTtTakes() throws {
+        for scheme in [TTAppearanceScheme.dark, .light] {
+            let data = try JSONEncoder().encode(TTControlRequest.appearance(scheme))
+            let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+            XCTAssertEqual(object["op"] as? String, "appearance")
+            XCTAssertEqual(object["text"] as? String, scheme.rawValue)
+            XCTAssertNil(object["project"])
+        }
+        XCTAssertEqual(TTAppearanceScheme(try XCTUnwrap(NSAppearance(named: .darkAqua))), .dark)
+        XCTAssertEqual(TTAppearanceScheme(try XCTUnwrap(NSAppearance(named: .aqua))), .light)
     }
 
     /// A later tt may add events; an older app skips what it does not know.

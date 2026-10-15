@@ -147,3 +147,27 @@ enum TTEnvironmentOverrides {
         return clean
     }
 }
+
+/// Whether tt follows macOS's appearance: tt.app sends the running tt the
+/// system's light or dark when a session connects and whenever it changes.
+/// Persisted in `UserDefaults` key `ttFollowAppearance`; absent reads as on.
+enum TTFollowAppearancePreference {
+    static let defaultsKey = "ttFollowAppearance"
+
+    static func load(from defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: defaultsKey) as? Bool ?? true
+    }
+
+    static func save(_ enabled: Bool, to defaults: UserDefaults = .standard) {
+        defaults.set(enabled, forKey: defaultsKey)
+    }
+}
+
+/// The two themes tt maintains, spelled as its `appearance` op takes them.
+enum TTAppearanceScheme: String {
+    case dark, light
+
+    init(_ appearance: NSAppearance) {
+        self = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .dark : .light
+    }
+}

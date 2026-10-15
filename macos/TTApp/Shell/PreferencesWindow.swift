@@ -47,6 +47,15 @@ final class PreferencesModel: ObservableObject {
         }
     }
 
+    /// tt's theme follows macOS's light or dark appearance.
+    @Published var followAppearance: Bool {
+        didSet {
+            guard followAppearance != oldValue else { return }
+            TTFollowAppearancePreference.save(followAppearance, to: defaults)
+            onFollowAppearanceChange?(followAppearance)
+        }
+    }
+
     /// The Dock icon carries tt's overdue count.
     @Published var dockBadge: Bool {
         didSet {
@@ -137,6 +146,7 @@ final class PreferencesModel: ObservableObject {
     var onCaptureHotKeyChange: ((HotKeyCombo?) -> Void)?
     var onDefaultFontSizeChange: ((Float?) -> Void)?
     var onDockBadgeChange: ((Bool) -> Void)?
+    var onFollowAppearanceChange: ((Bool) -> Void)?
     /// True while the recorder listens, so the live shortcuts can step aside
     /// and be recorded like any other key.
     var onRecordingChange: ((Bool) -> Void)?
@@ -154,6 +164,7 @@ final class PreferencesModel: ObservableObject {
         defaultFontSize = TTDefaultFontSize.load(from: defaults)
         notificationsEnabled = TTNotificationsPreference.load(from: defaults)
         dockBadge = TTDockBadgePreference.load(from: defaults)
+        followAppearance = TTFollowAppearancePreference.load(from: defaults)
         binaryOverride = defaults.string(forKey: TTBinaryResolver.overrideDefaultsKey) ?? ""
         environmentOverrides = TTEnvironmentOverrides.load(from: defaults)
         resolveNextBinary = { [defaults] searchPath in
@@ -383,6 +394,12 @@ struct PreferencesView: View {
                     ForEach(TTExitBehavior.allCases, id: \.self) { Text($0.label).tag($0) }
                 }
                 note("A crash or a non-zero exit always keeps tt's last output on screen with a Relaunch button.")
+            }
+
+            Section {
+                Toggle("Match macOS appearance", isOn: $model.followAppearance)
+                note("tt switches between its light and dark themes with the system, without changing "
+                    + "the theme it saves. T still toggles it until the next change.")
             }
 
             Section {

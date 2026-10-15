@@ -279,6 +279,24 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
         model.binaryOverride = "  "
         XCTAssertNil(defaults.object(forKey: TTBinaryResolver.overrideDefaultsKey))
     }
+
+    func testFollowingTheAppearanceDefaultsOnAndSavesEachChange() {
+        XCTAssertTrue(TTFollowAppearancePreference.load(from: defaults))
+        let model = PreferencesModel(defaults: defaults)
+        XCTAssertTrue(model.followAppearance)
+
+        var changes: [Bool] = []
+        model.onFollowAppearanceChange = { changes.append($0) }
+        model.followAppearance = false
+        model.followAppearance = false
+        XCTAssertEqual(changes, [false], "an unchanged value applies nothing")
+        XCTAssertFalse(TTFollowAppearancePreference.load(from: defaults))
+        XCTAssertFalse(PreferencesModel(defaults: defaults).followAppearance, "the next launch starts from it")
+
+        model.followAppearance = true
+        XCTAssertEqual(changes, [false, true])
+        XCTAssertTrue(TTFollowAppearancePreference.load(from: defaults))
+    }
 }
 
 final class TerminalToggleTests: XCTestCase {

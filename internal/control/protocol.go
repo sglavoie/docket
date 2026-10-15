@@ -42,6 +42,11 @@ const (
 	// not outlive the exit, so a host reads the connection closing as the
 	// same answer.
 	OpQuit = "quit"
+	// OpAppearance applies Text, "dark" or "light", as this session's theme.
+	// It is presentation alone: tt answers it even while the user is
+	// mid-interaction, writes no machine state, and records no ledger entry,
+	// so a tt launched from a terminal keeps its own saved theme.
+	OpAppearance = "appearance"
 )
 
 // The events tt reports.

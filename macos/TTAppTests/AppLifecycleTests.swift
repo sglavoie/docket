@@ -620,7 +620,10 @@ final class TerminalWindowControllerTests: XCTestCase {
         XCTAssertTrue(ghostty_surface_binding_action(surfaceView.surface, action, UInt(action.utf8.count)))
         try wait("the cell size to grow") { controller.window.contentResizeIncrements.width > cell.width }
         let bigger = surfaceView.cellSize
-        XCTAssertEqual(controller.window.contentResizeIncrements, bigger)
+        // A zoomed cell can be a fractional point (45 pixels at 2x), and AppKit
+        // keeps resize increments in whole points.
+        XCTAssertEqual(controller.window.contentResizeIncrements.width, bigger.width, accuracy: 1)
+        XCTAssertEqual(controller.window.contentResizeIncrements.height, bigger.height, accuracy: 1)
         XCTAssertEqual(controller.window.contentMinSize, TerminalWindowController.minimumContentSize(cell: bigger))
     }
 

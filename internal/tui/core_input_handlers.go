@@ -372,8 +372,6 @@ func (m *AppModel) coreRedo() tea.Cmd {
 	return m.performGlobalTaskUndoRedoForProject(project, true)
 }
 
-// coreToggleTheme flips exactly between the two maintained machine-local
-// variants and rebuilds every active style immediately.
 // coreResetToLaunchView is 0: the view returns to the one a lens-free launch
 // produces and says which axes it had to put down to get there. It takes the
 // population reload the F-chord facets owe whenever it cleared one of them,
@@ -397,12 +395,16 @@ func (m *AppModel) coreResetToLaunchView() operation.OperationHandlerResult {
 	return operation.OperationHandlerResult{Status: status}
 }
 
+// coreToggleTheme flips exactly between the two maintained machine-local
+// variants and rebuilds every active style immediately.
+// It flips the theme on screen rather than the one saved, so after a host's
+// appearance op it still changes what the user sees.
 func (m *AppModel) coreToggleTheme() error {
 	if m.domain.runtime == nil || m.domain.runtime.Machine() == nil {
 		return fmt.Errorf("machine theme is unavailable")
 	}
 	machine := *m.domain.runtime.Machine()
-	if machine.Theme == "light" {
+	if theme.ActiveThemeName == "light" {
 		machine.Theme = "dark"
 	} else {
 		machine.Theme = "light"
@@ -410,9 +412,15 @@ func (m *AppModel) coreToggleTheme() error {
 	if err := m.domain.runtime.CommitMachine(&machine); err != nil {
 		return fmt.Errorf("save theme: %w", err)
 	}
-	theme.ApplyTheme(theme.NewThemeConfig(m.domain.runtime.Machine()))
+	applySessionTheme(m.domain.runtime.Machine().Theme)
 	m.setInfoStatus("Theme: " + machine.Theme)
 	return nil
+}
+
+// applySessionTheme rebuilds every active style for name, writing no machine
+// state: the half of the theme toggle a host's appearance op shares.
+func applySessionTheme(name string) {
+	theme.ApplyTheme(theme.ThemeConfig{Name: name})
 }
 
 // coreToggleMenuBar shows and hides the Outliner's menu bar. Visibility is

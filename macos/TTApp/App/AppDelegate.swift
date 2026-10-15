@@ -34,6 +34,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     private var quitHandshake: TTQuitHandshake?
     /// How long a quit waits on tt before ending it with a hangup.
     var quitTimeout = TTQuitHandshake.defaultTimeout
+    /// Watches macOS's appearance for tt's theme.
+    private var appearanceObserver: NSKeyValueObservation?
     /// Asks whether to quit over what tt has open; true quits anyway.
     var confirmQuitAnyway: () -> Bool = AppDelegate.runBusyQuitAlert
 
@@ -351,7 +353,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         let client = TTControlClient(path: path)
         client.onEvent = { [weak self] event in self?.handle(event) }
         client.onConnectionChange = { [weak self] connected in
-            if !connected { self?.quitHandshake?.ttEnded() }
+            if connected {
+                self?.sendAppearance()
+            } else {
+                self?.quitHandshake?.ttEnded()
+            }
         }
         control = client
 
@@ -375,6 +381,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         case .arrivals(let arrivals, let title, let body):
             notifications.post(arrivals: arrivals, title: title, body: body)
         }
+    }
+
+    /// Tells the connected tt the system's light or dark, when set to follow
+    /// it. An older tt answers "unknown operation", which is ignored: it keeps
+    /// its own theme.
+    private func sendAppearance() {
+        guard preferencesModel.followAppearance, let control, control.isConnected else { return }
+        control.send(.appearance(TTAppearanceScheme(NSApp.effectiveAppearance)))
     }
 
     /// A notification naming a task was clicked: bring tt forward on it.
@@ -468,6 +482,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         notifications.isTerminalFrontmost = { [weak self] in self?.isTerminalFrontmost ?? false }
         notifications.onActivate = { [weak self] in self?.terminal?.show() }
         quickCapture.unavailableReason = { [weak self] in self?.captureUnavailableReason }
+        model.onFollowAppearanceChange = { [weak self] _ in self?.sendAppearance() }
+        appearanceObserver = NSApp.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
+            DispatchQueue.main.async { self?.sendAppearance() }
+        }
 
         syncStatusItem(to: model.activationPolicy)
         let hotKeys = HotKeyCenter()

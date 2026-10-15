@@ -295,6 +295,12 @@ takes that color, with light or dark title text to match, so the window reads
 as one surface. Before tt sets it, the title bar uses the Ghostty config's
 `background`.
 
+With Settings › General › Match macOS appearance on (`ttFollowAppearance`, the
+default), tt.app tells the running tt to use its light or dark theme when tt
+starts and again whenever macOS changes appearance. tt uses that theme for the
+session only, so a tt started from a terminal keeps the theme it saved, and
+`T` still toggles until the next change. An older tt ignores the request.
+
 ### Menus
 
 Edit has Copy, Paste, and Select All, and nothing else: tt owns every other

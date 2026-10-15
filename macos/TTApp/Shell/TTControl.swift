@@ -34,7 +34,7 @@ enum TTControlLaunch {
 
 struct TTControlRequest: Encodable, Equatable {
     enum Op: String, Encodable {
-        case reveal, acknowledge, capture, complete, preview, quit
+        case reveal, acknowledge, capture, complete, preview, quit, appearance
         case deferTask = "defer"
     }
 
@@ -72,6 +72,12 @@ struct TTControlRequest: Encodable, Equatable {
 
     /// Ends tt the way its quit key does, unless something is open in it.
     static let quit = Self(op: .quit)
+
+    /// Sets the running tt's theme for its session, `dark` or `light`. tt
+    /// answers it even while busy and saves nothing.
+    static func appearance(_ scheme: TTAppearanceScheme) -> Self {
+        Self(op: .appearance, text: scheme.rawValue)
+    }
 }
 
 /// Quitting tt.app asks tt to quit first, so it saves its view and filter

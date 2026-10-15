@@ -552,6 +552,16 @@ func (m *AppModel) answerControlRequest(request control.Request, reply chan<- co
 	case control.OpPreview:
 		m.controlPreview(request.Text, reply)
 		return nil
+	case control.OpAppearance:
+		// Ahead of the busy guard too: a theme changes what is drawn and
+		// nothing an open picker or editor holds.
+		if request.Text != "dark" && request.Text != "light" {
+			answer(reply, false, fmt.Sprintf("unknown appearance %q: want dark or light", request.Text))
+			return nil
+		}
+		applySessionTheme(request.Text)
+		answer(reply, true, "Theme: "+request.Text)
+		return nil
 	case control.OpReveal, control.OpAcknowledge, control.OpDefer, control.OpCapture, control.OpQuit:
 	default:
 		answer(reply, false, fmt.Sprintf("unknown operation %q", request.Op))

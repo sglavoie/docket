@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // controlEnv is the R chain's environment with the Outliner as the live route,
@@ -347,4 +348,43 @@ func TestControlRevealSeatsTheCursorOnTheTask(t *testing.T) {
 		t.Fatalf("reply = %+v", reply)
 	}
 	requireCursorRow(t, env.outliner, second.ID)
+}
+
+// TestControlAppearanceAppliesForTheSessionAlone: a host's appearance op
+// changes the theme on screen, even while the user is mid-interaction, and
+// writes no machine state, so a terminal-launched tt keeps its saved theme.
+func TestControlAppearanceAppliesForTheSessionAlone(t *testing.T) {
+	env := controlEnv(t, reviewSettledTask(t, 1, "existing"))
+	t.Cleanup(func() { applySessionTheme(env.model.domain.runtime.Machine().Theme) })
+	saved := env.model.domain.runtime.Machine().Theme
+	want := "light"
+	if saved == "light" {
+		want = "dark"
+	}
+	beforeUndo, beforeRedo := env.model.workspaceHistoryPreview()
+	setTestPresentationPath(env.model, presentation.ViewCrossProjectOutliner, presentation.ViewNotes)
+
+	reply := env.request(t, control.Request{Op: control.OpAppearance, Text: want})
+	if !reply.OK || reply.Message != "Theme: "+want {
+		t.Fatalf("reply = %+v", reply)
+	}
+	if theme.ActiveThemeName != want {
+		t.Fatalf("active theme = %q, want %q", theme.ActiveThemeName, want)
+	}
+	if got := env.model.domain.runtime.Machine().Theme; got != saved {
+		t.Fatalf("machine theme = %q, want the saved %q", got, saved)
+	}
+	if undo, redo := env.model.workspaceHistoryPreview(); undo != beforeUndo || redo != beforeRedo {
+		t.Fatalf("appearance wrote history: undo %q, redo %q", undo, redo)
+	}
+
+	for _, text := range []string{"", "Dark", "solarized"} {
+		reply := env.request(t, control.Request{Op: control.OpAppearance, Text: text})
+		if reply.OK || reply.Message == "" {
+			t.Fatalf("appearance %q answered %+v", text, reply)
+		}
+		if theme.ActiveThemeName != want {
+			t.Fatalf("refused appearance %q changed the theme to %q", text, theme.ActiveThemeName)
+		}
+	}
 }
