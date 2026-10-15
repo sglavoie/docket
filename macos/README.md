@@ -225,7 +225,9 @@ menu-bar and Dock menus also carry Quick Capture. If tt had
 exited, the capture starts it again first; a completion never does.
 
 `Cmd+Z` in the empty field takes back the last capture through tt's own undo,
-the one `u` would make, and the line under the field says what tt answered. tt
+the one `u` would make, and the line under the field says what tt answered.
+Only that most recent capture: a second `Cmd+Z` does not reach the ones before
+it, which `u` in tt still can. tt
 refuses it once something newer has changed in tt (`Something newer was
 changed in tt; undo it there`), or while something is open in tt, and the
 capture stays. With text in the field, `Cmd+Z` undoes the typing instead. So
