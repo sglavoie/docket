@@ -941,9 +941,17 @@ func (m *OutlinerModel) outlinerFocusContext() string {
 
 // buildOutlinerSearchIndicator renders the search chrome, appending a badge only
 // when the title row can hold it: at narrow widths the query itself is the more
-// useful half of the segment. A refused sigil wins over the case badge, because a
-// query that cannot run explains an empty list better than how it was matched.
+// useful half of the segment, so the match count sheds before it does. A refused
+// sigil wins over the count and the case badge, because a query that cannot run
+// explains an empty list better than how it was matched.
 func (m *OutlinerModel) buildOutlinerSearchIndicator(width int) string {
+	return m.searchIndicator(width, true)
+}
+
+// searchIndicator is that chrome with or without the match count. The context
+// row draws the counted form in full and the uncounted one compact, so a row
+// too narrow for every entry gives up the count before it drops the query.
+func (m *OutlinerModel) searchIndicator(width int, counted bool) string {
 	if m.IsSearchMode() && m.Search.historyPicker != nil {
 		picker := m.Search.historyPicker
 		picker.input.SetWidth(max(width-10, 1))
@@ -963,6 +971,9 @@ func (m *OutlinerModel) buildOutlinerSearchIndicator(width int) string {
 	if guidance := m.Search.Gate.GuidanceText(); guidance != "" {
 		return appendSearchBadge(indicator, " "+guidance, width)
 	}
+	if count := m.searchMatchCountLabel(); counted && count != "" {
+		indicator = appendSearchBadge(indicator, " · "+count, width)
+	}
 	if m.Search.caseRelaxed {
 		indicator = appendSearchBadge(indicator, " (case ignored)", width)
 	}
@@ -970,6 +981,18 @@ func (m *OutlinerModel) buildOutlinerSearchIndicator(width int) string {
 		indicator = appendSearchBadge(indicator, " · "+m.Search.history.notice, width)
 	}
 	return indicator
+}
+
+// searchMatchCountLabel spells how many task and note rows the projection
+// draws for the held query, the same in the typing and the applied form. It is
+// empty with no projection standing, since a query installed without one has
+// drawn nothing of its own to count, and over an empty query, which matched
+// nothing and narrowed nothing.
+func (m *OutlinerModel) searchMatchCountLabel() string {
+	if !m.HasSearchProjection() || strings.TrimSpace(m.SearchQuery()) == "" {
+		return ""
+	}
+	return util.CountPlural(m.Search.drawn, "match", "matches")
 }
 
 // appendLensQueryBadge gives the lens query the badges ordinary search already
@@ -1072,7 +1095,12 @@ func (m *OutlinerModel) BuildViewContextEntries(width int) []ViewContextEntry {
 		if m.HasActiveLens() && m.Lens.Query != "" {
 			label, value = "lens query", m.Lens.Query
 		}
-		entries = append(entries, ViewContextEntry{Label: label, Value: value, Row: search})
+		entries = append(entries, ViewContextEntry{
+			Label:      label,
+			Value:      value,
+			Row:        search,
+			RowCompact: m.searchIndicator(width, false),
+		})
 	}
 	if parts := m.ActiveFilterParts(); len(parts) > 0 {
 		entries = append(entries, ViewContextEntry{
@@ -1158,9 +1186,21 @@ func (m *OutlinerModel) BuildOutlinerContextRow(width int) string {
 		return ""
 	}
 	segments := make([]pulse.ContextRowSegment, 0, len(entries))
-	for _, entry := range entries {
+	query := -1
+	for index, entry := range entries {
+		if entry.Label == "query" && entry.RowCompact != entry.Row {
+			query = index
+		}
 		segments = append(segments, pulse.ContextRowSegment{Full: entry.Row, Compact: entry.RowCompact})
 	}
+	row := pulse.RenderContextRow(segments, width, m.queryReadoutDetailsHint())
+	if query < 0 || strings.Contains(row, segments[query].Full) {
+		return row
+	}
+	// The match count is the first thing the row gives up: the search entry
+	// steps down to its uncounted form before any other entry compacts or drops,
+	// so a count never costs the row an axis. Q still states it.
+	segments[query].Full = segments[query].Compact
 	return pulse.RenderContextRow(segments, width, m.queryReadoutDetailsHint())
 }
 

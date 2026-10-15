@@ -79,6 +79,7 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 	m.openChildCounts = query.OpenChildCounts(scope)
 	if m.ShowsRankedList() {
 		m.buildSearchProjectionRows()
+		m.countDrawnSearchRows()
 		m.finalizeModeRows()
 		return
 	}
@@ -121,7 +122,23 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 	}
 	m.separatePinnedSection(pinnedBoundary)
 	m.attributeNarrowingMatches(narrowing)
+	m.countDrawnSearchRows()
 	m.finalizeModeRows()
+}
+
+// countDrawnSearchRows records how many task and note rows the projection just
+// built draws for the held query. It runs ahead of finalizeModeRows, whose
+// checklist expansion and focused header add rows that are no result.
+func (m *OutlinerModel) countDrawnSearchRows() {
+	m.Search.drawn = 0
+	if !m.HasSearchProjection() {
+		return
+	}
+	for _, row := range m.Rows {
+		if row.IsTaskRow() || row.IsNoteRow {
+			m.Search.drawn++
+		}
+	}
 }
 
 // TimeDrivenRefreshOwedAt reports whether the canonical rows were last answered

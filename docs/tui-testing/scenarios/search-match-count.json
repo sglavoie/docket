@@ -1,0 +1,27 @@
+{
+  "name": "search-match-count",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
+    { "type": "key", "label": "typing a query says how many rows it drew", "key": "/" },
+    { "type": "text", "text": "login" },
+    { "type": "assert", "assert": "contains", "value": "Search: > login" },
+    { "type": "assert", "assert": "contains", "value": "· 2 matches" },
+    { "type": "text", "text": "zzz" },
+    { "type": "assert", "label": "a query matching nothing says so", "assert": "contains", "value": "· 0 matches" },
+    { "type": "key", "key": "backspace" },
+    { "type": "key", "key": "backspace" },
+    { "type": "key", "key": "backspace" },
+
+    { "type": "key", "label": "the applied form keeps the count", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Search: \"login\" · 2 matches" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "the narrowest frame still holds the query and its count", "width": 60, "height": 20 },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Search: \"login\" · 2 matches" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -290,6 +290,15 @@ func TestUXClarityCombinedContextIsReadableAtEverySize(t *testing.T) {
 				if strings.Contains(plainContext, ansi.Strip(entry.Row)) {
 					continue
 				}
+				// The match count is a search badge, shed whole before the query and
+				// stated again on the readout's query row, so the query drawn without
+				// it is the entry drawn rather than a dropped one.
+				if entry.Label == "query" && strings.Contains(plainContext, ansi.Strip(entry.RowCompact)) {
+					if !strings.Contains(readout, "match") {
+						t.Fatalf("the context row shed the match count and the readout does not state it:\n%s", readout)
+					}
+					continue
+				}
 				if !strings.Contains(plainContext, "details") {
 					t.Fatalf("the context row dropped %q without naming the readout: %q", entry.Label, plainContext)
 				}

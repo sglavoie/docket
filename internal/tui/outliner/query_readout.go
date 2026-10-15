@@ -159,8 +159,11 @@ func (m *OutlinerModel) QueryReadoutRows() []queryReadoutRow {
 			Label: "query",
 			value: m.SearchQuery(),
 		}
+		// The count rides the note so the readout states what the query drew
+		// beside what peeling it does.
+		row.note = m.searchMatchCountLabel()
 		if m.HasSuspendedLens() {
-			row.note = "restores the suspended lens"
+			row.note += " · restores the suspended lens"
 		}
 		rows = append(rows, row)
 	}

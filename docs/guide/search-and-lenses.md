@@ -60,6 +60,13 @@ the mode, facets, sort, cursor, scroll, and folds the search was typed over, so 
 narrowing typed inside the search leaves with it, and the restore is over the
 data as it stands rather than the rows the search was opened on.
 
+The search entry on the context row says how many rows the query drew —
+`· 2 matches`, `· 1 match`, `· 0 matches` — counting task rows and, in the flat
+list, note rows, while you type and once the query is applied. `Q` repeats the
+count on its query row. On a row too narrow for every entry the count is the
+first thing the row gives up, before any other entry is shortened or dropped;
+the query text stays.
+
 Find then narrow: the row facets and the sort axis compose with a query either
 way, so any `f` facet applies as an AND gate before scoring exactly like a query
 sigil. Under the flat list an `o` sort reorders within a relevance tier only — a

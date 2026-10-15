@@ -76,6 +76,12 @@ type searchState struct {
 	withheld         searchWithheldMatches
 	hiddenFilterHint string
 
+	// drawn counts the task and note rows the last rebuild drew for this query,
+	// in either presentation. It is taken when the rows are built rather than
+	// recounted at render, so the badge states the projection on screen and a
+	// frame never walks the rows to say so.
+	drawn int
+
 	// The input's own state. autocomplete is the suggestion pane, holding no cached
 	// vocabulary: every refresh reprojects the grammar and rereads the live
 	// candidates, so a mutation or a scope change cannot leave a stale value behind.
@@ -253,6 +259,7 @@ func (s *searchState) resetCompilation() {
 	s.setCompilation("", nil, false)
 	s.clearNoteMatches()
 	s.hiddenFilterHint = ""
+	s.drawn = 0
 }
 
 // setCompilation installs the reading of the query the visible result set was
