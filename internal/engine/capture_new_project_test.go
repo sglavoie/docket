@@ -1,11 +1,15 @@
 package engine
 
 import (
+	"bytes"
 	"errors"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -147,6 +151,134 @@ func TestCaptureCreatingProjectsRefusesAProjectWithNoTask(t *testing.T) {
 		{ProjectID: unfiled.ID, Title: "Buy compost"},
 	}); captureErr == nil {
 		t.Fatal("a created project receiving no task committed")
+	}
+	if refreshErr := runtime.Refresh(); refreshErr != nil {
+		t.Fatalf("Refresh: %v", refreshErr)
+	}
+	if runtime.State().GetProject("garden") != nil {
+		t.Fatal("the refused capture recorded the project")
+	}
+}
+
+// TestCaptureCreatingProjectsRefusesExistingTasksFile holds a slug the catalog
+// does not list whose directory already holds a tasks.md, as a partial sync or a
+// recovery can leave one. Creating the project would replace those bytes, so the
+// mixed batch refuses whole: the stray file, the catalog, the companion
+// project, planning, and the undo and redo stacks are all left as found.
+func TestCaptureCreatingProjectsRefusesExistingTasksFile(t *testing.T) {
+	env := newHeadlessEnvironment(t)
+	runtime := openHeadless(t, env.config(true))
+	stray := []byte("not a tasks document \x00\xff\n## Task ???\n")
+	garden := runtime.State().ProjectPath("garden")
+	if err := os.MkdirAll(garden, storage.DirPermissions); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(storage.TasksFilePath(garden), stray, storage.FilePermissions); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	creation, err := app.PrepareProjectCreation(runtime.State(), []app.NewProject{{ID: "11111111-1111-4111-8111-111111111111", Name: "garden"}})
+	if err != nil {
+		t.Fatalf("PrepareProjectCreation: %v", err)
+	}
+	requireCaptureCreatingProjectsRefusesStrayFile(t, runtime, creation, stray)
+}
+
+// TestCaptureCreatingProjectsRefusesTasksFileAppearingAfterPreparation holds the
+// same refusal for a tasks.md that arrives after the creation was prepared and
+// confirmed but before it commits: absence is checked under the commit locks,
+// not at preparation.
+func TestCaptureCreatingProjectsRefusesTasksFileAppearingAfterPreparation(t *testing.T) {
+	env := newHeadlessEnvironment(t)
+	runtime := openHeadless(t, env.config(true))
+
+	creation, err := app.PrepareProjectCreation(runtime.State(), []app.NewProject{{ID: "11111111-1111-4111-8111-111111111111", Name: "garden"}})
+	if err != nil {
+		t.Fatalf("PrepareProjectCreation: %v", err)
+	}
+	garden := creation.Projects[0].Path
+	if _, statErr := os.Stat(storage.TasksFilePath(garden)); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("preparing the creation wrote its tasks.md (stat err %v)", statErr)
+	}
+	// Another machine's canonical document for the same slug, synced in after
+	// the plan; the catalog that would list it has not arrived.
+	rival, err := models.NewProject("22222222-2222-4222-8222-222222222222", "garden", garden)
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+	document, err := app.EmptyTasksArtifact(rival)
+	if err != nil {
+		t.Fatalf("EmptyTasksArtifact: %v", err)
+	}
+	arrived := document.Data
+	if err := os.MkdirAll(garden, storage.DirPermissions); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(storage.TasksFilePath(garden), arrived, storage.FilePermissions); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	if refreshErr := runtime.Refresh(); refreshErr != nil {
+		t.Fatalf("Refresh: %v", refreshErr)
+	}
+	requireCaptureCreatingProjectsRefusesStrayFile(t, runtime, creation, arrived)
+}
+
+func requireCaptureCreatingProjectsRefusesStrayFile(t *testing.T, runtime *Runtime, creation app.ProjectCreation, stray []byte) {
+	t.Helper()
+	unfiled := runtime.State().SystemUnfiledProject()
+	ledger := runtime.Ledger()
+	dataDir := runtime.State().DataDir()
+	guarded := []string{
+		storage.TasksFilePath(creation.Projects[0].Path),
+		storage.TasksFilePath(unfiled.Path),
+		config.WorkspaceCatalogPath(dataDir),
+		config.PlanningStatePath(dataDir),
+	}
+	before := make([][]byte, len(guarded))
+	for i, path := range guarded {
+		data, err := os.ReadFile(path)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("ReadFile %s: %v", path, err)
+		}
+		before[i] = data
+	}
+	if !bytes.Equal(before[0], stray) {
+		t.Fatal("the stray tasks.md is not in place before the capture")
+	}
+	undoBefore, err := ledger.UndoCount(storage.LedgerScope{})
+	if err != nil {
+		t.Fatalf("UndoCount: %v", err)
+	}
+	redoBefore, err := ledger.RedoCount(storage.LedgerScope{})
+	if err != nil {
+		t.Fatalf("RedoCount: %v", err)
+	}
+
+	_, err = runtime.Service().CaptureManyCreatingProjects(creation, []app.CaptureRequest{
+		{ProjectID: creation.Projects[0].ID, Title: "Plant the beans"},
+		{ProjectID: unfiled.ID, Title: "Buy compost", Destination: app.CaptureDestinationToday},
+	})
+	if err == nil {
+		t.Fatal("a capture created a project over an existing tasks.md")
+	}
+	if !errors.Is(err, storage.ErrStaleArtifact) || !strings.Contains(err.Error(), "garden") ||
+		!strings.Contains(err.Error(), "already exists") {
+		t.Fatalf("the refusal does not name the existing file: %v", err)
+	}
+	for i, path := range guarded {
+		after, readErr := os.ReadFile(path)
+		if readErr != nil && !errors.Is(readErr, os.ErrNotExist) {
+			t.Fatalf("ReadFile %s: %v", path, readErr)
+		}
+		if !bytes.Equal(after, before[i]) {
+			t.Fatalf("the refused capture changed %s", path)
+		}
+	}
+	if after, _ := ledger.UndoCount(storage.LedgerScope{}); after != undoBefore {
+		t.Fatalf("a refused capture recorded an undo entry: %d, want %d", after, undoBefore)
+	}
+	if after, _ := ledger.RedoCount(storage.LedgerScope{}); after != redoBefore {
+		t.Fatalf("a refused capture changed the redo stack: %d, want %d", after, redoBefore)
 	}
 	if refreshErr := runtime.Refresh(); refreshErr != nil {
 		t.Fatalf("Refresh: %v", refreshErr)

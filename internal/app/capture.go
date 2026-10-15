@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -332,6 +333,14 @@ func (s *Service) captureMany(reqs []CaptureRequest, creation ProjectCreation) (
 			base:             snap.Document(project.ID),
 			attachmentOps:    attachmentOpsByProject[project.ID],
 		}
+		// A created project has no revision to check, and an empty one opts out,
+		// so its tasks.md is required absent under the commit locks instead: the
+		// catalog not naming a slug says nothing about a file already on disk.
+		if created[project.ID] != nil {
+			commits[i].artifactPreconditions = []storage.ArtifactPrecondition{{
+				Path: storage.TasksFilePath(project.Path),
+			}}
+		}
 	}
 	artifacts = creation.withCatalog(artifacts)
 	if len(commits) > 0 {
@@ -339,7 +348,7 @@ func (s *Service) captureMany(reqs []CaptureRequest, creation ProjectCreation) (
 	}
 	outcome, err := s.commitProjects(commits, "Add Tasks", ctxTitle)
 	if err != nil {
-		return nil, err
+		return nil, createdProjectFileError(created, err)
 	}
 	committed = true
 
@@ -388,6 +397,22 @@ func createdCaptureProjects(snap Snapshot, creation ProjectCreation) (map[string
 		created[project.ID] = &clone
 	}
 	return created, nil
+}
+
+// createdProjectFileError names the project whose tasks.md a capture found
+// already on disk, keeping the storage conflict wrapped beneath it.
+func createdProjectFileError(created map[string]*models.Project, err error) error {
+	var conflict *storage.ArtifactConflictError
+	if !errors.As(err, &conflict) || conflict.Expected != "" {
+		return err
+	}
+	for _, project := range created {
+		if conflict.Path == storage.TasksFilePath(project.Path) {
+			return fmt.Errorf("project '%s' cannot be created: %s already exists on disk: %w",
+				project.Slug, conflict.Path, err)
+		}
+	}
+	return err
 }
 
 // captureProject resolves a request's project from the snapshot, else from
