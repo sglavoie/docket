@@ -162,11 +162,14 @@ final class PreferencesModel: ObservableObject {
     /// The binary this session runs, set by the app delegate once resolved;
     /// its notes are read when Settings opens, not at launch.
     var runningBinary: TTBinaryResolver.Resolution?
+    var runningVersion: TTVersion?
+    var runningFingerprint: TTBinaryFingerprint?
     /// The tt the next session would run, resolved the way a session resolves
     /// it; nil when none resolves.
     var resolveNextBinary: (_ searchPath: String) -> TTBinaryResolver.Resolution?
     /// The next tt is another binary than the running one.
     @Published private(set) var binaryAwaitsRelaunch = false
+    @Published private(set) var nextBinaryNote: String?
     /// Which tt runs and its version.
     @Published private(set) var runningBinaryNote: String?
     /// A second copy that disagrees with the running one, and what to do.
@@ -260,7 +263,7 @@ final class PreferencesModel: ObservableObject {
             return
         }
         let path = running.url.path
-        let version = readVersion(path)
+        let version = runningVersion
         runningBinaryNote = "Running \(Self.abbreviated(path)): \(version?.line ?? "version unknown")"
 
         binarySkewNote = nil
@@ -287,7 +290,12 @@ final class PreferencesModel: ObservableObject {
     /// redraw: resolving may read two binaries' versions.
     func refreshBinaryRelaunch() {
         let next = runningBinary == nil ? nil : resolveNextBinary(effectiveEnvironment?.path ?? "")
-        let awaits = Self.binaryAwaitsRelaunch(running: runningBinary, next: next)
+        let nextVersion = next.flatMap { readVersion($0.url.path) }
+        let nextFingerprint = next.flatMap { TTBinaryFingerprint.read($0.url.path) }
+        let versionChanged = runningVersion != nil && nextVersion != nil && runningVersion != nextVersion
+        let fileChanged = runningFingerprint != nil && nextFingerprint != nil && runningFingerprint != nextFingerprint
+        let awaits = Self.binaryAwaitsRelaunch(running: runningBinary, next: next) || versionChanged || fileChanged
+        nextBinaryNote = awaits ? "Available after relaunch: \(nextVersion?.line ?? "updated executable")" : nil
         if awaits != binaryAwaitsRelaunch {
             binaryAwaitsRelaunch = awaits
         }
@@ -575,7 +583,7 @@ struct PreferencesView: View {
                 }
                 if model.binaryAwaitsRelaunch {
                     HStack {
-                        note("The running tt is another binary.", warning: true)
+                        note(model.nextBinaryNote ?? "A different tt is available after relaunch.", warning: true)
                         Spacer()
                         Button("Relaunch tt") { model.onRelaunch?() }
                     }

@@ -201,6 +201,11 @@ the running binary all follow the tt that just started. If no tt can be found at
 that moment, the last one that was keeps running; only a launch that never found
 one shows the error instead of a window.
 
+Settings keeps the running session's version separate from the executable now
+on disk. Reinstalling at the same path still offers **Relaunch tt**, naming the
+version available after relaunch. With a current tt, the running version comes
+from the process itself; older builds use the version recorded before launch.
+
 Quitting tt.app asks tt to quit first, the way `q` does, so it saves its view
 and filter state. The app ends once tt has, or after three seconds. If tt is
 holding unsaved content or still saving, the window comes forward with a
@@ -223,12 +228,16 @@ would offer there — projects after `%`, tags after `#`, dates after `@`, and s
 on — read from the running tt as you type: ↑/↓ choose, Tab accepts, and Enter
 accepts too unless what you typed already stands on its own, as a new tag does.
 Esc closes the list first; with no list, Esc or clicking elsewhere puts the
-field away. Reopening an unfinished capture restores its text and caret or
+field away. Text is saved locally as you edit, so restarting the app or recovering
+from a crash restores the unfinished draft without submitting it. Deleting the
+text removes its recovery copy. A failed recovery write keeps the text in the
+field and reports the problem; another edit retries the write.
+Reopening an unfinished capture in the same session restores its text and caret or
 selection, so typing resumes where you left off; Select All still replaces the
 whole draft. A successful capture clears the draft and its selection. With suggestions
 closed, `Ctrl+N` captures and keeps the field open for another task; Enter keeps
 its usual automatic dismissal. A refused capture preserves the draft for either
-key, and a pending capture cannot be submitted twice. Quick capture saves its draft and a submission identity before sending it to tt.
+key, and a pending capture cannot be submitted twice. Quick capture saves its draft and a submission identity together before sending it to tt.
 After five seconds without an answer, the panel stops waiting and keeps the
 saved draft. Press Enter to retry safely: tt returns the original outcome if
 it already committed, including after a restart or an undo, rather than creating

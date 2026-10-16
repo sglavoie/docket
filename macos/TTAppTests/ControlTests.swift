@@ -1005,18 +1005,96 @@ private extension NSView {
 }
 
 extension QuickCapturePanelTests {
+    func testUnsubmittedDraftSurvivesRestartWithoutSubmitting() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = QuickCaptureSubmissionStore(url: root.appendingPathComponent("pending.json"))
+        let first = QuickCapturePanel()
+        first.persistRecovery = { try store.save($0) }
+        first.show()
+        let field = try XCTUnwrap(first.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
+        let editor = try XCTUnwrap(field.currentEditor() as? NSTextView)
+        editor.insertText("Buy 🥛 milk %home", replacementRange: NSRange(location: 0, length: 0))
+        let recovered = try XCTUnwrap(store.load()) // Durable before closing or pressing Enter.
+        XCTAssertEqual(recovered.draft, "Buy 🥛 milk %home")
+        XCTAssertNil(recovered.pendingSubmission)
+        first.close()
+
+        let restarted = QuickCapturePanel()
+        restarted.persistRecovery = { try store.save($0) }
+        restarted.restoreRecovery(recovered)
+        var submitted = false
+        restarted.submit = { _, _, _ in submitted = true }
+        restarted.show()
+        defer { restarted.close() }
+        let restoredField = try XCTUnwrap(restarted.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
+        XCTAssertEqual(restoredField.stringValue, recovered.draft)
+        XCTAssertFalse(submitted, "restoration is never a capture")
+        let restoredEditor = try XCTUnwrap(restoredField.currentEditor() as? NSTextView)
+        restoredEditor.insertText("", replacementRange: NSRange(location: 0, length: (recovered.draft as NSString).length))
+        XCTAssertNil(try store.load(), "deleting the text also discards its recovery copy")
+    }
+
+    func testLateSuccessPreservesANewerDurableDraft() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = QuickCaptureSubmissionStore(url: root.appendingPathComponent("pending.json"))
+        let panel = QuickCapturePanel()
+        panel.persistRecovery = { try store.save($0) }
+        panel.captureContext = { $0("workspace", nil) }
+        var reply: ((Bool, String, String?, TTTextSelection?) -> Void)?
+        panel.submit = { _, _, done in reply = done }
+        panel.show()
+        defer { panel.close() }
+        let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
+        field.stringValue = "First capture"
+        field.sendAction(field.action, to: field.target)
+        panel.close()
+        panel.show()
+        field.stringValue = "Next draft"
+        panel.controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: field))
+        XCTAssertEqual(try store.load()?.pendingSubmission?.text, "First capture")
+        reply?(true, "Captured", "tx", nil)
+        XCTAssertEqual(try store.load(), QuickCaptureRecovery(draft: "Next draft", pendingSubmission: nil))
+        XCTAssertEqual(field.stringValue, "Next draft")
+    }
+
+    func testDraftRecoveryFailureKeepsTextAndCanRetry() throws {
+        let panel = QuickCapturePanel()
+        var fail = true
+        var recovered: QuickCaptureRecovery?
+        panel.persistRecovery = {
+            if fail { throw CocoaError(.fileWriteNoPermission) }
+            recovered = $0
+        }
+        panel.show()
+        defer { panel.close() }
+        let field = try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
+        field.stringValue = "Keep typing"
+        panel.controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: field))
+        XCTAssertEqual(field.stringValue, "Keep typing")
+        XCTAssertTrue(panel.panel.contentView!.descendants(of: NSTextField.self).contains { $0.stringValue.contains("Could not save the recovery copy") })
+        panel.close()
+        panel.toggle()
+        XCTAssertTrue(panel.isVisible, "a recovery write failure must not prevent reopening the draft")
+        XCTAssertTrue(panel.panel.contentView!.descendants(of: NSTextField.self).contains { $0.stringValue.contains("Could not save the recovery copy") })
+        fail = false
+        panel.controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: field))
+        XCTAssertEqual(recovered?.draft, "Keep typing")
+    }
+
     func testSafeRetryKeepsIdentityAndAcceptsOriginalLateReply() throws {
         let panel = QuickCapturePanel()
         panel.captureContext = { $0("workspace", nil) }
         var sent: [QuickCaptureSubmission] = []
         var replies: [(Bool, String, String?, TTTextSelection?) -> Void] = []
         var timers: [() -> Void] = []
-        var persisted: QuickCaptureSubmission?
-        panel.persistSubmission = { persisted = $0 }
+        var persisted: QuickCaptureRecovery?
+        panel.persistRecovery = { persisted = $0 }
         panel.scheduleTimeout = { _, action in timers.append(action) }
         panel.scheduleDismissal = { _ in }
         panel.submit = { submission, written, done in
-            XCTAssertEqual(persisted, submission, "identity must be durable before transmission")
+            XCTAssertEqual(persisted?.pendingSubmission, submission, "identity must be durable before transmission")
             sent.append(submission); replies.append(done); written()
         }
         panel.show()
@@ -1031,7 +1109,7 @@ extension QuickCapturePanelTests {
         replies[0](true, "Captured", "tx", nil)
         XCTAssertFalse(panel.sending, "original success also settles its retry")
         XCTAssertEqual(field.stringValue, "")
-        XCTAssertNil(persisted)
+        XCTAssertEqual(persisted, QuickCaptureRecovery(draft: "", pendingSubmission: nil))
         replies[1](true, "Captured", "tx", nil)
         field.stringValue = "One capture"
         field.sendAction(field.action, to: field.target)
@@ -1043,12 +1121,15 @@ extension QuickCapturePanelTests {
         defer { try? FileManager.default.removeItem(at: root) }
         let store = QuickCaptureSubmissionStore(url: root.appendingPathComponent("pending.json"))
         let submission = QuickCaptureSubmission(id: UUID().uuidString.lowercased(), text: "Recover me", workspace: "original")
-        try store.save(submission)
+        // Older versions stored only the submission; read it without losing
+        // the retry identity, then upgrade on the next edit or submission.
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try JSONEncoder().encode(submission).write(to: store.url)
         let restored = try XCTUnwrap(store.load())
-        XCTAssertEqual(restored, submission)
+        XCTAssertEqual(restored.pendingSubmission, submission)
         let panel = QuickCapturePanel()
-        panel.restoreSubmission(restored)
-        panel.persistSubmission = { try store.save($0) }
+        panel.restoreRecovery(restored)
+        panel.persistRecovery = { try store.save($0) }
         panel.captureContext = { $0("different", nil) }
         var sent = false
         panel.submit = { _, _, _ in sent = true }
@@ -1059,7 +1140,7 @@ extension QuickCapturePanelTests {
         field.sendAction(field.action, to: field.target)
         XCTAssertFalse(sent)
         XCTAssertFalse(panel.sending)
-        XCTAssertEqual(try store.load(), submission)
+        XCTAssertEqual(try store.load()?.pendingSubmission, submission)
         panel.captureContext = { $0("original", nil) }
         panel.submit = { value, written, done in
             XCTAssertEqual(value, submission); written(); done(true, "Captured", "tx", nil)
@@ -1072,7 +1153,7 @@ extension QuickCapturePanelTests {
     func testCaptureDoesNotSendWhenSavingItsIdentityFails() throws {
         let panel = QuickCapturePanel()
         panel.captureContext = { $0("workspace", nil) }
-        panel.persistSubmission = { _ in throw CocoaError(.fileWriteNoPermission) }
+        panel.persistRecovery = { _ in throw CocoaError(.fileWriteNoPermission) }
         var sent = false
         panel.submit = { _, _, _ in sent = true }
         panel.show()

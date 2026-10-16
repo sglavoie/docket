@@ -22,6 +22,9 @@ package control
 
 // The operations a Request may name.
 const (
+	// OpVersion reads the running process's build identity, never the executable
+	// currently installed at its path. It remains available during editing.
+	OpVersion = "version"
 	// OpReveal shows one task in the Outliner, seating the cursor on it.
 	OpReveal = "reveal"
 	// OpAcknowledge reviews one task, as R does on its row.
@@ -106,6 +109,7 @@ type Request struct {
 // Transaction answers a successful OpCapture with the committed transaction's
 // ID, the one OpUndo names.
 type Reply struct {
+	Version     string         `json:"version,omitempty"`
 	Workspace   string         `json:"workspace,omitempty"`
 	ID          int            `json:"reply"`
 	OK          bool           `json:"ok"`

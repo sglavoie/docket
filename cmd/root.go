@@ -229,14 +229,18 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		HideAdvisories: noAdvisories,
 		Notify:         notify,
 		ControlSocket:  controlSocket,
+		VersionLine:    versionLine(),
 	})
 }
 
 func printVersion() {
+	fmt.Println(versionLine())
+}
+
+func versionLine() string {
 	version, commit, buildTime := resolveBuildInfo()
 	if commit == "" && buildTime == "" {
-		fmt.Printf("tt version %s\n", version)
-		return
+		return fmt.Sprintf("tt version %s", version)
 	}
-	fmt.Printf("tt version %s (commit: %s, built: %s)\n", version, commit, buildTime)
+	return fmt.Sprintf("tt version %s (commit: %s, built: %s)", version, commit, buildTime)
 }

@@ -100,6 +100,16 @@ func TestControlAcknowledgeReviewsTheNamedTask(t *testing.T) {
 	}
 }
 
+func TestControlVersionReadsTheRunningBuildWhileEditing(t *testing.T) {
+	env := controlEnv(t, reviewSettledTask(t, 1, "existing"))
+	env.model.control.versionLine = "tt version original (commit: abc, built: then)"
+	setTestPresentationPath(env.model, presentation.ViewCrossProjectOutliner, presentation.ViewNotes)
+	reply := env.request(t, control.Request{Op: control.OpVersion})
+	if !reply.OK || reply.Version != env.model.control.versionLine {
+		t.Fatalf("running build: %+v", reply)
+	}
+}
+
 func TestControlDeferDefersByMinutesFromNow(t *testing.T) {
 	task := reviewSettledTask(t, 1, "later")
 	env := controlEnv(t, task)

@@ -487,6 +487,7 @@ final class TerminalWindowControllerTests: XCTestCase {
         var installed: URL? = old
         var askedOnMain = false
         let binaries = TTSessionBinaryStore()
+        binaries.readVersion = { _ in nil }
         binaries.resolve = { _ in
             askedOnMain = askedOnMain || Thread.isMainThread
             guard let installed else { return .failure(.init(invalidOverride: nil, tried: [])) }

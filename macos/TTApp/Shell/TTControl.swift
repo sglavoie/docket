@@ -34,7 +34,7 @@ enum TTControlLaunch {
 
 struct TTControlRequest: Encodable, Equatable {
     enum Op: String, Encodable {
-        case reveal, acknowledge, done, capture, complete, preview, quit, appearance, view, undo, edit
+        case reveal, acknowledge, done, capture, complete, preview, quit, appearance, view, undo, edit, version
         case deferTask = "defer"
         case captureOnce = "capture_once"
         case captureContext = "capture_context"
@@ -188,6 +188,7 @@ struct TTControlReply: Decodable, Equatable {
     let transaction: String?
     let selection: TTTextSelection?
     var workspace: String? = nil
+    var version: String? = nil
 
     init(
         reply: Int, ok: Bool, message: String?, completion: TTCompletion? = nil, preview: String? = nil,

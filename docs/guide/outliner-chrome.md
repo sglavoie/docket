@@ -288,8 +288,11 @@ focus and compares on return. If another machine's sync, or another `tt`,
 changed it meanwhile, tt reloads the catalog, planning, and every project, and
 says `Reloaded: the workspace changed on disk`. It waits while you are inside a
 picker, an editor, a visual selection, a ranked search, or another view, and
-reloads on the next minute's tick after you leave it, so nothing you are acting
-on is renumbered under you. A reload writes nothing.
+reloads as soon as you leave the last protected interaction, so nothing you are
+acting on is renumbered under you. The selected task and scroll position are
+preserved where still available, and a refresh does not replace save or undo
+feedback. A failed read stays pending for the normal timer to retry. A reload
+writes nothing.
 
 `tt --notify` also sends a desktop notification (OSC 777) when work arrives
 while the session runs: a check-in whose day comes, a timed deadline that

@@ -7,8 +7,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/notes"
 )
 
 // Exercise the full input-to-frame path, including projection and Peek, rather
@@ -51,6 +53,92 @@ func BenchmarkSingleProjectFrame(b *testing.B) {
 					m.View()
 				}
 			})
+		}
+	}
+}
+
+// Each operation types a query, renders after every key, and deletes it again.
+// Unlike the applied-search navigation benchmark above, every key recompiles,
+// ranks, and paints the live results. Report ns/key alongside the whole cycle.
+func BenchmarkLiveSearchTyping(b *testing.B) {
+	for _, count := range []int{100, 1000, 10000} {
+		for _, projectCount := range []int{1, 20} {
+			for _, withNotes := range []bool{false, true} {
+				b.Run(fmt.Sprintf("tasks=%d/projects=%d/notes=%t", count, projectCount, withNotes), func(b *testing.B) {
+					projects := make([]*models.Project, projectCount)
+					now := time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC)
+					for i := range projects {
+						id := fmt.Sprintf("project-%d", i)
+						projects[i] = &models.Project{ID: id, Slug: id, Name: id}
+					}
+					for i := range count {
+						p := projects[i%projectCount]
+						task := &models.Task{ID: fmt.Sprintf("task-%d", i), ShortID: i + 1,
+							Title: fmt.Sprintf("Review release item %d", i), CreatedAt: now, UpdatedAt: now, StateChangedAt: now}
+						if i%2 == 0 {
+							task.Title = fmt.Sprintf("Check delivery %d", i)
+							task.Description = "Check the release checklist before publishing the documentation."
+						}
+						task.ApplyWorkflowState(models.StateBacklog)
+						p.Tasks = append(p.Tasks, task)
+					}
+					var index []notes.LocatedNoteRow
+					if withNotes {
+						for i := range count / 5 {
+							p := projects[i%projectCount]
+							index = append(index, notes.LocatedNoteRow{
+								Location: app.NoteLocation{ProjectID: p.ID}, OwnerLabel: p.Name,
+								Note: &models.Note{Title: fmt.Sprintf("Release notes %d", i), Filename: fmt.Sprintf("note-%d.md", i),
+									Body: "Review the release checklist and delivery schedule."},
+							})
+						}
+					}
+					m := noteTierOutliner(index, projects...)
+					m.SetSize(100, 33)
+					m.ActivateSearch()
+					keys := make([]tea.KeyPressMsg, 0, 14)
+					for _, key := range "release" {
+						keys = append(keys, tea.KeyPressMsg{Code: key, Text: string(key)})
+					}
+					for range "release" {
+						keys = append(keys, tea.KeyPressMsg{Code: tea.KeyBackspace})
+					}
+					// Prove the workload reaches both result populations before timing it.
+					for _, key := range keys[:7] {
+						m.Update(key)
+						m.View()
+					}
+					tasks, noteCount := 0, 0
+					for _, row := range m.Rows {
+						if row.IsTaskRow() {
+							tasks++
+						}
+						if row.IsNoteRow {
+							noteCount++
+						}
+					}
+					if tasks == 0 || (withNotes && noteCount == 0) {
+						b.Fatalf("missing live results: tasks=%d notes=%d", tasks, noteCount)
+					}
+					for _, key := range keys[7:] {
+						m.Update(key)
+						m.View()
+					}
+					b.ReportAllocs()
+					b.ResetTimer()
+					for range b.N {
+						for _, key := range keys {
+							m.Update(key)
+							m.View()
+						}
+					}
+					b.StopTimer()
+					b.ReportMetric(float64(b.Elapsed().Nanoseconds())/float64(b.N*len(keys)), "ns/key")
+					if m.SearchInputValue() != "" {
+						b.Fatal("deletion did not return to the empty query")
+					}
+				})
+			}
 		}
 	}
 }

@@ -497,6 +497,14 @@ the conflicts' files, devices, and digests, without task or note content.
 
 ### Quick-capture retry receipts
 
+The Mac panel keeps its editable draft and any pending submission together in
+`~/Library/Application Support/io.github.sglavoie.tt/pending-capture.json`.
+Each edit replaces this local recovery file atomically. Restoring it fills the
+field only; capture still requires Enter or Ctrl+N. A successful reply clears
+its submission and the matching draft in one write, preserving newer text typed
+while the reply was delayed. This file is separate from the workspace and is
+never exchanged with another device.
+
 The Mac quick-capture panel gives each submitted draft a unique identity bound
 to its workspace. The task transaction also writes an immutable receipt under
 `.tt/control-captures/`. Tasks, planning changes, attachments, undo history, and

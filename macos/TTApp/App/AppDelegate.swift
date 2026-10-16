@@ -374,17 +374,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     /// learns whether it can be reached, and the control client exists exactly
     /// while that tt serves a socket.
     private func adopt(_ binary: TTSessionBinary) {
-        let path = binary.path
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            let line = TTVersion.read(binary: path)?.line
-            DispatchQueue.main.async { self?.ttVersionLine = line }
-        }
+        ttVersionLine = binary.version?.line
+        preferencesModel.runningVersion = binary.version
+        preferencesModel.runningFingerprint = binary.fingerprint
         if preferencesModel.runningBinary != binary.resolution {
             NSLog("tt: running %@ (%@)", binary.path, String(describing: binary.resolution.source))
             preferencesModel.runningBinary = binary.resolution
-            if preferences?.isVisible ?? false {
-                preferencesModel.refreshBinaryStatus()
-            }
+        }
+        if preferences?.isVisible ?? false {
+            preferencesModel.refreshBinaryStatus()
         }
         if binary.controlSupported {
             captureUnavailableReason = nil
@@ -424,9 +422,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         captureStoreConfigured = true
         let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         let store = QuickCaptureSubmissionStore(url: root.appendingPathComponent("io.github.sglavoie.tt/pending-capture.json"))
-        quickCapture.persistSubmission = { try store.save($0) }
+        quickCapture.persistRecovery = { try store.save($0) }
         do {
-            if let submission = try store.load() { quickCapture.restoreSubmission(submission) }
+            if let recovery = try store.load() { quickCapture.restoreRecovery(recovery) }
         } catch {
             captureStoreError = "Could not read the saved capture draft: \(error.localizedDescription)"
         }
@@ -436,9 +434,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         configureCaptureStore()
         let client = TTControlClient(path: path)
         client.onEvent = { [weak self] event in self?.handle(event) }
-        client.onConnectionChange = { [weak self] connected in
+        client.onConnectionChange = { [weak self, weak client] connected in
             if connected {
                 self?.sendAppearance()
+                // Ask the process itself: replacing its executable on disk
+                // must not rewrite what Settings calls the running version.
+                client?.send(TTControlRequest(op: .version)) { [weak self, weak client] reply in
+                    guard let self, let client, self.control === client,
+                          reply.ok, let line = reply.version, let version = TTVersion.parse(line) else { return }
+                    self.ttVersionLine = version.line
+                    self.preferencesModel.runningVersion = version
+                    if self.preferences?.isVisible ?? false { self.preferencesModel.refreshBinaryStatus() }
+                }
             } else {
                 self?.terminal?.desktopEditing = nil
                 self?.quitHandshake?.ttEnded()
@@ -578,6 +585,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
 
     /// The pieces that work even when tt itself could not start.
     private func setUpShell() {
+        configureCaptureStore()
         let model = preferencesModel
         model.onActivationPolicyChange = { [weak self] in self?.applyActivationPolicy($0) }
         model.onHotKeyChange = { [weak self] in self?.registerHotKey($0) }

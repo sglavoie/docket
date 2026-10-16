@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
@@ -12,6 +13,22 @@ import (
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
+
+func TestHelpFooterRemainsAtBottomWhileFilteringAndResizing(t *testing.T) {
+	d := polishDriver(t)
+	uxClarityPress(t, d, uxClarityKeys("?", "/")...)
+	if err := d.runAction(UITestAction{Type: UITestActionText, Text: "task"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, size := range append(uxClarityMatrixSizes, [2]int{60, 20}) {
+		d.dispatch(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
+		d.drain()
+		frame := shellFrameFooterLines(d.App().View().Content)
+		if len(frame) != size[1] || strings.TrimSpace(frame[len(frame)-1]) == "" {
+			t.Fatalf("filtered Help footer floats after resize to %v:\n%s", size, strings.Join(frame, "\n"))
+		}
+	}
+}
 
 // These are session 4's contracts over the composed frame: the footer says what
 // just happened and what the keys do, both at once, and every row it spends
@@ -215,6 +232,12 @@ func TestShellFrameFeedbackReachesASurfaceOwnedFooter(t *testing.T) {
 			}
 
 			before := ansi.Strip(app.View().Content)
+			if got := lipgloss.Height(before); got != size[1] {
+				t.Fatalf("Help uses %d rows in a %d-row terminal", got, size[1])
+			}
+			if tail := strings.Split(before, "\n"); strings.TrimSpace(tail[len(tail)-1]) == "" {
+				t.Fatal("Help leaves blank rows below its footer")
+			}
 			app.feedback.message = "Copied title to clipboard"
 			after := ansi.Strip(app.View().Content)
 

@@ -1,0 +1,79 @@
+package tui
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"charm.land/lipgloss/v2"
+
+	"github.com/sglavoie/tt/internal/tui/theme"
+)
+
+// Export the actual product frames for the opt-in Ghostty pixel review. The
+// ordinary suite also checks their geometry; the native test renders these
+// bytes through the same Metal surface as tt.app, rather than an SVG emulator.
+func TestPolishVisualReviewFrames(t *testing.T) {
+	defer theme.ApplyTheme(theme.ThemeConfig{})
+	root := os.Getenv("TT_TERMINAL_REVIEW_DIR")
+	if root == "" {
+		root = t.TempDir()
+	}
+	if err := os.MkdirAll(root, 0755); err != nil {
+		t.Fatal(err)
+	}
+	for _, palette := range []string{"dark", "light"} {
+		for _, size := range uxPresentationMatrixSizes {
+			for _, state := range []string{"peek", "menu-peek", "help", "capture-error"} {
+				name := fmt.Sprintf("%s-%dx%d-%s", palette, size[0], size[1], state)
+				t.Run(name, func(t *testing.T) {
+					d, view := uxDailyUseDriver(t, FixtureUXAcceptance, size[0], size[1])
+					theme.ApplyTheme(theme.ThemeConfig{Name: palette})
+					for i, row := range view.Rows {
+						if row.IsTaskRow() && row.Task != nil && row.Task.DueDate != nil {
+							view.Cursor = i
+							break
+						}
+					}
+					keys := []string{"b"}
+					switch state {
+					case "menu-peek":
+						keys = append(keys, "space")
+					case "help":
+						keys = []string{"?"}
+					case "capture-error":
+						keys = []string{"a"}
+					}
+					for _, key := range keys {
+						uxClarityPress(t, d, uxClarityKeys(key)...)
+					}
+					if state == "capture-error" {
+						if err := d.runAction(UITestAction{Type: UITestActionText, Text: "Keep this long draft while correcting its invalid deadline @not-a-date"}); err != nil {
+							t.Fatal(err)
+						}
+						uxClarityPress(t, d, uxClarityKeys("enter")...)
+					}
+					obs := d.Observe(ObserveOptions{IncludeANSI: true})
+					assertUXScreenFitsItsTerminal(t, obs, size)
+					assertUXMonochromeKeepsContent(t, obs)
+					if got := lipgloss.Height(obs.ANSIScreen); got != size[1] {
+						t.Fatalf("frame height = %d, want %d", got, size[1])
+					}
+					if state == "help" {
+						lines := strings.Split(obs.PlainScreen, "\n")
+						if strings.TrimSpace(lines[len(lines)-1]) == "" {
+							t.Fatal("blank row below Help footer")
+						}
+					}
+					for extension, content := range map[string]string{"ansi": obs.ANSIScreen, "txt": obs.PlainScreen} {
+						if err := os.WriteFile(filepath.Join(root, name+"."+extension), []byte(content), 0644); err != nil {
+							t.Fatal(err)
+						}
+					}
+				})
+			}
+		}
+	}
+}

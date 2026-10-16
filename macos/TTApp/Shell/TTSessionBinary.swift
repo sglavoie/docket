@@ -4,10 +4,29 @@ import Foundation
 struct TTSessionBinary: Equatable {
     let resolution: TTBinaryResolver.Resolution
     let supported: Set<String>
+    var version: TTVersion? = nil
+    var fingerprint: TTBinaryFingerprint? = nil
 
     var path: String { resolution.url.path }
     var notifySupported: Bool { supported.contains(TTNotificationsPreference.flag) }
     var controlSupported: Bool { supported.contains(TTControlLaunch.flag) }
+}
+
+/// Also distinguishes development builds whose version strings are identical.
+/// Captured at launch, never reconstructed from the running path later.
+struct TTBinaryFingerprint: Equatable {
+    let file: UInt64
+    let size: UInt64
+    let modified: Date
+
+    static func read(_ path: String) -> Self? {
+        let executable = URL(fileURLWithPath: path).resolvingSymlinksInPath().path
+        guard let attrs = try? FileManager.default.attributesOfItem(atPath: executable),
+              let file = attrs[.systemFileNumber] as? NSNumber,
+              let size = attrs[.size] as? NSNumber,
+              let modified = attrs[.modificationDate] as? Date else { return nil }
+        return Self(file: file.uint64Value, size: size.uint64Value, modified: modified)
+    }
 }
 
 /// Asks which tt runs before each session rather than once per launch, so
@@ -24,6 +43,7 @@ final class TTSessionBinaryStore {
     var supportedFlags: (_ binary: String) -> Set<String> = {
         TTVersion.supported(flags: [TTNotificationsPreference.flag, TTControlLaunch.flag], binary: $0)
     }
+    var readVersion: (String) -> TTVersion? = { TTVersion.read(binary: $0) }
 
     private let queue = DispatchQueue(label: "io.github.sglavoie.tt.session-binary")
 
@@ -33,9 +53,11 @@ final class TTSessionBinaryStore {
     func refresh(searchPath: String, completion: @escaping (TTBinaryResolver.NotFound?) -> Void) {
         let resolve = self.resolve
         let supportedFlags = self.supportedFlags
+        let readVersion = self.readVersion
         queue.async { [weak self] in
             let outcome = resolve(searchPath).map {
-                TTSessionBinary(resolution: $0, supported: supportedFlags($0.url.path))
+                TTSessionBinary(resolution: $0, supported: supportedFlags($0.url.path),
+                                version: readVersion($0.url.path), fingerprint: TTBinaryFingerprint.read($0.url.path))
             }
             DispatchQueue.main.async {
                 guard let self else { return }

@@ -222,6 +222,7 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
         XCTAssertNil(model.runningBinaryNote, "nothing runs yet")
 
         model.runningBinary = .init(url: bundled, source: .bundled)
+        model.runningVersion = TTVersion.parse(new)
         model.refreshBinaryStatus()
         XCTAssertEqual(model.runningBinaryNote, "Running \(bundled.path): \(new)")
         XCTAssertTrue(model.binarySkewNote?.contains("is older (\(old))") ?? false)
@@ -235,6 +236,39 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
         model.readVersion = { _ in TTVersion.parse(new) }
         model.refreshBinaryStatus()
         XCTAssertNil(model.binarySkewNote, "matching copies say nothing")
+    }
+
+    func testSamePathReplacementKeepsRunningVersionUntilRelaunch() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let path = dir.appendingPathComponent("tt")
+        try "old executable".write(to: path, atomically: true, encoding: .utf8)
+        let resolution = TTBinaryResolver.Resolution(url: path, source: .userDefaultsOverride)
+        let old = TTVersion.parse("tt version old")!
+        let new = TTVersion.parse("tt version new")!
+        let model = PreferencesModel(defaults: defaults)
+        model.runningBinary = resolution
+        model.runningVersion = old
+        model.runningFingerprint = TTBinaryFingerprint.read(path.path)
+        model.resolveNextBinary = { _ in resolution }
+        model.readVersion = { _ in old }
+        model.refreshBinaryStatus()
+        XCTAssertFalse(model.binaryAwaitsRelaunch)
+
+        try "new executable with the same version label".write(to: path, atomically: true, encoding: .utf8)
+        model.refreshBinaryStatus()
+        XCTAssertTrue(model.binaryAwaitsRelaunch, "development builds may have identical version strings")
+        model.readVersion = { _ in new }
+        model.refreshBinaryStatus()
+        XCTAssertTrue(model.runningBinaryNote?.hasSuffix(old.line) ?? false)
+        XCTAssertTrue(model.nextBinaryNote?.contains(new.line) ?? false)
+        model.runningVersion = new
+        model.runningFingerprint = TTBinaryFingerprint.read(path.path)
+        model.refreshBinaryStatus()
+        XCTAssertFalse(model.binaryAwaitsRelaunch)
+        XCTAssertNil(model.nextBinaryNote)
+        XCTAssertTrue(model.runningBinaryNote?.hasSuffix(new.line) ?? false)
     }
 
     func testTheModelStartsFromTheDefaultsAndSavesEachChange() {

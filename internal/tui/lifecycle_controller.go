@@ -142,6 +142,7 @@ var AppVersion = "dev"
 // RunOptions configures process-level TUI behavior independently from the
 // AppModel options used by tests and dependency injection.
 type RunOptions struct {
+	VersionLine  string
 	DisableColor bool
 	// HideAdvisories suppresses every ambient advisory for this run without
 	// touching the machine-local setting. See advisories_shell.go.
@@ -188,6 +189,7 @@ func RunApp(rt *engine.Runtime, runOpts RunOptions, opts ...AppOption) error {
 	if err != nil {
 		return err
 	}
+	model.control.versionLine = runOpts.VersionLine
 
 	p := tea.NewProgram(model, tea.WithEnvironment(tuiEnvironment(os.Environ(), runOpts.DisableColor)))
 
@@ -400,7 +402,9 @@ func (m *AppModel) adoptExternalWorkspaceChange() tea.Cmd {
 	if !m.externalReload.owed {
 		m.automaticSync.fingerprint = fingerprint
 	}
-	if !m.externalReload.quiet {
+	// A refresh is ambient; it must not replace the save, undo, or refusal
+	// the interaction that just closed is still reporting.
+	if !m.externalReload.quiet && m.footerFeedbackLine() == "" {
 		m.setInfoStatus("Reloaded: the workspace changed on disk")
 		cmds = append(cmds, m.statusReadingTimeout())
 	}
@@ -483,7 +487,8 @@ type controlPublisher interface {
 // controlState is the shell's link to the socket, nil-safe when tt runs
 // without one.
 type controlState struct {
-	publisher controlPublisher
+	versionLine string
+	publisher   controlPublisher
 	// published is the last pulse sent, so an unchanged pulse is never resent.
 	published   *pulse.WorkspacePulse
 	editing     *control.Editing
@@ -575,6 +580,9 @@ func (m *AppModel) answerControlRequest(request control.Request, reply chan<- co
 
 func (m *AppModel) executeControlRequest(request control.Request, reply chan<- control.Reply) tea.Cmd {
 	switch request.Op {
+	case control.OpVersion:
+		reply <- control.Reply{OK: true, Version: m.control.versionLine}
+		return nil
 	case control.OpEdit:
 		return m.controlEdit(request.Text, reply)
 	case control.OpComplete:

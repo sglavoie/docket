@@ -24,12 +24,13 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     var submit: ((QuickCaptureSubmission, _ written: @escaping () -> Void, _ done: @escaping (Bool, String, String?, TTTextSelection?) -> Void) -> Void)?
     /// Reads the workspace identity before saving and transmitting a submission.
     var captureContext: ((@escaping (String?, String?) -> Void) -> Void)?
-    var persistSubmission: (QuickCaptureSubmission?) throws -> Void = { _ in }
+    var persistRecovery: (QuickCaptureRecovery) throws -> Void = { _ in }
     private(set) var pendingSubmission: QuickCaptureSubmission?
+    private var recoveryError: String?
 
-    func restoreSubmission(_ submission: QuickCaptureSubmission) {
-        pendingSubmission = submission
-        field.stringValue = submission.text
+    func restoreRecovery(_ recovery: QuickCaptureRecovery) {
+        pendingSubmission = recovery.pendingSubmission
+        field.stringValue = recovery.draft
     }
 
     /// Asks tt to undo the named capture transaction, calls `written` once tt
@@ -136,6 +137,8 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         stopObservingSelection()
         if let reason = unavailableReason() {
             setStatus(reason, error: true)
+        } else if let recoveryError {
+            setStatus(recoveryError, error: true)
         } else {
             setStatus(Self.hint, error: false)
         }
@@ -383,13 +386,14 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
             } else {
                 submission = QuickCaptureSubmission(id: UUID().uuidString.lowercased(), text: text, workspace: workspace)
             }
-            do { try self.persistSubmission(submission) }
+            do { try self.persistRecovery(QuickCaptureRecovery(draft: text, pendingSubmission: submission)) }
             catch {
                 self.abandonRequest()
                 self.setStatus("Could not save the capture draft: \(error.localizedDescription)", error: true)
                 return
             }
             self.pendingSubmission = submission
+            self.recoveryError = nil
             self.sendCapture(submission, request: request, keepOpen: keepOpen, through: submit)
         }
     }
@@ -405,13 +409,15 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         }) { [weak self] ok, message, transaction, selection in
             guard let self, self.pendingSubmission?.id == submission.id else { return }
             if ok {
-                do { try self.persistSubmission(nil) }
+                let remaining = self.field.stringValue == text ? "" : self.field.stringValue
+                do { try self.persistRecovery(QuickCaptureRecovery(draft: remaining, pendingSubmission: nil)) }
                 catch {
                     self.abandonRequest()
                     self.setStatus("Captured, but the saved draft could not be cleared. Retrying is safe.", error: true)
                     return
                 }
                 self.pendingSubmission = nil
+                self.recoveryError = nil
                 if request != self.requestGeneration { self.abandonRequest() }
             }
             guard request == self.requestGeneration else {
@@ -552,9 +558,21 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
 
     func controlTextDidChange(_ notification: Notification) {
         dismissalGeneration += 1
+        saveDraft()
         rememberSelection()
         requestCompletion()
         requestPreview()
+    }
+
+    private func saveDraft() {
+        do {
+            try persistRecovery(QuickCaptureRecovery(draft: field.stringValue, pendingSubmission: pendingSubmission))
+            if recoveryError != nil { setStatus(Self.hint, error: false) }
+            recoveryError = nil
+        } catch {
+            recoveryError = "Could not save the recovery copy: \(error.localizedDescription). Keep this window open and retry editing."
+            setStatus(recoveryError!, error: true)
+        }
     }
 
     private func clearPreview() {

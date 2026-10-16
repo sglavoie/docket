@@ -2,6 +2,15 @@
 
 ## TUI architecture
 
+External changes remain deferred while an interaction owns the projection.
+`AppModel.Update` observes the transition from protected to safe and adopts an
+owed refresh in its completion hook; read failures remain owed for the ordinary
+timer. Reloads preserve the existing cursor recovery and scroll behavior, and
+ambient reload notices do not replace operation feedback. The control `version`
+request returns the process's immutable build line supplied by the launcher,
+including while an editor is open. The Mac host retains this answer separately
+from the executable it probes for the next launch.
+
 Every run creates one AppModel-owned Outliner and starts in Active Projects, All.
 Active Projects is the base task workspace: the non-archived projects the
 catalog does not tag parked. Search, filters, selection, folds, cursor, and

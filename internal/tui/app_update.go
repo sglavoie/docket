@@ -27,6 +27,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 	statusBefore := m.captureFooterFlashProbe()
 	textBefore := m.desktopTextBuffer()
 	draftBefore := m.quitBlockReason() != ""
+	externalRefreshWasSafe := m.safeToAdoptExternalChange()
 	defer func() {
 		if r := recover(); r != nil {
 			m.retireInteraction()
@@ -48,6 +49,11 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			return
 		}
 		outCmd = tea.Batch(outCmd, m.syncAfterLocalCommit())
+		// Closing the last protected interaction releases a deferred refresh
+		// immediately. Retry failures on the normal timer, not every redraw.
+		if !externalRefreshWasSafe && m.externalReload.owed && m.safeToAdoptExternalChange() {
+			outCmd = tea.Batch(outCmd, m.adoptExternalWorkspaceChange())
+		}
 		m.observeCheckInFeedbackMessage(msg)
 		outCmd = tea.Batch(outCmd, m.publishCheckInFeedback())
 		if interactive || isInteractionInput(msg) {
