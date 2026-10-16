@@ -234,7 +234,7 @@ is useful.
 
 The flat ranked list across several projects draws no project header, so its
 rows carry the one project label a task row still wears: `taskProjectLabel`
-puts the header's bold `[slug]`, in the same `ProjectColorStyle`, between the
+puts the header's `[slug]`, in the same `ProjectColorStyle`, between the
 badges and the title. The row leading a merged one-task group wears the same
 label for the same reason — no header stands over it — and
 `rowLeadsWithProjectLabel` is the one predicate both cases share; the rows
@@ -310,14 +310,11 @@ remainder is what made the ancestor mark a 40-column path on a short row, a
 exactly where a child row most needed distinguishing from a root row. Its
 meaning is now the same at every width. One segment rather than two also keeps
 the reserve near three columns on a row that is both a promoted child and a
-detached parent. It draws as one bold filled chip, `theme.RelationMarkerStyle`,
-after a single unstyled space: a muted mark beside a muted connector read as
-part of the tree's furniture, and amber accent text blended into the pin,
-due-soon, and blocked indicators around it, rather than reading as the one cue
-that family sits elsewhere. Its magenta fill sits at least 26° from every
-section, due, and late-review fill in both themes, which
-`TestRelationMarkerIsItsOwnBoldChip` holds. The chip's padding is counted in the
-reserved width, so the title budget already pays for it.
+detached parent. It draws as muted, unbold text through
+`theme.RelationMarkerStyle`, with the same reserved padding and no fill.
+`TestRelationMarkerIsQuietAndReadable` checks readable contrast in both themes.
+Deadlines and selection retain their stronger emphasis; family placement is
+supporting context. The padding still counts toward the title budget.
 
 Upward, a promoted section root carries `  ‹`: this row has a parent the outline
 above it does not show. Which parent is Peek's line to name. Downward, a row

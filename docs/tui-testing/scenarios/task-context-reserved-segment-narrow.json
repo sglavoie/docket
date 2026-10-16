@@ -8,11 +8,11 @@
     { "type": "assert", "label": "an over-budget context no longer costs the row a reserved segment", "assert": "not_contains", "value": "[distributed…]" },
     { "type": "key", "label": "select the long-context task", "key": "end" },
     { "type": "key", "label": "Peek carries the complete context beyond the row budget", "key": "b" },
-    { "type": "assert", "assert": "contains", "value": "Context: [distributed-systems]" },
-    { "type": "assert", "label": "and the position row names the tail the window has no room for", "assert": "contains", "value": "0 above · 2 below" },
+    { "type": "assert", "assert": "not_contains", "value": "Context: [distributed-systems]", "label": "the compact opening page keeps context below the fold" },
+    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "0 above · 3 below" },
     { "type": "key", "label": "page to the end of the document", "key": "ctrl+f" },
     { "type": "assert", "label": "the context is still readable whole a page in", "assert": "contains", "value": "Context: [distributed-systems]" },
-    { "type": "assert", "assert": "contains", "value": "2 above · 0 below" },
+    { "type": "assert", "assert": "contains", "value": "3 above · 0 below", "label": "the position row accounts for the compact window and its current offset" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

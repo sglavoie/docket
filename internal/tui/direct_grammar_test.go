@@ -258,6 +258,8 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		// has no draft to seed.
 		"D":           operation.OperationTaskRepeat,
 		"shift+enter": operation.OperationCoreFocusParent,
+		"alt+up":      operation.OperationCoreFocusParent,
+		"alt+right":   operation.OperationCoreJumpForward,
 		// Peek reads as a root letter now rather than a modified Enter, and its two
 		// page turns spell the same pair every other pageable body on the product
 		// answers to.

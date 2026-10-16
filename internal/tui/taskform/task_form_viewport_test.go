@@ -41,7 +41,7 @@ func formFieldWitness(tab, focus int) string {
 	case formTabBasics:
 		return []string{"Title:", "Description:", "Priority:", "Parent:", "Status:", "Flags:", "Tags:", "Context:"}[focus]
 	case formTabSchedule:
-		return []string{"Due:", "Next check-in:", "Repeat:"}[focus]
+		return []string{"Due:", "Next check-in:", "Repeat:", "Defer until:"}[focus]
 	case formTabChildren:
 		switch {
 		case focus == 0:
@@ -55,6 +55,10 @@ func formFieldWitness(tab, focus int) string {
 		}
 	case formTabExtras:
 		switch {
+		case focus == 2*formViewportItemCount+2:
+			return "Adopt children:"
+		case focus == 2*formViewportItemCount+3:
+			return "Dependencies:"
 		case focus == 0:
 			return fmt.Sprintf("Attachments (%d)", formViewportItemCount)
 		case focus <= formViewportItemCount:
@@ -129,7 +133,7 @@ func TestTaskFormViewportLeavesAFittingBodyAlone(t *testing.T) {
 	if strings.Contains(plain, "above ·") {
 		t.Fatalf("a body that fits must not draw the position row:\n%s", plain)
 	}
-	for _, want := range []string{"Due:", "Next check-in:", "Repeat:"} {
+	for _, want := range []string{"Due:", "Next check-in:", "Repeat:", "Defer until:"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("Schedule row %q missing:\n%s", want, plain)
 		}
@@ -219,7 +223,7 @@ func TestTaskFormViewportReturnsFromANestedPicker(t *testing.T) {
 	m := newLoadedTaskForm()
 	m.SetSize(formMinWidth, formMinHeight)
 	m.activeTab = formTabExtras
-	m.focusIndex = m.fieldCountForActiveTab() - 1
+	m.focusIndex = m.fieldCountForActiveTab() - 3
 	last := formFieldWitness(formTabExtras, m.focusIndex)
 
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter)) // edit the focused comment draft
@@ -249,7 +253,7 @@ func TestTaskFormHelpPaneNeverStealsTheWindowsLastRow(t *testing.T) {
 	// is taller than the body window it sits beside.
 	m.SetSize(100, formMinHeight)
 	m.activeTab = formTabExtras
-	m.focusIndex = m.fieldCountForActiveTab() - 1
+	m.focusIndex = m.fieldCountForActiveTab() - 3
 
 	plain := ansi.Strip(m.View().Content)
 	if !strings.Contains(plain, "Ctrl+L") {
@@ -258,7 +262,7 @@ func TestTaskFormHelpPaneNeverStealsTheWindowsLastRow(t *testing.T) {
 	if strings.Contains(plain, "resize terminal to view all") {
 		t.Fatalf("an over-tall help pane clipped the body instead of itself:\n%s", plain)
 	}
-	if !strings.Contains(plain, "· 0 below") {
+	if !strings.Contains(plain, "· 4 below") {
 		t.Fatalf("the position row is the body's last row and must survive the join:\n%s", plain)
 	}
 	assertFitsWithin(t, m.View().Content, 100, formMinHeight)

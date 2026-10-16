@@ -180,12 +180,15 @@ func (m *TaskFormModel) guidanceSpec() chrome.GuidanceSpec {
 	if m.err != nil {
 		commit = "Ctrl+S retry"
 	}
-	optional := []string{"Shift+←/→ tabs", "Tab next", "Shift+Tab previous"}
+	optional := []string{"Shift+←/→ tabs", "Tab next", "Shift+Tab previous", "Enter edit"}
 	switch m.activeTab {
 	case formTabChildren:
 		optional = []string{"c checklist", "Ctrl+A add item", "Enter edit item", "Space toggle", "Ctrl+D delete", "Ctrl+J/K reorder"}
 		optional = append([]string{"S subtasks", "Ctrl+T add subtask"}, optional...)
 	case formTabExtras:
+		if m.focusIndex >= m.fieldCountForExtras()-2 {
+			break
+		}
 		optional = []string{"a attachments", "Ctrl+L add", "Enter edit", "Ctrl+D delete", "Ctrl+J/K reorder"}
 		optional = append([]string{"c comments", "Ctrl+Y add comment"}, optional...)
 	}

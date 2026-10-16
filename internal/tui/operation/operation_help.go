@@ -81,7 +81,9 @@ func (registry *OperationRegistry) HelpItemsForInputStrategy(
 		items = append(items, HelpItem{
 			Key:         DisplayKeysForOperation(strategy, binding.OperationID),
 			Description: descriptor.Label,
-			Category:    OperationCategoryLabel(descriptor.Category),
+			Category:    bindingHelpCategory(binding, descriptor),
+			Group:       binding.HelpGroup,
+			Order:       binding.HelpOrder,
 			Aliases:     descriptor.Aliases,
 		})
 	}
@@ -107,7 +109,9 @@ func presetChordHelpItems(strategy InputStrategy, operationID OperationID, descr
 		items = append(items, HelpItem{
 			Key:         strings.Join(binding.Sequence, ""),
 			Description: descriptor.Label + ": " + strings.ToUpper(label[:1]) + label[1:],
-			Category:    OperationCategoryLabel(descriptor.Category),
+			Category:    bindingHelpCategory(binding, descriptor),
+			Group:       binding.HelpGroup,
+			Order:       binding.HelpOrder,
 			Aliases:     descriptor.Aliases,
 		})
 	}
@@ -379,4 +383,11 @@ func OperationCategoryLabel(category OperationCategory) string {
 	default:
 		return "Other"
 	}
+}
+
+func bindingHelpCategory(binding OperationKeyBinding, descriptor OperationDescriptor) string {
+	if binding.HelpCategory != "" {
+		return binding.HelpCategory
+	}
+	return OperationCategoryLabel(descriptor.Category)
 }

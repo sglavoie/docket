@@ -484,7 +484,7 @@ func (m *AppModel) coreInputHelpItems() []operation.HelpItem {
 	// come from the descriptor authority, with its actual menu route as the hint.
 	if descriptor, ok := m.operations.Registry.Descriptor(operation.OperationCoreSetUpCheckIns); ok && descriptor.Applicable(m.operationCommandContext()) {
 		items = append(items, operation.HelpItem{
-			Key: "Ctrl+M → Task", Description: descriptor.Label,
+			Key: m.menuOpenHint() + " → Task", Description: descriptor.Label,
 			Category: operation.OperationCategoryLabel(descriptor.Category), Aliases: descriptor.Aliases,
 		})
 	}

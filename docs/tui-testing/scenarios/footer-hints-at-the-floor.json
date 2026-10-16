@@ -24,6 +24,7 @@
 
     { "type": "key", "label": "open Peek, whose dock already shares the floor with the list", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "b/Esc close Peek" },
+    { "type": "key", "key": "B", "label": "expand Peek to read the supporting metadata" },
     { "type": "key", "label": "hold the workflow prefix over the open dock", "key": "w" },
     { "type": "assert", "label": "the three-row footer still holds all ten beside the dock", "assert": "contains", "value": "Plan: n next · t today" },
     { "type": "assert", "assert": "contains", "value": "Status: i inbox" },

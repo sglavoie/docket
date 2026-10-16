@@ -259,7 +259,7 @@ top-level task merges into that task's row instead: the kernel takes the top-lev
 count, emits nothing and reports the merge, and `mergeProjectGroupRows` trims one
 connector level off the rows the group then emitted and marks the first
 `OutlinerRow.LeadsMergedGroup`. That row stands at the header's depth with its
-subtree and checklist beneath it and leads with the same bold `[slug]` the ranked
+subtree and checklist beneath it and leads with the same `[slug]` the ranked
 list draws, so a group of one spends no row on a name its only row can carry.
 Folding it — `h` once nothing nearer is left, or `p` — draws the header as the
 summary, and `l` merges it back. Project operations, project Peek, and `Enter`

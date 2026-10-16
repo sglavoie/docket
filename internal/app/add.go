@@ -17,6 +17,13 @@ import (
 // ID/short-ID minting, and the single ChangeSet commit. It is the richer sibling
 // of CaptureRequest, which covers only the minimal quick-capture fields.
 type AddTaskRequest struct {
+	// DeferredUntil, ChildIDs and Dependencies carry compact capture's scheduling
+	// and relations through the same atomic form transaction.
+	Prepend       bool
+	DeferredUntil *time.Time
+	ChildIDs      []string
+	Dependencies  []TaskLocator
+
 	// ProjectID is the owning project's stable ID. Required.
 	ProjectID string
 	// Title is the task title. Required; validated with models.ValidateTaskTitle.
@@ -173,6 +180,13 @@ func normalizeAddTaskRequest(req AddTaskRequest) (normalizedAddTaskRequest, erro
 			return normalizedAddTaskRequest{}, err
 		}
 	}
+	if req.DeferredUntil != nil {
+		effect, err := deferredCaptureDestination(captureDestinationEffect{state: state, destination: destination}, CaptureRequest{DeferSet: true, Defer: req.DeferredUntil})
+		if err != nil {
+			return normalizedAddTaskRequest{}, err
+		}
+		state, destination = effect.state, effect.destination
+	}
 	if err := capturedCheckInAccepts(req.CheckIn, state); err != nil {
 		return normalizedAddTaskRequest{}, err
 	}
@@ -275,6 +289,15 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 		parent = resolved
 	}
 
+	children, err := resolveAdoptedChildren(project, req.ChildIDs)
+	if err != nil {
+		return TaskRef{}, "", err
+	}
+	dependencies, err := newReferenceResolver(snap, TaskLocator{}).resolveDependencyAdditions(nil, req.Dependencies)
+	if err != nil {
+		return TaskRef{}, "", err
+	}
+
 	now := s.clock.Now()
 	task, err := newTaskForCreation(s.ids.NewID(), project.GetNextShortID(), normalized.title)
 	if err != nil {
@@ -322,7 +345,20 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 		task.Review = true
 	}
 
-	project.Tasks = append(project.Tasks, task)
+	task.Dependencies = models.CloneTaskReferences(dependencies)
+	if req.DeferredUntil != nil {
+		if err := task.ApplyDeferAt(*req.DeferredUntil, now); err != nil {
+			return TaskRef{}, "", invalidInput("defer", err.Error())
+		}
+	}
+	insertCapturedTask(project, task, req.Prepend)
+	prepared := preparedCapture{parent: parent, children: children, destination: captureDestinationEffect{state: normalized.state}}
+	if err := applyCapturedTaskEdges(project, task, prepared); err != nil {
+		return TaskRef{}, "", err
+	}
+	if err := captureDestinationChildrenGuard(project, task, prepared); err != nil {
+		return TaskRef{}, "", err
+	}
 
 	return TaskRef{Task: task, Project: project, Base: snap.Document(project.ID)}, revision, nil
 }

@@ -207,26 +207,16 @@ func inlinePeekBodySections(opts inlinePeekOptions, width int) []inlinePeekSecti
 		sections = append(sections, inlinePeekSection{key: key, lines: lines})
 	}
 
-	// Identity leads: the whole title, then the ancestor chain the row reduced to
-	// a bare `‹`. A reader who opened Peek on a clipped row is looking for the
-	// rest of that title, so nothing precedes it.
+	// The compact dock answers what this is and where to resume before spending
+	// rows on project identity, ancestry, or scheduling detail. Every section
+	// still belongs to the scrollable document at every size.
 	add("title:"+task.Title, inlinePeekTitleLines(task, opts.Indent, width))
+	add("status:"+inlinePeekStatusKey(task, opts.Planning), inlinePeekStatusLines(task, opts.Planning, now, opts.Indent, width))
+	add("resume:"+task.ResumeNote, inlinePeekResumeLines(task.ResumeNote, opts.Indent, width))
 	add("project:"+opts.ProjectSlug, inlinePeekStyledLines(theme.MutedStyle.Render("Project: "), opts.ProjectSlug, opts.Indent, width))
 	add("parent:"+opts.Breadcrumb, inlinePeekParentLines(opts.Breadcrumb, opts.Indent, width))
 	add("match:"+opts.SearchExcerptKey, inlinePeekStyledLines(theme.MutedStyle.Render("Match: "), opts.SearchExcerpt, opts.Indent, width))
-
-	// The two summary lines follow, densest first: what the task is right now,
-	// then what it still owes. Both are `Label: value` pairs on one wrapped line
-	// rather than a section each, because a row of six one-word facts would spend
-	// the whole window saying what fits in two. The task's spent instants are not
-	// here: they are history, and history is the last thing in the document.
-	add("status:"+inlinePeekStatusKey(task, opts.Planning), inlinePeekStatusLines(task, opts.Planning, now, opts.Indent, width))
 	add("schedule:"+inlinePeekScheduleKey(task), inlinePeekScheduleLines(task, now, opts.Indent, width))
-
-	// Resume precedes the description because it answers the question Peek is
-	// opened to ask — where was this left — and the description answers a
-	// different, older one.
-	add("resume:"+task.ResumeNote, inlinePeekResumeLines(task.ResumeNote, opts.Indent, width))
 	add("description:"+task.Description, inlinePeekDescriptionLines(task.Description, opts.Indent, width))
 
 	// The three supporting counts sit under the task's own text, in the order a

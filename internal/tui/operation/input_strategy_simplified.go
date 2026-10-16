@@ -43,7 +43,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			// Capture leads the ladder outright: the act that puts a thought into
 			// the workspace is the one a user must never have to look for, and it
 			// is the one act on this row that is about work not yet on screen.
-			{OperationID: OperationCoreCapture, Keys: []string{"a"}, DisplayKey: "a", FooterRank: 1, FooterLabel: "capture"},
+			{HelpGroup: "Everyday", HelpOrder: 10, OperationID: OperationCoreCapture, Keys: []string{"a"}, DisplayKey: "a", FooterRank: 1, FooterLabel: "capture"},
 			// The keys a checklist row shares with a task row are declared
 			// checklist-first: shared-key resolution takes the first applicable
 			// descriptor, and only one of each pair applies to any given cursor.
@@ -54,15 +54,15 @@ func SimplifiedInputStrategy() InputStrategy {
 			// one applies is the same act at the same place in the row's reading.
 			{OperationID: OperationChecklistEditItem, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 3, FooterLabel: "item", SharedKey: true},
 			{OperationID: OperationScopeRenameProject, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 3, FooterLabel: "project", SharedKey: true},
-			{OperationID: OperationCoreEdit, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 3, FooterLabel: "edit", SharedKey: true},
+			{HelpGroup: "Everyday", HelpOrder: 20, OperationID: OperationCoreEdit, Keys: []string{"e"}, DisplayKey: "e", FooterRank: 3, FooterLabel: "edit", SharedKey: true},
 			{OperationID: OperationCoreEditDescription, Keys: []string{"E"}, DisplayKey: "E", FooterRank: 20, FooterLabel: "description"},
 			{OperationID: OperationCoreExternalEditor, Keys: []string{"ctrl+e"}, DisplayKey: "Ctrl+E", FooterRank: 21, FooterLabel: "editor"},
 			{OperationID: OperationCoreOutlineEditor, Keys: []string{"O"}, DisplayKey: "O", FooterRank: 23, FooterLabel: "outline"},
-			{OperationID: OperationTaskNewChild, Keys: []string{"A"}, DisplayKey: "A", FooterRank: 21, FooterLabel: "child"},
+			{HelpGroup: "Hierarchy", HelpOrder: 500, OperationID: OperationTaskNewChild, Keys: []string{"A"}, DisplayKey: "A", FooterRank: 21, FooterLabel: "child"},
 			// c appends to the cursor's checklist from either row, so it is one
 			// binding rather than a shared pair: the descriptor answers from the
 			// owner task and from any of its items alike.
-			{OperationID: OperationChecklistAddItem, Keys: []string{"c"}, DisplayKey: "c", FooterRank: 21, FooterLabel: "checklist item"},
+			{HelpGroup: "Hierarchy", HelpOrder: 501, OperationID: OperationChecklistAddItem, Keys: []string{"c"}, DisplayKey: "c", FooterRank: 21, FooterLabel: "checklist item"},
 			{OperationID: OperationChecklistToggleItem, Keys: []string{"x"}, DisplayKey: "x", FooterRank: 14, FooterLabel: "tick"},
 			// S converts the selected checklist item or child task in either direction.
 			// The two descriptors share a key but have disjoint row applicability, so
@@ -93,7 +93,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationCorePeekHalfPageDown, Keys: []string{"ctrl+d"}, DisplayKey: "Ctrl+D", SharedKey: true},
 			{OperationID: OperationCoreCursorPageDown, Keys: []string{"ctrl+d", "pgdown"}, DisplayKey: "Ctrl+D/PgDn", SharedKey: true},
 			{OperationID: OperationCoreJumpBackward, Keys: []string{"ctrl+o"}, DisplayKey: "Ctrl+O"},
-			{OperationID: OperationCoreJumpForward, Keys: []string{"ctrl+i"}, DisplayKey: "Ctrl+I"},
+			{OperationID: OperationCoreJumpForward, Keys: []string{"alt+right", "ctrl+i"}, DisplayKey: "Alt+→"},
 			{OperationID: OperationCoreFocusLatest, Keys: []string{"ctrl+l"}, DisplayKey: "Ctrl+L"},
 			{OperationID: OperationCoreSelectPinned, Keys: []string{"ctrl+p"}, DisplayKey: "Ctrl+P"},
 			{OperationID: OperationCoreCollapseParent, Keys: []string{"h", "left"}, DisplayKey: "h/←"},
@@ -113,10 +113,10 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationCoreReorderBottom, Keys: []string{"ctrl+j"}, DisplayKey: "Ctrl+J", SharedKey: true},
 			{OperationID: OperationChecklistMoveTop, Keys: []string{"ctrl+k"}, DisplayKey: "Ctrl+K", SharedKey: true},
 			{OperationID: OperationCoreReorderTop, Keys: []string{"ctrl+k"}, DisplayKey: "Ctrl+K", SharedKey: true},
-			{OperationID: OperationTaskOutdent, Keys: []string{"["}, DisplayKey: "["},
-			{OperationID: OperationTaskIndent, Keys: []string{"]"}, DisplayKey: "]"},
-			{OperationID: OperationTaskSetParent, Keys: []string{">"}, DisplayKey: ">"},
-			{OperationID: OperationTaskAdoptChildren, Keys: []string{"<"}, DisplayKey: "<"},
+			{HelpGroup: "Hierarchy", HelpOrder: 505, OperationID: OperationTaskOutdent, Keys: []string{"["}, DisplayKey: "["},
+			{HelpGroup: "Hierarchy", HelpOrder: 504, OperationID: OperationTaskIndent, Keys: []string{"]"}, DisplayKey: "]"},
+			{HelpGroup: "Hierarchy", HelpOrder: 502, OperationID: OperationTaskSetParent, Keys: []string{">"}, DisplayKey: ">"},
+			{HelpGroup: "Hierarchy", HelpOrder: 503, OperationID: OperationTaskAdoptChildren, Keys: []string{"<"}, DisplayKey: "<"},
 			{OperationID: OperationTaskReferences, Keys: []string{"~"}, DisplayKey: "~", FooterRank: 17, FooterLabel: "dependencies"},
 			{OperationID: OperationTaskMoveToProject, Keys: []string{"%"}, DisplayKey: "%"},
 			// The two capture sigils that carry task content keep the same
@@ -139,7 +139,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationCoreZoomSection, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 13, FooterLabel: "zoom", SharedKey: true},
 			{OperationID: OperationCoreActivateGroup, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 13, FooterLabel: "open", SharedKey: true},
 			{OperationID: OperationCoreOpenNote, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 13, FooterLabel: "open note", SharedKey: true},
-			{OperationID: OperationCoreFocusParent, Keys: []string{"shift+enter"}, DisplayKey: "Shift+Enter"},
+			{OperationID: OperationCoreFocusParent, Keys: []string{"alt+up", "shift+enter"}, DisplayKey: "Alt+↑"},
 			{OperationID: OperationCorePeekSize, Keys: []string{"B"}, DisplayKey: "B"},
 			{OperationID: OperationCorePeek, Keys: []string{"b"}, DisplayKey: "b", FooterRank: 5, FooterLabel: "peek"},
 			// Ctrl+F/B page the detail document a whole window at a time, exactly as
@@ -151,9 +151,9 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationCorePeekPageDown, Keys: []string{"ctrl+f"}, DisplayKey: "Ctrl+F"},
 			{OperationID: OperationCorePeekPageUp, Keys: []string{"ctrl+b"}, DisplayKey: "Ctrl+B"},
 			{OperationID: OperationCoreScopeSearch, Keys: []string{"/"}, DisplayKey: "/", FooterRank: 4, FooterLabel: "search"},
-			{OperationID: OperationCoreMultiSelect, Keys: []string{"v"}, DisplayKey: "v", FooterRank: 12, FooterLabel: "select"},
-			{OperationID: OperationCoreRangeSelect, Keys: []string{"V"}, DisplayKey: "V"},
-			{OperationID: OperationCoreSelectAll, Keys: []string{"ctrl+a"}, DisplayKey: "Ctrl+A"},
+			{HelpGroup: "Selection", HelpOrder: 600, OperationID: OperationCoreMultiSelect, Keys: []string{"v"}, DisplayKey: "v", FooterRank: 12, FooterLabel: "select"},
+			{HelpGroup: "Selection", HelpOrder: 601, OperationID: OperationCoreRangeSelect, Keys: []string{"V"}, DisplayKey: "V"},
+			{HelpGroup: "Selection", HelpOrder: 602, OperationID: OperationCoreSelectAll, Keys: []string{"ctrl+a"}, DisplayKey: "Ctrl+A"},
 			{OperationID: OperationCoreSelectProject, Keys: []string{"P"}, DisplayKey: "P", FooterRank: 18, FooterLabel: "projects"},
 			// Named Lenses carries no FooterRank on purpose: it is a discoverable
 			// entry point rather than a daily-loop act, so `?` teaches it and the
@@ -179,8 +179,8 @@ func SimplifiedInputStrategy() InputStrategy {
 			// a rank restating chrome the user is already looking at. The keys inside
 			// an open menu take none either, per the gated-keymap invariant.
 			{OperationID: OperationCoreOpenMenuBar, Keys: []string{"f10", "ctrl+m"}, DisplayKey: "F10/Ctrl+M"},
-			{OperationID: OperationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
-			{OperationID: OperationCoreRedo, Keys: []string{"ctrl+r"}, DisplayKey: "Ctrl+R"},
+			{HelpGroup: "Recovery", HelpOrder: 300, HelpCategory: "Tasks", OperationID: OperationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
+			{HelpGroup: "Recovery", HelpOrder: 301, HelpCategory: "Tasks", OperationID: OperationCoreRedo, Keys: []string{"ctrl+r"}, DisplayKey: "Ctrl+R"},
 			{OperationID: OperationCoreBack, Keys: []string{"esc"}, DisplayKey: "Esc"},
 			// Help closes the leading six. It is last of them because it is the rung
 			// a user reaches when the other five did not answer, and it is among
@@ -278,16 +278,16 @@ func SimplifiedInputStrategy() InputStrategy {
 			// the division is what the which-key row reads and never what the
 			// keypress does. Plan leads because two entries at the front of the
 			// run are two the narrow row never sheds.
-			{OperationID: OperationCoreNext, Sequence: []string{"w", "n"}, DisplayKey: "wn", HintLabel: "next", HintGroup: chrome.PlanHintGroup},
-			{OperationID: OperationCoreToday, Sequence: []string{"w", "t"}, DisplayKey: "wt", HintLabel: "today", HintGroup: chrome.PlanHintGroup},
-			{OperationID: OperationTaskSetState, Sequence: []string{"w", "i"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "inbox", HintGroup: chrome.StatusHintGroup, PresetValue: models.StateInbox, HasPresetValue: true},
-			{OperationID: OperationCoreBacklog, Sequence: []string{"w", "b"}, DisplayKey: "wb", HintLabel: "backlog", HintGroup: chrome.StatusHintGroup},
-			{OperationID: OperationTaskSetState, Sequence: []string{"w", "g"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "doing", HintGroup: chrome.StatusHintGroup, PresetValue: models.StateDoing, HasPresetValue: true},
-			{OperationID: OperationTaskSetState, Sequence: []string{"w", "w"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "waiting", HintGroup: chrome.StatusHintGroup, PresetValue: models.StateWaiting, HasPresetValue: true},
-			{OperationID: OperationTaskSetState, Sequence: []string{"w", "p"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "paused", HintGroup: chrome.StatusHintGroup, PresetValue: models.StatePaused, HasPresetValue: true},
-			{OperationID: OperationTaskSetState, Sequence: []string{"w", "m"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "someday", HintGroup: chrome.StatusHintGroup, PresetValue: models.StateSomeday, HasPresetValue: true},
-			{OperationID: OperationTaskSetState, Sequence: []string{"w", "d"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "done", HintGroup: chrome.StatusHintGroup, HintKeep: true, PresetValue: models.StateDone, HasPresetValue: true},
-			{OperationID: OperationTaskSetState, Sequence: []string{"w", "c"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "canceled", HintGroup: chrome.StatusHintGroup, PresetValue: models.StateCanceled, HasPresetValue: true},
+			{HelpGroup: "Plan", HelpOrder: 101, OperationID: OperationCoreNext, Sequence: []string{"w", "n"}, DisplayKey: "wn", HintLabel: "next", HintGroup: chrome.PlanHintGroup},
+			{HelpGroup: "Plan", HelpOrder: 100, OperationID: OperationCoreToday, Sequence: []string{"w", "t"}, DisplayKey: "wt", HintLabel: "today", HintGroup: chrome.PlanHintGroup},
+			{HelpGroup: "Other statuses", HelpOrder: 350, OperationID: OperationTaskSetState, Sequence: []string{"w", "i"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "inbox", HintGroup: chrome.StatusHintGroup, PresetValue: models.StateInbox, HasPresetValue: true},
+			{HelpGroup: "Other statuses", HelpOrder: 356, OperationID: OperationCoreBacklog, Sequence: []string{"w", "b"}, DisplayKey: "wb", HintLabel: "backlog", HintGroup: chrome.StatusHintGroup},
+			{HelpGroup: "Status", HelpOrder: 200, OperationID: OperationTaskSetState, Sequence: []string{"w", "g"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "doing", HintGroup: chrome.StatusHintGroup, PresetValue: models.StateDoing, HasPresetValue: true},
+			{HelpGroup: "Other statuses", HelpOrder: 351, OperationID: OperationTaskSetState, Sequence: []string{"w", "w"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "waiting", HintGroup: chrome.StatusHintGroup, PresetValue: models.StateWaiting, HasPresetValue: true},
+			{HelpGroup: "Other statuses", HelpOrder: 352, OperationID: OperationTaskSetState, Sequence: []string{"w", "p"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "paused", HintGroup: chrome.StatusHintGroup, PresetValue: models.StatePaused, HasPresetValue: true},
+			{HelpGroup: "Other statuses", HelpOrder: 353, OperationID: OperationTaskSetState, Sequence: []string{"w", "m"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "someday", HintGroup: chrome.StatusHintGroup, PresetValue: models.StateSomeday, HasPresetValue: true},
+			{HelpGroup: "Status", HelpOrder: 201, OperationID: OperationTaskSetState, Sequence: []string{"w", "d"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "done", HintGroup: chrome.StatusHintGroup, HintKeep: true, PresetValue: models.StateDone, HasPresetValue: true},
+			{HelpGroup: "Other statuses", HelpOrder: 354, OperationID: OperationTaskSetState, Sequence: []string{"w", "c"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "canceled", HintGroup: chrome.StatusHintGroup, PresetValue: models.StateCanceled, HasPresetValue: true},
 			// The f chord's facets are declared as two runs, the way the workflow
 			// chord's terminals are: the fields a task stores, then the facts
 			// computed from it. Declaration order is all the division changed, so

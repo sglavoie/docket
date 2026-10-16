@@ -43,6 +43,10 @@ const (
 // applicable over disjoint cursors. Without the flag a repeated path stays a
 // grammar defect.
 type OperationKeyBinding struct {
+	// Help presentation metadata never changes dispatch or footer order.
+	HelpGroup      string
+	HelpOrder      int
+	HelpCategory   string
 	OperationID    OperationID
 	Keys           []string
 	Sequence       []string

@@ -128,7 +128,7 @@ func TestSimplifiedInputStrategyUsesVisibleSearchAndFinalNavigation(t *testing.T
 		if item.Key == "Ctrl+O" && item.Description == "Jump to Older Task Position" {
 			helpHasJumpBackward = true
 		}
-		if item.Key == "Ctrl+I" && item.Description == "Jump to Newer Task Position" {
+		if item.Key == "Alt+→" && item.Description == "Jump to Newer Task Position" {
 			helpHasJumpForward = true
 		}
 	}
@@ -269,6 +269,20 @@ func TestSimplifiedNavigationAliasesShareOneOperationAndDisplayKey(t *testing.T)
 	for _, alias := range aliases {
 		if strings.Contains(footer, alias.display) {
 			t.Errorf("compact footer spends its hint budget on %q", alias.display)
+		}
+	}
+}
+
+func TestPortableKeysRetainEnhancedAliases(t *testing.T) {
+	registry := registeredSimplifiedOperationRegistry(t)
+	ctx := simplifiedOperationContext()
+	ctx.Entity = operation.EntityContext{ProjectID: "project", TaskID: "parent"}
+	ctx.CurrentEntity = operation.TaskEntity("project", "parent")
+	for _, pair := range [][2]string{{"alt+right", "ctrl+i"}, {"alt+up", "shift+enter"}, {"f10", "ctrl+m"}} {
+		first, _, ok := registry.InputBindingForKey(operation.InputStrategySimplified, pair[0], ctx)
+		second, _, also := registry.InputBindingForKey(operation.InputStrategySimplified, pair[1], ctx)
+		if !ok || !also || first.OperationID != second.OperationID {
+			t.Fatalf("portable alias %v differs", pair)
 		}
 	}
 }

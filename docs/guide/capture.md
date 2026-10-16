@@ -15,7 +15,7 @@ in scope it goes to Unfiled / Inbox; inside one project it goes to that project.
 | `A` on a task | Capture a child under that task, defaulting to Backlog |
 | `Enter` in capture | Save the task or batch and close |
 | `Ctrl+N` in capture | Save and keep capture open for another task or batch |
-| `Ctrl+F` in capture | Expand a supported single-task draft into the full form |
+| `Ctrl+F` in capture | Expand a single-task draft into the full form |
 | `?` in capture | Open syntax help after closing suggestions with `Esc` |
 | `Esc` | Close suggestions or help first; leaving a changed draft asks before discarding it |
 
@@ -142,7 +142,7 @@ validated before one atomic transaction is committed.
   the Comments one.
 
 Creating work in Doing or Waiting without a check-in interrupts nothing. The
-footer says so once the creation commits — `No check-in: <task> · Ctrl+M: Set up
+footer says so once the creation commits — `No check-in: <task> · F10: Set up
 check-ins`, or `No check-in: N tasks` when one capture committed several — and
 the route it names is the keyless **Set up check-ins** menu entry, not a key,
 because the new task may not be under the cursor. It says so once per session,
@@ -264,6 +264,8 @@ you edit, without moving the caret or showing submission refusals; Enter still
 validates the whole batch and focuses its first invalid line. Blank lines do
 not count as tasks or errors. The route row still summarizes the whole batch, including mixed routes.
 
+### Complete a token or look up syntax
+
 Autocomplete follows the caret too: move into an earlier line or token to complete
 it there. Accepting a suggestion replaces that token, preserves the remaining
 text and other tasks, and leaves the caret after the insertion. A `%project`
@@ -284,19 +286,38 @@ as it is up. `Ctrl+F` expands the same draft into the full form, which does
 replace the outline; `Esc` from either hands the screen back with the cursor,
 the folds, and the Peek dock exactly as capture found them.
 
-Expansion carries `*pin` and `=review` into the Basics tab's Flags picker,
-where either can be changed before saving. A line carrying adopted children,
-a deferral, or dependencies cannot expand: the form has no fields for those
-values. The `Ctrl+F` hint names the unsupported action while you type, or
-says `single task only` for a multiline batch. Pressing it still names the
-unsupported action and keeps the original draft intact;
-submit that line with `Enter` to keep all its attributes.
+### Expand and edit a capture
+
+Press `Ctrl+F` to open a valid single-task draft in the full form. Save with
+`Ctrl+S`. Expansion preserves the task's destination and every parsed value.
+Use `Tab` / `Shift+Tab` to reach fields and `Shift+←` / `Shift+→` to switch tabs.
+
+| Value | Where to edit it |
+| --- | --- |
+| Pin and review | Basics → Flags |
+| Due date and check-in | Schedule → Due / Next check-in / Repeat |
+| Deferral (`@@tomorrow`) | Schedule → Defer until → `Enter` |
+| Adopted children (`<12`) | Extras → Adopt children → `Enter` |
+| Dependencies (`~web:4`) | Extras → Dependencies → `Enter` |
+| Attachments and comments | Extras → Attachments / Comments |
+
+For example, expand `Prepare release @@tomorrow <12 ~web:4`. The Schedule tab
+shows the resolved deferral; Extras names the child and dependency. Relation
+editors accept space-separated task references such as `12 web:4`; adopted
+children must belong to the current project. Empty the editor and press `Enter`
+to clear the value, or `Esc` to cancel that edit. A deferral accepts `tomorrow`,
+`+4h`, or an ISO timestamp and saves the task to Backlog without Today/Next.
+
+Multiline batches stay in compact capture: `Ctrl+F` says `single task only`.
+A refused edit or save preserves the draft. Saving the form, adopting children,
+and creating its attachments, comments, checklist and subtasks is one undoable
+transaction.
 
 The capture footer has two rows, and a narrow terminal cannot hold every entry
 in them. `Enter create` and the `Esc` entry always stay. The rest are kept in
 this order, whatever order they are drawn in: `Ctrl+N create another`,
 `Ctrl+E create & edit`, `? syntax`, `Ctrl+P project` when there is a second
-project to switch to, the `Ctrl+F` entry, `Shift+Enter new line`, and last
+project to switch to, the `Ctrl+F` entry, `Alt+Enter new line`, and last
 `Ctrl+V paste`, which is the first to go because the terminal's own paste
 already works. A key the footer shed still answers.
 
@@ -305,12 +326,16 @@ date beside each shortcut. `+30 days` adds exactly 30 calendar days, matching
 the Outliner picker's **In 30 days** preset; typed month expressions still use
 calendar months.
 
+### Capture several tasks in succession
+
 In compact capture, `Ctrl+N` creates the current task or batch and keeps the
 panel open for another capture. The input clears only after a successful save;
 a refusal keeps it intact. The next draft keeps the composer's project and
 shared defaults, including a project selected with `Ctrl+P`, but inherits none
 of the submitted line's sigils. Each save is its own undo entry. Close any
 suggestions or syntax help first with `Esc`; `Enter` still creates and closes.
+
+### Correct a refused capture
 
 A rejected submission moves the cursor to the invalid token on the first
 invalid line and scrolls it into view, keeping the entire draft. Errors without
@@ -338,26 +363,13 @@ Clear behavior used by Set Check-In on an existing task. A schedule chosen there
 travels through expansion and the task-creation transaction as one paired value;
 a check-in due today does not add the new task to Today.
 
-Every field on every tab is reachable at any supported height. When a tab holds
-more than the terminal can show — a long checklist, a dozen attachments, a
-comments list — the form scrolls instead of cutting: `Tab` and `Shift+Tab` move
-the focus as usual and the window follows it, and the last row reads `3 above · 1
-below` so what is off screen is named rather than lost. A tab that already fits
-shows no such row. A refused save keeps its message on screen and moves the focus
-to the field it names, so the two stay readable together, and a taller terminal
-simply gives the rows back.
+The form scrolls as you move between fields. A refused save keeps its error
+visible; long values open in full when you press `Enter`.
 
-Every field is reachable at any supported width too. The expanded composer opens
-wherever the rest of `tt` opens — down to the same 60-column minimum every other
-surface accepts — rather than replacing itself with a "terminal too small"
-notice on anything under 68 columns. A narrow terminal shortens what a row can
-spare and nothing else: the grey key hints beside a focused row go before its
-value does, and a value too long for the row is shortened there and read whole by
-pressing `Enter` on it, which opens it in its own editor. The nested pickers —
-priority, state, flags, due date, the check-in editor, and the checklist,
-subtask, attachment, and comment editors — take the whole screen while they are
-open, so at every width they keep a complete frame and a complete list; `Esc`
-hands the form back exactly as it was.
+The expanded form supports the same 60×20 terminal minimum as the Outliner.
+Nested editors use the whole screen; `Esc` returns to the form.
+
+### Choose the destination project or parent
 
 `a` at base scope captures into Unfiled: a task cursor never lends capture its
 project. A project header row is the one exception, because it names a project

@@ -70,6 +70,7 @@ func (m *AppModel) handleGlobalInputMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case tea.PasteMsg:
 		return m.handleActivePasteOverlay(msg)
 	case tea.KeyboardEnhancementsMsg:
+		m.lifecycle.keyDisambiguation = msg.SupportsKeyDisambiguation()
 		return true, nil
 	case tea.KeyReleaseMsg:
 		return true, nil

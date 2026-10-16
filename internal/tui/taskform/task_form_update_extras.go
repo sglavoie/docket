@@ -38,6 +38,14 @@ func (m *TaskFormModel) handleExtrasTabKey(msg tea.KeyPressMsg) (tea.Model, bool
 // - on a section header: toggles expand/collapse
 // - on an attachment or comment draft: opens that draft's edit overlay
 func (m *TaskFormModel) handleExtrasEnter() {
+	if m.focusIndex == m.fieldCountForExtras()-2 {
+		m.openRelationEditor(formRelationChildren)
+		return
+	}
+	if m.focusIndex == m.fieldCountForExtras()-1 {
+		m.openRelationEditor(formRelationDependencies)
+		return
+	}
 	if m.focusIndex == 0 {
 		m.attachmentsExpanded = !m.attachmentsExpanded
 		m.clampExtrasFocusIndex()

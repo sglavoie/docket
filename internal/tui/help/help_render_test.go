@@ -239,3 +239,32 @@ func TestHelpFirstSectionHasNoBlankLineAbove(t *testing.T) {
 		}
 	}
 }
+
+func TestHelpTaskGroupsKeepDailyWorkAheadOfDetails(t *testing.T) {
+	items := []operation.HelpItem{
+		{Key: "<", Description: "Adopt Children", Category: "Tasks", Group: "Hierarchy", Order: 500},
+		{Key: "!", Description: "Priority", Category: "Tasks"},
+		{Key: "u", Description: "Undo", Category: "Tasks", Group: "Recovery", Order: 300},
+		{Key: "wd", Description: "Done", Category: "Tasks", Group: "Status", Order: 201},
+		{Key: "wt", Description: "Today", Category: "Tasks", Group: "Plan", Order: 100},
+		{Key: "a", Description: "Capture", Category: "Tasks", Group: "Everyday", Order: 10},
+	}
+	for _, width := range []int{60, 120} {
+		m := NewHelpViewModel(items, "Outliner")
+		m.SetSize(width, 40)
+		content := ansi.Strip(m.renderContent())
+		last := -1
+		for _, name := range []string{"Everyday", "Capture", "Plan", "Today", "Status", "Done", "Recovery", "Undo", "Details", "Priority", "Hierarchy", "Adopt Children"} {
+			index := strings.Index(content, name)
+			if index <= last {
+				t.Fatalf("%d: %s out of order:\n%s", width, name, content)
+			}
+			last = index
+		}
+		m.searchQuery = "Plan"
+		m.filterItems()
+		if len(m.filteredItems) != 1 || m.filteredItems[0].Key != "wt" {
+			t.Fatalf("group search: %+v", m.filteredItems)
+		}
+	}
+}

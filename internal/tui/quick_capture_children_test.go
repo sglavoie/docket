@@ -347,7 +347,7 @@ func TestTaskComposerReportsChildFailuresOnTheirSourceLine(t *testing.T) {
 	}
 }
 
-func TestTaskComposerExpandRefusesToDropAdoptedChildren(t *testing.T) {
+func TestTaskComposerExpandsWithAdoptedChildren(t *testing.T) {
 	appModel, project := newTestAppModelWithProject()
 	existing, err := models.NewGenericTask("existing", 1, "Existing")
 	if err != nil {
@@ -362,13 +362,11 @@ func TestTaskComposerExpandRefusesToDropAdoptedChildren(t *testing.T) {
 	}, appModel.domain.runtime)
 	composer.Input.SetValue("Adopter <1")
 
-	if cmd := composer.ExpandSingle(); cmd != nil {
-		t.Fatal("expand accepted a line carrying child references")
+	composer.ExpandSingle()
+	if composer.Mode != taskform.ComposerExpanded || composer.Expanded == nil {
+		t.Fatalf("capture did not expand: %+v", composer.Errors)
 	}
-	if composer.Mode != taskform.ComposerCompact || composer.Expanded != nil {
-		t.Fatal("composer entered expanded mode despite the refusal")
-	}
-	if len(composer.Errors) != 1 || !strings.Contains(composer.Errors[0].Message, "cannot adopt children") {
+	if len(composer.Errors) != 0 {
 		t.Fatalf("errors = %+v", composer.Errors)
 	}
 }

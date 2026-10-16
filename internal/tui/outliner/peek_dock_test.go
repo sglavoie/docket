@@ -228,21 +228,20 @@ func TestPeekDockNamesARowThatOwnsNoDocument(t *testing.T) {
 }
 
 // TestPeekDockHeightIsAShareOfTheFrame locks the responsive height at the four
-// reviewed terminals, the brief's eleven rows at 100x35 included. The height is
-// a third of what this view was handed, bounded at both ends, so a taller
+// reviewed terminals. The height is
+// a quarter of what this view was handed, bounded at both ends, so a taller
 // terminal reads more of a document without a shorter one losing its list.
 func TestPeekDockHeightIsAShareOfTheFrame(t *testing.T) {
 	for _, test := range []struct {
 		width, height int
 		want          int
 	}{
-		// The floor binds at the two short terminals: a third of 18 and of 22 rows
-		// is under seven, so both take the minimum readable dock.
+		// The floor binds at the two short terminals: a quarter of 18 and of 22 rows
+		// is under six, so both take the minimum readable dock.
 		{width: 60, height: 20, want: peekDockPreferredMinRows},
 		{width: 80, height: 24, want: peekDockPreferredMinRows},
-		// A third of the 33 rows this view is handed at 100x35, which is the
-		// brief's eleven: nine content lines, the divider, and the position row.
-		{width: 100, height: 35, want: 11},
+		// A quarter of 33 rows: six content lines plus divider and position row.
+		{width: 100, height: 35, want: 8},
 		// The ceiling binds at the tallest, so the list keeps the rest of it.
 		{width: 120, height: 40, want: peekDockPreferredMaxRows},
 	} {

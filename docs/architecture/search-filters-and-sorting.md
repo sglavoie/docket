@@ -27,7 +27,7 @@ an exact qualifier. `ShowsRankedList()` is the one predicate that gates what tha
 presentation takes away — the population filters, the `F` family, which need a
 reload rather than a rebuild — and what it alone offers: the notes tier, the relevance
 ordering a sort reorders within, an order a fixed-order mode would otherwise keep
-for itself, and the `Enter`/`Shift+Enter`/`gp` exit onto a result.
+for itself, and the `Enter`/`Alt+↑`/`gp` exit onto a result.
 
 That presentation is also where the slash key starts. `ActivateSearch` opens
 through `beginRankedSearchProjection`, because a typed query is a question about
@@ -267,7 +267,7 @@ thought it had left. An
 emptied zoom is left standing, because auto-unwinding would move the world under
 a user who has just completed the last task they were looking at.
 
-Pressed on a flat ranked list result, `Enter` and `Shift+Enter` exit that
+Pressed on a flat ranked list result, `Enter` and `Alt+↑` exit that
 presentation first rather than refusing it, which makes search the fastest way to
 reach an arbitrary task. `ExitSearchOntoCursorTask` reads the result's identity,
 runs the ordinary `ClearSearch` restoration, and lands the restored projection on
@@ -283,7 +283,7 @@ before it reads the origin mode and pushes the project scope. A query that is
 merely narrowing has nothing to exit: its rows are already the mode's own, so the
 jump keeps the query and the caller falls through to the ordinary row behavior.
 
-`Shift+Enter` widens by exactly one level. Outside Focus it pushes a frame rooted
+`Alt+↑` widens by exactly one level. Outside Focus it pushes a frame rooted
 at the cursor task's parent. Inside Focus it climbs from the focus root rather
 than from the cursor, and that choice is what terminates: the focus root is
 always an ancestor of the cursor, so each press moves strictly up a finite
@@ -349,9 +349,9 @@ That is what the old row-attached pane could not offer, since its height was the
 cursor document's height and every cursor move re-laid-out the list under it.
 
 The height is `min(peekDockPreferredRows, peekDockAvailableRows)`.
-`peekDockPreferredRows` is `clamp(floor(H/3), peekDockPreferredMinRows,
-peekDockPreferredMaxRows)` over the Outliner's own allotted height — a third of
-the frame, never fewer than seven rows and never more than twelve, so a tall
+`peekDockPreferredRows` is `clamp(floor(H/4), peekDockPreferredMinRows,
+peekDockPreferredMaxRows)` over the Outliner's own allotted height — a quarter of
+the frame, normally six to eight rows, so a tall
 terminal reads a long document in longer runs and a short one still gets a
 readable page. `peekDockAvailableRows` is what `ContentHeight` has left after the
 measured footer excess, the status strip, and `peekDockListFloorRows`, which is

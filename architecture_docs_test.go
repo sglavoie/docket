@@ -206,7 +206,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"The `z` prefix is scroll alone: the bulk fold that once shared it moved to `t`",
 		"`Enter` pushes a project-qualified Focus frame",
 		"`Esc` restores one frame at a time",
-		"`Shift+Enter` widens by exactly one level",
+		"`Alt+↑` widens by exactly one level",
 		"`b` toggles a session-only, project-qualified Peek in a dock below the list",
 		"`peekDockGeometry` is that one measurement and it carries `bodyRows` alone",
 		"`ComputeOutlinerViewport` subtracts exactly\nthat total whenever `PeekDockVisible()`, reading no cursor and no document",

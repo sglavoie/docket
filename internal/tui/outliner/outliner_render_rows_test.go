@@ -392,11 +392,10 @@ func TestOutlinerTaskRowCombinesBothRelationDirections(t *testing.T) {
 		t.Fatalf("row missing the combined relation marker: %q", plain)
 	}
 
-	// The marker is the one cue that family sits elsewhere, so it is a bold
-	// filled chip rather than the muted connectors or the amber text beside it.
+	// Family placement stays readable without competing with urgency chips.
 	style := theme.RelationMarkerStyle
-	if !style.GetBold() || style.GetBackground() == nil || style.GetForeground() == theme.ColorAccent {
-		t.Fatal("RelationMarkerStyle is not a bold filled chip of its own")
+	if style.GetBold() || style.GetBackground() != (lipgloss.NoColor{}) {
+		t.Fatal("RelationMarkerStyle should be supporting text")
 	}
 	marker := outliner.taskRelationMarker(OutlinerRow{Task: tasks[1], Breadcrumb: "Root ›"})
 	if want := " " + style.Render("‹›1"); marker != want {

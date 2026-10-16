@@ -166,7 +166,7 @@ func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-		case "shift+enter":
+		case "shift+enter", "alt+enter":
 			m.textarea.InsertString("\n")
 			return m, nil
 		}
@@ -201,7 +201,7 @@ func (m *TextEditorModel) GuidanceSpec() GuidanceSpec {
 	}
 	spec := RequiredExitGuidanceSpec(
 		"Ctrl+S save", DraftEscapeHint(m.hasDraft()),
-		"Ctrl+E external editor", "Shift+Enter new line",
+		"Ctrl+E external editor", "Alt+Enter new line",
 	)
 	if m.ExternalEdit {
 		spec.Supplemental = "External editor open"

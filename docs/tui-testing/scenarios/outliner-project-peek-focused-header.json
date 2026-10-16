@@ -19,6 +19,7 @@
     { "type": "assert", "label": "and the empty-state explanation is clipped, not overrun", "assert": "no_layout_issues" },
 
     { "type": "resize", "label": "which holds at the narrowest supported terminal", "width": 60, "height": 20 },
+    { "type": "key", "key": "ctrl+f", "label": "read the empty comment section below the summary" },
     { "type": "assert", "assert": "contains", "value": "No comments yet. Press C to add one." },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "width": 100, "height": 30 },

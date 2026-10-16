@@ -14,6 +14,8 @@ import (
 // handleScheduleEnter dispatches Enter key events for focused Schedule-tab rows.
 func (m *TaskFormModel) handleScheduleEnter() tea.Cmd {
 	switch m.focusIndex {
+	case 3:
+		return m.openRelationEditor(formRelationDefer)
 	case 0:
 		m.commitDueInput()
 		m.focusNext()

@@ -4,11 +4,9 @@ import (
 	"slices"
 	"strings"
 	"testing"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/grammar"
 )
@@ -79,46 +77,13 @@ func TestComposerExpansionSavesCapturedFlags(t *testing.T) {
 	}
 }
 
-func TestComposerExpansionRefusesUnsupportedFieldsWithoutLosingDraft(t *testing.T) {
-	for _, tc := range []struct {
-		name string
-		seed func(*app.CaptureRequest)
-		want string
-	}{
-		{"adoption", func(req *app.CaptureRequest) { req.ChildIDs = []string{"child"} }, "adopt children"},
-		{"deferral", func(req *app.CaptureRequest) { req.DeferSet = true }, "defer tasks"},
-		{"deferral instant", func(req *app.CaptureRequest) { now := time.Now(); req.Defer = &now }, "defer tasks"},
-		{"dependency", func(req *app.CaptureRequest) { req.Dependencies = []app.TaskLocator{{TaskID: "other"}} }, "set dependencies"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			runtime, project := newTestRuntimeWithProject()
-			composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, runtime)
-			composer.Input.SetValue("My unfinished capture")
-			req := app.CaptureRequest{ProjectID: project.ID, Title: "My unfinished capture", SourceLine: 3}
-			tc.seed(&req)
-			composer.ExpandRequest(req)
-			if composer.Mode != ComposerCompact || composer.Expanded != nil || composer.Input.Value() != "My unfinished capture" {
-				t.Fatal("refused expansion changed the draft or presentation")
-			}
-			if len(composer.Errors) != 1 || composer.Errors[0].Line != 3 || !strings.Contains(composer.Errors[0].Message, tc.want) {
-				t.Fatalf("missing actionable refusal: %+v", composer.Errors)
-			}
-			composer.Input.SetValue("Updated *pin =review")
-			composer.ExpandSingle()
-			if composer.Expanded == nil || len(composer.Errors) != 0 {
-				t.Fatalf("corrected draft did not expand: %+v", composer.Errors)
-			}
-		})
-	}
-}
-
 func TestComposerExpansionGuidanceFollowsDraftWithoutValidatingIt(t *testing.T) {
 	runtime, project := newTestRuntimeWithProject()
 	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, runtime)
 	for _, tc := range []struct{ draft, hint string }{
-		{"Ship @@tomorrow", "Ctrl+F cannot defer tasks"},
-		{"Ship ~missing", "Ctrl+F cannot set dependencies"},
-		{"Ship <missing", "Ctrl+F cannot adopt children"},
+		{"Ship @@tomorrow", "Ctrl+F expand"},
+		{"Ship ~missing", "Ctrl+F expand"},
+		{"Ship <missing", "Ctrl+F expand"},
 		{"One\nTwo", "Ctrl+F single task only"},
 		{"Ship ;discuss @@tomorrow and ~dependency;", "Ctrl+F expand"},
 		{"Ship *pin =review", "Ctrl+F expand"},

@@ -3,6 +3,22 @@
 How project scope narrows the Outliner, what Select Project administers, what a
 project tag decides, and the workspace-wide Notes manager.
 
+## Common actions
+
+| Goal | Keys | Example |
+| --- | --- | --- |
+| Work in one project | `P`, choose a project, `Enter` | Focus `web` before capturing its next task |
+| Reach a pinned project | `Ctrl+P` | Open a frequently used project |
+| Create or edit a project | `P`, then `a` or `e` | Set its name, slug, and description |
+| Park a project | `#` on the project, add `parked` | Remove inactive work from Active Projects |
+| Read notes | `Ctrl+N` | Open Notes from the Outliner or a project |
+
+Project scope and project search are different: `P` searches project metadata;
+`/` in the Outliner searches the work. Unfiled is protected and cannot be parked
+or deleted. [Project tags](#project-tags) and [All Notes](#all-notes) cover the
+remaining actions and exceptions.
+
+
 ## Scope and Select Project
 
 The Outliner opens on Active Projects, and scope is session-only. `Ctrl+P`
@@ -28,6 +44,8 @@ system Unfiled project. The preview beside the list lists the project's open
 tasks and folds finished ones into one `✓ N done` row. A row `v` selects wears
 `✓` where the cursor arrow sits; nothing is reserved for a checkbox.
 
+### Find a project
+
 `/` searches a project by anything the project itself says: its name, its slug,
 its description, and each of its tags spelled either way, so `#billing` finds
 what the row's own chip reads and `billing` finds it too. It never searches the
@@ -35,6 +53,8 @@ work inside a project — a task title, description, tag, context, or comment is
 the Outliner's `/`, not this one — so a row appearing here always names the
 words you typed. The pinned Hub and the archived tail answer the same
 vocabulary.
+
+### Preview project work
 
 On a terminal wide enough for two panes, the right one belongs to the project
 under the cursor. It opens with the project's name and a single muted line —

@@ -45,13 +45,9 @@ const periodicSaveInterval = 60 * time.Second
 // the composition root arms for the first frame, and the flag a quit sets so the
 // final paint renders nothing.
 //
-// It is the smallest cluster on AppModel deliberately. A session has exactly two
-// pieces of state between "constructed" and "gone": what it still owes the first
-// frame, and whether it is on the way out. Everything else about the lifecycle is
-// behavior, not state — RunApp acquires the process lock and owns the panic
-// recovery (app_run.go), NewAppModel runs the fifteen-step composition
-// (app_init.go), and teardown is the deferred lock release beside the Bubble Tea
-// program. None of that is retained, so none of it belongs to a field.
+// It also retains negotiated keyboard capabilities for accurate shortcut hints.
+// RunApp owns the process lock and panic recovery; teardown releases the lock
+// beside the Bubble Tea program.
 //
 // It also owns the scheduling of the recurring maintenance timer, because the two places
 // that arm it — Init and the handler that re-arms it on each fire — must arm the
@@ -59,6 +55,9 @@ const periodicSaveInterval = 60 * time.Second
 // stays virtualizable by the scenario harness; keeping the construction here is
 // what stops a second, differently-scheduled periodic save from appearing.
 type lifecycleController struct {
+	// keyDisambiguation is negotiated by Bubble Tea; until then use legacy-safe hints.
+	keyDisambiguation bool
+
 	// startup is the message the composition root owes the first frame. It is
 	// held rather than sent because NewAppModel returns a model, not a command:
 	// Init is the first place a tea.Cmd can exist.

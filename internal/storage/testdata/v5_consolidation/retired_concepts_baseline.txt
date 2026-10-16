@@ -2,7 +2,7 @@
 # Columns: concept, production path, identifier, AST occurrence count.
 # Regenerate after reviewing ownership changes with:
 #   UPDATE_RETIRED_CONCEPT_BASELINE=1 go test ./internal/storage -run TestRetiredConceptInventoryBaseline
-# Total rows: 460
+# Total rows: 470
 custom-context	internal/config/legacy_v4_domains.go	CustomContexts	2
 custom-context	internal/config/legacy_v4_domains_convert.go	CustomContexts	5
 custom-context	internal/config/pre_consolidation_v6_snapshot_audit.go	customContexts	3
@@ -52,6 +52,9 @@ dependency	cmd/doctor_references.go	NewDependencyIndex	1
 dependency	cmd/doctor_references.go	checkDependencyCycles	1
 dependency	cmd/doctor_references.go	dependencyCycles	2
 dependency	cmd/doctor_report.go	dependencyCycles	1
+dependency	internal/app/add.go	Dependencies	3
+dependency	internal/app/add.go	dependencies	2
+dependency	internal/app/add.go	resolveDependencyAdditions	1
 dependency	internal/app/capture.go	Dependencies	1
 dependency	internal/app/capture_prepare.go	Dependencies	2
 dependency	internal/app/capture_prepare.go	dependencies	5
@@ -425,8 +428,15 @@ dependency	internal/tui/task_operation_commands.go	Dependencies	1
 dependency	internal/tui/task_operation_execute.go	Dependencies	1
 dependency	internal/tui/task_operation_execute.go	TaskOperationSetDependencies	1
 dependency	internal/tui/taskform/task_composer_capture.go	Dependencies	1
-dependency	internal/tui/taskform/task_composer_capture.go	dependencies	2
-dependency	internal/tui/taskform/task_composer_view.go	FieldDependency	1
+dependency	internal/tui/taskform/task_composer_capture.go	dependencies	1
+dependency	internal/tui/taskform/task_form_relations.go	Dependencies	1
+dependency	internal/tui/taskform/task_form_relations.go	dependencies	2
+dependency	internal/tui/taskform/task_form_relations.go	formRelationDependencies	3
+dependency	internal/tui/taskform/task_form_render_extras.go	formRelationDependencies	1
+dependency	internal/tui/taskform/task_form_save.go	Dependencies	1
+dependency	internal/tui/taskform/task_form_save.go	dependencies	1
+dependency	internal/tui/taskform/task_form_types.go	dependencies	1
+dependency	internal/tui/taskform/task_form_update_extras.go	formRelationDependencies	1
 dependency	internal/tui/taskref/task_clone.go	CloneTaskDetachingDependencies	1
 dependency	internal/tui/taskref/task_clone.go	Dependencies	2
 dependency	internal/tui/theme/styles_misc.go	DependencyIndicatorBlockedStyle	1

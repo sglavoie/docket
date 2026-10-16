@@ -61,7 +61,7 @@ func (m *TaskFormModel) fieldCountForActiveTab() int {
 
 // fieldCountForExtras returns the dynamic field count for the Extras tab.
 func (m *TaskFormModel) fieldCountForExtras() int {
-	count := 1 // attachments section header (always present)
+	count := 3 // attachments section header (always present)
 	if m.attachmentsExpanded {
 		count += len(m.draft.attachments)
 	}

@@ -11,7 +11,6 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/textgrammar"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/grammar"
@@ -315,7 +314,7 @@ func (m *TaskComposerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		// two entries drawn ahead of it, since a capture filed to the wrong
 		// project is the mistake this footer can still prevent.
 		spec.Hints = append(spec.Hints,
-			chrome.NewGuidanceHint("Shift+Enter new line", 102, false),
+			chrome.NewGuidanceHint("Alt+Enter new line", 102, false),
 			chrome.NewGuidanceHint(m.expansionHint(), 101, false),
 		)
 		if m.Preset.AllowProjectSwitch && len(m.Preset.AllProjects) > 1 {
@@ -332,17 +331,6 @@ func (m *TaskComposerModel) expansionHint() string {
 	if m.nonblankLineCount() > 1 {
 		return "Ctrl+F single task only"
 	}
-	// Read tokens without resolving references or validating a submission: a
-	// hint must not change errors, move the caret, or consume the draft.
-	parsed := textgrammar.Parse(m.Input.Value(), textgrammar.SurfaceCapture)
-	unsupported := unsupportedExpansion(
-		len(parsed.TokensFor(textgrammar.FieldChild)) > 0,
-		len(parsed.TokensFor(textgrammar.FieldDefer)) > 0,
-		len(parsed.TokensFor(textgrammar.FieldDependency)) > 0,
-	)
-	if unsupported != "" {
-		return "Ctrl+F cannot " + unsupported
-	}
 	return "Ctrl+F expand"
 }
 
@@ -350,5 +338,5 @@ func (m *TaskComposerModel) HandledKeys() []string {
 	if m.Mode == ComposerExpanded && m.Expanded != nil {
 		return m.Expanded.HandledKeys()
 	}
-	return []string{"enter", "ctrl+s", "shift+enter", "ctrl+f", "ctrl+p", "ctrl+e", "?", "esc"}
+	return []string{"enter", "ctrl+s", "shift+enter", "alt+enter", "ctrl+f", "ctrl+p", "ctrl+e", "?", "esc"}
 }

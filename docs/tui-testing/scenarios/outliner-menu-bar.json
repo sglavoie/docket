@@ -55,7 +55,7 @@
     { "type": "assert", "label": "a menu too tall for the budget scrolls rather than overflowing", "assert": "contains", "value": "more" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "given the room, the whole menu is drawn", "width": 100, "height": 35 },
-    { "type": "assert", "assert": "contains", "value": "Query Readout" },
+    { "type": "assert", "assert": "contains", "value": "Explain Current View" },
     { "type": "assert", "label": "the keyless entry is drawn, and the menu is the only place it exists", "assert": "contains", "value": "Clear All Folds" },
     { "type": "assert", "label": "the bar's own row reads back off the machine flag, not off the borrowed reveal", "assert": "contains", "value": "Menu Bar" },
     { "type": "assert", "assert": "not_contains", "value": "✓ Menu Bar" },
@@ -66,7 +66,7 @@
     { "type": "resize", "width": 100, "height": 20 },
 
     { "type": "key", "label": "esc puts the menu away and gives the borrowed bar back", "key": "esc" },
-    { "type": "assert", "assert": "not_contains", "value": "Query Readout" },
+    { "type": "assert", "assert": "not_contains", "value": "Explain Current View" },
     { "type": "assert", "label": "a bar the menu revealed goes when the menu goes: hiding it stays M's alone", "assert": "not_contains", "value": "Task  View  Go  Find  Help" },
     { "type": "assert", "label": "the title and the row the bar borrowed come back", "assert": "contains", "value": "Active Projects · All" },
     { "type": "assert", "assert": "contains", "value": "Release acceptance item 032" },

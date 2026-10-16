@@ -91,6 +91,11 @@ func (m *TaskFormModel) normalizeDraftContext() error {
 // unparseable input. Supports optional time-of-day suffixes (e.g. "tomorrow 5pm").
 func (m *TaskFormModel) parseDraftDueDate() error {
 	value := strings.TrimSpace(m.draft.dueInput)
+	// An unchanged field already carries a resolved instant. Do not round it or
+	// reinterpret it in a different timezone merely because the form was saved.
+	if m.draft.dueDate != nil && value == formatDateInput(m.draft.dueDate) {
+		return nil
+	}
 	if value == "" || strings.EqualFold(value, "none") || strings.EqualFold(value, "clear") {
 		m.draft.dueDate = nil
 		return nil
@@ -120,7 +125,7 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 	if m.presetDestination.IsPlanning() && m.draft.state == models.StateBacklog {
 		destination = m.presetDestination
 	}
-	if coordinator.DueDateIsToday(m.draft.dueDate) {
+	if coordinator.DueDateIsToday(m.draft.dueDate) && (m.presetDestination == "" || !sameFormDate(m.draft.dueDate, m.presetDue)) {
 		destination = app.CaptureDestinationToday
 	}
 
@@ -170,6 +175,10 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 	}
 
 	req := app.AddTaskRequest{
+		Prepend:        m.draft.prepend,
+		DeferredUntil:  cloneTime(m.draft.deferredUntil),
+		ChildIDs:       append([]string(nil), m.draft.childIDs...),
+		Dependencies:   append([]app.TaskLocator(nil), m.draft.dependencies...),
 		ProjectID:      m.project.ID,
 		Title:          m.draft.title,
 		Priority:       m.draft.priority,
@@ -199,3 +208,10 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 
 // SetTaskFormCoordinator injects the shared task-form coordinator (taskFormWireable).
 func (m *TaskFormModel) SetTaskFormCoordinator(c coordinator.TaskFormCoordinator) { m.taskForm = c }
+
+func sameFormDate(a, b *time.Time) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return a.Equal(*b)
+}

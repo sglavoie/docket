@@ -55,6 +55,9 @@ func TestTaskFormBodyFitsEverySupportedWidth(t *testing.T) {
 // rather than by someone remembering to write a test for it.
 func formOverlayOpeners() map[string]func(m *TaskFormModel) {
 	return map[string]func(m *TaskFormModel){
+		"deferral":     func(m *TaskFormModel) { m.openRelationEditor(formRelationDefer) },
+		"adoption":     func(m *TaskFormModel) { m.openRelationEditor(formRelationChildren) },
+		"dependencies": func(m *TaskFormModel) { m.openRelationEditor(formRelationDependencies) },
 		"priority": func(m *TaskFormModel) {
 			m.activeOverlay = formOverlayPriority
 			m.priorityPicker = newFormPriorityPicker(m.draft.priority)

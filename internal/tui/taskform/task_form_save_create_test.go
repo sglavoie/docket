@@ -9,17 +9,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
-// scenarioCreateForm builds a create task form for env.project wired to the
-// scenario task-form coordinator, so handleSave commits through the real
-// transactional stack (mutation → reload) instead of a raw project save.
-func scenarioCreateForm(t *testing.T, env *scenarioEnv) *TaskFormModel {
-	t.Helper()
-	cfg := newTestConfig()
-	m := NewTaskFormModelCreate(env.project, testRuntimeAt(cfg.DataDir(), cfg), nil)
-	m.SetTaskFormCoordinator(env.features.TaskForm)
-	return m
-}
-
 // ── Create happy path ───────────────────────────────────────────────────────
 
 func TestTaskForm_Save_CreateHappyPath_CommitsThroughCoordinator(t *testing.T) {

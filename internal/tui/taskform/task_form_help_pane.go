@@ -61,7 +61,7 @@ func (m *TaskFormModel) helpPaneHeader() string {
 			return names[m.focusIndex]
 		}
 	case formTabSchedule:
-		return "Due Date"
+		return []string{"Due Date", "Next check-in", "Repeat", "Defer until"}[m.focusIndex]
 	case formTabChildren:
 		return "Children"
 	case formTabExtras:
@@ -137,6 +137,8 @@ func (m *TaskFormModel) scheduleHelpEntries() []helpEntry {
 		return []helpEntry{{key: "Enter", desc: "edit check-in schedule"}}
 	case 2: // Repeat
 		return []helpEntry{{key: "Enter", desc: "edit check-in schedule"}}
+	case 3:
+		return []helpEntry{{key: "Enter", desc: "edit or clear deferral"}}
 	}
 	return nil
 }
@@ -155,6 +157,9 @@ func (m *TaskFormModel) childrenHelpEntries() []helpEntry {
 }
 
 func (m *TaskFormModel) extrasHelpEntries() []helpEntry {
+	if m.focusIndex >= m.fieldCountForExtras()-2 {
+		return []helpEntry{{key: "Enter", desc: "edit task references"}, {key: "empty", desc: "clear the list"}, {key: "Ctrl+S", desc: "save task"}}
+	}
 	return []helpEntry{
 		{key: "a", desc: "toggle attachments"},
 		{key: "c", desc: "toggle comments"},

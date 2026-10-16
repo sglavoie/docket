@@ -3,6 +3,23 @@
 The durable layout on disk, the one undo ledger every surface shares, conflict
 recovery, and the schema chain a startup migrates through.
 
+## Start with the recovery action
+
+| Goal | Action | What to expect |
+| --- | --- | --- |
+| Reverse an accidental change | `u`; `Ctrl+R` to redo | One whole transaction, including its related files |
+| Inspect workspace health | `tt doctor` | Read-only diagnostics |
+| Inspect a conflict | `tt conflict list`, then `tt conflict show <id>` | Review both versions before choosing one |
+| Resolve a conflict | `tt conflict resolve <id> --use local` (or `remote`) | Keep the version you chose |
+| Locate or move data | `tt workspace location`; `tt workspace move <destination>` | Inspect the current location before moving |
+| Set up device exchange | [Exchange-folder instructions](#syncing-through-an-exchange-folder) | Each device retains its own working copy |
+
+For example, after an accidental bulk move, press `u` once to reverse the whole
+move. If undo refuses because a file changed outside that transaction, read the
+named file and entry before trying the previous history entry. Before upgrading,
+keep your own backup: migrations are one-way.
+
+
 ## Undo, recovery, and conflicts
 
 `u` and `Ctrl+R` use one workspace-wide ledger capped at 50 committed

@@ -429,7 +429,7 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		// while the stack is open and the footer says so for as long as they do.
 		core(
 			OperationCoreQueryReadout,
-			"Query Readout",
+			"Explain Current View",
 			OperationCategoryFilter,
 			TargetCardinalityNone,
 			OperationRiskReadOnly,

@@ -353,7 +353,7 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			return m, func() tea.Msg { return status.BackMsg{} }
-		case "shift+enter":
+		case "shift+enter", "alt+enter":
 			m.Input.InsertString("\n")
 			m.UpdatePreview()
 			return m, nil

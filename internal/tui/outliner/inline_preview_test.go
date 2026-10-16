@@ -423,12 +423,12 @@ func TestInlinePeekBodyKeepsItsContentOrder(t *testing.T) {
 	body := ansi.Strip(strings.Join(doc.Body, "\n"))
 	order := []string{
 		"Rework the sync path",
-		"Parent: Launch platform",
 		"Plan: Today · Status: Doing 4h · Priority: 2 medium · Pinned · Review",
+		"Resume: Left mid-refactor",
+		"Parent: Launch platform",
 		"Due: " + chrome.FormatWeekdayDate(due, time.Now(), task.DueHasTime()) + " (" + chrome.DayGloss(due, time.Now()) + ")" +
 			" · Check-in: " + chrome.FormatWeekdayDate(checkIn, time.Now(), false) + " (" + chrome.DayGloss(checkIn, time.Now()) + ")",
 		"Repeat: off",
-		"Resume: Left mid-refactor",
 		"Description: Wrapped description content",
 		"Checklist: 1/2 done",
 		"Attachments: 1 · spec.pdf",
@@ -653,9 +653,8 @@ func TestInlinePeekNamesThePromotedAncestorChain(t *testing.T) {
 	if strings.Contains(withoutParent, "Parent:") {
 		t.Fatalf("root task Peek gained a parent line: %q", withoutParent)
 	}
-	// The chain follows the title and precedes everything else: both are identity,
-	// and a reader looking for where a promoted row belongs reads them together.
-	if withParent != "Child\nParent: Launch platform › User authentication\nStatus: Backlog" {
+	// The chain follows the title and status, before the remaining metadata.
+	if withParent != "Child\nStatus: Backlog\nParent: Launch platform › User authentication" {
 		t.Fatalf("identity block = %q", withParent)
 	}
 }

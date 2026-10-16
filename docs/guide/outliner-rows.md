@@ -4,6 +4,24 @@ What a task row says, in what order it sheds those signals when the width runs
 out, the checklist rows that fold open beneath a task, and the detail Peek adds.
 The keys are in [`outliner-keys.md`](outliner-keys.md).
 
+## Common actions
+
+| Goal | Keys | Example |
+| --- | --- | --- |
+| Read a task’s full details | `b` | Read its resume note or unclipped title |
+| Give details more room | `B` | Expand Peek, then press again to return to compact |
+| Scroll details | `Ctrl+D` / `Ctrl+U`, `Ctrl+F` / `Ctrl+B` | Move half a page or a full page |
+| Open children or checklist | `l` / `→` | Open children first, then checklist items |
+| Select work together | `v`, `V`, `Ctrl+A` | Select several tasks, then `wn` to plan them for Next |
+
+Task titles carry the visual emphasis. Project labels keep their identity color
+without bold text, lane headings have no filled background, and `‹` / `›N`
+family markers are muted. Selection and urgent dates retain stronger emphasis.
+
+**Before a bulk action:** read the selection count. Hidden selected tasks still
+belong to the batch. Opening Peek does not change selection.
+
+
 ## Inline checklist rows
 
 A task that carries checklist items folds them open beneath itself, as `[ ]` and
@@ -84,6 +102,8 @@ items, and `Esc` brings back exactly the rows that were open.
 
 ## Peek and multi-select
 
+### Read a task row
+
 The Outliner uses the full terminal width at every supported size. A task row is
 its title first: what the work is, in as many columns as the row can spare.
 Beside it the row carries only what you would act on without opening anything —
@@ -139,8 +159,8 @@ word is left off, since the lane's heading already says it. `review` and
 `review today` share the teal of a due-today date, and a late `review +<age>`
 turns amber, a warning rather than a missed deadline. Moving a task to Waiting with
 `ww` opens nothing: the move commits, and when the task has no check-in the
-footer says so — `No check-in: <task> · Ctrl+M: Set up check-ins` — naming the
-keyless Task menu entry, which `Ctrl+M` opens, that schedules one rather than
+footer says so — `No check-in: <task> · F10: Set up check-ins` — naming the
+keyless Task menu entry, which `F10` opens, that schedules one rather than
 asking for a date there and then. It is a reminder, not a refrain: the first such
 commit in a session says it, and later ones stay quiet.
 
@@ -204,12 +224,7 @@ deadline says when something is actually due; the deadline goes last. The order
 is short because the budget is short — the counts, ages, and markers that used
 to fill the lower rungs did not move down it, they left the row for Peek.
 
-Wherever one task in the list can be folded — it shows a child, or it has a
-checklist — every task row keeps the two columns the `▾`/`▸` glyph takes, blank
-on a row with nothing to fold, so state glyphs and titles line up down the
-list. A list in which nothing folds keeps those columns for its titles, and so
-does a terminal under 60 columns. The reference count stands two columns clear
-of the title, the gap the deadline and review chips keep.
+Fold arrows and task titles stay aligned as you navigate or open a subtree.
 
 A task shown under a section it did not root — a child promoted into Doing,
 Today, Pinned, or a tag facet — ends its title with a bare `‹`, which says only
@@ -268,7 +283,7 @@ scope brings the zoom back with it. An emptied zoom stays put and reports
 `No tasks are left in this section. Press Esc to return.` rather than unwinding
 under you.
 
-`Shift+Enter` widens in the other direction. Outside Focus it opens Focus on the
+`Alt+↑` widens in the other direction. Outside Focus it opens Focus on the
 cursor task's parent, so the task's own siblings come into view; a root task
 reports `No parent to focus`. Inside Focus it climbs one level from the focus
 root, again keeping the cursor where it was, until the focus root is a root task
@@ -278,6 +293,8 @@ entry once more, focusing the cursor task's parent.
 Project labels keep their distinguishing suffix when shortened names would
 otherwise collide. Peek always names the full project slug.
 
+### Open, expand, and scroll Peek
+
 `B` switches an open Peek between compact and expanded sizes. Expanded Peek
 uses roughly two thirds of the outline's height while preserving list rows.
 The choice lasts for the session, including after closing and reopening Peek;
@@ -285,8 +302,7 @@ cursor movement never changes it.
 
 `b` toggles a session-only Peek in a pane docked below the list, whether the
 cursor is on a task or on a project header. Its compact height is a share of the terminal
-— about a third of the outline's own room, never fewer than seven rows and never
-more than twelve — counted off the list once when you open it, so a taller
+— about a quarter of the outline's own room, normally six to eight rows — counted off the list once when you open it, so a taller
 terminal reads more of a long detail at a time. What the pane never reads is the
 row you are on: a short task and a long one give the outline exactly the same
 room, and moving between them never shifts the rows under your cursor. When
@@ -297,22 +313,20 @@ the divider, one line of detail, and the position row, the pane stays closed
 rather than being drawn cut off. On a row with no detail to show, a section
 heading or a checklist item, the pane stays where it is and reads `No detail to
 show for this row.`; `b` closes it again from any row. On a task, Peek
-follows navigation and reads, in this order: the task's whole title, its full
-project slug, the ancestor
-chain of a promoted row as `Parent: Launch platform › User authentication`, a
-status line reading
+follows navigation. The title, status, and resume note come first so compact
+Peek gives you a restart point before the supporting details. The status reads
 `Plan: Today · Status: Doing 4h · Priority: 1 high · Pinned · Review`
 with empty fields omitted (only Doing and Waiting carry an age, and it counts
 from the last state change rather than the last edit). The plan comes first and
 is the collection you committed the task to, Today or Next; the status is the
 lifecycle state it holds. They are two answers, not one, which is why a task
 planned for Today reads `Plan: Today · Status: Backlog` and a task in no
-collection has no plan half at all. Then a schedule line reading
+collection has no plan half at all. The project slug and full parent chain follow, for example
+`Parent: Launch platform › User authentication`, then a schedule line reading
 `Due: Fri Aug 14 (in 4 days) · Defer: Sep 2 · Check-in: Thu Aug 20 (in 10 days) · Repeat: every 7d`
 with empty fields omitted too (a one-off schedule reads `Repeat: off`, and a
 check-in whose day has arrived adds `review owed` to its gloss, the word its row
-uses), the resume
-note, the description, a `Checklist: 1/4 done` count,
+uses), the description, a `Checklist: 1/4 done` count,
 attachment names, a comment count, a `Dependencies: 1/3 ·` list, a `Dependents: 2 ·`
 list, the task's context, its tags, and last of all a history line reading
 `Created: 12d ago · Updated: 2d ago · Last review: 3d ago · Woke: 1d ago · Deferred: ×3`.

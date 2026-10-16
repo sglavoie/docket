@@ -33,15 +33,15 @@ func TestTaskForm_Extras_ToggleAndFieldCount(t *testing.T) {
 	m := navigateToExtrasTab(newTestTaskForm())
 	m.draft.attachments = []formAttachmentDraft{{value: "https://example.com/a"}}
 
-	if got := m.fieldCountForActiveTab(); got != 2 {
-		t.Fatalf("collapsed field count = %d, want 2 (the two section headers)", got)
+	if got := m.fieldCountForActiveTab(); got != 4 {
+		t.Fatalf("collapsed field count = %d, want 4 (two headers and two relation fields)", got)
 	}
 	m = sendFormKey(m, syntheticKey('a'))
 	if !m.attachmentsExpanded {
 		t.Fatal("a should expand the Attachments section")
 	}
-	if got := m.fieldCountForActiveTab(); got != 3 {
-		t.Errorf("expanded field count = %d, want 3 (two headers + one draft)", got)
+	if got := m.fieldCountForActiveTab(); got != 5 {
+		t.Errorf("expanded field count = %d, want 5 (two headers, two relation fields and one draft)", got)
 	}
 	m = sendFormKey(m, syntheticKey('a'))
 	if m.attachmentsExpanded {
@@ -196,8 +196,8 @@ func TestTaskForm_Extras_CommentsIsTheSecondSection(t *testing.T) {
 	m := navigateToExtrasTab(newTestTaskForm())
 	m.draft.comments = []formCommentDraft{{text: "ask about the SSO deadline"}}
 
-	if got := m.fieldCountForActiveTab(); got != 2 {
-		t.Fatalf("collapsed field count = %d, want 2 (two section headers)", got)
+	if got := m.fieldCountForActiveTab(); got != 4 {
+		t.Fatalf("collapsed field count = %d, want 4 (two headers and two relation fields)", got)
 	}
 	if got := m.extrasCommentsHeaderIdx(); got != 1 {
 		t.Fatalf("comments header idx = %d, want 1 while Attachments is collapsed", got)
@@ -207,8 +207,8 @@ func TestTaskForm_Extras_CommentsIsTheSecondSection(t *testing.T) {
 	if !m.commentsExpanded {
 		t.Fatal("c should expand the Comments section")
 	}
-	if got := m.fieldCountForActiveTab(); got != 3 {
-		t.Errorf("expanded field count = %d, want 3 (two headers + one draft)", got)
+	if got := m.fieldCountForActiveTab(); got != 5 {
+		t.Errorf("expanded field count = %d, want 5 (two headers, two relation fields and one draft)", got)
 	}
 
 	// Expanding Attachments pushes the Comments header down by its drafts.

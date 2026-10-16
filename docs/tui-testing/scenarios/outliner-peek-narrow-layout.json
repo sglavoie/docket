@@ -10,6 +10,7 @@
     { "type": "key", "key": "end" },
     { "type": "key", "label": "enable the same inline Peek at minimum width", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "Description: Google / GitHub OAuth." },
+    { "type": "key", "key": "B", "label": "expand Peek to read the supporting metadata" },
     { "type": "assert", "label": "the history line closing the document survives minimum width", "assert": "contains", "value": "Created:" },
     { "type": "assert", "label": "a task untouched since its creation repeats no Updated age", "assert": "not_contains", "value": "· Updated:" },
     { "type": "assert", "label": "every summary line is one Label: value grammar at the floor", "assert": "contains", "value": "Status: Someday" },

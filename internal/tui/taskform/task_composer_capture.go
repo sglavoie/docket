@@ -54,33 +54,19 @@ func (m *TaskComposerModel) ExpandSingle() tea.Cmd {
 	return m.ExpandRequest(reqs[0])
 }
 
-// unsupportedExpansion names the first value the expanded form cannot carry.
-// Both the live hint and the request boundary use the same precedence.
-func unsupportedExpansion(adopts, defers, dependencies bool) string {
-	switch {
-	case adopts:
-		return "adopt children"
-	case defers:
-		return "defer tasks"
-	case dependencies:
-		return "set dependencies"
-	}
-	return ""
-}
-
 func (m *TaskComposerModel) ExpandRequest(req app.CaptureRequest) tea.Cmd {
-	// Refuse values the form has no channel for before changing presentation.
-	// Keep this at the request boundary so typed callers receive the same guard.
-	if unsupported := unsupportedExpansion(len(req.ChildIDs) > 0, req.DeferSet || req.Defer != nil, len(req.Dependencies) > 0); unsupported != "" {
-		m.Errors = []grammar.LineError{{Line: max(req.SourceLine, 1), Message: "expanded mode cannot " + unsupported + "; submit the line with Enter instead"}}
-		return nil
-	}
 	project := m.projectByID(req.ProjectID)
 	if project == nil {
 		m.Errors = []grammar.LineError{{Line: 1, Message: "target project is unavailable"}}
 		return nil
 	}
 	form := NewTaskFormModelCreate(project, m.runtime, nil)
+	form.allProjects = append([]*models.Project(nil), m.Preset.AllProjects...)
+	form.draft.prepend = req.Prepend
+	form.draft.deferredUntil = cloneTime(req.Defer)
+	form.draft.childIDs = append([]string(nil), req.ChildIDs...)
+	form.draft.dependencies = append([]app.TaskLocator(nil), req.Dependencies...)
+	form.presetDue = cloneTime(req.Due)
 	form.draft.title = req.Title
 	form.draft.priority = req.Priority
 	form.draft.tags = append([]string(nil), req.Tags...)
@@ -108,6 +94,7 @@ func (m *TaskComposerModel) ExpandRequest(req app.CaptureRequest) tea.Cmd {
 		form.draft.comments = append(form.draft.comments, formCommentDraft{text: raw})
 	}
 	form.commentsExpanded = len(form.draft.comments) > 0
+	form.hasChanges = req.Title != ""
 	form.titleInput.SetValue(req.Title)
 	form.contextInput.SetValue(req.Context)
 	form.dueTextInput.SetValue(form.draft.dueInput)
@@ -153,6 +140,7 @@ func (m *TaskComposerModel) seedExpandedForm(seed TaskComposerSeed) {
 		form.draft.checklist = append(form.draft.checklist, models.ChecklistItem{Text: text, Done: false})
 	}
 	form.checklistExpanded = len(form.draft.checklist) > 0
+	form.hasChanges = seed.Title != ""
 	form.titleInput.SetValue(seed.Title)
 	form.contextInput.SetValue(seed.Context)
 	form.dueTextInput.SetValue("")

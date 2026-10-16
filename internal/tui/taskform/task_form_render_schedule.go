@@ -57,6 +57,7 @@ func (m *TaskFormModel) renderScheduleTab(b *formBodyBuilder, bodyWidth int) {
 		b.WriteString(repeatDisplay(m.draft.checkIn.RepeatDays))
 	}
 	b.WriteString("\n")
+	m.renderRelationField(b, 3, formRelationDefer, bodyWidth)
 }
 
 // scheduleDueDateDisplay formats a due date for display in the Schedule tab row.

@@ -310,18 +310,20 @@ func makeDueBadgeStyle(tone dueBadgeTone) lipgloss.Style {
 		Padding(0, 1)
 }
 
-// newRelationMarkerStyle is the hidden-family chip: `‹` and `›N` on a fill of
-// their own rather than accent text, which shared its amber with the pin, the
-// due-soon text and a blocked reference and read as one more of them. The fill
-// sits in the magenta gap every section fill and both chip families leave, at
-// least 26° from each in both themes, so it reads as a relation and never as a
-// section header; it is emphasized, so its ink meets the enhanced ratio.
+// StructuralSectionStyle uses readable heading text without a
+// filled badge competing with task selection and deadline chips.
+func StructuralSectionStyle(badge lipgloss.Style) lipgloss.Style {
+	ink := badge.GetBackground()
+	if ActiveThemeName != "light" {
+		ink = badge.GetForeground()
+	}
+	return lipgloss.NewStyle().Foreground(ink).Bold(true).Padding(0, 1)
+}
+
+// Hidden family is supporting context, not an urgency badge. Keep its existing
+// columns, with readable muted text in both themes and no competing fill.
 func newRelationMarkerStyle() lipgloss.Style {
-	return makeDueBadgeStyle(dueBadgeTone{
-		darkFill: "#862a82", darkInk: "#fdf4ff",
-		lightFill: "#f9c8f0", lightInk: "#4a044e",
-		emphasized: true,
-	})
+	return lipgloss.NewStyle().Foreground(ColorMuted).Padding(0, 1)
 }
 
 // makeLensAccentStyle creates a foreground-only accent in the tone the active

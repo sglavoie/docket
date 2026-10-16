@@ -2,6 +2,7 @@ package help
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -195,10 +196,29 @@ func (m *HelpViewModel) renderBySectionContent() string {
 		first = false
 		b.WriteString(heading.Render(section))
 		b.WriteString("\n")
-		for j := 0; j < len(items); j += columns {
+		// Task groups are declared alongside the key bindings. Keep exact search
+		// hits together and retain the normal order for every other category.
+		if section == "Tasks" {
+			items = append([]filteredHelpItem(nil), items...)
+			sort.SliceStable(items, func(i, j int) bool { return taskHelpOrder(items[i]) < taskHelpOrder(items[j]) })
+		}
+		previousGroup := ""
+		for j := 0; j < len(items); {
+			group := ""
+			if section == "Tasks" {
+				group = taskHelpGroup(items[j])
+				if group != previousGroup {
+					b.WriteString(theme.MutedStyle.Render(group) + "\n")
+					previousGroup = group
+				}
+			}
+			pair := columns == 2 && j+1 < len(items)
+			if pair && section == "Tasks" {
+				pair = taskHelpGroup(items[j+1]) == group
+			}
 			col1 := columnStyle.Render(renderItem(items[j]))
 			var col2 string
-			if columns == 2 && j+1 < len(items) {
+			if pair {
 				col2 = columnStyle.Render(renderItem(items[j+1]))
 			}
 			row := col1
@@ -207,6 +227,10 @@ func (m *HelpViewModel) renderBySectionContent() string {
 			}
 			b.WriteString(row)
 			b.WriteString("\n")
+			j++
+			if pair {
+				j++
+			}
 		}
 	}
 
@@ -348,4 +372,18 @@ func (m *HelpViewModel) StatusBarLabel() string {
 // HandledKeys returns the keys handled by Help.
 func (m *HelpViewModel) HandledKeys() []string {
 	return m.buildKeyMap().HandledKeys()
+}
+
+func taskHelpOrder(item filteredHelpItem) int {
+	if item.Order > 0 {
+		return item.Order
+	}
+	return 400
+}
+
+func taskHelpGroup(item filteredHelpItem) string {
+	if item.Group == "" {
+		return "Details"
+	}
+	return item.Group
 }

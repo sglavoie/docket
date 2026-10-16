@@ -35,9 +35,9 @@ func TestFocusKeyGrammarDispatchHelpAndGuidanceAgree(t *testing.T) {
 	help := registry.HelpItemsForInputStrategy(operation.InputStrategySimplified, ctx)
 	footer := guidanceHintsText(registry.GuidanceHintsForInputStrategy(operation.InputStrategySimplified, ctx))
 	for key, description := range map[string]string{
-		"Enter":       "Focus Subtree",
-		"Shift+Enter": "Focus Parent",
-		"b":           "Toggle Peek",
+		"Enter": "Focus Subtree",
+		"Alt+↑": "Focus Parent",
+		"b":     "Toggle Peek",
 	} {
 		found := false
 		for _, item := range help {

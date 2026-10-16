@@ -21,7 +21,7 @@
     { "type": "key", "label": "open workflow actions", "key": "w" },
     { "type": "key", "label": "start the third Inbox task", "key": "g" },
     { "type": "wait" },
-    { "type": "assert", "label": "the note rides the line already speaking and leaves u undo last", "assert": "status_contains", "value": "Change Status: Untriaged inbox item 3 → Doing · No check-in · Ctrl+M: Set up check-ins · u undo" },
+    { "type": "assert", "label": "the note rides the line already speaking and leaves u undo last", "assert": "status_contains", "value": "Change Status: Untriaged inbox item 3 → Doing · No check-in · F10: Set up check-ins · u undo" },
     { "type": "assert", "assert": "contains", "value": "Untriaged inbox item 4" },
     { "type": "key", "label": "open workflow actions", "key": "w" },
     { "type": "key", "label": "complete the fourth Inbox task", "key": "d" },

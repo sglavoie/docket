@@ -116,7 +116,7 @@ func (m *AppModel) publishCheckInFeedback() tea.Cmd {
 	if m.checkInFeedback.spoken {
 		return nil
 	}
-	note := checkInFeedbackNote(m.committedCheckInTitles(results), m.feedback.message)
+	note := checkInFeedbackNote(m.committedCheckInTitles(results), m.feedback.message, m.menuOpenHint())
 	if note == "" {
 		return nil
 	}
@@ -167,26 +167,33 @@ func (m *AppModel) committedCheckInTitles(results []app.TaskResult) []string {
 // and the row menu operate on the cursor, and the task this note is about may
 // have moved out from under it the moment it changed state. Set up check-ins
 // names its own population — unscheduled Doing and Waiting work — which always
-// contains whatever the sentence just counted. The note does name Ctrl+M, the
+// contains whatever the sentence just counted. The note names the negotiated menu shortcut, the
 // key that opens the Task menu holding that entry, since "menu" alone does not
 // say which one or how to reach it, and opening a menu reads no cursor.
 //
 // spoken is the line the note will ride. When it already names the one task —
 // a status change says which task moved — the note does not repeat the title,
 // since a second copy is what would push the route off a narrow footer.
-func checkInFeedbackNote(titles []string, spoken string) string {
+func (m *AppModel) menuOpenHint() string {
+	if m.lifecycle.keyDisambiguation {
+		return "Ctrl+M"
+	}
+	return "F10"
+}
+
+func checkInFeedbackNote(titles []string, spoken, menuKey string) string {
 	switch len(titles) {
 	case 0:
 		return ""
 	case 1:
 		if lineNamesTitle(spoken, titles[0]) {
-			return "No check-in · Ctrl+M: Set up check-ins"
+			return "No check-in · " + menuKey + ": Set up check-ins"
 		}
 		return "No check-in: " +
 			textfit.TruncateToVisualWidth(titles[0], checkInFeedbackTitleWidth) +
-			" · Ctrl+M: Set up check-ins"
+			" · " + menuKey + ": Set up check-ins"
 	default:
-		return fmt.Sprintf("No check-in: %d tasks · Ctrl+M: Set up check-ins", len(titles))
+		return fmt.Sprintf("No check-in: %d tasks · %s: Set up check-ins", len(titles), menuKey)
 	}
 }
 

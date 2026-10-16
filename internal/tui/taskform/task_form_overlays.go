@@ -13,16 +13,17 @@ import (
 type formOverlayKind int
 
 const (
-	formOverlayNone           formOverlayKind = iota
-	formOverlayPriority                       // formPriorityPicker
-	formOverlayState                          // formStatePicker
-	formOverlayFlags                          // formFlagsPicker
-	formOverlayDue                            // formDueDatePicker
-	formOverlayCheckIn                        // shared CheckInEditorModel
-	formOverlayChecklistEdit                  // inline textinput for editing a checklist item
-	formOverlaySubtaskEdit                    // inline overlay for editing a subtask draft
-	formOverlayAttachmentEdit                 // inline textinput for editing an attachment draft
-	formOverlayCommentEdit                    // inline textinput for editing a comment draft
+	formOverlayNone formOverlayKind = iota
+	formOverlayRelation
+	formOverlayPriority       // formPriorityPicker
+	formOverlayState          // formStatePicker
+	formOverlayFlags          // formFlagsPicker
+	formOverlayDue            // formDueDatePicker
+	formOverlayCheckIn        // shared CheckInEditorModel
+	formOverlayChecklistEdit  // inline textinput for editing a checklist item
+	formOverlaySubtaskEdit    // inline overlay for editing a subtask draft
+	formOverlayAttachmentEdit // inline textinput for editing an attachment draft
+	formOverlayCommentEdit    // inline textinput for editing a comment draft
 )
 
 // ── Overlay rendering dispatch ────────────────────────────────────────────────
@@ -33,6 +34,8 @@ func (m *TaskFormModel) renderFormOverlay() string {
 	switch m.activeOverlay {
 	case formOverlayNone:
 		return ""
+	case formOverlayRelation:
+		return m.renderRelationEditor()
 	case formOverlayPriority:
 		if m.priorityPicker != nil {
 			return m.priorityPicker.render(m.width, m.draft.priority)
@@ -74,6 +77,8 @@ func (m *TaskFormModel) handleFormOverlayKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 		result  tea.Msg
 	)
 	switch m.activeOverlay {
+	case formOverlayRelation:
+		return m.handleRelationEditor(msg), true
 	case formOverlayPriority:
 		if m.priorityPicker != nil {
 			dismiss, result = m.priorityPicker.handleKey(msg)

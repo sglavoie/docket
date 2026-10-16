@@ -26,13 +26,13 @@ import (
 const (
 	peekDockDividerRows = 1
 	// peekDockFrameDivisor, peekDockPreferredMinRows and peekDockPreferredMaxRows
-	// are the dock's ordinary height: a third of the height this view was handed,
+	// are the dock's ordinary height: a quarter of the height this view was handed,
 	// bounded below so a short terminal still shows a readable page and above so a
-	// tall one spends the rest of itself on the list. A third is the share that
+	// tall one spends the rest of itself on the list. A quarter is the share that
 	// leaves the list the majority of every frame it is drawn in.
-	peekDockFrameDivisor     = 3
-	peekDockPreferredMinRows = 7
-	peekDockPreferredMaxRows = 12
+	peekDockFrameDivisor     = 4
+	peekDockPreferredMinRows = 6
+	peekDockPreferredMaxRows = 8
 	// peekDockMinRows is the whole dock at its smallest displayed size: one content
 	// line, the divider that separates it from the list, and the position line that
 	// says how much of the document is off screen. Below this the dock is not drawn
@@ -175,7 +175,7 @@ func (m *OutlinerModel) peekDockGeometry() peekDockGeometry {
 	return peekDockGeometry{bodyRows: total - peekDockDividerRows - inlinePeekPositionRows}
 }
 
-// peekDockPreferredRows is the dock's ordinary height: a third of the height
+// peekDockPreferredRows is the dock's ordinary height: a quarter of the height
 // this view was allotted, bounded to the two ends. The height it divides is the
 // view's own rather than the terminal's, because the shell's footer is already
 // out of it — so a footer that grows does not also shrink the dock, and only the

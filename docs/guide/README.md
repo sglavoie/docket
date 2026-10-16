@@ -1,7 +1,6 @@
 # Behavior guide
 
-The full behavior reference for `tt`. It is written to be looked things up in,
-not read straight through — [`../../README.md`](../../README.md) is the front
+The full behavior reference for `tt`. Use it to look up an action or rule — [`../../README.md`](../../README.md) is the front
 door. Mechanism lives in [`../architecture.md`](../architecture.md).
 
 | Guide | Covers |
@@ -16,6 +15,15 @@ door. Mechanism lives in [`../architecture.md`](../architecture.md).
 | [`projects-and-notes.md`](projects-and-notes.md) | Project scope, Select Project, project tags including `parked`, and All Notes |
 | [`storage.md`](storage.md) | The durable layout, the undo ledger, conflict recovery, and the migration chain up to the schema-21 catalog and its schema-19 task files |
 | [`retired-keys.md`](retired-keys.md) | Every retired key, per surface, and what answers it now |
+
+## Find an answer
+
+Start with the common-action tables in each guide. They give the operation,
+keys, and an example before the detailed rules. For everyday work, use the
+recipes below; for a symbol on screen, use [Rows and Peek](outliner-rows.md);
+for a missing task, use [search and restrictions](search-and-lenses.md).
+Rendering budgets and implementation rationale belong in
+[the architecture reference](../architecture/interaction-layout-details.md).
 
 ## Everyday recipes
 

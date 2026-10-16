@@ -140,22 +140,13 @@
       "assert": "contains",
       "value": "reconciliation export before the audit closes"
     },
-    {
-      "type": "assert",
-      "label": "and names the rest of the document rather than ending",
-      "assert": "contains",
-      "value": "0 above · 4 below"
-    },
+    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "0 above · 7 below" },
     {
       "type": "key",
-      "label": "half a nine-row window is four content rows, and this document's tail is three, so the step clamps on its end",
+      "label": "half a six-row body moves three content rows",
       "key": "ctrl+d"
     },
-    {
-      "type": "assert",
-      "assert": "contains",
-      "value": "4 above · 0 below"
-    },
+    { "type": "assert", "assert": "contains", "value": "3 above · 4 below", "label": "the position row accounts for the compact window and its current offset" },
     {
       "type": "assert",
       "assert": "no_layout_issues"
@@ -945,12 +936,7 @@
       "assert": "contains",
       "value": "No check-in"
     },
-    {
-      "type": "assert",
-      "label": "and routes it to the keyless menu entry rather than interrupting",
-      "assert": "contains",
-      "value": "Ctrl+M: Set up check-ins"
-    },
+    { "type": "assert", "label": "and routes it to the keyless menu entry rather than interrupting", "assert": "contains", "value": "F10: Set up check-ins" },
     {
       "type": "assert",
       "assert": "no_layout_issues"

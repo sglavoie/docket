@@ -37,18 +37,22 @@ type formCommentDraft struct {
 // taskFormDraft holds all editable state for the form, independent of mode.
 // Populated from a new task (create) or an existing task (edit).
 type taskFormDraft struct {
-	title    string
-	priority int
-	parentID *string
-	state    models.WorkflowState
-	pinned   bool
-	review   bool
-	tags     []string
-	context  string
-	dueDate  *time.Time
-	dueInput string
-	checkIn  models.CheckInSchedule
-	desc     string
+	prepend       bool
+	deferredUntil *time.Time
+	childIDs      []string
+	dependencies  []app.TaskLocator
+	title         string
+	priority      int
+	parentID      *string
+	state         models.WorkflowState
+	pinned        bool
+	review        bool
+	tags          []string
+	context       string
+	dueDate       *time.Time
+	dueInput      string
+	checkIn       models.CheckInSchedule
+	desc          string
 
 	// Children tab data.
 	checklist []models.ChecklistItem
@@ -61,6 +65,11 @@ type taskFormDraft struct {
 
 // TaskFormModel drives expanded task creation.
 type TaskFormModel struct {
+	allProjects   []*models.Project
+	presetDue     *time.Time
+	relationInput textinput.Model
+	relationKind  formRelationKind
+	relationError error
 	pulse.WorkspacePulseState
 	project           *models.Project
 	draft             taskFormDraft

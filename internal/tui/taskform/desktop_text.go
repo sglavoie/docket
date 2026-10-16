@@ -25,6 +25,8 @@ func (m *TaskFormModel) DesktopTextBuffer() *chrome.DesktopTextBuffer {
 	}
 	changed := func() { m.hasChanges = true; m.err = nil }
 	switch m.activeOverlay { //nolint:exhaustive // Non-text pickers own input without exposing an editable buffer.
+	case formOverlayRelation:
+		return chrome.DesktopInput(&m.relationInput, func() { m.relationError = nil })
 	case formOverlayCheckIn:
 		if m.checkInEditor != nil {
 			return m.checkInEditor.DesktopTextBuffer()

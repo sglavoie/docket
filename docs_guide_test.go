@@ -114,14 +114,13 @@ func TestGuideDocumentsPeekAndBulkSemantics(t *testing.T) {
 		"so now are tags, context, the neutral Waiting and Doing ages, deferral markers,\nand the checklist, comment, and attachment counts",
 		"a row whose open children are all placed somewhere else ends with `›N`",
 		"`Enter` focuses the cursor task's descendants",
-		"`Shift+Enter` widens in the other direction",
+		"`Alt+↑` widens in the other direction",
 		"`b` toggles a session-only Peek in a pane docked below the list, whether the\n" +
 			"cursor is on a task or on a project header",
 		"`B` switches an open Peek between compact and expanded sizes",
 		"Peek always names the full project slug",
-		"Its compact height is a share of the terminal\n" +
-			"— about a third of the outline's own room, never fewer than seven rows and never\n" +
-			"more than twelve — counted off the list once when you open it",
+		"normally six to eight rows",
+		"about a quarter of the outline's own room",
 		"What the pane never reads is the\nrow you are on",
 		"Peek gives them up and comes back to its full height when that panel\ncloses",
 		"the pane stays where it is and reads `No detail to\nshow for this row.`; `b` closes it again from any row",

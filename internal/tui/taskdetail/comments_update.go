@@ -214,7 +214,7 @@ func (m *CommentsModel) updateEditMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+x":
 			m.exportDraft()
 			return m, nil
-		case "shift+enter":
+		case "shift+enter", "alt+enter":
 			if m.refuseComposerEdit(commentMutationEdit) {
 				return m, nil
 			}
@@ -251,7 +251,7 @@ func (m *CommentsModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+x":
 			m.exportDraft()
 			return m, nil
-		case "shift+enter":
+		case "shift+enter", "alt+enter":
 			if m.refuseComposerEdit(commentMutationAdd) {
 				return m, nil
 			}

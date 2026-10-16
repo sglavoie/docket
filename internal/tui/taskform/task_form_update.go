@@ -259,6 +259,9 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // QuitBlockReason names content a desktop quit would abandon.
 func (m *TaskFormModel) QuitBlockReason() string {
+	if m.activeOverlay == formOverlayRelation && m.relationInput.Value() != m.relationValue(m.relationKind, true) {
+		return "Your task form contains an unsaved draft."
+	}
 	if m.activeOverlay == formOverlayCheckIn && m.checkInEditor != nil {
 		if reason := m.checkInEditor.QuitBlockReason(); reason != "" {
 			return reason

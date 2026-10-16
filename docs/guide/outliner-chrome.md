@@ -5,6 +5,23 @@ pulse, the menu bar, contextual guidance, the status strip and the advisories it
 carries, the conflict browser, how the cursor row is marked, and the colors a
 tag wears.
 
+## Common actions
+
+| Goal | Keys | Example |
+| --- | --- | --- |
+| Find a shortcut | `?`, then `/` | Search `defer` to find scheduling controls |
+| Explain a narrow view | `Q` | Remove one restriction with its numbered key |
+| Open the menus | `F10` | Task → Set up check-ins |
+| Keep the menu bar visible | `M` | Press again to hide it |
+| Reread feedback | Help → Recent messages | Recover the full text of an expired message |
+
+Help puts Everyday, Plan, the Doing/Done Status actions, and Recovery first.
+Other statuses, task details, hierarchy, and selection follow. Search also matches those group names. The label
+**Explain Current View** opens the same `Q` readout.
+
+
+## Find a shortcut
+
 In `?` help, `/` searches within the selected category tab. Each search word
 may match the key, description, category, or an alias of the same entry, so a
 category and an action can be searched together. Every word must match that
@@ -28,6 +45,8 @@ it later in the same place; `Backspace` clears the query and returns to All.
 Available actions refresh on every opening. If a category has disappeared,
 Help returns to All, and shorter results or a resized window clamp the scroll.
 
+## Read the title and current restrictions
+
 Every full-screen presentation keeps one operational title row. It names the
 surface, scope, and mode once on the left, and reports the workspace pulse on the
 right as `workspace: inbox 3 · today 2 · overdue 1 · done 4`. A component at zero
@@ -47,6 +66,8 @@ than cutting one in half, ending in `+2 more · Q details`: the count is what it
 could not draw and `Q` is where the whole of it is written out. Press `Q` and
 every one of those values is there in full, wrapped rather than cut, in a
 readout you can scroll.
+
+## Open a menu
 
 `M` puts a menu bar above that title row: a single band reading
 `Task  View  Go  Find  Help`, one label per menu. `M` again takes it away. The
@@ -101,10 +122,16 @@ operation reachable only this way never touches a task or a project — it acts 
 the view or on nothing at all — so the bar can stay off by default without hiding
 anything that edits your work.
 
-Terminals that do not report enhanced keyboard events encode `Ctrl+M` as
-`Enter`, the way they encode `Ctrl+I` as `Tab`. Use `F10` to open and close the
-menu in those terminals. `M` still shows the bar, and `Ctrl+M` over an open menu
-runs the highlighted entry rather than closing it.
+### Terminal keyboard compatibility
+
+`F10` opens the menu in every supported keyboard mode. Feedback uses `F10`
+until the terminal confirms enhanced keyboard support, then uses `Ctrl+M`.
+Without that support, `Ctrl+M` arrives as Enter and `Ctrl+I` as Tab.
+Use `Alt+→` to move forward in navigation history and `Alt+↑` to focus the
+parent. `Ctrl+I` and `Shift+Enter` remain enhanced-keyboard aliases for those
+operations. To insert a newline in capture, comments, or the text editor,
+use `Alt+Enter`; `Shift+Enter` remains an alias. Multiline paste works in capture
+too. The menu keeps every operation available by arrow keys and Enter.
 
 Whether the bar is drawn is remembered for this machine, the way the light or
 dark theme is: it survives quitting and reopening `tt`, and it does not follow
@@ -116,38 +143,20 @@ terminal you are sitting at. The View menu lists the toggle itself, checked when
 because the key that shows the bar is the one thing you cannot read off the bar
 once you have found it by accident.
 
+## Read workload and feedback
+
 Today mode also compares its open load with the workspace's 30-day completion
 pace in the middle region, for example `9 open · median 3 done/day (30d)`. A fresh
 workspace with no completion history shows no comparison. Under pressure the
 workspace pulse disappears first; the comparison then sheds `(30d)`, then
 `median`, and finally disappears before required interaction context shortens.
 
-Contextual guidance is made of complete `key action` entries. Browse states use
-one row; editing, adding, confirming, autocomplete, and expanded detail may use
-two, and a pending chord may use three, which is what lets `w` name all ten of
-its destinations, Done included, at the narrowest terminal. The `f` and `g`
-rows are divided the way `w` is, by a heading riding the first entry of each
-run: `f` reads `Field:` over the values a task stores and `Derived:` over the
-facts worked out from it, with `x clear all` and `% projects` closing the row
-outside both, and `g` reads `Mode:`, `Task:`, and `Sync:` behind `g top`. A row
-too narrow for all of it never draws a heading without its first entry. At the
-narrowest terminal `f` keeps `x clear all` and gives up `a completion age` and
-`% projects`, and `g` over a task row gives up the `Sync:` pair whole; every
-shed key still works and `?` help still lists it. Required commit and cancellation controls survive before
-optional hints, and they survive whole at the narrowest terminal `tt` runs in,
-so the way out of a state is never half a sentence. Transient pickers and action
-sheets own their local guidance while leaving the host title and workspace pulse
-visible.
+Press a chord prefix such as `w`, `f`, or `g` to see its next keys.
+`w` separates Plan from Status; `?` lists all shortcuts, including those a
+narrow footer cannot show.
 
-Only one set of shortcuts is on screen at a time, and it always belongs to
-whatever your next key press reaches. Open a picker, an action sheet, a lens
-list, the check-in editor, or the conflict browser over the outline and the
-outline's own row of shortcuts goes quiet: it is describing keys that picker has
-taken. The same is true of a confirmation, and of a picker opened inside the
-expanded capture form. The row does not collapse
-while it is quiet — the space stays reserved, so nothing on screen jumps when
-the picker opens — and closing the picker brings the outline's shortcuts back
-exactly as they were.
+The footer always describes the keys for the current interaction. Closing a
+picker restores the outline’s shortcuts.
 
 A panel that takes over the whole screen is a different case, because nothing is
 left underneath it to go quiet. Comments, attachments, the project creator and
@@ -343,7 +352,7 @@ says so in the strip instead of opening an empty overlay. See
 
 After a commit, recovery feedback advertises `u undo` only when the newest
 workspace-ledger entry is that exact transaction. A task relocation adds
-`Ctrl+O origin` only after its origin was recorded; `Ctrl+I` returns to the
+`Ctrl+O origin` only after its origin was recorded; `Alt+→` returns to the
 relocated task. When that line is wider than the terminal, the sentence is
 shortened with `…` and the keys stay whole at its end, so a narrow window never
 hides the way back.

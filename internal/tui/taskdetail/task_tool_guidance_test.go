@@ -61,7 +61,7 @@ func TestCommentsGuidanceTracksBrowseEmptyInputExpandedAndConfirmation(t *testin
 	model.AddMode = true
 	spec, ok = model.guidanceSpec()
 	assertRequiredGuidance(t, "comments add", spec, ok, "Ctrl+S save", "Esc cancel")
-	assertGuidanceContains(t, "comments add", spec, ok, "Ctrl+E editor", "Shift+Enter newline")
+	assertGuidanceContains(t, "comments add", spec, ok, "Ctrl+E editor", "Alt+Enter newline")
 
 	// Esc over typed text raises the discard question instead of closing, so the
 	// entry that key owns changes with the draft rather than with the mode.

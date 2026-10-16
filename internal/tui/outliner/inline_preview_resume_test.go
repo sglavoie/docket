@@ -130,12 +130,9 @@ func TestInlinePeekResumeNoteSpendsThePageRatherThanRaisingIt(t *testing.T) {
 	}
 }
 
-// TestInlinePeekResumeNoteFollowsTheTitleAndAncestorChain replaced the header
-// exceptions. Nothing sits outside the body any more, so the claim is about
-// order rather than exemption: the whole title leads, the promoted ancestor
-// chain follows it, and the note sits beneath both while the page stays five
-// rows tall.
-func TestInlinePeekResumeNoteFollowsTheTitleAndAncestorChain(t *testing.T) {
+// Status and resume lead supporting metadata so restarting work does not require
+// paging past a long ancestor chain.
+func TestInlinePeekResumeNotePrecedesTheAncestorChain(t *testing.T) {
 	task := resumeNotePeekTask("stopped at the CSV column mapping")
 	task.Title = "Selected task whose title is long enough to want more than one row of a narrow pane"
 	task.CreatedAt = time.Now().Add(-5 * 24 * time.Hour)
@@ -157,8 +154,8 @@ func TestInlinePeekResumeNoteFollowsTheTitleAndAncestorChain(t *testing.T) {
 	if parent < 0 || resume < 0 {
 		t.Fatalf("the document lost the ancestor chain or the note:\n%s", plain)
 	}
-	if parent > resume {
-		t.Fatalf("the note precedes the ancestor chain:\n%s", plain)
+	if parent < resume {
+		t.Fatalf("the note follows the ancestor chain:\n%s", plain)
 	}
 }
 

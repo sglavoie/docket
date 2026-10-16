@@ -463,7 +463,7 @@ presentation and declares no layout, so the expanded form owns the whole content
 area.
 
 Capture's footer sheds by `Priority`, moving no drawn entry: it keeps `Ctrl+N`,
-`Ctrl+E`, `? syntax`, `Ctrl+P`, `Ctrl+F`, `Shift+Enter`, and
+`Ctrl+E`, `? syntax`, `Ctrl+P`, `Ctrl+F`, `Alt+Enter`, and
 `chrome.CapturePasteHint` last.
 
 Capture completion and syntax help follow the caret; feedback recall holds 20
@@ -670,7 +670,7 @@ Row and Peek budget:
   disagree about a height, and `PeekDockRows` is a method over it rather than a
   constant. That total is
   `min(peekDockPreferredRows, peekDockAvailableRows)` — preferred is
-  `clamp(floor(H/3), peekDockPreferredMinRows, peekDockPreferredMaxRows)` over the
+  `clamp(floor(H/4), peekDockPreferredMinRows, peekDockPreferredMaxRows)` over the
   Outliner's own height in compact mode; `PeekExpanded` uses `max(2*H/3,
   peekDockPreferredMinRows)`. `B` changes that session preference through
   `OperationCorePeekSize`, even on a placeholder row, and toggling the dock
@@ -704,7 +704,7 @@ Row and Peek budget:
   the geometry's `BodyRows` bounds visibility alone, a short document pads, and
   `positionLine` is a further row reserved for every document, blank when the
   body fits. Nothing sits outside that window and the document has no header:
-  body order is title, parent, optional search excerpt, status, schedule, resume, description, checklist
+  body order is title, status, resume, project, parent, optional search excerpt, schedule, description, checklist
   count, attachments, comment count, `Dependencies`/`Dependents`, context, tags,
   history; place a new section deliberately. Schedule is what is still owed —
   deadline, pending deferral, check-in, repeat — and history records created,
@@ -760,7 +760,7 @@ Row and Peek budget:
   so no label competes with the title. The cross-project ranked list and a
   merged group's row are the exceptions, since no header stands over either:
   `taskProjectLabel` leads each title with
-  the header's own bold `[slug]` in the project color, padded to
+  the header's own `[slug]` in the project color, padded to
   `ColumnLayout.ProjectWidth` so the titles share a column, its slug cut by
   `rankedProjectLabelMaxSlug` alone. The match cue is shed ahead of the whole
   ladder and is now the one on-row explanation of a hit the row cannot show.
@@ -1013,8 +1013,8 @@ committing one transaction.
   disagree about order.
 - Children resolve only in the effective project, so `<child` never crosses a
   project boundary.
-- Expansion carries pin/review to Flags; adoption, deferral and dependencies
-  refuse by name, preserving the draft.
+- Expansion preserves flags, deferral, adoption and dependencies. Unchanged dates
+  keep their route; form commits revalidate references.
 - A terminal destination refuses an open adopted child on both surfaces.
 - `~task` is the one repeatable reference crossing a project boundary, and it is
   soft: readiness, ordering, ranking, and completion never read it, and

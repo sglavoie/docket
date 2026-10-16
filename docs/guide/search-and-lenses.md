@@ -27,6 +27,8 @@ Below are the [filter and search reference](#filters-and-search),
 
 ## Filters and search
 
+### Search inside a picker
+
 In value, named-lens, and relationship pickers, `/` opens an editable search
 field. Left/right and Home/End move the text cursor; Backspace/Delete edit at
 that position. Long queries scroll horizontally to keep the cursor visible.
@@ -39,7 +41,7 @@ one more of them. Slash reads that query as one flat list in relevance order,
 with no lanes, no headers, and no folds, over the whole project scope rather than
 the mode's own membership: a question you type is a question about your work, not
 about the lane the cursor happened to be standing in. That flat list is also
-where search is the fastest way to jump anywhere: `Enter`, `Shift+Enter`, and
+where search is the fastest way to jump anywhere: `Enter`, `Alt+↑`, and
 `gp` on a result leave it on that task, so the restored projection lands on the
 row you searched for. A mode that cannot list the result falls back to All; a
 facet that still excludes it says `Task is hidden by the active facets` and
@@ -102,6 +104,8 @@ facets, and query, and disappear when nothing matching is withheld.
 | `f*` | Toggle the pinned facet, the same `*pin` a typed query spells |
 | `fx` | Clear every facet |
 | `/` | Search title, description, resume note, checklist, comment, tag, context, attachment, and project as one flat ranked list over the project scope, gated by any capture sigils the query carries; `or` reads the same query as a narrowing of the mode |
+
+### Read search results
 
 The ranked list has no project headings, so across several projects each row
 opens with its project's `[slug]`, in the color that project's heading wears in

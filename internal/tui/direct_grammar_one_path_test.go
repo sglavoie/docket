@@ -190,7 +190,7 @@ func TestPanelFootersOnlyAdvertiseKeysTheStrategyBinds(t *testing.T) {
 			name:     "comments",
 			strategy: entityops.CommentsInputStrategy(),
 			keys:     (&taskdetail.CommentsModel{}).BuildKeyMap(),
-			modal:    []string{"ctrl+s", "ctrl+e", "ctrl+x", "shift+enter", "ctrl+d", "ctrl+f"},
+			modal:    []string{"ctrl+s", "ctrl+e", "ctrl+x", "alt+enter", "shift+enter", "ctrl+d", "ctrl+f"},
 		},
 	} {
 		t.Run(surface.name, func(t *testing.T) {

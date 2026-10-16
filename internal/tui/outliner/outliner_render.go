@@ -311,7 +311,7 @@ func (m *OutlinerModel) RenderOutlinerSectionHeaderRow(row OutlinerRow, selected
 		Count:       row.SectionCount,
 		Lifted:      row.SectionLiftedCount,
 		Collapsed:   m.IsSectionRowCollapsed(row),
-		AccentColor: sectionStyle,
+		AccentColor: theme.StructuralSectionStyle(sectionStyle),
 		Prefix:      prefix,
 		Cursor:      paint,
 	})
@@ -356,7 +356,6 @@ func (m *OutlinerModel) projectSlugForRow(row OutlinerRow) (string, *models.Proj
 func (m *OutlinerModel) RenderOutlinerProjectHeaderRow(row OutlinerRow, selected bool, rowWidth, rowIndex int) string {
 	projectSlug, project := m.projectSlugForRow(row)
 	badge := theme.ProjectColorStyle(project).
-		Bold(true).
 		Render("[" + projectSlug + "]")
 	// The focused-project header owns no fold, so it shows no glyph at all: a
 	// blank of the same single column keeps its badge on the column every row
@@ -504,7 +503,7 @@ func (m *OutlinerModel) noteProjectLabel(row notes.LocatedNoteRow, rowWidth int,
 	if slug == "" {
 		return ""
 	}
-	style := theme.ProjectColorStyle(project).Bold(true)
+	style := theme.ProjectColorStyle(project)
 	if global {
 		style = theme.MutedStyle
 	}

@@ -12,6 +12,8 @@ import (
 func (m *TaskFormModel) renderExtrasTab(b *formBodyBuilder, bodyWidth int) {
 	m.renderExtrasAttachmentsSection(b, bodyWidth)
 	m.renderExtrasCommentsSection(b, bodyWidth)
+	m.renderRelationField(b, m.fieldCountForExtras()-2, formRelationChildren, bodyWidth)
+	m.renderRelationField(b, m.fieldCountForExtras()-1, formRelationDependencies, bodyWidth)
 }
 
 // renderExtrasAttachmentsSection renders the Attachments collapsible section.

@@ -76,7 +76,8 @@ func (m *CommentsModel) BuildKeyMap() *keymap.KeyMap {
 		// and Esc all still mean what they say there — a pending submission answers
 		// three of them with its own refusal rather than with silence — which is why
 		// this is the only row that narrows.
-		keymap.Bind("shift+enter", "Insert newline", "Actions", keymap.WithFooter(4, "newline", false), keymap.WithFooterKey("Shift+Enter"), keymap.WithGate(editableInput)),
+		keymap.Bind("alt+enter", "Insert newline", "Actions", keymap.WithFooter(4, "newline", false), keymap.WithFooterKey("Alt+Enter"), keymap.WithGate(editableInput)),
+		keymap.Bind("shift+enter", "Insert newline", "Actions", keymap.AsHidden(), keymap.WithGate(editableInput)),
 		// Ranked last of the five input keys because it is the one a reader only
 		// needs when a save is refused — and ranked at all because that is the
 		// moment it has to be findable: a draft the panel cannot write and the

@@ -118,7 +118,7 @@ func matchHelpItems(items []operation.HelpItem, query string) ([]filteredHelpIte
 			for _, term := range strings.Fields(query) {
 				keyScore, keyPos := matcher.ScoreWithPositions(item.Key, term)
 				descScore, descPos := matcher.ScoreWithPositions(item.Description, term)
-				found := keyScore > 0 || descScore > 0 || matcher.Score(item.Category, term) > 0
+				found := keyScore > 0 || descScore > 0 || matcher.Score(item.Category, term) > 0 || matcher.Score(item.Group, term) > 0
 				entry.keyPositions = append(entry.keyPositions, keyPos...)
 				entry.descPositions = append(entry.descPositions, descPos...)
 				for _, alias := range item.Aliases {

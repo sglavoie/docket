@@ -35,6 +35,8 @@ func (m *TaskFormModel) handlePaste(msg tea.PasteMsg) (tea.Model, tea.Cmd) {
 		m.err = nil
 	}
 	switch {
+	case m.activeOverlay == formOverlayRelation:
+		return m, m.pasteIntoInput(msg, &m.relationInput, func() { m.relationError = nil })
 	case m.activeOverlay == formOverlayCheckIn && m.checkInEditor != nil:
 		return m, m.checkInEditor.HandlePaste(msg)
 	case m.activeOverlay == formOverlayAttachmentEdit:

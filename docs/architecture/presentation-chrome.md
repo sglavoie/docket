@@ -79,7 +79,7 @@ Selection order is `Priority` and never display order, so a provider
 reprioritises without moving an entry: capture draws `Ctrl+V paste` where it
 always stood and ranks it behind every other optional hint through
 `chrome.CapturePasteHint`, and the composer ranks `Ctrl+P project` ahead of the
-`Ctrl+F` and `Shift+Enter` entries drawn before it.
+`Ctrl+F` and `Alt+Enter` entries drawn before it.
 Operation descriptors, gated keymaps, and `ListSurface` state remain the
 authorities for keys and applicability.
 
@@ -479,8 +479,8 @@ the frame it is still fixed in the sense that matters: `peekDockGeometry`
 measures neither the cursor nor the document, so `ComputeOutlinerViewport`
 subtracts the same rows under a one-line task and under a forty-line one, and one
 resolved geometry is what the render, the clamp, the two page distances, and the
-hints all read. `peekDockPreferredRows` is a third of the Outliner's own height
-clamped to seven and twelve rows, `peekDockAvailableRows` is what
+hints all read. `peekDockPreferredRows` is a quarter of the Outliner's own height
+clamped to six and eight rows, `peekDockAvailableRows` is what
 `ContentHeight` leaves after the footer excess, the strip, and
 `peekDockListFloorRows`, the smaller wins, and a total under `peekDockMinRows`
 puts the dock down rather than clipping it. It subtracts a guard row as well, against a footer
@@ -731,7 +731,7 @@ than "current".
 Recovery feedback is transaction-correlated. `storage.CommitResult.TransactionID`
 flows through application results and TUI messages, and `u undo` appears only
 when it equals the newest global ledger entry. Relocations add `Ctrl+O origin`
-only after jump history records an origin; `Ctrl+I` returns to the relocated
+only after jump history records an origin; `Alt+→` returns to the relocated
 task.
 
 A ledger restore decorates its own message on the same terms. When the session's

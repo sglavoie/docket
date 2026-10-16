@@ -226,7 +226,7 @@ func TestCheckInSetupMenuHelpAndViewPreservation(t *testing.T) {
 	}
 	found := false
 	for _, item := range model.coreInputHelpItems() {
-		if item.Description == "Set up check-ins" && strings.Contains(item.Key, "Ctrl+M") {
+		if item.Description == "Set up check-ins" && strings.Contains(item.Key, "F10") {
 			found = true
 		}
 	}
