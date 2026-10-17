@@ -232,6 +232,14 @@ something is actually due. The deadline goes last — it is the final commitment
 width pressure may hide. A new indicator gets a position in that list, not an
 append.
 
+The ordinary row targets one third of its width for the title, bounded to
+12–32 columns and capped at the title's actual display width. The match-source
+cue, reference census, and review badge yield toward that target. The final
+deadline rung uses an eight-column emergency floor instead: a longer title
+alone never removes a deadline. Preview rows still seek the complete title
+while preserving the deadline. Rendering and inline-edit measurement both use
+`taskRowSegments`, so the wider title budget also reaches the editor.
+
 The ladder is short because the budget is: the seven entries it lost were not
 demoted within it, they left the row for Peek. Adding one back means arguing that
 it is required to decide what to do next from the list alone, not merely that it

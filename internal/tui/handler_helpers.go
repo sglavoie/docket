@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -149,6 +150,10 @@ func (m *AppModel) setWarningStatus(msg string) {
 // statusReadingTimeout gives ordinary shell feedback the same reading time as
 // view-owned feedback. Undo toasts keep their dedicated deadline and timer.
 func (m *AppModel) statusReadingTimeout() tea.Cmd {
+	if m.feedback.severity == flashWarning {
+		rows := len(m.footerRefusalLines(icons.Get("warning") + " " + m.feedback.message))
+		return status.StatusTimeout(status.RefusalDuration(m.feedback.message, rows))
+	}
 	return status.StatusTimeout(status.StatusDuration(m.feedback.message))
 }
 

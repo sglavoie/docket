@@ -119,9 +119,9 @@ func TestAbandonedChordNamesThePathItLeft(t *testing.T) {
 		sequence []string
 		want     string
 	}{
-		{sequence: []string{"w", "q"}, want: "wq is not a workflow action"},
-		{sequence: []string{"f", "q"}, want: "fq is not a filter action"},
-		{sequence: []string{"F", "q"}, want: "Fq is not a project filter action"},
+		{sequence: []string{"w", "q"}, want: "wq is not a workflow action. Press w to see choices."},
+		{sequence: []string{"f", "q"}, want: "fq is not a filter action. Press f to see choices."},
+		{sequence: []string{"F", "q"}, want: "Fq is not a project filter action. Press F to see choices."},
 	} {
 		t.Run(strings.Join(testCase.sequence, ""), func(t *testing.T) {
 			app.feedback.message = ""

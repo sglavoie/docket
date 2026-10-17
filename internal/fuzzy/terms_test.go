@@ -3,6 +3,7 @@ package fuzzy
 import (
 	"math/rand"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -30,6 +31,33 @@ func TestCompiledTermsPreserveScores(t *testing.T) {
 					t.Fatalf("case=%t text=%q query=%q score=%d want=%d", sensitive, text, query, got, want)
 				}
 			}
+		}
+	}
+}
+
+func TestCompiledTermsLongTextConcurrentParity(t *testing.T) {
+	texts := []string{
+		strings.Repeat("Résumé 確認 mixedCase notes. ", 20),
+		strings.Repeat("ordinary prose ", 400) + "the Handoff",
+		strings.Repeat("界", 4096) + "é",
+		strings.Repeat("x", 128) + "İstanbul Σοφία",
+	}
+	for _, sensitive := range []bool{false, true} {
+		matcher := NewMatcher(sensitive)
+		for _, query := range []string{"rés", "確認 notes", "mc", "Handoff", "zzzz", "é", "i σ"} {
+			compiled := matcher.CompileTerms(query)
+			var wg sync.WaitGroup
+			for _, text := range texts {
+				want, _ := matcher.ScoreTermsWithPositions(text, query)
+				for range 4 {
+					wg.Go(func() {
+						if got := compiled.Score(text); got != want {
+							t.Errorf("query %q sensitive=%t got %d, want %d", query, sensitive, got, want)
+						}
+					})
+				}
+			}
+			wg.Wait()
 		}
 	}
 }

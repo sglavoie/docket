@@ -104,8 +104,8 @@ func TestOutlinerMultiSelectStatusFitsHeight(t *testing.T) {
 // channel, so a piece of operation feedback already standing there survives the
 // gesture that is about to replace it — which is the whole reason the summary
 // left that channel. Once members are folded out of view, both row spellings
-// carry the hidden count: the compact one sheds the word `selected`, never the
-// number, since a gesture reaching rows you cannot see is the one thing a narrow
+// carry the hidden count and the word `selected`, since a gesture reaching rows
+// you cannot see is the one thing a narrow
 // terminal must not quietly stop saying. And the `Value` `Q` reads is the whole
 // breakdown exactly where there is a difference to read — with nothing hidden,
 // the visible half is the total restated and the readout keeps its row.
@@ -169,7 +169,7 @@ func TestMultiSelectStatesItselfOnceOnTheContextRow(t *testing.T) {
 	if full != "Multi-select: 3 selected (2 hidden)" {
 		t.Fatalf("the full spelling is %q", full)
 	}
-	if compact != "Multi-select: 3 (2 hidden)" {
+	if compact != "Multi-select: 3 selected (2 hidden)" {
 		t.Fatalf("the compact spelling sheds the hidden count: %q", compact)
 	}
 

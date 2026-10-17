@@ -56,7 +56,7 @@ details. Today is a plan; the task's status is still Backlog until you start
 it with `wg`.
 
 Later, add `!1` for high priority or `#auth` for a tag. See
-[capture syntax and date rules](docs/guide/capture.md) for the full reference,
+[capture syntax and date rules](docs/guide/capture-reference.md) for the full reference,
 including literal examples and batch capture.
 
 ## Mental model
@@ -227,10 +227,10 @@ up a specific action in [`docs/guide/`](docs/guide/README.md):
 - [`docs/guide/outliner.md`](docs/guide/outliner.md) — the index to the four
   Outliner files: the modes, the chrome around the list, the full key table and
   task actions, and row indicators, checklists, Peek, and multi-select.
-- [`docs/guide/capture.md`](docs/guide/capture.md) — every capture and edit
-  sigil, the workflow and hierarchy rules, and the `O` outline buffer.
-- [`docs/guide/search-and-lenses.md`](docs/guide/search-and-lenses.md) — the `f`
-  row facets, the `F` population facets, slash search, named lenses, sorting.
+- [`docs/guide/capture.md`](docs/guide/capture.md) — everyday capture and editing,
+  with a linked [syntax reference](docs/guide/capture-reference.md).
+- [`docs/guide/search-and-lenses.md`](docs/guide/search-and-lenses.md) — finding
+  work and saving views, with a linked [search reference](docs/guide/search-reference.md).
 - [`docs/guide/projects-and-notes.md`](docs/guide/projects-and-notes.md) —
   project scope, Select Project, project tags including `parked`, All Notes.
 - [`docs/guide/storage.md`](docs/guide/storage.md) — working copies, file exchange,
@@ -249,6 +249,7 @@ harness is [`docs/tui-testing/README.md`](docs/tui-testing/README.md).
 just test
 ./scripts/check_docs.sh
 ./scripts/run_tui_scenarios.sh
+just search-bench
 just ci
 ```
 
@@ -256,6 +257,10 @@ The scenario script replays the committed final-product TUI workflows plus the
 snapshot-first migration and interrupted-activation recovery scenarios. It
 re-selects tests `just test` and `just ci` already run, for a faster loop while
 authoring one.
+
+The [daily-use polish review](docs/tui-testing/daily-polish-review.md) records
+presentation checks, search measurements, and allocation budgets. Run
+`just search-bench --strict-time` on an idle machine to enforce latency targets too.
 
 ## License
 

@@ -18,6 +18,13 @@ string when nothing is left, so the `workspace: ` prefix never stands alone; the
 drop ladder's order and every counter are unchanged, since the ladder decides
 what may be shown and the zero test decides what is worth showing.
 
+Ranked search replaces the mode segment with `Search · all modes`, including
+before any text is entered. Scope stays in the identity; Today pace and the
+mode strip wait until search closes or switches to narrowing. The readout names
+the underlying mode as the return mode. `BuildViewContextEntries` adds the
+compiled gate's terminal/deferred population last, after active restrictions;
+its compact spelling points to `Q`, which always keeps the full value.
+
 Selection, lens, search, filters, sort, focus, and section zoom are no longer in
 that line. `OutlinerModel.BuildViewContextEntries` describes them once as typed
 `ViewContextEntry` values — label, value, a rendered `Row`, a `RowCompact`, and
@@ -38,8 +45,8 @@ the sole persistent summary of a live selection — the status channel writes
 nothing about one, so whatever the entry sheds is shed everywhere — and that is
 why the hidden count is not what the compact spelling gives up: a count silently
 covering rows off screen is the one number a bulk gesture must not be surprised
-by, so both spellings carry it whenever it is nonzero and the compact one drops
-the word `selected` the number already implies. Its `Value` spells the whole
+by, so both spellings carry it whenever it is nonzero and retain the word
+`selected` to identify the count. Its `Value` spells the whole
 breakdown on the same terms and on those terms only: `Q` is the one place the
 visible half is written down, and with nothing hidden that half is the total
 restated, which is not worth the wrapped readout rows it costs at a narrow
@@ -739,6 +746,15 @@ flows through application results and TUI messages, and `u undo` appears only
 when it equals the newest global ledger entry. Relocations add `Ctrl+O origin`
 only after jump history records an origin; `Alt+→` returns to the relocated
 task.
+
+Shell warnings and errors use `footerRefusalLines` for up to three wrapped rows;
+overflow names the full-text Recent messages viewer. The same line calculation
+feeds warning reading time, including the warning icon: `RefusalDuration` grants
+six to twelve seconds based on text length and wrapping at publication. Ordinary
+success/info timing and the six-second undo window are unchanged. Existing
+retained-draft errors keep their dismissal rules. Frame metrics count the wrapped
+block through `footerFeedbackLine`, so the controls remain below it and the
+outline restores its resting window when a warning expires.
 
 A ledger restore decorates its own message on the same terms. When the session's
 undo-focus memory correlates the restored transaction with one committed task,

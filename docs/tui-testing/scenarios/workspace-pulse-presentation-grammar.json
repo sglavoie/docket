@@ -22,7 +22,7 @@
     { "type": "key", "key": "/" },
     { "type": "text", "text": "x" },
     { "type": "key", "key": "enter" },
-    { "type": "assert", "label": "so a live search costs the pulse nothing: it is on the row below", "assert": "contains", "value": "workspace: today 1 · overdue 1" },
+    { "type": "assert", "label": "search scope takes precedence over optional pulse counts at minimum width", "assert": "contains", "value": "Search · all modes" },
     { "type": "assert", "assert": "contains", "value": "Search: \"x\"" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

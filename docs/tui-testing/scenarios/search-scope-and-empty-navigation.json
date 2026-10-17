@@ -1,0 +1,167 @@
+{
+  "name": "search-scope-and-empty-navigation",
+  "fixture": "fresh",
+  "size": "80x24",
+  "actions": [
+    {
+      "type": "key",
+      "key": "a"
+    },
+    {
+      "type": "text",
+      "text": "Review the migration checklist $backlog"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "key",
+      "key": "g"
+    },
+    {
+      "type": "key",
+      "key": "t"
+    },
+    {
+      "type": "assert",
+      "value": "Nothing planned for today. Press gb to choose from Backlog.",
+      "assert": "contains"
+    },
+    {
+      "type": "key",
+      "key": "g"
+    },
+    {
+      "type": "key",
+      "key": "b"
+    },
+    {
+      "type": "assert",
+      "value": "Review the migration checklist",
+      "assert": "contains"
+    },
+    {
+      "type": "key",
+      "key": "g"
+    },
+    {
+      "type": "key",
+      "key": "n"
+    },
+    {
+      "type": "assert",
+      "value": "Nothing planned for Next. Press gb to choose from Backlog.",
+      "assert": "contains"
+    },
+    {
+      "type": "key",
+      "key": "g"
+    },
+    {
+      "type": "key",
+      "key": "b"
+    },
+    {
+      "type": "assert",
+      "value": "Review the migration checklist",
+      "assert": "contains"
+    },
+    {
+      "type": "key",
+      "key": "g"
+    },
+    {
+      "type": "key",
+      "key": "i"
+    },
+    {
+      "type": "assert",
+      "value": "Inbox is clear. Press gt to open Today.",
+      "assert": "contains"
+    },
+    {
+      "type": "key",
+      "key": "g"
+    },
+    {
+      "type": "key",
+      "key": "t"
+    },
+    {
+      "type": "key",
+      "key": "/"
+    },
+    {
+      "type": "assert",
+      "value": "Search \u00b7 all modes",
+      "assert": "contains"
+    },
+    {
+      "type": "text",
+      "text": "migration"
+    },
+    {
+      "type": "key",
+      "key": "enter"
+    },
+    {
+      "type": "assert",
+      "value": "Review the migration checklist",
+      "assert": "contains"
+    },
+    {
+      "type": "assert",
+      "value": "Open tasks \u00b7 not deferred",
+      "assert": "contains"
+    },
+    {
+      "type": "assert",
+      "assert": "no_layout_issues"
+    },
+    {
+      "type": "resize",
+      "width": 60,
+      "height": 20
+    },
+    {
+      "type": "assert",
+      "value": "Search \u00b7 all modes",
+      "assert": "contains"
+    },
+    {
+      "type": "assert",
+      "assert": "no_layout_issues"
+    },
+    {
+      "type": "key",
+      "key": "o"
+    },
+    {
+      "type": "key",
+      "key": "r"
+    },
+    {
+      "type": "assert",
+      "value": "No tasks match search",
+      "assert": "contains"
+    },
+    {
+      "type": "assert",
+      "assert": "no_layout_issues"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "assert",
+      "value": "Nothing planned for today.",
+      "assert": "contains"
+    },
+    {
+      "type": "assert",
+      "assert": "no_layout_issues"
+    }
+  ]
+}

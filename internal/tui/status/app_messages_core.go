@@ -104,6 +104,15 @@ func StatusDuration(text string) time.Duration {
 	return min(d, statusMaxTimeout)
 }
 
+// RefusalDuration leaves time to read the reason and use its recovery action.
+// rows is the actual wrapped feedback height, measured by the renderer's own
+// layout. Routine successes and the undo deadline keep their existing timing.
+func RefusalDuration(text string, rows int) time.Duration {
+	d := StatusUpdateTimeout + time.Duration(utf8.RuneCountInString(text))*statusPerRune
+	d += time.Duration(max(rows-1, 0)) * time.Second
+	return min(max(d, 6*time.Second), 12*time.Second)
+}
+
 // ViewStatusTimeout returns a command that clears one generation of a
 // view-owned status message once its text has had time to be read.
 func ViewStatusTimeout(view presentation.PresentationID, seq uint64, text string) tea.Cmd {

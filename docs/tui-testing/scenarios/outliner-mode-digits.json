@@ -66,7 +66,7 @@
     { "type": "key", "label": "search owns input while it is open", "key": "/" },
     { "type": "text", "label": "digits typed into the query stay text", "text": "5" },
     { "type": "assert", "assert": "contains", "value": "Search: > 5" },
-    { "type": "assert", "assert": "contains", "value": "Active Projects · Today" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Search · all modes" },
     { "type": "key", "label": "drop the query", "key": "esc" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · Today" },
     { "type": "assert", "assert": "no_layout_issues" }

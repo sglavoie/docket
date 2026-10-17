@@ -32,7 +32,7 @@
     { "type": "key", "label": "open workflow actions", "key": "w" },
     { "type": "key", "label": "plan the final Inbox task for Today", "key": "t" },
     { "type": "assert", "assert": "status_contains", "value": "Plan for Today: Untriaged inbox item 5 · u undo" },
-    { "type": "assert", "assert": "contains", "value": "Inbox is empty" },
+    { "type": "assert", "assert": "contains", "value": "Inbox is clear" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

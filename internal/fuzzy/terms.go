@@ -2,6 +2,7 @@ package fuzzy
 
 import (
 	"strings"
+	"sync"
 	"unicode"
 	"unicode/utf8"
 )
@@ -12,6 +13,17 @@ type Terms struct {
 	matcher  Matcher
 	patterns [][]rune
 }
+
+// Reuse bounded scratch for descriptions and comments. Each call borrows its
+// own buffers, so a compiled query remains safe to share between goroutines.
+// Larger documents use exact-size temporary slices rather than growing a pool
+// entry indefinitely. Short titles still use stack scratch.
+type termRuneBuffers struct {
+	original [4096]rune
+	folded   [4096]rune
+}
+
+var longTermBuffers = sync.Pool{New: func() any { return new(termRuneBuffers) }}
 
 // CompileTerms prepares a whitespace-separated AND query for repeated scoring.
 func (m Matcher) CompileTerms(query string) Terms {
@@ -31,14 +43,23 @@ func (q Terms) Score(text string) int {
 	if text == "" {
 		return 0
 	}
-	// Most titles and short descriptions fit on the stack. Decode and fold in
-	// one pass, preserving original runes for the camel-case score. Long text
-	// gets exact-size buffers; the compiled query stays immutable and shareable.
+	// Reject long text missing the first required rune before decoding or
+	// allocating. This is only a necessary condition, never a scoring shortcut.
+	if len(text) > 128 && !q.containsFirstRune(text) {
+		return 0
+	}
+	// Decode and fold in one pass, preserving original case for camel bonuses.
 	var originalBuffer, foldedBuffer [128]rune
 	original, folded := originalBuffer[:0], foldedBuffer[:0]
 	if len(text) > len(originalBuffer) {
 		if count := utf8.RuneCountInString(text); count > len(originalBuffer) {
-			original, folded = make([]rune, 0, count), make([]rune, 0, count)
+			if count <= len(termRuneBuffers{}.original) {
+				buffers := longTermBuffers.Get().(*termRuneBuffers)
+				defer longTermBuffers.Put(buffers)
+				original, folded = buffers.original[:0], buffers.folded[:0]
+			} else {
+				original, folded = make([]rune, 0, count), make([]rune, 0, count)
+			}
 		}
 	}
 	for _, r := range text {
@@ -57,4 +78,17 @@ func (q Terms) Score(text string) int {
 		total += score
 	}
 	return total
+}
+
+func (q Terms) containsFirstRune(text string) bool {
+	first := q.patterns[0][0]
+	if q.matcher.caseSensitive {
+		return strings.ContainsRune(text, first)
+	}
+	for _, r := range text {
+		if unicode.ToLower(r) == first {
+			return true
+		}
+	}
+	return false
 }

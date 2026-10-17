@@ -202,11 +202,11 @@ func (m *AppModel) footerChromeContent() string {
 func (m *AppModel) footerFeedbackLine() string {
 	switch {
 	case m.feedback.err != nil:
-		return m.renderFooterMessageRow(theme.ErrorStatusStyle, icons.Get("error")+" "+sentenceCaseFeedback(m.feedback.err.Error()))
+		return m.renderFooterRefusal(theme.ErrorStatusStyle, icons.Get("error")+" "+sentenceCaseFeedback(m.feedback.err.Error()))
 	case m.feedback.message == "":
 		return ""
 	case m.feedback.info && m.feedback.severity == flashWarning:
-		return m.renderFooterMessageRow(theme.InfoStatusStyle, icons.Get("warning")+" "+m.feedback.message)
+		return m.renderFooterRefusal(theme.InfoStatusStyle, icons.Get("warning")+" "+m.feedback.message)
 	case m.feedback.info:
 		// Neutral information carries no mark: a leading dot read as a stray
 		// bullet, and the neutral color already sets it apart from ✓ and ✕.
@@ -214,6 +214,31 @@ func (m *AppModel) footerFeedbackLine() string {
 	default:
 		return m.renderFooterMessageRow(theme.SuccessStyle, icons.Get("success")+" "+m.feedback.message)
 	}
+}
+
+// footerRefusalLines gives a reason and its recovery instruction room to wrap
+// without consuming the editor or the controls. Longer diagnostics explicitly
+// point to the existing full-text history instead of silently losing their tail.
+func (m *AppModel) footerRefusalLines(text string) []string {
+	width := m.viewNav.width
+	if width <= 0 {
+		width = 80
+	}
+	lines := textfit.WrapText(text, width)
+	const maxRows = 3
+	if len(lines) > maxRows {
+		lines = lines[:maxRows]
+		lines[maxRows-1] = textfit.TruncateToVisualWidth("F10 → Help → Recent messages for full details", width)
+	}
+	return lines
+}
+
+func (m *AppModel) renderFooterRefusal(style lipgloss.Style, text string) string {
+	lines := m.footerRefusalLines(text)
+	for i := range lines {
+		lines[i] = m.renderFooterMessageRow(style, lines[i])
+	}
+	return strings.Join(lines, "\n")
 }
 
 // sentenceCaseFeedback capitalizes an error's first rune so it reads beside the

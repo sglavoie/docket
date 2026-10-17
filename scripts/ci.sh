@@ -23,6 +23,9 @@ echo "Running race tests and collecting coverage..."
 ./scripts/test_race.sh coverage.out
 ./scripts/check_coverage.sh coverage.out
 
+echo "Checking search allocation budgets..."
+./scripts/check_search_budget.sh
+
 echo "Running golangci-lint..."
 # golangci-lint otherwise takes a machine-wide lock at $TMPDIR/golangci-lint.lock
 # and exits 3 with "parallel golangci-lint is running" when any other checkout on

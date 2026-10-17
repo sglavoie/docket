@@ -54,8 +54,8 @@ func budgetAcceptanceTask(title string) *models.Task {
 // acceptance. Five levels of tree prefix under a project whose name fills a
 // header leaves the least title width the product ever offers, and the row still
 // has to say what state the work is in, that it is priority 1, that it is
-// pinned, when it is due, and that a review is owed — those are the signals the
-// budget calls essential, so none of them may be what the width takes.
+// pinned, and when it is due. Supporting review and reference badges yield
+// before the title; their full values remain in Peek.
 func TestNestedRowUnderALongProjectNameKeepsItsEssentials(t *testing.T) {
 	task := budgetAcceptanceTask("Confirm the vendor security questionnaire")
 	project := renderFixtureProject(
@@ -79,18 +79,14 @@ func TestNestedRowUnderALongProjectNameKeepsItsEssentials(t *testing.T) {
 				"priority badge": ansi.Strip(chrome.RenderPriorityBadge(1)),
 				"pin marker":     "*",
 				"deadline":       ansi.Strip(query.FormatDueDate(task)),
-				"owed review":    "review",
 			}
 			for name, want := range essentials {
 				if !strings.Contains(plain, want) {
 					t.Fatalf("%d-column nested row lost its %s (%q): %q", width, name, want, plain)
 				}
 			}
-			// The title is what the width is allowed to take, and only after the
-			// ladder has run: a clipped title still reads as its own first words.
-			// The census keeps a chip's leading gap, which is one of the columns
-			// the 60-column title gives up.
-			if !strings.Contains(plain, "Confirm th") {
+			// A recognizable phrase survives even in the deepest, narrowest row.
+			if !strings.Contains(plain, "Confirm the vendor") {
 				t.Fatalf("%d-column nested row spent nothing on the title: %q", width, plain)
 			}
 			// And the long project name never reaches the task row at all, so it
@@ -115,6 +111,7 @@ func TestNestedRowSupportingDetailStaysReadableInPeek(t *testing.T) {
 	for _, want := range []string{
 		"Confirm the vendor security questionnaire",
 		"Waiting 11d",
+		"Check-in:",
 		"Checklist: 1/2 done",
 		"Context: [platform]",
 		"Tags: #backend",
@@ -195,8 +192,7 @@ func TestSelectedNestedRowKeepsTheSameEssentials(t *testing.T) {
 	for _, want := range []string{
 		ansi.Strip(chrome.RenderPriorityBadge(1)),
 		ansi.Strip(query.FormatDueDate(task)),
-		"review",
-		"Confirm",
+		"Confirm the vendor",
 	} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("selected row traded an essential for its mark, missing %q: %q", want, plain)

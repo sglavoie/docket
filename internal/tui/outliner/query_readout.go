@@ -133,11 +133,15 @@ func (m *OutlinerModel) QueryReadoutRows() []queryReadoutRow {
 	// All is the unnarrowed mode, so it is the absence of a row rather than a row
 	// saying nothing is narrowed.
 	if mode := m.ActiveOutlinerModeEntry(); mode.ID != chrome.ModeAll {
+		note := "peels to All"
+		if m.ShowsRankedList() {
+			note = "return mode; search spans all modes · peels to All"
+		}
 		rows = append(rows, queryReadoutRow{
 			Axis:  QueryReadoutAxisMode,
 			Label: "mode",
 			value: mode.Label,
-			note:  "peels to All",
+			note:  note,
 		})
 	}
 	// A lens's narrowing query and an ordinary search projection are two different

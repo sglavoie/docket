@@ -18,6 +18,10 @@ Task titles carry the visual emphasis. Project labels keep their identity color
 without bold text, lane headings have no filled background, and `‹` / `›N`
 family markers are muted. Selection and urgent dates retain stronger emphasis.
 
+Crowded rows give a recognizable phrase of the title room before keeping review
+and reference badges. Deadlines yield only when even a short title would not
+fit. `b` shows the complete title and every detail the row omits.
+
 Peek's status summary includes **Overdue** and **Check-in owed** when applicable,
 before priority and flags, so attention is visible beside the resume note.
 The full dates and repeat schedule remain in the scrollable details.

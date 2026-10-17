@@ -1116,10 +1116,14 @@ func (m *OutlinerModel) BuildViewContextEntries(width int) []ViewContextEntry {
 		})
 	}
 	if parts := m.ActiveFilterParts(); len(parts) > 0 {
+		row := query.RenderFilterBadge(parts)
+		if m.ShowsRankedList() {
+			row = theme.MutedStyle.Render(util.Count(len(parts), "filter") + ": " + strings.Join(parts, " "))
+		}
 		entries = append(entries, ViewContextEntry{
 			Label:      "filters",
 			Value:      strings.Join(parts, " "),
-			Row:        query.RenderFilterBadge(parts),
+			Row:        row,
 			RowCompact: pulse.OperationalTitleBadge(theme.FilterBadgeStyle, "["+util.Count(len(parts), "filter")+"]"),
 		})
 	}
@@ -1152,6 +1156,22 @@ func (m *OutlinerModel) BuildViewContextEntries(width int) []ViewContextEntry {
 			ReadOnly: true,
 		})
 	}
+	if m.ShowsRankedList() {
+		population := "Open tasks"
+		if m.Search.Gate.AllowsTerminal() {
+			population = "Includes completed"
+		}
+		if m.Search.Gate.AllowsDeferred() {
+			population += " · includes deferred"
+		} else {
+			population += " · not deferred"
+		}
+		entries = append(entries, ViewContextEntry{
+			Label: "search population", Value: population,
+			Row:        theme.MutedStyle.Render(population),
+			RowCompact: theme.MutedStyle.Render("Q population details"), ReadOnly: true,
+		})
+	}
 	return entries
 }
 
@@ -1172,7 +1192,7 @@ func (m *OutlinerModel) selectionContextEntry() ViewContextEntry {
 	counts := m.SelectionCounts()
 	value := fmt.Sprintf("%d selected", counts.Total)
 	full := fmt.Sprintf("Multi-select: %d selected", counts.Total)
-	compact := fmt.Sprintf("Multi-select: %d", counts.Total)
+	compact := full
 	if counts.Hidden > 0 {
 		value = fmt.Sprintf("%d total · %d visible · %d hidden", counts.Total, counts.Visible, counts.Hidden)
 		hidden := fmt.Sprintf(" (%d hidden)", counts.Hidden)
@@ -1249,6 +1269,13 @@ func (m *OutlinerModel) BuildOutlinerTitleLine(width int) string {
 		Mode:  chrome.OperationalTitleModeSegment(m.ActiveOutlinerModeEntry()),
 		Pace:  pace,
 		Pulse: &workspacePulse,
+	}
+	if m.ShowsRankedList() {
+		// The mode underneath search is a return destination, not a limit on
+		// these results. Say so even before the first character is typed.
+		spec.Mode = theme.MutedStyle.Render("Search · all modes")
+		spec.Pace = nil
+		return pulse.RenderOperationalTitle(spec, max(width, 1))
 	}
 	// A wide title spends its blank middle on the active mode's Tab neighbors,
 	// so the reader sees where Tab and Shift+Tab go. It is offered only where the whole title still
@@ -1434,11 +1461,8 @@ func (m *OutlinerModel) OutlinerEmptyMessage() string {
 		return "No tasks are left in this section. Press Esc to unzoom."
 	case outlinerEmptyMode:
 		mode := m.ActiveOutlinerModeEntry()
-		if mode.ID == chrome.ModeInbox {
-			return "Inbox is empty. Press a to capture or Tab to change modes."
-		}
-		if step, ok := m.emptyModeNextStep(mode.ID); ok {
-			return fmt.Sprintf("%s is empty. Press %s, or Tab to change modes.", mode.Label, step)
+		if message, hint := m.emptyModeNextStep(mode.ID); hint != "" {
+			return message + " Press " + hint + "."
 		}
 		return fmt.Sprintf("%s is empty. Press Tab or Shift+Tab to change modes.", mode.Label)
 	default:
@@ -1446,33 +1470,39 @@ func (m *OutlinerModel) OutlinerEmptyMessage() string {
 	}
 }
 
-// emptyModeNextStep names the act that fills an empty planning or deadline
-// mode, spelled with the key the live strategy binds, so a rebinding moves the
-// sentence with the grammar. A mode without one, or a strategy that no longer
-// binds the act, falls back to the plain mode-change sentence.
-func (m *OutlinerModel) emptyModeNextStep(mode chrome.OutlinerModeID) (string, bool) {
+// emptyModeNextStep offers navigation that works without a selected task. Both
+// the explanation and footer read the registry's key, so neither advertises a
+// task mutation on an empty list.
+func (m *OutlinerModel) emptyModeNextStep(mode chrome.OutlinerModeID) (message, hint string) {
 	var (
 		operationID operation.OperationID
 		act         string
 	)
 	switch mode {
+	case chrome.ModeInbox:
+		message = "Inbox is clear."
+		operationID, act = operation.OperationCoreGotoToday, "to open Today"
 	case chrome.ModeToday:
-		operationID, act = operation.OperationCoreToday, "on a task to plan it for today"
+		message = "Nothing planned for today."
+		operationID, act = operation.OperationCoreGotoBacklog, "to choose from Backlog"
 	case chrome.ModeNext:
-		operationID, act = operation.OperationCoreNext, "on a task to add it to Next"
+		message = "Nothing planned for Next."
+		operationID, act = operation.OperationCoreGotoBacklog, "to choose from Backlog"
 	case chrome.ModeDue:
-		operationID, act = operation.OperationTaskSetDueDate, "on a task to give it a deadline"
+		message = "No upcoming or overdue deadlines."
+		operationID, act = operation.OperationCoreGotoToday, "to open Today"
 	default:
-		return "", false
+		return "", ""
 	}
 	if m == nil || m.OperationRegistry == nil {
-		return "", false
+		return "", ""
 	}
 	key := m.OperationRegistry.InputShortcutForOperation(operation.InputStrategySimplified, operationID)
 	if key == "" {
-		return "", false
+		return "", ""
 	}
-	return key + " " + act, true
+	key, _, _ = strings.Cut(key, "/")
+	return message, key + " " + act
 }
 
 // outlinerListRows is the height of the block between the header chrome and the

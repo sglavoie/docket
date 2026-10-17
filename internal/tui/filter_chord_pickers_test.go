@@ -157,7 +157,7 @@ func TestFilterStaleChordAndHelpAreUnavailableInRecent(t *testing.T) {
 	if app.crossOutliner.Filter.Stale {
 		t.Fatal("fs enabled the Stale facet in Recent")
 	}
-	if want := "fs is not a filter action"; app.feedback.message != want {
+	if want := "fs is not a filter action. Press f to see choices."; app.feedback.message != want {
 		t.Fatalf("Recent fs status = %q, want %q", app.feedback.message, want)
 	}
 }

@@ -106,8 +106,8 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 				out.PrimaryMode = chrome.ModeDue
 				out.Rows = nil
 			},
-			wantMessage: "Due is empty. Press @ on a task to give it a deadline, or Tab to change modes.",
-			wantHint:    "Tab next mode",
+			wantMessage: "No upcoming or overdue deadlines. Press gt to open Today.",
+			wantHint:    "gt to open Today",
 		},
 		{
 			name: "empty Today",
@@ -117,8 +117,8 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 				out.PrimaryMode = chrome.ModeToday
 				out.Rows = nil
 			},
-			wantMessage: "Today is empty. Press wt on a task to plan it for today, or Tab to change modes.",
-			wantHint:    "Tab next mode",
+			wantMessage: "Nothing planned for today. Press gb to choose from Backlog.",
+			wantHint:    "gb to choose from Backlog",
 		},
 		{
 			name: "empty Next",
@@ -128,8 +128,8 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 				out.PrimaryMode = chrome.ModeNext
 				out.Rows = nil
 			},
-			wantMessage: "Next is empty. Press wn on a task to add it to Next, or Tab to change modes.",
-			wantHint:    "Tab next mode",
+			wantMessage: "Nothing planned for Next. Press gb to choose from Backlog.",
+			wantHint:    "gb to choose from Backlog",
 		},
 		{
 			name: "filtered empty",

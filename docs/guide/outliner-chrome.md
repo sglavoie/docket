@@ -50,7 +50,10 @@ Help returns to All, and shorter results or a resized window clamp the scroll.
 
 The title names the surface, scope, and mode. On the right, the workspace pulse
 summarizes nonzero counts, for example `workspace: inbox 3 · today 2 · overdue 1`.
-Wide windows also show the modes reached by `Tab` and `Shift+Tab`.
+Wide windows also show the modes reached by `Tab` and `Shift+Tab`. Ranked search
+replaces the mode strip with `Search · all modes`: results span the displayed
+project scope, including tasks outside the mode you started in. Its context row
+summarizes active filters and the admitted task population; `Q` gives details.
 
 A second row appears while the view has restrictions or a selection. It names
 the active lens, search, filters, sort, Focus, and section zoom. If they do not
@@ -158,7 +161,11 @@ to correct it. Messages can reduce the room available to the list or editor;
 the active field and its recovery controls remain visible.
 
 Ordinary feedback lasts two to six seconds, depending on its length; undo
-feedback lasts six seconds. A mode change clears transient view feedback.
+feedback lasts six seconds. Warnings allow six to twelve seconds, based on text
+length and wrapped rows when published. Warnings and errors wrap across up to
+three rows so the reason and recovery action can be read together. Longer
+diagnostics point to Help → Recent messages for their full text.
+A mode change clears transient view feedback.
 A save failure with a retained draft stays visible until that field is edited
 or the draft is saved or discarded. Moving the cursor, waiting, or opening Help
 does not dismiss it. The selection count stays in the second header row.

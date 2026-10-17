@@ -848,8 +848,8 @@ func (m *OutlinerModel) emptyGuidance() chrome.GuidanceSpec {
 	case outlinerEmptyNoProjects:
 		required = "P projects"
 	case outlinerEmptyMode:
-		if m.PrimaryMode == chrome.ModeInbox {
-			required = "a capture"
+		if _, hint := m.emptyModeNextStep(m.PrimaryMode); hint != "" {
+			required = hint
 		} else {
 			required = "Tab next mode"
 		}

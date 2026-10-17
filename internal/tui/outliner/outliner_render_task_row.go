@@ -207,7 +207,11 @@ func taskMatchSourceCue(row OutlinerRow) string {
 // ordinary row; it changes no piece's width, so a caller measuring the title
 // budget can pass the zero value.
 func (m *OutlinerModel) buildTaskRowSegments(row OutlinerRow, rowWidth int, colLayout *chrome.ColumnLayout, paint cursorPaint) taskRowSegments {
-	return m.buildTaskRowSegmentsFor(row, rowWidth, colLayout, paint, min(8, max(rowWidth/4, 4)), indicatorDropLadder)
+	// Reserve a recognizable phrase before spending columns on supporting
+	// metadata. Short titles need only their actual width. Deadlines retain the
+	// smaller emergency floor below, so gaining title space cannot hide urgency.
+	target := min(lipgloss.Width(row.Task.Title), min(32, max(12, rowWidth/3)))
+	return m.buildTaskRowSegmentsFor(row, rowWidth, colLayout, paint, target, indicatorDropLadder)
 }
 
 // buildTaskRowSegmentsFor is buildTaskRowSegments with the title width the
@@ -267,8 +271,14 @@ func (m *OutlinerModel) buildTaskRowSegmentsFor(row OutlinerRow, rowWidth int, c
 	if segments.titleWidth(rowWidth) < titleTarget {
 		segments.matchCue = ""
 	}
-	for _, dropSegment := range ladder {
-		if segments.titleWidth(rowWidth) >= titleTarget {
+	for index, dropSegment := range ladder {
+		target := titleTarget
+		if index == len(indicatorDropLadder)-1 {
+			// The deadline is the last rung, and yields only when even a short
+			// title would be unreadable. The preview's ladder never reaches it.
+			target = min(target, 8)
+		}
+		if segments.titleWidth(rowWidth) >= target {
 			break
 		}
 		dropSegment(&indicatorSegments)

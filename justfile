@@ -43,6 +43,10 @@ test-fast:
 test-pkg PKG:
     GORACE="atexit_sleep_ms=0" go test -race {{ PKG }}
 
+# Measure search latency and enforce allocation budgets; optionally --strict-time
+search-bench *ARGS:
+    ./scripts/check_search_budget.sh {{ ARGS }}
+
 # Run tests with coverage report and enforce the coverage thresholds
 coverage:
     @echo "Running tests with coverage..."

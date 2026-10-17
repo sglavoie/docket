@@ -138,7 +138,8 @@ func (m *AppModel) chordMissStatus(strategyID operation.InputStrategyID, sequenc
 	if !ok {
 		return nil
 	}
-	m.setWarningStatus(strings.Join(sequence, "") + " is not a " + label + " action")
+	prefix := strings.Join(sequence[:len(sequence)-1], "")
+	m.setWarningStatus(strings.Join(sequence, "") + " is not a " + label + " action. Press " + prefix + " to see choices.")
 	return m.statusReadingTimeout()
 }
 
