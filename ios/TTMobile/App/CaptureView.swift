@@ -4,7 +4,7 @@ import TTEngine
 /// Capture, two ways over one engine: shorthand text read by the desktop's own
 /// capture grammar, previewed line by line as it is typed, or a structured
 /// form. The draft survives everything but a save that committed and an
-/// explicit Cancel: dismissing the sheet, a refused save, and a relaunch all
+/// explicit discard: closing the sheet, a refused save, and a relaunch all
 /// bring it back.
 struct CaptureSheet: View {
     let workspace: WorkspaceModel
@@ -16,6 +16,7 @@ struct CaptureSheet: View {
     @State private var preview: CapturePreview?
     @State private var failure: String?
     @State private var saving = false
+    @State private var confirmingDiscard = false
     @State private var focused = false
     @State private var selection = NSRange(location: 0, length: 0)
     @State private var composing = false
@@ -53,11 +54,23 @@ struct CaptureSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        workspace.drafts?.discardCapture()
-                        dismiss()
+                    Button("Close") { dismiss() }
+                        .accessibilityIdentifier("capture.close")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    if !draft.isEmpty {
+                        Menu {
+                            Button("Discard Draft…", role: .destructive) {
+                                afterDialogCloses { confirmingDiscard = true }
+                            }
+                                .accessibilityIdentifier("capture.discard")
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                        }
+                        .accessibilityLabel("Draft actions")
+                        .accessibilityIdentifier("capture.actions")
+                        .disabled(saving)
                     }
-                    .accessibilityIdentifier("capture.cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
@@ -65,11 +78,20 @@ struct CaptureSheet: View {
                         .accessibilityIdentifier("capture.save")
                 }
             }
+            .alert("Discard this capture?", isPresented: $confirmingDiscard) {
+                Button("Discard Draft", role: .destructive) {
+                    workspace.drafts?.discardCapture()
+                    dismiss()
+                }
+                Button("Keep Editing", role: .cancel) {}
+            } message: {
+                Text("Your unsaved capture will be deleted from this iPhone.")
+            }
             .background {
                 // Command-S saves, as the desktop's editors do. Command-W
                 // closes the sheet as a swipe down does, keeping the draft;
                 // so does Escape, where no text field takes the key first.
-                // Only Cancel throws a draft away.
+                // Only a confirmed discard throws a draft away.
                 ZStack {
                     Button("Save") { save() }
                         .keyboardShortcut("s", modifiers: .command)
@@ -161,7 +183,7 @@ struct CaptureSheet: View {
                 .overlay(alignment: .topLeading) {
                     if draft.text.isEmpty {
                         Text("Buy milk #errand @tomorrow $today")
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Color.primary.opacity(0.75))
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
                     }
@@ -192,6 +214,7 @@ struct CaptureSheet: View {
             }
         } footer: {
             Text("One task per line. !1–3 priority, #tag, ##context, @due, @@defer, $status or $today/$next, %project, >parent, <child, ~dependency, *pin, =review, &link, ;comment;. Swipe suggestions to see more; tap to insert.")
+                .foregroundStyle(Color.primary.opacity(0.75))
         }
         if let preview, !preview.errors.isEmpty || !preview.lines.isEmpty {
             Section("Preview") {
@@ -221,7 +244,7 @@ struct CaptureSheet: View {
         if let plan = line.plan { parts.append("Plan: \(plan.capitalized)") }
         parts.append("Status: \(line.state.rawValue.capitalized)")
         if line.priority > 0 { parts.append("P\(line.priority)") }
-        if let due = line.due { parts.append("Due \(due.formatted(date: .abbreviated, time: .omitted))") }
+        if let due = line.due { parts.append("Due \(TaskSchedule.deadline(due))") }
         if let deferred = line.deferUntil { parts.append("Deferred until \(deferred.formatted(date: .abbreviated, time: .shortened))") }
         if let context = line.context { parts.append("##\(context)") }
         parts.append(contentsOf: line.tags.map { "#\($0)" })
@@ -315,15 +338,22 @@ struct TaskFieldsForm: View {
             if fields.hasDue {
                 DatePicker("Due", selection: $fields.due, displayedComponents: .date)
                     .accessibilityIdentifier("form.due")
+                Toggle("Deadline time", isOn: $fields.includesDueTime)
+                    .accessibilityIdentifier("form.due.time.toggle")
+                if fields.includesDueTime {
+                    DatePicker("Time", selection: $fields.due, displayedComponents: .hourAndMinute)
+                        .accessibilityIdentifier("form.due.time")
+                }
             }
             Toggle("Defer", isOn: $fields.hasDefer)
                 .accessibilityIdentifier("form.defer.toggle")
             if fields.hasDefer {
-                DatePicker("Defer until", selection: $fields.deferUntil, displayedComponents: .date)
+                DatePicker("Defer until", selection: $fields.scheduledDeferral, displayedComponents: [.date, .hourAndMinute])
                     .accessibilityIdentifier("form.defer")
             }
         } footer: {
-            Text("A due date today plans the task for Today. A deferral moves it to Backlog until then.")
+            Text("A due date today plans the task for Today. Deadline times use your local time; midnight means date-only. A deferral moves work to Backlog until the selected instant.")
         }
+        .environment(\.calendar, TaskSchedule.calendar)
     }
 }

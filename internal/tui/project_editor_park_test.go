@@ -220,6 +220,13 @@ func TestProjectEditorDescriptiveTagsSaveWithoutAPrompt(t *testing.T) {
 	if fixture.app.project.ParkArmed() {
 		t.Fatal("descriptive tag save raised a confirmation")
 	}
+	if slices.Contains(live.Tags, "client-acme") {
+		t.Fatal("the asynchronous save mutated the live project before its result was delivered")
+	}
+	fixture.app.Update(msg)
+	if !slices.Equal(live.Tags, []string{"billable", "client-acme"}) {
+		t.Fatalf("delivered save did not refresh the live project: %v", live.Tags)
+	}
 	disk := session4DiskProject(t, fixture.dataDir, project.ID)
 	if !slices.Equal(disk.Tags, []string{"billable", "client-acme"}) {
 		t.Fatalf("durable tags = %v, want the normalized descriptive set", disk.Tags)

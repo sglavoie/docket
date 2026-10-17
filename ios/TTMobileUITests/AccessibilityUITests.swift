@@ -162,6 +162,10 @@ final class AccessibilityUITests: XCTestCase {
         // The software keyboard and its prediction bar are the system's too.
         let overlays = (app.tabBars.allElementsBoundByIndex + [app.keyboards.firstMatch, app.otherElements["SystemInputAssistantView"].firstMatch])
             .filter { $0.exists }.map { $0.frame }
+        // UIKit reports the sigil accessory separately from the keyboard.
+        // Ignore content fully behind it, but still audit its own buttons.
+        let sigils = app.scrollViews["capture.sigils"]
+        let sigilFrame = sigils.exists ? sigils.frame : .null
         let failures = AuditLog(), systemIssues = AuditLog()
         try app.performAccessibilityAudit(for: types) { @Sendable issue in
             // The audit calls back on the main thread, where elements are read.
@@ -171,7 +175,8 @@ final class AccessibilityUITests: XCTestCase {
                 let described = "\(issue.compactDescription): \(element?.debugDescription.prefix(200) ?? "no element")"
                 let frame = element?.frame ?? .null
                 if element?.elementType == .searchField || systemChrome.contains(where: { $0.contains(frame) })
-                    || overlays.contains(where: { $0.intersects(frame) }) {
+                    || overlays.contains(where: { $0.intersects(frame) })
+                    || (sigilFrame.contains(frame) && !(element?.identifier.hasPrefix("capture.sigil.") ?? false)) {
                     systemIssues.append(described)
                 } else {
                     failures.append(described)
@@ -316,13 +321,13 @@ final class AccessibilityUITests: XCTestCase {
         openCapture(app)
         // The keyboard-only shortcuts draw nothing and VoiceOver never lands
         // on them.
-        for hidden in ["Close", "Close Window"] {
+        for hidden in ["Close Window"] {
             XCTAssertFalse(app.buttons[hidden].exists, "VoiceOver can reach the hidden \(hidden) shortcut")
         }
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == 'Save'")).count, 1, "VoiceOver finds a second Save")
         requireNamedButtons("capture")
         try audit(app, [.sufficientElementDescription], "capture")
-        app.buttons["capture.cancel"].tap()
+        app.buttons["capture.close"].tap()
 
         app.buttons["sync.open"].firstMatch.tap()
         require(app.navigationBars["Sync"], "the sync sheet")
@@ -347,7 +352,7 @@ final class AccessibilityUITests: XCTestCase {
         openCapture(app)
         screenshot(app, "capture-dark")
         try audit(app, [.contrast], "capture in dark mode")
-        app.buttons["capture.cancel"].tap()
+        app.buttons["capture.close"].tap()
 
         app.tabBars.buttons["Browse"].tap()
         require(app.buttons["browse.mode.all"].firstMatch, "Browse in dark mode")
@@ -382,7 +387,7 @@ final class AccessibilityUITests: XCTestCase {
 
         openCapture(app)
         requireReachable(app.buttons["capture.save"], "Save")
-        requireReachable(app.buttons["capture.cancel"], "Cancel")
+        requireReachable(app.buttons["capture.close"], "Close")
         let text = input(app, "capture.text")
         text.tap()
         text.typeText("Small screen capture $today")
@@ -470,8 +475,10 @@ final class AccessibilityUITests: XCTestCase {
         require(app.descendants(matching: .any)["capture.restored"].firstMatch, "the restored-draft notice")
         XCTAssertEqual(input(app, "capture.text").value as? String, "Unsent capture #errand")
         screenshot(app, "capture-restored-dark-largest")
-        app.buttons["capture.cancel"].tap()
-        eventually("Cancel discarded the capture draft") { !self.drafts().contains("capture.json") }
+        app.buttons["capture.actions"].tap()
+        app.buttons["capture.discard"].tap()
+        app.buttons["Discard Draft"].tap()
+        eventually("Confirmed discard removed the capture draft") { !self.drafts().contains("capture.json") }
 
         openTask(app, "Order bathroom tiles")
         app.buttons["detail.edit"].firstMatch.tap()

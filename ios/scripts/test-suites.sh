@@ -15,9 +15,10 @@
 #   sync     the exchange transport scenarios in apple/TTSync: two or more
 #            bridgehost engines exchanging over a fake iCloud provider and a
 #            real coordinated folder, and joining from an enrolled exchange
-#   all      unit, bridge, then sync
+#   app      hosted app scheduling and presentation tests on a simulator
+#   all      unit, bridge, app, then sync
 #
-# Each suite writes OUTPUT_DIR/<suite>/ (its log, and for bridge the result
+# Each suite writes OUTPUT_DIR/<suite>/ (its log, and for simulator suites the result
 # bundle), and OUTPUT_DIR/summary.json lists every suite run with its status
 # and its executed, failed, and skipped counts. A suite that executes no test
 # or skips one fails, so an empty or skipped run is never reported as passing.
@@ -27,7 +28,7 @@
 set -eu
 
 if [ "$#" -ne 2 ]; then
-	echo "usage: $0 unit|bridge|sync|all OUTPUT_DIR" >&2
+	echo "usage: $0 unit|bridge|app|sync|all OUTPUT_DIR" >&2
 	exit 2
 fi
 
@@ -85,26 +86,28 @@ run_unit() {
 	swift_package unit-reminders "$ios_dir/TTReminders"
 }
 
-run_bridge() {
-	log="$output/bridge/test-engine.log"
-	mkdir -p "$output/bridge"
-	echo "Testing bridge (TTEngine on a simulator)..." >&2
+run_simulator_suite() {
+	name=$1 script=$2 bundle_name=$3
+	log="$output/$name/test.log"
+	mkdir -p "$output/$name"
+	echo "Testing $name on a simulator..." >&2
 	status=passed
-	"$script_dir/test-engine.sh" "$output/bridge" >"$log" 2>&1 || status=failed
-	bundle="$output/bridge/TTEngine.xcresult"
+	"$script_dir/$script" "$output/$name" >"$log" 2>&1 || status=failed
+	bundle="$output/$name/$bundle_name.xcresult"
 	executed=0 failed=0 skipped=0
 	if [ -d "$bundle" ]; then
-		xcrun xcresulttool get test-results summary --path "$bundle" >"$output/bridge/summary.json" 2>/dev/null || true
-		executed=$(plutil -extract totalTestCount raw -o - "$output/bridge/summary.json" 2>/dev/null || echo 0)
-		failed=$(plutil -extract failedTests raw -o - "$output/bridge/summary.json" 2>/dev/null || echo 0)
-		skipped=$(plutil -extract skippedTests raw -o - "$output/bridge/summary.json" 2>/dev/null || echo 0)
+		xcrun xcresulttool get test-results summary --path "$bundle" >"$output/$name/summary.json" 2>/dev/null || true
+		executed=$(plutil -extract totalTestCount raw -o - "$output/$name/summary.json" 2>/dev/null || echo 0)
+		failed=$(plutil -extract failedTests raw -o - "$output/$name/summary.json" 2>/dev/null || echo 0)
+		skipped=$(plutil -extract skippedTests raw -o - "$output/$name/summary.json" 2>/dev/null || echo 0)
 	fi
 	[ "$executed" -gt 0 ] || status=failed
 	[ "$skipped" -eq 0 ] || status=failed
-	record bridge "$status" "$executed" "$failed" "$skipped" "$log"
+	[ "$failed" -eq 0 ] || status=failed
+	record "$name" "$status" "$executed" "$failed" "$skipped" "$log"
 	if [ "$status" != passed ]; then
 		tail -20 "$log" >&2
-		echo "bridge: failed (log at $log)" >&2
+		echo "$name: failed (log at $log)" >&2
 		failures=$((failures + 1))
 	fi
 }
@@ -129,15 +132,17 @@ run_sync() {
 
 case "$suite" in
 unit) run_unit ;;
-bridge) run_bridge ;;
+bridge) run_simulator_suite bridge test-engine.sh TTEngine ;;
+app) run_simulator_suite app test-app.sh TTMobileTests ;;
 sync) run_sync ;;
 all)
 	run_unit
-	run_bridge
+	run_simulator_suite bridge test-engine.sh TTEngine
+	run_simulator_suite app test-app.sh TTMobileTests
 	run_sync
 	;;
 *)
-	echo "unknown suite $suite (unit, bridge, sync, or all)" >&2
+	echo "unknown suite $suite (unit, bridge, app, sync, or all)" >&2
 	exit 2
 	;;
 esac

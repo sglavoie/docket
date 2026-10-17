@@ -56,6 +56,12 @@ struct TaskFilter: Hashable {
 
     var isActive: Bool { state != nil || priority != nil || pinned || review }
 
+    var summary: String {
+        [state.map { "Status: \($0.rawValue.capitalized)" },
+         priority.map { "Priority: P\($0)" }, pinned ? "Pinned" : nil,
+         review ? "Flagged for review" : nil].compactMap { $0 }.joined(separator: " · ")
+    }
+
     var clauses: [String] {
         var clauses: [String] = []
         if let state { clauses.append("$\(state.rawValue)") }
@@ -94,6 +100,7 @@ struct TaskListView: View {
     @State private var editingRow: TaskRow?
     @State private var openedNote: NoteRecord?
     @State private var managingProject = false
+    @State private var emptyCapture = false
     @Environment(\.dismiss) private var dismiss
 
     private struct LoadKey: Hashable {
@@ -158,6 +165,15 @@ struct TaskListView: View {
             }
             .environment(\.editMode, .constant(selecting ? .active : .inactive))
             .safeAreaInset(edge: .top) {
+                if filter.isActive {
+                    Text(filter.summary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal)
+                        .padding(.vertical, 6)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("list.restrictions")
+                }
                 if let actionFailure {
                     Text(actionFailure)
                         .font(.footnote)
@@ -171,6 +187,7 @@ struct TaskListView: View {
             .sheet(item: $editingRow) { row in
                 TaskEditSheet(workspace: workspace, task: row.item.task)
             }
+            .sheet(isPresented: $emptyCapture) { CaptureSheet(workspace: workspace) }
             .navigationDestination(item: $openedNote) { note in
                 NoteEditorView(workspace: workspace, location: note.location, filename: note.filename)
             }
@@ -200,7 +217,38 @@ struct TaskListView: View {
     @ViewBuilder
     private var content: some View {
         if let state, !(showsPendingCaptures && state.isEmpty) {
-            ScreenStateView(state: state)
+            ScrollView {
+                VStack(spacing: 12) {
+                    ScreenStateView(state: state)
+                    if state.isEmpty {
+                        if !search.isEmpty {
+                            Button("Clear Search") { search = "" }
+                                .accessibilityIdentifier("list.clearSearch")
+                        }
+                        if filter.isActive {
+                            Button("Clear Filters") { filter = TaskFilter() }
+                                .accessibilityIdentifier("list.clearFilters")
+                        }
+                        if search.isEmpty && !filter.isActive {
+                            if source.lens != nil {
+                                Button("Leave Lens") { dismiss() }
+                            } else if source.mode == "all" {
+                                Button("Capture a Task") { emptyCapture = true }
+                                    .accessibilityIdentifier("list.empty.capture")
+                            } else {
+                                NavigationLink(value: Route.list(emptyDestination)) {
+                                    Text("Browse \(emptyDestination.title)")
+                                }
+                                .accessibilityIdentifier("list.empty.browse")
+                            }
+                        }
+                    } else if case .error = state {
+                        Button("Retry") { Task { await load() } }
+                    }
+                }
+                .buttonStyle(.bordered)
+                .padding(.bottom, 80)
+            }
         } else {
             List(selection: $selection) {
                 if showsPendingCaptures {
@@ -271,6 +319,26 @@ struct TaskListView: View {
             // The last row scrolls clear of the floating capture button.
             .contentMargins(.bottom, 72, for: .scrollContent)
         }
+    }
+
+    private var emptyDestination: ListSource {
+        var destination: ListSource = switch source.mode {
+        case "today": .mode("next", title: "Next")
+        case "next", "inbox": .mode("backlog", title: "Backlog")
+        default: .mode("all", title: "All Tasks")
+        }
+        destination.scope = source.scope
+        destination.population = source.population
+        return destination
+    }
+
+    private var noMatchesMessage: String {
+        var parts = ["No tasks in \(source.title) match these restrictions."]
+        let trimmed = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { parts.append("Search: “\(trimmed)”") }
+        if filter.isActive { parts.append(filter.summary) }
+        if source.lens != nil { parts.append("This search stays within the saved lens.") }
+        return parts.joined(separator: "\n")
     }
 
     private var supportsManualOrder: Bool {
@@ -416,7 +484,7 @@ struct TaskListView: View {
             Toggle("Pinned", isOn: $filter.pinned)
             Toggle("Flagged for review", isOn: $filter.review)
             if filter.isActive {
-                Button("Clear Filters", role: .destructive) { filter = TaskFilter() }
+                Button("Clear Filters") { filter = TaskFilter() }
             }
         } label: {
             Image(systemName: filter.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
@@ -515,7 +583,7 @@ struct TaskListView: View {
             if rows.isEmpty, diagnostics.isEmpty, projectNotes.isEmpty, notesFailure == nil {
                 state = trimmed.isEmpty && !filter.isActive
                     ? .empty(title: "No tasks", message: source.emptyMessage)
-                    : .empty(title: "No matches", message: "No task matches this search or filter.")
+                    : .empty(title: "No matches", message: noMatchesMessage)
             } else {
                 state = nil
             }
@@ -581,68 +649,54 @@ struct TaskRowView: View {
     let item: TaskQueryItem
     let projectName: String?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-    /// The badges sit on one line until an accessibility text size, where
-    /// one line would break them mid-word; then each takes its own.
-    private var badgeLayout: AnyLayout {
-        dynamicTypeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
-            : AnyLayout(HStackLayout(spacing: 8))
-    }
+    @Environment(\.colorScheme) private var colorScheme
 
     private var metadata: String {
         var parts = [item.task.state.rawValue.capitalized]
         if item.today { parts.append("Today") }
         if item.next { parts.append("Next") }
+        if item.task.pinned { parts.append("Pinned") }
         if let projectName, !projectName.isEmpty { parts.append(projectName) }
         return parts.joined(separator: " · ")
     }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Image(systemName: item.task.state.symbol)
-                .foregroundStyle(item.task.state.isTerminal ? Color.secondary : Color.accentColor)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.task.title)
-                    .strikethrough(item.task.state.isTerminal)
-                Text(metadata)
-                    .font(.caption)
+        // Refresh time-sensitive cues even when the list's data is unchanged.
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            let attention = TaskAttention(task: item.task, now: context.date)
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Image(systemName: item.task.state.symbol)
                     .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                if !item.task.tags.isEmpty {
-                    Text(item.task.tags.map { "#\($0)" }.joined(separator: " "))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if let context = item.task.context, !context.isEmpty {
-                    Text("##\(context)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if item.task.priority > 0 || item.task.dueDate != nil || item.task.pinned || item.task.review {
-                    badgeLayout {
-                        if item.task.priority > 0 {
-                            Text("P\(item.task.priority)").foregroundStyle(.orange)
-                        }
-                        if let due = item.task.dueDate {
-                            Label(due.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
-                                .labelStyle(DueLabelStyle(compact: dynamicTypeSize.isAccessibilitySize))
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        if item.task.pinned { Image(systemName: "pin.fill") }
-                        if item.task.review { Image(systemName: "flag.fill") }
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.task.title)
+                        .strikethrough(item.task.state.isTerminal)
+                    if let label = attention.label {
+                        Text(label)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(attention.overdue ? overdueColor : Color.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("task.attention")
                     }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    // Each badge takes the height its text needs rather than
-                    // being clipped to the row's first guess.
-                    .fixedSize(horizontal: false, vertical: true)
+                    if let due = item.task.dueDate, !attention.showsDeadline {
+                        Text("Due \(TaskSchedule.deadline(due))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(metadata)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
+    }
+
+    private var overdueColor: Color {
+        colorScheme == .dark
+            ? Color(red: 1, green: 0.55, blue: 0.55)
+            : Color(red: 0.70, green: 0.12, blue: 0.10)
     }
 
     /// What VoiceOver says for a row, in the order it is read: the state,
@@ -651,8 +705,10 @@ struct TaskRowView: View {
     /// list spans projects.
     static func spokenLabel(_ item: TaskQueryItem, projectName: String?) -> String {
         var parts = [item.task.state.rawValue, item.task.title]
+        let attention = TaskAttention(task: item.task, now: .now)
+        if let label = attention.label { parts.append(label) }
         if item.task.priority > 0 { parts.append("priority \(item.task.priority)") }
-        if let due = item.task.dueDate { parts.append("due \(due.formatted(date: .abbreviated, time: .omitted))") }
+        if let due = item.task.dueDate, !attention.showsDeadline { parts.append("due \(TaskSchedule.deadline(due))") }
         if item.today { parts.append("Today") }
         if item.next { parts.append("Next") }
         if item.task.pinned { parts.append("pinned") }
@@ -661,20 +717,6 @@ struct TaskRowView: View {
         if let context = item.task.context, !context.isEmpty { parts.append("context \(context)") }
         if let projectName { parts.append(projectName) }
         return parts.joined(separator: ", ")
-    }
-}
-
-/// The due badge: icon and date, or the date alone where an accessibility
-/// text size leaves no room for both.
-private struct DueLabelStyle: LabelStyle {
-    let compact: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        if compact {
-            configuration.title
-        } else {
-            Label(configuration)
-        }
     }
 }
 

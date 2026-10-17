@@ -2,6 +2,7 @@ package outliner
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -15,7 +16,13 @@ import (
 
 // Exercise title, description, comment, and no-match searches over substantial
 // prose. Every key rebuilds and renders; setup and correctness checks are untimed.
-func BenchmarkLiveSearchContent(b *testing.B) {
+func BenchmarkLiveSearchContent(b *testing.B) { benchmarkLiveSearchContent(b, false, false) }
+
+// A first query in a fresh session, with descriptions and comments unique to
+// each task. This prevents repeated fixture prose from overstating cache wins.
+func BenchmarkLiveSearchColdUniqueContent(b *testing.B) { benchmarkLiveSearchContent(b, true, true) }
+
+func benchmarkLiveSearchContent(b *testing.B, cold, unique bool) {
 	for _, count := range []int{1000, 10000} {
 		for _, query := range []string{"release", "handoff", "zzzzzzz"} {
 			b.Run(fmt.Sprintf("tasks=%d/query=%s", count, query), func(b *testing.B) {
@@ -36,6 +43,12 @@ func BenchmarkLiveSearchContent(b *testing.B) {
 					if i%2 == 0 {
 						task.Title = fmt.Sprintf("Check delivery %d", i)
 						task.Description += "\nPrepare the release."
+					}
+					if unique {
+						task.Description = fmt.Sprintf("Document %d. ", i) + task.Description
+						for j, comment := range task.Comments {
+							comment.Text = fmt.Sprintf("Comment %d/%d. ", i, j) + comment.Text
+						}
 					}
 					project := projects[i%len(projects)]
 					project.Tasks = append(project.Tasks, task)
@@ -83,14 +96,23 @@ func BenchmarkLiveSearchContent(b *testing.B) {
 					m.View()
 				}
 				b.ReportAllocs()
+				latencies := make([]int64, 0, b.N*len(keys))
 				b.ResetTimer()
 				for range b.N {
+					if cold {
+						m.Search.scoreCache = nil
+					}
 					for _, key := range keys {
+						started := time.Now()
 						m.Update(key)
 						m.View()
+						latencies = append(latencies, time.Since(started).Nanoseconds())
 					}
 				}
 				b.StopTimer()
+				slices.Sort(latencies)
+				b.ReportMetric(float64(latencies[(len(latencies)*95+99)/100-1]), "p95-ns/key")
+				b.ReportMetric(float64(latencies[len(latencies)-1]), "max-ns/key")
 				b.ReportMetric(float64(b.Elapsed().Nanoseconds())/float64(b.N*len(keys)), "ns/key")
 				if m.SearchInputValue() != "" {
 					b.Fatal("deletion did not return to the empty query")

@@ -12,6 +12,8 @@ import (
 type Terms struct {
 	matcher  Matcher
 	patterns [][]rune
+	query    string
+	cache    *ScoreCache
 }
 
 // Reuse bounded scratch for descriptions and comments. Each call borrows its
@@ -27,7 +29,7 @@ var longTermBuffers = sync.Pool{New: func() any { return new(termRuneBuffers) }}
 
 // CompileTerms prepares a whitespace-separated AND query for repeated scoring.
 func (m Matcher) CompileTerms(query string) Terms {
-	terms := Terms{matcher: m}
+	terms := Terms{matcher: m, query: query}
 	for _, word := range strings.Fields(query) {
 		terms.patterns = append(terms.patterns, []rune(m.fold(word)))
 	}
@@ -37,6 +39,20 @@ func (m Matcher) CompileTerms(query string) Terms {
 // Score preserves ScoreTerms' AND semantics and scores, including smart case,
 // word boundaries, density limits, and the original-text camel-case bonus.
 func (q Terms) Score(text string) int {
+	if q.cache != nil && len(q.patterns) != 0 && len(text) > 128 {
+		return q.cache.score(q, text)
+	}
+	return q.scoreUncached(text)
+}
+
+// WithCache shares bounded, content-addressed work across live query changes.
+// It caches scores, never membership: callers still evaluate current predicates.
+func (q Terms) WithCache(cache *ScoreCache) Terms {
+	q.cache = cache
+	return q
+}
+
+func (q Terms) scoreUncached(text string) int {
 	if len(q.patterns) == 0 {
 		return 1
 	}

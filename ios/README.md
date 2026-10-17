@@ -28,6 +28,7 @@ placeholder you can type over. The rest of the draft stays intact.
 | `Config/` | the app's and extensions' Info.plist additions and App Group entitlements |
 | `TTMobileUITests/` | the seeded UI suites (browsing, capture and editing, organizing, rich content, conflicts, share and widgets, accessibility), on a simulator against the real engine, and the reminder delivery suite, on a physical iPhone |
 | `TTMobileDeviceTests/` | the responder of the real iCloud exchange, hosted in the app on a physical iPhone |
+| `TTMobileTests/` | app scheduling and attention tests, including structured edits through the real engine on a simulator |
 | `../apple/TTSync/` | Swift package shared with the macOS helper: the exchange transport and its contract |
 | `project.yml` | XcodeGen spec for `TTMobile.xcodeproj` (generated, gitignored) |
 | `scripts/` | the bridge build, project generation, the suites, and the app automation behind the `ios-*` recipes |
@@ -47,7 +48,7 @@ dependencies, built into `ios/.cache/`, and XcodeGen is the release
 | `just ios-project` | The bridge, then `TTMobile.xcodeproj` from `project.yml` |
 | `just ios-build` | `tt.app` for the simulator, with its result bundle and build diagnostics |
 | `just ios-install [TEAMID] [UDID]` | Build, sign, install, and launch on a paired iPhone, keeping its app data |
-| `just ios-test [unit\|bridge\|sync\|all]` | The Swift suites that are not UI tests, each on its own |
+| `just ios-test [unit\|bridge\|app\|sync\|all]` | Swift package, engine, app, and sync tests, each on its own |
 | `just ios-ui-test [CLASS] [default\|small]` | The simulator UI suite, or one class, on the default or small-screen simulator |
 | `just ios-run [FIXTURE] [light\|dark] [TEXT_SIZE] [default\|small]` | Launch the app over a fresh copy of a fixture |
 | `just ios-reset` | Reseed the running app's workspace and relaunch it |
@@ -131,10 +132,12 @@ Every recipe writes under `ios/.cache/` (gitignored): results under
 `results/`, or `TT_IOS_RESULTS`, and the running app's session under `run/`,
 or `TT_IOS_RUN`.
 
-**Suites.** `just ios-test` runs four separately reported suites through
+**Suites.** `just ios-test` runs five separately reported suites through
 `ios/scripts/test-suites.sh`: `unit` is `swift test` in `TTShared` and
 `TTReminders` on the Mac; `bridge` is the `TTEngine` suite on a simulator
-against the gomobile-bound engine (`test-engine.sh`); `sync` is the
+against the gomobile-bound engine (`test-engine.sh`); `app` runs the hosted
+`TTMobileTests`, including schedule round trips through that engine
+(`test-app.sh`); `sync` is the
 `apple/TTSync` exchange and join scenarios between real `bridgehost` engines.
 `results/<suite>/summary.json` lists each with its status and its executed,
 failed, and skipped counts; a suite that executes nothing or skips a test
@@ -155,6 +158,16 @@ toolbar, the search field, and content under the translucent tab bar) are
 attached rather than failed. On a hardware keyboard, Command-1 through -4
 select Today, Inbox, Notes, and Browse, Command-N opens capture, Command-S saves it,
 and Command-W closes it keeping the draft.
+
+The 2026-10-17 polish verification passed all six hosted app tests and fourteen
+focused UI tests on iOS 27 simulators (iPhone 18 Pro and 375-point iPhone SE).
+These cover schedule preservation, Close and confirmed discard, independent
+search/filter recovery, empty-view navigation, capture links, every autocomplete
+sigil, and all six accessibility workflows. Native screenshots were reviewed
+for timed deadlines, task rows, empty Today, dark mode, and the largest text size.
+The capture placeholder now has stronger contrast; accessibility audits exclude
+content fully hidden behind the keyboard accessory while still checking its
+shortcut buttons.
 
 **Running the app.** `just ios-run` builds, boots the simulator, sets its
 appearance and text size (`simctl ui`; `accessibility-extra-extra-extra-large`
@@ -194,6 +207,14 @@ preceding search and appends a space. A project's list follows the
 project's outline. A task's detail links its ancestors, subtasks,
 dependencies, and dependents.
 
+Rows lead with the title and one attention cue: overdue, review or check-in,
+due today, then high priority. Completed work stays quiet. Supporting state,
+plan, pin, and project information is compact; task details retain every tag,
+context, and priority, and put the resume note beside the title. VoiceOver
+still reads the complete metadata. Empty searches name the query and active
+filters and let you clear them independently. An empty Today offers Next;
+an empty Next or Inbox offers Backlog, keeping the current project scope.
+
 Long-press a task and drag it to reorder. Today and Next save a workspace-wide
 order; Inbox and project lists reorder siblings within the same project, keeping
 subtasks with their parent. These lists use manual order by default. All and
@@ -225,8 +246,17 @@ and status, the two halves of the desktop's workflow chord. The engine judges
 every save, and a refusal is explained beside the draft it refused. Unsaved
 capture and edit drafts are kept per workspace under
 `devices/<name>/drafts`, never synced, and come back after a refused save, a
-dismissed sheet, or a relaunch. Only a committed save or **Cancel** removes
-one.
+dismissed sheet, or a relaunch. **Close**, a swipe down, and the hardware-keyboard
+close shortcuts all preserve the draft. **Draft actions → Discard Draft…**
+asks before deleting it; **Keep Editing** retains every field. Only a committed
+save or a confirmed discard removes the draft.
+
+The structured form's **Deadline time** toggle adds an optional local clock to
+the due date. Changing the day preserves that clock; midnight is date-only.
+Rows, task details, and VoiceOver show timed deadlines. Deferrals have a date
+and time and retain the exact instant across devices. Time-only edits save;
+editing an unrelated field preserves the existing schedule. Older saved form
+drafts keep their original date-only meaning.
 
 A task's detail lists its comments and attachments, and a project's settings
 list the project's comments and open its notes. A project's task list also shows

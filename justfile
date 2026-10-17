@@ -148,7 +148,7 @@ ios-install team="" device="":
     export TT_IOS_DEVICE="${2:-${TT_IOS_DEVICE:-}}"
     exec ./ios/scripts/install-device.sh --launch
 
-# Run the Swift suites: unit, bridge (TTEngine on a simulator), sync, or all; summary in ios/.cache/results/<suite> (outside `just ci`)
+# Run Swift suites: unit, bridge, app (hosted simulator tests), sync, or all; summary in ios/.cache/results/<suite> (outside `just ci`)
 ios-test suite="all":
     ./ios/scripts/test-suites.sh {{ suite }} "${TT_IOS_RESULTS:-ios/.cache/results}/{{ suite }}"
 

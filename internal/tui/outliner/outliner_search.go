@@ -42,6 +42,9 @@ import (
 // is what keeps a struct-literal test model and the Project Hub's preview
 // painter working without a constructor.
 type searchState struct {
+	// Scores are content-addressed, not task-addressed, and bounded to 128 MiB.
+	// Rebuilds still read current tasks, scope, predicates and ordering.
+	scoreCache *fuzzy.ScoreCache
 	// The frame. projection is the navigation frame the query was typed in, and
 	// its presence is the same thing as saying the view holds a query. rankedList
 	// is the other presentation of that same query — one flat relevance-ordered
@@ -720,20 +723,20 @@ func (m *OutlinerModel) buildSearchProjectionRows() {
 	notesAdmitted := !predicates.Invalid() && !predicates.HasAnySigil()
 
 	matcher := fuzzy.SmartCase(query)
-	matches := searchProjectionMatchesWithin(projects, query, candidates, matcher, predicates)
+	matches := searchProjectionMatchesWithin(projects, query, candidates, matcher, predicates, m.searchScoreCache())
 	notes := m.scoreNoteSearchTier(query, matcher, notesAdmitted)
 	// One query, one case reading: relaxation is decided over the whole result
 	// set, so a query that relaxes relaxes for tasks and notes together.
 	if len(matches) == 0 && len(notes) == 0 && matcher.CaseSensitive() {
 		relaxed := fuzzy.NewMatcher(false)
-		matches = searchProjectionMatchesWithin(projects, query, candidates, relaxed, predicates)
+		matches = searchProjectionMatchesWithin(projects, query, candidates, relaxed, predicates, m.searchScoreCache())
 		notes = m.scoreNoteSearchTier(query, relaxed, notesAdmitted)
 		m.Search.setCaseRelaxed(len(matches) > 0 || len(notes) > 0)
 		matcher = relaxed
 	}
 	m.Search.withheld = searchWithheldMatches{}
 	if !predicates.Invalid() {
-		m.Search.withheld = countWithheldSearchMatches(projects, query, candidates, matcher, predicates)
+		m.Search.withheld = countWithheldSearchMatches(projects, query, candidates, matcher, predicates, m.searchScoreCache())
 	}
 	m.Search.hiddenFilterHint = ""
 	m.Search.eliminationHint = ""
@@ -763,7 +766,7 @@ func (m *OutlinerModel) buildSearchProjectionRows() {
 // countWithheldSearchMatches sorts the matches a widened gate found into the two
 // populations the live gate kept out, by the rule AdmitsPopulation reads:
 // terminal first, then a pending deferral.
-func countWithheldSearchMatches(projects []*models.Project, text string, candidates map[string][]*models.Task, matcher fuzzy.Matcher, gate *query.SearchPredicates) searchWithheldMatches {
+func countWithheldSearchMatches(projects []*models.Project, text string, candidates map[string][]*models.Task, matcher fuzzy.Matcher, gate *query.SearchPredicates, cache *fuzzy.ScoreCache) searchWithheldMatches {
 	// Visible tasks have already been scored. Widen only the population that
 	// was withheld, keeping the same project, Focus and facet boundaries.
 	hidden := make(map[string][]*models.Task, len(projects))
@@ -782,7 +785,7 @@ func countWithheldSearchMatches(projects []*models.Project, text string, candida
 			}
 		}
 	}
-	matches := searchProjectionMatchesWithin(projects, text, hidden, matcher, gate.WithEveryPopulation())
+	matches := searchProjectionMatchesWithin(projects, text, hidden, matcher, gate.WithEveryPopulation(), cache)
 	var withheld searchWithheldMatches
 	for _, match := range matches {
 		if gate.AdmitsPopulation(match.task) {
@@ -799,6 +802,13 @@ func countWithheldSearchMatches(projects []*models.Project, text string, candida
 		}
 	}
 	return withheld
+}
+
+func (m *OutlinerModel) searchScoreCache() *fuzzy.ScoreCache {
+	if m.Search.scoreCache == nil {
+		m.Search.scoreCache = fuzzy.NewScoreCache(128 << 20)
+	}
+	return m.Search.scoreCache
 }
 
 func (m *OutlinerModel) appendSearchTaskRows(matches []outlinerSearchMatch) {
@@ -1033,7 +1043,7 @@ func (m *OutlinerModel) scoreNoteSearchTier(
 	notes.SortLocatedNoteRows(rows)
 	matches := make([]outlinerSearchNoteMatch, 0, len(rows))
 	for sourceIndex, row := range rows {
-		match, ok := notes.ScoreNoteSearch(row.Note, query, matcher)
+		match, ok := notes.ScoreNoteSearch(row.Note, query, matcher, m.searchScoreCache())
 		if !ok {
 			continue
 		}
@@ -1080,9 +1090,9 @@ func (m *OutlinerModel) removableFilterSearchHint(projects []*models.Project) st
 		predicate := m.facetPredicateForRowsAt(query.WithoutFields(rows, field), now)
 		candidates := m.searchCandidateBoundary(projects, predicate)
 		matcher := fuzzy.SmartCase(text)
-		matches := searchProjectionMatchesWithin(projects, text, candidates, matcher, gate)
+		matches := searchProjectionMatchesWithin(projects, text, candidates, matcher, gate, m.searchScoreCache())
 		if len(matches) == 0 && matcher.CaseSensitive() {
-			matches = searchProjectionMatchesWithin(projects, text, candidates, fuzzy.NewMatcher(false), gate)
+			matches = searchProjectionMatchesWithin(projects, text, candidates, fuzzy.NewMatcher(false), gate, m.searchScoreCache())
 		}
 		if len(matches) == 0 {
 			continue
@@ -1128,7 +1138,7 @@ func (m *OutlinerModel) searchEliminationHint(projects []*models.Project, candid
 			continue
 		}
 		gate := query.CompileSearchClauseAlone(text, projects, plan, clause)
-		if gate.Invalid() || len(searchProjectionMatchesWithin(projects, "", candidates, fuzzy.NewMatcher(false), gate)) > 0 {
+		if gate.Invalid() || len(searchProjectionMatchesWithin(projects, "", candidates, fuzzy.NewMatcher(false), gate, m.searchScoreCache())) > 0 {
 			continue
 		}
 		if clause.NamesProject() {
@@ -1149,9 +1159,9 @@ func (m *OutlinerModel) searchEliminationHint(projects []*models.Project, candid
 			continue
 		}
 		matcher := fuzzy.SmartCase(rest)
-		matches := searchProjectionMatchesWithin(projects, rest, candidates, matcher, gate)
+		matches := searchProjectionMatchesWithin(projects, rest, candidates, matcher, gate, m.searchScoreCache())
 		if len(matches) == 0 && matcher.CaseSensitive() {
-			matches = searchProjectionMatchesWithin(projects, rest, candidates, fuzzy.NewMatcher(false), gate)
+			matches = searchProjectionMatchesWithin(projects, rest, candidates, fuzzy.NewMatcher(false), gate, m.searchScoreCache())
 		}
 		if len(matches) > bestCount {
 			best, bestCount = clause, len(matches)

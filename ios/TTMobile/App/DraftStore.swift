@@ -72,8 +72,12 @@ struct TaskFields: Codable, Equatable, Sendable {
     var review = false
     var hasDue = false
     var due = Date()
+    // Optional so drafts saved before time controls still decode as date-only.
+    var dueTimeEnabled: Bool?
     var hasDefer = false
     var deferUntil = Date()
+    // Missing in older drafts, whose structured deferral meant a day only.
+    var deferTimeEnabled: Bool? = true
 
     init() {}
 
@@ -89,6 +93,7 @@ struct TaskFields: Codable, Equatable, Sendable {
         if let due = task.dueDate {
             hasDue = true
             self.due = due
+            dueTimeEnabled = TaskSchedule.hasTime(due)
         }
         if let deferred = task.deferredUntil {
             hasDefer = true
@@ -105,8 +110,31 @@ struct TaskFields: Codable, Equatable, Sendable {
     /// A calendar day as the engine's date reader takes it, in this device's
     /// calendar.
     static func day(_ date: Date) -> String {
-        let parts = Calendar.current.dateComponents([.year, .month, .day], from: date)
+        let parts = TaskSchedule.calendar.dateComponents([.year, .month, .day], from: date)
         return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+
+    var includesDueTime: Bool {
+        get { dueTimeEnabled == true }
+        set { dueTimeEnabled = newValue }
+    }
+
+    var dueValue: String {
+        guard includesDueTime else { return Self.day(due) }
+        let parts = TaskSchedule.calendar.dateComponents([.hour, .minute], from: due)
+        return Self.day(due) + String(format: " %02d:%02d", parts.hour ?? 0, parts.minute ?? 0)
+    }
+
+    var deferValue: String {
+        scheduledDeferral.ISO8601Format(.init(includingFractionalSeconds: true))
+    }
+
+    var scheduledDeferral: Date {
+        get { deferTimeEnabled == true ? deferUntil : TaskSchedule.calendar.startOfDay(for: deferUntil) }
+        set {
+            deferUntil = newValue
+            deferTimeEnabled = true
+        }
     }
 
     /// The structured capture these fields describe.
@@ -120,8 +148,8 @@ struct TaskFields: Codable, Equatable, Sendable {
             priority: priority == 0 ? nil : priority,
             tags: tagList.isEmpty ? nil : tagList,
             context: context.isEmpty ? nil : context,
-            due: hasDue ? Self.day(due) : nil,
-            deferUntil: hasDefer ? Self.day(deferUntil) : nil,
+            due: hasDue ? dueValue : nil,
+            deferUntil: hasDefer ? deferValue : nil,
             pinned: pinned ? true : nil,
             review: review ? true : nil
         )
@@ -140,11 +168,11 @@ struct TaskFields: Codable, Equatable, Sendable {
         if context != original.context { edit.context = context }
         if pinned != original.pinned { edit.pinned = pinned }
         if review != original.review { edit.review = review }
-        if hasDue != original.hasDue || (hasDue && Self.day(due) != Self.day(original.due)) {
-            edit.due = hasDue ? Self.day(due) : ""
+        if hasDue != original.hasDue || (hasDue && dueValue != original.dueValue) {
+            edit.due = hasDue ? dueValue : ""
         }
-        if hasDefer != original.hasDefer || (hasDefer && Self.day(deferUntil) != Self.day(original.deferUntil)) {
-            edit.deferUntil = hasDefer ? Self.day(deferUntil) : ""
+        if hasDefer != original.hasDefer || (hasDefer && scheduledDeferral != original.scheduledDeferral) {
+            edit.deferUntil = hasDefer ? deferValue : ""
         }
         return edit
     }
@@ -174,8 +202,8 @@ extension TaskFields {
         lhs.title == rhs.title && lhs.description == rhs.description && lhs.resumeNote == rhs.resumeNote &&
             lhs.priority == rhs.priority && lhs.tags == rhs.tags && lhs.context == rhs.context &&
             lhs.pinned == rhs.pinned && lhs.review == rhs.review &&
-            lhs.hasDue == rhs.hasDue && (!lhs.hasDue || day(lhs.due) == day(rhs.due)) &&
-            lhs.hasDefer == rhs.hasDefer && (!lhs.hasDefer || day(lhs.deferUntil) == day(rhs.deferUntil))
+            lhs.hasDue == rhs.hasDue && (!lhs.hasDue || lhs.dueValue == rhs.dueValue) &&
+            lhs.hasDefer == rhs.hasDefer && (!lhs.hasDefer || lhs.scheduledDeferral == rhs.scheduledDeferral)
     }
 }
 

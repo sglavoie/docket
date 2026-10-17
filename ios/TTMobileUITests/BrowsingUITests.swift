@@ -356,6 +356,31 @@ final class BrowsingUITests: XCTestCase {
         XCTAssertTrue(inOrder(), "title order does not lead with \(ordered)")
     }
 
+    func testEmptySearchExplainsAndClearsRestrictionsIndependently() throws {
+        let app = try launchSeeded()
+        tab(app, "Browse")
+        open(app, "browse.mode.all")
+        app.buttons["list.filter"].tap()
+        choose(app, "Waiting", under: "Status")
+        require(text(app, "Await signing certificate"), "the filtered task")
+        search(app, "zzzznomatch")
+        require(app.staticTexts["state.empty"], "the empty result")
+        let message = app.staticTexts["state.empty.message"].label
+        XCTAssertTrue(message.contains("zzzznomatch"), message)
+        XCTAssertTrue(message.contains("Status: Waiting"), message)
+        app.buttons["list.clearSearch"].tap()
+        require(text(app, "Await signing certificate"), "the result after clearing only search")
+        require(app.staticTexts["list.restrictions"], "the remaining filter")
+        search(app, "zzzznomatch")
+        require(app.buttons["list.clearFilters"], "filter recovery")
+        app.buttons["list.clearFilters"].tap()
+        require(app.staticTexts["state.empty"], "the remaining search")
+        XCTAssertTrue(app.staticTexts["state.empty.message"].label.contains("zzzznomatch"))
+        requireAbsent(app.staticTexts["list.restrictions"], "cleared filter summary")
+        app.buttons["list.clearSearch"].tap()
+        require(text(app, "Call the bank"), "the recovered full list")
+    }
+
     func testOpeningShowsLoadingThenContent() throws {
         try seed("seeded", .representative)
         try select("seeded")
@@ -371,6 +396,9 @@ final class BrowsingUITests: XCTestCase {
         app.buttons["onboarding.create"].tap()
         require(app.staticTexts["state.empty"], "Today's empty state")
         XCTAssertEqual(app.staticTexts["state.empty.message"].label, "Nothing is planned for today.")
+        app.buttons["list.empty.browse"].tap()
+        require(app.navigationBars["Next"], "the destination offered by empty Today")
+        back(app)
         tab(app, "Inbox")
         require(app.staticTexts["state.empty"], "Inbox's empty state")
 

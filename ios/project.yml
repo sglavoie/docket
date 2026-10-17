@@ -63,6 +63,7 @@ targets:
         embed: true
     scheme:
       testTargets:
+        - TTMobileTests
         - TTMobileDeviceTests
         - TTMobileUITests
   # The share sheet's tt entry: saves what was shared to the App Group
@@ -108,6 +109,21 @@ targets:
         product: TTShared
       - sdk: WidgetKit.framework
       - sdk: SwiftUI.framework
+  TTMobileTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: TTMobileTests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.tt.mobile.tests
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/tt.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/tt
+        BUNDLE_LOADER: $(TEST_HOST)
+    dependencies:
+      - target: TTMobile
+      - package: TTEngine
+        product: TTEngine
   # Hosted in the app, so it runs with the app's container and the exchange
   # folder bookmark the document picker left there. Physical iPhone only:
   # ios/scripts/record-icloud-exchange.sh drives it.

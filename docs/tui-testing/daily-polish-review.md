@@ -17,13 +17,13 @@ This pass improves the existing task loop:
 - Search benchmarks cover substantial descriptions, comments, and Unicode;
   allocation budgets now run in CI.
 
-## Verification, 2026-10-17
+## Initial verification, 2026-10-17
 
 `just ci` passed: the full race suite, coverage thresholds (70.57% overall),
 search allocation budgets, lint, module metadata, dead-code checks, and build.
 The focused transition suite also passed under the race detector. All 168
 frames exported successfully; selected synthetic light/dark frames were
-inspected. `just search-bench --strict-time` passed all four workload targets.
+inspected. `just search-bench --strict-time` passed the original four workload targets.
 Local links and the previous guide heading anchors were checked after the split.
 
 ## Presentation checks
@@ -91,16 +91,71 @@ Exploratory single-sample comparisons reduced allocations by about 60–82%:
 | 10,000 tasks, `handoff` | 2,497.3 | 454.8 |
 | 10,000 tasks, `zzzzzzz` | 6,087.8 | 1,095.1 |
 
-The 10,000-task long-content stress case remains CPU-heavy: about 75 ms/key for
+Before the content cache, the 10,000-task long-content stress case was CPU-heavy: about 75 ms/key for
 `release`, 209 ms/key for `handoff`, and 139 ms/key for no match in those samples.
-It is available for profiling but is not a CI latency promise. Run it explicitly:
+It now has allocation budgets and optional latency gates alongside a cold,
+unique-content variant. Run both explicitly:
 
 ```sh
 go test ./internal/tui/outliner -run '^$' \
-  -bench '^BenchmarkLiveSearchContent/tasks=10000$' -benchtime=1x -count=3
+  -bench '^BenchmarkLiveSearch(Content|ColdUniqueContent)/tasks=10000$' -benchtime=1x -count=3
 ```
 
 Timing varies with CPU contention. The budget checker rejects missing samples,
 invalid measurements, and allocation regressions; it reports latency overruns
 without failing ordinary CI. Budget definitions live in
 [`scripts/searchbudget/main.go`](../../scripts/searchbudget/main.go).
+
+## Content cache and cold-search checks
+
+The Outliner owns a lazily populated 128 MiB cache of long text and its recent
+scores. Entries use the exact text and case mode, so edits, undo, sync, and
+deletions need no revision guess to invalidate a score. Scope, filters,
+population admission, match tiers, and ordering are evaluated on every rebuild;
+the cache never stores a result list. Decoded rune buffers can use at most half
+the budget, preventing large unsuccessful queries from evicting all their
+cheaper cached scores. Oversized text and long queries remain supported without
+unbounded retention.
+
+An ASCII presence check rejects impossible candidates before decoding. A
+bounded subsequence check rejects impossible scoring windows before dynamic
+programming. Both preserve Unicode, smart case, scores, and highlights. A prior
+fuzzy miss is deliberately **not** an incremental candidate filter: adding a
+character also widens the allowed density window and can make that text match.
+
+`BenchmarkLiveSearchColdUniqueContent` adds unique text to each task's description
+and comments and starts each measured typing/deletion cycle with an empty cache.
+This prevents repeated fixture prose or a warmed query from overstating the
+improvement. Both content benchmarks report average, p95, and maximum time from
+the input update through the rendered frame. Cache parity tests cover concurrent
+access, eviction, Unicode, case changes, and longer-query recovery; projection
+tests edit content and comments, change candidate scope, and delete tasks while
+reusing the cache.
+
+The ten search workloads now run through `just search-bench` and ordinary CI.
+Latency gates remain opt-in with `--strict-time`; cold unique-content search is
+the more demanding case and should be measured alongside the repeated-content
+workload when evaluating future changes.
+
+After caching, three-sample medians on the same Apple M2 Ultra and Go 1.27.1:
+
+| 10,000-task workload | Median MB/cycle | Median ms/key |
+| --- | ---: | ---: |
+| Warm content, `release` | 98.6 | 19.1 |
+| Warm content, `handoff` | 213.0 | 18.9 |
+| Warm content, `zzzzzzz` | 810.1 | 34.0 |
+| Cold unique content, `release` | 156.5 | 29.1 |
+| Cold unique content, `handoff` | 320.5 | 78.4 |
+| Cold unique content, `zzzzzzz` | 879.6 | 49.8 |
+
+All ten workloads met both their allocation budgets and median latency targets.
+These are complete input-to-render cycles, not scorer-only timings. Cold comment
+search remains the expensive case; the cache does not make every first query
+fit within 25 ms per key.
+
+The follow-up full CI run passed race tests, coverage thresholds (70.59% overall),
+all ten allocation budgets, lint, module checks, dead-code checks, and the build.
+Rechecking its three-sample benchmark output with `searchbudget --strict-time`
+also passed. The race run exposed a project-editor save mutating metadata while
+the UI read it; saves now return a separate result for the update loop to apply,
+with a regression check that live metadata stays unchanged until delivery.

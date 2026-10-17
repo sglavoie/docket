@@ -23,10 +23,16 @@ type budget struct {
 // Allocation ceilings leave headroom over the measured baseline. Timing targets
 // are opt-in gates because shared CI machines cannot promise a stable CPU share.
 var budgets = map[string]budget{
-	"BenchmarkLiveSearchTyping/tasks=10000/projects=20/notes=true": {96e6, 25e6},
-	"BenchmarkLiveSearchContent/tasks=1000/query=release":          {48e6, 20e6},
-	"BenchmarkLiveSearchContent/tasks=1000/query=handoff":          {64e6, 40e6},
-	"BenchmarkLiveSearchContent/tasks=1000/query=zzzzzzz":          {144e6, 30e6},
+	"BenchmarkLiveSearchTyping/tasks=10000/projects=20/notes=true":   {96e6, 25e6},
+	"BenchmarkLiveSearchContent/tasks=1000/query=release":            {48e6, 20e6},
+	"BenchmarkLiveSearchContent/tasks=1000/query=handoff":            {64e6, 40e6},
+	"BenchmarkLiveSearchContent/tasks=1000/query=zzzzzzz":            {144e6, 30e6},
+	"BenchmarkLiveSearchContent/tasks=10000/query=release":           {140e6, 25e6},
+	"BenchmarkLiveSearchContent/tasks=10000/query=handoff":           {280e6, 30e6},
+	"BenchmarkLiveSearchContent/tasks=10000/query=zzzzzzz":           {1050e6, 45e6},
+	"BenchmarkLiveSearchColdUniqueContent/tasks=10000/query=release": {220e6, 50e6},
+	"BenchmarkLiveSearchColdUniqueContent/tasks=10000/query=handoff": {440e6, 110e6},
+	"BenchmarkLiveSearchColdUniqueContent/tasks=10000/query=zzzzzzz": {1150e6, 80e6},
 }
 
 var cpuSuffix = regexp.MustCompile(`-\d+$`)

@@ -233,7 +233,7 @@ final class ShareCaptureUITests: XCTestCase {
         eventually("the Today tab is selected") { app.tabBars.buttons["Today"].isSelected }
         app.open(DeepLink.capture.url)
         require(app.segmentedControls["capture.mode"], "the capture sheet")
-        app.buttons["capture.cancel"].tap()
+        app.buttons["capture.close"].tap()
 
         app.open(DeepLink.task(workspace: "00000000-0000-4000-8000-0000000000ff", projectID: "p", taskID: "t").url)
         require(app.staticTexts["workspace.failure"], "the refusal of another workspace's link")

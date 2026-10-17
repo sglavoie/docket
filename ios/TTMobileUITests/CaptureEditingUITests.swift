@@ -206,6 +206,12 @@ final class CaptureEditingUITests: XCTestCase {
         require(app.buttons["capture.save"], "the capture sheet")
     }
 
+    private func discardCapture(_ app: XCUIApplication) {
+        app.buttons["capture.actions"].tap()
+        app.buttons["capture.discard"].tap()
+        app.buttons["Discard Draft"].tap()
+    }
+
     // MARK: Tests
 
     private func insertSigil(_ app: XCUIApplication, _ symbol: String) {
@@ -243,7 +249,7 @@ final class CaptureEditingUITests: XCTestCase {
                 input(app, "capture.text").typeText("Remember #literal")
                 XCTAssertEqual(value(app, "capture.text"), prefix + ";Remember #literal; ")
             }
-            app.buttons["capture.cancel"].tap()
+            discardCapture(app)
             requireAbsent(app.buttons["capture.save"], "the dismissed capture")
         }
     }
@@ -438,11 +444,22 @@ final class CaptureEditingUITests: XCTestCase {
         }
         XCTAssertEqual(draftFiles(), [])
 
-        // Cancel is the one way to throw a draft away.
+        // Closing preserves a draft; only a confirmed discard removes it.
         openCapture(app)
         type(app, "capture.text", "Never mind")
         eventually("the draft was written") { self.draftFiles() == ["capture.json"] }
-        app.buttons["capture.cancel"].tap()
+        app.buttons["capture.close"].tap()
+        requireAbsent(app.buttons["capture.save"], "the closed capture")
+        XCTAssertEqual(draftFiles(), ["capture.json"])
+        openCapture(app)
+        XCTAssertEqual(value(app, "capture.text"), "Never mind")
+        app.buttons["capture.actions"].tap()
+        app.buttons["capture.discard"].tap()
+        app.buttons["Keep Editing"].tap()
+        XCTAssertEqual(value(app, "capture.text"), "Never mind")
+        XCTAssertEqual(draftFiles(), ["capture.json"])
+        discardCapture(app)
+        requireAbsent(app.buttons["capture.save"], "the discarded capture")
         XCTAssertEqual(draftFiles(), [])
         openCapture(app)
         XCTAssertFalse(app.descendants(matching: .any)["capture.restored"].firstMatch.waitForExistence(timeout: 2))
@@ -528,6 +545,59 @@ final class CaptureEditingUITests: XCTestCase {
             try block("Call the bank today", in: markdown("unfiled"))?.contains("context: phone") == true
         }
         XCTAssertEqual(draftFiles(), [])
+    }
+
+    func testTimedDeadlineIsVisibleAndSurvivesAnUnrelatedEdit() throws {
+        let file = workspace.appendingPathComponent("projects/unfiled/tasks.md")
+        let original = try String(contentsOf: file, encoding: .utf8)
+        try original.replacingOccurrences(of: "priority: 0,", with: "priority: 0, due: 2030-06-10, due_time: 15:30,")
+            .write(to: file, atomically: true, encoding: .utf8)
+        let app = launch()
+        tab(app, "Inbox")
+        let taskRow = row(app, "Call the bank")
+        require(taskRow, "the task with a timed deadline")
+        XCTAssertTrue(taskRow.label.contains(":30"), taskRow.label)
+        openTask(app, "Call the bank")
+        let due = app.descendants(matching: .any)["detail.due"].firstMatch
+        for _ in 0..<3 where !due.isHittable { app.swipeUp() }
+        require(due, "the full deadline")
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "timed-deadline-detail"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        app.buttons["detail.edit"].tap()
+        type(app, "form.resume", "Bring the account number")
+        app.buttons["edit.save"].tap()
+        requireAbsent(app.buttons["edit.save"], "the saved editor")
+        let saved = try markdown("unfiled")
+        XCTAssertTrue(saved.contains("due: 2030-06-10"), saved)
+        XCTAssertTrue(saved.contains("due_time: 15:30"), saved)
+    }
+
+    func testClosingAndDiscardingAnEditedTask() throws {
+        let app = launch()
+        tab(app, "Inbox")
+        openTask(app, "Call the bank")
+        let before = try markdown("unfiled")
+        app.buttons["detail.edit"].tap()
+        type(app, "form.resume", "Bring the account number")
+        app.buttons["edit.close"].tap()
+        requireAbsent(app.buttons["edit.save"], "the closed editor")
+        XCTAssertEqual(try markdown("unfiled"), before)
+        XCTAssertEqual(draftFiles().count, 1)
+        app.buttons["detail.edit"].tap()
+        require(app.descendants(matching: .any)["edit.restored"].firstMatch, "the restored edit")
+        XCTAssertEqual(value(app, "form.resume"), "Bring the account number")
+        app.buttons["edit.actions"].tap()
+        app.buttons["edit.discard"].tap()
+        app.buttons["Keep Editing"].tap()
+        XCTAssertEqual(value(app, "form.resume"), "Bring the account number")
+        app.buttons["edit.actions"].tap()
+        app.buttons["edit.discard"].tap()
+        app.buttons["Discard Draft"].tap()
+        requireAbsent(app.buttons["edit.save"], "the discarded editor")
+        XCTAssertEqual(draftFiles(), [])
+        XCTAssertEqual(try markdown("unfiled"), before)
     }
 
     func testPlanStatusAndLifecycleRefusals() throws {

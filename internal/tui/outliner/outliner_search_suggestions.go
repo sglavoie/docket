@@ -656,6 +656,7 @@ func searchProjectionMatchesWithin(
 	candidates map[string][]*models.Task,
 	matcher fuzzy.Matcher,
 	predicates *query.SearchPredicates,
+	caches ...*fuzzy.ScoreCache,
 ) []outlinerSearchMatch {
 	if predicates.Invalid() {
 		return nil
@@ -666,6 +667,9 @@ func searchProjectionMatchesWithin(
 
 	matches := make([]outlinerSearchMatch, 0)
 	terms := matcher.CompileTerms(query)
+	if len(caches) > 0 {
+		terms = terms.WithCache(caches[0])
+	}
 	sourceIndex := 0
 	for _, project := range projects {
 		if project == nil || !predicates.AdmitsProject(project) {

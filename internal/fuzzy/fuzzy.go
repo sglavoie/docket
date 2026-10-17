@@ -206,6 +206,18 @@ func scoreFromStart(text, originalText, pattern []rune, startIdx int, wantPositi
 	if score, positions, ok := scoreConsecutiveFrom(text, originalText, pattern, startIdx, wantPositions); ok {
 		return score, positions
 	}
+	// Most starts in prose cannot finish inside the density window. A greedy
+	// existence check proves those impossible before the scoring DP visits the
+	// same window once per pattern rune. It chooses no score or match positions.
+	next := 1
+	for i := startIdx + 1; i <= maxEnd && next < len(pattern); i++ {
+		if text[i] == pattern[next] {
+			next++
+		}
+	}
+	if next != len(pattern) {
+		return 0, nil
+	}
 
 	windowLen := maxEnd - startIdx + 1
 	// Most interactive queries fit on the stack. Long patterns still use their

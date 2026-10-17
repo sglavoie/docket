@@ -3,7 +3,7 @@ import TTEngine
 
 /// Edits one task's daily fields in one transaction. Only what the person
 /// changed is sent, measured against the task as it stood when editing
-/// began, and the draft is kept on this device until a save commits or Cancel
+/// began, and the draft is kept on this device until a save commits or Discard
 /// discards it — a refused save or an interrupted session reopens on the same
 /// changes.
 struct TaskEditSheet: View {
@@ -14,6 +14,7 @@ struct TaskEditSheet: View {
     @State private var restored = false
     @State private var failure: String?
     @State private var saving = false
+    @State private var confirmingDiscard = false
 
     var body: some View {
         NavigationStack {
@@ -37,17 +38,38 @@ struct TaskEditSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        workspace.drafts?.discardEdit(task.locator)
-                        dismiss()
+                    Button("Close") { dismiss() }
+                        .accessibilityIdentifier("edit.close")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    if draft.map { $0.fields != $0.original } == true {
+                        Menu {
+                            Button("Discard Draft…", role: .destructive) {
+                                afterDialogCloses { confirmingDiscard = true }
+                            }
+                                .accessibilityIdentifier("edit.discard")
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                        }
+                        .accessibilityLabel("Draft actions")
+                        .accessibilityIdentifier("edit.actions")
+                        .disabled(saving)
                     }
-                    .accessibilityIdentifier("edit.cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
                         .disabled(saving || draft == nil)
                         .accessibilityIdentifier("edit.save")
                 }
+            }
+            .alert("Discard these changes?", isPresented: $confirmingDiscard) {
+                Button("Discard Draft", role: .destructive) {
+                    workspace.drafts?.discardEdit(task.locator)
+                    dismiss()
+                }
+                Button("Keep Editing", role: .cancel) {}
+            } message: {
+                Text("The saved task will stay as it is. Your unsaved changes will be deleted.")
             }
             .task {
                 guard draft == nil else { return }

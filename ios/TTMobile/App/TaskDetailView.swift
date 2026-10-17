@@ -150,6 +150,14 @@ struct TaskDetailView: View {
                 Text(task.title)
                     .font(.title3.weight(.semibold))
                     .accessibilityIdentifier("detail.title")
+                if let resume = task.resumeNote, !resume.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Resume").font(.caption).foregroundStyle(.secondary)
+                        Text(resume)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("detail.resume")
+                }
                 LabeledContent("Status", value: task.state.rawValue.capitalized)
                     .accessibilityIdentifier("detail.status")
                 LabeledContent("Project", value: detail.project.name)
@@ -167,15 +175,13 @@ struct TaskDetailView: View {
             if task.dueDate != nil || task.deferredUntil != nil {
                 Section("Schedule") {
                     if let due = task.dueDate {
-                        LabeledContent("Due", value: due.formatted(date: .abbreviated, time: .omitted))
+                        LabeledContent("Due", value: TaskSchedule.deadline(due))
+                            .accessibilityIdentifier("detail.due")
                     }
                     if let deferred = task.deferredUntil {
                         LabeledContent("Deferred until", value: deferred.formatted(date: .abbreviated, time: .shortened))
                     }
                 }
-            }
-            if let resume = task.resumeNote, !resume.isEmpty {
-                Section("Resume") { Text(resume) }
             }
             if let description = task.description, !description.isEmpty {
                 Section("Description") { Text(description) }

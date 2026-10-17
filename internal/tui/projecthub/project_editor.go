@@ -305,8 +305,11 @@ func (m *ProjectEditorModel) resolveSave() (*ProjectEditorSave, error) {
 			return nil, fmt.Errorf("project with slug '%s' already exists", newSlug)
 		}
 	}
+	// The command runs off the update loop. Freeze its metadata rather than
+	// sharing the live project the outline and operation context still read.
+	project := *m.project
 	return &ProjectEditorSave{
-		Project:     m.project,
+		Project:     &project,
 		Name:        name,
 		runtime:     m.runtime,
 		appService:  m.appService,
@@ -331,8 +334,9 @@ func (s *ProjectEditorSave) Commit() tea.Msg {
 	}
 	transactionID := saved.TransactionID
 
-	coordinator.CopyCatalogMetadata(project, saved.Project)
-	return ProjectUpdatedMsg{Project: project, Parked: s.parks, TransactionID: transactionID}
+	updated := *project
+	coordinator.CopyCatalogMetadata(&updated, saved.Project)
+	return ProjectUpdatedMsg{Project: &updated, Parked: s.parks, TransactionID: transactionID}
 }
 
 func (m *ProjectEditorModel) View() tea.View {

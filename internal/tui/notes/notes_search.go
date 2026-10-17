@@ -22,7 +22,7 @@ type NoteSearchMatch struct {
 	BodyMatched    bool
 }
 
-func ScoreNoteSearch(note *models.Note, query string, matcher fuzzy.Matcher) (NoteSearchMatch, bool) {
+func ScoreNoteSearch(note *models.Note, query string, matcher fuzzy.Matcher, caches ...*fuzzy.ScoreCache) (NoteSearchMatch, bool) {
 	if note == nil {
 		return NoteSearchMatch{}, false
 	}
@@ -33,7 +33,7 @@ func ScoreNoteSearch(note *models.Note, query string, matcher fuzzy.Matcher) (No
 	} else {
 		titlePositions = nil
 	}
-	bodyScore := scoreNoteBodyTerms(note.Body, query, matcher)
+	bodyScore := scoreNoteBodyTerms(note.Body, query, matcher, caches...)
 	score := max(titleScore, bodyScore)
 	if score == 0 {
 		return NoteSearchMatch{}, false
@@ -49,7 +49,7 @@ func ScoreNoteSearch(note *models.Note, query string, matcher fuzzy.Matcher) (No
 // match terms in different parts of a long note body. Contiguous matches under
 // the matcher's case sensitivity receive a predictable score; the fuzzy scorer
 // is a fallback for terms that are present as a sufficiently dense subsequence.
-func scoreNoteBodyTerms(body, query string, matcher fuzzy.Matcher) int {
+func scoreNoteBodyTerms(body, query string, matcher fuzzy.Matcher, caches ...*fuzzy.ScoreCache) int {
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return 1
@@ -70,7 +70,11 @@ func scoreNoteBodyTerms(body, query string, matcher fuzzy.Matcher) int {
 			continue
 		}
 
-		score := matcher.Score(body, term)
+		compiled := matcher.CompileTerms(term)
+		if len(caches) > 0 {
+			compiled = compiled.WithCache(caches[0])
+		}
+		score := compiled.Score(body)
 		if score == 0 {
 			return 0
 		}
