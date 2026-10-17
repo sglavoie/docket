@@ -107,6 +107,7 @@ func BenchmarkLiveSearchTyping(b *testing.B) {
 					// Prove the workload reaches both result populations before timing it.
 					for _, key := range keys[:7] {
 						m.Update(key)
+						settleBackgroundSearch(m)
 						m.View()
 					}
 					tasks, noteCount := 0, 0
@@ -123,6 +124,7 @@ func BenchmarkLiveSearchTyping(b *testing.B) {
 					}
 					for _, key := range keys[7:] {
 						m.Update(key)
+						settleBackgroundSearch(m)
 						m.View()
 					}
 					b.ReportAllocs()
@@ -132,6 +134,7 @@ func BenchmarkLiveSearchTyping(b *testing.B) {
 						for _, key := range keys {
 							started := time.Now()
 							m.Update(key)
+							settleBackgroundSearch(m)
 							m.View()
 							latencies = append(latencies, time.Since(started).Nanoseconds())
 						}
@@ -165,6 +168,7 @@ func benchmarkSearchEscape(b *testing.B, m *OutlinerModel, typing []tea.KeyPress
 		m.ActivateSearch()
 		for _, key := range typing {
 			m.Update(key)
+			settleBackgroundSearch(m)
 			m.View()
 		}
 		started := time.Now()

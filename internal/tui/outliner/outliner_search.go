@@ -1,20 +1,24 @@
 package outliner
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -42,6 +46,11 @@ import (
 // is what keeps a struct-literal test model and the Project Hub's preview
 // painter working without a constructor.
 type searchState struct {
+	queued      tea.Cmd
+	snapshot    *backgroundSearchSnapshot
+	flight      *backgroundSearch
+	worker      *sync.Mutex
+	workContext context.Context
 	// Scores are content-addressed, not task-addressed, and bounded to 128 MiB.
 	// Rebuilds still read current tasks, scope, predicates and ordering.
 	scoreCache *fuzzy.ScoreCache
@@ -203,6 +212,8 @@ func (s *searchState) take() *outlinerSearchSnapshot {
 // would be reinstated by the next Esc over a view it was never suspended under.
 // Whatever needs it kept has already captured a checkpoint, which carries it.
 func (s *searchState) discard() {
+	s.cancelBackground()
+	s.snapshot = nil
 	s.Projection = nil
 	s.rankedList = false
 	s.suspendedLens = nil
@@ -707,6 +718,9 @@ func (m *OutlinerModel) searchCaseSensitive() bool {
 }
 
 func (m *OutlinerModel) buildSearchProjectionRows() {
+	if m.useBackgroundRows() {
+		return
+	}
 	projects := m.ProjectsInCatalogOrder(m.WorkModeScopeProjects())
 	candidates := m.SearchCandidateBoundary(projects)
 
@@ -723,20 +737,26 @@ func (m *OutlinerModel) buildSearchProjectionRows() {
 	notesAdmitted := !predicates.Invalid() && !predicates.HasAnySigil()
 
 	matcher := fuzzy.SmartCase(query)
-	matches := searchProjectionMatchesWithin(projects, query, candidates, matcher, predicates, m.searchScoreCache())
+	matches := searchProjectionMatchesWithinContext(m.searchContext(), projects, query, candidates, matcher, predicates, m.searchScoreCache())
+	if m.searchContext().Err() != nil {
+		return
+	}
 	notes := m.scoreNoteSearchTier(query, matcher, notesAdmitted)
 	// One query, one case reading: relaxation is decided over the whole result
 	// set, so a query that relaxes relaxes for tasks and notes together.
 	if len(matches) == 0 && len(notes) == 0 && matcher.CaseSensitive() {
 		relaxed := fuzzy.NewMatcher(false)
-		matches = searchProjectionMatchesWithin(projects, query, candidates, relaxed, predicates, m.searchScoreCache())
+		matches = searchProjectionMatchesWithinContext(m.searchContext(), projects, query, candidates, relaxed, predicates, m.searchScoreCache())
 		notes = m.scoreNoteSearchTier(query, relaxed, notesAdmitted)
 		m.Search.setCaseRelaxed(len(matches) > 0 || len(notes) > 0)
 		matcher = relaxed
 	}
+	if m.searchContext().Err() != nil {
+		return
+	}
 	m.Search.withheld = searchWithheldMatches{}
 	if !predicates.Invalid() {
-		m.Search.withheld = countWithheldSearchMatches(projects, query, candidates, matcher, predicates, m.searchScoreCache())
+		m.Search.withheld = countWithheldSearchMatches(m.searchContext(), projects, query, candidates, matcher, predicates, m.searchScoreCache())
 	}
 	m.Search.hiddenFilterHint = ""
 	m.Search.eliminationHint = ""
@@ -766,7 +786,7 @@ func (m *OutlinerModel) buildSearchProjectionRows() {
 // countWithheldSearchMatches sorts the matches a widened gate found into the two
 // populations the live gate kept out, by the rule AdmitsPopulation reads:
 // terminal first, then a pending deferral.
-func countWithheldSearchMatches(projects []*models.Project, text string, candidates map[string][]*models.Task, matcher fuzzy.Matcher, gate *query.SearchPredicates, cache *fuzzy.ScoreCache) searchWithheldMatches {
+func countWithheldSearchMatches(ctx context.Context, projects []*models.Project, text string, candidates map[string][]*models.Task, matcher fuzzy.Matcher, gate *query.SearchPredicates, cache *fuzzy.ScoreCache) searchWithheldMatches {
 	// Visible tasks have already been scored. Widen only the population that
 	// was withheld, keeping the same project, Focus and facet boundaries.
 	hidden := make(map[string][]*models.Task, len(projects))
@@ -785,7 +805,7 @@ func countWithheldSearchMatches(projects []*models.Project, text string, candida
 			}
 		}
 	}
-	matches := searchProjectionMatchesWithin(projects, text, hidden, matcher, gate.WithEveryPopulation(), cache)
+	matches := searchProjectionMatchesWithinContext(ctx, projects, text, hidden, matcher, gate.WithEveryPopulation(), cache)
 	var withheld searchWithheldMatches
 	for _, match := range matches {
 		if gate.AdmitsPopulation(match.task) {
@@ -983,6 +1003,8 @@ type outlinerSearchNoteMatch struct {
 // setter rather than a constructor parameter: NewOutlinerModel builds the Hub
 // preview painter too, and that surface must keep the nil accessor.
 func (m *OutlinerModel) SetNoteSearchIndex(accessor func() []notes.LocatedNoteRow) {
+	m.Search.cancelBackground()
+	m.Search.snapshot = nil
 	m.Search.setNoteIndex(accessor)
 }
 
@@ -1043,6 +1065,9 @@ func (m *OutlinerModel) scoreNoteSearchTier(
 	notes.SortLocatedNoteRows(rows)
 	matches := make([]outlinerSearchNoteMatch, 0, len(rows))
 	for sourceIndex, row := range rows {
+		if m.searchContext().Err() != nil {
+			return nil
+		}
 		match, ok := notes.ScoreNoteSearch(row.Note, query, matcher, m.searchScoreCache())
 		if !ok {
 			continue
@@ -1090,9 +1115,9 @@ func (m *OutlinerModel) removableFilterSearchHint(projects []*models.Project) st
 		predicate := m.facetPredicateForRowsAt(query.WithoutFields(rows, field), now)
 		candidates := m.searchCandidateBoundary(projects, predicate)
 		matcher := fuzzy.SmartCase(text)
-		matches := searchProjectionMatchesWithin(projects, text, candidates, matcher, gate, m.searchScoreCache())
+		matches := searchProjectionMatchesWithinContext(m.searchContext(), projects, text, candidates, matcher, gate, m.searchScoreCache())
 		if len(matches) == 0 && matcher.CaseSensitive() {
-			matches = searchProjectionMatchesWithin(projects, text, candidates, fuzzy.NewMatcher(false), gate, m.searchScoreCache())
+			matches = searchProjectionMatchesWithinContext(m.searchContext(), projects, text, candidates, fuzzy.NewMatcher(false), gate, m.searchScoreCache())
 		}
 		if len(matches) == 0 {
 			continue
@@ -1138,7 +1163,7 @@ func (m *OutlinerModel) searchEliminationHint(projects []*models.Project, candid
 			continue
 		}
 		gate := query.CompileSearchClauseAlone(text, projects, plan, clause)
-		if gate.Invalid() || len(searchProjectionMatchesWithin(projects, "", candidates, fuzzy.NewMatcher(false), gate, m.searchScoreCache())) > 0 {
+		if gate.Invalid() || len(searchProjectionMatchesWithinContext(m.searchContext(), projects, "", candidates, fuzzy.NewMatcher(false), gate, m.searchScoreCache())) > 0 {
 			continue
 		}
 		if clause.NamesProject() {
@@ -1159,9 +1184,9 @@ func (m *OutlinerModel) searchEliminationHint(projects []*models.Project, candid
 			continue
 		}
 		matcher := fuzzy.SmartCase(rest)
-		matches := searchProjectionMatchesWithin(projects, rest, candidates, matcher, gate, m.searchScoreCache())
+		matches := searchProjectionMatchesWithinContext(m.searchContext(), projects, rest, candidates, matcher, gate, m.searchScoreCache())
 		if len(matches) == 0 && matcher.CaseSensitive() {
-			matches = searchProjectionMatchesWithin(projects, rest, candidates, fuzzy.NewMatcher(false), gate, m.searchScoreCache())
+			matches = searchProjectionMatchesWithinContext(m.searchContext(), projects, rest, candidates, fuzzy.NewMatcher(false), gate, m.searchScoreCache())
 		}
 		if len(matches) > bestCount {
 			best, bestCount = clause, len(matches)
@@ -1179,4 +1204,274 @@ func (m *OutlinerModel) searchEliminationHint(projects []*models.Project, candid
 		return fmt.Sprintf("%s %s %q; %s removes %s.", count, verb, remainder, best.Spelling, object)
 	}
 	return fmt.Sprintf("%s %s without %s.", count, verb, best.Spelling)
+}
+
+// A request is owned by the update loop. The command reads only its detached
+// model and context; it never reads this flight or the live Outliner.
+type backgroundSearch struct {
+	run         tea.Cmd
+	cancel      context.CancelFunc
+	revision    uint64
+	fingerprint string
+	anchor      modeCursorAnchor
+	result      *OutlinerModel
+}
+
+type BackgroundSearchResultMsg struct {
+	flight *backgroundSearch
+	result *OutlinerModel
+}
+
+// Immutable inputs are reused while only the typed query changes. This bounds
+// retention to one workspace snapshot instead of cloning 10,000 tasks per key.
+type backgroundSearchSnapshot struct {
+	key      string
+	revision uint64
+	model    *OutlinerModel
+	live     map[taskref.TaskIdentity]*models.Task
+}
+
+func (s *searchState) cancelBackground() {
+	if s.flight != nil {
+		s.flight.cancel()
+		s.flight = nil
+	}
+}
+
+func (m *OutlinerModel) takeSearchCommand() tea.Cmd {
+	cmd := m.Search.queued
+	m.Search.queued = nil
+	return cmd
+}
+
+// Small searches stay synchronous. Bound by both population and text volume so
+// a handful of large descriptions/notes also leave the input loop promptly.
+func (m *OutlinerModel) needsBackgroundSearch() bool {
+	if !m.ShowsRankedList() || m.SearchQuery() == "" {
+		return false
+	}
+	count, size := 0, 0
+	for _, project := range m.WorkModeScopeProjects() {
+		if project == nil {
+			continue
+		}
+		count += len(project.Tasks)
+		if count >= 1000 {
+			return true
+		}
+		for _, task := range project.Tasks {
+			if task == nil {
+				continue
+			}
+			size += len(task.Title) + len(task.Description) + len(task.ResumeNote)
+			for _, comment := range task.Comments {
+				if comment != nil {
+					size += len(comment.Text)
+				}
+			}
+			for _, item := range task.Checklist {
+				size += len(item.Text)
+			}
+			if size >= 1<<20 {
+				return true
+			}
+		}
+	}
+	for _, row := range m.noteSearchRowsInScope() {
+		count++
+		if row.Note != nil {
+			size += len(row.Note.Title) + len(row.Note.Body)
+		}
+		if count >= 1000 || size >= 1<<20 {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *OutlinerModel) rebuildLiveSearch() tea.Cmd {
+	anchor := m.captureModeCursor()
+	var reusableRows []OutlinerRow
+	if m.Search.flight != nil && m.Search.flight.result != nil {
+		reusableRows = m.Search.flight.result.Rows[:0]
+	}
+	if m.Search.flight != nil && m.Search.flight.result == nil {
+		anchor = m.Search.flight.anchor
+	}
+	m.Search.cancelBackground()
+	if !m.needsBackgroundSearch() {
+		RebuildOutlinerPreservingCursor(m)
+		return nil
+	}
+	worker, err := m.detachedSearchModel()
+	if err != nil {
+		// Keep the query editable and report the failure; never hide a failed
+		// snapshot behind a costly synchronous fallback.
+		m.Rows = nil
+		return status.ErrorCmd("Search could not start: %v", err)
+	}
+	worker.Rows = reusableRows
+	ctx, cancel := context.WithCancel(context.Background())
+	worker.Search.workContext = ctx
+	flight := &backgroundSearch{cancel: cancel, revision: m.Population.revision,
+		fingerprint: m.crossProjectRowsFingerprint(), anchor: anchor}
+	m.Search.flight = flight
+	if m.Search.worker == nil {
+		m.Search.worker = &sync.Mutex{}
+	}
+	serial := m.Search.worker
+	m.rebuildRows()
+	flight.run = func() tea.Msg {
+		serial.Lock()
+		defer serial.Unlock()
+		if ctx.Err() != nil {
+			return nil
+		}
+		worker.buildSearchProjectionRows()
+		if ctx.Err() != nil {
+			return nil
+		}
+		return BackgroundSearchResultMsg{flight: flight, result: worker}
+	}
+	return flight.run
+}
+
+// Detach every mutable input, including planning, project metadata, comments,
+// and note bodies. The scorer and all empty-state diagnostics stay shared with
+// synchronous search; no second query language or ranking path exists.
+func (m *OutlinerModel) detachedSearchModel() (*OutlinerModel, error) {
+	key := fmt.Sprintf("%p|%s|%v|%v", m.Project, m.crossProjectRowsFingerprintForSearch(""), m.Focus.Stack, m.Focus.CrossStack)
+	snapshot := m.Search.snapshot
+	if snapshot == nil || snapshot.key != key || snapshot.revision != m.Population.revision {
+		base, err := m.cloneSearchInputs()
+		if err != nil {
+			return nil, err
+		}
+		live := make(map[taskref.TaskIdentity]*models.Task)
+		for _, project := range m.WorkModeScopeProjects() {
+			if project == nil {
+				continue
+			}
+			for _, task := range project.Tasks {
+				if task != nil {
+					live[taskref.For(task, project)] = task
+				}
+			}
+		}
+		snapshot = &backgroundSearchSnapshot{key: key, revision: m.Population.revision, model: base, live: live}
+		m.Search.snapshot = snapshot
+	}
+	worker := *snapshot.model
+	worker.BaseSearchableView.SetSearchQuery(m.SearchQuery())
+	worker.Search = searchState{
+		Projection: &outlinerSearchSnapshot{}, rankedList: true,
+		scoreCache: m.searchScoreCache(), noteIndex: snapshot.model.Search.noteIndex,
+	}
+	return &worker, nil
+}
+
+func (m *OutlinerModel) cloneSearchInputs() (*OutlinerModel, error) {
+	worker := &OutlinerModel{PrimaryMode: m.PrimaryMode, Sort: m.Sort}
+	if m.Runtime != nil {
+		domains, err := m.Runtime.CloneDomains()
+		if err != nil {
+			return nil, err
+		}
+		worker.Runtime = config.NewRuntimeState("", domains)
+	}
+	cloneProject := func(project *models.Project) *models.Project {
+		if project == nil {
+			return nil
+		}
+		clone := *project
+		clone.Tags = slices.Clone(project.Tags)
+		clone.ArchivedAt = models.CloneInstant(project.ArchivedAt)
+		clone.PinnedAt = models.CloneInstant(project.PinnedAt)
+		clone.Comments = models.CloneProjectComments(project.Comments)
+		clone.Tasks = make([]*models.Task, len(project.Tasks))
+		for i, task := range project.Tasks {
+			clone.Tasks[i] = models.CloneTaskDeep(task)
+		}
+		clone.BuildTaskTree()
+		return &clone
+	}
+	for _, project := range m.Population.Projects {
+		worker.Population.Projects = append(worker.Population.Projects, cloneProject(project))
+	}
+	worker.Project = cloneProject(m.Project)
+	worker.Scope.ProjectID = m.Scope.ProjectID
+	worker.Focus.Restore(slices.Clone(m.Focus.Stack), slices.Clone(m.Focus.CrossStack), m.Focus.Zoom)
+	worker.SetFilterQuery(m.FilterQuery)
+	rows := slices.Clone(m.noteSearchRowsInScope())
+	for i := range rows {
+		if rows[i].Note != nil {
+			note := *rows[i].Note
+			rows[i].Note = &note
+		}
+	}
+	worker.Search.noteIndex = func() []notes.LocatedNoteRow { return rows }
+	worker.openChildCounts = query.OpenChildCounts(worker.WorkModeScopeProjects())
+	worker.timeDrivenDay = time.Now()
+	return worker, nil
+}
+
+func (m *OutlinerModel) backgroundCurrent(flight *backgroundSearch) bool {
+	return flight != nil && m.Search.flight == flight && m.ShowsRankedList() &&
+		flight.revision == m.Population.revision && flight.fingerprint == m.crossProjectRowsFingerprint()
+}
+
+func (m *OutlinerModel) acceptBackgroundSearch(msg BackgroundSearchResultMsg) {
+	if !m.backgroundCurrent(msg.flight) {
+		return
+	}
+	// Rows name live task objects only after the snapshot generation is accepted.
+	// Editors and operation targets must never receive the worker's copies.
+	live := m.Search.snapshot.live
+	for i := range msg.result.Rows {
+		row := &msg.result.Rows[i]
+		if row.Task == nil {
+			continue
+		}
+		projectID := row.ProjectID
+		if m.Project != nil {
+			projectID = m.Project.ID
+		}
+		row.Task = live[taskref.TaskIdentity{ProjectID: projectID, TaskID: row.Task.ID}]
+	}
+	msg.flight.result = msg.result
+	m.rebuildRows()
+	m.restoreModeCursor(msg.flight.anchor)
+	m.ClampCursor()
+}
+
+func (m *OutlinerModel) useBackgroundRows() bool {
+	flight := m.Search.flight
+	if flight == nil {
+		return false
+	}
+	if !m.backgroundCurrent(flight) {
+		m.Search.cancelBackground()
+		return false
+	}
+	m.Search.clearNoteMatches()
+	m.Search.withheld = searchWithheldMatches{}
+	m.Search.hiddenFilterHint, m.Search.eliminationHint = "", ""
+	if flight.result == nil {
+		m.Search.setCompilation("", nil, false)
+		return true
+	}
+	result := flight.result
+	m.Rows = append(m.Rows, result.Rows...)
+	m.Search.setCompilation(result.Search.remainder, result.Search.Gate, result.Search.caseRelaxed)
+	m.Search.withheld = result.Search.withheld
+	m.Search.hiddenFilterHint, m.Search.eliminationHint = result.Search.hiddenFilterHint, result.Search.eliminationHint
+	m.Search.noteMatches = result.Search.noteMatches
+	return true
+}
+
+func (m *OutlinerModel) searchContext() context.Context {
+	if m.Search.workContext != nil {
+		return m.Search.workContext
+	}
+	return context.Background()
 }

@@ -11,6 +11,7 @@ struct CommentsSection: View {
     let compose: (CommentRecord?) -> Void
     let delete: (CommentRecord) -> Void
 
+    @State private var actions = SheetActions()
     @State private var actingOn: CommentRecord?
 
     var body: some View {
@@ -27,6 +28,7 @@ struct CommentsSection: View {
                     Spacer()
                     Button {
                         actingOn = comment
+                        actions.isPresented = true
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
@@ -38,13 +40,15 @@ struct CommentsSection: View {
             Button("Add Comment") { compose(nil) }
                 .accessibilityIdentifier("comments.add")
         }
-        .confirmationDialog(
-            "Comment", isPresented: Binding(get: { actingOn != nil }, set: { if !$0 { actingOn = nil } }),
-            titleVisibility: .hidden, presenting: actingOn
-        ) { comment in
-            Button("Edit Comment") { afterDialogCloses { compose(comment) } }
-            Button("Delete Comment", role: .destructive) { delete(comment) }
+        .sheet(isPresented: $actions.isPresented, onDismiss: actions.didDismiss) {
+            ActionSheet(title: "Comment", actionCount: 2) {
+                if let comment = actingOn {
+                    Button("Edit Comment") { actions.choose { compose(comment) } }
+                    Button("Delete Comment", role: .destructive) { actions.choose { delete(comment) } }
+                }
+            }
         }
+        .onDisappear { actions.cancelPending() }
     }
 }
 
@@ -79,6 +83,7 @@ struct CommentEditorSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                DraftRecoveryNotice(store: workspace.drafts, key: .comment(request.id))
                 if let failure {
                     Text(failure)
                         .foregroundStyle(.red)

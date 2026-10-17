@@ -432,6 +432,9 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	switch msg := msg.(type) {
+	case BackgroundSearchResultMsg:
+		m.acceptBackgroundSearch(msg)
+		return m, nil
 	case status.CursorFlashClearMsg:
 		m.CursorFlash = false
 		return m, nil

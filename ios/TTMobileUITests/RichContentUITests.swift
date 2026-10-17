@@ -115,10 +115,12 @@ final class RichContentUITests: XCTestCase {
 
     /// Brings an element into reach by scrolling the screen it is on.
     private func reach(_ app: XCUIApplication, _ element: XCUIElement, _ what: String) {
-        for _ in 0..<6 where !element.waitForExistence(timeout: 2) {
+        for _ in 0..<6 {
+            if element.waitForExistence(timeout: 2) { break }
             app.swipeUp()
         }
-        for _ in 0..<8 where !element.waitForExistence(timeout: 2) {
+        for _ in 0..<8 {
+            if element.waitForExistence(timeout: 2) { break }
             app.swipeDown()
         }
         require(element, what)

@@ -142,6 +142,7 @@ public struct TaskSnapshot: Decodable, Hashable, Sendable, Identifiable {
     public var deferredUntil: Date?
     public var resumeNote: String?
     public var nextCheckIn: Date?
+    public var checkInRepeatDays: Int?
     /// Absent from an engine older than the browsing ops, so optional.
     public var checklist: [ChecklistItem]?
     public var commentCount: Int?
@@ -165,6 +166,7 @@ public struct TaskSnapshot: Decodable, Hashable, Sendable, Identifiable {
         case deferredUntil = "deferred_until"
         case resumeNote = "resume_note"
         case nextCheckIn = "next_check_in"
+        case checkInRepeatDays = "check_in_repeat_days"
         case commentCount = "comment_count"
         case attachmentCount = "attachment_count"
         case dependencyCount = "dependency_count"

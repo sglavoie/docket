@@ -72,6 +72,7 @@ func benchmarkLiveSearchContent(b *testing.B, cold, unique bool) {
 				}
 				for _, key := range keys[:len(query)] {
 					m.Update(key)
+					settleBackgroundSearch(m)
 					m.View()
 				}
 				if query == "zzzzzzz" {
@@ -92,6 +93,7 @@ func benchmarkLiveSearchContent(b *testing.B, cold, unique bool) {
 				}
 				for _, key := range keys[len(query):] {
 					m.Update(key)
+					settleBackgroundSearch(m)
 					m.View()
 				}
 				b.ReportAllocs()
@@ -104,6 +106,7 @@ func benchmarkLiveSearchContent(b *testing.B, cold, unique bool) {
 					for _, key := range keys {
 						started := time.Now()
 						m.Update(key)
+						settleBackgroundSearch(m)
 						m.View()
 						latencies = append(latencies, time.Since(started).Nanoseconds())
 					}

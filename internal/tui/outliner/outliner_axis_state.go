@@ -775,6 +775,7 @@ type populationState struct {
 	focusDepth   int
 	taskCount    int
 	ForceRebuild bool
+	revision     uint64
 }
 
 // setProjects installs a new loaded population. It is the only write to the
@@ -942,7 +943,7 @@ func (p *populationState) clearReloadTarget() {
 // changed underneath the guard, so the next rebuild runs whatever the guard
 // inputs say. It is one-shot: the rebuild that honors it consumes it through
 // record.
-func (p *populationState) Invalidate() { p.ForceRebuild = true }
+func (p *populationState) Invalidate() { p.ForceRebuild = true; p.revision++ }
 
 // memoized reports whether the pass about to run would reproduce the rows the
 // last one already built. A standing force flag answers no on its own, before

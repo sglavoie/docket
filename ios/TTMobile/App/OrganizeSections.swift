@@ -12,6 +12,7 @@ struct ChecklistSection: View {
 
     @State private var adding = false
     @State private var newText = ""
+    @State private var actions = SheetActions()
     @State private var actingOn: Int?
     @State private var editing: Int?
     @State private var editText = ""
@@ -33,6 +34,7 @@ struct ChecklistSection: View {
                     Spacer()
                     Button {
                         actingOn = index
+                        actions.isPresented = true
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
@@ -62,25 +64,28 @@ struct ChecklistSection: View {
                 Button("Add") { act(.add(newText), items) }
             }
         }
-        .confirmationDialog(
-            actingOn.map { items.indices.contains($0) ? items[$0].text : "" } ?? "",
-            isPresented: Binding(get: { actingOn != nil }, set: { if !$0 { actingOn = nil } }),
-            titleVisibility: .visible,
-            presenting: actingOn
-        ) { index in
-            Button("Edit Item") {
-                editText = items.indices.contains(index) ? items[index].text : ""
-                afterDialogCloses { editing = index }
+        .sheet(isPresented: $actions.isPresented, onDismiss: actions.didDismiss) {
+            ActionSheet(title: "Checklist Item", actionCount: 5) {
+                if let index = actingOn, items.indices.contains(index) {
+                    Button("Edit Item") {
+                        let text = items[index].text
+                        actions.choose {
+                            editText = text
+                            editing = index
+                        }
+                    }
+                    if index > 0 {
+                        Button("Move Up") { actions.choose { act(.move(index: index, to: index - 1), items) } }
+                    }
+                    if index < items.count - 1 {
+                        Button("Move Down") { actions.choose { act(.move(index: index, to: index + 1), items) } }
+                    }
+                    Button("Promote to Subtask") { actions.choose { act(.promote(index: index), items) } }
+                    Button("Delete Item", role: .destructive) { actions.choose { act(.remove(index: index), items) } }
+                }
             }
-            if index > 0 {
-                Button("Move Up") { act(.move(index: index, to: index - 1), items) }
-            }
-            if index < items.count - 1 {
-                Button("Move Down") { act(.move(index: index, to: index + 1), items) }
-            }
-            Button("Promote to Subtask") { act(.promote(index: index), items) }
-            Button("Delete Item", role: .destructive) { act(.remove(index: index), items) }
         }
+        .onDisappear { actions.cancelPending() }
     }
 }
 
@@ -89,76 +94,132 @@ struct ChecklistSection: View {
 /// one-off; it never changes the task's status or deadline.
 struct CheckInSection: View {
     let task: TaskSnapshot
-    let act: (CheckInAction) -> Void
+    let act: (CheckInAction) async -> String?
     @State private var scheduling = false
+    @State private var acknowledging = false
+    @State private var failure: String?
 
     var body: some View {
         Section("Check-In") {
             LabeledContent("Next check-in", value: task.nextCheckIn.map { $0.formatted(date: .abbreviated, time: .omitted) } ?? "None")
                 .accessibilityIdentifier("detail.checkin.value")
+            if let days = task.checkInRepeatDays, days > 0 {
+                LabeledContent("Repeat", value: "Every \(days) days")
+            }
+            if let failure { Text(failure).foregroundStyle(.red) }
             Button(task.nextCheckIn == nil ? "Set Check-In" : "Change Check-In") { scheduling = true }
                 .accessibilityIdentifier("detail.checkin.set")
                 .sheet(isPresented: $scheduling) {
-                    CheckInSheet(current: task.nextCheckIn) { action in
-                        scheduling = false
-                        if let action { act(action) }
-                    }
+                    CheckInSheet(task: task, save: act)
                 }
             if task.review || task.nextCheckIn != nil {
-                Button("Acknowledge Review") { act(.acknowledge) }
-                    .accessibilityIdentifier("detail.checkin.acknowledge")
+                Button("Acknowledge Review") {
+                    acknowledging = true
+                    Task {
+                        failure = await act(.acknowledge)
+                        acknowledging = false
+                    }
+                }
+                .disabled(acknowledging)
+                .accessibilityIdentifier("detail.checkin.acknowledge")
             }
         }
     }
 }
 
-/// One schedule: a day and an optional repeat in whole days.
-struct CheckInSheet: View {
-    let current: Date?
-    /// Called with the action to run, or nil on Cancel.
-    let finish: (CheckInAction?) -> Void
-    @State private var day = Date()
-    @State private var repeatDays = ""
+/// A complete schedule draft. Invalid text never silently means “once”.
+struct CheckInDraft {
+    var day: Date
+    var repeatDays: String
 
-    init(current: Date?, finish: @escaping (CheckInAction?) -> Void) {
-        self.current = current
-        self.finish = finish
-        _day = State(initialValue: current ?? Date())
+    init(task: TaskSnapshot) {
+        day = task.nextCheckIn ?? Date()
+        repeatDays = task.checkInRepeatDays.flatMap { $0 > 0 ? String($0) : nil } ?? ""
+    }
+
+    var interval: Int? {
+        let text = repeatDays.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.isEmpty { return 0 }
+        guard text.allSatisfy({ $0.isASCII && $0.isNumber }),
+              let days = Int(text), (1...3650).contains(days) else { return nil }
+        return days
+    }
+
+    var action: CheckInAction? {
+        interval.map { .set(date: TaskFields.day(day), repeatDays: $0) }
+    }
+
+    func isUnchanged(from task: TaskSnapshot) -> Bool {
+        guard let current = task.nextCheckIn else { return false }
+        return TaskFields.day(day) == TaskFields.day(current) && interval == (task.checkInRepeatDays ?? 0)
+    }
+}
+
+/// Keep the complete draft until the engine accepts it, including on Clear.
+struct CheckInSheet: View {
+    let task: TaskSnapshot
+    let save: (CheckInAction) async -> String?
+    @Environment(\.dismiss) private var dismiss
+    @State private var draft: CheckInDraft
+    @State private var saving = false
+    @State private var failure: String?
+
+    init(task: TaskSnapshot, save: @escaping (CheckInAction) async -> String?) {
+        self.task = task
+        self.save = save
+        _draft = State(initialValue: CheckInDraft(task: task))
     }
 
     var body: some View {
         NavigationStack {
             Form {
-                DatePicker("Check in on", selection: $day, displayedComponents: .date)
+                if let failure {
+                    Text(failure).foregroundStyle(.red)
+                        .accessibilityIdentifier("checkin.failure")
+                }
+                DatePicker("Check in on", selection: $draft.day, displayedComponents: .date)
                     .accessibilityIdentifier("checkin.date")
-                TextField("Repeat every N days (blank for once)", text: $repeatDays)
+                TextField("Repeat every N days (blank for once)", text: $draft.repeatDays)
                     .keyboardType(.numberPad)
                     .accessibilityIdentifier("checkin.repeat")
-                if current != nil {
-                    Button("Clear Check-In", role: .destructive) { finish(.clear) }
+                if draft.interval == nil {
+                    Text("Enter 1–3650 days, or leave blank for a one-off check-in.")
+                        .foregroundStyle(.red)
+                        .accessibilityIdentifier("checkin.validation")
+                }
+                if task.nextCheckIn != nil {
+                    Button("Clear Check-In", role: .destructive) { submit(.clear) }
                         .accessibilityIdentifier("checkin.clear")
                 }
             }
+            .disabled(saving)
             .navigationTitle("Check-In")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { finish(nil) }
+                    Button("Cancel") { dismiss() }.disabled(saving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        finish(.set(date: Self.calendarDay(day), repeatDays: Int(repeatDays.trimmingCharacters(in: .whitespaces)) ?? 0))
+                        if draft.isUnchanged(from: task) { dismiss() }
+                        else if let action = draft.action { submit(action) }
                     }
+                    .disabled(saving || draft.action == nil)
                     .accessibilityIdentifier("checkin.save")
                 }
             }
         }
+        .interactiveDismissDisabled(saving)
     }
 
-    /// The picked day as the engine's calendar date, in this device's zone.
-    static func calendarDay(_ date: Date) -> String {
-        let parts = Calendar.current.dateComponents([.year, .month, .day], from: date)
-        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    private func submit(_ action: CheckInAction) {
+        guard !saving else { return }
+        saving = true
+        Task {
+            failure = await save(action)
+            saving = false
+            if failure == nil { dismiss() }
+        }
     }
 }
 
@@ -168,12 +229,11 @@ struct OrganizeSection: View {
     let detail: TaskDetail
     let workspace: WorkspaceModel
     let hierarchy: (HierarchyAction) -> Void
-    let move: (String) -> Void
+    let move: (String) async -> String?
 
     @State private var addingSubtask = false
     @State private var subtaskTitle = ""
     @State private var choosingProject = false
-    @State private var projects: [ProjectSummary] = []
 
     var body: some View {
         Section("Organize") {
@@ -188,19 +248,11 @@ struct OrganizeSection: View {
                 Button("Cancel", role: .cancel) {}
                 Button("Add") { hierarchy(.addChild(subtaskTitle)) }
             }
-            Button("Move to Project") {
-                Task {
-                    projects = ((try? await workspace.engine.projects())?.active ?? [])
-                        .filter { $0.id != detail.project.id }
-                    choosingProject = true
+            Button("Move to Project") { choosingProject = true }
+                .accessibilityIdentifier("detail.move")
+                .sheet(isPresented: $choosingProject) {
+                    ProjectPickerSheet(workspace: workspace, excluding: detail.project.id, choose: move)
                 }
-            }
-            .accessibilityIdentifier("detail.move")
-            .confirmationDialog("Move to Project", isPresented: $choosingProject, titleVisibility: .visible) {
-                ForEach(projects) { project in
-                    Button(project.name) { move(project.id) }
-                }
-            }
             HStack {
                 Button("Indent") { hierarchy(.indent) }
                     .accessibilityIdentifier("detail.indent")
@@ -217,16 +269,5 @@ struct OrganizeSection: View {
             }
             .buttonStyle(.borderless)
         }
-    }
-}
-
-/// Runs `present` once a confirmation dialog has finished closing. A dialog's
-/// button that raises an alert or another dialog at once is dropped, since
-/// the closing dialog still owns the presentation.
-@MainActor
-func afterDialogCloses(_ present: @escaping @MainActor () -> Void) {
-    Task { @MainActor in
-        try? await Task.sleep(for: .milliseconds(450))
-        present()
     }
 }

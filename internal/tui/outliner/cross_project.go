@@ -359,10 +359,14 @@ func (m *OutlinerModel) reseatNoteCursorAfterRebuild() {
 }
 
 func (m *OutlinerModel) crossProjectRowsFingerprint() string {
+	return m.crossProjectRowsFingerprintForSearch(m.SearchQuery())
+}
+
+func (m *OutlinerModel) crossProjectRowsFingerprintForSearch(search string) string {
 	commonParts := query.CommonFilterParts(&m.Filter.CommonFilterState)
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "search=%q|", m.SearchQuery())
+	fmt.Fprintf(&b, "search=%q|", search)
 	fmt.Fprintf(&b, "search-projection=%t|", m.HasSearchProjection())
 	// The same query yields lanes or one flat list, so the presentation toggle is
 	// a membership input here exactly as the query itself is.

@@ -17,19 +17,52 @@ enum ShellTab: Hashable {
     case today, inbox, notes, browse
 }
 
-/// A task a reminder notification or a link opened.
-private struct OpenedTask: Identifiable {
-    let locator: TaskLocator
-    var id: TaskLocator { locator }
+/// Serializes root sheets, including requests received during interactive dismissal.
+@MainActor @Observable
+final class ShellPresentation {
+    enum Destination: Identifiable, Equatable {
+        case capture, sync, task(TaskLocator)
+        var id: String {
+            switch self {
+            case .capture: "capture"
+            case .sync: "sync"
+            case .task(let locator): "task:\(locator.projectID):\(locator.taskID)"
+            }
+        }
+    }
+    private(set) var current: Destination?
+    private var pending: Destination?
+    private var dismissing = false
+
+    func show(_ destination: Destination) {
+        guard current != destination else { return }
+        if current != nil || dismissing {
+            pending = destination
+            dismissing = true
+            current = nil
+        } else {
+            current = destination
+        }
+    }
+
+    func dismiss() {
+        pending = nil
+        dismissing = dismissing || current != nil
+        current = nil
+    }
+
+    func didDismiss() {
+        dismissing = false
+        current = pending
+        pending = nil
+    }
 }
 
 /// Today, Inbox, Notes, and Browse, with capture reachable from every one of them
 /// and sync status a tap away.
 struct MainTabView: View {
     let workspace: WorkspaceModel
-    @State private var capturing = false
-    @State private var showingSync = false
-    @State private var opened: OpenedTask?
+    @State private var presentation = ShellPresentation()
     @State private var tab: ShellTab = .today
 
     var body: some View {
@@ -44,21 +77,21 @@ struct MainTabView: View {
             Tab("Notes", systemImage: "note.text", value: ShellTab.notes) {
                 NavigationStack {
                     NotesListView(workspace: workspace, location: nil)
-                        .modifier(ShellChrome(workspace: workspace, showingSync: $showingSync))
+                        .modifier(ShellChrome(workspace: workspace, showingSync: syncBinding))
                         .navigationDestination(for: Route.self) { destination($0) }
                 }
             }
             Tab("Browse", systemImage: "square.grid.2x2", value: ShellTab.browse) {
                 NavigationStack {
                     BrowseView(workspace: workspace)
-                        .modifier(ShellChrome(workspace: workspace, showingSync: $showingSync))
+                        .modifier(ShellChrome(workspace: workspace, showingSync: syncBinding))
                         .navigationDestination(for: Route.self) { destination($0) }
                 }
             }
         }
         .overlay(alignment: .bottomTrailing) {
             Button {
-                capturing = true
+                presentation.show(.capture)
             } label: {
                 Image(systemName: "plus")
                     .font(.title2.weight(.semibold))
@@ -85,51 +118,56 @@ struct MainTabView: View {
         .onChange(of: presentedSheet, initial: true) { _, sheet in
             workspace.screen.sheet = sheet
         }
-        .sheet(isPresented: $capturing) {
-            CaptureSheet(workspace: workspace)
-        }
-        .sheet(isPresented: $showingSync) {
-            SyncView(workspace: workspace)
-        }
         .onChange(of: workspace.reminders.openRequest) { _, request in
             guard let request else { return }
-            // One sheet presents at a time: a reminder opened while capture
-            // or the sync sheet is up replaces it (capture keeps its draft).
-            if capturing || showingSync {
-                capturing = false
-                showingSync = false
-                Task {
-                    try? await Task.sleep(for: .milliseconds(700))
-                    opened = OpenedTask(locator: request)
-                }
-            } else {
-                opened = OpenedTask(locator: request)
-            }
+            presentation.show(.task(request))
         }
         .task(id: workspace.linkRequest) {
             guard let link = workspace.linkRequest else { return }
             follow(link)
         }
-        .sheet(item: $opened, onDismiss: { workspace.reminders.openRequest = nil }) { opened in
-            NavigationStack {
-                TaskDetailView(workspace: workspace, locator: opened.locator)
-                    .navigationDestination(for: Route.self) { destination($0) }
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Done") { self.opened = nil }
-                                .accessibilityIdentifier("reminder.opened.done")
+        .sheet(item: Binding(get: { presentation.current }, set: { value in
+            // A programmatic replacement already cleared current and queued
+            // its successor. Only an interactive dismissal cancels that route.
+            if value == nil, presentation.current != nil { presentation.dismiss() }
+        }), onDismiss: {
+            workspace.reminders.openRequest = nil
+            presentation.didDismiss()
+        }) { destination in
+            switch destination {
+            case .capture:
+                CaptureSheet(workspace: workspace)
+            case .sync:
+                SyncView(workspace: workspace)
+            case .task(let locator):
+                NavigationStack {
+                    TaskDetailView(workspace: workspace, locator: locator)
+                        .navigationDestination(for: Route.self) { self.destination($0) }
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Done") { presentation.dismiss() }
+                                    .accessibilityIdentifier("reminder.opened.done")
+                            }
                         }
-                    }
+                }
+                .accessibilityIdentifier("reminder.opened")
             }
-            .accessibilityIdentifier("reminder.opened")
         }
     }
 
+    private var syncBinding: Binding<Bool> {
+        Binding(get: { presentation.current == .sync }, set: { value in
+            if value { presentation.show(.sync) } else { presentation.dismiss() }
+        })
+    }
+
     private var presentedSheet: String? {
-        if capturing { return "capture" }
-        if showingSync { return "sync" }
-        if opened != nil { return "task" }
-        return nil
+        switch presentation.current {
+        case .capture: "capture"
+        case .sync: "sync"
+        case .task: "task"
+        case nil: nil
+        }
     }
 
     /// Shows what a link named: a view selects its tab, capture opens the
@@ -142,39 +180,23 @@ struct MainTabView: View {
         workspace.linkRequest = nil
         switch link {
         case .view(.today):
-            dismissSheets()
+            presentation.dismiss()
             tab = .today
         case .view(.inbox):
-            dismissSheets()
+            presentation.dismiss()
             tab = .inbox
         case .capture:
-            showingSync = false
-            opened = nil
-            capturing = true
+            presentation.show(.capture)
         case .task(_, let projectID, let taskID):
             let locator = TaskLocator(projectID: projectID, taskID: taskID)
-            if capturing || showingSync {
-                dismissSheets()
-                Task {
-                    try? await Task.sleep(for: .milliseconds(700))
-                    opened = OpenedTask(locator: locator)
-                }
-            } else {
-                opened = OpenedTask(locator: locator)
-            }
+            presentation.show(.task(locator))
         }
-    }
-
-    private func dismissSheets() {
-        capturing = false
-        showingSync = false
-        opened = nil
     }
 
     private func stack(root: ListSource) -> some View {
         NavigationStack {
             TaskListView(workspace: workspace, source: root)
-                .modifier(ShellChrome(workspace: workspace, showingSync: $showingSync))
+                .modifier(ShellChrome(workspace: workspace, showingSync: syncBinding))
                 .navigationDestination(for: Route.self) { destination($0) }
         }
     }
@@ -241,6 +263,15 @@ private struct ShellChrome: ViewModifier {
                             .frame(maxWidth: .infinity)
                             .background(.red)
                             .accessibilityIdentifier("workspace.failure")
+                    }
+                    if let drafts = workspace.drafts, drafts.hasPendingChanges {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Some recovery drafts couldn’t be saved or removed. Retry before quitting tt.")
+                                .font(.footnote)
+                            Button("Retry Saving Drafts") { drafts.retry() }
+                        }
+                        .padding(8)
+                        .accessibilityIdentifier("draft.recovery.pending")
                     }
                     if workspace.sync.isFailing {
                         SyncFailureBanner(sync: workspace.sync)

@@ -17,6 +17,7 @@ struct CaptureSheet: View {
     @State private var failure: String?
     @State private var saving = false
     @State private var confirmingDiscard = false
+    @State private var draftActions = SheetActions()
     @State private var focused = false
     @State private var selection = NSRange(location: 0, length: 0)
     @State private var composing = false
@@ -28,6 +29,7 @@ struct CaptureSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                DraftRecoveryNotice(store: workspace.drafts, key: .capture)
                 Picker("Capture as", selection: $draft.mode) {
                     Text("Quick").tag(CaptureDraft.Mode.quick)
                     Text("Form").tag(CaptureDraft.Mode.form)
@@ -59,12 +61,7 @@ struct CaptureSheet: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     if !draft.isEmpty {
-                        Menu {
-                            Button("Discard Draft…", role: .destructive) {
-                                afterDialogCloses { confirmingDiscard = true }
-                            }
-                                .accessibilityIdentifier("capture.discard")
-                        } label: {
+                        Button { draftActions.isPresented = true } label: {
                             Image(systemName: "ellipsis.circle")
                         }
                         .accessibilityLabel("Draft actions")
@@ -78,6 +75,15 @@ struct CaptureSheet: View {
                         .accessibilityIdentifier("capture.save")
                 }
             }
+            .sheet(isPresented: $draftActions.isPresented, onDismiss: draftActions.didDismiss) {
+                ActionSheet(title: "Draft Actions", actionCount: 1) {
+                    Button("Discard Draft…", role: .destructive) {
+                        draftActions.choose { confirmingDiscard = true }
+                    }
+                    .accessibilityIdentifier("capture.discard")
+                }
+            }
+            .onDisappear { draftActions.cancelPending() }
             .alert("Discard this capture?", isPresented: $confirmingDiscard) {
                 Button("Discard Draft", role: .destructive) {
                     workspace.drafts?.discardCapture()

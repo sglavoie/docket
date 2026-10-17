@@ -238,6 +238,9 @@ example. It stays within that list, unlike the terminal’s ranked search across
 modes. A transient refresh failure keeps the last successful list and reading
 position, names that the results are from before the failure, and offers
 **Retry**. Invalid searches and unavailable workspaces replace the old results.
+Task details likewise retain the same task after a temporary refresh failure,
+with **Retry** above the content. A project picker that cannot load explains the
+failure and offers **Retry**, separately from having no destinations.
 
 A task's detail also edits its checklist in place (tick, add, edit, reorder,
 delete, promote to a subtask), schedules and acknowledges its check-in, adds
@@ -247,6 +250,10 @@ Today, Next, Backlog, Start, Done, a tag, or a project. A project list's
 settings rename, describe, and tag the project, park and archive it after a
 confirmation, and delete it after a confirmation that names everything the
 delete takes. **New Project** sits in Browse.
+
+**Change Check-In** opens with the saved day and repeat interval. Leave the
+interval blank for a one-off, or enter 1–3650 days. Saving an unchanged schedule
+leaves it untouched; a refused save keeps the sheet and its fields open.
 
 Capture takes shorthand in the desktop's capture grammar, one task per line,
 previewed as it is typed and committed in one transaction, or a structured
@@ -260,6 +267,12 @@ dismissed sheet, or a relaunch. **Close**, a swipe down, and the hardware-keyboa
 close shortcuts all preserve the draft. **Draft actions → Discard Draft…**
 asks before deleting it; **Keep Editing** retains every field. Only a committed
 save or a confirmed discard removes the draft.
+
+If recovery storage fails, the editor explains that its newest text is held
+only for this session and offers **Retry Saving Drafts**. Retry before quitting;
+it saves the recovery draft without submitting a task, comment, or note.
+Unreadable earlier drafts are preserved before replacement, with **Export
+Unreadable Draft** available from the notice.
 
 The structured form's **Deadline time** toggle adds an optional local clock to
 the due date. Changing the day preserves that clock; midnight is date-only.

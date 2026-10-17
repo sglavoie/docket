@@ -159,10 +159,12 @@ final class OrganizingUITests: XCTestCase {
         // A list draws only the rows near the screen, so a control further
         // down exists only once it is scrolled toward, and one above the rows
         // in view only once the list is scrolled back.
-        for _ in 0..<5 where !button.waitForExistence(timeout: 2) {
+        for _ in 0..<5 {
+            if button.waitForExistence(timeout: 2) { break }
             app.swipeUp()
         }
-        for _ in 0..<8 where !button.waitForExistence(timeout: 2) {
+        for _ in 0..<8 {
+            if button.waitForExistence(timeout: 2) { break }
             app.swipeDown()
         }
         require(button, identifier)
@@ -311,10 +313,13 @@ final class OrganizingUITests: XCTestCase {
         let paint = row(app, "Pick paint colors")
         let tiles = row(app, "Order bathroom tiles")
         require(tiles, "the last sibling")
-        // Drop past the last row's bottom; its center can resolve to the
-        // insertion slot before it, which is still inside the first branch.
+        // Freeze the endpoint before lifting: a coordinate relative to the
+        // destination row follows its animation and can land before it.
+        // Move slowly and hold so the insertion position settles before release.
+        let drop = app.coordinate(withNormalizedOffset: .zero).withOffset(
+            CGVector(dx: tiles.frame.midX, dy: tiles.frame.maxY + tiles.frame.height))
         paint.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            .press(forDuration: 1, thenDragTo: tiles.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1.1)))
+            .press(forDuration: 1, thenDragTo: drop, withVelocity: .slow, thenHoldForDuration: 1)
         let outline = XCTAttachment(string: app.debugDescription)
         outline.name = "Outline after dragging the parent"
         outline.lifetime = .keepAlways
@@ -378,6 +383,28 @@ final class OrganizingUITests: XCTestCase {
         eventually("the weekly check-in was written") {
             try self.taskLine("Call the bank", in: self.markdown("unfiled"))?.contains("check_in: \(today), check_in_repeat: 7") == true
         }
+
+        let unchanged = try markdown("unfiled")
+        press(app, "detail.checkin.set")
+        XCTAssertEqual(app.textFields["checkin.repeat"].value as? String, "7")
+        app.buttons["checkin.save"].tap()
+        require(app.buttons["detail.checkin.set"], "the unchanged schedule's detail")
+        XCTAssertEqual(try markdown("unfiled"), unchanged)
+        press(app, "detail.checkin.set")
+        replace(app, "checkin.repeat", with: "3651")
+        XCTAssertFalse(app.buttons["checkin.save"].isEnabled)
+        require(app.staticTexts["checkin.validation"], "the invalid interval explanation")
+        replace(app, "checkin.repeat", with: "8")
+        let catalog = workspace.appendingPathComponent(".tt/workspace.json")
+        let permissions = try FileManager.default.attributesOfItem(atPath: catalog.path)[.posixPermissions]!
+        defer { try? FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: catalog.path) }
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: catalog.path)
+        app.buttons["checkin.save"].tap()
+        require(app.staticTexts["checkin.failure"], "the refused schedule with its draft intact")
+        XCTAssertEqual(app.textFields["checkin.repeat"].value as? String, "8")
+        try FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: catalog.path)
+        replace(app, "checkin.repeat", with: "7")
+        app.buttons["checkin.save"].tap()
 
         press(app, "detail.checkin.acknowledge")
         eventually("the acknowledgement moved the check-in on a week") {

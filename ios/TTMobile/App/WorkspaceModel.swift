@@ -27,7 +27,21 @@ enum WorkspacePhase: Equatable {
 final class WorkspaceModel {
     private(set) var phase: WorkspacePhase = .loading
     private(set) var status: WorkspaceStatus?
-    private(set) var location: WorkspaceLocation?
+    private(set) var location: WorkspaceLocation? {
+        didSet {
+            if oldValue?.runtime != location?.runtime {
+                if let location {
+                    let store = draftStores[location.runtime] ?? DraftStore(location: location)
+                    draftStores[location.runtime] = store
+                    drafts = store
+                } else {
+                    drafts = nil
+                }
+            }
+        }
+    }
+    // A workspace switch must not drop recovery text whose disk write failed.
+    @ObservationIgnored private var draftStores: [URL: DraftStore] = [:]
     private(set) var generation = 0
     /// The last mutation refusal, shown until the next one succeeds.
     private(set) var failure: String?
@@ -259,7 +273,7 @@ final class WorkspaceModel {
     }
 
     /// This workspace's unsaved drafts, or nil before one is open.
-    var drafts: DraftStore? { location.map(DraftStore.init(location:)) }
+    private(set) var drafts: DraftStore?
 
     /// Captures shorthand text. Returns the refusal in a person's words, or
     /// nil once every line committed.

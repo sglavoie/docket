@@ -435,6 +435,40 @@ final class BrowsingUITests: XCTestCase {
         XCTAssertTrue(text(app, "Ship beta build").exists)
     }
 
+    func testDetailRefreshAndProjectPickerRecoverFromReadFailures() throws {
+        let app = try launchSeeded()
+        row(app, "Ship beta build").tap()
+        require(app.staticTexts["detail.title"], "the task detail")
+        let catalog = root.appendingPathComponent("workspaces/seeded/.tt/workspace.json")
+        let permissions = try FileManager.default.attributesOfItem(atPath: catalog.path)[.posixPermissions]!
+        defer { try? FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: catalog.path) }
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: catalog.path)
+        let list = app.collectionViews.firstMatch
+        list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
+            .press(forDuration: 0.1, thenDragTo: list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9)))
+        require(app.staticTexts["detail.refresh.failure"], "the stale detail explanation")
+        XCTAssertTrue(app.staticTexts["detail.title"].exists)
+        XCTAssertFalse(app.staticTexts["state.error"].exists)
+        let retained = XCTAttachment(screenshot: app.screenshot())
+        retained.name = "Detail retained after refresh failure"
+        retained.lifetime = .keepAlways
+        add(retained)
+        try FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: catalog.path)
+        app.buttons["detail.refresh.retry"].tap()
+        requireAbsent(app.staticTexts["detail.refresh.failure"], "the recovered detail")
+
+        let move = app.buttons["detail.move"].firstMatch
+        for _ in 0..<12 where !move.isHittable { app.swipeUp() }
+        require(move, "Move to Project")
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: catalog.path)
+        move.tap()
+        require(app.staticTexts["state.error"], "the project loading error")
+        XCTAssertFalse(app.staticTexts["state.empty"].exists)
+        try FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: catalog.path)
+        app.buttons["state.action"].tap()
+        require(app.buttons["Home Renovation"], "the recovered destination list")
+    }
+
     func testOpeningShowsLoadingThenContent() throws {
         try seed("seeded", .representative)
         try select("seeded")

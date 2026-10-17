@@ -4,6 +4,31 @@ import TTEngine
 @testable import tt
 
 final class SchedulingTests: XCTestCase {
+    func testCheckInDraftPreservesScheduleAndRejectsInvalidIntervals() async throws {
+        let engine = try await openEngine()
+        let task = try await engine.capture(title: "Weekly review").task
+        _ = try await engine.checkIn([task.locator], .set(date: "2030-06-10", repeatDays: 7))
+        let stored = try await engine.task(task.locator).task
+        XCTAssertEqual(stored.checkInRepeatDays, 7)
+        var draft = CheckInDraft(task: stored)
+        XCTAssertEqual(draft.repeatDays, "7")
+        XCTAssertTrue(draft.isUnchanged(from: stored))
+        _ = try await engine.checkIn([task.locator], XCTUnwrap(draft.action))
+        let reread = try await engine.task(task.locator).task
+        XCTAssertEqual(reread.nextCheckIn, stored.nextCheckIn)
+        XCTAssertEqual(reread.checkInRepeatDays, 7)
+        XCTAssertEqual(reread.updatedAt, stored.updatedAt)
+        for invalid in ["0", "-1", "7 days", "1.5", "3651", "999999999999999999999999", "７"] {
+            draft.repeatDays = invalid
+            XCTAssertNil(draft.action, invalid)
+        }
+        draft.repeatDays = " "
+        _ = try await engine.checkIn([task.locator], XCTUnwrap(draft.action))
+        let once = try await engine.task(task.locator).task
+        XCTAssertEqual(once.checkInRepeatDays ?? 0, 0)
+        XCTAssertEqual(once.nextCheckIn, stored.nextCheckIn)
+    }
+
     private func openEngine() async throws -> TTEngine {
         let engine = TTEngine()
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

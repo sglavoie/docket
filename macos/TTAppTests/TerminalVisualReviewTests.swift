@@ -1,6 +1,6 @@
 import AppKit
 import GhosttyKit
-import ScreenCaptureKit
+import IOSurface
 import XCTest
 @testable import tt
 
@@ -19,6 +19,8 @@ final class TerminalVisualReviewTests: XCTestCase {
     }
 
     private func render(_ file: URL) throws {
+        let fontSize = Float(ProcessInfo.processInfo.environment["TT_TERMINAL_REVIEW_FONT_SIZE"] ?? "14") ?? 14
+        XCTAssertTrue((8...40).contains(fontSize))
         let parts = file.deletingPathExtension().lastPathComponent.split(separator: "-")
         let size = parts[1].split(separator: "x").compactMap { Int($0) }
         guard size.count == 2 else { return XCTFail("Frame must name its columns and rows: \(file)") }
@@ -31,7 +33,7 @@ final class TerminalVisualReviewTests: XCTestCase {
         let overrides = Ghostty.ConfigOverrides(command: URL(fileURLWithPath: "/bin/sh"), arguments: [
             "-c", "while [ ! -e \"$2\" ]; do sleep 0.02; done; printf '\\033[2J\\033[H\\033[?25l\\033[?7l'; cat \"$1\"; sleep 30",
             "review", file.path, ready.path,
-        ], fontSize: 14)
+        ], fontSize: fontSize)
         let ghostty = Ghostty.App { Ghostty.Config(userConfig: config, overrides: overrides) }
         let window = NSWindow(contentRect: NSRect(x: 50, y: 50, width: 800, height: 500),
                               styleMask: [.titled], backing: .buffered, defer: false)
@@ -65,36 +67,13 @@ final class TerminalVisualReviewTests: XCTestCase {
             ghostty_surface_draw(surface)
             RunLoop.current.run(until: Date().addingTimeInterval(0.02))
         }
-        let output = file.deletingPathExtension().appendingPathExtension("png")
-        let captured = expectation(description: "capture own review window")
-        var screenshot: CGImage?
-        var captureError: Error?
-        let windowID = CGWindowID(window.windowNumber)
-        let imageWidth = Int(window.frame.width * window.backingScaleFactor)
-        let imageHeight = Int(window.frame.height * window.backingScaleFactor)
-        SCShareableContent.getExcludingDesktopWindows(true, onScreenWindowsOnly: true) { content, error in
-            guard let ownWindow = content?.windows.first(where: { $0.windowID == windowID }) else {
-                captureError = error
-                captured.fulfill()
-                return
-            }
-            let filter = SCContentFilter(desktopIndependentWindow: ownWindow)
-            let configuration = SCStreamConfiguration()
-            configuration.width = imageWidth
-            configuration.height = imageHeight
-            configuration.showsCursor = false
-            configuration.ignoreShadowsSingleWindow = true
-            SCScreenshotManager.captureImage(contentFilter: filter, configuration: configuration) { image, error in
-                screenshot = image
-                captureError = error
-                captured.fulfill()
-            }
-        }
-        wait(for: [captured], timeout: 10)
-        let cgImage = try XCTUnwrap(screenshot, "Own-window capture failed: \(String(describing: captureError))")
+        let output = fontSize == 14
+            ? file.deletingPathExtension().appendingPathExtension("png")
+            : file.deletingPathExtension().appendingPathExtension("font\(Int(fontSize)).png")
+        let cgImage = try renderedImage(from: try XCTUnwrap(view?.layer))
         let bitmap = NSBitmapImageRep(cgImage: cgImage)
-        // Ignore the native title and rounded edges: a blank terminal with a
-        // correctly rendered window title must not pass this review again.
+        // This is the actual terminal texture, excluding native window chrome.
+        // Readable terminal text alone is not pixel evidence.
         var colors = Set<String>()
         for y in stride(from: 80, to: bitmap.pixelsHigh - 24, by: 6) {
             for x in stride(from: 24, to: bitmap.pixelsWide - 24, by: 6) {
@@ -110,6 +89,35 @@ final class TerminalVisualReviewTests: XCTestCase {
         attachment.name = file.deletingPathExtension().lastPathComponent
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    /// Copy only this terminal's rendered pixels. Ghostty 1.3 presents a Metal-
+    /// rendered IOSurface as the view layer's contents, so desktop capture and
+    /// Screen Recording permission are unnecessary. Native chrome is excluded.
+    private func renderedImage(from layer: CALayer) throws -> CGImage {
+        let contents = try XCTUnwrap(layer.contents) as CFTypeRef
+        guard CFGetTypeID(contents) == IOSurfaceGetTypeID() else {
+            throw NSError(domain: "TerminalReview", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "Expected the renderer's IOSurface layer contents"])
+        }
+        let surface = contents as! IOSurfaceRef
+        let status = IOSurfaceLock(surface, .readOnly, nil)
+        guard status == 0 else {
+            throw NSError(domain: NSMachErrorDomain, code: Int(status))
+        }
+        defer { IOSurfaceUnlock(surface, .readOnly, nil) }
+        // BGRA is the native texture format; fail explicitly if it changes.
+        XCTAssertEqual(IOSurfaceGetPixelFormat(surface), 0x42475241)
+        let width = IOSurfaceGetWidth(surface)
+        let height = IOSurfaceGetHeight(surface)
+        let stride = IOSurfaceGetBytesPerRow(surface)
+        let bytes = Data(bytes: IOSurfaceGetBaseAddress(surface), count: stride * height)
+        let provider = try XCTUnwrap(CGDataProvider(data: bytes as CFData))
+        return try XCTUnwrap(CGImage(width: width, height: height,
+            bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: stride,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: [.byteOrder32Little, CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue)],
+            provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent))
     }
 
     private func screenText(_ surface: ghostty_surface_t) -> String {

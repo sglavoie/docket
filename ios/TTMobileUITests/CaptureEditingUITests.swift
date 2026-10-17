@@ -413,6 +413,28 @@ final class CaptureEditingUITests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["capture.project"].exists, "quick capture drew a project picker")
     }
 
+    func testDraftStorageFailureKeepsTextAndRetrySurvivesRelaunch() throws {
+        var app = launch()
+        let drafts = root.appendingPathComponent("devices/\(workspaceName)/drafts")
+        try Data("unavailable".utf8).write(to: drafts)
+        openCapture(app)
+        type(app, "capture.text", "Keep this unsaved thought")
+        require(app.descendants(matching: .any)["draft.recovery.message"].firstMatch, "the draft storage warning")
+        app.buttons["capture.close"].tap()
+        requireAbsent(app.buttons["capture.save"], "the closed capture")
+        require(app.descendants(matching: .any)["draft.recovery.pending"].firstMatch, "the pending draft banner")
+        openCapture(app)
+        XCTAssertEqual(value(app, "capture.text"), "Keep this unsaved thought")
+        try FileManager.default.removeItem(at: drafts)
+        app.buttons["draft.recovery.retry"].tap()
+        requireAbsent(app.descendants(matching: .any)["draft.recovery.message"].firstMatch, "the recovered storage warning")
+        app.terminate()
+        app = launch()
+        openCapture(app)
+        XCTAssertEqual(value(app, "capture.text"), "Keep this unsaved thought")
+        XCTAssertNil(try block("Keep this unsaved thought", in: markdown("unfiled")), "draft retry submitted the task")
+    }
+
     func testRefusedCaptureKeepsItsDraftAcrossARelaunch() throws {
         var app = launch()
         openCapture(app)
@@ -594,7 +616,9 @@ final class CaptureEditingUITests: XCTestCase {
         XCTAssertEqual(value(app, "form.resume"), "Bring the account number")
         app.buttons["edit.actions"].tap()
         app.buttons["edit.discard"].tap()
-        app.buttons["Discard Draft"].tap()
+        let discard = app.alerts.buttons["Discard Draft"]
+        require(discard, "the edit discard confirmation")
+        discard.tap()
         requireAbsent(app.buttons["edit.save"], "the discarded editor")
         XCTAssertEqual(draftFiles(), [])
         XCTAssertEqual(try markdown("unfiled"), before)

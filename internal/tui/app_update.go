@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/operationhost"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/projectops"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -98,6 +99,16 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			cmd = m.popView()
 		}
 		return m, cmd
+	}
+
+	// Search belongs to the retained Outliner, even when Help or another
+	// presentation is currently above it. Its request identity rejects old work.
+	if result, ok := msg.(outliner.BackgroundSearchResultMsg); ok {
+		if m.crossOutliner != nil {
+			_, cmd := m.crossOutliner.Update(result)
+			return m, cmd
+		}
+		return m, nil
 	}
 
 	if saved, ok := msg.(checkInSetupSavedMsg); ok {

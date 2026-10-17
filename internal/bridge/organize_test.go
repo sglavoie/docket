@@ -152,11 +152,17 @@ func organizeRecurringCheckIn(t *testing.T, h *harness) {
 		t.Fatalf("set %+v", set)
 	}
 	for _, view := range set.Tasks {
+		if view.CheckInRepeatDays != 7 {
+			t.Fatalf("repeat interval missing from task view: %+v", view)
+		}
 		if view.NextCheckIn == nil || localDay(*view.NextCheckIn) != "2026-10-06" {
 			t.Fatalf("%s check-in %v", view.Title, view.NextCheckIn)
 		}
 	}
 	before := h.detail(atlasProject, signingTask).Task
+	if before.CheckInRepeatDays != 7 {
+		t.Fatalf("reread lost the repeat interval: %+v", before)
+	}
 	h.clock.advance(48 * time.Hour)
 	var acknowledged tasksResultView
 	h.ok(h.call("command.check_in", map[string]any{"tasks": []locator{signing}, "action": "acknowledge"}), &acknowledged)

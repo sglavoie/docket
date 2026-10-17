@@ -1002,6 +1002,9 @@ func (m *OutlinerModel) searchIndicator(width int, counted bool) string {
 // drawn nothing of its own to count, and over an empty query, which matched
 // nothing and narrowed nothing.
 func (m *OutlinerModel) searchMatchCountLabel() string {
+	if m.Search.flight != nil && m.Search.flight.result == nil {
+		return "Searching…"
+	}
 	if !m.HasSearchProjection() || strings.TrimSpace(m.SearchQuery()) == "" {
 		return ""
 	}
@@ -1416,6 +1419,9 @@ func (m *OutlinerModel) withheldSearchHint() string {
 }
 
 func (m *OutlinerModel) OutlinerEmptyMessage() string {
+	if m.Search.flight != nil && m.Search.flight.result == nil {
+		return "Searching… Keep typing to refine; Esc returns to your view."
+	}
 	switch m.ClassifyEmptyCause() {
 	case outlinerEmptyNoProjects:
 		return "No projects are available. Press P to open Projects."

@@ -15,5 +15,7 @@ go test ./internal/tui/outliner -run '^$' \
 go test ./internal/tui/outliner -run '^$' \
   -bench '^BenchmarkLiveSearchColdUniqueContent/tasks=10000$/query=(release|handoff|zzzzzzz)$' \
   -benchtime=1x -count=3 >> "$report"
+go test ./internal/tui/outliner -run '^$' -bench '^BenchmarkLiveSearchResponsive$' \
+  -benchtime=1x -count=3 >> "$report"
 cat "$report"
 go run ./scripts/searchbudget "$@" < "$report"

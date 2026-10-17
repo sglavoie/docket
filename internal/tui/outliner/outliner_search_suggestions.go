@@ -1,6 +1,7 @@
 package outliner
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"sort"
@@ -305,7 +306,8 @@ func (m *OutlinerModel) acceptSearchSuggestion() {
 	m.SetSearchInputValue(accepted)
 	m.SetSearchInputCursor(utf8.RuneCountInString(inserted))
 	state.clear()
-	m.SetSearchQuery(accepted)
+	m.BaseSearchableView.SetSearchQuery(accepted)
+	m.Search.queued = m.rebuildLiveSearch()
 	// The caret now sits after the inserted token's trailing space, so the refresh
 	// finds no active token and the pane stays closed until the next sigil.
 	m.RefreshSearchAutocomplete()
@@ -658,7 +660,19 @@ func searchProjectionMatchesWithin(
 	predicates *query.SearchPredicates,
 	caches ...*fuzzy.ScoreCache,
 ) []outlinerSearchMatch {
-	if predicates.Invalid() {
+	return searchProjectionMatchesWithinContext(context.Background(), projects, query, candidates, matcher, predicates, caches...)
+}
+
+func searchProjectionMatchesWithinContext(
+	ctx context.Context,
+	projects []*models.Project,
+	query string,
+	candidates map[string][]*models.Task,
+	matcher fuzzy.Matcher,
+	predicates *query.SearchPredicates,
+	caches ...*fuzzy.ScoreCache,
+) []outlinerSearchMatch {
+	if ctx.Err() != nil || predicates.Invalid() {
 		return nil
 	}
 	if projectRef, shortID, exact := parseProjectShortIDQuery(query); exact {
@@ -680,6 +694,9 @@ func searchProjectionMatchesWithin(
 			tasks = bounded
 		}
 		for _, task := range tasks {
+			if ctx.Err() != nil {
+				return nil
+			}
 			if task == nil || !predicates.AdmitsPopulation(task) {
 				sourceIndex++
 				continue
@@ -1102,7 +1119,7 @@ func (m *OutlinerModel) applyRecalledSearchQuery(value string) {
 	m.SetSearchInputCursor(utf8.RuneCountInString(value))
 	m.BaseSearchableView.SetSearchQuery(value)
 	m.Search.Autocomplete.clear()
-	RebuildOutlinerPreservingCursor(m)
+	m.Search.queued = m.rebuildLiveSearch()
 }
 
 // hasSearchHistory reports whether anything is there to recall, which is what
@@ -1223,7 +1240,7 @@ func (m *OutlinerModel) updateSearchHistoryPicker(msg tea.Msg) tea.Cmd {
 				m.Search.history.resetRecall()
 				m.applyRecalledSearchQuery(value)
 			}
-			return nil
+			return m.takeSearchCommand()
 		case "up", "down", "ctrl+k", "ctrl+j", "ctrl+p", "ctrl+n":
 			p.choices.HandleKey(key.String(), nil)
 			return nil

@@ -830,48 +830,53 @@ struct BulkActionsButton: View {
     /// Called with the refusal, if any, and whether the action moved tasks.
     let finished: (String?, Bool) -> Void
 
-    @State private var choosing = false
+    @State private var actions = SheetActions()
+    @State private var targets: [TaskLocator] = []
     @State private var tagging = false
     @State private var tag = ""
     @State private var choosingProject = false
-    @State private var projects: [ProjectSummary] = []
 
     var body: some View {
-        Button("Actions") { choosing = true }
+        Button("Actions") {
+            targets = selection
+            actions.isPresented = true
+        }
             .disabled(selection.isEmpty)
             .accessibilityIdentifier("list.bulk")
-            .confirmationDialog("\(selection.count) selected", isPresented: $choosing, titleVisibility: .visible) {
-                Button("Add to Today") { run(.plan(.addToday)) }
-                Button("Add to Next") { run(.plan(.addNext)) }
-                Button("Move to Backlog") { run(.plan(.backlog)) }
-                Button("Start") { run(.state(.doing)) }
-                Button("Mark Done") { run(.state(.done)) }
-                Button("Add Tag…") {
-                    tag = ""
-                    afterDialogCloses { tagging = true }
-                }
-                Button("Move to Project…") {
-                    Task {
-                        projects = (try? await workspace.engine.projects())?.active ?? []
-                        afterDialogCloses { choosingProject = true }
+            .sheet(isPresented: $actions.isPresented, onDismiss: actions.didDismiss) {
+                ActionSheet(title: "\(targets.count) selected", actionCount: 7) {
+                    Button("Add to Today") { actions.choose { run(.plan(.addToday)) } }
+                    Button("Add to Next") { actions.choose { run(.plan(.addNext)) } }
+                    Button("Move to Backlog") { actions.choose { run(.plan(.backlog)) } }
+                    Button("Start") { actions.choose { run(.state(.doing)) } }
+                    Button("Mark Done") { actions.choose { run(.state(.done)) } }
+                    Button("Add Tag…") {
+                        actions.choose {
+                            tag = ""
+                            tagging = true
+                        }
                     }
+                    Button("Move to Project…") { actions.choose { choosingProject = true } }
                 }
             }
+            .onDisappear { actions.cancelPending() }
             .alert("Add Tag", isPresented: $tagging) {
                 TextField("Tag", text: $tag)
                     .accessibilityIdentifier("bulk.tag")
                 Button("Cancel", role: .cancel) {}
                 Button("Add") { run(.tags(add: [tag], remove: [])) }
             }
-            .confirmationDialog("Move to Project", isPresented: $choosingProject, titleVisibility: .visible) {
-                ForEach(projects) { project in
-                    Button(project.name) { run(.move(projectID: project.id)) }
+            .sheet(isPresented: $choosingProject) {
+                ProjectPickerSheet(workspace: workspace) { projectID in
+                    let outcome = await workspace.bulk(targets, .move(projectID: projectID))
+                    finished(outcome.refusal, outcome.refusal == nil)
+                    return outcome.refusal
                 }
             }
     }
 
     private func run(_ action: BulkAction) {
-        let targets = selection
+        let targets = targets
         let moves: Bool
         if case .move = action { moves = true } else { moves = false }
         Task {

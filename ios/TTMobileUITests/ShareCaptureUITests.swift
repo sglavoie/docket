@@ -240,6 +240,27 @@ final class ShareCaptureUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["workspace.failure"].label.contains("another workspace"))
         XCTAssertFalse(app.staticTexts["detail.title"].exists)
     }
+
+    func testLinksReplaceSheetsAfterDismissalAndKeepCaptureText() throws {
+        let app = launch()
+        app.open(DeepLink.capture.url)
+        require(app.segmentedControls["capture.mode"], "capture from the link")
+        let text = app.textViews["capture.text"].firstMatch
+        require(text, "capture text")
+        text.tap()
+        text.typeText("Keep while opening a task")
+        app.open(DeepLink.task(workspace: workspaceID,
+                              projectID: "6f1d3c2a-1b4e-4c8a-9a0e-0d5b7c1e2a01",
+                              taskID: "0a7e5d10-2c3b-4f6a-8e9d-000000000101").url)
+        require(app.staticTexts["detail.title"], "the linked task after capture dismisses")
+        XCTAssertEqual(app.staticTexts["detail.title"].label, "Ship beta build")
+        app.open(DeepLink.capture.url)
+        require(text, "capture after task dismissal")
+        XCTAssertEqual(text.value as? String, "Keep while opening a task")
+        app.open(DeepLink.view(.inbox).url)
+        eventually("the Inbox tab is selected after dismissal") { app.tabBars.buttons["Inbox"].isSelected }
+        XCTAssertFalse(app.buttons["capture.save"].exists)
+    }
 }
 
 private extension XCUIElement {

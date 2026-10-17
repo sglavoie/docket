@@ -118,6 +118,14 @@ func (m *OutlinerModel) setFocusRecoveryNotice(retainedDepth int) {
 // rebuildRows flattens the current task tree into the rows slice, applying the
 // active mode and filters, and clamps the cursor to stay within bounds.
 func (m *OutlinerModel) RebuildRows() {
+	m.Search.cancelBackground()
+	m.Population.Invalidate()
+	m.rebuildRows()
+}
+
+// rebuildRows is also used to publish a search request/result without declaring
+// a new workspace revision and invalidating that very request.
+func (m *OutlinerModel) rebuildRows() {
 	m.feedbackBudget = feedbackBudgetAnchor{}
 	// The multi-select summary counts visible against hidden members, so it is a
 	// projection of the rows and not of the selection alone: a fold, a filter, or
@@ -133,7 +141,7 @@ func (m *OutlinerModel) RebuildRows() {
 		// crossProjectRebuildRows is bypassed. The render path calls
 		// crossProjectRebuildRows directly (not via rebuildRows), so it
 		// still benefits from the guard on no-op events like window resize.
-		m.Population.Invalidate()
+		m.Population.ForceRebuild = true
 		m.CrossProjectRebuildRows()
 		return
 	}

@@ -223,3 +223,90 @@ after the final cache-key cleanup. Documentation, lint, module metadata,
 production and test-inclusive dead-code audits, and the build also passed.
 The iPhone lens/search/autocomplete/filter/sort flow passed on the 375-point
 simulator after making its viewport and menu-scrolling assumptions explicit.
+
+
+## Responsive search and recovery follow-up
+
+Large live ranked searches now run on a detached workspace snapshot, using the
+same scorer and projection rules as synchronous searches. At 1,000 candidates
+or 1 MiB of searchable text, typing queues cancellable work and immediately
+renders a pending state. Escape restores the preceding view without waiting
+for scoring. Query changes cancel older work; population, scope, filter, and
+note-index changes invalidate retained snapshots. Accepted rows are rebound to
+live task objects before they can become operation targets.
+
+The existing ten benchmarks still wait for complete results after every key.
+`BenchmarkLiveSearchResponsive` adds a seven-key burst over 10,000 tasks with
+long, unique Unicode descriptions and comments. It measures input and Escape
+while scoring runs, then drains cancelled workers outside the measured interval.
+Its allocation budget is 48 MB per burst; optional latency targets are 10 ms
+average, 25 ms p95, 30 ms maximum, and 50 ms Escape. A deterministic test holds
+the worker gate closed while checking that typing and Escape still advance.
+
+The final three local samples on Apple M2 Ultra measured 31.7 MB per burst,
+0.8 ms median average per key, 4.6 ms median maximum, and 8.4 ms median Escape. Complete-result
+benchmarks remain distinct: warm long-content release/handoff queries took
+16.6/17.0 ms per key and 124.7/123.2 MB per cycle. These measurements describe
+responsiveness during scoring; they do not imply instant search completion.
+
+The iPhone follow-up preserves recurring check-in intervals in the bridge and
+editor, validates intervals, and retains fields when saving fails. Recovery
+drafts report storage failures, keep the newest text in memory for retry, and
+preserve unreadable originals before replacement. Same-task transient detail
+refresh failures retain content with Retry; project loading failures have their
+own retry state. Sheet transitions use dismissal callbacks rather than fixed
+delays, including root sheets opened by deep links and reminders.
+
+Native review preparation exported all 232 current ANSI frames. ScreenCaptureKit
+continued returning -3801 after the user enabled permission, including with a
+stable signing identity and a normal app launch. The review helper now reads the
+terminal view's own Metal-rendered IOSurface. This captures real Ghostty pixels
+without desktop capture, OS permission changes, or synthetic rasterization. It
+validates the pixel format and rejects blank terminal output. Native window
+chrome is excluded. The font override defaults to 14 and preserves enlarged
+captures with a `.font20.png` suffix.
+
+Full `just ci` passed with four race-test shard jobs and 70.68% overall coverage.
+All eleven workloads also passed `just search-bench --strict-time` after the
+heavy Go tests finished. A concurrent run exceeded several full-result timing
+targets, while still meeting all allocation budgets and responsive-input timing
+targets; timing comparisons should use similarly quiet machines. The final cold
+unique-comment workload took 70.9 ms per completed-result key (162.9 ms p95/max),
+while Escape took 6.8 ms. This cost is now off the live input path.
+
+All 18 hosted iPhone app tests passed, including corrupted recovery files,
+failed writes/removals, interval preservation, and dismissal sequencing. The
+375-point simulator passed recurring check-in editing with a refused save,
+draft storage failure → Retry → relaunch without task submission, detail and
+project-picker read failure → Retry, bulk actions, checklist editing/promotion,
+and restoring/discarding drafts at the largest text size in dark mode.
+
+The remaining comment/notes flows, attachment-link creation, and capture →
+linked task → restored capture transitions also passed on that simulator. The
+edit-discard check passed after its confirmation lookup was scoped to the alert.
+The retained-detail and restored capture/edit screenshots were inspected; Retry
+and the editor toolbar actions remain visible, including at accessibility text
+sizes. The parent/subtask drag check also passed after slowing the gesture and
+allowing the insertion position to settle before release; production ordering
+logic was unchanged.
+
+
+The final native runs passed at both 14 and 20 points: 232 frames per size,
+464 real Ghostty pixel images in total. Both palettes and all four terminal
+sizes (60×20, 80×24, 100×35, 120×40) passed grid and nonblank-image checks.
+Every enlarged image has greater pixel dimensions than its normal-size pair.
+The 68 repeated frames with identical ANSI input also produced byte-identical
+PNGs at each font size.
+
+Selected native images were inspected for help, capture validation, action menus,
+compact/expanded Peek, wrapped refusal messages, and search scope/results. Text,
+selection, deadline cues, and footer controls remained readable in the inspected
+light/dark and narrow/enlarged samples; no additional layout correction was
+needed. These are rendered fixture frames, not a claim about every live window
+interaction. The iPhone interaction checks above cover their respective flows.
+
+Local evidence is in `macos/.cache/reliability-review/`: `.png` and `.font20.png`
+images, plus `index.html` and `index-font20.html` replays of the 168 transition
+frames in 48 sequences. See [reproduction instructions](polish-transition-review.md#reproduce)
+for the native rendering test. Screen Recording permission is no longer a
+prerequisite for this review.

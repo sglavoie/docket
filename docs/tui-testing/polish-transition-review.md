@@ -53,11 +53,16 @@ TEST_RUNNER_TT_TERMINAL_REVIEW_DIR="$PWD/macos/.cache/transition-review" \
   -only-testing:TTAppTests/TerminalVisualReviewTests
 ```
 
-Generate the Xcode project with `just mac-test` if needed. Screen & System Audio
-Recording must allow `macos/DerivedData/Build/Products/Debug/tt.app`. After granting
-access, use `test-without-building` in place of `test`: rebuilding an ad-hoc-signed
-host can invalidate the grant. The test explicitly requests a Metal draw and
-rejects blank terminal captures, excluding the native title bar from that check.
+Generate the Xcode project with `just mac-test` if needed. The test requests a
+real Metal draw, then copies the rendered IOSurface belonging to its terminal
+view. It checks the pixel format and rejects blank output. This records terminal
+pixels without native window chrome and requires no Screen Recording permission.
+The helper deliberately fails if a future Ghostty renderer stops exposing an
+IOSurface; synthetic ANSI rendering is not a substitute.
+
+Set `TEST_RUNNER_TT_TERMINAL_REVIEW_FONT_SIZE=20` alongside the directory to
+repeat at enlarged text. Default 14-point captures use `.png`; enlarged captures
+use `.font20.png`, preserving both sets.
 
 Create an offline replay:
 

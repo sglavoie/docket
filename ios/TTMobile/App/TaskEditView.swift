@@ -15,10 +15,12 @@ struct TaskEditSheet: View {
     @State private var failure: String?
     @State private var saving = false
     @State private var confirmingDiscard = false
+    @State private var draftActions = SheetActions()
 
     var body: some View {
         NavigationStack {
             Form {
+                DraftRecoveryNotice(store: workspace.drafts, key: .edit(task.locator))
                 if restored {
                     Label("Restored your unsaved changes", systemImage: "arrow.uturn.backward.circle")
                         .font(.footnote)
@@ -43,12 +45,7 @@ struct TaskEditSheet: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     if draft.map { $0.fields != $0.original } == true {
-                        Menu {
-                            Button("Discard Draft…", role: .destructive) {
-                                afterDialogCloses { confirmingDiscard = true }
-                            }
-                                .accessibilityIdentifier("edit.discard")
-                        } label: {
+                        Button { draftActions.isPresented = true } label: {
                             Image(systemName: "ellipsis.circle")
                         }
                         .accessibilityLabel("Draft actions")
@@ -62,6 +59,15 @@ struct TaskEditSheet: View {
                         .accessibilityIdentifier("edit.save")
                 }
             }
+            .sheet(isPresented: $draftActions.isPresented, onDismiss: draftActions.didDismiss) {
+                ActionSheet(title: "Draft Actions", actionCount: 1) {
+                    Button("Discard Draft…", role: .destructive) {
+                        draftActions.choose { confirmingDiscard = true }
+                    }
+                    .accessibilityIdentifier("edit.discard")
+                }
+            }
+            .onDisappear { draftActions.cancelPending() }
             .alert("Discard these changes?", isPresented: $confirmingDiscard) {
                 Button("Discard Draft", role: .destructive) {
                     workspace.drafts?.discardEdit(task.locator)

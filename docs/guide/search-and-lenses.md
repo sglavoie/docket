@@ -26,6 +26,10 @@ The header says **Search · all modes** while ranked search is open. The project
 name or scope beside it still limits the results. Active filters remain in
 effect; their count appears beside the query, with `Q` for details.
 
+Large searches briefly show **Searching…** while results are prepared. Keep
+typing to refine the query, or press `Esc` to return immediately. Superseded
+results do not replace the latest query or reopen a search you closed.
+
 By default search includes open tasks and excludes deferred work. The context
 row names that population when space permits; `Q` keeps the full explanation.
 Add `?completed` or `?deferred` to admit those tasks. An `Also matches` message

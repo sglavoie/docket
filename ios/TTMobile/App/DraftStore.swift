@@ -1,60 +1,146 @@
 import Foundation
+import Observation
 import TTEngine
 
-/// Unsaved capture and edit drafts, kept on this device beside the workspace's
-/// machine-local runtime. A draft is written on every change and removed only
-/// by a save that committed or an explicit discard, so a dismissed sheet, a
-/// refused save, a backgrounded app, and a killed process all come back to
-/// the same text. Drafts never sync: they are this iPhone's unfinished work,
-/// not the workspace's.
-struct DraftStore: Sendable {
+/// One workspace's recovery drafts. Failed writes stay in memory for reopening
+/// and retry; an unreadable file is preserved before any replacement or removal.
+@MainActor
+@Observable
+final class DraftStore {
+    enum Key: Hashable {
+        case capture, edit(TaskLocator), comment(String), note(String)
+    }
+
+    struct Issue {
+        var message: String
+        var recovery: URL?
+    }
+
     let directory: URL
+    private(set) var issues: [Key: Issue] = [:]
+    @ObservationIgnored private var pending: [Key: Data] = [:]
+    @ObservationIgnored private var removals = Set<Key>()
+    @ObservationIgnored private var unreadable = Set<Key>()
+    @ObservationIgnored private var preserved: [Key: URL] = [:]
 
     init(location: WorkspaceLocation) {
         directory = location.runtime.appendingPathComponent("drafts", isDirectory: true)
     }
 
-    private var captureFile: URL { directory.appendingPathComponent("capture.json") }
-
-    private func editFile(_ locator: TaskLocator) -> URL {
-        let name = "edit-\(locator.projectID)-\(locator.taskID)"
-            .map { $0.isLetter || $0.isNumber || $0 == "-" ? $0 : "_" }
-        return directory.appendingPathComponent(String(name) + ".json")
+    func file(for key: Key) -> URL {
+        let name: String = switch key {
+        case .capture: "capture"
+        case .edit(let locator): "edit-\(locator.projectID)-\(locator.taskID)"
+        case .comment(let key): "comment-\(key)"
+        case .note(let key): "note-\(key)"
+        }
+        let safe = name.map { $0.isLetter || $0.isNumber || $0 == "-" ? $0 : "_" }
+        return directory.appendingPathComponent(String(safe) + ".json")
     }
 
-    func loadCapture() -> CaptureDraft? { load(captureFile) }
-    func saveCapture(_ draft: CaptureDraft) { save(draft, to: captureFile) }
-    func discardCapture() { try? FileManager.default.removeItem(at: captureFile) }
+    func loadCapture() -> CaptureDraft? { load(.capture) }
+    func saveCapture(_ draft: CaptureDraft) { save(draft, for: .capture) }
+    func discardCapture() { discard(.capture) }
+    func loadEdit(_ locator: TaskLocator) -> EditDraft? { load(.edit(locator)) }
+    func saveEdit(_ draft: EditDraft, for locator: TaskLocator) { save(draft, for: .edit(locator)) }
+    func discardEdit(_ locator: TaskLocator) { discard(.edit(locator)) }
+    func loadComment(_ key: String) -> CommentDraft? { load(.comment(key)) }
+    func saveComment(_ draft: CommentDraft, for key: String) { save(draft, for: .comment(key)) }
+    func discardComment(_ key: String) { discard(.comment(key)) }
+    func loadNote(_ key: String) -> NoteDraft? { load(.note(key)) }
+    func saveNote(_ draft: NoteDraft, for key: String) { save(draft, for: .note(key)) }
+    func discardNote(_ key: String) { discard(.note(key)) }
 
-    func loadEdit(_ locator: TaskLocator) -> EditDraft? { load(editFile(locator)) }
-    func saveEdit(_ draft: EditDraft, for locator: TaskLocator) { save(draft, to: editFile(locator)) }
-    func discardEdit(_ locator: TaskLocator) { try? FileManager.default.removeItem(at: editFile(locator)) }
-
-    private func keyedFile(_ prefix: String, _ key: String) -> URL {
-        let name = "\(prefix)-\(key)".map { $0.isLetter || $0.isNumber || $0 == "-" ? $0 : "_" }
-        return directory.appendingPathComponent(String(name) + ".json")
+    var hasPendingChanges: Bool {
+        // Observe issue changes as well as checking the non-observed payloads.
+        issues.keys.contains { pending[$0] != nil || removals.contains($0) }
     }
 
-    func loadComment(_ key: String) -> CommentDraft? { load(keyedFile("comment", key)) }
-    func saveComment(_ draft: CommentDraft, for key: String) { save(draft, to: keyedFile("comment", key)) }
-    func discardComment(_ key: String) { try? FileManager.default.removeItem(at: keyedFile("comment", key)) }
-
-    func loadNote(_ key: String) -> NoteDraft? { load(keyedFile("note", key)) }
-    func saveNote(_ draft: NoteDraft, for key: String) { save(draft, to: keyedFile("note", key)) }
-    func discardNote(_ key: String) { try? FileManager.default.removeItem(at: keyedFile("note", key)) }
-
-    private func load<Draft: Decodable>(_ file: URL) -> Draft? {
-        guard let data = try? Data(contentsOf: file) else { return nil }
-        return try? JSONDecoder().decode(Draft.self, from: data)
+    func retry() {
+        for key in Array(pending.keys) { writePending(key) }
+        for key in Array(removals) { removePending(key) }
     }
 
-    private func save<Draft: Encodable>(_ draft: Draft, to file: URL) {
+    private func load<Draft: Decodable>(_ key: Key) -> Draft? {
+        if removals.contains(key) { return nil }
+        do {
+            let data = try pending[key] ?? Data(contentsOf: file(for: key))
+            let draft = try JSONDecoder().decode(Draft.self, from: data)
+            if pending[key] == nil { restoredStorage(key) }
+            return draft
+        } catch let error as CocoaError where error.code == .fileReadNoSuchFile || error.code == .fileNoSuchFile {
+            unreadable.remove(key)
+            restoredStorage(key)
+            return nil
+        } catch {
+            unreadable.insert(key)
+            issues[key] = Issue(message: "An earlier draft couldn’t be restored. It will be kept before saving a new draft.")
+            return nil
+        }
+    }
+
+    private func save<Draft: Encodable>(_ draft: Draft, for key: Key) {
+        do {
+            pending[key] = try JSONEncoder().encode(draft)
+            removals.remove(key)
+            writePending(key)
+        } catch {
+            issues[key] = Issue(message: "Draft couldn’t be saved. Keep this editor open until it can be saved.")
+        }
+    }
+
+    /// Preserve the original bytes even if they cannot be decoded. If the copy
+    /// fails, refuse the overwrite; the new draft remains available in memory.
+    private func preserveUnreadable(_ key: Key) throws {
+        guard unreadable.contains(key), preserved[key] == nil else { return }
+        let original = file(for: key)
+        let recovery = directory.appendingPathComponent("\(original.deletingPathExtension().lastPathComponent)-unreadable-\(UUID().uuidString).json")
+        do { try FileManager.default.copyItem(at: original, to: recovery) }
+        catch let error as CocoaError where error.code == .fileReadNoSuchFile || error.code == .fileNoSuchFile {
+            unreadable.remove(key)
+            return
+        }
+        preserved[key] = recovery
+    }
+
+    private func writePending(_ key: Key) {
+        guard let data = pending[key] else { return }
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            try JSONEncoder().encode(draft).write(to: file, options: .atomic)
+            try preserveUnreadable(key)
+            try data.write(to: file(for: key), options: .atomic)
+            pending.removeValue(forKey: key)
+            unreadable.remove(key)
+            restoredStorage(key)
         } catch {
-            // A draft that cannot be written is still on screen; the next
-            // keystroke tries again.
+            issues[key] = Issue(message: "Draft couldn’t be saved. Your text is kept for this session; retry before quitting tt.", recovery: preserved[key])
+        }
+    }
+
+    private func discard(_ key: Key) {
+        pending.removeValue(forKey: key)
+        removals.insert(key)
+        removePending(key)
+    }
+
+    private func removePending(_ key: Key) {
+        do {
+            try preserveUnreadable(key)
+            do { try FileManager.default.removeItem(at: file(for: key)) }
+            catch let error as CocoaError where error.code == .fileNoSuchFile { /* Already removed. */ }
+            removals.remove(key)
+            unreadable.remove(key)
+            issues.removeValue(forKey: key)
+        } catch {
+            issues[key] = Issue(message: "The recovery draft couldn’t be removed and may reappear after restarting tt. Retry before quitting.", recovery: preserved[key])
+        }
+    }
+
+    private func restoredStorage(_ key: Key) {
+        if let recovery = preserved[key] {
+            issues[key] = Issue(message: "An earlier draft couldn’t be restored. Its original file has been kept for recovery.", recovery: recovery)
+        } else {
+            issues.removeValue(forKey: key)
         }
     }
 }

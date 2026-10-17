@@ -101,7 +101,7 @@ struct NoteEditorView: View {
     @State private var stale = false
     @State private var loaded = false
     @State private var saving = false
-    @State private var choosingAction = false
+    @State private var actions = SheetActions()
     @State private var confirmingDelete = false
     @State private var destinations: [ProjectSummary] = []
     @State private var state: ScreenState? = .loading("Loading note…")
@@ -122,7 +122,7 @@ struct NoteEditorView: View {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if note != nil {
                     Button {
-                        choosingAction = true
+                        actions.isPresented = true
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
@@ -134,15 +134,18 @@ struct NoteEditorView: View {
                     .accessibilityIdentifier("note.save")
             }
         }
-        .confirmationDialog("Note", isPresented: $choosingAction, titleVisibility: .hidden) {
-            if location.isGlobal == false {
-                Button("Move to Global Notes") { move(to: .global) }
+        .sheet(isPresented: $actions.isPresented, onDismiss: actions.didDismiss) {
+            ActionSheet(title: "Note", actionCount: destinations.count + 2) {
+                if location.isGlobal == false {
+                    Button("Move to Global Notes") { actions.choose { move(to: .global) } }
+                }
+                ForEach(destinations.filter { $0.id != location.projectID }) { project in
+                    Button("Move to \(project.name)") { actions.choose { move(to: .project(project.id)) } }
+                }
+                Button("Delete Note", role: .destructive) { actions.choose { confirmingDelete = true } }
             }
-            ForEach(destinations.filter { $0.id != location.projectID }) { project in
-                Button("Move to \(project.name)") { move(to: .project(project.id)) }
-            }
-            Button("Delete Note", role: .destructive) { afterDialogCloses { confirmingDelete = true } }
         }
+        .onDisappear { actions.cancelPending() }
         .alert("Delete this note?", isPresented: $confirmingDelete) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) { delete() }
@@ -156,6 +159,7 @@ struct NoteEditorView: View {
 
     private var editor: some View {
         Form {
+            DraftRecoveryNotice(store: workspace.drafts, key: .note(draftKey))
             if let failure {
                 Section {
                     Text(failure)

@@ -24,6 +24,7 @@ type budget struct {
 // Allocation ceilings leave headroom over the measured baseline. Timing targets
 // are opt-in gates because shared CI machines cannot promise a stable CPU share.
 var budgets = map[string]budget{
+	"BenchmarkLiveSearchResponsive":                                  {48e6, 10e6, 25e6, 30e6, 50e6},
 	"BenchmarkLiveSearchTyping/tasks=10000/projects=20/notes=true":   {96e6, 25e6, 50e6, 75e6, 50e6},
 	"BenchmarkLiveSearchContent/tasks=1000/query=release":            {48e6, 20e6, 30e6, 40e6, 25e6},
 	"BenchmarkLiveSearchContent/tasks=1000/query=handoff":            {32e6, 20e6, 30e6, 40e6, 25e6},

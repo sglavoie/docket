@@ -63,7 +63,7 @@ func (m *OutlinerModel) HandleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// the search cascade below sees them, which is what makes the first Esc close
 	// the pane and the next one clear or restore the search.
 	if m.IsSearchMode() && m.HandleSearchAutocompleteKey(key) {
-		return m, nil
+		return m, m.takeSearchCommand()
 	}
 
 	// Up and Down walk the session's submitted queries, below the pane's claim
@@ -71,7 +71,7 @@ func (m *OutlinerModel) HandleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// the input: no root key is bound for it, and the shell routes every key here
 	// while search mode owns the input.
 	if m.recallSearchHistory(key) {
-		return m, nil
+		return m, m.takeSearchCommand()
 	}
 
 	// Handle search mode input first
@@ -92,16 +92,17 @@ func (m *OutlinerModel) HandleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			historyCmd = status.ErrorCmd("Search works, but history could not be saved: %v", err)
 		}
 	}
+	var searchCmd tea.Cmd
 	if model, cmd, handled := m.HandleSearchMode(msg, m, func() {
 		// Typing ends the walk, so the next Up starts from the newest query again
 		// rather than from wherever the abandoned walk had reached.
 		m.Search.history.resetRecall()
-		RebuildOutlinerPreservingCursor(m)
+		searchCmd = m.rebuildLiveSearch()
 	}); handled {
 		// Recompute unconditionally rather than on value change alone: a bare caret
 		// move leaves the query identical while putting a different token under it.
 		m.RefreshSearchAutocomplete()
-		return model, tea.Batch(cmd, historyCmd)
+		return model, tea.Batch(cmd, historyCmd, searchCmd)
 	}
 
 	// Handle quick edit mode input first
