@@ -178,3 +178,10 @@ None of that is a relocation jump: a departure records nothing for `Ctrl+O`, and
 undo restores the task without moving the cursor back to it. A mutation you
 started and then walked away from cannot take the cursor either — moving it
 yourself before the write lands cancels the follow.
+
+## When a mode is empty
+
+Empty Inbox offers Today (`gt`); empty Today offers Next (`gn`); empty Next
+offers Backlog (`gb`). Empty Due offers Today. These destinations match the
+iPhone app and preserve the current project scope. Search and filtered empty
+views keep their own explanations and recovery controls.

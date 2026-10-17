@@ -288,6 +288,27 @@ final class WorkspaceModel {
         await attempt { _ = try await self.engine.transition(locator, to: state) }
     }
 
+    func listAction(_ locator: TaskLocator, _ action: TaskListAction) async -> Result<TaskActionReceipt, TaskActionFailure> {
+        do {
+            let result: TaskMutation
+            switch action {
+            case .transition(let state): result = try await engine.transition(locator, to: state)
+            case .plan(let plan): result = try await engine.plan(locator, plan)
+            }
+            changed(.localChange)
+            sync.exchange()
+            return .success(TaskActionReceipt(message: action.message(title: result.task.title),
+                                              transactionID: result.committed.transactionID.isEmpty ? nil : result.committed.transactionID))
+        } catch {
+            return .failure(TaskActionFailure(message: Self.describe(error)))
+        }
+    }
+
+    func undoReceipt(_ receipt: TaskActionReceipt) async -> String? {
+        guard let transactionID = receipt.transactionID else { return "This action has no change to undo." }
+        return await attempt { _ = try await self.engine.undo(transactionID: transactionID) }
+    }
+
     func checklist(_ locator: TaskLocator, _ action: ChecklistAction, seen: [ChecklistItem]) async -> String? {
         await attempt { _ = try await self.engine.checklist(locator, action, seen: seen) }
     }

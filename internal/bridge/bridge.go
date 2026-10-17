@@ -77,6 +77,7 @@ var operations = map[string]op{
 	"command.edit":              {mutates: true, run: (*Bridge).commandEdit},
 	"command.transition":        {mutates: true, run: (*Bridge).commandTransition},
 	"command.plan":              {mutates: true, run: (*Bridge).commandPlan},
+	"command.undo":              {mutates: true, run: (*Bridge).commandUndo},
 	"command.checklist":         {mutates: true, run: (*Bridge).commandChecklist},
 	"command.check_in":          {mutates: true, run: (*Bridge).commandCheckIn},
 	"command.reorder":           {mutates: true, run: (*Bridge).commandReorder},
@@ -104,7 +105,7 @@ var operations = map[string]op{
 // answer unknown_op with details.reserved, so a client can tell an op this
 // build lacks from one the protocol never had.
 var reservedOperations = map[string]bool{
-	"command.undo": true, "command.redo": true,
+	"command.redo": true,
 }
 
 // Call answers one JSON request with one JSON response. It never panics and

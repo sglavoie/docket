@@ -23,6 +23,46 @@ func resumeNotePeekTask(note string) *models.Task {
 	}
 }
 
+func TestCompactPeekKeepsAResumePassageAheadOfMetadata(t *testing.T) {
+	for _, title := range []string{
+		"Restore the overdue billing reconciliation export before the audit closes",
+		strings.Repeat("A long task title ", 20),
+	} {
+		task := resumeNotePeekTask("Stopped after the ledger export; the reconciliation diff is still open.")
+		task.Title = title
+		opts := inlinePeekOptions{Task: task, Indent: "  ", Width: 60, Window: peekDockGeometry{bodyRows: 4}, Compact: true}
+		doc := inlinePeekDocumentFor(opts)
+		page := strings.Join(strings.Fields(ansi.Strip(strings.Join(doc.Lines(0), " "))), " ")
+		if !strings.Contains(page, task.ResumeNote) {
+			t.Fatalf("compact Peek lost the restart instruction: %s", page)
+		}
+		whole := strings.Join(strings.Fields(ansi.Strip(strings.Join(doc.Body, " "))), " ")
+		if !strings.Contains(whole, strings.TrimSpace(task.Title)) || !strings.Contains(whole, "Status: Backlog") {
+			t.Fatalf("compact Peek dropped detail: %s", whole)
+		}
+		opts.Compact = false
+		expanded := inlinePeekDocumentFor(opts)
+		if !strings.HasPrefix(expanded.sections[0].key, "title:") {
+			t.Fatal("expanded document no longer leads with its full title")
+		}
+		// A reader on the second resume line stays on that passage when the
+		// supporting sections move around it, and when returning to compact.
+		for offset, line := range doc.Body {
+			if !strings.Contains(ansi.Strip(line), "reconciliation diff") {
+				continue
+			}
+			anchor := doc.readingAnchor(offset)
+			expandedOffset := expanded.offsetForAnchor(anchor)
+			if !strings.Contains(ansi.Strip(expanded.Body[expandedOffset]), "reconciliation diff") {
+				t.Fatal("expansion lost the resume passage")
+			}
+			if got := doc.offsetForAnchor(expanded.readingAnchor(expandedOffset)); got != offset {
+				t.Fatalf("compacting moved the passage to %d from %d", got, offset)
+			}
+		}
+	}
+}
+
 // TestInlinePeekLeadsTheBodyWithTheResumeNote is the ordering claim. Peek is
 // opened to ask where the work was left, so the note that answers it precedes
 // the description that answers an older question.

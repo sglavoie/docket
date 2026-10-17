@@ -52,12 +52,24 @@ func (q Terms) WithCache(cache *ScoreCache) Terms {
 	return q
 }
 
+// ScoreParts has exactly the semantics of scoring a space-joined field. A
+// bounded cache also reuses the joined text across successive query letters.
+func (q Terms) ScoreParts(parts []string) int {
+	if q.cache != nil {
+		return q.Score(q.cache.join(parts))
+	}
+	return q.Score(strings.Join(parts, " "))
+}
+
 func (q Terms) scoreUncached(text string) int {
 	if len(q.patterns) == 0 {
 		return 1
 	}
 	if text == "" {
 		return 0
+	}
+	if len(q.patterns) == 1 && len(q.patterns[0]) == 1 {
+		return q.scoreSingleRune(text, q.patterns[0][0])
 	}
 	// Reject long text missing the first required rune before decoding or
 	// allocating. This is only a necessary condition, never a scoring shortcut.
@@ -81,7 +93,7 @@ func (q Terms) scoreUncached(text string) int {
 	for _, r := range text {
 		original = append(original, r)
 		if !q.matcher.caseSensitive {
-			r = unicode.ToLower(r)
+			r = foldRune(r)
 		}
 		folded = append(folded, r)
 	}
@@ -102,9 +114,47 @@ func (q Terms) containsFirstRune(text string) bool {
 		return strings.ContainsRune(text, first)
 	}
 	for _, r := range text {
-		if unicode.ToLower(r) == first {
+		if foldRune(r) == first {
 			return true
 		}
 	}
 	return false
+}
+
+// A one-letter query needs neither decoded buffers nor a dynamic-programming
+// window. After the first character, a word/camel boundary is the best possible
+// match, so it also ends the scan. Keep the document length tie-break unchanged.
+func (q Terms) scoreSingleRune(text string, pattern rune) int {
+	best := 0
+	var previous rune
+	for offset, original := range text {
+		r := original
+		if !q.matcher.caseSensitive {
+			r = foldRune(r)
+		}
+		if r == pattern {
+			if offset == 0 {
+				return addLengthBonus(4, utf8.RuneCountInString(text), 1)
+			}
+			if isWordBoundary(previous) || isCamelBoundary(previous, original) {
+				return addLengthBonus(3, utf8.RuneCountInString(text), 1)
+			}
+			best = 1
+		}
+		previous = original
+	}
+	if best == 0 {
+		return 0
+	}
+	return addLengthBonus(best, utf8.RuneCountInString(text), 1)
+}
+
+func foldRune(r rune) rune {
+	if r < utf8.RuneSelf {
+		if r >= 'A' && r <= 'Z' {
+			return r + ('a' - 'A')
+		}
+		return r
+	}
+	return unicode.ToLower(r)
 }

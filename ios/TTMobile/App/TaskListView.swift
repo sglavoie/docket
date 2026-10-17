@@ -1,5 +1,6 @@
 import SwiftUI
 import TTEngine
+import UIKit
 
 /// What a task list shows: a mode, a project, or a saved lens. Every list is
 /// one engine query; nothing here filters or orders tasks on its own beyond
@@ -96,24 +97,40 @@ struct TaskListView: View {
     @State private var selecting = false
     @State private var selection = Set<TaskLocator>()
     @State private var actionFailure: String?
+    @State private var receipt: TaskActionReceipt?
+    @State private var refreshFailure: String?
+    @State private var lastLoadedQuery: QueryKey?
+    @State private var loadRequest: UUID?
+    @State private var retry = 0
     @State private var acting = false
     @State private var editingRow: TaskRow?
     @State private var openedNote: NoteRecord?
     @State private var managingProject = false
     @State private var emptyCapture = false
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private struct LoadKey: Hashable {
         var generation: Int
+        var retry: Int
+        var query: QueryKey
+    }
+
+    private struct QueryKey: Hashable {
+        var source: ListSource
         var search: String
         var filter: TaskFilter
         var sort: TaskSort
     }
 
+    private var queryKey: QueryKey {
+        QueryKey(source: source, search: search, filter: filter, sort: sort)
+    }
+
     var body: some View {
         content
             .navigationTitle(source.title)
-            .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search titles, #tags, $states…")
+            .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search in \(source.title)")
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             .searchSuggestions {
@@ -183,6 +200,7 @@ struct TaskListView: View {
                         .background(.regularMaterial)
                         .accessibilityIdentifier("list.failure")
                 }
+                feedback
             }
             .sheet(item: $editingRow) { row in
                 TaskEditSheet(workspace: workspace, task: row.item.task)
@@ -192,14 +210,24 @@ struct TaskListView: View {
                 NoteEditorView(workspace: workspace, location: note.location, filename: note.filename)
             }
             .refreshable { await workspace.refresh() }
-            .task(id: LoadKey(generation: workspace.generation, search: search, filter: filter, sort: sort)) {
+            .task(id: receipt?.id) {
+                guard let shown = receipt else { return }
+                let remaining = (UIAccessibility.isVoiceOverRunning ? 15.0 : 8.0) - Date().timeIntervalSince(shown.createdAt)
+                guard remaining > 0 else { receipt = nil; return }
+                UIAccessibility.post(notification: .announcement, argument: shown.message)
+                do {
+                    try await Task.sleep(for: .seconds(remaining))
+                    if receipt?.id == shown.id { receipt = nil }
+                } catch { }
+            }
+            .task(id: LoadKey(generation: workspace.generation, retry: retry, query: queryKey)) {
                 if !search.isEmpty {
                     try? await Task.sleep(for: .milliseconds(250))
                     if Task.isCancelled { return }
                 }
-                await loadSuggestions()
-                if Task.isCancelled { return }
                 await load()
+                if Task.isCancelled { return }
+                await loadSuggestions()
             }
     }
 
@@ -324,7 +352,8 @@ struct TaskListView: View {
     private var emptyDestination: ListSource {
         var destination: ListSource = switch source.mode {
         case "today": .mode("next", title: "Next")
-        case "next", "inbox": .mode("backlog", title: "Backlog")
+        case "inbox", "due": .today
+        case "next": .mode("backlog", title: "Backlog")
         default: .mode("all", title: "All Tasks")
         }
         destination.scope = source.scope
@@ -413,19 +442,19 @@ struct TaskListView: View {
         let task = row.item.task
         if task.state.isTerminal {
             Button("Reopen", systemImage: "arrow.uturn.backward") {
-                act { await workspace.transition(task.locator, to: .inbox) }
+                act(task.locator, .transition(.inbox))
             }
             .tint(.blue)
             .accessibilityIdentifier("task.swipe.reopen")
         } else {
             Button("Done", systemImage: "checkmark") {
-                act { await workspace.transition(task.locator, to: .done) }
+                act(task.locator, .transition(.done))
             }
             .tint(.green)
             .accessibilityIdentifier("task.swipe.done")
 
             Button(task.state == .doing ? "Pause" : "Start", systemImage: task.state == .doing ? "pause.fill" : "play.fill") {
-                act { await workspace.transition(task.locator, to: task.state == .doing ? .paused : .doing) }
+                act(task.locator, .transition(task.state == .doing ? .paused : .doing))
             }
             .tint(.orange)
             .accessibilityIdentifier("task.swipe.startPause")
@@ -442,14 +471,14 @@ struct TaskListView: View {
     private func planActions(_ row: TaskRow) -> some View {
         let item = row.item
         Button(item.today ? "Remove Today" : "Today", systemImage: item.today ? "calendar.badge.minus" : "calendar") {
-            act { await workspace.plan(item.task.locator, item.today ? .removeToday : .addToday) }
+            act(item.task.locator, .plan(item.today ? .removeToday : .addToday))
         }
         .tint(.blue)
         .accessibilityLabel(item.today ? "Remove from Today" : "Add to Today")
         .accessibilityIdentifier("task.swipe.today")
 
         Button(item.next ? "Remove Next" : "Next", systemImage: item.next ? "minus.circle" : "arrow.right.circle") {
-            act { await workspace.plan(item.task.locator, item.next ? .removeNext : .addNext) }
+            act(item.task.locator, .plan(item.next ? .removeNext : .addNext))
         }
         .tint(.indigo)
         .accessibilityLabel(item.next ? "Remove from Next" : "Add to Next")
@@ -457,14 +486,73 @@ struct TaskListView: View {
     }
 
     /// Let the engine judge each action and keep refusals beside the list.
-    private func act(_ command: @escaping () async -> String?) {
+    private func act(_ locator: TaskLocator, _ action: TaskListAction) {
         guard !acting else { return }
         acting = true
         actionFailure = nil
+        receipt = nil
         Task {
-            actionFailure = await command()
+            switch await workspace.listAction(locator, action) {
+            case .success(let committed): receipt = committed
+            case .failure(let failure):
+                actionFailure = failure.message
+                UIAccessibility.post(notification: .announcement, argument: failure.message)
+            }
             acting = false
         }
+    }
+
+    private func undo(_ shown: TaskActionReceipt) {
+        guard !acting else { return }
+        acting = true
+        Task {
+            actionFailure = await workspace.undoReceipt(shown)
+            receipt = actionFailure == nil ? TaskActionReceipt(message: "Undone: \(shown.message)", transactionID: nil) : nil
+            if let actionFailure { UIAccessibility.post(notification: .announcement, argument: actionFailure) }
+            acting = false
+        }
+    }
+
+    @ViewBuilder
+    private var feedback: some View {
+        if let receipt {
+            feedbackRow(receipt.message, identifier: "list.receipt") {
+                if receipt.transactionID != nil {
+                    Button("Undo") { undo(receipt) }
+                        .frame(minWidth: 44, minHeight: 44)
+                        .disabled(acting)
+                        .accessibilityIdentifier("list.undo")
+                }
+                Button { self.receipt = nil } label: { Image(systemName: "xmark") }
+                    .frame(minWidth: 44, minHeight: 44)
+                    .accessibilityLabel("Dismiss confirmation")
+            }
+        }
+        if let refreshFailure {
+            feedbackRow(refreshFailure, identifier: "list.refreshFailure") {
+                Button("Retry") { retry += 1 }
+                    .frame(minWidth: 44, minHeight: 44)
+                    .accessibilityIdentifier("list.retryRefresh")
+            }
+        }
+    }
+
+    private func feedbackRow<Actions: View>(_ message: String, identifier: String, @ViewBuilder actions: () -> Actions) -> some View {
+        let stacked = dynamicTypeSize.isAccessibilitySize
+        let layout = stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(spacing: 8))
+        return layout {
+            Text(message).font(.footnote)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier(identifier)
+            HStack(spacing: 8) {
+                if stacked { Spacer(minLength: 0) }
+                actions()
+            }
+            .fixedSize(horizontal: !stacked, vertical: true)
+        }
+        .padding(8)
+        .background(.regularMaterial)
     }
 
     private var filterMenu: some View {
@@ -541,6 +629,9 @@ struct TaskListView: View {
     }
 
     private func load() async {
+        let requestedQuery = queryKey
+        let request = UUID()
+        loadRequest = request
         if rows.isEmpty, state == nil {
             state = .loading("Loading…")
         }
@@ -573,7 +664,9 @@ struct TaskListView: View {
                     noteError = "Notes could not load: \(WorkspaceModel.describe(error))"
                 }
             }
-            if Task.isCancelled { return }
+            if Task.isCancelled || loadRequest != request || queryKey != requestedQuery { return }
+            lastLoadedQuery = requestedQuery
+            refreshFailure = nil
             projectNotes = loadedNotes
             notesFailure = noteError
             projectNames = names
@@ -587,18 +680,26 @@ struct TaskListView: View {
             } else {
                 state = nil
             }
-        } catch let failure as BridgeError where failure.code == .notFound {
-            if Task.isCancelled { return }
-            rows = []
-            state = .unavailable(title: "Not available", message: failure.message)
-        } catch let failure as BridgeError where failure.code == .validation {
-            if Task.isCancelled { return }
-            rows = []
-            state = .error(title: "This search cannot run", message: failure.message)
         } catch {
-            if Task.isCancelled { return }
+            guard loadRequest == request, queryKey == requestedQuery else { return }
+            switch TaskListLoadFailure.classify(error, hasMatchingContent: lastLoadedQuery == requestedQuery, cancelled: Task.isCancelled) {
+            case .ignored: return
+            case .refresh(let message):
+                refreshFailure = message
+                return
+            case .replace: break
+            }
+            lastLoadedQuery = nil
+            refreshFailure = nil
             rows = []
-            state = .error(title: "Something went wrong", message: WorkspaceModel.describe(error))
+            projectNotes = []
+            if let failure = error as? BridgeError, failure.code == .notFound {
+                state = .unavailable(title: "Not available", message: failure.message)
+            } else if let failure = error as? BridgeError, failure.code == .validation {
+                state = .error(title: "This search cannot run", message: failure.message)
+            } else {
+                state = .error(title: "Something went wrong", message: WorkspaceModel.describe(error))
+            }
         }
     }
 

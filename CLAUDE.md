@@ -703,7 +703,7 @@ Row and Peek budget:
   body fits. Nothing sits outside that window and the document has no header:
   body order is title, status, resume, project, parent, optional search excerpt, schedule, description, checklist
   count, attachments, comment count, `Dependencies`/`Dependents`, context, tags,
-  history; place a new section deliberately. Schedule is what is still owed —
+  history; compact Peek prioritizes resume. Schedule is what is still owed —
   deadline, pending deferral, check-in, repeat — and history records created,
   updated if later, last review, a lapsed wake, avoidance count on its last line.
   The deferral instant keys both. Title and ancestor chain are uncompacted.

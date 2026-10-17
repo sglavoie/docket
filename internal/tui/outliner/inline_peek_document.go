@@ -129,7 +129,10 @@ type inlinePeekOptions struct {
 	// own paging arithmetic and the render agree about the height on screen. It
 	// is the frame's answer and never the document's: a long body and a short one
 	// are drawn in the same window.
-	Window      peekDockGeometry
+	Window peekDockGeometry
+	// Compact prioritizes a readable resume passage in a crowded first page.
+	// The document remains complete; expansion restores the ordinary order.
+	Compact     bool
 	Breadcrumb  string
 	ProjectSlug string
 	// SearchExcerpt explains a non-title search hit without replacing the detail.
@@ -212,9 +215,24 @@ func inlinePeekBodySections(opts inlinePeekOptions, width int) []inlinePeekSecti
 	// The compact dock answers what this is and where to resume before spending
 	// rows on project identity, ancestry, or scheduling detail. Every section
 	// still belongs to the scrollable document at every size.
-	add("title:"+task.Title, inlinePeekTitleLines(task, opts.Indent, width))
-	add("status:"+inlinePeekStatusKey(task, opts.Planning), inlinePeekStatusLines(task, opts.Planning, now, opts.Indent, width))
-	add("resume:"+task.ResumeNote, inlinePeekResumeLines(task.ResumeNote, opts.Indent, width))
+	title := inlinePeekSection{"title:" + task.Title, inlinePeekTitleLines(task, opts.Indent, width)}
+	status := inlinePeekSection{"status:" + inlinePeekStatusKey(task, opts.Planning), inlinePeekStatusLines(task, opts.Planning, now, opts.Indent, width)}
+	resume := inlinePeekSection{"resume:" + task.ResumeNote, inlinePeekResumeLines(task.ResumeNote, opts.Indent, width)}
+	lead := []inlinePeekSection{title, status, resume}
+	if opts.Compact && opts.Window.Displayed() && len(resume.lines) > 0 {
+		// Two wrapped lines usually carry an instruction, rather than just its
+		// preamble. Move metadata, then a long title, behind that passage without
+		// eliding either or changing the dock's frame-owned height.
+		passage := min(2, len(resume.lines))
+		if len(title.lines)+passage > opts.Window.BodyRows() {
+			lead = []inlinePeekSection{resume, title, status}
+		} else if len(title.lines)+len(status.lines)+passage > opts.Window.BodyRows() {
+			lead = []inlinePeekSection{title, resume, status}
+		}
+	}
+	for _, section := range lead {
+		add(section.key, section.lines)
+	}
 	add("project:"+opts.ProjectSlug, inlinePeekStyledLines(theme.MutedStyle.Render("Project: "), opts.ProjectSlug, opts.Indent, width))
 	add("parent:"+opts.Breadcrumb, inlinePeekParentLines(opts.Breadcrumb, opts.Indent, width))
 	add("match:"+opts.SearchExcerptKey, inlinePeekStyledLines(theme.MutedStyle.Render("Match: "), opts.SearchExcerpt, opts.Indent, width))

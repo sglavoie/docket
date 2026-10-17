@@ -112,10 +112,12 @@ The Outliner owns a lazily populated 128 MiB cache of long text and its recent
 scores. Entries use the exact text and case mode, so edits, undo, sync, and
 deletions need no revision guess to invalidate a score. Scope, filters,
 population admission, match tiers, and ordering are evaluated on every rebuild;
-the cache never stores a result list. Decoded rune buffers can use at most half
-the budget, preventing large unsuccessful queries from evicting all their
-cheaper cached scores. Oversized text and long queries remain supported without
-unbounded retention.
+the cache never stores a result list. One quarter of the budget now retains
+space-joined comment/checklist fields, keyed by their exact components; the
+remaining three quarters retain text and scores. Decoded rune buffers can use
+at most half of that latter partition, preventing large unsuccessful queries
+from evicting all their cheaper cached scores. Oversized text and long queries
+remain supported without unbounded retention.
 
 An ASCII presence check rejects impossible candidates before decoding. A
 bounded subsequence check rejects impossible scoring windows before dynamic
@@ -159,3 +161,65 @@ Rechecking its three-sample benchmark output with `searchbudget --strict-time`
 also passed. The race run exposed a project-editor save mutating metadata while
 the UI read it; saves now return a separate result for the update loop to apply,
 with a regression check that live metadata stays unchanged until delivery.
+
+## Daily-loop follow-up
+
+The first help screen now includes capture, search, Peek, edit, Today/Next,
+start, complete, and Undo at 60×20. Compact Peek promotes the resume passage
+ahead of metadata when needed, and ahead of an unusually long title when the
+title would otherwise consume the pane. The complete document remains
+scrollable; expanding and collapsing preserve the reading anchor.
+
+Empty navigation follows Inbox → Today → Next → Backlog on both clients;
+Due points to Today. The iPhone search field names its current list. Swipe
+actions confirm the committed task and result, announce them to VoiceOver,
+and offer Undo for that transaction. The bridge refuses superseded receipts
+and changed artifacts, and sync propagates the restore. Transient refresh
+failures keep only the last successful results for the exact same query,
+with Retry; invalid queries and unavailable workspaces replace the content.
+
+Profiling cold comment search identified repeated joined-field allocations
+and one-letter scoring as avoidable work. Joined fields now share the bounded
+cache, and one-letter queries use an equivalent boundary scan without building
+full rune buffers. Independent score parity tests cover Unicode and smart case.
+The search gate requires average, p95, maximum, and Escape measurements for all
+ten workloads; `--strict-time` enforces each metric using three-sample medians.
+Escape is measured from key delivery through the restored rendered frame after
+typing the full query. Query setup is excluded from its measured interval.
+
+Verification includes eight hosted iPhone app tests and simulator checks of
+completion → Undo, a refused parent completion, and file-read failure → Retry.
+The 375-point simulator also checks that Undo remains reachable at the largest
+Dynamic Type size; feedback actions move below the message at accessibility
+sizes. Screenshots were reviewed for the confirmation and retained-list states.
+Bridge tests cover replay, reopening, sync propagation, and refusal after an
+incoming edit. All 232 terminal frames (including 168 transition frames) were
+exported; these remain synthetic ANSI evidence. The last-task transition now
+waits for its capture and completion commits without advancing the feedback
+clock, so a busy disk cannot turn the reviewed completion frame into an
+unfinished transaction.
+
+The final three-sample medians on the same Apple M2 Ultra and Go 1.27.1:
+
+| 10,000-task workload | MB/cycle | Mean ms/key | p95/max ms/key | Escape ms |
+| --- | ---: | ---: | ---: | ---: |
+| Warm content, `release` | 98.7 | 14.3 | 17.5 | 6.8 |
+| Warm content, `handoff` | 97.3 | 15.8 | 20.6 | 7.2 |
+| Warm content, `zzzzzzz` | 643.5 | 25.9 | 31.2 | 6.7 |
+| Cold unique content, `release` | 156.3 | 25.0 | 62.9 | 6.2 |
+| Cold unique content, `handoff` | 217.6 | 72.2 | 169.5 | 6.1 |
+| Cold unique content, `zzzzzzz` | 742.8 | 50.0 | 175.7 | 7.1 |
+
+Each default sample contains 14 measured keys, so its nearest-rank p95 equals
+its maximum; longer benchmark runs distinguish them. All ten workloads passed
+the strict allocation, average, p95, maximum, and Escape gates. Cold comment
+search allocates about 32% less than the preceding cache baseline, and warm
+comment search about 54% less. Cold first queries still have visible pauses;
+these measurements do not imply every key renders within one display frame.
+
+The full race suite passed with `TT_SHARD_JOBS=4`, reaching 70.63% overall
+coverage and meeting every package threshold. The cache race tests were rerun
+after the final cache-key cleanup. Documentation, lint, module metadata,
+production and test-inclusive dead-code audits, and the build also passed.
+The iPhone lens/search/autocomplete/filter/sort flow passed on the 375-point
+simulator after making its viewport and menu-scrolling assumptions explicit.

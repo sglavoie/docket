@@ -1484,7 +1484,7 @@ func (m *OutlinerModel) emptyModeNextStep(mode chrome.OutlinerModeID) (message, 
 		operationID, act = operation.OperationCoreGotoToday, "to open Today"
 	case chrome.ModeToday:
 		message = "Nothing planned for today."
-		operationID, act = operation.OperationCoreGotoBacklog, "to choose from Backlog"
+		operationID, act = operation.OperationCoreGotoNext, "to choose from Next"
 	case chrome.ModeNext:
 		message = "Nothing planned for Next."
 		operationID, act = operation.OperationCoreGotoBacklog, "to choose from Backlog"

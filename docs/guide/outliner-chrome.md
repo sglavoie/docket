@@ -15,7 +15,9 @@ tag wears.
 | Keep the menu bar visible | `M` | Press again to hide it |
 | Reread feedback | Help → Recent messages | Recover the full text of an expired message |
 
-Help puts Everyday, Plan, the Doing/Done Status actions, and Recovery first.
+Help puts capture, search, Peek, and editing together under Everyday, followed
+by Plan, the Doing/Done Status actions, and Recovery. These actions through
+Undo fit on the first screen at 60×20.
 Other statuses, task details, hierarchy, and selection follow. Search also matches those group names. The label
 **Explain Current View** opens the same `Q` readout.
 

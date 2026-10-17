@@ -4,7 +4,6 @@ import (
 	"container/list"
 	"strings"
 	"sync"
-	"unicode"
 	"unicode/utf8"
 )
 
@@ -18,6 +17,10 @@ type ScoreCache struct {
 	preparedUsed int
 	entries      map[string]*list.Element
 	recent       list.List
+	joined       map[joinedTextKey]*list.Element
+	joinedRecent list.List
+	joinedUsed   int
+	joinedBudget int
 }
 
 type cachedScore struct {
@@ -35,7 +38,64 @@ type cachedText struct {
 }
 
 func NewScoreCache(bytes int) *ScoreCache {
-	return &ScoreCache{budget: max(0, bytes), entries: make(map[string]*list.Element)}
+	bytes = max(0, bytes)
+	return &ScoreCache{budget: bytes - bytes/4, entries: make(map[string]*list.Element),
+		joinedBudget: bytes / 4, joined: make(map[joinedTextKey]*list.Element)}
+}
+
+// Most compound fields are a handful of comments or checklist items. Their
+// exact components are comparable keys: edits invalidate them without relying
+// on timestamps, pointer identity, or a collision-prone digest.
+type joinedTextKey struct {
+	parts [4]string
+	count int
+}
+
+type joinedText struct {
+	key  joinedTextKey
+	text string
+	cost int
+}
+
+func (c *ScoreCache) join(parts []string) string {
+	if len(parts) == 0 {
+		return ""
+	}
+	if len(parts) == 1 {
+		return parts[0]
+	}
+	if len(parts) > 4 {
+		return strings.Join(parts, " ")
+	}
+	key := joinedTextKey{count: len(parts)}
+	copy(key.parts[:], parts)
+	cost := 256 + 2*(len(parts)-1)
+	for _, part := range parts {
+		cost += 2 * len(part)
+	}
+	if cost > c.joinedBudget {
+		return strings.Join(parts, " ")
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if entry := c.joined[key]; entry != nil {
+		c.joinedRecent.MoveToFront(entry)
+		return entry.Value.(*joinedText).text
+	}
+	for c.joinedUsed+cost > c.joinedBudget {
+		old := c.joinedRecent.Back()
+		value := old.Value.(*joinedText)
+		delete(c.joined, value.key)
+		c.joinedUsed -= value.cost
+		c.joinedRecent.Remove(old)
+	}
+	for i := range parts {
+		key.parts[i] = strings.Clone(parts[i])
+	}
+	value := &joinedText{key: key, text: strings.Join(key.parts[:key.count], " "), cost: cost}
+	c.joined[key] = c.joinedRecent.PushFront(value)
+	c.joinedUsed += cost
+	return value.text
 }
 
 func (c *ScoreCache) score(q Terms, text string) int {
@@ -61,7 +121,7 @@ func (c *ScoreCache) score(q Terms, text string) int {
 			if r < 128 {
 				entry.originalASCII[r/64] |= 1 << (r % 64)
 			}
-			r = unicode.ToLower(r)
+			r = foldRune(r)
 			if r < 128 {
 				entry.foldedASCII[r/64] |= 1 << (r % 64)
 			}
@@ -85,7 +145,7 @@ func (c *ScoreCache) score(q Terms, text string) int {
 	score := 0
 	if containsRequiredASCII(q, present) {
 		// Decode only candidates that can match. Keep decoded buffers for
-		// reused text only, and cap them at a half of the total budget so
+		// reused text only, and cap them at half of the score partition so
 		// a large no-match population cannot evict all of its cheap scores.
 		if entry.original == nil && entry.count > 0 {
 			preparedCost := 8 * utf8.RuneCountInString(text)
@@ -93,7 +153,7 @@ func (c *ScoreCache) score(q Terms, text string) int {
 				entry.original = []rune(text)
 				entry.folded = make([]rune, len(entry.original))
 				for i, r := range entry.original {
-					entry.folded[i] = unicode.ToLower(r)
+					entry.folded[i] = foldRune(r)
 				}
 				entry.preparedCost = preparedCost
 				entry.cost += preparedCost

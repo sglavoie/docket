@@ -63,3 +63,35 @@ func TestScoreCacheQueryRingAndContentIdentity(t *testing.T) {
 		t.Fatal("zero-budget fallback changed the result")
 	}
 }
+
+func TestJoinedFieldsPreserveScoresThroughEditsEvictionAndConcurrentReads(t *testing.T) {
+	cache := NewScoreCache(16 << 10)
+	var wg sync.WaitGroup
+	for i := range 80 {
+		parts := []string{fmt.Sprintf("Comment %d. %s", i, strings.Repeat("Résumé mixedCase 確認 ", 10)), "handoff after verification"}
+		for _, query := range []string{"h", "handoff", "rés", "mc", "確認 handoff", "absent"} {
+			for _, sensitive := range []bool{false, true} {
+				matcher := NewMatcher(sensitive)
+				wg.Go(func() {
+					for range 2 {
+						got := matcher.CompileTerms(query).WithCache(cache).ScoreParts(parts)
+						want, _ := matcher.ScoreTermsWithPositions(strings.Join(parts, " "), query)
+						if got != want {
+							t.Errorf("%q: got %d want %d", query, got, want)
+						}
+					}
+				})
+			}
+		}
+	}
+	wg.Wait()
+	if cache.used+cache.joinedUsed > 16<<10 || cache.joinedUsed == 0 {
+		t.Fatalf("combined cache retention: scores=%d joined=%d", cache.used, cache.joinedUsed)
+	}
+	for _, parts := range [][]string{nil, {"a"}, {"a", ""}, {"a", "b", "c", "d", "e"}, {strings.Repeat("a", 20000), "b"}} {
+		terms := NewMatcher(false).CompileTerms("a").WithCache(cache)
+		if got, want := terms.ScoreParts(parts), ScoreTerms(strings.Join(parts, " "), "a"); got != want {
+			t.Fatalf("fallback changed joined score: %d != %d", got, want)
+		}
+	}
+}

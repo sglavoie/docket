@@ -141,7 +141,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationCoreOpenNote, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 13, FooterLabel: "open note", SharedKey: true},
 			{OperationID: OperationCoreFocusParent, Keys: []string{"alt+up", "shift+enter"}, DisplayKey: "Alt+↑"},
 			{OperationID: OperationCorePeekSize, Keys: []string{"B"}, DisplayKey: "B"},
-			{OperationID: OperationCorePeek, Keys: []string{"b"}, DisplayKey: "b", FooterRank: 5, FooterLabel: "peek"},
+			{HelpGroup: "Everyday", HelpOrder: 12, HelpCategory: "Tasks", OperationID: OperationCorePeek, Keys: []string{"b"}, DisplayKey: "b", FooterRank: 5, FooterLabel: "peek"},
 			// Ctrl+F/B page the detail document a whole window at a time, exactly as
 			// they do beside the Hub's preview, and they own their keys outright
 			// rather than sharing them: the list has no full page of its own to
@@ -150,7 +150,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			// a column on a key that is inert on every other row.
 			{OperationID: OperationCorePeekPageDown, Keys: []string{"ctrl+f"}, DisplayKey: "Ctrl+F"},
 			{OperationID: OperationCorePeekPageUp, Keys: []string{"ctrl+b"}, DisplayKey: "Ctrl+B"},
-			{OperationID: OperationCoreScopeSearch, Keys: []string{"/"}, DisplayKey: "/", FooterRank: 4, FooterLabel: "search"},
+			{HelpGroup: "Everyday", HelpOrder: 11, HelpCategory: "Tasks", OperationID: OperationCoreScopeSearch, Keys: []string{"/"}, DisplayKey: "/", FooterRank: 4, FooterLabel: "search"},
 			{HelpGroup: "Selection", HelpOrder: 600, OperationID: OperationCoreMultiSelect, Keys: []string{"v"}, DisplayKey: "v", FooterRank: 12, FooterLabel: "select"},
 			{HelpGroup: "Selection", HelpOrder: 601, OperationID: OperationCoreRangeSelect, Keys: []string{"V"}, DisplayKey: "V"},
 			{HelpGroup: "Selection", HelpOrder: 602, OperationID: OperationCoreSelectAll, Keys: []string{"ctrl+a"}, DisplayKey: "Ctrl+A"},

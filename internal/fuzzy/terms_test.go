@@ -9,7 +9,7 @@ import (
 
 func TestCompiledTermsPreserveScores(t *testing.T) {
 	texts := []string{"", "ReleaseNotes review", "Über die Brücke", "İstanbul Straße Σοφία", "確認 é 👩‍💻", strings.Repeat("ab ", 150)}
-	queries := []string{"", "  ", "release review", "rn", "übr", "i straße", "確認", "é", "ab", strings.Repeat("ab", 40)}
+	queries := []string{"", "  ", "a", "A", "é", "界", "i", "k", "👩", "release review", "rn", "übr", "i straße", "確認", "é", "ab", strings.Repeat("ab", 40)}
 	random := rand.New(rand.NewSource(42))
 	for range 100 {
 		var text strings.Builder

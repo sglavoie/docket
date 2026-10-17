@@ -309,7 +309,12 @@ closing capture restores it. A checklist item shows its full text, completion
 state, and owning task. A section heading displays `No detail to show for this row.`;
 `b` closes Peek from any row.
 
-Task Peek leads with the full title, status, and resume note. For example,
+Task Peek ordinarily leads with the full title, status, and resume note.
+When compact Peek cannot show two lines of the resume note on its first page,
+it moves the note ahead of status, or ahead of a title that would fill the
+page. Nothing is shortened or removed: scrolling retains the full document,
+and expanded Peek restores title-first order while preserving the reading
+passage. For example,
 `Plan: Today · Status: Backlog · Priority: 1 high` distinguishes the planning
 collection from the lifecycle state. Doing and Waiting include time in that
 state. The project slug and parent chain follow, then the schedule, description,

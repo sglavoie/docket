@@ -735,10 +735,10 @@ func scoreSearchProjectionTask(
 	if score := matcher.Score(task.ResumeNote); score > 0 {
 		return searchFieldRankResume, score, MatchSourceResume, true
 	}
-	if score := matcher.Score(searchChecklistText(task)); score > 0 {
+	if score := matcher.ScoreParts(searchChecklistParts(task)); score > 0 {
 		return searchFieldRankChecklist, score, MatchSourceChecklist, true
 	}
-	if score := matcher.Score(searchCommentText(task)); score > 0 {
+	if score := matcher.ScoreParts(searchCommentParts(task)); score > 0 {
 		return searchFieldRankComment, score, MatchSourceComment, true
 	}
 	// Tags and context share a rank, so the better score wins and an exact tie
@@ -768,19 +768,27 @@ func scoreSearchProjectionTask(
 // searchChecklistText is the item text alone: completion state is presentation,
 // never a term a text query can match or miss on.
 func searchChecklistText(task *models.Task) string {
+	return strings.Join(searchChecklistParts(task), " ")
+}
+
+func searchChecklistParts(task *models.Task) []string {
 	if len(task.Checklist) == 0 {
-		return ""
+		return nil
 	}
 	parts := make([]string, 0, len(task.Checklist))
 	for _, item := range task.Checklist {
 		parts = append(parts, item.Text)
 	}
-	return strings.Join(parts, " ")
+	return parts
 }
 
 func searchCommentText(task *models.Task) string {
+	return strings.Join(searchCommentParts(task), " ")
+}
+
+func searchCommentParts(task *models.Task) []string {
 	if len(task.Comments) == 0 {
-		return ""
+		return nil
 	}
 	parts := make([]string, 0, len(task.Comments))
 	for _, comment := range task.Comments {
@@ -788,7 +796,7 @@ func searchCommentText(task *models.Task) string {
 			parts = append(parts, comment.Text)
 		}
 	}
-	return strings.Join(parts, " ")
+	return parts
 }
 
 // searchAttachmentText covers both the displayed name (filename for files, the

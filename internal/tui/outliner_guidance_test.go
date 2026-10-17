@@ -117,8 +117,8 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 				out.PrimaryMode = chrome.ModeToday
 				out.Rows = nil
 			},
-			wantMessage: "Nothing planned for today. Press gb to choose from Backlog.",
-			wantHint:    "gb to choose from Backlog",
+			wantMessage: "Nothing planned for today. Press gn to choose from Next.",
+			wantHint:    "gn to choose from Next",
 		},
 		{
 			name: "empty Next",

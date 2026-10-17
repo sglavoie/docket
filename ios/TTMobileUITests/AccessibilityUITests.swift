@@ -360,6 +360,24 @@ final class AccessibilityUITests: XCTestCase {
         try audit(app, [.contrast], "Browse in dark mode")
     }
 
+    func testActionReceiptKeepsUndoReachableAtLargestTextSize() throws {
+        let app = launch(textSize: .largest)
+        requireState("environment.dynamic_type", "accessibility5")
+        row(app, "Ship beta build").swipeLeft()
+        let start = app.buttons["task.swipe.startPause"].firstMatch
+        require(start, "the Start action")
+        start.tap()
+        let receipt = app.staticTexts["list.receipt"]
+        require(receipt, "the action receipt")
+        let undo = app.buttons["list.undo"]
+        XCTAssertTrue(undo.isHittable)
+        XCTAssertTrue(app.windows.firstMatch.frame.contains(undo.frame))
+        screenshot(app, "action-receipt-largest-text")
+        undo.tap()
+        XCTAssertTrue(receipt.waitForExistence(timeout: timeout))
+        XCTAssertTrue(receipt.label.hasPrefix("Undone:"))
+    }
+
     func testASmallScreenKeepsEveryMainActionReachable() throws {
         let app = launch(textSize: .accessibility2)
         requireState("phase", "ready")

@@ -2,7 +2,6 @@ package outliner
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -110,13 +109,12 @@ func benchmarkLiveSearchContent(b *testing.B, cold, unique bool) {
 					}
 				}
 				b.StopTimer()
-				slices.Sort(latencies)
-				b.ReportMetric(float64(latencies[(len(latencies)*95+99)/100-1]), "p95-ns/key")
-				b.ReportMetric(float64(latencies[len(latencies)-1]), "max-ns/key")
+				reportSearchTailLatency(b, latencies)
 				b.ReportMetric(float64(b.Elapsed().Nanoseconds())/float64(b.N*len(keys)), "ns/key")
 				if m.SearchInputValue() != "" {
 					b.Fatal("deletion did not return to the empty query")
 				}
+				benchmarkSearchEscape(b, m, keys[:len(query)])
 			})
 		}
 	}

@@ -213,7 +213,8 @@ plan, pin, and project information is compact; task details retain every tag,
 context, and priority, and put the resume note beside the title. VoiceOver
 still reads the complete metadata. Empty searches name the query and active
 filters and let you clear them independently. An empty Today offers Next;
-an empty Next or Inbox offers Backlog, keeping the current project scope.
+an empty Next offers Backlog, and an empty Inbox or Due offers Today, keeping
+the current project scope.
 
 Long-press a task and drag it to reorder. Today and Next save a workspace-wide
 order; Inbox and project lists reorder siblings within the same project, keeping
@@ -227,7 +228,16 @@ Swipe left on a task for **Done**, **Start** (or **Pause** while doing), and
 right for **Today** and **Next**, or remove it from the plan it already has.
 Swipes reveal buttons without committing an action until tapped. These
 shortcuts are available outside selection mode, and an action the engine
-refuses is explained above the list.
+refuses is explained above the list. Successful swipe actions name the task
+and result in a brief confirmation, announced to VoiceOver, with **Undo** for
+that exact transaction. A newer action or an intervening edit can make Undo
+unavailable; it never reverses a different action instead.
+
+Search names its scope in the field before typing: **Search in Today**, for
+example. It stays within that list, unlike the terminal’s ranked search across
+modes. A transient refresh failure keeps the last successful list and reading
+position, names that the results are from before the failure, and offers
+**Retry**. Invalid searches and unavailable workspaces replace the old results.
 
 A task's detail also edits its checklist in place (tick, add, edit, reorder,
 delete, promote to a subtask), schedules and acknowledges its check-in, adds

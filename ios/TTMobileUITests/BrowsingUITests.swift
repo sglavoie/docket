@@ -287,14 +287,14 @@ final class BrowsingUITests: XCTestCase {
         back(app)
 
         open(app, "browse.mode.all")
-        require(text(app, "Call the bank"), "All")
+        require(text(app, "Order bathroom tiles"), "All")
         XCTAssertLessThan(row(app, "Ship beta build").frame.minY, row(app, "Await signing certificate").frame.minY,
                           "the default order no longer leads with the priority 1 task")
         search(app, "paint")
         require(text(app, "Pick paint colors"), "the search match")
-        requireAbsent(text(app, "Call the bank"), "a task the search excludes")
+        requireAbsent(text(app, "Order bathroom tiles"), "a task the search excludes")
         clearSearch(app)
-        require(text(app, "Call the bank"), "All after clearing the search")
+        require(text(app, "Order bathroom tiles"), "All after clearing the search")
 
         for (query, token, title) in [("#fe", "#feature", "Ship beta build"),
                                       ("Ship #FE", "#feature", "Ship beta build"),
@@ -310,19 +310,19 @@ final class BrowsingUITests: XCTestCase {
             require(suggestion, "the autocomplete suggestion for \(query)")
             suggestion.tap()
             require(text(app, title), "the selected suggestion's result")
-            requireAbsent(text(app, "Call the bank"), "a task outside the selected suggestion")
+            requireAbsent(text(app, "Order bathroom tiles"), "a task outside the selected suggestion")
             let expected = query.hasPrefix("Ship ") ? "Ship \(token) " : "\(token) "
             XCTAssertEqual(app.searchFields.firstMatch.value as? String, expected)
             clearSearch(app)
-            require(text(app, "Call the bank"), "All after clearing autocomplete")
+            require(text(app, "Order bathroom tiles"), "All after clearing autocomplete")
         }
 
         for query in ["#feature", "#Feature", "#FEATURE"] {
             search(app, query)
             require(text(app, "Ship beta build"), "the tag search match for \(query)")
-            requireAbsent(text(app, "Call the bank"), "a task without the searched tag")
+            requireAbsent(text(app, "Order bathroom tiles"), "a task without the searched tag")
             clearSearch(app)
-            require(text(app, "Call the bank"), "All after clearing the tag search")
+            require(text(app, "Order bathroom tiles"), "All after clearing the tag search")
         }
 
         search(app, "$ready")
@@ -333,10 +333,15 @@ final class BrowsingUITests: XCTestCase {
         app.buttons["list.filter"].tap()
         choose(app, "Waiting", under: "Status")
         require(text(app, "Await signing certificate"), "the Waiting filter's match")
-        requireAbsent(text(app, "Call the bank"), "a task the filter excludes")
+        requireAbsent(text(app, "Order bathroom tiles"), "a task the filter excludes")
         app.buttons["list.filter"].tap()
-        app.buttons["Clear Filters"].tap()
-        require(text(app, "Call the bank"), "All after clearing the filter")
+        let clearFilters = app.buttons["Clear Filters"]
+        // The menu scrolls on the 375-point simulator; its final action may
+        // start below the visible status and priority choices.
+        if !clearFilters.waitForExistence(timeout: 1) { app.swipeUp() }
+        require(clearFilters, "the filter menu's Clear Filters action")
+        clearFilters.tap()
+        require(text(app, "Order bathroom tiles"), "All after clearing the filter")
 
         app.buttons["list.sort"].tap()
         choose(app, "Title", under: "Sort by")
@@ -379,6 +384,55 @@ final class BrowsingUITests: XCTestCase {
         requireAbsent(app.staticTexts["list.restrictions"], "cleared filter summary")
         app.buttons["list.clearSearch"].tap()
         require(text(app, "Call the bank"), "the recovered full list")
+    }
+
+    func testCompletionReceiptCanUndoTheTaskThatLeftToday() throws {
+        let app = try launchSeeded()
+        XCTAssertEqual(app.searchFields.firstMatch.placeholderValue, "Search in Today")
+        row(app, "Order bathroom tiles").swipeLeft()
+        let done = app.buttons["task.swipe.done"].firstMatch
+        require(done, "the completion action")
+        done.tap()
+        let receipt = app.staticTexts["list.receipt"]
+        require(receipt, "the completion receipt")
+        XCTAssertEqual(receipt.label, "Completed “Order bathroom tiles”")
+        let confirmation = XCTAttachment(screenshot: app.screenshot())
+        confirmation.name = "Completed task receipt"
+        confirmation.lifetime = .keepAlways
+        add(confirmation)
+        requireAbsent(text(app, "Order bathroom tiles"), "the completed task in Today")
+        app.buttons["list.undo"].tap()
+        require(text(app, "Order bathroom tiles"), "the task and its Today membership restored by Undo")
+        XCTAssertTrue(receipt.label.hasPrefix("Undone:"))
+        // The parent has open children. A refused completion must not claim
+        // success or leave the previous action's Undo button standing.
+        row(app, "Ship beta build").swipeLeft()
+        app.buttons["task.swipe.done"].firstMatch.tap()
+        require(app.staticTexts["list.failure"], "the blocked parent's refusal")
+        XCTAssertFalse(app.staticTexts["list.receipt"].exists)
+        XCTAssertFalse(app.buttons["list.undo"].exists)
+    }
+
+    func testRefreshFailureKeepsTheListAndRetryRecovers() throws {
+        let app = try launchSeeded()
+        let catalog = root.appendingPathComponent("workspaces/seeded/.tt/workspace.json")
+        let permissions = try FileManager.default.attributesOfItem(atPath: catalog.path)[.posixPermissions]!
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: catalog.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: catalog.path) }
+        let list = app.collectionViews.firstMatch
+        list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+            .press(forDuration: 0.1, thenDragTo: list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9)))
+        require(app.staticTexts["list.refreshFailure"], "the refresh failure beside the retained list")
+        let retained = XCTAttachment(screenshot: app.screenshot())
+        retained.name = "Refresh failure retains Today"
+        retained.lifetime = .keepAlways
+        add(retained)
+        XCTAssertTrue(text(app, "Ship beta build").exists)
+        XCTAssertFalse(app.staticTexts["state.error"].exists)
+        try FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: catalog.path)
+        app.buttons["list.retryRefresh"].tap()
+        requireAbsent(app.staticTexts["list.refreshFailure"], "the recovered refresh failure")
+        XCTAssertTrue(text(app, "Ship beta build").exists)
     }
 
     func testOpeningShowsLoadingThenContent() throws {

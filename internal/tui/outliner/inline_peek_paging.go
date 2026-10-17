@@ -426,6 +426,7 @@ func (m *OutlinerModel) inlinePeekDocumentForRow(
 		Indent:           indent,
 		Width:            rowWidth,
 		Window:           geometry,
+		Compact:          !m.PeekExpanded,
 		Breadcrumb:       row.Breadcrumb,
 		ProjectSlug:      projectSlug,
 		SearchExcerpt:    excerpt,

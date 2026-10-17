@@ -15,29 +15,56 @@ import (
 )
 
 type budget struct {
-	bytesPerCycle float64
-	nsPerKey      float64
+	bytesPerCycle        float64
+	nsPerKey             float64
+	p95, maximum, escape float64
 }
 
 // Each benchmark cycle types and deletes seven characters (14 rendered keys).
 // Allocation ceilings leave headroom over the measured baseline. Timing targets
 // are opt-in gates because shared CI machines cannot promise a stable CPU share.
 var budgets = map[string]budget{
-	"BenchmarkLiveSearchTyping/tasks=10000/projects=20/notes=true":   {96e6, 25e6},
-	"BenchmarkLiveSearchContent/tasks=1000/query=release":            {48e6, 20e6},
-	"BenchmarkLiveSearchContent/tasks=1000/query=handoff":            {64e6, 40e6},
-	"BenchmarkLiveSearchContent/tasks=1000/query=zzzzzzz":            {144e6, 30e6},
-	"BenchmarkLiveSearchContent/tasks=10000/query=release":           {140e6, 25e6},
-	"BenchmarkLiveSearchContent/tasks=10000/query=handoff":           {280e6, 30e6},
-	"BenchmarkLiveSearchContent/tasks=10000/query=zzzzzzz":           {1050e6, 45e6},
-	"BenchmarkLiveSearchColdUniqueContent/tasks=10000/query=release": {220e6, 50e6},
-	"BenchmarkLiveSearchColdUniqueContent/tasks=10000/query=handoff": {440e6, 110e6},
-	"BenchmarkLiveSearchColdUniqueContent/tasks=10000/query=zzzzzzz": {1150e6, 80e6},
+	"BenchmarkLiveSearchTyping/tasks=10000/projects=20/notes=true":   {96e6, 25e6, 50e6, 75e6, 50e6},
+	"BenchmarkLiveSearchContent/tasks=1000/query=release":            {48e6, 20e6, 30e6, 40e6, 25e6},
+	"BenchmarkLiveSearchContent/tasks=1000/query=handoff":            {32e6, 20e6, 30e6, 40e6, 25e6},
+	"BenchmarkLiveSearchContent/tasks=1000/query=zzzzzzz":            {100e6, 30e6, 45e6, 60e6, 25e6},
+	"BenchmarkLiveSearchContent/tasks=10000/query=release":           {140e6, 25e6, 50e6, 75e6, 50e6},
+	"BenchmarkLiveSearchContent/tasks=10000/query=handoff":           {160e6, 30e6, 60e6, 80e6, 50e6},
+	"BenchmarkLiveSearchContent/tasks=10000/query=zzzzzzz":           {900e6, 45e6, 80e6, 110e6, 50e6},
+	"BenchmarkLiveSearchColdUniqueContent/tasks=10000/query=release": {220e6, 50e6, 100e6, 150e6, 50e6},
+	"BenchmarkLiveSearchColdUniqueContent/tasks=10000/query=handoff": {300e6, 90e6, 220e6, 280e6, 50e6},
+	"BenchmarkLiveSearchColdUniqueContent/tasks=10000/query=zzzzzzz": {1000e6, 80e6, 250e6, 300e6, 50e6},
 }
 
 var cpuSuffix = regexp.MustCompile(`-\d+$`)
 
-type sample struct{ bytes, ns float64 }
+type sample struct{ bytes, ns, p95, maximum, escape float64 }
+
+func parseSample(name string, fields []string) (sample, error) {
+	var s sample
+	for i := 2; i+1 < len(fields); i += 2 {
+		value, err := strconv.ParseFloat(fields[i], 64)
+		if err != nil || value <= 0 || math.IsNaN(value) || math.IsInf(value, 0) {
+			return s, fmt.Errorf("invalid benchmark measurement for %s", name)
+		}
+		switch fields[i+1] {
+		case "B/op":
+			s.bytes = value
+		case "ns/key":
+			s.ns = value
+		case "p95-ns/key":
+			s.p95 = value
+		case "max-ns/key":
+			s.maximum = value
+		case "escape-ns":
+			s.escape = value
+		}
+	}
+	if s.bytes == 0 || s.ns == 0 || s.p95 == 0 || s.maximum == 0 || s.escape == 0 {
+		return s, fmt.Errorf("missing allocation, average, tail, or Escape metric for %s", name)
+	}
+	return s, nil
+}
 
 func check(input io.Reader, output io.Writer, strictTime bool) error {
 	measurements := make(map[string][]sample)
@@ -51,21 +78,9 @@ func check(input io.Reader, output io.Writer, strictTime bool) error {
 		if _, known := budgets[name]; !known {
 			continue
 		}
-		var s sample
-		for i := 2; i+1 < len(fields); i += 2 {
-			value, err := strconv.ParseFloat(fields[i], 64)
-			if err != nil || value <= 0 || math.IsNaN(value) || math.IsInf(value, 0) {
-				return fmt.Errorf("invalid benchmark measurement for %s", name)
-			}
-			switch fields[i+1] {
-			case "B/op":
-				s.bytes = value
-			case "ns/key":
-				s.ns = value
-			}
-		}
-		if s.bytes == 0 || s.ns == 0 {
-			return fmt.Errorf("missing B/op or ns/key for %s", name)
+		s, err := parseSample(name, fields)
+		if err != nil {
+			return err
 		}
 		measurements[name] = append(measurements[name], s)
 	}
@@ -98,11 +113,31 @@ func check(input io.Reader, output io.Writer, strictTime bool) error {
 		if allocated > limit.bytesPerCycle {
 			failures = append(failures, name+": allocation budget exceeded")
 		}
-		if elapsed > limit.nsPerKey {
-			if strictTime {
-				failures = append(failures, name+": latency target exceeded")
-			} else {
-				if _, err := fmt.Fprintln(output, "  Latency above target; rerun on an idle machine with --strict-time."); err != nil {
+		for _, metric := range []struct {
+			label string
+			limit float64
+			value func(sample) float64
+		}{
+			{"average", limit.nsPerKey, func(s sample) float64 { return s.ns }},
+			{"p95", limit.p95, func(s sample) float64 { return s.p95 }},
+			{"maximum", limit.maximum, func(s sample) float64 { return s.maximum }},
+			{"Escape", limit.escape, func(s sample) float64 { return s.escape }},
+		} {
+			values := make([]float64, len(samples))
+			for i, s := range samples {
+				values[i] = metric.value(s)
+			}
+			slices.Sort(values)
+			measured := values[len(values)/2]
+			if metric.label != "average" {
+				if _, err := fmt.Fprintf(output, "  %s: %.1f ms (target %.0f)\n", metric.label, measured/1e6, metric.limit/1e6); err != nil {
+					return err
+				}
+			}
+			if measured > metric.limit {
+				if strictTime {
+					failures = append(failures, name+": "+metric.label+" latency target exceeded")
+				} else if _, err := fmt.Fprintf(output, "  %s latency above target; rerun on an idle machine with --strict-time.\n", metric.label); err != nil {
 					return err
 				}
 			}
@@ -115,7 +150,7 @@ func check(input io.Reader, output io.Writer, strictTime bool) error {
 }
 
 func main() {
-	strict := flag.Bool("strict-time", false, "also fail when median latency exceeds its target")
+	strict := flag.Bool("strict-time", false, "also fail when average, p95, maximum, or Escape latency exceeds its target")
 	flag.Parse()
 	if err := check(os.Stdin, os.Stdout, *strict); err != nil {
 		fmt.Fprintln(os.Stderr, err)

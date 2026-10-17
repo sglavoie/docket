@@ -149,6 +149,14 @@ public actor TTEngine {
 
     // MARK: Commands
 
+    /// Undo the transaction on a visible receipt, never a newer action.
+    public func undo(transactionID: String, requestID: String = UUID().uuidString) throws -> UndoMutation {
+        struct Payload: Encodable {
+            let transaction_id: String
+        }
+        return try send("command.undo", payload: Payload(transaction_id: transactionID), requestID: requestID)
+    }
+
     /// Creates one task with a literal title. A nil project is the protected
     /// Unfiled project; a nil destination is the capture default.
     public func capture(

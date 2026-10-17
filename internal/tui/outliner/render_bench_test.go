@@ -2,6 +2,7 @@ package outliner
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 
@@ -125,20 +126,54 @@ func BenchmarkLiveSearchTyping(b *testing.B) {
 						m.View()
 					}
 					b.ReportAllocs()
+					latencies := make([]int64, 0, b.N*len(keys))
 					b.ResetTimer()
 					for range b.N {
 						for _, key := range keys {
+							started := time.Now()
 							m.Update(key)
 							m.View()
+							latencies = append(latencies, time.Since(started).Nanoseconds())
 						}
 					}
 					b.StopTimer()
+					reportSearchTailLatency(b, latencies)
 					b.ReportMetric(float64(b.Elapsed().Nanoseconds())/float64(b.N*len(keys)), "ns/key")
 					if m.SearchInputValue() != "" {
 						b.Fatal("deletion did not return to the empty query")
 					}
+					benchmarkSearchEscape(b, m, keys[:7])
 				})
 			}
 		}
 	}
+}
+
+// Record tails from actual input-to-render cycles, not scorer-only timings.
+func reportSearchTailLatency(b *testing.B, latencies []int64) {
+	slices.Sort(latencies)
+	b.ReportMetric(float64(latencies[(len(latencies)*95+99)/100-1]), "p95-ns/key")
+	b.ReportMetric(float64(latencies[len(latencies)-1]), "max-ns/key")
+}
+
+// Search setup is outside both measured intervals. Escape must restore the
+// original projection promptly even after the most expensive query.
+func benchmarkSearchEscape(b *testing.B, m *OutlinerModel, typing []tea.KeyPressMsg) {
+	b.Helper()
+	var slowest time.Duration
+	for range b.N {
+		m.ActivateSearch()
+		for _, key := range typing {
+			m.Update(key)
+			m.View()
+		}
+		started := time.Now()
+		m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+		m.View()
+		slowest = max(slowest, time.Since(started))
+		if m.HasSearchProjection() {
+			b.Fatal("Escape did not restore the original projection")
+		}
+	}
+	b.ReportMetric(float64(slowest.Nanoseconds()), "escape-ns")
 }

@@ -25,7 +25,20 @@
     },
     {
       "type": "assert",
-      "value": "Nothing planned for today. Press gb to choose from Backlog.",
+      "value": "Nothing planned for today. Press gn to choose from Next.",
+      "assert": "contains"
+    },
+    {
+      "type": "key",
+      "key": "g"
+    },
+    {
+      "type": "key",
+      "key": "n"
+    },
+    {
+      "type": "assert",
+      "value": "Nothing planned for Next. Press gb to choose from Backlog.",
       "assert": "contains"
     },
     {

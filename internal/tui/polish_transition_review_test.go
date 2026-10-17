@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"charm.land/lipgloss/v2"
 
@@ -49,10 +50,14 @@ func TestPolishTransitionReviewFrames(t *testing.T) {
 					if sequence == "last-task" {
 						press("a")
 						uxClarityPress(t, d, UITestAction{Type: UITestActionText, Text: "Finish this last task"})
-						press("enter", "g", "i")
+						press("enter")
+						d.Wait(5 * time.Second)
+						press("g", "i")
 						wait()
 						frame("before", size)
 						press("w", "d")
+						// Settle the disk commit without advancing the feedback clock.
+						d.Wait(5 * time.Second)
 						obs := frame("completed", size)
 						if !strings.Contains(obs.PlainScreen, "Inbox is clear") {
 							t.Fatalf("last task did not leave Inbox:\n%s", obs.PlainScreen)

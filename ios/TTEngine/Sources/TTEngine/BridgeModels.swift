@@ -314,6 +314,16 @@ public struct TaskMutation: Decodable, Hashable, Sendable {
     public var committed: CommittedEffect
 }
 
+public struct UndoMutation: Decodable, Hashable, Sendable {
+    public var transactionID: String
+    public var action: String
+
+    enum CodingKeys: String, CodingKey {
+        case action
+        case transactionID = "transaction_id"
+    }
+}
+
 /// Every task one capture created, in line order; `task` is the first.
 public struct CaptureMutation: Decodable, Hashable, Sendable {
     public var task: TaskSnapshot
