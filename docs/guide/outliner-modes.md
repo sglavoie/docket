@@ -59,8 +59,9 @@ tasks sit one level beneath it without repeating the project's name; `h` folds
 the cursor's own group down to that header once nothing nearer — a checklist,
 children, a parent — is left to fold, and `p` folds or opens every project group
 at once. A group holding a single top-level task draws no header while it is
-open: that task's row leads with the `[slug]` instead, with its own subtasks
-beneath it. Folding it with `h` or `p` brings the header back as the summary,
+open: that task's row leads with the `[slug]` instead, with its checkbox aligned
+with the other projects' tasks and its own subtasks beneath it. Folding it with
+`h` or `p` brings the header back as the summary,
 and `l` on that header merges it into the row again. On that row the task keys
 answer, so to act on the project itself — edit it, tag it, Peek it, or `Enter`
 it — fold the group with `h` and press the key on its header, or use `P`. Focus a single project and those

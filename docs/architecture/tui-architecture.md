@@ -256,9 +256,9 @@ pressure counts, is what `l` expands and `h` folds, and is what every project
 operation resolves from. The task rows under it name no project, so the title
 keeps every column the header already paid for. An expanded group of exactly one
 top-level task merges into that task's row instead: the kernel takes the top-level
-count, emits nothing and reports the merge, and `mergeProjectGroupRows` trims one
-connector level off the rows the group then emitted and marks the first
-`OutlinerRow.LeadsMergedGroup`. That row stands at the header's depth with its
+count, emits nothing and reports the merge, and `mergeProjectGroupRows` replaces
+the first row's connector with equal-width blank space and marks it
+`OutlinerRow.LeadsMergedGroup`. That row keeps the other tasks' depth with its
 subtree and checklist beneath it and leads with the same `[slug]` the ranked
 list draws, so a group of one spends no row on a name its only row can carry.
 Folding it — `h` once nothing nearer is left, or `p` — draws the header as the

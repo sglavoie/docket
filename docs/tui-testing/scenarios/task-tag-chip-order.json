@@ -28,8 +28,8 @@
     { "type": "key", "label": "Esc closes Peek before Outliner navigation", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "Tags: #billing #ux #bug" },
 
-    { "type": "resize", "label": "the minimum width now holds the whole title, because nothing competes for it", "width": 60, "height": 20 },
-    { "type": "assert", "assert": "not_clipped", "value": "Ship the invoice redesign to the billing portal" },
+    { "type": "resize", "label": "the minimum width keeps the task column and clips the long title", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "     ◌ [unfiled] Ship the invoice redesign to the billing p…" },
     { "type": "assert", "assert": "not_contains", "value": "#billing" },
     { "type": "assert", "assert": "no_layout_issues" },
 

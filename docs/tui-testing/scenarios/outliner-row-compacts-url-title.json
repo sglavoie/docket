@@ -18,10 +18,12 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "key": "b" },
 
+    { "type": "resize", "label": "allow room to inspect the stored URL in the aligned inline editor", "width": 100, "height": 24 },
     { "type": "key", "label": "the inline editor edits the stored title, not the compacted one", "key": "e" },
     { "type": "assert", "assert": "contains", "value": "EDIT TASK" },
     { "type": "assert", "assert": "contains", "value": "https://acme.slack.com/archives/C024BE91L/p1700000000123456 thread" },
     { "type": "key", "key": "esc" },
+    { "type": "resize", "label": "return to the width that compacts the URL", "width": 80, "height": 24 },
     { "type": "assert", "assert": "contains", "value": "◌ [unfiled] Reply to acme.slack.com/archives/… thread" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

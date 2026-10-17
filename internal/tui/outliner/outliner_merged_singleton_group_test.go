@@ -13,8 +13,8 @@ import (
 )
 
 // An expanded cross-project group holding exactly one top-level task draws no
-// header: that task's row leads with the project's `[slug]` and stands at the
-// header's depth. Folding brings the header back as the summary and l merges
+// header: that task's row leads with the project's `[slug]` and keeps the same
+// depth as other project tasks. Folding brings the header back and l merges
 // it again. These tests hold that presentation and the keys that read the
 // group off the row rather than off a header.
 
@@ -79,11 +79,11 @@ func TestSingletonProjectGroupMergesIntoItsRow(t *testing.T) {
 	}
 
 	rootIndex, rootRow := mustRowForTask(t, outliner, root.ID)
-	if !rootRow.LeadsMergedGroup || rootRow.Prefix != "" {
-		t.Fatalf("root row = %+v, want it to lead the merged group at the header's depth", rootRow)
+	if !rootRow.LeadsMergedGroup || rootRow.Prefix != connectorSpace {
+		t.Fatalf("root row = %+v, want it to lead the merged group at the task's depth", rootRow)
 	}
 	_, childRow := mustRowForTask(t, outliner, child.ID)
-	if childRow.LeadsMergedGroup || childRow.Prefix != connectorLastItem {
+	if childRow.LeadsMergedGroup || childRow.Prefix != connectorSpace+connectorLastItem {
 		t.Fatalf("child row prefix %q leads=%t, want one level beneath its root", childRow.Prefix, childRow.LeadsMergedGroup)
 	}
 	if childRow.Group != rootRow.Group {
@@ -123,6 +123,41 @@ func TestProjectGroupWithTwoRootsKeepsItsHeader(t *testing.T) {
 	}
 	if _, row := mustRowForTask(t, outliner, "beta-one"); !row.LeadsMergedGroup {
 		t.Fatalf("beta's one task did not merge: %+v", row)
+	}
+}
+
+func TestSingletonProjectCheckboxAlignsWithOtherProjectTasks(t *testing.T) {
+	alpha := primaryRowsProject("alpha",
+		primaryRowsTask("alpha-one", models.StateBacklog),
+		primaryRowsTask("alpha-two", models.StateBacklog),
+	)
+	beta := primaryRowsProject("beta", primaryRowsTask("beta-one", models.StateBacklog))
+	outliner, _ := primaryRowsOutliner(alpha, beta)
+	for _, mode := range []chrome.OutlinerModeID{chrome.ModeAll, chrome.ModeBacklog} {
+		outliner.SelectOutlinerMode(mode)
+		for _, width := range []int{40, 80, 120} {
+			for _, selected := range []bool{false, true} {
+				t.Run(fmt.Sprintf("%s/width=%d/selected=%t", mode, width, selected), func(t *testing.T) {
+					layout := outliner.ComputeOutlinerRowLayout(outliner.Rows, width)
+					want := -1
+					for _, id := range []string{"alpha-one", "alpha-two", "beta-one"} {
+						index, row := mustRowForTask(t, outliner, id)
+						line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, selected, width, index, layout))
+						badge := strings.TrimSpace(ansi.Strip(outliner.renderTaskStatusIcon(row.Task)))
+						position := strings.Index(line, badge)
+						if badge == "" || position < 0 {
+							t.Fatalf("row has no checkbox %q: %q", badge, line)
+						}
+						column := ansi.StringWidth(line[:position])
+						if want < 0 {
+							want = column
+						} else if column != want {
+							t.Errorf("%s checkbox at column %d, want %d: %q", id, column, want, line)
+						}
+					}
+				})
+			}
+		}
 	}
 }
 
@@ -222,7 +257,7 @@ func TestMergedRootChecklistRowsSitBeneathIt(t *testing.T) {
 		t.Fatalf("checklist owner = %+v, want it to lead its group", row)
 	}
 	item := outliner.Rows[index+1]
-	if !item.IsChecklistItem || item.LeadsMergedGroup || item.Prefix != connectorLastItem || item.Group != row.Group {
+	if !item.IsChecklistItem || item.LeadsMergedGroup || item.Prefix != connectorSpace+connectorLastItem || item.Group != row.Group {
 		t.Fatalf("checklist row = %+v, want it one level beneath its owner in the same group", item)
 	}
 }

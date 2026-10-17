@@ -251,7 +251,7 @@ func (m *OutlinerModel) rowGroupFor(sectionKey, projectKey, projectID string) Ou
 // Every other project group draws its header, folded or expanded, with one
 // exception: an expanded group holding exactly one top-level task merges into
 // that task's row, which leads with the `[slug]` the header would have drawn
-// and sits at the header's depth, so a group of one does not spend a row naming
+// and keeps the task's depth, so a group of one does not spend a row naming
 // a project its only row can name. merged reports that case, and the caller
 // hands the rows it then emits to mergeProjectGroupRows. Every row still
 // carries the group, so discovery, folding, and navigation read it off the row
@@ -286,29 +286,15 @@ func (m *OutlinerModel) appendProjectGroupHeader(
 	return !m.IsSectionRowCollapsed(header), false
 }
 
-// mergeProjectGroupRows seats the rows one merged group emitted from start on
-// at the depth its header would have held: the lone top-level task loses its
-// connector and leads the group, and every descendant moves up the same one
-// level, so the tree beneath it still reads as that task's own.
+// mergeProjectGroupRows lets the lone top-level task name its project without
+// changing task columns. Its header connector becomes blank space; descendants
+// keep their prefixes so their checkboxes also align with other project trees.
 func (m *OutlinerModel) mergeProjectGroupRows(start int) {
 	if start < 0 || start >= len(m.Rows) {
 		return
 	}
-	for index := start; index < len(m.Rows); index++ {
-		m.Rows[index].Prefix = trimTreePrefixLevel(m.Rows[index].Prefix)
-	}
+	m.Rows[start].Prefix = connectorSpace
 	m.Rows[start].LeadsMergedGroup = true
-}
-
-// trimTreePrefixLevel drops the outermost connector level of one tree prefix.
-// Every level BuildTreePrefix writes is one four-column connector.
-func trimTreePrefixLevel(prefix string) string {
-	runes := []rune(prefix)
-	level := len([]rune(connectorSpace))
-	if len(runes) <= level {
-		return ""
-	}
-	return string(runes[level:])
 }
 
 // projectGroupPressure counts the overdue and Today-planned work one project
