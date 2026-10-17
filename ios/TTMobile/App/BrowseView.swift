@@ -1,7 +1,7 @@
 import SwiftUI
 import TTEngine
 
-/// Everything beyond Today and Inbox: the other modes, every project by
+/// Additional task views: the other modes, every project by
 /// population, and the saved lenses.
 struct BrowseView: View {
     let workspace: WorkspaceModel
@@ -30,12 +30,6 @@ struct BrowseView: View {
                             }
                             .accessibilityIdentifier("browse.mode.\(mode)")
                         }
-                    }
-                    Section("Notes") {
-                        NavigationLink(value: Route.notes(nil)) {
-                            Label("All Notes", systemImage: "note.text")
-                        }
-                        .accessibilityIdentifier("browse.notes")
                     }
                     Section("Lenses") {
                         if lenses.isEmpty {

@@ -14,7 +14,7 @@ enum Route: Hashable {
 
 /// The shell's tabs, which a widget or a shortcut can select.
 enum ShellTab: Hashable {
-    case today, inbox, browse
+    case today, inbox, notes, browse
 }
 
 /// A task a reminder notification or a link opened.
@@ -23,7 +23,7 @@ private struct OpenedTask: Identifiable {
     var id: TaskLocator { locator }
 }
 
-/// Today, Inbox, and Browse, with capture reachable from every one of them
+/// Today, Inbox, Notes, and Browse, with capture reachable from every one of them
 /// and sync status a tap away.
 struct MainTabView: View {
     let workspace: WorkspaceModel
@@ -41,6 +41,13 @@ struct MainTabView: View {
                 stack(root: .inbox)
             }
             .badge(workspace.captures.pending.count)
+            Tab("Notes", systemImage: "note.text", value: ShellTab.notes) {
+                NavigationStack {
+                    NotesListView(workspace: workspace, location: nil)
+                        .modifier(ShellChrome(workspace: workspace, showingSync: $showingSync))
+                        .navigationDestination(for: Route.self) { destination($0) }
+                }
+            }
             Tab("Browse", systemImage: "square.grid.2x2", value: ShellTab.browse) {
                 NavigationStack {
                     BrowseView(workspace: workspace)
@@ -71,6 +78,7 @@ struct MainTabView: View {
             workspace.screen.tab = switch tab {
             case .today: "today"
             case .inbox: "inbox"
+            case .notes: "notes"
             case .browse: "browse"
             }
         }
@@ -186,7 +194,7 @@ struct MainTabView: View {
     }
 }
 
-/// Command-1, -2, and -3 select Today, Inbox, and Browse from a hardware
+/// Command-1 through -4 select Today, Inbox, Notes, and Browse from a hardware
 /// keyboard. The buttons draw nothing and VoiceOver skips them; the tab bar
 /// is their accessible counterpart.
 private struct TabShortcuts: View {
@@ -196,7 +204,8 @@ private struct TabShortcuts: View {
         ZStack {
             Button("Today") { tab = .today }.keyboardShortcut("1", modifiers: .command)
             Button("Inbox") { tab = .inbox }.keyboardShortcut("2", modifiers: .command)
-            Button("Browse") { tab = .browse }.keyboardShortcut("3", modifiers: .command)
+            Button("Notes") { tab = .notes }.keyboardShortcut("3", modifiers: .command)
+            Button("Browse") { tab = .browse }.keyboardShortcut("4", modifiers: .command)
         }
         // Hidden draws nothing and leaves VoiceOver nothing to land on; the
         // shortcuts still answer.

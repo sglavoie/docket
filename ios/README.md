@@ -152,8 +152,8 @@ all of them, with the system's accessibility audits on each screen. Each test
 reads the app's semantic state to prove its setting took effect and keeps a
 screenshot of what it checked. Issues in system-drawn chrome (the navigation
 toolbar, the search field, and content under the translucent tab bar) are
-attached rather than failed. On a hardware keyboard, Command-1, -2, and -3
-select Today, Inbox, and Browse, Command-N opens capture, Command-S saves it,
+attached rather than failed. On a hardware keyboard, Command-1 through -4
+select Today, Inbox, Notes, and Browse, Command-N opens capture, Command-S saves it,
 and Command-W closes it keeping the draft.
 
 **Running the app.** `just ios-run` builds, boots the simulator, sets its
@@ -182,8 +182,8 @@ relaunches. A workspace an earlier build kept at `Application
 Support/workspace` is adopted as `workspace`. **Choose Another Workspace…** in
 the sync sheet returns to that choice without touching any files.
 
-Today, Inbox, and Browse are the tabs, and the capture button floats over all
-three. Browse holds Next, Due, All, Backlog, and Recent, every project by
+Today, Inbox, Notes, and Browse are the tabs, and the capture button floats over all
+four. Browse holds Next, Due, All, Backlog, and Recent, every project by
 population (active, parked, archived), and the saved lenses. Every list is one
 engine query with search, filters, and a sort. Search offers tappable
 completions for tags, contexts, projects, states, priorities, dates, flags,
@@ -229,7 +229,7 @@ dismissed sheet, or a relaunch. Only a committed save or **Cancel** removes
 one.
 
 A task's detail lists its comments and attachments, and a project's settings
-list the project's comments and open its notes. **All Notes** in Browse lists
+list the project's comments and open its notes. The **Notes** tab lists
 the global notes and every available project's. A comment or a note keeps a
 draft the same way, and each change names what was read: a comment edited on
 another device refuses the change, and a note saved over another device's edit

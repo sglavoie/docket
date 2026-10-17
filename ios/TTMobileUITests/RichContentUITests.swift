@@ -232,8 +232,10 @@ final class RichContentUITests: XCTestCase {
 
     func testNotesCreateEditMoveAndKeepAStaleEditAsACopy() throws {
         let app = launch()
+        XCTAssertEqual(app.tabBars.buttons.allElementsBoundByIndex.map { $0.label }, ["Today", "Inbox", "Notes", "Browse"])
         tab(app, "Browse")
-        press(app, "browse.notes")
+        XCTAssertFalse(app.buttons["browse.notes"].exists)
+        tab(app, "Notes")
         require(app.buttons["note.Weekly review"].firstMatch, "the global note")
         require(app.buttons["note.Release runbook"].firstMatch, "the project note")
 
