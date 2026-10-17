@@ -109,7 +109,7 @@ open ends the loan rather than resurrecting one it already dropped.
 The panel's height is what its content asks for. `composerPanelContentRows` is
 that demand: `composerPanelFixedRows` for the divider and the route row, the
 input's own wrapped line count, the error block when there is one, and the pane
-under it — the suggestion list's items while autocomplete is open, one row for a
+above it — the suggestion list's items while autocomplete is open, one row for a
 multiline draft's summary, one more for its `To:` destination counts when
 `batchSpansProjects` says the batch lands in more than one project, and otherwise
 the grouped preview's height through
@@ -137,14 +137,21 @@ the two would need. And the rows the shell's footer costs beyond its two-row
 baseline ride the *share* rather than the drawn panel: `ExcessRows` is added to
 the demand and to the floor, and `compactPanelRows` subtracts it again for the
 render, so the panel draws exactly its content while the host is charged for the
-footer that content stands above.
+footer accompanying that content. Capture sets `HostedPanelLayout.FooterAbove`:
+the shell inserts its footer between the host and the panel, then applies
+overlays using the resulting screen coordinates. This keeps the editor at the
+terminal's bottom even when completion guidance or transient feedback changes
+the footer's height. Expanded forms retain the ordinary footer placement.
 
 Inside the ceiling the bounded paths are unchanged, and `composerInputRows` is
 where the priority falls: the body is the share less the two fixed rows, the
 input keeps its first row unconditionally, and every row beyond it yields to the
 error block, so a refusal is never what scrolls off a panel that has run out of
-room. The pane below it is windowed by the preview and autocomplete paths that
-already existed, which is why the ceiling is the number they were sized against.
+room. The pane above it is windowed by the preview and autocomplete paths.
+Autocomplete reserves up to two rows even for a long draft, so the selected
+suggestion remains visible. `renderCompactPanel` fits the details to their
+remaining budget before appending the editor, leaving all padding above the
+input. Multiline drafts grow upward and scroll within the bounded editor.
 
 The syntax guide is the one presentation that measures as the pane it replaced.
 Expanding it sets `HostDrawn` false — the panel takes the frame while the guide

@@ -9,8 +9,8 @@
     { "type": "key", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "label": "the over-wide title, led by its singleton group's slug, draws the link as host, first path segment, and an ellipsis, keeping the words after it", "assert": "contains", "value": "◌ [unfiled] Reply to acme.slack.com/archives/… thread" },
-    { "type": "assert", "assert": "not_contains", "value": "◌ [unfiled] Reply to https://" },
+    { "type": "assert", "label": "the over-wide title, led by its singleton group's slug, draws the link as host, first path segment, and an ellipsis, keeping the words after it", "assert": "contains", "value": "[unfiled] ◌ Reply to acme.slack.com/archives/… thread" },
+    { "type": "assert", "assert": "not_contains", "value": "[unfiled] ◌ Reply to https://" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "Peek reads the stored title", "key": "b" },
@@ -24,7 +24,7 @@
     { "type": "assert", "assert": "contains", "value": "https://acme.slack.com/archives/C024BE91L/p1700000000123456 thread" },
     { "type": "key", "key": "esc" },
     { "type": "resize", "label": "return to the width that compacts the URL", "width": 80, "height": 24 },
-    { "type": "assert", "assert": "contains", "value": "◌ [unfiled] Reply to acme.slack.com/archives/… thread" },
+    { "type": "assert", "assert": "contains", "value": "[unfiled] ◌ Reply to acme.slack.com/archives/… thread" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

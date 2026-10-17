@@ -38,6 +38,7 @@ type taskRowSegments struct {
 	// ranked list, which draws no group headers, and the one row a merged
 	// singleton group draws in place of its header. It is empty everywhere else.
 	projectLabel string
+	projectFirst bool
 }
 
 func (s taskRowSegments) titleWidth(rowWidth int) int {
@@ -63,26 +64,20 @@ func (s taskRowSegments) gutter() string {
 // sizes it to the columns the title actually had. A widened title budget reaches
 // the editor by construction, which is the whole point of naming this once.
 func (s taskRowSegments) titlePrefix() string {
-	return s.gutter() + s.statusIcon + " " + s.prioritySegment + s.projectLabel + s.pinMarker
+	return s.gutter() + s.contentPrefix()
 }
 
-// content is everything from the state badge on, the region that keeps its own
-// colors under the cursor. The space after the badge is the one outlinerNonTitleWidth
-// counts.
-// The match cue closes the row, behind the indicators, as it closes a note row:
-// the indicators are the row's own facts and keep one column across a result
-// list, while the cue is a remark about the search and comes and goes per row.
+// contentPrefix keeps rendering and the inline editor on the same title column.
+func (s taskRowSegments) contentPrefix() string {
+	if s.projectFirst {
+		return s.projectLabel + s.statusIcon + " " + s.prioritySegment + s.pinMarker
+	}
+	return s.statusIcon + " " + s.prioritySegment + s.projectLabel + s.pinMarker
+}
+
+// content keeps semantic colors under the cursor; the match cue closes the row.
 func (s taskRowSegments) content(title string) string {
-	return fmt.Sprintf("%s %s%s%s%s%s%s%s",
-		s.statusIcon,
-		s.prioritySegment,
-		s.projectLabel,
-		s.pinMarker,
-		title,
-		s.relationMarker,
-		s.indicators,
-		s.matchCue,
-	)
+	return s.contentPrefix() + title + s.relationMarker + s.indicators + s.matchCue
 }
 
 // taskRelationMarker names the family the outline placed elsewhere: `‹` for a
@@ -159,6 +154,9 @@ func (m *OutlinerModel) taskProjectLabel(row OutlinerRow, rowWidth int, colLayou
 	label := theme.ProjectColorStyle(project).Render("[" + slug + "]")
 	if colLayout != nil {
 		label += strings.Repeat(" ", max(colLayout.ProjectWidth-lipgloss.Width(label), 0))
+	}
+	if row.LeadsMergedGroup {
+		label = m.projectHeaderPinMarker(project) + label
 	}
 	return label + " "
 }
@@ -246,7 +244,16 @@ func (m *OutlinerModel) buildTaskRowSegmentsFor(row OutlinerRow, rowWidth int, c
 		}
 	}
 	prefixBudget := max(min(rowWidth/3, 12), 4)
-	prefixStr, foldIndicator := renderTaskPrefix(compactOutlinerTreePrefix(row.Prefix, prefixBudget), foldIndicator, bg, m.treeConnectorStyle(row))
+	prefix := compactOutlinerTreePrefix(row.Prefix, prefixBudget)
+	if row.LeadsMergedGroup {
+		// The merged row replaces a project header, so its label starts in
+		// that header's column. Keep the task's fold arrow in the same gutter.
+		prefix = ""
+		if foldIndicator == "" {
+			foldIndicator = gutterSpace(bg) + gutterSpace(bg)
+		}
+	}
+	prefixStr, foldIndicator := renderTaskPrefix(prefix, foldIndicator, bg, m.treeConnectorStyle(row))
 
 	segments := taskRowSegments{
 		cursorPrefix:    m.renderTaskCursorColumn(row, paint),
@@ -255,6 +262,7 @@ func (m *OutlinerModel) buildTaskRowSegmentsFor(row OutlinerRow, rowWidth int, c
 		statusIcon:      statusIcon,
 		prioritySegment: prioritySegment,
 		projectLabel:    m.taskProjectLabel(row, rowWidth, colLayout),
+		projectFirst:    row.LeadsMergedGroup,
 		pinMarker:       m.taskPinnedMarker(row),
 		indicators:      indicatorSegments.render(),
 		relationMarker:  m.taskRelationMarker(row),

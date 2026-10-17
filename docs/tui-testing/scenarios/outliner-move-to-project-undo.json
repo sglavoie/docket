@@ -20,7 +20,7 @@
     { "type": "key", "label": "undo names the same action back", "key": "u" },
     { "type": "assert", "assert": "status_contains", "value": "Undid: Move to Project: #2 Alpha migration kickoff → client-beta" },
     { "type": "wait" },
-    { "type": "assert", "label": "the task is back as its project's one top-level task, so the row carries the project label", "assert": "contains", "value": "[client-alpha] Alpha migration kickoff" },
+    { "type": "assert", "label": "the task is back as its project's one top-level task, so the row carries the project label", "assert": "contains", "value": "[client-alpha] □ Alpha migration kickoff" },
     { "type": "assert", "assert": "not_contains", "value": "[client-beta] (2)" },
 
     { "type": "key", "label": "redo the same transaction", "key": "ctrl+r" },

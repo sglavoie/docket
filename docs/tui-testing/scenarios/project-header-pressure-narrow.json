@@ -5,7 +5,7 @@
   "actions": [
     { "type": "key", "label": "go to Inbox", "key": "g" },
     { "type": "key", "key": "i" },
-    { "type": "assert", "label": "an open singleton group keeps its task column and cuts the title beside the deadline", "assert": "contains", "value": "[signal-deli…] Alpha overdue i…" },
+    { "type": "assert", "label": "an open singleton group keeps its task column and cuts the title beside the deadline", "assert": "contains", "value": "[signal-deli…] ◌ Alpha overdue int…" },
     { "type": "key", "label": "fold every group so the singleton draws its header", "key": "p" },
     { "type": "assert", "label": "the suffix degrades instead of being truncated", "assert": "contains", "value": "[signal-delivery-coordination-track] (1)  ! overdue 1" },
     { "type": "assert", "label": "today drops first and only the pulse still says it", "assert": "count_contains", "value": "today 1", "count": 1 },

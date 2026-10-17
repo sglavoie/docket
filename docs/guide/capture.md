@@ -4,6 +4,9 @@
 
 Press `a`, type a title, and press `Enter`. Check the destination above the draft
 before saving. With no project in scope, capture goes to Unfiled / Inbox.
+The draft stays at the bottom of the terminal. Previews, completions, validation
+messages, and keyboard hints appear above it, so adding metadata keeps the typing
+line in place. Multiline drafts grow upward and scroll when they fill the panel.
 
 ## Everyday capture
 

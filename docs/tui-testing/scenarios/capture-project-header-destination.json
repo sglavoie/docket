@@ -13,7 +13,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "key", "label": "return to the top row", "key": "home" },
     { "type": "key", "label": "step onto Client Alpha's lone task, which carries the project label instead of a header", "key": "j" },
-    { "type": "assert", "assert": "contains", "value": "[client-alpha] Alpha migration kickoff" },
+    { "type": "assert", "assert": "contains", "value": "[client-alpha] □ Alpha migration kickoff" },
     { "type": "key", "label": "fold that singleton group so its project header is drawn, under the cursor", "key": "h" },
     { "type": "assert", "assert": "contains", "value": "▸ [client-alpha] (1)" },
     { "type": "key", "label": "capture from a project header row", "key": "a" },

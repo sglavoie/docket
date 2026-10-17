@@ -17,7 +17,7 @@
     { "type": "key", "label": "choose the system Inbox", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "label": "the destination minted its own ShortID for the moved root", "assert": "status_contains", "value": "Move to Project: #1 User authentication → unfiled" },
-    { "type": "assert", "label": "the moved root is the destination group's one top-level task, so it leads with the project label", "assert": "contains", "value": "[unfiled]      User authentication" },
+    { "type": "assert", "label": "the moved root is the destination group's one top-level task, so it leads with the project label", "assert": "contains", "value": "[unfiled]      □ ● User authentication" },
     { "type": "assert", "label": "and its backlog child still hangs beneath it", "assert": "contains", "value": "└──   □   Add password validation" },
     { "type": "key", "label": "fold every project group so each header counts what it holds", "key": "p" },
     { "type": "assert", "label": "the root and its backlog child left together", "assert": "contains", "value": "[unfiled] (2)" },

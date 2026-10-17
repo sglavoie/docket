@@ -23,7 +23,7 @@
     {"type": "assert", "assert": "not_contains", "value": "review today"},
     {"type": "key", "key": "u"},
     {"type": "wait"},
-    {"type": "assert", "assert": "contains", "value": "◐   [rich-project] Build login form"},
+    {"type": "assert", "assert": "contains", "value": "[rich-project] ◐   Build login form"},
     {"type": "key", "label": "blocking it emptied the Doing lane, so the cursor swept on and the undos left it there", "key": "home"},
     {"type": "key", "label": "past the lane back onto the restored row, whose single-task group draws no header", "key": "j"},
     {"type": "key", "key": "w"},

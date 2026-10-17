@@ -205,7 +205,9 @@ never displaced, and a view-local modal answers through its own surface.
 
 Feedback and controls are two blocks of one footer, never alternatives.
 `renderFooterChrome` composes divider, feedback, controls in that order, so the
-controls keep the terminal's last row and the footer grows upward; a
+controls keep the terminal's last row and the footer grows upward, except for
+compact capture, whose footer stands above the panel to keep its editor at the
+terminal's bottom; a
 surface-owned footer is never replaced, since `composeSurfaceFooterFeedback`
 spends body rows above that surface's own divider and a frame with no divider or
 no room keeps its footer and drops the feedback.
@@ -445,7 +447,12 @@ syntax guide flips `HostDrawn` instead of moving it. `syncHostedPanelHost` resiz
 that host once per `Update` and never per frame, and `ComposeHostedPanel` pins
 the panel to the bottom, spending the rows it declined on blank lines when no
 host resolves, since a bottom panel that floated to the first row reads as a
-full view. The panel draws `chrome.RenderLabeledDivider` and no title, so the
+full view. Capture declares `HostedPanelLayout.FooterAbove`, so shell feedback
+and controls stand between host and panel; changes to the footer's height never
+move the editor. The panel appends its editor after all details and padding:
+previews, errors, syntax help, and completions grow above the draft. Multiline
+input grows upward and scrolls within its budget, reserving visible completions
+even when the draft fills the panel. The panel draws `chrome.RenderLabeledDivider` and no title, so the
 workspace pulse stays the host's and appears exactly once. That divider names
 the act and the footer repeats nothing: the destination is the route summary's,
 the row `Ctrl+P` rewrites, so only a value that row cannot carry — a child

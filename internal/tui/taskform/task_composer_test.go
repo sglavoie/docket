@@ -327,7 +327,7 @@ func TestTaskComposerPanelIsSizedByItsContent(t *testing.T) {
 		t.Fatalf("blank capture left the host %d rows, want %d", got, want)
 	}
 
-	// A draft with a preview under it earns the rows that preview needs, and the
+	// A draft with a preview above it earns the rows that preview needs, and the
 	// host pays for exactly those.
 	composer.Input.SetValue("Draft task !1 #tag")
 	composer.UpdatePreview()
@@ -351,7 +351,7 @@ func TestTaskComposerPanelIsSizedByItsContent(t *testing.T) {
 		}
 	}
 	// One project and the default destination are the route row's to say, so
-	// the pane under the draft is the count and the task alone.
+	// the pane above the draft is the count and the task alone.
 	if got := lipgloss.Height(multiline); got != composerPanelMinRows+4 {
 		t.Fatalf("three draft lines, summary, and preview took %d rows, want %d:\n%s",
 			got, composerPanelMinRows+4, multiline)
@@ -480,8 +480,11 @@ func TestTaskComposerCompactPanelShape(t *testing.T) {
 	if !strings.HasPrefix(lines[1], "Project: Project · Status: ") {
 		t.Fatalf("panel does not state its effective route on one row:\n%s", rendered)
 	}
-	if !strings.Contains(lines[2], "Draft task") {
-		t.Fatalf("input does not follow the route row:\n%s", rendered)
+	if !strings.HasPrefix(lines[2], "Task     Draft task") {
+		t.Fatalf("preview does not follow the route row:\n%s", rendered)
+	}
+	if got, want := lines[len(lines)-1], ansi.Strip(composer.Input.View()); got != want {
+		t.Fatalf("input is not the panel's final row:\n%s", rendered)
 	}
 	if !strings.Contains(rendered, "Task     Draft task") {
 		t.Fatalf("panel does not preview what Enter would create:\n%s", rendered)

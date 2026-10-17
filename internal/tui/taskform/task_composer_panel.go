@@ -70,8 +70,9 @@ func (m *TaskComposerModel) HostedPanelLayout(width, height int) chrome.HostedPa
 	}
 	share := composerPanelShareRows(height, m.composerPanelContentRows(max(width, 1)), m.shellFrame.ExcessRows())
 	return chrome.HostedPanelLayout{
-		HostRows:  max(height-share, 1),
-		HostDrawn: !m.HelpExpanded,
+		HostRows:    max(height-share, 1),
+		HostDrawn:   !m.HelpExpanded,
+		FooterAbove: true,
 	}
 }
 
@@ -163,7 +164,11 @@ func (m *TaskComposerModel) previewRepeatsRefusal() bool {
 func (m *TaskComposerModel) composerInputRows(panelRows, want, errorRows int) int {
 	body := max(panelRows-composerPanelFixedRows, 1)
 	previewRows := 0
-	if m.nonblankLineCount() > 1 && !m.IsAutocompleteActive() {
+	if m.IsAutocompleteActive() {
+		// Even a draft filling the panel must leave a visible suggestion to
+		// accept. The textarea scrolls to keep its caret in the remaining rows.
+		previewRows = min(m.composerPanelPaneContentRows(), 2)
+	} else if m.nonblankLineCount() > 1 {
 		// Keep the count and at least one preview row alongside a long batch.
 		previewRows = min(m.composerPanelPaneContentRows(), 2)
 	}
@@ -234,8 +239,9 @@ func (m *TaskComposerModel) SetShellFrameMetrics(metrics chrome.ShellFrameMetric
 	}
 }
 
-// renderCompactPanel draws the bounded capture panel: what the line will do,
-// the line itself, and the one thing the panel has room to say about it.
+// renderCompactPanel draws the bounded capture panel with the editor at its
+// bottom. Details grow upward, so changing a preview or opening completions
+// never moves the line being typed.
 //
 // The input is sized here, from the rows this frame was handed, so the panel
 // spends exactly the height its own content asked for. That is a write during
@@ -251,14 +257,16 @@ func (m *TaskComposerModel) renderCompactPanel(rows int) string {
 	b.WriteString(chrome.RenderLabeledDivider(m.Preset.label(), width))
 	b.WriteString("\n")
 	b.WriteString(m.renderComposerRouteRow(width))
-	b.WriteString("\n")
-	b.WriteString(m.Input.View())
-
-	if tail := m.renderComposerPanelTail(rows-lipgloss.Height(b.String()), errors); tail != "" {
+	input := m.Input.View()
+	detailRows := rows - lipgloss.Height(input)
+	if details := m.renderComposerPanelDetails(detailRows-lipgloss.Height(b.String()), errors); details != "" {
 		b.WriteString("\n")
-		b.WriteString(tail)
+		b.WriteString(details)
 	}
-	return chrome.FitBlockHeight(strings.TrimRight(b.String(), "\n"), rows)
+	if detailRows <= 0 {
+		return input
+	}
+	return chrome.FitBlockHeight(b.String(), detailRows) + "\n" + input
 }
 
 // renderComposerRouteRow states the effective route on one row. Every axis is
@@ -290,13 +298,13 @@ func (m *TaskComposerModel) renderComposerRouteRow(width int) string {
 	return textfit.TruncateToVisualWidth(row, width)
 }
 
-// renderComposerPanelTail fills what the panel has left after its chrome.
+// renderComposerPanelDetails fills the rows above the editor after its chrome.
 // Refusals lead, because they are the rows a bounded panel must never drop;
 // below them the panel shows the one pane the current interaction is about. The
 // discard question is not among them: it is the shell's own confirm dialog,
 // drawn over this panel, and a second copy underneath would cost the preview a
 // row to repeat what the overlay already asks.
-func (m *TaskComposerModel) renderComposerPanelTail(rows int, errors string) string {
+func (m *TaskComposerModel) renderComposerPanelDetails(rows int, errors string) string {
 	if rows <= 0 {
 		return ""
 	}

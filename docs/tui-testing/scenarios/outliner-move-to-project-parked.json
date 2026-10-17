@@ -16,7 +16,7 @@
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Move to Project: #3 Ship the delivery checklist → parked-work" },
     { "type": "assert", "label": "the moved task follows its new owner out of the base task workspace, so the status names it but no row does", "assert": "count_contains", "value": "Ship the delivery checklist", "count": 1 },
-    { "type": "assert", "label": "the source group keeps its one remaining task, which now carries the project's label in place of a header", "assert": "contains", "value": "[active-deli…] Confirm the release window" },
+    { "type": "assert", "label": "the source group keeps its one remaining task, which now carries the project's label in place of a header", "assert": "contains", "value": "[active-deli…] □ Confirm the release window" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

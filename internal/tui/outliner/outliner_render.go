@@ -375,16 +375,7 @@ func (m *OutlinerModel) RenderOutlinerProjectHeaderRow(row OutlinerRow, selected
 	gutter := paint.bar(lipgloss.NewStyle(), " ") +
 		gutterPiece(bg, theme.MutedStyle, indicator) +
 		gutterSpace(bg)
-	// The marker leads the badge so a pinned project's `*` sits at the same
-	// column as a pinned task's one row below. It goes on before the pressure
-	// ladder measures, so its two columns are inside that budget and today or
-	// overdue sheds first; the marker itself is never dropped. Unlike the task
-	// row's it is not reserved — a header has no ColumnLayout, so an unpinned
-	// header pays nothing for it.
-	content := badge
-	if project != nil && project.Pinned {
-		content = listsurface.PinnedMarker() + badge
-	}
+	content := m.projectHeaderPinMarker(project) + badge
 	if row.SectionCount > 0 {
 		content += " " + theme.MutedStyle.Render(fmt.Sprintf("(%d)", row.SectionCount))
 	}
@@ -400,6 +391,23 @@ func (m *OutlinerModel) RenderOutlinerProjectHeaderRow(row OutlinerRow, selected
 	// in the dock below the list, on the same key and under the same cursor rule
 	// as a task's.
 	return line
+}
+
+// projectHeaderPinMarker reserves the same columns on grouped project rows
+// when any project in scope is pinned, keeping their labels aligned.
+func (m *OutlinerModel) projectHeaderPinMarker(project *models.Project) string {
+	if project != nil && project.Pinned {
+		return listsurface.PinnedMarker()
+	}
+	if !m.groupsRowsByProject() {
+		return ""
+	}
+	for _, candidate := range m.ScopeProjects() {
+		if candidate != nil && candidate.Pinned {
+			return strings.Repeat(" ", lipgloss.Width(listsurface.PinnedMarker()))
+		}
+	}
+	return ""
 }
 
 // appendProjectHeaderPressure names the overdue and Today-planned work a

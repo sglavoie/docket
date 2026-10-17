@@ -10,7 +10,7 @@
     { "type": "text", "label": "reparent it under the intake above it, which is a move inside its own lane", "text": " >1" },
     { "type": "key", "label": "the typed reference is complete, so Enter commits the reparent", "key": "enter" },
     { "type": "wait" },
-    { "type": "assert", "label": "the group now holds one top-level task, which leads with the project label in place of a header", "assert": "contains", "value": "◌ [triage-alpha] Alpha intake ready for triage" },
+    { "type": "assert", "label": "the group now holds one top-level task, which leads with the project label in place of a header", "assert": "contains", "value": "[triage-alpha] ◌ Alpha intake ready for triage" },
     { "type": "assert", "label": "the row kept its lane and took its new place under its new parent, one row up", "assert": "contains", "value": "└──   ◌ Alpha intake closing the group" },
     { "type": "assert", "assert": "not_contains", "value": "[triage-alpha] (2)" },
     { "type": "assert", "label": "the correlated transaction advertises undo", "assert": "status_contains", "value": "u undo" },

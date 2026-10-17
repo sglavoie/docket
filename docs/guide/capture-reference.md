@@ -170,8 +170,10 @@ text, not task attributes. Root capture
 defaults to Inbox. A new child defaults to Backlog under its selected parent.
 
 Capture opens below the outline and keeps the selected row visible. The panel
-grows with the draft, suggestions, and validation messages; closing it restores
-the outline and Peek.
+grows upward with the draft, suggestions, and validation messages; closing it
+restores the outline and Peek. The editor occupies the terminal's bottom rows,
+with previews and completions above it. Keyboard hints and temporary feedback
+stand above the capture panel, so changes to their height never move the editor.
 
 The route row reads
 `Project: Client Alpha · Status: Inbox`, and when

@@ -22,7 +22,7 @@
       "assert": "contains",
       "value": "[triage-alpha] (4)"
     },
-    { "type": "assert", "label": "the sibling left behind is its group's only task, so it leads with the project label in place of a header", "assert": "contains", "value": "◌ [triage-beta] Beta intake trailing remainder" },
+    { "type": "assert", "label": "the sibling left behind is its group's only task, so it leads with the project label in place of a header", "assert": "contains", "value": "[triage-beta] ◌ Beta intake trailing remainder" },
     { "type": "key", "label": "copy whatever the sweep continued onto", "key": "y" },
     {
       "type": "assert",

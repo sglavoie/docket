@@ -632,6 +632,9 @@ harness command or a direct cursor assignment. Three reasons:
 
 A later polish pass merged an expanded project group holding one top-level task
 into that task's row, which leads with the `[slug]` the header would have drawn.
+The label occupies the project header's column, followed by the task checkbox
+and priority, so singleton and multi-task project names align. When projects in
+scope are pinned, unpinned project rows reserve the pin marker's space too.
 That reverses the restored heading for singletons only, so the same two
 populations moved again: a slug assertion now reads the merged row, and a
 `down` or `j` that stepped past a one-task group's header was dropped rather than

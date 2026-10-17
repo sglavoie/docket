@@ -24,7 +24,7 @@
     {
       "type": "assert",
       "assert": "contains",
-      "value": "[ux-support-…] Triage the duplicate support tickets"
+      "value": "[ux-support-…] ◌   Triage the duplicate support tickets"
     },
     {
       "type": "assert",

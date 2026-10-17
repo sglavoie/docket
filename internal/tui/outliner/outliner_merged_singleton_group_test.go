@@ -94,7 +94,7 @@ func TestSingletonProjectGroupMergesIntoItsRow(t *testing.T) {
 	}
 
 	line := ansi.Strip(outliner.RenderOutlinerTaskRow(rootRow, false, 120, rootIndex, nil))
-	if !strings.Contains(line, "[alpha] alpha-root") {
+	if !strings.Contains(line, "[alpha] □ alpha-root") {
 		t.Fatalf("merged row %q does not lead with its project", line)
 	}
 	childLine := ansi.Strip(outliner.RenderOutlinerTaskRow(childRow, false, 120, rootIndex+1, nil))
@@ -126,36 +126,36 @@ func TestProjectGroupWithTwoRootsKeepsItsHeader(t *testing.T) {
 	}
 }
 
-func TestSingletonProjectCheckboxAlignsWithOtherProjectTasks(t *testing.T) {
+func TestSingletonProjectLabelAlignsWithProjectHeaders(t *testing.T) {
 	alpha := primaryRowsProject("alpha",
 		primaryRowsTask("alpha-one", models.StateBacklog),
 		primaryRowsTask("alpha-two", models.StateBacklog),
 	)
 	beta := primaryRowsProject("beta", primaryRowsTask("beta-one", models.StateBacklog))
 	outliner, _ := primaryRowsOutliner(alpha, beta)
-	for _, mode := range []chrome.OutlinerModeID{chrome.ModeAll, chrome.ModeBacklog} {
-		outliner.SelectOutlinerMode(mode)
-		for _, width := range []int{40, 80, 120} {
-			for _, selected := range []bool{false, true} {
-				t.Run(fmt.Sprintf("%s/width=%d/selected=%t", mode, width, selected), func(t *testing.T) {
-					layout := outliner.ComputeOutlinerRowLayout(outliner.Rows, width)
-					want := -1
-					for _, id := range []string{"alpha-one", "alpha-two", "beta-one"} {
-						index, row := mustRowForTask(t, outliner, id)
+	for _, pins := range [][2]bool{{false, false}, {true, true}, {true, false}, {false, true}} {
+		alpha.Pinned, beta.Pinned = pins[0], pins[1]
+		for _, mode := range []chrome.OutlinerModeID{chrome.ModeAll, chrome.ModeBacklog} {
+			outliner.SelectOutlinerMode(mode)
+			for _, width := range []int{40, 80, 120} {
+				for _, selected := range []bool{false, true} {
+					t.Run(fmt.Sprintf("%s/pinned=%v/width=%d/selected=%t", mode, pins, width, selected), func(t *testing.T) {
+						layout := outliner.ComputeOutlinerRowLayout(outliner.Rows, width)
+						header := collapsibleProjectHeaders(outliner)[0]
+						headerLine := ansi.Strip(outliner.RenderOutlinerProjectHeaderRow(header, selected, width, 0))
+						index, row := mustRowForTask(t, outliner, "beta-one")
 						line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, selected, width, index, layout))
+						label := strings.Index(line, "[beta]")
+						want := strings.Index(headerLine, "[alpha]")
+						if label < 0 || want < 0 || ansi.StringWidth(line[:label]) != ansi.StringWidth(headerLine[:want]) {
+							t.Fatalf("project labels are misaligned: header %q, task %q", headerLine, line)
+						}
 						badge := strings.TrimSpace(ansi.Strip(outliner.renderTaskStatusIcon(row.Task)))
-						position := strings.Index(line, badge)
-						if badge == "" || position < 0 {
-							t.Fatalf("row has no checkbox %q: %q", badge, line)
+						if strings.Index(line, badge) <= label {
+							t.Fatalf("checkbox must follow the project: %q", line)
 						}
-						column := ansi.StringWidth(line[:position])
-						if want < 0 {
-							want = column
-						} else if column != want {
-							t.Errorf("%s checkbox at column %d, want %d: %q", id, column, want, line)
-						}
-					}
-				})
+					})
+				}
 			}
 		}
 	}

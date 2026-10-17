@@ -5,7 +5,7 @@
   "actions": [
     { "type": "key", "label": "l opens Backlog, which launch folds", "key": "l" },
     { "type": "key", "label": "j steps past the lane header onto the first task, whose singleton group draws no header", "key": "j" },
-    { "type": "assert", "assert": "contains", "value": "[client-alpha] Alpha migration kickoff" },
+    { "type": "assert", "assert": "contains", "value": "[client-alpha] □ Alpha migration kickoff" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
     { "type": "key", "label": "c answers from the owner row, since an empty checklist has no item row", "key": "c" },

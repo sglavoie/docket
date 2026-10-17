@@ -6,7 +6,7 @@
     { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "key", "label": "select the row whose title the width clips", "key": "end" },
-    { "type": "assert", "label": "the aligned singleton row leads with its project label and clips the title to the remaining columns", "assert": "contains", "value": "[narrow-proj…] Investigate intermittent timeout wh…" },
+    { "type": "assert", "label": "the aligned singleton row leads with its project label and clips the title to the remaining columns", "assert": "contains", "value": "[narrow-proj…] □ ◉ Investigate intermittent timeout when…" },
     { "type": "key", "label": "open Peek on the clipped title", "key": "b" },
     { "type": "assert", "label": "Peek leads with the whole title, wrapped rather than elided", "assert": "contains", "value": "Investigate intermittent timeout when syncing very" },
     { "type": "assert", "assert": "contains", "value": "project archives over slow connections" },

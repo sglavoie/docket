@@ -14,21 +14,21 @@
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Set Priority" },
-    { "type": "assert", "assert": "contains", "value": "◐ ◉ [rich-project] Build login form" },
+    { "type": "assert", "assert": "contains", "value": "[rich-project] ◐ ◉ Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "drop it to Low priority", "key": "!" },
     { "type": "key", "key": "3" },
     { "type": "wait" },
-    { "type": "assert", "label": "an explicit P3 shows the low-priority badge", "assert": "contains", "value": "◐ ◆ [rich-project] Build login form" },
-    { "type": "assert", "assert": "not_contains", "value": "◐ ◉ [rich-project] Build login form" },
+    { "type": "assert", "label": "an explicit P3 shows the low-priority badge", "assert": "contains", "value": "[rich-project] ◐ ◆ Build login form" },
+    { "type": "assert", "assert": "not_contains", "value": "[rich-project] ◐ ◉ Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "clear the priority", "key": "!" },
     { "type": "key", "key": "0" },
     { "type": "wait" },
-    { "type": "assert", "label": "an unset priority borrows no badge", "assert": "not_contains", "value": "◐ ◉ [rich-project] Build login form" },
-    { "type": "assert", "assert": "not_contains", "value": "◐ ◆ [rich-project] Build login form" },
+    { "type": "assert", "label": "an unset priority borrows no badge", "assert": "not_contains", "value": "[rich-project] ◐ ◉ Build login form" },
+    { "type": "assert", "assert": "not_contains", "value": "[rich-project] ◐ ◆ Build login form" },
     { "type": "assert", "assert": "contains", "value": "Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 
@@ -44,8 +44,8 @@
     { "type": "key", "key": "1" },
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Set Priority: priority 1 · u undo" },
-    { "type": "assert", "assert": "contains", "value": "◐ ◉ [rich-project] Build login form" },
-    { "type": "assert", "assert": "contains", "value": "◌ ◉ [rich-project] Triage support inbox" },
+    { "type": "assert", "assert": "contains", "value": "[rich-project] ◐ ◉ Build login form" },
+    { "type": "assert", "assert": "contains", "value": "[rich-project] ◌ ◉ Triage support inbox" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

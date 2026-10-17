@@ -129,6 +129,23 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 		content += strings.Repeat("\n", targetContentHeight-contentHeight)
 	}
 
+	if layout, ok := m.hostedPanelLayout(); ok && layout.FooterAbove {
+		// Capture keeps its editor at the terminal's floor. Insert the footer
+		// before the panel so neither changing controls nor transient feedback
+		// can lift the draft. Overlay coordinates use this final arrangement.
+		lines := strings.Split(content, "\n")
+		above := strings.Join(lines[:panelDivider], "\n")
+		panel := strings.Join(lines[panelDivider:], "\n")
+		content = statusBar + "\n" + panel
+		if panelDivider > 0 {
+			content = above + "\n" + content
+		}
+		panelDivider += statusBarHeight
+		content = m.applyOverlays(content, m.viewNav.height, panelDivider)
+		resultView.SetContent(m.applyBackground(content))
+		return resultView
+	}
+
 	content = m.applyOverlays(content, targetContentHeight, panelDivider)
 
 	// One separator, always. A trailing newline is the last content row rather

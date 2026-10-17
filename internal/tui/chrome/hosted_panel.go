@@ -29,6 +29,10 @@ type HostedPanelLayout struct {
 	HostRows int
 	// HostDrawn reports whether that presentation is painted this frame.
 	HostDrawn bool
+	// FooterAbove places shell feedback and guidance above the panel. An editor
+	// at the panel's bottom then keeps the terminal's last rows even when the
+	// footer changes height.
+	FooterAbove bool
 }
 
 // Active reports whether the layout describes a panel drawn over a host.

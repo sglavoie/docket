@@ -10,7 +10,7 @@
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "label": "reach a later task", "key": "j" },
-    { "type": "assert", "assert": "contains", "value": "   ◌   [rich-project] Triage support inbox" },
+    { "type": "assert", "assert": "contains", "value": "   [rich-project] ◌   Triage support inbox" },
     { "type": "key", "label": "toggle a non-adjacent task", "key": "v" },
     { "type": "assert", "assert": "contains", "value": "Multi-select: 2 selected" },
     { "type": "assert", "label": "the rows moved over stay unselected: two marks and no more", "assert": "count_contains", "value": "✓", "count": 2 },

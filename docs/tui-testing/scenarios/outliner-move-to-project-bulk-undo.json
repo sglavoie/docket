@@ -49,7 +49,7 @@
     { "type": "wait" },
     { "type": "assert", "label": "one ledger entry covers the whole selection", "assert": "status_contains", "value": "Move to Project: 3 tasks → client-alpha · u undo" },
     { "type": "assert", "assert": "contains", "value": "[client-alpha] (3)" },
-    { "type": "assert", "label": "the unselected capture stayed behind, alone, so it carries its project's label in place of a header", "assert": "contains", "value": "[unfiled] Sort the desk drawer" },
+    { "type": "assert", "label": "the unselected capture stayed behind, alone, so it carries its project's label in place of a header", "assert": "contains", "value": "[unfiled] ◌ Sort the desk drawer" },
     { "type": "assert", "assert": "not_contains", "value": "[unfiled] (" },
     { "type": "assert", "label": "the move invalidated every identity the selection held", "assert": "not_contains", "value": "Multi-select" },
 
@@ -62,7 +62,7 @@
     { "type": "key", "label": "redo the same one transaction", "key": "ctrl+r" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "[client-alpha] (3)" },
-    { "type": "assert", "assert": "contains", "value": "[unfiled] Sort the desk drawer" },
+    { "type": "assert", "assert": "contains", "value": "[unfiled] ◌ Sort the desk drawer" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }
