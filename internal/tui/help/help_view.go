@@ -138,6 +138,14 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.SetSize(m.width, m.height)
 			}
 		}()
+		if msg.String() == "tab" && !m.tabSearchMode && m.otherCategoryMatches > 0 {
+			m.pendingG = false
+			m.activeTab = 0
+			m.filterItems()
+			m.viewport.SetContent(m.renderContent())
+			m.viewport.GotoTop()
+			return m, nil
+		}
 		if m.searchMode {
 			return m.updateSearchMode(msg)
 		}

@@ -43,9 +43,9 @@ func (c *Controller) validateMenuBarSpecs() error {
 		seen[menu.ID] = true
 		for _, entry := range menu.Entries {
 			if entry.OperationID == "" {
-				// A separator names no operation, so it can carry none of the three
-				// things an operation supplies.
-				if entry.Label != "" || entry.Key != "" || entry.Checked != nil {
+				// Rules and group headings are not actions: a heading may name its
+				// group, but neither may advertise a shortcut or checked state.
+				if entry.Key != "" || entry.Checked != nil {
 					return fmt.Errorf("menu %s separator carries entry content", menu.ID)
 				}
 				continue

@@ -3,6 +3,8 @@ package models
 import (
 	"testing"
 	"time"
+
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func TestIsDeferred(t *testing.T) {
@@ -141,5 +143,30 @@ func TestIsOverdue(t *testing.T) {
 	task.Complete()
 	if task.IsOverdue() {
 		t.Error("expected not overdue when task is complete")
+	}
+}
+
+func TestIsOverdueAtDistinguishesDateOnlyAndTimedDeadlines(t *testing.T) {
+	now := time.Date(2026, time.October, 16, 10, 0, 0, 0, time.Local)
+	for _, tc := range []struct {
+		name  string
+		due   time.Time
+		state WorkflowState
+		want  bool
+	}{
+		{"earlier today", now.Add(-time.Hour), StateBacklog, true},
+		{"exactly now", now, StateBacklog, false},
+		{"later today", now.Add(time.Hour), StateBacklog, false},
+		{"date only today", util.StartOfDay(now), StateBacklog, false},
+		{"date only yesterday", util.StartOfDay(now).AddDate(0, 0, -1), StateBacklog, true},
+		{"completed", now.Add(-time.Hour), StateDone, false},
+		{"canceled", now.Add(-time.Hour), StateCanceled, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			task := &Task{WorkflowState: tc.state, DueDate: &tc.due}
+			if got := task.IsOverdueAt(now); got != tc.want {
+				t.Fatalf("IsOverdueAt = %v, want %v", got, tc.want)
+			}
+		})
 	}
 }

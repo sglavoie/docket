@@ -1,9 +1,8 @@
 # tt — Terminal Tasks
 
-`tt` is a local-first task manager for the terminal. One Bubble Tea Outliner is
-the whole product: you capture, triage, plan, and finish work in a single
-keyboard-driven outline, and readable Markdown on your own disk stays the
-canonical store. Nothing is hidden in a database you cannot open.
+`tt` is a local-first task manager for the terminal. Capture, plan, and finish
+work in one keyboard-driven outline. Your tasks live in readable Markdown
+files on your own disk.
 
 The terminal is the core interface. [tt.app for macOS](macos/README.md)
 wraps it with quick capture, menus, and notifications; the
@@ -13,7 +12,7 @@ working copies in sync through a folder you provide, including iCloud Drive.
 There is no hosted server, account, or web interface.
 
 There is no `tt add`: the command line is deliberately limited to diagnostics, conflict
-recovery, workspace relocation, project export, and shell completion. Run `tt`
+recovery, device sync, workspace relocation, project export, and shell completion. Run `tt`
 and the interface is the product.
 
 ![Terminal Tasks showing Doing, Review, Inbox, Backlog, and Waiting lanes, with the selected task's resume note and description in Peek.](docs/images/outliner.svg)
@@ -36,66 +35,45 @@ Run `tt` after [installing it](#install-and-start). No project setup is needed:
 4. Press `/`, type `Terminal`, and press `Enter` to search. Press `Esc` to
    clear the search.
 
-Press `?` whenever you want the keys for the surface you are on.
+Press `?` whenever you want the keys for the surface you are on. Press `F10`
+to browse menus; Task groups everyday actions under Plan, Status, and Details.
 
 ### Capture more in one line
 
 Once you want metadata, create a project with slug `web` using `P` then `a`.
-Press `a` in the Outliner, type this line, and press `Enter`:
+With a project named `web` (create it with `P`, then `a`), press `a` in the
+Outliner, type this line, and press `Enter`:
 
 ```text
 fix login redirect !1 @friday #auth %web $today
 ```
 
-Captured on Friday 28 August 2026, that lands in the Today lane of project
-`web` as:
+This creates a high-priority task in `web`, due next Friday, tagged `auth`, and
+planned for Today. The preview shows the resolved date before you save; `b`
+opens Peek to read the saved details.
 
-```text
- □ ◉ fix login redirect  ⊡ Sep 4
-```
-
-- `!1` set High priority, drawn as the `◉` badge after the state badge.
-- `@friday` resolved to the *next* Friday, never today, so the due chip reads
-  `⊡ Sep 4`.
-- `#auth` set the tag, minting it if it did not exist. Rows draw no tags, so
-  it shows in Peek (`b`), not on the row.
-- `%web` routed the task into the `web` project instead of wherever the cursor
-  was. It names a project that already exists — capture refuses an unknown
-  slug — so on a fresh workspace create `web` first with `P` then `a`.
-- `$today` planned it for today.
-
-The one non-obvious part is that last line: `$today` adds Today membership and
-leaves the task's lifecycle state at **Backlog**, which is why the row wears the
-Backlog `□` badge rather than a Today one. Today and Next are planning
-collections, not states — see the mental model below.
+Today is a plan; the task's status is still Backlog until you start it with
+`wg`. See [capture syntax and date rules](docs/guide/capture.md) for the full
+reference, including literal examples and batch capture.
 
 ## Mental model
 
-Four ideas carry the whole product.
-
-**Eight lifecycle states**, and a task is in exactly one of them:
+**Status says where the work stands.** Each task has one of eight states:
 
 ```text
 inbox  backlog  doing  waiting  paused  someday  done  canceled
 ```
 
-**Today and Next are not states.** They are project-qualified planning
-collections a task holds membership in, so a task planned for today still
-answers `$backlog`. They are mutually exclusive, and finishing a task clears
-both.
+**Today and Next are plans.** A task can belong to one at a time. Completing it
+clears its plan. Use `wt` for Today, `wn` for Next, and `wb` for Backlog.
 
-**Projects hold tasks, and a parent holds children.** Parents are project-local
-and hierarchy depth is capped at six. Capture with no project in view routes to
-the protected `Unfiled` project, which cannot be deleted or parked.
+**Projects organize tasks.** Capture goes to the current project, or Unfiled
+when you are browsing all projects. Tasks can have subtasks within their project.
 
-**Seven modes are seven questions.** `Tab` cycles exactly All → Today → Inbox →
-Next → Backlog → Due → Recent, and `Shift+Tab` reverses it; the `g` chord jumps
-straight to one. All is the home view, and it lays its sections out in this
-order:
-
-```text
-Pinned, Today, Doing, Review, Inbox, Next, Paused, Backlog, Waiting, Someday
-```
+**Modes choose what you see.** `Tab` cycles All → Today → Inbox → Next → Backlog
+→ Due → Recent; `Shift+Tab` reverses it. All is home. Press `g` to see shortcuts
+for jumping directly to a mode. [Modes and lanes](docs/guide/outliner-modes.md)
+explains how each view groups your work.
 
 ## Install and start
 
@@ -105,9 +83,7 @@ tt
 ```
 
 That needs Go 1.25.13 or newer and `$(go env GOPATH)/bin` — usually `~/go/bin` —
-on your `PATH`. The floor is the first Go release without a known vulnerability
-`tt` actually reaches; a newer toolchain is fetched automatically unless you
-have pinned `GOTOOLCHAIN=local`. To build from a clone instead:
+on your `PATH`. To build from a clone instead:
 
 ```bash
 go build -o tt .
@@ -126,15 +102,9 @@ A new workspace starts locally in `~/.tt/`. Use `--data-dir`, `TT_DATA_DIR`, or
 another synced directory is an explicit choice; an existing selected iCloud
 workspace is preserved.
 
-A launch starts in Active Projects, All mode, then reapplies the saved view of
-any lens you left active on this machine: its mode, query, filters, sort, and
-project scope. Selection and navigation are never restored. Press `Esc` to leave
-a restored lens and return to Active Projects, All.
-
-Active Projects is the base task workspace: every project you have not tagged
-`parked`. Press `a` to capture the first task. At Active Projects scope, capture
-routes to the protected Unfiled project with Inbox lifecycle; in a single-project
-scope, it routes to that project.
+Launch opens Active Projects in All mode, or your last active saved lens.
+Press `Esc` to leave a restored lens. [Search and lenses](docs/guide/search-and-lenses.md)
+explains saved views and how to reveal tasks hidden by filters.
 
 ## Platform support
 
@@ -154,16 +124,12 @@ the working-copy layout and recovery instructions.
 
 ## Before you upgrade
 
-Migration is snapshot-first and one-way. Opening a workspace with a newer `tt`
-publishes an immutable archive of the old bytes and then activates the new
-schema; there is no down-migration, and an older build refuses a migrated
-workspace rather than converting it back.
+Keep a backup of your workspace before upgrading. Migrations save a snapshot
+first, but are one-way: older builds refuse a migrated workspace.
 
-So before a version jump, keep your own copy of `~/.tt/`. If anything looks
-wrong afterwards, run `tt doctor` for read-only integrity and
-migration-snapshot diagnostics, and `tt doctor --fix` for the explicitly
-supported repairs. [`docs/guide/storage.md`](docs/guide/storage.md) documents
-the archive names and the manual recovery path.
+If something looks wrong, start with `tt doctor` for read-only diagnostics.
+See [storage and recovery](docs/guide/storage.md) before using `tt doctor --fix`
+or restoring a backup.
 
 ## Daily loop
 
@@ -227,6 +193,14 @@ tt doctor [--fix] [--json]
 tt conflict list [--json]
 tt conflict show <id> [--json]
 tt conflict resolve <id> --use local|remote|file [--file PATH]
+tt sync enroll --exchange DIR --working-copy DIR [--snapshot-dir DIR] [--force]
+tt sync join --exchange DIR --working-copy DIR
+tt sync status [--json]
+tt sync exchange [--folder DIR] [--json]
+tt sync doctor [--json]
+tt sync conflicts [ID] [--json]
+tt sync resolve ID --version N|--current|--file PATH [--json]
+tt sync diagnostics [--output FILE]
 tt workspace [location]
 tt workspace move <destination> [--force]
 tt completion bash|zsh|fish
@@ -238,10 +212,14 @@ tt --version
 Global flags are `--data-dir` and `--no-color`. Run `tt help <command>` for
 per-command syntax.
 
+For device sync, [enroll once or join an existing exchange](docs/guide/storage.md#syncing-through-an-exchange-folder).
+Each device keeps a local working copy; the exchange folder carries changes
+between them. Enrollment preserves the original workspace.
+
 ## Where to read more
 
-Behavior lives in [`docs/guide/`](docs/guide/README.md), written to be looked
-things up in rather than read straight through:
+Start with the [everyday recipes](docs/guide/README.md#everyday-recipes), or look
+up a specific action in [`docs/guide/`](docs/guide/README.md):
 
 - [`docs/guide/outliner.md`](docs/guide/outliner.md) — the index to the four
   Outliner files: the modes, the chrome around the list, the full key table and
@@ -252,9 +230,8 @@ things up in rather than read straight through:
   row facets, the `F` population facets, slash search, named lenses, sorting.
 - [`docs/guide/projects-and-notes.md`](docs/guide/projects-and-notes.md) —
   project scope, Select Project, project tags including `parked`, All Notes.
-- [`docs/guide/storage.md`](docs/guide/storage.md) — the durable layout, the undo
-  ledger, conflict recovery, and the migration chain up to the schema-21
-  catalog and its schema-19 task files.
+- [`docs/guide/storage.md`](docs/guide/storage.md) — working copies, file exchange,
+  undo, backups, migration, and conflict recovery.
 - [`docs/guide/retired-keys.md`](docs/guide/retired-keys.md) — every retired key,
   per surface, and what answers it now.
 

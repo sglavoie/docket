@@ -13,6 +13,8 @@ import (
 // literal rune the search input would otherwise swallow.
 func helpKeyPress(key string) tea.KeyPressMsg {
 	switch key {
+	case "tab":
+		return tea.KeyPressMsg{Code: tea.KeyTab}
 	case "left":
 		return tea.KeyPressMsg{Code: tea.KeyLeft}
 	case "right":

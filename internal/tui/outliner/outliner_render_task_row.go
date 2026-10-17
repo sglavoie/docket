@@ -606,9 +606,10 @@ func (m *OutlinerModel) renderTaskTitle(row OutlinerRow, titleStyle lipgloss.Sty
 	if lipgloss.Width(title) > availableWidth {
 		title = m.compactTitleForRow(title)
 	}
+	fullTitle := title
 	title = textfit.TruncateToVisualWidth(title, availableWidth)
 	if highlight == "" {
-		return titleStyle.Render(title)
+		return textfit.TruncateToVisualWidth(textfit.RenderTaskTitle(fullTitle, nil, titleStyle), availableWidth)
 	}
 	// Keep the familiar title opening when it still explains the match. Only
 	// move the excerpt when ordinary shortening would hide a query term.
@@ -617,7 +618,7 @@ func (m *OutlinerModel) renderTaskTitle(row OutlinerRow, titleStyle lipgloss.Sty
 		_, positions := matcher.ScoreTermsWithPositions(row.Task.Title, highlight)
 		if len(positions) > 0 {
 			excerpt, kept := titleMatchExcerpt(row.Task.Title, positions, availableWidth)
-			return textfit.HighlightText(excerpt, kept, titleStyle)
+			return textfit.RenderTaskTitle(excerpt, kept, titleStyle)
 		}
 	}
 	positions := query.SearchSubstringPositions(title, highlight, caseSensitive)
@@ -628,10 +629,7 @@ func (m *OutlinerModel) renderTaskTitle(row OutlinerRow, titleStyle lipgloss.Sty
 	if len(positions) == 0 && row.MatchSource == MatchSourceTitle {
 		_, positions = fuzzy.NewMatcher(caseSensitive).ScoreTermsWithPositions(title, highlight)
 	}
-	if len(positions) == 0 {
-		return titleStyle.Render(title)
-	}
-	return textfit.HighlightText(title, positions, titleStyle)
+	return textfit.TruncateToVisualWidth(textfit.RenderTaskTitle(fullTitle, positions, titleStyle), availableWidth)
 }
 
 // compactTitleForRow is the row's display form of a title too wide for it: a

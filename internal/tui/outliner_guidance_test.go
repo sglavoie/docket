@@ -230,7 +230,10 @@ func TestOutlinerGuidanceAdvertisesOnlyApplicableControlsOnEveryRowType(t *testi
 		if !strings.HasPrefix(got, "e item · ") {
 			t.Fatalf("checklist guidance does not lead with the item's own edit: %q", got)
 		}
-		for _, taskOnly := range []string{"a capture", "w workflow", "@ date", "! priority", "b peek"} {
+		if !strings.Contains(got, "b peek") {
+			t.Fatalf("checklist guidance omits its item preview: %q", got)
+		}
+		for _, taskOnly := range []string{"a capture", "w workflow", "@ date", "! priority"} {
 			if strings.Contains(got, taskOnly) {
 				t.Errorf("checklist guidance exposes task-only hint %q: %q", taskOnly, got)
 			}

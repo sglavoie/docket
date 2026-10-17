@@ -14,9 +14,9 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-// This file is Peek's second document kind. It shares inlinePeekDocument whole —
+// Project and checklist documents share inlinePeekDocument whole —
 // the same window arithmetic, the same counter row, the same four scrolling keys
-// — and owns only what a project has to say that a task does not. Nothing here
+// — and own the details outside a task's document. Nothing here
 // measures or clips: the page is what bounds a project with a hundred comments,
 // exactly as it bounds a task with a long description.
 
@@ -220,4 +220,38 @@ func inlinePeekProjectCommentTextRows(text string, width int) []string {
 		}
 	}
 	return rows
+}
+
+func checklistPeekItemValid(row OutlinerRow) bool {
+	return row.IsChecklistItem && row.Task != nil && row.ChecklistIndex >= 0 && row.ChecklistIndex < len(row.Task.Checklist)
+}
+
+// Checklist details use the same fixed dock and scrolling document as tasks.
+// They describe the selected item; task mutation keys still refuse this row.
+func inlinePeekChecklistDocumentFor(row OutlinerRow, indent string, width int, window peekDockGeometry) inlinePeekDocument {
+	if !checklistPeekItemValid(row) || width <= 0 {
+		return inlinePeekDocument{}
+	}
+	item := row.Task.Checklist[row.ChecklistIndex]
+	state := "Not done"
+	if item.Done {
+		state = "Done"
+	}
+	available := max(width-lipgloss.Width(indent), 1)
+	completion := fmt.Sprintf("%s · item %d of %d", state, row.ChecklistIndex+1, len(row.Task.Checklist))
+	sections := []inlinePeekSection{
+		{key: "item:" + item.Text, lines: inlinePeekStyledLines("", item.Text, indent, available)},
+		{key: "completion:" + completion, lines: inlinePeekStyledLines(theme.MutedStyle.Render("Checklist: "), completion, indent, available)},
+		{key: "owner:" + row.Task.Title, lines: inlinePeekStyledLines(theme.MutedStyle.Render("Task: "), row.Task.Title, indent, available)},
+	}
+	body := make([]string, 0, len(sections))
+	keys := make([]string, 0, len(sections))
+	for _, section := range sections {
+		body = append(body, section.lines...)
+		keys = append(keys, section.key)
+	}
+	return inlinePeekDocument{
+		Body: body, sections: sections, Fingerprint: strings.Join(keys, "\x1f"),
+		indent: indent, width: available, window: window,
+	}
 }

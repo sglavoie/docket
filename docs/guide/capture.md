@@ -36,6 +36,19 @@ destination rules and [outline editing](#outline-editing) for whole-project edit
 
 ## Capture grammar
 
+### A worked example
+
+With an existing `web` project, capturing
+`fix login redirect !1 @friday #auth %web $today` on Friday 28 August 2026
+creates a Backlog task planned for Today, with High priority and a September 4
+deadline. A weekday means the next occurrence, never today. Its row reads
+`□ ◉ fix login redirect  ⊡ Sep 4`; the `auth` tag is visible in Peek (`b`).
+Today and Next are planning collections, so `$today` does not create a new
+lifecycle state. `%web` names the destination project; see the project-creation
+confirmation below for slugs that do not yet exist.
+
+### Sigil reference
+
 One nonblank line creates one task. Multiple lines are fully parsed and
 validated before one atomic transaction is committed.
 

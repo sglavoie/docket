@@ -52,32 +52,27 @@ const ChecklistRowRejectionMessage = "move the cursor to a task row to use this 
 // cursor turns off. Category alone cannot name them: the core family mixes
 // navigation, which is how the cursor leaves the row and therefore stays, with
 // operations that reach through the row to the owner task whose pointer it
-// carries. Selection is refused because a selection names task rows, and Peek
-// because the item has no detail panel of its own.
+// carries. Selection is refused because a selection names task rows. Peek
+// reads the checklist item's own document and remains available.
 var coreOperationsRefusedOnChecklistRow = map[OperationID]bool{
-	OperationCoreCapture:          true,
-	OperationCoreEdit:             true,
-	OperationCoreEditDescription:  true,
-	OperationCoreExternalEditor:   true,
-	OperationCoreBacklog:          true,
-	OperationCoreToday:            true,
-	OperationCoreNext:             true,
-	OperationCoreActions:          true,
-	OperationCoreFocusSubtree:     true,
-	OperationCoreFocusParent:      true,
-	OperationCoreZoomSection:      true,
-	OperationCorePeek:             true,
-	OperationCorePeekHalfPageDown: true,
-	OperationCorePeekHalfPageUp:   true,
-	OperationCorePeekPageDown:     true,
-	OperationCorePeekPageUp:       true,
-	OperationCoreReorderDown:      true,
-	OperationCoreReorderUp:        true,
-	OperationCoreReorderBottom:    true,
-	OperationCoreReorderTop:       true,
-	OperationCoreMultiSelect:      true,
-	OperationCoreRangeSelect:      true,
-	OperationCoreSelectAll:        true,
+	OperationCoreCapture:         true,
+	OperationCoreEdit:            true,
+	OperationCoreEditDescription: true,
+	OperationCoreExternalEditor:  true,
+	OperationCoreBacklog:         true,
+	OperationCoreToday:           true,
+	OperationCoreNext:            true,
+	OperationCoreActions:         true,
+	OperationCoreFocusSubtree:    true,
+	OperationCoreFocusParent:     true,
+	OperationCoreZoomSection:     true,
+	OperationCoreReorderDown:     true,
+	OperationCoreReorderUp:       true,
+	OperationCoreReorderBottom:   true,
+	OperationCoreReorderTop:      true,
+	OperationCoreMultiSelect:     true,
+	OperationCoreRangeSelect:     true,
+	OperationCoreSelectAll:       true,
 }
 
 // operationRefusedOnChecklistRow decides, by category rather than by key, which

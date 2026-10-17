@@ -288,8 +288,7 @@ func inlinePeekTitleLines(task *models.Task, indent string, width int) []string 
 		return nil
 	}
 	style := theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{})
-	paint := func(row string) string { return style.Render(row) }
-	return inlinePeekHangingLines("", textfit.WrapText(title, width), indent, width, paint)
+	return inlinePeekStyledLines("", textfit.RenderTaskTitle(title, nil, style), indent, width)
 }
 
 // inlinePeekFields collects `Label: value` pairs into one dense line. Peek has
@@ -433,7 +432,11 @@ func inlinePeekScheduleLine(task *models.Task, now time.Time) string {
 	}
 	var fields inlinePeekFields
 	if task.DueDate != nil {
-		fields.add("Due", chrome.FormatWeekdayDate(*task.DueDate, now, task.DueHasTime())+" ("+chrome.DayGloss(*task.DueDate, now)+")")
+		gloss := chrome.DayGloss(*task.DueDate, now)
+		if task.IsOverdueAt(now) {
+			gloss += "; overdue"
+		}
+		fields.add("Due", chrome.FormatWeekdayDate(*task.DueDate, now, task.DueHasTime())+" ("+gloss+")")
 	}
 	// The pending half of the deferral alone. Its lapsed half is a wake that
 	// already happened, so it is history and is named there instead.

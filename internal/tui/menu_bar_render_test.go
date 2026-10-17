@@ -86,6 +86,9 @@ func TestAnOpenMenuStandsOnTheViewItWasOpenedFrom(t *testing.T) {
 // hint it pushes right is still whole, so both are checked on the drawn frame.
 func TestMenuDropdownFlushesEveryKeyHintToOneColumn(t *testing.T) {
 	driver, _ := menuBarDriver(t)
+	// Fit the expanded Task menu so this alignment check sees its last entry;
+	// the dropdown's scrolling behavior is exercised separately at small sizes.
+	driver.Resize(100, 50)
 	pressMenuBarKey(t, driver, "M", "ctrl+m")
 	screen := driver.Observe(ObserveOptions{}).PlainScreen
 

@@ -1,8 +1,7 @@
 # CLAUDE.md
 
 This file is the invariant contract the implementation and its tests are held
-to, written for whoever is changing the code — human or agent — and terse on
-purpose. It states rules, not explanations: if you want to know how `tt`
+to. It states rules, not explanations: if you want to know how `tt`
 behaves, read [`docs/guide/`](docs/guide/README.md) instead.
 
 Contributor rules only: invariants, forbidden patterns, forwarding addresses.
@@ -286,11 +285,9 @@ comment, and Project comments narrow to an Outliner project header through
 `outlinerProjectOperationTargetsHeader`: the sole-scope fallback is the Hub's,
 where the row already named its project.
 
-`b` and its four scrolling keys are shared differently, and must stay so: one
-descriptor over `OperationTargetCurrentEntity`, because Peek is one act — show
-this row's detail — however the row answers. `CommandContextNamesPeekTarget`
-gates them, so a section, note, or checklist row refuses by name instead of
-doing nothing.
+`b` and its four scrolling keys use one descriptor over
+`OperationTargetCurrentEntity`. `CommandContextNamesPeekTarget` admits tasks,
+project headers, and checklist items; section and note rows refuse by name.
 
 Checklist rules:
 
@@ -728,6 +725,8 @@ Row and Peek budget:
   so a header always has a document and an unresolved one has none.
   `projectPeekOwner` is that project identity, so All's several headers for one
   project share one window. Task Peek keeps its comment count.
+- Checklist Peek owns item text, completion, position, and task title. Its
+  qualified task/index/text identity isolates scrolling; task mutations refuse.
 - Peek remembers one session-only owner/query/section/content anchor. Unchanged
   fingerprints and geometry reuse the offset; resize and edits remap the passage.
   Replacing it resumes at the section start; removing its section or changing

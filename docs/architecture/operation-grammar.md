@@ -216,6 +216,11 @@ wrapped row takes the header's one-column pad, and the first section heading
 drops `theme.HelpCategoryStyle`'s top margin, which separates sections rather
 than leading them.
 
+When a selected category has no results and other categories do, Help offers
+`Tab show all matches`. The action selects All, preserves the query and input
+mode, and scrolls to the top. It is available while browsing or typing a filter,
+but not while finding a tab. Counts alone never change the selected category.
+
 A value provider is exactly one of `operation.TextEntry()` (a separate overlay),
 `operation.TagEntry()` (inline add mode), `operation.DateEntry()` (inline add mode), or a plain list
 such as `ValueProviderParent`.

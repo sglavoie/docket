@@ -112,7 +112,7 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 		Priority:      q.Preview.Priority,
 		Tags:          q.Preview.Tags,
 	}
-	taskTitle := theme.TaskTitleStyleFor(previewTask, theme.TaskTitleStyleOptions{}).Render(q.Preview.Title)
+	taskTitle := textfit.RenderTaskTitle(q.Preview.Title, nil, theme.TaskTitleStyleFor(previewTask, theme.TaskTitleStyleOptions{}))
 	groups = append(groups, previewGroup{label: "Task", chunks: []string{taskTitle}})
 	if hint := q.duplicateCaptureHint(); hint != "" {
 		groups = append(groups, previewGroup{label: "Notice", chunks: []string{hint}})

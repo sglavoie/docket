@@ -92,6 +92,11 @@ age carries the duration. A Waiting deadline remains the ordinary
 `FormatDueDate` segment on the row; check-ins are a separate schedule and never
 reinterpret or suppress it.
 
+`FormatDueDate` appends `late` when `Task.IsOverdue` holds, including for a timed
+deadline earlier today. That text survives monochrome rendering and participates
+in the ordinary indicator width budget. Peek uses `IsOverdueAt` with its single
+observation clock to label the full deadline `overdue`.
+
 `formatReviewIndicator` spells `models.TaskNeedsAttention` and nothing else, so
 the row and `chrome.PickHeroAttribute` read one predicate and a row can never
 demote a badge for a review it does not name. It has three tiers: a bare `review`

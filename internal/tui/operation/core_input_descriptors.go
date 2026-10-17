@@ -33,7 +33,7 @@ func CoreInputOperationRequiresTask(id OperationID) bool {
 
 // CoreInputOperationRequiresPeekTarget names the delegated core operations that
 // need a row with a detail document behind it. They are the task requirement's
-// sibling rather than a member of it: Peek reads two entity kinds, so a project
+// sibling rather than a member of it: Peek reads several entity kinds, so a project
 // header answers these five and refuses every other task key on the same row.
 func CoreInputOperationRequiresPeekTarget(id OperationID) bool {
 	switch id { //nolint:exhaustive // Only Peek and its four scrolling keys are listed.
@@ -132,6 +132,7 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		OperationRiskReadOnly,
 		"peek task",
 		"peek project",
+		"peek checklist item",
 		"task preview",
 		"project preview",
 	))
@@ -139,14 +140,13 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		if !CoreOutlinerApplicability(ctx) {
 			return false
 		}
-		// An open dock closes from wherever the cursor is. The selection and
-		// checklist exclusions are the opening ones: entering a selection closes the
+		// An open dock closes from wherever the cursor is. The selection
+		// exclusion applies to opening: entering a selection closes the
 		// dock, so a visual selection never reaches the first branch.
 		if ctx.Peek.Visible {
 			return true
 		}
 		return !ctx.Selection.Visual &&
-			!ctx.Entity.HasChecklistCursor &&
 			CommandContextNamesPeekTarget(ctx)
 	}
 	// The four scrolling keys are Peek's own while a Peek is on screen: a pane

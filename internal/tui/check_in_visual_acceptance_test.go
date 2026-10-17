@@ -63,18 +63,18 @@ func TestCheckInVisualAcceptance(t *testing.T) {
 				// What one row can promise depends on the width it is given, and the
 				// project label a merged singleton group leads its row with is part of
 				// that arithmetic. At 110 the whole title, the countdown, and the
-				// deadline all arrive. At 62 the two indicators still outrank the
-				// title's tail, so the title is what pays. At 60 the label leaves the
-				// title too little, so the ladder sheds the countdown ahead of the
-				// deadline. The deadline survives all three, which is the ladder's own
+				// deadline all arrive. At 62 and 60 the explicit late label leaves
+				// too little title room for both indicators, so the ladder sheds the
+				// countdown ahead of the deadline. The deadline survives all three,
+				// including its late label, which is the ladder's own
 				// promise. The pulse rides along at every width, naming the one
 				// component this fixture has anything to count.
-				rowsRequired := []string{"Migrated vendor wait", "review +", "Apr 1 '20 15:30", "workspace: overdue 1"}
+				rowsRequired := []string{"Migrated vendor wait", "review +", "Apr 1 '20 15:30 late", "workspace: overdue 1"}
 				switch size[0] {
 				case 62:
-					rowsRequired = []string{"Migrate", "review +", "Apr 1 '20 15:30", "workspace: overdue 1"}
+					rowsRequired = []string{"Migrated vendor", "Apr 1 '20 15:30 late", "workspace: overdue 1"}
 				case 60:
-					rowsRequired = []string{"[check-in-ac…] Migrated vendor", "Apr 1 '20 15:30", "workspace: overdue 1"}
+					rowsRequired = []string{"[check-in-ac…] Migrated vendor", "Apr 1 '20 15:30 late", "workspace: overdue 1"}
 				}
 				capture("rows", rowsRequired...)
 				out := driver.App().crossOutliner
@@ -92,12 +92,12 @@ func TestCheckInVisualAcceptance(t *testing.T) {
 				// A selection buys its checkbox out of the same budget, and the
 				// narrow widths shorten the title further. The deadline is what may
 				// not be paid with: it survives the checkbox at every width.
-				selectedRequired := []string{"Migrated vendor", "review +", "Apr 1 '20 15:30"}
+				selectedRequired := []string{"Migrated vendor", "review +", "Apr 1 '20 15:30 late"}
 				switch size[0] {
 				case 62:
-					selectedRequired = []string{"Migrate", "review +", "Apr 1 '20 15:30"}
+					selectedRequired = []string{"Migrate", "Apr 1 '20 15:30 late"}
 				case 60:
-					selectedRequired = []string{"Migrate", "Apr 1 '20 15:30"}
+					selectedRequired = []string{"Migrate", "Apr 1 '20 15:30 late"}
 				}
 				capture("selected", selectedRequired...)
 				if _, err := driver.ApplyAction(UITestAction{Type: UITestActionKey, Key: "esc"}, ObserveOptions{}); err != nil {

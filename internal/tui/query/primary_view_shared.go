@@ -138,9 +138,10 @@ func FormatDueDate(task *models.Task) string {
 	dateStr, style := chrome.ClassifyDueDate(task.DueDate)
 	if clock := chrome.FormatDueClock(task); clock != "" {
 		dateStr += " " + clock
-		if task.IsOverdue() {
-			style = theme.OverdueStyle
-		}
+	}
+	if task.IsOverdue() {
+		dateStr += " late"
+		style = theme.OverdueStyle
 	}
 	return style.Render(icons.Get("date") + " " + dateStr)
 }

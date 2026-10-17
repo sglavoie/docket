@@ -327,8 +327,13 @@ branching on the cursor, because Peek is one act whatever the row names. That is
 why the five IDs are absent from `CoreInputOperationRequiresTask`, whose
 descriptors are wrapped in `!CommandContextNamesNonTaskEntity`:
 `CoreInputOperationRequiresPeekTarget` and `CommandContextNamesPeekTarget` are
-their sibling requirement instead, so a section, note, or checklist row refuses
+their sibling requirement instead, so a section or note row refuses
 by name rather than leaving the key silently dead.
+Checklist rows build `inlinePeekChecklistDocumentFor`: full item text,
+completion state and position, then the owning task title. They share the dock's
+geometry and paging. `inlinePeekOwnerChecklist` includes the qualified owner,
+item index and text, keeping the item's scroll separate from the task and its
+neighbors. The task-mutation refusal still applies on checklist rows.
 `CommandContextSatisfiesPeekRequirement` is the one exception and the one place
 it is spelled, shared by the descriptor's applicability and the delegated
 handler's gate: an open dock admits `b` on any row, because the row that opened
@@ -461,8 +466,8 @@ than a bare task identity because the project header's detail shares this
 arithmetic and these four keys: `inlinePeekOwnerProject` carries the project
 identity beside `inlinePeekOwnerTask`'s `taskref.TaskIdentity`, so the two
 populations can never be the same owner however their identity strings compare,
-and a third kind would add itself the same way with every reset rule below
-unchanged. `peekOffsetForRow` is pure: a key mismatch reads as the top of the
+and checklist items carry their own kind and item identity.
+`peekOffsetForRow` is pure: a key mismatch reads as the top of the
 document, so changing owner, editing the detail, gaining or losing a reference,
 and resizing each reset scrolling without any writer having to notice, and a
 redraw preserves a manual scroll. `scrollPeek` is the only writer.

@@ -32,9 +32,14 @@ then the children. `h` on a checklist row returns to the owning task rather than
 folding anything, since the item is one rung below it. Checklists start
 collapsed; Peek (`b`) shows checklist progress, such as `1/3`, either way.
 
-A checklist row is not a task row. Every task action refuses there with one
+A checklist row is not a task row. Task mutations refuse there with one
 sentence — "move the cursor to a task row to use this action" — instead of
 quietly applying to the owner.
+
+Press `b` on an item to read its complete text, Done or Not done state, position
+in the checklist, and owning task. Long text wraps and scrolls with the usual
+Peek controls. Moving between tasks and checklist items keeps the dock the same
+size; each item's reading position is separate from its owner's.
 
 The checklist operation catalog contains eleven operations. Ten of them answer a key
 on a checklist row or child task row:
@@ -113,6 +118,11 @@ so now are tags, context, the neutral Waiting and Doing ages, deferral markers,
 and the checklist, comment, and attachment counts. None of those is gone: `b`
 opens Peek on the same row and shows every one of them at full value, unclipped,
 rather than in a fixed-width badge the row had to buy out of the title.
+
+An overdue deadline includes `late` in its badge, such as `Oct 15 late` or
+`Today 09:00 late`, so it remains identifiable without color. Peek's Due line
+shows the date, any time, and `overdue`. A date-only deadline becomes overdue
+the following day; a timed deadline becomes overdue after its time passes.
 
 A title too wide for its row is display-compacted before it is cut: a link
 draws as its host and first path segment, so
@@ -287,8 +297,9 @@ cursor movement never changes it.
 cursor is on a task or on a project header. Compact Peek uses about a quarter
 of the outline's height, normally six to eight rows. Moving between short and
 long tasks keeps the list in place. Capture can temporarily shrink the dock;
-closing capture restores it. A section heading or checklist item displays
-`No detail to show for this row.`; `b` closes Peek from any row.
+closing capture restores it. A checklist item shows its full text, completion
+state, and owning task. A section heading displays `No detail to show for this row.`;
+`b` closes Peek from any row.
 
 Task Peek leads with the full title, status, and resume note. For example,
 `Plan: Today · Status: Backlog · Priority: 1 high` distinguishes the planning

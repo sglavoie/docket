@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/pulse"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -63,7 +64,7 @@ func RenderTaskScopedFullscreenTitleWithPulse(prefix string, task *models.Task, 
 	if task == nil {
 		return renderFullscreenTitleContentWithPulse(titleStyle.Render(prefix), subtitle, workspacePulse, width)
 	}
-	titleContent := titleStyle.Render(prefix) + theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{}).Render(task.Title)
+	titleContent := titleStyle.Render(prefix) + textfit.RenderTaskTitle(task.Title, nil, theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{}))
 	return renderFullscreenTitleContentWithPulse(titleContent, subtitle, workspacePulse, width)
 }
 

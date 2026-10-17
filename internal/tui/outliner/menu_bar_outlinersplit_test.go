@@ -83,3 +83,30 @@ func TestResolveMenuEntriesRemovesRatherThanGreys(t *testing.T) {
 		t.Fatalf("mixed menu resolved to %+v, want the applicable entry alone", menus[0].Entries)
 	}
 }
+
+func TestMenuGroupsContainOnlyApplicableActionsAndSkipHeadings(t *testing.T) {
+	registry := operation.NewOperationRegistry()
+	registerMenuTestOperation(t, registry, "test.menu.today", "Today", true)
+	registerMenuTestOperation(t, registry, "test.menu.state", "Set Status", false)
+	registerMenuTestOperation(t, registry, "test.menu.priority", "Priority", true)
+	menus, err := ResolveMenuEntries(registry, operation.InputStrategy{}, menuBarCommandContext(), []menuSpec{{
+		ID: "task", Title: "Task", Entries: []menuEntrySpec{
+			{OperationID: "test.menu.today", Group: "Plan"},
+			{OperationID: "test.menu.state", Group: "Status"},
+			{OperationID: "test.menu.priority", Group: "Details"},
+		},
+	}})
+	if err != nil || len(menus) != 1 {
+		t.Fatalf("resolve groups: %v, %v", menus, err)
+	}
+	entries := menus[0].Entries
+	if len(entries) != 4 || entries[0].Label != "Plan" || entries[2].Label != "Details" {
+		t.Fatalf("empty group survived or first heading disappeared: %+v", entries)
+	}
+	if got := resolveMenuBarItem(entries, 0); got != 1 {
+		t.Fatalf("first highlight = %d, want first action at 1", got)
+	}
+	if StepMenuBarItem(entries, 1, 1) != 3 || StepMenuBarItem(entries, 3, -1) != 1 {
+		t.Fatal("menu navigation landed on a heading")
+	}
+}

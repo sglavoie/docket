@@ -260,10 +260,14 @@ func (t *Task) DueHasTime() bool {
 // has passed. A timed due date is compared at its exact instant, so a task due
 // today at 09:00 is overdue from 10:00.
 func (t *Task) IsOverdue() bool {
+	return t.IsOverdueAt(time.Now())
+}
+
+// IsOverdueAt applies the same deadline rules at a supplied observation time.
+func (t *Task) IsOverdueAt(now time.Time) bool {
 	if t.DueDate == nil || t.IsTerminalState() {
 		return false
 	}
-	now := time.Now()
 	if t.DueHasTime() {
 		return t.DueDate.Before(now)
 	}

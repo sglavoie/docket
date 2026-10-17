@@ -31,6 +31,8 @@ type menuEntrySpec struct {
 	// Label is optional shorter wording for the bar. Empty means the
 	// descriptor's own Label, which is the wording `?` help already teaches.
 	Label string
+	// Group introduces a heading only when at least one action in it applies.
+	Group string
 	// Checked is the checkbox or radio state read off live model state. Nil is
 	// an entry with no state to show, which is most of them.
 	Checked *bool
@@ -46,7 +48,8 @@ type menuSpec struct {
 
 // resolvedMenuEntry is one spec row projected against the live registry and the
 // live input strategy. Key is always the strategy's own spelling for the
-// operation, never a string the spec supplied.
+// operation, never a string the spec supplied. An empty OperationID is a rule
+// or, when Label is present, a non-selectable group heading.
 type ResolvedMenuEntry struct {
 	OperationID operation.OperationID
 	Label       string
@@ -94,17 +97,25 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 				{OperationID: operation.OperationCoreCapture},
 				{OperationID: operation.OperationTaskNewChild, Label: "Capture Child"},
 				{OperationID: operation.OperationChecklistAddItem},
-				{OperationID: operation.OperationCoreEdit, Label: "Edit"},
-				{OperationID: operation.OperationCoreEditDescription, Label: "Description"},
-				{OperationID: operation.OperationCoreExternalEditor, Label: "External Editor"},
-				{OperationID: operation.OperationCoreOutlineEditor},
-				menuSeparator(),
-				{OperationID: operation.OperationTaskAttachments},
-				{OperationID: operation.OperationTaskComments},
-				{OperationID: operation.OperationTaskReferences},
-				{OperationID: operation.OperationTaskSetResumeNote, Label: "Resume Note"},
-				{OperationID: operation.OperationTaskToggleReview},
-				{OperationID: operation.OperationCoreSetUpCheckIns},
+				{OperationID: operation.OperationCoreToday, Label: "Today", Group: "Plan"},
+				{OperationID: operation.OperationCoreNext, Label: "Next", Group: "Plan"},
+				{OperationID: operation.OperationTaskSetState, Label: "Set Status…", Group: "Status"},
+				{OperationID: operation.OperationCoreBacklog, Label: "Backlog (clear plan)", Group: "Status"},
+				{OperationID: operation.OperationTaskSetPriority, Label: "Priority…", Group: "Details"},
+				{OperationID: operation.OperationTaskSetDueDate, Label: "Due / Defer / Check-in…", Group: "Details"},
+				{OperationID: operation.OperationTaskSetTags, Label: "Tags / Context…", Group: "Details"},
+				{OperationID: operation.OperationTaskTogglePin, Group: "Details"},
+				{OperationID: operation.OperationTaskMoveToProject, Group: "Details"},
+				{OperationID: operation.OperationCoreEdit, Label: "Edit", Group: "Details"},
+				{OperationID: operation.OperationCoreEditDescription, Label: "Description", Group: "Details"},
+				{OperationID: operation.OperationCoreExternalEditor, Label: "External Editor", Group: "Details"},
+				{OperationID: operation.OperationCoreOutlineEditor, Group: "Details"},
+				{OperationID: operation.OperationTaskAttachments, Group: "Details"},
+				{OperationID: operation.OperationTaskComments, Group: "Details"},
+				{OperationID: operation.OperationTaskReferences, Group: "Details"},
+				{OperationID: operation.OperationTaskSetResumeNote, Label: "Resume Note", Group: "Details"},
+				{OperationID: operation.OperationTaskToggleReview, Group: "Details"},
+				{OperationID: operation.OperationCoreSetUpCheckIns, Group: "Details"},
 				menuSeparator(),
 				{OperationID: operation.OperationTaskCopyTitle},
 				{OperationID: operation.OperationTaskCopyDetails},
@@ -274,9 +285,11 @@ func ResolveMenuEntries(
 	menus := make([]ResolvedMenu, 0, len(specs))
 	for _, spec := range specs {
 		entries := make([]ResolvedMenuEntry, 0, len(spec.Entries))
+		group := ""
 		for _, entry := range spec.Entries {
 			if entry.OperationID == "" {
 				entries = append(entries, ResolvedMenuEntry{})
+				group = ""
 				continue
 			}
 			descriptor, exists := registry.Descriptor(entry.OperationID)
@@ -290,6 +303,10 @@ func ResolveMenuEntries(
 			if !descriptor.Applicable(ctx) {
 				continue
 			}
+			if entry.Group != "" && entry.Group != group {
+				entries = append(entries, ResolvedMenuEntry{Label: entry.Group})
+			}
+			group = entry.Group
 			label := entry.Label
 			if label == "" {
 				label = descriptor.Label
@@ -317,7 +334,7 @@ func ResolveMenuEntries(
 func collapseMenuSeparators(entries []ResolvedMenuEntry) []ResolvedMenuEntry {
 	collapsed := make([]ResolvedMenuEntry, 0, len(entries))
 	for _, entry := range entries {
-		if entry.OperationID != "" {
+		if entry.OperationID != "" || entry.Label != "" {
 			collapsed = append(collapsed, entry)
 			continue
 		}
@@ -911,7 +928,7 @@ func menuBarDropdownWidth(entries []ResolvedMenuEntry, width int) int {
 	marker := menuBarDropdownMarkerWidth(entries)
 	longest := 0
 	for _, entry := range entries {
-		if entry.OperationID == "" {
+		if entry.OperationID == "" && entry.Label == "" {
 			continue
 		}
 		// The gap is LayoutListText's own, charged here because the labels are
@@ -970,7 +987,11 @@ func newMenuBarDropdownSurface(entries []ResolvedMenuEntry, contentWidth int) (*
 	for index, entry := range entries {
 		item := listsurface.ListItem{ID: menuBarDropdownItemID(index), PrimaryMarker: blank}
 		if entry.OperationID == "" {
-			item.PrimaryText = strings.Repeat("─", textWidth)
+			if entry.Label != "" {
+				item.PrimaryText = theme.MutedStyle.Render(entry.Label)
+			} else {
+				item.PrimaryText = strings.Repeat("─", textWidth)
+			}
 			items = append(items, item)
 			continue
 		}

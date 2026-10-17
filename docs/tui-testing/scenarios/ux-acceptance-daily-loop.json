@@ -775,8 +775,8 @@
     {
       "type": "assert",
       "assert": "contains",
-      "label": "the uncovered part of the host is still drawn below the history labels",
-      "value": "Reconcile the client onboarding checklist against the revised milestones"
+      "label": "the uncovered deadline remains visible beside the longer menu",
+      "value": "12:00 late"
     },
     {
       "type": "assert",

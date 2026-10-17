@@ -241,7 +241,7 @@ func TestPreviewRowShedsIndicatorsBeforeCuttingTheTitle(t *testing.T) {
 	if !strings.Contains(preview, dueText) {
 		t.Fatalf("preview row shed the deadline a glance at a project is for: %q", preview)
 	}
-	if roomy := ansi.Strip(outliner.RenderOutlinerPreviewTaskRow(row, 46, 0, nil)); !strings.Contains(roomy, title) ||
+	if roomy := ansi.Strip(outliner.RenderOutlinerPreviewTaskRow(row, 51, 0, nil)); !strings.Contains(roomy, title) ||
 		!strings.Contains(roomy, dueText) || strings.Contains(roomy, "review") {
 		t.Fatalf("a preview row with room for title and deadline alone kept the review instead: %q", roomy)
 	}

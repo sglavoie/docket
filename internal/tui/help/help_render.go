@@ -106,8 +106,12 @@ func (m *HelpViewModel) renderBySectionContent() string {
 				if m.otherCategoryMatches == 1 {
 					noun = "match"
 				}
-				message = fmt.Sprintf("No matches in %s; %d %s in other categories.\nChoose the All tab to search every category.",
-					m.categories[m.activeTab-1], m.otherCategoryMatches, noun)
+				action := "Press Tab to show all matches."
+				if m.tabSearchMode {
+					action = "Finish finding a tab with Enter, then press Tab to show all matches."
+				}
+				message = fmt.Sprintf("No matches in %s; %d %s in other categories.\n%s",
+					m.categories[m.activeTab-1], m.otherCategoryMatches, noun, action)
 			}
 		}
 		return theme.MutedStyle.Width(max(m.viewport.Width(), 1)).Render(message)
@@ -301,8 +305,12 @@ func (m *HelpViewModel) renderHelpHeader(tabBar string) string {
 
 func (m *HelpViewModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	if m.searchMode {
+		hints := chrome.RequiredGuidanceHints("Enter apply filter", "Esc cancel edit")
+		if m.otherCategoryMatches > 0 {
+			hints = append(hints, chrome.RequiredGuidanceHints("Tab show all matches")...)
+		}
 		return chrome.GuidanceSpec{
-			Hints: append(chrome.RequiredGuidanceHints("Enter apply filter", "Esc cancel edit"),
+			Hints: append(hints,
 				chrome.OptionalGuidanceHints(10, "Shift+←/→ tabs", "\\ find tab")...),
 			Supplemental: m.helpScrollSupplemental(),
 			Rows:         2,

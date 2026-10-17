@@ -28,8 +28,9 @@ entry; words never combine across different entries. While searching,
 each tab shows the number of matches selecting it would reveal, including its
 own case-insensitive fallback. If that category has
 no matches but others do, the empty view names the category and counts the
-matches available elsewhere. Choose the All tab to see them with the same
-query; the search never switches categories on its own. Help uses one column in narrow
+matches available elsewhere. Press `Tab` to show all matches with the same
+query, including while typing. This explicitly selects All; search never
+switches categories on its own. Help uses one column in narrow
 windows and two when each description has at least 24 columns of room. Search
 highlighting follows matches across wrapped description lines. When a search
 matches an alias, that alias stays beside the description and wraps as needed
@@ -61,6 +62,14 @@ See [search and restrictions](search-and-lenses.md#reading-and-peeling-the-narro
 Press `F10` to open the menus. Press `M` to keep the menu bar visible or hide it.
 The bar contains Task, View, Go, Find, and Help. Opening a menu temporarily shows
 a hidden bar; closing it restores the previous setting.
+
+Task begins with capture, then groups everyday actions under **Plan**,
+**Status**, and **Details**. Today and Next apply the same planning actions as
+`wt` and `wn`. **Set Status…** opens the existing state picker, where you can
+choose Doing or Done; **Backlog (clear plan)** performs `wb`. Details includes
+priority, due/defer/check-in scheduling, tags/context, pinning, and project moves,
+followed by editing and supporting material. Group headings are skipped by the
+cursor and disappear when none of their actions apply.
 
 Use left/right or `h`/`l` to switch menus, up/down or `j`/`k` to select an entry,
 and `Enter` to run it. `Esc` or `F10` closes the menu. Menus overlay the current

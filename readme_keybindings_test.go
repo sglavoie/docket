@@ -116,11 +116,12 @@ func TestREADMEDocumentsFinalDailyLoop(t *testing.T) {
 	content := readREADMEForContractTest(t)
 	requireDocumentationText(t, content, []string{
 		"The Outliner is the only primary task presentation",
-		"`Tab` cycles exactly All → Today → Inbox → Next → Backlog → Due",
+		"`Tab` cycles All → Today → Inbox → Next → Backlog → Due → Recent",
 		"capture, triage, plan, execute, and complete",
 	})
-	// The final section catalog is intentionally checked as one ordered string.
-	requireDocumentationText(t, content, []string{
+	// The front door links to the detailed mode reference, which owns lane order.
+	requireDocumentationText(t, content, []string{"docs/guide/outliner-modes.md"})
+	requireDocumentationText(t, readRepositoryDoc(t, "docs/guide/outliner-modes.md"), []string{
 		"Pinned, Today, Doing, Review, Inbox, Next, Paused, Backlog, Waiting, Someday",
 	})
 	rejectDocumentationText(t, content, []string{

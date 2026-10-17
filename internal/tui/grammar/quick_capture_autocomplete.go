@@ -239,8 +239,8 @@ func (q *QuickCaptureInput) structuralSuggestions(partial string, candidates []*
 		task := s.task
 		// Truncate title if too long (width-aware).
 		titleLimit := max(q.Width-15, 10)
-		title := textfit.TruncateToVisualWidth(task.Title, titleLimit)
-		titleRendered := theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{}).Render(title)
+		title := textfit.RenderTaskTitle(task.Title, nil, theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{}))
+		titleRendered := textfit.TruncateToVisualWidth(title, titleLimit)
 		suggestions = append(suggestions, ACSuggestion{
 			Display: fmt.Sprintf("%s%d %s", displayPrefix, task.ShortID, titleRendered),
 			Value:   strconv.Itoa(task.ShortID),

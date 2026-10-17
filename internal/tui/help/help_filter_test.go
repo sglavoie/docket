@@ -26,7 +26,7 @@ func TestHelpEmptyCategoryNamesMatchesAvailableInAll(t *testing.T) {
 			t.Fatalf("%q: visible = %v, elsewhere = %d", query, m.filteredItems, m.otherCategoryMatches)
 		}
 		rendered := ansi.Strip(m.renderContent())
-		if !strings.Contains(rendered, "No matches in Tasks; 2 matches in other categories.") || !strings.Contains(rendered, "Choose the All tab") {
+		if !strings.Contains(rendered, "No matches in Tasks; 2 matches in other categories.") || !strings.Contains(rendered, "Press Tab to show all matches") {
 			t.Fatalf("missing category guidance:\n%s", rendered)
 		}
 		for _, line := range strings.Split(rendered, "\n") {
@@ -34,8 +34,7 @@ func TestHelpEmptyCategoryNamesMatchesAvailableInAll(t *testing.T) {
 				t.Fatalf("empty guidance overflows viewport: %q", line)
 			}
 		}
-		m.activeTab = 0
-		m.filterItems()
+		m.Update(helpKeyPress("tab"))
 		if len(m.filteredItems) != 2 || m.otherCategoryMatches != 0 || m.searchQuery != query {
 			t.Fatalf("All did not reveal the promised matches: %+v", m.filteredItems)
 		}
@@ -54,8 +53,40 @@ func TestHelpOtherCategoryCountClearsWhenSearchChanges(t *testing.T) {
 	for _, query := range []string{"remove", "zebra", ""} {
 		m.searchQuery = query
 		m.filterItems()
-		if m.otherCategoryMatches != 0 || strings.Contains(m.renderContent(), "Choose the All tab") {
+		if m.otherCategoryMatches != 0 || strings.Contains(m.renderContent(), "Press Tab to show all matches") {
 			t.Fatalf("%q left a stale other-category notice", query)
+		}
+	}
+}
+
+func TestHelpShowAllMatchesWhileTypingPreservesInputAndReflows(t *testing.T) {
+	for _, width := range []int{60, 80, 120} {
+		m := helpSmartCaseModel()
+		m.SetSize(width, 20)
+		m.activeTab = slices.Index(m.categories, "Actions") + 1
+		m.Update(helpKeyPress("/"))
+		for _, letter := range "cursor" {
+			m.Update(helpKeyPress(string(letter)))
+		}
+		if m.activeTab == 0 {
+			t.Fatal("typing automatically changed categories")
+		}
+		spec, ok := m.ContextualGuidance()
+		assertGuidance(t, "other-category search", spec, ok, "Tab show all matches")
+		m.Update(helpKeyPress("tab"))
+		if m.activeTab != 0 || m.searchQuery != "cursor" || m.searchInput.Value() != "cursor" || !m.searchMode || len(m.filteredItems) != 1 {
+			t.Fatalf("show all changed the search draft or lost results: %+v", m.filteredItems)
+		}
+		if screen := ansi.Strip(m.View().Content); lipgloss.Height(screen) > 20 {
+			t.Fatalf("help grew past its window:\n%s", screen)
+		}
+		m.Update(helpKeyPress("enter"))
+		m.Update(helpKeyPress("backspace"))
+		m.Update(helpKeyPress("right"))
+		tab := m.activeTab
+		m.Update(helpKeyPress("tab"))
+		if m.activeTab != tab {
+			t.Fatal("Tab changed categories without an offer to show all matches")
 		}
 	}
 }

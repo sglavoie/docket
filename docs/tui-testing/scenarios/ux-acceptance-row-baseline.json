@@ -38,7 +38,7 @@
     { "type": "assert", "assert": "not_clipped", "value": "Await the vendor security questionnaire" },
     { "type": "assert", "label": "the reclaimed width reaches the titles that used to lose their tail to a tag list", "assert": "not_clipped", "value": "Reconcile the client onboarding checklist against the revised milestones" },
     { "type": "assert", "assert": "not_clipped", "value": "Reread the quarterly access list flagged for review" },
-    { "type": "assert", "label": "the fixture's longest title still loses its tail to the deadline beside it", "assert": "contains", "value": "Restore the overdue billing reconciliation export before the audit clos…" },
+    { "type": "assert", "label": "the fixture's longest title still loses its tail to the deadline beside it", "assert": "contains", "value": "Restore the overdue billing reconciliation export before the audit…" },
 
     { "type": "assert", "label": "All hides deferred and terminal work rather than laning it", "assert": "not_contains", "value": "Hold the deferred storage cleanup" },
     { "type": "assert", "assert": "not_contains", "value": "Close the retired staging cluster" },

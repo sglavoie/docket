@@ -60,7 +60,7 @@ const (
 	// tree node, so a deeply nested task and a root one read at the same margin.
 	peekDockIndent = "  "
 	// peekDockPlaceholderText is what the dock says for a row that owns no detail
-	// document — a section header, a note, a checklist item. The dock stays open
+	// document — a section header or a note. The dock stays open
 	// and stays this tall there, so crossing such a row moves nothing on screen.
 	peekDockPlaceholderText = "No detail to show for this row."
 	// peekDockPlaceholderFingerprint identifies that stand-in content. It is a
@@ -296,6 +296,7 @@ const (
 	inlinePeekOwnerNone inlinePeekOwnerKind = iota
 	inlinePeekOwnerTask
 	inlinePeekOwnerProject
+	inlinePeekOwnerChecklist
 )
 
 // inlinePeekOwner is the typed identity half of the key, and the extension point
@@ -310,6 +311,10 @@ type inlinePeekOwner struct {
 	// a group per state section — one owner: a page turn under one of them is the
 	// same page under the others, because they are the same project's detail.
 	project string
+	// Checklist items have no durable ID. Index and text prevent an unrelated
+	// item at a reused position from inheriting this item's reading position.
+	checklistIndex int
+	checklistText  string
 }
 
 func taskPeekOwner(identity taskref.TaskIdentity) inlinePeekOwner {
@@ -335,14 +340,15 @@ func (owner inlinePeekOwner) sameAs(other inlinePeekOwner) bool {
 	if owner.kind == inlinePeekOwnerNone || other.kind == inlinePeekOwnerNone {
 		return false
 	}
-	return owner.kind == other.kind && owner.task == other.task && owner.project == other.project
+	return owner.kind == other.kind && owner.task == other.task && owner.project == other.project &&
+		owner.checklistIndex == other.checklistIndex && owner.checklistText == other.checklistText
 }
 
 // rowSupportsPeek names the rows that carry a detail document. Every reader of a
 // Peek — the render, the measurement, the offset key, and the four scrolling
 // keys — asks here, so none of them can admit a row another one refuses.
 func rowSupportsPeek(row OutlinerRow) bool {
-	return row.IsTaskRow() || row.IsProjectHeader
+	return row.IsTaskRow() || row.IsProjectHeader || checklistPeekItemValid(row)
 }
 
 // inlinePeekOffsetKey is what a remembered offset is remembered for. Peek's
@@ -394,6 +400,9 @@ func (m *OutlinerModel) inlinePeekDocumentForRow(
 ) inlinePeekDocument {
 	if m == nil {
 		return inlinePeekDocument{}
+	}
+	if row.IsChecklistItem {
+		return inlinePeekChecklistDocumentFor(row, indent, rowWidth, geometry)
 	}
 	if row.IsProjectHeader {
 		// The row's own project identity, not the view's: a cross-project group
@@ -468,6 +477,12 @@ func (m *OutlinerModel) inlinePeekOffsetKey(row OutlinerRow, doc inlinePeekDocum
 func (m *OutlinerModel) peekOwnerForRow(row OutlinerRow) inlinePeekOwner {
 	if row.IsProjectHeader {
 		return projectPeekOwner(row.ProjectID)
+	}
+	if checklistPeekItemValid(row) {
+		return inlinePeekOwner{
+			kind: inlinePeekOwnerChecklist, task: m.rowIdentity(row),
+			checklistIndex: row.ChecklistIndex, checklistText: row.Task.Checklist[row.ChecklistIndex].Text,
+		}
 	}
 	return taskPeekOwner(m.rowIdentity(row))
 }

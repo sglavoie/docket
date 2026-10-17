@@ -229,10 +229,10 @@ func (m *ParentSelectorModel) renderList() string {
 
 			prefix := fmt.Sprintf("  %s ", shortID)
 			maxTitleLen := max(m.Width()-lipgloss.Width(prefix), 1)
-			title := textfit.TruncateToVisualWidth(item.Task.Title, maxTitleLen)
-			titleRendered := theme.TaskTitleStyleFor(item.Task, theme.TaskTitleStyleOptions{
+			title := textfit.RenderTaskTitle(item.Task.Title, nil, theme.TaskTitleStyleFor(item.Task, theme.TaskTitleStyleOptions{
 				CursorSelected: m.CursorIndex() == i,
-			}).Render(title)
+			}))
+			titleRendered := textfit.TruncateToVisualWidth(title, maxTitleLen)
 			line := prefix + titleRendered
 
 			if m.CursorIndex() == i {

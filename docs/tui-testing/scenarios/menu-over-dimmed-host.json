@@ -1,7 +1,7 @@
 {
   "name": "menu-over-dimmed-host",
   "fixture": "release",
-  "size": "100x35",
+  "size": "100x50",
   "actions": [
     { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
     { "type": "key", "label": "open Peek, so the dock is part of the host the menu will stand on", "key": "b" },
@@ -28,7 +28,7 @@
     { "type": "assert", "assert": "contains", "value": "Capture Child" },
     { "type": "assert", "assert": "contains", "value": "Active Projects" },
     { "type": "assert", "assert": "no_layout_issues" },
-    { "type": "resize", "width": 100, "height": 35 },
+    { "type": "resize", "width": 100, "height": 50 },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "closing hands the whole view back", "key": "esc" },

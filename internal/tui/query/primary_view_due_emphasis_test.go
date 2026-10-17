@@ -1,6 +1,7 @@
 package query
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -31,9 +32,9 @@ func TestFormatDueDateRendersTheThemeTierUnchanged(t *testing.T) {
 				text string
 				want func() string
 			}{
-				{"overdue", today.AddDate(0, 0, -3), today.AddDate(0, 0, -3).Format("Jan 2"),
+				{"overdue", today.AddDate(0, 0, -3), today.AddDate(0, 0, -3).Format("Jan 2") + " late",
 					func() string {
-						return theme.OverdueStyle.Render(icons.Get("date") + " " + today.AddDate(0, 0, -3).Format("Jan 2"))
+						return theme.OverdueStyle.Render(icons.Get("date") + " " + today.AddDate(0, 0, -3).Format("Jan 2") + " late")
 					}},
 				{"today", today, "Today",
 					func() string { return theme.DueTodayStyle.Render(icons.Get("date") + " Today") }},
@@ -63,9 +64,30 @@ func TestFormatDueDateRendersTheThemeTierUnchanged(t *testing.T) {
 				WorkflowState: models.StateBacklog,
 				DueDate:       &timed,
 			}
-			want := theme.OverdueStyle.Render(icons.Get("date") + " " + timed.Format("Jan 2") + " 15:30")
+			want := theme.OverdueStyle.Render(icons.Get("date") + " " + timed.Format("Jan 2") + " 15:30 late")
 			if got := FormatDueDate(task); got != want {
 				t.Errorf("timed overdue chip = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
+func TestOverdueDeadlineLabelSurvivesMonochrome(t *testing.T) {
+	now := time.Now()
+	for _, tc := range []struct {
+		name     string
+		due      time.Time
+		wantLate bool
+	}{
+		{"passed time", now.Add(-time.Minute), true},
+		{"future time", now.Add(time.Hour), false},
+		{"today without time", util.StartOfDay(now), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			task := &models.Task{WorkflowState: models.StateBacklog, DueDate: &tc.due}
+			plain := ansi.Strip(FormatDueDate(task))
+			if strings.Contains(plain, " late") != tc.wantLate {
+				t.Fatalf("deadline label = %q, want late=%v", plain, tc.wantLate)
 			}
 		})
 	}

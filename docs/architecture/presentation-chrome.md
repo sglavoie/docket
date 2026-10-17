@@ -555,6 +555,12 @@ and `menuBarLayout` reports where each label landed rather than only what the
 row reads, because a dropdown is padded to a column and `RenderTabBar` returns
 a string alone.
 
+Task entries carry optional `Group` metadata for Plan, Status, and Details.
+Resolution emits a non-action heading only before an applicable group member.
+Headings have no operation ID, key, or checked state; navigation skips them like
+separators. Status opens the existing value provider, and all mutations still
+go through the same executor as their direct shortcuts.
+
 The open menu is the `Q` readout's template applied a second time: the gate and
 two indices named together as the model's `MenuBar` field, whose own
 `menuBarState` owns every write to them, `closeMenuBar` in every projection-replacing

@@ -9,6 +9,9 @@ func (m *HelpViewModel) buildKeyMap() *keymap.KeyMap {
 	browsing := func() bool { return !m.searchMode && !m.tabSearchMode }
 	hasFilter := func() bool { return m.searchQuery != "" }
 	entries := []keymap.Entry{
+		keymap.Bind("tab", "Show all matches", "Help",
+			keymap.WithGate(func() bool { return !m.tabSearchMode && m.otherCategoryMatches > 0 }),
+			keymap.WithFooter(1, "show all matches", true), keymap.WithFooterKey("Tab")),
 		keymap.Bind("/", "Search keybindings", "Help",
 			keymap.WithGate(browsing), keymap.WithFooter(20, "filter", false)),
 		keymap.Bind(`\`, "Search and focus tab", "Help",
