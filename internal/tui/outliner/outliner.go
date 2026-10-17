@@ -70,7 +70,8 @@ type OutlinerModel struct {
 	// budget rather than a size, which is why it is held here instead of folded
 	// into Height: SetSize drops the scroll window, and a footer that grows a row
 	// when a message arrives would re-anchor the list under every keystroke.
-	ShellFrame chrome.ShellFrameMetrics
+	ShellFrame     chrome.ShellFrameMetrics
+	feedbackBudget feedbackBudgetAnchor
 	// primaryMode is the authoritative canonical row-strategy identity.
 	PrimaryMode chrome.OutlinerModeID
 
@@ -244,6 +245,7 @@ func (m *OutlinerModel) resetViewScrollOffset() {
 func (m *OutlinerModel) SetSize(width, height int) {
 	m.BaseSearchableView.SetSize(width, height)
 	m.hostBudget = hostBudgetAnchor{}
+	m.feedbackBudget = feedbackBudgetAnchor{}
 	m.resetViewScrollOffset()
 }
 

@@ -427,7 +427,7 @@ func TestProjectPeekBelongsToTheProjectAndNotToTheHeader(t *testing.T) {
 // offset's remaining lifetime on this document kind: a reload rebuilds the rows
 // and the pointers behind them without changing what the project says, and the
 // two header forms are two rows over one project, so neither is a reason to lose
-// a reading position. A rename is, because it is a different document.
+// a reading position. A rename also preserves a passage in another section.
 func TestProjectPeekOffsetSurvivesReloadAndFollowsScope(t *testing.T) {
 	alpha := peekCommentedProject("alpha")
 	outliner := projectPeekOutliner(t, "", 80, 40, alpha, peekCommentedProject("beta"))
@@ -464,10 +464,10 @@ func TestProjectPeekOffsetSurvivesReloadAndFollowsScope(t *testing.T) {
 		t.Fatalf("changing header form reset the offset to %d", got)
 	}
 
-	// Renaming is a different document, so the window returns to the top.
+	// Renaming does not lose the passage in the description.
 	alpha.Name = "Renamed Platform"
-	if got := peekOffset(t, outliner); got != 0 {
-		t.Fatalf("a rename kept offset %d", got)
+	if got := peekOffset(t, outliner); got != outliner.peekDockGeometry().HalfPageRows() {
+		t.Fatalf("a rename lost offset: %d", got)
 	}
 }
 

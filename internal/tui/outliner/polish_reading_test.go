@@ -6,7 +6,47 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+
+	"github.com/sglavoie/tt/internal/models"
 )
+
+func TestProjectLabelCacheTracksPopulationAndRenames(t *testing.T) {
+	alpha := &models.Project{ID: "a", Slug: "platform-services-api"}
+	beta := &models.Project{ID: "b", Slug: "platform-services-web"}
+	m := NewOutlinerModel(nil, nil, nil)
+	m.Population.Projects = []*models.Project{alpha, beta}
+	check := func(width int) {
+		t.Helper()
+		names := []string{alpha.Slug, beta.Slug}
+		want := projectAbbreviations(names, width)
+		for _, name := range names {
+			if got := m.abbreviatedProjectSlug(name, width); got != want[name] {
+				t.Fatalf("%q => %q want %q", name, got, want[name])
+			}
+		}
+	}
+	check(12)
+	check(24)
+	beta.Slug = "platform-services-infra"
+	check(12)
+	m.Population.Projects = []*models.Project{beta, alpha}
+	check(12)
+	m.Population.Projects = []*models.Project{alpha}
+	if got := m.abbreviatedProjectSlug(alpha.Slug, 12); got != projectAbbreviations([]string{alpha.Slug}, 12)[alpha.Slug] {
+		t.Fatal("removed project left stale collision")
+	}
+	if got := m.abbreviatedProjectSlug("standalone-preview", 12); got == "" || lipgloss.Width(got) > 12 {
+		t.Fatal("missing standalone preview")
+	}
+	standalone := "platform-services-standalone"
+	m.abbreviatedProjectSlug(standalone, 12)
+	if allocations := testing.AllocsPerRun(20, func() { m.abbreviatedProjectSlug(standalone, 12) }); allocations != 0 {
+		t.Fatalf("unchanged standalone preview allocated %g times", allocations)
+	}
+	if got := m.abbreviatedProjectSlug(alpha.Slug, 12); got != projectAbbreviations([]string{alpha.Slug}, 12)[alpha.Slug] {
+		t.Fatal("standalone preview changed the loaded project's label")
+	}
+}
 
 func TestProjectAbbreviationsDistinguishSharedPrefixes(t *testing.T) {
 	names := []string{"platform-services-api", "platform-services-web", "platform-services-infra", "short", "国際化プロジェクト-one", "国際化プロジェクト-two", "same-prefix-a-same-suffix", "same-prefix-b-same-suffix"}

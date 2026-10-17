@@ -32,7 +32,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "not_contains", "value": "No comments yet." },
 
-    { "type": "assert", "label": "a body taller than the window reserves its counter row", "assert": "contains", "value": "0 above ·" },
+    { "type": "assert", "label": "adding a comment preserves the summary reading position", "assert": "contains", "value": "1 above ·" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "Ctrl+F pages the pane, not the list", "key": "ctrl+f" },

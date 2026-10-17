@@ -37,11 +37,12 @@ type inlinePeekDocument struct {
 	// and nothing in it sits outside the window: the window decides only how much
 	// of it is on screen, so a detail Peek holds is always a scroll away rather
 	// than sometimes pinned and sometimes elided.
-	Body []string
+	Body     []string
+	sections []inlinePeekSection
 	// Fingerprint identifies the content the body was built from, independent of
 	// the width it was wrapped to. It is what lets a stored offset survive a
-	// re-render and fall back to the top when the detail, the reference
-	// population, or the task itself changed.
+	// re-render without resolving its content anchor again. Changed detail or
+	// geometry resolves that anchor against the new section layout.
 	Fingerprint string
 
 	indent string
@@ -182,6 +183,7 @@ func inlinePeekDocumentFor(opts inlinePeekOptions) inlinePeekDocument {
 
 	return inlinePeekDocument{
 		Body:        body,
+		sections:    sections,
 		Fingerprint: strings.Join(keys, "\x1f"),
 		indent:      opts.Indent,
 		width:       available,

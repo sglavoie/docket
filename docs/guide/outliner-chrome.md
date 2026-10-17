@@ -19,7 +19,6 @@ Help puts Everyday, Plan, the Doing/Done Status actions, and Recovery first.
 Other statuses, task details, hierarchy, and selection follow. Search also matches those group names. The label
 **Explain Current View** opens the same `Q` readout.
 
-
 ## Find a shortcut
 
 In `?` help, `/` searches within the selected category tab. Each search word
@@ -47,51 +46,26 @@ Help returns to All, and shorter results or a resized window clamp the scroll.
 
 ## Read the title and current restrictions
 
-Every full-screen presentation keeps one operational title row. It names the
-surface, scope, and mode once on the left, and reports the workspace pulse on the
-right as `workspace: inbox 3 · today 2 · overdue 1 · done 4`. A component at zero
-is left out, and a pulse with nothing to report is left out whole rather than
-leaving a bare `workspace:` behind. Narrow terminals drop Done, Inbox, overdue,
-then Today before shortening required interaction context. A terminal wide
-enough to hold all of that whole follows the mode with its two Tab neighbours,
-muted — `Inbox  ‹ Today  Next ›` — so the title shows where `Shift+Tab` and
-`Tab` go; anywhere narrower the active mode stands alone.
+The title names the surface, scope, and mode. On the right, the workspace pulse
+summarizes nonzero counts, for example `workspace: inbox 3 · today 2 · overdue 1`.
+Wide windows also show the modes reached by `Tab` and `Shift+Tab`.
 
-What is narrowing the view gets a second row, immediately under that one and
-above the list. It appears only while some axis is live — a selection, a lens, a
-search, filters, a sort you chose, a focus, or a section zoom — so a resting view
-spends no row saying that nothing is happening. Each axis is one segment, and a
-terminal too narrow for all of them drops whole segments from the right rather
-than cutting one in half, ending in `+2 more · Q details`: the count is what it
-could not draw and `Q` is where the whole of it is written out. Press `Q` and
-every one of those values is there in full, wrapped rather than cut, in a
-readout you can scroll.
+A second row appears while the view has restrictions or a selection. It names
+the active lens, search, filters, sort, Focus, and section zoom. If they do not
+all fit, `+2 more · Q details` reports the hidden segments. Press `Q` for the
+complete, scrollable explanation and numbered controls to remove restrictions.
+See [search and restrictions](search-and-lenses.md#reading-and-peeling-the-narrowing).
 
 ## Open a menu
 
-`M` puts a menu bar above that title row: a single band reading
-`Task  View  Go  Find  Help`, one label per menu. `M` again takes it away. The
-bar costs exactly one row of the task list while it is shown, which is the whole
-reason it is off by default and the whole reason it is a key rather than a
-permanent fixture. A terminal too narrow for every label drops whole menus from
-the right — Help first, then Find, then Go — rather than cutting a word in half,
-because a half-word is a lie about what the bar offers while a dropped menu is
-still reachable by the keys its entries carry.
+Press `F10` to open the menus. Press `M` to keep the menu bar visible or hide it.
+The bar contains Task, View, Go, Find, and Help. Opening a menu temporarily shows
+a hidden bar; closing it restores the previous setting.
 
-`F10` or `Ctrl+M` opens the leftmost menu, borrowing a row for the bar if it was hidden,
-so reaching a menu is never two presses. The reveal lasts as long as the menu
-does: close the menu and the bar goes back to whatever `M` last left it as, up
-if it was up and away if it was away. The dropdown falls inline under the label
-it belongs to, and the view stays underneath it: the bar stays on its row, the
-title and its workspace pulse stay on theirs, and the task list — with an open
-Peek dock, a multi-select summary, whatever you were looking at — is still there,
-dimmed, everywhere the box does not reach. The box covers those rows rather than
-pushing them anywhere, so nothing shifts down and back up per press and the view
-you return to is the one you left, scrolled where you left it. A menu too tall
-for the room under its label scrolls inside its own box. `h`/`l` or left/right move along the bar, `j`/`k` or up/down move within
-the open menu and step over the rules between groups, `Enter` runs the
-highlighted entry and closes the menu, and `Esc`, `F10`, or `Ctrl+M` closes it without
-running anything, leaving the bar exactly as it was.
+Use left/right or `h`/`l` to switch menus, up/down or `j`/`k` to select an entry,
+and `Enter` to run it. `Esc` or `F10` closes the menu. Menus overlay the current
+view and preserve its scroll position, selection, and Peek. Tall menus scroll.
+Direct shortcuts remain usable while a menu is open.
 
 A menu lists only what the cursor could do right now: an entry that does not
 apply is removed rather than greyed out, so the Task menu is shorter under a
@@ -110,17 +84,14 @@ workspace-wide history that `u` and `Ctrl+R` restore, including after a restart.
 The descriptions refresh each time the menu opens; reading them changes nothing.
 An action with no available history is omitted from the menu.
 
-A row with no key beside it has none anywhere, and the menu is the only place it
-exists. The View menu's **Clear All Folds** is the first of those: `s`, `p`, and
-`t` each toggle one fold axis and each reverses, so opening a tree that is folded
-in three different ways takes three presses that may each go the wrong way, while
-this opens all of them once and never folds anything. It says `All folds cleared`
-or `Nothing is folded`, since the dropdown closes over the rows it changed.
-**Advisories** is the other, ticked while advisories are shown; it is described
-with the status strip below. An
-operation reachable only this way never touches a task or a project — it acts on
-the view or on nothing at all — so the bar can stay off by default without hiding
-anything that edits your work.
+Entries with no shortcut are available only through the menus. View → Clear All
+Folds opens every folded section, project group, and task subtree, reporting
+`All folds cleared` or `Nothing is folded`. View → Advisories toggles ambient
+workspace notices. Task → Set up check-ins schedules the tasks named by a
+recent check-in reminder.
+
+Menu-bar visibility is saved on this machine, as are the theme and advisory
+setting. These preferences do not follow a workspace to another computer.
 
 ### Terminal keyboard compatibility
 
@@ -133,44 +104,19 @@ operations. To insert a newline in capture, comments, or the text editor,
 use `Alt+Enter`; `Shift+Enter` remains an alias. Multiline paste works in capture
 too. The menu keeps every operation available by arrow keys and Enter.
 
-Whether the bar is drawn is remembered for this machine, the way the light or
-dark theme is: it survives quitting and reopening `tt`, and it does not follow
-you to another computer that opens the same workspace. tt.app can match the
-theme to macOS's appearance instead, for that session only, without changing
-the saved one. Chrome belongs to the
-terminal you are sitting at. The View menu lists the toggle itself, checked when
-`M` is keeping the bar rather than when a menu is only borrowing its row,
-because the key that shows the bar is the one thing you cannot read off the bar
-once you have found it by accident.
+tt.app can follow macOS appearance for the current session without changing
+the saved terminal theme.
 
 ## Read workload and feedback
 
-Today mode also compares its open load with the workspace's 30-day completion
-pace in the middle region, for example `9 open · median 3 done/day (30d)`. A fresh
-workspace with no completion history shows no comparison. Under pressure the
-workspace pulse disappears first; the comparison then sheds `(30d)`, then
-`median`, and finally disappears before required interaction context shortens.
+Today mode compares open work with the workspace's 30-day completion pace,
+for example `9 open · median 3 done/day (30d)`. It shows no comparison until
+there is completion history, and hides optional information in narrow windows.
 
-Press a chord prefix such as `w`, `f`, or `g` to see its next keys.
-`w` separates Plan from Status; `?` lists all shortcuts, including those a
-narrow footer cannot show.
-
-The footer always describes the keys for the current interaction. Closing a
-picker restores the outline’s shortcuts.
-
-A panel that takes over the whole screen is a different case, because nothing is
-left underneath it to go quiet. Comments, attachments, the project creator and
-editor, and the expanded capture form each have one footer: a single divider
-with that panel's own shortcuts under it, on the last row of the terminal. The
-way out is among them, and on Comments and Attachments so is `? help`. On a
-narrow terminal the shortcuts wrap onto a second row rather than drop the ones
-you cannot reach any other way, and the panel gives up a row of its content to
-make room.
-
-A message is not a set of shortcuts, so a status line or an error still reaches
-that row with a picker open: it is telling you what just happened rather than
-what to press next. An unfinished chord, likewise, keeps its `w …` row, since
-those are the keys really waiting for you.
+The footer describes the current interaction. Press a chord prefix such as `w`,
+`f`, or `g` to see its next keys. `w` separates Plan from Status; `?` lists all
+shortcuts, including those a narrow footer cannot show. Pickers and editors
+show their own controls, and closing them restores the outline's shortcuts.
 
 The `Esc` entry names what the next press does, not what you are in. Standing in
 a Focus inside a lens it reads `Esc leave Focus`, because that is the layer the
@@ -197,46 +143,17 @@ an already-selected mode or priority, an unavailable workflow transition, or
 clearing empty filters or sort settings. Emphasis is recomputed on every render;
 dimmed shortcuts remain usable. Toggles and Recent's refresh stay prominent.
 
-When an operation finishes, its result and the keys never trade places. The
-footer keeps its controls on the bottom row of the terminal and grows one row
-upward to carry the message, so `✓ Copied title to clipboard` sits directly under
-the divider with `Enter create · … · Esc cancel` still beneath it. Nothing that
-was usable a moment ago goes unnamed because something succeeded or failed. A
-refused save is the case that matters most: the draft is still there, the error
-says why, and the keys that would fix or abandon it are still spelled out at the
-smallest supported terminal.
+Feedback appears above the controls, so an error never hides the keys needed
+to correct it. Messages can reduce the room available to the list or editor;
+the active field and its recovery controls remain visible.
 
-The row a message costs comes out of the view underneath, once. A 35-row terminal
-resting on the outline spends one row on the divider and one on the controls,
-leaving 33 for the list; a message standing leaves 32. Open capture over that
-same outline and it is the panel, not the outline under it, that gives the row
-back — so the list behind the panel does not shuffle when a message arrives, and
-the panel never overlaps the footer it grew. With Peek open the list has already
-set a row aside for a footer the dock's own paging keys can wrap, so an ordinary
-one-line message costs it nothing further and the dock stays exactly where it
-was: no message and no cursor ever moves it.
+Ordinary feedback lasts two to six seconds, depending on its length; undo
+feedback lasts six seconds. A mode change clears transient view feedback.
+A save failure with a retained draft stays visible until that field is edited
+or the draft is saved or discarded. Moving the cursor, waiting, or opening Help
+does not dismiss it. The selection count stays in the second header row.
 
-Surfaces that draw their own footer — Help, Notes, the Hub, Recent messages —
-keep it. The message is placed directly above that footer's divider rather than
-over its keys, and the frame stays exactly as tall as the terminal. Everywhere
-else, the comments panel, the project editor, and expanded capture included, the
-message sits between the one divider and the shortcuts.
-
-The Outliner's own feedback — a focus notice, or a line such as
-`Latest activity: …` — renders in a status strip pinned directly above the
-footer, introduced by a dim thin divider. The strip never floats mid-screen on a
-short list and never leaves blank padding under itself: it takes its rows from
-the task list, and in a narrow terminal it wraps rather than pushing the footer
-off screen. Ordinary shell and view feedback stays for two to six seconds,
-depending on text length; undo feedback keeps its six-second window. A save
-failure with a retained draft stays visible until that field is edited or the
-draft is saved or discarded. Cursor movement, timers, and typing in covering
-Help do not dismiss the editor's failure. The strip
-clears on a
-mode change, so a message naming a mode can never misreport the one you switched
-to. A live visual selection is no exception, because the strip never carries one
-in the first place: the selection states itself on the second header row, once,
-and the strip is left free for the feedback your next bulk gesture writes there.
+### Reread a message
 
 `F10` → Help → Recent messages opens the latest feedback in a read-only,
 scrollable viewer, even after it has expired or a mode change has cleared it.
@@ -266,24 +183,16 @@ appears only when there are matches, and the result reports how many were copied
 Details added to an existing message update that entry. Recovery hints in the
 recalled text are historical text, not controls in this viewer.
 
-The strip carries one line that is not feedback at all: while the workspace
-holds unresolved merge conflicts, an indicator counting them leads the strip and
-names `tt conflict list`. It is workspace state rather than a message, so it
-neither expires nor clears on a mode change; it leads the transient lines so
-they cannot shift it, and it disappears only once the last bundle is resolved.
-See [`storage.md`](storage.md) for what a bundle is and how to resolve one.
+### Workspace advisories
 
-That indicator is an *advisory*: a line the workspace puts on screen because of
-what it holds, not because of a key you pressed. The launch-time
-`N projects failed to load` notice is the other one. Advisories can be turned
-off, together: launch with `tt --no-advisories` for one session, or tick
-`View → Advisories` off to make the choice stick on this machine. A hidden
-advisory is absent rather than dimmed, and the row it occupied goes back to the
-task list. Nothing else goes quiet — feedback from your own operations, the `Q`
-readout, and the message that explains a workspace where *every* project failed
-to load all still speak, because none of them is ambient. The conflicts
-themselves are untouched: hiding the count resolves nothing, and `gc` and
-`tt conflict list` still find every bundle.
+Unresolved conflicts and projects that failed to load appear as persistent
+advisories. The conflict notice names `gc` to review them; it disappears after
+the last conflict is resolved. Use `tt conflict list` from a shell.
+
+View → Advisories saves whether these notices are shown on this machine.
+`tt --no-advisories` hides them for one launch. Hiding notices changes no data
+and does not suppress operation errors, the `Q` explanation, or the error when
+every project failed to load.
 
 ### While tt is in the background
 
@@ -312,28 +221,14 @@ waking from sleep reports the gap once. A date-only deadline is not an arrival:
 its day is the Today lane's and the overdue count's. It is opt-in because a
 terminal that honors the escape shows it whether or not tt is in view.
 
-`tt --control PATH` serves a Unix socket at `PATH`, readable by your user
-alone, for a host app such as tt.app. Over it the session reports the pulse
-whenever it changes and each tick's arrivals with the identity of every task,
-and it takes seven requests: show a task, acknowledge one as `R` does, mark
-one Done as `wd` does, defer one by some minutes, capture a line as the `a`
-composer would read it, refusals included, ask what that composer would suggest for a draft up to its caret,
-and preview the project, plan, status, and deadline of a full capture draft.
-Each is answered as though you had pressed the key in tt: through the same
-commit and the same undo entry, so `u` takes it back. A request that changes
-something is refused, never queued, while you are inside a picker, an editor, a
-selection, or another view — completions and previews change nothing, so they
-are answered even then — and a session that lost focus first adopts any change made on disk since,
-so what it commits is never against a stale read. tt.app starts tt this way, and
-falls back to `--notify` for a tt too old to have the flag.
+`tt --control PATH` lets a host such as tt.app request capture and task actions
+through the running session. Those actions use the same validation and undo as
+the keyboard. Read-only completion and preview requests remain available during
+editing; mutations are refused while a protected interaction is open.
+See [tt.app](../../macos/README.md#talking-to-tt) for host behavior and
+[the architecture](../architecture.md) for the control protocol.
 
-The strip is also where `Q` expands the narrowing readout: one numbered row per
-narrowing the view is under, then an `Also in view` block for the axes nothing
-peels — your selection, the effective sort, a focus, a section zoom — with the
-conflict indicator keeping the lead above it all. It grows the strip rather than
-floating over the list, so the rows it pushes off are rows the strip was already
-entitled to, and it never takes the last one.
-[`search-and-lenses.md`](search-and-lenses.md) has the readout and its peels.
+## Resolve a conflict
 
 `gc` opens the conflict browser in the TUI and desktop app. It lists recorded
 bundles newest first, followed by sync conflicts. `Enter` inspects the selected
@@ -350,24 +245,19 @@ time and asks before discarding edits. With no unresolved conflicts, `gc`
 says so in the strip instead of opening an empty overlay. See
 [conflict resolution](storage.md) for the complete workflow.
 
-After a commit, recovery feedback advertises `u undo` only when the newest
-workspace-ledger entry is that exact transaction. A task relocation adds
-`Ctrl+O origin` only after its origin was recorded; `Alt+→` returns to the
-relocated task. When that line is wider than the terminal, the sentence is
-shortened with `…` and the keys stay whole at its end, so a narrow window never
-hides the way back.
+## Undo and return
 
-Undoing or redoing tells you where the work went. When the entry you took back
-was aimed at one task — a state change, a reorder, an indent, a row edit, a
-delete — and the restored task is drawn in the view you are standing in, the
-cursor moves onto it and the message ends in `Ctrl+O origin`, so one key returns
-to where you were. When the view does not draw it, nothing moves: your mode,
-scope, search, filters, and folds stay exactly as you left them and the message
-names the destination instead, as `now in Design (Done)`. An entry that was aimed
-at many tasks at once, or at a project, says neither and moves nothing, so a
-selection you are still holding survives its own undo. The correlation is
-session-only: after restarting `tt`, undo still restores the same work but never
-moves the cursor.
+After a commit, feedback offers `u undo` while that transaction is still the
+newest history entry. A relocation can also offer `Ctrl+O origin`; `Alt+→`
+returns to the relocated task. Recovery keys remain visible in narrow windows.
+
+Undo and redo follow a restored single task when it is visible, offering
+`Ctrl+O origin` to return. If the task is hidden, the message names its destination
+without changing the view. Bulk and project undo preserve the current selection
+and position. After restarting tt, undo still restores data but does not move
+the cursor.
+
+## Read cursor and context markers
 
 The Outliner marks its cursor with a bright column at the far left. A selected
 task also carries a subtle background band across the full row, so the eye can
@@ -390,19 +280,16 @@ count:
 ▾  Waiting › [release-catalog]  (212) ──────────────────────
 ```
 
-It is muted, closed with a rule, and never the cursor's: it is not a row, so
-`k` from the row under it scrolls the list rather than landing on it, and the
-real header is still where `gg` or `N` finds it. It costs one list row while it
-is drawn and none otherwise — a window that opens on a lane header, or one that
-has not scrolled, shows the header itself. The flat `/` result list and a view
-scoped to one project draw none.
+This pinned context row cannot be selected. Moving up scrolls toward the real
+header; `gg` and `N` can still reach it. It is absent when the real header is
+visible, in flat search results, and in single-project views.
 
-Every tag carries a color, and it is the same color everywhere a tag is rendered
-as itself: the `Tags:` line in Peek, and every row of
-the tag list the composer's expanded detail opens. Nothing needs configuring — a
-tag earns its color from its own name the first time you type it and keeps it
-for good, and `T` re-resolves the whole set for the new theme so a tag stays
-recognizably itself in dark and light.
+## Read tag colors
+
+Tags keep a color derived from their name, adjusted for the current theme.
+For example, `#billing` keeps the same chip color wherever tags are shown.
+Colors are a mnemonic: unrelated tags may share one, and color never determines
+a task's behavior.
 
 A row inside `#`, `f#`, or `F#` is an offer rather than a label, so it shows you
 the color it is about to paint. Most of those rows paint nothing else and simply
@@ -419,15 +306,9 @@ plain for the same reason: a context is a field, not a chip. A Select
 Project row is the one place a tag is named without its color, because its tags
 share the one secondary line that carries the counts beside them.
 
-Read a chip color as a mnemonic, not a legend. It tells you `#billing` is
-reliably that one color; it never tells you what that color means. Six chip
-colors cover an unlimited tag vocabulary, so two unrelated tags will sometimes
-share one, and nothing in `tt` ever decides anything from a chip color. A `bug`,
-`question`, `epic`, `story`, `feature`, or `idea` tag is a tag like any other:
-it wears its chip in Peek and the pickers, and the strongest one present — by
-the precedence `bug`, `question`, `epic`, `story`, `feature`, `idea` — also
-tints the task's state glyph. The task title stays ordinary text
-whatever a task is tagged, how urgent it is, or when it is due.
+The semantic tags `bug`, `question`, `epic`, `story`, `feature`, and `idea` also
+tint the task's state glyph, in that precedence order when several apply.
+The task title stays ordinary text.
 
 A task row shows no chips at all. Its columns go to the title, and Peek names
 the whole tag set on one `Tags:` line, in an order that does not depend on how

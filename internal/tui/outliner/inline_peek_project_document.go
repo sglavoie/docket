@@ -56,6 +56,7 @@ func inlinePeekProjectDocumentFor(opts inlinePeekProjectOptions) inlinePeekDocum
 
 	return inlinePeekDocument{
 		Body:        body,
+		sections:    sections,
 		Fingerprint: strings.Join(keys, "\x1f"),
 		indent:      opts.Indent,
 		width:       available,

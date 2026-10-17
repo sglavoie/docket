@@ -665,6 +665,7 @@ func searchProjectionMatchesWithin(
 	}
 
 	matches := make([]outlinerSearchMatch, 0)
+	terms := matcher.CompileTerms(query)
 	sourceIndex := 0
 	for _, project := range projects {
 		if project == nil || !predicates.AdmitsProject(project) {
@@ -683,7 +684,7 @@ func searchProjectionMatchesWithin(
 				sourceIndex++
 				continue
 			}
-			fieldRank, score, source, ok := scoreSearchProjectionTask(task, project, query, matcher)
+			fieldRank, score, source, ok := scoreSearchProjectionTask(task, project, query, terms)
 			if ok {
 				matches = append(matches, outlinerSearchMatch{
 					task: task, project: project, fieldRank: fieldRank,
@@ -715,52 +716,46 @@ func scoreSearchProjectionTask(
 	task *models.Task,
 	project *models.Project,
 	query string,
-	matcher fuzzy.Matcher,
+	matcher fuzzy.Terms,
 ) (int, int, MatchSource, bool) {
 	if query == "" {
 		return searchFieldRankTitle, 1, MatchSourceNone, true
 	}
 
-	checklistText := searchChecklistText(task)
-	commentText := searchCommentText(task)
-	tagText := strings.Join(task.Tags, " ")
-	attachmentText := searchAttachmentText(task)
-	projectText := searchProjectText(task, project)
-
-	if score := matcher.ScoreTerms(task.Title, query); score > 0 {
+	if score := matcher.Score(task.Title); score > 0 {
 		return searchFieldRankTitle, score, MatchSourceTitle, true
 	}
-	if score := matcher.ScoreTerms(task.Description, query); score > 0 {
+	if score := matcher.Score(task.Description); score > 0 {
 		return searchFieldRankDescription, score, MatchSourceDescription, true
 	}
-	if score := matcher.ScoreTerms(task.ResumeNote, query); score > 0 {
+	if score := matcher.Score(task.ResumeNote); score > 0 {
 		return searchFieldRankResume, score, MatchSourceResume, true
 	}
-	if score := matcher.ScoreTerms(checklistText, query); score > 0 {
+	if score := matcher.Score(searchChecklistText(task)); score > 0 {
 		return searchFieldRankChecklist, score, MatchSourceChecklist, true
 	}
-	if score := matcher.ScoreTerms(commentText, query); score > 0 {
+	if score := matcher.Score(searchCommentText(task)); score > 0 {
 		return searchFieldRankComment, score, MatchSourceComment, true
 	}
 	// Tags and context share a rank, so the better score wins and an exact tie
 	// falls to the declared field order: tags precede context.
-	tagScore := matcher.ScoreTerms(tagText, query)
-	contextScore := matcher.ScoreTerms(task.Context, query)
+	tagScore := matcher.Score(strings.Join(task.Tags, " "))
+	contextScore := matcher.Score(task.Context)
 	if tagScore > 0 || contextScore > 0 {
 		if tagScore >= contextScore {
 			return searchFieldRankTagContext, tagScore, MatchSourceTag, true
 		}
 		return searchFieldRankTagContext, contextScore, MatchSourceContext, true
 	}
-	if score := matcher.ScoreTerms(attachmentText, query); score > 0 {
+	if score := matcher.Score(searchAttachmentText(task)); score > 0 {
 		return searchFieldRankAttachment, score, MatchSourceAttachment, true
 	}
-	if score := matcher.ScoreTerms(projectText, query); score > 0 {
+	if score := matcher.Score(searchProjectText(task, project)); score > 0 {
 		return searchFieldRankProject, score, MatchSourceProject, true
 	}
 
 	details := searchMatchText(task, project, MatchSourceDetails)
-	if score := matcher.ScoreTerms(details, query); score > 0 {
+	if score := matcher.Score(details); score > 0 {
 		return searchFieldRankDetails, score, MatchSourceDetails, true
 	}
 	return searchFieldRankTitle, 0, MatchSourceNone, false

@@ -728,10 +728,10 @@ Row and Peek budget:
   so a header always has a document and an unresolved one has none.
   `projectPeekOwner` is that project identity, so All's several headers for one
   project share one window. Task Peek keeps its comment count.
-- Peek's window is one content-row offset, session-only, keyed by typed Peek
-  owner, document fingerprint, and terminal size; schedule date, cadence, and
-  last-review instant are part of that fingerprint. The schedule line shows a
-  future check-in even while the row stays quiet.
+- Peek remembers one session-only owner/query/section/content anchor. Unchanged
+  fingerprints and geometry reuse the offset; resize and edits remap the passage.
+  Replacing it resumes at the section start; removing its section or changing
+  query resets to top. Schedule values stay in the fingerprint.
   `peekOffsetForRow` is pure and `scrollPeek` the only writer, so no render moves
   the window. `Ctrl+D`/`Ctrl+U` travel `HalfPageRows`, half the body, and
   `Ctrl+F`/`Ctrl+B` travel `FullPageRows`, one row short of it so a turn carries a

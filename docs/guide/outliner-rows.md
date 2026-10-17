@@ -114,18 +114,14 @@ and the checklist, comment, and attachment counts. None of those is gone: `b`
 opens Peek on the same row and shows every one of them at full value, unclipped,
 rather than in a fixed-width badge the row had to buy out of the title.
 
-The trade is deliberate. A row is a list you scan; Peek is the one you read. A
-title that fits is worth more on every row than a badge that only matters on
-some, and a value shown whole one keypress away is worth more than an
-abbreviation shown always.
-
 A title too wide for its row is display-compacted before it is cut: a link
 draws as its host and first path segment, so
 `https://www.slack.com/archives/C024BE91L/p17…` reads `slack.com/archives/…`,
 and a path under your home directory draws as `~/…/<last segment>`. Only the
 row is compacted. Peek, the inline editor, the form, and exports keep the whole
-title, so a search highlight follows the compacted text on the row and the full
-one in Peek.
+title. If ordinary shortening would hide a search match, the row shows an excerpt
+around it, keeping an issue number or directory name visible. `…` marks omitted
+text; Peek keeps the whole title.
 
 A deferral is one of those, and it is read in two places depending on which way
 it points. Peek's schedule line reads `Defer: <date>` while it is still pending,
@@ -164,28 +160,15 @@ keyless Task menu entry, which `F10` opens, that schedules one rather than
 asking for a date there and then. It is a reminder, not a refrain: the first such
 commit in a session says it, and later ones stay quiet.
 
-Waiting by itself is quiet. The badge says where the task is, and that is the
-whole signal: no background tint, no age competing for the eye, and nothing that
-makes it read as more urgent than the work you could actually do something about
-today. Waiting says where a task is, not how loudly it is asking. A Waiting task
-still shouts when it earns it — a deadline that has passed, a check-in whose day
-has come, a priority you set — on exactly the same terms as any other task.
+Waiting and Doing ages appear in Peek. Their rows become prominent only when
+there is something to act on, such as a deadline, priority, or owed review.
 
 Due-date chips include the year when the date is outside the current year,
 including overdue dates. Today and Tomorrow keep their relative labels.
 
-Due dates and arrived check-ins both render as a filled chip rather than as colored
-text, so a date reads as one bounded object at the end of a row the title now
-owns. All three tiers are chips — overdue, today, and
-upcoming — and they share one hue that no section header uses, so a date is
-never mistaken for a section; urgency is carried by how saturated the fill is
-rather than by its hue. The two tiers that demand an answer — overdue and today
-— are also emphasized: they are bold, and their text is pushed away from the
-fill rather than toward it, so it is lighter than the chip in the dark theme and
-darker than it in the light one. An upcoming date stays quieter on both. Under
-the cursor the chip keeps its own colors like every other colored segment, and
-under `--no-color` the fill drops away, the bold survives, and the `⊡` glyph
-marks the date on its own.
+Due dates and arrived check-ins use filled chips. Today and overdue dates are
+bold; upcoming dates are quieter. In `--no-color`, bold and the `⊡` date marker
+remain, so urgency does not depend on color.
 
 A Doing task similarly reads `doing <age>` in Peek, measured from the moment it
 entered Doing rather than from its last touch. It reports how long work has
@@ -301,83 +284,59 @@ The choice lasts for the session, including after closing and reopening Peek;
 cursor movement never changes it.
 
 `b` toggles a session-only Peek in a pane docked below the list, whether the
-cursor is on a task or on a project header. Its compact height is a share of the terminal
-— about a quarter of the outline's own room, normally six to eight rows — counted off the list once when you open it, so a taller
-terminal reads more of a long detail at a time. What the pane never reads is the
-row you are on: a short task and a long one give the outline exactly the same
-room, and moving between them never shifts the rows under your cursor. When
-something else needs those rows — a capture panel raised over the pane on a short
-terminal — Peek gives them up and comes back to its full height when that panel
-closes, keeping your place in the outline; if the terminal is too short even for
-the divider, one line of detail, and the position row, the pane stays closed
-rather than being drawn cut off. On a row with no detail to show, a section
-heading or a checklist item, the pane stays where it is and reads `No detail to
-show for this row.`; `b` closes it again from any row. On a task, Peek
-follows navigation. The title, status, and resume note come first so compact
-Peek gives you a restart point before the supporting details. The status reads
-`Plan: Today · Status: Doing 4h · Priority: 1 high · Pinned · Review`
-with empty fields omitted (only Doing and Waiting carry an age, and it counts
-from the last state change rather than the last edit). The plan comes first and
-is the collection you committed the task to, Today or Next; the status is the
-lifecycle state it holds. They are two answers, not one, which is why a task
-planned for Today reads `Plan: Today · Status: Backlog` and a task in no
-collection has no plan half at all. The project slug and full parent chain follow, for example
-`Parent: Launch platform › User authentication`, then a schedule line reading
-`Due: Fri Aug 14 (in 4 days) · Defer: Sep 2 · Check-in: Thu Aug 20 (in 10 days) · Repeat: every 7d`
-with empty fields omitted too (a one-off schedule reads `Repeat: off`, and a
-check-in whose day has arrived adds `review owed` to its gloss, the word its row
-uses), the description, a `Checklist: 1/4 done` count,
-attachment names, a comment count, a `Dependencies: 1/3 ·` list, a `Dependents: 2 ·`
-list, the task's context, its tags, and last of all a history line reading
-`Created: 12d ago · Updated: 2d ago · Last review: 3d ago · Woke: 1d ago · Deferred: ×3`.
-The `Updated` age is left out when the task has not been touched since it was
-created, to the second, since it would only repeat `Created`.
-A URL or `path:line` attachment name is also a link (OSC 8) in a terminal that
-follows them — `Cmd`-click in Ghostty and tt.app — so a shortened
-`GH owner/repo#123` opens the issue, and every wrapped row of a long URL opens
-the whole URL. A stored file is opened from the `&` panel instead.
-The split is what the task still owes against what it has already spent: the
-schedule is the part you can act on, so it sits with the status line at the top,
-and the history is the part you consult afterwards, so it closes the document
-below everything else. Every one of those is shown whole. Long
-text wraps rather than being cut off, and nothing is dropped to make room for
-something else: Peek shows as many rows as its height allows and `Ctrl+D` and
-`Ctrl+U` scroll through the rest half a pane a press, while `Ctrl+F` and `Ctrl+B`
-move a whole page, one row short of the pane. Every move keeps at least one row
-of what you were reading, the two step sizes mix freely, and the last one stops
-at the end of the detail rather than running past it. A further row at the bottom
-reads
-`12 above · 7 below`, so you know how much is out of sight; a detail that fits
-leaves that row blank rather than changing the pane's height.
-The footer offers a key only when that direction can actually move, but all four
-belong to an open Peek: pressing one at the end of the detail does nothing rather
-than moving the outline underneath. `PgDn` and `PgUp` still move the outline,
-open Peek or not. Where you scrolled to is remembered while you stay on the same
-row and resets by itself when you move to another task or project, the detail
-changes, or the terminal is resized. Future check-ins appear here while the task
-row stays quiet; only an arrived, undeferred schedule adds `review today` or
-`review +Nd` to the row, and the review flag alone adds a bare `review`.
+cursor is on a task or on a project header. Compact Peek uses about a quarter
+of the outline's height, normally six to eight rows. Moving between short and
+long tasks keeps the list in place. Capture can temporarily shrink the dock;
+closing capture restores it. A section heading or checklist item displays
+`No detail to show for this row.`; `b` closes Peek from any row.
 
-On a project header — the group header a cross-project mode draws above each
-project's tasks, and the single header a project-scoped or focused view leads
-with — the same key opens the same pane over the project instead. A project
-with one task in a group draws no header there, so its row Peeks the task; fold
-the group with `h` to reach the header. It leads with the
-project's full name, then a task summary such as
-`Tasks: 12 · Doing 2 · Backlog 7 · Done 3` — every stored task, children and
-finished work included, counted by lifecycle section and the same whatever mode,
-search, or folds you are in; an empty project says `0 · no sections`, and one
-whose tasks have not been read yet says `Not loaded` rather than zero — then its
-description, its tags, and every
-comment it has, newest first, each under a `[2026-03-03 09:30] 6 days ago` stamp.
-A project with no comments yet says `No comments yet. Press C to add one.` rather than showing
-nothing, so the key always answers on a header. Everything is shown whole and the
-same four keys page through it, exactly as on a task. A project shown under
-several headers at once — All draws one per state section — is one detail behind
-all of them, so where you scrolled to under one is where you are under the next.
-A task's Peek keeps its comment count; `;` is the panel that reads the full
-conversation. During search, a matching comment can also appear in the short
-`Match:` excerpt below the title and parent chain.
+Task Peek leads with the full title, status, and resume note. For example,
+`Plan: Today · Status: Backlog · Priority: 1 high` distinguishes the planning
+collection from the lifecycle state. Doing and Waiting include time in that
+state. The project slug and parent chain follow, then the schedule, description,
+checklist progress, attachments, comment count, dependencies, context, tags,
+and history. Empty fields are omitted.
+
+| Detail | Example | Meaning |
+| --- | --- | --- |
+| Schedule | `Check-in: Thu Aug 20 (in 10 days) · Repeat: every 7d` | What is still owed; an arrived check-in adds `review owed` |
+| History | `Created: 12d ago · Updated: 2d ago · Woke: 1d ago` | Past activity; Updated is omitted when it repeats Created |
+| Checklist | `Checklist: 1/4 done` | Progress; open the task's checklist rows to edit items |
+| Search | `Match: comment · …` | An excerpt explaining a match outside the title |
+
+URL and `path:line` attachments are clickable in terminals that support OSC 8
+links (`Cmd`-click in Ghostty and tt.app). Wrapped links still open the complete
+address. Open stored files through the `&` panel.
+
+Long details wrap and remain accessible by scrolling:
+
+| Keys | Action |
+| --- | --- |
+| `Ctrl+D` / `Ctrl+U` | Scroll half a pane down / up |
+| `Ctrl+F` / `Ctrl+B` | Scroll a full page with one row of overlap |
+| `PgDn` / `PgUp` | Move the outline, even with Peek open |
+| `b` / `Esc` | Close Peek before unwinding navigation |
+
+The bottom line reports hidden content, such as `12 above · 7 below`.
+At either end, Peek's scrolling keys stop rather than moving the outline.
+The footer offers only directions that can move.
+
+Peek remembers the most recently scrolled task or project during the session.
+Moving away and back preserves that position unless you scrolled another owner.
+Resizing, changing the theme, appending text, and edits before an unchanged
+passage preserve the passage being read. Replacing that passage returns to the
+start of its section; removing the section or changing the search query returns
+to the top. A shorter document clamps the position to its end.
+
+On a project header, Peek shows the full project name, a task summary such as
+`Tasks: 12 · Doing 2 · Backlog 7 · Done 3`, description, tags, and every comment
+newest first. Counts include all stored tasks regardless of the current view.
+An empty project says `0 · no sections`; an unread project says `Not loaded`.
+With no comments, it says `No comments yet. Press C to add one.`
+
+All headers for the same project share its reading position. A group with one
+task has no project header: fold it with `h` to reach the header and its Peek.
+Task Peek shows a comment count; `;` opens the full conversation.
 
 Both reference lists are read-only wherever Peek is open, and
 both carry their own count. `Dependencies` names what this task stores, in the

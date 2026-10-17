@@ -5,7 +5,7 @@ import XCTest
 @testable import tt
 
 /// Opt-in pixel evidence from the production terminal renderer. Input consists
-/// only of fictional fixture frames exported by TestPolishVisualReviewFrames.
+/// only of fictional fixture frames exported by the Go visual-review tests.
 final class TerminalVisualReviewTests: XCTestCase {
     func testRenderReviewFramesInGhostty() throws {
         guard let directory = ProcessInfo.processInfo.environment["TT_TERMINAL_REVIEW_DIR"] else {
@@ -42,7 +42,8 @@ final class TerminalVisualReviewTests: XCTestCase {
         let cell = try XCTUnwrap(view).cellSize
         window.setContentSize(NSSize(width: cell.width * Double(size[0]), height: cell.height * Double(size[1])))
         window.title = file.deletingPathExtension().lastPathComponent
-        window.orderFront(nil)
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
         let surface = try XCTUnwrap(view?.surface)
         let grid = ghostty_surface_size(surface)
         XCTAssertEqual(Int(grid.columns), size[0])
@@ -54,8 +55,16 @@ final class TerminalVisualReviewTests: XCTestCase {
             RunLoop.current.run(until: Date().addingTimeInterval(0.02))
         }
         XCTAssertFalse(screenText(surface).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        // Let the GPU present the complete frame before taking the window image.
-        for _ in 0..<10 { ghostty.appTick(); RunLoop.current.run(until: Date().addingTimeInterval(0.02)) }
+        // A background test host can leave the Metal surface marked occluded
+        // even though the terminal has consumed the frame. Request a real draw
+        // before capture; readable terminal text alone is not pixel evidence.
+        ghostty_surface_set_occlusion(surface, true)
+        ghostty_surface_refresh(surface)
+        for _ in 0..<20 {
+            ghostty.appTick()
+            ghostty_surface_draw(surface)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.02))
+        }
         let output = file.deletingPathExtension().appendingPathExtension("png")
         let captured = expectation(description: "capture own review window")
         var screenshot: CGImage?
@@ -84,6 +93,17 @@ final class TerminalVisualReviewTests: XCTestCase {
         wait(for: [captured], timeout: 10)
         let cgImage = try XCTUnwrap(screenshot, "Own-window capture failed: \(String(describing: captureError))")
         let bitmap = NSBitmapImageRep(cgImage: cgImage)
+        // Ignore the native title and rounded edges: a blank terminal with a
+        // correctly rendered window title must not pass this review again.
+        var colors = Set<String>()
+        for y in stride(from: 80, to: bitmap.pixelsHigh - 24, by: 6) {
+            for x in stride(from: 24, to: bitmap.pixelsWide - 24, by: 6) {
+                if let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) {
+                    colors.insert("\(Int(color.redComponent * 255)),\(Int(color.greenComponent * 255)),\(Int(color.blueComponent * 255))")
+                }
+            }
+        }
+        XCTAssertGreaterThan(colors.count, 8, "Captured a blank terminal: \(file.lastPathComponent)")
         try XCTUnwrap(bitmap.representation(using: .png, properties: [:])).write(to: output)
         let image = NSImage(cgImage: cgImage, size: .zero)
         let attachment = XCTAttachment(image: image)

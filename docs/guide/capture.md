@@ -193,15 +193,11 @@ aliases such as `priority:`, `due:`, `state:`, and `proj:` are literal title
 text, not task attributes. Root capture
 defaults to Inbox. A new child defaults to Backlog under its selected parent.
 
-Capture opens as a panel across the bottom of the screen rather than a view that
-replaces what you were looking at. The outline stays above it, live and scrolled
-where you left it, so the row you were on — and its Peek dock, if one was open —
-is still readable while you type. The panel leads with a divider naming the act
-(`── Capture ─`), states the effective route on one row, and holds the input.
-A blank capture is exactly those three rows; the panel then grows a row at a
-time as the draft, the preview of what `Enter` would create, a suggestion list,
-or a refusal needs one, and shrinks again as they go away, up to a ceiling of
-fourteen rows and never below the four the outline keeps. The route row reads
+Capture opens below the outline and keeps the selected row visible. The panel
+grows with the draft, suggestions, and validation messages; closing it restores
+the outline and Peek.
+
+The route row reads
 `Project: Client Alpha · Status: Inbox`, and when
 the draft joins a planning collection it says so in its own half —
 `Project: Client Alpha · Plan: Today · Status: Backlog`, because `$today` is a
@@ -313,13 +309,9 @@ A refused edit or save preserves the draft. Saving the form, adopting children,
 and creating its attachments, comments, checklist and subtasks is one undoable
 transaction.
 
-The capture footer has two rows, and a narrow terminal cannot hold every entry
-in them. `Enter create` and the `Esc` entry always stay. The rest are kept in
-this order, whatever order they are drawn in: `Ctrl+N create another`,
-`Ctrl+E create & edit`, `? syntax`, `Ctrl+P project` when there is a second
-project to switch to, the `Ctrl+F` entry, `Alt+Enter new line`, and last
-`Ctrl+V paste`, which is the first to go because the terminal's own paste
-already works. A key the footer shed still answers.
+The footer keeps `Enter create` and the current `Esc` action visible. Other
+shortcuts may disappear in a narrow terminal but still work; `?` opens syntax
+help. The terminal's normal paste also works.
 
 The expanded form's due-date presets show the resolved weekday and calendar
 date beside each shortcut. `+30 days` adds exactly 30 calendar days, matching
@@ -346,14 +338,9 @@ problem; `Alt+P` visits the previous one. Both land on the reported token and wr
 problems, the panel names the current one (`Problem 2 of 4 · Line 9`) and puts its explanation first. Navigation
 changes no text and submits nothing. Press `Enter` to retry the save.
 
-Once the panel is at its ceiling — or on a short terminal, where the ceiling is
-whatever the outline can spare — it keeps its shape and shortens the preview
-instead of its chrome, and a refusal keeps its rows ahead of the draft's, so the
-message that says what went wrong is never the thing that scrolls away. Rather
-than show the first few labelled groups and silently drop the
-rest, it falls back to one wrapped run — `Panel capture · ◌ $inbox · !2 · #panel`
-— so nothing the parser recognized goes unnamed. At the 60×20 floor the outline
-keeps enough rows to show the row the cursor is on; capture never hides it.
+On a short terminal, errors and editing controls keep priority over the preview.
+The preview may combine its fields into a wrapped line, but keeps every parsed
+attribute. The selected outline row remains visible at the 60×20 minimum.
 
 The expanded composer keeps deadlines and check-ins separate on its Schedule
 tab. Due remains the deadline field and is the only date that can infer Today.

@@ -25,6 +25,8 @@ import (
 // handleKeyMsg processes only the inline controls owned by the Outliner. Root
 // operations are dispatched by OperationRegistry before the model sees them.
 func (m *OutlinerModel) HandleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	// A deliberate navigation or edit supersedes a transient message's window.
+	m.feedbackBudget = feedbackBudgetAnchor{}
 	key := msg.String()
 
 	// The relationship picker is read before everything else: it is a modal

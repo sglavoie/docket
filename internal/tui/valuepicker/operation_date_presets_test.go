@@ -2,6 +2,7 @@ package valuepicker
 
 import (
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/sglavoie/tt/internal/tui/listsurface"
@@ -145,20 +146,36 @@ func TestDatePresetSecondaryTextNamesTheDayAndOnlyClocksAnInstant(t *testing.T) 
 	}
 }
 
-func TestRelativeDateSelectedIDHighlightsEveryReproduciblePreset(t *testing.T) {
-	for _, deferred := range []bool{false, true} {
-		for _, preset := range OperationDatePresets(deferred, time.Now()) {
-			if preset.clear || preset.id == "1h" || preset.id == "4h" || preset.id == "8h" {
-				continue
+func TestRelativeDateSelectedIDHighlightsFirstReproduciblePreset(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		// Keep hour-based instants distinct from midnight and 09:00 presets in
+		// every local time zone, even though this test freezes time exactly.
+		afternoon := util.StartOfDay(time.Now()).AddDate(0, 0, 1).Add(15*time.Hour + 26*time.Minute)
+		time.Sleep(time.Until(afternoon))
+		// Cover every weekday with a frozen clock. Presets can be aliases:
+		// on Friday, tomorrow and weekend both mean Saturday. The first row
+		// owns the highlight because the stored date retains no preset ID.
+		for range 7 {
+			now := time.Now()
+			for _, deferred := range []bool{false, true} {
+				first := make(map[time.Time]listsurface.ListItemID)
+				for _, preset := range OperationDatePresets(deferred, now) {
+					if preset.clear || preset.id == "1h" || preset.id == "4h" || preset.id == "8h" {
+						continue
+					}
+					value := preset.value()
+					if _, seen := first[value]; !seen {
+						first[value] = DateListItemID(deferred, preset.id)
+					}
+					got, want := RelativeDateSelectedID(&value, deferred), first[value]
+					if len(got) != 1 || got[0] != want {
+						t.Errorf("%s deferred=%v preset %q highlighted %v, want [%s]", now.Weekday(), deferred, preset.id, got, want)
+					}
+				}
 			}
-			value := preset.value()
-			got := RelativeDateSelectedID(&value, deferred)
-			want := DateListItemID(deferred, preset.id)
-			if len(got) != 1 || got[0] != want {
-				t.Errorf("deferred=%v preset %q highlighted %v, want [%s]", deferred, preset.id, got, want)
-			}
+			time.Sleep(24 * time.Hour)
 		}
-	}
+	})
 }
 
 func TestRelativeDateSelectedIDRefusesToApproximateAnIntraDayDefer(t *testing.T) {

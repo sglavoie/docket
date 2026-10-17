@@ -208,8 +208,15 @@ func scoreFromStart(text, originalText, pattern []rune, startIdx int, wantPositi
 	}
 
 	windowLen := maxEnd - startIdx + 1
-	dpPrev := make([]int, windowLen)
-	dpCurr := make([]int, windowLen)
+	// Most interactive queries fit on the stack. Long patterns still use their
+	// full density window; this changes allocation, never matching semantics.
+	var scratch [192]int
+	var dpPrev, dpCurr []int
+	if windowLen <= len(scratch)/2 {
+		dpPrev, dpCurr = scratch[:windowLen], scratch[len(scratch)/2:len(scratch)/2+windowLen]
+	} else {
+		dpPrev, dpCurr = make([]int, windowLen), make([]int, windowLen)
+	}
 	dpPrev[0] = matchScore(originalText, startIdx, 0, -2)
 
 	var predecessors [][]int

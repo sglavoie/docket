@@ -118,6 +118,7 @@ func (m *OutlinerModel) setFocusRecoveryNotice(retainedDepth int) {
 // rebuildRows flattens the current task tree into the rows slice, applying the
 // active mode and filters, and clamps the cursor to stay within bounds.
 func (m *OutlinerModel) RebuildRows() {
+	m.feedbackBudget = feedbackBudgetAnchor{}
 	// The multi-select summary counts visible against hidden members, so it is a
 	// projection of the rows and not of the selection alone: a fold, a filter, or
 	// a mode change moves members across that line without touching the selection.

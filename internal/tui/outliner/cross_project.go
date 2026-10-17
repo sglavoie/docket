@@ -304,6 +304,8 @@ func (m *OutlinerModel) CrossProjectRebuildRows() {
 		return
 	}
 
+	m.feedbackBudget = feedbackBudgetAnchor{}
+
 	// Update guard state and consume the force flag.
 	m.Population.record(currentFingerprint, currentFocusDepth, taskCount)
 	// A day-boundary or defer-wake invalidation captures the cursor before the

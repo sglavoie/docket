@@ -382,11 +382,11 @@ func TestPeekScrollingIsRefusedWhereThereIsNothingToScroll(t *testing.T) {
 	}
 }
 
-// TestPeekScrollingResetsOnEveryAxisItIsKeyedTo is the session-only offset's
+// TestPeekScrollingPreservesReadingPosition is the session-only offset's
 // whole lifetime. The stored offset answers for one owner, one detail, one
 // reference population, and one layout; each of those changing falls back to the
 // top of the document, and nothing else does.
-func TestPeekScrollingResetsOnEveryAxisItIsKeyedTo(t *testing.T) {
+func TestPeekScrollingPreservesReadingPosition(t *testing.T) {
 	task := pagedPeekTask()
 	other := &models.Task{
 		ID: "other", ShortID: 2, Title: "Other", WorkflowState: models.StateBacklog,
@@ -426,19 +426,18 @@ func TestPeekScrollingResetsOnEveryAxisItIsKeyedTo(t *testing.T) {
 		t.Fatalf("returning to the task lost its offset: %d", got)
 	}
 
-	// Editing the detail resets: the offset pointed into a document that no longer
-	// exists, and the same row of a different document is not where the reader was.
+	// Appending to another section preserves the passage being read.
 	outliner.Rows[outliner.Cursor].Task.Description += " and a newly appended sentence"
-	if got := peekOffset(t, outliner); got != 0 {
-		t.Fatalf("an edited description kept offset %d", got)
+	if got := peekOffset(t, outliner); got != half {
+		t.Fatalf("an appended description lost the reading position: %d", got)
 	}
 	scroll()
 
-	// A resize resets for the same reason, since the wrap decides what a row is.
+	// Resizing preserves the content anchor through reflow.
 	outliner.SetSize(60, 24)
 	outliner.View()
-	if got := peekOffset(t, outliner); got != 0 {
-		t.Fatalf("a resize kept offset %d", got)
+	if got := peekOffset(t, outliner); got == 0 {
+		t.Fatal("a resize lost the reading position")
 	}
 }
 

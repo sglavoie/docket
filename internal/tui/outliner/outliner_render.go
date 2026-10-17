@@ -1515,11 +1515,27 @@ func (m *OutlinerModel) outlinerListRows(extraFooterLines int) int {
 	return max(rows-geometry.TotalRows(), 1)
 }
 
-// SetShellFrameMetrics records the footer budget the shell measured for this
-// frame. It is deliberately not SetSize: the scroll window survives it, so a
-// message arriving and expiring costs the list a row without re-anchoring what
-// it is showing.
+// feedbackBudgetAnchor holds a temporary footer loan only while the user and
+// projection remain at the position where it started. A rebuild, key, or
+// resize cancels the loan explicitly.
+type feedbackBudgetAnchor struct {
+	window hostBudgetAnchor
+	cursor int
+}
+
+// SetShellFrameMetrics repays a feedback row when the message expires. This
+// reverses the viewport's automatic clamp, without undoing intervening input.
 func (m *OutlinerModel) SetShellFrameMetrics(metrics chrome.ShellFrameMetrics) {
+	if m.ShellFrame.FeedbackRows == 0 && metrics.FeedbackRows > 0 && len(m.Rows) > 0 {
+		m.feedbackBudget = feedbackBudgetAnchor{window: m.captureHostBudgetAnchor(), cursor: m.Cursor}
+	}
+	if metrics.FeedbackRows == 0 {
+		held := m.feedbackBudget
+		if held.window.active && len(m.Rows) > 0 && held.cursor == m.Cursor {
+			m.seatWindowAtAnchor(held.window)
+		}
+		m.feedbackBudget = feedbackBudgetAnchor{}
+	}
 	m.ShellFrame = metrics
 }
 

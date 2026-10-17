@@ -2,6 +2,10 @@ package outliner
 
 import (
 	"slices"
+	"strings"
+	"unicode"
+
+	"github.com/charmbracelet/x/ansi"
 
 	"charm.land/lipgloss/v2"
 
@@ -342,13 +346,12 @@ func rowSupportsPeek(row OutlinerRow) bool {
 }
 
 // inlinePeekOffsetKey is what a remembered offset is remembered for. Peek's
-// scrolling is session-only and belongs to one owner's one document at one
-// layout, so the key carries all three: the typed owner, the width-independent
-// fingerprint of the detail it showed, and the terminal size that document was
-// laid out against.
+// scrolling is session-only. Matching content and geometry reuse a row offset;
+// changed content or geometry resolves the saved reading anchor instead.
 type inlinePeekOffsetKey struct {
 	owner       inlinePeekOwner
 	fingerprint string
+	query       string
 	width       int
 	height      int
 }
@@ -362,6 +365,7 @@ type inlinePeekOffsetKey struct {
 func (key inlinePeekOffsetKey) sameAs(other inlinePeekOffsetKey) bool {
 	return key.owner.sameAs(other.owner) &&
 		key.fingerprint == other.fingerprint &&
+		key.query == other.query &&
 		key.width == other.width &&
 		key.height == other.height
 }
@@ -373,6 +377,7 @@ func (key inlinePeekOffsetKey) sameAs(other inlinePeekOffsetKey) bool {
 type peekOffsetState struct {
 	key    inlinePeekOffsetKey
 	offset int
+	anchor peekReadingAnchor
 }
 
 // inlinePeekDocumentForRow builds the complete detail document for one row.
@@ -452,6 +457,7 @@ func (m *OutlinerModel) inlinePeekOffsetKey(row OutlinerRow, doc inlinePeekDocum
 	return inlinePeekOffsetKey{
 		owner:       m.peekOwnerForRow(row),
 		fingerprint: doc.Fingerprint,
+		query:       m.searchTextQuery(),
 		width:       m.Width(),
 		height:      m.Height(),
 	}
@@ -466,24 +472,17 @@ func (m *OutlinerModel) peekOwnerForRow(row OutlinerRow) inlinePeekOwner {
 	return taskPeekOwner(m.rowIdentity(row))
 }
 
-// peekOffsetForRow resolves the content row a row's Peek starts at. It is pure,
-// and that is the whole of how scrolling resets: the stored offset answers only
-// for the exact owner, detail, reference population, and layout it was written
-// against, so each of those changing falls back to the top without any writer
-// having to notice. The model width and height stand in for the layout, which is
-// the whole of it: the dock spans the frame, so nothing about where the cursor
-// sits or how many rows the list holds changes how the document wrapped.
-//
-// The window's height is deliberately not part of that key, and the clamp is why:
-// a status message arriving can shorten the dock by a row, and an offset that
-// reset every time one did would send the reader back to the top of a document
-// they were halfway through. The offset survives and narrows to the end of the
-// shorter window instead.
+// peekOffsetForRow is pure: unchanged frames use the stored row, while reflow
+// and edits resolve the saved content anchor in the current document. Only a
+// scroll writes the anchor, so temporary shrinking cannot erase reading position.
 func (m *OutlinerModel) peekOffsetForRow(row OutlinerRow, doc inlinePeekDocument) int {
-	if m == nil || !m.peek.key.sameAs(m.inlinePeekOffsetKey(row, doc)) {
+	if m == nil || !m.peek.key.owner.sameAs(m.peekOwnerForRow(row)) || m.peek.key.query != m.searchTextQuery() {
 		return 0
 	}
-	return doc.ClampOffset(m.peek.offset)
+	if m.peek.key.sameAs(m.inlinePeekOffsetKey(row, doc)) {
+		return doc.ClampOffset(m.peek.offset)
+	}
+	return doc.offsetForAnchor(m.peek.anchor)
 }
 
 // peekCursorDocument is the document the dock draws and the scrolling keys act
@@ -531,8 +530,8 @@ func (m *OutlinerModel) CanScrollPeek(direction int) bool {
 }
 
 // scrollPeek moves the window by a number of content rows and reports whether it
-// moved. It is the only writer of the offset; every other reset falls out of the
-// key. Both distances come through here, so a half page and a full page are one
+// moved. It is the only writer of the offset and content anchor. Both distances
+// come through here, so a half page and a full page are one
 // movement measured twice rather than two paging models.
 func (m *OutlinerModel) scrollPeek(rows int) bool {
 	row, doc, ok := m.peekCursorDocument()
@@ -544,7 +543,7 @@ func (m *OutlinerModel) scrollPeek(rows int) bool {
 	if next == current {
 		return false
 	}
-	m.peek = peekOffsetState{key: m.inlinePeekOffsetKey(row, doc), offset: next}
+	m.peek = peekOffsetState{key: m.inlinePeekOffsetKey(row, doc), offset: next, anchor: doc.readingAnchor(next)}
 	return true
 }
 
@@ -651,4 +650,88 @@ func (m *OutlinerModel) peekSearchExcerpt(row OutlinerRow) string {
 		return ""
 	}
 	return label + " · " + searchMatchExcerpt(text, positions)
+}
+
+// A reading position belongs to content within a named section, independent
+// of terminal cells, wrapping, palette, and the sections above it.
+type peekReadingAnchor struct {
+	section   string
+	text      []rune
+	character int
+}
+
+func peekReadingText(line string) []rune {
+	return []rune(strings.Map(func(r rune) rune {
+		if unicode.IsSpace(r) {
+			return -1
+		}
+		return r
+	}, ansi.Strip(line)))
+}
+
+func (doc inlinePeekDocument) readingAnchor(offset int) peekReadingAnchor {
+	for _, section := range doc.sections {
+		if offset >= len(section.lines) {
+			offset -= len(section.lines)
+			continue
+		}
+		name, _, _ := strings.Cut(section.key, ":")
+		anchor := peekReadingAnchor{section: name}
+		for i, line := range section.lines {
+			text := peekReadingText(line)
+			if i < offset {
+				anchor.character += len(text)
+			}
+			anchor.text = append(anchor.text, text...)
+		}
+		return anchor
+	}
+	return peekReadingAnchor{}
+}
+
+func (doc inlinePeekDocument) offsetForAnchor(anchor peekReadingAnchor) int {
+	start := 0
+	for _, section := range doc.sections {
+		name, _, _ := strings.Cut(section.key, ":")
+		if name != anchor.section {
+			start += len(section.lines)
+			continue
+		}
+		var text []rune
+		ends := make([]int, len(section.lines))
+		for i, line := range section.lines {
+			text = append(text, peekReadingText(line)...)
+			ends[i] = len(text)
+		}
+		character := relocatedPeekCharacter(anchor.text, text, anchor.character)
+		for i, end := range ends {
+			if character < end {
+				return doc.ClampOffset(start + i)
+			}
+		}
+		return doc.ClampOffset(start + max(len(section.lines)-1, 0))
+	}
+	// If the section itself was removed, there is no honest place to resume.
+	return 0
+}
+
+// Preserve a point in the unchanged prefix or suffix of an edit. This covers
+// appending text, inserting before the passage, and changes in other sections.
+// If the passage itself was replaced, resume at the start of that section.
+func relocatedPeekCharacter(before, after []rune, character int) int {
+	prefix := 0
+	for prefix < min(len(before), len(after)) && before[prefix] == after[prefix] {
+		prefix++
+	}
+	if character < prefix || prefix == len(before) {
+		return character
+	}
+	suffix := 0
+	for suffix < min(len(before), len(after))-prefix && before[len(before)-1-suffix] == after[len(after)-1-suffix] {
+		suffix++
+	}
+	if character >= len(before)-suffix {
+		return max(character+len(after)-len(before), 0)
+	}
+	return 0
 }

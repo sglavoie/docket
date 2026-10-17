@@ -8,6 +8,9 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
+
+	"github.com/rivo/uniseg"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -599,13 +602,23 @@ func (m *OutlinerModel) treeConnectorStyle(row OutlinerRow) lipgloss.Style {
 func (m *OutlinerModel) renderTaskTitle(row OutlinerRow, titleStyle lipgloss.Style, rowWidth int, segments taskRowSegments) string {
 	availableWidth := segments.titleWidth(rowWidth)
 	title := row.Task.Title
+	highlight, caseSensitive := m.titleHighlightQuery()
 	if lipgloss.Width(title) > availableWidth {
 		title = m.compactTitleForRow(title)
 	}
 	title = textfit.TruncateToVisualWidth(title, availableWidth)
-	highlight, caseSensitive := m.titleHighlightQuery()
 	if highlight == "" {
 		return titleStyle.Render(title)
+	}
+	// Keep the familiar title opening when it still explains the match. Only
+	// move the excerpt when ordinary shortening would hide a query term.
+	matcher := fuzzy.NewMatcher(caseSensitive)
+	if title != row.Task.Title && matcher.ScoreTerms(title, highlight) == 0 {
+		_, positions := matcher.ScoreTermsWithPositions(row.Task.Title, highlight)
+		if len(positions) > 0 {
+			excerpt, kept := titleMatchExcerpt(row.Task.Title, positions, availableWidth)
+			return textfit.HighlightText(excerpt, kept, titleStyle)
+		}
 	}
 	positions := query.SearchSubstringPositions(title, highlight, caseSensitive)
 	// A title the matcher admitted as a subsequence holds no contiguous run to
@@ -861,29 +874,118 @@ func abbreviateProjectMiddle(name string, width, head int) string {
 }
 
 type projectLabelCache struct {
-	key    string
+	width  int
+	names  []string
 	labels map[string]string
+	// A scoped preview can repeatedly render one project outside the population.
+	standaloneName  string
+	standaloneLabel string
+}
+
+func projectLabelName(project *models.Project) string {
+	if project == nil {
+		return ""
+	}
+	if project.Slug != "" {
+		return project.Slug
+	}
+	return project.Name
 }
 
 func (m *OutlinerModel) abbreviatedProjectSlug(slug string, width int) string {
-	names := []string{slug}
-	for _, project := range m.Population.Projects {
-		if project == nil {
-			continue
+	// Compare the population without allocating or sorting for every task row.
+	// Names, rather than project pointers, also detect an in-place rename.
+	cache := &m.projectLabels
+	valid := cache.width == width && len(cache.names) == len(m.Population.Projects)
+	if valid {
+		for i, project := range m.Population.Projects {
+			if cache.names[i] != projectLabelName(project) {
+				valid = false
+				break
+			}
 		}
-		name := project.Slug
-		if name == "" {
-			name = project.Name
+	}
+	if !valid || cache.labels == nil {
+		names := make([]string, len(m.Population.Projects))
+		for i, project := range m.Population.Projects {
+			names[i] = projectLabelName(project)
 		}
-		names = append(names, name)
+		*cache = projectLabelCache{width: width, names: names, labels: projectAbbreviations(names, width)}
 	}
-	slices.Sort(names)
-	names = slices.Compact(names)
-	// Include the resolved slug in the cache key: standalone project previews
-	// need not have a loaded cross-project population.
-	key := fmt.Sprint(width) + "\x00" + strings.Join(names, "\x00")
-	if m.projectLabels.key != key {
-		m.projectLabels = projectLabelCache{key: key, labels: projectAbbreviations(names, width)}
+	if label, ok := cache.labels[slug]; ok {
+		return label
 	}
-	return m.projectLabels.labels[slug]
+	// Standalone previews may name an unloaded project. It must not change
+	// labels for the loaded population on the following render.
+	if cache.standaloneName != slug {
+		cache.standaloneName = slug
+		cache.standaloneLabel = projectAbbreviations(append(slices.Clone(cache.names), slug), width)[slug]
+	}
+	return cache.standaloneLabel
+}
+
+// titleMatchExcerpt keeps the matching part of a long title, with explicit
+// elision and original rune positions. Boundaries are whole graphemes, so a
+// match inside an emoji or combining sequence never detaches its other runes.
+func titleMatchExcerpt(title string, positions []int, width int) (string, []int) {
+	if len(positions) == 0 || width <= 0 {
+		return "", nil
+	}
+	var clusters []string
+	cells, runes := []int{0}, []int{0}
+	g := uniseg.NewGraphemes(title)
+	for g.Next() {
+		cluster := g.Str()
+		clusters = append(clusters, cluster)
+		cells = append(cells, cells[len(cells)-1]+lipgloss.Width(cluster))
+		runes = append(runes, runes[len(runes)-1]+utf8.RuneCountInString(cluster))
+	}
+	first, last := 0, len(clusters)
+	for first+1 < len(runes) && runes[first+1] <= positions[0] {
+		first++
+	}
+	for last > first+1 && runes[last-1] > positions[len(positions)-1] {
+		last--
+	}
+	cost := func(start, end int) int {
+		n := cells[end] - cells[start]
+		if start > 0 {
+			n++
+		}
+		if end < len(clusters) {
+			n++
+		}
+		return n
+	}
+	start, end := first, last
+	for end > start+1 && cost(start, end) > width {
+		end--
+	}
+	if cost(start, end) > width {
+		// At an exceptionally small title budget even the elision markers may
+		// not fit. Show the matched grapheme if possible, still within budget.
+		part := textfit.TruncateToVisualWidth(clusters[start], width)
+		return part, nil
+	}
+	for start > 0 && cells[first]-cells[start-1] <= 8 && cost(start-1, end) <= width {
+		start--
+	}
+	for end < len(clusters) && cost(start, end+1) <= width {
+		end++
+	}
+	prefix := ""
+	if start > 0 {
+		prefix = "…"
+	}
+	excerpt := prefix + strings.Join(clusters[start:end], "")
+	if end < len(clusters) {
+		excerpt += "…"
+	}
+	var kept []int
+	for _, position := range positions {
+		if position >= runes[start] && position < runes[end] {
+			kept = append(kept, position-runes[start]+utf8.RuneCountInString(prefix))
+		}
+	}
+	return excerpt, kept
 }

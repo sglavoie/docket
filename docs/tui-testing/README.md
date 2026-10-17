@@ -364,6 +364,10 @@ the same screens passed through the terminal monochrome profile. Scenario
 `wait` advances timer delivery only; exact calendar-boundary assertions use an
 explicit `OutlinerModeInput.Now` after reloading stored task documents.
 
+For ordered feedback, completion, Peek-resize, and capture frames, see the
+[polish transition review](polish-transition-review.md). It includes native
+Ghostty capture and an offline replay with frame stepping.
+
 Release compatibility requires actual old-binary execution:
 `env TT_OLD_BINARY_REF=08c0cb08fec10154e6d2c9455e32d4c4ffa5f72d just cross-machine`.
 That schema-19 binary validates the legacy Waiting seed before the new binary
