@@ -131,8 +131,8 @@ func TestShellFrameMetricsMatchTheFooterThatGetsDrawn(t *testing.T) {
 
 // TestShellFrameBudgetIsChargedExactlyOnce is the double-reservation contract.
 // A footer taller than the baseline costs the content area exactly that
-// difference: charged twice and the frame ends in a blank band above the footer,
-// charged not at all and the footer is clipped off the bottom of the terminal.
+// difference: charged twice and the frame gains a blank band; charged not at
+// all and the frame clips its content.
 //
 // It is read at every size in the matrix with capture open over the outline,
 // which is the deepest live stack — a bounded panel, its host underneath, and a
@@ -154,17 +154,28 @@ func TestShellFrameBudgetIsChargedExactlyOnce(t *testing.T) {
 				t.Fatalf("the composed frame is %d rows in a %d-row terminal", got, size[1])
 			}
 
-			// The footer is the frame's last rows, in the same order and with the
-			// same text. That is the whole claim: nothing was inserted below it and
-			// nothing of it was cut off.
+			// Capture keeps the terminal's last rows. Its complete shell footer
+			// stands directly above the panel, without a second reservation or
+			// any clipped feedback or controls.
 			frame := shellFrameFooterLines(content)
 			footer := shellFrameFooterLines(app.renderStatusBar())
-			tail := frame[len(frame)-len(footer):]
+			panelStart := -1
+			for index, line := range frame {
+				if strings.HasPrefix(line, "── Capture ─") {
+					panelStart = index
+					break
+				}
+			}
+			footerStart := panelStart - len(footer)
+			if footerStart < 0 {
+				t.Fatalf("no room for the footer above capture:\n%s", content)
+			}
+			footerRows := frame[footerStart:panelStart]
 			for index := range footer {
-				if tail[index] != footer[index] {
-					t.Fatalf("frame row %d is %q, want the footer's %q\nframe tail:\n%s\nfooter:\n%s",
-						len(frame)-len(footer)+index, tail[index], footer[index],
-						strings.Join(tail, "\n"), strings.Join(footer, "\n"))
+				if footerRows[index] != footer[index] {
+					t.Fatalf("frame row %d is %q, want the footer's %q\nframe:\n%s\nfooter:\n%s",
+						footerStart+index, footerRows[index], footer[index],
+						strings.Join(frame, "\n"), strings.Join(footer, "\n"))
 				}
 			}
 

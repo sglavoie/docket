@@ -40,15 +40,22 @@ func TestCaptureEditorStaysAtTerminalBottom(t *testing.T) {
 				}
 			}
 			setDraft := func(value string) {
-				composer.Input.SetValue(value)
-				composer.Input.MoveToEnd()
-				composer.UpdatePreview()
-				composer.RefreshAutocomplete()
+				composer.Input.Reset()
+				composer.Update(tea.PasteMsg{Content: value})
 			}
 
 			check("Type a task title…", "Enter create")
 			setDraft("Anchor task")
 			check("Anchor task", "Task     Anchor task")
+			for _, r := range " #re" {
+				app.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
+				check(strings.TrimSpace(composer.Input.Value()), "Project: Test Project")
+			}
+			if !composer.IsAutocompleteActive() {
+				t.Fatal("typing a tag did not open completions")
+			}
+			app.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+			check("Anchor task #release", "Tags     #release")
 			setDraft("Anchor task !2 #release ")
 			check("Anchor task !2 #release", "Tags     #release")
 			setDraft("Anchor task !2 #release #re")
@@ -81,6 +88,14 @@ func TestCaptureEditorStaysAtTerminalBottom(t *testing.T) {
 
 			setDraft(strings.Repeat("Earlier task\n", 30) + "Final task $")
 			check("Final task $", "$inbox")
+			app.feedback.message = "Task saved"
+			check("Final task $", "Task saved")
+			app.feedback.message = ""
+			for _, resized := range [][2]int{{60, 20}, {100, 35}} {
+				size = resized
+				app.handleWindowSize(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
+				check("Final task $", "$inbox")
+			}
 			composer.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 			composer.Errors = []grammar.LineError{{Line: 31, Message: "Choose a destination"}}
 			check("Final task $", "Choose a destination")

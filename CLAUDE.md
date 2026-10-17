@@ -423,19 +423,17 @@ and paints its tasks with `RenderOutlinerPreviewTaskRow` from the
 tally-retained tree over a cache `rebuildProjectSurface` invalidates.
 
 Capture is a bounded panel over a live presentation, not a fullscreen view.
-`route.HostedPanelView` is the one seam a view asks for that through and
-`chrome.HostedPanelLayout` the whole of what it says: `HostRows` is the content
-height left to whatever is underneath and `HostDrawn` whether that presentation
-is painted this frame, so the zero value is a view owning the area outright and
-one view declares both presentations without a second route. `HostRows` is the
+`route.HostedPanelView` declares `chrome.HostedPanelLayout`: `HostRows` is the
+host's content height, `HostDrawn` whether it is painted. Zero owns the area
+outright; both presentations use one route. `HostRows` is the
 frame less what the panel's content asks for, bounded by the panel's ceiling and
 the host's floor, and the rows it takes are a loan, not a resize. Every demand
 term reads settled state — the stored draft wrapped at the input's width, the
 recorded refusals, the autocomplete rows, the stored preview through
 `PreviewBlockRows` — so measuring re-parses nothing and no height decides one;
 the footer excess rides the share, not the drawn panel, and a presentation
-replacing a pane inherits its demand and never measures as nothing, since a
-shrunken share costs the host its window. `route.HostedBudgetView` is that
+replacing a pane inherits its demand and never measures as nothing.
+`route.HostedBudgetView` is that
 seam: `SetHostedBudget` for every budget a panel leaves a host,
 `ReleaseHostedBudget` once at the close, and a plain `SetSize` for a host
 implementing neither. The outline keeps the window it was reading across both,
@@ -444,25 +442,22 @@ offset it held, and writes `ViewScrollOffset` alone, so the one window authority
 still decides what keeping the cursor visible costs. `SetSize` still drops that
 window, so a terminal resize ends a loan rather than repaying one, and the
 syntax guide flips `HostDrawn` instead of moving it. `syncHostedPanelHost` resizes
-that host once per `Update` and never per frame, and `ComposeHostedPanel` pins
-the panel to the bottom, spending the rows it declined on blank lines when no
-host resolves, since a bottom panel that floated to the first row reads as a
-full view. Capture declares `HostedPanelLayout.FooterAbove`, so shell feedback
-and controls stand between host and panel; changes to the footer's height never
-move the editor. The panel appends its editor after all details and padding:
-previews, errors, syntax help, and completions grow above the draft. Multiline
-input grows upward and scrolls within its budget, reserving visible completions
-even when the draft fills the panel. The panel draws `chrome.RenderLabeledDivider` and no title, so the
+that host once per `Update`, never per frame. `ComposeHostedPanel` pins the panel
+to the bottom, padding with blank rows when no host resolves.
+`HostedPanelLayout.FooterAbove` puts shell feedback and controls above capture;
+the editor stays at the terminal's bottom. All details and padding precede it.
+Multiline input grows upward and scrolls, reserving visible completions.
+The panel draws `chrome.RenderLabeledDivider` and no title, so the
 workspace pulse stays the host's and appears exactly once. That divider names
 the act and the footer repeats nothing: the destination is the route summary's,
 the row `Ctrl+P` rewrites, so only a value that row cannot carry — a child
 capture's parent — reaches the label. The pane repeats it neither: `To:` counts
 are drawn only for a batch spanning projects, through `batchSpansProjects` in
 measure and render alike, and `HostRoute` drops the preview's Route group
-where that row says it whole: not Mixed, not deferred. The discard question stays the shell's
-confirm dialog, and a second copy underneath would cost the preview a row. A bounded preview elides nothing: `ComposeBoundedPreviewBlock`
-falls to the compact wrapped run rather than clipping the grouped one, because a
-truncated group list reads as a complete one. `Ctrl+F` is the composer's other
+where that row says it whole: not Mixed, not deferred. The discard question stays
+the shell's confirm dialog, without a second copy. A bounded preview elides
+nothing: `ComposeBoundedPreviewBlock` falls to the compact wrapped run rather
+than clipping the grouped one. `Ctrl+F` is the composer's other
 presentation and declares no layout, so the expanded form owns the whole content
 area.
 
