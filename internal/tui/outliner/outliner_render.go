@@ -531,7 +531,7 @@ func (m *OutlinerModel) noteBodyExcerpt(entry outlinerSearchNoteMatch, width int
 	return searchMatchExcerptWithin(body, positions, width)
 }
 
-// renderOutlinerNoteRow draws one row of the search projection's notes tier. It
+// renderOutlinerNoteRow draws a project note or a ranked note search result. It
 // keeps the task row's rhythm — the same cursor bar, the same badge columns, the
 // same muted match cue in the same place — without borrowing task furniture: a
 // note has no state, priority, or due date, so those columns carry the note

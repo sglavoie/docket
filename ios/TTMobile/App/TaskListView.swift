@@ -78,6 +78,8 @@ struct TaskListView: View {
     let source: ListSource
 
     @State private var rows: [TaskRow] = []
+    @State private var projectNotes: [NoteRecord] = []
+    @State private var notesFailure: String?
     @State private var projectNames: [String: String] = [:]
     @State private var diagnostics: [QueryDiagnostic] = []
     @State private var state: ScreenState? = .loading("Loading…")
@@ -90,6 +92,7 @@ struct TaskListView: View {
     @State private var actionFailure: String?
     @State private var acting = false
     @State private var editingRow: TaskRow?
+    @State private var openedNote: NoteRecord?
     @State private var managingProject = false
     @Environment(\.dismiss) private var dismiss
 
@@ -168,6 +171,9 @@ struct TaskListView: View {
             .sheet(item: $editingRow) { row in
                 TaskEditSheet(workspace: workspace, task: row.item.task)
             }
+            .navigationDestination(item: $openedNote) { note in
+                NoteEditorView(workspace: workspace, location: note.location, filename: note.filename)
+            }
             .refreshable { await workspace.refresh() }
             .task(id: LoadKey(generation: workspace.generation, search: search, filter: filter, sort: sort)) {
                 if !search.isEmpty {
@@ -184,6 +190,11 @@ struct TaskListView: View {
     /// and the engine has not imported yet.
     private var showsPendingCaptures: Bool {
         source == .inbox && !workspace.captures.pending.isEmpty
+    }
+
+    private var showsProjectNotes: Bool {
+        source.projectID != nil && source.population != "+archived"
+            && search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !filter.isActive
     }
 
     @ViewBuilder
@@ -229,6 +240,32 @@ struct TaskListView: View {
                     }
                 }
                 .onMove(perform: moveRows)
+                if showsProjectNotes, !projectNotes.isEmpty || notesFailure != nil {
+                    Section("Notes") {
+                        ForEach(projectNotes) { note in
+                            // An explicit destination keeps the task List's
+                            // selection and the note's navigation independent.
+                            Button { openedNote = note } label: {
+                                HStack {
+                                    NoteRowLabel(note: note, showsOwner: false)
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.tertiary)
+                                        .accessibilityHidden(true)
+                                }
+                            }
+                            .foregroundStyle(.primary)
+                            .accessibilityIdentifier("note.\(note.title)")
+                            .disabled(selecting)
+                        }
+                        if let notesFailure {
+                            Label(notesFailure, systemImage: "exclamationmark.triangle")
+                                .foregroundStyle(.orange)
+                                .accessibilityIdentifier("list.notes.failure")
+                        }
+                    }
+                }
             }
             .accessibilityIdentifier("list.tasks")
             // The last row scrolls clear of the floating capture button.
@@ -459,12 +496,23 @@ struct TaskListView: View {
                     names[project.id] = project.name
                 }
             }
+            var loadedNotes: [NoteRecord] = []
+            var noteError: String?
+            if showsProjectNotes, let projectID = source.projectID {
+                do {
+                    loadedNotes = try await workspace.engine.notes(at: .project(projectID))
+                } catch {
+                    noteError = "Notes could not load: \(WorkspaceModel.describe(error))"
+                }
+            }
             if Task.isCancelled { return }
+            projectNotes = loadedNotes
+            notesFailure = noteError
             projectNames = names
             diagnostics = result.diagnostics
             let reordered = (sort.field != nil && sort.field != "manual") || filter.isActive || !trimmed.isEmpty
             rows = source.outline && !reordered ? Self.outline(result.items) : result.items.map { TaskRow(item: $0, depth: 0) }
-            if rows.isEmpty, diagnostics.isEmpty {
+            if rows.isEmpty, diagnostics.isEmpty, projectNotes.isEmpty, notesFailure == nil {
                 state = trimmed.isEmpty && !filter.isActive
                     ? .empty(title: "No tasks", message: source.emptyMessage)
                     : .empty(title: "No matches", message: "No task matches this search or filter.")

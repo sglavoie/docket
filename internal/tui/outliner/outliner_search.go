@@ -101,7 +101,8 @@ type searchState struct {
 	// The notes tier. noteIndex is the shell-injected accessor over the
 	// workspace-wide note index the tier ranks, so the Outliner never learns where
 	// notes live or when they are read; a nil accessor means the tier is simply
-	// absent. noteMatches is what the tier's rows are rendered from, keyed the way
+	// absent. Project browsing uses the same index and note-row route.
+	// noteMatches holds the current projection's note payloads, keyed the way
 	// the Notes manager keys its own match map and held beside the rows rather than
 	// on them because a note row's render payload is wide and outlinerRow is copied
 	// for every row of every rebuild. noteCursorReseat is the note the cursor rested

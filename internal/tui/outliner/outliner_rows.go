@@ -153,6 +153,7 @@ func (m *OutlinerModel) RebuildRows() {
 	m.validateFocusStack()
 
 	m.buildCanonicalModeRows()
+	m.reseatNoteCursorAfterRebuild()
 
 	if openAt != nil {
 		m.revealTask(openAt)
@@ -532,7 +533,7 @@ type OutlinerRow struct {
 	IsNextSection          bool                      // True for the synthetic Next header and every explicit Next task row beneath it
 	PromotedTag            string                    // Canonical promoted workflow tag for synthetic header/project/task rows
 	SectionName            string                    // Section name for header rows
-	SectionCount           int                       // Number of tasks in this section
+	SectionCount           int                       // Number of entries in this section
 	SectionLiftedCount     int                       // Members drawn in a promoted lane above instead (All only)
 	StateGroup             models.WorkflowStateGroup // Canonical state group for workflow headers; empty for unrelated/computed headers
 	CollapseKey            string                    // Stable identity for shared or project-owned grouping headers
@@ -544,7 +545,7 @@ type OutlinerRow struct {
 	ChecklistIndex         int                       // Position of the item inside the owner task's checklist
 	ChecklistDone          bool                      // Ticked state of the item this row names
 	MatchSource            MatchSource               // Field that produced this search hit; matchSourceNone on every ordinary row
-	IsNoteRow              bool                      // True for one note from the search projection's notes tier
+	IsNoteRow              bool                      // True for a project note or a note search result
 	NoteRow                notes.NoteRowIdentity     // Workspace identity of the note an IsNoteRow row names
 }
 

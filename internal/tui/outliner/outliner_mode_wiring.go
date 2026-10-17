@@ -83,8 +83,7 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 		m.finalizeModeRows()
 		return
 	}
-	// Only the flat list has a notes tier, so the payloads it retained die with
-	// it rather than outliving the rows that named them.
+	// Drop the previous projection's payloads before building its notes anew.
 	m.Search.clearNoteMatches()
 
 	mode, ok := chrome.OutlinerModeByID(m.PrimaryMode)
@@ -122,6 +121,7 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 	}
 	m.separatePinnedSection(pinnedBoundary)
 	m.attributeNarrowingMatches(narrowing)
+	m.appendProjectNotesSection()
 	m.countDrawnSearchRows()
 	m.finalizeModeRows()
 }

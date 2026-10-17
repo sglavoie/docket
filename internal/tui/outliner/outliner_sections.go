@@ -7,6 +7,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/notes"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -655,4 +657,49 @@ func (m *OutlinerModel) appendReviewSection(section reviewSectionBuild) {
 			return reviewProjectSectionCollapsePrefix + projectID
 		},
 	)
+}
+
+const projectNotesSectionKey = "_synthetic:notes"
+
+// Project notes belong to the project's browsing view, outside its task lanes.
+// Search keeps its own ranked note results; task filters, lenses and subtree
+// focus must not acquire unrelated notes as apparent matches.
+func (m *OutlinerModel) appendProjectNotesSection() {
+	project := m.FocusedProjectHeaderOwner()
+	if project == nil || project.Archived || m.HasSearchProjection() || m.HasActiveLens() ||
+		len(m.Focus.Stack) != 0 || len(m.Focus.CrossStack) != 0 ||
+		query.HasActiveCommonFilters(&m.Filter.CommonFilterState) ||
+		!m.sectionZoomAdmits(projectNotesSectionKey) {
+		return
+	}
+	rows := m.noteSearchRowsInScope()
+	if len(rows) == 0 {
+		return
+	}
+	// Scope filtering owns this slice. Match the Notes surface's newest-first
+	// order with a stable filename tie-break, without reordering the shared index.
+	slices.SortFunc(rows, func(a, b notes.LocatedNoteRow) int {
+		if order := b.Note.ModifiedAt.Compare(a.Note.ModifiedAt); order != 0 {
+			return order
+		}
+		return strings.Compare(a.Note.Filename, b.Note.Filename)
+	})
+	group := OutlinerRowGroup{SectionKey: projectNotesSectionKey}
+	m.Rows = append(m.Rows, OutlinerRow{
+		IsSectionHeader: true,
+		SectionName:     "Notes",
+		SectionCount:    len(rows),
+		CollapseKey:     projectNotesSectionKey,
+		Group:           group,
+	})
+	if m.sectionCollapsed(projectNotesSectionKey) {
+		return
+	}
+	payloads := make(map[notes.NoteRowIdentity]outlinerSearchNoteMatch, len(rows))
+	for _, row := range rows {
+		identity := row.Identity()
+		payloads[identity] = outlinerSearchNoteMatch{row: row}
+		m.Rows = append(m.Rows, OutlinerRow{IsNoteRow: true, NoteRow: identity, Group: group})
+	}
+	m.Search.setNoteMatches(payloads)
 }

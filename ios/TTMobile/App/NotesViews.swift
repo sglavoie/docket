@@ -17,21 +17,7 @@ struct NotesListView: View {
                 ScreenStateView(state: state)
             } else {
                 List(notes) { note in
-                    NavigationLink(value: Route.note(note.location, filename: note.filename)) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(note.title)
-                            if !note.excerpt.isEmpty {
-                                Text(note.excerpt)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                            }
-                            Text(note.location.isGlobal ? "Global" : note.projectName ?? "Project")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .accessibilityIdentifier("note.\(note.title)")
+                    NoteListRow(note: note)
                 }
             }
         }
@@ -54,6 +40,42 @@ struct NotesListView: View {
             state = notes.isEmpty ? .empty(title: "No notes", message: "Notes written here or on the desktop appear here.") : nil
         } catch {
             state = .error(title: "Notes could not load", message: WorkspaceModel.describe(error))
+        }
+    }
+}
+
+/// A note link in the Notes tab or a project notes collection.
+struct NoteListRow: View {
+    let note: NoteRecord
+    var showsOwner = true
+
+    var body: some View {
+        NavigationLink(value: Route.note(note.location, filename: note.filename)) {
+            NoteRowLabel(note: note, showsOwner: showsOwner)
+        }
+        .accessibilityIdentifier("note.\(note.title)")
+    }
+}
+
+/// Shared presentation for note collections and a project's task list.
+struct NoteRowLabel: View {
+    let note: NoteRecord
+    var showsOwner = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(note.title)
+            if !note.excerpt.isEmpty {
+                Text(note.excerpt)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            if showsOwner {
+                Text(note.location.isGlobal ? "Global" : note.projectName ?? "Project")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 }

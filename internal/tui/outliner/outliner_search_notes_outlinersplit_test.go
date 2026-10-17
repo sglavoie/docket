@@ -11,14 +11,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
-// noteTierOutliner builds a cross-project Outliner whose note index is the
-// supplied snapshot, which is what the shell injects in production.
-func noteTierOutliner(rows []notes.LocatedNoteRow, projects ...*models.Project) *OutlinerModel {
-	outliner := scopeTestOutliner(projects...)
-	outliner.SetNoteSearchIndex(func() []notes.LocatedNoteRow { return rows })
-	return outliner
-}
-
 func noteTierIdentities(matches []outlinerSearchNoteMatch) []notes.NoteRowIdentity {
 	identities := make([]notes.NoteRowIdentity, len(matches))
 	for i, match := range matches {

@@ -358,6 +358,38 @@ final class RichContentUITests: XCTestCase {
         }
     }
 
+    func testProjectListNotesOpenAndRefresh() throws {
+        let app = launch()
+        XCTAssertFalse(app.buttons["note.Release runbook"].exists)
+        tab(app, "Browse")
+        press(app, "browse.project.atlas-launch")
+        press(app, "note.Release runbook")
+        eventually("the project list note opened") { !self.value(app, "note.body").isEmpty }
+        replace(app, "note.title", with: "Updated runbook")
+        app.buttons["note.save"].firstMatch.tap()
+        eventually("the note edit was written") {
+            self.note(titled: "Updated runbook", under: "projects/atlas-launch/notes") != nil
+        }
+        app.navigationBars["Note"].buttons["BackButton"].tap()
+        require(app.buttons["list.project.settings"].firstMatch, "the project list after Back")
+        reach(app, app.buttons["note.Updated runbook"].firstMatch, "the refreshed project note")
+        XCTAssertFalse(app.buttons["note.Release runbook"].exists)
+        XCTAssertFalse(app.buttons["note.Weekly review"].exists, "global notes leaked into the project")
+    }
+
+    func testProjectListNotesWithoutTasks() throws {
+        let tasks = workspace.appendingPathComponent("projects/atlas-launch/tasks.md")
+        let header = try markdown("atlas-launch").components(separatedBy: "\n## Task:")[0]
+        try header.write(to: tasks, atomically: true, encoding: .utf8)
+        let app = launch()
+        tab(app, "Browse")
+        press(app, "browse.project.atlas-launch")
+        require(app.staticTexts["Notes"].firstMatch, "the Notes section")
+        XCTAssertFalse(app.buttons["task.row"].exists)
+        press(app, "note.Release runbook")
+        eventually("the note-only project's note opened") { !self.value(app, "note.body").isEmpty }
+    }
+
     func testProjectCommentsAndProjectNotes() throws {
         let app = launch()
         tab(app, "Browse")

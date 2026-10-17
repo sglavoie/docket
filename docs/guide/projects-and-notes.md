@@ -150,6 +150,12 @@ them unchanged.
 
 ### All Notes
 
+When browsing a single project, its notes appear in a separate **Notes** section
+below the task lanes, newest first, even when the project has no tasks. Fold or
+zoom the section like a task lane, and press `Enter` on a note to open it in
+Notes. Task filters, subtree focus, lenses, and search hide this browsing section;
+ranked search retains its matching-note results. Archived projects are excluded.
+
 `Ctrl+N` opens All Notes, a workspace-wide manager that scans Global plus every
 unarchived project, including the protected Unfiled project and every parked
 project. On a project header row it opens that project's notes instead. Rows

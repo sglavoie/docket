@@ -229,7 +229,10 @@ dismissed sheet, or a relaunch. Only a committed save or **Cancel** removes
 one.
 
 A task's detail lists its comments and attachments, and a project's settings
-list the project's comments and open its notes. The **Notes** tab lists
+list the project's comments and open its notes. A project's task list also shows
+its notes in a separate **Notes** section, newest first, including when it has no
+tasks. Tap a note to open it; search, task filters, and archived projects omit
+this section. The **Notes** tab lists
 the global notes and every available project's. A comment or a note keeps a
 draft the same way, and each change names what was read: a comment edited on
 another device refuses the change, and a note saved over another device's edit

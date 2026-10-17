@@ -4,6 +4,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -63,4 +64,12 @@ func searchMatchTaskIDs(matches []outlinerSearchMatch) []string {
 		result[i] = match.task.ID
 	}
 	return result
+}
+
+// noteTierOutliner builds a cross-project Outliner whose note index is the
+// supplied snapshot, which is what the shell injects in production.
+func noteTierOutliner(rows []notes.LocatedNoteRow, projects ...*models.Project) *OutlinerModel {
+	outliner := scopeTestOutliner(projects...)
+	outliner.SetNoteSearchIndex(func() []notes.LocatedNoteRow { return rows })
+	return outliner
 }
