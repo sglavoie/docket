@@ -18,6 +18,10 @@ Task titles carry the visual emphasis. Project labels keep their identity color
 without bold text, lane headings have no filled background, and `‹` / `›N`
 family markers are muted. Selection and urgent dates retain stronger emphasis.
 
+Peek's status summary includes **Overdue** and **Check-in owed** when applicable,
+before priority and flags, so attention is visible beside the resume note.
+The full dates and repeat schedule remain in the scrollable details.
+
 **Before a bulk action:** read the selection count. Hidden selected tasks still
 belong to the batch. Opening Peek does not change selection.
 

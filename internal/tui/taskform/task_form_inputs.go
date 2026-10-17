@@ -82,7 +82,8 @@ func (m *TaskFormModel) commitContextInput() {
 // initDueInput creates and configures the due date textinput with an optional initial value.
 func (m *TaskFormModel) initDueInput(value string) {
 	m.dueTextInput = textinput.New()
-	m.dueTextInput.Placeholder = "tomorrow, +3d, fri 15:30, 2026-01-15 09:00"
+	m.dueTextInput.Placeholder = "e.g. tomorrow"
+	m.dueTextInput.Prompt = ""
 	m.dueTextInput.CharLimit = 40
 	m.dueTextInput.SetWidth(formDueInputWidth)
 	theme.ApplyThemedTextInput(&m.dueTextInput)

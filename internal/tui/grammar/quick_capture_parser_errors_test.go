@@ -19,8 +19,9 @@ func TestParseQuickCaptureErrors(t *testing.T) {
 			name:        "invalid due date",
 			input:       "Task with bad date @notadate",
 			wantErr:     true,
-			errContains: "invalid date",
+			errContains: "use @tomorrow, @friday, or @+3d",
 		},
+		{name: "invalid deferral", input: "Task @@notadate", wantErr: true, errContains: "use @@+2h, @@tomorrow, or @@+3d"},
 		{
 			name:        "parent not found",
 			input:       "Task with missing parent >999",

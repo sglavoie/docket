@@ -91,8 +91,8 @@ func (registry *OperationRegistry) HelpItemsForInputStrategy(
 }
 
 // presetChordHelpItems spells a chord whose one display key compresses several
-// presets — `wi/g/w/p/m/d/c` — as one help row per preset instead, `wi` Set
-// State: Inbox, so `?` names what each letter does rather than leaving the
+// presets — `wi/g/w/p/m/d/c` — as one help row per preset instead, `wi` Move
+// to Inbox, so `?` names what each letter does rather than leaving the
 // reader to decode a run of initials. Any other operation returns nothing and
 // keeps its single row.
 func presetChordHelpItems(strategy InputStrategy, operationID OperationID, descriptor OperationDescriptor) []HelpItem {
@@ -106,13 +106,18 @@ func presetChordHelpItems(strategy InputStrategy, operationID OperationID, descr
 			return nil
 		}
 		label := binding.HintLabel
+		description := binding.HelpLabel
+		if description == "" {
+			description = descriptor.Label + ": " + strings.ToUpper(label[:1]) + label[1:]
+		}
+		aliases := append(slices.Clone(descriptor.Aliases), descriptor.Label, label)
 		items = append(items, HelpItem{
 			Key:         strings.Join(binding.Sequence, ""),
-			Description: descriptor.Label + ": " + strings.ToUpper(label[:1]) + label[1:],
+			Description: description,
 			Category:    bindingHelpCategory(binding, descriptor),
 			Group:       binding.HelpGroup,
 			Order:       binding.HelpOrder,
-			Aliases:     descriptor.Aliases,
+			Aliases:     aliases,
 		})
 	}
 	return items

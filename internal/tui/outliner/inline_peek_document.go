@@ -341,6 +341,14 @@ func inlinePeekStatusLine(task *models.Task, planning string, now time.Time) str
 	var fields inlinePeekFields
 	fields.add(chrome.PlanFieldLabel, planning)
 	fields.add(chrome.StatusFieldLabel, inlinePeekStatusValue(task, now))
+	// Keep the reason to act in the first summary, before optional metadata.
+	// Dates and repeat details remain complete in the schedule section.
+	if task.IsOverdueAt(now) {
+		fields.parts = append(fields.parts, theme.ProjectPressureOverdueStyle.Render("Overdue"))
+	}
+	if task.CheckInIsDueAt(now) && models.TaskNeedsAttention(task, now) {
+		fields.flag("Check-in owed")
+	}
 	// The same gate theme.PriorityIcon takes, so a task the row draws no priority
 	// badge for names no priority here either.
 	if models.ValidatePriority(task.Priority, false) == nil {
@@ -386,6 +394,7 @@ func inlinePeekStatusKey(task *models.Task, planning string) string {
 		"priority:" + strconv.Itoa(task.Priority),
 		"pinned:" + strconv.FormatBool(task.Pinned),
 		"review:" + strconv.FormatBool(task.Review),
+		inlinePeekScheduleKey(task),
 	}, "|")
 }
 

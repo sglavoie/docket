@@ -117,9 +117,15 @@ func auditInputStrategyHelp(t *testing.T, registry *operation.OperationRegistry,
 			}
 			item := help[index]
 			index++
-			if wantKey := strings.Join(binding.Sequence, ""); item.Key != wantKey ||
-				!strings.HasPrefix(item.Description, descriptor.Label+": ") {
-				t.Errorf("help row %d = %q %q, want %q under %q", index-1, item.Key, item.Description, wantKey, descriptor.Label)
+			wantLabel := binding.HelpLabel
+			if wantLabel == "" {
+				wantLabel = descriptor.Label + ": " + strings.ToUpper(binding.HintLabel[:1]) + binding.HintLabel[1:]
+			}
+			if wantKey := strings.Join(binding.Sequence, ""); item.Key != wantKey || item.Description != wantLabel {
+				t.Errorf("help row %d = %q %q, want %q %q", index-1, item.Key, item.Description, wantKey, wantLabel)
+			}
+			if !slices.Contains(item.Aliases, binding.HintLabel) {
+				t.Errorf("help row %d lost its searchable preset %q", index-1, binding.HintLabel)
 			}
 		}
 	}

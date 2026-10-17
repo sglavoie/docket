@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/textgrammar"
 )
@@ -26,6 +26,9 @@ func TestHelpGrammarSectionComesFromCanonicalRegistry(t *testing.T) {
 	if len(items) != len(definitions) {
 		t.Fatalf("grammar help rows = %d, want %d registry definitions", len(items), len(definitions))
 	}
+	m := NewHelpViewModel(items, "Outliner")
+	m.SetSize(60, 30)
+	rendered := ansi.Strip(m.renderContent())
 	for i, definition := range definitions {
 		item := items[i]
 		if got, want := item.Key, strings.Join(definition.Forms, " "); got != want {
@@ -42,10 +45,8 @@ func TestHelpGrammarSectionComesFromCanonicalRegistry(t *testing.T) {
 		if item.Category != helpGrammarCategory {
 			t.Errorf("%s category = %q, want %q", definition.Field, item.Category, helpGrammarCategory)
 		}
-		// The key column is a fixed cell: a wider spelling wraps mid-token and the
-		// row stops reading as one form.
-		if width := lipgloss.Width(item.Key); width > helpKeyColumnWidth {
-			t.Errorf("%s key %q is %d cells, want at most %d", definition.Field, item.Key, width, helpKeyColumnWidth)
+		if !strings.Contains(rendered, item.Key) {
+			t.Errorf("%s key %q was split or lost", definition.Field, item.Key)
 		}
 		for _, alias := range item.Aliases {
 			if strings.TrimSpace(alias) == "" {

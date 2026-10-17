@@ -81,12 +81,7 @@ func TestPolishVisualReviewFrames(t *testing.T) {
 					if got := lipgloss.Height(obs.ANSIScreen); got != size[1] {
 						t.Fatalf("frame height = %d, want %d", got, size[1])
 					}
-					if state == "help" {
-						lines := strings.Split(obs.PlainScreen, "\n")
-						if strings.TrimSpace(lines[len(lines)-1]) == "" {
-							t.Fatal("blank row below Help footer")
-						}
-					}
+					assertPolishFrameReading(t, obs.PlainScreen, state, size[0])
 					for extension, content := range map[string]string{"ansi": obs.ANSIScreen, "txt": obs.PlainScreen} {
 						if err := os.WriteFile(filepath.Join(root, name+"."+extension), []byte(content), 0644); err != nil {
 							t.Fatal(err)
@@ -95,5 +90,25 @@ func TestPolishVisualReviewFrames(t *testing.T) {
 				})
 			}
 		}
+	}
+}
+
+func assertPolishFrameReading(t *testing.T, screen, state string, width int) {
+	t.Helper()
+	if state == "help" {
+		lines := strings.Split(screen, "\n")
+		if strings.TrimSpace(lines[len(lines)-1]) == "" {
+			t.Fatal("blank row below Help footer")
+		}
+		if width >= 80 {
+			for _, action := range []string{"Capture", "Edit Task", "Toggle Today plan", "Toggle Next plan", "Start task", "Complete task", "Undo", "Redo", "Attachments"} {
+				if !strings.Contains(screen, action) {
+					t.Fatalf("first Help screen lost %q", action)
+				}
+			}
+		}
+	}
+	if state == "capture-error" && !strings.Contains(screen, "@+3d)") {
+		t.Fatal("capture repair examples were clipped")
 	}
 }

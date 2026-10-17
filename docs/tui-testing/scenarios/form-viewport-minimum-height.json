@@ -43,7 +43,7 @@
     { "type": "key", "key": "ctrl+l" },
     { "type": "text", "text": "https://ex.co/s10" },
     { "type": "key", "key": "enter" },
-    { "type": "assert", "label": "the relation fields extend the body below these drafts", "assert": "contains", "value": "0 above · 4 below" },
+    { "type": "assert", "label": "the aligned relation fields each occupy one row below these drafts", "assert": "contains", "value": "0 above · 2 below" },
     { "type": "assert", "label": "whose hints are the form's keys", "assert": "contains", "value": "Ctrl+S save · Esc discard" },
     { "type": "assert", "label": "in place of the breadcrumb row", "assert": "not_contains", "value": "Outliner >" },
     { "type": "key", "key": "ctrl+l" },
@@ -58,7 +58,7 @@
 
     { "type": "assert", "assert": "contains", "value": "Attachments (13)" },
     { "type": "assert", "label": "the body scrolls now instead of telling a reader to resize", "assert": "not_contains", "value": "resize terminal to view all" },
-    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "0 above · 7 below" },
+    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "0 above · 5 below" },
     { "type": "assert", "label": "the tail is genuinely below the fold at this height", "assert": "not_contains", "value": "https://ex.co/s13" },
     { "type": "assert", "assert": "no_layout_issues" },
 
@@ -76,7 +76,7 @@
     { "type": "key", "key": "tab" },
     { "type": "key", "label": "and on to the thirteenth, which the window has to follow", "key": "tab" },
     { "type": "assert", "assert": "contains", "value": "https://ex.co/s13" },
-    { "type": "assert", "assert": "contains", "value": "2 above · 5 below", "label": "the position row accounts for the compact window and its current offset" },
+    { "type": "assert", "assert": "contains", "value": "2 above · 3 below", "label": "the position row accounts for the compact window and its current offset" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "open the nested item editor on the focused draft", "key": "enter" },
@@ -85,11 +85,11 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "return from it", "key": "esc" },
     { "type": "assert", "label": "the window is still where the focus is", "assert": "contains", "value": "https://ex.co/s13" },
-    { "type": "assert", "assert": "contains", "value": "2 above · 5 below", "label": "the position row accounts for the compact window and its current offset" },
+    { "type": "assert", "assert": "contains", "value": "2 above · 3 below", "label": "the position row accounts for the compact window and its current offset" },
 
     { "type": "key", "label": "one field further reaches the Comments header", "key": "tab" },
     { "type": "assert", "assert": "contains", "value": "Comments (0)" },
-    { "type": "assert", "assert": "contains", "value": "3 above · 4 below", "label": "the position row accounts for the compact window and its current offset" },
+    { "type": "assert", "assert": "contains", "value": "3 above · 2 below", "label": "the position row accounts for the compact window and its current offset" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "resize", "label": "a taller terminal gives the whole body back", "width": 100, "height": 40 },
@@ -101,17 +101,17 @@
 
     { "type": "resize", "label": "and shrinking restores the window around the same focus", "width": 72, "height": 20 },
     { "type": "assert", "assert": "contains", "value": "Comments (0)" },
-    { "type": "assert", "assert": "contains", "value": "3 above · 4 below", "label": "the position row accounts for the compact window and its current offset" },
+    { "type": "assert", "assert": "contains", "value": "3 above · 2 below", "label": "the position row accounts for the compact window and its current offset" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "resize", "label": "the same window semantics at the app's own minimum width", "width": 60, "height": 20 },
     { "type": "assert", "label": "the body resizes from the available width instead of refusing it", "assert": "not_contains", "value": "Terminal too small" },
     { "type": "assert", "label": "the focused field is still the one on screen", "assert": "not_clipped", "value": "Comments (0)" },
-    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "3 above · 4 below" },
+    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "3 above · 2 below" },
     { "type": "assert", "assert": "not_contains", "value": "resize terminal to view all" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "back to the starting width, window intact", "width": 72, "height": 20 },
-    { "type": "assert", "assert": "contains", "value": "3 above · 4 below", "label": "the position row accounts for the compact window and its current offset" },
+    { "type": "assert", "assert": "contains", "value": "3 above · 2 below", "label": "the position row accounts for the compact window and its current offset" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "a fourteenth draft the application layer will refuse", "key": "ctrl+l" },
@@ -126,7 +126,7 @@
     { "type": "assert", "assert": "contains", "value": "above ·" },
 
     { "type": "key", "label": "delete the refused draft the window is sitting on", "key": "ctrl+d" },
-    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "4 above · 4 below" },
+    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "4 above · 2 below" },
     { "type": "assert", "label": "which is the shell's line, above the form's keys and under the one divider", "assert": "contains", "value": "invalid attachment" },
     { "type": "assert", "assert": "contains", "value": "https://ex.co/s13" },
     { "type": "assert", "assert": "contains", "value": "Comments (0)" },

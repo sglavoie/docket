@@ -251,7 +251,7 @@ func (p *quickCaptureParser) parseDueTokens(tokens []textgrammar.Token) {
 func (p *quickCaptureParser) parseDueToken(token textgrammar.Token, parse func(string) (time.Time, error)) {
 	date, err := parse(token.Value)
 	if err != nil {
-		p.failTokenf(token, "invalid date: %s", token.Value)
+		p.failTokenf(token, "%s", textgrammar.InvalidScheduleError(textgrammar.FieldDue, token.Value))
 		return
 	}
 	p.result.DueDate = &date
@@ -272,7 +272,7 @@ func (p *quickCaptureParser) parseDeferTokens(tokens []textgrammar.Token) {
 		}
 		instant, err := util.ParseDeferInstant(token.Value)
 		if err != nil {
-			if p.failTokenf(token, "invalid defer: %s", token.Value) {
+			if p.failTokenf(token, "%s", textgrammar.InvalidScheduleError(textgrammar.FieldDefer, token.Value)) {
 				return
 			}
 			continue

@@ -101,7 +101,7 @@ func (p *quickEditParser) applyDueDate() bool {
 	}
 	date, err := capturetext.ParseDueDateValue(token.Value)
 	if err != nil {
-		return p.setError(fmt.Sprintf("invalid date: %s", token.Value))
+		return p.setError(textgrammar.InvalidScheduleError(textgrammar.FieldDue, token.Value).Error())
 	}
 	p.result.DueDate = &date
 	return false
@@ -125,7 +125,7 @@ func (p *quickEditParser) applyDefer() bool {
 	}
 	instant, err := util.ParseDeferInstant(token.Value)
 	if err != nil {
-		return p.setError(fmt.Sprintf("invalid defer: %s", token.Value))
+		return p.setError(textgrammar.InvalidScheduleError(textgrammar.FieldDefer, token.Value).Error())
 	}
 	p.result.DeferUntil = &instant
 

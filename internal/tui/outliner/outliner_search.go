@@ -733,10 +733,7 @@ func (m *OutlinerModel) buildSearchProjectionRows() {
 	}
 	m.Search.withheld = searchWithheldMatches{}
 	if !predicates.Invalid() {
-		m.Search.withheld = countWithheldSearchMatches(
-			searchProjectionMatchesWithin(projects, query, candidates, matcher, predicates.WithEveryPopulation()),
-			predicates,
-		)
+		m.Search.withheld = countWithheldSearchMatches(projects, query, candidates, matcher, predicates)
 	}
 	m.Search.hiddenFilterHint = ""
 	m.Search.eliminationHint = ""
@@ -766,7 +763,26 @@ func (m *OutlinerModel) buildSearchProjectionRows() {
 // countWithheldSearchMatches sorts the matches a widened gate found into the two
 // populations the live gate kept out, by the rule AdmitsPopulation reads:
 // terminal first, then a pending deferral.
-func countWithheldSearchMatches(matches []outlinerSearchMatch, gate *query.SearchPredicates) searchWithheldMatches {
+func countWithheldSearchMatches(projects []*models.Project, text string, candidates map[string][]*models.Task, matcher fuzzy.Matcher, gate *query.SearchPredicates) searchWithheldMatches {
+	// Visible tasks have already been scored. Widen only the population that
+	// was withheld, keeping the same project, Focus and facet boundaries.
+	hidden := make(map[string][]*models.Task, len(projects))
+	for _, project := range projects {
+		if project == nil {
+			continue
+		}
+		tasks := project.Tasks
+		if bounded, ok := candidates[project.ID]; ok {
+			tasks = bounded
+		}
+		hidden[project.ID] = nil
+		for _, task := range tasks {
+			if task != nil && !gate.AdmitsPopulation(task) {
+				hidden[project.ID] = append(hidden[project.ID], task)
+			}
+		}
+	}
+	matches := searchProjectionMatchesWithin(projects, text, hidden, matcher, gate.WithEveryPopulation())
 	var withheld searchWithheldMatches
 	for _, match := range matches {
 		if gate.AdmitsPopulation(match.task) {

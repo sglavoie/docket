@@ -44,6 +44,8 @@ const (
 // grammar defect.
 type OperationKeyBinding struct {
 	// Help presentation metadata never changes dispatch or footer order.
+	// HelpLabel optionally spells a preset's action; its state remains an alias.
+	HelpLabel      string
 	HelpGroup      string
 	HelpOrder      int
 	HelpCategory   string

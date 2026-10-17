@@ -3,6 +3,7 @@ package outliner
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -12,6 +13,39 @@ import (
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
+
+func TestPeekSummarySurfacesAttentionWithoutReplacingResume(t *testing.T) {
+	now := time.Now()
+	yesterday := now.AddDate(0, 0, -1)
+	task := pagedPeekTask()
+	task.DueDate, task.NextCheckIn = &yesterday, &yesterday
+	for _, width := range []int{60, 80, 120} {
+		doc := inlinePeekDocumentFor(inlinePeekOptions{Task: task, Width: width, Indent: "  ", Window: testPeekWindow()})
+		first := ansi.Strip(strings.Join(doc.Lines(0), "\n"))
+		for _, want := range []string{"Overdue", "Check-in owed", "Resume:"} {
+			if !strings.Contains(first, want) {
+				t.Fatalf("width %d: first Peek window lost %q:\n%s", width, want, first)
+			}
+		}
+	}
+	key := inlinePeekStatusKey(task, "")
+	// Attention ages with the clock, but its stored key must not reset a reader.
+	if got := inlinePeekStatusLine(task, "", yesterday.AddDate(0, 0, -1)); strings.Contains(got, "Overdue") || strings.Contains(got, "Check-in owed") {
+		t.Fatalf("future schedule claims attention: %s", got)
+	}
+	if key != inlinePeekStatusKey(task, "") {
+		t.Fatal("reading attention changed the summary key")
+	}
+	deferred := now.Add(time.Hour)
+	task.DeferredUntil = &deferred
+	if strings.Contains(inlinePeekStatusLine(task, "", now), "Check-in owed") {
+		t.Fatal("deferred check-in claims attention")
+	}
+	task.ApplyWorkflowState(models.StateDone)
+	if got := inlinePeekStatusLine(task, "", now); strings.Contains(got, "Overdue") || strings.Contains(got, "Check-in owed") {
+		t.Fatalf("completed work claims attention: %s", got)
+	}
+}
 
 // TestInlinePeekWindowsExposeEveryBodyLine is the completeness claim, and it is
 // made against the mixed sequence rather than one distance: a reader who

@@ -465,7 +465,9 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(row OutlinerRow, now time.Ti
 	// Deliberately ungated by a column: a reference count is not a column the
 	// user can hide, and naming one would put a dependency back in the column
 	// vocabulary the retired hard-dependency panels owned.
-	segments.dependencies = renderDependencyIndicator(task, m.dependencyIndex())
+	if len(task.Dependencies) > 0 {
+		segments.dependencies = renderDependencyIndicator(task, m.dependencyIndex())
+	}
 	return segments
 }
 

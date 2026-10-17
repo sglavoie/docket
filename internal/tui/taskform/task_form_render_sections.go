@@ -37,7 +37,11 @@ func (m *TaskFormModel) renderFormSectionHeader(
 	hint string,
 	bodyWidth int,
 ) {
-	label := fmt.Sprintf(" %s %s (%d) ", icon, name, count)
+	disclosure := "+"
+	if icon == theme.IconExpanded {
+		disclosure = "−"
+	}
+	label := fmt.Sprintf(" [%s] %s (%d) ", disclosure, name, count)
 	spent := formLabelMarkerWidth + formSectionLeadRule + lipgloss.Width(label)
 	remaining := max(bodyWidth-spent, 0)
 
@@ -56,7 +60,11 @@ func (m *TaskFormModel) renderFormSectionHeader(
 		b.WriteString(theme.FieldLabelStyle.Render("  "))
 	}
 	b.WriteString(theme.MutedStyle.Render(strings.Repeat("─", formSectionLeadRule)))
-	b.WriteString(theme.BoldStyle.Render(label))
+	if focused {
+		b.WriteString(theme.FieldLabelFocusedStyle.Render(label))
+	} else {
+		b.WriteString(theme.FieldLabelStyle.Render(label))
+	}
 	b.WriteString(theme.MutedStyle.Render(strings.Repeat("─", trail)))
 	if fitted != "" {
 		b.WriteString(theme.MutedStyle.Render(fitted))

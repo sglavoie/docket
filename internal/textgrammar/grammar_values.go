@@ -112,6 +112,21 @@ func InvalidPriorityError(raw string) error {
 	return fmt.Errorf("invalid priority: !%s (use %s)", raw, joinOptions(values))
 }
 
+// InvalidScheduleError includes short, parseable examples from the same
+// registry that supplies capture help and completion.
+func InvalidScheduleError(field Field, raw string) error {
+	name := "date"
+	if field == FieldDefer {
+		name = "defer"
+	}
+	definition, ok := registrySpecFor(field)
+	if !ok || len(definition.Examples) == 0 {
+		return fmt.Errorf("invalid %s: %s", name, raw)
+	}
+	examples := definition.Examples[:min(3, len(definition.Examples))]
+	return fmt.Errorf("invalid %s: %s (use %s)", name, raw, joinOptions(examples))
+}
+
 func joinOptions(values []string) string {
 	switch len(values) {
 	case 0:

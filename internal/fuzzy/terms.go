@@ -1,6 +1,10 @@
 package fuzzy
 
-import "strings"
+import (
+	"strings"
+	"unicode"
+	"unicode/utf8"
+)
 
 // Terms is an immutable compiled query. A result population shares its folded
 // patterns, and each candidate is decoded only once even for multiword queries.
@@ -27,8 +31,23 @@ func (q Terms) Score(text string) int {
 	if text == "" {
 		return 0
 	}
-	original := []rune(text)
-	folded := []rune(q.matcher.fold(text))
+	// Most titles and short descriptions fit on the stack. Decode and fold in
+	// one pass, preserving original runes for the camel-case score. Long text
+	// gets exact-size buffers; the compiled query stays immutable and shareable.
+	var originalBuffer, foldedBuffer [128]rune
+	original, folded := originalBuffer[:0], foldedBuffer[:0]
+	if len(text) > len(originalBuffer) {
+		if count := utf8.RuneCountInString(text); count > len(originalBuffer) {
+			original, folded = make([]rune, 0, count), make([]rune, 0, count)
+		}
+	}
+	for _, r := range text {
+		original = append(original, r)
+		if !q.matcher.caseSensitive {
+			r = unicode.ToLower(r)
+		}
+		folded = append(folded, r)
+	}
 	total := 0
 	for _, pattern := range q.patterns {
 		score := scoreSubsequence(folded, original, pattern)

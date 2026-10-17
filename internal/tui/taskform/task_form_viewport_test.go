@@ -262,7 +262,7 @@ func TestTaskFormHelpPaneNeverStealsTheWindowsLastRow(t *testing.T) {
 	if strings.Contains(plain, "resize terminal to view all") {
 		t.Fatalf("an over-tall help pane clipped the body instead of itself:\n%s", plain)
 	}
-	if !strings.Contains(plain, "· 4 below") {
+	if !strings.Contains(plain, "· 2 below") {
 		t.Fatalf("the position row is the body's last row and must survive the join:\n%s", plain)
 	}
 	assertFitsWithin(t, m.View().Content, 100, formMinHeight)

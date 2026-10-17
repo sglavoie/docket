@@ -15,7 +15,8 @@
     { "type": "assert", "assert": "not_contains", "value": "Capture & Edit Grammar" },
 
     { "type": "assert", "assert": "contains", "value": "Capture" },
-    { "type": "assert", "assert": "contains", "value": "Set State" },
+    { "type": "assert", "assert": "contains", "value": "Start task" },
+    { "type": "assert", "assert": "contains", "value": "Complete task" },
     { "type": "assert", "assert": "contains", "value": "Move to Backlog" },
     { "type": "assert", "assert": "contains", "value": "Toggle Next" },
     { "type": "assert", "assert": "contains", "value": "Toggle Today" },

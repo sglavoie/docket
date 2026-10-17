@@ -40,21 +40,24 @@ to browse menus; Task groups everyday actions under Plan, Status, and Details.
 
 ### Capture more in one line
 
-Once you want metadata, create a project with slug `web` using `P` then `a`.
-With a project named `web` (create it with `P`, then `a`), press `a` in the
-Outliner, type this line, and press `Enter`:
+Start with a title, then add one piece of metadata at a time. Create a project
+with slug `web` using `P` then `a`. In the Outliner, press `a` and build up
+this draft; each row below adds one instruction to the previous one:
 
-```text
-fix login redirect !1 @friday #auth %web $today
-```
+| Draft | Result |
+| --- | --- |
+| `fix login redirect` | A task in the current project, or Inbox under Unfiled when browsing all projects |
+| `fix login redirect %web` | The task goes to `web` |
+| `fix login redirect %web @friday` | It is due next Friday; the preview shows the exact date |
+| `fix login redirect %web @friday $today` | It is also planned for Today |
 
-This creates a high-priority task in `web`, due next Friday, tagged `auth`, and
-planned for Today. The preview shows the resolved date before you save; `b`
-opens Peek to read the saved details.
+Press `Enter` when the draft is ready. Press `b` on the saved task to read its
+details. Today is a plan; the task's status is still Backlog until you start
+it with `wg`.
 
-Today is a plan; the task's status is still Backlog until you start it with
-`wg`. See [capture syntax and date rules](docs/guide/capture.md) for the full
-reference, including literal examples and batch capture.
+Later, add `!1` for high priority or `#auth` for a tag. See
+[capture syntax and date rules](docs/guide/capture.md) for the full reference,
+including literal examples and batch capture.
 
 ## Mental model
 

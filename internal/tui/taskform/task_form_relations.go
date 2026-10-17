@@ -102,19 +102,23 @@ func (m *TaskFormModel) relationValue(kind formRelationKind, editing bool) strin
 func (m *TaskFormModel) renderRelationField(b *formBodyBuilder, index int, kind formRelationKind, width int) {
 	b.field(index)
 	label := kind.label() + ":"
-	if m.focusIndex == index {
-		label += " Enter edit"
-	}
-	b.WriteString(chrome.RenderFormLabelWithWidth(label, min(width, 32), m.focusIndex == index) + "\n")
+	lw := formScheduleLabelWidth
+	indent := strings.Repeat(" ", lw+formLabelMarkerWidth)
+	b.WriteString(chrome.RenderFormLabelWithWidth(label, lw, m.focusIndex == index))
 	value := m.relationValue(kind, false)
 	if value == "" {
 		value = "(none)"
 	}
-	for _, line := range textfit.WrapStyled(value, max(width-4, 1)) {
-		b.WriteString("  " + line + "\n")
+	for i, line := range textfit.WrapStyled(value, formValueWidth(width, lw)) {
+		if i > 0 {
+			b.WriteString(indent)
+		}
+		b.WriteString(line + "\n")
 	}
 	if kind == formRelationDefer && m.draft.deferredUntil != nil {
-		b.WriteString(theme.MutedStyle.Render("  Deferred work saves to Backlog, without Today or Next.") + "\n")
+		for _, line := range textfit.WrapStyled("Deferred work saves to Backlog, without Today or Next.", formValueWidth(width, lw)) {
+			b.WriteString(indent + theme.MutedStyle.Render(line) + "\n")
+		}
 	}
 }
 

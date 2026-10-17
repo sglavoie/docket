@@ -708,7 +708,8 @@ Row and Peek budget:
   updated if later, last review, a lapsed wake, avoidance count on its last line.
   The deferral instant keys both. Title and ancestor chain are uncompacted.
   Status spells plan (collection), state with Doing/Waiting age off
-  `StateChangedAt`, priority, pinned, and review; stored values key it, so ticks
+  `StateChangedAt`, overdue/check-in attention, priority, pinned, and review;
+  stored values including schedule key it, so ticks
   never reset the window. Every labeled line is `Label: value` joined by ` · `;
   `Pinned` and `Review` are bare flags, and a list's count follows its colon.
   Checklist and comments stay counts; their items are rows and their panel.

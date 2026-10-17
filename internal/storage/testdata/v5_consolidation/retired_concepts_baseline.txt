@@ -357,7 +357,7 @@ dependency	internal/tui/outliner/outliner_mode_wiring.go	dependencyIndex	1
 dependency	internal/tui/outliner/outliner_mode_wiring.go	passesDependencyFilter	2
 dependency	internal/tui/outliner/outliner_projection.go	CloneTaskDetachingDependencies	3
 dependency	internal/tui/outliner/outliner_quick_edit_view.go	Dependencies	2
-dependency	internal/tui/outliner/outliner_render_task_row.go	Dependencies	1
+dependency	internal/tui/outliner/outliner_render_task_row.go	Dependencies	2
 dependency	internal/tui/outliner/outliner_render_task_row.go	DependencyCensusFor	1
 dependency	internal/tui/outliner/outliner_render_task_row.go	DependencyIndex	1
 dependency	internal/tui/outliner/outliner_render_task_row.go	dependencies	4

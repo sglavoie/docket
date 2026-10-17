@@ -75,9 +75,10 @@ func TestHelpRenderKeyColumnFitsEveryComposedSpelling(t *testing.T) {
 		}
 		seen[binding.OperationID] = true
 		key := operation.DisplayKeysForOperation(strategy, binding.OperationID)
-		if width := lipgloss.Width(key); width > helpKeyColumnWidth {
-			t.Errorf("%s displays as %q (%d cells), which wraps the %d-cell help key column",
-				binding.OperationID, key, width, helpKeyColumnWidth)
+		m := NewHelpViewModel([]operation.HelpItem{{Key: key, Description: "An action", Category: "Tasks"}}, "Outliner")
+		m.SetSize(60, 20)
+		if !strings.Contains(ansi.Strip(m.renderContent()), key+"  An action") {
+			t.Errorf("%s: composed key %q was split", binding.OperationID, key)
 		}
 	}
 }
@@ -87,7 +88,7 @@ func TestHelpColumnsFollowAvailableDescriptionWidth(t *testing.T) {
 		{Key: "e", Description: "Edit the task title", Category: "Tasks"},
 		{Key: "a", Description: "Capture a new task", Category: "Tasks"},
 	}, "Outliner")
-	for _, width := range []int{60, 80, 91, 92, 100, 160, 60} {
+	for _, width := range []int{46, 58, 59, 60, 80, 100, 160, 46} {
 		m.SetSize(width, 20)
 		plain := ansi.Strip(m.renderContent())
 		together := false
@@ -99,7 +100,7 @@ func TestHelpColumnsFollowAvailableDescriptionWidth(t *testing.T) {
 				together = true
 			}
 		}
-		if together != (width >= 92) {
+		if together != (width >= 60) {
 			t.Fatalf("width %d: unexpected column layout:\n%s", width, plain)
 		}
 		for _, text := range []string{"Edit the task title", "Capture a new task"} {
@@ -222,8 +223,8 @@ func TestHelpFirstSectionHasNoBlankLineAbove(t *testing.T) {
 		m := NewHelpViewModel(outlinerShapedHelpItems(), "Outliner")
 		m.SetSize(width, 30)
 		content := strings.Split(ansi.Strip(m.renderContent()), "\n")
-		if strings.TrimSpace(content[0]) != outlinerHelpSections[0] {
-			t.Errorf("width %d: first content line = %q, want the %q heading", width, content[0], outlinerHelpSections[0])
+		if strings.TrimSpace(content[0]) != "Details" {
+			t.Errorf("width %d: first content line = %q, want the %q heading", width, content[0], "Details")
 		}
 		blankBeforeSecond := 0
 		for i, line := range content {

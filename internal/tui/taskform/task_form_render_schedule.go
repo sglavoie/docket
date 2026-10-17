@@ -1,6 +1,7 @@
 package taskform
 
 import (
+	"strings"
 	"time"
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
@@ -37,6 +38,12 @@ func (m *TaskFormModel) renderScheduleTab(b *formBodyBuilder, bodyWidth int) {
 		}
 	}
 	b.WriteString("\n")
+	if m.focusIndex == 0 {
+		indent := strings.Repeat(" ", lw+formLabelMarkerWidth)
+		for _, line := range textfit.WrapStyled("Examples: +3d, fri 15:30, 2026-10-20 09:00", valueWidth) {
+			b.WriteString(indent + theme.MutedStyle.Render(line) + "\n")
+		}
+	}
 
 	// 1: Next check-in — the shared editor owns both this row and Repeat.
 	b.field(1)

@@ -351,6 +351,10 @@ problem; `Alt+P` visits the previous one. Both land on the reported token and wr
 problems, the panel names the current one (`Problem 2 of 4 · Line 9`) and puts its explanation first. Navigation
 changes no text and submits nothing. Press `Enter` to retry the save.
 
+Invalid dates include accepted examples: `@tomorrow`, `@friday`, or `@+3d`.
+Invalid deferrals offer `@@+2h`, `@@tomorrow`, or `@@+3d`. Correct the token
+in place; the examples do not replace or submit your draft.
+
 On a short terminal, errors and editing controls keep priority over the preview.
 The preview may combine its fields into a wrapped line, but keeps every parsed
 attribute. The selected outline row remains visible at the 60×20 minimum.

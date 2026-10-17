@@ -14,11 +14,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-// helpKeyColumnWidth is the fixed cell width of the help key column. A display
-// key wider than this wraps mid-token, so every composed spelling must fit. The
-// widest one is the review pair, "=review =unreview".
-const helpKeyColumnWidth = 17
-
 // Keep enough prose beside each key to read a short action without wrapping.
 const helpMinDescriptionWidth = 24
 
@@ -130,8 +125,61 @@ func (m *HelpViewModel) renderBySectionContent() string {
 		buckets[section] = append(buckets[section], item)
 	}
 
-	contentWidth := max(m.viewport.Width(), 1)
-	keyWidth := helpKeyColumnWidth
+	var b strings.Builder
+	first := true
+	sections := helpSectionsForCategories(categories)
+	if len(buckets[exactSection]) > 0 {
+		sections = append([]string{exactSection}, sections...)
+	}
+	for _, section := range sections {
+		items := buckets[section]
+		if len(items) == 0 {
+			continue
+		}
+		// The category margin separates sections; the first sits directly under
+		// the header, so it renders without one.
+		heading := theme.HelpCategoryStyle
+		if first {
+			heading = heading.MarginTop(0)
+		} else {
+			b.WriteString("\n")
+		}
+		first = false
+		if section != "Tasks" {
+			b.WriteString(heading.Render(section))
+			b.WriteString("\n")
+		}
+		// Task groups are declared alongside the key bindings. Keep exact search
+		// hits together and retain the normal order for every other category.
+		if section == "Tasks" {
+			items = append([]filteredHelpItem(nil), items...)
+			sort.SliceStable(items, func(i, j int) bool { return taskHelpOrder(items[i]) < taskHelpOrder(items[j]) })
+		}
+		for start := 0; start < len(items); {
+			end := len(items)
+			if section == "Tasks" {
+				group := taskHelpGroup(items[start])
+				b.WriteString(theme.MutedStyle.Render(group) + "\n")
+				end = start + 1
+				for end < len(items) && taskHelpGroup(items[end]) == group {
+					end++
+				}
+			}
+			b.WriteString(renderHelpItemGroup(items[start:end], max(m.viewport.Width(), 1)))
+			start = end
+		}
+	}
+
+	return b.String()
+}
+
+// Measure each section (or task group) independently. A long grammar key must
+// remain whole without spending its columns on every everyday shortcut.
+func renderHelpItemGroup(items []filteredHelpItem, contentWidth int) string {
+	keyWidth := 1
+	for _, item := range items {
+		keyWidth = max(keyWidth, lipgloss.Width(item.Key))
+	}
 	columnGap := 4
 	columnOverhead := keyWidth + 2
 	columns := 2
@@ -179,65 +227,17 @@ func (m *HelpViewModel) renderBySectionContent() string {
 	}
 
 	var b strings.Builder
-	first := true
-	sections := helpSectionsForCategories(categories)
-	if len(buckets[exactSection]) > 0 {
-		sections = append([]string{exactSection}, sections...)
-	}
-	for _, section := range sections {
-		items := buckets[section]
-		if len(items) == 0 {
-			continue
-		}
-		// The category margin separates sections; the first sits directly under
-		// the header, so it renders without one.
-		heading := theme.HelpCategoryStyle
-		if first {
-			heading = heading.MarginTop(0)
-		} else {
-			b.WriteString("\n")
-		}
-		first = false
-		b.WriteString(heading.Render(section))
-		b.WriteString("\n")
-		// Task groups are declared alongside the key bindings. Keep exact search
-		// hits together and retain the normal order for every other category.
-		if section == "Tasks" {
-			items = append([]filteredHelpItem(nil), items...)
-			sort.SliceStable(items, func(i, j int) bool { return taskHelpOrder(items[i]) < taskHelpOrder(items[j]) })
-		}
-		previousGroup := ""
-		for j := 0; j < len(items); {
-			group := ""
-			if section == "Tasks" {
-				group = taskHelpGroup(items[j])
-				if group != previousGroup {
-					b.WriteString(theme.MutedStyle.Render(group) + "\n")
-					previousGroup = group
-				}
-			}
-			pair := columns == 2 && j+1 < len(items)
-			if pair && section == "Tasks" {
-				pair = taskHelpGroup(items[j+1]) == group
-			}
-			col1 := columnStyle.Render(renderItem(items[j]))
-			var col2 string
-			if pair {
-				col2 = columnStyle.Render(renderItem(items[j+1]))
-			}
-			row := col1
-			if columns == 2 {
-				row = lipgloss.JoinHorizontal(lipgloss.Top, col1, strings.Repeat(" ", columnGap), col2)
-			}
-			b.WriteString(row)
-			b.WriteString("\n")
+	for j := 0; j < len(items); {
+		col1 := columnStyle.Render(renderItem(items[j]))
+		j++
+		if columns == 2 && j < len(items) {
+			col2 := columnStyle.Render(renderItem(items[j]))
+			col1 = lipgloss.JoinHorizontal(lipgloss.Top, col1, strings.Repeat(" ", columnGap), col2)
 			j++
-			if pair {
-				j++
-			}
 		}
+		b.WriteString(col1)
+		b.WriteString("\n")
 	}
-
 	return b.String()
 }
 
