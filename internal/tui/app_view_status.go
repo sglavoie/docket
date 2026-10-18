@@ -44,9 +44,9 @@ func (m *AppModel) renderFooterDivider(width int) string {
 	if width <= 0 {
 		width = 80
 	}
-	accent := m.currentAccentColor()
+	base := theme.ColorMuted
 	if !m.feedback.flash.active() {
-		return chrome.RenderHorizontalDivider(width, chrome.WithDividerColor(accent))
+		return chrome.RenderHorizontalDivider(width)
 	}
 
 	highlight := m.feedback.flash.severity.color()
@@ -64,7 +64,7 @@ func (m *AppModel) renderFooterDivider(width int) string {
 		sweepFrame := frame - footerFlashImpactFrames
 		progress := float64(sweepFrame) / float64(footerFlashSweepFrames-1)
 		start := int(math.Round(easeInOutCubic(progress) * float64(width-segmentWidth)))
-		return renderFooterSweep(width, start, segmentWidth, accent, highlight)
+		return renderFooterSweep(width, start, segmentWidth, base, highlight)
 	}
 
 	settleFrame := frame - footerFlashImpactFrames - footerFlashSweepFrames
@@ -72,8 +72,8 @@ func (m *AppModel) renderFooterDivider(width int) string {
 	eased := easeInOutCubic(progress)
 	segmentWidth = max(int(math.Round(float64(segmentWidth)*(1-eased))), 1)
 	start := width - segmentWidth
-	highlight = blendColor(highlight, accent, eased)
-	return renderFooterSweep(width, start, segmentWidth, accent, highlight)
+	highlight = blendColor(highlight, base, eased)
+	return renderFooterSweep(width, start, segmentWidth, base, highlight)
 }
 
 func renderFooterSweep(width, start, segmentWidth int, accent, highlight color.Color) string {
@@ -164,7 +164,7 @@ func (m *AppModel) renderStatusBar() string {
 }
 
 func (m *AppModel) renderFooterChrome() string {
-	// Top border separator for visual distinction; tinted with current view accent.
+	// Top border uses the shared separator color, with temporary status flashes.
 	separator := m.renderFooterDivider(m.viewNav.width)
 	return separator + "\n" + m.renderFooterContent(m.footerChromeContent(), m.viewNav.width)
 }
