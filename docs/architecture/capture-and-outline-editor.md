@@ -88,7 +88,7 @@ either way. The shell calls `SetHostedBudget` for every budget a panel leaves a
 host — the first and every later one, since a panel that changes height changes
 the loan rather than taking a second — and `ReleaseHostedBudget` exactly once,
 with the whole content area, when the panel closes. `applyHostedBudget` and
-`releaseHostedBudget` in `app_view.go` are the one dispatch: a host implementing
+`releaseHostedBudget` in `app_hosted_panel.go` are the one dispatch: a host implementing
 neither is resized for both, which is what it always was.
 
 `OutlinerModel` implements it. `hostBudgetAnchor` is captured at the first budget

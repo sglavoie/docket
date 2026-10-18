@@ -1,0 +1,448 @@
+# Contributor guidance budget history 16200 to 37340
+
+Historical rationale for the `CLAUDE.md` byte budget, preserved from
+`contributor_guidance_docs_test.go`. These entries describe decisions at the
+time they were made; `CLAUDE.md` remains the current invariant contract.
+
+[Middle history](contributor-guidance-budget-middle.md) · [Recent history](contributor-guidance-budget-recent.md)
+
+The budget polices prose, not rule count: it is what forces mechanism into
+docs/architecture.md and behavior into README.md. It moves only when a
+feature adds invariants that cannot live anywhere else — the Outliner
+project sheet, the enumerated project delete, the restore lock scope, the
+cursor row's gutter/content seam, Select Project's preview pane owning a
+second scroll, the parse-order/teach-order registry split that the
+attachment sigil forced, the paired-delimiter comment sigil that leads
+parse order, the Notes preview pane — a second read-only scroll whose
+cache key and anchor rule nothing else states — the named lens a launch
+reopens, which is the one thing layered over the clean-root reset and so
+cannot be stated by the launch invariant it qualifies, and the search's
+notes tier, whose read-only admission rule belongs to neither the Notes
+surface nor the search grammar alone, and the soft task reference, whose
+preserve-by-default patch and count-what-is-stored indicator are rules no
+behavior or mechanism document can state for the surfaces that must obey
+them, are the eleven that raised it from 16200 — and never to absorb
+explanation. The last raise is the one exception and is not an invariant at
+all: publishing the repository made this file readable by strangers, so it
+opens with a paragraph saying what it is and pointing at docs/guide/ for
+behavior. That framing is bounded and one-time; the budget still polices
+every rule below it.
+
+This raise is taken once, before the work rather than after it, because
+three queued features each need contract text and would otherwise race for
+the same headroom — the first to land would take it and the next two would
+each argue their own raise. It is earmarked for exactly three additions and
+nothing else. The bulk move to another project: its destination project
+must be committed even when it holds none of the selection, which is the
+rule that separates it from every other bulk attribute and binds every
+surface offering it. The machine-local adoption and merge of named lenses:
+the migration chain is guarded by the synced catalog version while lenses
+live outside every migration snapshot, so this step is keyed off
+machine-local state and runs after the schema is already current — a
+sequencing rule the persistence layout cannot state for it. And the
+conflict signal: the status strip carries it and a read-only overlay
+browses it, because the workspace pulse ladder is closed and there is no
+sixth grammar, so both placements are rules stated against standing
+refusals. Spending it on anything else is a new raise, argued on its own.
+
+That earmark is spent, so this is the new raise, argued on its own and for
+one feature: the search grammar's uniform negation. Three rules come with
+it and none can be stated anywhere else. `-` now means removal on every
+surface, which is a claim about the whole registry rather than about any
+one sigil, and the ten spellings it covers only stay coherent if the
+registration order and the twin-resolved vocabulary are contract rather
+than convention — a reviewer adding an eleventh has nowhere else to read
+that the negation must sit immediately before its twin, longest trigger
+first, and must own no values of its own. `?` opens a second kind of
+predicate, one computed rather than stored, and its rule is a layering
+refusal: the names and the answers live in `internal/models` because
+`internal/tui` production code may not name `blocked`, so the contract
+that already bans the word has to say where the word does belong. `!N+`
+is one line and rides along because it is the same claim about where
+acceptance lives. The prose that explains any of it stayed in
+docs/architecture.md; what landed here is the rule set alone, in bullets.
+
+That raise is spent too, so this is the next one, argued on its own and for
+one feature: the query readout and the peel. Its rules are refusals about
+placement and authority that no other document can hold. The readout is a
+fourth line in a strip whose height is reserved from the viewport, so it has
+to be pure or the reservation and the paint disagree — a rule about
+`StatusStripHeight`, not about a readout. It may name only what it can
+prove, which is why a mode row names the mode rather than clauses the
+catalog never declared, and it is the standing ban on inferred chrome that
+makes that a contract rather than a design note. Peeling routes every axis
+through the key's own call, so the one thing the model cannot do for itself
+— reload the population — is delegated to the shell instead of reimplemented
+under the strip, and the ranked-list refusal is the same standing refusal
+the `F` chord already answers to. Two grammar rules ride along because they
+are the same claim about vocabulary rather than about this feature: a
+sigil-carrying facet answers to its sigil, which is what binds pinned to
+`f*` and keeps the retired letter `fp` retired, and a picker row is the
+canonical token it writes, enforced at registration, which is what stops a
+picker minting a private spelling beside the grammar. The prose is in
+docs/architecture.md and docs/guide/search-and-lenses.md; the rules alone
+landed here.
+
+That raise is spent as well, so this is the next one, argued on its own and
+for one feature: the soft reference read as a signal. Its rules are the kind
+only this file can hold, because each one is a refusal binding several
+surfaces at once. The reference reading is one hop and never transitive, a
+ban that has to be stated where the row, Peek, the facet, search, and the
+doctor census can all read it — no one of them owns it, and a closure would
+look locally reasonable in any of them. `blocked` is live vocabulary now but
+may never be rendered bare, which amends a rule already in this file rather
+than adding a document elsewhere. And the `~` picker is tri-state, which is
+what lets one picker take a selection: the row nobody agreed on is emitted
+by neither half, and an addition naming a task inside the selection refuses
+by name — a rule about what a gesture may not mean, not about how it is
+implemented. The row shape, the facet's carve-out from the row predicate,
+and the drop-ladder position ride along as the same claim. The prose is in
+docs/architecture.md and the two guides.
+
+That raise is spent, so this is the next one, argued on its own and for one
+feature: review as a stored axis. It is the rare change that rewrites this
+file rather than appending to it, because the sentence it replaces was a
+contract — review had no key and rode an ordinary tag — and a stale contract
+is worse than an absent one. What takes its place is the same shape as the
+pin and has to be stated once for four surfaces at a time: `=` writes the
+flag on capture, edit, outline, and search, `=unreview` clears it on the two
+surfaces that may clear anything, `-=` narrows and owns no vocabulary, and
+`f=` is the facet, with `fr` retired the way `fp` was. None of that can live
+in a guide, because a guide says what the sigil does rather than what a
+reviewer adding the next one may not do. The schema pair moves with it — a
+v17 catalog over schema-15 Markdown, and the migration that lifts the tag
+onto the flag — and that pairing sentence already lived here because nothing
+else states which task grammar a catalog version implies. The prose is in
+docs/architecture.md and the guides; the rules alone landed here.
+That raise is spent too. This one buys two rules the cross-machine story
+cannot state anywhere else. The first is a forbidden pattern with teeth:
+`.tt/transactions/` is portable, so a reviewer touching recovery has to know
+that another machine's live manifest is left alone rather than rolled either
+way — the plausible reading, "an unfinished transaction is interrupted work",
+is the one that makes one machine roll back a commit another is publishing.
+The second is that `just cross-machine` is deliberately outside `just ci`,
+which is a rule about the gate rather than about the code, and a contributor
+who does not know it will either delete the recipe as dead or wire it into CI
+where it forks processes and checks out tags. Both are invariants; neither is
+derivable from the tests, because the tests that could state them are the
+two-process ones no in-process suite runs.
+That raise is spent as well. This one buys the menu bar, and it is bought
+twice over because the bar breaks two defaults a contributor would otherwise
+reach for. The first is where a new chrome flag goes: machine.json's "only
+those two" was a closed list, and closing it again at three without saying
+why would read as an accident, so the rule now names the test the list is
+closed by — chrome follows the terminal you are sitting at — and the
+omitempty-and-never-seeded shape that makes an absent key mean the default.
+A reviewer who does not have that test will either put the next flag in the
+portable workspace, where it follows the user to a terminal that cannot draw
+it, or seed it and hand every existing machine a surprise. The second is that
+the bar is a view-local gated sub-state rather than a presentation. Every
+instinct here says otherwise: it is persistent, it is visible chrome, and it
+will grow dropdowns, all of which look like reasons to mint a
+`PresentationID` and a manifest entry — and doing so silently changes what
+`surfaceOperationGates()` and `ValidateOperationOnePath` cover. The one-row
+cost belongs beside it, because the failure it prevents is the quiet one: a
+second subtraction at a call site does not crash, it just draws a row short.
+Neither rule is derivable from the code, since the code that would state them
+is the code a contributor is about to write.
+That raise is spent as well, and this last one is the smallest yet: it buys
+the sentence the finished menu bar makes necessary and rewrites a contract
+rather than appending to it, which is the one case this file pays for
+willingly. "On every surface" was true when the only menu was an entity
+action sheet. Once the bar exists it reads as a ban on the bar naming any
+operation that has a key, which would empty it — and a contributor obeying a
+stale contract does more damage than one with no contract at all, because the
+obedience looks like care. So the sentence is narrowed to the sheet it always
+meant, the bar is classified as a projection beside `?` help and the footer
+ranks, and the one genuinely new rule lands beside it: the bar may make an
+operation keyless, but not an entity operation keyless. That last clause is
+the only place the boundary is written down. `ValidateOperationOnePath`
+cannot state it — it never sees the bar — and the bar's own specs cannot,
+because the defect it prevents is a descriptor that looks locally reasonable
+in core_input_operations.go and only becomes wrong when a menu row names it.
+That raise is spent as well, and this one buys two rules that are both
+categories rather than features, which is the only kind of prose this file
+has ever paid for. The first is the advisory gate. A contributor adding the
+next ambient row — a sync warning, a quota line — will reach for the strip
+directly, and the row will then be unhideable while `--no-advisories`
+silently claims to cover it. So the rule names the category, names the two
+members, and forbids gating at the render site, because the plausible local
+fix (an `if hidden` beside the paint) is exactly what breaks the single
+`StatusStripHeight` measurement the strip's whole height contract rests on.
+The second is conflict-bundle decay: `.tt/conflicts/` is portable and
+unmigrated, so a bundle outlives its schema, and the default instinct — a
+document that will not parse is a fatal error — is what stranded a real
+record where adopting remote was the only legal resolution. "Undecodable is
+allowed, unresolvable is not" is a rule about which paths may read a stored
+document, and neither the merge code nor the store can state it, since both
+are what a contributor is about to change.
+That raise is spent as well, and this one is the first that buys no rule at
+all. The package split gives a named thing a longer name: `tickCmd` became
+`status.TickCmd` when Session 2.6 moved it, and the sentence naming it grew
+by the seven bytes of the qualifier. Absorbing that by trimming an unrelated
+rule would be the worse trade, because it makes the diff claim an edit the
+author did not intend to make. So a requalification is paid for at cost, in
+exactly the bytes the qualifier adds, and says so here; the ratchet still
+refuses prose, which is what it was built to refuse. Expect one of these per
+remaining extraction that touches a name this file spells out.
+
+That raise is spent as well, and this one is the second that buys no rule
+either: it pays for the layer-ownership sentence becoming true. Phase 1 of
+the package split turned `internal/tui` from one package into twenty-two,
+so the clause calling it "the sole Outliner root and operation
+registry/executor" stopped naming anything a contributor could act on — and
+a forwarding address with no destination is worse than none, because the
+reader concludes the layering is prose rather than a graph and puts the
+next concern wherever it compiles. What replaces it is the same rule at the
+same altitude, spelled at the granularity that now exists: the eight
+layers, which packages sit in each, and the table plus fitness test that
+refuse an edge nobody declared. It is bought at cost, in the bytes the
+enumeration takes, and no rule elsewhere was trimmed to pay for it. Phase 2
+folds `outliner` out of the shell and rewrites this list once more; that is
+the same kind of raise and is argued then rather than pre-approved here.
+
+That is this raise, and it is the one the sentence above pre-declared.
+Phase 2 landed `outliner` as its own L7 package and decomposed the shell,
+so the enumeration written for twenty-two packages named a graph that no
+longer existed. It was replaced twice over: once by prose forwarding to
+`scripts/tui_package_graph.tsv`, which was accurate but nameless — a
+contributor holding a new concern learned that a table decides, not which
+row their concern belongs in — and now by the nine-layer block that names
+all twenty-three packages and the shell. The block is the cheapest form
+the rule has: one line per layer, package names and nothing else, with the
+whitelist, the fitness test, and every edge's reason left in the table
+where they already live. It costs 227 bytes and no rule elsewhere was
+trimmed to pay for it. A package added or a layer moved rewrites the block
+and is a raise of the same kind, argued then.
+
+A third raise, of 171 bytes, for the menu bar's two visibility sources.
+While `Ctrl+M` revealed a hidden bar by committing the machine-local flag,
+there was one source and "`M` toggles the Outliner menu bar" covered every
+question a contributor could have: the bar was shown because someone chose
+it. The reveal is now the open menu's own, so a frame draws the band for
+either of two reasons, and which one the View checkbox and the close read
+is exactly the kind of fact that gets guessed wrong once and then copied.
+The sentence names the disjunction, its one writer, and the projection the
+checkbox takes, and nothing else; the mechanism is in
+docs/architecture/presentation-chrome.md, where the rest of the bar's
+implementation already lives. No rule elsewhere was trimmed to pay for it.
+
+A fourth raise, of 54 bytes, for the review key. Both edits correct a
+standing enumeration rather than add a rule: the review sentence named the
+axis's whole keyboard surface and would otherwise still name it as the
+sigil and the facet alone, and the one-key-one-act table is an inventory of
+the keys that rule governs, so a key it omits is a key nobody is holding to
+it. Fourteen of those bytes are the table cell; the rest is the clause that
+says the row key is the sigil's own character rather than a new one, which
+is the fact a contributor would otherwise have to infer from the absence of
+a second spelling. No rule elsewhere was trimmed to pay for it.
+
+A fifth raise, of 367 bytes, for `g~`'s return trail. It extends the
+standing session-only sentence rather than opening a section: the trail is
+the second thing in the Outliner that survives no relaunch, and the four
+facts a contributor cannot get from the code without reading three files
+are exactly the ones a later change would break silently — what a frame may
+hold (no task or project pointer, which is what lets a return resolve
+against current data), where `Esc` spends it in a cascade whose order is
+otherwise only implicit in a handler, that `0` drops it whole, and that a
+hop suspends a live lens through the one seam that touches no persistence.
+The mechanism is in docs/architecture/tui-architecture.md, where the rest
+of the revelation path already lives. No rule elsewhere was trimmed to pay
+for it.
+
+A sixth raise, of 403 bytes, for selection-aware copy. It corrects a
+standing enumeration and adds the one rule that correction creates. The
+clause listing clipboard beside structural, edit, Peek, and relation
+operations became false the moment the three projections started taking a
+selection, and a false refusal is the worst kind of rule here: a
+contributor reads it and adds the guard back. What replaces it is the
+contract that made the refusal unnecessary — one snapshot, one
+`external.CopyText` call, so partial success has nowhere to live — plus
+the ordering seam, which is the fact no code path advertises: copied text
+is the one place target order is the result, so `ClipboardSelectionOrder`
+exists beside `NormalizedTaskIdentities` rather than replacing it, and a
+later change that folds the two together would silently reorder every
+copy. The mechanism is in docs/architecture/selection-and-project-tags.md,
+where the rest of the selection contract already lives. No rule elsewhere
+was trimmed to pay for it.
+
+A seventh raise, of 341 bytes, for the resume note. Two of the three edits
+are digit swaps a schema boundary always forces; the cost is the rule the
+new field creates. `ResumeNote` is the first task field with a shape a
+caller can get wrong — trimmed, single-line, bounded in runes — and the
+only thing standing between a bad value and unrepresentable bytes is that
+every surface routes through one validator. A second gate written beside a
+future editing surface would pass what the canonical writer refuses, and
+the refusal would surface as a failed save rather than a rejected edit, so
+naming `models.ValidateResumeNote` as the single gate is the rule. The
+v18 clause pays for itself by keeping the pairing paragraph honest: it is
+the boundary that rewrites every `tasks.md` and changes nothing in it, and
+a contributor who assumes otherwise looks for the lens restage that is
+deliberately absent. The mechanism is in docs/architecture/migration.md.
+No rule elsewhere was trimmed to pay for it.
+
+An eighth raise, of 532 bytes, for the two keys that stopped naming one
+entity. `e` joined `*`, `#`, and `Space` as a shared key, so the sentence
+that enumerates them had to grow a third member and, with it, the one
+rule the widening creates: Edit project's Outliner route is narrowed to a
+project header, because `e` is a root key there and the sole-scope
+fallback that is right on the Hub would otherwise edit the scoped project
+from a section header. `c` cost a checklist bullet for the same reason in
+the other direction — Add Item is the one member of that family answering
+from a row it does not own, and the fold and cursor it moves are a
+property of the commit rather than of the press, which is the fact a
+future handler that reveals at dispatch time would get wrong. The
+explanatory halves live in docs/architecture/operation-grammar.md and
+docs/architecture/tui-architecture.md. Retiring the start-only operation
+and the Edit project sheet row paid part of the raise back in the same
+edit; no rule elsewhere was trimmed for the rest.
+
+Ninth raise, 31492 to 31942, for quick Add Comment on `C`. 450 bytes buy
+three rules that nothing else in the file implies. The first is which of
+the two comment routes may do what: `;` still owns reading, editing,
+reordering, and deleting, `C` only appends, and the only reason that is
+not a second route to an existing act is that they share one mutation and
+one limit — a reader who does not know that would either duplicate the
+mutation or refuse the key. The second is that a multiline `TextEntry()`
+provider moves apply off `Enter`, which the value-provider rule above
+cannot say for it, since Enter-as-newline is a property of the value and
+not of the provider kind. The third is the pair of properties that make
+the popup safe rather than merely convenient — one submission per open,
+and text that survives a refusal — because both are easy to drop in a
+later refactor and neither shows up in a passing render. Nothing was
+trimmed to pay for it: the retired-key list gave back only the five bytes
+`C` itself occupied.
+
+Tenth raise, 31942 to 32732, for a Peek that pages. 790 bytes buy the two
+rules the old five-line cap used to make unnecessary. The first is that
+there are now two heights — the document's and the page's — and exactly
+one function returns either, which is the whole reason a render and a
+viewport measurement taken at different widths still agree; a reader who
+reached for a second line count would reserve a height nothing draws. The
+second is that a remembered page is state, and state in a render path
+needs its reset rule stated where the render rule is: keyed on identity,
+content, and size, read purely, written from one place. Neither is
+derivable from the drop-order bullet they replace, which said the
+opposite — that Peek sheds content to fit. That bullet, the body order it
+carried, and `Ctrl+Enter`'s line in the retired-key list were all trimmed
+in the same edit; the section order survives because it is still a rule,
+just about placement rather than about what gets dropped. The
+explanatory half lives in docs/architecture/search-filters-and-sorting.md.
+
+Eleventh raise, 32732 to 33543, for repeating a task on `D`. 811 bytes buy
+two rules and one prohibition, none of them implied by anything above. The
+first is the seam: a draft is prepared read-only in the application layer
+and reaches the composer as copied values through a typed seed rather than
+as `InitialText`. The preset already carries a text field that the compact
+surface parses, so a reader following the nearest precedent would route the
+title through the capture grammar and silently turn a literal `#123` into a
+tag — the file has to say which channel this is, because both exist and
+only one is correct. The second is the retain/clear split itself, which is
+a policy decision rather than a derivation: nothing in the task invariants
+says whether a repetition keeps a due date or a pin, and a later reader
+adding one field to the seed would have no line to check against. The
+prohibition — no recurrence field, no repeat relationship, no copy-options
+screen — is the boundary that keeps this one key from growing into a
+scheduling feature, and it is exactly the kind of thing a passing test
+cannot state. Nothing was trimmed to pay for it; the key table cell is
+fourteen of the bytes and the rest is the paragraph. The behavioral half
+lives in docs/guide/outliner-keys.md.
+
+Twelfth raise, 33543 to 34557, for acknowledging a review candidate on `R`.
+1014 bytes buy one policy, one prohibition, and one cursor contract, and the
+prohibition is the reason the other two cannot wait. This file already says
+that only the lifecycle transitions write the state clock, which is exactly
+the sentence that sends a reader implementing "mark it reviewed" to
+`ApplyStateTransitionAt` — and that call clears deferral and completion data
+on the way past. So the file has to say what acknowledging is instead: a
+flag clear and a touch, no transition, no second timestamp, no stored queue.
+The policy is the admission set. Flagged, stale, or Waiting is a choice
+nothing above implies — review is a stored axis and staleness is a derived
+one, and joining them is this operation's own decision — and a later reader
+adding a fourth clause has no other line to check against. The cursor
+contract is the half that is not about the mutation at all: the successors
+are read before the commit because the list that answers "who is next" stops
+existing once the acknowledgement lands, and the refusals beside it — no
+fold expanded, no lens changed, no project loaded, no wrap — are what keep a
+triage key from quietly becoming a navigation feature. `=` keeping both
+halves off is one clause and rides along, because the two keys are otherwise
+indistinguishable in a descriptor list. The behavioral half lives in
+docs/guide/outliner-keys.md and the mechanism in
+docs/architecture/tui-architecture.md; the retired-key list gave back the
+five bytes `R` occupied.
+
+Thirteenth raise, 34557 to 35063, for what a merge owes the canonical
+writer. 506 bytes buy one rule and the one worked example that makes it
+checkable. The rule is not discoverable from the code: auditMergedDocument
+reads as a duplicate of models.AuditProject, so a reader adding an invariant
+to the writer has no reason to look at it, and the failure that follows is
+silent in the only way that matters — the merge succeeds field by field, the
+commit fails while rendering, and the losing machine holds an error that
+names no bundle, so `tt conflict` lists nothing and the retry path that
+already exists is never reached. Concurrent creation is the example because
+it is the case the file otherwise implies is handled: ShortID is
+project-local and minted next-free, which two machines do independently
+against documents neither has seen, and nothing above says where that
+collision is caught. Naming the audit rather than the symptom is what keeps
+the next invariant — not this one — from landing in the same blind spot.
+The mechanism lives in docs/architecture/persistence-and-transactions.md.
+
+Fourteenth raise, 35063 to 36119, for the project-comment collection. 1056
+bytes buy three rules a reader cannot derive. The first is where the
+`PROJECT-COMMENTS` block sits and what fixes its bytes: placement, escaping,
+UTC, and an order derived from stored values alone, because the canonical
+rendering is what ComputeRevision hashes and two machines disagreeing about
+any of those would trade revisions that describe one collection. The second
+is that `tasks.md` is now the whole project, so `WriteProjectMarkdown` is the
+only production renderer and the name-plus-task-list one is gone rather than
+deprecated — a rewrite site that could still spell a name and a task list
+would drop comments silently, and rename, task edit, outline edit, and
+cross-project move all rewrite documents they did not otherwise change. The
+third is that comments merge as one collection rather than by id, which
+reads as an oversight beside the field-level task merge and is instead the
+conservative seam an id-keyed merge replaces once comments can be written.
+The mechanism for all three lives in
+docs/architecture/persistence-and-transactions.md.
+
+Fifteenth raise, 36119 to 36516, for the identity-keyed comment merge that
+replaced the conservative seam the fourteenth raise's third rule named. 397
+bytes buy the rules that seam did not need. Merging by id rather than
+position is the one a reader would otherwise have to infer from the value
+carrying a UUID, and inferring it wrong is silent: an index-keyed merge
+reconciles two unrelated comments after the other side inserts one above.
+CreatedAt being refused even when both sides moved it alike is the opposite
+of every other field beside it, where agreement coalesces, so it has to be
+stated or the next reader will "fix" it. The conflict shape — CommentID plus
+one of three field names, never TaskTitle, one entry per diverging id — is
+what a bundle is addressable by, and borrowing TaskTitle would send an
+operator looking for a task that does not exist. The mechanism lives in
+docs/architecture/persistence-and-transactions.md.
+
+Sixteenth raise, 36516 to 36574, for `C` joining the shared keys. 58 bytes
+buy two rules that are cheaper stated than inferred. The first is that the
+key is shared at all: a reader who knows `*` and `#` branch on the cursor
+has no way to tell whether the comment key does, and guessing wrong writes a
+project comment where a task comment was meant. The second is the name of
+the guard, which stopped being about one operation: the narrowing is now a
+set, so a third root key aimed at a project header declares itself in
+`outlinerProjectOperationTargetsHeader` instead of restating the check. The
+mechanism lives in docs/architecture/operation-grammar.md.
+
+Seventeenth raise, 36574 to 37340, for `;` joining `C` on the project header
+and for what the project half of that panel is held to. 766 bytes buy three
+rules that are silent when guessed wrong. The first is that the second owner
+is an adapter over the one panel rather than a second panel, which is the
+decision a reader is most likely to undo: a project comments surface reads
+like a sibling of the task one, and building it that way forks the grammar,
+the footer, and the delete confirmation. The second is that a project
+comment is addressed by id and by the text the panel read, and that the list
+runs newest first — those two are a pair, because reversing the display is
+exactly what makes an index-addressed mutation rewrite the wrong comment,
+and the failure is invisible: it commits. The third is that the adapter
+re-resolves its project by identity on every reload, which a reader holding
+a `*models.Project` has no reason to expect until a commit replaces the
+object and the panel is silently commenting on a discarded one. Preserving
+the UUID and CreatedAt across an edit is stated with them because an edit
+that mints either is a different comment to the merge. The mechanism lives
+in docs/architecture/operation-grammar.md.
+

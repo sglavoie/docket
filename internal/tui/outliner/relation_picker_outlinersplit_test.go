@@ -43,30 +43,6 @@ func TestRelationPickerSearchEditsInPlaceAndScrolls(t *testing.T) {
 	}
 }
 
-// relationFixture seeds the whole reference shape the picker has to describe:
-// a same-project target, a cross-project one, a locator into a project nothing
-// loaded, and a reciprocal pair, so both directions and both refusals have a
-// real subject.
-func relationFixture(t *testing.T) (*models.Project, *models.Project) {
-	t.Helper()
-	source := renderFixtureTask(t, "source", 1, "Wire the importer", models.StateDoing, 0, models.StateDoing)
-	sibling := renderFixtureTask(t, "sibling", 2, "Agree the schema", models.StateBacklog, 2, models.StateBacklog)
-	remote := renderFixtureTask(t, "remote", 1, "Publish the contract", models.StateWaiting, 0, models.StateWaiting)
-	closed := renderFixtureTask(t, "closed", 2, "Retire the shim", models.StateDone, 0, models.StateDone)
-	alpha := renderFixtureProject(t, "proj-a", "alpha", "Alpha", []*models.Task{source, sibling})
-	beta := renderFixtureProject(t, "proj-b", "beta", "Beta", []*models.Task{remote, closed})
-	source.Dependencies = []models.TaskReference{
-		{ProjectID: "proj-a", TaskID: "sibling"},
-		{ProjectID: "proj-b", TaskID: "remote"},
-		{ProjectID: "proj-z", TaskID: "ghost"},
-	}
-	// The reciprocal half: remote names source back, so the pair resolves to the
-	// same locator in both directions.
-	remote.Dependencies = []models.TaskReference{{ProjectID: "proj-a", TaskID: "source"}}
-	closed.Dependencies = []models.TaskReference{{ProjectID: "proj-a", TaskID: "source"}}
-	return alpha, beta
-}
-
 // relationPickerOver opens the picker over one loaded task.
 func relationPickerOver(t *testing.T, outlinerView *OutlinerModel, projectID, taskID string) {
 	t.Helper()

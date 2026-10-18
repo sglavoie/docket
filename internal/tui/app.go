@@ -72,7 +72,7 @@ type AppModel struct {
 
 	// shellFrame records which presentation the shell last told how tall its
 	// footer is, so the view that stops being active is told the footer is no
-	// longer its to reserve for. See app_view.go.
+	// longer its to reserve for. See app_hosted_panel.go.
 	shellFrame shellFrameRecipient
 
 	// viewNav is the view and navigation cluster: the authoritative route and

@@ -10,7 +10,6 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/colorprofile"
-	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -374,10 +373,4 @@ func uxClarityFrameNamed(name string) (uxClarityFrame, bool) {
 		}
 	}
 	return uxClarityFrame{}, false
-}
-
-// uxClarityFooter is the shell-composed bottom bar with its styling removed,
-// which is where feedback and guidance either coexist or replace one another.
-func uxClarityFooter(driver *UITestDriver) string {
-	return ansi.Strip(driver.App().renderStatusBar())
 }

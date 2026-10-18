@@ -193,7 +193,6 @@ func TestSearchAutocompleteStaticValuesComeFromTheSearchGrammar(t *testing.T) {
 // contract for the new module, matching the one the capture consumers already
 // answer to: a second static list here would be a second grammar.
 func TestSearchAutocompleteOwnsNoParallelTriggerOrValueRegistry(t *testing.T) {
-	name := "outliner_search_suggestions.go"
 	triggerSet := make(map[string]bool)
 	for _, definition := range textgrammar.Definitions(textgrammar.SurfaceSearch) {
 		triggerSet[definition.Trigger] = true
@@ -207,41 +206,48 @@ func TestSearchAutocompleteOwnsNoParallelTriggerOrValueRegistry(t *testing.T) {
 		destinationSet[value] = true
 	}
 
-	source, err := os.ReadFile(name)
-	if err != nil {
-		t.Fatalf("read %s: %v", name, err)
-	}
-	fileSet := token.NewFileSet()
-	file, err := parser.ParseFile(fileSet, filepath.Clean(name), source, 0)
-	if err != nil {
-		t.Fatalf("parse %s: %v", name, err)
-	}
-	ast.Inspect(file, func(node ast.Node) bool {
-		switch value := node.(type) {
-		case *ast.CompositeLit:
-			triggers, destinations := grammarLiteralsInNode(value, triggerSet, destinationSet)
-			if len(triggers) >= 2 {
-				t.Errorf("%s:%d owns a parallel trigger list %v", name, fileSet.Position(value.Pos()).Line, mapKeys(triggers))
-			}
-			if len(destinations) >= 2 {
-				t.Errorf("%s:%d owns a parallel destination list %v", name, fileSet.Position(value.Pos()).Line, mapKeys(destinations))
-			}
-		case *ast.BasicLit:
-			if value.Kind != token.STRING {
-				return true
-			}
-			literal, err := strconv.Unquote(value.Value)
-			if err == nil && inlineFormTriggerCount(literal, triggerSet) >= 2 {
-				t.Errorf("%s:%d owns a parallel inline-form string %q", name, fileSet.Position(value.Pos()).Line, literal)
-			}
+	for _, name := range []string{
+		"outliner_search_suggestions.go",
+		"outliner_search_vocabulary.go",
+		"outliner_search_scoring.go",
+		"outliner_search_history.go",
+	} {
+		source, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatalf("read %s: %v", name, err)
 		}
-		return true
-	})
+		fileSet := token.NewFileSet()
+		file, err := parser.ParseFile(fileSet, filepath.Clean(name), source, 0)
+		if err != nil {
+			t.Fatalf("parse %s: %v", name, err)
+		}
+		ast.Inspect(file, func(node ast.Node) bool {
+			switch value := node.(type) {
+			case *ast.CompositeLit:
+				triggers, destinations := grammarLiteralsInNode(value, triggerSet, destinationSet)
+				if len(triggers) >= 2 {
+					t.Errorf("%s:%d owns a parallel trigger list %v", name, fileSet.Position(value.Pos()).Line, mapKeys(triggers))
+				}
+				if len(destinations) >= 2 {
+					t.Errorf("%s:%d owns a parallel destination list %v", name, fileSet.Position(value.Pos()).Line, mapKeys(destinations))
+				}
+			case *ast.BasicLit:
+				if value.Kind != token.STRING {
+					return true
+				}
+				literal, err := strconv.Unquote(value.Value)
+				if err == nil && inlineFormTriggerCount(literal, triggerSet) >= 2 {
+					t.Errorf("%s:%d owns a parallel inline-form string %q", name, fileSet.Position(value.Pos()).Line, literal)
+				}
+			}
+			return true
+		})
 
-	// Cardinality is the other thing a parallel list could smuggle in: it must be
-	// read off the definition, so the capture-surface singleton table stays
-	// unreferenced here.
-	if strings.Contains(string(source), "autocompleteSingletonField") {
-		t.Error("search completion read the capture surface's parallel singleton list instead of Definition.Cardinality")
+		// Cardinality is the other thing a parallel list could smuggle in: it must be
+		// read off the definition, so the capture-surface singleton table stays
+		// unreferenced here.
+		if strings.Contains(string(source), "autocompleteSingletonField") {
+			t.Error("search completion read the capture surface's parallel singleton list instead of Definition.Cardinality")
+		}
 	}
 }

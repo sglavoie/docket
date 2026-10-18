@@ -153,7 +153,7 @@ contract in the same change.
 | ~~Status displaces the capture controls rather than standing beside them.~~ Replaced by session 4: the footer says both, feedback on its own row above the controls, at every size in the matrix. | `TestUXClarityFeedbackStandsBesideTheCaptureControls`, formerly `TestUXClarityFeedbackTakesTheCaptureControlsRow` | Session 4 — done |
 | ~~Transient messages replace capture controls in the footer.~~ Replaced by session 4: the message takes a row beside them and clearing it restores the footer byte for byte. | `TestCaptureFooterKeepsControlsBesideATemporaryStatus`, formerly `TestCaptureFooterYieldsToTemporaryStatusThenReturns` | Session 4 — done |
 | ~~Every context axis competes for one header row and the overflow is unreadable.~~ Replaced by session 5: the axes take an optional second row, it drops whole segments and names what it dropped, and every dropped value is readable in the bounded `Q` document. | `TestUXClarityCombinedContextIsReadableAtEverySize`, formerly `TestUXClarityCombinedContextExceedsTheOneRowHeader` | Session 5 — done |
-| ~~The Outliner's content height counts exactly one header row.~~ Replaced by session 5: it counts the identity row plus `contextRowRows()`, which is presence-only and charged exactly once. | `OutlinerModel.ContentHeight` in `internal/tui/outliner/outliner_rows.go`, `TestOutlinerContextRowIsAbsentFromADefaultView` | Session 5 — done |
+| ~~The Outliner's content height counts exactly one header row.~~ Replaced by session 5: it counts the identity row plus `contextRowRows()`, which is presence-only and charged exactly once. | `OutlinerModel.ContentHeight` in `internal/tui/outliner/outliner_rows_rebuild.go`, `TestOutlinerContextRowIsAbsentFromADefaultView` | Session 5 — done |
 | ~~Peek's dock costs the same rows at every terminal height.~~ Replaced by session 7: the dock is `clamp(floor(H/3), 7, 12)` capped by what the frame leaves, it grows with height, capture shrinks it and closing capture gives it back, and typing under capture moves it not at all. The last clause was itself replaced by the daily-use plan's session 7: the capture panel is now sized by the content it holds, so typing may cost the dock rows, and the assertion is that it only ever yields them, stays whole, and keeps the three a displayed dock owes. | `TestUXClarityPeekDockIsAShareOfTheFrame`, formerly `TestUXClarityCaptureOverPeekKeepsAFixedDock` | Session 7 — done |
 | ~~Peek's body, window, and page sizes are constants.~~ Replaced by session 7: `peekDockGeometry` is the one measurement, and the body, the window, the total, and both page distances are derived from its `bodyRows`. | `peekDockGeometry` in `internal/tui/outliner/inline_peek_paging.go` | Session 7 — done |
 
@@ -177,7 +177,7 @@ contract in the same change.
   the multi-select summary; advisories route through `AdvisoryLine` or
   `AdvisoryStatus` and are never gated at a render site.
 - Landed: `footerFlashSeverity.animates()` in
-  `internal/tui/app_view_status.go` is the closed severity table, and
+  `internal/tui/app_footer_flash.go` is the closed severity table, and
   `feedbackController.retireFlash` in `internal/tui/feedback_controller.go` is
   the supersession. `internal/tui/footer_flash_test.go` holds the two halves
   apart — `TestFooterFlashStaysQuietOnRoutineShellStatus` and
@@ -225,7 +225,7 @@ contract in the same change.
   absence would be a visible edit rather than a silently relaxed assertion.
 - Landed: `route.ActiveGuidanceOwner` in
   `internal/tui/route/presentation_chrome_policy.go` is the ownership vocabulary
-  and `AppModel.activeGuidance` in `internal/tui/app_view_status.go` the one
+  and `AppModel.activeGuidance` in `internal/tui/app_footer_guidance.go` the one
   resolution, with `suppressGuidanceRows` blanking the occupant at its own
   height and `surfaceFooterContent` holding the branches it takes whole.
   `route.SelfGuidedPresentation` in `internal/tui/route/view.go` is the

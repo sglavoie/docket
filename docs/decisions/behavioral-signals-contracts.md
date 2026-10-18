@@ -130,7 +130,7 @@ days old. The threshold is hardcoded as `90`, and the boundary is inclusive:
 age 89 is not stale; age 90 is stale. Compare calendar days, not elapsed
 24-hour durations. This follows Recent's hardcoded local-day precedent at
 `recentModeCutoffDays` and `BuildRecentModeSections` in
-`internal/tui/outliner/outliner_rows.go` while intentionally using `UpdatedAt`,
+`internal/tui/outliner/outliner_mode_sections.go` while intentionally using `UpdatedAt`,
 not `StateChangedAt`.
 
 The base stale predicate excludes terminal and currently deferred tasks. It may
@@ -147,7 +147,7 @@ Stale. This extends the Review rule at
 active-work state outranks a derived age claim. Existing relative precedence
 among those five sections is unchanged. The insertion point binds
 `(*OutlinerModel).buildAllPrimaryRows` in
-`internal/tui/outliner/outliner_projection.go`.
+`internal/tui/outliner/outliner_projection_modes.go`.
 
 ## Today pace readout
 

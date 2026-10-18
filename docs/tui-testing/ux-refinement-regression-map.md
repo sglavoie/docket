@@ -307,7 +307,7 @@ declared their text required, while this reads the finished screen.
 ### Session 11 — Present capture as a contextual bottom modal
 
 - Go: `internal/tui/chrome/hosted_panel_test.go`,
-  `internal/tui/taskform/task_composer_test.go`,
+  `internal/tui/taskform/task_composer_panel_test.go`,
   `internal/tui/taskform/task_composer_expand_test.go`,
   `internal/tui/taskform/task_composer_seed_test.go`,
   `internal/tui/app_view_test.go`,

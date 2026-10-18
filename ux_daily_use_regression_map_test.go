@@ -31,13 +31,18 @@ import (
 
 const uxDailyUseRegressionMapPath = "docs/tui-testing/ux-daily-use-regression-map.md"
 
-// uxDailyUseRecordedExpectationsPath is where the expectations this plan
-// replaces are asserted. The map names the tests in it, and the gate below reads
-// the names out of the file rather than out of a list kept here, so a renamed or
+// uxDailyUseRecordedExpectationsPaths is where the expectations this plan
+// replaces are asserted. The map names these tests, and the gate below reads
+// the names out of the files rather than out of a list kept here, so a renamed or
 // deleted contract fails at the map instead of becoming a second place to
 // update. The review matrix is deliberately not scanned: it records evidence
 // that every session re-exports, not an expectation any one session replaces.
-const uxDailyUseRecordedExpectationsPath = "internal/tui/ux_daily_use_baseline_test.go"
+var uxDailyUseRecordedExpectationsPaths = []string{
+	"internal/tui/ux_daily_use_baseline_test.go",
+	"internal/tui/ux_daily_use_baseline_capture_test.go",
+	"internal/tui/ux_daily_use_baseline_guidance_test.go",
+	"internal/tui/ux_daily_use_baseline_tags_test.go",
+}
 
 // uxDailyUsePlannedSessions is the span this map covers. Session 1 establishes
 // the baseline, the review frames, and the map itself, so it owns no later
@@ -154,27 +159,29 @@ func TestBaselineUXDailyUseMapPreservesTheEarlierMaps(t *testing.T) {
 // be rewritten by whoever hit it first, which is exactly how a deliberate change
 // and a regression stop being distinguishable in review.
 func TestBaselineUXDailyUseMapNamesTheExpectationsItReplaces(t *testing.T) {
-	recorded := readRepositoryFile(t, uxDailyUseRecordedExpectationsPath)
 	daily := readRepositoryFile(t, uxDailyUseRegressionMapPath)
 
-	var named int
-	for _, line := range strings.Split(recorded, "\n") {
-		const prefix = "func TestUXDailyUse"
-		if !strings.HasPrefix(line, prefix) {
-			continue
+	for _, path := range uxDailyUseRecordedExpectationsPaths {
+		recorded := readRepositoryFile(t, path)
+		var named int
+		for _, line := range strings.Split(recorded, "\n") {
+			const prefix = "func TestUXDailyUse"
+			if !strings.HasPrefix(line, prefix) {
+				continue
+			}
+			name := line[len("func "):]
+			if cut := strings.IndexByte(name, '('); cut >= 0 {
+				name = name[:cut]
+			}
+			named++
+			if !strings.Contains(daily, name) {
+				t.Errorf("%s records %s but %s never names it, so no session owns replacing it",
+					path, name, uxDailyUseRegressionMapPath)
+			}
 		}
-		name := line[len("func "):]
-		if cut := strings.IndexByte(name, '('); cut >= 0 {
-			name = name[:cut]
+		if named == 0 {
+			t.Fatalf("%s declares no recorded expectations; the gate is not reaching them",
+				path)
 		}
-		named++
-		if !strings.Contains(daily, name) {
-			t.Errorf("%s records %s but %s never names it, so no session owns replacing it",
-				uxDailyUseRecordedExpectationsPath, name, uxDailyUseRegressionMapPath)
-		}
-	}
-	if named == 0 {
-		t.Fatalf("%s declares no recorded expectations; the gate is not reaching them",
-			uxDailyUseRecordedExpectationsPath)
 	}
 }

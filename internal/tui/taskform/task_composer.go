@@ -1,17 +1,14 @@
 package taskform
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
@@ -263,6 +260,31 @@ func (m *TaskComposerModel) Init() tea.Cmd {
 	return textarea.Blink
 }
 
+// QuitBlockReason names content a desktop quit would abandon.
+func (m *TaskComposerModel) QuitBlockReason() string {
+	if m.SubmissionInFlight {
+		return "A capture is still being saved."
+	}
+	if m.Mode == ComposerExpanded && m.Expanded != nil {
+		return m.Expanded.QuitBlockReason()
+	}
+	if m.HasDraft() {
+		return "Your capture draft has not been saved."
+	}
+	return ""
+}
+
+func (m *TaskComposerModel) closeCompactDraft() tea.Cmd {
+	if m.preservesDraft {
+		return m.closeKeepingDraft()
+	}
+	if m.HasDraft() {
+		m.ConfirmDiscard = true
+		return nil
+	}
+	return func() tea.Msg { return status.BackMsg{} }
+}
+
 // updateSubmission releases the pending save only on a result. While it is
 // pending, input stays frozen so success cannot erase text typed after submit.
 func (m *TaskComposerModel) updateSubmission(msg tea.Msg) bool {
@@ -442,346 +464,4 @@ func (m *TaskComposerModel) handleComposerAutocompleteKey(name string) (bool, te
 		return true, nil
 	}
 	return false, nil
-}
-
-func (m *TaskComposerModel) CreateCompact(openContent bool) tea.Cmd {
-	return m.createCompact(openContent, false)
-}
-
-func (m *TaskComposerModel) createCompact(openContent, keepOpen bool) tea.Cmd {
-	if m.SubmissionInFlight {
-		return nil
-	}
-	m.pasteRefusal = ""
-	reqs, ok := m.ParseCompactLines()
-	if !ok {
-		m.validateOnEdit = true
-		m.focusFirstCaptureError()
-		m.offerProjectCreation(openContent, keepOpen)
-		return nil
-	}
-	var cmd tea.Cmd
-	if len(reqs) == 1 {
-		cmd = m.capture.CaptureCreate(reqs[0], openContent)
-	} else {
-		cmd = m.capture.CaptureBulk(reqs, true)
-	}
-	if cmd == nil {
-		return nil
-	}
-	return m.markSubmission(cmd, keepOpen)
-}
-
-// markSubmission freezes input until the capture's result arrives and, for
-// Ctrl+N, marks a success as one that keeps the composer open.
-func (m *TaskComposerModel) markSubmission(cmd tea.Cmd, keepOpen bool) tea.Cmd {
-	cmd = m.guardRecoverySubmit(cmd)
-	if cmd == nil {
-		return nil
-	}
-	m.SubmissionInFlight = true
-	if !keepOpen {
-		return cmd
-	}
-	return func() tea.Msg {
-		result := cmd()
-		if created, ok := result.(coordinator.TaskCreatedMsg); ok {
-			created.KeepComposerOpen = true
-			return created
-		}
-		return result
-	}
-}
-
-// focusFirstCaptureError runs only after an explicit submit. Walking visual
-// rows also handles wrapped lines and scrolls an off-screen error into view.
-func (m *TaskComposerModel) focusFirstCaptureError() {
-	if len(m.Errors) == 0 {
-		return
-	}
-	m.focusCaptureErrorLine(m.Errors[0].Line)
-}
-
-func (m *TaskComposerModel) focusNextCaptureError() {
-	if len(m.Errors) == 0 {
-		return
-	}
-	target := m.Errors[0].Line
-	for _, problem := range m.Errors {
-		if problem.Line > m.Input.Line()+1 {
-			target = problem.Line
-			break
-		}
-	}
-	m.focusCaptureErrorLine(target)
-}
-
-func (m *TaskComposerModel) focusPreviousCaptureError() {
-	if len(m.Errors) == 0 {
-		return
-	}
-	target := m.Errors[len(m.Errors)-1].Line
-	for i := len(m.Errors) - 1; i >= 0; i-- {
-		if m.Errors[i].Line < m.Input.Line()+1 {
-			target = m.Errors[i].Line
-			break
-		}
-	}
-	m.focusCaptureErrorLine(target)
-}
-
-func (m *TaskComposerModel) focusCaptureErrorLine(line int) {
-	m.syncInputHeight()
-	target := max(line-1, 0)
-	m.Input.MoveToBegin()
-	for guard := m.composerInputContentRows(); m.Input.Line() < target && guard > 0; guard-- {
-		m.Input.CursorDown()
-	}
-	column := 0
-	for _, problem := range m.Errors {
-		if problem.Line == line {
-			column = problem.Column
-			break
-		}
-	}
-	m.Input.SetCursorColumn(column)
-	// Setting a column alone does not scroll a wrapped token into view.
-	m.Input, _ = m.Input.Update(nil)
-	m.UpdatePreview()
-}
-
-func (m *TaskComposerModel) ParseCompactLines() ([]app.CaptureRequest, bool) {
-	reqs, lineErrors := m.parseCompactLines()
-	m.Errors = lineErrors
-	return reqs, len(lineErrors) == 0
-}
-
-// Live batch feedback uses the submit parser without publishing refusals or
-// moving the caret. Rendering and layout only read the settled count.
-func (m *TaskComposerModel) refreshBatchDiagnostics() {
-	m.batchInvalidLines = 0
-	m.batchDestinations = nil
-	m.batchPlanSummary = ""
-	if m.nonblankLineCount() > 1 {
-		requests, lineErrors := m.parseCompactLines()
-		m.batchInvalidLines = len(lineErrors)
-		counts := make(map[string]int)
-		planCounts := make(map[app.CaptureDestination]int)
-		var order []string
-		for _, request := range requests {
-			if counts[request.ProjectID] == 0 {
-				order = append(order, request.ProjectID)
-			}
-			counts[request.ProjectID]++
-			planCounts[composerPlanDestination(request.Destination)]++
-		}
-		for _, id := range order {
-			project := m.projectByID(id)
-			name := project.Slug
-			if name == "" {
-				name = project.Name
-			}
-			m.batchDestinations = append(m.batchDestinations, fmt.Sprintf("%s %d", name, counts[id]))
-		}
-		if len(planCounts) > 1 {
-			var parts []string
-			for _, plan := range []app.CaptureDestination{app.CaptureDestinationToday, app.CaptureDestinationNext, ""} {
-				if count := planCounts[plan]; count > 0 {
-					label := "Unplanned"
-					if plan != "" {
-						label = chrome.PlanStatusValue(string(plan))
-					}
-					parts = append(parts, fmt.Sprintf("%s %d", label, count))
-				}
-			}
-			m.batchPlanSummary = "Plan: " + strings.Join(parts, " · ")
-		}
-	}
-}
-
-func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, []grammar.LineError) {
-	return capturetext.Requests(m.Input.Value(), m.Preset.Project, m.Preset.AllProjects, m.captureDefaults())
-}
-
-// captureDefaults is the preset's half of every line: the shared values a line's
-// own tokens override, read by the one request builder the bridge also uses.
-func (m *TaskComposerModel) captureDefaults() capturetext.Defaults {
-	return capturetext.Defaults{
-		Priority:    m.Preset.Shared.Priority,
-		Tags:        m.Preset.Shared.Tags,
-		ParentID:    m.Preset.Shared.ParentID,
-		Due:         m.Preset.Shared.Due,
-		Destination: m.Preset.Shared.Destination,
-		SkipProject: !m.Preset.AllowProjectSwitch,
-	}
-}
-
-// ParseCaptureText reads text exactly as the compact composer would on
-// submit — every nonblank line through the capture grammar and the preset's
-// defaults — without a composer on screen. A host capturing through the
-// control socket uses it, so a line refused here is one `a` would refuse too.
-func ParseCaptureText(preset TaskComposerPreset, runtime *config.RuntimeState, text string) ([]app.CaptureRequest, []grammar.LineError) {
-	composer := NewTaskComposerModel(preset, runtime)
-	composer.Input.SetValue(text)
-	reqs, ok := composer.ParseCompactLines()
-	if !ok {
-		return nil, composer.Errors
-	}
-	return reqs, nil
-}
-
-// CapturePreviewText describes a host's full draft through the composer's own
-// validation and route summary. Invalid drafts return no misleading route;
-// opening an empty field still describes the default destination.
-func CapturePreviewText(preset TaskComposerPreset, runtime *config.RuntimeState, text string) (string, []grammar.LineError) {
-	composer := NewTaskComposerModel(preset, runtime)
-	composer.Input.SetValue(text)
-	var reqs []app.CaptureRequest
-	if strings.TrimSpace(text) != "" {
-		var ok bool
-		reqs, ok = composer.ParseCompactLines()
-		if !ok {
-			return "", composer.Errors
-		}
-	}
-	project, plan, state := composer.effectiveRouteHeader().strings()
-	parts := []string{"Project: " + project}
-	if plan != "" {
-		parts = append(parts, "Plan: "+plan)
-	}
-	parts = append(parts, "Status: "+state)
-	now := time.Now()
-	var due string
-	for i, req := range reqs {
-		value := ""
-		if req.Due != nil {
-			value = chrome.FormatWeekdayDate(*req.Due, now, (&models.Task{DueDate: req.Due}).DueHasTime())
-		}
-		if i == 0 {
-			due = value
-		} else if due != value {
-			due = composerMixedValue
-		}
-	}
-	if due != "" {
-		parts = append(parts, "Due: "+due)
-	}
-	for _, field := range []struct {
-		label string
-		value func(app.CaptureRequest) string
-	}{
-		{"Defer until", func(req app.CaptureRequest) string {
-			if req.Defer == nil {
-				return ""
-			}
-			return chrome.FormatWeekdayDate(req.Defer.Local(), now, true)
-		}},
-		{"Priority", func(req app.CaptureRequest) string {
-			if req.Priority == models.PriorityUnset {
-				return ""
-			}
-			return models.PriorityName(req.Priority)
-		}},
-	} {
-		value := ""
-		for i, req := range reqs {
-			next := field.value(req)
-			if i == 0 {
-				value = next
-			} else if next != value {
-				value = composerMixedValue
-			}
-		}
-		if value != "" {
-			parts = append(parts, field.label+": "+value)
-		}
-	}
-	var notices []string
-	for _, req := range reqs {
-		project := composer.projectByID(req.ProjectID)
-		input := grammar.QuickCaptureInput{Project: project,
-			Preview: &grammar.QuickCaptureResult{Title: req.Title, ParentID: req.ParentID}}
-		if hint := input.DuplicateCaptureHint(); hint != "" {
-			if len(reqs) > 1 {
-				hint = fmt.Sprintf("Line %d: %s", req.SourceLine, hint)
-			}
-			notices = append(notices, hint)
-		}
-	}
-	return strings.Join(append([]string{strings.Join(parts, " · ")}, notices...), "\n"), nil
-}
-
-// CaptureCompletion is one suggestion CaptureCompletions offers: Label is the
-// plain text a list shows and Insert the whole replacement for the token.
-type CaptureCompletion struct {
-	Label  string
-	Insert string
-}
-
-// CaptureCompletionSet is what the compact composer would offer at a caret.
-// Token is the text being completed, sigil included, and empty when the caret
-// stands on no sigil the grammar completes. Exact is the composer's own test
-// for whether Enter submits instead of accepting.
-type CaptureCompletionSet struct {
-	Token string
-	Items []CaptureCompletion
-	Exact bool
-}
-
-// captureCompletionWidth is the width a headless composer truncates its task
-// titles at. A host draws its own list, so the budget is generous rather than a
-// terminal's, while still bounding a pathological title.
-const captureCompletionWidth = 120
-
-// CaptureCompletions reads text as the draft up to the caret and returns what
-// the compact composer would suggest there, each suggestion as accepting it
-// would rewrite the token. A host completing through the control socket uses
-// it, so it offers exactly what `a` offers.
-func CaptureCompletions(preset TaskComposerPreset, runtime *config.RuntimeState, text string) CaptureCompletionSet {
-	composer := NewTaskComposerModel(preset, runtime)
-	composer.SetSize(captureCompletionWidth, composer.height)
-	composer.Input.SetValue(text)
-	composer.RefreshAutocomplete()
-	value := composer.Input.Value()
-	if !composer.AC.IsActive() || composer.AC.TriggerPos > len(value) {
-		return CaptureCompletionSet{}
-	}
-	trigger := grammar.TriggerCharForMode(composer.AC.Mode, composer.Triggers)
-	set := CaptureCompletionSet{
-		Token: value[composer.AC.TriggerPos:],
-		Items: make([]CaptureCompletion, 0, len(composer.AC.Items)),
-		Exact: composer.AutocompleteLiteralComplete(),
-	}
-	for _, item := range composer.AC.Items {
-		set.Items = append(set.Items, CaptureCompletion{
-			Label:  ansi.Strip(item.Display),
-			Insert: trigger + item.Value + " ",
-		})
-	}
-	return set
-}
-
-// QuitBlockReason names content a desktop quit would abandon.
-func (m *TaskComposerModel) QuitBlockReason() string {
-	if m.SubmissionInFlight {
-		return "A capture is still being saved."
-	}
-	if m.Mode == ComposerExpanded && m.Expanded != nil {
-		return m.Expanded.QuitBlockReason()
-	}
-	if m.HasDraft() {
-		return "Your capture draft has not been saved."
-	}
-	return ""
-}
-
-func (m *TaskComposerModel) closeCompactDraft() tea.Cmd {
-	if m.preservesDraft {
-		return m.closeKeepingDraft()
-	}
-	if m.HasDraft() {
-		m.ConfirmDiscard = true
-		return nil
-	}
-	return func() tea.Msg { return status.BackMsg{} }
 }

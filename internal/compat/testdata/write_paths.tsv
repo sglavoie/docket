@@ -56,9 +56,9 @@ internal/storage/markdown_load_save.go:SaveProject	commit-journal	raw tasks.md s
 internal/storage/markdown_load_save.go:deleteProjectDir	commit-journal	test-double repository path; production delete is PlanProjectDelete through the journal
 internal/storage/undo_ledger_maintenance.go:WorkspaceLedger.gcBlobs	ledger-restore	garbage-collects retained undo images; ledger is local
 internal/syncexchange/folder.go:ExchangeFolder	sync-transport	creates the device-local transport directory that holds the exchange lock; never exchanged
-internal/syncexchange/folder.go:pruneInbox	sync-transport	removes spent copies from the device-local sync inbox; never touches the exchange
+internal/syncexchange/folder_fetch.go:pruneInbox	sync-transport	removes spent copies from the device-local sync inbox; never touches the exchange
 internal/syncexchange/folder.go:saveFolderStatus	sync-transport	device-local transport status for status surfaces; never exchanged
-internal/syncexchange/folder.go:stageInbox	sync-transport	stages verified exchange files into the device-local inbox before import through the journal
+internal/syncexchange/folder_fetch.go:stageInbox	sync-transport	stages verified exchange files into the device-local inbox before import through the journal
 internal/syncexchange/folder.go:writeExchangeFile	sync-transport	writes immutable content-addressed history the identity and this device advertisement into the exchange folder
 internal/synclog/stat_cache.go:History.saveStatCache	machine-local	device-local observation stat cache under .tt/sync; derived from the synced files it names and safe to delete; never exchanged
 internal/transaction/journal.go:Journal.prepareWithID	commit-journal	removes stale staging during prepare
@@ -69,9 +69,9 @@ internal/tui/handler_view.go:AppModel.handleTextEditorExternal	external-editor	r
 internal/tui/lifecycle_controller.go:RunApp	machine-local	TUI process lock directory under the local runtime root
 internal/tui/notes/notes_editor_round_trip.go:startNoteEditorWithContent	external-editor	note round trip through an external editor
 internal/tui/outline_editor.go:removeOutlineBuffer	external-editor	removes the outline dump buffer after O
-internal/tui/taskdetail/comments_actions.go:CommentsModel.createCommentTempFile	external-editor	comment buffer for an external editor
-internal/tui/taskdetail/comments_actions.go:CommentsModel.editCommentWithExternalEditor	external-editor	removes the comment buffer
-internal/tui/taskdetail/comments_actions.go:readEditedCommentText	external-editor	removes the comment buffer after reading it
+internal/tui/taskdetail/comments_external_editor.go:CommentsModel.createCommentTempFile	external-editor	comment buffer for an external editor
+internal/tui/taskdetail/comments_external_editor.go:CommentsModel.editCommentWithExternalEditor	external-editor	removes the comment buffer
+internal/tui/taskdetail/comments_external_editor.go:readEditedCommentText	external-editor	removes the comment buffer after reading it
 internal/util/files.go:AtomicWriteFile	commit-journal	temp-write, fsync, rename primitive every durable writer uses
 internal/util/files.go:WithFileLock	commit-staging	advisory lock file; local-only
 internal/util/pidlock.go:AcquirePIDLock	machine-local	process lock file

@@ -31,7 +31,7 @@ import (
 // they are the only one that can show the thing.
 //
 // Every frame here records current behavior. Nothing in this file asserts what
-// a later session will do; `ux_daily_use_baseline_test.go` is where the
+// a later session will do; the baseline test files are where the
 // expectations later sessions deliberately rewrite are stated, and
 // `docs/tui-testing/ux-daily-use-regression-map.md` is where each one is
 // assigned an owner.
@@ -273,7 +273,7 @@ func uxDailyUseOwnerList(owners []int) string {
 }
 
 // The staging functions below are the frames' only definition of what each state
-// is. The recorded expectations in ux_daily_use_baseline_test.go reach them
+// is. The recorded expectations in the baseline test files reach them
 // through uxDailyUseStagedDriver, so the screens exported for review are exactly
 // the screens the contracts are written against rather than a second
 // approximation of them.

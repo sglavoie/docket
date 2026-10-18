@@ -336,7 +336,7 @@ The committed suite exercises the product contracts directly:
 | Stale work staying in its lifecycle lane, `fs` outside All, and narrow layout | `stale-lane-and-filter.json` |
 | Semantic colors in both themes | `theme-toggle.json` plus `internal/tui/theme/semantic_tag_title_style_test.go` |
 | Tag chip order, its `+N` remainder, and the row as a prefix of Peek | `task-tag-chip-order.json` plus `internal/tui/outliner/tag_chip_style_test.go` |
-| Deterministic launch and duplicate-submit hardening | `internal/tui/app_deterministic_startup_test.go`, `internal/tui/taskform/task_composer_test.go`, `internal/tui/taskform/task_form_save_create_test.go` |
+| Deterministic launch and duplicate-submit hardening | `internal/tui/app_deterministic_startup_test.go`, `internal/tui/taskform/task_composer_validation_test.go`, `internal/tui/taskform/task_form_save_create_test.go` |
 | Generated operation help and retired-key absence | `in-app-help.json`, `mode-catalog.json` |
 | Each surface's `?` naming its own grammar rather than the Outliner's | `project-hub-help.json`, `task-comments-help.json` |
 | Responsive and large-catalog rendering | `baseline-layout.json`, `resize-stress.json` |
@@ -406,8 +406,8 @@ plan replaces to its owning session, and documents
 `TT_UX_DAILY_USE_REVIEW_DIR`, the directory
 `internal/tui/ux_daily_use_review_matrix_test.go` exports its eight ANSI,
 plain-text, and monochrome before-frames to at 60×20, 80×24, 100×35, and
-120×40. `internal/tui/ux_daily_use_baseline_test.go` is where the expectations
-it replaces are recorded, and `ux_daily_use_regression_map_test.go` is the gate
+120×40. The baseline files listed in the map record the expectations it
+replaces, and `ux_daily_use_regression_map_test.go` is the gate
 that holds the map to all of it — including that both earlier maps still carry
 their own last session number.
 

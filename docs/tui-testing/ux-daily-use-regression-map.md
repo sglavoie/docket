@@ -9,9 +9,8 @@ Each map keeps its own enforced gate. The gate for this one is
 `ux_daily_use_regression_map_test.go`, which holds it to four claims: every
 artifact it names exists, every planned session has at least one regression
 home, both earlier maps survive with their last session numbers intact, and
-every recorded expectation in
-`internal/tui/ux_daily_use_baseline_test.go` is named here by the session that
-owns replacing it.
+every recorded expectation in the baseline files listed below is named here by
+the session that owns replacing it.
 
 Session 1 owns no later regression home. It establishes the baseline, the review
 frames, and this map; sessions 2–13 each own a behavior change and the
@@ -21,7 +20,10 @@ expectations that change rewrites.
 
 | Artifact | What it is |
 | --- | --- |
-| `internal/tui/ux_daily_use_baseline_test.go` | The eleven recorded expectations. Each one describes current behavior a named later session replaces. |
+| `internal/tui/ux_daily_use_baseline_test.go` | Project labels, cursor styling, and selection summaries. |
+| `internal/tui/ux_daily_use_baseline_capture_test.go` | Capture sizing and hosted-panel resizing. |
+| `internal/tui/ux_daily_use_baseline_guidance_test.go` | Workflow headings, check-in feedback, and launch behavior. |
+| `internal/tui/ux_daily_use_baseline_tags_test.go` | Applied and mixed tag-picker values. |
 | `internal/tui/ux_daily_use_review_matrix_test.go` | The eight review frames, exported at four sizes in dark, light, and monochrome. |
 | `ux_daily_use_regression_map_test.go` | The gate over this document. |
 | `internal/tui/uitest_fixtures_registry_test.go` | The `ux-acceptance`, `narrow`, `multi-project`, and `release` fixtures every frame and every recorded expectation reuses. |
@@ -237,8 +239,9 @@ behavior rewrites the sentence and the gate that requires it, in the same diff.
 `contributor_guidance_docs_test.go` holds `CLAUDE.md` to a rules-only byte
 budget, 70500 when this plan opened and 74200 by the end of session 12. A
 session that spends more of that budget than it reclaims raises the constant in
-its own diff and says why in the comment ledger above it, the way every previous
-raise did; nobody raises it on another session's behalf.
+its own diff and records why in the
+[budget history](../decisions/contributor-guidance-budget-recent.md); nobody
+raises it on another session's behalf.
 
 ## Per-session regression homes
 
@@ -265,28 +268,28 @@ raise did; nobody raises it on another session's behalf.
 
 ### Session 5 — Plan and Status presentation
 
-- Go: `internal/tui/footer_ranked_guidance_test.go`, `internal/tui/outliner/workflow_state_group_presentation_test.go`, `internal/tui/ux_daily_use_baseline_test.go`, `internal/tui/taskform/task_composer_test.go`, `internal/tui/outliner/inline_preview_test.go`
+- Go: `internal/tui/footer_ranked_guidance_test.go`, `internal/tui/outliner/workflow_state_group_presentation_test.go`, `internal/tui/ux_daily_use_baseline_guidance_test.go`, `internal/tui/taskform/task_composer_test.go`, `internal/tui/outliner/inline_preview_test.go`
 - Frames: `workflow-chord`
 - Contracts: `docs/guide/outliner-keys.md` line 12; `docs/guide/outliner-rows.md` line 267; `docs/guide/capture.md` line 144; `docs/architecture/presentation-chrome.md` line 74; `docs/architecture/operation-grammar.md` line 785; `docs/architecture/search-filters-and-sorting.md` line 394; `docs/architecture/capture-and-outline-editor.md` line 97
 - Landed: `internal/tui/chrome/plan_status_vocabulary.go` as the one home of the two words — `PlanFieldLabel`/`StatusFieldLabel` for a labelled field, `PlanFieldKey`/`StatusFieldKey` for Peek's lowercase `label value` idiom, `PlanHintGroup`/`StatusHintGroup` for a which-key heading, and `PlanStatusValue` as the single place a canonical lowercase token is capitalized — so four surfaces cannot drift into four synonyms. `OperationKeyBinding.HintGroup` carries the division on the one declaration that already carries the sequence, which is why no dispatch path, operation identity, or key changed: the ten `w` terminals were only reordered so Plan's two lead. `ChordHint.Group` is stamped on every member by `DecoratedChordHintsForPrefix`, and `pendingChordGuidanceSpec` turns a run into a heading by emitting one only where the group changes. `chrome.GuidanceHint.Group` is a field on the entry rather than an entry of its own, because the packer stops at the first optional hint that will not fit and a standalone heading could therefore outlive every member under it; riding the first member makes the pair pack, fit, and drop as one thing, which `TestPendingChordGuidanceNeverStrandsADivisionHeading` sweeps every width from 60 to 160 to prove. The division costs one entry at the 60-column floor — `d done` and `c canceled` are shed where only `c canceled` was before — and nothing at the two baseline sizes, where all ten still fit. On the capture side `renderComposerDestination` is gone and `effectiveRouteHeader` returns three independently aggregated axes, so the route row reads `Project: X · Plan: Today · Status: Backlog` with the plan half written only under `Destination.IsPlanning()` and `Mixed` confined to the one axis a multiline draft disagrees about; the row dropped its icon and `$` token because no sigil can spell `Mixed`, while `quick_capture_preview.go` keeps that echo and appends the same two labelled chunks under the same gate, which is what left `capture-defer-sigil` and `capture-review` passing untouched. `inlinePeekStatusLine` now leads with `plan` and follows with `status` (`inlinePeekStateValue` renamed to `inlinePeekStatusValue`), since `today` standing alone in the old trailing position read as a tenth state.
 
 ### Session 6 — Viewport-preserving hosted-panel resizing
 
-- Go: `internal/tui/outliner/outliner_host_budget_test.go`, `internal/tui/app_handlers_view_capture_test.go`, `internal/tui/ux_daily_use_baseline_test.go`
+- Go: `internal/tui/outliner/outliner_host_budget_test.go`, `internal/tui/app_handlers_view_capture_test.go`, `internal/tui/ux_daily_use_baseline_capture_test.go`
 - Frames: `dense-scrolled`, `capture-panel`
 - Contracts: `CLAUDE.md` lines 373–383; `docs/architecture/capture-and-outline-editor.md`; `docs/architecture/presentation-chrome.md`
-- Landed: `route.HostedBudgetView` — `SetHostedBudget` and `ReleaseHostedBudget` — as the seam the shell hands a bounded panel's leftover rows through, beside `ShellFrameAware` and for the same reason it exists: a list surface drops its scroll window every time it is resized, so a budget that travels through `SetSize` is indistinguishable from a terminal that changed size. `applyHostedBudget`/`releaseHostedBudget` in `app_view.go` are the one dispatch, so `syncHostedPanelHost` and `releaseHostedPanelHost` each kept their single call site and every host implementing neither is resized exactly as before. The outline answers both through `hostBudgetAnchor`, captured once at the first budget and re-seated on every later one, which is what makes a panel growing with its draft, a syntax guide opening, and an expanded form collapsing back one loan with one repayment instead of a drift whichever height came last decided. The anchor is a position rather than a number — the top task row's qualified identity, the cursor's behind it, the held offset behind that — because capture commits work into the projection underneath it, and a window restored by row number would slide the document under a user who had just captured above their position. `seatWindowAtAnchor` writes `ViewScrollOffset` and nothing else: keeping the cursor visible and cutting the window to the document stay `ComputeOutlinerViewport`'s, which runs on the very frame the seat is for, so the shortened window still clamps no further than the cursor requires and nothing here is a state rollback — folds, scope, query, selection, and the rows themselves are never read or written. `SetSize` drops the anchor with the window, so a terminal resized while a panel is open ends the loan rather than resurrecting one it already dropped. The cluster lives in `outliner.go` beside `SetSize` rather than in a file of its own, because the package was at its forty-file ceiling and the two acts are the same concern read twice.
+- Landed: `route.HostedBudgetView` — `SetHostedBudget` and `ReleaseHostedBudget` — as the seam the shell hands a bounded panel's leftover rows through, beside `ShellFrameAware` and for the same reason it exists: a list surface drops its scroll window every time it is resized, so a budget that travels through `SetSize` is indistinguishable from a terminal that changed size. `applyHostedBudget`/`releaseHostedBudget` in `app_hosted_panel.go` are the one dispatch, so `syncHostedPanelHost` and `releaseHostedPanelHost` each kept their single call site and every host implementing neither is resized exactly as before. The outline answers both through `hostBudgetAnchor`, captured once at the first budget and re-seated on every later one, which is what makes a panel growing with its draft, a syntax guide opening, and an expanded form collapsing back one loan with one repayment instead of a drift whichever height came last decided. The anchor is a position rather than a number — the top task row's qualified identity, the cursor's behind it, the held offset behind that — because capture commits work into the projection underneath it, and a window restored by row number would slide the document under a user who had just captured above their position. `seatWindowAtAnchor` writes `ViewScrollOffset` and nothing else: keeping the cursor visible and cutting the window to the document stay `ComputeOutlinerViewport`'s, which runs on the very frame the seat is for, so the shortened window still clamps no further than the cursor requires and nothing here is a state rollback — folds, scope, query, selection, and the rows themselves are never read or written. `SetSize` drops the anchor with the window, so a terminal resized while a panel is open ends the loan rather than resurrecting one it already dropped. The cluster lives in `outliner.go` beside `SetSize` rather than in a file of its own, because the package was at its forty-file ceiling and the two acts are the same concern read twice.
 
 ### Session 7 — Content-sized compact capture
 
-- Go: `internal/tui/taskform/task_composer_test.go`, `internal/tui/app_view_test.go`, `internal/tui/capture_footer_test.go`, `internal/tui/chrome/capture_footer_test.go`, `internal/tui/quick_capture_interrupt_test.go`, `internal/tui/ux_daily_use_baseline_test.go`, `internal/tui/ux_clarity_baseline_test.go`
+- Go: `internal/tui/taskform/task_composer_panel_test.go`, `internal/tui/app_view_test.go`, `internal/tui/capture_footer_test.go`, `internal/tui/chrome/capture_footer_test.go`, `internal/tui/quick_capture_interrupt_test.go`, `internal/tui/ux_daily_use_baseline_capture_test.go`, `internal/tui/ux_clarity_baseline_test.go`
 - Frames: `capture-panel`
 - Contracts: `CLAUDE.md` lines 367–392; `internal/tui/chrome/hosted_panel.go`; `docs/architecture/capture-and-outline-editor.md`; `docs/architecture/presentation-chrome.md`; `docs/guide/capture.md`
 - Landed: `composerPanelContentRows` is the panel's demand — `composerPanelFixedRows` for the divider and the route row, the input's own wrapped line count, the error block, and the pane underneath (the suggestion list's items, one row for a multiline draft's summary, otherwise the grouped preview through the new `grammar.QuickCaptureInput.PreviewBlockRows`) — and `composerPanelShareRows` is what the host is told, bounded by `composerPanelMinRows` below, `composerPanelMaxRows` above, and `composerHostMinRows` kept for the host. The old frame-only `composerPanelRows` and its five chrome rows are gone, so a blank capture is three rows instead of eight and the outline keeps five it used to lend. Every demand term reads settled state — `Input.Value()` wrapped at `Input.Width()`, the recorded `Errors`, `len(AC.Items)`, the stored parse — so nothing re-parses during measurement or render and no term reads the panel's own height, which is the loop a content-sized panel could otherwise close. The shell's footer excess rides the share rather than the drawn rows, because taking it out of the panel's own height would drop the row the content asked for; `compactPanelRows` subtracts it again for the render, so the panel draws exactly what it measured and the host is charged for the footer above it through the loan `hostBudgetAnchor` keeps a window across. `HelpExpanded` deliberately moves no term, since measuring the open syntax guide as nothing shrank the share and cost the host the window session 6 had just bought. `composerInputRows` is the in-panel priority: the input keeps its first row unconditionally and yields the rest to refusals, so a message naming what went wrong never scrolls off a full panel, and the bounded preview and autocomplete paths are unchanged behind the same fourteen-row ceiling they were written for. The divider dropped its destination half — `HeaderLabel` is now `Capture`, the footer's `Supplemental` fallback is gone — because the route row states the project and `Ctrl+P` rewrites it, so the old label was both a repetition and the copy that went stale; a child capture keeps `Capture → child of …`, the one value no axis of that row carries.
 
 ### Session 8 — Applied-first task tags and context
 
-- Go: `internal/tui/task_tags_picker_semantic_test.go`, `internal/tui/bulk_picker_test_helpers_test.go`, `internal/tui/project_tags_picker_test.go`, `internal/tui/ux_daily_use_baseline_test.go`
+- Go: `internal/tui/task_tags_picker_semantic_test.go`, `internal/tui/bulk_picker_test_helpers_test.go`, `internal/tui/project_tags_picker_test.go`, `internal/tui/ux_daily_use_baseline_tags_test.go`
 - Frames: `bulk-tag-picker`
 - Contracts: `CLAUDE.md` lines 800, 816
 - Landed: `FreezeAppliedValuesFirst` on the value picker, called once by the
@@ -308,14 +311,14 @@ raise did; nobody raises it on another session's behalf.
 
 ### Session 9 — Independent check-in editor ownership safeguards
 
-- Go: `internal/tui/task_check_in_editor_test.go`, `internal/tui/check_in_setup_test.go`, `internal/tui/ux_daily_use_baseline_test.go`
+- Go: `internal/tui/task_check_in_editor_test.go`, `internal/tui/check_in_setup_test.go`, `internal/tui/ux_daily_use_baseline_guidance_test.go`
 - Frames: `check-in-offer`
 - Contracts: `docs/architecture/operation-grammar.md`, the interaction-ownership paragraph under optional check-in setup
 - Landed: `interactionOwnership` in `internal/tui/app_update.go` is the asynchronous safeguard as its own state: one count of which user interaction owns the work in flight, holding no queue, no draft, and no pending offer, where `checkInOfferController.epoch` previously was both that count and the offer's cancellation flag. The envelopes moved with it and lost the offer's name — `checkInOfferCommandMsg`/`checkInOfferOriginMsg` are `originTaggedCommandMsg`/`commandOriginMsg`, `withCheckInOfferOrigin`/`runCheckInOfferCommand` are `withCommandOrigin`/`runOriginTaggedCommand`, `beginCheckInOfferUpdate` is `beginCommandOriginUpdate`, and `checkInOfferInput` is `isInteractionInput` — so the deterministic runner in `internal/tui/uitest_runner_test.go` unwraps an envelope named for what it carries rather than for one consumer of it. `originTaggedMessage` is the tagged set and names `operationhost.CheckInRejectedMsg` on its own terms, delegating the committed evidence to `checkInOfferObservedMessage`, which is the offer's own list and the one line Session 10 takes out. `retireInteraction` is the one act every former `cancelPendingCheckInOffer` site now spells: it advances the count and then calls `forgetInteractionScopedWork`, the whole of what retiring an interaction costs the queue, so the stale-refusal protection reads ownership alone and no longer any offer state. Nothing about delivery moved: the same durable messages reach the same handlers, the duplicate Enter/Ctrl+S submission guard still retires nothing, and `internal/tui/task_check_in_editor_test.go` gains `TestExplicitCheckInRejectionReopensOnlyItsOwnInteraction`, which drives a refused explicit save through the shell with the offer queue empty throughout and proves both halves: the owning interaction gets the exact draft, the error, and the frozen request back, while an interaction retired by one intervening key press gets nothing and the editor stays closed.
 
 ### Session 10 — Non-interrupting check-in feedback across commit paths
 
-- Go: `internal/tui/task_check_in_feedback_test.go`, `internal/tui/check_in_visual_acceptance_test.go`, `internal/tui/task_check_in_editor_test.go`, `internal/tui/ux_daily_use_baseline_test.go`, `internal/app/task_state_effect_test.go`
+- Go: `internal/tui/task_check_in_feedback_test.go`, `internal/tui/check_in_visual_acceptance_test.go`, `internal/tui/task_check_in_editor_test.go`, `internal/tui/ux_daily_use_baseline_guidance_test.go`, `internal/app/task_state_effect_test.go`
 - Scenarios: `docs/tui-testing/scenarios/active-work-check-in-feedback.json`
 - Frames: `check-in-offer`
 - Contracts: `docs/guide/outliner-keys.md` line 12; `docs/guide/capture.md` line 12; `docs/architecture/operation-grammar.md` line 479
@@ -323,7 +326,7 @@ raise did; nobody raises it on another session's behalf.
 
 ### Session 11 — First-task launch selection
 
-- Go: `internal/tui/app_launch_lens_test.go`, `internal/tui/outliner/outliner_primary_rows_test.go`, `internal/tui/ux_daily_use_baseline_test.go`
+- Go: `internal/tui/app_launch_lens_test.go`, `internal/tui/outliner/outliner_primary_rows_test.go`, `internal/tui/ux_daily_use_baseline_guidance_test.go`
 - Frames: `startup-focus`
 - Contracts: `CLAUDE.md` lines 127–131
 - Landed: The cursor starts on the first task row the settled projection draws,
@@ -343,7 +346,7 @@ raise did; nobody raises it on another session's behalf.
 
 ### Session 12 — Contextual guidance priorities
 
-- Go: `internal/tui/outliner_guidance_test.go`, `internal/tui/footer_ranked_guidance_test.go`, `internal/tui/ux_daily_use_baseline_test.go`, `internal/tui/ux_clarity_baseline_test.go`
+- Go: `internal/tui/outliner_guidance_test.go`, `internal/tui/footer_ranked_guidance_test.go`, `internal/tui/ux_daily_use_baseline_guidance_test.go`, `internal/tui/ux_clarity_baseline_test.go`
 - Scenarios: `docs/tui-testing/scenarios/ux-acceptance-narrow-baseline.json`, `docs/tui-testing/scenarios/tags-picker-direct.json`, `docs/tui-testing/scenarios/semantic-task-tags-split.json`
 - Frames: `startup-focus`
 - Contracts: `CLAUDE.md` lines 224–236; `docs/architecture/operation-grammar.md` lines 154–171
@@ -351,14 +354,14 @@ raise did; nobody raises it on another session's behalf.
 
 ### Session 13 — Integrated acceptance and final review
 
-- Go: `internal/tui/ux_daily_use_integrated_acceptance_test.go`, `internal/tui/ux_daily_use_review_matrix_test.go`, `internal/tui/ux_presentation_matrix_acceptance_test.go`, `ux_daily_use_regression_map_test.go`
+- Go: `internal/tui/ux_daily_use_integrated_acceptance_test.go`, `internal/tui/ux_daily_use_integrated_layout_test.go`, `internal/tui/ux_daily_use_integrated_release_test.go`, `internal/tui/ux_daily_use_review_matrix_test.go`, `internal/tui/ux_presentation_matrix_acceptance_test.go`, `ux_daily_use_regression_map_test.go`
 - Frames: all eight, re-exported into "Layout measurements after the plan"
 - Contracts: `just ci`, which is this plan's only session-level gate wider than the aggregate race command
-- Landed: `internal/tui/ux_daily_use_integrated_acceptance_test.go` is the one
+- Landed: The integrated acceptance, layout, and release test files form the one
   regression home for the relationships between this plan's changes, which is
   the part no single session could assert. Sessions 2–12 each proved one
-  occupant of the frame correct on its own and
-  `internal/tui/ux_daily_use_baseline_test.go` records each of those outcomes
+  occupant of the frame correct on its own, and
+  the baseline files listed above record each of those outcomes
   against the expectation it replaced; nothing here restates one of them. Five
   tests: the whole day through public keys —
   capture, triage, plan, start, edit, schedule, complete, undo — reading the

@@ -20,6 +20,12 @@ func TestMigratedTaskTitleRenderersAvoidActiveSuccessTitleOverrides(t *testing.T
 		// the package.
 		"chrome/shared_render.go",
 		"outliner/outliner_render.go",
+		"outliner/outliner_render_headers.go",
+		"outliner/outliner_render_notes.go",
+		"outliner/outliner_viewport.go",
+		"outliner/outliner_status_strip.go",
+		"outliner/outliner_view_context.go",
+		"outliner/outliner_empty_state.go",
 		"listsurface/parent_selector.go",
 		"grammar/quick_capture_autocomplete.go",
 		"taskdetail/task_attachments_view.go",
