@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"charm.land/bubbles/v2/textarea"
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
@@ -96,14 +97,24 @@ func (m *TaskComposerModel) composerPanelContentRows(width int) int {
 // textarea.LineCount is the logical count alone, so a long pasted line would
 // otherwise measure as one row and the panel would grow by nothing.
 //
-// An estimate is honest here: the fallback for measuring one row short is the
-// textarea scrolling inside the height it was given, which keeps the cursor
-// visible and loses no input.
+// Use the textarea's wrapping rules: display-text wrapping can undercount long
+// attachment paths and omits the extra row needed by a caret at the right edge.
 func (m *TaskComposerModel) composerInputContentRows() int {
-	wrapWidth := m.Input.Width()
+	if m.Input.LineCount() == 1 {
+		return m.Input.LineInfo().Height
+	}
+	// A fresh probe keeps measurement from changing the live input: even a
+	// shallow copy shares its viewport and text buffers with the original.
+	input := textarea.New()
+	input.CharLimit = 0
+	input.MaxWidth = 0
+	input.ShowLineNumbers = false
+	input.Prompt = ""
+	input.SetWidth(m.Input.Width())
 	rows := 0
 	for _, line := range strings.Split(m.Input.Value(), "\n") {
-		rows += max(len(textfit.WrapText(line, wrapWidth)), 1)
+		input.SetValue(line)
+		rows += input.LineInfo().Height
 	}
 	return max(rows, 1)
 }
@@ -208,6 +219,9 @@ func (m *TaskComposerModel) setInputHeight(rows int) {
 		m.Input.CursorDown()
 	}
 	m.Input.SetCursorColumn(col)
+	// Restoring a column can move the caret several wrapped rows down, but
+	// SetCursorColumn does not scroll. Reapply the height to reveal it.
+	m.Input.SetHeight(rows)
 }
 
 // compactPanelRows is the height this panel renders to: the share the layout

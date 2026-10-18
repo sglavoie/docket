@@ -229,7 +229,13 @@ func (m *TaskComposerModel) SetSize(width, height int) {
 	}
 	if m.Mode == ComposerCompact {
 		m.Width = max(width-2, 1)
+		previousWidth := m.Input.Width()
 		m.Input.SetWidth(max(min(width-4, 90), 20))
+		if m.Input.Width() != previousWidth {
+			// Refresh the viewport's wrapped content before scrolling: its old
+			// row count can otherwise clamp the caret above a newly wrapped end.
+			_ = m.Input.View()
+		}
 		m.SetSyntaxViewportWidth(max(width-2, 1))
 		// After the width, since the width is what the draft wraps at and the
 		// wrapping is what decides how many rows it needs.
