@@ -294,7 +294,7 @@ struct CaptureSheet: View {
             saving = false
             if let refusal {
                 // The draft stays on screen and on disk.
-                failure = refusal
+                failure = "Couldn’t save. Your draft is still open. \(refusal)"
                 return
             }
             workspace.drafts?.discardCapture()

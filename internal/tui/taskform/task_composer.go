@@ -129,15 +129,19 @@ func (p TaskComposerPreset) defaultDestination(
 type TaskComposerModel struct {
 	pulse.WorkspacePulseState
 	grammar.QuickCaptureInput
-	Preset   TaskComposerPreset
-	runtime  *config.RuntimeState
-	Mode     TaskComposerMode
-	Expanded *TaskFormModel
-	capture  coordinator.CaptureCoordinator
-	taskForm coordinator.TaskFormCoordinator
-	Errors   []grammar.LineError
-	width    int
-	height   int
+	preservesDraft  bool
+	recovery        *config.LocalDraft
+	recoveryBlocked error
+	recoveryPending bool
+	Preset          TaskComposerPreset
+	runtime         *config.RuntimeState
+	Mode            TaskComposerMode
+	Expanded        *TaskFormModel
+	capture         coordinator.CaptureCoordinator
+	taskForm        coordinator.TaskFormCoordinator
+	Errors          []grammar.LineError
+	width           int
+	height          int
 	// shellFrame is what the shell last said its own footer costs. It travels
 	// beside the size rather than through it, because the panel must not lose its
 	// draft or its preview to a footer that grew a row.
@@ -240,9 +244,8 @@ func (m *TaskComposerModel) SetWorkspacePulse(workspacePulse pulse.WorkspacePuls
 	}
 }
 
-// HasDraft reports whether the compact buffer holds work Esc would have to ask
-// about. The key handler and the footer read this one predicate, so the hint and
-// the act it names cannot drift apart.
+// HasDraft reports whether the compact buffer holds work to preserve on close.
+// The key handler and footer share this predicate.
 func (m *TaskComposerModel) HasDraft() bool {
 	return strings.TrimSpace(m.Input.Value()) != ""
 }
@@ -348,11 +351,10 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.CloseHelp()
 				return m, nil
 			}
-			if m.HasDraft() {
-				m.ConfirmDiscard = true
-				return m, nil
-			}
-			return m, func() tea.Msg { return status.BackMsg{} }
+			return m, m.closeCompactDraft()
+		case "ctrl+x":
+			m.ConfirmDiscard = true
+			return m, nil
 		case "shift+enter", "alt+enter":
 			m.Input.InsertString("\n")
 			m.UpdatePreview()
@@ -381,6 +383,9 @@ func (m *TaskComposerModel) updateDiscardConfirmation(msg tea.Msg) (tea.Model, t
 		switch key.String() {
 		case "y", "Y":
 			m.ConfirmDiscard = false
+			if m.preservesDraft {
+				return m, m.discardRecovery()
+			}
 			return m, func() tea.Msg { return status.BackMsg{} }
 		case "n", "N", "esc":
 			m.ConfirmDiscard = false
@@ -464,6 +469,10 @@ func (m *TaskComposerModel) createCompact(openContent, keepOpen bool) tea.Cmd {
 // markSubmission freezes input until the capture's result arrives and, for
 // Ctrl+N, marks a success as one that keeps the composer open.
 func (m *TaskComposerModel) markSubmission(cmd tea.Cmd, keepOpen bool) tea.Cmd {
+	cmd = m.guardRecoverySubmit(cmd)
+	if cmd == nil {
+		return nil
+	}
 	m.SubmissionInFlight = true
 	if !keepOpen {
 		return cmd
@@ -758,4 +767,15 @@ func (m *TaskComposerModel) QuitBlockReason() string {
 		return "Your capture draft has not been saved."
 	}
 	return ""
+}
+
+func (m *TaskComposerModel) closeCompactDraft() tea.Cmd {
+	if m.preservesDraft {
+		return m.closeKeepingDraft()
+	}
+	if m.HasDraft() {
+		m.ConfirmDiscard = true
+		return nil
+	}
+	return func() tea.Msg { return status.BackMsg{} }
 }

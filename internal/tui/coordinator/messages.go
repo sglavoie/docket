@@ -19,6 +19,7 @@ import (
 // shared navigation/status logic, so the legacy Task/Project fields (still set by
 // the not-yet-migrated task form) and the coordinator path share one handler.
 type TaskCreatedMsg struct {
+	RecoveryWarning  string
 	Results          []app.TaskResult
 	Task             *models.Task
 	Project          *models.Project // target project (for cross-project + open-after)

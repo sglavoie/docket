@@ -105,6 +105,7 @@ func (m *TaskComposerModel) ExpandRequest(req app.CaptureRequest) tea.Cmd {
 	form.SetShellFrameMetrics(m.shellFrame)
 	m.Expanded = form
 	m.Mode = ComposerExpanded
+	m.wireExpandedRecovery()
 	m.Errors = nil
 	return form.Init()
 }
@@ -151,6 +152,7 @@ func (m *TaskComposerModel) seedExpandedForm(seed TaskComposerSeed) {
 	form.SetShellFrameMetrics(m.shellFrame)
 	m.Expanded = form
 	m.Mode = ComposerExpanded
+	m.wireExpandedRecovery()
 }
 
 func (m *TaskComposerModel) cycleProject() {

@@ -201,7 +201,14 @@ func (m *OutlinerModel) finalizeModeRows() {
 // so this is the first point an index names the row it was taken from.
 func (m *OutlinerModel) indexSectionHeaderRows() {
 	clear(m.sectionHeaderRows)
+	clear(m.projectHeaderRows)
 	for index, row := range m.Rows {
+		if (row.IsProjectHeader || row.LeadsMergedGroup) && row.Group.ProjectKey != "" {
+			if m.projectHeaderRows == nil {
+				m.projectHeaderRows = make(map[string]int)
+			}
+			m.projectHeaderRows[row.Group.ProjectKey] = index
+		}
 		if !row.IsSectionHeader || row.Group.SectionKey == "" {
 			continue
 		}

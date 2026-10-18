@@ -5,7 +5,7 @@
   "actions": [
     { "type": "key", "label": "l opens Backlog, which launch folds", "key": "l" },
     { "type": "key", "label": "j steps past the lane header onto the first task, which its singleton group draws in place of a project header", "key": "j" },
-    { "type": "assert", "assert": "contains", "value": "[client-alpha] □ Alpha migration kickoff" },
+    { "type": "assert", "assert": "contains", "value": "[client-alpha] 🞑 Alpha migration kickoff" },
     { "type": "key", "label": "select it", "key": "v" },
     { "type": "key", "label": "onto the Client Beta task", "key": "j" },
     { "type": "key", "label": "and select that one too", "key": "v" },

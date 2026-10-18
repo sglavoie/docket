@@ -105,7 +105,27 @@ is refused without changing existing text.
 
 The cursor moves to the first invalid token. Correct it and press `Enter` again.
 For a batch, `Alt+N` and `Alt+P` visit the next and previous problems. Nothing is
-saved until every line is valid. `Esc` asks before discarding a changed draft.
+saved until every line is valid. `Esc` closes capture and keeps its draft;
+`Ctrl+X` asks before discarding it.
+
+### Close and resume a draft
+
+In compact capture and its expanded form, `Esc` keeps the draft on this machine.
+Open capture from the same context to resume it, including after restarting tt.
+The text, caret, selected project, and expanded fields are retained. A child
+capture stays tied to its original parent. Closing an open suggestion list or
+field picker first returns to the editor.
+
+Drafts are saved when you close capture and before submitting it. Changes typed
+while the editor remains open are not continuously saved. If the recovery write
+fails, capture stays open with the text intact; fix the problem and close again.
+`Ctrl+X` opens the explicit discard confirmation; `N` or `Esc` keeps editing.
+A successful capture removes its recovery copy.
+
+If a previous save was interrupted, the recovered draft explains that the task
+may already exist and prevents resubmission. Check the task list before discarding
+that recovery copy. Recovery files live under
+`~/.tt/runtime/<workspace-id>/capture-drafts/` and do not sync.
 
 [Validation and recovery details](capture-reference.md#correct-a-refused-capture)
 cover the expanded form and scheduling errors.

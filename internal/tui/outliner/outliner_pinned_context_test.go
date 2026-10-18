@@ -348,3 +348,26 @@ func TestPinnedContextWindowIsTheOneEveryReaderReads(t *testing.T) {
 		t.Fatalf("the release came back to %+v, want %+v", after, before)
 	}
 }
+
+func TestPinnedProjectContextInInbox(t *testing.T) {
+	tasks := make([]*models.Task, 0, 60)
+	for index := range 60 {
+		tasks = append(tasks, primaryRowsTask(fmt.Sprintf("beta-inbox-%02d", index), models.StateInbox))
+	}
+	model, _ := primaryRowsOutliner(primaryRowsProject("alpha", primaryRowsTask("alpha-task", models.StateInbox)), primaryRowsProject("beta", tasks...))
+	model.SelectOutlinerMode(chrome.ModeInbox)
+	for _, width := range []int{60, 80, 100} {
+		model.SetSize(width, 20)
+		pinnedContextSeat(t, model, "beta-inbox-40", "beta")
+		viewport, lines := pinnedContextLines(model)
+		if !viewport.pinned || !strings.Contains(lines[0], "[beta]") {
+			t.Fatalf("width %d lost project context: %+v %q", width, viewport, lines[0])
+		}
+		if viewport.startIdx > model.Cursor || viewport.endIdx <= model.Cursor {
+			t.Fatal("context hid cursor")
+		}
+		if lipgloss.Width(model.renderPinnedContextRow(viewport)) != viewport.rowWidth {
+			t.Fatal("context width changed")
+		}
+	}
+}

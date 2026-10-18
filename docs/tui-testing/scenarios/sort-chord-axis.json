@@ -4,7 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
-    { "type": "assert", "label": "the mode's own order leads each group", "assert": "contains", "value": "├── □ ◉ Overdue: submit quarterly report" },
+    { "type": "assert", "label": "the mode's own order leads each group", "assert": "contains", "value": "├── 🞑 ◉ Overdue: submit quarterly report" },
     { "type": "assert", "assert": "contains", "value": "├── ⊘ ◉ Waiting: production outage" },
 
     { "type": "key", "label": "hold the sort prefix", "key": "o" },
@@ -20,7 +20,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Sorting by title ↑" },
     { "type": "assert", "label": "the sort badge joins the title row", "assert": "contains", "value": "Sort: title ↑" },
-    { "type": "assert", "assert": "contains", "value": "├── □ ● Due soon: renew certificate" },
+    { "type": "assert", "assert": "contains", "value": "├── 🞑 ● Due soon: renew certificate" },
     { "type": "assert", "assert": "contains", "value": "├── ⊘   Waiting on vendor response" },
     { "type": "assert", "assert": "no_layout_issues" },
 

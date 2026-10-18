@@ -82,9 +82,10 @@ and `Enter` to run it. `Esc` or `F10` closes the menu. Menus overlay the current
 view and preserve its scroll position, selection, and Peek. Tall menus scroll.
 Direct shortcuts remain usable while a menu is open.
 
-A menu lists only what the cursor could do right now: an entry that does not
-apply is removed rather than greyed out, so the Task menu is shorter under a
-visual selection than without one. The Task menu offers **Add Checklist Item**
+Capture, Edit, Today, Next, Set Status, Backlog, Undo, and Redo keep their
+positions at the start of Task. An unavailable everyday action stays visible
+in muted text. Focus it to read the reason below the list; Enter leaves the
+menu open. Specialist actions that do not apply are omitted. The Task menu offers **Add Checklist Item**
 (`c`) when the cursor names a task or one of its checklist items. Modes and
 toggles carry a checkmark — the
 active mode, whether the bar is kept — so a menu reads the state back instead
@@ -97,7 +98,8 @@ The Task menu also offers Undo and Redo with the next recorded action in their
 labels, such as `Undo: Set Priority: Ship release`. These describe the same
 workspace-wide history that `u` and `Ctrl+R` restore, including after a restart.
 The descriptions refresh each time the menu opens; reading them changes nothing.
-An action with no available history is omitted from the menu.
+An action with no available history remains visible with “Nothing to undo” or
+“Nothing to redo” when focused.
 
 Entries with no shortcut are available only through the menus. View → Clear All
 Folds opens every folded section, project group, and task subtree, reporting
@@ -145,7 +147,10 @@ is the one after. Search typed under a lens reads `Esc restore lens` rather than
 sentences use the same words — `Press Esc to unzoom`, `Press Esc to leave
 Focus` — so the footer and the explanation never disagree.
 
-Anywhere you can type, that entry answers for your draft. An untouched composer,
+In capture and its expanded form, the footer says `Esc keep draft`;
+`Ctrl+X` explicitly asks to discard. Other editors retain their existing
+confirmation on close. Wherever that confirmation applies, the entry answers
+for your draft. An untouched composer,
 form, comment box, or editor reads `Esc cancel` and leaves at once. Type
 something and it becomes `Esc discard`, and the press asks first: `Y discard ·
 N/Esc keep editing`. Declining keeps every character and leaves you in the
@@ -301,7 +306,10 @@ count:
 
 This pinned context row cannot be selected. Moving up scrolls toward the real
 header; `gg` and `N` can still reach it. It is absent when the real header is
-visible, in flat search results, and in single-project views.
+visible, in flat search results, and in single-project views. In a grouped
+mode without lane headers, such as Inbox, it names the project whose heading
+has scrolled away. Project names use neutral text, with identity color on their
+brackets and tree connectors, leaving task titles and attention cues prominent.
 
 ## Read tag colors
 

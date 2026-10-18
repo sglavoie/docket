@@ -32,7 +32,7 @@
     { "type": "assert", "label": "without stating the pair a second time", "assert": "count_contains", "value": "Plan: Today", "count": 1 },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "abandoning the draft asks first", "key": "esc" },
+    { "type": "key", "label": "explicit discard asks first", "key": "ctrl+x" },
     { "type": "assert", "assert": "contains", "value": "Discard unsaved changes?" },
     { "type": "assert", "label": "and the question stands beside the panel, never on the divider that says where it starts", "assert": "contains", "value": "── Capture ─────────────────────────────────────────────────────────────────────────────────────────" },
     { "type": "assert", "assert": "no_layout_issues" },
@@ -46,7 +46,7 @@
     { "type": "assert", "label": "which owns the whole content area rather than a share of it", "assert": "not_contains", "value": "Backlog  (4)" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "cancel the capture", "key": "esc" },
+    { "type": "key", "label": "discard the capture", "key": "ctrl+x" },
     { "type": "key", "label": "discarding the draft", "key": "y" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },

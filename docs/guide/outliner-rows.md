@@ -127,8 +127,8 @@ and the checklist, comment, and attachment counts. None of those is gone: `b`
 opens Peek on the same row and shows every one of them at full value, unclipped,
 rather than in a fixed-width badge the row had to buy out of the title.
 
-An overdue deadline includes `late` in its badge, such as `Oct 15 late` or
-`Today 09:00 late`, so it remains identifiable without color. Peek's Due line
+An overdue deadline includes `overdue` in its badge, such as `Oct 15 overdue` or
+`Today 09:00 overdue`, so it remains identifiable without color. Peek's Due line
 shows the date, any time, and `overdue`. A date-only deadline becomes overdue
 the following day; a timed deadline becomes overdue after its time passes.
 

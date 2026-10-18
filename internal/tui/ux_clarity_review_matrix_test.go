@@ -301,7 +301,7 @@ func stageUXClarityNestedDiscardPrompt(t *testing.T, driver *UITestDriver, view 
 	uxClarityPress(t, driver,
 		UITestAction{Type: UITestActionKey, Key: "a"},
 		UITestAction{Type: UITestActionText, Text: uxClarityDraftTitle},
-		UITestAction{Type: UITestActionKey, Key: "esc"},
+		UITestAction{Type: UITestActionKey, Key: "ctrl+x"},
 	)
 }
 

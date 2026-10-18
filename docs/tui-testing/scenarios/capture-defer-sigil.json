@@ -15,7 +15,7 @@
     { "type": "key", "label": "commit the capture", "key": "enter" },
     { "type": "wait", "label": "land the commit without spending the notice's lifetime", "duration": "10ms" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "label": "a same-day deferral hides the new row at once", "assert": "not_contains", "value": "□ Sigil deferred intake" },
+    { "type": "assert", "label": "a same-day deferral hides the new row at once", "assert": "not_contains", "value": "🞑 Sigil deferred intake" },
     { "type": "assert", "label": "the notice names the deferral, not a filter nobody set", "assert": "contains", "value": "Deferred until" },
     { "type": "assert", "assert": "not_contains", "value": "hidden by current filters" },
     { "type": "assert", "assert": "no_layout_issues" },
@@ -37,7 +37,7 @@
     { "type": "key", "label": "clear every facet", "key": "x" },
     { "type": "key", "label": "undo the capture", "key": "u" },
     { "type": "wait" },
-    { "type": "assert", "assert": "not_contains", "value": "□ Sigil deferred intake" },
+    { "type": "assert", "assert": "not_contains", "value": "🞑 Sigil deferred intake" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

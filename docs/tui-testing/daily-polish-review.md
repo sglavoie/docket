@@ -310,3 +310,66 @@ images, plus `index.html` and `index-font20.html` replays of the 168 transition
 frames in 48 sequences. See [reproduction instructions](polish-transition-review.md#reproduce)
 for the native rendering test. Screen Recording permission is no longer a
 prerequisite for this review.
+
+## Everyday presentation and capture recovery
+
+Project labels now keep their durable colors on brackets and tree connectors;
+the names use neutral text. Grouped lists without lane headings, including
+Inbox, keep the project name in view after scrolling past its heading. The Task
+menu keeps capture, edit, planning, status, and history actions in stable
+positions. Unavailable everyday actions stay visible, and selecting one explains
+how to make it available. Specialist actions still follow their context.
+Menu height also accounts for transient feedback and wrapped footer hints, so
+the explanation and bottom border remain visible together at 60×20.
+
+Closing compact or expanded capture with Escape keeps a machine-local draft;
+Ctrl+X explicitly discards after confirmation. Recovery preserves raw invalid
+text, fields, children, and cursor/focus position. It checks for changes from
+another terminal before replacing a copy, and records a pending submission
+before saving so an interrupted save cannot silently submit twice. Copies are
+written on close and before submission, not continuously while typing. See
+[capture recovery](../guide/capture.md#close-and-resume-a-draft).
+
+Save failures explain that the draft remains open and how to retry. Deadline
+rows use “overdue” consistently with group summaries. The committed
+`capture-draft-recovery.json` scenario covers close → reopen → expand → close →
+reopen → save, canceled discard, and confirmed discard at 60×20. Recovery tests
+also cover conflicting writers, unreadable documents, failed storage operations,
+and interrupted submissions.
+
+The small fictional `everyday` fixture complements the release stress fixture:
+similar project names, ordinary short titles, sparse metadata, and a few urgent
+tasks. `TestEverydayPolishReviewFrames` records capture → triage → plan → start →
+complete → undo, with an initial overview, at all four sizes and both palettes
+plus an unavailable-action explanation (64 frames). Export it together with
+the existing 232 review frames:
+
+```sh
+TT_TERMINAL_REVIEW_DIR="$PWD/macos/.cache/everyday-polish-review" \
+  go test ./internal/tui \
+  -run '^(TestEverydayPolishReviewFrames|TestPolishVisualReviewFrames|TestPolishTransitionReviewFrames)$' \
+  -count=1
+```
+
+The macOS app suite and 18 hosted iPhone tests passed. Native review produced
+296 frames at both 14 and 20 points (592 Ghostty images), with grid and nonblank
+checks passing and every enlarged image larger in both dimensions. The blank
+check now includes title and footer regions, which empty-list frames may use
+while leaving their middle blank. Selected light/dark, narrow/enlarged images
+were inspected for project emphasis, capture controls, undo feedback, and the
+unavailable-action explanation. The latter review caught and fixed the menu
+border clipping described above; those frames were regenerated at both sizes.
+
+Local evidence is in `macos/.cache/everyday-polish-review/`, including
+`index.html` and `index-font20.html` replays of 232 transition frames in 56
+sequences. The remaining 64 frames are the existing standalone review states.
+
+The complete race-test set passed after the inventory updates were checked and
+storage was rerun separately. The initial CI invocation reached its 20-minute
+storage deadline during the sync fault properties; running that package with
+`TT_SHARD_JOBS=4 ./scripts/test_sharded.sh` completed all 24 shards in 192 seconds.
+The original 48 UI/configuration shards also passed. Combined coverage is
+70.70%, meeting every package floor. Focused menu, modal, picker, and daily-loop
+scenario checks were rerun after the border correction. All eleven search
+allocation budgets, documentation checks, lint, module metadata, production and
+test-inclusive dead-code checks, and the build passed.

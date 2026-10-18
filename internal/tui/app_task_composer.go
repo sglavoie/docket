@@ -22,6 +22,7 @@ func (m *AppModel) openTaskComposer(preset taskform.TaskComposerPreset) tea.Cmd 
 	composer.SetCaptureCoordinator(m.features.Capture)
 	composer.SetTaskFormCoordinator(m.features.TaskForm)
 	composer.SetSize(m.viewNav.viewSize())
+	composer.EnableDraftRecovery()
 	m.taskComposer = composer
 	m.viewNav.views.Register(presentation.ViewTaskComposer, composer)
 	m.pushTypedOverlay(route.OverlayComposer, taskComposerOverlayKey)

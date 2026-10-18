@@ -95,3 +95,10 @@ func ProjectColorStyle(project *models.Project) lipgloss.Style {
 	}
 	return MutedStyle
 }
+
+// ProjectLabel keeps identity color on the brackets, leaving the name quiet
+// beside task titles and attention cues. Its width and plain text are unchanged.
+func ProjectLabel(project *models.Project, name string) string {
+	marker := ProjectColorStyle(project)
+	return marker.Render("[") + MutedStyle.Render(name) + marker.Render("]")
+}

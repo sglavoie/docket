@@ -70,12 +70,18 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyPressMsg:
+		if m.submissionInFlight {
+			return m, nil
+		}
 		// ── Discard confirmation ───────────────────────────────────────────────
 		if m.ConfirmDiscard {
 			switch msg.String() {
 			case "y", "Y":
 				m.ConfirmDiscard = false
 				m.ConfirmOverlay.Cancel()
+				if m.discardDraft != nil {
+					return m, m.discardDraft()
+				}
 				return m, func() tea.Msg { return status.BackMsg{} }
 			case "n", "N", "esc":
 				m.ConfirmDiscard = false
@@ -91,6 +97,16 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, cmd
 			}
 			return m, nil
+		}
+
+		if m.closeDraft != nil {
+			switch msg.String() {
+			case "esc":
+				return m, m.closeDraft()
+			case "ctrl+x":
+				m.ConfirmDiscard = true
+				return m, nil
+			}
 		}
 
 		// ── Title textarea (field 0 on Basics tab) ─────────────────────────────
@@ -251,6 +267,9 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.PasteMsg:
+		if m.submissionInFlight {
+			return m, nil
+		}
 		return m.handlePaste(msg)
 	}
 

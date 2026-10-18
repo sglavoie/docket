@@ -279,13 +279,20 @@ func sectionHeaderLabel(row OutlinerRow) (name, prefix string) {
 func (m *OutlinerModel) renderPinnedContextRow(viewport outlinerViewport) string {
 	header := m.Rows[viewport.pinnedHeader]
 	name, prefix := sectionHeaderLabel(header)
+	count := header.SectionCount
+	if !header.IsSectionHeader {
+		slug, _ := m.projectSlugForRow(header)
+		name, prefix, count = "["+slug+"]", "", 0
+	}
 	if projectID := m.Rows[viewport.startIdx].Group.ProjectID; projectID != "" {
-		slug, _ := m.projectSlugForRow(OutlinerRow{ProjectID: projectID})
-		name += " › [" + slug + "]"
+		if header.IsSectionHeader {
+			slug, _ := m.projectSlugForRow(OutlinerRow{ProjectID: projectID})
+			name += " › [" + slug + "]"
+		}
 	}
 	gutter, content := renderSectionHeader(sectionHeaderOpts{
 		Name:        name,
-		Count:       header.SectionCount,
+		Count:       count,
 		AccentColor: theme.MutedStyle.Padding(0, 1),
 		Width:       viewport.rowWidth,
 		Prefix:      prefix,
@@ -322,7 +329,7 @@ func (m *OutlinerModel) RenderOutlinerSectionHeaderRow(row OutlinerRow, selected
 		if project != nil {
 			projectName = project.Name
 		}
-		content += "  " + theme.ProjectColorStyle(project).Render("["+projectName+"]")
+		content += "  " + theme.ProjectLabel(project, projectName)
 	}
 
 	if selected {
@@ -355,8 +362,7 @@ func (m *OutlinerModel) projectSlugForRow(row OutlinerRow) (string, *models.Proj
 // its project scope behavior.
 func (m *OutlinerModel) RenderOutlinerProjectHeaderRow(row OutlinerRow, selected bool, rowWidth, rowIndex int) string {
 	projectSlug, project := m.projectSlugForRow(row)
-	badge := theme.ProjectColorStyle(project).
-		Render("[" + projectSlug + "]")
+	badge := theme.ProjectLabel(project, projectSlug)
 	// The focused-project header owns no fold, so it shows no glyph at all: a
 	// blank of the same single column keeps its badge on the column every row
 	// below it uses, and nothing invites an h/l that would fold the whole
@@ -511,11 +517,10 @@ func (m *OutlinerModel) noteProjectLabel(row notes.LocatedNoteRow, rowWidth int,
 	if slug == "" {
 		return ""
 	}
-	style := theme.ProjectColorStyle(project)
+	label := theme.ProjectLabel(project, slug)
 	if global {
-		style = theme.MutedStyle
+		label = theme.MutedStyle.Render("[" + slug + "]")
 	}
-	label := style.Render("[" + slug + "]")
 	if colLayout != nil {
 		label += strings.Repeat(" ", max(colLayout.ProjectWidth-lipgloss.Width(label), 0))
 	}
@@ -796,7 +801,7 @@ func (m *OutlinerModel) CursorScreenRow() (int, bool) {
 // measured against the terminal instead would put its bottom halo behind the
 // status strip, where the shell clips rather than scrolls it.
 func (m *OutlinerModel) outlinerHostFrameHeight(width int) int {
-	return max(m.Height()-m.StatusStripHeight(width), 1)
+	return max(m.Height()-m.StatusStripHeight(width)-m.ShellFrame.ExcessRows(), 1)
 }
 
 // outlinerModalBudget is the rows a modal may claim: the frame, less the host
@@ -1625,13 +1630,13 @@ func (m *OutlinerModel) pinnedContextWindow(visibleRows int) outlinerViewport {
 func (m *OutlinerModel) pinnedContextWindowAt(offset, visibleRows int) (outlinerViewport, int) {
 	full := offset
 	startIdx, endIdx := chrome.PersistentIndexWindow(m.Cursor, len(m.Rows), visibleRows, &full)
-	if _, scrolledPast := m.sectionHeaderAbove(startIdx); !scrolledPast || visibleRows < 2 {
+	if _, scrolledPast := m.contextHeaderAbove(startIdx); !scrolledPast || visibleRows < 2 {
 		return outlinerViewport{startIdx: startIdx, endIdx: endIdx}, full
 	}
 	fullWindow := outlinerViewport{startIdx: startIdx, endIdx: endIdx}
 	reduced := offset
 	startIdx, endIdx = chrome.PersistentIndexWindow(m.Cursor, len(m.Rows), visibleRows-1, &reduced)
-	header, scrolledPast := m.sectionHeaderAbove(startIdx)
+	header, scrolledPast := m.contextHeaderAbove(startIdx)
 	if !scrolledPast && startIdx+visibleRows > len(m.Rows) {
 		return fullWindow, full
 	}
@@ -1639,6 +1644,28 @@ func (m *OutlinerModel) pinnedContextWindowAt(offset, visibleRows int) (outliner
 		return outlinerViewport{startIdx: startIdx, endIdx: startIdx + visibleRows}, reduced
 	}
 	return outlinerViewport{startIdx: startIdx, endIdx: endIdx, pinned: true, pinnedHeader: header}, reduced
+}
+
+// contextHeaderAbove also covers modes with project groups but no lane headers.
+// Ranked results already label every row; scoped views name their project in
+// the title. Neither needs another context row.
+func (m *OutlinerModel) contextHeaderAbove(index int) (int, bool) {
+	if header, ok := m.sectionHeaderAbove(index); ok {
+		return header, true
+	}
+	if index <= 0 || index >= len(m.Rows) || !m.groupsRowsByProject() || m.ShowsRankedList() {
+		return 0, false
+	}
+	group := m.Rows[index].Group
+	if _, hasLane := m.sectionHeaderRows[group.SectionKey]; hasLane {
+		return 0, false
+	}
+	header, ok := m.projectHeaderRows[group.ProjectKey]
+	if !ok || header >= index || header < 0 || header >= len(m.Rows) {
+		return 0, false
+	}
+	row := m.Rows[header]
+	return header, (row.IsProjectHeader || row.LeadsMergedGroup) && row.Group == group
 }
 
 // sectionHeaderAbove answers whether the row at index sits in a lane whose

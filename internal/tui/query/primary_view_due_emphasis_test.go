@@ -32,9 +32,9 @@ func TestFormatDueDateRendersTheThemeTierUnchanged(t *testing.T) {
 				text string
 				want func() string
 			}{
-				{"overdue", today.AddDate(0, 0, -3), today.AddDate(0, 0, -3).Format("Jan 2") + " late",
+				{"overdue", today.AddDate(0, 0, -3), today.AddDate(0, 0, -3).Format("Jan 2") + " overdue",
 					func() string {
-						return theme.OverdueStyle.Render(icons.Get("date") + " " + today.AddDate(0, 0, -3).Format("Jan 2") + " late")
+						return theme.OverdueStyle.Render(icons.Get("date") + " " + today.AddDate(0, 0, -3).Format("Jan 2") + " overdue")
 					}},
 				{"today", today, "Today",
 					func() string { return theme.DueTodayStyle.Render(icons.Get("date") + " Today") }},
@@ -64,7 +64,7 @@ func TestFormatDueDateRendersTheThemeTierUnchanged(t *testing.T) {
 				WorkflowState: models.StateBacklog,
 				DueDate:       &timed,
 			}
-			want := theme.OverdueStyle.Render(icons.Get("date") + " " + timed.Format("Jan 2") + " 15:30 late")
+			want := theme.OverdueStyle.Render(icons.Get("date") + " " + timed.Format("Jan 2") + " 15:30 overdue")
 			if got := FormatDueDate(task); got != want {
 				t.Errorf("timed overdue chip = %q, want %q", got, want)
 			}
@@ -86,8 +86,8 @@ func TestOverdueDeadlineLabelSurvivesMonochrome(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			task := &models.Task{WorkflowState: models.StateBacklog, DueDate: &tc.due}
 			plain := ansi.Strip(FormatDueDate(task))
-			if strings.Contains(plain, " late") != tc.wantLate {
-				t.Fatalf("deadline label = %q, want late=%v", plain, tc.wantLate)
+			if strings.Contains(plain, " overdue") != tc.wantLate {
+				t.Fatalf("deadline label = %q, want overdue=%v", plain, tc.wantLate)
 			}
 		})
 	}

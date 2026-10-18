@@ -226,7 +226,8 @@ Esc has one source too, and it is an act rather than a state. Each `EscStep`
 carries its own `Action`, `NextEscAction` walks them as `RunEscCascade` does, and
 `EscAction`/`EscHint` are what every Outliner profile, empty-state sentence, and
 footer entry spell; a step whose act depends on what it stands over answers for
-itself, as `SearchExitAction` does. A draft-bearing surface reads
+itself, as `SearchExitAction` does. Capture closes with a machine-local recovery copy (`Esc keep draft`)
+and reserves `Ctrl+X` for confirmed discard. Other draft-bearing surfaces read
 `chrome.DraftEscapeHint` instead — `Esc discard` exactly where the press raises
 `DiscardGuidanceSpec`, `Esc cancel` where it leaves — and that question is not
 `ConfirmationGuidanceSpec`, since declining it keeps the draft. A modal
@@ -405,13 +406,11 @@ the last 30 days`.
 render moves `ViewScrollOffset`; the `zt`/`zz`/`zb` chord is the one key press
 that may write it. Never recompute the window in a key handler.
 
-A window opening inside a lane whose header scrolled above it spends its first
-screen row on the pinned context row, and `pinnedContextWindow` is where that is
-decided: `VisibleRows` still counts the row, `startIdx`/`endIdx` span one fewer,
-and every reader of the window reads that pair. `sectionHeaderAbove` answers
-from the row's own group and the index `finalizeModeRows` records, never a scan.
-The row is muted, exactly `rowWidth`, and never the cursor's; the ranked list,
-either single-project form, and a zero-group first row pin nothing.
+`pinnedContextWindow` reserves one row for scrolled lane or project context.
+`VisibleRows` includes it; `startIdx`/`endIdx` exclude it. Every reader uses that
+pair. `contextHeaderAbove` reads the row group and indices from `finalizeModeRows`,
+never a scan. Context is muted, exactly `rowWidth`, and never selectable. Ranked
+results, single-project forms, and zero-group rows pin nothing.
 
 A preview pane splits through `ListSurfacePreviewGeometry` and paints through
 `RenderListSurfacePreview`, never a per-surface copy of either. The render owns
@@ -464,6 +463,9 @@ area.
 Capture's footer sheds by `Priority`, moving no drawn entry: it keeps `Ctrl+N`,
 `Ctrl+E`, `? syntax`, `Ctrl+P`, `Ctrl+F`, `Alt+Enter`, and
 `chrome.CapturePasteHint` last.
+
+Capture recovery is local, checked before overwrite, and never replays
+an interrupted submission.
 
 Capture completion and syntax help follow the caret; feedback recall holds 20
 session events. Details: `docs/architecture/capture-and-outline-editor.md`.
@@ -762,7 +764,7 @@ Row and Peek budget:
   so no label competes with the title. The cross-project ranked list and a
   merged group's row are the exceptions, since no header stands over either:
   `taskProjectLabel` leads each title with
-  the header's own `[slug]` in the project color, padded to
+  the header's own `[slug]` with colored brackets and a neutral name, padded to
   `ColumnLayout.ProjectWidth` so the titles share a column, its slug cut by
   `rankedProjectLabelMaxSlug` alone. The match cue is shed ahead of the whole
   ladder and is now the one on-row explanation of a hit the row cannot show.

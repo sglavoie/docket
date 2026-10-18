@@ -112,7 +112,7 @@ struct TaskEditSheet: View {
             let refusal = await workspace.edit(task.locator, draft.fields.edit(from: draft.original))
             saving = false
             if let refusal {
-                failure = refusal
+                failure = "Couldn’t save. Your draft is still open. \(refusal)"
                 return
             }
             workspace.drafts?.discardEdit(task.locator)

@@ -2,6 +2,7 @@ package coordinator
 
 import (
 	"errors"
+	"fmt"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -198,7 +199,7 @@ func (c CaptureCoordinator) CaptureCreate(req app.CaptureRequest, openContent bo
 	return func() tea.Msg {
 		res, err := mutator.Capture(req)
 		if err != nil {
-			return status.ErrorMsg{Err: err}
+			return status.ErrorMsg{Err: fmt.Errorf("couldn’t save. Your draft is still open. Fix the problem and retry: %w", err)}
 		}
 		result := res
 		return TaskCreatedMsg{
@@ -218,7 +219,7 @@ func (c CaptureCoordinator) CaptureBulk(reqs []app.CaptureRequest, closeOnSucces
 	return func() tea.Msg {
 		results, err := mutator.CaptureMany(reqs)
 		if err != nil {
-			return status.ErrorMsg{Err: err}
+			return status.ErrorMsg{Err: fmt.Errorf("couldn’t save. Your draft is still open. Fix the problem and retry: %w", err)}
 		}
 		if closeOnSuccess {
 			msg := TaskCreatedMsg{
@@ -247,11 +248,11 @@ func (c CaptureCoordinator) CaptureCreatingProjects(state *config.RuntimeState, 
 	return func() tea.Msg {
 		creation, err := app.PrepareProjectCreation(state, projects)
 		if err != nil {
-			return status.ErrorMsg{Err: err}
+			return status.ErrorMsg{Err: fmt.Errorf("couldn’t save. Your draft is still open. Fix the problem and retry: %w", err)}
 		}
 		results, err := mutator.CaptureManyCreatingProjects(creation, reqs)
 		if err != nil {
-			return status.ErrorMsg{Err: err}
+			return status.ErrorMsg{Err: fmt.Errorf("couldn’t save. Your draft is still open. Fix the problem and retry: %w", err)}
 		}
 		msg := TaskCreatedMsg{
 			CreatedCount:    len(results),
@@ -282,7 +283,7 @@ func (c TaskFormCoordinator) CreateForm(req app.AddTaskRequest, openSubtaskIdx i
 	return func() tea.Msg {
 		res, err := mutator.AddTaskWithChildren(req)
 		if err != nil {
-			return status.ErrorMsg{Err: err}
+			return status.ErrorMsg{Err: fmt.Errorf("couldn’t save. Your draft is still open. Fix the problem and retry: %w", err)}
 		}
 		result := res.Task
 		openTaskID := ""

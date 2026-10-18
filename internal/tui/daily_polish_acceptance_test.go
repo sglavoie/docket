@@ -75,7 +75,7 @@ func TestDailyPolishTaskMenuFitsNarrowWindowsAndKeepsGroups(t *testing.T) {
 				groups = append(groups, entry.Label)
 			}
 		}
-		if strings.Join(groups, ",") != "Plan,Status,Details" {
+		if strings.Join(groups, ",") != "Plan,Status,Recovery,Details" {
 			t.Fatalf("Task menu groups = %v", groups)
 		}
 		for range menu.Entries {

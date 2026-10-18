@@ -92,7 +92,7 @@ age carries the duration. A Waiting deadline remains the ordinary
 `FormatDueDate` segment on the row; check-ins are a separate schedule and never
 reinterpret or suppress it.
 
-`FormatDueDate` appends `late` when `Task.IsOverdue` holds, including for a timed
+`FormatDueDate` appends `overdue` when `Task.IsOverdue` holds, including for a timed
 deadline earlier today. That text survives monochrome rendering and participates
 in the ordinary indicator width budget. Peek uses `IsOverdueAt` with its single
 observation clock to label the full deadline `overdue`.

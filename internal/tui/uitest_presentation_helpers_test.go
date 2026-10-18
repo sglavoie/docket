@@ -7,6 +7,8 @@ import (
 
 	"github.com/charmbracelet/colorprofile"
 	"github.com/charmbracelet/x/ansi"
+
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
 // assertUXScreenFitsItsTerminal measures display cells, so a double-width rune
@@ -47,4 +49,22 @@ func assertUXMonochromeKeepsContent(t *testing.T, obs UITestObservation, require
 			t.Fatalf("monochrome output lacks %q\n%s", text, plain)
 		}
 	}
+}
+
+// uxDailyUseDriver launches one named fixture at one size. It is the one place
+// the fixture name on a frame is turned into a workspace, so no staging function
+// has to know how a driver is built or remember to register the cleanup that
+// removes the temporary workspace.
+func uxDailyUseDriver(t *testing.T, fixture string, width, height int) (*UITestDriver, *outliner.OutlinerModel) {
+	t.Helper()
+	driver, workspace, err := NewFixtureDriver(fixture, width, height)
+	if err != nil {
+		t.Fatalf("fixture %s: %v", fixture, err)
+	}
+	t.Cleanup(func() { _ = workspace.Cleanup() })
+	view := driver.App().crossOutliner
+	if view == nil {
+		t.Fatalf("the %s fixture app has no Outliner", fixture)
+	}
+	return driver, view
 }

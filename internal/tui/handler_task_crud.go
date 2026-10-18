@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"os"
@@ -140,6 +141,7 @@ func (m *AppModel) handleTaskCreated(msg coordinator.TaskCreatedMsg) (bool, tea.
 		created.After = app.TaskLocator{ProjectID: msg.Result.ProjectID, TaskID: msg.Result.TaskID}
 	}
 	m.undoFocus.ObserveCommit(transactionID, created)
+	successMessage = cmp.Or(msg.RecoveryWarning, successMessage)
 	feedbackCmd := m.setRecoveryFeedback(successMessage, transactionID, false)
 
 	// Delegate to the current view so it can reload its state

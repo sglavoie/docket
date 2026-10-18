@@ -20,12 +20,12 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "a key the menu lists is the menu's: it moves the menu's own cursor", "key": "down" },
-    { "type": "assert", "assert": "contains", "value": "› Capture Child" },
+    { "type": "assert", "assert": "contains", "value": "› Edit" },
     { "type": "assert", "label": "and moves nothing under it: Peek still describes the row it was opened on", "assert": "contains", "value": "Unicode display-width" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "resize", "label": "the app's own minimum still holds a bounded menu", "width": 60, "height": 20 },
-    { "type": "assert", "assert": "contains", "value": "Capture Child" },
+    { "type": "assert", "assert": "contains", "value": "Set Status…" },
     { "type": "assert", "assert": "contains", "value": "Active Projects" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "width": 100, "height": 50 },

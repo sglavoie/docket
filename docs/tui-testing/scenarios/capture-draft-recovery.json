@@ -1,0 +1,134 @@
+{
+  "name": "capture-draft-recovery",
+  "fixture": "rich",
+  "size": "60x20",
+  "actions": [
+    {
+      "type": "key",
+      "key": "a"
+    },
+    {
+      "type": "text",
+      "text": "Review the quiet draft"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "assert",
+      "assert": "view",
+      "value": "CrossProjectOutliner"
+    },
+    {
+      "type": "key",
+      "key": "a"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Review the quiet draft"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+f"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Task Composer \u00b7 Expanded"
+    },
+    {
+      "type": "key",
+      "key": "esc"
+    },
+    {
+      "type": "assert",
+      "assert": "view",
+      "value": "CrossProjectOutliner"
+    },
+    {
+      "type": "key",
+      "key": "a"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Task Composer \u00b7 Expanded"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Review the quiet draft"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+x"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Discard"
+    },
+    {
+      "type": "key",
+      "key": "n"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Review the quiet draft"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+s"
+    },
+    {
+      "type": "wait"
+    },
+    {
+      "type": "assert",
+      "assert": "view",
+      "value": "CrossProjectOutliner"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Review the quiet draft"
+    },
+    {
+      "type": "key",
+      "key": "a"
+    },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "Type a task title\u2026"
+    },
+    {
+      "type": "text",
+      "text": "Disposable draft"
+    },
+    {
+      "type": "key",
+      "key": "ctrl+x"
+    },
+    {
+      "type": "key",
+      "key": "y"
+    },
+    {
+      "type": "key",
+      "key": "a"
+    },
+    {
+      "type": "assert",
+      "assert": "not_contains",
+      "value": "Disposable draft"
+    },
+    {
+      "type": "assert",
+      "assert": "no_layout_issues"
+    }
+  ]
+}

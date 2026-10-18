@@ -72,7 +72,7 @@ func TestUXClarityFeedbackStandsBesideTheCaptureControls(t *testing.T) {
 			// The capture controls are the guidance the composer publishes. Both
 			// halves are named, because a footer that kept one of them would leave
 			// the other act unreachable by name.
-			for _, control := range []string{"Enter create", "Esc cancel"} {
+			for _, control := range []string{"Enter create", "Esc keep draft"} {
 				if !strings.Contains(footer, control) {
 					t.Fatalf("the status displaced %q, leaving the open draft's control unnamed:\n%s", control, footer)
 				}

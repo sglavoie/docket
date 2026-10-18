@@ -462,7 +462,7 @@ var uxDailyUseIntegratedCombinedStates = []uxDailyUseIntegratedCombinedState{
 		name:    "validation-and-guidance",
 		why:     "a refusal the panel has to keep on screen beside the keys that answer it",
 		stage:   uxDailyUseIntegratedStageValidationAndGuidance,
-		require: []string{"$ready", "Esc discard"},
+		require: []string{"$ready", "Esc keep draft"},
 	},
 	{
 		name:    "selection-and-filters",

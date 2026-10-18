@@ -43,8 +43,8 @@
     { "type": "key", "label": "open capture over the same floor", "key": "a" },
     { "type": "assert", "assert": "contains", "value": "Enter create" },
     { "type": "assert", "assert": "contains", "value": "Ctrl+N create another" },
-    { "type": "assert", "assert": "contains", "value": "Ctrl+E create & edit" },
-    { "type": "assert", "assert": "contains", "value": "? syntax" },
+    { "type": "assert", "assert": "contains", "value": "Ctrl+X discard" },
+    { "type": "assert", "assert": "contains", "value": "Esc keep draft" },
     { "type": "assert", "label": "the project switch outranks the entries drawn ahead of it", "assert": "contains", "value": "Ctrl+P project" },
     { "type": "assert", "label": "and paste, which the terminal already answers, is the first entry shed", "assert": "not_contains", "value": "Ctrl+V paste" },
     { "type": "assert", "assert": "no_layout_issues" }

@@ -126,7 +126,7 @@ func TestPolishTransitionReviewFrames(t *testing.T) {
 						if !strings.Contains(obs.PlainScreen, "Follow up on the release") {
 							t.Fatal("active draft was hidden")
 						}
-						press("esc", "Y")
+						press("ctrl+x", "Y")
 						after := frame("closed", size)
 						if view.Cursor != cursor || view.ViewScrollOffset != scroll {
 							t.Fatal("capture changed outline position")

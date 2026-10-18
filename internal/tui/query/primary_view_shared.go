@@ -140,7 +140,7 @@ func FormatDueDate(task *models.Task) string {
 		dateStr += " " + clock
 	}
 	if task.IsOverdue() {
-		dateStr += " late"
+		dateStr += " overdue"
 		style = theme.OverdueStyle
 	}
 	return style.Render(icons.Get("date") + " " + dateStr)

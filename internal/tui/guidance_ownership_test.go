@@ -281,7 +281,7 @@ func TestExpandedComposerPublishesThroughTheShellFooter(t *testing.T) {
 		t.Fatalf("the expanded form resolves to owner %d rather than shell", owner)
 	}
 	expanded := ansi.Strip(app.renderStatusBar())
-	for _, entry := range []string{"Ctrl+S save", "Esc cancel", "Tab next"} {
+	for _, entry := range []string{"Ctrl+S save", "Esc keep draft", "Tab next"} {
 		if !strings.Contains(expanded, entry) {
 			t.Fatalf("the shell footer under the expanded form does not carry %q:\n%s", entry, expanded)
 		}

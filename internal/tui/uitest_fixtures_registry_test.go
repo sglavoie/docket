@@ -22,6 +22,7 @@ import (
 // Built-in fixture names accepted by NewFixtureDriver and the committed
 // test-only scenario harness.
 const (
+	FixtureEveryday     = "everyday"
 	FixtureEmpty        = "empty"
 	FixtureFresh        = "fresh"
 	FixtureRich         = "rich"
@@ -112,6 +113,7 @@ const (
 // when the builder runs; the builder only adds projects and sets config state.
 var builtinFixtures = map[string]func(*uitestWorkspace) error{
 	"check-ins":         buildCheckInFixture,
+	FixtureEveryday:     buildEverydayFixture,
 	FixtureEmpty:        buildEmptyFixture,
 	FixtureFresh:        nil,
 	FixtureRich:         buildRichFixture,

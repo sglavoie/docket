@@ -35,8 +35,8 @@
     { "type": "key", "key": "j" },
     { "type": "key", "label": "onto the Backlog lane, folded at launch", "key": "j" },
     { "type": "key", "label": "open it", "key": "l" },
-    { "type": "assert", "label": "one top-level task with a subtree still merges: the root leads at the header's depth", "assert": "contains", "value": " ▾ [rich-project] □ ◉ Launch platform" },
-    { "type": "assert", "label": "and its descendants hang beneath it without a label", "assert": "contains", "value": " └── ▾ □ ● User authentication" },
+    { "type": "assert", "label": "one top-level task with a subtree still merges: the root leads at the header's depth", "assert": "contains", "value": " ▾ [rich-project] 🞑 ◉ Launch platform" },
+    { "type": "assert", "label": "and its descendants hang beneath it without a label", "assert": "contains", "value": " └── ▾ 🞑 ● User authentication" },
     { "type": "assert", "assert": "count_contains", "value": "[rich-project]", "count": 4 },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

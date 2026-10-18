@@ -75,8 +75,10 @@ final class TerminalVisualReviewTests: XCTestCase {
         // This is the actual terminal texture, excluding native window chrome.
         // Readable terminal text alone is not pixel evidence.
         var colors = Set<String>()
-        for y in stride(from: 80, to: bitmap.pixelsHigh - 24, by: 6) {
-            for x in stride(from: 24, to: bitmap.pixelsWide - 24, by: 6) {
+        // Empty-list frames may draw only their title and footer. Include
+        // those regions so a quiet, correctly rendered screen is not blank.
+        for y in stride(from: 0, to: bitmap.pixelsHigh, by: 3) {
+            for x in stride(from: 0, to: bitmap.pixelsWide, by: 3) {
                 if let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) {
                     colors.insert("\(Int(color.redComponent * 255)),\(Int(color.greenComponent * 255)),\(Int(color.blueComponent * 255))")
                 }

@@ -60,6 +60,7 @@ type OutlinerModel struct {
 	// tell a header scrolled above the window from the row's own group rather
 	// than by scanning upward for one.
 	sectionHeaderRows map[string]int
+	projectHeaderRows map[string]int
 	// hostBudget is the loan outstanding while a bounded panel is drawn over this
 	// list: where the window stood when the panel took its rows, held as a
 	// position in the document rather than a number of them.

@@ -139,7 +139,7 @@ func inlinePeekProjectNameLines(project *models.Project, indent string, width in
 	if name == "" || width <= 0 {
 		return nil
 	}
-	style := theme.ProjectColorStyle(project).Bold(true)
+	style := theme.NormalStyle.Bold(true)
 	paint := func(row string) string { return style.Render(row) }
 	return inlinePeekHangingLines("", textfit.WrapText(name, width), indent, width, paint)
 }

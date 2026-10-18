@@ -112,7 +112,7 @@ func TestMenuHistoryLabelsFollowTheWorkspaceLedger(t *testing.T) {
 	}
 	pressMenuBarKey(t, driver, "esc", "ctrl+r", "ctrl+m")
 	menu = menuWithID(t, openMenuBarMenusForTest(t, view), outliner.MenuIDTask)
-	if !menuHasLabel(menu, "Undo: "+undo) || menuHasLabel(menu, "Redo") {
+	if !menuHasLabel(menu, "Undo: "+undo) || menuHasLabel(menu, "Redo: "+undo) {
 		t.Fatalf("menu retained stale history labels after redo: %+v", menu.Entries)
 	}
 }
@@ -352,5 +352,24 @@ func TestAnUnrecognizedKeyClosesTheMenuAndStillRuns(t *testing.T) {
 	}
 	if !outlinerView.QueryReadout.Expanded {
 		t.Error("the re-emitted key never reached the root grammar")
+	}
+}
+
+func TestUnavailableMenuActionStaysOpenAndExplainsRecovery(t *testing.T) {
+	driver, view := menuBarDriver(t)
+	pressMenuBarKey(t, driver, "v", "f10", "down")
+	for _, size := range [][2]int{{60, 20}, {80, 24}} {
+		driver.Resize(size[0], size[1])
+		before := driver.Observe(ObserveOptions{})
+		if !strings.Contains(before.PlainScreen, "Leave multi-select") {
+			t.Fatalf("unavailable Edit has no reason: %s", before.PlainScreen)
+		}
+		if len(before.LayoutIssues) != 0 {
+			t.Fatalf("unavailable reason overflows: %+v", before.LayoutIssues)
+		}
+		pressMenuBarKey(t, driver, "enter")
+		if !view.MenuBar.Open {
+			t.Fatal("unavailable action closed the menu")
+		}
 	}
 }

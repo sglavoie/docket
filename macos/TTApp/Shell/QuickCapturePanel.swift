@@ -389,7 +389,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
             do { try self.persistRecovery(QuickCaptureRecovery(draft: text, pendingSubmission: submission)) }
             catch {
                 self.abandonRequest()
-                self.setStatus("Could not save the capture draft: \(error.localizedDescription)", error: true)
+                self.setStatus("Couldn’t save a recovery copy. Your draft is still open. Fix the problem and press Enter to retry: \(error.localizedDescription)", error: true)
                 return
             }
             self.pendingSubmission = submission
@@ -570,7 +570,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
             if recoveryError != nil { setStatus(Self.hint, error: false) }
             recoveryError = nil
         } catch {
-            recoveryError = "Could not save the recovery copy: \(error.localizedDescription). Keep this window open and retry editing."
+            recoveryError = "Couldn’t save a recovery copy. Your draft is still open. Keep this window open and edit to retry: \(error.localizedDescription)"
             setStatus(recoveryError!, error: true)
         }
     }

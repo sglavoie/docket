@@ -151,7 +151,7 @@ func (m *OutlinerModel) taskProjectLabel(row OutlinerRow, rowWidth int, colLayou
 		return ""
 	}
 	_, project := m.projectSlugForRow(row)
-	label := theme.ProjectColorStyle(project).Render("[" + slug + "]")
+	label := theme.ProjectLabel(project, slug)
 	if colLayout != nil {
 		label += strings.Repeat(" ", max(colLayout.ProjectWidth-lipgloss.Width(label), 0))
 	}

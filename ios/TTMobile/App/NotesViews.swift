@@ -236,7 +236,7 @@ struct NoteEditorView: View {
                 stale = outcome.stale
                 failure = outcome.stale
                     ? "This note changed on another device since you opened it, so it was not overwritten. Your text is kept here."
-                    : outcome.refusal
+                    : outcome.refusal.map { "Couldn’t save. Your draft is still open. \($0)" }
                 return
             }
             workspace.drafts?.discardNote(key)

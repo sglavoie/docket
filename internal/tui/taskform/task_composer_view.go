@@ -321,6 +321,17 @@ func (m *TaskComposerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 			spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(100, "Ctrl+P project")...)
 		}
 	}
+	if m.preservesDraft && !m.ConfirmDiscard && !m.IsAutocompleteActive() && !m.HelpExpanded {
+		for i := range spec.Hints {
+			if spec.Hints[i].Key == "Esc" {
+				spec.Hints[i].Label = "keep draft"
+			}
+			if spec.Hints[i].Key == "Ctrl+P" {
+				spec.Hints[i].Priority = 0
+			}
+		}
+		spec.Hints = append(spec.Hints, chrome.NewGuidanceHint("Ctrl+X discard", 0, false))
+	}
 	// No supplemental naming the panel: the divider above already opens with
 	// that label and the route row under it states the destination, so a footer
 	// repeating either spends the row capture's own keys are read from.
@@ -338,5 +349,5 @@ func (m *TaskComposerModel) HandledKeys() []string {
 	if m.Mode == ComposerExpanded && m.Expanded != nil {
 		return m.Expanded.HandledKeys()
 	}
-	return []string{"enter", "ctrl+s", "shift+enter", "alt+enter", "ctrl+f", "ctrl+p", "ctrl+e", "?", "esc"}
+	return []string{"enter", "ctrl+s", "shift+enter", "alt+enter", "ctrl+f", "ctrl+p", "ctrl+e", "?", "esc", "ctrl+x"}
 }

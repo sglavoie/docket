@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -27,7 +28,8 @@ import (
 // The zero OperationID is a separator, the rule between two groups; it names no
 // operation, so it carries neither label, key hint, nor state.
 type menuEntrySpec struct {
-	OperationID operation.OperationID
+	KeepUnavailable bool
+	OperationID     operation.OperationID
 	// Label is optional shorter wording for the bar. Empty means the
 	// descriptor's own Label, which is the wording `?` help already teaches.
 	Label string
@@ -51,10 +53,11 @@ type menuSpec struct {
 // operation, never a string the spec supplied. An empty OperationID is a rule
 // or, when Label is present, a non-selectable group heading.
 type ResolvedMenuEntry struct {
-	OperationID operation.OperationID
-	Label       string
-	Key         string
-	Checked     *bool
+	DisabledReason string
+	OperationID    operation.OperationID
+	Label          string
+	Key            string
+	Checked        *bool
 }
 
 // resolvedMenu is one menu ready to be drawn. Every menu here has at least one
@@ -94,19 +97,22 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 			ID:    MenuIDTask,
 			Title: "Task",
 			Entries: []menuEntrySpec{
-				{OperationID: operation.OperationCoreCapture},
+				{OperationID: operation.OperationCoreCapture, KeepUnavailable: true},
+				{OperationID: operation.OperationCoreEdit, Label: "Edit", KeepUnavailable: true},
+				{OperationID: operation.OperationCoreToday, KeepUnavailable: true, Label: "Today", Group: "Plan"},
+				{OperationID: operation.OperationCoreNext, KeepUnavailable: true, Label: "Next", Group: "Plan"},
+				{OperationID: operation.OperationTaskSetState, KeepUnavailable: true, Label: "Set Status…", Group: "Status"},
+				{OperationID: operation.OperationCoreBacklog, KeepUnavailable: true, Label: "Backlog (clear plan)", Group: "Status"},
+				{OperationID: operation.OperationCoreUndo, Group: "Recovery", KeepUnavailable: true},
+				{OperationID: operation.OperationCoreRedo, Group: "Recovery", KeepUnavailable: true},
+				menuSeparator(),
 				{OperationID: operation.OperationTaskNewChild, Label: "Capture Child"},
 				{OperationID: operation.OperationChecklistAddItem},
-				{OperationID: operation.OperationCoreToday, Label: "Today", Group: "Plan"},
-				{OperationID: operation.OperationCoreNext, Label: "Next", Group: "Plan"},
-				{OperationID: operation.OperationTaskSetState, Label: "Set Status…", Group: "Status"},
-				{OperationID: operation.OperationCoreBacklog, Label: "Backlog (clear plan)", Group: "Status"},
 				{OperationID: operation.OperationTaskSetPriority, Label: "Priority…", Group: "Details"},
 				{OperationID: operation.OperationTaskSetDueDate, Label: "Due / Defer / Check-in…", Group: "Details"},
 				{OperationID: operation.OperationTaskSetTags, Label: "Tags / Context…", Group: "Details"},
 				{OperationID: operation.OperationTaskTogglePin, Group: "Details"},
 				{OperationID: operation.OperationTaskMoveToProject, Group: "Details"},
-				{OperationID: operation.OperationCoreEdit, Label: "Edit", Group: "Details"},
 				{OperationID: operation.OperationCoreEditDescription, Label: "Description", Group: "Details"},
 				{OperationID: operation.OperationCoreExternalEditor, Label: "External Editor", Group: "Details"},
 				{OperationID: operation.OperationCoreOutlineEditor, Group: "Details"},
@@ -120,9 +126,6 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 				{OperationID: operation.OperationTaskCopyTitle},
 				{OperationID: operation.OperationTaskCopyDetails},
 				{OperationID: operation.OperationTaskCopyTitleDescription},
-				menuSeparator(),
-				{OperationID: operation.OperationCoreUndo},
-				{OperationID: operation.OperationCoreRedo},
 			},
 		},
 		{
@@ -265,8 +268,8 @@ func gotoOperationForMode(mode chrome.OutlinerModeID) operation.OperationID {
 //
 //   - A spec naming an operation the registry does not hold is a startup error,
 //     not a silently dropped row.
-//   - An entry whose descriptor does not apply to ctx is removed, not greyed,
-//     which is what makes the menu honest about the current cursor.
+//   - An unavailable everyday entry stays visible with a reason; specialist
+//     entries are omitted. Disabled rows cannot dispatch an operation.
 //   - A key hint is always DisplayKeysForOperation, the same helper `?` reads.
 //   - A menu with no surviving entry is omitted, so the bar never shows a label
 //     that opens nothing.
@@ -300,8 +303,12 @@ func ResolveMenuEntries(
 					entry.OperationID,
 				)
 			}
+			reason := ""
 			if !descriptor.Applicable(ctx) {
-				continue
+				if !entry.KeepUnavailable {
+					continue
+				}
+				reason = menuUnavailableReason(entry.OperationID, ctx)
 			}
 			if entry.Group != "" && entry.Group != group {
 				entries = append(entries, ResolvedMenuEntry{Label: entry.Group})
@@ -312,10 +319,11 @@ func ResolveMenuEntries(
 				label = descriptor.Label
 			}
 			entries = append(entries, ResolvedMenuEntry{
-				OperationID: entry.OperationID,
-				Label:       label,
-				Key:         operation.DisplayKeysForOperation(strategy, entry.OperationID),
-				Checked:     entry.Checked,
+				OperationID:    entry.OperationID,
+				Label:          label,
+				Key:            operation.DisplayKeysForOperation(strategy, entry.OperationID),
+				Checked:        entry.Checked,
+				DisabledReason: reason,
 			})
 		}
 		entries = collapseMenuSeparators(entries)
@@ -583,6 +591,9 @@ func (m *OutlinerModel) handleMenuBarKey(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 		return m, nil
 	case "enter":
 		index := resolveMenuBarItem(entries, m.MenuBar.ItemIndex)
+		if index >= 0 && entries[index].DisabledReason != "" {
+			return m, nil
+		}
 		m.closeMenuBar()
 		if index < 0 {
 			return m, nil
@@ -812,12 +823,12 @@ func (m *OutlinerModel) resolvedMenuBar() []ResolvedMenu {
 			case operation.OperationCoreUndo:
 				description = m.MenuBar.undoDescription
 				if m.HistoryPreview != nil && description == "" {
-					continue
+					entry.DisabledReason = "Nothing to " + strings.ToLower(entry.Label) + "."
 				}
 			case operation.OperationCoreRedo:
 				description = m.MenuBar.redoDescription
 				if m.HistoryPreview != nil && description == "" {
-					continue
+					entry.DisabledReason = "Nothing to " + strings.ToLower(entry.Label) + "."
 				}
 			}
 			if description != "" {
@@ -889,7 +900,15 @@ func (m *OutlinerModel) renderOutlinerMenuDropdown(width, maxBoxRows int) (strin
 	innerWidth := menuBarDropdownWidth(entries, width)
 	// The box's own rows come off the budget before the list is sized.
 	maxBoxRows = max(maxBoxRows, menuBarDropdownMinRows+menuBarDropdownListRows)
-	listHeight := max(min(len(entries), maxBoxRows-menuBarDropdownListRows), 1)
+	reason := ""
+	if entries[cursor].DisabledReason != "" {
+		reason = strings.Join(textfit.WrapText(entries[cursor].DisabledReason, innerWidth-4), "\n")
+	}
+	reasonRows := 0
+	if reason != "" {
+		reasonRows = lipgloss.Height(reason) + 1
+	}
+	listHeight := max(min(len(entries), maxBoxRows-menuBarDropdownListRows-reasonRows), 1)
 
 	surface, err := newMenuBarDropdownSurface(entries, innerWidth-4)
 	if err != nil {
@@ -900,6 +919,9 @@ func (m *OutlinerModel) renderOutlinerMenuDropdown(width, maxBoxRows int) (strin
 	}
 	surface.SetCursorToID(menuBarDropdownItemID(cursor))
 	content := listsurface.RenderCompactListSurface(surface, innerWidth-4, listHeight)
+	if reason != "" {
+		content += "\n" + strings.Repeat("─", innerWidth-4) + "\n" + theme.MutedStyle.Render(reason)
+	}
 	box := chrome.RenderOverlayBox(content, innerWidth, "", "",
 		lipgloss.NewStyle().Foreground(theme.ColorPrimary))
 	return box, menuBarDropdownStartCol(menus, width, m.MenuBar.MenuIndex, box)
@@ -997,6 +1019,10 @@ func newMenuBarDropdownSurface(entries []ResolvedMenuEntry, contentWidth int) (*
 		}
 		item.PrimaryText = padMenuBarDropdownLabel(entry.Label, entry.Key, textWidth)
 		item.SecondaryText = entry.Key
+		if entry.DisabledReason != "" {
+			item.PrimaryText = theme.MutedStyle.Render(item.PrimaryText)
+			item.SecondaryText = theme.MutedStyle.Render(item.SecondaryText)
+		}
 		if entry.Checked != nil && *entry.Checked {
 			item.PrimaryMarker = "✓ "
 		}
@@ -1030,4 +1056,25 @@ func padMenuBarDropdownLabel(label, key string, textWidth int) string {
 // with different wording, and a separator names none.
 func menuBarDropdownItemID(index int) listsurface.ListItemID {
 	return listsurface.ListItemID("menu-entry-" + strconv.Itoa(index))
+}
+
+// Reasons explain presentation availability; execution still belongs to the
+// registry. Disabled entries remain focusable so keyboard users can read why.
+func menuUnavailableReason(id operation.OperationID, ctx operation.CommandContext) string {
+	if ctx.Entity.Archived {
+		return "This project is archived. Open an active project to make changes."
+	}
+	if id == operation.OperationCoreEdit && ctx.Selection.Visual {
+		return "Leave multi-select, then choose one task to edit."
+	}
+	if ctx.Entity.HasChecklistCursor {
+		return "Choose the task row to use this action."
+	}
+	if ctx.Selection.Visual && ctx.Selection.Count() == 0 {
+		return "Select at least one task."
+	}
+	if ctx.Entity.TaskID == "" && ctx.Selection.Count() == 0 {
+		return "Choose a task to use this action."
+	}
+	return "This action is unavailable for the current selection."
 }

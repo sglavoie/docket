@@ -192,6 +192,9 @@ func (m *TaskFormModel) guidanceSpec() chrome.GuidanceSpec {
 		optional = []string{"a attachments", "Ctrl+L add", "Enter edit", "Ctrl+D delete", "Ctrl+J/K reorder"}
 		optional = append([]string{"c comments", "Ctrl+Y add comment"}, optional...)
 	}
+	if m.closeDraft != nil {
+		return chrome.RequiredExitGuidanceSpec(commit, "Esc keep draft", append([]string{"Ctrl+X discard"}, optional...)...)
+	}
 	return chrome.RequiredExitGuidanceSpec(commit, chrome.DraftEscapeHint(m.escRaisesDiscard()), optional...)
 }
 

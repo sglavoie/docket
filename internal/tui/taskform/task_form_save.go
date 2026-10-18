@@ -53,6 +53,9 @@ func (m *TaskFormModel) handleSave() tea.Cmd {
 	}
 
 	cmd := m.saveCreate()
+	if m.guardSubmit != nil {
+		cmd = m.guardSubmit(cmd)
+	}
 	if cmd != nil {
 		m.submissionInFlight = true
 	}

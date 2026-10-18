@@ -32,7 +32,7 @@
     { "type": "text", "label": "the clear form belongs to the edit surface", "text": " @@0 " },
     { "type": "key", "key": "enter" },
     { "type": "wait" },
-    { "type": "assert", "label": "the deferral is gone, so the deferred-only filter drops the row", "assert": "not_contains", "value": "□ Alpha still hidden" },
+    { "type": "assert", "label": "the deferral is gone, so the deferred-only filter drops the row", "assert": "not_contains", "value": "🞑 Alpha still hidden" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "reopen the filter chord", "key": "f" },
@@ -47,7 +47,7 @@
     { "type": "key", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Edit Task Line: #6 Alpha overdue intake" },
-    { "type": "assert", "label": "a same-day deferral hides the row at once", "assert": "not_contains", "value": "□ Alpha overdue intake" },
+    { "type": "assert", "label": "a same-day deferral hides the row at once", "assert": "not_contains", "value": "🞑 Alpha overdue intake" },
     { "type": "assert", "label": "deferring takes the task out of Today with it", "assert": "not_contains", "value": "Today  (" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

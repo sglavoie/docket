@@ -1073,11 +1073,11 @@ extension QuickCapturePanelTests {
         field.stringValue = "Keep typing"
         panel.controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: field))
         XCTAssertEqual(field.stringValue, "Keep typing")
-        XCTAssertTrue(panel.panel.contentView!.descendants(of: NSTextField.self).contains { $0.stringValue.contains("Could not save the recovery copy") })
+        XCTAssertTrue(panel.panel.contentView!.descendants(of: NSTextField.self).contains { $0.stringValue.contains("Couldn’t save a recovery copy") })
         panel.close()
         panel.toggle()
         XCTAssertTrue(panel.isVisible, "a recovery write failure must not prevent reopening the draft")
-        XCTAssertTrue(panel.panel.contentView!.descendants(of: NSTextField.self).contains { $0.stringValue.contains("Could not save the recovery copy") })
+        XCTAssertTrue(panel.panel.contentView!.descendants(of: NSTextField.self).contains { $0.stringValue.contains("Couldn’t save a recovery copy") })
         fail = false
         panel.controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: field))
         XCTAssertEqual(recovered?.draft, "Keep typing")

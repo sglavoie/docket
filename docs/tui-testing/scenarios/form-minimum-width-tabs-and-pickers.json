@@ -95,7 +95,7 @@
     { "type": "assert", "assert": "not_clipped", "value": "Checklist (1)" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "a dirty cancel must ask before it discards", "key": "esc" },
+    { "type": "key", "label": "explicit discard must ask first", "key": "ctrl+x" },
     { "type": "assert", "assert": "contains", "value": "Discard" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "keep editing instead", "key": "n" },

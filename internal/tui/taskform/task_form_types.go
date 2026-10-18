@@ -3,6 +3,8 @@ package taskform
 import (
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+
 	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/textinput"
 
@@ -65,6 +67,9 @@ type taskFormDraft struct {
 
 // TaskFormModel drives expanded task creation.
 type TaskFormModel struct {
+	closeDraft    func() tea.Cmd
+	discardDraft  func() tea.Cmd
+	guardSubmit   func(tea.Cmd) tea.Cmd
 	allProjects   []*models.Project
 	presetDue     *time.Time
 	relationInput textinput.Model

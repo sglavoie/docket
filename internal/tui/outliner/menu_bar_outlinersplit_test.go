@@ -110,3 +110,17 @@ func TestMenuGroupsContainOnlyApplicableActionsAndSkipHeadings(t *testing.T) {
 		t.Fatal("menu navigation landed on a heading")
 	}
 }
+
+func TestMenuKeepsUnavailableEverydayActionWithReason(t *testing.T) {
+	registry := operation.NewOperationRegistry()
+	registerMenuTestOperation(t, registry, operation.OperationCoreEdit, "Edit", false)
+	ctx := menuBarCommandContext()
+	ctx.Selection.Visual = true
+	menus, err := ResolveMenuEntries(registry, operation.InputStrategy{}, ctx, []menuSpec{{ID: "task", Entries: []menuEntrySpec{{OperationID: operation.OperationCoreEdit, KeepUnavailable: true}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(menus) != 1 || len(menus[0].Entries) != 1 || menus[0].Entries[0].DisabledReason != "Leave multi-select, then choose one task to edit." {
+		t.Fatalf("missing unavailable action and recovery: %+v", menus)
+	}
+}

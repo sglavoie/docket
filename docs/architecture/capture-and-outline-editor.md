@@ -720,3 +720,27 @@ Full-height surfaces keep their own controls on the terminal's last row through
 `fitSurfaceFooterHeight`, with shell feedback immediately above the divider.
 Single-project repaint caching shares the population invalidation guard; explicit
 `RebuildRows` remains an unconditional mutation-driven rebuild.
+
+
+## Closing capture and local recovery
+
+The shell calls `EnableDraftRecovery` before mounting a composer. Its local
+store is keyed by workspace identity and the original preset, including child
+parent and seeded values. A project selected inside the editor is stored in the
+document, preserving the destination without changing the draft's lookup key.
+`Esc` closes compact capture or the expanded form after writing its raw draft.
+`Ctrl+X` requests confirmed discard. Nested pickers retain their own Esc behavior.
+Recovery writes happen on close and before submission, not on every keystroke.
+
+`config.LocalDraft` keeps these opaque documents beside machine state, outside
+synced workspace artifacts. Atomic writes use restrictive permissions and a
+locked byte comparison against the version read. A competing terminal or an
+unreadable recovery document cannot be silently overwritten. A failed write
+keeps the editor and draft open. Versioned recovery includes unparsed schedule
+text, checklist, subtasks, comments, attachments, and navigation within the form.
+
+A durable pending marker precedes a dispatched save. Success removes the recovery
+copy; failure restores a retryable draft. A process interrupted between dispatch
+and acknowledgement restores the text with a warning and blocks resubmission,
+since the task may already exist. The user checks the task list and explicitly
+discards that recovery copy before creating another task.

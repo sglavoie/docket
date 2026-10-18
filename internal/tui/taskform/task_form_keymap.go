@@ -21,6 +21,9 @@ func (m *TaskFormModel) buildKeyMap() *keymap.KeyMap {
 	)
 
 	// Actions
+	if m.discardDraft != nil {
+		entries = append(entries, keymap.Bind("ctrl+x", "Discard draft", "Actions"))
+	}
 	entries = append(entries,
 		keymap.Bind("enter", "Open picker / confirm text field", "Actions"),
 		keymap.Bind("ctrl+s", "Save task", "Actions"),

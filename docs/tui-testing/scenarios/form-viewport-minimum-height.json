@@ -44,7 +44,7 @@
     { "type": "text", "text": "https://ex.co/s10" },
     { "type": "key", "key": "enter" },
     { "type": "assert", "label": "the aligned relation fields each occupy one row below these drafts", "assert": "contains", "value": "0 above · 2 below" },
-    { "type": "assert", "label": "whose hints are the form's keys", "assert": "contains", "value": "Ctrl+S save · Esc discard" },
+    { "type": "assert", "label": "whose hints are the form's keys", "assert": "contains", "value": "Ctrl+S save · Esc keep draft" },
     { "type": "assert", "label": "in place of the breadcrumb row", "assert": "not_contains", "value": "Outliner >" },
     { "type": "key", "key": "ctrl+l" },
     { "type": "text", "text": "https://ex.co/s11" },
@@ -126,7 +126,7 @@
     { "type": "assert", "assert": "contains", "value": "above ·" },
 
     { "type": "key", "label": "delete the refused draft the window is sitting on", "key": "ctrl+d" },
-    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "5 above · 2 below" },
+    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "6 above · 2 below" },
     { "type": "assert", "label": "which is the shell's line, above the form's keys and under the one divider", "assert": "contains", "value": "invalid attachment" },
     { "type": "assert", "assert": "contains", "value": "https://ex.co/s13" },
     { "type": "assert", "assert": "contains", "value": "Comments (0)" },

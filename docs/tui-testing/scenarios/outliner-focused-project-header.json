@@ -5,12 +5,12 @@
   "actions": [
     { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
-    { "type": "assert", "label": "unscoped, a project's lone task leads its group and carries the project's label", "assert": "contains", "value": "[mix-active-…] □ Mix rollout plan" },
+    { "type": "assert", "label": "unscoped, a project's lone task leads its group and carries the project's label", "assert": "contains", "value": "[mix-active-…] 🞑 Mix rollout plan" },
     { "type": "key", "label": "step off the Backlog section header onto that task", "key": "j" },
     { "type": "key", "label": "the group is still foldable", "key": "h" },
     { "type": "assert", "label": "folded, it is a header with a size", "assert": "contains", "value": "[mix-active-delivery] (1)" },
     { "type": "key", "label": "and opening it merges the header back into the task", "key": "l" },
-    { "type": "assert", "assert": "contains", "value": "[mix-active-…] □ Mix rollout plan" },
+    { "type": "assert", "assert": "contains", "value": "[mix-active-…] 🞑 Mix rollout plan" },
 
     { "type": "key", "label": "focus the project that holds work", "key": "P" },
     { "type": "assert", "assert": "contains", "value": "Select Project" },
@@ -46,7 +46,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
     { "type": "key", "label": "leave the focus", "key": "esc" },
-    { "type": "assert", "label": "and the cross-project grouping comes back whole", "assert": "contains", "value": "[mix-active-…] □ Mix rollout plan" },
+    { "type": "assert", "label": "and the cross-project grouping comes back whole", "assert": "contains", "value": "[mix-active-…] 🞑 Mix rollout plan" },
 
     { "type": "key", "label": "now focus the project that holds nothing", "key": "P" },
     { "type": "key", "key": "/" },

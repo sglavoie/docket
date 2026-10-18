@@ -5,7 +5,7 @@
   "actions": [
     { "type": "key", "label": "launch folds Backlog and seats the cursor on its header, so open the lane", "key": "l" },
     { "type": "key", "label": "onto Client Alpha's task, which its singleton group draws in place of a header", "key": "j" },
-    { "type": "assert", "assert": "contains", "value": "[client-alpha] □ Alpha migration kickoff" },
+    { "type": "assert", "assert": "contains", "value": "[client-alpha] 🞑 Alpha migration kickoff" },
     { "type": "key", "label": "store one cross-project reference the typed way", "key": "e" },
     { "type": "text", "text": " ~client-beta:1" },
     { "type": "key", "key": "tab" },

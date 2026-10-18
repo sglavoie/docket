@@ -503,7 +503,8 @@ The pinned context row is the one thing inside that window that is not a row.
 header landed, keyed by the section half of `OutlinerRowGroup`; it runs there
 rather than where a header is appended because the Pinned separator, the
 checklist expansion, and the focused project header all move rows afterwards.
-`sectionHeaderAbove` reads that index and the first window row's own group, so
+`contextHeaderAbove` also uses the project header index for modes without
+lane headers. `sectionHeaderAbove` reads the lane index and the first window row's own group, so
 "is this lane's header above the window" is answered without scanning for one,
 and it distrusts an index the rows no longer bear out. `pinnedContextWindow`,
 called by `ComputeOutlinerViewport` alone, then decides the window: it tries the
@@ -563,7 +564,12 @@ row reads, because a dropdown is padded to a column and `RenderTabBar` returns
 a string alone.
 
 Task entries carry optional `Group` metadata for Plan, Status, and Details.
-Resolution emits a non-action heading only before an applicable group member.
+Resolution emits a non-action heading before each surviving group. Everyday
+Task entries use `KeepUnavailable`; they retain their order and a
+`DisabledReason` when the descriptor does not apply. They remain focusable for
+keyboard discovery, but Enter dispatches nothing. The reason wraps below the
+menu within its existing height budget. Specialist entries still disappear
+when unavailable. Undo and Redo retain empty-history reasons.
 Headings have no operation ID, key, or checked state; navigation skips them like
 separators. Status opens the existing value provider, and all mutations still
 go through the same executor as their direct shortcuts.

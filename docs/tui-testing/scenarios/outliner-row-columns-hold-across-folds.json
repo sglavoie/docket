@@ -11,7 +11,7 @@
 
     { "type": "key", "label": "s opens every lane", "key": "s" },
     { "type": "assert", "assert": "contains", "value": "▾  Backlog  (3)" },
-    { "type": "assert", "label": "the parents draw their glyph in that column", "assert": "contains", "value": " ▾ [rich-project] □ ◉ Launch platform" },
+    { "type": "assert", "label": "the parents draw their glyph in that column", "assert": "contains", "value": " ▾ [rich-project] 🞑 ◉ Launch platform" },
     { "type": "assert", "label": "and no title moved", "assert": "contains", "value": "   [rich-project] ◐   Build login form" },
     { "type": "assert", "assert": "contains", "value": "   [rich-project] ◌   Triage support inbox" },
     { "type": "assert", "assert": "contains", "value": "   [rich-project] ⊘ ◉ Fix redirect loop after logout" },
@@ -20,7 +20,7 @@
 
     { "type": "resize", "label": "the minimum size holds the same columns", "width": 60, "height": 20 },
     { "type": "assert", "assert": "contains", "value": "   [rich-project] ◐   Build login form" },
-    { "type": "assert", "assert": "contains", "value": " ▾ [rich-project] □ ◉ Launch platform" },
+    { "type": "assert", "assert": "contains", "value": " ▾ [rich-project] 🞑 ◉ Launch platform" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

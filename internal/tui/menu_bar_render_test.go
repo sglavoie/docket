@@ -57,7 +57,7 @@ func TestAnOpenMenuStandsOnTheViewItWasOpenedFrom(t *testing.T) {
 	cursor := outlinerView.Cursor
 	pressMenuBarKey(t, driver, "down")
 	moved := driver.Observe(ObserveOptions{}).PlainScreen
-	if !strings.Contains(moved, "› Capture Child") {
+	if !strings.Contains(moved, "› Edit") {
 		t.Errorf("the menu did not take its own cursor key:\n%s", moved)
 	}
 	if got := outlinerView.Cursor; got != cursor {

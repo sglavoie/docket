@@ -304,8 +304,8 @@
     },
     {
       "type": "key",
-      "label": "abandoning a draft asks before it costs anything",
-      "key": "esc"
+      "label": "explicit discard asks before removing the draft",
+      "key": "ctrl+x"
     },
     {
       "type": "assert",
@@ -328,7 +328,7 @@
     },
     {
       "type": "key",
-      "key": "esc"
+      "key": "ctrl+x"
     },
     {
       "type": "key",
@@ -764,7 +764,7 @@
       "type": "assert",
       "label": "a menu names directly-bound operations freely",
       "assert": "contains",
-      "value": "Set Dependencies"
+      "value": "Outline Edit Project"
     },
     {
       "type": "assert",
@@ -776,7 +776,7 @@
       "type": "assert",
       "assert": "contains",
       "label": "the uncovered deadline remains visible beside the longer menu",
-      "value": "12:00 late"
+      "value": "12:00 overdue"
     },
     {
       "type": "assert",
@@ -801,7 +801,7 @@
     {
       "type": "assert",
       "assert": "not_contains",
-      "value": "Set Dependencies"
+      "value": "Outline Edit Project"
     },
     {
       "type": "key",
