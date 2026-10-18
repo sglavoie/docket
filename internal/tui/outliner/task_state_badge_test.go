@@ -19,12 +19,13 @@ func TestTaskRowStatusIconUsesSemanticAccent(t *testing.T) {
 			outliner := &OutlinerModel{}
 			for _, selected := range []bool{false, true} {
 				segments := outliner.buildTaskRowSegments(OutlinerRow{Task: task}, 60, nil, outliner.cursorPaintFor(selected))
-				want := theme.TodoBadgeStyle.Foreground(theme.SemanticTaskTitleStyle(entry.Role, 0, false, false).GetForeground()).Render(task.State().Icon())
+				want := theme.GetTaskStateBadge(task)
 				if segments.statusIcon != want {
 					t.Errorf("%s/%s selected=%v status icon = %q, want %q", themeName, entry.Name, selected, segments.statusIcon, want)
 				}
-				if got := ansi.Strip(segments.statusIcon); got != task.State().Icon() {
-					t.Errorf("status symbol = %q, want %q", got, task.State().Icon())
+				icon := "🞑"
+				if got := ansi.Strip(segments.statusIcon); got != icon {
+					t.Errorf("status symbol = %q, want %q", got, icon)
 				}
 			}
 		}

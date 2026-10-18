@@ -94,7 +94,7 @@ func TestSingletonProjectGroupMergesIntoItsRow(t *testing.T) {
 	}
 
 	line := ansi.Strip(outliner.RenderOutlinerTaskRow(rootRow, false, 120, rootIndex, nil))
-	if !strings.Contains(line, "[alpha] □ alpha-root") {
+	if !strings.Contains(line, "[alpha] 🞑 alpha-root") {
 		t.Fatalf("merged row %q does not lead with its project", line)
 	}
 	childLine := ansi.Strip(outliner.RenderOutlinerTaskRow(childRow, false, 120, rootIndex+1, nil))

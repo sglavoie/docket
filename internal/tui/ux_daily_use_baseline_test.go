@@ -232,7 +232,7 @@ func uxDailyUseRowContent(t *testing.T, line, title string) string {
 // uxDailyUseRowGutter is where the compared run starts: the Backlog state badge
 // the alpha row draws first. Every `multi-project` task is its project's only
 // one, so its group merges into the row and no tree connector precedes it.
-const uxDailyUseRowGutter = "□"
+const uxDailyUseRowGutter = "🞑"
 
 // TestUXDailyUseSelectionCountsAreStatedOnce is this contract after session 4
 // rewrote it. A visual selection used to be counted in two places at once — the

@@ -196,19 +196,27 @@ func TaskTitleStyleFor(task *models.Task, opts TaskTitleStyleOptions) lipgloss.S
 	return NormalStyle
 }
 
-// GetStateBadge returns the workflow-state icon rendered as a styled badge
-// with background. Each state reuses the badge style of the legacy status it
+// GetStateBadge returns the workflow-state icon rendered as a styled badge.
+// Each state reuses the badge style of the legacy status it
 // collapses into (see WorkflowState.Icon): the three todo-ish planning states
 // share the todo badge, waiting uses its own badge, paused the standby
 // badge, and someday the maybe badge.
 func GetStateBadge(state models.WorkflowState) string {
-	return stateBadgeStyle(state).Render(state.Icon())
+	return readableStateBadgeStyle(stateBadgeStyle(state)).Render(stateBadgeIcon(state))
 }
 
 // GetTaskStateBadge keeps the workflow-state symbol and badge styling, but uses
 // the highest-precedence semantic tag's accent when the task has one.
 func GetTaskStateBadge(task *models.Task) string {
-	return taskStateBadgeStyle(task).Render(task.State().Icon())
+	return taskStateBadgeStyle(task).Render(stateBadgeIcon(task.State()))
+}
+
+func stateBadgeIcon(state models.WorkflowState) string {
+	if state == models.StateBacklog {
+		// Terminal bold alone often leaves the ordinary square's outline thin.
+		return icons.Get("status.backlog.bold")
+	}
+	return state.Icon()
 }
 
 func taskStateBadgeStyle(task *models.Task) lipgloss.Style {
@@ -222,7 +230,34 @@ func taskStateBadgeStyle(task *models.Task) lipgloss.Style {
 	if role != models.SemanticTaskTagNone {
 		style = style.Foreground(SemanticTaskTitleStyle(role, 0, false, false).GetForeground())
 	}
-	return style
+	return readableStateBadgeStyle(style)
+}
+
+// Status icons use a vivid light-theme palette independent of text accents.
+// The surrounding row supplies the background, including its cursor tint.
+func readableStateBadgeStyle(style lipgloss.Style) lipgloss.Style {
+	if ActiveThemeName != "light" {
+		return style
+	}
+	hex := "#2b2f36"
+	switch style.GetForeground() {
+	case ColorSemanticBugTitle, ColorError:
+		hex = "#f02318"
+	case ColorSemanticQuestionTitle:
+		hex = "#e06400"
+	case ColorSemanticEpicTitle, StandbyBadgeStyle.GetForeground(), MaybeBadgeStyle.GetForeground():
+		hex = "#a020d0"
+	case ColorSemanticStoryTitle:
+		hex = "#087de0"
+	case ColorSemanticFeatureTitle, ColorSuccess:
+		hex = "#00a632"
+	case ColorSemanticIdeaTitle, ColorWarning:
+		hex = "#bc8e00"
+	}
+	return style.
+		UnsetBackground().
+		Foreground(lipgloss.Color(hex)).
+		Bold(true)
 }
 
 func stateBadgeStyle(state models.WorkflowState) lipgloss.Style {

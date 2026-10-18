@@ -121,7 +121,7 @@ func assertPlanningMarkerColumnRemoved(t *testing.T, line string, row outliner.O
 	t.Helper()
 
 	plain := ansi.Strip(line)
-	wantPrefix := theme.RenderCursorPrefix() + row.Prefix + task.State().Icon()
+	wantPrefix := theme.RenderCursorPrefix() + row.Prefix + ansi.Strip(theme.GetTaskStateBadge(task))
 	if !strings.HasPrefix(plain, wantPrefix) {
 		t.Fatalf("planned task row should place its state badge directly after the tree prefix; got:\n%s", plain)
 	}
