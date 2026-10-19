@@ -83,6 +83,16 @@ entries (or unstamped entries recorded before sync).
 workspace keeps its workspace id, and the copy produces no transactions. Moving
 an enrolled working copy keeps its history, since `.tt/sync/` moves with it.
 
+### `workspace-backup`
+
+`tt workspace backup` copies every durable workspace file to a timestamped
+directory outside the live workspace, then verifies the copy against a hash
+manifest. The workspace commit lock keeps a `tt` commit from changing files
+during the copy. Verification reads the snapshot without changing the source.
+
+**Sync integration point:** none. A backup is an external recovery copy; its
+creation does not publish a workspace transaction or change sync history.
+
 ### `sync-enrollment`
 
 `tt sync enroll` snapshots the original workspace under the machine-local
@@ -90,6 +100,8 @@ an enrolled working copy keeps its history, since `.tt/sync/` moves with it.
 staged catalog to the enrolled schema, writes the device-local enrollment
 record under `.tt/sync/`, and publishes the working copy with one rename.
 `tt sync join` creates the empty directory a joining device imports into.
+The snapshot writer is shared with `workspace-backup`; it writes only under
+the destination chosen by the caller.
 
 **Sync integration point:** the genesis. None of these writes is a
 transaction: the working copy's first sync record is the `kind: enroll`
@@ -137,7 +149,7 @@ themselves are never exchanged.
 ### `machine-local`
 
 Logs, process locks, the control socket, the active-workspace pointer, and the
-phone's capture inbox (`internal/bridge/capture_inbox_ops.go`): the receipts that
+phone's capture inbox (`internal/bridge/capture_inbox_files.go`): the receipts that
 keep a saved capture from importing twice, the status beside a refused one,
 and the removal of imported entries from the App Group container.
 

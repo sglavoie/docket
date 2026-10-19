@@ -18,15 +18,22 @@ from .core import (
 def device_info(udid):
     with tempfile.NamedTemporaryFile(suffix=".json") as out:
         run(["xcrun", "devicectl", "list", "devices", "--json-output", out.name])
-        devices = json.load(open(out.name))["result"]["devices"]
+        with open(out.name) as handle:
+            devices = json.load(handle)["result"]["devices"]
     for device in devices:
-        hw, props = device["hardwareProperties"], device["deviceProperties"]
+        properties = device.get("properties", {})
+        hw = properties.get("hardware", device.get("hardwareProperties", {}))
+        legacy = device.get("deviceProperties", {})
+        state = properties.get("state", legacy)
+        version = properties.get("software", {}).get("osVersionNumber", legacy.get("osVersionNumber"))
+        if isinstance(version, dict):
+            version = version.get("stringValue")
         if hw.get("platform") != "iOS" or hw.get("reality") != "physical":
             continue
         if udid and hw.get("udid") != udid:
             continue
-        return {"udid": hw["udid"], "name": props.get("name"), "model": hw.get("productType"),
-                "os_version": props.get("osVersionNumber"), "reality": hw["reality"]}
+        return {"udid": hw["udid"], "name": state.get("name"), "model": hw.get("productType"),
+                "os_version": version, "reality": hw["reality"]}
     fail("no physical iPhone is paired" + (f" with UDID {udid}" if udid else ""))
 
 

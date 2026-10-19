@@ -126,19 +126,20 @@ func (p TaskComposerPreset) defaultDestination(
 type TaskComposerModel struct {
 	pulse.WorkspacePulseState
 	grammar.QuickCaptureInput
-	preservesDraft  bool
-	recovery        *config.LocalDraft
-	recoveryBlocked error
-	recoveryPending bool
-	Preset          TaskComposerPreset
-	runtime         *config.RuntimeState
-	Mode            TaskComposerMode
-	Expanded        *TaskFormModel
-	capture         coordinator.CaptureCoordinator
-	taskForm        coordinator.TaskFormCoordinator
-	Errors          []grammar.LineError
-	width           int
-	height          int
+	preservesDraft           bool
+	recovery                 *config.LocalDraft
+	recoveryBlocked          error
+	recoveryPending          bool
+	recoveryAutosaveSequence uint64
+	Preset                   TaskComposerPreset
+	runtime                  *config.RuntimeState
+	Mode                     TaskComposerMode
+	Expanded                 *TaskFormModel
+	capture                  coordinator.CaptureCoordinator
+	taskForm                 coordinator.TaskFormCoordinator
+	Errors                   []grammar.LineError
+	width                    int
+	height                   int
 	// shellFrame is what the shell last said its own footer costs. It travels
 	// beside the size rather than through it, because the panel must not lose its
 	// draft or its preview to a footer that grew a row.
@@ -269,7 +270,7 @@ func (m *TaskComposerModel) QuitBlockReason() string {
 		return m.Expanded.QuitBlockReason()
 	}
 	if m.HasDraft() {
-		return "Your capture draft has not been saved."
+		return "A capture draft is open; close it to keep the latest edits."
 	}
 	return ""
 }
@@ -316,6 +317,22 @@ func (m *TaskComposerModel) updateSubmission(msg tea.Msg) bool {
 }
 
 func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if autosave, ok := msg.(composerAutosaveMsg); ok {
+		m.flushDraftAutosave(autosave)
+		return m, nil
+	}
+	before, enabled := m.autosaveBeforeUpdate()
+	model, cmd := m.update(msg)
+	if enabled {
+		cmd = m.autosaveAfterUpdate(before, cmd)
+	}
+	return model, cmd
+}
+
+// The form has many early returns, including results from its pickers and
+// external editor. Update compares the complete recovery value around them so
+// every edit gets the same recovery behavior without a second field router.
+func (m *TaskComposerModel) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.updateSubmission(msg) {
 		return m, nil
 	}

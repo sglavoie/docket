@@ -73,6 +73,14 @@ def procedure_record(name, checkpoints, checks, performed_by="person"):
             "remarks": remarks, "checkpoints": checkpoints, "checks": checks}
 
 
+def restore_snapshot_contents(snapshot, destination):
+    """Copy the workspace bytes, leaving only the root manifest behind."""
+    def ignore_manifest(directory, names):
+        return {"snapshot.json"} if os.path.realpath(directory) == snapshot and "snapshot.json" in names else set()
+
+    shutil.copytree(snapshot, destination, ignore=ignore_manifest)
+
+
 def cmd_procedure(args):
     trial = Trial.current()
     name = args[0] if args else ""
@@ -80,25 +88,43 @@ def cmd_procedure(args):
     if earlier:
         trial.state.setdefault("superseded_procedures", []).append({"procedure": name, "superseded_at": stamp(), "record": earlier})
     if name == "backup":
-        backup = os.path.join(trial.dir, "backups", now().strftime("%Y%m%dT%H%M%SZ"))
-        # "Backup" in the rollout guide: exchange so nothing waits, then copy
-        # the working copy whole. The recorder's tt closes after every step,
-        # so no commit is in flight.
-        trial.mac_exchange()
-        run(["ditto", trial.working, os.path.join(backup, "working")])
-        # tt doctor on the copy where it lies reports the device-local undo
-        # history as pointing at the original path; that is expected, and the
-        # copy is checked properly by the restore drill in "Recovery".
-        doctor = trial.tt("doctor", "--data-dir", os.path.join(backup, "working"), check=False)
-        checks = {"backup": os.path.relpath(backup, trial.dir),
-                  "matches_working_copy": synced_digest(trial, os.path.join(backup, "working")) == trial.mac_observation()["digest"],
-                  "doctor_on_copy_in_place": [line.strip() for line in doctor.stdout.splitlines() if "escapes approved roots" in line]}
+        backup_root = os.path.join(trial.dir, "backups")
+        # The recorder's tt closes after every step, so no commit is in flight.
+        if not trial.mac_exchange():
+            fail("Mac exchange failed before the backup")
+        observation = trial.mac_observation()
+        # local_transactions is the full authored history, including genesis;
+        # only outstanding work and held imports prevent a settled backup.
+        if (observation["outstanding_up"] or observation["outstanding_down"] or
+                observation["held"]):
+            fail("Mac still has sync work waiting; finish the exchange before backing up")
+        created = trial.tt("workspace", "backup", backup_root, "--data-dir", trial.working)
+        match = re.search(r"^Backup verified: (.+) \(\d+ files\)$", created.stdout, re.M)
+        if not match:
+            fail("tt workspace backup did not report its snapshot path")
+        backup = os.path.realpath(match.group(1))
+        expected_root = os.path.realpath(os.path.join(backup_root, trial.state["workspace"]["workspace_id"]))
+        if os.path.dirname(backup) != expected_root:
+            fail("tt workspace backup reported a snapshot outside the trial backup root")
+        verified = trial.tt("workspace", "verify-backup", backup, check=False)
+        checks = {"backup": os.path.relpath(backup, os.path.realpath(trial.dir)),
+                  "verified_after_creation": verified.returncode == 0,
+                  "matches_working_copy": digest_tree(backup) == digest_tree(trial.working)}
         trial.state["procedures"]["backup"] = procedure_record("backup", [], checks, performed_by="recorder")
     elif name == "recovery":
-        backups = sorted(os.listdir(os.path.join(trial.dir, "backups"))) if os.path.isdir(os.path.join(trial.dir, "backups")) else []
-        if not backups:
+        backup_record = trial.state["procedures"].get("backup", {})
+        backup_rel = backup_record.get("checks", {}).get("backup")
+        if not backup_rel:
             fail("record the backup procedure first")
-        trial.mac_exchange()
+        trial_dir = os.path.realpath(trial.dir)
+        backup = os.path.realpath(os.path.join(trial_dir, backup_rel))
+        if os.path.commonpath([trial_dir, backup]) != trial_dir:
+            fail("recorded backup is outside the qualification trial")
+        verified = trial.tt("workspace", "verify-backup", backup, check=False)
+        if verified.returncode != 0:
+            fail("recorded backup failed verification before the restore drill")
+        if not trial.mac_exchange():
+            fail("Mac exchange failed before the recovery drill")
         mac_digest = trial.mac_observation()["digest"]
         # A replacement Mac: a new HOME is a new device to tt. Join, then
         # exchange until nothing more arrives, as the guide says.
@@ -119,9 +145,11 @@ def cmd_procedure(args):
         # and prove it is unchanged.
         aside = trial.working + ".recovery-aside"
         before = trial.mac_observation()["digest"]
+        if digest_tree(backup) != digest_tree(trial.working):
+            fail("working copy changed since the backup; record a fresh backup before the restore drill")
         os.rename(trial.working, aside)
         try:
-            run(["ditto", os.path.join(trial.dir, "backups", backups[-1], "working"), trial.working])
+            restore_snapshot_contents(backup, trial.working)
             restored_doctor = trial.tt("doctor", "--data-dir", trial.working, check=False)
             restored_digest = synced_digest(trial, trial.working)
         finally:
@@ -130,6 +158,7 @@ def cmd_procedure(args):
         checks = {"rejoined_from_exchange": joined.returncode == 0,
                   "rejoined_same_tasks": task_records(rejoined) == task_records(trial.working),
                   "rejoined_byte_identical": rejoined_digest == mac_digest,
+                  "backup_verified_before_restore": verified.returncode == 0,
                   "restored_backup_passes_doctor_in_place": restored_doctor.returncode == 0 and "escapes approved roots" not in restored_doctor.stdout,
                   "restored_backup_digest": restored_digest,
                   "working_copy_unchanged_after_drill": trial.mac_observation()["digest"] == before}

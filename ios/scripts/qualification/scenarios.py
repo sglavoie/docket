@@ -54,10 +54,12 @@ Skip any of these you have already done in this trial.
 In tt on the iPhone capture two tasks titled exactly:
   {phone[0]}
   {phone[1]}
-and complete one existing task. The Mac captures its own task meanwhile.""")
+and complete one existing task. Once you confirm, the Mac captures its own task.""")
+    # The TUI exchanges automatically: wait until the phone is offline before
+    # creating the Mac transaction used to prove isolation.
+    wait_enter()
     if trial.marker_counts(mac)[mac[0]] == 0:
         mac_capture(trial, mac[0])
-    wait_enter()
     offline = checkpoint(trial, s, "offline", phone + mac,
                          {"converged": False, "present": mac, "absent": phone, "isolated": True})
     say("Turn Airplane Mode off on the iPhone and open tt.")
@@ -108,14 +110,15 @@ saving, while it exchanges. Reopen tt once more.""")
     wait_enter()
     mac_capture(trial, mac)
     interrupted = 0
-    for delay in (0.2, 0.5, 1.0):
+    # Small exchanges can finish in less than 200 ms on a fast Mac.
+    for delay in (0.02, 0.05, 0.1, 0.2, 0.5, 1.0):
         process = subprocess.Popen([os.path.join(trial.dir, "bin", "tt"), "sync", "exchange", "--data-dir", trial.working],
                                    env={**os.environ, "HOME": trial.home}, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         time.sleep(delay)
         if process.poll() is None:
             process.send_signal(signal.SIGKILL)
+        if process.wait() == -signal.SIGKILL:
             interrupted += 1
-        process.wait()
     note(f"killed {interrupted} Mac exchanges mid-pass")
     record = checkpoint(trial, s, "relaunched", phone + [mac])
     return [record], {"mac_exchanges_killed": interrupted}

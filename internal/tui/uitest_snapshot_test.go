@@ -73,7 +73,7 @@ func TestUITestSnapshotOutliner(t *testing.T) {
 		}
 	}
 
-	snap := m.UITestSnapshot()
+	snap := outlinerSemanticSnapshot(m)
 	if got := snapString(t, snap, "mode"); got != string(chrome.ModeAll) {
 		t.Errorf("mode = %q, want %s", got, chrome.ModeAll)
 	}

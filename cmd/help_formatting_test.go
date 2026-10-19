@@ -99,8 +99,10 @@ func TestPublicCommandTreeIsMaintenanceOnly(t *testing.T) {
 		"tt sync resolve",
 		"tt sync status",
 		"tt workspace",
+		"tt workspace backup",
 		"tt workspace location",
 		"tt workspace move",
+		"tt workspace verify-backup",
 	}
 	slices.Sort(want)
 	if !slices.Equal(paths, want) {

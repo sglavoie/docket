@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -40,6 +41,59 @@ type expandedRecovery struct {
 	SubtasksExpanded    bool
 	AttachmentsExpanded bool
 	CommentsExpanded    bool
+}
+
+const composerAutosaveDelay = 500 * time.Millisecond
+
+type composerAutosaveMsg struct {
+	owner    *TaskComposerModel
+	sequence uint64
+}
+
+func (m *TaskComposerModel) scheduleDraftAutosave() tea.Cmd {
+	m.recoveryAutosaveSequence++
+	sequence := m.recoveryAutosaveSequence
+	return status.TickCmd(composerAutosaveDelay, func(time.Time) tea.Msg {
+		return composerAutosaveMsg{owner: m, sequence: sequence}
+	})
+}
+
+func (m *TaskComposerModel) autosaveBeforeUpdate() (composerRecovery, bool) {
+	if !m.preservesDraft || m.SubmissionInFlight {
+		return composerRecovery{}, false
+	}
+	return m.recoverySnapshot(m.recoveryPending), true
+}
+
+func (m *TaskComposerModel) autosaveAfterUpdate(before composerRecovery, cmd tea.Cmd) tea.Cmd {
+	if m.SubmissionInFlight || (m.Expanded != nil && m.Expanded.submissionInFlight) {
+		return cmd
+	}
+	if !reflect.DeepEqual(before, m.recoverySnapshot(m.recoveryPending)) {
+		return tea.Batch(cmd, m.scheduleDraftAutosave())
+	}
+	return cmd
+}
+
+func (m *TaskComposerModel) flushDraftAutosave(msg composerAutosaveMsg) {
+	if msg.owner != m || msg.sequence != m.recoveryAutosaveSequence ||
+		!m.preservesDraft || m.SubmissionInFlight ||
+		(m.Expanded != nil && m.Expanded.submissionInFlight) {
+		return
+	}
+	if m.recoveryPending {
+		// An interrupted submission must retain its durable pending marker.
+		return
+	}
+	var err error
+	if m.HasDraft() || m.Mode == ComposerExpanded {
+		err = m.writeRecovery(false)
+	} else if m.recovery != nil && m.recoveryBlocked == nil {
+		err = m.recovery.Replace(nil)
+	}
+	if err != nil {
+		m.recoveryIssue(err)
+	}
 }
 
 // EnableDraftRecovery is called by the shell once, before mounting the composer.
@@ -164,7 +218,7 @@ func (m *TaskComposerModel) recoverySnapshot(pending bool) composerRecovery {
 }
 
 func (m *TaskComposerModel) recoveryIssue(err error) {
-	message := fmt.Sprintf("Couldn’t keep a recovery copy. Your draft is still open. %v. Retry closing after fixing the problem.", err)
+	message := fmt.Sprintf("Couldn’t keep a recovery copy. Your draft is still open. %v. Edit or close again after fixing the problem.", err)
 	m.showRecoveryIssue(message)
 }
 

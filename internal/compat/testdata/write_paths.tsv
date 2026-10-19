@@ -6,10 +6,10 @@
 cmd/project_export.go:runProjectExport	export	project export creates its output directory outside the workspace; never synced
 cmd/project_export.go:runProjectExportAll	export	project export --all creates its output directory outside the workspace; never synced
 cmd/sync_conflicts.go:runSyncDiagnostics	export	sync diagnostics writes a report the person names, outside the workspace; never synced
-internal/bridge/capture_inbox_ops.go:Bridge.sweepCaptureStaging	machine-local	sweeps interrupted removals and abandoned extension writes from the capture inbox
-internal/bridge/capture_inbox_ops.go:Bridge.writeCaptureReceipt	machine-local	capture import receipts under the device runtime directory; never synced
-internal/bridge/capture_inbox_ops.go:removeCaptureEntry	machine-local	removes an imported capture from the App Group capture inbox after its receipt; never synced
-internal/bridge/capture_inbox_ops.go:writeFileAtomically	machine-local	capture receipts and pending-capture status notes; never synced
+internal/bridge/capture_inbox_files.go:Bridge.sweepCaptureStaging	machine-local	sweeps interrupted removals and abandoned extension writes from the capture inbox
+internal/bridge/capture_inbox_files.go:Bridge.writeCaptureReceipt	machine-local	capture import receipts under the device runtime directory; never synced
+internal/bridge/capture_inbox_files.go:removeCaptureEntry	machine-local	removes an imported capture from the App Group capture inbox after its receipt; never synced
+internal/bridge/capture_inbox_files.go:writeFileAtomically	machine-local	capture receipts and pending-capture status notes; never synced
 internal/config/domain_file_store_io.go:DomainFileStore.recoverEnvelopeFromBackup	domain-store	restores a corrupt domain artifact from its .bak sidecar; the repaired artifact is republished as a domain change
 internal/config/domain_file_store_io.go:DomainFileStore.saveObserved	domain-store	checked catalog/planning/lenses/machine save; synced kinds become catalog/planning/lenses effects and machine.json stays local
 internal/config/domain_file_store_io.go:backupDomainArtifact	domain-store	.bak sidecar beside a domain artifact; local-only and excluded from exchange
@@ -22,12 +22,13 @@ internal/config/sync_enroll.go:PrepareJoinedWorkingCopy	sync-enrollment	creates 
 internal/config/sync_enroll.go:writeEnrollmentRecord	sync-enrollment	device-local enrollment record under .tt/sync naming this device exchange folder; never exchanged
 internal/config/sync_enroll_staging.go:enrollStagedCatalog	sync-enrollment	drops the staged catalog sidecar after advancing the staged working copy to the enrolled schema
 internal/config/sync_enroll_staging.go:publishWorkingCopy	sync-enrollment	publishes the staged working copy by one rename; the copy produces no transactions
-internal/config/sync_enroll_staging.go:snapshotOriginal	sync-enrollment	hash-verified snapshot of the original under the machine-local enrollments root; never synced
+internal/config/sync_enroll_staging.go:snapshotWorkspace	sync-enrollment	hash-verified snapshots for enrollment and workspace backup; the copies are never synced
 internal/config/sync_enroll_staging.go:stageWorkingCopy	sync-enrollment	stages the working copy beside its final path; replaced only when marked as enrollment staging
 internal/config/workspace_move.go:acquireWorkspaceTUILocks	machine-local	process-lock directory for workspace move
 internal/config/workspace_move.go:moveWorkspace	workspace-relocation	workspace move creates the destination root; relocation re-enrolls rather than syncing
 internal/config/workspace_move_copy.go:copyFileVerified	workspace-relocation	hash-verified copy of every artifact during workspace move
 internal/config/workspace_move_copy.go:createDestinationDirs	workspace-relocation	destination tree for workspace move
+internal/config/workspace_backup.go:CreateWorkspaceBackup	workspace-backup	creates a hash-verified snapshot outside the workspace under the workspace commit lock
 internal/control/server.go:Listen	machine-local	control socket for --control sessions
 internal/control/server.go:Server.Close	machine-local	removes the control socket
 internal/engine/repository.go:Repository.CommitOps	commit-journal	delegates to CommitService; the direct-write branch is the test-double fallback
@@ -68,7 +69,7 @@ internal/tui/handler_task_content.go:writeTaskContentBuffer	external-editor	writ
 internal/tui/handler_view.go:AppModel.handleTextEditorExternal	external-editor	removes the external text editor buffer
 internal/tui/lifecycle_controller.go:RunApp	machine-local	TUI process lock directory under the local runtime root
 internal/tui/notes/notes_editor_round_trip.go:startNoteEditorWithContent	external-editor	note round trip through an external editor
-internal/tui/outline_editor.go:removeOutlineBuffer	external-editor	removes the outline dump buffer after O
+internal/tui/outline_editor_handlers.go:removeOutlineBuffer	external-editor	removes the outline dump buffer after O
 internal/tui/taskdetail/comments_external_editor.go:CommentsModel.createCommentTempFile	external-editor	comment buffer for an external editor
 internal/tui/taskdetail/comments_external_editor.go:CommentsModel.editCommentWithExternalEditor	external-editor	removes the comment buffer
 internal/tui/taskdetail/comments_external_editor.go:readEditedCommentText	external-editor	removes the comment buffer after reading it

@@ -414,7 +414,6 @@ outliner_search_suggestions.go	outliner	L7	merged
 outliner_sections.go	outliner	L7	merged
 outliner_selection.go	outliner	L7	receiver:OutlinerModel
 outliner_state.go	outliner	L7	receiver:OutlinerModel
-outliner_uitest_snapshot.go	outliner	L7	assigned
 query_readout.go	outliner	L7	receiver:OutlinerModel
 view_helpers.go	outliner	L7	assigned
 advisories_shell.go	tui	L8	receiver:AppModel

@@ -23,9 +23,8 @@ just ci
 just cross-machine
 ```
 
-Go accepts packages, not files, as test targets. `just cross-machine` stays
-outside `just ci`: it forks two processes under different `HOME`s and builds a
-tagged older binary, which one in-process test cannot do.
+Go tests target packages, not files. `just cross-machine` stays outside `just
+ci`; GitHub CI runs it separately with a pinned schema-19 binary and no skips.
 `just mac-test` and `just mac-install` build the macOS app in `macos/` and stay
 outside `just ci` too, since they need Xcode and Zig.
 

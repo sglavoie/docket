@@ -42,6 +42,7 @@ var writePathIntegrations = []string{
 	"domain-store",
 	"ledger-restore",
 	"workspace-relocation",
+	"workspace-backup",
 	"sync-enrollment",
 	"sync-transport",
 	"conflict-store",

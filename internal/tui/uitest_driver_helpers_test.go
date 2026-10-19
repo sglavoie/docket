@@ -236,7 +236,9 @@ func (d *UITestDriver) Observe(opts ObserveOptions) UITestObservation {
 
 	// Semantic snapshot from the active view when it supports inspection.
 	if view := d.app.viewNav.views.Get(d.app.currentView()); view != nil {
-		if inspectable, ok := view.(TUITestInspectable); ok {
+		if outline, ok := view.(*outliner.OutlinerModel); ok {
+			obs.Snapshot = outlinerSemanticSnapshot(outline)
+		} else if inspectable, ok := view.(TUITestInspectable); ok {
 			if snap := inspectable.UITestSnapshot(); len(snap) > 0 {
 				obs.Snapshot = snap
 			}

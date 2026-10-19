@@ -206,6 +206,8 @@ tt sync resolve ID --version N|--current|--file PATH [--json]
 tt sync diagnostics [--output FILE]
 tt workspace [location]
 tt workspace move <destination> [--force]
+tt workspace backup <backup-directory>
+tt workspace verify-backup <snapshot-directory>
 tt completion bash|zsh|fish
 tt project export <slug-or-id> [--file PATH|-]
 tt project export --all [--dir DIR]

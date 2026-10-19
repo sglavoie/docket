@@ -32,6 +32,7 @@
 #                      enrolled-workspace refusal case. Defaults to the parent of
 #                      the commit that introduced the enrolled catalog schema, or
 #                      HEAD while that change is still uncommitted.
+#   TT_REQUIRE_NO_SKIPS  set to 1 for a release gate where every case must run.
 
 set -eu
 
@@ -1636,6 +1637,10 @@ if [ "$failures" -gt 0 ]; then
 	exit 1
 fi
 if [ "$skips" -gt 0 ]; then
+	if [ "${TT_REQUIRE_NO_SKIPS:-}" = "1" ]; then
+		echo "cross-machine gate failed: $skips required case(s) were skipped" >&2
+		exit 1
+	fi
 	echo "cross-machine gate passed with $skips skipped case(s)."
 	exit 0
 fi

@@ -66,6 +66,44 @@ func TestCaptureCloseRestoresVerbatimDraftAndCaret(t *testing.T) {
 	}
 }
 
+func TestCaptureAutosaveRestoresOpenDraftAfterInterruptedSession(t *testing.T) {
+	fresh := recoveryComposerFactory(t)
+	m := fresh()
+	_, scheduled := m.Update(tea.PasteMsg{Content: "Draft left open @tomorrow"})
+	if scheduled == nil || m.recoveryAutosaveSequence == 0 {
+		t.Fatal("editing did not schedule a recovery copy")
+	}
+	stale := composerAutosaveMsg{owner: m, sequence: m.recoveryAutosaveSequence}
+	m.Update(tea.KeyPressMsg{Code: '!', Text: "!"})
+	if m.recoveryAutosaveSequence == stale.sequence {
+		t.Fatal("later typing did not supersede the old autosave")
+	}
+	m.Update(stale)
+	if fresh().HasDraft() {
+		t.Fatal("a stale timer saved an unfinished version")
+	}
+	m.Update(composerAutosaveMsg{owner: m, sequence: m.recoveryAutosaveSequence})
+	restored := fresh()
+	if restored.Input.Value() != m.Input.Value() || restored.Input.Column() != m.Input.Column() {
+		t.Fatalf("interrupted draft/caret = %q/%d, want %q/%d", restored.Input.Value(), restored.Input.Column(), m.Input.Value(), m.Input.Column())
+	}
+}
+
+func TestExpandedCaptureAutosaveRestoresUnsavedFieldEdit(t *testing.T) {
+	fresh := recoveryComposerFactory(t)
+	m := fresh()
+	m.ExpandRequest(app.CaptureRequest{ProjectID: "project", Title: "Before", Destination: app.CaptureDestinationInbox})
+	_, scheduled := m.Update(tea.KeyPressMsg{Code: 'x', Text: "x"})
+	if scheduled == nil || m.recoveryAutosaveSequence == 0 {
+		t.Fatal("expanded edit did not schedule recovery")
+	}
+	m.Update(composerAutosaveMsg{owner: m, sequence: m.recoveryAutosaveSequence})
+	restored := fresh()
+	if restored.Mode != ComposerExpanded || restored.Expanded.titleInput.Value() != m.Expanded.titleInput.Value() {
+		t.Fatalf("expanded edit was lost: %q", restored.Expanded.titleInput.Value())
+	}
+}
+
 func TestExpandedCaptureRecoveryKeepsRawFieldsAndChildren(t *testing.T) {
 	fresh := recoveryComposerFactory(t)
 	m := fresh()
@@ -128,6 +166,11 @@ func TestCaptureRecoveryDistinguishesCommitFailureAndInterruptedSave(t *testing.
 	interrupted := fresh()
 	if !interrupted.recoveryPending {
 		t.Fatal("submission was not marked before dispatch")
+	}
+	interrupted.Update(tea.KeyPressMsg{Code: 'x', Text: "x"})
+	interrupted.Update(composerAutosaveMsg{owner: interrupted, sequence: interrupted.recoveryAutosaveSequence})
+	if !fresh().recoveryPending {
+		t.Fatal("autosave erased an interrupted submission marker")
 	}
 	if interrupted.guardRecoverySubmit(func() tea.Msg { calls++; return nil }) != nil || calls != 0 {
 		t.Fatal("ambiguous submission could be repeated")

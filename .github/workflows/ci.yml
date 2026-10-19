@@ -137,3 +137,25 @@ jobs:
           name: macos-results
           path: macos-results
           if-no-files-found: warn
+
+  cross-machine:
+    name: Cross-machine compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # Schema-19 build: the older reader and migration source under test.
+      TT_OLD_BINARY_REF: 08c0cb08fec10154e6d2c9455e32d4c4ffa5f72d
+      TT_REQUIRE_NO_SKIPS: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Exercise real-process and older-binary compatibility
+        run: ./scripts/cross_machine_gate.sh

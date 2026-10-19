@@ -116,9 +116,10 @@ The text, caret, selected project, and expanded fields are retained. A child
 capture stays tied to its original parent. Closing an open suggestion list or
 field picker first returns to the editor.
 
-Drafts are saved when you close capture and before submitting it. Changes typed
-while the editor remains open are not continuously saved. If the recovery write
-fails, capture stays open with the text intact; fix the problem and close again.
+Drafts are saved after a brief pause in editing, when you close capture, and
+before submitting. A crash can lose only the newest edits that had not yet
+reached that pause. If a recovery write fails, capture keeps the text in memory
+and reports the problem; fix it and edit or close again to retry.
 `Ctrl+X` opens the explicit discard confirmation; `N` or `Esc` keeps editing.
 A successful capture removes its recovery copy.
 

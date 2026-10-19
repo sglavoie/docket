@@ -122,14 +122,18 @@ leaves nothing waiting, with `tt` quit so no commit is in flight:
 
 ```sh
 tt sync exchange && tt sync status
-ditto ~/tt-synced ~/Backups/tt-synced-$(date +%Y%m%d)
+tt workspace backup ~/Backups/tt
 ```
 
-`tt sync status` should show nothing outstanding. A backup is only meant to be
-restored at the working copy's own path: its undo history records that path,
-so `tt doctor` run on the copy where it lies reports the history as pointing
-elsewhere. Check a backup by restoring it, as [Recovery](#recovery) describes. The snapshot under `~/.tt/enrollments/` is the workspace as
-it was before enrolling; keep it until you no longer need to go back.
+`tt sync status` should show nothing outstanding. Backup prints its timestamped
+snapshot path and a `tt workspace verify-backup PATH` command. Run that command
+again after copying the snapshot to another drive: it checks every file against
+the hash manifest without touching the live workspace. A backup is only meant
+to be restored at the working copy's own path: its undo history records that
+path. Hash verification proves the copy is intact; a restore rehearsal checks
+that the workspace also opens and syncs correctly. The snapshot under
+`~/.tt/enrollments/` is the workspace as it was before enrolling; keep it until
+you no longer need to go back.
 
 The iPhone needs no separate backup for work it has published, because joining
 again rebuilds it from the exchange. Work it has not published yet, shown as
@@ -163,7 +167,8 @@ publishes to the folder and each device keeps one working copy.
 **The same Mac, from a backup.** Restoring a backup over the working copy is
 safe only if the Mac committed nothing after the backup was taken. Its history
 then matches what it already published. Quit `tt`, move the damaged copy
-aside, restore the backup with `ditto`, and run `tt sync exchange` to fetch what
+aside, copy the verified snapshot's contents back to that path while excluding
+its root `snapshot.json` manifest, and run `tt sync exchange` to fetch what
 the other devices published since. If the Mac did commit after the backup, do
 not restore it: the restored history would number new changes the way already
 published ones are numbered. Keep the damaged copy and the exchange folder as

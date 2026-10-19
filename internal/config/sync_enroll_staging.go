@@ -16,19 +16,30 @@ import (
 // snapshotOriginal copies every durable file of the original, verified by
 // hash, into a new snapshot directory under root, and records what it holds
 // last. The directory is assembled under a partial name and renamed into place
-// once complete, so a snapshot that exists is a whole one; partials an earlier
-// interrupted run left behind are removed first.
+// once complete, so a snapshot that exists is a whole one; interrupted
+// enrollment partials are removed before the next enrollment snapshot.
 func snapshotOriginal(entries []workspaceEntry, original, root string, at time.Time) (string, error) {
+	return snapshotWorkspace(entries, original, root, at, enrollmentSnapshotFormat, enrollmentFormatVersion)
+}
+
+func snapshotWorkspace(entries []workspaceEntry, original, root string, at time.Time, format string, version int) (string, error) {
+	for _, entry := range entries {
+		if entry.rel == snapshotManifest {
+			return "", fmt.Errorf("snapshot cannot use %s as a source: it is reserved for the snapshot manifest", entry.src)
+		}
+	}
 	if err := os.MkdirAll(root, DirPermissions); err != nil {
-		return "", fmt.Errorf("enroll: creating the snapshot root %s: %w", root, err)
+		return "", fmt.Errorf("snapshot: creating the root %s: %w", root, err)
 	}
-	stale, err := filepath.Glob(filepath.Join(root, "*"+snapshotPartialExt))
-	if err != nil {
-		return "", err
-	}
-	for _, partial := range stale {
-		if removeErr := os.RemoveAll(partial); removeErr != nil {
-			return "", fmt.Errorf("enroll: removing an interrupted snapshot %s: %w", partial, removeErr)
+	if format == enrollmentSnapshotFormat {
+		stale, err := filepath.Glob(filepath.Join(root, "*"+snapshotPartialExt))
+		if err != nil {
+			return "", err
+		}
+		for _, partial := range stale {
+			if removeErr := os.RemoveAll(partial); removeErr != nil {
+				return "", fmt.Errorf("snapshot: removing an interrupted copy %s: %w", partial, removeErr)
+			}
 		}
 	}
 	// A snapshot is never replaced: an earlier run's complete snapshot of the
@@ -59,7 +70,7 @@ func snapshotOriginal(entries []workspaceEntry, original, root string, at time.T
 		Source        string         `json:"source"`
 		CreatedAt     time.Time      `json:"created_at"`
 		Files         []snapshotFile `json:"files"`
-	}{Format: enrollmentSnapshotFormat, FormatVersion: enrollmentFormatVersion, Source: original, CreatedAt: at.UTC(), Files: []snapshotFile{}}
+	}{Format: format, FormatVersion: version, Source: original, CreatedAt: at.UTC(), Files: []snapshotFile{}}
 	for _, entry := range entries {
 		if !entry.dir {
 			manifest.Files = append(manifest.Files, snapshotFile{Path: filepath.ToSlash(entry.rel), SHA256: entry.hash})
@@ -70,10 +81,13 @@ func snapshotOriginal(entries []workspaceEntry, original, root string, at time.T
 		return "", err
 	}
 	if err := util.AtomicWriteFile(filepath.Join(partial, snapshotManifest), append(data, '\n'), FilePermissions); err != nil {
-		return "", fmt.Errorf("enroll: recording the snapshot: %w", err)
+		return "", fmt.Errorf("snapshot: recording the manifest: %w", err)
+	}
+	if err := validateSourceSnapshot(entries); err != nil {
+		return "", err
 	}
 	if err := os.Rename(partial, final); err != nil {
-		return "", fmt.Errorf("enroll: publishing the snapshot: %w", err)
+		return "", fmt.Errorf("snapshot: publishing the copy: %w", err)
 	}
 	return final, nil
 }

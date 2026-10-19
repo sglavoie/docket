@@ -17,7 +17,7 @@ recovery, and the schema chain a startup migrates through.
 For example, after an accidental bulk move, press `u` once to reverse the whole
 move. If undo refuses because a file changed outside that transaction, read the
 named file and entry before trying the previous history entry. Before upgrading,
-keep your own backup: migrations are one-way.
+run `tt workspace backup DIR` and keep the verified snapshot: migrations are one-way.
 
 
 ## Undo, recovery, and conflicts

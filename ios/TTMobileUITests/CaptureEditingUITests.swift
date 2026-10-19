@@ -443,7 +443,7 @@ final class CaptureEditingUITests: XCTestCase {
         app.buttons["capture.save"].tap()
         let failure = app.staticTexts["capture.failure"].firstMatch
         require(failure, "the save's refusal")
-        XCTAssertTrue(failure.label.hasPrefix("Line 1:"), failure.label)
+        XCTAssertTrue(failure.label.hasPrefix("Couldn’t save. Your draft is still open. Line 1:"), failure.label)
         XCTAssertTrue(app.buttons["capture.save"].exists, "a refused save closed the sheet")
         XCTAssertEqual(value(app, "capture.text"), "Renew passport $ready")
         XCTAssertNil(try block("Renew passport", in: markdown("unfiled")), "a refused capture was written")

@@ -119,17 +119,6 @@ func TestProjectCommentsAppliesOnProjectHeadersAndNowhereElse(t *testing.T) {
 	}
 }
 
-// mountedProjectCommentsPanel is the panel `;` put on the route, or a failure
-// naming the view that is there instead.
-func mountedProjectCommentsPanel(t *testing.T, app *AppModel) *taskdetail.CommentsModel {
-	t.Helper()
-	panel := app.entities.ActiveCommentsPanel(app)
-	if panel == nil {
-		t.Fatalf("no Comments panel is mounted; view = %s", app.currentView())
-	}
-	return panel
-}
-
 func panelCommentTexts(panel *taskdetail.CommentsModel) []string {
 	entries := panel.Entries()
 	texts := make([]string, 0, len(entries))

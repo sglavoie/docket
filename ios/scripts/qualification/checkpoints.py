@@ -62,11 +62,15 @@ def device_reachable(trial):
     with tempfile.NamedTemporaryFile(suffix=".json") as out:
         if run(["xcrun", "devicectl", "list", "devices", "--json-output", out.name], check=False).returncode != 0:
             return False
-        devices = json.load(open(out.name))["result"]["devices"]
+        with open(out.name) as handle:
+            devices = json.load(handle)["result"]["devices"]
     for device in devices:
-        if device["hardwareProperties"].get("udid") == trial.state["iphone"]["udid"]:
-            state = device.get("connectionProperties", {}).get("tunnelState", "")
-            return state not in ("unavailable", "disconnected", "")
+        properties = device.get("properties", {})
+        hardware = properties.get("hardware", device.get("hardwareProperties", {}))
+        if hardware.get("udid") == trial.state["iphone"]["udid"]:
+            connection = properties.get("connection", device.get("connectionProperties", {}))
+            state = connection.get("state", connection.get("tunnelState"))
+            return state == "connected"
     return False
 
 

@@ -44,7 +44,7 @@ struct TaskEditSheet: View {
                         .accessibilityIdentifier("edit.close")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    if draft.map { $0.fields != $0.original } == true {
+                    if draft.map({ $0.fields != $0.original }) == true {
                         Button { draftActions.isPresented = true } label: {
                             Image(systemName: "ellipsis.circle")
                         }
