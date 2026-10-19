@@ -70,7 +70,7 @@ final class SyncModel {
                 hasFolder = FileManager.default.fileExists(atPath: bookmark.path)
             }
             transport = ExchangeTransport(
-                provider: CoordinatedFolderProvider(access: access),
+                provider: Self.provider(access: access),
                 engine: try BridgeSyncEngine(client: client),
                 stateDirectory: location.runtime.appendingPathComponent("sync-transport", isDirectory: true)
             )
@@ -125,7 +125,7 @@ final class SyncModel {
             access = DirectFolderAccess(folder: folder)
         }
         try await Task.detached(priority: .userInitiated) {
-            let provider = CoordinatedFolderProvider(access: access)
+            let provider = Self.provider(access: access)
             try provider.checkAccess()
             let workspaceID = try JoiningSyncEngine.workspaceID(in: provider)
             try FileManager.default.createDirectory(at: location.runtime, withIntermediateDirectories: true)
@@ -164,6 +164,20 @@ final class SyncModel {
                 self.finish(outcome, conflicts: conflicts)
             }
         }
+    }
+
+    nonisolated private static func provider(access: any FolderAccess) -> any ExchangeProvider {
+        let base = CoordinatedFolderProvider(access: access)
+        #if DEBUG && targetEnvironment(simulator)
+        let environment = ProcessInfo.processInfo.environment
+        if let root = environment["TT_UITEST_ROOT"], !root.isEmpty,
+           environment["TT_UITEST_SYNC_CONTROL"] == "1" {
+            return SimulatorExchangeProvider(
+                base: base, control: URL(fileURLWithPath: root).appendingPathComponent("exchange-control.json")
+            )
+        }
+        #endif
+        return base
     }
 
     /// Retries now: every queued transfer skips its backoff and the exchange

@@ -1622,7 +1622,7 @@ verify_session_17() {
 		ios = jobs.fetch("ios") { abort "no ios job" }
 		abort "the ios job does not run on macOS" unless ios["runs-on"].to_s.start_with?("macos")
 		runs = ios["steps"].map { |s| s["run"].to_s }
-		["just ios-build", "just ios-test all", "just ios-ui-test", "just ios-ui-test AccessibilityUITests small"].each do |want|
+		[%q[just ios-qualify run "$TT_IOS_RESULTS/qualification"], "just ios-ui-test AccessibilityUITests small"].each do |want|
 			abort "the ios job does not run #{want}" unless runs.any? { |r| r.strip == want }
 		end
 		abort "the ios job repeats the Go gate" if runs.any? { |r| r.include?("scripts/ci.sh") || r.include?("go test") }

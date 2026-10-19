@@ -25,7 +25,8 @@
 #                           available iPhone on an iOS 18 or later runtime)
 #   TT_UITEST_MAX_WIDTH     the widest window the small-screen test accepts
 #   TT_IOS_CACHE            cache root (default ios/.cache, gitignored)
-#   TT_UITEST_ONLY          one UI test class to run (default: every class)
+#   TT_UITEST_ONLY          one UI test class/method (default: every class)
+#   TT_UITEST_TARGET        UI test bundle (default: TTMobileUITests)
 
 set -eu
 
@@ -122,7 +123,8 @@ TEST_RUNNER_TT_UITEST_FIXTURE="$fixture" \
 	xcodebuild test \
 	-project "$ios_dir/TTMobile.xcodeproj" \
 	-scheme TTMobile \
-	-only-testing:"TTMobileUITests${TT_UITEST_ONLY:+/$TT_UITEST_ONLY}" \
+	-only-testing:"${TT_UITEST_TARGET:-TTMobileUITests}${TT_UITEST_ONLY:+/$TT_UITEST_ONLY}" \
+	-parallel-testing-enabled NO \
 	-destination "platform=iOS Simulator,id=$simulator" \
 	-derivedDataPath "$cache_root/UIDerivedData" \
 	-resultBundlePath "$output/TTMobileUITests.xcresult" \

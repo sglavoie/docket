@@ -320,6 +320,9 @@ final class RichContentUITests: XCTestCase {
         let close = app.buttons["QLOverlayDoneButtonAccessibilityIdentifier"].firstMatch
         require(close, "the preview's close button")
         close.tap()
+        eventually("the preview was dismissed") {
+            !app.otherElements["QLPreviewControllerView"].firstMatch.exists
+        }
         press(app, "attachment.field-notes.txt.share")
         let sheet = app.otherElements["ActivityListView"].firstMatch
         let copy = app.buttons["Copy"].firstMatch
@@ -407,6 +410,7 @@ final class RichContentUITests: XCTestCase {
             guard let block = text.components(separatedBy: "<!-- /PROJECT-COMMENTS -->").first else { return false }
             return block.contains("Phone: the beta date holds")
         }
+        eventually("the new project comment editor closed") { !app.buttons["comment.save"].exists }
         choose(app, "comment.0.actions", "Edit Comment")
         replace(app, "comment.text", with: "Kickoff agreed: beta in October")
         app.buttons["comment.save"].firstMatch.tap()
@@ -414,6 +418,7 @@ final class RichContentUITests: XCTestCase {
             let text = try self.markdown("atlas-launch")
             return text.contains("<!-- project-comment: 3c9b2f4e-5d6a-4b7c-8d9e-0f1a2b3c4d01 2026-09-02T10:00:00Z -->\nKickoff agreed: beta in October")
         }
+        eventually("the project comment editor closed") { !app.buttons["comment.save"].exists }
 
         press(app, "project.notes")
         let runbook = app.buttons["note.Release runbook"].firstMatch

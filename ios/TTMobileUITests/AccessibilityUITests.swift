@@ -495,7 +495,9 @@ final class AccessibilityUITests: XCTestCase {
         screenshot(app, "capture-restored-dark-largest")
         app.buttons["capture.actions"].tap()
         app.buttons["capture.discard"].tap()
-        app.buttons["Discard Draft"].tap()
+        let discard = app.alerts.buttons["Discard Draft"]
+        require(discard, "the capture discard confirmation")
+        discard.tap()
         eventually("Confirmed discard removed the capture draft") { !self.drafts().contains("capture.json") }
 
         openTask(app, "Order bathroom tiles")

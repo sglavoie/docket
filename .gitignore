@@ -33,6 +33,7 @@ macos/DerivedData/
 # ios/scripts/build-bridge.sh, the Xcode project is generated from
 # ios/project.yml, and SwiftPM keeps its own state beside the package.
 ios/.cache/
+/ios-results/
 ios/TTEngine/Frameworks/
 ios/TTEngine/.build/
 ios/TTEngine/.swiftpm/

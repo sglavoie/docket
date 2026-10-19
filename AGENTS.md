@@ -5,8 +5,14 @@ Read `~/.codex/memories/sglavoie_tt.md`, when available, for project preferences
 
 ## UI testing
 
-Before running UI tests that may open windows or steal focus, ask the user
-for permission and wait for an explicit answer. Prefer running these tests
-over SSH on the MacBook Pro. Use this machine only when the laptop is
-unavailable, and ask the user before running them locally. Permission already
-granted for the same testing in the current session need not be requested again.
+The user authorized autonomous simulator testing over SSH on the MacBook Pro
+on 2026-10-19. Routine implementation checks there need no per-run confirmation.
+For other UI tests that may open windows or steal focus, ask the user and wait
+for an explicit answer. Use this machine only when the laptop is unavailable,
+and ask before running UI tests locally. Laptop unavailability does not
+authorize local testing. Reuse permission already granted for the same work.
+
+Use `just ios-qualify` for unattended iPhone implementation checks. Run it
+over SSH on the MacBook Pro; `start`, `status`, and `resume` support long runs.
+Do not start a human-guided physical-device trial unless the user explicitly
+requests one. Simulator evidence does not certify real iCloud delivery.

@@ -209,7 +209,9 @@ final class CaptureEditingUITests: XCTestCase {
     private func discardCapture(_ app: XCUIApplication) {
         app.buttons["capture.actions"].tap()
         app.buttons["capture.discard"].tap()
-        app.buttons["Discard Draft"].tap()
+        let discard = app.alerts.buttons["Discard Draft"]
+        require(discard, "the capture discard confirmation")
+        discard.tap()
     }
 
     // MARK: Tests

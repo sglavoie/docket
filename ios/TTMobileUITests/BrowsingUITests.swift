@@ -472,10 +472,17 @@ final class BrowsingUITests: XCTestCase {
     func testOpeningShowsLoadingThenContent() throws {
         try seed("seeded", .representative)
         try select("seeded")
-        let app = launch(["TT_UITEST_OPEN_DELAY_MS": "3000"])
-        require(app.staticTexts["state.loading"], "the loading state")
+        // Launch/automation startup can outlast a fixed delay. Release the
+        // real workspace open only after the loading screen is observed.
+        let gate = root.appendingPathComponent("hold-open")
+        try Data().write(to: gate)
+        defer { try? FileManager.default.removeItem(at: gate) }
+        let app = launch(["TT_UITEST_HOLD_OPEN": "1"])
+        let loading = app.descendants(matching: .any)["state.loading"].firstMatch
+        require(loading, "the loading state")
+        try FileManager.default.removeItem(at: gate)
         require(text(app, "Ship beta build"), "Today after loading")
-        XCTAssertFalse(app.staticTexts["state.loading"].exists)
+        XCTAssertFalse(loading.exists)
     }
 
     func testOnboardingStartsAnEmptyWorkspaceAndCaptures() throws {

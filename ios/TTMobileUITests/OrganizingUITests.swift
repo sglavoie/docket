@@ -286,7 +286,12 @@ final class OrganizingUITests: XCTestCase {
         let tiles = row(app, "Order bathroom tiles")
         require(ship, "the first Next task")
         require(tiles, "the second Next task")
-        tiles.press(forDuration: 1, thenDragTo: ship)
+        // A row-relative destination can move with the insertion animation.
+        // Freeze the screen position and let the insertion settle before lift.
+        let drop = app.coordinate(withNormalizedOffset: .zero).withOffset(
+            CGVector(dx: ship.frame.midX, dy: ship.frame.midY))
+        tiles.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 1, thenDragTo: drop, withVelocity: .slow, thenHoldForDuration: 1)
         eventually("Next's dragged order was saved") {
             let text = try self.planning()
             return try XCTUnwrap(text.range(of: "000000000202")).lowerBound
@@ -608,8 +613,12 @@ final class OrganizingUITests: XCTestCase {
             ? app.buttons["project.delete.confirm"].firstMatch : app.buttons["Delete"].firstMatch
         require(confirm, "the delete confirmation")
         confirm.tap()
-        eventually("the project was deleted") { !self.exists("projects/home-renovation/tasks.md") }
-        XCTAssertNil(try project("home-renovation"))
-        XCTAssertFalse(try planning().contains("6f1d3c2a-1b4e-4c8a-9a0e-0d5b7c1e2a02"))
+        // Host-file reads do not take the engine's transaction lock. Wait for
+        // every durable effect, not just the first file removed by the commit.
+        eventually("the project, catalog entry, and planning references were deleted") {
+            try !self.exists("projects/home-renovation/tasks.md")
+                && self.project("home-renovation") == nil
+                && !self.planning().contains("6f1d3c2a-1b4e-4c8a-9a0e-0d5b7c1e2a02")
+        }
     }
 }

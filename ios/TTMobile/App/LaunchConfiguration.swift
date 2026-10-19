@@ -12,6 +12,8 @@ struct LaunchConfiguration: Sendable {
     /// workspace named `workspace` when nothing is selected yet.
     let legacyWorkspace: URL?
     let openDelay: Duration
+    /// A simulator test releases opening only after it has observed loading.
+    let openGate: URL?
     let exchangeOverride: URL?
     let deviceIDOverride: String?
     /// A file a UI test hands over in place of the Files picker, which
@@ -79,6 +81,12 @@ struct LaunchConfiguration: Sendable {
             legacyWorkspace = support.appendingPathComponent("workspace", isDirectory: true)
         }
         openDelay = .milliseconds(Int(environment["TT_UITEST_OPEN_DELAY_MS"] ?? "") ?? 0)
+        #if DEBUG && targetEnvironment(simulator)
+        openGate = environment["TT_UITEST_HOLD_OPEN"] == "1" && environment["TT_UITEST_ROOT"]?.isEmpty == false
+            ? root.appendingPathComponent("hold-open") : nil
+        #else
+        openGate = nil
+        #endif
         exchangeOverride = environment["TT_UITEST_EXCHANGE_DIR"].flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0, isDirectory: true) }
         deviceIDOverride = environment["TT_UITEST_DEVICE_ID"].flatMap { $0.isEmpty ? nil : $0 }
         importSourceOverride = environment["TT_UITEST_IMPORT_SOURCE"].flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) }

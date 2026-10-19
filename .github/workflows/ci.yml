@@ -62,6 +62,8 @@ jobs:
       TT_IOS_RESULTS: ${{ github.workspace }}/ios-results
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # Pinned app upgrade and old-schema compatibility builds.
 
       - name: Set up Go
         uses: actions/setup-go@v7
@@ -72,14 +74,11 @@ jobs:
       - name: Install just
         run: brew install just
 
-      - name: Build the app for the simulator
-        run: just ios-build
+      - name: Qualification runner checks
+        run: python3 -m unittest discover -s ios/scripts -p 'test*qualification*.py'
 
-      - name: Swift unit, bridge, and sync suites
-        run: just ios-test all
-
-      - name: Simulator UI suite
-        run: just ios-ui-test
+      - name: Unattended simulator qualification
+        run: just ios-qualify run "$TT_IOS_RESULTS/qualification"
 
       - name: Accessibility suite on a small screen
         run: just ios-ui-test AccessibilityUITests small

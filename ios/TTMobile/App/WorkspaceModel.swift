@@ -150,6 +150,12 @@ final class WorkspaceModel {
     private func performStart() async {
         guard !Self.isHostingTests else { return }
         phase = .loading
+        if let gate = launch.openGate {
+            while FileManager.default.fileExists(atPath: gate.path) {
+                do { try await Task.sleep(for: .milliseconds(100)) }
+                catch { return }
+            }
+        }
         if launch.openDelay > .zero {
             try? await Task.sleep(for: launch.openDelay)
         }

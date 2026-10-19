@@ -66,6 +66,7 @@ targets:
         - TTMobileTests
         - TTMobileDeviceTests
         - TTMobileUITests
+        - TTMobileUpgradeUITests
   # The share sheet's tt entry: saves what was shared to the App Group
   # capture inbox and never opens the workspace.
   TTShare:
@@ -158,7 +159,25 @@ targets:
         TEST_TARGET_NAME: TTMobile
     dependencies:
       - target: TTMobile
+      - package: TTEngine
+        product: TTEngine
+      - package: TTSync
+        product: TTSync
       # The share and widget suite writes captures with the extension's own
       # inbox writer and reads the widget snapshot with the widgets' reader.
       - package: TTShared
         product: TTShared
+  # Invoked separately: seed with a pinned previous app, then verify with the
+  # current app over the same simulator and disposable workspace.
+  TTMobileUpgradeUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: TTMobileUpgradeUITests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.tt.mobile.upgradetests
+        TEST_TARGET_NAME: TTMobile
+    dependencies:
+      - target: TTMobile

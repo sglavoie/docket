@@ -1,5 +1,6 @@
 import SwiftUI
 import TTEngine
+import UIKit
 
 /// A task's or a project's comments. Each change names the comment as this
 /// screen drew it — its index or id, and the text read there — so a comment
@@ -11,41 +12,48 @@ struct CommentsSection: View {
     let compose: (CommentRecord?) -> Void
     let delete: (CommentRecord) -> Void
 
-    @State private var actions = SheetActions()
-    @State private var actingOn: CommentRecord?
-
     var body: some View {
         Section("Comments") {
             ForEach(comments) { comment in
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(comment.text)
-                            .accessibilityIdentifier("comment.\(comment.index)")
-                        Text(comment.createdAt.formatted(date: .abbreviated, time: .shortened))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Button {
-                        actingOn = comment
-                        actions.isPresented = true
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
-                    .buttonStyle(.borderless)
-                    .accessibilityLabel("Comment actions")
-                    .accessibilityIdentifier("comment.\(comment.index).actions")
-                }
+                CommentRow(comment: comment, compose: compose, delete: delete)
             }
             Button("Add Comment") { compose(nil) }
                 .accessibilityIdentifier("comments.add")
         }
+    }
+}
+
+/// Each row owns one presenter. A Section expands into multiple Form children,
+/// so it must not carry a sheet modifier shared by all of those children.
+private struct CommentRow: View {
+    let comment: CommentRecord
+    let compose: (CommentRecord?) -> Void
+    let delete: (CommentRecord) -> Void
+    @State private var actions = SheetActions()
+
+    var body: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(comment.text)
+                    .accessibilityIdentifier("comment.\(comment.index)")
+                Text(comment.createdAt.formatted(date: .abbreviated, time: .shortened))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button {
+                actions.isPresented = true
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Comment actions")
+            .accessibilityIdentifier("comment.\(comment.index).actions")
+        }
         .sheet(isPresented: $actions.isPresented, onDismiss: actions.didDismiss) {
             ActionSheet(title: "Comment", actionCount: 2) {
-                if let comment = actingOn {
-                    Button("Edit Comment") { actions.choose { compose(comment) } }
-                    Button("Delete Comment", role: .destructive) { actions.choose { delete(comment) } }
-                }
+                Button("Edit Comment") { actions.choose { compose(comment) } }
+                Button("Delete Comment", role: .destructive) { actions.choose { delete(comment) } }
             }
         }
         .onDisappear { actions.cancelPending() }
@@ -158,6 +166,7 @@ struct AttachmentsSection: View {
     let pending: [AttachmentImporter.Pending]
     let add: () -> Void
     let preview: (URL) -> Void
+    let share: (URL) -> Void
     let remove: (AttachmentRecord) -> Void
 
     @State private var actingOn: AttachmentRecord?
@@ -217,7 +226,9 @@ struct AttachmentsSection: View {
             }
             Spacer()
             if let shared = shareURL(attachment) {
-                ShareLink(item: shared) {
+                Button {
+                    share(shared)
+                } label: {
                     Image(systemName: "square.and.arrow.up")
                 }
                 .buttonStyle(.borderless)
@@ -248,6 +259,9 @@ struct AttachmentsSection: View {
                 } label: {
                     Label(attachment.name, systemImage: "doc")
                 }
+                // This row also has Share and Actions controls. An automatic
+                // List button makes the whole row activate the preview.
+                .buttonStyle(.borderless)
                 .accessibilityIdentifier("attachment.\(attachment.name)")
             } else {
                 Label(attachment.name, systemImage: "doc.badge.ellipsis")
@@ -301,4 +315,21 @@ struct AttachmentsSection: View {
             .disabled(!sync.hasFolder)
             .accessibilityIdentifier("attachment.\(name).download")
     }
+}
+
+/// Present sharing from the task screen, whose lifetime spans preview dismissal
+/// and list-row updates, using the system's file and link sharing controller.
+struct AttachmentShareRequest: Identifiable {
+    let url: URL
+    var id: URL { url }
+}
+
+struct AttachmentShareSheet: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: [url], applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }

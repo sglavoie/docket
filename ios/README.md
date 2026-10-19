@@ -49,6 +49,7 @@ dependencies, built into `ios/.cache/`, and XcodeGen is the release
 | `just ios-build` | `tt.app` for the simulator, with its result bundle and build diagnostics |
 | `just ios-install [TEAMID] [UDID]` | Build, sign, install, and launch on a paired iPhone, keeping its app data |
 | `just ios-test [unit\|bridge\|app\|sync\|all]` | Swift package, engine, app, and sync tests, each on its own |
+| `just ios-qualify [run\|start\|status\|resume] [OUTPUT]` | Unattended simulator qualification, including sync failures, upgrades, compatibility and backup checks |
 | `just ios-ui-test [CLASS] [default\|small]` | The simulator UI suite, or one class, on the default or small-screen simulator |
 | `just ios-run [FIXTURE] [light\|dark] [TEXT_SIZE] [default\|small]` | Launch the app over a fresh copy of a fixture |
 | `just ios-reset` | Reseed the running app's workspace and relaunch it |
@@ -57,6 +58,12 @@ dependencies, built into `ios/.cache/`, and XcodeGen is the release
 | `just ios-stop` | Stop the app `ios-run` launched |
 
 None of them needs Xcode open; see [Automation](#automation).
+
+Use [unattended simulator qualification](../docs/mobile/simulator-qualification.md)
+for routine implementation work. `start` survives an SSH disconnect and
+`resume` reuses verified results from the same sources. No Apple Account,
+signing identity, or physical iPhone is needed. Physical-device trials are
+separate checks and should only be started when explicitly requested.
 
 ### Redeploy to your iPhone
 

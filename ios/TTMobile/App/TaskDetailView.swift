@@ -26,6 +26,7 @@ struct TaskDetailView: View {
     @State private var photo: PhotosPickerItem?
     @State private var addingLink = false
     @State private var linkText = ""
+    @State private var sharing: AttachmentShareRequest?
     @State private var previewURL: URL?
     @State private var pendingImports: [AttachmentImporter.Pending] = []
     @State private var refreshFailure: String?
@@ -121,6 +122,10 @@ struct TaskDetailView: View {
                     act { await workspace.attachment(task.locator, .addURL(linkText)) }
                 }
             }
+        }
+        .sheet(item: $sharing) { request in
+            AttachmentShareSheet(url: request.url)
+                .presentationDetents([.medium, .large])
         }
         .quickLookPreview($previewURL)
         .task(id: LoadKey(generation: workspace.generation, identity: identity, retry: retry)) { await load() }
@@ -247,6 +252,7 @@ struct TaskDetailView: View {
                 detail: detail, sync: workspace.sync, pending: pendingImports,
                 add: { attachmentActions.isPresented = true },
                 preview: { previewURL = $0 },
+                share: { sharing = AttachmentShareRequest(url: $0) },
                 remove: { attachment in act { await workspace.attachment(task.locator, .remove(attachment)) } }
             )
             if task.context != nil || !task.tags.isEmpty {

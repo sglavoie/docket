@@ -32,6 +32,12 @@ On the Mac, build and install `tt` with `just install`.
 
 ## Qualification trial
 
+For routine implementation checks, run the [unattended simulator
+qualification](simulator-qualification.md). It requires no phone interaction or
+Apple Account and is the default development gate. The physical-device trial
+below is a separately requested check of actual iCloud and device behavior;
+simulator results never stand in for its evidence.
+
 Run this once per build you plan to rely on, before enrolling your real
 workspace. It uses a disposable copy of the representative fixture, a trial
 directory under `~/.tt-qualification/`, an exchange folder of its own in
