@@ -72,6 +72,7 @@ declared their text required, while this reads the finished screen.
   `internal/tui/primary_row_title_style_test.go`,
   `internal/tui/task_title_regression_test.go`,
   `internal/tui/outliner_cursor_highlight_test.go`,
+  `internal/tui/outliner_cursor_colors_test.go`,
   `internal/tui/theme/styles_helpers_test.go`,
   `internal/tui/theme/semantic_tag_title_style_test.go`,
   `internal/tui/chrome/hero_attribute_test.go`,
@@ -166,6 +167,7 @@ declared their text required, while this reads the finished screen.
   `internal/tui/inline_row_editor_commit_test.go`,
   `internal/tui/check_in_visual_acceptance_test.go`,
   `internal/tui/outliner_cursor_highlight_test.go`,
+  `internal/tui/outliner_cursor_colors_test.go`,
   `internal/tui/responsive_peek_test.go`,
   `internal/tui/textfit/text_width_helpers_test.go`
 - Scenarios: `docs/tui-testing/scenarios/ux-acceptance-row-baseline.json`,

@@ -2,7 +2,7 @@
 # Columns: concept, production path, identifier, AST occurrence count.
 # Regenerate after reviewing ownership changes with:
 #   UPDATE_RETIRED_CONCEPT_BASELINE=1 go test ./internal/storage -run TestRetiredConceptInventoryBaseline
-# Total rows: 475
+# Total rows: 478
 custom-context	internal/config/legacy_v4_domains.go	CustomContexts	2
 custom-context	internal/config/legacy_v4_domains_convert.go	CustomContexts	5
 custom-context	internal/config/pre_consolidation_v6_snapshot_audit.go	customContexts	3
@@ -204,8 +204,10 @@ dependency	internal/storage/v5_archive_reintegration_refs.go	DependsOn	4
 dependency	internal/storage/v5_archive_reintegration_refs.go	canonicalV5DependencyReference	1
 dependency	internal/storage/v5_archive_reintegration_refs.go	dependencyID	3
 dependency	internal/storage/v5_archive_reintegration_refs.go	dependencyRef	3
-dependency	internal/textgrammar/grammar_registry.go	FieldDependency	3
-dependency	internal/textgrammar/grammar_registry.go	FieldRemoveDependency	2
+dependency	internal/textgrammar/grammar_guide_order.go	FieldDependency	1
+dependency	internal/textgrammar/grammar_guide_order.go	FieldRemoveDependency	1
+dependency	internal/textgrammar/grammar_registry.go	FieldDependency	2
+dependency	internal/textgrammar/grammar_registry.go	FieldRemoveDependency	1
 dependency	internal/textgrammar/grammar_types.go	FieldDependency	1
 dependency	internal/textgrammar/grammar_types.go	FieldRemoveDependency	1
 dependency	internal/textgrammar/search.go	FieldDependency	1
@@ -298,7 +300,8 @@ dependency	internal/tui/outline_editor.go	DependencyAlias	1
 dependency	internal/tui/outline_editor.go	FieldDependency	1
 dependency	internal/tui/outline_editor.go	dependencyDefinition	2
 dependency	internal/tui/outline_editor.go	outlineDependencyAlias	2
-dependency	internal/tui/outline_editor.go	outlineDependencyProjects	3
+dependency	internal/tui/outline_editor.go	outlineDependencyProjects	2
+dependency	internal/tui/outline_editor_handlers.go	outlineDependencyProjects	1
 dependency	internal/tui/outliner/cross_project_projection.go	invalidateDependencyIndex	1
 dependency	internal/tui/outliner/dependency_detail.go	Dependencies	5
 dependency	internal/tui/outliner/dependency_detail.go	DependencyCensusFor	1
@@ -352,6 +355,7 @@ dependency	internal/tui/outliner/outliner_mode_input.go	DependencyFilterBlocked	
 dependency	internal/tui/outliner/outliner_mode_input.go	DependencyFilterBlocking	1
 dependency	internal/tui/outliner/outliner_mode_input.go	dependencyIndex	1
 dependency	internal/tui/outliner/outliner_mode_input.go	passesDependencyFilter	2
+dependency	internal/tui/outliner/outliner_planning_sections.go	CloneTaskDetachingDependencies	1
 dependency	internal/tui/outliner/outliner_population_state.go	invalidateDependencyIndex	1
 dependency	internal/tui/outliner/outliner_projection_modes.go	CloneTaskDetachingDependencies	1
 dependency	internal/tui/outliner/outliner_projection_primary.go	CloneTaskDetachingDependencies	2
@@ -376,7 +380,6 @@ dependency	internal/tui/outliner/outliner_search_vocabulary.go	DependencySuggest
 dependency	internal/tui/outliner/outliner_search_vocabulary.go	searchDependencyCandidates	2
 dependency	internal/tui/outliner/outliner_search_vocabulary.go	searchDependencyEffectiveProject	2
 dependency	internal/tui/outliner/outliner_search_vocabulary.go	searchDependencySuggestions	1
-dependency	internal/tui/outliner/outliner_sections.go	CloneTaskDetachingDependencies	1
 dependency	internal/tui/outliner/query_readout.go	Dependency	2
 dependency	internal/tui/outliner/query_readout.go	DependencyFilterAll	1
 dependency	internal/tui/outliner/query_readout.go	DependencyFilterClauses	1

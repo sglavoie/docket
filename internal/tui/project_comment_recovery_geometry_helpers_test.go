@@ -1,0 +1,373 @@
+package tui
+
+import (
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
+)
+
+// seatRecoveryGeometryRecoveredAdd walks the production path: open the add
+// composer, hand it to an editor that writes the long draft, lose the project
+// while that editor holds the terminal, and let the result come back to a panel
+// whose owner is gone. The retention runs before the refusal does, which is what
+// leaves a draft on screen that nothing else in the workspace holds.
+func seatRecoveryGeometryRecoveredAdd(t *testing.T, driver *UITestDriver, draft string) string {
+	t.Helper()
+	seatCursorOnProjectHeader(t, driver.App().crossOutliner)
+	runChecklistActions(t, driver, []UITestAction{
+		{Type: UITestActionKey, Key: ";"},
+		{Type: UITestActionKey, Key: "a"},
+	})
+	if panel := mountedProjectCommentsPanel(t, driver.App()); !panel.AddMode {
+		t.Fatalf("a did not open the add composer:\n%s", driver.Render())
+	}
+	useRecoveryGeometryEditor(t, draft)
+
+	// The press is dispatched and deliberately not drained: what it produced is
+	// the editor launch, and the harness runs that in the runtime's place so the
+	// workspace can change between the editor exiting and its result arriving.
+	if err := driver.SendKey("ctrl+e"); err != nil {
+		t.Fatalf("ctrl+e: %v", err)
+	}
+	finished := driver.runPendingExternalEditor(t)
+	removeRecoveryGeometryOwner(t, driver)
+	driver.dispatch(finished)
+	driver.drain()
+
+	panel := mountedProjectCommentsPanel(t, driver.App())
+	if !panel.AddMode {
+		t.Fatalf("the editor's result closed the add composer:\n%s", driver.Render())
+	}
+	if panel.Err == nil || !strings.Contains(panel.Err.Error(), "no longer available") {
+		t.Fatalf("the panel did not refuse the vanished owner (err %v):\n%s", panel.Err, driver.Render())
+	}
+	// The box is the lossy half by construction, and saying so here is what keeps
+	// the file assertion honest: the bytes this case demands are the editor's, and
+	// they are bytes the composer provably does not hold.
+	seated, _ := panelDraft(panel)
+	if seated == draft {
+		t.Fatal("the composer took the whole editor result, so this case proves nothing about a draft it cannot hold")
+	}
+	if strings.Contains(seated, recoveryGeometryTailMarker) {
+		t.Fatalf("the composer holds the tail marker, so the draft under test is not past its limit:\n%q", recoveryGeometryTailOf(seated))
+	}
+	return draft
+}
+
+// useRecoveryGeometryEditor points the panel's external editor at a script that
+// writes the draft into the buffer it is handed, which is what a user typing the
+// whole thing into their editor and saving does. The panel is constructed with no
+// configured editor, so $VISUAL is the production route to it; both variables are
+// set because either one is what a real environment would have supplied.
+//
+// The script appends rather than replaces so the header the panel wrote stays
+// where the parser expects it, and the draft arrives as the bytes below the
+// marker — tabs, accents, and tail included.
+func useRecoveryGeometryEditor(t *testing.T, draft string) {
+	t.Helper()
+	dir := t.TempDir()
+	draftPath := filepath.Join(dir, "editor-result.txt")
+	if strings.ContainsAny(draftPath, "'\"\\ ") {
+		t.Fatalf("the fixture path %q cannot be spelled in a shell script", draftPath)
+	}
+	if err := os.WriteFile(draftPath, []byte(draft), 0o600); err != nil {
+		t.Fatalf("writing the editor's result: %v", err)
+	}
+	script := filepath.Join(dir, "editor.sh")
+	if err := os.WriteFile(script, []byte("#!/bin/sh\ncat '"+draftPath+"' >> \"$1\"\n"), 0o700); err != nil {
+		t.Fatalf("writing the editor script: %v", err)
+	}
+	t.Setenv("VISUAL", script)
+	t.Setenv("EDITOR", script)
+}
+
+// runRecoveryGeometryCase is one case at one terminal size, start to finish: a
+// fresh workspace, the state, the recovery press, and then the three readings
+// that have to agree — the first frame, the frame after a redraw, and the frame
+// after the terminal has changed size and changed back.
+func runRecoveryGeometryCase(t *testing.T, testCase recoveryGeometryCase, size recoveryGeometrySize, draft string) {
+	t.Helper()
+	driver, workspace, _ := addCommentFixtureApp(t)
+	tempDir := recoveryGeometryTempDir(t)
+
+	driver.Resize(size.width, size.height)
+	want := testCase.seat(t, driver, draft)
+	if want == "" {
+		t.Fatal("the case seated no draft")
+	}
+
+	before := projectCommentsOnDisk(t, workspace)
+	runChecklistActions(t, driver, []UITestAction{{Type: UITestActionKey, Key: "ctrl+x"}})
+
+	// The first reading is the one the defect was about: the press has just
+	// happened and the answer to it is the last thing the panel drew.
+	frame := assertRecoveryGeometryFrame(t, driver, size, testCase)
+	path := recoveryGeometryExportPath(t, frame, tempDir)
+	assertRecoveryGeometryFile(t, path, want)
+
+	// A redraw is not an event. The panel has to keep saying where the draft went
+	// for as long as the user has not asked it something else.
+	if got := recoveryGeometryExportPath(t, assertRecoveryGeometryFrame(t, driver, size, testCase), tempDir); got != path {
+		t.Fatalf("a redraw changed the export destination from %q to %q", path, got)
+	}
+
+	// A resize is an event, and it is the one that re-lays out every row the
+	// recovery competes for. The other supported size has to fit too, and coming
+	// back has to leave the answer where it was.
+	for _, other := range recoveryGeometrySizes {
+		if other.name == size.name {
+			continue
+		}
+		driver.Resize(other.width, other.height)
+		if got := recoveryGeometryExportPath(t, assertRecoveryGeometryFrame(t, driver, other, testCase), tempDir); got != path {
+			t.Fatalf("resizing to %s changed the export destination from %q to %q", other.name, path, got)
+		}
+	}
+	driver.Resize(size.width, size.height)
+	if got := recoveryGeometryExportPath(t, assertRecoveryGeometryFrame(t, driver, size, testCase), tempDir); got != path {
+		t.Fatalf("resizing back to %s changed the export destination from %q to %q", size.name, path, got)
+	}
+	assertRecoveryGeometryFile(t, path, want)
+
+	// The reason the comment could not be saved is exactly as true after the
+	// recovery as before it: the export asks the owner for nothing and writes
+	// nothing to the workspace.
+	assertRecoveryGeometryCommentsUnchanged(t, workspace, before)
+	assertRecoveryGeometryDraftHeld(t, driver, tempDir, want)
+}
+
+// recoveryGeometryTempDir is where the export writes, which is what makes the
+// file outlive the panel. Pointing the system temporary directory at one of this
+// subtest's own keeps the run from leaving copies of the draft behind and gives
+// the frame reader a prefix it can anchor the wrapped path on.
+//
+// It is deliberately not t.TempDir(): that name carries the test's own, and a
+// path made long by this file's naming would be measuring the test rather than
+// the panel. This one is the length a real generated path has.
+func recoveryGeometryTempDir(t *testing.T) string {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "tt-draft-")
+	if err != nil {
+		t.Fatalf("MkdirTemp: %v", err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	t.Setenv("TMPDIR", dir)
+	return dir
+}
+
+// seedRecoveryGeometryComment stores the long draft as the fixture project's one
+// comment, which is what makes `e` seat a draft the composer cannot hold: the
+// edit composer is opened on the stored text, so a stored comment longer than
+// CommentCharLimit is a recovered draft the panel reached by ordinary keys.
+func seedRecoveryGeometryComment(t *testing.T, driver *UITestDriver, draft string) {
+	t.Helper()
+	project := recoveryGeometryProject(t, driver)
+	project.Comments = []*models.ProjectComment{{
+		ID:        recoveryGeometryCommentID,
+		Text:      draft,
+		CreatedAt: time.Date(2026, 3, 4, 9, 30, 0, 0, time.UTC),
+	}}
+	if err := storage.SaveProject(project); err != nil {
+		t.Fatalf("SaveProject(%q): %v", project.ID, err)
+	}
+}
+
+// deleteRecoveryGeometryComment is another surface removing the comment while the
+// edit composer is open on it, which is the state the panel refuses by name.
+func deleteRecoveryGeometryComment(t *testing.T, driver *UITestDriver) {
+	t.Helper()
+	project := recoveryGeometryProject(t, driver)
+	project.Comments = nil
+	if err := storage.SaveProject(project); err != nil {
+		t.Fatalf("SaveProject(%q): %v", project.ID, err)
+	}
+}
+
+// removeRecoveryGeometryOwner takes the project out from under the open composer.
+// It has to happen after the composer is open, because the panel resolves its
+// owner by identity on every reload and would never have mounted otherwise.
+func removeRecoveryGeometryOwner(t *testing.T, driver *UITestDriver) {
+	t.Helper()
+	app := driver.App()
+	if app.projectByID(projectCommentFixtureSlug) == nil {
+		t.Fatalf("the shell never held project %q", projectCommentFixtureSlug)
+	}
+	app.domain.projects = nil
+}
+
+func recoveryGeometryProject(t *testing.T, driver *UITestDriver) *models.Project {
+	t.Helper()
+	project := driver.App().projectByID(projectCommentFixtureSlug)
+	if project == nil {
+		t.Fatalf("the shell does not hold project %q", projectCommentFixtureSlug)
+	}
+	return project
+}
+
+// openRecoveryGeometryEdit mounts the panel on the project header and opens the
+// stored comment in the edit composer.
+func openRecoveryGeometryEdit(t *testing.T, driver *UITestDriver) {
+	t.Helper()
+	seatCursorOnProjectHeader(t, driver.App().crossOutliner)
+	runChecklistActions(t, driver, []UITestAction{
+		{Type: UITestActionKey, Key: ";"},
+		{Type: UITestActionKey, Key: "e"},
+	})
+	panel := mountedProjectCommentsPanel(t, driver.App())
+	if !panel.EditMode {
+		t.Fatalf("e did not open the edit composer:\n%s", driver.Render())
+	}
+	if panel.EditTextInput.Value() == recoveryGeometryDraft() {
+		t.Fatal("the composer took the whole stored comment, so this case proves nothing about a draft it cannot hold")
+	}
+}
+
+// refuseRecoveryGeometrySave spends the save the state cannot honor, which is
+// what puts the refusal on screen beside the draft it protected.
+func refuseRecoveryGeometrySave(t *testing.T, driver *UITestDriver) {
+	t.Helper()
+	runChecklistActions(t, driver, []UITestAction{{Type: UITestActionKey, Key: "ctrl+s"}})
+}
+
+// assertRecoveryGeometryFrame reads the composed shell frame and requires it to
+// fit the terminal and to still be saying everything the state owes: the
+// recovery instructions where the draft is lossy, the active refusal where there
+// is one, the controls that end the composer, and the destination the export
+// wrote to.
+func assertRecoveryGeometryFrame(t *testing.T, driver *UITestDriver, size recoveryGeometrySize, testCase recoveryGeometryCase) string {
+	t.Helper()
+	observation := driver.Observe(ObserveOptions{})
+	frame := observation.PlainScreen
+	if len(observation.LayoutIssues) > 0 {
+		t.Fatalf("the composed frame does not fit %s: %v\n%s", size.name, observation.LayoutIssues, frame)
+	}
+	if rows := len(strings.Split(strings.TrimRight(frame, "\n"), "\n")); rows > size.height {
+		t.Fatalf("the composed frame is %d row(s) tall at %s:\n%s", rows, size.name, frame)
+	}
+
+	flat := flattenRecoveryGeometryFrame(frame)
+	required := []string{
+		// The line the whole defect was about.
+		"Draft written to",
+		// The two controls a composer may never be left without: one that keeps
+		// the text and one that admits to discarding it.
+		"Ctrl+S",
+		"Esc",
+	}
+	if testCase.lossy {
+		// Where the box is a preview, the sentence that says so also names the
+		// key that hands the draft back. That one is owed at every width; the
+		// explanation above it and the excerpt under it are what the ladder is
+		// allowed to spend, so they are owed only where there were rows to spend.
+		required = append(required, recoveryGeometryHint)
+		if size.roomy {
+			required = append(required, recoveryGeometryNotice, recoveryGeometryTailMarker)
+		}
+	} else {
+		required = append(required, "Ctrl+X")
+	}
+	if testCase.refusal != "" {
+		required = append(required, testCase.refusal)
+	}
+	for _, want := range required {
+		if !strings.Contains(flat, want) {
+			t.Fatalf("the composed frame at %s never says %q:\n%s", size.name, want, frame)
+		}
+	}
+	return frame
+}
+
+// flattenRecoveryGeometryFrame turns the frame back into one line so a wrapped
+// sentence can be looked for as the sentence it is. Wrapping replaces a space
+// with a row break, so rejoining on a space restores the prose; only a token too
+// long for the terminal is broken elsewhere, and none of the sentences asserted
+// here carry one.
+func flattenRecoveryGeometryFrame(frame string) string {
+	return strings.Join(strings.Fields(strings.ReplaceAll(frame, "\n", " ")), " ")
+}
+
+// recoveryGeometryExportPathPattern is anchored on the subtest's own temporary
+// directory because the path is the one piece of the frame that has no words:
+// at a narrow width it is hard-broken across rows, so it is reassembled from the
+// rows rather than read off one.
+func recoveryGeometryExportPath(t *testing.T, frame, tempDir string) string {
+	t.Helper()
+	if !strings.Contains(flattenRecoveryGeometryFrame(frame), "Draft written to") {
+		t.Fatalf("the composed frame names no file for the draft:\n%s", frame)
+	}
+	var joined strings.Builder
+	for _, line := range strings.Split(frame, "\n") {
+		joined.WriteString(strings.TrimSpace(line))
+	}
+	pattern := regexp.MustCompile(regexp.QuoteMeta(tempDir) + `/tt-comment-draft-\S*?\.md`)
+	path := pattern.FindString(joined.String())
+	if path == "" {
+		t.Fatalf("the composed frame does not carry a usable export path under %s:\n%s", tempDir, frame)
+	}
+	return path
+}
+
+// assertRecoveryGeometryFile reads the file the frame named and requires the
+// whole draft, byte for byte. Nothing else in this test can prove the recovery
+// worked: the composer is short of the draft by construction and the excerpt is
+// an excerpt, so the file is the only complete copy the user can reach.
+func assertRecoveryGeometryFile(t *testing.T, path, want string) {
+	t.Helper()
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("the file the frame named cannot be read: %v", err)
+	}
+	if string(contents) != want {
+		t.Fatalf("the exported draft is not the draft the panel holds (%d rune(s) short):\ngot  %q\nwant %q",
+			len([]rune(want))-len([]rune(string(contents))),
+			recoveryGeometryTailOf(string(contents)), recoveryGeometryTailOf(want))
+	}
+	if !strings.Contains(string(contents), recoveryGeometryHead) {
+		t.Fatalf("the exported draft is missing %q", recoveryGeometryHead)
+	}
+}
+
+func recoveryGeometryTailOf(text string) string {
+	runes := []rune(text)
+	if len(runes) <= 80 {
+		return text
+	}
+	return "…" + string(runes[len(runes)-80:])
+}
+
+// assertRecoveryGeometryCommentsUnchanged is the export's price: nothing. The
+// recovery resolves no owner and submits no mutation, so the stored collection
+// has to be exactly what it was before the press.
+func assertRecoveryGeometryCommentsUnchanged(t *testing.T, workspace *uitestWorkspace, before []*models.ProjectComment) {
+	t.Helper()
+	after := projectCommentsOnDisk(t, workspace)
+	if len(after) != len(before) {
+		t.Fatalf("the recovery changed the stored comment count from %d to %d", len(before), len(after))
+	}
+	for i := range after {
+		if after[i].ID != before[i].ID || after[i].Text != before[i].Text || !after[i].CreatedAt.Equal(before[i].CreatedAt) {
+			t.Fatalf("the recovery rewrote stored comment %d", i)
+		}
+	}
+}
+
+// assertRecoveryGeometryDraftHeld is the other half: the export is a copy, not a
+// handover. The composer is still open and the panel is still authoritative for
+// the same bytes, so a user who exported by accident has lost nothing.
+func assertRecoveryGeometryDraftHeld(t *testing.T, driver *UITestDriver, tempDir, want string) {
+	t.Helper()
+	panel := mountedProjectCommentsPanel(t, driver.App())
+	if _, open := panelDraft(panel); !open {
+		t.Fatalf("the recovery closed the composer:\n%s", driver.Render())
+	}
+	runChecklistActions(t, driver, []UITestAction{{Type: UITestActionKey, Key: "ctrl+x"}})
+	frame := driver.Observe(ObserveOptions{}).PlainScreen
+	again := recoveryGeometryExportPath(t, frame, tempDir)
+	assertRecoveryGeometryFile(t, again, want)
+}

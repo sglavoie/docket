@@ -32,7 +32,7 @@ type AppModel struct {
 	// editor that submitted them and to nothing the user moved on to. It is
 	// separate from checkInFeedback on purpose: that note rides whatever line is
 	// speaking and takes no keyboard, so it asks nothing of ownership. See
-	// app_update.go.
+	// app_command_origin.go.
 	interaction interactionOwnership
 	// domain is the domain commit and configuration cluster: the startup-loaded
 	// snapshot of the catalog, planning and machine domains, the manager and
@@ -210,7 +210,7 @@ type AppModel struct {
 	// beside dueClocks for the same reason and on the same terms: only the shell
 	// sees both the commit that names a target and the ledger restore that spends
 	// it, and nothing about it is persisted, so a restart correlates nothing. See
-	// handler_task_crud.go.
+	// handler_task_history.go.
 	undoFocus coordinator.UndoFocusController
 
 	// dueSteps serializes the deadline gestures the + and - keys record. It sits

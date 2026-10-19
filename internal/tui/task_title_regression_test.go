@@ -30,6 +30,7 @@ func TestMigratedTaskTitleRenderersAvoidActiveSuccessTitleOverrides(t *testing.T
 		"grammar/quick_capture_autocomplete.go",
 		"taskdetail/task_attachments_view.go",
 		"taskdetail/comments_view.go",
+		"taskdetail/comments_composer_view.go",
 		"chrome/fullscreen_task_helpers.go",
 		"query/picker_items.go",
 		"notes/notes_view_render.go",

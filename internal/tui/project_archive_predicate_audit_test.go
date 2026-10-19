@@ -59,7 +59,7 @@ var archivePredicateAudit = map[string]string{
 	"internal/tui/grammar/quick_capture_input.go:InitCaches":                       "availability: %project completes parked projects",
 	"internal/capturetext/resolution.go:ResolveProject":                            "availability: %project resolves parked projects",
 	"internal/capturetext/resolution.go:SuggestProjectSlugs":                       "availability: typo suggestions admit parked destinations, matching exact %project resolution",
-	"internal/tui/task_operation_manifest.go:taskActionDisabledReason":             "lifecycle: an archived owner disables writing task actions",
+	"internal/tui/task_action_sheet.go:taskActionDisabledReason":                   "lifecycle: an archived owner disables writing task actions",
 	"internal/tui/taskform/task_composer_capture.go:cycleProject":                  "availability: the composer cycles onto a parked destination",
 }
 

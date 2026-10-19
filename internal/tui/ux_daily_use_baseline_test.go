@@ -146,8 +146,9 @@ func uxDailyUseScreenLine(t *testing.T, screen, fragment string) string {
 // covering one the moment the row dropped it. The per-signal claim — state,
 // priority, deadline, review, dependencies, and a search match, each legible on
 // the band in both themes — is stated at the row level in
-// outliner_cursor_highlight_test.go, where all six can be put on one task; so
-// are the flash and the visual selection, which are gestures rather than frames.
+// outliner_cursor_colors_test.go, where all six can be put on one task.
+// outliner_cursor_highlight_test.go covers the flash and the visual selection,
+// which are gestures rather than frames.
 func TestUXDailyUseCursorRowWearsOneBandUnderItsContent(t *testing.T) {
 	driver, view := uxDailyUseDriver(t, FixtureMultiProject, uxDailyUseDailySize[0], uxDailyUseDailySize[1])
 	seatCursorOnTaskTitled(t, view, uxDailyUseAlphaTitle)

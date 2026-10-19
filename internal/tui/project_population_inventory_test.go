@@ -53,7 +53,7 @@ var projectPopulationInventory = map[string]string{
 	"internal/tui/filterops/filter_project_operations.go:AvailableProjects":        "the project tag vocabulary must name parked projects so a facet can widen back out",
 	"internal/tui/projectops/project_tag_vocabulary.go:AvailableProjects":          "a tag's editable membership includes its parked projects",
 	"internal/tui/handler_helpers.go:availableProjects":                            "planning prune must not drop references owned by a parked project",
-	"internal/tui/handler_task_crud.go:availableProjects":                          "external-editor %project resolution matches inline edit",
+	"internal/tui/handler_task_content.go:availableProjects":                       "external-editor %project resolution matches inline edit",
 	"internal/tui/handler_view_notes.go:availableProjects":                         "Notes owner refresh when reopening the manager",
 	"internal/tui/projecthub/manage_hub.go:AvailableProjects":                      "Notes owners and project-note command scope",
 	"internal/tui/notesops/note_search_index.go:AvailableProjects":                 "the Outliner note search index covers the same owners the Notes manager does, so a parked project's notes stay searchable",

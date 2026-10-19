@@ -254,7 +254,7 @@ raises it on another session's behalf.
 
 ### Session 3 — Current-row tint and semantic colors
 
-- Go: `internal/tui/outliner_cursor_highlight_test.go`, `internal/tui/attention_styling_acceptance_test.go`, `internal/tui/primary_row_title_style_test.go`, `internal/tui/chrome/cursor_test.go`, `internal/tui/theme/styles_palette_test.go`, `internal/tui/textfit/background_test.go`, `internal/tui/outliner/outliner_render_rows_test.go`, `internal/tui/outliner/outliner_search_cue_outlinersplit_test.go`, `internal/tui/ux_daily_use_baseline_test.go`
+- Go: `internal/tui/outliner_cursor_highlight_test.go`, `internal/tui/outliner_cursor_colors_test.go`, `internal/tui/attention_styling_acceptance_test.go`, `internal/tui/primary_row_title_style_test.go`, `internal/tui/chrome/cursor_test.go`, `internal/tui/theme/styles_palette_test.go`, `internal/tui/textfit/background_test.go`, `internal/tui/outliner/outliner_render_rows_test.go`, `internal/tui/outliner/outliner_search_cue_outlinersplit_test.go`, `internal/tui/ux_daily_use_baseline_test.go`
 - Frames: `project-label-widths`, `dense-scrolled`
 - Contracts: `CLAUDE.md` line 532; `docs/architecture/presentation-chrome.md` lines 479–512
 - Landed: `theme.ColorCursorRowBg` derived in `ApplyTheme` a short step from the terminal's own paper, `theme.CursorBarStyle` switched to inverse video so the mark survives a profile carrying no color, `cursorPaint.rowBg` with `overTaskRow()` as the one opt-in and `gutterBg()`/`trail()` reading it, `textfit.PaintBackground` arming a background that re-arms after every reset so no foreground is rewritten, and `applyTaskRowLineStyle` returning ahead of `taskRowTint` and `ZebraLine`, which is the whole of background precedence.

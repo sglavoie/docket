@@ -1,0 +1,289 @@
+package tui
+
+import (
+	"fmt"
+	"os"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
+)
+
+func TestUITestFixtureRichLoadsTasksFromDisk(t *testing.T) {
+	driver, ws, err := NewFixtureDriver(FixtureRich, 120, 40)
+	if err != nil {
+		t.Fatalf("NewFixtureDriver(rich) error: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	current := driver.App().currentProject
+	if current == nil {
+		t.Fatal("rich fixture has no current project")
+	}
+	if len(current.Tasks) == 0 {
+		t.Fatal("rich fixture current project has no tasks after load from disk")
+	}
+
+	// Tasks must have round-tripped through storage: the on-disk tasks.md
+	// exists inside the isolated workspace.
+	tasksPath := storage.TasksFilePath(current.Path)
+	if !strings.HasPrefix(tasksPath, ws.DataDir) {
+		t.Fatalf("project tasks path %q not inside workspace data dir %q", tasksPath, ws.DataDir)
+	}
+	if _, statErr := os.Stat(tasksPath); statErr != nil {
+		t.Fatalf("expected tasks.md on disk at %q: %v", tasksPath, statErr)
+	}
+}
+
+func TestUITestFixtureRichLoadsGlobalAndProjectNotesFromDisk(t *testing.T) {
+	driver, ws, err := NewFixtureDriver(FixtureRich, 120, 40)
+	if err != nil {
+		t.Fatalf("NewFixtureDriver(rich) error: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	project := driver.App().currentProject
+	if project == nil {
+		t.Fatal("rich fixture has no current project")
+	}
+	globalNotes, err := storage.ListNotesFrom(storage.GlobalNotesDir(ws.DataDir))
+	if err != nil {
+		t.Fatalf("load rich Global notes: %v", err)
+	}
+	projectNotes, err := storage.ListNotes(project)
+	if err != nil {
+		t.Fatalf("load rich project notes: %v", err)
+	}
+	if len(globalNotes) != 1 || globalNotes[0].Title != "Workspace launch brief" {
+		t.Fatalf("rich Global notes = %#v", globalNotes)
+	}
+	if len(projectNotes) != 1 ||
+		projectNotes[0].Title != "Rich Project delivery plan" ||
+		!strings.Contains(projectNotes[0].Body, "authentication milestone") {
+		t.Fatalf("rich project notes = %#v", projectNotes)
+	}
+}
+
+func TestUITestWorkspaceCopyIsIsolated(t *testing.T) {
+	src := newSourceWorkspace(t)
+	srcProject := src.Runtime.TaskWorkspaceProjects()[0]
+	srcTasksPath := storage.TasksFilePath(srcProject.Path)
+	srcBefore := mustReadFile(t, srcTasksPath)
+	sourceCatalog, err := config.NewDomainFileStore(src.DataDir).LoadCatalog()
+	if err != nil {
+		t.Fatalf("LoadCatalog(source): %v", err)
+	}
+	sourceWorkspaceID := sourceCatalog.WorkspaceID
+	sourceMachine := config.NewMachineState()
+	sourceMachine.Theme = "light"
+	sourceStore := config.NewDomainFileStore(src.DataDir)
+	if bindErr := sourceStore.BindWorkspaceID(sourceWorkspaceID); bindErr != nil {
+		t.Fatalf("BindWorkspaceID(source): %v", bindErr)
+	}
+	if saveErr := sourceStore.SaveMachine(sourceMachine); saveErr != nil {
+		t.Fatalf("SaveMachine(source): %v", saveErr)
+	}
+
+	driver, ws, err := NewCopiedWorkspaceDriver(src.ConfigPath, 100, 30)
+	if err != nil {
+		t.Fatalf("NewCopiedWorkspaceDriver error: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	// The copy lives in its own temp tree, distinct from the source.
+	if ws.DataDir == src.DataDir {
+		t.Fatal("copied workspace shares the source data dir")
+	}
+	if driver.App().domain.runtime.DataDir() != ws.DataDir {
+		t.Fatalf("driver runtime DataDir = %q, want copied dir %q", driver.App().domain.runtime.DataDir(), ws.DataDir)
+	}
+	if got := driver.App().domain.runtime.Catalog().WorkspaceID; got == "" || got == sourceWorkspaceID {
+		t.Fatalf("copied workspace ID = %q, want a fresh identity distinct from %q", got, sourceWorkspaceID)
+	}
+	if got, want := driver.App().domain.runtime.Machine().Theme, config.NewMachineState().Theme; got != want {
+		t.Fatalf("copied workspace machine theme = %q, want isolated default %q", got, want)
+	}
+
+	// The copied project points at the temp copy and its tasks.md matches source.
+	copied := driver.App().projectByID(srcProject.ID)
+	if copied == nil {
+		t.Fatal("copied config is missing the source project")
+	}
+	copiedTasksPath := storage.TasksFilePath(copied.Path)
+	if !strings.HasPrefix(copiedTasksPath, ws.DataDir) {
+		t.Fatalf("copied project path %q not inside copy data dir %q", copiedTasksPath, ws.DataDir)
+	}
+	if got := mustReadFile(t, copiedTasksPath); got != srcBefore {
+		t.Fatal("copied tasks.md differs from source")
+	}
+}
+
+func TestUITestWorkspaceDoesNotMutateSource(t *testing.T) {
+	src := newSourceWorkspace(t)
+	srcProject := src.Runtime.TaskWorkspaceProjects()[0]
+	srcTasksPath := storage.TasksFilePath(srcProject.Path)
+	// Persistence is the decomposed domain files, not the legacy monolithic
+	// .tt.json (which Manager.Save no longer writes), so the source "config" to
+	// guard against mutation is the workspace-catalog domain artifact.
+	srcCatalogPath := config.WorkspaceCatalogPath(src.DataDir)
+	srcConfigBefore := mustReadFile(t, srcCatalogPath)
+	srcTasksBefore := mustReadFile(t, srcTasksPath)
+
+	driver, ws, err := NewCopiedWorkspaceDriver(src.ConfigPath, 100, 30)
+	if err != nil {
+		t.Fatalf("NewCopiedWorkspaceDriver error: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	// Write through the copied project — the isolation guarantee is that this
+	// never reaches the source tree.
+	copied := driver.App().projectByID(srcProject.ID)
+	if copied == nil {
+		t.Fatal("copied config is missing the source project")
+	}
+	newTask, err := models.NewGenericTask("copy-only-task", copied.NextShortID, "Copy-only task")
+	if err != nil {
+		t.Fatalf("NewTask error: %v", err)
+	}
+	copied.Tasks = append(copied.Tasks, newTask)
+	copied.BuildTaskTree()
+	if err := storage.SaveProject(copied); err != nil {
+		t.Fatalf("SaveProject(copied) error: %v", err)
+	}
+
+	if got := mustReadFile(t, srcTasksPath); got != srcTasksBefore {
+		t.Fatal("source tasks.md was mutated by copied-workspace writes")
+	}
+	if got := mustReadFile(t, srcCatalogPath); got != srcConfigBefore {
+		t.Fatal("source config was mutated by copied-workspace launch")
+	}
+}
+
+// newSourceWorkspace builds an isolated workspace with one project + tasks on
+// disk and its config file written, to act as the "real user data" source for
+// copied-workspace tests. It is cleaned up automatically.
+func newSourceWorkspace(t *testing.T) *uitestWorkspace {
+	t.Helper()
+	ws, err := newUITestWorkspace()
+	if err != nil {
+		t.Fatalf("newUITestWorkspace error: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	project, err := ws.addProject("Source Project", func(p *models.Project) {
+		epic := newFixtureTask(p, "Source epic")
+		epic.Priority = 1
+		story := newFixtureTask(p, "Source story")
+		story.ParentID = &epic.ID
+	})
+	if err != nil {
+		t.Fatalf("addProject error: %v", err)
+	}
+	ws.setCurrentProject(project.ID)
+	if err := ws.persistSyncedDomains(); err != nil {
+		t.Fatalf("persistSyncedDomains error: %v", err)
+	}
+	return ws
+}
+
+func mustReadFile(t *testing.T, path string) string {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %q: %v", path, err)
+	}
+	return string(data)
+}
+
+// TestFixtureDueInstantSurvivesTheMidnightMinute pins the wall-clock hazard that
+// broke every busy-fixture build for one minute a day: a raw time.Now() offset
+// carries seconds the schema-13 codec renders away, and the "00:00" left behind
+// is the date-only signal it refuses to spell as a due_time. Truncating to the
+// minute is what the grammar produces, so midnight becomes an honest date-only
+// due instead of an unrepresentable timed one.
+func TestFixtureDueInstantSurvivesTheMidnightMinute(t *testing.T) {
+	// The offsets buildBusyFixture and the release fixture hand setDue.
+	offsets := []time.Duration{-3 * 24 * time.Hour, -2 * 24 * time.Hour, -24 * time.Hour, 12 * time.Hour}
+	// A base 22.5s past noon sends the +12h offset into the midnight minute,
+	// which is the instant the failing run happened to occupy.
+	base := time.Date(2026, 8, 27, 12, 0, 22, 500_000_000, time.Local)
+
+	ws, err := newUITestWorkspace()
+	if err != nil {
+		t.Fatalf("newUITestWorkspace: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	for _, offset := range offsets {
+		due := fixtureDueInstant(base, offset)
+		if due.Second() != 0 || due.Nanosecond() != 0 {
+			t.Errorf("fixtureDueInstant(base, %v) = %v, want a whole minute", offset, due)
+		}
+		project, err := ws.addProject(fmt.Sprintf("Due %v", offset), func(p *models.Project) {
+			task := newFixtureTask(p, "Timed due")
+			task.ApplyWorkflowState(models.StateBacklog)
+			task.DueDate = &due
+		})
+		if err != nil {
+			t.Fatalf("addProject with due %v (offset %v): %v", due, offset, err)
+		}
+		reloaded := &models.Project{ID: project.ID, Name: project.Name, Slug: project.Slug, Path: project.Path}
+		if err := storage.LoadProject(reloaded); err != nil {
+			t.Fatalf("LoadProject after due %v: %v", due, err)
+		}
+	}
+}
+
+func TestBusyFixtureDeadlineStartsTomorrow(t *testing.T) {
+	location, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, base := range []time.Time{
+		time.Date(2026, 9, 13, 0, 0, 22, 0, location),
+		time.Date(2026, 9, 13, 11, 59, 22, 0, location),
+		time.Date(2026, 9, 13, 12, 0, 22, 0, location),
+		time.Date(2026, 9, 13, 23, 59, 22, 0, location),
+		time.Date(2026, 3, 7, 23, 30, 22, 0, location),
+		time.Date(2026, 11, 1, 0, 30, 22, 0, location),
+	} {
+		t.Run(base.Format(time.RFC3339), func(t *testing.T) {
+			ws, err := newUITestWorkspace()
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = ws.Cleanup() })
+			if err := buildBusyFixtureAt(ws, base); err != nil {
+				t.Fatal(err)
+			}
+			var project *models.Project
+			// Find the seeded project rather than relying on sandbox ordering.
+			for _, candidate := range ws.Runtime.Catalog().Projects {
+				if candidate.Name == "Busy Project" {
+					project = &models.Project{ID: candidate.ID, Name: candidate.Name, Slug: candidate.Slug, Path: ws.Runtime.ProjectPath(candidate.Slug)}
+					break
+				}
+			}
+			if project == nil {
+				t.Fatal("fixture is missing Busy Project")
+			}
+			if err := storage.LoadProject(project); err != nil {
+				t.Fatal(err)
+			}
+			for _, task := range project.Tasks {
+				if task.Title != "Due soon: renew certificate" {
+					continue
+				}
+				want := base.AddDate(0, 0, 1).Format(time.DateOnly)
+				if task.DueDate == nil || task.DueDate.Format(time.DateOnly) != want {
+					t.Fatalf("stored deadline = %v, want calendar tomorrow %s", task.DueDate, want)
+				}
+				return
+			}
+			t.Fatal("fixture is missing the renewal task")
+		})
+	}
+}
