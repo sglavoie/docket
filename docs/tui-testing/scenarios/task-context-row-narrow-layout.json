@@ -5,7 +5,7 @@
   "actions": [
     { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "label": "the badge the row used to reserve at minimum width is Peek's now", "assert": "not_contains", "value": "[platform]" },
+    { "type": "assert", "label": "context remains visible at minimum width", "assert": "contains", "value": "[platform]" },
     { "type": "assert", "label": "so a title that once lost its tail to it arrives whole at 60 columns", "assert": "not_clipped", "value": "Add password validation" },
     { "type": "assert", "assert": "no_layout_issues" },
 
@@ -13,9 +13,9 @@
     { "type": "text", "text": "Add password validation" },
     { "type": "key", "key": "enter" },
     { "type": "key", "label": "the search keeps the ancestry, so the deepest row is the result", "key": "end" },
-    { "type": "key", "label": "the narrow dock still carries the context whole", "key": "b" },
+    { "type": "key", "label": "open Peek beside the row context", "key": "b" },
     { "type": "key", "key": "B", "label": "expand Peek to read the supporting metadata" },
-    { "type": "assert", "assert": "contains", "value": "Context: [platform]" },
+    { "type": "assert", "assert": "contains", "value": "[platform]" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

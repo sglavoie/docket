@@ -4,7 +4,7 @@
 
 A task row promotes three operational signals and no more: the deadline, an
 owed review, and the outgoing-reference census. Everything a row used to
-abbreviate beside them — the tag chips, the context badge, the Waiting and Doing
+abbreviate beside them — the tag chips, the Waiting and Doing
 ages, the deferral, the checklist tally, the comment and attachment counts, the
 recency chip — is now read in Peek, at full value rather than in a fixed-width
 badge. The trade is deliberate and one-directional: a row is scanned to decide
@@ -12,6 +12,13 @@ what to do next, so it carries required interaction context and spends every
 other column on the title, while Peek is the complete document one `b` away.
 Nothing was deleted from the product; each signal has exactly one surface now
 instead of a truncated copy and a whole one.
+
+`taskIdentityLabel` joins `[project] [context]` before alignment padding.
+Rows under a project header carry the context alone. The shared project column
+measures that combined label, while the context-only column includes contexts
+hidden by folds. Context text
+is bounded to one third of the row width and the picker retains its full value.
+Peek carries no context section.
 
 The title itself is display-compacted when it is wider than `titleWidth`:
 `compactTitleForRow`, beside `renderTaskTitle`, draws each http(s) URL as host
@@ -311,8 +318,8 @@ like any other segment, and it is still the first thing a crowded row sheds,
 ahead of every `indicatorDropLadder` entry, because an explanation is worth
 nothing beside an unreadable title and because shedding it first leaves a
 non-search row's degradation exactly as it was. It carries more now than it did:
-`· tag` and `· context` used to explain a hit the row itself also showed, and
-they are now the only thing on the row that says why a result is there.
+`· tag` explains a value shown in Peek; `· context` identifies a hit on the
+context badge beside the project.
 
 The relation marker is not in that ladder and never drops.
 `taskRelationMarker` writes both directions of the hidden-family relation into

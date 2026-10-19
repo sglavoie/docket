@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -24,7 +25,8 @@ type taskRowSegments struct {
 	indicators, relationMarker, matchCue   string
 	// projectLabel names the task's project where no heading above it does: the
 	// ranked list, which draws no group headers, and the one row a merged
-	// singleton group draws in place of its header. It is empty everywhere else.
+	// singleton group draws in place of its header. Context follows that label,
+	// or stands alone where a project header already names the project.
 	projectLabel string
 	projectFirst bool
 }
@@ -127,24 +129,43 @@ func (m *OutlinerModel) rankedProjectSlug(row OutlinerRow, rowWidth int) string 
 	return m.abbreviatedProjectSlug(slug, rankedProjectLabelMaxSlug(rowWidth))
 }
 
-// taskProjectLabel is the `[slug]` the project header would have drawn, in the
-// same bold project color, padded to the projection's widest label so every
-// labeled title starts in one column.
+// taskIdentityLabel puts context directly after the project, before alignment
+// padding. Rows under a project header carry only their own context.
+func (m *OutlinerModel) taskIdentityLabel(row OutlinerRow, rowWidth int) string {
+	label := ""
+	if m.rowLeadsWithProjectLabel(row) {
+		if slug := m.rankedProjectSlug(row, rowWidth); slug != "" {
+			_, project := m.projectSlugForRow(row)
+			label = theme.ProjectLabel(project, slug)
+		}
+	}
+	if row.Task != nil {
+		if context := strings.TrimSpace(row.Task.Context); context != "" {
+			if label != "" {
+				label += " "
+			}
+			context = textfit.TruncateToVisualWidth(context, max(rowWidth/3, 1))
+			label += theme.TaskContextBadgeStyle(row.Task).Render("[" + context + "]")
+		}
+	}
+	return label
+}
+
 func (m *OutlinerModel) taskProjectLabel(row OutlinerRow, rowWidth int, colLayout *chrome.ColumnLayout) string {
-	if !m.rowLeadsWithProjectLabel(row) {
-		return ""
-	}
-	slug := m.rankedProjectSlug(row, rowWidth)
-	if slug == "" {
-		return ""
-	}
-	_, project := m.projectSlugForRow(row)
-	label := theme.ProjectLabel(project, slug)
+	label := m.taskIdentityLabel(row, rowWidth)
 	if colLayout != nil {
-		label += strings.Repeat(" ", max(colLayout.ProjectWidth-lipgloss.Width(label), 0))
+		width := colLayout.ContextWidth
+		if m.rowLeadsWithProjectLabel(row) {
+			width = colLayout.ProjectWidth
+		}
+		label += strings.Repeat(" ", max(width-lipgloss.Width(label), 0))
 	}
 	if row.LeadsMergedGroup {
+		_, project := m.projectSlugForRow(row)
 		label = m.projectHeaderPinMarker(project) + label
+	}
+	if label == "" {
+		return ""
 	}
 	return label + " "
 }

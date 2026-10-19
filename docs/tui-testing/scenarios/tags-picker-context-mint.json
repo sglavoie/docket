@@ -35,7 +35,7 @@
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "key", "label": "both axes are Peek's now", "key": "b" },
-    { "type": "assert", "assert": "contains", "value": "Context: [deep-work]" },
+    { "type": "assert", "assert": "contains", "value": "[deep-work]" },
     { "type": "key", "label": "the tag line is one row past the window", "key": "ctrl+f" },
     { "type": "assert", "assert": "contains", "value": "Tags: #bug" },
     { "type": "key", "label": "close Peek", "key": "b" },

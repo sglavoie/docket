@@ -122,10 +122,15 @@ its title first: what the work is, in as many columns as the row can spare.
 Beside it the row carries only what you would act on without opening anything —
 workflow state, priority, whether it is pinned, when it is due, whether it owes
 a review, and how many other tasks it points at. Short task IDs are hidden, and
-so now are tags, context, the neutral Waiting and Doing ages, deferral markers,
+so now are tags, the neutral Waiting and Doing ages, deferral markers,
 and the checklist, comment, and attachment counts. None of those is gone: `b`
 opens Peek on the same row and shows every one of them at full value, unclipped,
 rather than in a fixed-width badge the row had to buy out of the title.
+
+Context appears on the task row immediately after the project label, as
+`[project] [context]`. When the project is named by a group header, the task
+shows its context before the title. Long contexts are shortened to fit; `#`
+opens the picker with the full value. Peek does not repeat context.
 
 An overdue deadline includes `overdue` in its badge, such as `Oct 15 overdue` or
 `Today 09:00 overdue`, so it remains identifiable without color. Peek's Due line
@@ -318,7 +323,7 @@ passage. For example,
 `Plan: Today · Status: Backlog · Priority: 1 high` distinguishes the planning
 collection from the lifecycle state. Doing and Waiting include time in that
 state. The project slug and parent chain follow, then the schedule, description,
-checklist progress, attachments, comment count, dependencies, context, tags,
+checklist progress, attachments, comment count, dependencies, tags,
 and history. Empty fields are omitted.
 
 | Detail | Example | Meaning |

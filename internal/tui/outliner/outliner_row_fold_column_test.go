@@ -86,6 +86,7 @@ func TestRankedProjectLabelCapFollowsTheRow(t *testing.T) {
 // caller measuring rows of its own reads no accumulator.
 func TestRowLayoutCountsWhatAFoldHides(t *testing.T) {
 	parent := renderFixtureTask(t, "parent", 1, "Parent work", models.StateBacklog, 1, models.StateBacklog)
+	parent.Context = "platform"
 	child := renderFixtureTask(t, "child", 2, "Child work", models.StateBacklog, 0, models.StateBacklog)
 	child.ParentID = &parent.ID
 	leaf := renderFixtureTask(t, "leaf", 3, "Leaf work", models.StateDoing, 0, models.StateDoing)
@@ -95,7 +96,7 @@ func TestRowLayoutCountsWhatAFoldHides(t *testing.T) {
 
 	outliner.RebuildRows()
 	open := outliner.computeRowLayout(outliner.Rows, 80, &outliner.hiddenLayout)
-	if open == nil || !open.HasFold || !open.HasPriority {
+	if open == nil || !open.HasFold || !open.HasPriority || open.ContextWidth != len("[platform]") {
 		t.Fatalf("the open projection measured %+v, want a fold and a priority column", open)
 	}
 

@@ -19,49 +19,44 @@ import (
 // and pin markers, the counts a project header carries, and the badges a
 // cross-project row must not repeat. Each is reserved at every width, which is
 // why these cases assert at narrow widths too. It also covers what the row no
-// longer reserves — context, tags, and the supporting counts — and where each
+// longer reserves — tags and the supporting counts — and where each
 // went. The indicators are in outliner_render_indicators_test.go and the width
 // ladder itself in outliner_render_rows_pressure_test.go.
 
-// TestTaskContextAndTagsLeaveTheRowForPeek is the two removals as one rule. The
-// row said both in fixed-width badges that cost the title a dozen columns at
-// every width; Peek says both at full value, which is the trade the simplified
-// budget makes.
-func TestTaskContextAndTagsLeaveTheRowForPeek(t *testing.T) {
-	task := &models.Task{
-		ID:      "task",
-		Title:   "Readable title",
-		Context: "abcdefghijklmnop",
-		Tags:    []string{"secondary"},
-	}
+// Context follows the project before padding and is absent from Peek.
+func TestTaskContextFollowsProjectOnRow(t *testing.T) {
+	task := &models.Task{ID: "task", Title: "Readable title", Context: "platform", Tags: []string{"secondary"}}
 	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
 	outliner := NewOutlinerModel(project, nil, newTestConfig())
-	row := OutlinerRow{Task: task, ProjectID: project.ID}
-
-	segments := outliner.buildTaskRowSegments(row, 60, nil, cursorPaint{})
-	if segments.titleWidth(60) != 60-outlinerNonTitleWidth(
-		segments.cursorPrefix, segments.prefixStr, segments.foldIndicator,
-		segments.statusIcon, segments.prioritySegment, segments.projectLabel, segments.pinMarker,
-		segments.indicators, segments.relationMarker, segments.matchCue,
-	) {
-		t.Fatal("a segment drifted between titleWidth and outlinerNonTitleWidth")
-	}
-
-	// 24 columns is where a reserved badge used to leave the title four of them.
-	plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 24, 0, nil))
-	for _, gone := range []string{"[abcde", "abcdefghijk", "#secondary"} {
-		if strings.Contains(plain, gone) {
-			t.Fatalf("narrow row still reserves %q: %q", gone, plain)
+	for _, merged := range []bool{false, true} {
+		row := OutlinerRow{Task: task, ProjectID: project.ID, LeadsMergedGroup: merged}
+		for _, width := range []int{60, 100} {
+			layout := outliner.ComputeOutlinerRowLayout([]OutlinerRow{row}, width)
+			plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, width, 0, layout))
+			want := "[platform]"
+			if merged {
+				want = "[project] [platform]"
+			}
+			if !strings.Contains(plain, want) || !strings.Contains(plain, task.Title) {
+				t.Fatalf("width %d row missing context or title: %q", width, plain)
+			}
+			if lipgloss.Width(plain) > width {
+				t.Fatalf("row exceeded width %d: %q", width, plain)
+			}
+			if strings.Contains(plain, "#secondary") {
+				t.Fatalf("row contains tags: %q", plain)
+			}
+			segments := outliner.buildTaskRowSegments(row, width, layout, cursorPaint{})
+			if !strings.HasPrefix(plain, ansi.Strip(segments.titlePrefix())) {
+				t.Fatalf("editor prefix differs from row: %q", plain)
+			}
 		}
-	}
-	if !strings.Contains(plain, "Readable title") {
-		t.Fatalf("narrow row did not spend the reclaimed width on the title: %q", plain)
-	}
-
-	peek := ansi.Strip(strings.Join(peekDocumentBody(outliner, row, 60), "\n"))
-	for _, want := range []string{"abcdefghijklmnop", "secondary"} {
-		if !strings.Contains(peek, want) {
-			t.Fatalf("Peek lost %q:\n%s", want, peek)
+		peek := ansi.Strip(strings.Join(peekDocumentBody(outliner, row, 60), "\n"))
+		if strings.Contains(peek, "Context:") || strings.Contains(peek, "[platform]") {
+			t.Fatalf("Peek repeats context: %s", peek)
+		}
+		if !strings.Contains(peek, "#secondary") {
+			t.Fatalf("Peek lost tags: %s", peek)
 		}
 	}
 }

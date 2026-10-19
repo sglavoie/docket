@@ -111,7 +111,7 @@ func TestGuideDocumentsPeekAndBulkSemantics(t *testing.T) {
 	content := readGuideCorpus(t)
 	requireDocumentationText(t, content, []string{
 		"A task row is\nits title first",
-		"so now are tags, context, the neutral Waiting and Doing ages, deferral markers,\nand the checklist, comment, and attachment counts",
+		"so now are tags, the neutral Waiting and Doing ages, deferral markers,\nand the checklist, comment, and attachment counts",
 		"a row whose open children are all placed somewhere else ends with `›N`",
 		"`Enter` focuses the cursor task's descendants",
 		"`Alt+↑` widens in the other direction",

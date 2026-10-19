@@ -35,18 +35,19 @@ func (m *OutlinerModel) computeRowLayout(rows []OutlinerRow, rowWidth int, hidde
 	}
 	tasks := make([]*models.Task, 0, len(rows))
 	hasFold := false
-	var slugs map[*models.Task]string
+	identityWidth := 0
+	contextWidth := 0
 	for _, row := range rows {
 		if !row.IsTaskRow() || row.Task == nil {
 			continue
 		}
 		tasks = append(tasks, row.Task)
 		hasFold = hasFold || rowDrawsFold(row)
+		width := lipgloss.Width(m.taskIdentityLabel(row, rowWidth))
 		if m.rowLeadsWithProjectLabel(row) {
-			if slugs == nil {
-				slugs = make(map[*models.Task]string, len(rows))
-			}
-			slugs[row.Task] = m.rankedProjectSlug(row, rowWidth)
+			identityWidth = max(identityWidth, width)
+		} else {
+			contextWidth = max(contextWidth, width)
 		}
 	}
 	noteWidth := 0
@@ -62,16 +63,16 @@ func (m *OutlinerModel) computeRowLayout(rows []OutlinerRow, rowWidth int, hidde
 	if hidden != nil {
 		tasks = append(tasks, hidden.tasks...)
 		hasFold = hasFold || hidden.hasFold
+		for _, task := range hidden.tasks {
+			contextWidth = max(contextWidth, lipgloss.Width(m.taskIdentityLabel(OutlinerRow{Task: task}, rowWidth)))
+		}
 	}
 	opts := chrome.BadgeWidthOpts{IncludeStatus: true}
-	if slugs != nil {
-		opts.ProjectNameFor = func(task *models.Task) string { return slugs[task] }
-		opts.MaxProjectLen = rankedProjectLabelMaxSlug(rowWidth)
-	}
 	layout := chrome.ComputeBadgeWidths(tasks, opts)
 	if layout != nil {
 		layout.HasFold = hasFold
-		layout.ProjectWidth = max(layout.ProjectWidth, noteWidth)
+		layout.ProjectWidth = max(identityWidth, noteWidth)
+		layout.ContextWidth = contextWidth
 	}
 	return layout
 }

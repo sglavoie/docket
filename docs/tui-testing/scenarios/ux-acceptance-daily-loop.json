@@ -140,13 +140,13 @@
       "assert": "contains",
       "value": "reconciliation export before the audit closes"
     },
-    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "0 above · 7 below" },
+    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "0 above · 6 below" },
     {
       "type": "key",
       "label": "half a six-row body moves three content rows",
       "key": "ctrl+d"
     },
-    { "type": "assert", "assert": "contains", "value": "3 above · 4 below", "label": "the position row accounts for the compact window and its current offset" },
+    { "type": "assert", "assert": "contains", "value": "3 above · 3 below", "label": "the position row accounts for the compact window and its current offset" },
     {
       "type": "assert",
       "assert": "no_layout_issues"

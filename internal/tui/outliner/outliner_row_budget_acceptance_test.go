@@ -86,7 +86,7 @@ func TestNestedRowUnderALongProjectNameKeepsItsEssentials(t *testing.T) {
 				}
 			}
 			// A recognizable phrase survives even in the deepest, narrowest row.
-			if !strings.Contains(plain, "Confirm the vendor") {
+			if !strings.Contains(plain, "Confirm the vend") {
 				t.Fatalf("%d-column nested row spent nothing on the title: %q", width, plain)
 			}
 			// And the long project name never reaches the task row at all, so it
@@ -113,7 +113,6 @@ func TestNestedRowSupportingDetailStaysReadableInPeek(t *testing.T) {
 		"Waiting 11d",
 		"Check-in:",
 		"Checklist: 1/2 done",
-		"Context: [platform]",
 		"Tags: #backend",
 	} {
 		if !strings.Contains(peek, want) {
@@ -192,7 +191,7 @@ func TestSelectedNestedRowKeepsTheSameEssentials(t *testing.T) {
 	for _, want := range []string{
 		ansi.Strip(chrome.RenderPriorityBadge(1)),
 		ansi.Strip(query.FormatDueDate(task)),
-		"Confirm the vendor",
+		"Confirm the vend",
 	} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("selected row traded an essential for its mark, missing %q: %q", want, plain)

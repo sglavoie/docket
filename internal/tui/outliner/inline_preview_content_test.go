@@ -278,24 +278,11 @@ func TestInlinePeekWrapsTagsRatherThanElidingThem(t *testing.T) {
 	}
 }
 
-// TestInlinePeekNamesTheContextInItsOwnSection replaced the old fold into the
-// tags line. The row reserves a context segment at every width and truncates it
-// there, so Peek shows the whole value on a line of its own whether or not the
-// row could fit it.
-func TestInlinePeekNamesTheContextInItsOwnSection(t *testing.T) {
-	short := &models.Task{Context: "platform"}
-	if got := ansi.Strip(strings.Join(inlinePeekContextLines(short, "", 80), "\n")); got != "Context: [platform]" {
-		t.Fatalf("short context line = %q", got)
-	}
-
-	long := &models.Task{Context: "platform-core", Tags: []string{"bug"}}
-	body := ansi.Strip(strings.Join(inlinePeekDocumentFor(inlinePeekOptions{Task: long, Width: 80, Window: testPeekWindow()}).Body, "\n"))
-	if body != "Status: Backlog\nContext: [platform-core]\nTags: #bug" {
-		t.Fatalf("context and tags body = %q", body)
-	}
-
-	if inlinePeekContextLines(&models.Task{}, "", 80) != nil {
-		t.Fatal("a task with no context grew a Context line")
+func TestInlinePeekLeavesContextOnTheRow(t *testing.T) {
+	task := &models.Task{Context: "platform-core", Tags: []string{"bug"}}
+	body := ansi.Strip(strings.Join(inlinePeekDocumentFor(inlinePeekOptions{Task: task, Width: 80, Window: testPeekWindow()}).Body, "\n"))
+	if body != "Status: Backlog\nTags: #bug" {
+		t.Fatalf("Peek body = %q", body)
 	}
 }
 

@@ -705,7 +705,7 @@ Row and Peek budget:
   `positionLine` is a further row reserved for every document, blank when the
   body fits. Nothing sits outside that window and the document has no header:
   body order is title, status, resume, project, parent, optional search excerpt, schedule, description, checklist
-  count, attachments, comment count, `Dependencies`/`Dependents`, context, tags,
+  count, attachments, comment count, `Dependencies`/`Dependents`, tags,
   history; compact Peek prioritizes resume. Schedule is what is still owed —
   deadline, pending deferral, check-in, repeat — and history records created,
   updated if later, last review, a lapsed wake, avoidance count on its last line.
@@ -748,7 +748,7 @@ Row and Peek budget:
 - A task row promotes three indicators and no more — the deadline, an owed
   review, the reference census — and `indicatorDropLadder` is that list in
   reverse: a new indicator earns a position or it does not go on the row. Tags,
-  context, the Waiting and Doing ages, the deferral, and the checklist, comment,
+  the Waiting and Doing ages, the deferral, and the checklist, comment,
   and attachment counts are Peek's, whole; every reclaimed column is the title's.
   The trailing `~S/N` counts stored locators in `N` regardless of target
   state or availability and is gated by no
@@ -764,8 +764,9 @@ Row and Peek budget:
   merged group's row are the exceptions, since no header stands over either:
   `taskProjectLabel` leads each title with
   the header's own `[slug]` with colored brackets and a neutral name, padded to
-  `ColumnLayout.ProjectWidth` so the titles share a column, its slug cut by
-  `rankedProjectLabelMaxSlug` alone. The match cue is shed ahead of the whole
+  `ColumnLayout.ProjectWidth`. Context follows `[slug]` before padding,
+  or stands alone; cap its text at rowWidth/3. Peek omits it.
+  Slugs are cut by `rankedProjectLabelMaxSlug` alone. The match cue is shed ahead of the whole
   ladder and is now the one on-row explanation of a hit the row cannot show.
 - `ComputeOutlinerRowLayout` is the one task-row geometry — the fold column and
   the badge columns — measured over the whole projection,

@@ -189,7 +189,6 @@ func TestInlinePeekBodyKeepsItsContentOrder(t *testing.T) {
 		"Comments: 1",
 		"Dependencies: ",
 		"Dependents: 1 · ",
-		"Context: [platform-core]",
 		"Tags: #backend",
 		"Created: 5d ago · Updated: 1h ago · Last review: 1d ago",
 	}

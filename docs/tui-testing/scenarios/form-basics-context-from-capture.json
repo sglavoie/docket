@@ -37,9 +37,9 @@
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Add Task: #1 Ship the launch" },
-    { "type": "assert", "label": "the context is Peek's, so the row is a title", "assert": "not_contains", "value": "[acme-eu]" },
+    { "type": "assert", "label": "the context appears beside the project on the row", "assert": "contains", "value": "[acme-eu]" },
     { "type": "key", "key": "b" },
-    { "type": "assert", "label": "and the edited context persisted onto the detail", "assert": "contains", "value": "Context: [acme-eu]" },
+    { "type": "assert", "label": "Peek does not repeat the context", "assert": "not_contains", "value": "Context:" },
     { "type": "key", "label": "close Peek", "key": "b" },
     { "type": "assert", "assert": "no_layout_issues" },
 

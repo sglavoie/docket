@@ -258,11 +258,6 @@ func inlinePeekBodySections(opts inlinePeekOptions, width int) []inlinePeekSecti
 		inlinePeekReferenceLines(dependentLabel, opts.Dependents, opts.Indent, width),
 	)
 
-	// Context is its own section rather than a prefix on the tags line. Neither
-	// reaches the row any more — a row is scanned for what to do next, and a
-	// label is not that — so these two sections are the only place either is
-	// readable, and both are rendered whole rather than truncated.
-	add("context:"+task.Context, inlinePeekContextLines(task, opts.Indent, width))
 	add("tags:"+strings.Join(listsurface.OrderedTaskTags(task.Tags), ","), inlinePeekTagsLines(task, opts.Indent, width))
 
 	// History is last because nothing in it is owed. How old a task is, when it

@@ -139,18 +139,6 @@ func inlinePeekCommentsLines(task *models.Task, indent string, width int) []stri
 	return inlinePeekEntryLines("Comments: ", []string{strconv.Itoa(len(task.Comments))}, indent, width)
 }
 
-func inlinePeekContextLines(task *models.Task, indent string, width int) []string {
-	if task == nil {
-		return nil
-	}
-	context := strings.TrimSpace(task.Context)
-	if context == "" {
-		return nil
-	}
-	badge := theme.TaskContextBadgeStyle(task).Render("[" + context + "]")
-	return inlinePeekStyledLines(theme.MutedStyle.Render("Context: "), badge, indent, width)
-}
-
 func inlinePeekTagsLines(task *models.Task, indent string, width int) []string {
 	if task == nil {
 		return nil

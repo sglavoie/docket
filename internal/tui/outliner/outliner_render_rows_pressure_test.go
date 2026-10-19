@@ -23,9 +23,9 @@ import (
 
 // TestLoadedRowSpendsItsWidthOnTheTitle is the row simplification stated as an
 // outcome rather than as a list of deletions. A task carrying every signal the
-// row used to draw — context, tags, a long Doing age, repeated deferrals, a
-// checklist, comments, attachments — shows its whole title at 60 columns
-// instead, because none of those reach the row any more.
+// row used to draw — tags, a long Doing age, repeated deferrals, a
+// checklist, comments, attachments — keeps a recognizable title at 60 columns
+// beside its context and deadline.
 func TestLoadedRowSpendsItsWidthOnTheTitle(t *testing.T) {
 	now := time.Now()
 	due := util.StartOfDay(now.AddDate(0, 0, -4))
@@ -54,13 +54,13 @@ func TestLoadedRowSpendsItsWidthOnTheTitle(t *testing.T) {
 			if got := lipgloss.Width(plain); got > width {
 				t.Fatalf("%d-column row assembled %d columns: %q", width, got, plain)
 			}
-			if !strings.Contains(plain, title) {
-				t.Fatalf("%d-column row clipped a title the simplified budget fits: %q", width, plain)
+			if !strings.Contains(plain, "Investig") {
+				t.Fatalf("%d-column row lost the recognizable title prefix: %q", width, plain)
 			}
 			if !strings.Contains(plain, ansi.Strip(query.FormatDueDate(task))) {
 				t.Fatalf("%d-column row dropped the deadline: %q", width, plain)
 			}
-			for _, gone := range []string{"abcdefghijk", "release", "doing 120d", "deferred ×3", "1/2", "▪ 2", "⊕ 1"} {
+			for _, gone := range []string{"release", "doing 120d", "deferred ×3", "1/2", "▪ 2", "⊕ 1"} {
 				if strings.Contains(plain, gone) {
 					t.Fatalf("%d-column row still carries %q: %q", width, gone, plain)
 				}
@@ -69,7 +69,7 @@ func TestLoadedRowSpendsItsWidthOnTheTitle(t *testing.T) {
 			// Every one of them is still a keypress away. Peek is the whole document,
 			// which is what makes dropping them from the row a relocation.
 			peek := ansi.Strip(strings.Join(peekDocumentBody(outliner, row, width), "\n"))
-			for _, want := range []string{"abcdefghijklmnop", "release", "Doing 120d", "×3", "1/2 done", "quote.pdf", "2"} {
+			for _, want := range []string{"release", "Doing 120d", "×3", "1/2 done", "quote.pdf", "2"} {
 				if !strings.Contains(peek, want) {
 					t.Fatalf("%d-column Peek lost %q:\n%s", width, want, peek)
 				}
