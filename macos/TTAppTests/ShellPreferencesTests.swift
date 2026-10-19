@@ -392,6 +392,49 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
         XCTAssertEqual(changes, [false, true])
         XCTAssertTrue(TTFollowAppearancePreference.load(from: defaults))
     }
+
+    func testTerminalThemeSelectionPersistsAndNotifiesOnlyOnChanges() throws {
+        let model = PreferencesModel(defaults: defaults)
+        XCTAssertNil(model.terminalTheme)
+        var changes = 0
+        model.onTerminalThemeChange = { changes += 1 }
+
+        model.themeName = "Catppuccin Latte"
+        model.themeName = "Catppuccin Latte"
+        XCTAssertEqual(changes, 1)
+        XCTAssertEqual(TTTerminalThemePreference.load(from: defaults)?.configValue, "Catppuccin Latte")
+
+        model.separateDarkTheme = true
+        model.darkThemeName = "Catppuccin Mocha"
+        XCTAssertEqual(PreferencesModel(defaults: defaults).terminalTheme?.configValue,
+                       "light:Catppuccin Latte,dark:Catppuccin Mocha")
+        XCTAssertEqual(changes, 3)
+
+        model.themeName = nil
+        XCTAssertNil(defaults.object(forKey: TTTerminalThemePreference.defaultsKey))
+        XCTAssertEqual(changes, 4)
+    }
+
+    func testTerminalThemeSyntaxAndThemeDiscovery() throws {
+        XCTAssertEqual(TerminalTheme(configValue: "dark:Mocha,light:Latte")?.configValue,
+                       "light:Latte,dark:Mocha")
+        for bad in ["", "light:Latte", "light:Latte,dark:", "light:Latte,light:Mocha", "A,B", "A\ncommand = /bin/sh"] {
+            XCTAssertNil(TerminalTheme(configValue: bad), bad)
+        }
+
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("tt-themes-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let bundled = root.appendingPathComponent("bundled")
+        let user = root.appendingPathComponent("user")
+        try FileManager.default.createDirectory(at: bundled, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: user, withIntermediateDirectories: true)
+        for (directory, names) in [(bundled, ["Latte", "Mocha", ".hidden"]), (user, ["Mocha", "Custom"])] {
+            for name in names {
+                try "background = #000000\n".write(to: directory.appendingPathComponent(name), atomically: true, encoding: .utf8)
+            }
+        }
+        XCTAssertEqual(TerminalTheme.available(bundled: bundled, user: user), ["Custom", "Latte", "Mocha"])
+    }
 }
 
 final class TerminalToggleTests: XCTestCase {

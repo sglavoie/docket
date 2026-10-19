@@ -391,6 +391,15 @@ defaults delete io.github.sglavoie.tt ttDefaultFontSize   # use the config's
 Ghostty's standard themes ship inside the app, so `theme = Catppuccin Mocha`
 works without Ghostty.app installed; `build-ghosttykit.sh` vendors them, with
 Ghostty's terminfo and shell integration, into `Vendor/resources/`.
+Settings › Terminal › Theme lists those bundled themes and themes in
+`~/.config/ghostty/themes`. A selected theme applies immediately to the open
+terminal and is saved as `ttTerminalTheme`; the optional Dark Mode choice follows
+macOS appearance. “From the Ghostty config” removes the override. Theme changes
+keep the terminal's current zoom. tt.app also sends the selected theme's
+resolved colors to the running tt process, which repaints its task colors,
+selections, and background for that session. Clearing the selection restores
+tt's saved theme or the “Match macOS appearance” setting. A tt started outside
+the app keeps its own saved theme.
 
 ## Layout
 

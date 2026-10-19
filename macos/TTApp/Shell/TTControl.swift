@@ -35,6 +35,7 @@ enum TTControlLaunch {
 struct TTControlRequest: Encodable, Equatable {
     enum Op: String, Encodable {
         case reveal, acknowledge, done, capture, complete, preview, quit, appearance, view, undo, edit, version
+        case themePalette = "theme_palette"
         case deferTask = "defer"
         case captureOnce = "capture_once"
         case captureContext = "capture_context"
@@ -93,6 +94,14 @@ struct TTControlRequest: Encodable, Equatable {
     static func appearance(_ scheme: TTAppearanceScheme) -> Self {
         Self(op: .appearance, text: scheme.rawValue)
     }
+
+    static func themePalette(_ palette: TerminalThemePalette) -> Self? {
+        guard let data = try? JSONEncoder().encode(palette),
+              let text = String(data: data, encoding: .utf8) else { return nil }
+        return Self(op: .themePalette, text: text)
+    }
+
+    static let clearThemePalette = Self(op: .themePalette, text: "")
 
     /// Switches the running tt to the mode `view` names, as its mode jump
     /// does; refused while something is open in tt.

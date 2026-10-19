@@ -86,6 +86,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         let ghostty = Ghostty.App {
             var current = overrides
             current.fontSize = model.defaultFontSize
+            current.theme = model.terminalTheme?.configValue
             if let binary = binaries.current {
                 current.arguments += [binary.path] + TTControlLaunch.arguments(
                     controlPath: binary.controlSupported ? TTControlLaunch.socketPath() : nil,
@@ -109,6 +110,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         ghostty.delegate = self
         self.ghostty = ghostty
         model.onDefaultFontSizeChange = { [weak self] _ in self?.applyDefaultFontSize() }
+        model.onTerminalThemeChange = { [weak self] in
+            guard let self else { return }
+            self.ghostty?.reloadConfig()
+            self.sendTheme(clearWhenUnselected: true)
+        }
         model.onEnvironmentChange = { [weak self] in self?.scheduleEnvironmentReload() }
         model.onRelaunch = { [weak self] in self?.relaunchTerminal() }
         refreshConfigFontSize()
@@ -436,7 +442,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         client.onEvent = { [weak self] event in self?.handle(event) }
         client.onConnectionChange = { [weak self, weak client] connected in
             if connected {
-                self?.sendAppearance()
+                self?.sendTheme(clearWhenUnselected: true)
                 // Ask the process itself: replacing its executable on disk
                 // must not rewrite what Settings calls the running version.
                 client?.send(TTControlRequest(op: .version)) { [weak self, weak client] reply in
@@ -498,12 +504,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
     }
 
-    /// Tells the connected tt the system's light or dark, when set to follow
-    /// it. An older tt answers "unknown operation", which is ignored: it keeps
-    /// its own theme.
-    private func sendAppearance() {
-        guard preferencesModel.followAppearance, let control, control.isConnected else { return }
-        control.send(.appearance(TTAppearanceScheme(NSApp.effectiveAppearance)))
+    /// Keep tt's painted interface in step with the terminal's selected theme.
+    /// A selected Ghostty theme takes precedence over the general appearance
+    /// setting; clearing it restores that setting or tt's saved theme.
+    private func sendTheme(clearWhenUnselected: Bool = false) {
+        guard let control, control.isConnected else { return }
+        let appearance = TTAppearanceScheme(NSApp.effectiveAppearance)
+        if let selected = preferencesModel.terminalTheme {
+            let name = selected.name(for: appearance)
+            let config = Ghostty.Config(overrides: .init(command: URL(fileURLWithPath: "/usr/bin/true"), theme: name))
+            if let palette = config.themePalette(name: name), let request = TTControlRequest.themePalette(palette) {
+                control.send(request)
+            }
+        } else if preferencesModel.followAppearance {
+            control.send(.appearance(appearance))
+        } else if clearWhenUnselected {
+            control.send(.clearThemePalette)
+        }
     }
 
     /// A notification naming a task was clicked: bring tt forward on it.
@@ -612,9 +629,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         notifications.isTerminalFrontmost = { [weak self] in self?.isTerminalFrontmost ?? false }
         notifications.onActivate = { [weak self] in self?.terminal?.show() }
         quickCapture.unavailableReason = { [weak self] in self?.captureStoreError ?? self?.captureUnavailableReason }
-        model.onFollowAppearanceChange = { [weak self] _ in self?.sendAppearance() }
+        model.onFollowAppearanceChange = { [weak self] _ in self?.sendTheme(clearWhenUnselected: true) }
         appearanceObserver = NSApp.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
-            DispatchQueue.main.async { self?.sendAppearance() }
+            DispatchQueue.main.async { self?.sendTheme() }
         }
 
         syncStatusItem(to: model.activationPolicy)

@@ -46,9 +46,11 @@ const (
 	cursorRowLightFactor = 0.55
 )
 
-// ThemeConfig identifies one of the two maintained themes.
+// ThemeConfig identifies a built-in theme or a host-supplied palette.
 type ThemeConfig struct {
-	Name string // "light" or "dark"; every other value resolves to dark
+	Name     string // "light" or "dark"; every other value resolves to dark
+	Override *config.Theme
+	Ghostty  *GhosttyPalette
 }
 
 // NewThemeConfig constructs a ThemeConfig from machine-local state.
@@ -85,8 +87,12 @@ func ApplyTheme(tc ThemeConfig) {
 		tc.Name = "dark"
 	}
 	ActiveThemeName = tc.Name
+	activeGhosttyPalette = tc.Ghostty
 
 	themeDefaults := config.DefaultTheme(tc.Name)
+	if tc.Override != nil {
+		themeDefaults = *tc.Override
+	}
 
 	effectiveBgColor := themeDefaults.BackgroundColor
 	ThemeBgColor = effectiveBgColor
@@ -94,9 +100,6 @@ func ApplyTheme(tc ThemeConfig) {
 
 	rebuildAccentColors()
 	rebuildPalette(themeDefaults.Palette)
-	rebuildStyles()
-	ThemedTextInputStyles = themedTextInputStyles()
-	ThemedTextareaStyles = themedTextareaStyles()
 
 	effectiveBg := themeDefaults.CursorColor
 	effectiveFg := themeDefaults.CursorTextColor
@@ -124,13 +127,19 @@ func ApplyTheme(tc ThemeConfig) {
 	ColorSelectedDimBg = lipgloss.Color(dim(effectiveBg, dimFactor))
 	ColorCursorRowBg = lipgloss.Color(dim(effectiveBg, rowFactor))
 	ColorFlashDimBg = lipgloss.Color(dim(effectiveFlash, dimFactor))
-	if tc.Name == "light" {
+	if tc.Ghostty != nil {
+		ColorSelectedTextFg = lipgloss.Color(legibleHex(tc.Ghostty.SelectionForeground, effectiveBg, 4.5))
+		ColorSelectedDimBg = lipgloss.Color(blendHex(effectiveBgColor, effectiveBg, 0.35))
+	} else if tc.Name == "light" {
 		ColorSelectedTextFg = lipgloss.Color("#0f172a")
 	} else {
 		// The resting dark cursor trail is pure black; the flash keeps its tint.
 		ColorSelectedDimBg = lipgloss.Color("#000000")
 		ColorSelectedTextFg = lipgloss.Color("#c0caf5")
 	}
+	rebuildStyles()
+	ThemedTextInputStyles = themedTextInputStyles()
+	ThemedTextareaStyles = themedTextareaStyles()
 
 	SelectedStyle = lipgloss.NewStyle().
 		Background(ColorSelectedBg).

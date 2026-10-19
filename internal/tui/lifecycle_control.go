@@ -2,6 +2,7 @@ package tui
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // =============================================================================
@@ -152,6 +154,27 @@ func (m *AppModel) executeControlRequest(request control.Request, reply chan<- c
 		}
 		applySessionTheme(request.Text)
 		answer(reply, true, "Theme: "+request.Text)
+		return nil
+	case control.OpThemePalette:
+		if request.Text == "" {
+			if m.domain.runtime == nil || m.domain.runtime.Machine() == nil {
+				answer(reply, false, "machine theme is unavailable")
+				return nil
+			}
+			applySessionTheme(m.domain.runtime.Machine().Theme)
+			answer(reply, true, "Theme: saved")
+			return nil
+		}
+		var palette theme.GhosttyPalette
+		if err := json.Unmarshal([]byte(request.Text), &palette); err != nil {
+			answer(reply, false, "invalid theme palette: "+err.Error())
+			return nil
+		}
+		if err := theme.ApplyGhosttyPalette(palette); err != nil {
+			answer(reply, false, "invalid theme palette: "+err.Error())
+			return nil
+		}
+		answer(reply, true, "Theme: "+palette.Name)
 		return nil
 	case control.OpQuit:
 		if reason := m.quitBlockReason(); reason != "" {

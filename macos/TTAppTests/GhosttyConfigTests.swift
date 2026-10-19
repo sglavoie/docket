@@ -129,6 +129,29 @@ final class GhosttyConfigTests: XCTestCase {
             Ghostty.Config(userConfig: user, overrides: overrides).get("font-size", as: Float.self, initial: 0), 17)
     }
 
+    func testThemeSelectionOverridesTheUserThemeAndCanBeCleared() throws {
+        let user = try writeUserConfig("theme = Catppuccin Mocha\n")
+        var selected = overrides
+        selected.theme = "Catppuccin Latte"
+        XCTAssertTrue(selected.lines.contains("theme = Catppuccin Latte"))
+        let config = Ghostty.Config(userConfig: user, overrides: selected)
+        XCTAssertEqual(config.diagnostics, [])
+        let background = try XCTUnwrap(config.get("background", as: ghostty_config_color_s.self, initial: .init()))
+        XCTAssertEqual([background.r, background.g, background.b], [0xEF, 0xF1, 0xF5])
+
+        selected.theme = nil
+        XCTAssertFalse(selected.lines.contains { $0.hasPrefix("theme = ") })
+        let restored = Ghostty.Config(userConfig: user, overrides: selected)
+        let original = try XCTUnwrap(restored.get("background", as: ghostty_config_color_s.self, initial: .init()))
+        XCTAssertEqual([original.r, original.g, original.b], [0x1E, 0x1E, 0x2E])
+    }
+
+    func testThemeOverrideRejectsInjectedConfigLines() {
+        var selected = overrides
+        selected.theme = "Catppuccin Latte\ncommand = /bin/sh"
+        XCTAssertFalse(selected.lines.contains { $0.hasPrefix("theme = ") })
+    }
+
     func testUserConfigDiagnosticsAreReported() throws {
         let user = try writeUserConfig("not-a-real-ghostty-key = 1\n")
         let config = Ghostty.Config(userConfig: user, overrides: overrides)
@@ -155,6 +178,19 @@ final class GhosttyConfigTests: XCTestCase {
         XCTAssertEqual([background.r, background.g, background.b], [0x1E, 0x1E, 0x2E])
         let foreground = try XCTUnwrap(config.get("foreground", as: ghostty_config_color_s.self, initial: .init()))
         XCTAssertEqual([foreground.r, foreground.g, foreground.b], [0xCD, 0xD6, 0xF4])
+
+        let palette = try XCTUnwrap(config.themePalette(name: "Catppuccin Mocha"))
+        XCTAssertEqual(palette.background, "#1e1e2e")
+        XCTAssertEqual(palette.foreground, "#cdd6f4")
+        XCTAssertEqual(palette.palette.count, 16)
+        XCTAssertEqual(palette.palette[1], "#f38ba8")
+        let request = try XCTUnwrap(TTControlRequest.themePalette(palette))
+        let wire = try JSONSerialization.jsonObject(with: JSONEncoder().encode(request)) as? [String: Any]
+        XCTAssertEqual(wire?["op"] as? String, "theme_palette")
+        let inner = try XCTUnwrap((wire?["text"] as? String)?.data(using: .utf8))
+        let payload = try XCTUnwrap(JSONSerialization.jsonObject(with: inner) as? [String: Any])
+        XCTAssertEqual(payload["background"] as? String, "#1e1e2e")
+        XCTAssertEqual(payload["palette"] as? [String], palette.palette)
     }
 
     func testAppCreatesGhosttyAppObject() {

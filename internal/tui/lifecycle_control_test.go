@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"encoding/json"
 	"slices"
 	"strings"
 	"testing"
@@ -8,6 +9,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/control"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
@@ -429,6 +431,57 @@ func TestControlAppearanceAppliesForTheSessionAlone(t *testing.T) {
 		if theme.ActiveThemeName != want {
 			t.Fatalf("refused appearance %q changed the theme to %q", text, theme.ActiveThemeName)
 		}
+	}
+}
+
+func TestControlThemePaletteRepaintsAndRestoresSavedTheme(t *testing.T) {
+	env := controlEnv(t, reviewSettledTask(t, 1, "existing"))
+	saved := env.model.domain.runtime.Machine().Theme
+	savedBackground := config.DefaultTheme(saved).BackgroundColor
+	t.Cleanup(func() { applySessionTheme(saved) })
+	beforeUndo, beforeRedo := env.model.workspaceHistoryPreview()
+	setTestPresentationPath(env.model, presentation.ViewCrossProjectOutliner, presentation.ViewNotes)
+	p := theme.GhosttyPalette{
+		Name: "Test Theme", Background: "#f1e8d9", Foreground: "#27213a",
+		Cursor: "#543210", CursorText: "#ffffff",
+		SelectionBackground: "#e2cba6", SelectionForeground: "#27213a",
+		Palette: []string{"#27213a", "#9a1529", "#286536", "#856018", "#244d9a", "#753785", "#086778", "#d6d0c2",
+			"#554d60", "#b93747", "#408045", "#a3782a", "#4770b1", "#98559e", "#34808e", "#fffaf0"},
+	}
+	data, err := json.Marshal(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reply := env.request(t, control.Request{Op: control.OpThemePalette, Text: string(data)}); !reply.OK || reply.Message != "Theme: Test Theme" {
+		t.Fatalf("reply = %+v", reply)
+	}
+	if theme.ThemeBgColor != p.Background || theme.ColorNormalText != p.Foreground || theme.ActiveThemeName != "light" {
+		t.Fatalf("TUI palette not applied: background %q, foreground %q, variant %q", theme.ThemeBgColor, theme.ColorNormalText, theme.ActiveThemeName)
+	}
+	painted := env.model.View().Content
+	if !strings.Contains(painted, hexToBgEsc(p.Background)) || !strings.Contains(painted, hexToFgEsc(p.Foreground)) {
+		t.Fatal("rendered view does not contain the selected theme's background and foreground")
+	}
+	if theme.ColorPrimary == theme.ColorError {
+		t.Fatal("theme did not retain distinct semantic colors")
+	}
+	if got := env.model.domain.runtime.Machine().Theme; got != saved {
+		t.Fatalf("machine theme = %q, want %q", got, saved)
+	}
+	if undo, redo := env.model.workspaceHistoryPreview(); undo != beforeUndo || redo != beforeRedo {
+		t.Fatalf("theme wrote history: undo %q, redo %q", undo, redo)
+	}
+	if reply := env.request(t, control.Request{Op: control.OpThemePalette, Text: "bad json"}); reply.OK {
+		t.Fatalf("accepted invalid palette: %+v", reply)
+	}
+	if theme.ThemeBgColor != p.Background {
+		t.Fatal("invalid palette changed the theme")
+	}
+	if reply := env.request(t, control.Request{Op: control.OpThemePalette}); !reply.OK {
+		t.Fatalf("clear palette reply = %+v", reply)
+	}
+	if theme.ThemeBgColor != savedBackground {
+		t.Fatalf("clear palette background = %q, want %q", theme.ThemeBgColor, savedBackground)
 	}
 }
 

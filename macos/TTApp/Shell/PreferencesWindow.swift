@@ -112,6 +112,49 @@ final class PreferencesModel: ObservableObject {
         }
     }
 
+    /// A selected Ghostty theme, or nil to use the Ghostty config.
+    @Published var terminalTheme: TerminalTheme? {
+        didSet {
+            guard terminalTheme != oldValue else { return }
+            TTTerminalThemePreference.save(terminalTheme, to: defaults)
+            onTerminalThemeChange?()
+        }
+    }
+
+    @Published var availableThemes: [String]
+
+    var themeName: String? {
+        get { terminalTheme?.light }
+        set { terminalTheme = newValue.flatMap { TerminalTheme($0, dark: terminalTheme?.dark) } }
+    }
+
+    var separateDarkTheme: Bool {
+        get { terminalTheme?.dark != nil }
+        set {
+            guard var theme = terminalTheme else { return }
+            theme.dark = newValue ? theme.light : nil
+            terminalTheme = theme
+        }
+    }
+
+    var darkThemeName: String {
+        get { terminalTheme.map { $0.dark ?? $0.light } ?? "" }
+        set {
+            guard let light = terminalTheme?.light,
+                  let theme = TerminalTheme(light, dark: newValue) else { return }
+            terminalTheme = theme
+        }
+    }
+
+    /// Keep a saved choice visible even if its theme file was removed.
+    var themeChoices: [String] {
+        var choices = availableThemes
+        for name in [terminalTheme?.light, terminalTheme?.dark].compactMap({ $0 }) where !choices.contains(name) {
+            choices.append(name)
+        }
+        return choices
+    }
+
     /// The size the terminal uses while `defaultFontSize` is nil: the Ghostty
     /// config's, set by whoever loads it.
     @Published var configFontSize: Float = 13
@@ -198,6 +241,7 @@ final class PreferencesModel: ObservableObject {
     var onHotKeyChange: ((HotKeyCombo?) -> Void)?
     var onCaptureHotKeyChange: ((HotKeyCombo?) -> Void)?
     var onDefaultFontSizeChange: ((Float?) -> Void)?
+    var onTerminalThemeChange: (() -> Void)?
     var onDockBadgeChange: ((Bool) -> Void)?
     var onFollowAppearanceChange: ((Bool) -> Void)?
     /// True while the recorder listens, so the live shortcuts can step aside
@@ -215,6 +259,8 @@ final class PreferencesModel: ObservableObject {
         hotKey = TTHotKeyPreference.load(from: defaults)
         captureHotKey = TTCaptureHotKeyPreference.load(from: defaults)
         defaultFontSize = TTDefaultFontSize.load(from: defaults)
+        terminalTheme = TTTerminalThemePreference.load(from: defaults)
+        availableThemes = TerminalTheme.available()
         notificationsEnabled = TTNotificationsPreference.load(from: defaults)
         dockBadge = TTDockBadgePreference.load(from: defaults)
         followAppearance = TTFollowAppearancePreference.load(from: defaults)
@@ -229,6 +275,8 @@ final class PreferencesModel: ObservableObject {
     /// Settings or a `defaults write`.
     func refresh() {
         exitBehavior = .load(from: defaults)
+        terminalTheme = TTTerminalThemePreference.load(from: defaults)
+        availableThemes = TerminalTheme.available()
         let stored = defaults.string(forKey: TTBinaryResolver.overrideDefaultsKey) ?? ""
         if stored != binaryOverride.trimmingCharacters(in: .whitespacesAndNewlines) {
             binaryOverride = stored
@@ -542,6 +590,23 @@ struct PreferencesView: View {
                     ? "The Ghostty config's font size. "
                     : "Overrides the Ghostty config's font-size. ")
                     + "⌘+ and ⌘− zoom until tt.app quits; each launch and ⌘0 return to this size.")
+
+                Picker("Theme", selection: $model.themeName) {
+                    Text("From the Ghostty config").tag(String?.none)
+                    Divider()
+                    ForEach(model.themeChoices, id: \.self) { Text($0).tag(String?.some($0)) }
+                }
+                Toggle("Use another theme in Dark Mode", isOn: $model.separateDarkTheme)
+                    .disabled(model.themeName == nil)
+                if model.separateDarkTheme {
+                    Picker("Dark Mode theme", selection: $model.darkThemeName) {
+                        ForEach(model.themeChoices, id: \.self) { Text($0).tag($0) }
+                    }
+                }
+                note((model.themeName == nil
+                    ? "Uses the Ghostty config's theme. "
+                    : "Overrides the Ghostty config's theme; colors it sets individually still apply. ")
+                    + "Changing this recolors the open terminal without changing its zoom.")
             }
 
             Section {

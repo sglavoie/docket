@@ -70,17 +70,21 @@ type SectionColorEntry struct {
 }
 
 // SectionColorPalette defines the available colors for sections (dark-theme hex values).
-var SectionColorPalette = []SectionColorEntry{
-	{"gray", lipgloss.Color("#565f89")},
-	{"red", lipgloss.Color("#f7768e")},
-	{"orange", ColorOrange},
-	{"yellow", lipgloss.Color("#e0af68")},
-	{"green", lipgloss.Color("#9ece6a")},
-	{"cyan", lipgloss.Color("#73daca")},
-	{"blue", lipgloss.Color("#7aa2f7")},
-	{"purple", ColorPurple},
-	{"magenta", lipgloss.Color("#ff6b9d")},
-	{"white", lipgloss.Color("#c0caf5")},
+var SectionColorPalette = defaultSectionColorPalette()
+
+func defaultSectionColorPalette() []SectionColorEntry {
+	return []SectionColorEntry{
+		{"gray", lipgloss.Color("#565f89")},
+		{"red", lipgloss.Color("#f7768e")},
+		{"orange", ColorOrange},
+		{"yellow", lipgloss.Color("#e0af68")},
+		{"green", lipgloss.Color("#9ece6a")},
+		{"cyan", lipgloss.Color("#73daca")},
+		{"blue", lipgloss.Color("#7aa2f7")},
+		{"purple", ColorPurple},
+		{"magenta", lipgloss.Color("#ff6b9d")},
+		{"white", lipgloss.Color("#c0caf5")},
+	}
 }
 
 // sectionColorLight maps color names to muted hex values for light theme readability.
@@ -104,7 +108,7 @@ func GetSectionColorValue(colorName string) color.Color {
 	if colorName == "" {
 		return nil
 	}
-	if ActiveThemeName == "light" {
+	if ActiveThemeName == "light" && activeGhosttyPalette == nil {
 		if c, ok := sectionColorLight[colorName]; ok {
 			return c
 		}

@@ -87,6 +87,14 @@ func tagChipRamp(variant string) []color.Color {
 
 // rebuildTagChipColors re-resolves the chip ramp for the active theme.
 func rebuildTagChipColors() {
+	if activeGhosttyPalette != nil {
+		ramp := make([]color.Color, 6)
+		for i := range ramp {
+			ramp[i] = lipgloss.Color(legibleHex(activeGhosttyPalette.Palette[i+1], activeGhosttyPalette.Background, 4.5))
+		}
+		tagChipColors = ramp
+		return
+	}
 	tagChipColors = tagChipRamp(ActiveThemeName)
 }
 
@@ -128,6 +136,25 @@ func lightenHex(hex string, factor float64) string {
 
 // rebuildAccentColors sets pipeline accent colors appropriate for the active theme.
 func rebuildAccentColors() {
+	if p := activeGhosttyPalette; p != nil {
+		visible := func(index int) color.Color { return lipgloss.Color(legibleHex(p.Palette[index], p.Background, 4.5)) }
+		AccentCapture, AccentTriage, AccentPlan = visible(1), visible(6), visible(2)
+		AccentWork, AccentExecute, AccentSupport, AccentSearch = visible(3), visible(6), visible(8), visible(5)
+		ColorViewStandby, ColorViewSomeday = visible(5), visible(13)
+		ColorPurple, ColorOrange = visible(5), visible(3)
+		ColorRuleKeyword, ColorRuleOperator = visible(6), visible(5)
+		SectionColorPalette = []SectionColorEntry{
+			{"gray", visible(8)}, {"red", visible(1)}, {"orange", visible(3)},
+			{"yellow", visible(11)}, {"green", visible(2)}, {"cyan", visible(6)},
+			{"blue", visible(4)}, {"purple", visible(5)}, {"magenta", visible(13)},
+			{"white", lipgloss.Color(p.Foreground)},
+		}
+		return
+	}
+	ColorViewStandby, ColorViewSomeday = lipgloss.Color("#bb9af7"), lipgloss.Color("#9d7cd8")
+	ColorPurple, ColorOrange = lipgloss.Color("#bb9af7"), lipgloss.Color("#ff9e64")
+	ColorRuleKeyword, ColorRuleOperator = lipgloss.Color("#7dcfff"), lipgloss.Color("#bb9af7")
+	SectionColorPalette = defaultSectionColorPalette()
 	if ActiveThemeName == "light" {
 		AccentCapture = lipgloss.Color("#b91c1c")
 		AccentTriage = lipgloss.Color("#0e7490")

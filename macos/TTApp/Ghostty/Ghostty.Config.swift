@@ -20,6 +20,9 @@ extension Ghostty {
         var waitAfterCommand = false
         /// The font size in points, or nil to keep the user config's.
         var fontSize: Float?
+        /// A Ghostty theme name, or light/dark theme pair. Nil keeps the
+        /// theme from the user's Ghostty config.
+        var theme: String?
 
         /// The override file's lines, in the order Ghostty reads them.
         var lines: [String] {
@@ -30,6 +33,9 @@ extension Ghostty {
             ]
             if let fontSize {
                 lines.append("font-size = \(Self.number(fontSize))")
+            }
+            if let theme, Self.isSingleLine(theme), !theme.isEmpty {
+                lines.append("theme = \(theme)")
             }
             for key in environment.keys.sorted() {
                 guard let value = environment[key], Self.isSingleLine(key), Self.isSingleLine(value) else {
@@ -61,7 +67,7 @@ extension Ghostty {
         }
 
         private static func isSingleLine(_ s: String) -> Bool {
-            s.rangeOfCharacter(from: .newlines) == nil
+            s.rangeOfCharacter(from: .newlines) == nil && !s.contains("\0")
         }
     }
 
@@ -124,6 +130,33 @@ extension Ghostty {
         /// The configured default background, before any program changes it.
         var backgroundColor: NSColor? {
             self.get("background", as: ghostty_config_color_s.self, initial: ghostty_config_color_s()).map(Ghostty.color)
+        }
+
+        /// Ghostty has already resolved the named theme and any user config
+        /// into these effective colors. The first 16 palette entries are ANSI.
+        func themePalette(name: String) -> TerminalThemePalette? {
+            func color(_ key: String) -> String? {
+                get(key, as: ghostty_config_color_s.self, initial: .init()).map(Self.hex)
+            }
+            guard let background = color("background"), let foreground = color("foreground"),
+                  var ansi = get("palette", as: ghostty_config_palette_s.self, initial: .init()) else { return nil }
+            let colors = withUnsafePointer(to: &ansi.colors) { pointer in
+                pointer.withMemoryRebound(to: ghostty_config_color_s.self, capacity: 256) { entries in
+                    (0..<16).map { Self.hex(entries[$0]) }
+                }
+            }
+            return TerminalThemePalette(
+                name: name, background: background, foreground: foreground,
+                cursor: color("cursor-color") ?? foreground,
+                cursorText: color("cursor-text") ?? background,
+                selectionBackground: color("selection-background") ?? foreground,
+                selectionForeground: color("selection-foreground") ?? background,
+                palette: colors
+            )
+        }
+
+        private static func hex(_ color: ghostty_config_color_s) -> String {
+            String(format: "#%02x%02x%02x", color.r, color.g, color.b)
         }
 
         private static func load(userConfig: URL?, overrides: ConfigOverrides) -> ghostty_config_t? {
