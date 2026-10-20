@@ -32,6 +32,18 @@
     { "type": "assert", "assert": "contains", "value": "Redo workspace change" },
     { "type": "assert", "label": "both ends are spelled as the whole paths the panel answers", "assert": "contains", "value": "gg/Home" },
     { "type": "assert", "assert": "contains", "value": "G/End" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "close help", "key": "esc" },
+    { "type": "key", "label": "return to the task row", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "resize", "width": 60, "height": 24 },
+    { "type": "assert", "label": "the attachment glyph survives a narrow row with Peek closed", "assert": "contains", "value": "📎" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "undo the only attachment from the outline", "key": "u" },
+    { "type": "assert", "label": "the glyph disappears with the last attachment", "assert": "not_contains", "value": "📎" },
+    { "type": "key", "label": "restore the attachment", "key": "ctrl+r" },
+    { "type": "assert", "label": "the glyph returns after redo", "assert": "contains", "value": "📎" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

@@ -127,6 +127,10 @@ and the checklist, comment, and attachment counts. None of those is gone: `b`
 opens Peek on the same row and shows every one of them at full value, unclipped,
 rather than in a fixed-width badge the row had to buy out of the title.
 
+A paperclip (`📎`) after the title means the task has one or more attachments,
+including files, URLs, and code references. It stays visible on narrow rows.
+Press `&` to open the attachments panel; Peek shows the count and details.
+
 Context appears on the task row immediately after the project label, as
 `[project] [context]`. When the project is named by a group header, the task
 shows its context before the title. Long contexts are shortened to fit; `#`

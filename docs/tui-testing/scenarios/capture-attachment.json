@@ -19,6 +19,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "assert", "label": "the row leaves the attachment count to Peek and the panel below", "assert": "not_contains", "value": "⊕ 1" },
+    { "type": "assert", "label": "attachment presence is visible without Peek", "assert": "contains", "value": "📎" },
 
     { "type": "key", "key": "home" },
     { "type": "key", "label": "past the Inbox section header", "key": "j" },

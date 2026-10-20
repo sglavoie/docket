@@ -23,6 +23,7 @@ type taskRowSegments struct {
 	cursorPrefix, prefixStr, foldIndicator string
 	statusIcon, prioritySegment, pinMarker string
 	indicators, relationMarker, matchCue   string
+	attachmentMarker                       string
 	// projectLabel names the task's project where no heading above it does: the
 	// ranked list, which draws no group headers, and the one row a merged
 	// singleton group draws in place of its header. Context follows that label,
@@ -35,7 +36,7 @@ func (s taskRowSegments) titleWidth(rowWidth int) int {
 	return max(rowWidth-outlinerNonTitleWidth(
 		s.cursorPrefix, s.prefixStr, s.foldIndicator,
 		s.statusIcon, s.prioritySegment, s.projectLabel, s.pinMarker,
-		s.indicators, s.relationMarker, s.matchCue,
+		s.indicators, s.relationMarker, s.attachmentMarker, s.matchCue,
 	), 1)
 }
 
@@ -67,7 +68,16 @@ func (s taskRowSegments) contentPrefix() string {
 
 // content keeps semantic colors under the cursor; the match cue closes the row.
 func (s taskRowSegments) content(title string) string {
-	return s.contentPrefix() + title + s.relationMarker + s.indicators + s.matchCue
+	return s.contentPrefix() + title + s.attachmentMarker + s.relationMarker + s.indicators + s.matchCue
+}
+
+// taskAttachmentMarker reserves a presence cue even when the row sheds its
+// optional indicators. Counts and attachment details remain in Peek.
+func taskAttachmentMarker(task *models.Task) string {
+	if task == nil || !task.HasAttachments() {
+		return ""
+	}
+	return theme.MutedStyle.Render(" 📎")
 }
 
 // taskRelationMarker names the family the outline placed elsewhere: `‹` for a
@@ -265,17 +275,18 @@ func (m *OutlinerModel) buildTaskRowSegmentsFor(row OutlinerRow, rowWidth int, c
 	prefixStr, foldIndicator := renderTaskPrefix(prefix, foldIndicator, bg, m.treeConnectorStyle(row))
 
 	segments := taskRowSegments{
-		cursorPrefix:    m.renderTaskCursorColumn(row, paint),
-		prefixStr:       prefixStr,
-		foldIndicator:   foldIndicator,
-		statusIcon:      statusIcon,
-		prioritySegment: prioritySegment,
-		projectLabel:    m.taskProjectLabel(row, rowWidth, colLayout),
-		projectFirst:    row.LeadsMergedGroup,
-		pinMarker:       m.taskPinnedMarker(row),
-		indicators:      indicatorSegments.render(),
-		relationMarker:  m.taskRelationMarker(row),
-		matchCue:        taskMatchSourceCue(row),
+		cursorPrefix:     m.renderTaskCursorColumn(row, paint),
+		prefixStr:        prefixStr,
+		foldIndicator:    foldIndicator,
+		statusIcon:       statusIcon,
+		prioritySegment:  prioritySegment,
+		projectLabel:     m.taskProjectLabel(row, rowWidth, colLayout),
+		projectFirst:     row.LeadsMergedGroup,
+		pinMarker:        m.taskPinnedMarker(row),
+		attachmentMarker: taskAttachmentMarker(task),
+		indicators:       indicatorSegments.render(),
+		relationMarker:   m.taskRelationMarker(row),
+		matchCue:         taskMatchSourceCue(row),
 	}
 
 	// Preserve a readable title before secondary metadata on narrow/deep rows.

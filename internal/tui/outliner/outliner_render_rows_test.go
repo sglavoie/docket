@@ -226,8 +226,8 @@ func TestCrossProjectProjectIdentityHasExactlyOneCarrier(t *testing.T) {
 }
 
 // TestOutlinerTaskRowLeavesSupportingCountsToPeek keeps the checklist, comment,
-// and attachment counts out of the row at its widest. They were never a reason
-// to act on a task, only a reason to open one, and opening one is what Peek is.
+// and attachment counts out of the row. Attachment presence remains visible
+// without opening Peek, regardless of how many attachments the task holds.
 func TestOutlinerTaskRowLeavesSupportingCountsToPeek(t *testing.T) {
 	task := &models.Task{
 		ID:            "task",
@@ -252,6 +252,29 @@ func TestOutlinerTaskRowLeavesSupportingCountsToPeek(t *testing.T) {
 	for _, want := range []string{"1/2 done", "design.pdf", "Comments"} {
 		if !strings.Contains(peek, want) {
 			t.Fatalf("Peek lost %q:\n%s", want, peek)
+		}
+	}
+
+	for _, attachments := range [][]models.Attachment{
+		nil,
+		{{Filename: "design.pdf"}},
+		{{Filename: "design.pdf"}, {Filename: "notes.txt"}},
+	} {
+		task.Attachments = attachments
+		want := 0
+		if len(attachments) > 0 {
+			want = 1
+		}
+		for _, width := range []int{60, 120} {
+			for _, selected := range []bool{false, true} {
+				plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, selected, width, 0, nil))
+				if strings.Count(plain, "📎") != want {
+					t.Fatalf("%d attachments should draw %d paperclips: %q", len(attachments), want, plain)
+				}
+				if lipgloss.Width(plain) > width || !strings.Contains(plain, task.Title) {
+					t.Fatalf("attachment marker displaced the title or exceeded width %d: %q", width, plain)
+				}
+			}
 		}
 	}
 }

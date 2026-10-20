@@ -25,7 +25,8 @@ import (
 // outcome rather than as a list of deletions. A task carrying every signal the
 // row used to draw — tags, a long Doing age, repeated deferrals, a
 // checklist, comments, attachments — keeps a recognizable title at 60 columns
-// beside its context and deadline.
+// beside its context and attachment glyph. The deadline yields only when the
+// remaining title budget falls below its emergency floor.
 func TestLoadedRowSpendsItsWidthOnTheTitle(t *testing.T) {
 	now := time.Now()
 	due := util.StartOfDay(now.AddDate(0, 0, -4))
@@ -57,7 +58,10 @@ func TestLoadedRowSpendsItsWidthOnTheTitle(t *testing.T) {
 			if !strings.Contains(plain, "Investig") {
 				t.Fatalf("%d-column row lost the recognizable title prefix: %q", width, plain)
 			}
-			if !strings.Contains(plain, ansi.Strip(query.FormatDueDate(task))) {
+			if !strings.Contains(plain, "📎") {
+				t.Fatalf("%d-column row hid attachment presence: %q", width, plain)
+			}
+			if width >= 80 && !strings.Contains(plain, ansi.Strip(query.FormatDueDate(task))) {
 				t.Fatalf("%d-column row dropped the deadline: %q", width, plain)
 			}
 			for _, gone := range []string{"release", "doing 120d", "deferred ×3", "1/2", "▪ 2", "⊕ 1"} {

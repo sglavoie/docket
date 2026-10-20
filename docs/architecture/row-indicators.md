@@ -10,8 +10,11 @@ recency chip — is now read in Peek, at full value rather than in a fixed-width
 badge. The trade is deliberate and one-directional: a row is scanned to decide
 what to do next, so it carries required interaction context and spends every
 other column on the title, while Peek is the complete document one `b` away.
-Nothing was deleted from the product; each signal has exactly one surface now
-instead of a truncated copy and a whole one.
+Attachment presence is a reserved `📎` segment after the title, rendered by
+`taskAttachmentMarker` from `Task.HasAttachments()`. It carries no count and
+stays outside `indicatorDropLadder`, so narrowing the row never hides it.
+`taskRowSegments` charges its display width before fitting the title, including
+for inline editing and project previews. Counts and details remain in Peek.
 
 `taskIdentityLabel` joins `[project] [context]` before alignment padding.
 Rows under a project header carry the context alone. The shared project column
