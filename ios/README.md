@@ -237,12 +237,17 @@ Swipes reveal buttons without committing an action until tapped. These
 shortcuts are available outside selection mode, and an action the engine
 refuses is explained above the list. Successful swipe actions name the task
 and result in a brief confirmation, announced to VoiceOver, with **Undo** for
-that exact transaction. A newer action or an intervening edit can make Undo
+that exact transaction. Task detail actions, task edits, and bulk actions use the
+same confirmation and Undo; bulk confirmations name the number of tasks affected.
+Undoing a project move while reading its task returns the detail to the original
+project. A newer action or an intervening edit can make Undo
 unavailable; it never reverses a different action instead.
 
 Search names its scope in the field before typing: **Search in Today**, for
 example. It stays within that list, unlike the terminal’s ranked search across
-modes. A transient refresh failure keeps the last successful list and reading
+modes. An empty scoped or filtered search offers **Search All with this query**:
+it opens All across active projects with the same query and without the list's
+filters. Back returns to the original search and its position. A transient refresh failure keeps the last successful list and reading
 position, names that the results are from before the failure, and offers
 **Retry**. Invalid searches and unavailable workspaces replace the old results.
 Task details likewise retain the same task after a temporary refresh failure,
@@ -388,7 +393,10 @@ go build -trimpath -o /tmp/bridgehost ./mobile/bridgehost
 ```
 
 The sync sheet lists the open conflicts from the phone's own history, so they
-read with the exchange unreachable. A conflict shows what differs, the version
+read with the exchange unreachable. Loading and read failures are distinct from
+an empty successful read; **Retry** rereads after a failure. “No conflicts found
+on this device” describes the local history, not delivery from every device.
+A conflict shows what differs, the version
 every side started from, and each competing version with the device and change
 that wrote it. A version reads as a diff against that starting version, removed
 lines in red and added lines in green under `@@` hunk headers, and **Show Whole
@@ -396,10 +404,19 @@ File** swaps in its full text. **Keep This Version** keeps that side of what con
 rest of what both devices changed, plus the same change's side of any other
 file it touched; **Keep What This iPhone Has Now** and, for tasks and notes,
 **Write a Replacement…** resolve it otherwise. A conflict that changed after it
-was opened is refused without writing and read again. While the exchange
-fails, a banner says everything is saved on the iPhone and offers **Retry**;
-the sheet's Recovery section repeats the retry and exports a diagnostics file
-(under `devices/<name>/diagnostics/`) to share.
+was opened is refused without writing and read again.
+
+Replacement drafts are saved locally as you edit. **Close** keeps the draft;
+**Discard…** asks before deleting it, and starting from another version asks
+before replacing edited text. Reopening or relaunching restores the draft without
+submitting it. If the conflict has changed, review its updated versions and
+explicitly choose **Use Draft for These Versions** before saving. Failed draft
+writes use the shared recovery warning and Retry, and unreadable drafts are
+preserved before replacement.
+
+While the exchange fails, a banner says everything is saved on the iPhone and
+offers **Retry**; the sheet's Recovery section repeats the retry and exports a
+diagnostics file (under `devices/<name>/diagnostics/`) to share.
 
 `ios/scripts/record-icloud-exchange.sh` records the same contract between this
 Mac and a physical iPhone over iCloud Drive. First install the app on the

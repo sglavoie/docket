@@ -84,6 +84,12 @@ struct TaskListView: View {
     let workspace: WorkspaceModel
     let source: ListSource
 
+    init(workspace: WorkspaceModel, source: ListSource, initialSearch: String = "") {
+        self.workspace = workspace
+        self.source = source
+        _search = State(initialValue: initialSearch)
+    }
+
     @State private var rows: [TaskRow] = []
     @State private var projectNotes: [NoteRecord] = []
     @State private var notesFailure: String?
@@ -97,7 +103,6 @@ struct TaskListView: View {
     @State private var selecting = false
     @State private var selection = Set<TaskLocator>()
     @State private var actionFailure: String?
-    @State private var receipt: TaskActionReceipt?
     @State private var refreshFailure: String?
     @State private var lastLoadedQuery: QueryKey?
     @State private var loadRequest: UUID?
@@ -210,16 +215,6 @@ struct TaskListView: View {
                 NoteEditorView(workspace: workspace, location: note.location, filename: note.filename)
             }
             .refreshable { await workspace.refresh() }
-            .task(id: receipt?.id) {
-                guard let shown = receipt else { return }
-                let remaining = (UIAccessibility.isVoiceOverRunning ? 15.0 : 8.0) - Date().timeIntervalSince(shown.createdAt)
-                guard remaining > 0 else { receipt = nil; return }
-                UIAccessibility.post(notification: .announcement, argument: shown.message)
-                do {
-                    try await Task.sleep(for: .seconds(remaining))
-                    if receipt?.id == shown.id { receipt = nil }
-                } catch { }
-            }
             .task(id: LoadKey(generation: workspace.generation, retry: retry, query: queryKey)) {
                 if !search.isEmpty {
                     try? await Task.sleep(for: .milliseconds(250))
@@ -252,6 +247,17 @@ struct TaskListView: View {
                         if !search.isEmpty {
                             Button("Clear Search") { search = "" }
                                 .accessibilityIdentifier("list.clearSearch")
+                            if source.mode != "all" || source.scope != nil || source.lens != nil || filter.isActive {
+                                NavigationLink {
+                                    TaskListView(workspace: workspace, source: .mode("all", title: "All"), initialSearch: search)
+                                } label: {
+                                    Text("Search All with this query")
+                                }
+                                .accessibilityIdentifier("list.searchAll")
+                                Text("Search all active projects and modes, without this list’s filters.")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                         if filter.isActive {
                             Button("Clear Filters") { filter = TaskFilter() }
@@ -490,10 +496,9 @@ struct TaskListView: View {
         guard !acting else { return }
         acting = true
         actionFailure = nil
-        receipt = nil
         Task {
             switch await workspace.listAction(locator, action) {
-            case .success(let committed): receipt = committed
+            case .success: break
             case .failure(let failure):
                 actionFailure = failure.message
                 UIAccessibility.post(notification: .announcement, argument: failure.message)
@@ -502,32 +507,9 @@ struct TaskListView: View {
         }
     }
 
-    private func undo(_ shown: TaskActionReceipt) {
-        guard !acting else { return }
-        acting = true
-        Task {
-            actionFailure = await workspace.undoReceipt(shown)
-            receipt = actionFailure == nil ? TaskActionReceipt(message: "Undone: \(shown.message)", transactionID: nil) : nil
-            if let actionFailure { UIAccessibility.post(notification: .announcement, argument: actionFailure) }
-            acting = false
-        }
-    }
-
     @ViewBuilder
     private var feedback: some View {
-        if let receipt {
-            feedbackRow(receipt.message, identifier: "list.receipt") {
-                if receipt.transactionID != nil {
-                    Button("Undo") { undo(receipt) }
-                        .frame(minWidth: 44, minHeight: 44)
-                        .disabled(acting)
-                        .accessibilityIdentifier("list.undo")
-                }
-                Button { self.receipt = nil } label: { Image(systemName: "xmark") }
-                    .frame(minWidth: 44, minHeight: 44)
-                    .accessibilityLabel("Dismiss confirmation")
-            }
-        }
+        TaskActionFeedback(workspace: workspace, prefix: "list")
         if let refreshFailure {
             feedbackRow(refreshFailure, identifier: "list.refreshFailure") {
                 Button("Retry") { retry += 1 }

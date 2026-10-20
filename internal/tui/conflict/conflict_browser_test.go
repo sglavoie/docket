@@ -302,11 +302,20 @@ func TestConflictBrowserListsSyncConflicts(t *testing.T) {
 	detail := strings.Join(browser.detail, "\n")
 	for _, want := range []string{"Sync conflict abcdef0123456789", "Tasks in Unfiled", "[1] content 11111111 · held meanwhile", "[2] content 22222222",
 		"edit on desk, this device at 2026-10-06T09:00:00Z · aaaaaaaa", "edit outside tt on Laptop (laptop) · bbbbbbbb",
-		"Started from:", "│ ## Task: Shared task", "│ ## Task: Laptop title", "keeping it also keeps this change's Today and Next",
+		"Started from:", "│ ## Task: Shared task", "│ ## Task: Laptop title", "Keeping this version also resolves: Today and Next",
 		"Holding:   content 11111111", "task title: competing edits", "nothing was lost", "v keep selected version"} {
 		if !strings.Contains(detail, want) {
 			t.Fatalf("detail does not show %q:\n%s", want, detail)
 		}
+	}
+	summaryEnd := strings.Index(detail, "File contents")
+	for _, want := range []string{"Tasks in Unfiled", "task title: competing edits", "edit on desk (this device)", "edit outside tt on Laptop", "Keeping this version also resolves: Today and Next"} {
+		if at := strings.Index(detail, want); at < 0 || at >= summaryEnd {
+			t.Fatalf("decision summary omitted %q before file contents:\n%s", want, detail)
+		}
+	}
+	if strings.Index(detail, "Diagnostics:") < strings.Index(detail, "│ ## Task: Laptop title") {
+		t.Fatal("diagnostics displaced the decision and file contents")
 	}
 	if loads != 0 {
 		t.Fatalf("inspecting a sync conflict reloaded %d bundles", loads)

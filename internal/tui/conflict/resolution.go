@@ -45,7 +45,9 @@ func (model *ConflictBrowserModel) rebuildDetail() {
 			if model.diffBase {
 				before, label, prefix = entry.BaseText, "Base", "base/"
 			}
-			model.detail = []string{entry.Label, fmt.Sprintf("%s → version %d of %d · [/] change version", label, model.version+1, len(entry.Versions)), ""}
+			model.detail = []string{entry.Label, fmt.Sprintf("%s → version %d of %d · [/] change version", label, model.version+1, len(entry.Versions))}
+			model.detail = append(model.detail, syncConflictVersionSummary(version)...)
+			model.detail = append(model.detail, "")
 			if before == nil || version.Text == nil {
 				model.detail = append(model.detail, "Text diff unavailable for binary, oversized, or missing content.")
 				model.detail = append(model.detail, syncConflictBody(version.Content)...)

@@ -256,7 +256,9 @@ See [tt.app](../../macos/README.md#talking-to-tt) for host behavior and
 
 `gc` opens the conflict browser in the TUI and desktop app. It lists recorded
 bundles newest first, followed by sync conflicts. `Enter` inspects the selected
-conflict; `d` toggles a Git-style diff against the current content (recorded
+conflict. Sync conflict details lead with what differs, the devices that wrote
+each version, and the other files keeping that version would resolve. Full file
+contents and diagnostic identifiers follow that explanation. `d` toggles a Git-style diff against the current content (recorded
 remote content for project bundles). `b` switches to or from the base comparison. Project bundles offer
 `l` to keep local and `r` to keep the current remote; sync conflicts use `[`/`]`
 to select a version, `v` to keep it, and `c` to keep the current content. `e`

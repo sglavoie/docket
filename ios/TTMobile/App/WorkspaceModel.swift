@@ -4,6 +4,7 @@ import Observation
 import TTEngine
 import TTReminders
 import TTShared
+import UIKit
 
 /// Where the app stands with its workspace. Each phase has its own screen, so
 /// a slow open, a first launch, a workspace that went missing, and one this
@@ -30,6 +31,8 @@ final class WorkspaceModel {
     private(set) var location: WorkspaceLocation? {
         didSet {
             if oldValue?.runtime != location?.runtime {
+                actionReceipt = nil
+                undoneReceipt = nil
                 if let location {
                     let store = draftStores[location.runtime] ?? DraftStore(location: location)
                     draftStores[location.runtime] = store
@@ -43,6 +46,9 @@ final class WorkspaceModel {
     // A workspace switch must not drop recovery text whose disk write failed.
     @ObservationIgnored private var draftStores: [URL: DraftStore] = [:]
     private(set) var generation = 0
+    private(set) var actionReceipt: TaskActionReceipt?
+    private(set) var undoneReceipt: TaskActionReceipt?
+    private(set) var undoing = false
     /// The last mutation refusal, shown until the next one succeeds.
     private(set) var failure: String?
     private(set) var isJoining = false
@@ -297,18 +303,28 @@ final class WorkspaceModel {
     }
 
     func edit(_ locator: TaskLocator, _ edit: TaskEdit) async -> String? {
-        await attempt { _ = try await self.engine.edit(locator, edit) }
+        await attempt {
+            let result = try await self.engine.edit(locator, edit)
+            self.recordReceipt("Saved changes to “\(result.task.title)”", result.committed)
+        }
     }
 
     func plan(_ locator: TaskLocator, _ action: PlanAction) async -> String? {
-        await attempt { _ = try await self.engine.plan(locator, action) }
+        switch await listAction(locator, .plan(action)) {
+        case .success: nil
+        case .failure(let failure): failure.message
+        }
     }
 
     func transition(_ locator: TaskLocator, to state: WorkflowState) async -> String? {
-        await attempt { _ = try await self.engine.transition(locator, to: state) }
+        switch await listAction(locator, .transition(state)) {
+        case .success: nil
+        case .failure(let failure): failure.message
+        }
     }
 
     func listAction(_ locator: TaskLocator, _ action: TaskListAction) async -> Result<TaskActionReceipt, TaskActionFailure> {
+        actionReceipt = nil
         do {
             let result: TaskMutation
             switch action {
@@ -317,39 +333,87 @@ final class WorkspaceModel {
             }
             changed(.localChange)
             sync.exchange()
-            return .success(TaskActionReceipt(message: action.message(title: result.task.title),
-                                              transactionID: result.committed.transactionID.isEmpty ? nil : result.committed.transactionID))
+            return .success(recordReceipt(action.message(title: result.task.title), result.committed))
         } catch {
             return .failure(TaskActionFailure(message: Self.describe(error)))
         }
     }
 
     func undoReceipt(_ receipt: TaskActionReceipt) async -> String? {
+        guard !undoing else { return "Undo is already in progress." }
         guard let transactionID = receipt.transactionID else { return "This action has no change to undo." }
-        return await attempt { _ = try await self.engine.undo(transactionID: transactionID) }
+        undoing = true
+        defer { undoing = false }
+        return await attempt(clearingReceipt: false) {
+            _ = try await self.engine.undo(transactionID: transactionID)
+            self.undoneReceipt = receipt
+            if self.actionReceipt?.id == receipt.id {
+                self.actionReceipt = TaskActionReceipt(message: "Undone: \(receipt.message)", transactionID: nil)
+                UIAccessibility.post(notification: .announcement, argument: self.actionReceipt?.message)
+            }
+        }
+    }
+
+    func dismissReceipt(_ id: UUID) {
+        if actionReceipt?.id == id { actionReceipt = nil }
+    }
+
+    @discardableResult
+    private func recordReceipt(_ message: String, _ committed: CommittedEffect, moves: [AddressMove] = []) -> TaskActionReceipt {
+        let receipt = TaskActionReceipt(message: committed.transactionID.isEmpty ? "No changes were needed." : message,
+                                        transactionID: committed.transactionID.isEmpty ? nil : committed.transactionID,
+                                        moves: moves)
+        actionReceipt = receipt
+        UIAccessibility.post(notification: .announcement, argument: receipt.message)
+        return receipt
     }
 
     func checklist(_ locator: TaskLocator, _ action: ChecklistAction, seen: [ChecklistItem]) async -> String? {
-        await attempt { _ = try await self.engine.checklist(locator, action, seen: seen) }
+        await attempt {
+            let result = try await self.engine.checklist(locator, action, seen: seen)
+            self.recordReceipt("Updated checklist for “\(result.task.title)”", result.committed)
+        }
     }
 
     func checkIn(_ locators: [TaskLocator], _ action: CheckInAction) async -> String? {
-        await attempt { _ = try await self.engine.checkIn(locators, action) }
+        await attempt {
+            let result = try await self.engine.checkIn(locators, action)
+            let verb = if case .acknowledge = action { "Reviewed" } else { "Updated check-in for" }
+            self.recordReceipt("\(verb) \(result.tasks.count) \(result.tasks.count == 1 ? "task" : "tasks")", result.committed)
+        }
     }
 
     func reorder(_ locator: TaskLocator, in kind: TaskOrder, order: [TaskLocator]) async -> String? {
-        await attempt { _ = try await self.engine.reorder(locator, in: kind, order: order) }
+        await attempt {
+            let result = try await self.engine.reorder(locator, in: kind, order: order)
+            self.recordReceipt("Updated task order", result.committed)
+        }
     }
 
     func hierarchy(_ locator: TaskLocator, _ action: HierarchyAction) async -> String? {
-        await attempt { _ = try await self.engine.hierarchy(locator, action) }
+        await attempt {
+            let result = try await self.engine.hierarchy(locator, action)
+            self.recordReceipt("Updated outline for “\(result.task.title)”", result.committed)
+        }
     }
 
     /// Applies one action to a selection. A move reports where each task
     /// went, which a screen showing one of them follows.
     func bulk(_ locators: [TaskLocator], _ action: BulkAction) async -> (refusal: String?, moves: [AddressMove]) {
         var moves: [AddressMove] = []
-        let refusal = await attempt { moves = try await self.engine.bulk(locators, action).moves }
+        let refusal = await attempt {
+            let result = try await self.engine.bulk(locators, action)
+            moves = result.moves
+            let count = result.tasks.count
+            let subject = "\(count) \(count == 1 ? "task" : "tasks")"
+            let message: String = switch action {
+            case .plan(let plan): TaskListAction.plan(plan).message(count: count)
+            case .state(let state): TaskListAction.transition(state).message(count: count)
+            case .tags: "Updated tags on \(subject)"
+            case .move: "Moved \(subject) to another project"
+            }
+            self.recordReceipt(message, result.committed, moves: moves)
+        }
         return (refusal, moves)
     }
 
@@ -360,7 +424,12 @@ final class WorkspaceModel {
     // MARK: Rich content
 
     func comment(_ owner: CommentOwner, _ action: CommentAction) async -> String? {
-        await attempt { _ = try await self.engine.comment(owner, action) }
+        await attempt {
+            let result = try await self.engine.comment(owner, action)
+            if let task = result.task {
+                self.recordReceipt("Updated comments on “\(task.title)”", result.committed)
+            }
+        }
     }
 
     /// Runs one note action, returning the note as saved.
@@ -379,7 +448,10 @@ final class WorkspaceModel {
     }
 
     func attachment(_ locator: TaskLocator, _ action: AttachmentAction) async -> String? {
-        await attempt { _ = try await self.engine.attachment(locator, action) }
+        await attempt {
+            let result = try await self.engine.attachment(locator, action)
+            self.recordReceipt("Updated attachments on “\(result.task.title)”", result.committed)
+        }
     }
 
     /// This workspace's staged attachment imports, or nil before one is open.
@@ -433,7 +505,10 @@ final class WorkspaceModel {
     private func commitImport(_ pending: AttachmentImporter.Pending, _ importer: AttachmentImporter) async -> String? {
         guard !launch.holdImportsBeforeCommit else { return nil }
         do {
-            _ = try await importer.commit(pending, engine: engine)
+            let result = try await importer.commit(pending, engine: engine)
+            if result.outcome == "added" {
+                recordReceipt("Attached “\(pending.filename)” to “\(result.task.title)”", result.committed)
+            }
             sync.exchange()
             return nil
         } catch {
@@ -507,7 +582,8 @@ final class WorkspaceModel {
 
     /// Runs one mutation for a screen that shows its own refusal, so the
     /// refusal stays beside the draft it refused rather than in the banner.
-    private func attempt(_ mutation: @escaping () async throws -> Void) async -> String? {
+    private func attempt(clearingReceipt: Bool = true, _ mutation: @escaping () async throws -> Void) async -> String? {
+        if clearingReceipt { actionReceipt = nil }
         do {
             try await mutation()
             changed(.localChange)

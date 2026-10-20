@@ -677,7 +677,7 @@ final class QuickCapturePanelTests: XCTestCase {
         let field = try XCTUnwrap(labels.first { $0.isEditable })
         XCTAssertEqual(field.placeholderString, QuickCapturePanel.placeholder)
         XCTAssertTrue(labels.contains { $0.stringValue == QuickCapturePanel.hint })
-        for sigil in ["#tag", "@date", "%project", "$state", "!1"] {
+        for sigil in ["#tag", "@date", "%project", "$today", "!1"] {
             XCTAssertTrue(QuickCapturePanel.placeholder.contains(sigil), sigil)
             XCTAssertFalse(QuickCapturePanel.hint.contains(sigil), sigil)
         }

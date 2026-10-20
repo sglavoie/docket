@@ -67,8 +67,8 @@ final class SimulatorQualificationUITests: XCTestCase {
         return app
     }
 
-    func eventually(_ reason: String, _ body: () throws -> Bool) throws {
-        let deadline = Date().addingTimeInterval(timeout)
+    func eventually(_ reason: String, within duration: TimeInterval? = nil, _ body: () throws -> Bool) throws {
+        let deadline = Date().addingTimeInterval(duration ?? timeout)
         while Date() < deadline {
             if try body() { return }
             RunLoop.current.run(until: Date().addingTimeInterval(0.2))
@@ -142,7 +142,12 @@ final class SimulatorQualificationUITests: XCTestCase {
             let phone = try XCTUnwrap(document["engine"] as? [String: Any])
             let other = try XCTUnwrap(JSONSerialization.jsonObject(with: self.peer.send("sync.diagnostics")) as? [String: Any])
             let digest = try XCTUnwrap(phone["workspace_digest"] as? String)
-            return !digest.isEmpty && digest == other["workspace_digest"] as? String
+            let delivery = try XCTUnwrap(document["transport"] as? [String: Any])
+            // Applying the downloaded transaction can make the digests agree
+            // before the transport finishes and clears its pending record.
+            return !digest.isEmpty && digest == other["workspace_digest"] as? String &&
+                delivery["outstanding_uploads"] as? Int == 0 &&
+                delivery["outstanding_downloads"] as? Int == 0
         }
         let engine = try XCTUnwrap(document["engine"] as? [String: Any])
         let status = try XCTUnwrap(engine["status"] as? [String: Any])
@@ -228,7 +233,9 @@ final class SimulatorQualificationUITests: XCTestCase {
         app = launch()
         let suffix = "qualification-large.bin"
         var received: URL?
-        try eventually("large attachment never reached the peer") {
+        // This includes resuming the local import and transferring 64 MiB,
+        // so it needs more time than the small metadata scenarios.
+        try eventually("large attachment never reached the peer", within: 120) {
             _ = try self.transport.exchange()
             let files = FileManager.default.enumerator(at: self.peerWorkspace.appendingPathComponent("projects/atlas-launch/.attachments"), includingPropertiesForKeys: nil)
             received = files?.compactMap { $0 as? URL }.first { $0.lastPathComponent == suffix }

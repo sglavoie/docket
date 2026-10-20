@@ -49,3 +49,58 @@ final class TaskListPolishTests: XCTestCase {
         XCTAssertEqual(TaskListLoadFailure.classify(TTEngineError.notOpen, hasMatchingContent: true, cancelled: false), .replace)
     }
 }
+
+extension TaskListPolishTests {
+    @MainActor func testDetailAndBulkActionsPublishReceiptsAndUndoOnlyTheirTransaction() async throws {
+        let workspace = WorkspaceModel()
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try await workspace.engine.open(dataDirectory: root.appendingPathComponent("workspace"),
+                                        runtimeDirectory: root.appendingPathComponent("runtime"),
+                                        deviceID: "detail-receipt-tests", createIfMissing: true)
+        addTeardownBlock {
+            try await workspace.engine.close()
+            try FileManager.default.removeItem(at: root)
+        }
+        let first = try await workspace.engine.capture(title: "First", destination: .today).task
+        let second = try await workspace.engine.capture(title: "Second", destination: .today).task
+        let completed = await workspace.transition(first.locator, to: .done)
+        XCTAssertNil(completed)
+        let detailReceipt = try XCTUnwrap(workspace.actionReceipt)
+        XCTAssertEqual(detailReceipt.message, "Completed “First”")
+        let detailUndo = await workspace.undoReceipt(detailReceipt)
+        XCTAssertNil(detailUndo)
+        let restored = try await workspace.engine.task(first.locator)
+        XCTAssertTrue(restored.today == true)
+        XCTAssertEqual(restored.task.state, .backlog)
+
+        let bulk = await workspace.bulk([first.locator, second.locator], .plan(.addNext))
+        XCTAssertNil(bulk.refusal)
+        let bulkReceipt = try XCTUnwrap(workspace.actionReceipt)
+        XCTAssertEqual(bulkReceipt.message, "Moved to Next: 2 tasks")
+        // An old view's timer or dismissal must not erase a newer receipt.
+        workspace.dismissReceipt(detailReceipt.id)
+        XCTAssertEqual(workspace.actionReceipt?.id, bulkReceipt.id)
+        let bulkUndo = await workspace.undoReceipt(bulkReceipt)
+        XCTAssertNil(bulkUndo)
+        for task in [first, second] {
+            let restored = try await workspace.engine.task(task.locator)
+            XCTAssertTrue(restored.today == true)
+            XCTAssertFalse(restored.next == true)
+        }
+        let planned = await workspace.plan(first.locator, .addNext)
+        XCTAssertNil(planned)
+        let previous = try XCTUnwrap(workspace.actionReceipt)
+        let checklist = await workspace.checklist(second.locator, .add("Check wording"), seen: [])
+        XCTAssertNil(checklist)
+        let latest = try XCTUnwrap(workspace.actionReceipt)
+        let refused = await workspace.undoReceipt(previous)
+        XCTAssertNotNil(refused)
+        XCTAssertEqual(workspace.actionReceipt?.id, latest.id)
+        let checklistUndo = await workspace.undoReceipt(latest)
+        XCTAssertNil(checklistUndo)
+        let unchanged = try await workspace.engine.task(first.locator)
+        XCTAssertTrue(unchanged.next == true)
+        let cleared = try await workspace.engine.task(second.locator)
+        XCTAssertTrue(cleared.task.checklist?.isEmpty ?? true)
+    }
+}

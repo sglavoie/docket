@@ -3,6 +3,7 @@ package conflict
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 // SyncConflictEntry is one open sync conflict as the browser lists it: the
@@ -66,27 +67,73 @@ func syncConflictRowSummary(entry SyncConflictEntry) string {
 	return fmt.Sprintf("sync conflict · %d versions · %s", len(entry.Versions), entry.Kind)
 }
 
-// syncConflictDetailLines is the detail pane for a sync conflict: what the
-// file is, what differs, the version both sides started from, every
-// competing version with the device and change that wrote it, and the available
-// resolution controls.
-func syncConflictDetailLines(entry SyncConflictEntry) []string {
-	lines := []string{
-		"Sync conflict " + strings.TrimPrefix(entry.ID, "sha256:"),
-		"  " + entry.Label,
-		"  File:      " + entry.Path,
-		"  Kind:      " + entry.Kind,
-		"  Holding:   " + syncConflictBlob(entry.Result),
-	}
+// syncConflictSummaryLines answers the decision before showing file contents
+// or diagnostics. Every version's coupled effects remain beside its author.
+func syncConflictSummaryLines(entry SyncConflictEntry) []string {
+	lines := []string{entry.Label, fmt.Sprintf("%d versions need a choice; no version was chosen by time.", len(entry.Versions))}
 	if len(entry.Details) > 0 {
 		lines = append(lines, "", "What differs:")
 		for _, detail := range entry.Details {
 			lines = append(lines, "  "+detail)
 		}
 	}
-	lines = append(lines, "", "Started from:")
+	for i, version := range entry.Versions {
+		lines = append(lines, "", fmt.Sprintf("Version %d", i+1))
+		lines = append(lines, syncConflictVersionSummary(version)...)
+	}
+	return append(lines, "", "d shows changes · [/] selects a version", "Every version is kept in the sync history; nothing was lost.")
+}
+
+func syncConflictVersionSummary(version SyncConflictVersion) []string {
+	var lines []string
+	if version.Current {
+		lines = append(lines, "  Shown on this device now")
+	}
+	if version.Blob == "" {
+		lines = append(lines, "  Deletes this file")
+	}
+	for _, writer := range version.Writers {
+		device := writer.DeviceName
+		if device == "" {
+			device = writer.Device
+		}
+		if device == "" {
+			device = "an unnamed device"
+		}
+		if writer.ThisDevice {
+			device += " (this device)"
+		}
+		change := writer.Change
+		if change == "" {
+			change = "change"
+		}
+		line := "  " + change + " on " + device
+		if instant, err := time.Parse(time.RFC3339Nano, writer.At); err == nil {
+			line += " · " + instant.Local().Format("Jan 2, 2006 15:04 MST")
+		} else if writer.At != "" {
+			line += " · " + writer.At
+		}
+		lines = append(lines, line)
+	}
+	for _, also := range version.AlsoResolves {
+		lines = append(lines, "  Keeping this version also resolves: "+also)
+	}
+	return lines
+}
+
+// Whole files and exact identifiers stay available below the decision summary.
+func syncConflictDetailLines(entry SyncConflictEntry) []string {
+	lines := syncConflictSummaryLines(entry)
+	lines = append(lines, "", "File contents", "Started from:")
 	lines = append(lines, syncConflictBody(entry.Base)...)
-	lines = append(lines, "", fmt.Sprintf("%d competing versions:", len(entry.Versions)))
+	for i, version := range entry.Versions {
+		lines = append(lines, "", fmt.Sprintf("Version %d contents:", i+1))
+		lines = append(lines, syncConflictBody(version.Content)...)
+	}
+	lines = append(lines, "", "Diagnostics:",
+		"Sync conflict "+strings.TrimPrefix(entry.ID, "sha256:"),
+		"  File:      "+entry.Path, "  Kind:      "+entry.Kind,
+		"  Holding:   "+syncConflictBlob(entry.Result))
 	for i, version := range entry.Versions {
 		heading := fmt.Sprintf("  [%d] %s", i+1, syncConflictBlob(version.Blob))
 		if version.Current {
@@ -96,18 +143,12 @@ func syncConflictDetailLines(entry SyncConflictEntry) []string {
 		for _, writer := range version.Writers {
 			lines = append(lines, "      "+syncConflictWriterLine(writer))
 		}
-		for _, also := range version.AlsoResolves {
-			lines = append(lines, "      keeping it also keeps this change's "+also)
-		}
-		lines = append(lines, syncConflictBody(version.Content)...)
 	}
 	hint := "v keep selected version · c keep current"
 	if entry.Replaceable {
 		hint += " · e edit merged result"
 	}
-	return append(lines, "",
-		"Every version is kept in the sync history; nothing was lost.",
-		hint)
+	return append(lines, "", hint)
 }
 
 func syncConflictWriterLine(writer SyncConflictWriter) string {

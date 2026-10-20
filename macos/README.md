@@ -218,7 +218,7 @@ once and tt gets a hangup, as a closed terminal would give it.
 
 `Ctrl+Opt+Cmd+A` by default (after tt's own `a`) opens a capture field over
 whatever app is in front, without bringing tt forward. Type a line in the
-composer's grammar — `#tag`, `@date`, `%project`, `$state`, `!1`, which the
+composer's grammar — `#tag`, `@date`, `%project`, `$today`, `!1`, which the
 empty field shows as its placeholder while the line under it names the keys —
 and Enter
 sends it to tt, which captures it into Unfiled's Inbox unless the line says
@@ -228,7 +228,7 @@ would offer there — projects after `%`, tags after `#`, dates after `@`, and s
 on — read from the running tt as you type: ↑/↓ choose, Tab accepts, and Enter
 accepts too unless what you typed already stands on its own, as a new tag does.
 Esc closes the list first; with no list, Esc or clicking elsewhere puts the
-field away. Text is saved locally as you edit, so restarting the app or recovering
+field away; the hint spells this as `Esc keep draft`. Text is saved locally as you edit, so restarting the app or recovering
 from a crash restores the unfinished draft without submitting it. Deleting the
 text removes its recovery copy. A failed recovery write keeps the text in the
 field and reports the problem; another edit retries the write.

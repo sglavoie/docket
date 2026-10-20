@@ -250,6 +250,73 @@ final class ConflictRecoveryUITests: XCTestCase {
         XCTAssertTrue(tasks.contains("### Task: Write release notes (edited elsewhere)\n"), "the racing edit was dropped")
     }
 
+    func testConflictReadFailureOffersRetryAndClearsAfterRecovery() throws {
+        let app = try join("TT_UITEST_CONFLICT_EXCHANGE")
+        // A permission-only fault can disappear when a background exchange
+        // atomically replaces the file. A directory at the file path keeps
+        // the read failing until this test explicitly restores the note.
+        let saved = root.appendingPathComponent("saved-runbook.md")
+        try FileManager.default.moveItem(at: runbook, to: saved)
+        try FileManager.default.createDirectory(at: runbook, withIntermediateDirectories: false)
+        defer {
+            if FileManager.default.fileExists(atPath: saved.path) {
+                try? FileManager.default.removeItem(at: runbook)
+                try? FileManager.default.moveItem(at: saved, to: runbook)
+            }
+        }
+        openSync(app)
+        reach(app, element(app, "conflicts.failure"), "the failed local conflict read")
+        XCTAssertFalse(element(app, "conflicts.none").exists)
+        try FileManager.default.removeItem(at: runbook)
+        try FileManager.default.moveItem(at: saved, to: runbook)
+        press(app, "conflicts.retry")
+        requireAbsent(element(app, "conflicts.failure"), "the recovered read failure")
+        openConflict(app, "Release runbook")
+        require(element(app, "conflict.label"), "the readable conflict after Retry")
+    }
+
+    func testReplacementDraftSurvivesCloseRelaunchAndConfirmedDiscard() throws {
+        let app = try join("TT_UITEST_CONFLICT_EXCHANGE")
+        openSync(app)
+        openConflict(app, "Release runbook")
+        press(app, "conflict.replace")
+        let editor = app.textViews["conflict.replacement.editor"].firstMatch
+        require(editor, "the replacement editor")
+        editor.tap()
+        editor.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.97)).tap()
+        editor.typeText("\nKeep these careful edits.")
+        press(app, "conflict.replacement.from.0")
+        require(app.alerts["Replace your edited draft?"], "confirmation before replacing edits")
+        app.alerts.buttons["Keep Editing"].tap()
+        XCTAssertTrue((editor.value as? String ?? "").contains("Keep these careful edits."))
+        press(app, "conflict.replacement.close")
+        press(app, "conflict.replace")
+        require(app.staticTexts["conflict.replacement.restored"], "the kept replacement")
+        XCTAssertTrue((editor.value as? String ?? "").contains("Keep these careful edits."))
+        app.terminate()
+        app.launch()
+        require(app.tabBars.buttons["Today"], "the reopened workspace")
+        openSync(app)
+        openConflict(app, "Release runbook")
+        press(app, "conflict.replace")
+        require(app.staticTexts["conflict.replacement.restored"], "the durable replacement")
+        XCTAssertTrue((editor.value as? String ?? "").contains("Keep these careful edits."))
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Restored conflict replacement"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        XCTAssertFalse(read(runbook).contains("Keep these careful edits."), "restoring submitted the draft")
+        press(app, "conflict.replacement.discard")
+        app.alerts.buttons["Keep Editing"].tap()
+        XCTAssertTrue((editor.value as? String ?? "").contains("Keep these careful edits."))
+        press(app, "conflict.replacement.discard")
+        app.alerts.buttons["Discard Draft"].tap()
+        press(app, "conflict.replace")
+        require(editor, "a fresh replacement")
+        XCTAssertFalse((editor.value as? String ?? "").contains("Keep these careful edits."))
+        XCTAssertFalse(app.staticTexts["conflict.replacement.restored"].exists)
+    }
+
     /// With the exchange folder gone, local work goes on: content stays
     /// readable, a capture commits, the failure is shown with a retry, and a
     /// diagnostics export records it. Once the folder is back, a retry

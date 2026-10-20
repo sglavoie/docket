@@ -386,6 +386,45 @@ final class BrowsingUITests: XCTestCase {
         require(text(app, "Call the bank"), "the recovered full list")
     }
 
+    func testEmptyScopedSearchCanSearchAllAndReturnToItsQuery() throws {
+        let app = try launchSeeded()
+        search(app, "Call the bank")
+        require(app.staticTexts["state.empty"], "the empty Today search")
+        require(app.buttons["list.searchAll"], "the explicit wider search")
+        app.buttons["list.searchAll"].tap()
+        require(text(app, "Call the bank"), "the Inbox task found in All")
+        XCTAssertEqual(app.searchFields.firstMatch.value as? String, "Call the bank")
+        XCTAssertEqual(app.searchFields.firstMatch.placeholderValue, "Search in All")
+        back(app)
+        require(app.staticTexts["state.empty"], "the original empty Today search")
+        XCTAssertEqual(app.searchFields.firstMatch.value as? String, "Call the bank")
+        XCTAssertEqual(app.searchFields.firstMatch.placeholderValue, "Search in Today")
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Scoped search restored after Search All"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+    }
+
+    func testDetailCompletionOffersUndoAndRestoresToday() throws {
+        let app = try launchSeeded()
+        row(app, "Order bathroom tiles").tap()
+        require(app.buttons["detail.status.menu"], "the detail status control")
+        app.buttons["detail.status.menu"].tap()
+        require(app.buttons["Done"].firstMatch, "the Done status")
+        app.buttons["Done"].firstMatch.tap()
+        require(app.buttons["detail.undo"], "Undo for the detail action")
+        XCTAssertEqual(app.staticTexts["detail.receipt"].label, "Completed “Order bathroom tiles”")
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Detail completion with Undo"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        app.buttons["detail.undo"].tap()
+        require(app.staticTexts["detail.receipt"], "the undo confirmation")
+        XCTAssertTrue(app.staticTexts["detail.receipt"].label.hasPrefix("Undone:"))
+        back(app)
+        require(text(app, "Order bathroom tiles"), "the restored Today task")
+    }
+
     func testCompletionReceiptCanUndoTheTaskThatLeftToday() throws {
         let app = try launchSeeded()
         XCTAssertEqual(app.searchFields.firstMatch.placeholderValue, "Search in Today")

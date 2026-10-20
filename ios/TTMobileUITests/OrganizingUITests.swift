@@ -160,17 +160,15 @@ final class OrganizingUITests: XCTestCase {
         // down exists only once it is scrolled toward, and one above the rows
         // in view only once the list is scrolled back.
         for _ in 0..<5 {
-            if button.waitForExistence(timeout: 2) { break }
+            if button.waitForExistence(timeout: 2), button.isHittable { break }
             app.swipeUp()
         }
         for _ in 0..<8 {
-            if button.waitForExistence(timeout: 2) { break }
+            if button.waitForExistence(timeout: 2), button.isHittable { break }
             app.swipeDown()
         }
         require(button, identifier)
-        for _ in 0..<4 where !button.isHittable {
-            app.swipeUp()
-        }
+        XCTAssertTrue(button.isHittable, "\(identifier) is not reachable after scrolling")
         button.tap()
     }
 
@@ -485,6 +483,17 @@ final class OrganizingUITests: XCTestCase {
         eventually("the task moved to Home Renovation") {
             try self.taskLine("Await signing certificate", in: self.markdown("home-renovation")) != nil
         }
+        require(app.buttons["detail.undo"], "Undo for the project move")
+        app.buttons["detail.undo"].tap()
+        eventually("the move was undone in storage") {
+            try self.taskLine("Await signing certificate", in: self.markdown("atlas-launch")) != nil
+        }
+        require(app.staticTexts["detail.title"], "the detail followed the task back")
+        XCTAssertFalse(app.staticTexts["Task unavailable"].exists)
+        choose(app, "detail.move", "Home Renovation")
+        eventually("the task moved again") {
+            try self.taskLine("Await signing certificate", in: self.markdown("home-renovation")) != nil
+        }
         XCTAssertNil(try taskLine("Await signing certificate", in: markdown("atlas-launch")))
         // The dependent in Home Renovation now names the task's new address.
         let paint = try XCTUnwrap(taskLine("Pick paint colors", in: markdown("home-renovation")))
@@ -532,6 +541,16 @@ final class OrganizingUITests: XCTestCase {
             guard let next = plan.range(of: "\"next\"") else { return false }
             return ids.allSatisfy { plan[next.upperBound...].contains($0) }
         }
+
+        require(app.buttons["list.undo"], "Undo for the whole selection")
+        XCTAssertEqual(app.staticTexts["list.receipt"].label, "Moved to Next: 2 tasks")
+        app.buttons["list.undo"].tap()
+        eventually("both tasks left Next after Undo") {
+            let plan = try self.planning()
+            return ids.allSatisfy { !plan.contains($0) }
+        }
+        choose(app, "list.bulk", "Add to Next")
+        require(app.buttons["list.undo"], "the next bulk receipt")
 
         choose(app, "list.bulk", "Add Tag…")
         answerAlert(app, "weekend", "Add")

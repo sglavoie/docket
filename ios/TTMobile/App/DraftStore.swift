@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import Observation
 import TTEngine
@@ -8,7 +9,7 @@ import TTEngine
 @Observable
 final class DraftStore {
     enum Key: Hashable {
-        case capture, edit(TaskLocator), comment(String), note(String)
+        case capture, edit(TaskLocator), comment(String), note(String), conflict(String)
     }
 
     struct Issue {
@@ -33,6 +34,7 @@ final class DraftStore {
         case .edit(let locator): "edit-\(locator.projectID)-\(locator.taskID)"
         case .comment(let key): "comment-\(key)"
         case .note(let key): "note-\(key)"
+        case .conflict(let key): "conflict-" + SHA256.hash(data: Data(key.utf8)).map { String(format: "%02x", $0) }.joined()
         }
         let safe = name.map { $0.isLetter || $0.isNumber || $0 == "-" ? $0 : "_" }
         return directory.appendingPathComponent(String(safe) + ".json")
@@ -50,6 +52,9 @@ final class DraftStore {
     func loadNote(_ key: String) -> NoteDraft? { load(.note(key)) }
     func saveNote(_ draft: NoteDraft, for key: String) { save(draft, for: .note(key)) }
     func discardNote(_ key: String) { discard(.note(key)) }
+    func loadConflict(_ key: String) -> ConflictDraft? { load(.conflict(key)) }
+    func saveConflict(_ draft: ConflictDraft, for key: String) { save(draft, for: .conflict(key)) }
+    func discardConflict(_ key: String) { discard(.conflict(key)) }
 
     var hasPendingChanges: Bool {
         // Observe issue changes as well as checking the non-observed payloads.

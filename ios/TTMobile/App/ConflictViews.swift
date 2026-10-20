@@ -7,8 +7,7 @@ struct ConflictsSection: View {
     let workspace: WorkspaceModel
     @Binding var notice: String?
 
-    @State private var conflicts: [SyncConflict] = []
-    @State private var failure: String?
+    @State private var read = ConflictReadModel()
 
     var body: some View {
         Section("Conflicts") {
@@ -18,14 +17,20 @@ struct ConflictsSection: View {
                     .foregroundStyle(.green)
                     .accessibilityIdentifier("conflicts.notice")
             }
-            if let failure {
+            if let failure = read.failure {
                 Text(failure).foregroundStyle(.red).accessibilityIdentifier("conflicts.failure")
-            } else if conflicts.isEmpty {
-                Text("No conflicts. Changes from every device merged.")
+                Button("Retry") { Task { await load() } }
+                    .disabled(read.loading)
+                    .accessibilityIdentifier("conflicts.retry")
+            } else if read.loading {
+                ProgressView("Checking conflicts…")
+                    .accessibilityIdentifier("conflicts.loading")
+            } else if read.hasLoaded && read.conflicts.isEmpty {
+                Text("No conflicts found on this device.")
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("conflicts.none")
             }
-            ForEach(Array(conflicts.enumerated()), id: \.element.id) { index, conflict in
+            ForEach(Array(read.conflicts.enumerated()), id: \.element.id) { index, conflict in
                 NavigationLink {
                     ConflictDetailView(workspace: workspace, conflictID: conflict.id, path: conflict.path, notice: $notice)
                 } label: {
@@ -46,13 +51,7 @@ struct ConflictsSection: View {
     }
 
     private func load() async {
-        switch await workspace.conflicts() {
-        case .success(let read):
-            conflicts = read
-            failure = nil
-        case .failure(let refusal):
-            failure = refusal.message
-        }
+        await read.load { await workspace.conflicts() }
     }
 
     private func conflictDevices(_ conflict: SyncConflict) -> String {
@@ -81,18 +80,27 @@ struct ConflictDetailView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var conflict: SyncConflict?
+    @State private var read = ConflictReadModel()
     @State private var failure: String?
     @State private var gone = false
     @State private var expanded: Set<String> = []
     @State private var diffs: [Int: ConflictDiff] = [:]
     @State private var whole: Set<Int> = []
     @State private var replacing = false
-    @State private var draft = ""
     @State private var replacementFailure: String?
     @State private var working = false
 
     var body: some View {
         List {
+            if let readFailure = read.failure {
+                Section {
+                    Text(readFailure).foregroundStyle(.red)
+                        .accessibilityIdentifier("conflict.read.failure")
+                    Button("Retry") { Task { await load(preferring: conflict?.id ?? conflictID) } }
+                        .disabled(read.loading)
+                        .accessibilityIdentifier("conflict.retry")
+                }
+            }
             if let failure {
                 Section {
                     Text(failure)
@@ -125,7 +133,6 @@ struct ConflictDetailView: View {
                         .disabled(working)
                     if conflict.replaceable {
                         Button("Write a Replacement…") {
-                            if draft.isEmpty { draft = conflict.current?.text ?? "" }
                             replacementFailure = nil
                             replacing = true
                         }
@@ -137,8 +144,8 @@ struct ConflictDetailView: View {
                 }
             } else if gone {
                 Text("This conflict is resolved.").accessibilityIdentifier("conflict.gone")
-            } else {
-                ProgressView()
+            } else if read.loading {
+                ProgressView("Loading conflict…")
             }
         }
         .navigationTitle("Conflict")
@@ -215,47 +222,11 @@ struct ConflictDetailView: View {
         }
     }
 
+    @ViewBuilder
     private var replacementEditor: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 8) {
-                if let replacementFailure {
-                    Text(replacementFailure)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .accessibilityIdentifier("conflict.replacement.failure")
-                }
-                if let conflict {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack {
-                            ForEach(conflict.versions) { version in
-                                Button("Start from Version \(version.index + 1)") {
-                                    draft = version.content.text ?? ""
-                                }
-                                .buttonStyle(.bordered)
-                                .accessibilityIdentifier("conflict.replacement.from.\(version.index)")
-                            }
-                        }
-                    }
-                }
-                TextEditor(text: $draft)
-                    .font(.caption.monospaced())
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .accessibilityIdentifier("conflict.replacement.editor")
-            }
-            .padding()
-            .navigationTitle("Replacement")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { replacing = false }
-                        .accessibilityIdentifier("conflict.replacement.cancel")
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { Task { await resolve(.replace(draft)) } }
-                        .accessibilityIdentifier("conflict.replacement.save")
-                        .disabled(working)
-                }
+        if let conflict {
+            ConflictReplacementSheet(workspace: workspace, conflict: conflict, failure: replacementFailure) { draft in
+                await resolve(.replace(draft.text), expectedID: draft.conflictID)
             }
         }
     }
@@ -263,18 +234,14 @@ struct ConflictDetailView: View {
     /// Reads the conflict again: by id while it holds, else the open conflict
     /// on the same file, which is what an edit since leaves.
     private func load(preferring id: String) async {
-        switch await workspace.conflicts() {
-        case .success(let conflicts):
-            if let match = conflicts.first(where: { $0.id == id }) ?? conflicts.first(where: { $0.path == path }) {
-                if match != conflict { diffs = versionDiffs(match) }
-                conflict = match
-                gone = false
-            } else {
-                conflict = nil
-                gone = true
-            }
-        case .failure(let refusal):
-            failure = refusal.message
+        guard let conflicts = await read.load(using: { await workspace.conflicts() }) else { return }
+        if let match = conflicts.first(where: { $0.id == id }) ?? conflicts.first(where: { $0.path == path }) {
+            if match != conflict { diffs = versionDiffs(match) }
+            conflict = match
+            gone = false
+        } else {
+            conflict = nil
+            gone = true
         }
     }
 
@@ -296,8 +263,10 @@ struct ConflictDetailView: View {
         return diffs
     }
 
-    private func resolve(_ choice: ConflictChoice) async {
-        guard let current = conflict else { return }
+    @discardableResult
+    private func resolve(_ choice: ConflictChoice, expectedID: String? = nil) async -> Bool {
+        guard var current = conflict, !working else { return false }
+        if let expectedID { current.id = expectedID }
         working = true
         defer { working = false }
         switch await workspace.resolve(current, choice) {
@@ -305,8 +274,9 @@ struct ConflictDetailView: View {
             let names = resolution.resolved.map(\.label).joined(separator: ", ")
             notice = "Resolved \(names). It syncs to your other devices at the next exchange."
             replacing = false
-            draft = ""
+            workspace.drafts?.discardConflict(path)
             dismiss()
+            return true
         case .failure(let refusal):
             let message = refusal.stale
                 ? "This conflict changed since you opened it, so nothing was written. It has been read again; every version is still here."
@@ -316,6 +286,7 @@ struct ConflictDetailView: View {
             }
             failure = message
             await load(preferring: current.id)
+            return false
         }
     }
 

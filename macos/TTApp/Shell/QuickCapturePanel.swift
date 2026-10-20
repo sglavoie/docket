@@ -72,9 +72,9 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     static let accessibilityLabel = "Quick capture"
     static let suggestionsAccessibilityLabel = "Suggestions"
 
-    static let hint = "Enter capture · Ctrl+N capture another · Tab complete · Esc cancel"
+    static let hint = "Enter capture · Ctrl+N capture another · Tab complete · Esc keep draft"
     /// The sigil examples, read only while the field is empty.
-    static let placeholder = "Capture a task  #tag  @date  %project  $state  !1"
+    static let placeholder = "Capture a task  #tag  @date  %project  $today  !1"
 
     /// The most suggestion rows shown at once; the rest scroll.
     static let visibleSuggestions = 7

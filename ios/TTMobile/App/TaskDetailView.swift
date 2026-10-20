@@ -33,6 +33,7 @@ struct TaskDetailView: View {
     @State private var lastLoaded: DetailIdentity?
     @State private var loadRequest: UUID?
     @State private var retry = 0
+    @State private var acting = false
 
     var body: some View {
         Group {
@@ -40,6 +41,7 @@ struct TaskDetailView: View {
                 ScreenStateView(state: state, actionTitle: canRetry ? "Retry" : nil, action: { retry += 1 })
             } else if let detail {
                 content(detail)
+                    .disabled(acting || workspace.undoing)
                     .refreshable { await load() }
             }
         }
@@ -47,6 +49,7 @@ struct TaskDetailView: View {
             // The last refusal stays in view wherever the list is scrolled,
             // since the control that raised it may be far down the screen.
             VStack(alignment: .leading, spacing: 8) {
+                TaskActionFeedback(workspace: workspace, prefix: "detail")
                 if let refreshFailure {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(refreshFailure).font(.footnote)
@@ -129,6 +132,11 @@ struct TaskDetailView: View {
         }
         .quickLookPreview($previewURL)
         .task(id: LoadKey(generation: workspace.generation, identity: identity, retry: retry)) { await load() }
+        .onChange(of: workspace.undoneReceipt?.id) {
+            if let move = workspace.undoneReceipt?.moves.first(where: { $0.to == (current ?? locator) }) {
+                current = move.from
+            }
+        }
     }
 
     /// Plan and status, the two halves of the desktop's workflow chord: a plan
@@ -167,7 +175,12 @@ struct TaskDetailView: View {
     }
 
     private func act(_ command: @escaping () async -> String?) {
-        Task { failure = await command() }
+        guard !acting else { return }
+        acting = true
+        Task {
+            failure = await command()
+            acting = false
+        }
     }
 
     private func content(_ detail: TaskDetail) -> some View {
