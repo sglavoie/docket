@@ -114,9 +114,15 @@ func (m *HelpViewModel) renderBySectionContent() string {
 
 	buckets := make(map[string][]filteredHelpItem)
 	categories := make([]string, 0, len(m.filteredItems))
+	keyWidth := 1
 	const exactSection = "Exact matches"
 	for _, item := range m.filteredItems {
 		section := helpSectionForItem(item.HelpItem)
+		// Shortcuts share one alignment across categories and task groups.
+		// Grammar forms are prose-sized and keep their own key column.
+		if section != helpGrammarCategory {
+			keyWidth = max(keyWidth, lipgloss.Width(item.Key))
+		}
 		if m.searchQuery != "" && item.exactMatch {
 			buckets[exactSection] = append(buckets[exactSection], item)
 			continue
@@ -127,6 +133,17 @@ func (m *HelpViewModel) renderBySectionContent() string {
 
 	var b strings.Builder
 	first := true
+	writeHeading := func(title string) {
+		heading := theme.HelpCategoryStyle
+		if first {
+			heading = heading.MarginTop(0)
+		} else {
+			b.WriteString("\n")
+		}
+		first = false
+		b.WriteString(heading.Render(title))
+		b.WriteString("\n")
+	}
 	sections := helpSectionsForCategories(categories)
 	if len(buckets[exactSection]) > 0 {
 		sections = append([]string{exactSection}, sections...)
@@ -136,18 +153,8 @@ func (m *HelpViewModel) renderBySectionContent() string {
 		if len(items) == 0 {
 			continue
 		}
-		// The category margin separates sections; the first sits directly under
-		// the header, so it renders without one.
-		heading := theme.HelpCategoryStyle
-		if first {
-			heading = heading.MarginTop(0)
-		} else {
-			b.WriteString("\n")
-		}
-		first = false
 		if section != "Tasks" {
-			b.WriteString(heading.Render(section))
-			b.WriteString("\n")
+			writeHeading(section)
 		}
 		// Task groups are declared alongside the key bindings. Keep exact search
 		// hits together and retain the normal order for every other category.
@@ -155,17 +162,21 @@ func (m *HelpViewModel) renderBySectionContent() string {
 			items = append([]filteredHelpItem(nil), items...)
 			sort.SliceStable(items, func(i, j int) bool { return taskHelpOrder(items[i]) < taskHelpOrder(items[j]) })
 		}
+		groupKeyWidth := keyWidth
+		if section == helpGrammarCategory {
+			groupKeyWidth = 1
+		}
 		for start := 0; start < len(items); {
 			end := len(items)
 			if section == "Tasks" {
 				group := taskHelpGroup(items[start])
-				b.WriteString(theme.MutedStyle.Render(group) + "\n")
+				writeHeading(group)
 				end = start + 1
 				for end < len(items) && taskHelpGroup(items[end]) == group {
 					end++
 				}
 			}
-			b.WriteString(renderHelpItemGroup(items[start:end], max(m.viewport.Width(), 1)))
+			b.WriteString(renderHelpItemGroup(items[start:end], max(m.viewport.Width(), 1), groupKeyWidth))
 			start = end
 		}
 	}
@@ -173,10 +184,8 @@ func (m *HelpViewModel) renderBySectionContent() string {
 	return b.String()
 }
 
-// Measure each section (or task group) independently. A long grammar key must
-// remain whole without spending its columns on every everyday shortcut.
-func renderHelpItemGroup(items []filteredHelpItem, contentWidth int) string {
-	keyWidth := 1
+// Use the shared shortcut width, expanding it for grammar forms when needed.
+func renderHelpItemGroup(items []filteredHelpItem, contentWidth, keyWidth int) string {
 	for _, item := range items {
 		keyWidth = max(keyWidth, lipgloss.Width(item.Key))
 	}

@@ -242,6 +242,9 @@ func TestHelpFirstSectionHasNoBlankLineAbove(t *testing.T) {
 }
 
 func TestHelpTaskGroupsKeepDailyWorkAheadOfDetails(t *testing.T) {
+	previous := theme.HelpCategoryStyle
+	theme.HelpCategoryStyle = lipgloss.NewStyle().Underline(true).MarginTop(1)
+	t.Cleanup(func() { theme.HelpCategoryStyle = previous })
 	items := []operation.HelpItem{
 		{Key: "<", Description: "Adopt Children", Category: "Tasks", Group: "Hierarchy", Order: 500},
 		{Key: "!", Description: "Priority", Category: "Tasks"},
@@ -253,7 +256,17 @@ func TestHelpTaskGroupsKeepDailyWorkAheadOfDetails(t *testing.T) {
 	for _, width := range []int{60, 120} {
 		m := NewHelpViewModel(items, "Outliner")
 		m.SetSize(width, 40)
-		content := ansi.Strip(m.renderContent())
+		rendered := m.renderContent()
+		content := ansi.Strip(rendered)
+		for i, name := range []string{"Everyday", "Plan", "Status", "Recovery", "Details", "Hierarchy"} {
+			heading := theme.HelpCategoryStyle
+			if i == 0 {
+				heading = heading.MarginTop(0)
+			}
+			if !strings.Contains(rendered, heading.Render(name)+"\n") {
+				t.Fatalf("%d: %s lacks the section heading style and spacing:\n%s", width, name, rendered)
+			}
+		}
 		last := -1
 		for _, name := range []string{"Everyday", "Capture", "Plan", "Today", "Status", "Done", "Recovery", "Undo", "Details", "Priority", "Hierarchy", "Adopt Children"} {
 			index := strings.Index(content, name)
@@ -266,6 +279,45 @@ func TestHelpTaskGroupsKeepDailyWorkAheadOfDetails(t *testing.T) {
 		m.filterItems()
 		if len(m.filteredItems) != 1 || m.filteredItems[0].Key != "wt" {
 			t.Fatalf("group search: %+v", m.filteredItems)
+		}
+	}
+}
+
+func TestHelpShortcutColumnsAlignAcrossGroupsAndCategories(t *testing.T) {
+	items := []operation.HelpItem{
+		{Key: "wg", Description: "Start task", Category: "Tasks", Group: "Status", Order: 200},
+		{Key: "wd", Description: "Complete task", Category: "Tasks", Group: "Status", Order: 201},
+		{Key: "u", Description: "Undo", Category: "Tasks", Group: "Recovery", Order: 300},
+		{Key: "Ctrl+R", Description: "Redo", Category: "Tasks", Group: "Recovery", Order: 301},
+		{Key: "o@", Description: "Sort by Due Date", Category: "Sorting"},
+		{Key: "o!", Description: "Sort by Priority", Category: "Sorting"},
+	}
+	// Long grammar spellings must not shift the ordinary shortcuts.
+	items = append(items, GrammarHelpItems()...)
+	m := NewHelpViewModel(items, "Outliner")
+	for _, width := range []int{46, 60, 80, 160, 60} {
+		m.SetSize(width, 40)
+		content := ansi.Strip(m.renderContent())
+		positions := make(map[string]int)
+		for _, line := range strings.Split(content, "\n") {
+			if lipgloss.Width(line) > m.viewport.Width() {
+				t.Fatalf("width %d overflows: %q", width, line)
+			}
+			for _, item := range items[:6] {
+				if index := strings.Index(line, item.Description); index >= 0 {
+					positions[item.Description] = lipgloss.Width(line[:index])
+				}
+			}
+		}
+		for i, item := range items[:6] {
+			want := len("Ctrl+R") + 2
+			if width >= 80 && i%2 == 1 {
+				want += (m.viewport.Width()-4)/2 + 4
+			}
+			if got, ok := positions[item.Description]; !ok || got != want {
+				t.Fatalf("width %d: %q starts at %d (present %t), want %d:\n%s",
+					width, item.Description, got, ok, want, content)
+			}
 		}
 	}
 }
