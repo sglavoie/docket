@@ -196,6 +196,23 @@ func renderHelpItemGroup(items []filteredHelpItem, contentWidth, keyWidth int) s
 	if descWidth < helpMinDescriptionWidth {
 		columns = 1
 		descWidth = max(contentWidth-columnOverhead, 1)
+	} else {
+		// Short shortcut groups need no more space than their descriptions.
+		// Keep grammar's prose at the available width, including exact matches
+		// that combine grammar forms with ordinary shortcuts.
+		preferredWidth := helpMinDescriptionWidth
+		for _, item := range items {
+			if item.Category == helpGrammarCategory {
+				preferredWidth = descWidth
+				break
+			}
+			description := item.Description
+			if len(item.matchedAliases) > 0 {
+				description += " · " + strings.Join(item.matchedAliases, ", ")
+			}
+			preferredWidth = max(preferredWidth, lipgloss.Width(description))
+		}
+		descWidth = min(descWidth, preferredWidth)
 	}
 	columnWidth := keyWidth + 2 + descWidth
 

@@ -312,11 +312,37 @@ func TestHelpShortcutColumnsAlignAcrossGroupsAndCategories(t *testing.T) {
 		for i, item := range items[:6] {
 			want := len("Ctrl+R") + 2
 			if width >= 80 && i%2 == 1 {
-				want += (m.viewport.Width()-4)/2 + 4
+				// These short descriptions use a compact 24-column measure
+				// even when the terminal has room for much wider columns.
+				want += len("Ctrl+R") + 2 + 24 + 4
 			}
 			if got, ok := positions[item.Description]; !ok || got != want {
 				t.Fatalf("width %d: %q starts at %d (present %t), want %d:\n%s",
 					width, item.Description, got, ok, want, content)
+			}
+		}
+	}
+}
+
+func TestHelpWideColumnsFitDescriptionsButKeepGrammarFullWidth(t *testing.T) {
+	for _, category := range []string{"Tasks", helpGrammarCategory} {
+		items := []filteredHelpItem{
+			{HelpItem: operation.HelpItem{Key: "a", Description: strings.Repeat("x", 32), Category: category}},
+			{HelpItem: operation.HelpItem{Key: "b", Description: "Second item", Category: category}},
+		}
+		for _, width := range []int{160, 240} {
+			content := ansi.Strip(renderHelpItemGroup(items, width, 1))
+			want := 3 + 32 + 4
+			if category == helpGrammarCategory {
+				want = (width-4)/2 + 4
+			}
+			if got := strings.Index(content, "b  Second item"); got != want {
+				t.Fatalf("%s at width %d: second column starts at %d, want %d:\n%s",
+					category, width, got, want, content)
+			}
+			if !strings.Contains(content, items[0].Description) {
+				t.Fatalf("%s at width %d: description wrapped despite available space:\n%s",
+					category, width, content)
 			}
 		}
 	}
