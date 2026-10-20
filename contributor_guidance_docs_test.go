@@ -85,8 +85,8 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`~task` is the one repeatable reference crossing a project boundary",
 		"`DependencyPatch`'s zero value is no intent, so a save that never mentions a reference " +
 			"preserves the set",
-		"Relation, pin, and attachment markers bypass the ladder",
-		"`taskRowSegments` reserves all three at every width",
+		"Relation, pin, attachment, and description bypass the ladder",
+		"`taskRowSegments` reserves them at every width",
 		"`taskRowSegments.titlePrefix()` is where the inline row editor gets its indent\n  and its width",
 		"`quickEditMandatoryMetadata` serves it first and shrinks the\n  route to `quickEditRouteFloor` beneath it",
 		"`taskRelationMarker` is one segment both ways",

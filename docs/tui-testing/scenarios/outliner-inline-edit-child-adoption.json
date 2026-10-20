@@ -29,7 +29,7 @@
     { "type": "assert", "label": "the unmentioned children stayed put", "assert": "contains", "value": "Build login form  ‹" },
     { "type": "assert", "assert": "contains", "value": "Add password validation" },
     { "type": "assert", "assert": "contains", "value": "Triage support inbox  ‹" },
-    { "type": "assert", "assert": "contains", "value": "Explore social login  ‹" },
+    { "type": "assert", "assert": "contains", "value": "Explore social login ▤  ‹" },
     { "type": "assert", "label": "the short id and the title prefix adopted one task once", "assert": "count_contains", "value": "Explore social login", "count": 1 },
     { "type": "key", "key": "home" },
     { "type": "key", "label": "onto Build login form, which leads Doing's singleton project group", "key": "j" },
@@ -41,13 +41,13 @@
     { "type": "key", "label": "undo the adoption", "key": "u" },
     { "type": "wait" },
     { "type": "assert", "assert": "not_contains", "value": "Triage support inbox  ‹" },
-    { "type": "assert", "assert": "not_contains", "value": "Explore social login  ‹" },
+    { "type": "assert", "assert": "not_contains", "value": "Explore social login ▤  ‹" },
     { "type": "assert", "label": "the flat project order is unchanged", "assert": "contains", "value": "Build login form  ‹" },
 
     { "type": "key", "label": "redo the same transaction", "key": "ctrl+r" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "Triage support inbox  ‹" },
-    { "type": "assert", "assert": "contains", "value": "Explore social login  ‹" },
+    { "type": "assert", "assert": "contains", "value": "Explore social login ▤  ‹" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

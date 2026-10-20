@@ -30,7 +30,7 @@
     { "type": "key", "label": "back to All", "key": "g" },
     { "type": "key", "key": "a" },
     { "type": "assert", "label": "both adopted tasks now name a parent rendered elsewhere", "assert": "contains", "value": "Fix redirect loop after logout  ‹" },
-    { "type": "assert", "assert": "contains", "value": "Explore social login  ‹" },
+    { "type": "assert", "assert": "contains", "value": "Explore social login ▤  ‹" },
     { "type": "assert", "label": "the children the task already had are untouched", "assert": "contains", "value": "Build login form  ‹" },
     { "type": "assert", "assert": "contains", "value": "Add password validation" },
     { "type": "assert", "assert": "no_layout_issues" },
@@ -38,7 +38,7 @@
     { "type": "key", "label": "one undo takes back both adoptions", "key": "u" },
     { "type": "wait" },
     { "type": "assert", "assert": "not_contains", "value": "Fix redirect loop after logout  ‹" },
-    { "type": "assert", "assert": "not_contains", "value": "Explore social login  ‹" },
+    { "type": "assert", "assert": "not_contains", "value": "Explore social login ▤  ‹" },
     { "type": "assert", "assert": "contains", "value": "Build login form  ‹" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

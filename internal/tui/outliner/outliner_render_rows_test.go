@@ -279,6 +279,42 @@ func TestOutlinerTaskRowLeavesSupportingCountsToPeek(t *testing.T) {
 	}
 }
 
+func TestTaskDescriptionGlyphSurvivesNarrowRowsAndClearsWithDescription(t *testing.T) {
+	task := &models.Task{
+		ID: "task", Title: strings.Repeat("Review the proposal ", 8),
+		WorkflowState: models.StateBacklog,
+		Attachments:   []models.Attachment{{Filename: "proposal.pdf"}},
+	}
+	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
+	outliner := NewOutlinerModel(project, nil, newTestConfig())
+	row := OutlinerRow{Task: task, ProjectID: project.ID, Prefix: "│   ├── "}
+
+	for _, description := range []string{"", " \t\n", "Read the proposed changes.\nThen approve.", ""} {
+		task.Description = description
+		want := strings.TrimSpace(description) != ""
+		for _, width := range []int{60, 120} {
+			for _, selected := range []bool{false, true} {
+				rendered := []string{
+					outliner.RenderOutlinerTaskRow(row, selected, width, 0, nil),
+					outliner.RenderOutlinerPreviewTaskRow(row, width, 0, nil),
+				}
+				for _, line := range rendered {
+					plain := ansi.Strip(line)
+					if strings.Contains(plain, "▤") != want {
+						t.Fatalf("description %q has incorrect presence glyph: %q", description, plain)
+					}
+					if !strings.Contains(plain, "📎") || (want && !strings.Contains(plain, "▤ 📎")) {
+						t.Fatalf("description displaced the attachment marker: %q", plain)
+					}
+					if lipgloss.Width(plain) > width || !strings.Contains(plain, "Review") {
+						t.Fatalf("markers exceeded width %d or displaced the title: %q", width, plain)
+					}
+				}
+			}
+		}
+	}
+}
+
 // TestOutlinerTaskRowTitleStaysNeutralWithoutTagChips is the neutral-title rule
 // at the row's widest: a semantic tag reaches the reader through Peek's chips
 // now, and it was never allowed to reach them through the title.

@@ -131,6 +131,11 @@ A paperclip (`📎`) after the title means the task has one or more attachments,
 including files, URLs, and code references. It stays visible on narrow rows.
 Press `&` to open the attachments panel; Peek shows the count and details.
 
+A document glyph (`▤`) after the title means the task has a description.
+It precedes the paperclip when both are present and stays visible on narrow
+rows. Empty or whitespace-only descriptions show no glyph. Open Peek with `b`
+to read the description.
+
 Context appears on the task row immediately after the project label, as
 `[project] [context]`. When the project is named by a group header, the task
 shows its context before the title. Long contexts are shortened to fit; `#`

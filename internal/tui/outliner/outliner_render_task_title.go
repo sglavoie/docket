@@ -151,13 +151,13 @@ func (m *OutlinerModel) titleHighlightQuery() (string, bool) {
 	return m.LensTextQuery(), m.LensCaseSensitive()
 }
 
-func outlinerNonTitleWidth(cursorPrefix, prefixStr, foldIndicator, statusIcon, prioritySegment, projectLabel, pinMarker, indicators, relationMarker, attachmentMarker, matchCue string) int {
+func outlinerNonTitleWidth(cursorPrefix, prefixStr, foldIndicator, statusIcon, prioritySegment, projectLabel, pinMarker, indicators, relationMarker, attachmentMarker, descriptionMarker, matchCue string) int {
 	return lipgloss.Width(cursorPrefix) +
 		lipgloss.Width(prefixStr) + lipgloss.Width(foldIndicator) +
 		lipgloss.Width(statusIcon) + 1 +
 		lipgloss.Width(prioritySegment) + lipgloss.Width(projectLabel) + lipgloss.Width(pinMarker) +
 		lipgloss.Width(indicators) +
-		lipgloss.Width(relationMarker) + lipgloss.Width(attachmentMarker) + lipgloss.Width(matchCue)
+		lipgloss.Width(relationMarker) + lipgloss.Width(attachmentMarker) + lipgloss.Width(descriptionMarker) + lipgloss.Width(matchCue)
 }
 
 // PeekDocumentBodyForRow is one row's complete detail document, wrapped to the

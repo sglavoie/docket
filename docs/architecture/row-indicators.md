@@ -16,6 +16,10 @@ stays outside `indicatorDropLadder`, so narrowing the row never hides it.
 `taskRowSegments` charges its display width before fitting the title, including
 for inline editing and project previews. Counts and details remain in Peek.
 
+Description presence uses the same reserved width policy: `taskDescriptionMarker`
+renders `▤` before the attachment marker when `strings.TrimSpace(task.Description)`
+is nonempty. The description text remains in Peek.
+
 `taskIdentityLabel` joins `[project] [context]` before alignment padding.
 Rows under a project header carry the context alone. The shared project column
 measures that combined label, while the context-only column includes contexts

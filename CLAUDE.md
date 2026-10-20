@@ -755,8 +755,8 @@ Row and Peek budget:
   column. Only `S`, the `?` suffix, and the color read the targets, one hop and
   never transitively: amber blocked, green settled, muted unreadable. Peek's two
   lines repeat those numbers and add no line.
-  Relation, pin, and attachment markers bypass the ladder:
-  `taskRowSegments` reserves all three at every width. `📎` means attachments.
+  Relation, pin, attachment, and description bypass the ladder.
+  `taskRowSegments` reserves them at every width (`📎` attachments, `▤` description).
   `taskRelationMarker` is one segment both ways.
   `taskPinnedMarker` reads `task.Pinned && !row.IsPinnedSection`, not
   `ShowsPinned`. A task row names no project: the group header above it does,

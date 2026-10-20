@@ -38,7 +38,7 @@
     { "type": "assert", "assert": "not_clipped", "value": "Await the vendor security questionnaire" },
     { "type": "assert", "label": "the reclaimed width reaches the titles that used to lose their tail to a tag list", "assert": "not_clipped", "value": "Reconcile the client onboarding checklist against the revised milestones" },
     { "type": "assert", "assert": "not_clipped", "value": "Reread the quarterly access list flagged for review" },
-    { "type": "assert", "label": "the fixture's longest title shares room with its attachment glyph and deadline", "assert": "contains", "value": "Restore the overdue billing reconciliation export … 📎" },
+    { "type": "assert", "label": "the fixture's longest title shares room with its description and attachment glyphs and deadline", "assert": "contains", "value": "Restore the overdue billing reconciliation expor… ▤ 📎" },
 
     { "type": "assert", "label": "All hides deferred and terminal work rather than laning it", "assert": "not_contains", "value": "Hold the deferred storage cleanup" },
     { "type": "assert", "assert": "not_contains", "value": "Close the retired staging cluster" },
@@ -64,8 +64,8 @@
     { "type": "resize", "label": "a wider terminal keeps the same composition", "width": 120, "height": 40 },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "assert", "assert": "contains", "value": "▾  Review  (1)" },
-    { "type": "assert", "label": "120 columns keeps the attachment glyph beside the clipped title", "assert": "contains", "value": "Restore the overdue billing reconciliation export before the audit clo… 📎" },
-    { "type": "resize", "width": 124, "height": 40 },
+    { "type": "assert", "label": "120 columns keeps both content glyphs beside the clipped title", "assert": "contains", "value": "Restore the overdue billing reconciliation export before the audit c… ▤ 📎" },
+    { "type": "resize", "width": 126, "height": 40 },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "assert", "label": "a wider row fits the title alongside the glyph and deadline", "assert": "not_clipped", "value": "Restore the overdue billing reconciliation export before the audit closes" }
   ]
