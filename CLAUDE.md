@@ -704,7 +704,7 @@ Row and Peek budget:
   the geometry's `BodyRows` bounds visibility alone, a short document pads, and
   `positionLine` is a further row reserved for every document, blank when the
   body fits. Nothing sits outside that window and the document has no header:
-  body order is title, status, resume, project, parent, optional search excerpt, schedule, description, checklist
+  body order is title, status, resume, project, context, parent, optional search excerpt, schedule, description, checklist
   count, attachments, comment count, `Dependencies`/`Dependents`, tags,
   history; compact Peek prioritizes resume. Schedule is what is still owed —
   deadline, pending deferral, check-in, repeat — and history records created,
@@ -759,15 +759,14 @@ Row and Peek budget:
   `taskRowSegments` reserves them at every width (`📎` attachments, `▤` description).
   `taskRelationMarker` is one segment both ways.
   `taskPinnedMarker` reads `task.Pinned && !row.IsPinnedSection`, not
-  `ShowsPinned`. A task row names no project: the group header above it does,
-  so no label competes with the title. The cross-project ranked list and a
-  merged group's row are the exceptions, since no header stands over either:
-  `taskProjectLabel` leads each title with
-  the header's own `[slug]` with colored brackets and a neutral name, padded to
-  `ColumnLayout.ProjectWidth`. Context follows `[slug]` before padding,
-  or stands alone; cap its text at rowWidth/3. Peek omits it.
-  Slugs are cut by `rankedProjectLabelMaxSlug` alone. The match cue is shed ahead of the whole
-  ladder and is now the one on-row explanation of a hit the row cannot show.
+  `ShowsPinned`. Only cross-project ranked and merged rows name the project,
+  using `[slug]` with colored brackets and neutral text. `taskIdentityLabel`
+  joins project and context before `ColumnLayout.ProjectWidth` padding;
+  other rows carry context alone. Cap context text at clamp(rowWidth/8,8,20)
+  and combined identity at rowWidth/3, shortening the slug below
+  `rankedProjectLabelMaxSlug` when needed. Peek wraps the full context.
+  Shed the match cue before the indicator ladder; it explains a hit the title
+  cannot show.
 - `ComputeOutlinerRowLayout` is the one task-row geometry — the fold column and
   the badge columns — measured over the whole projection,
   including rows a fold hides, and never a window or a cursor, so titles hold

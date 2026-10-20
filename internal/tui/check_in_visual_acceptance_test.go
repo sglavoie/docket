@@ -72,9 +72,9 @@ func TestCheckInVisualAcceptance(t *testing.T) {
 				rowsRequired := []string{"Migrated vendor wait", "review +", "Apr 1 '20 15:30 overdue", "workspace: overdue 1"}
 				switch size[0] {
 				case 62:
-					rowsRequired = []string{"Migrated vend…", "Apr 1 '20 15:30 overdue", "workspace: overdue 1"}
+					rowsRequired = []string{"Migrated vendor", "▤", "Apr 1 '20 15:30 overdue", "workspace: overdue 1"}
 				case 60:
-					rowsRequired = []string{"[check-in-ac…] ⊘ Migrated ve…", "Apr 1 '20 15:30 overdue", "workspace: overdue 1"}
+					rowsRequired = []string{"[check-i…] ⊘ Migrated vend", "▤", "Apr 1 '20 15:30 overdue", "workspace: overdue 1"}
 				}
 				capture("rows", rowsRequired...)
 				out := driver.App().crossOutliner

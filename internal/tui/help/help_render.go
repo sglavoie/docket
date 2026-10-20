@@ -133,9 +133,12 @@ func (m *HelpViewModel) renderBySectionContent() string {
 
 	var b strings.Builder
 	first := true
+	// At the terminal floor the daily groups through Undo must remain on the
+	// first screen. Keep their styling but spend no rows on decorative spacing.
+	compactHeadings := m.viewport.Height() < 20
 	writeHeading := func(title string) {
 		heading := theme.HelpCategoryStyle
-		if first {
+		if first || compactHeadings {
 			heading = heading.MarginTop(0)
 		} else {
 			b.WriteString("\n")
@@ -161,6 +164,9 @@ func (m *HelpViewModel) renderBySectionContent() string {
 		if section == "Tasks" {
 			items = append([]filteredHelpItem(nil), items...)
 			sort.SliceStable(items, func(i, j int) bool { return taskHelpOrder(items[i]) < taskHelpOrder(items[j]) })
+			if compactHeadings {
+				writeHeading(section)
+			}
 		}
 		groupKeyWidth := keyWidth
 		if section == helpGrammarCategory {
@@ -170,7 +176,9 @@ func (m *HelpViewModel) renderBySectionContent() string {
 			end := len(items)
 			if section == "Tasks" {
 				group := taskHelpGroup(items[start])
-				writeHeading(group)
+				if !compactHeadings {
+					writeHeading(group)
+				}
 				end = start + 1
 				for end < len(items) && taskHelpGroup(items[end]) == group {
 					end++

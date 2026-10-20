@@ -471,14 +471,6 @@ struct SyncRecoverySection: View {
 
     var body: some View {
         Section("Recovery") {
-            if workspace.sync.isFailing {
-                Text("The exchange folder could not be reached. Everything you save stays on this iPhone and is published once it can be.")
-                    .font(.footnote)
-                    .accessibilityIdentifier("sync.failure")
-                Button("Retry Now") { workspace.sync.retry() }
-                    .disabled(workspace.sync.isExchanging)
-                    .accessibilityIdentifier("sync.retry")
-            }
             Button("Export Diagnostics") {
                 Task {
                     switch await workspace.exportDiagnostics() {

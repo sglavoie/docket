@@ -18,7 +18,7 @@
     { "type": "assert", "label": "read the compact Peek document using its paging controls", "assert": "not_contains", "value": "0 above · 0 below" },
     { "type": "key", "label": "the dock swallows a page at its boundary and moves nothing", "key": "ctrl+f" },
     { "type": "assert", "assert": "contains", "value": "Created: now" },
-    { "type": "assert", "assert": "contains", "value": "1 above · 0 below" },
+    { "type": "assert", "assert": "contains", "value": "2 above · 0 below" },
     { "type": "assert", "label": "a lapsed deferral says the task came back", "assert": "contains", "value": "Woke:" },
     { "type": "assert", "label": "no stale past-dated defer field beside it, on either line", "assert": "not_contains", "value": "Defer:" },
     { "type": "assert", "assert": "no_layout_issues" },

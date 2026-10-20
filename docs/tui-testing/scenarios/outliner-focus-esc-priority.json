@@ -13,7 +13,7 @@
     { "type": "key", "label": "focus the Launch platform descendants", "key": "enter" },
     { "type": "assert", "assert": "contains", "value": "Focus: [Rich Project] › Launch platform" },
     { "type": "assert", "assert": "not_contains", "value": "Fix redirect loop after logout" },
-    { "type": "assert", "label": "Focus opens on User authentication, which leads the branch's singleton project group", "assert": "contains", "value": "[rich-project] 🞑 ● User authentication" },
+    { "type": "assert", "label": "Focus opens on User authentication, which leads the branch's singleton project group", "assert": "contains", "value": "[rich-proj…] 🞑 ● User authentication" },
     { "type": "key", "label": "push a nested Focus level", "key": "enter" },
     { "type": "assert", "assert": "contains", "value": "Focus: [Rich Project] › Launch platform › User authe" },
     { "type": "key", "label": "pop only the nested Focus level", "key": "esc" },

@@ -12,35 +12,43 @@ struct TaskEditSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var draft: EditDraft?
     @State private var restored = false
-    @State private var failure: String?
+    @State private var failure: EditorFailure?
+    @State private var savedEarlier: String?
     @State private var saving = false
     @State private var confirmingDiscard = false
     @State private var draftActions = SheetActions()
+    @FocusState private var fieldFocus: TaskField?
+    @State private var correction: TaskField?
 
     var body: some View {
         NavigationStack {
-            Form {
-                DraftRecoveryNotice(store: workspace.drafts, key: .edit(task.locator))
-                if restored {
-                    Label("Restored your unsaved changes", systemImage: "arrow.uturn.backward.circle")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("edit.restored")
+            ScrollViewReader { scroll in
+                Form {
+                    DraftRecoveryNotice(store: workspace.drafts, key: .edit(task.locator))
+                    if restored {
+                        Label("Restored your unsaved changes", systemImage: "arrow.uturn.backward.circle")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("edit.restored")
+                    }
+                    if draft != nil {
+                        TaskFieldsForm(fields: fieldsBinding, focus: $fieldFocus)
+                    }
                 }
-                if let failure {
-                    Text(failure)
-                        .foregroundStyle(.red)
-                        .accessibilityIdentifier("edit.failure")
-                }
-                if draft != nil {
-                    TaskFieldsForm(fields: fieldsBinding)
+                .onChange(of: correction) { _, field in
+                    if let field { scroll.scrollTo(field, anchor: .center) }
                 }
             }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                EditorFeedback(failure: failure, notice: savedEarlier, saving: saving, prefix: "edit")
+            }
+            .interactiveDismissDisabled(saving)
             .navigationTitle("Edit Task")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
+                        .disabled(saving)
                         .accessibilityIdentifier("edit.close")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -89,7 +97,9 @@ struct TaskEditSheet: View {
             }
             .onChange(of: draft) { _, draft in
                 guard let draft else { return }
-                if draft.fields == draft.original {
+                failure = nil
+                correction = nil
+                if draft.fields == draft.original && !saving {
                     workspace.drafts?.discardEdit(task.locator)
                 } else {
                     workspace.drafts?.saveEdit(draft, for: task.locator)
@@ -106,17 +116,43 @@ struct TaskEditSheet: View {
     }
 
     private func save() {
-        guard let draft else { return }
+        guard !saving, let submitted = draft else { return }
         saving = true
+        failure = nil
+        savedEarlier = nil
+        correction = nil
+        let store = workspace.drafts
+        let revision = store?.saveEdit(submitted, for: task.locator)
         Task {
-            let refusal = await workspace.edit(task.locator, draft.fields.edit(from: draft.original))
-            saving = false
+            let refusal = await workspace.saveEditDraft(task.locator, submitted)
             if let refusal {
-                failure = "Couldn’t save. Your draft is still open. \(refusal)"
+                saving = false
+                failure = refusal
+                if draft == submitted, let field = refusal.field {
+                    correction = field
+                    fieldFocus = field
+                }
                 return
             }
-            workspace.drafts?.discardEdit(task.locator)
-            dismiss()
+            if let current = draft, current != submitted {
+                store?.saveEdit(current, for: task.locator)
+            }
+            let retained: EditDraft?
+            if let store, let revision {
+                retained = store.finishEdit(submitted, revision: revision, for: task.locator)
+            } else if var current = draft, current != submitted {
+                current.original = submitted.fields
+                retained = current
+            } else {
+                retained = nil
+            }
+            saving = false
+            if let retained {
+                draft = retained
+                savedEarlier = "Saved the submitted changes. Your newer edits are still open."
+            } else {
+                dismiss()
+            }
         }
     }
 }

@@ -23,7 +23,7 @@ import (
 // went. The indicators are in outliner_render_indicators_test.go and the width
 // ladder itself in outliner_render_rows_pressure_test.go.
 
-// Context follows the project before padding and is absent from Peek.
+// Context follows the project before padding and is recovered whole in Peek.
 func TestTaskContextFollowsProjectOnRow(t *testing.T) {
 	task := &models.Task{ID: "task", Title: "Readable title", Context: "platform", Tags: []string{"secondary"}}
 	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
@@ -52,8 +52,8 @@ func TestTaskContextFollowsProjectOnRow(t *testing.T) {
 			}
 		}
 		peek := ansi.Strip(strings.Join(peekDocumentBody(outliner, row, 60), "\n"))
-		if strings.Contains(peek, "Context:") || strings.Contains(peek, "[platform]") {
-			t.Fatalf("Peek repeats context: %s", peek)
+		if !strings.Contains(peek, "Context: platform") {
+			t.Fatalf("Peek lost context: %s", peek)
 		}
 		if !strings.Contains(peek, "#secondary") {
 			t.Fatalf("Peek lost tags: %s", peek)

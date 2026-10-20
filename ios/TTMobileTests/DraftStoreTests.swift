@@ -96,4 +96,48 @@ final class DraftStoreTests: XCTestCase {
         XCTAssertFalse(store.hasPendingChanges)
         XCTAssertNil(store.loadCapture())
     }
+
+    @MainActor func testCaptureCompletionCannotClearALaterRevisionEvenWithTheSameText() throws {
+        let store = try store()
+        var submitted = CaptureDraft()
+        submitted.text = "Send proposal"
+        let revision = store.saveCapture(submitted)
+        var later = submitted
+        later.text = "Send revised proposal"
+        store.saveCapture(later)
+        XCTAssertFalse(store.finishCapture(submitted, revision: revision))
+        XCTAssertEqual(store.loadCapture(), later)
+        // A → B → A is still a later edit, not the submitted revision.
+        store.saveCapture(submitted)
+        XCTAssertFalse(store.finishCapture(submitted, revision: revision))
+        XCTAssertEqual(store.loadCapture(), submitted)
+        let next = store.saveCapture(submitted)
+        XCTAssertTrue(store.finishCapture(submitted, revision: next))
+        XCTAssertNil(store.loadCapture())
+    }
+
+    @MainActor func testEditCompletionRebasesLaterChangesIncludingARevert() throws {
+        let store = try store()
+        let locator = TaskLocator(projectID: "project", taskID: "task")
+        var original = TaskFields()
+        original.title = "Original title"
+        var submittedFields = original
+        submittedFields.title = "Submitted title"
+        let submitted = EditDraft(original: original, fields: submittedFields)
+        let revision = store.saveEdit(submitted, for: locator)
+        var later = submitted
+        later.fields.title = original.title
+        later.fields.context = "phone"
+        store.saveEdit(later, for: locator)
+        let retained = try XCTUnwrap(store.finishEdit(submitted, revision: revision, for: locator))
+        XCTAssertEqual(retained.original.title, "Submitted title")
+        XCTAssertEqual(retained.fields.title, "Original title")
+        let patch = retained.fields.edit(from: retained.original)
+        XCTAssertEqual(patch.title, "Original title")
+        XCTAssertEqual(patch.context, "phone")
+        XCTAssertEqual(store.loadEdit(locator), retained)
+        let next = store.saveEdit(retained, for: locator)
+        XCTAssertNil(store.finishEdit(retained, revision: next, for: locator))
+        XCTAssertNil(store.loadEdit(locator))
+    }
 }

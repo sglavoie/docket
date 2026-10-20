@@ -23,9 +23,12 @@ is nonempty. The description text remains in Peek.
 `taskIdentityLabel` joins `[project] [context]` before alignment padding.
 Rows under a project header carry the context alone. The shared project column
 measures that combined label, while the context-only column includes contexts
-hidden by folds. Context text
-is bounded to one third of the row width and the picker retains its full value.
-Peek carries no context section.
+hidden by folds. Context text is bounded to one eighth of the row width,
+clamped to 8–20 columns. A combined project/context label spends at most one
+third of the row, including brackets and the separator; the project slug
+abbreviates to the remaining budget. The render and measurement share this
+rule, including inline editing. Peek recovers the full context in a wrapped
+section after Project, with the value in its content fingerprint.
 
 The title itself is display-compacted when it is wider than `titleWidth`:
 `compactTitleForRow`, beside `renderTaskTitle`, draws each http(s) URL as host
@@ -266,13 +269,11 @@ badges and the title. The row leading a merged one-task group wears the same
 label for the same reason — no header stands over it — and
 `rowLeadsWithProjectLabel` is the one predicate both cases share; the rows
 beneath it, its own subtree and checklist, name nothing. The label is reserved
-rather than laddered, so on a narrow row the title and the ladder pay for it. `rankedProjectLabelMaxSlug` is the one cap on that slug —
-an eighth of the row, never under twelve columns and never over twenty-four — so a
-narrow row spends its columns on the title and a wide one spells a long slug out.
-The floor stays at twelve rather than following the eighth down, so a
-twelve-column slug is still whole at eighty columns;
-`chrome.ComputeBadgeWidths` takes it as `MaxProjectLen` and keeps no default of
-its own. `ComputeOutlinerRowLayout` measures the widest label into
+rather than laddered. `rankedProjectLabelMaxSlug` caps its text at an eighth
+of the row, bounded to 8–24 columns. Shortening the narrow-row identity makes
+room for both a recognizable title and the reserved content glyphs. When context
+shares the label, the combined identity budget can shorten the slug further.
+`ComputeOutlinerRowLayout` measures the actual widest label into
 `ColumnLayout.ProjectWidth` and every label pads to it, so the labeled titles
 start in one column; it is part of `titlePrefix`, so the inline editor opens after it. A
 single-project scope keeps its focused header and no label.

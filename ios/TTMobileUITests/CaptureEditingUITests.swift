@@ -48,9 +48,10 @@ final class CaptureEditingUITests: XCTestCase {
         try Data(workspaceName.utf8).write(to: root.appendingPathComponent("selected-workspace"))
     }
 
-    private func launch() -> XCUIApplication {
+    private func launch(holdEditorSave: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment = ["TT_UITEST_ROOT": root.path, "TT_UITEST_DEVICE_ID": "ui-test-phone"]
+        if holdEditorSave { app.launchEnvironment["TT_UITEST_EDITOR_SAVE_GATE"] = "1" }
         app.launch()
         require(app.tabBars.buttons["Today"], "the open workspace")
         return app
@@ -220,6 +221,8 @@ final class CaptureEditingUITests: XCTestCase {
         let bar = app.scrollViews["capture.sigils"]
         require(bar, "the keyboard sigil shortcuts")
         let button = app.buttons["capture.sigil.\(symbol)"]
+        // A previous insertion may have left the horizontal bar scrolled.
+        for _ in 0..<5 where !button.isHittable { bar.swipeRight() }
         for _ in 0..<5 where !button.isHittable { bar.swipeLeft() }
         XCTAssertTrue(button.isHittable, "the \(symbol) shortcut is unreachable")
         button.tap()
@@ -227,6 +230,7 @@ final class CaptureEditingUITests: XCTestCase {
 
     func testCaptureAutocompleteAllSigils() throws {
         let app = launch()
+        openCapture(app)
         let cases: [(String, String)] = [
             ("!", "!1"), ("#rel", "#release"), ("##lap", "##laptop"),
             ("@tomo", "@tomorrow"), ("@@+2h", "@@+2h"), ("$tod", "$today"),
@@ -235,7 +239,10 @@ final class CaptureEditingUITests: XCTestCase {
             ("&https://example.com/atlas", "&https://example.com/atlas/release"), (";", ";comment;")
         ]
         for (partial, token) in cases {
-            openCapture(app)
+            // Exercise replacement in one live editor. Draft discard and
+            // reopening have their own tests; cycling nested presentations
+            // for every token also strands XCTest's animation-idle tracking.
+            clear(app, "capture.text")
             let prefix = partial.hasPrefix("%") ? "Suggested " : "Suggested %atlas-launch "
             type(app, "capture.text", prefix)
             let symbol = partial.hasPrefix("##") || partial.hasPrefix("@@")
@@ -251,9 +258,9 @@ final class CaptureEditingUITests: XCTestCase {
                 input(app, "capture.text").typeText("Remember #literal")
                 XCTAssertEqual(value(app, "capture.text"), prefix + ";Remember #literal; ")
             }
-            discardCapture(app)
-            requireAbsent(app.buttons["capture.save"], "the dismissed capture")
         }
+        discardCapture(app)
+        requireAbsent(app.buttons["capture.save"], "the dismissed capture")
     }
 
     func testCaptureAutocompleteSavesCompletedMetadata() throws {
@@ -437,6 +444,80 @@ final class CaptureEditingUITests: XCTestCase {
         XCTAssertNil(try block("Keep this unsaved thought", in: markdown("unfiled")), "draft retry submitted the task")
     }
 
+    func testCaptureSaveKeepsTextTypedWhileTheSubmissionIsWaiting() throws {
+        let app = launch(holdEditorSave: true)
+        openCapture(app)
+        type(app, "capture.text", "Submitted capture")
+        app.buttons["capture.save"].tap()
+        require(app.descendants(matching: .any)["capture.saving"].firstMatch, "the pending save")
+        XCTAssertFalse(app.buttons["capture.close"].isEnabled)
+        clear(app, "capture.text")
+        type(app, "capture.text", "Newer capture")
+        XCTAssertNil(try block("Submitted capture", in: markdown("unfiled")))
+        try Data().write(to: root.appendingPathComponent("editor-save.release"))
+        require(app.staticTexts["capture.savedEarlier"], "the retained-draft confirmation")
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "capture-newer-draft-after-save"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        XCTAssertEqual(value(app, "capture.text"), "Newer capture")
+        XCTAssertNotNil(try block("Submitted capture", in: markdown("unfiled")))
+        XCTAssertNil(try block("Newer capture", in: markdown("unfiled")))
+        app.buttons["capture.close"].tap()
+        openCapture(app)
+        XCTAssertEqual(value(app, "capture.text"), "Newer capture")
+        app.buttons["capture.save"].tap()
+        requireAbsent(app.buttons["capture.save"], "the saved capture")
+        let text = try markdown("unfiled")
+        XCTAssertEqual(text.components(separatedBy: "## Task: Submitted capture\n").count - 1, 1)
+        XCTAssertEqual(text.components(separatedBy: "## Task: Newer capture\n").count - 1, 1)
+        XCTAssertEqual(draftFiles(), [])
+    }
+
+    func testEditSaveKeepsAndRebasesChangesTypedWhileWaiting() throws {
+        let app = launch(holdEditorSave: true)
+        tab(app, "Inbox")
+        openTask(app, "Call the bank")
+        app.buttons["detail.edit"].tap()
+        clear(app, "form.title")
+        type(app, "form.title", "Submitted bank title")
+        app.buttons["edit.save"].tap()
+        require(app.descendants(matching: .any)["edit.saving"].firstMatch, "the pending edit")
+        XCTAssertFalse(app.buttons["edit.close"].isEnabled)
+        clear(app, "form.title")
+        type(app, "form.title", "Call the bank")
+        try Data().write(to: root.appendingPathComponent("editor-save.release"))
+        require(app.staticTexts["edit.savedEarlier"], "the retained-edit confirmation")
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "edit-newer-draft-after-save"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        XCTAssertEqual(value(app, "form.title"), "Call the bank")
+        XCTAssertNotNil(try block("Submitted bank title", in: markdown("unfiled")))
+        app.buttons["edit.save"].tap()
+        requireAbsent(app.buttons["edit.save"], "the saved edit")
+        let text = try markdown("unfiled")
+        XCTAssertNotNil(block("Call the bank", in: text))
+        XCTAssertNil(block("Submitted bank title", in: text))
+        XCTAssertEqual(draftFiles(), [])
+    }
+
+    func testRefusedCaptureSelectsTheTokenForImmediateCorrection() throws {
+        let app = launch()
+        openCapture(app)
+        type(app, "capture.text", "Renew passport $ready")
+        app.buttons["capture.save"].tap()
+        require(app.staticTexts["capture.failure"], "the save refusal")
+        XCTAssertTrue(app.staticTexts["capture.failure"].isHittable)
+        // No tap or manual selection: the refused token already owns the caret.
+        app.typeText("$today")
+        XCTAssertEqual(value(app, "capture.text"), "Renew passport $today")
+        requireAbsent(app.staticTexts["capture.failure"], "the corrected refusal")
+        app.buttons["capture.save"].tap()
+        requireAbsent(app.buttons["capture.save"], "the saved capture")
+        XCTAssertNotNil(try block("Renew passport", in: markdown("unfiled")))
+    }
+
     func testRefusedCaptureKeepsItsDraftAcrossARelaunch() throws {
         var app = launch()
         openCapture(app)
@@ -446,10 +527,15 @@ final class CaptureEditingUITests: XCTestCase {
         let failure = app.staticTexts["capture.failure"].firstMatch
         require(failure, "the save's refusal")
         XCTAssertTrue(failure.label.hasPrefix("Couldn’t save. Your draft is still open. Line 1:"), failure.label)
+        XCTAssertTrue(failure.isHittable, "the refusal is not visible above the keyboard")
         XCTAssertTrue(app.buttons["capture.save"].exists, "a refused save closed the sheet")
         XCTAssertEqual(value(app, "capture.text"), "Renew passport $ready")
         XCTAssertNil(try block("Renew passport", in: markdown("unfiled")), "a refused capture was written")
         XCTAssertEqual(draftFiles(), ["capture.json"])
+        app.buttons["capture.failure.details"].tap()
+        require(app.navigationBars["Save Error"], "the complete refusal")
+        app.buttons["Done"].tap()
+        XCTAssertEqual(value(app, "capture.text"), "Renew passport $ready")
 
         // Killed mid-draft, the app comes back to the same text.
         app.terminate()
@@ -551,6 +637,12 @@ final class CaptureEditingUITests: XCTestCase {
         let failure = app.staticTexts["edit.failure"].firstMatch
         require(failure, "the edit's refusal")
         XCTAssertTrue(failure.label.lowercased().contains("title"), failure.label)
+        XCTAssertTrue(failure.isHittable, "the refusal scrolled out of view")
+        XCTAssertTrue(input(app, "form.title").isHittable, "the refused title was not brought into view")
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "edit-refusal-focuses-title"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
         XCTAssertEqual(try markdown("unfiled"), before, "a refused edit was written")
         XCTAssertEqual(draftFiles().count, 1)
 

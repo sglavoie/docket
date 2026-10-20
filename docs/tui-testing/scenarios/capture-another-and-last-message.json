@@ -15,6 +15,7 @@
       "type": "key",
       "key": "ctrl+n"
     },
+    { "type": "wait", "label": "let the first capture commit before typing the next" },
     {
       "type": "assert",
       "assert": "view",

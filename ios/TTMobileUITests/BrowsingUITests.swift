@@ -547,6 +547,12 @@ final class BrowsingUITests: XCTestCase {
         app.buttons["sync.open"].tap()
         require(app.staticTexts["sync.local"], "the local save state")
         require(app.staticTexts["sync.noFolder"], "the absent exchange folder")
+        XCTAssertTrue(app.buttons["sync.chooseFolder"].isHittable, "folder recovery is not beside the condition")
+        XCTAssertFalse(app.staticTexts["Catalog schema"].exists, "technical identifiers should start collapsed")
+        let syncScreenshot = XCTAttachment(screenshot: app.screenshot())
+        syncScreenshot.name = "sync-folder-recovery-first"
+        syncScreenshot.lifetime = .keepAlways
+        add(syncScreenshot)
         app.buttons["workspace.switch"].tap()
         require(app.buttons["onboarding.workspace.local"], "the workspace just created, listed for reopening")
         app.buttons["onboarding.workspace.local"].tap()
@@ -599,6 +605,7 @@ final class BrowsingUITests: XCTestCase {
         require(text(app, "Call the bank"), "the joined workspace's Inbox")
         app.buttons["sync.open"].tap()
         require(app.staticTexts["sync.local"], "the local save state")
+        app.buttons["sync.details"].tap()
         require(app.staticTexts["Conflicts"], "the conflict count")
         XCTAssertFalse(app.staticTexts["sync.noFolder"].exists, "the joined workspace forgot its exchange folder")
     }

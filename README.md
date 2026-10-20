@@ -15,7 +15,7 @@ There is no `tt add`: the command line is deliberately limited to diagnostics, c
 recovery, device sync, workspace relocation, project export, and shell completion. Run `tt`
 and the interface is the product.
 
-![Terminal Tasks showing Doing, Review, Inbox, Backlog, and Waiting lanes, with the selected task's resume note and description in Peek.](docs/images/outliner.svg)
+![Terminal Tasks showing Doing, Review, Inbox, Backlog, and Waiting lanes, with the selected task's resume note and context in Peek.](docs/images/outliner.svg)
 
 Work is grouped into lanes and projects; Peek below the outline shows the selected
 task's details. This screen uses fictional tasks.

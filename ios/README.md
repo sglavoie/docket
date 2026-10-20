@@ -14,6 +14,22 @@ references follow the current line's project, and dependencies can cross
 projects. Links offer existing URLs or a URL prefix, and comments offer a
 placeholder you can type over. The rest of the draft stays intact.
 
+Capture and task editing keep a submission tied to its draft revision. You can
+continue typing while a save finishes; newer text stays open and is retained
+for recovery. An edit saved again sends only changes made since the previous
+submission. Close and swipe-to-dismiss wait for an in-flight save to finish.
+Quick previews always belong to the current draft, including after switching
+between Quick and Form. A refused save stays visible above the form and takes
+you to the named field or capture token when the engine identifies one.
+Long errors have a bounded summary so the editor stays usable; Read full error
+opens the complete, scrollable explanation.
+
+Task rows show priority and context in their secondary text, wrapping the full
+value. The dominant attention cue remains overdue, review/check-in, due today,
+then high priority. Sync leads with its current condition and the relevant
+folder-choice or retry action. Zero transfer counts and workspace identifiers
+live in expandable details below the main status.
+
 ## Layout
 
 | Path | Holds |

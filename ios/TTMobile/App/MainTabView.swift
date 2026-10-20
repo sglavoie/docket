@@ -293,15 +293,22 @@ struct SyncView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var choosingFolder = false
     @State private var conflictNotice: String?
+    @State private var showingWorkspaceDetails = false
 
     var body: some View {
         NavigationStack {
             List {
+                SyncStatusSection(sync: workspace.sync, chooseFolder: { choosingFolder = true })
+                ConflictsSection(workspace: workspace, notice: $conflictNotice)
                 Section("Workspace") {
                     LabeledContent("Name", value: workspace.location?.name ?? "—")
                     if let status = workspace.status {
-                        LabeledContent("Identity", value: String(status.workspace.prefix(8)))
-                        LabeledContent("Catalog schema", value: "\(status.schemas.catalog)")
+                        SyncDetailsButton(title: "Workspace details", expanded: $showingWorkspaceDetails)
+                            .accessibilityIdentifier("sync.workspaceDetails")
+                        if showingWorkspaceDetails {
+                            LabeledContent("Identity", value: String(status.workspace.prefix(8)))
+                            LabeledContent("Catalog schema", value: "\(status.schemas.catalog)")
+                        }
                     }
                     Button("Choose Another Workspace…") {
                         dismiss()
@@ -317,14 +324,7 @@ struct SyncView: View {
                     }
                     .accessibilityIdentifier("reminders.open")
                 }
-                SyncStatusSection(sync: workspace.sync)
-                ConflictsSection(workspace: workspace, notice: $conflictNotice)
                 SyncRecoverySection(workspace: workspace)
-                Section {
-                    Button("Choose Exchange Folder…") { choosingFolder = true }
-                    Button("Exchange Now") { Task { await workspace.refresh() } }
-                        .disabled(!workspace.sync.hasFolder)
-                }
             }
             .navigationTitle("Sync")
             .toolbar {

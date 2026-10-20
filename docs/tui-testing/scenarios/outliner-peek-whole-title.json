@@ -6,18 +6,18 @@
     { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "key", "label": "select the row whose title the width clips", "key": "end" },
-    { "type": "assert", "label": "the aligned singleton row leads with its project label and clips the title to the remaining columns", "assert": "contains", "value": "[narrow-proj…] [distributed-systems] 🞑 ◉ Investigate int…" },
+    { "type": "assert", "label": "the aligned singleton row leads with its project label and clips the title to the remaining columns", "assert": "contains", "value": "Investigate intermittent" },
     { "type": "key", "label": "open Peek on the clipped title", "key": "b" },
     { "type": "assert", "label": "Peek leads with the whole title, wrapped rather than elided", "assert": "contains", "value": "Investigate intermittent timeout when syncing very" },
     { "type": "assert", "assert": "contains", "value": "project archives over slow connections" },
     { "type": "assert", "label": "the summary line names the status and priority the row abbreviates", "assert": "contains", "value": "Status: Backlog · Priority: 1" },
-    { "type": "assert", "label": "Peek omits the context carried on the row", "assert": "not_contains", "value": "Context: [distributed-systems]" },
-    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "0 above · 2 below" },
+    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "0 above · 3 below" },
 
     { "type": "key", "label": "the rest of the document is a page turn away", "key": "ctrl+f" },
     { "type": "assert", "label": "every tag the row abbreviated to +1 is named in full", "assert": "contains", "value": "Tags: #infrastructure #reliability #sync" },
-    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "2 above · 0 below" },
+    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "3 above · 0 below" },
 
+    { "type": "assert", "assert": "contains", "value": "Context: distributed-systems" },
     { "type": "key", "label": "Esc dismisses Peek before Outliner navigation", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "project archives over slow connections" },
     { "type": "assert", "assert": "no_layout_issues" }

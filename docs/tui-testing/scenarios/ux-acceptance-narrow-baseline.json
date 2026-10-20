@@ -35,16 +35,16 @@
     { "type": "key", "key": "G" },
     { "type": "key", "key": "b" },
     { "type": "assert", "assert": "no_layout_issues" },
-    { "type": "assert", "label": "the narrow ranked row reserves both content glyphs and its project label; Peek below spells the whole title", "assert": "contains", "value": "[ux-platform…] [finance] Restore the overdue bi… ▤ 📎" },
+    { "type": "assert", "label": "the narrow ranked row reserves both content glyphs and its project label; Peek below spells the whole title", "assert": "contains", "value": "[ux-plat…] [finance] Restore the overdue billin… ▤ 📎" },
     { "type": "assert", "label": "Peek wraps the whole title rather than eliding it", "assert": "contains", "value": "Restore the overdue billing reconciliation export" },
     { "type": "assert", "assert": "contains", "value": "the audit closes" },
-    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "0 above · 12 below" },
+    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "0 above · 13 below" },
 
     { "type": "assert", "assert": "contains", "value": "Resume: Stopped after the ledger export; the" },
     { "type": "assert", "assert": "contains", "value": "reconciliation diff is still open." },
     { "type": "key", "label": "metadata follows the immediately readable resume passage", "key": "ctrl+f" },
     { "type": "assert", "assert": "contains", "value": "Status: Backlog" },
-    { "type": "assert", "assert": "contains", "value": "3 above · 9 below", "label": "the position row accounts for the compact window and its current offset" },
+    { "type": "assert", "assert": "contains", "value": "3 above · 10 below", "label": "the position row accounts for the compact window and its current offset" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

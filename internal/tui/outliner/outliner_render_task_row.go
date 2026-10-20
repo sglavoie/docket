@@ -117,11 +117,11 @@ func (m *OutlinerModel) taskRelationMarker(row OutlinerRow) string {
 }
 
 // rankedProjectLabelMaxSlug bounds the slug a ranked row spells: an eighth of
-// the row, never under twelve columns and never over twenty-four, so a narrow
+// the row, never under eight columns and never over twenty-four, so a narrow
 // row keeps its title and a wide one spells a long slug out. It is the one
 // source of that cap; the render and ComputeOutlinerRowLayout both read it.
 func rankedProjectLabelMaxSlug(rowWidth int) int {
-	return min(max(rowWidth/8, 12), 24)
+	return min(max(rowWidth/8, 8), 24)
 }
 
 // showsRankedProjectLabel reports whether every task row leads its title with
@@ -152,20 +152,29 @@ func (m *OutlinerModel) rankedProjectSlug(row OutlinerRow, rowWidth int) string 
 // padding. Rows under a project header carry only their own context.
 func (m *OutlinerModel) taskIdentityLabel(row OutlinerRow, rowWidth int) string {
 	label := ""
+	context := ""
+	if row.Task != nil {
+		// Identity must leave space for the title and the row's fixed presence
+		// markers. One context spends at most an eighth of the row; a combined
+		// project/context label spends at most a third, brackets included.
+		context = textfit.TruncateToVisualWidth(strings.TrimSpace(row.Task.Context), min(max(rowWidth/8, 8), 20))
+	}
 	if m.rowLeadsWithProjectLabel(row) {
-		if slug := m.rankedProjectSlug(row, rowWidth); slug != "" {
+		slugLimit := rankedProjectLabelMaxSlug(rowWidth)
+		if context != "" {
+			slugLimit = min(slugLimit, max(4, rowWidth/3-lipgloss.Width(context)-5))
+		}
+		slug, _ := m.projectSlugForRow(row)
+		if slug = m.abbreviatedProjectSlug(slug, slugLimit); slug != "" {
 			_, project := m.projectSlugForRow(row)
 			label = theme.ProjectLabel(project, slug)
 		}
 	}
-	if row.Task != nil {
-		if context := strings.TrimSpace(row.Task.Context); context != "" {
-			if label != "" {
-				label += " "
-			}
-			context = textfit.TruncateToVisualWidth(context, max(rowWidth/3, 1))
-			label += theme.TaskContextBadgeStyle(row.Task).Render("[" + context + "]")
+	if context != "" {
+		if label != "" {
+			label += " "
 		}
+		label += theme.TaskContextBadgeStyle(row.Task).Render("[" + context + "]")
 	}
 	return label
 }

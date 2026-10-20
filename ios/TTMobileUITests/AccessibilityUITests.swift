@@ -244,6 +244,7 @@ final class AccessibilityUITests: XCTestCase {
         require(ship, "the Ship beta build row")
         XCTAssertTrue(ship.label.contains("priority 1"), ship.label)
         XCTAssertTrue(ship.label.contains("due "), ship.label)
+        XCTAssertTrue(ship.label.contains("context laptop"), ship.label)
         screenshot(app, "today-largest-text")
         try audit(app, [.dynamicType, .textClipped], "Today at the largest text size")
 
@@ -332,6 +333,12 @@ final class AccessibilityUITests: XCTestCase {
         app.buttons["sync.open"].firstMatch.tap()
         require(app.navigationBars["Sync"], "the sync sheet")
         requireNamedButtons("sync")
+        let workspaceDetails = app.buttons["sync.workspaceDetails"]
+        XCTAssertEqual(workspaceDetails.label, "Workspace details")
+        XCTAssertEqual(workspaceDetails.value as? String, "Collapsed")
+        workspaceDetails.tap()
+        XCTAssertEqual(workspaceDetails.value as? String, "Expanded")
+        requireNamedButtons("expanded sync details")
         try audit(app, [.sufficientElementDescription], "sync")
         screenshot(app, "sync-voiceover-labels")
     }

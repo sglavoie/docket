@@ -5,14 +5,14 @@
   "actions": [
     { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "label": "the row reserves its context badge", "assert": "contains", "value": "[distributed-systems]" },
+    { "type": "assert", "label": "the row reserves its context badge", "assert": "contains", "value": "[distrib…]" },
     { "type": "key", "label": "select the long-context task", "key": "end" },
-    { "type": "key", "label": "Peek omits the context already on the row", "key": "b" },
-    { "type": "assert", "assert": "not_contains", "value": "Context: [distributed-systems]", "label": "Peek omits the context carried on the row" },
-    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "0 above · 2 below" },
+    { "type": "key", "label": "Peek recovers the context abbreviated on the row", "key": "b" },
+    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "0 above · 3 below" },
     { "type": "key", "label": "page to the end of the document", "key": "ctrl+f" },
-    { "type": "assert", "label": "paging Peek leaves context visible on the row", "assert": "contains", "value": "[distributed-systems]" },
-    { "type": "assert", "assert": "contains", "value": "2 above · 0 below", "label": "the position row accounts for the compact window and its current offset" },
+    { "type": "assert", "label": "paging Peek leaves context visible on the row", "assert": "contains", "value": "[distrib…]" },
+    { "type": "assert", "assert": "contains", "value": "3 above · 0 below", "label": "the position row accounts for the compact window and its current offset" },
+    { "type": "assert", "assert": "contains", "value": "Context: distributed-systems" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

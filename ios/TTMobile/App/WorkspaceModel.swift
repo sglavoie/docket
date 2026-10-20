@@ -302,6 +302,28 @@ final class WorkspaceModel {
         try? await engine.previewCapture(text: text, projectID: projectID)
     }
 
+    func saveCaptureDraft(_ draft: CaptureDraft) async -> EditorFailure? {
+        let error = await attemptError {
+            try await waitForSimulatorEditorSave()
+            switch draft.mode {
+            case .quick:
+                _ = try await self.engine.capture(text: draft.text, projectID: nil)
+            case .form:
+                _ = try await self.engine.capture(draft.fields.capture(projectID: draft.projectID, destination: draft.destination))
+            }
+        }
+        return error.map(EditorFailure.init)
+    }
+
+    func saveEditDraft(_ locator: TaskLocator, _ draft: EditDraft) async -> EditorFailure? {
+        let error = await attemptError {
+            try await waitForSimulatorEditorSave()
+            let result = try await self.engine.edit(locator, draft.fields.edit(from: draft.original))
+            self.recordReceipt("Saved changes to “\(result.task.title)”", result.committed)
+        }
+        return error.map(EditorFailure.init)
+    }
+
     func edit(_ locator: TaskLocator, _ edit: TaskEdit) async -> String? {
         await attempt {
             let result = try await self.engine.edit(locator, edit)
@@ -583,6 +605,10 @@ final class WorkspaceModel {
     /// Runs one mutation for a screen that shows its own refusal, so the
     /// refusal stays beside the draft it refused rather than in the banner.
     private func attempt(clearingReceipt: Bool = true, _ mutation: @escaping () async throws -> Void) async -> String? {
+        await attemptError(clearingReceipt: clearingReceipt, mutation).map(Self.describe)
+    }
+
+    private func attemptError(clearingReceipt: Bool = true, _ mutation: @escaping () async throws -> Void) async -> Error? {
         if clearingReceipt { actionReceipt = nil }
         do {
             try await mutation()
@@ -590,7 +616,7 @@ final class WorkspaceModel {
             sync.exchange()
             return nil
         } catch {
-            return Self.describe(error)
+            return error
         }
     }
 

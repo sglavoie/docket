@@ -3,13 +3,13 @@
   "fixture": "rich",
   "size": "80x24",
   "actions": [
-    { "type": "assert", "label": "Doing holds one task, so its group draws no header and the row leads with the project", "assert": "contains", "value": "[rich-project] ◐   Build login form" },
+    { "type": "assert", "label": "Doing holds one task, so its group draws no header and the row leads with the project", "assert": "contains", "value": "[rich-proj…] ◐   Build login form" },
     { "type": "assert", "assert": "not_contains", "value": "[rich-project] (1)" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "past the Inbox lane header", "key": "j" },
     { "type": "key", "label": "onto Inbox's one task, which leads its merged group", "key": "j" },
-    { "type": "assert", "assert": "contains", "value": "[rich-project] ◌   Triage support inbox" },
+    { "type": "assert", "assert": "contains", "value": "[rich-proj…] ◌   Triage support inbox" },
     { "type": "key", "label": "nothing nearer to fold, so h folds the group to its header", "key": "h" },
     { "type": "assert", "label": "the folded singleton draws its header as the summary", "assert": "contains", "value": "▸ [rich-project] (1)" },
     { "type": "assert", "assert": "not_contains", "value": "Triage support inbox" },
@@ -17,7 +17,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "l merges the header back into the row", "key": "l" },
-    { "type": "assert", "assert": "contains", "value": "[rich-project] ◌   Triage support inbox" },
+    { "type": "assert", "assert": "contains", "value": "[rich-proj…] ◌   Triage support inbox" },
     { "type": "assert", "assert": "not_contains", "value": "[rich-project] (1)" },
     { "type": "key", "label": "and returns the cursor to the task it folded", "key": "y" },
     { "type": "assert", "assert": "clipboard_contains", "value": "Triage support inbox" },
@@ -27,7 +27,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "and the second p merges them again", "key": "p" },
     { "type": "assert", "assert": "not_contains", "value": "[rich-project] (1)" },
-    { "type": "assert", "assert": "contains", "value": "[rich-project] ◐   Build login form" },
+    { "type": "assert", "assert": "contains", "value": "[rich-proj…] ◐   Build login form" },
 
     { "type": "key", "label": "back to the top", "key": "home" },
     { "type": "key", "key": "j" },
@@ -35,9 +35,9 @@
     { "type": "key", "key": "j" },
     { "type": "key", "label": "onto the Backlog lane, folded at launch", "key": "j" },
     { "type": "key", "label": "open it", "key": "l" },
-    { "type": "assert", "label": "one top-level task with a subtree still merges: the root leads at the header's depth", "assert": "contains", "value": " ▾ [rich-project] 🞑 ◉ Launch platform" },
+    { "type": "assert", "label": "one top-level task with a subtree still merges: the root leads at the header's depth", "assert": "contains", "value": " ▾ [rich-proj…] 🞑 ◉ Launch platform" },
     { "type": "assert", "label": "and its descendants hang beneath it without a label", "assert": "contains", "value": " └── ▾ 🞑 ●            User authentication" },
-    { "type": "assert", "assert": "count_contains", "value": "[rich-project]", "count": 4 },
+    { "type": "assert", "assert": "count_contains", "value": "[rich-proj…]", "count": 4 },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

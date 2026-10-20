@@ -229,6 +229,7 @@ func inlinePeekBodySections(opts inlinePeekOptions, width int) []inlinePeekSecti
 		add(section.key, section.lines)
 	}
 	add("project:"+opts.ProjectSlug, inlinePeekStyledLines(theme.MutedStyle.Render("Project: "), opts.ProjectSlug, opts.Indent, width))
+	add("context:"+task.Context, inlinePeekStyledLines(theme.MutedStyle.Render("Context: "), task.Context, opts.Indent, width))
 	add("parent:"+opts.Breadcrumb, inlinePeekParentLines(opts.Breadcrumb, opts.Indent, width))
 	add("match:"+opts.SearchExcerptKey, inlinePeekStyledLines(theme.MutedStyle.Render("Match: "), opts.SearchExcerpt, opts.Indent, width))
 	add("schedule:"+inlinePeekScheduleKey(task), inlinePeekScheduleLines(task, now, opts.Indent, width))

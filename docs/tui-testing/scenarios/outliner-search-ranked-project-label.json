@@ -11,7 +11,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "resize", "label": "the label survives the minimum width", "width": 60, "height": 24 },
-    { "type": "assert", "assert": "contains", "value": "[client-alpha] Alpha" },
+    { "type": "assert", "assert": "contains", "value": "[clie…pha] Alpha" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "width": 100, "height": 30 },
 

@@ -39,7 +39,7 @@
     { "type": "assert", "assert": "status_contains", "value": "Add Task: #1 Ship the launch" },
     { "type": "assert", "label": "the context appears beside the project on the row", "assert": "contains", "value": "[acme-eu]" },
     { "type": "key", "key": "b" },
-    { "type": "assert", "label": "Peek does not repeat the context", "assert": "not_contains", "value": "Context:" },
+    { "type": "assert", "label": "Peek recovers the full context", "assert": "contains", "value": "Context: acme-eu" },
     { "type": "key", "label": "close Peek", "key": "b" },
     { "type": "assert", "assert": "no_layout_issues" },
 

@@ -23,6 +23,7 @@ final class DraftStore {
     @ObservationIgnored private var removals = Set<Key>()
     @ObservationIgnored private var unreadable = Set<Key>()
     @ObservationIgnored private var preserved: [Key: URL] = [:]
+    @ObservationIgnored private var revisions: [Key: UUID] = [:]
 
     init(location: WorkspaceLocation) {
         directory = location.runtime.appendingPathComponent("drafts", isDirectory: true)
@@ -41,10 +42,10 @@ final class DraftStore {
     }
 
     func loadCapture() -> CaptureDraft? { load(.capture) }
-    func saveCapture(_ draft: CaptureDraft) { save(draft, for: .capture) }
+    @discardableResult func saveCapture(_ draft: CaptureDraft) -> UUID { save(draft, for: .capture) }
     func discardCapture() { discard(.capture) }
     func loadEdit(_ locator: TaskLocator) -> EditDraft? { load(.edit(locator)) }
-    func saveEdit(_ draft: EditDraft, for locator: TaskLocator) { save(draft, for: .edit(locator)) }
+    @discardableResult func saveEdit(_ draft: EditDraft, for locator: TaskLocator) -> UUID { save(draft, for: .edit(locator)) }
     func discardEdit(_ locator: TaskLocator) { discard(.edit(locator)) }
     func loadComment(_ key: String) -> CommentDraft? { load(.comment(key)) }
     func saveComment(_ draft: CommentDraft, for key: String) { save(draft, for: .comment(key)) }
@@ -55,6 +56,28 @@ final class DraftStore {
     func loadConflict(_ key: String) -> ConflictDraft? { load(.conflict(key)) }
     func saveConflict(_ draft: ConflictDraft, for key: String) { save(draft, for: .conflict(key)) }
     func discardConflict(_ key: String) { discard(.conflict(key)) }
+
+    /// A save owns only the revision it submitted, including when text was
+    /// changed and then changed back while the engine was working.
+    func finishCapture(_ submitted: CaptureDraft, revision: UUID) -> Bool {
+        guard revisions[.capture] == revision, loadCapture() == submitted else { return false }
+        discardCapture()
+        return true
+    }
+
+    /// Later edits remain a draft over the fields that just committed. The next
+    /// save must describe only those later edits, including a revert to a value
+    /// that existed before this submission.
+    func finishEdit(_ submitted: EditDraft, revision: UUID, for locator: TaskLocator) -> EditDraft? {
+        if revisions[.edit(locator)] == revision, loadEdit(locator) == submitted {
+            discardEdit(locator)
+            return nil
+        }
+        guard var current = loadEdit(locator) else { return submitted }
+        current.original = submitted.fields
+        saveEdit(current, for: locator)
+        return current
+    }
 
     var hasPendingChanges: Bool {
         // Observe issue changes as well as checking the non-observed payloads.
@@ -84,7 +107,9 @@ final class DraftStore {
         }
     }
 
-    private func save<Draft: Encodable>(_ draft: Draft, for key: Key) {
+    @discardableResult private func save<Draft: Encodable>(_ draft: Draft, for key: Key) -> UUID {
+        let revision = UUID()
+        revisions[key] = revision
         do {
             pending[key] = try JSONEncoder().encode(draft)
             removals.remove(key)
@@ -92,6 +117,7 @@ final class DraftStore {
         } catch {
             issues[key] = Issue(message: "Draft couldn’t be saved. Keep this editor open until it can be saved.")
         }
+        return revision
     }
 
     /// Preserve the original bytes even if they cannot be decoded. If the copy
@@ -123,6 +149,7 @@ final class DraftStore {
     }
 
     private func discard(_ key: Key) {
+        revisions[key] = UUID()
         pending.removeValue(forKey: key)
         removals.insert(key)
         removePending(key)

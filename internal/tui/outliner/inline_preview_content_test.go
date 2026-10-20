@@ -278,10 +278,10 @@ func TestInlinePeekWrapsTagsRatherThanElidingThem(t *testing.T) {
 	}
 }
 
-func TestInlinePeekLeavesContextOnTheRow(t *testing.T) {
+func TestInlinePeekRecoversTheFullContext(t *testing.T) {
 	task := &models.Task{Context: "platform-core", Tags: []string{"bug"}}
 	body := ansi.Strip(strings.Join(inlinePeekDocumentFor(inlinePeekOptions{Task: task, Width: 80, Window: testPeekWindow()}).Body, "\n"))
-	if body != "Status: Backlog\nTags: #bug" {
+	if body != "Status: Backlog\nContext: platform-core\nTags: #bug" {
 		t.Fatalf("Peek body = %q", body)
 	}
 }

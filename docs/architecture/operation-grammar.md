@@ -214,7 +214,8 @@ The help tab bar renders through `chrome.RenderWrappingTabBar` with
 tabs — which is what fits every Outliner section on one row at 80 columns; every
 wrapped row takes the header's one-column pad, and the first section heading
 drops `theme.HelpCategoryStyle`'s top margin, which separates sections rather
-than leading them.
+than leading them. Short viewports omit decorative gaps and use one Tasks
+heading, preserving the daily action order through Undo on the first screen.
 
 When a selected category has no results and other categories do, Help offers
 `Tab show all matches`. The action selects All, preserves the query and input

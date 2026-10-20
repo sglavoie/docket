@@ -13,8 +13,9 @@ struct CaptureSheet: View {
     @State private var restored = false
     @State private var loaded = false
     @State private var projects: [ProjectSummary] = []
-    @State private var preview: CapturePreview?
-    @State private var failure: String?
+    @State private var preview = CapturePreviewModel()
+    @State private var failure: EditorFailure?
+    @State private var savedEarlier: String?
     @State private var saving = false
     @State private var confirmingDiscard = false
     @State private var draftActions = SheetActions()
@@ -23,40 +24,47 @@ struct CaptureSheet: View {
     @State private var composing = false
     @State private var suggestions: [CaptureSuggestion] = []
     @State private var suggestedFor: SuggestionKey?
+    @FocusState private var fieldFocus: TaskField?
+    @State private var correction: TaskField?
 
     private static let destinations: [CaptureDestination] = [.inbox, .today, .next, .backlog, .doing, .waiting, .someday]
 
     var body: some View {
         NavigationStack {
-            Form {
-                DraftRecoveryNotice(store: workspace.drafts, key: .capture)
-                Picker("Capture as", selection: $draft.mode) {
-                    Text("Quick").tag(CaptureDraft.Mode.quick)
-                    Text("Form").tag(CaptureDraft.Mode.form)
+            ScrollViewReader { scroll in
+                Form {
+                    DraftRecoveryNotice(store: workspace.drafts, key: .capture)
+                    Picker("Capture as", selection: $draft.mode) {
+                        Text("Quick").tag(CaptureDraft.Mode.quick)
+                        Text("Form").tag(CaptureDraft.Mode.form)
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("capture.mode")
+                    if restored {
+                        Label("Restored your unsaved capture", systemImage: "arrow.uturn.backward.circle")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("capture.restored")
+                    }
+                    switch draft.mode {
+                    case .quick: quick
+                    case .form: form
+                    }
                 }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier("capture.mode")
-                if restored {
-                    Label("Restored your unsaved capture", systemImage: "arrow.uturn.backward.circle")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("capture.restored")
-                }
-                if let failure {
-                    Text(failure)
-                        .foregroundStyle(.red)
-                        .accessibilityIdentifier("capture.failure")
-                }
-                switch draft.mode {
-                case .quick: quick
-                case .form: form
+                .onChange(of: correction) { _, field in
+                    if let field { scroll.scrollTo(field, anchor: .center) }
                 }
             }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                EditorFeedback(failure: failure, notice: savedEarlier, saving: saving, prefix: "capture")
+            }
+            .interactiveDismissDisabled(saving)
             .navigationTitle("Capture")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
+                        .disabled(saving)
                         .accessibilityIdentifier("capture.close")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -104,8 +112,10 @@ struct CaptureSheet: View {
                         .disabled(!canSave || saving)
                     Button("Close") { dismiss() }
                         .keyboardShortcut(.escape, modifiers: [])
+                        .disabled(saving)
                     Button("Close Window") { dismiss() }
                         .keyboardShortcut("w", modifiers: .command)
+                        .disabled(saving)
                 }
                 // Hidden draws nothing and leaves VoiceOver nothing to land on; the
                 // shortcuts still answer.
@@ -125,6 +135,8 @@ struct CaptureSheet: View {
             }
             .onChange(of: draft) { _, draft in
                 guard loaded else { return }
+                failure = nil
+                correction = nil
                 if draft.isEmpty {
                     workspace.drafts?.discardCapture()
                 } else {
@@ -132,10 +144,9 @@ struct CaptureSheet: View {
                 }
             }
             .task(id: PreviewKey(text: draft.text, mode: draft.mode)) {
-                guard draft.mode == .quick else { return }
-                try? await Task.sleep(for: .milliseconds(150))
-                guard !Task.isCancelled else { return }
-                preview = await workspace.previewCapture(text: draft.text, projectID: nil)
+                await preview.update(text: draft.text, quick: draft.mode == .quick) {
+                    await workspace.previewCapture(text: $0, projectID: nil)
+                }
             }
             .task(id: suggestionKey) {
                 let key = suggestionKey
@@ -186,6 +197,7 @@ struct CaptureSheet: View {
     private var quick: some View {
         Section {
             CaptureTextEditor(text: $draft.text, selection: $selection, focused: $focused, composing: $composing)
+                .id(TaskField.title)
                 .overlay(alignment: .topLeading) {
                     if draft.text.isEmpty {
                         Text("Buy milk #errand @tomorrow $today")
@@ -222,7 +234,7 @@ struct CaptureSheet: View {
             Text("One task per line. !1–3 priority, #tag, ##context, @due, @@defer, $status or $today/$next, %project, >parent, <child, ~dependency, *pin, =review, &link, ;comment;. Swipe suggestions to see more; tap to insert.")
                 .foregroundStyle(Color.primary.opacity(0.75))
         }
-        if let preview, !preview.errors.isEmpty || !preview.lines.isEmpty {
+        if let preview = preview.current(for: draft.text), !preview.errors.isEmpty || !preview.lines.isEmpty {
             Section("Preview") {
                 ForEach(preview.errors, id: \.self) { problem in
                     Label("Line \(problem.line): \(problem.message)", systemImage: "exclamationmark.triangle")
@@ -261,7 +273,7 @@ struct CaptureSheet: View {
 
     @ViewBuilder
     private var form: some View {
-        TaskFieldsForm(fields: $draft.fields)
+        TaskFieldsForm(fields: $draft.fields, focus: $fieldFocus)
         Section {
             Picker("Lands in", selection: $draft.destination) {
                 ForEach(Self.destinations, id: \.self) { destination in
@@ -269,6 +281,7 @@ struct CaptureSheet: View {
                 }
             }
             .accessibilityIdentifier("capture.destination")
+            .id(TaskField.destination)
             // Quick capture has no picker: %project is its one route, and the
             // preview names where each line lands.
             Picker("Project", selection: $draft.projectID) {
@@ -278,27 +291,44 @@ struct CaptureSheet: View {
                 }
             }
             .accessibilityIdentifier("capture.project")
+            .id(TaskField.project)
         }
     }
 
     private func save() {
+        guard !saving, canSave else { return }
         saving = true
-        let draft = draft
+        failure = nil
+        savedEarlier = nil
+        correction = nil
+        let submitted = draft
+        let store = workspace.drafts
+        let revision = store?.saveCapture(submitted)
         Task {
-            let refusal: String? = switch draft.mode {
-            case .quick:
-                await workspace.capture(text: draft.text, projectID: nil)
-            case .form:
-                await workspace.capture(draft.fields.capture(projectID: draft.projectID, destination: draft.destination))
-            }
+            let refusal = await workspace.saveCaptureDraft(submitted)
             saving = false
             if let refusal {
-                // The draft stays on screen and on disk.
-                failure = "Couldn’t save. Your draft is still open. \(refusal)"
+                failure = refusal
+                // A refusal against an earlier version must not move the caret
+                // in text the person has since replaced.
+                if draft == submitted {
+                    if draft.mode == .quick {
+                        if let range = refusal.selection(in: draft.text) { selection = range }
+                        focused = true
+                        correction = .title
+                    } else if let field = refusal.field {
+                        correction = field
+                        fieldFocus = field
+                    }
+                }
                 return
             }
-            workspace.drafts?.discardCapture()
-            dismiss()
+            if draft == submitted,
+               store == nil || revision.map({ store?.finishCapture(submitted, revision: $0) == true }) == true {
+                dismiss()
+            } else {
+                savedEarlier = "Saved the submitted capture. Your newer draft is still open."
+            }
         }
     }
 }
@@ -306,16 +336,23 @@ struct CaptureSheet: View {
 /// The structured fields a capture and an edit share.
 struct TaskFieldsForm: View {
     @Binding var fields: TaskFields
+    var focus: FocusState<TaskField?>.Binding
 
     var body: some View {
         Section {
             TextField("Title", text: $fields.title, axis: .vertical)
                 .accessibilityIdentifier("form.title")
+                .focused(focus, equals: .title)
+                .id(TaskField.title)
             TextField("Description", text: $fields.description, axis: .vertical)
                 .lineLimit(2...6)
                 .accessibilityIdentifier("form.description")
+                .focused(focus, equals: .description)
+                .id(TaskField.description)
             TextField("Resume note", text: $fields.resumeNote)
                 .accessibilityIdentifier("form.resume")
+                .focused(focus, equals: .resume)
+                .id(TaskField.resume)
         }
         Section {
             Picker("Priority", selection: $fields.priority) {
@@ -325,22 +362,30 @@ struct TaskFieldsForm: View {
                 Text("P3").tag(3)
             }
             .accessibilityIdentifier("form.priority")
+            .id(TaskField.priority)
             TextField("Tags", text: $fields.tags)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .accessibilityIdentifier("form.tags")
+                .focused(focus, equals: .tags)
+                .id(TaskField.tags)
             TextField("Context", text: $fields.context)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .accessibilityIdentifier("form.context")
+                .focused(focus, equals: .context)
+                .id(TaskField.context)
             Toggle("Pinned", isOn: $fields.pinned)
                 .accessibilityIdentifier("form.pinned")
+                .id(TaskField.pinned)
             Toggle("Review", isOn: $fields.review)
                 .accessibilityIdentifier("form.review")
+                .id(TaskField.review)
         }
         Section {
             Toggle("Due date", isOn: $fields.hasDue)
                 .accessibilityIdentifier("form.due.toggle")
+                .id(TaskField.due)
             if fields.hasDue {
                 DatePicker("Due", selection: $fields.due, displayedComponents: .date)
                     .accessibilityIdentifier("form.due")
@@ -353,6 +398,7 @@ struct TaskFieldsForm: View {
             }
             Toggle("Defer", isOn: $fields.hasDefer)
                 .accessibilityIdentifier("form.defer.toggle")
+                .id(TaskField.deferUntil)
             if fields.hasDefer {
                 DatePicker("Defer until", selection: $fields.scheduledDeferral, displayedComponents: [.date, .hourAndMinute])
                     .accessibilityIdentifier("form.defer")

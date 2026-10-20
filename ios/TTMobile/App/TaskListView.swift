@@ -731,11 +731,16 @@ extension WorkflowState {
 struct TaskRowView: View {
     let item: TaskQueryItem
     let projectName: String?
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.colorScheme) private var colorScheme
 
     private var metadata: String {
+        Self.metadata(item, projectName: projectName)
+    }
+
+    static func metadata(_ item: TaskQueryItem, projectName: String?) -> String {
         var parts = [item.task.state.rawValue.capitalized]
+        if item.task.priority > 0 { parts.append("P\(item.task.priority)") }
+        if let context = item.task.context, !context.isEmpty { parts.append("Context: \(context)") }
         if item.today { parts.append("Today") }
         if item.next { parts.append("Next") }
         if item.task.pinned { parts.append("Pinned") }
@@ -769,8 +774,8 @@ struct TaskRowView: View {
                     Text(metadata)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                         .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("task.metadata")
                 }
             }
         }

@@ -138,8 +138,9 @@ to read the description.
 
 Context appears on the task row immediately after the project label, as
 `[project] [context]`. When the project is named by a group header, the task
-shows its context before the title. Long contexts are shortened to fit; `#`
-opens the picker with the full value. Peek does not repeat context.
+shows its context before the title. Long contexts and combined project/context
+labels are shortened to leave room for the task title and its indicators.
+Peek (`b`) shows the full context; `#` opens the picker to change it.
 
 An overdue deadline includes `overdue` in its badge, such as `Oct 15 overdue` or
 `Today 09:00 overdue`, so it remains identifiable without color. Peek's Due line

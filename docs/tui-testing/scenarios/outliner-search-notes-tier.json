@@ -22,7 +22,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "the floor terminal", "width": 80, "height": 24 },
     { "type": "assert", "assert": "contains", "value": "[global]" },
-    { "type": "assert", "label": "at the floor terminal the late body hit still draws its matched word whole, shedding leading context rather than the match", "assert": "contains", "value": "Rich Project delivery plan  …e Friday before launch…  · note" },
+    { "type": "assert", "label": "at the floor terminal the late body hit still draws its matched word whole, shedding leading context rather than the match", "assert": "contains", "value": "Rich Project delivery plan  …the Friday before launch…  · note" },
     { "type": "assert", "label": "no excerpt is cut back to context that ends before the search term", "assert": "not_contains", "value": "before la…" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "and back", "width": 100, "height": 35 },

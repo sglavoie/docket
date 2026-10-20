@@ -318,7 +318,7 @@ final class ConflictRecoveryUITests: XCTestCase {
     }
 
     /// With the exchange folder gone, local work goes on: content stays
-    /// readable, a capture commits, the failure is shown with a retry, and a
+    /// readable, a capture commits, the failure offers folder recovery, and a
     /// diagnostics export records it. Once the folder is back, a retry
     /// publishes what waited.
     func testTransportFailureKeepsLocalContentRetriesAndExportsDiagnostics() throws {
@@ -343,6 +343,8 @@ final class ConflictRecoveryUITests: XCTestCase {
 
         openSync(app)
         reach(app, element(app, "sync.failure"), "the failure explanation")
+        XCTAssertTrue(app.buttons["sync.chooseFolder"].exists)
+        XCTAssertFalse(app.buttons["sync.retry"].exists)
         press(app, "sync.diagnostics")
         require(element(app, "sync.diagnostics.file"), "the exported diagnostics")
         require(app.buttons["sync.diagnostics.share"].firstMatch, "the share button")
@@ -357,7 +359,8 @@ final class ConflictRecoveryUITests: XCTestCase {
         XCTAssertTrue(published().isEmpty)
 
         try FileManager.default.moveItem(at: away, to: exchange)
-        press(app, "sync.retry")
+        press(app, "sync.details")
+        press(app, "sync.exchange")
         requireAbsent(element(app, "sync.failure"), "the failure after the retry")
         eventually("the offline capture reached the exchange") { !published().isEmpty }
     }

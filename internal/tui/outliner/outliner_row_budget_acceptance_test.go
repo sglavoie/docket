@@ -50,6 +50,39 @@ func budgetAcceptanceTask(title string) *models.Task {
 	}
 }
 
+func TestLongIdentityAndPresenceMarkersKeepAReadableTitle(t *testing.T) {
+	for _, context := range []string{"platform-delivery-internationalization", strings.Repeat("国際化プラットフォーム配信", 4)} {
+		task := budgetAcceptanceTask("Confirm the vendor security questionnaire")
+		task.Context = context
+		task.Description = "Read the vendor's complete response."
+		task.Attachments = []models.Attachment{{Filename: "vendor-response.pdf"}}
+		project := renderFixtureProject(t, "budget-project", "platform-delivery-and-migration", "Platform", []*models.Task{task})
+		outliner := NewOutlinerModel(project, nil, newTestConfig())
+		for _, width := range []int{60, 80, 100} {
+			for _, merged := range []bool{false, true} {
+				row := OutlinerRow{Task: task, ProjectID: project.ID, Prefix: "│   │   │   │   └── ", LeadsMergedGroup: merged}
+				layout := outliner.ComputeOutlinerRowLayout([]OutlinerRow{row}, width)
+				plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, true, width, 0, layout))
+				if lipgloss.Width(plain) > width {
+					t.Fatalf("%d-column row overruns: %q", width, plain)
+				}
+				for _, want := range []string{"Confirm the", "▤", "📎", "*"} {
+					if !strings.Contains(plain, want) {
+						t.Fatalf("%d-column row merged=%v lost %q: %q", width, merged, want, plain)
+					}
+				}
+				if width >= 80 && !strings.Contains(plain, ansi.Strip(query.FormatDueDate(task))) {
+					t.Fatalf("%d-column row lost its deadline: %q", width, plain)
+				}
+				peek := ansi.Strip(strings.Join(peekDocumentBody(outliner, row, width), "\n"))
+				if !strings.Contains(strings.Join(strings.Fields(peek), ""), context) {
+					t.Fatalf("Peek lost full context %q: %s", context, peek)
+				}
+			}
+		}
+	}
+}
+
 // TestNestedRowUnderALongProjectNameKeepsItsEssentials is the narrow-layout
 // acceptance. Five levels of tree prefix under a project whose name fills a
 // header leaves the least title width the product ever offers, and the row still

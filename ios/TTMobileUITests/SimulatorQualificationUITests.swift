@@ -131,7 +131,12 @@ final class SimulatorQualificationUITests: XCTestCase {
         syncSheet(app)
         // Retry clears backoff after a simulated delivery failure.
         if app.buttons["sync.retry"].exists { press(app, "sync.retry") }
-        else { press(app, "Exchange Now") }
+        else {
+            if app.buttons["sync.chooseFolder"].exists, !app.buttons["Exchange Now"].exists {
+                press(app, "sync.details")
+            }
+            press(app, "Exchange Now")
+        }
         try eventually("peer never received the phone edits") {
             _ = try self.transport.exchange()
             return try titles.allSatisfy { try self.count($0, in: self.peerWorkspace) == 1 }
@@ -192,6 +197,19 @@ final class SimulatorQualificationUITests: XCTestCase {
             let report = try diagnostics(app)
             let transportState = try XCTUnwrap(report["transport"] as? [String: Any])
             XCTAssertEqual(transportState["condition"] as? String, access == "accessExpired" ? "needsFolderAccess" : "accountUnavailable")
+            // The recovery is attached to the condition instead of a generic
+            // retry below unrelated workspace information.
+            let failure = app.staticTexts["sync.failure"]
+            for _ in 0..<8 where !failure.exists || !failure.isHittable { app.swipeDown() }
+            XCTAssertTrue(failure.waitForExistence(timeout: timeout))
+            XCTAssertTrue(failure.isHittable)
+            if access == "accessExpired" {
+                XCTAssertTrue(app.buttons["sync.chooseFolder"].isHittable)
+                XCTAssertEqual(failure.label, "Choose the exchange folder again")
+            } else {
+                XCTAssertTrue(app.buttons["sync.retry"].isHittable)
+                XCTAssertEqual(failure.label, "iCloud is unavailable; changes stay on this device")
+            }
             XCTAssertEqual(try count("Saved with \(access)", in: peerWorkspace), 0)
             try control()
             try converge(app, titles: ["Saved with \(access)"])
