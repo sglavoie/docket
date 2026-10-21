@@ -42,6 +42,7 @@ ios/TTEngine/.swiftpm/
 # itself.
 apple/TTSync/.build/
 apple/TTSync/.swiftpm/
+apple/TTSync/build/
 # The reminder scheduling package (ios/TTReminders) keeps SwiftPM state beside
 # its sources.
 ios/TTReminders/.build/
