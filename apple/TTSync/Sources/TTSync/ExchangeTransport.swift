@@ -12,6 +12,10 @@ public struct ExchangeReport: Codable, Equatable, Sendable {
     public var outstandingUploads = 0
     /// Incoming transactions still queued: not downloaded, incomplete, or held.
     public var outstandingDownloads = 0
+    /// Optional so reports saved by earlier builds still decode.
+    public var waitingForDownload: Int?
+    public var waitingToApply: Int?
+    public var blockedReason: String?
     /// Workspace paths whose incoming content has not arrived. The local files
     /// stay as they are until it does.
     public var unavailable: [String] = []
@@ -64,10 +68,20 @@ public final class ExchangeTransport: @unchecked Sendable {
     /// Runs one exchange pass. It throws only when its own local state cannot
     /// be read or written; everything about the exchange is reported.
     @discardableResult
-    public func exchange() throws -> ExchangeReport {
+    public func exchange(retryNow: Bool = false) throws -> ExchangeReport {
         lock.lock()
         defer { lock.unlock() }
         var state = try store.load()
+        if retryNow {
+            for index in state.uploads.indices {
+                state.uploads[index].attempts = 0
+                state.uploads[index].nextAttempt = nil
+            }
+            for index in state.downloads.indices {
+                state.downloads[index].attempts = 0
+                state.downloads[index].nextAttempt = nil
+            }
+        }
         if state.workspaceID == nil {
             state.workspaceID = engine.workspaceID
         }
@@ -78,6 +92,9 @@ public final class ExchangeTransport: @unchecked Sendable {
             report.condition = state.condition ?? report.condition
             report.outstandingUploads = state.uploads.count
             report.outstandingDownloads = state.downloads.count
+            report.waitingForDownload = state.waitingForDownload
+            report.waitingToApply = state.waitingToApply
+            report.blockedReason = state.blockedReason
             report.unavailable = Array(Set(state.downloads.flatMap(\.unavailable))).sorted()
             report.held = state.downloads.filter { $0.outcome == "held" }.map(\.txnID)
             report.lastSuccessfulExchange = state.lastSuccessfulExchange
@@ -94,11 +111,30 @@ public final class ExchangeTransport: @unchecked Sendable {
             state.lastError = report.errors.last
             return try finish()
         }
-        try upload(&state, &report)
-        try download(&state, &report)
+        let manifests: [ExchangeItem]
+        do {
+            manifests = try provider.list(directory: "\(Self.root)/txns")
+            if let problem = try historyProblem(manifests) {
+                state.condition = .identityConflict
+                state.lastError = problem
+                report.errors.append(problem)
+                return try finish()
+            }
+        } catch {
+            state.condition = .reachable
+            state.lastError = "listing the exchange: \(error)"
+            report.errors.append(state.lastError!)
+            return try finish()
+        }
+        state.condition = .reachable
+        try upload(&state, &report, manifests: manifests)
+        if state.condition == .identityConflict { return try finish() }
+        try download(&state, &report, manifests: manifests)
         state.condition = .reachable
         if report.errors.isEmpty {
-            state.lastSuccessfulExchange = started
+            if state.uploads.isEmpty && state.downloads.isEmpty {
+                state.lastSuccessfulExchange = started
+            }
             state.lastError = nil
         } else {
             state.lastError = report.errors.last
@@ -147,6 +183,7 @@ public final class ExchangeTransport: @unchecked Sendable {
         var state = try store.load()
         let wanted = paths.map(Set.init)
         var requested = 0
+        var downloads: Set<String> = []
         for index in state.downloads.indices {
             var entry = state.downloads[index]
             if let wanted, wanted.isDisjoint(with: entry.unavailable) {
@@ -156,15 +193,23 @@ public final class ExchangeTransport: @unchecked Sendable {
             entry.attempts = 0
             for missing in entry.missing {
                 let path = missing == entry.path ? missing : Self.blobPath(missing)
-                try? provider.requestDownload("\(Self.root)/\(path)")
+                downloads.insert("\(Self.root)/\(path)")
             }
             if entry.missing.isEmpty, !entry.manifestStaged {
-                try? provider.requestDownload("\(Self.root)/\(entry.path)")
+                downloads.insert("\(Self.root)/\(entry.path)")
             }
             state.downloads[index] = entry
             requested += 1
         }
         try store.save(state)
+        var errors: [String] = []
+        for path in downloads.sorted() {
+            do { try provider.requestDownload(path) }
+            catch { errors.append(String(describing: error)) }
+        }
+        if let first = errors.first {
+            throw ExchangeProviderError.transient("Requesting downloads failed: \(first)")
+        }
         return requested
     }
 
@@ -244,7 +289,7 @@ public final class ExchangeTransport: @unchecked Sendable {
 
     // MARK: Upload
 
-    private func upload(_ state: inout TransferState, _ report: inout ExchangeReport) throws {
+    private func upload(_ state: inout TransferState, _ report: inout ExchangeReport, manifests: [ExchangeItem]) throws {
         let outbox: ExportedOutbox
         do {
             outbox = try engine.exportPending()
@@ -259,6 +304,14 @@ public final class ExchangeTransport: @unchecked Sendable {
         }
         state.uploads.sort { $0.transaction.deviceSeq < $1.transaction.deviceSeq }
         try store.save(state)
+
+        let outgoing = outbox.pending.map { ExchangeItem(path: $0.manifest.path, size: nil, state: .current) }
+        if let problem = try historyProblem(manifests + outgoing) {
+            state.condition = .identityConflict
+            state.lastError = problem
+            report.errors.append(problem)
+            return
+        }
 
         let index = 0 // the head: a published entry is removed, a failed one stops the pass
         while index < state.uploads.count {
@@ -313,13 +366,31 @@ public final class ExchangeTransport: @unchecked Sendable {
 
     private static let manifestPattern = try! NSRegularExpression(pattern: "^txns/([A-Za-z0-9][A-Za-z0-9._-]{0,63})/([0-9]{10})-([0-9a-f]{64})\\.json$")
 
-    private func download(_ state: inout TransferState, _ report: inout ExchangeReport) throws {
+    /// Check names before reading content or publishing more history. A
+    /// repeated sequence must never be silently treated as an old delivery.
+    private func historyProblem(_ manifests: [ExchangeItem]) throws -> String? {
+        var authors: [String: String] = [:]
+        let joiningID = engine.isJoining ? try engine.status().deviceID : nil
+        for item in manifests.sorted(by: { $0.path < $1.path }) {
+            let path = relative(item.path)
+            guard let (device, seq, txnID) = Self.parseManifestPath(path) else { continue }
+            if device == joiningID {
+                return "This sync identity already has history in the exchange. Open its existing working copy or join with a fresh sync identity."
+            }
+            let key = "\(device)/\(seq)"
+            if let previous = authors[key], previous != txnID {
+                return "Sync identity \(device) reused sequence \(seq). Preserve both working copies and repair their history before exchanging again."
+            }
+            authors[key] = txnID
+        }
+        return nil
+    }
+
+    private func download(_ state: inout TransferState, _ report: inout ExchangeReport, manifests: [ExchangeItem]) throws {
         let status: EngineSyncStatus
-        let manifests: [ExchangeItem]
         var blobs: [String: ExchangeItem] = [:]
         do {
             status = try engine.status()
-            manifests = try provider.list(directory: "\(Self.root)/txns")
             for item in try provider.list(directory: "\(Self.root)/blobs") {
                 blobs[relative(item.path)] = item
             }

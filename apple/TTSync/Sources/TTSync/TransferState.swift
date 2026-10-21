@@ -12,6 +12,8 @@ public enum ExchangeCondition: String, Codable, Sendable {
     case foreignExchange
     /// The exchange identity file has not downloaded yet.
     case waitingForExchange
+    /// An author reused a sequence or a joining copy reused an existing author.
+    case identityConflict
 }
 
 /// One outgoing transaction on its way to the exchange. Uploaded records the
@@ -60,6 +62,12 @@ public struct TransferState: Codable, Equatable, Sendable {
     public var lastError: String?
 
     public init() {}
+
+    public var waitingForDownload: Int { downloads.filter { !$0.manifestStaged }.count }
+    public var waitingToApply: Int { downloads.filter { $0.manifestStaged && $0.outcome != "held" }.count }
+    public var blockedReason: String? {
+        downloads.first { $0.manifestStaged && $0.outcome != "held" && $0.lastError != nil }?.lastError
+    }
 }
 
 /// Loads and saves the transfer state file.

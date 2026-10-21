@@ -259,6 +259,109 @@ final class ExchangeContractTests: XCTestCase {
         _ = mac
     }
 
+    func testManualExchangeBypassesUploadBackoffWithoutAdvancingTime() throws {
+        let cloud = FakeCloud()
+        let clock = TestClock()
+        let run = "manual-upload"
+        let (mac, _) = try seededPair(run: run,
+            originator: ScopedProvider(base: cloud.provider(for: "mac"), prefix: run),
+            responder: ScopedProvider(base: cloud.provider(for: "phone"), prefix: run),
+            clock: clock, pause: { cloud.advance() })
+        _ = try mac.transport.exchange()
+        try mac.capture("Publish immediately after retry")
+        cloud.failWrites = 1
+        XCTAssertFalse(try mac.transport.exchange().errors.isEmpty)
+        XCTAssertTrue(try mac.transport.exchange().published.isEmpty)
+        let now = clock.now
+        let retried = try mac.transport.exchange(retryNow: true)
+        XCTAssertEqual(clock.now, now)
+        XCTAssertEqual(retried.published.count, 1)
+        XCTAssertEqual(retried.outstandingUploads, 0)
+    }
+
+    func testDownloadedDescendantReportsWaitingForHistoryRatherThanDownload() throws {
+        let cloud = FakeCloud()
+        let run = "missing-parent"
+        let (mac, phone) = try seededPair(run: run,
+            originator: ScopedProvider(base: cloud.provider(for: "mac"), prefix: run),
+            responder: ScopedProvider(base: cloud.provider(for: "phone"), prefix: run),
+            pause: { cloud.advance() })
+        try mac.capture("Parent")
+        _ = try mac.transport.exchange()
+        cloud.advance()
+        let parent = try XCTUnwrap(cloud.paths().first { $0.contains("/txns/") })
+        let parentBytes = try XCTUnwrap(cloud.contents(parent))
+        try mac.capture("Descendant")
+        _ = try mac.transport.exchange()
+        cloud.advance()
+        cloud.remove(parent)
+        for path in cloud.paths() { try cloud.provider(for: "phone").requestDownload(path) }
+        let blocked = try phone.transport.exchange()
+        XCTAssertEqual(blocked.outstandingDownloads, 1)
+        XCTAssertEqual(blocked.waitingForDownload, 0)
+        XCTAssertEqual(blocked.waitingToApply, 1)
+        XCTAssertNotNil(blocked.blockedReason)
+        XCTAssertNil(blocked.lastSuccessfulExchange)
+        XCTAssertFalse(try phone.titles().contains("Descendant"))
+        try cloud.provider(for: "mac").write(parent, data: parentBytes)
+        try cloud.provider(for: "phone").requestDownload(parent)
+        cloud.advance()
+        let recovered = try phone.transport.exchange()
+        XCTAssertEqual(recovered.imported.count, 2)
+        XCTAssertEqual(recovered.waitingToApply, 0)
+        XCTAssertNil(recovered.blockedReason)
+        XCTAssertNotNil(recovered.lastSuccessfulExchange)
+    }
+
+    func testDuplicateAuthorSequenceIsReportedEvenAfterItWasReceived() throws {
+        let cloud = FakeCloud()
+        let run = "forked-author"
+        let (mac, phone) = try seededPair(run: run,
+            originator: ScopedProvider(base: cloud.provider(for: "mac"), prefix: run),
+            responder: ScopedProvider(base: cloud.provider(for: "phone"), prefix: run),
+            pause: { cloud.advance() })
+        try mac.capture("Original sequence")
+        _ = try mac.transport.exchange()
+        cloud.advance()
+        for path in cloud.paths() { try cloud.provider(for: "phone").requestDownload(path) }
+        XCTAssertEqual(try phone.transport.exchange().imported.count, 1)
+        let path = try XCTUnwrap(cloud.paths().first { $0.contains("/txns/") })
+        let name = URL(fileURLWithPath: path).lastPathComponent
+        let duplicate = String(path.dropLast(name.count)) + String(name.prefix(11)) + String(repeating: "a", count: 64) + ".json"
+        try cloud.provider(for: "mac").write(duplicate, data: Data("still downloading".utf8))
+        cloud.advance()
+        try phone.capture("Keep local work queued")
+        let before = cloud.writes.count
+        let refused = try phone.transport.exchange(retryNow: true)
+        XCTAssertEqual(refused.condition, .identityConflict)
+        XCTAssertTrue(refused.errors.first?.contains("reused sequence") == true)
+        XCTAssertEqual(cloud.writes.count, before)
+        XCTAssertFalse(try phone.transport.engine.status().outbox.isEmpty)
+    }
+
+    func testUploadRefusesToIntroduceASequenceCollision() throws {
+        let cloud = FakeCloud()
+        let run = "forked-upload"
+        let (mac, _) = try seededPair(run: run,
+            originator: ScopedProvider(base: cloud.provider(for: "mac"), prefix: run),
+            responder: ScopedProvider(base: cloud.provider(for: "phone"), prefix: run),
+            pause: { cloud.advance() })
+        _ = try mac.transport.exchange()
+        try mac.capture("Retain this unpublished edit")
+        let transaction = try XCTUnwrap(mac.transport.engine.exportPending().pending.first)
+        let directory = transaction.manifest.path.split(separator: "/").dropLast().joined(separator: "/")
+        let name = String(format: "%010llu-", transaction.deviceSeq) + String(repeating: "b", count: 64) + ".json"
+        let collision = "\(run)/\(ExchangeTransport.root)/\(directory)/\(name)"
+        try cloud.provider(for: "old-copy").write(collision, data: Data("placeholder".utf8))
+        let before = cloud.writes.count
+        let refused = try mac.transport.exchange()
+        XCTAssertEqual(refused.condition, .identityConflict)
+        XCTAssertEqual(cloud.writes.count, before)
+        XCTAssertEqual(try mac.transport.state().uploads.count, 1)
+        cloud.remove(collision)
+        XCTAssertEqual(try mac.transport.exchange(retryNow: true).published.count, 1)
+    }
+
     func testMissingContentIsUnavailableAndNeverDeletes() throws {
         let cloud = FakeCloud()
         let run = "unavailable"

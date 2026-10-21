@@ -225,6 +225,9 @@ func exchangePass(committer FolderCommitter, history *synclog.History, opts Fold
 	if err := ensureIdentity(root, opts.WorkspaceID); err != nil {
 		return err
 	}
+	if err := checkAuthorSequences(root); err != nil {
+		return err
+	}
 	external, err := committer.CommitExternalChanges()
 	if err != nil {
 		return fmt.Errorf("observing external changes: %w", err)
@@ -308,6 +311,15 @@ func publish(committer FolderCommitter, history *synclog.History, root string, r
 	pending, err := Pending(history)
 	if err != nil {
 		return err
+	}
+	if len(pending) > 0 {
+		paths := make([]string, 0, len(pending))
+		for _, outgoing := range pending {
+			paths = append(paths, outgoing.Manifest.Path)
+		}
+		if err := checkAuthorSequences(root, paths...); err != nil {
+			return err
+		}
 	}
 	var published []string
 	for _, outgoing := range pending {

@@ -18,11 +18,14 @@ struct SyncStatusSection: View {
             if !sync.hasFolder {
                 Text("No exchange folder chosen")
                     .accessibilityIdentifier("sync.noFolder")
+            } else if sync.isExchanging {
+                ProgressView("Exchanging changes…")
+                    .accessibilityIdentifier("sync.progress")
             } else if sync.isFailing {
                 Text(Self.explanation(sync.condition))
                     .accessibilityIdentifier("sync.failure")
-            } else if sync.isExchanging {
-                ProgressView("Exchanging changes…")
+            } else if sync.waitingToApply > 0 {
+                Text("Downloaded changes are waiting to apply")
             } else if sync.conflicts > 0 {
                 Text("Review the conflicting changes below")
             } else if sync.outstandingUploads > 0 || sync.outstandingDownloads > 0 {
@@ -49,8 +52,17 @@ struct SyncStatusSection: View {
                 if sync.outstandingUploads > 0 {
                     LabeledContent("Waiting to upload", value: "\(sync.outstandingUploads)")
                 }
-                if sync.outstandingDownloads > 0 {
-                    LabeledContent("Waiting to download", value: "\(sync.outstandingDownloads)")
+                if sync.waitingForDownload > 0 {
+                    LabeledContent("Waiting to download", value: "\(sync.waitingForDownload)")
+                }
+                if sync.waitingToApply > 0 {
+                    LabeledContent("Waiting to apply", value: "\(sync.waitingToApply)")
+                    if let reason = sync.blockedReason {
+                        Text(reason).font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
+                if sync.condition == .identityConflict, let error = sync.lastError {
+                    Text(error).font(.footnote).foregroundStyle(.secondary)
                 }
                 if !sync.unavailable.isEmpty {
                     LabeledContent("Content not downloaded yet", value: "\(sync.unavailable.count)")
@@ -61,7 +73,7 @@ struct SyncStatusSection: View {
                 if sync.conflicts > 0 {
                     LabeledContent("Conflicts", value: "\(sync.conflicts)")
                 }
-                LabeledContent("Last exchange") {
+                LabeledContent("Last completed exchange") {
                     if let date = sync.lastSuccessfulExchange {
                         Text(date, style: .relative)
                     } else {
@@ -72,7 +84,8 @@ struct SyncStatusSection: View {
                     .accessibilityIdentifier("sync.details")
                 if showingDetails {
                     LabeledContent("Waiting to upload", value: "\(sync.outstandingUploads)")
-                    LabeledContent("Waiting to download", value: "\(sync.outstandingDownloads)")
+                    LabeledContent("Waiting to download", value: "\(sync.waitingForDownload)")
+                    LabeledContent("Waiting to apply", value: "\(sync.waitingToApply)")
                     LabeledContent("Conflicts", value: "\(sync.conflicts)")
                     if let error = sync.lastError {
                         Text(error).font(.footnote).foregroundStyle(.secondary)
@@ -97,6 +110,7 @@ struct SyncStatusSection: View {
         case .needsFolderAccess: "Choose the exchange folder again"
         case .foreignExchange: "That folder belongs to another workspace"
         case .waitingForExchange: "Waiting for the exchange folder to download"
+        case .identityConflict: "Sync history needs repair; changes stay on this device"
         }
     }
 }

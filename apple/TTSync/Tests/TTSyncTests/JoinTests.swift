@@ -92,6 +92,51 @@ final class JoinTests: XCTestCase {
         }
     }
 
+    func testRejoinUsesANewAuthorAndImportsThePreviousCopiesHistory() throws {
+        let exchange = try exchangeCopy()
+        let provider = CoordinatedFolderProvider(access: DirectFolderAccess(folder: exchange))
+        let workspaceID = try JoiningSyncEngine.workspaceID(in: provider)
+        func join(_ name: String, device: String) throws -> (BridgeClient, JoiningSyncEngine, ExchangeTransport) {
+            let client = try client()
+            let runtime = root.appendingPathComponent("\(name)/runtime")
+            let engine = JoiningSyncEngine(client: client, workspaceID: workspaceID,
+                dataDirectory: root.appendingPathComponent("\(name)/workspace"), runtimeDirectory: runtime,
+                deviceID: device, exchange: exchange.path)
+            let transport = ExchangeTransport(provider: provider, engine: engine,
+                stateDirectory: runtime.appendingPathComponent("sync-transport"))
+            _ = try transport.exchange()
+            return (client, engine, transport)
+        }
+        func identity(_ name: String) throws -> String {
+            try WorkingCopyIdentity.resolve(dataDirectory: root.appendingPathComponent("\(name)/workspace"),
+                runtimeDirectory: root.appendingPathComponent("\(name)/runtime"),
+                legacyDeviceID: "same-installation", creating: true)
+        }
+
+        let firstID = try identity("first")
+        let (first, _, firstTransport) = try join("first", device: firstID)
+        _ = try first.send("command.capture", payload: ["title": "Before rejoining"])
+        XCTAssertEqual(try firstTransport.exchange().published.count, 1)
+
+        // Previously the transport skipped this author's files, bypassing the
+        // engine's existing protection and leaving a partially joined copy.
+        let (_, reused, reusedTransport) = try join("reused", device: firstID)
+        XCTAssertFalse(reused.joined)
+        XCTAssertEqual(try reusedTransport.state().condition, .identityConflict)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: reused.dataDirectory.path))
+
+        let secondID = try identity("second")
+        XCTAssertNotEqual(firstID, secondID)
+        let (second, joined, secondTransport) = try join("second", device: secondID)
+        XCTAssertTrue(joined.joined)
+        XCTAssertTrue(try titles(second, mode: "inbox").contains("Before rejoining"))
+        _ = try second.send("command.capture", payload: ["title": "After rejoining"])
+        XCTAssertEqual(try secondTransport.exchange().published.count, 1)
+        XCTAssertEqual(try firstTransport.exchange().imported.count, 1)
+        XCTAssertTrue(try titles(first, mode: "inbox").contains("After rejoining"))
+        XCTAssertEqual(try secondTransport.state().downloads.count, 0)
+    }
+
     func testFailedJoinLeavesNoWorkingCopy() throws {
         let exchange = try exchangeCopy()
         let provider = CoordinatedFolderProvider(access: DirectFolderAccess(folder: exchange))

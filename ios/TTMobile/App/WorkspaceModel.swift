@@ -4,6 +4,7 @@ import Observation
 import TTEngine
 import TTReminders
 import TTShared
+import TTSync
 import UIKit
 
 /// Where the app stands with its workspace. Each phase has its own screen, so
@@ -186,7 +187,7 @@ final class WorkspaceModel {
         }
         do {
             try FileManager.default.createDirectory(at: location.runtime, withIntermediateDirectories: true)
-            let device = deviceID()
+            let device = try deviceID(for: location, creating: create)
             status = try await engine.open(
                 dataDirectory: location.data, runtimeDirectory: location.runtime,
                 deviceID: device, createIfMissing: create
@@ -258,8 +259,8 @@ final class WorkspaceModel {
         isJoining = true
         joinFailure = nil
         let location = launch.location(named: launch.unusedName("joined"))
-        let device = deviceID()
         do {
+            let device = try deviceID(for: location, creating: true)
             try await sync.join(choice: access, location: location, deviceID: device)
             isJoining = false
             await open(location, create: false)
@@ -656,19 +657,15 @@ final class WorkspaceModel {
         return String(describing: error)
     }
 
-    /// A stable identity for this installation. The keychain replaces this
-    /// once sync needs an identity that survives reinstalling.
-    private func deviceID() -> String {
+    /// Existing copies retain their author; each new copy gets a fresh one.
+    private func deviceID(for location: WorkspaceLocation, creating: Bool) throws -> String {
         if let override = launch.deviceIDOverride {
             return override
         }
-        let key = "tt.device-id"
-        if let existing = UserDefaults.standard.string(forKey: key) {
-            return existing
-        }
-        let minted = UUID().uuidString.lowercased()
-        UserDefaults.standard.set(minted, forKey: key)
-        return minted
+        return try WorkingCopyIdentity.resolve(
+            dataDirectory: location.data, runtimeDirectory: location.runtime,
+            legacyDeviceID: UserDefaults.standard.string(forKey: "tt.device-id"), creating: creating
+        )
     }
 }
 

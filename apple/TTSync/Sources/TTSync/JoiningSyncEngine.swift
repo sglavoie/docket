@@ -57,6 +57,8 @@ public final class JoiningSyncEngine: SyncEngine, @unchecked Sendable {
         return joinedWorkspace
     }
 
+    public var isJoining: Bool { !joined }
+
     /// The workspace an exchange folder declares.
     public static func workspaceID(in provider: any ExchangeProvider) throws -> String {
         struct Identity: Decodable {

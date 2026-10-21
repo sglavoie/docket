@@ -307,6 +307,16 @@ that joins (`tt sync join`, `engine.Join`) starts from an empty directory: the
 genesis is the one manifest that may start a history where there is no
 catalog, so the joining device's workspace is exactly what the history says.
 
+A sync author identifies one working copy. The iPhone records that identity in
+its runtime directory as `sync-device-id`; creating or joining another copy
+mints a fresh author instead of reusing the installation's identity. Existing
+copies retain their recorded author, including when adopting an older build's
+installation identity. A join refuses an author already present in the exchange,
+even before its manifests download. Both transports reject different transaction
+hashes at the same author/sequence, including already-received sequences and
+outgoing transactions about to collide. They preserve the histories and report
+that repair is needed instead of treating either branch as already delivered.
+
 Where a device keeps its exchange folder is device-local, in
 `.tt/sync/enrollment.json`, and never synced.
 
@@ -497,13 +507,20 @@ macOS helper (`tt-sync-helper`, which drives a desktop engine running as
   next pass stages and imports what arrived. The iPhone's attachment rows
   call it from their Download action, and match the unavailable paths against
   a task's `attachment_dir` to show content still on its way.
+- **Exchange now.** A manual exchange shows progress before folder I/O and
+  clears both upload and download retry delays. Requests during a running pass
+  coalesce into one followup and retain the manual retry intent. A completed
+  worker cannot update a workspace the app has since detached.
 - **Durable queues.** `transport.json` under the runtime directory records each
   upload's verified files and each download's staged blobs, attempts, and
   backoff. It is rewritten atomically after every step, so a restart resumes
   where the previous pass stopped.
 - **Status.** Each pass reports separately: the exchange condition, what it
   published and imported, outstanding uploads and downloads, unavailable
-  content, held transactions, and the last successful exchange. A local write
+  content, held transactions, and the last completed exchange. Incoming changes
+  missing bytes are shown as waiting to download; fully staged changes are
+  waiting to apply, with the engine's blocking reason. The completion time only
+  advances when both queues are empty and the pass has no errors. A local write
   never counts as a delivery.
 
 Nothing is ever deleted from the exchange or from the workspace because a file

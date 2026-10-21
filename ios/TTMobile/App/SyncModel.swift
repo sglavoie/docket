@@ -27,6 +27,9 @@ final class SyncModel {
     private(set) var condition: ExchangeCondition?
     private(set) var outstandingUploads = 0
     private(set) var outstandingDownloads = 0
+    private(set) var waitingForDownload = 0
+    private(set) var waitingToApply = 0
+    private(set) var blockedReason: String?
     private(set) var unavailable: [String] = []
     private(set) var held: [String] = []
     private(set) var conflicts = 0
@@ -51,7 +54,27 @@ final class SyncModel {
     var onImport: (() -> Void)?
 
     private var transport: ExchangeTransport?
-    private var pending = false
+    private var pending: ExchangeRequest?
+    private var attachment = UUID()
+
+    init(transport: ExchangeTransport? = nil) {
+        self.transport = transport
+        hasFolder = transport != nil
+    }
+
+    private enum ExchangeRequest: Sendable {
+        case automatic, retry, download([String]?)
+
+        func merging(_ other: ExchangeRequest) -> ExchangeRequest {
+            switch (self, other) {
+            case (.retry, _), (_, .retry): return .retry
+            case (.download(nil), _), (_, .download(nil)): return .download(nil)
+            case (.download(let left?), .download(let right?)): return .download(Array(Set(left + right)).sorted())
+            case (.automatic, _): return other
+            default: return self
+            }
+        }
+    }
 
     /// Connects the transport to the open workspace and restores the picked
     /// folder, if any.
@@ -84,11 +107,17 @@ final class SyncModel {
 
     /// Forgets the transport; the workspace and the queues stay on disk.
     func detach() {
+        attachment = UUID()
         transport = nil
+        isExchanging = false
+        pending = nil
         hasFolder = false
         condition = nil
         outstandingUploads = 0
         outstandingDownloads = 0
+        waitingForDownload = 0
+        waitingToApply = 0
+        blockedReason = nil
         unavailable = []
         held = []
         conflicts = 0
@@ -149,17 +178,34 @@ final class SyncModel {
     /// Runs one exchange pass in the background; a request made during a pass
     /// runs once more after it.
     func exchange() {
+        exchange(.automatic)
+    }
+
+    private func exchange(_ request: ExchangeRequest) {
         guard hasFolder, let transport else { return }
         if isExchanging {
-            pending = true
+            pending = pending?.merging(request) ?? request
             return
         }
+        // Publish progress before any download requests, locks, or folder I/O.
         isExchanging = true
-        Task.detached(priority: .utility) {
-            let outcome = Result { try transport.exchange() }
+        let attachment = self.attachment
+        let priority: TaskPriority
+        if case .automatic = request { priority = .utility } else { priority = .userInitiated }
+        Task.detached(priority: priority) {
+            let outcome = Result {
+                switch request {
+                case .automatic: return try transport.exchange()
+                case .retry: return try transport.exchange(retryNow: true)
+                case .download(let paths):
+                    try transport.requestDownloads(paths: paths)
+                    return try transport.exchange()
+                }
+            }
             let conflicts = (try? transport.engine.status().conflicts.count) ?? 0
             let names = transport.deviceNames()
             await MainActor.run {
+                guard self.attachment == attachment else { return }
                 if !names.isEmpty { self.deviceNames = names }
                 self.finish(outcome, conflicts: conflicts)
             }
@@ -183,11 +229,7 @@ final class SyncModel {
     /// Retries now: every queued transfer skips its backoff and the exchange
     /// runs once more. Nothing local waits on it.
     func retry() {
-        guard hasFolder, let transport else { return }
-        Task.detached(priority: .userInitiated) {
-            _ = try? transport.requestDownloads(paths: nil)
-            await MainActor.run { self.exchange() }
-        }
+        exchange(.retry)
     }
 
     /// Records the conflict count a resolution reported, before the next pass
@@ -207,6 +249,9 @@ final class SyncModel {
             lastSuccessfulExchange: lastSuccessfulExchange,
             outstandingUploads: outstandingUploads,
             outstandingDownloads: outstandingDownloads,
+            waitingForDownload: waitingForDownload,
+            waitingToApply: waitingToApply,
+            blockedReason: blockedReason,
             unavailable: unavailable,
             held: held,
             deviceNames: deviceNames,
@@ -219,11 +264,7 @@ final class SyncModel {
     /// nil) skip their retry delay and request their missing files from
     /// iCloud, then an exchange runs.
     func download(paths: [String]?) {
-        guard hasFolder, let transport else { return }
-        Task.detached(priority: .userInitiated) {
-            _ = try? transport.requestDownloads(paths: paths)
-            await MainActor.run { self.exchange() }
-        }
+        exchange(.download(paths))
     }
 
     /// Whether content for `path` is known to be on its way.
@@ -240,6 +281,9 @@ final class SyncModel {
             condition = report.condition
             outstandingUploads = report.outstandingUploads
             outstandingDownloads = report.outstandingDownloads
+            waitingForDownload = report.waitingForDownload ?? report.outstandingDownloads
+            waitingToApply = report.waitingToApply ?? 0
+            blockedReason = report.blockedReason
             unavailable = report.unavailable
             held = report.held
             lastSuccessfulExchange = report.lastSuccessfulExchange
@@ -250,9 +294,9 @@ final class SyncModel {
         case .failure(let error):
             lastError = String(describing: error)
         }
-        if pending {
-            pending = false
-            exchange()
+        if let pending {
+            self.pending = nil
+            exchange(pending)
         }
     }
 
@@ -260,6 +304,9 @@ final class SyncModel {
         condition = state.condition
         outstandingUploads = state.uploads.count
         outstandingDownloads = state.downloads.count
+        waitingForDownload = state.waitingForDownload
+        waitingToApply = state.waitingToApply
+        blockedReason = state.blockedReason
         unavailable = Array(Set(state.downloads.flatMap(\.unavailable))).sorted()
         held = state.downloads.filter { $0.outcome == "held" }.map(\.txnID)
         lastSuccessfulExchange = state.lastSuccessfulExchange
@@ -276,6 +323,9 @@ struct TransportDiagnostics: Encodable {
     var lastSuccessfulExchange: Date?
     var outstandingUploads: Int
     var outstandingDownloads: Int
+    var waitingForDownload: Int
+    var waitingToApply: Int
+    var blockedReason: String?
     var unavailable: [String]
     var held: [String]
     var deviceNames: [String: String]
@@ -289,6 +339,9 @@ struct TransportDiagnostics: Encodable {
         case lastSuccessfulExchange = "last_successful_exchange"
         case outstandingUploads = "outstanding_uploads"
         case outstandingDownloads = "outstanding_downloads"
+        case waitingForDownload = "waiting_for_download"
+        case waitingToApply = "waiting_to_apply"
+        case blockedReason = "blocked_reason"
         case deviceNames = "device_names"
     }
 }

@@ -144,7 +144,10 @@ func (h *History) loadOrStartState(m *Manifest) (*State, error) {
 		joining.Indexed = true
 		return joining, nil
 	}
-	if catalog == nil || catalog.workspaceID == "" {
+	if catalog == nil {
+		return nil, fmt.Errorf("%w: the workspace genesis has not arrived", ErrIncomplete)
+	}
+	if catalog.workspaceID == "" {
 		return nil, fmt.Errorf("synclog: no workspace catalog names this workspace's identity")
 	}
 	return h.newState(catalog.workspaceID), nil

@@ -30,6 +30,14 @@ then high priority. Sync leads with its current condition and the relevant
 folder-choice or retry action. Zero transfer counts and workspace identifiers
 live in expandable details below the main status.
 
+Exchange Now shows progress immediately and retries both upload and download
+queues without their automatic retry delay. Waiting to download counts changes
+whose files have not arrived; Waiting to apply counts downloaded changes the
+engine cannot apply yet and shows the reason. Last completed exchange advances
+only when both queues are empty. Rejoining creates a new sync identity while
+keeping existing working copies intact. Reused transaction numbers report that
+sync history needs repair instead of silently skipping changes.
+
 ## Layout
 
 | Path | Holds |

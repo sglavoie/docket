@@ -104,6 +104,8 @@ final class AutomationStateExporter {
                 "condition": nullable(sync.condition.map { String(describing: $0) }),
                 "uploads": sync.outstandingUploads,
                 "downloads": sync.outstandingDownloads,
+                "waiting_for_download": sync.waitingForDownload,
+                "waiting_to_apply": sync.waitingToApply,
                 "conflicts": sync.conflicts,
                 "last_error": nullable(sync.lastError),
                 "last_exchange": nullable(sync.lastSuccessfulExchange.map { $0.ISO8601Format() }),

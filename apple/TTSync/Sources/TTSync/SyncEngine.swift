@@ -98,10 +98,15 @@ public struct EngineSyncStatus: Decodable, Sendable {
 /// contract.
 public protocol SyncEngine: Sendable {
     var workspaceID: String { get }
+    var isJoining: Bool { get }
     func exportPending() throws -> ExportedOutbox
     func importInbox(_ directory: URL) throws -> ImportReport
     func acknowledge(_ txnIDs: [String]) throws
     func status() throws -> EngineSyncStatus
+}
+
+public extension SyncEngine {
+    var isJoining: Bool { false }
 }
 
 /// A refusal the engine answered with.
