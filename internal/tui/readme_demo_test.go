@@ -32,7 +32,8 @@ func demoText(text string, holdMS int, caption string) readmeDemoStep {
 }
 
 // readmeDemoScript is the tour the README animation plays: capture a task with
-// sigils, start it, read it in Peek, and search. It names no date, so the frames
+// sigils, read it in Peek, start it, search, plan another for Today, finish it
+// there, and undo, ending back on All so the loop closes where it began. It names no date, so the frames
 // do not change with the day they are regenerated on.
 var readmeDemoScript = []readmeDemoStep{
 	demoKey("a", 700, "a  capture"),
@@ -52,6 +53,13 @@ var readmeDemoScript = []readmeDemoStep{
 	demoKey("/", 700, "/  search"),
 	demoText("land", 2000, "/  search"),
 	demoKey("esc", 1200, "Esc  back"),
+	demoKey("w", 900, "w  workflow chord"),
+	demoKey("t", 1800, "w t  plan for Today"),
+	demoKey("tab", 2000, "Tab  next mode"),
+	demoKey("w", 900, "w  workflow chord"),
+	demoKey("d", 2000, "w d  done"),
+	demoKey("u", 2000, "u  undo"),
+	demoKey("shift+tab", 1500, "Shift+Tab  back to All"),
 }
 
 // TestReadmeDemo plays readmeDemoScript over the README fixture and exports

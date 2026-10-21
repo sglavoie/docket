@@ -15,7 +15,7 @@ There is no `tt add`: the command line is deliberately limited to diagnostics, c
 recovery, device sync, workspace relocation, project export, and shell completion. Run `tt`
 and the interface is the product.
 
-![Terminal Tasks capturing "Draft the release notes %website !1 #docs" into Inbox, reading it in Peek, starting it with w then g, and searching for "land".](docs/images/demo.svg)
+![Terminal Tasks capturing "Draft the release notes %website !1 #docs" into Inbox, reading it in Peek, starting it with w then g, searching, planning another task for Today, completing it in Today mode, and undoing.](docs/images/demo.svg)
 
 Work is grouped into lanes and projects; Peek below the outline shows the selected
 task's details. The animation is recorded from the real app over fictional tasks;
