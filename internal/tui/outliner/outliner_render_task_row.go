@@ -181,12 +181,11 @@ func (m *OutlinerModel) taskIdentityLabel(row OutlinerRow, rowWidth int) string 
 
 func (m *OutlinerModel) taskProjectLabel(row OutlinerRow, rowWidth int, colLayout *chrome.ColumnLayout) string {
 	label := m.taskIdentityLabel(row, rowWidth)
-	if colLayout != nil {
-		width := colLayout.ContextWidth
-		if m.rowLeadsWithProjectLabel(row) {
-			width = colLayout.ProjectWidth
-		}
-		label += strings.Repeat(" ", max(width-lipgloss.Width(label), 0))
+	// Only the flat cross-project ranked list needs an identity column.
+	// Grouped rows keep labels inline, so one context or long project slug
+	// cannot leave an empty metadata column on every other task.
+	if colLayout != nil && m.showsRankedProjectLabel() {
+		label += strings.Repeat(" ", max(colLayout.ProjectWidth-lipgloss.Width(label), 0))
 	}
 	if row.LeadsMergedGroup {
 		_, project := m.projectSlugForRow(row)

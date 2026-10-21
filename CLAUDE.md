@@ -761,8 +761,9 @@ Row and Peek budget:
   `taskPinnedMarker` reads `task.Pinned && !row.IsPinnedSection`, not
   `ShowsPinned`. Only cross-project ranked and merged rows name the project,
   using `[slug]` with colored brackets and neutral text. `taskIdentityLabel`
-  joins project and context before `ColumnLayout.ProjectWidth` padding;
-  other rows carry context alone. Cap context text at clamp(rowWidth/8,8,20)
+  joins project and context; only cross-project ranked results pad to
+  `ColumnLayout.ProjectWidth`. Grouped labels stay inline; rows under a header
+  carry context alone. Cap context text at clamp(rowWidth/8,8,20)
   and combined identity at rowWidth/3, shortening the slug below
   `rankedProjectLabelMaxSlug` when needed. Peek wraps the full context.
   Shed the match cue before the indicator ladder; it explains a hit the title

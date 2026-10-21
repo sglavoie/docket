@@ -222,23 +222,43 @@ func TestToggleProjectGroupsFoldsSingletonsToo(t *testing.T) {
 	}
 }
 
-// TestMergedRowLabelsShareOneColumn holds the label to ComputeOutlinerRowLayout:
-// slugs of different lengths pad to the widest, so the merged titles start in
-// one column.
-func TestMergedRowLabelsShareOneColumn(t *testing.T) {
+// A long label elsewhere in the list must not create a gap between a merged
+// row's own label and its state badge.
+func TestMergedRowLabelsUseOnlyTheirOwnWidth(t *testing.T) {
 	outliner, root, _ := mergedSingletonFixture(t)
-	layout := outliner.ComputeOutlinerRowLayout(outliner.Rows, 120)
-	if layout == nil || layout.ProjectWidth != len("[beta-long]") {
-		t.Fatalf("layout = %+v, want the widest merged label measured", layout)
+	_, beta := mustRowForTask(t, outliner, "beta-backlog")
+	beta.Task.Context = "mobile-app"
+	for _, width := range []int{60, 80, 120, 180} {
+		layout := outliner.ComputeOutlinerRowLayout(outliner.Rows, width)
+		index, row := mustRowForTask(t, outliner, root.ID)
+		line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, width, index, layout))
+		if !strings.Contains(line, "[alpha] 🞑 alpha-root") {
+			t.Fatalf("width %d: merged row reserves another task's label width: %q", width, line)
+		}
 	}
-	column := func(taskID, title string) int {
-		index, row := mustRowForTask(t, outliner, taskID)
-		line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, index, layout))
-		return ansi.StringWidth(line[:max(strings.Index(line, title), 0)])
-	}
-	alphaColumn := column(root.ID, root.Title)
-	if betaColumn := column("beta-backlog", "beta-backlog"); alphaColumn < 0 || alphaColumn != betaColumn {
-		t.Fatalf("merged titles start at %d and %d, want one column", alphaColumn, betaColumn)
+}
+
+func TestGroupedRowsDoNotReserveSpaceForOtherTasksContexts(t *testing.T) {
+	plain := primaryRowsTask("plain", models.StateBacklog)
+	contextual := primaryRowsTask("contextual", models.StateBacklog)
+	contextual.Context = "mobile-app"
+	alpha := primaryRowsProject("alpha", plain, contextual)
+	beta := primaryRowsProject("beta", primaryRowsTask("beta-one", models.StateBacklog))
+	outliner, _ := primaryRowsOutliner(alpha, beta)
+	outliner.SelectOutlinerMode(chrome.ModeAll)
+	for _, width := range []int{60, 80, 120, 180} {
+		layout := outliner.ComputeOutlinerRowLayout(outliner.Rows, width)
+		for _, task := range []*models.Task{plain, contextual} {
+			index, row := mustRowForTask(t, outliner, task.ID)
+			line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, width, index, layout))
+			want := "🞑 " + task.Title
+			if task.Context != "" {
+				want = "🞑 " + ansi.Strip(outliner.taskIdentityLabel(row, width)) + " " + task.Title
+			}
+			if !strings.Contains(line, want) {
+				t.Fatalf("width %d: grouped row has an empty metadata gap: %q, want %q", width, line, want)
+			}
+		}
 	}
 }
 

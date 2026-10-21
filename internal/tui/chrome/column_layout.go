@@ -17,7 +17,6 @@ type ColumnLayout struct {
 	PriorityWidth int // 1 when any row shows priority badge; 0 if all hidden
 	StatusWidth   int // max rendered status badge visual width; 0 when column inactive
 	ProjectWidth  int // max rendered project and context label width; 0 when not in use
-	ContextWidth  int // context-only width for task rows under a project header
 	HasPriority   bool
 	HasStatus     bool
 	// HasFold reports that some row of the projection draws a fold glyph, so

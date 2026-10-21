@@ -96,7 +96,7 @@ func TestRowLayoutCountsWhatAFoldHides(t *testing.T) {
 
 	outliner.RebuildRows()
 	open := outliner.computeRowLayout(outliner.Rows, 80, &outliner.hiddenLayout)
-	if open == nil || !open.HasFold || !open.HasPriority || open.ContextWidth != len("[platform]") {
+	if open == nil || !open.HasFold || !open.HasPriority {
 		t.Fatalf("the open projection measured %+v, want a fold and a priority column", open)
 	}
 

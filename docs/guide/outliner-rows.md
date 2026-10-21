@@ -140,6 +140,8 @@ Context appears on the task row immediately after the project label, as
 `[project] [context]`. When the project is named by a group header, the task
 shows its context before the title. Long contexts and combined project/context
 labels are shortened to leave room for the task title and its indicators.
+Grouped rows use only the space their labels need: a task without context
+leaves no empty context column. Cross-project ranked results align their labels.
 Peek (`b`) shows the full context; `#` opens the picker to change it.
 
 An overdue deadline includes `overdue` in its badge, such as `Oct 15 overdue` or

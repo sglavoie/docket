@@ -20,10 +20,10 @@ Description presence uses the same reserved width policy: `taskDescriptionMarker
 renders `▤` before the attachment marker when `strings.TrimSpace(task.Description)`
 is nonempty. The description text remains in Peek.
 
-`taskIdentityLabel` joins `[project] [context]` before alignment padding.
-Rows under a project header carry the context alone. The shared project column
-measures that combined label, while the context-only column includes contexts
-hidden by folds. Context text is bounded to one eighth of the row width,
+`taskIdentityLabel` joins `[project] [context]`. Only cross-project ranked
+results pad that combined label to a shared project column. Grouped and merged
+rows use the actual label width; rows under a project header carry context
+alone and reserve no space when it is absent. Context text is bounded to one eighth of the row width,
 clamped to 8–20 columns. A combined project/context label spends at most one
 third of the row, including brackets and the separator; the project slug
 abbreviates to the remaining budget. The render and measurement share this
@@ -273,9 +273,10 @@ rather than laddered. `rankedProjectLabelMaxSlug` caps its text at an eighth
 of the row, bounded to 8–24 columns. Shortening the narrow-row identity makes
 room for both a recognizable title and the reserved content glyphs. When context
 shares the label, the combined identity budget can shorten the slug further.
-`ComputeOutlinerRowLayout` measures the actual widest label into
-`ColumnLayout.ProjectWidth` and every label pads to it, so the labeled titles
-start in one column; it is part of `titlePrefix`, so the inline editor opens after it. A
+`ComputeOutlinerRowLayout` measures the widest ranked label into
+`ColumnLayout.ProjectWidth`, so those titles start in one column. Merged rows
+keep their labels inline without that padding. The label is part of
+`titlePrefix`, so the inline editor opens after it. A
 single-project scope keeps its focused header and no label.
 
 The fold glyph is a column of the same layout. `ComputeOutlinerRowLayout` sets
