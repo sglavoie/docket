@@ -131,14 +131,43 @@ func (b *Bridge) syncImport(request Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	report, err := syncexchange.ImportInbox(commits, filepath.Clean(payload.InboxDir))
+	workspace := b.workspace
+	report, err := syncexchange.ImportInbox(yieldingImport{b, workspace, commits}, filepath.Clean(payload.InboxDir))
 	if err != nil {
 		return nil, err
 	}
-	if err := b.workspace.runtime.Refresh(); err != nil {
-		return nil, err
+	if b.workspace != workspace {
+		return nil, newError(CodeWorkspaceMismatch, "the workspace changed during sync")
+	}
+	for _, result := range report.Results {
+		if result.Outcome == syncexchange.Imported {
+			if err := workspace.runtime.Refresh(); err != nil {
+				return nil, err
+			}
+			break
+		}
 	}
 	return report, nil
+}
+
+// An open workspace imports one transaction at a time, letting queued local
+// requests run between them. Initial joins still use the batched bootstrap in
+// ImportInbox directly. A close/reopen invalidates the captured workspace even
+// when it has the same ID; an old pass cannot write into its replacement.
+type yieldingImport struct {
+	bridge    *Bridge
+	workspace *openWorkspace
+	commits   *storage.CommitService
+}
+
+func (i yieldingImport) SyncHistory() *synclog.History { return i.commits.SyncHistory() }
+
+func (i yieldingImport) CommitIncoming(manifest *synclog.Manifest, blobs synclog.BlobSource) (string, error) {
+	i.bridge.requests.yieldBackground()
+	if i.bridge.workspace != i.workspace {
+		return "", newError(CodeWorkspaceMismatch, "the workspace changed during sync")
+	}
+	return i.commits.CommitIncoming(manifest, blobs)
 }
 
 // syncAcknowledge records that the transport durably published the named

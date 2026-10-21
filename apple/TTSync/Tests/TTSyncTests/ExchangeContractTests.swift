@@ -113,6 +113,33 @@ final class ExchangeContractTests: XCTestCase {
 
     // MARK: Fake provider
 
+    func testLocalReadsAndWritesFinishWhileExchangeIsStalled() throws {
+        let cloud = FakeCloud()
+        let provider = StalledProvider(base: cloud.provider(for: "local-first"))
+        let data = root.appendingPathComponent("local-first/workspace")
+        try copyFixture(to: data)
+        let device = try party("local", device: "local-first", provider: provider, dataDirectory: data)
+        let exchangeFinished = expectation(description: "exchange resumes")
+        DispatchQueue.global(qos: .utility).async {
+            defer { exchangeFinished.fulfill() }
+            do { _ = try device.transport.exchange() }
+            catch { XCTFail("exchange failed: \(error)") }
+        }
+        defer { provider.release.signal(); wait(for: [exchangeFinished], timeout: 30) }
+        XCTAssertEqual(provider.entered.wait(timeout: .now() + 5), .success)
+        let localFinished = expectation(description: "local read and durable save finish before network resumes")
+        DispatchQueue.global(qos: .userInitiated).async {
+            defer { localFinished.fulfill() }
+            do {
+                XCTAssertFalse(try device.titles().isEmpty)
+                try device.capture("Saved during a stalled exchange")
+                XCTAssertTrue(try device.titles().contains("Saved during a stalled exchange"))
+                XCTAssertFalse(try device.transport.engine.status().outbox.isEmpty)
+            } catch { XCTFail("local work failed: \(error)") }
+        }
+        wait(for: [localFinished], timeout: 5)
+    }
+
     func testContractRoundTripOverFakeICloud() throws {
         let cloud = FakeCloud()
         cloud.uploadLag = 1
@@ -535,4 +562,30 @@ final class ExchangeContractTests: XCTestCase {
             XCTAssertEqual(error as? ExchangeProviderError, .notFound("a/missing.json"))
         }
     }
+}
+
+/// Holds provider I/O open instead of failing immediately, as a poor connection
+/// can do. Local work has to finish before the test releases the exchange.
+private final class StalledProvider: ExchangeProvider, @unchecked Sendable {
+    let base: any ExchangeProvider
+    let entered = DispatchSemaphore(value: 0)
+    let release = DispatchSemaphore(value: 0)
+    private let lock = NSLock()
+    private var first = true
+    init(base: any ExchangeProvider) { self.base = base }
+    func checkAccess() throws {
+        let block = lock.withLock { let value = first; first = false; return value }
+        if block {
+            entered.signal()
+            guard release.wait(timeout: .now() + 30) == .success else {
+                throw ExchangeProviderError.transient("test provider was never released")
+            }
+        }
+        try base.checkAccess()
+    }
+    func renewAccess() throws { try base.renewAccess() }
+    func list(directory: String) throws -> [ExchangeItem] { try base.list(directory: directory) }
+    func read(_ path: String) throws -> Data { try base.read(path) }
+    func write(_ path: String, data: Data) throws { try base.write(path, data: data) }
+    func requestDownload(_ path: String) throws { try base.requestDownload(path) }
 }

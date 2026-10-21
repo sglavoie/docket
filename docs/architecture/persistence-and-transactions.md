@@ -149,6 +149,13 @@ operation; migration publication includes the machine-state root as well as the
 portable workspace. A quarantined or malformed journal blocks startup rather
 than allowing a partial view.
 
+Each mutation also recovers pending journals and checks quarantine under the
+workspace commit lock. It leaves unreferenced staging-file cleanup to full
+startup recovery: those files cannot change live data, and walking the whole
+workspace on every edit would make save latency grow with retained sync history.
+Independent writes share durability barriers before the prepared and committed
+markers. Moves, deletes, and overlapping writes retain their ordered barriers.
+
 Because `.tt/transactions/` is portable, recovery can meet a journal that is not
 an interrupted transaction at all but another machine's live one, delivered
 mid-commit by a sync service. A manifest therefore records who wrote it and when

@@ -1,9 +1,47 @@
 import Foundation
+import TTEngine
 import TTSync
 import XCTest
 @testable import tt
 
 final class SyncModelTests: XCTestCase {
+    @MainActor
+    func testAttachingSyncPreservesTheOpenEngineAndCommittedRequestReplay() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let location = WorkspaceLocation(name: "local", data: root.appendingPathComponent("data"), runtime: root.appendingPathComponent("runtime"))
+        let engine = TTEngine()
+        let opened = try await engine.open(dataDirectory: location.data, runtimeDirectory: location.runtime, deviceID: "local-first-test", createIfMissing: true)
+        let first = try await engine.capture(title: "Capture once", requestID: "local-before-sync")
+        let model = SyncModel()
+        model.attach(location: location, workspaceID: opened.workspace, exchangeOverride: root.appendingPathComponent("exchange"))
+        let replay = try await engine.capture(title: "Capture once", requestID: "local-before-sync")
+        XCTAssertEqual(replay.task.locator, first.task.locator, "attaching sync must not reopen the shared engine and lose replay memory")
+        try await engine.close()
+    }
+
+    @MainActor
+    func testCompletedExchangeDoesNotWaitForPeerNames() async throws {
+        let fixture = try SyncFixture(gateNames: true)
+        defer { fixture.release(); fixture.remove() }
+        let model = SyncModel(transport: fixture.transport)
+        model.exchange()
+        for _ in 0..<500 {
+            if fixture.provider.isReadingNames { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertTrue(fixture.provider.isReadingNames)
+        XCTAssertFalse(model.isExchanging, "optional cloud metadata must not delay the completed pass")
+        XCTAssertNotNil(model.lastAttempt)
+        XCTAssertNotNil(model.lastSuccessfulExchange)
+        // Another exchange may finish without starting a second stalled read.
+        model.exchange()
+        try await settle(model)
+        XCTAssertEqual(fixture.engine.passes, 2)
+        fixture.release()
+        await model.waitForExchanges()
+    }
+
     @MainActor
     func testManualExchangeShowsProgressBeforeIOAndQueuesOneFollowup() async throws {
         let fixture = try SyncFixture()
@@ -80,11 +118,11 @@ private final class SyncFixture {
     let provider: GatedSyncProvider
     let transport: ExchangeTransport
 
-    init() throws {
+    init(gateNames: Bool = false) throws {
         root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let exchange = root.appendingPathComponent("exchange")
         try FileManager.default.createDirectory(at: exchange, withIntermediateDirectories: true)
-        provider = GatedSyncProvider(base: CoordinatedFolderProvider(access: DirectFolderAccess(folder: exchange)))
+        provider = GatedSyncProvider(base: CoordinatedFolderProvider(access: DirectFolderAccess(folder: exchange)), gateNames: gateNames)
         transport = ExchangeTransport(provider: provider, engine: engine, stateDirectory: root.appendingPathComponent("runtime"))
     }
     func release() { provider.gate.signal() }
@@ -96,16 +134,30 @@ private final class GatedSyncProvider: ExchangeProvider, @unchecked Sendable {
     let gate = DispatchSemaphore(value: 0)
     private let lock = NSLock()
     private var first = true
-    init(base: any ExchangeProvider) { self.base = base }
+    private let gateNames: Bool
+    private var readingNames = false
+    var isReadingNames: Bool { lock.withLock { readingNames } }
+    init(base: any ExchangeProvider, gateNames: Bool = false) {
+        self.base = base
+        self.gateNames = gateNames
+    }
     func checkAccess() throws {
-        let wait = lock.withLock { let value = first; first = false; return value }
+        let wait = lock.withLock { let value = first && !gateNames; first = false; return value }
         if wait, gate.wait(timeout: .now() + 10) == .timedOut {
             throw ExchangeProviderError.transient("test gate timed out")
         }
         try base.checkAccess()
     }
     func renewAccess() throws { try base.renewAccess() }
-    func list(directory: String) throws -> [ExchangeItem] { try base.list(directory: directory) }
+    func list(directory: String) throws -> [ExchangeItem] {
+        if gateNames, directory.hasSuffix("/devices") {
+            lock.withLock { readingNames = true }
+            if gate.wait(timeout: .now() + 10) == .timedOut {
+                throw ExchangeProviderError.transient("peer names gate timed out")
+            }
+        }
+        return try base.list(directory: directory)
+    }
     func read(_ path: String) throws -> Data { try base.read(path) }
     func write(_ path: String, data: Data) throws { try base.write(path, data: data) }
     func requestDownload(_ path: String) throws { try base.requestDownload(path) }

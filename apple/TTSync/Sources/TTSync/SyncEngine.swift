@@ -128,7 +128,11 @@ public final class BridgeClient: @unchecked Sendable {
     private var counter = 0
     public private(set) var workspace: String?
 
-    public init(call: @escaping Call) {
+    /// Supply the identity when sharing an already-open process-wide bridge.
+    /// Attaching a transport must not reopen that bridge or reset its replay
+    /// memory while local requests are using it.
+    public init(workspace: String? = nil, call: @escaping Call) {
+        self.workspace = workspace
         self.call = call
     }
 

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"runtime/debug"
-	"sync"
+	"strings"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/engine"
@@ -25,9 +25,10 @@ type Options struct {
 }
 
 // Bridge serves one host. It holds at most one open workspace and answers one
-// request at a time, so a host may call it from any thread.
+// local request or sync transaction at a time, so a host may call it from any
+// thread. Sync imports yield between transactions to waiting local requests.
 type Bridge struct {
-	mu        sync.Mutex
+	requests  requestGate
 	options   Options
 	workspace *openWorkspace
 }
@@ -111,8 +112,14 @@ var reservedOperations = map[string]bool{
 // Call answers one JSON request with one JSON response. It never panics and
 // never returns an empty string.
 func (b *Bridge) Call(raw string) (response string) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	// Scheduling reads only the operation name; serve still validates the full
+	// envelope. Local reads and edits go ahead of queued background sync work.
+	var scheduling struct {
+		Op string `json:"op"`
+	}
+	_ = json.Unmarshal([]byte(raw), &scheduling)
+	b.requests.enter(strings.HasPrefix(scheduling.Op, "sync."))
+	defer b.requests.leave()
 	var request Request
 	defer func() {
 		if recovered := recover(); recovered != nil {

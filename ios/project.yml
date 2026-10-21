@@ -125,6 +125,8 @@ targets:
       - target: TTMobile
       - package: TTEngine
         product: TTEngine
+      - package: TTSync
+        product: TTSync
   # Hosted in the app, so it runs with the app's container and the exchange
   # folder bookmark the document picker left there. Physical iPhone only:
   # ios/scripts/record-icloud-exchange.sh drives it.

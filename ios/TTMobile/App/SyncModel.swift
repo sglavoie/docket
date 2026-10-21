@@ -57,6 +57,7 @@ final class SyncModel {
     private var pending: ExchangeRequest?
     private var attachment = UUID()
     private var exchangeTasks: [UUID: Task<Void, Never>] = [:]
+    private var readingDeviceNames = false
 
     /// Detaching hides old results immediately, but a pass can still be
     /// writing files. Workspace deletion waits until those writers finish.
@@ -85,11 +86,10 @@ final class SyncModel {
 
     /// Connects the transport to the open workspace and restores the picked
     /// folder, if any.
-    func attach(location: WorkspaceLocation, deviceID: String, exchangeOverride: URL?) {
+    func attach(location: WorkspaceLocation, workspaceID: String, exchangeOverride: URL?) {
         detach()
         do {
-            let client = BridgeClient(call: { GoBridgeTransport().call($0) })
-            try client.open(dataDirectory: location.data, runtimeDirectory: location.runtime, deviceID: deviceID)
+            let client = BridgeClient(workspace: workspaceID, call: { GoBridgeTransport().call($0) })
             let access: any FolderAccess
             if let exchangeOverride {
                 access = DirectFolderAccess(folder: exchangeOverride)
@@ -211,12 +211,31 @@ final class SyncModel {
                 }
             }
             let conflicts = (try? transport.engine.status().conflicts.count) ?? 0
-            let names = transport.deviceNames()
+            let readNames = await MainActor.run {
+                guard self.attachment == attachment else { return false }
+                var readNames = false
+                if case .success(let report) = outcome, report.condition == .reachable,
+                   !self.readingDeviceNames {
+                    self.readingDeviceNames = true
+                    readNames = true
+                }
+                self.finish(outcome, conflicts: conflicts)
+                return readNames
+            }
+            // Imported tasks are usable before optional peer names touch the
+            // provider again. A stalled metadata read must not hold their UI
+            // refresh (or the completed pass's status) hostage.
+            let names: [String: String]
+            if readNames {
+                names = transport.deviceNames()
+            } else {
+                names = [:]
+            }
             await MainActor.run {
                 self.exchangeTasks[taskID] = nil
+                if readNames { self.readingDeviceNames = false }
                 guard self.attachment == attachment else { return }
                 if !names.isEmpty { self.deviceNames = names }
-                self.finish(outcome, conflicts: conflicts)
             }
         }
     }

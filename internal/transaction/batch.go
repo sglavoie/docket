@@ -14,7 +14,7 @@ type fileBatch interface {
 	Flush() error
 }
 
-// WithBatchedWrites groups durability waits for a large initial import. Every
+// WithBatchedWrites groups durability waits for independent writes. Every
 // staged file is durable before the prepared manifest, and every applied
 // rename is durable before the committed manifest. Moves, deletes and writes
 // to overlapping paths retain the ordinary per-operation apply barriers.

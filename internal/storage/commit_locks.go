@@ -109,7 +109,10 @@ func withWorkspaceCommitLocks(services []*CommitService, recover bool, fn func()
 // workspace commit lock. Keeping the quarantine classification here gives
 // startup recovery and every mutation entry point the same fail-closed policy.
 func (s *CommitService) recoverLocked(journal *transaction.Journal) (*transaction.RecoveryReport, error) {
-	report, err := journal.Recover()
+	return s.checkRecovery(journal.RecoverPending())
+}
+
+func (s *CommitService) checkRecovery(report *transaction.RecoveryReport, err error) (*transaction.RecoveryReport, error) {
 	if err != nil {
 		return report, fmt.Errorf("transaction recovery failed: %w", err)
 	}

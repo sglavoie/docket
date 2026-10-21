@@ -110,6 +110,19 @@ type manifestEntry struct {
 // later pass finds nothing to do for it, and re-applying a partially applied
 // transaction converges on the same committed result.
 func (j *Journal) Recover() (*RecoveryReport, error) {
+	return j.recover(true)
+}
+
+// RecoverPending completes every journaled transaction and checks quarantine,
+// without walking the workspace for unreferenced staging files. Mutation paths
+// use this while holding the commit lock: orphan stages cannot affect live data
+// or a later transaction, whose staging names carry a fresh ID. Full startup
+// recovery still sweeps them, including stages left by older processes.
+func (j *Journal) RecoverPending() (*RecoveryReport, error) {
+	return j.recover(false)
+}
+
+func (j *Journal) recover(sweep bool) (*RecoveryReport, error) {
 	report := &RecoveryReport{}
 
 	// protected collects every transaction id known to have a manifest (loadable,
@@ -143,8 +156,10 @@ func (j *Journal) Recover() (*RecoveryReport, error) {
 		}
 	}
 
-	if err := j.sweepOrphans(report, protected); err != nil {
-		return report, err
+	if sweep {
+		if err := j.sweepOrphans(report, protected); err != nil {
+			return report, err
+		}
 	}
 	return report, nil
 }

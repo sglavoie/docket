@@ -341,6 +341,12 @@ the desktop's active-workspace pointer. A device that already publishes to
 the exchange, a non-empty `data_dir`, or an inbox that never delivered the
 workspace answers `refused` and leaves no workspace open.
 
+Local queries and commands take precedence over queued sync requests. An import
+yields between complete incoming transactions so a backlog cannot monopolize
+the bridge; each transaction still commits atomically. Closing or reopening the
+workspace invalidates the yielding import. The mobile transport attaches to the
+already-open bridge by workspace identity rather than opening it again.
+
 `sync.export_pending` first records any edit made outside a commit (see
 [External changes](sync-envelope.md#external-changes)), so the list includes
 it. `sync.status` reports the engine's side only. Whether the exchange is

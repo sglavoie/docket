@@ -65,7 +65,7 @@ func (s *CommitService) OnMachine(machineID string) *CommitService {
 // commit and recovery path goes through it, so there is exactly one place a
 // journal's ownership is decided.
 func (s *CommitService) journal() *transaction.Journal {
-	return transaction.NewJournal(s.transactionsDir, s.roots, s.machineID)
+	return transaction.NewJournal(s.transactionsDir, s.roots, s.machineID).WithBatchedWrites()
 }
 
 // NewCommitService returns a CommitService that journals transactions under
@@ -116,7 +116,7 @@ func (s *CommitService) RecoverWorkspace() (*transaction.RecoveryReport, error) 
 	var report *transaction.RecoveryReport
 	err := s.withWorkspaceCommitLock(func() error {
 		var recoverErr error
-		report, recoverErr = s.recoverLocked(s.journal())
+		report, recoverErr = s.checkRecovery(s.journal().Recover())
 		return recoverErr
 	})
 	return report, err

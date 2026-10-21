@@ -221,14 +221,15 @@ final class WorkspaceModel {
         do {
             try FileManager.default.createDirectory(at: location.runtime, withIntermediateDirectories: true)
             let device = try deviceID(for: location, creating: create)
-            status = try await engine.open(
+            let opened = try await engine.open(
                 dataDirectory: location.data, runtimeDirectory: location.runtime,
                 deviceID: device, createIfMissing: create
             )
+            status = opened
             try launch.select(location)
             self.location = location
             failure = nil
-            sync.attach(location: location, deviceID: device, exchangeOverride: launch.exchangeOverride)
+            sync.attach(location: location, workspaceID: opened.workspace, exchangeOverride: launch.exchangeOverride)
             sync.exchange()
             generation += 1
             phase = .ready

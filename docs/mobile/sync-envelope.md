@@ -531,7 +531,10 @@ macOS helper (`tt-sync-helper`, which drives a desktop engine running as
 - **Exchange now.** A manual exchange shows progress before folder I/O and
   clears both upload and download retry delays. Requests during a running pass
   coalesce into one followup and retain the manual retry intent. A completed
-  worker cannot update a workspace the app has since detached.
+  worker cannot update a workspace the app has since detached. Imported data
+  and the completed pass's status reach the UI before optional peer-name reads;
+  a stalled metadata read does not delay local content. At most one peer-name
+  read runs at a time.
 - **Durable queues.** `transport.json` under the runtime directory records each
   upload's verified files and each download's staged blobs, attempts, and
   backoff. It is rewritten atomically after every step, so a restart resumes
