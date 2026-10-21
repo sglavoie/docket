@@ -101,6 +101,14 @@ ci:
 tui-scenarios:
     ./scripts/run_tui_scenarios.sh
 
+# Re-record the README animation (docs/images/demo.svg); needs uv
+readme-media:
+    ./scripts/readme_media.sh
+
+# Fail when the committed README animation no longer matches the app
+readme-media-check:
+    ./scripts/readme_media.sh --check
+
 # Run the two-machine hazard gate (outside `just ci`; see TT_OLD_BINARY_REF)
 cross-machine:
     ./scripts/cross_machine_gate.sh

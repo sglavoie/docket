@@ -421,12 +421,15 @@ characters fits every reviewed terminal while staying wholly readable in Peek.
 
 ## Observation contract
 
-The README image is an actual 100×32 application frame over fictional tasks.
-Regenerate it from the repository root (requires `uv` for the SVG exporter):
+The README animation is a sequence of actual 100×32 application frames over
+fictional tasks, played by `TestReadmeDemo` from `readmeDemoScript`; every frame
+must be free of layout issues and error toasts. The script names no date, so the
+frames do not change with the day they are recorded on. Regenerate it from the
+repository root (requires `uv` for the SVG renderer):
 
 ```bash
-TT_README_SCREENSHOT_DIR=/tmp/tt-readme-review go test ./internal/tui -run '^TestReadmeScreenshot$' -count=1
-uv run scripts/render_terminal_svg.py /tmp/tt-readme-review/outliner.ansi docs/images/outliner.svg
+just readme-media        # writes docs/images/demo.svg
+just readme-media-check  # what CI runs: fails when the committed copy is stale
 ```
 
 The fixture never opens the user's workspace. Ordinary test runs export into a

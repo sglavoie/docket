@@ -158,3 +158,24 @@ jobs:
 
       - name: Exercise real-process and older-binary compatibility
         run: ./scripts/cross_machine_gate.sh
+
+  # The README animation is recorded from TestReadmeDemo, so a change to what
+  # the app draws must re-record it with `just readme-media`.
+  readme-media:
+    name: README animation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10
+
+      - name: Check the committed animation is current
+        run: ./scripts/readme_media.sh --check

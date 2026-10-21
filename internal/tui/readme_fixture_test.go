@@ -2,17 +2,21 @@ package tui
 
 import (
 	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// TestReadmeScreenshot exports an actual application frame over fictional data.
-// The optional output directory follows the existing visual-review convention;
-// ordinary test runs write only into their own temporary directory.
-func TestReadmeScreenshot(t *testing.T) {
+// readmeWidth and readmeHeight are the terminal every README image is drawn at.
+const (
+	readmeWidth  = 100
+	readmeHeight = 32
+)
+
+// launchReadmeFixture opens the fictional two-project workspace every README
+// image is drawn from, at the 100x32 size those images share.
+func launchReadmeFixture(t *testing.T) *UITestDriver {
+	t.Helper()
 	w, err := newUITestWorkspace()
 	if err != nil {
 		t.Fatal(err)
@@ -44,18 +48,18 @@ func TestReadmeScreenshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	driver, err := w.launch(100, 32)
+	driver, err := w.launch(readmeWidth, readmeHeight)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := driver.SendKey("b"); err != nil {
-		t.Fatal(err)
-	}
-	driver.drain()
-	obs := driver.Observe(ObserveOptions{IncludeANSI: true})
-	if len(obs.LayoutIssues) != 0 || !strings.Contains(obs.PlainScreen, "Start with the narrow-screen navigation.") {
-		t.Fatalf("screenshot does not show the task and Peek cleanly:\n%s\n%+v", obs.PlainScreen, obs.LayoutIssues)
-	}
+	return driver
+}
+
+// readmeScreenshotDir is where a README image's source frames are exported:
+// TT_README_SCREENSHOT_DIR when regenerating them, else the test's own
+// temporary directory so ordinary runs leave the committed images alone.
+func readmeScreenshotDir(t *testing.T) string {
+	t.Helper()
 	dir := os.Getenv("TT_README_SCREENSHOT_DIR")
 	if dir == "" {
 		dir = t.TempDir()
@@ -63,7 +67,5 @@ func TestReadmeScreenshot(t *testing.T) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "outliner.ansi"), []byte(obs.ANSIScreen), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	return dir
 }

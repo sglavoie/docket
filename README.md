@@ -15,10 +15,11 @@ There is no `tt add`: the command line is deliberately limited to diagnostics, c
 recovery, device sync, workspace relocation, project export, and shell completion. Run `tt`
 and the interface is the product.
 
-![Terminal Tasks showing Doing, Review, Inbox, Backlog, and Waiting lanes, with the selected task's resume note and context in Peek.](docs/images/outliner.svg)
+![Terminal Tasks capturing "Draft the release notes %website !1 #docs" into Inbox, reading it in Peek, starting it with w then g, and searching for "land".](docs/images/demo.svg)
 
 Work is grouped into lanes and projects; Peek below the outline shows the selected
-task's details. This screen uses fictional tasks.
+task's details. The animation is recorded from the real app over fictional tasks;
+the key pressed is named in the title bar.
 
 ## What using it looks like
 
@@ -253,12 +254,17 @@ just test
 ./scripts/run_tui_scenarios.sh
 just search-bench
 just ci
+just readme-media
 ```
 
 The scenario script replays the committed final-product TUI workflows plus the
 snapshot-first migration and interrupted-activation recovery scenarios. It
 re-selects tests `just test` and `just ci` already run, for a faster loop while
 authoring one.
+
+`just readme-media` re-records the animation above from `TestReadmeDemo`
+(it needs [uv](https://docs.astral.sh/uv/)); CI fails when the committed copy
+no longer matches what the app draws.
 
 The [daily-use polish review](docs/tui-testing/daily-polish-review.md) records
 presentation checks, search measurements, and allocation budgets. Run
