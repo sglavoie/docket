@@ -15,6 +15,7 @@ struct TaskDetailView: View {
     @State private var detail: TaskDetail?
     @State private var state: ScreenState? = .loading("Loading task…")
     @State private var editing = false
+    @State private var editFocus: TaskField?
     @State private var choosingPlan = false
     @State private var choosingStatus = false
     /// The last plan or status refusal, explained from what the engine judged.
@@ -77,14 +78,17 @@ struct TaskDetailView: View {
         .toolbar {
             if detail != nil {
                 ToolbarItem(placement: .primaryAction) {
-                    Button("Edit") { editing = true }
+                    Button("Edit") {
+                        editFocus = nil
+                        editing = true
+                    }
                         .accessibilityIdentifier("detail.edit")
                 }
             }
         }
         .sheet(isPresented: $editing) {
             if let task = detail?.task {
-                TaskEditSheet(workspace: workspace, task: task)
+                TaskEditSheet(workspace: workspace, task: task, initialFocus: editFocus)
             }
         }
         .sheet(item: $commentRequest) { request in
@@ -224,8 +228,17 @@ struct TaskDetailView: View {
                     }
                 }
             }
-            if let description = task.description, !description.isEmpty {
-                Section("Description") { Text(description) }
+            Section("Description") {
+                if let description = task.description, !description.isEmpty {
+                    Text(description)
+                        .textSelection(.enabled)
+                        .accessibilityIdentifier("detail.description")
+                }
+                Button(task.description?.isEmpty == false ? "Edit Description" : "Add Description") {
+                    editFocus = .description
+                    editing = true
+                }
+                .accessibilityIdentifier("detail.description.edit")
             }
             if let children = relations?.children, !children.isEmpty {
                 relationSection("Subtasks", children, identifier: "detail.child")

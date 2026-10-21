@@ -605,6 +605,68 @@ final class CaptureEditingUITests: XCTestCase {
         XCTAssertTrue(try planning().contains(taskID), "the Today capture is not in planning.json")
     }
 
+    func testDescriptionActionAddsRecoversEditsAndClearsMultilineText() throws {
+        var app = launch()
+        tab(app, "Inbox")
+        openTask(app, "Call the bank")
+        let original = try markdown("unfiled")
+        let description = "Ask about fees.\nBring the account number."
+
+        func openDescription(_ app: XCUIApplication, label: String) {
+            let action = app.buttons["detail.description.edit"]
+            for _ in 0..<4 where !action.isHittable { app.swipeUp() }
+            require(action, "the description action")
+            XCTAssertEqual(action.label, label)
+            action.tap()
+            require(app.buttons["edit.save"], "the task editor")
+            require(app.keyboards.firstMatch, "the description keyboard")
+            XCTAssertTrue(input(app, "form.description").isHittable)
+        }
+
+        openDescription(app, label: "Add Description")
+        // Type through the app to prove the action focused the description.
+        app.typeText(description)
+        XCTAssertEqual(value(app, "form.description"), description)
+        app.buttons["edit.close"].tap()
+        requireAbsent(app.buttons["edit.save"], "the closed editor")
+        XCTAssertEqual(try markdown("unfiled"), original, "closing committed the description")
+
+        app.terminate()
+        app = launch()
+        tab(app, "Inbox")
+        openTask(app, "Call the bank")
+        openDescription(app, label: "Add Description")
+        XCTAssertEqual(value(app, "form.description"), description)
+        app.buttons["edit.save"].tap()
+        requireAbsent(app.buttons["edit.save"], "the saved editor")
+        eventually("the multiline description was persisted") {
+            try block("Call the bank", in: markdown("unfiled"))?.contains(description) == true
+        }
+        require(app.staticTexts["detail.description"], "the saved description")
+        XCTAssertEqual(app.staticTexts["detail.description"].label, description)
+
+        openDescription(app, label: "Edit Description")
+        clear(app, "form.description")
+        type(app, "form.description", "Ask about the mortgage.")
+        app.buttons["edit.save"].tap()
+        requireAbsent(app.buttons["edit.save"], "the saved edit")
+        eventually("the replacement description was persisted") {
+            try block("Call the bank", in: markdown("unfiled"))?.contains("Ask about the mortgage.") == true
+        }
+
+        openDescription(app, label: "Edit Description")
+        clear(app, "form.description")
+        app.buttons["edit.save"].tap()
+        requireAbsent(app.buttons["edit.save"], "the cleared description editor")
+        eventually("the description was removed") {
+            let saved = try block("Call the bank", in: markdown("unfiled")) ?? ""
+            return saved.contains("state: inbox") && !saved.contains("Ask about")
+        }
+        requireAbsent(app.staticTexts["detail.description"], "the removed description")
+        XCTAssertEqual(app.buttons["detail.description.edit"].label, "Add Description")
+        XCTAssertEqual(draftFiles(), [])
+    }
+
     func testDailyEditSavesOnceAndKeepsARefusedDraft() throws {
         var app = launch()
         tab(app, "Inbox")

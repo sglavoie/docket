@@ -9,6 +9,7 @@ import TTEngine
 struct TaskEditSheet: View {
     let workspace: WorkspaceModel
     let task: TaskSnapshot
+    var initialFocus: TaskField? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var draft: EditDraft?
     @State private var restored = false
@@ -33,6 +34,12 @@ struct TaskEditSheet: View {
                     }
                     if draft != nil {
                         TaskFieldsForm(fields: fieldsBinding, focus: $fieldFocus)
+                            .task {
+                                if let initialFocus {
+                                    scroll.scrollTo(initialFocus, anchor: .center)
+                                    fieldFocus = initialFocus
+                                }
+                            }
                     }
                 }
                 .onChange(of: correction) { _, field in

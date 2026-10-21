@@ -344,11 +344,15 @@ struct TaskFieldsForm: View {
                 .accessibilityIdentifier("form.title")
                 .focused(focus, equals: .title)
                 .id(TaskField.title)
+        }
+        Section("Description") {
             TextField("Description", text: $fields.description, axis: .vertical)
                 .lineLimit(2...6)
                 .accessibilityIdentifier("form.description")
                 .focused(focus, equals: .description)
                 .id(TaskField.description)
+        }
+        Section {
             TextField("Resume note", text: $fields.resumeNote)
                 .accessibilityIdentifier("form.resume")
                 .focused(focus, equals: .resume)

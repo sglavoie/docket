@@ -24,6 +24,12 @@ you to the named field or capture token when the engine identifies one.
 Long errors have a bounded summary so the editor stays usable; Read full error
 opens the complete, scrollable explanation.
 
+Task details always show a Description section. Tap Add Description or Edit
+Description to open the task editor at its multiline description field, then
+Save. Clear the field and save to remove a description. New tasks can include
+a description through Capture → Form. Closing either form keeps unsaved text
+on this device for later.
+
 Task rows show priority and context in their secondary text, wrapping the full
 value. The dominant attention cue remains overdue, review/check-in, due today,
 then high priority. Sync leads with its current condition and the relevant
