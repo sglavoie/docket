@@ -61,6 +61,10 @@ var syncDir = SyncDir
 // on an existing destination is preserved rather than loosened. After the rename
 // the parent directory is fsynced so the replacement is durable.
 func AtomicWriteFile(path string, data []byte, perm os.FileMode) error {
+	return atomicWriteFile(path, data, perm, SyncFile, syncDir)
+}
+
+func atomicWriteFile(path string, data []byte, perm os.FileMode, syncFile func(*os.File) error, syncDirectory func(string) error) error {
 	dir := filepath.Dir(path)
 	base := filepath.Base(path)
 
@@ -94,19 +98,18 @@ func AtomicWriteFile(path string, data []byte, perm os.FileMode) error {
 		return fmt.Errorf("failed to write to temp file: %w", err)
 	}
 
-	// Sync to ensure data is on disk before rename
-	if err := SyncFile(tmp); err != nil {
+	// Include permissions in the file sync, before publishing the replacement.
+	if err := tmp.Chmod(perm); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("failed to set file permissions: %w", err)
+	}
+	if err := syncFile(tmp); err != nil {
 		_ = tmp.Close()
 		return fmt.Errorf("failed to sync temp file: %w", err)
 	}
 
 	if err := tmp.Close(); err != nil {
 		return fmt.Errorf("failed to close temp file: %w", err)
-	}
-
-	// Set permissions on temp file before rename
-	if err := os.Chmod(tmpPath, perm); err != nil {
-		return fmt.Errorf("failed to set file permissions: %w", err)
 	}
 
 	// Atomic rename
@@ -116,7 +119,7 @@ func AtomicWriteFile(path string, data []byte, perm os.FileMode) error {
 
 	// Fsync the parent directory so the rename is durably recorded and cannot be
 	// lost by a crash right after this call returns.
-	if err := syncDir(dir); err != nil {
+	if err := syncDirectory(dir); err != nil {
 		return fmt.Errorf("failed to sync directory: %w", err)
 	}
 

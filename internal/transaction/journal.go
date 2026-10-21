@@ -50,6 +50,9 @@ type Journal struct {
 	// this machine's to finish. It is never empty: the constructors resolve the
 	// running process's identity for callers that do not inject one.
 	machineID string
+	// batchWrites is an opt-in durability policy, never part of the on-disk
+	// format. Ordinary recovery can finish these same prepared operations.
+	batchWrites bool
 
 	// Injectable seams so tests can drive deterministic ids/timestamps and
 	// simulate failures at every prepare, fsync, rename, manifest-update, and
@@ -63,6 +66,7 @@ type Journal struct {
 	rename    func(oldpath, newpath string) error
 	remove    func(path string) error
 	syncDir   func(dir string) error
+	newBatch  func() fileBatch
 }
 
 // NewJournal returns a Journal that stores manifests under dir and only permits
@@ -95,6 +99,7 @@ func NewJournal(dir string, roots []string, machineID string) *Journal {
 		rename:    os.Rename,
 		remove:    os.Remove,
 		syncDir:   util.SyncDir,
+		newBatch:  func() fileBatch { return util.NewDurableBatch() },
 	}
 }
 
@@ -163,6 +168,17 @@ func (j *Journal) prepareWithID(id string, ops []Op) (*Manifest, error) {
 		}
 	}
 
+	stage := j.stageBytes
+	var batch fileBatch
+	if j.batchWrites && onlyWrites(ops) {
+		batch = j.newBatch()
+		stage = func(path string, data []byte, mode os.FileMode) error {
+			if err := batch.MkdirAll(filepath.Dir(path), util.DirPermissions); err != nil {
+				return err
+			}
+			return batch.WriteFile(path, data, mode)
+		}
+	}
 	for i, op := range ops {
 		fop := FileOp{Kind: op.Kind, Target: filepath.Clean(op.Target)}
 		switch op.Kind {
@@ -173,7 +189,7 @@ func (j *Journal) prepareWithID(id string, ops []Op) (*Manifest, error) {
 			}
 			stagePath := j.stagePath(op.Target, id, i)
 			preparePath := j.prepareStagePath(stagePath, ops[:i])
-			if err := j.stageBytes(preparePath, op.Data, mode); err != nil {
+			if err := stage(preparePath, op.Data, mode); err != nil {
 				cleanup()
 				return nil, fmt.Errorf("op %d: staging write target %q: %w", i, op.Target, err)
 			}
@@ -187,6 +203,12 @@ func (j *Journal) prepareWithID(id string, ops []Op) (*Manifest, error) {
 			// Nothing to stage for a delete.
 		}
 		manifest.Ops = append(manifest.Ops, fop)
+	}
+	if batch != nil {
+		if err := batch.Flush(); err != nil {
+			cleanup()
+			return nil, err
+		}
 	}
 
 	if err := j.writeManifest(manifest); err != nil {

@@ -307,6 +307,27 @@ that joins (`tt sync join`, `engine.Join`) starts from an empty directory: the
 genesis is the one manifest that may start a history where there is no
 catalog, so the joining device's workspace is exactly what the history says.
 
+When the staged history is complete and readable, `ImportInbox` asks
+`CommitService.BootstrapIncoming` to reconstruct the empty working copy once.
+`History.PlanBootstrap` validates every manifest, author sequence, parent and
+historical blob, then uses the ordinary reconciliation materializer over the
+whole history. Final files, retained content, conflict records, individual
+receipts and indexes, and tracking state share one recoverable journal
+transaction. Each receipt names that transaction and its final open conflicts.
+This avoids rebuilding every historical prefix during a join. Existing working
+copies and incomplete or incompatible batches use ordinary per-item import;
+a failure after preparing the batch must go through journal recovery.
+
+Bootstrap opts into journal durability batching. Every staged file is synced
+before the prepared marker; every independent applied rename is synced before
+the committed marker. On Apple platforms, each file and affected directory
+first completes `fsync`, followed by one full device-cache flush per filesystem
+at each boundary. This preserves durable ordering without requesting a device
+flush for each small history file. New directory ancestors are included in the
+barrier. Moves, deletes and potentially overlapping writes keep per-operation
+apply barriers. The journal format is unchanged, and ordinary recovery can
+finish the transaction without the optimization.
+
 A sync author identifies one working copy. The iPhone records that identity in
 its runtime directory as `sync-device-id`; creating or joining another copy
 mints a fresh author instead of reusing the installation's identity. Existing

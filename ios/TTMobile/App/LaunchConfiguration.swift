@@ -161,6 +161,34 @@ struct LaunchConfiguration: Sendable {
         try Data((location?.name ?? "").utf8).write(to: selectionFile, options: .atomic)
     }
 
+    /// Removes only an app-owned local copy and its device state. The picked
+    /// exchange folder is deliberately outside this operation.
+    func delete(_ workspace: WorkspaceLocation) throws {
+        let manager = FileManager.default
+        let ownedRoot = root.resolvingSymlinksInPath().standardizedFileURL
+        let expectedData = ownedRoot.appendingPathComponent(
+            workspace.name == WorkspaceLocation.legacyName && legacyWorkspace != nil
+                ? "workspace" : "workspaces/\(workspace.name)"
+        ).standardizedFileURL.path
+        let expectedRuntime = ownedRoot.appendingPathComponent(
+            workspace.name == WorkspaceLocation.legacyName && legacyWorkspace != nil
+                ? "device" : "devices/\(workspace.name)"
+        ).standardizedFileURL.path
+        guard existingLocations().contains(workspace),
+              workspace.name != ".", workspace.name != "..", !workspace.name.contains("/"),
+              workspace.data.resolvingSymlinksInPath().standardizedFileURL.path == expectedData,
+              workspace.runtime.resolvingSymlinksInPath().standardizedFileURL.path == expectedRuntime else {
+            throw CocoaError(.fileWriteNoPermission)
+        }
+        if selectedLocation() == workspace { try select(nil) }
+        // Keep the workspace listed if removing its device state fails, so
+        // the person can retry instead of leaving invisible drafts behind.
+        if manager.fileExists(atPath: workspace.runtime.path) {
+            try manager.removeItem(at: workspace.runtime)
+        }
+        try manager.removeItem(at: workspace.data)
+    }
+
     /// A name no workspace on this device uses yet.
     func unusedName(_ base: String) -> String {
         let taken = Set(existingLocations().map(\.name))

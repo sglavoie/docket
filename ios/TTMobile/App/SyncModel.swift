@@ -56,6 +56,13 @@ final class SyncModel {
     private var transport: ExchangeTransport?
     private var pending: ExchangeRequest?
     private var attachment = UUID()
+    private var exchangeTasks: [UUID: Task<Void, Never>] = [:]
+
+    /// Detaching hides old results immediately, but a pass can still be
+    /// writing files. Workspace deletion waits until those writers finish.
+    func waitForExchanges() async {
+        for task in Array(exchangeTasks.values) { await task.value }
+    }
 
     init(transport: ExchangeTransport? = nil) {
         self.transport = transport
@@ -192,7 +199,8 @@ final class SyncModel {
         let attachment = self.attachment
         let priority: TaskPriority
         if case .automatic = request { priority = .utility } else { priority = .userInitiated }
-        Task.detached(priority: priority) {
+        let taskID = UUID()
+        exchangeTasks[taskID] = Task.detached(priority: priority) {
             let outcome = Result {
                 switch request {
                 case .automatic: return try transport.exchange()
@@ -205,6 +213,7 @@ final class SyncModel {
             let conflicts = (try? transport.engine.status().conflicts.count) ?? 0
             let names = transport.deviceNames()
             await MainActor.run {
+                self.exchangeTasks[taskID] = nil
                 guard self.attachment == attachment else { return }
                 if !names.isEmpty { self.deviceNames = names }
                 self.finish(outcome, conflicts: conflicts)

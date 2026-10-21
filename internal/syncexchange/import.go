@@ -41,6 +41,13 @@ type Committer interface {
 	CommitIncoming(manifest *synclog.Manifest, blobs synclog.BlobSource) (string, error)
 }
 
+// bootstrapCommitter can install a complete history into an empty working
+// copy in one checked transaction. Existing copies and incomplete batches
+// decline this optimization and retain ordinary per-item import semantics.
+type bootstrapCommitter interface {
+	BootstrapIncoming([]*synclog.Manifest, synclog.BlobSource) (string, bool, error)
+}
+
 // Result reports one staged manifest.
 type Result struct {
 	Path      string  `json:"path"`
@@ -140,7 +147,24 @@ func ImportInbox(committer Committer, inbox string) (*Report, error) {
 		}
 		return queue[i].manifest.DeviceID < queue[j].manifest.DeviceID
 	})
-	for progress := true; progress; {
+	bootstrapped := false
+	if bootstrap, ok := committer.(bootstrapCommitter); ok && len(report.Results) == 0 && len(queue) > 1 {
+		manifests := make([]*synclog.Manifest, 0, len(queue))
+		for _, item := range queue {
+			manifests = append(manifests, item.manifest)
+		}
+		id, accepted, err := bootstrap.BootstrapIncoming(manifests, blobs)
+		if err != nil {
+			return nil, fmt.Errorf("bootstrapping sync history: %w", err)
+		}
+		bootstrapped = accepted
+		if accepted {
+			for _, item := range queue {
+				item.result.Outcome, item.result.LocalTxnID = Imported, id
+			}
+		}
+	}
+	for progress := !bootstrapped; progress; {
 		progress = false
 		for _, item := range queue {
 			if item.result.Outcome != "" && item.result.Outcome != Incomplete {

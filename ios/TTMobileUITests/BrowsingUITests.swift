@@ -560,6 +560,68 @@ final class BrowsingUITests: XCTestCase {
         require(text(app, "Buy milk"), "the reopened workspace's capture")
     }
 
+    func testWorkspaceDeletionConfirmsAndPersistsWithoutRemovingOtherWorkspaces() throws {
+        let removed = try seed("unused", .representative)
+        let kept = try seed("kept", .representative)
+        let runtime = root.appendingPathComponent("devices/unused")
+        try FileManager.default.createDirectory(at: runtime, withIntermediateDirectories: true)
+        try Data("draft recovery".utf8).write(to: runtime.appendingPathComponent("draft"))
+        var app = launch()
+        require(app.buttons["onboarding.delete.unused"], "the workspace delete control")
+        app.buttons["onboarding.delete.unused"].tap()
+        let confirmation = app.alerts.firstMatch
+        require(confirmation, "the deletion confirmation")
+        XCTAssertTrue(confirmation.staticTexts.allElementsBoundByIndex.contains { $0.label.contains("unsaved drafts") })
+        confirmation.buttons["Cancel"].tap()
+        XCTAssertTrue(FileManager.default.fileExists(atPath: removed.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: runtime.path))
+        app.buttons["onboarding.delete.unused"].tap()
+        app.alerts.buttons["Delete from This iPhone"].tap()
+        requireAbsent(app.buttons["onboarding.workspace.unused"], "the deleted workspace")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: removed.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: runtime.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: kept.path))
+        app.terminate()
+        app = launch()
+        require(app.buttons["onboarding.workspace.kept"], "the retained workspace after relaunch")
+        XCTAssertFalse(app.buttons["onboarding.workspace.unused"].exists)
+        app.buttons["onboarding.workspace.kept"].tap()
+        require(text(app, "Ship beta build"), "the retained workspace's tasks")
+        app.buttons["sync.open"].tap()
+        app.buttons["workspace.switch"].tap()
+        require(app.buttons["onboarding.delete.kept"], "deleting the last workspace")
+        app.buttons["onboarding.delete.kept"].tap()
+        app.alerts.buttons["Delete from This iPhone"].tap()
+        requireAbsent(app.buttons["onboarding.workspace.kept"], "the last workspace")
+        app.buttons["onboarding.create"].tap()
+        require(app.staticTexts["state.empty"], "a fresh workspace after deleting every old one")
+    }
+
+    func testDeletedWorkspaceDraftDoesNotReturnWhenNameIsReused() throws {
+        let app = launch()
+        require(app.buttons["onboarding.create"], "onboarding")
+        app.buttons["onboarding.create"].tap()
+        require(app.buttons["capture.open"], "the new workspace")
+        app.buttons["capture.open"].tap()
+        let title = app.textFields["capture.text"].firstMatch
+        let field = title.waitForExistence(timeout: 5) ? title : app.textViews["capture.text"].firstMatch
+        require(field, "capture draft")
+        field.tap()
+        field.typeText("Discarded workspace draft")
+        app.buttons["capture.close"].tap()
+        app.buttons["sync.open"].tap()
+        app.buttons["workspace.switch"].tap()
+        require(app.buttons["onboarding.delete.local"], "the local workspace's delete control")
+        app.buttons["onboarding.delete.local"].tap()
+        app.alerts.buttons["Delete from This iPhone"].tap()
+        requireAbsent(app.buttons["onboarding.workspace.local"], "the deleted workspace")
+        app.buttons["onboarding.create"].tap()
+        require(app.buttons["capture.open"], "the replacement workspace")
+        app.buttons["capture.open"].tap()
+        require(field, "a fresh capture draft")
+        XCTAssertFalse((field.value as? String ?? "").contains("Discarded workspace draft"))
+    }
+
     func testUnavailableWorkspaceAndReference() throws {
         try select("gone")
         var app = launch()

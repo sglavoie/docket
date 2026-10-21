@@ -24,9 +24,22 @@ func (j *Journal) driveCommit(m *Manifest, path string) error {
 			return fmt.Errorf("marking transaction committing: %w", err)
 		}
 	}
+	applying := j
+	var batch fileBatch
+	if j.batchWrites && independentWrites(m.Ops) {
+		batch = j.newBatch()
+		copy := *j
+		copy.syncDir = batch.SyncDir
+		applying = &copy
+	}
 	for i, op := range m.Ops {
-		if err := j.applyOp(op); err != nil {
+		if err := applying.applyOp(op); err != nil {
 			return fmt.Errorf("applying op %d (%s %q): %w", i, op.Kind, op.Target, err)
+		}
+	}
+	if batch != nil {
+		if err := batch.Flush(); err != nil {
+			return fmt.Errorf("syncing applied transaction: %w", err)
 		}
 	}
 	m.State = StateCommitted
@@ -75,7 +88,12 @@ func (j *Journal) applyWrite(op FileOp) error {
 		}
 		return nil
 	case os.IsNotExist(statErr):
-		return confirmApplied(op.Target, "write")
+		if err := confirmApplied(op.Target, "write"); err != nil {
+			return err
+		}
+		// A prior pass may have stopped after the rename but before its
+		// directory barrier. Re-establish durability before acknowledging it.
+		return j.syncDir(filepath.Dir(op.Target))
 	default:
 		return fmt.Errorf("stat staged file %q: %w", op.Staged, statErr)
 	}

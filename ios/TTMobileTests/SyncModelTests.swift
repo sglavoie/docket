@@ -44,6 +44,27 @@ final class SyncModelTests: XCTestCase {
     }
 
     @MainActor
+    func testDeletionWaitsForDetachedExchangeWriters() async throws {
+        let fixture = try SyncFixture()
+        defer { fixture.release(); fixture.remove() }
+        let model = SyncModel(transport: fixture.transport)
+        model.retry()
+        model.detach()
+        var finished = false
+        let wait = Task {
+            await model.waitForExchanges()
+            finished = true
+        }
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertFalse(finished, "deletion must not race the detached writer")
+        fixture.release()
+        await wait.value
+        XCTAssertTrue(finished)
+        XCTAssertEqual(fixture.engine.passes, 1)
+        XCTAssertNotNil(try fixture.transport.state().lastSuccessfulExchange)
+    }
+
+    @MainActor
     private func settle(_ model: SyncModel) async throws {
         for _ in 0..<500 {
             if !model.isExchanging { return }

@@ -90,10 +90,87 @@ func TestJoinRetriesHistoryListedBeforeItsGenesis(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if len(report.Results) < 2 {
+		t.Fatal("join must exercise a multi-manifest history")
+	}
+	batchID := report.Results[0].LocalTxnID
 	for _, result := range report.Results {
 		if result.Outcome != syncexchange.Imported {
 			t.Fatalf("join needed another pass despite all history being present: %+v", result)
 		}
+		if batchID == "" || result.LocalTxnID != batchID {
+			t.Fatalf("complete initial history was not committed together: %+v", report.Results)
+		}
 	}
 	requireSameTree(t, "first-pass join", syncedDigests(t, peer.DataDir()), syncedDigests(t, joined.DataDir()))
+	captureIn(t, joined, "Created after the initial batch")
+	exchangeNow(t, joined)
+	exchangeNow(t, peer)
+	requireSameTree(t, "post-join sync", syncedDigests(t, peer.DataDir()), syncedDigests(t, joined.DataDir()))
+}
+
+func TestInitialImportFallsBackWhenLatestContentIsMissing(t *testing.T) {
+	env := newEnrollEnvironment(t)
+	env.enroll(t)
+	desk := env.open(t, env.workingCopy, enrollingDevice)
+	captureIn(t, desk, "First delivered edit")
+	exchangeNow(t, desk)
+	captureIn(t, desk, "Waiting for its content")
+	pending, err := desk.SyncCommits().SyncHistory().Pending()
+	if err != nil || len(pending) != 1 {
+		t.Fatalf("pending: %+v, %v", pending, err)
+	}
+	latest := pending[0]
+	exchangeNow(t, desk)
+	var digest string
+	for _, effect := range latest.Effects {
+		if effect.Kind == synclog.EffectProjectDocument && effect.Blob != nil {
+			digest = *effect.Blob
+		}
+	}
+	if digest == "" {
+		t.Fatal("capture must change project content")
+	}
+	inbox := filepath.Join(env.exchange, syncexchange.ExchangeRoot)
+	path := filepath.Join(inbox, syncexchange.BlobPath(digest))
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(env.root, "partial-join")
+	service, err := joiningCommits(root, "partial-phone", env.clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := syncexchange.ImportInbox(service, inbox)
+	if err != nil {
+		t.Fatal(err)
+	}
+	imported, waiting := 0, 0
+	for _, result := range report.Results {
+		switch result.Outcome {
+		case syncexchange.Imported:
+			imported++
+		case syncexchange.Incomplete:
+			waiting++
+			if result.TxnID != latest.TxnID || len(result.Missing) == 0 {
+				t.Fatalf("wrong incomplete result: %+v", result)
+			}
+		default:
+			t.Fatalf("unexpected fallback result: %+v", result)
+		}
+	}
+	if imported < 2 || waiting != 1 {
+		t.Fatalf("complete prefix not imported: %+v", report.Results)
+	}
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := syncexchange.ImportInbox(service, inbox); err != nil {
+		t.Fatal(err)
+	}
+	requireSameTree(t, "completed partial join", syncedDigests(t, desk.DataDir()), syncedDigests(t, root))
 }

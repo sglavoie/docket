@@ -138,43 +138,81 @@ func (s *CommitService) commitReconciled(manifest *synclog.Manifest, blobs syncl
 		if err != nil {
 			return err
 		}
-		locked := make([]ArtifactChange, 0, len(plan.Expect))
-		for path := range plan.Expect {
-			locked = append(locked, ArtifactChange{Path: path})
-		}
-		lockPaths, err := artifactLockPaths(locked, s.roots)
-		if err != nil {
+		if err := s.commitReconcilePlan(journal, id, plan); err != nil {
 			return err
 		}
-		if err := createArtifactLockDirectories(lockPaths); err != nil {
-			return err
-		}
-		return withOrderedFileLocks(lockPaths, func() error {
-			for path, want := range plan.Expect {
-				if err := expectSyncedBytes(path, want); err != nil {
-					return err
-				}
-			}
-			prepared, err := journal.PrepareWithID(id, plan.Ops)
-			if err != nil {
-				return fmt.Errorf("preparing incoming transaction: %w", err)
-			}
-			for _, dir := range plan.MoveTargets {
-				if err := os.MkdirAll(dir, DirPermissions); err != nil {
-					return fmt.Errorf("creating commit target directory: %w", err)
-				}
-			}
-			if err := commitJournal(journal, prepared); err != nil {
-				return fmt.Errorf("committing incoming transaction: %w", err)
-			}
-			txnID = prepared.ID
-			return nil
-		})
+		txnID = id
+		return nil
 	})
 	if commitErr != nil {
 		return "", commitErr
 	}
 	return txnID, nil
+}
+
+// BootstrapIncoming attempts one initial import into an empty working copy.
+// A declined plan changes nothing and leaves ordinary per-item import to
+// report missing history, incompatible records or existing workspace edits.
+// Once prepared, any failure is returned for journal recovery, never retried
+// as independent commits over a partially applied bootstrap.
+func (s *CommitService) BootstrapIncoming(manifests []*synclog.Manifest, blobs synclog.BlobSource) (string, bool, error) {
+	if s.history == nil || s.merger == nil {
+		return "", false, nil
+	}
+	var txnID string
+	accepted := false
+	err := s.withWorkspaceCommitLock(func() error {
+		journal := s.journal().WithBatchedWrites()
+		if _, err := s.recoverLocked(journal); err != nil {
+			return err
+		}
+		id := uuid.NewString()
+		plan, err := s.history.PlanBootstrap(manifests, blobs, s.merger, id)
+		if err != nil || plan == nil {
+			return nil
+		}
+		accepted = true
+		if err := s.commitReconcilePlan(journal, id, plan); err != nil {
+			return err
+		}
+		txnID = id
+		return nil
+	})
+	return txnID, accepted, err
+}
+
+func (s *CommitService) commitReconcilePlan(journal *transaction.Journal, id string, plan *synclog.ReconcilePlan) error {
+	locked := make([]ArtifactChange, 0, len(plan.Expect))
+	for path := range plan.Expect {
+		locked = append(locked, ArtifactChange{Path: path})
+	}
+	lockPaths, err := artifactLockPaths(locked, s.roots)
+	if err != nil {
+		return err
+	}
+	if err := createArtifactLockDirectories(lockPaths); err != nil {
+		return err
+	}
+	return withOrderedFileLocks(lockPaths, func() error {
+		for path, want := range plan.Expect {
+			if err := expectSyncedBytes(path, want); err != nil {
+				return err
+			}
+		}
+		prepared, err := journal.PrepareWithID(id, plan.Ops)
+		if err != nil {
+			return fmt.Errorf("preparing incoming transaction: %w", err)
+		}
+		for _, dir := range plan.MoveTargets {
+			if err := os.MkdirAll(dir, DirPermissions); err != nil {
+				return fmt.Errorf("creating commit target directory: %w", err)
+			}
+		}
+		if err := commitJournal(journal, prepared); err != nil {
+			return fmt.Errorf("committing incoming transaction: %w", err)
+		}
+		return nil
+	})
 }
 
 func expectSyncedBytes(path string, want *string) error {

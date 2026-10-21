@@ -225,6 +225,12 @@ picking that exchange folder. Each workspace lives under
 relaunches. A workspace an earlier build kept at `Application
 Support/workspace` is adopted as `workspace`. **Choose Another Workspace…** in
 the sync sheet returns to that choice without touching any files.
+In **On this iPhone**, tap the trash button beside an unused workspace, then
+confirm **Delete from This iPhone**. This permanently removes its local tasks,
+notes, attachments, and unsaved drafts, including changes that have not synced.
+The exchange folder and copies on other devices are kept. Cancel leaves the
+workspace intact; deleting the last workspace returns you to the start/join
+choices.
 
 Today, Inbox, Notes, and Browse are the tabs, and the capture button floats over all
 four. Browse holds Next, Due, All, Backlog, and Recent, every project by

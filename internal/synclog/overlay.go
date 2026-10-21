@@ -109,14 +109,13 @@ func (o *overlay) filesUnder(source string) ([]string, error) {
 
 // retain stages f's bytes in the blob store unless they are already there.
 func (o *overlay) retain(f *vfile) {
-	if o.planned[f.digest] {
-		return
-	}
-	o.planned[f.digest] = true
 	o.retainBytes(f.digest, f.data)
 }
 
 func (o *overlay) retainBytes(digest string, data []byte) {
+	if o.planned[digest] {
+		return
+	}
 	o.planned[digest] = true
 	path := o.h.BlobPath(digest)
 	if _, err := os.Lstat(path); err == nil {

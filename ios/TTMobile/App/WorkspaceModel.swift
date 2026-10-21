@@ -54,6 +54,8 @@ final class WorkspaceModel {
     private(set) var failure: String?
     private(set) var isJoining = false
     private(set) var joinFailure: String?
+    private(set) var isDeletingWorkspace = false
+    private(set) var workspaceDeletionFailure: String?
 
     let engine = TTEngine()
     let sync = SyncModel()
@@ -141,9 +143,39 @@ final class WorkspaceModel {
         return phase == .ready
     }
 
-    var existingLocations: [WorkspaceLocation] { launch.existingLocations() }
+    var existingLocations: [WorkspaceLocation] {
+        // Disk changes need an observable dependency to refresh the picker.
+        _ = generation
+        return launch.existingLocations()
+    }
+
+    /// Called only after confirmation in the workspace picker, where no
+    /// workspace is open and no editor can submit another change.
+    func deleteWorkspace(_ target: WorkspaceLocation) async {
+        guard phase == .onboarding, !isJoining, !isDeletingWorkspace else { return }
+        isDeletingWorkspace = true
+        workspaceDeletionFailure = nil
+        defer { isDeletingWorkspace = false }
+        await sync.waitForExchanges()
+        do {
+            // Closing serializes behind pending engine calls and refuses any
+            // late editor/import request before the directories disappear.
+            if await engine.workspaceID != nil { try await engine.close() }
+            await captures.settle()
+            captures.clearSnapshot()
+            let launch = launch
+            try await Task.detached(priority: .userInitiated) {
+                try launch.delete(target)
+            }.value
+            draftStores[target.runtime] = nil
+            generation += 1
+        } catch {
+            workspaceDeletionFailure = "Could not delete “\(target.name)”: \(Self.describe(error))"
+        }
+    }
 
     func start() async {
+        guard !isDeletingWorkspace else { return }
         if let starting {
             await starting.value
             return
@@ -180,6 +212,7 @@ final class WorkspaceModel {
     /// Opens a workspace on this device. Without `create`, a missing
     /// workspace is reported unavailable rather than silently recreated empty.
     func open(_ location: WorkspaceLocation, create: Bool) async {
+        guard !isDeletingWorkspace else { return }
         phase = .loading
         if !create, !FileManager.default.fileExists(atPath: location.data.appendingPathComponent(".tt").path) {
             phase = .unavailable("The workspace “\(location.name)” is no longer on this iPhone.")
@@ -247,6 +280,7 @@ final class WorkspaceModel {
     /// transport downloads its history and the engine builds the working copy
     /// from it, then the app opens it like any other.
     func join(folder: URL?) async {
+        guard !isDeletingWorkspace else { return }
         let access: SyncModel.FolderChoice
         if let folder {
             access = .picked(folder)
@@ -278,6 +312,7 @@ final class WorkspaceModel {
         captures.clearSnapshot()
         location = nil
         status = nil
+        workspaceDeletionFailure = nil
         phase = .onboarding
     }
 
