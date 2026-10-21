@@ -388,6 +388,7 @@ final class CaptureEditingUITests: XCTestCase {
         row(app, "Ship beta build").swipeRight()
         XCTAssertFalse(app.buttons["task.swipe.today"].exists)
         XCTAssertFalse(app.buttons["task.swipe.next"].exists)
+        XCTAssertFalse(app.buttons["task.swipe.organize"].exists)
     }
 
     func testShorthandCaptureWithLivePreview() throws {

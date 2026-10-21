@@ -263,6 +263,12 @@ keep their query order. Reordering is saved on the iPhone and synced normally.
 Swipe left on a task for **Done**, **Start** (or **Pause** while doing), and
 **Edit**; completed and canceled tasks offer **Reopen** and **Edit**. Swipe
 right for **Today** and **Next**, or remove it from the plan it already has.
+The same right swipe offers **Organize**, including on completed and canceled
+tasks: choose **Indent**, **Outdent**, **Move Up**, or **Move Down** for that
+row. Outdent is disabled for a top-level task. Up and Down change sibling order
+in the project's outline; a sorted or filtered list may not show that order.
+These four controls live on task rows; task details keep **Add Subtask** and
+**Move to Project**.
 Swipes reveal buttons without committing an action until tapped. These
 shortcuts are available outside selection mode, and an action the engine
 refuses is explained above the list. Successful swipe actions name the task

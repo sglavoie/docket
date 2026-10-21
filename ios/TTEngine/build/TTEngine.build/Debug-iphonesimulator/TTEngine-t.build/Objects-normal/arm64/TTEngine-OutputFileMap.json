@@ -1,0 +1,99 @@
+{
+  "" : {
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/TTEngine-primary.dia",
+    "emit-module-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/TTEngine-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/TTEngine-primary-emit-module.dia",
+    "pch" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/TTEngine-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/TTEngine-primary.swiftdeps"
+  },
+  "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/Sources/TTEngine/BridgeModels.swift" : {
+    "const-values" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/BridgeModels.swiftconstvalues",
+    "dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/BridgeModels.d",
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/BridgeModels.dia",
+    "index-unit-output-path" : "/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/BridgeModels.o",
+    "llvm-bc" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/BridgeModels.bc",
+    "object" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/BridgeModels.o",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/BridgeModels.swiftdeps",
+    "swiftmodule" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/BridgeModels~partial.swiftmodule"
+  },
+  "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/Sources/TTEngine/BridgeTransport.swift" : {
+    "const-values" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/BridgeTransport.swiftconstvalues",
+    "dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/BridgeTransport.d",
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/BridgeTransport.dia",
+    "index-unit-output-path" : "/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/BridgeTransport.o",
+    "llvm-bc" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/BridgeTransport.bc",
+    "object" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/BridgeTransport.o",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/BridgeTransport.swiftdeps",
+    "swiftmodule" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/BridgeTransport~partial.swiftmodule"
+  },
+  "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/Sources/TTEngine/CaptureSuggestions.swift" : {
+    "const-values" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/CaptureSuggestions.swiftconstvalues",
+    "dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/CaptureSuggestions.d",
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/CaptureSuggestions.dia",
+    "index-unit-output-path" : "/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/CaptureSuggestions.o",
+    "llvm-bc" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/CaptureSuggestions.bc",
+    "object" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/CaptureSuggestions.o",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/CaptureSuggestions.swiftdeps",
+    "swiftmodule" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/CaptureSuggestions~partial.swiftmodule"
+  },
+  "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/Sources/TTEngine/Captures.swift" : {
+    "const-values" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Captures.swiftconstvalues",
+    "dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Captures.d",
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Captures.dia",
+    "index-unit-output-path" : "/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Captures.o",
+    "llvm-bc" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Captures.bc",
+    "object" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Captures.o",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Captures.swiftdeps",
+    "swiftmodule" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Captures~partial.swiftmodule"
+  },
+  "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/Sources/TTEngine/ConflictDiff.swift" : {
+    "const-values" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/ConflictDiff.swiftconstvalues",
+    "dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/ConflictDiff.d",
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/ConflictDiff.dia",
+    "index-unit-output-path" : "/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/ConflictDiff.o",
+    "llvm-bc" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/ConflictDiff.bc",
+    "object" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/ConflictDiff.o",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/ConflictDiff.swiftdeps",
+    "swiftmodule" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/ConflictDiff~partial.swiftmodule"
+  },
+  "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/Sources/TTEngine/Conflicts.swift" : {
+    "const-values" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Conflicts.swiftconstvalues",
+    "dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Conflicts.d",
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Conflicts.dia",
+    "index-unit-output-path" : "/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Conflicts.o",
+    "llvm-bc" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Conflicts.bc",
+    "object" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Conflicts.o",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Conflicts.swiftdeps",
+    "swiftmodule" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Conflicts~partial.swiftmodule"
+  },
+  "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/Sources/TTEngine/Reminders.swift" : {
+    "const-values" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Reminders.swiftconstvalues",
+    "dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Reminders.d",
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Reminders.dia",
+    "index-unit-output-path" : "/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Reminders.o",
+    "llvm-bc" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Reminders.bc",
+    "object" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Reminders.o",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Reminders.swiftdeps",
+    "swiftmodule" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/Reminders~partial.swiftmodule"
+  },
+  "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/Sources/TTEngine/RichContent.swift" : {
+    "const-values" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/RichContent.swiftconstvalues",
+    "dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/RichContent.d",
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/RichContent.dia",
+    "index-unit-output-path" : "/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/RichContent.o",
+    "llvm-bc" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/RichContent.bc",
+    "object" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/RichContent.o",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/RichContent.swiftdeps",
+    "swiftmodule" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/RichContent~partial.swiftmodule"
+  },
+  "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/Sources/TTEngine/TTEngine.swift" : {
+    "const-values" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/TTEngine.swiftconstvalues",
+    "dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/TTEngine.d",
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/TTEngine.dia",
+    "index-unit-output-path" : "/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/TTEngine.o",
+    "llvm-bc" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/TTEngine.bc",
+    "object" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/TTEngine.o",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/TTEngine.swiftdeps",
+    "swiftmodule" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTEngine/build/TTEngine.build/Debug-iphonesimulator/TTEngine-t.build/Objects-normal/arm64/TTEngine~partial.swiftmodule"
+  }
+}

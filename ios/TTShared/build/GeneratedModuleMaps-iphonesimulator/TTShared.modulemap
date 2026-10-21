@@ -1,0 +1,4 @@
+module TTShared {
+header "TTShared-Swift.h"
+export *
+}

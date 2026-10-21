@@ -223,8 +223,8 @@ struct CheckInSheet: View {
     }
 }
 
-/// The task's place in its project: a new subtask, its level in the outline,
-/// its order among its siblings, and the project it belongs to.
+/// Creating a subtask and moving between projects. Outline level and sibling
+/// order are changed from the task list's Organize swipe action.
 struct OrganizeSection: View {
     let detail: TaskDetail
     let workspace: WorkspaceModel
@@ -253,21 +253,6 @@ struct OrganizeSection: View {
                 .sheet(isPresented: $choosingProject) {
                     ProjectPickerSheet(workspace: workspace, excluding: detail.project.id, choose: move)
                 }
-            HStack {
-                Button("Indent") { hierarchy(.indent) }
-                    .accessibilityIdentifier("detail.indent")
-                Spacer()
-                Button("Outdent") { hierarchy(.outdent) }
-                    .accessibilityIdentifier("detail.outdent")
-                    .disabled(detail.task.parentID == nil)
-                Spacer()
-                Button("Up") { hierarchy(.moveUp) }
-                    .accessibilityIdentifier("detail.moveUp")
-                Spacer()
-                Button("Down") { hierarchy(.moveDown) }
-                    .accessibilityIdentifier("detail.moveDown")
-            }
-            .buttonStyle(.borderless)
         }
     }
 }

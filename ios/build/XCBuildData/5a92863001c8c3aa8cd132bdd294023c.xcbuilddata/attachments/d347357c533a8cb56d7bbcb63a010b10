@@ -1,0 +1,59 @@
+{
+  "" : {
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/TTReminders-primary.dia",
+    "emit-module-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/TTReminders-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/TTReminders-primary-emit-module.dia",
+    "pch" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/TTReminders-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/TTReminders-primary.swiftdeps"
+  },
+  "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/Sources/TTReminders/ReminderActions.swift" : {
+    "const-values" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderActions.swiftconstvalues",
+    "dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderActions.d",
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderActions.dia",
+    "index-unit-output-path" : "/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderActions.o",
+    "llvm-bc" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderActions.bc",
+    "object" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderActions.o",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderActions.swiftdeps",
+    "swiftmodule" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderActions~partial.swiftmodule"
+  },
+  "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/Sources/TTReminders/ReminderPlan.swift" : {
+    "const-values" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderPlan.swiftconstvalues",
+    "dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderPlan.d",
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderPlan.dia",
+    "index-unit-output-path" : "/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderPlan.o",
+    "llvm-bc" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderPlan.bc",
+    "object" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderPlan.o",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderPlan.swiftdeps",
+    "swiftmodule" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderPlan~partial.swiftmodule"
+  },
+  "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/Sources/TTReminders/ReminderReconciler.swift" : {
+    "const-values" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderReconciler.swiftconstvalues",
+    "dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderReconciler.d",
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderReconciler.dia",
+    "index-unit-output-path" : "/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderReconciler.o",
+    "llvm-bc" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderReconciler.bc",
+    "object" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderReconciler.o",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderReconciler.swiftdeps",
+    "swiftmodule" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderReconciler~partial.swiftmodule"
+  },
+  "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/Sources/TTReminders/ReminderScheduler.swift" : {
+    "const-values" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderScheduler.swiftconstvalues",
+    "dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderScheduler.d",
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderScheduler.dia",
+    "index-unit-output-path" : "/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderScheduler.o",
+    "llvm-bc" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderScheduler.bc",
+    "object" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderScheduler.o",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderScheduler.swiftdeps",
+    "swiftmodule" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/ReminderScheduler~partial.swiftmodule"
+  },
+  "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/Sources/TTReminders/SystemNotificationCenter.swift" : {
+    "const-values" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/SystemNotificationCenter.swiftconstvalues",
+    "dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/SystemNotificationCenter.d",
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/SystemNotificationCenter.dia",
+    "index-unit-output-path" : "/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/SystemNotificationCenter.o",
+    "llvm-bc" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/SystemNotificationCenter.bc",
+    "object" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/SystemNotificationCenter.o",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/SystemNotificationCenter.swiftdeps",
+    "swiftmodule" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTReminders/build/TTReminders.build/Debug-iphonesimulator/TTReminders-t.build/Objects-normal/arm64/SystemNotificationCenter~partial.swiftmodule"
+  }
+}

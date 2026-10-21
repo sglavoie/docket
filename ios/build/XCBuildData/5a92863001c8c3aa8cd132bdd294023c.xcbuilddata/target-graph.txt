@@ -1,0 +1,29 @@
+Target dependency graph (12 targets)
+Target 'TTMobileUITests' in project 'TTMobile'
+➜ Explicit dependency on target 'TTMobile' in project 'TTMobile'
+➜ Explicit dependency on target 'TTEngine-product' in project 'TTEngine'
+➜ Explicit dependency on target 'TTSync-product' in project 'TTSync'
+➜ Explicit dependency on target 'TTShared-product' in project 'TTShared'
+Target 'TTMobile' in project 'TTMobile'
+➜ Explicit dependency on target 'TTShare' in project 'TTMobile'
+➜ Explicit dependency on target 'TTWidgets' in project 'TTMobile'
+➜ Explicit dependency on target 'TTEngine-product' in project 'TTEngine'
+➜ Explicit dependency on target 'TTSync-product' in project 'TTSync'
+➜ Explicit dependency on target 'TTReminders-product' in project 'TTReminders'
+➜ Explicit dependency on target 'TTShared-product' in project 'TTShared'
+Target 'TTReminders-product' in project 'TTReminders'
+➜ Explicit dependency on target 'TTReminders' in project 'TTReminders'
+Target 'TTReminders' in project 'TTReminders' (no dependencies)
+Target 'TTSync-product' in project 'TTSync'
+➜ Explicit dependency on target 'TTSync' in project 'TTSync'
+Target 'TTSync' in project 'TTSync' (no dependencies)
+Target 'TTEngine-product' in project 'TTEngine'
+➜ Explicit dependency on target 'TTEngine' in project 'TTEngine'
+Target 'TTEngine' in project 'TTEngine' (no dependencies)
+Target 'TTWidgets' in project 'TTMobile'
+➜ Explicit dependency on target 'TTShared-product' in project 'TTShared'
+Target 'TTShare' in project 'TTMobile'
+➜ Explicit dependency on target 'TTShared-product' in project 'TTShared'
+Target 'TTShared-product' in project 'TTShared'
+➜ Explicit dependency on target 'TTShared' in project 'TTShared'
+Target 'TTShared' in project 'TTShared' (no dependencies)

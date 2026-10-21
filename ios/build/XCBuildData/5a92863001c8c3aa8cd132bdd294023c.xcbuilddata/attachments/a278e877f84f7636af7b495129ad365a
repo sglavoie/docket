@@ -1,0 +1,59 @@
+{
+  "" : {
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/TTShared-primary.dia",
+    "emit-module-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/TTShared-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/TTShared-primary-emit-module.dia",
+    "pch" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/TTShared-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/TTShared-primary.swiftdeps"
+  },
+  "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/Sources/TTShared/CaptureEnvelope.swift" : {
+    "const-values" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/CaptureEnvelope.swiftconstvalues",
+    "dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/CaptureEnvelope.d",
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/CaptureEnvelope.dia",
+    "index-unit-output-path" : "/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/CaptureEnvelope.o",
+    "llvm-bc" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/CaptureEnvelope.bc",
+    "object" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/CaptureEnvelope.o",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/CaptureEnvelope.swiftdeps",
+    "swiftmodule" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/CaptureEnvelope~partial.swiftmodule"
+  },
+  "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/Sources/TTShared/CaptureInbox.swift" : {
+    "const-values" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/CaptureInbox.swiftconstvalues",
+    "dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/CaptureInbox.d",
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/CaptureInbox.dia",
+    "index-unit-output-path" : "/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/CaptureInbox.o",
+    "llvm-bc" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/CaptureInbox.bc",
+    "object" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/CaptureInbox.o",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/CaptureInbox.swiftdeps",
+    "swiftmodule" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/CaptureInbox~partial.swiftmodule"
+  },
+  "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/Sources/TTShared/DeepLink.swift" : {
+    "const-values" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/DeepLink.swiftconstvalues",
+    "dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/DeepLink.d",
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/DeepLink.dia",
+    "index-unit-output-path" : "/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/DeepLink.o",
+    "llvm-bc" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/DeepLink.bc",
+    "object" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/DeepLink.o",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/DeepLink.swiftdeps",
+    "swiftmodule" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/DeepLink~partial.swiftmodule"
+  },
+  "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/Sources/TTShared/SharedItems.swift" : {
+    "const-values" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/SharedItems.swiftconstvalues",
+    "dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/SharedItems.d",
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/SharedItems.dia",
+    "index-unit-output-path" : "/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/SharedItems.o",
+    "llvm-bc" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/SharedItems.bc",
+    "object" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/SharedItems.o",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/SharedItems.swiftdeps",
+    "swiftmodule" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/SharedItems~partial.swiftmodule"
+  },
+  "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/Sources/TTShared/WidgetSnapshot.swift" : {
+    "const-values" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/WidgetSnapshot.swiftconstvalues",
+    "dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/WidgetSnapshot.d",
+    "diagnostics" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/WidgetSnapshot.dia",
+    "index-unit-output-path" : "/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/WidgetSnapshot.o",
+    "llvm-bc" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/WidgetSnapshot.bc",
+    "object" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/WidgetSnapshot.o",
+    "swift-dependencies" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/WidgetSnapshot.swiftdeps",
+    "swiftmodule" : "/Users/sglavoie/1_dev_projects/sglavoie_tt/ios/TTShared/build/TTShared.build/Debug-iphonesimulator/TTShared-t.build/Objects-normal/arm64/WidgetSnapshot~partial.swiftmodule"
+  }
+}

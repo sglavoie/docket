@@ -142,6 +142,16 @@ final class OrganizingUITests: XCTestCase {
         require(app.staticTexts["detail.title"], "the \(title) detail")
     }
 
+    private func organize(_ app: XCUIApplication, _ title: String, _ action: String) {
+        let task = row(app, title)
+        for _ in 0..<5 where !task.isHittable { app.swipeUp() }
+        require(task, "the \(title) row")
+        task.swipeRight()
+        press(app, "task.swipe.organize")
+        press(app, "task.organize.\(action)")
+        eventually("the organize chooser closed") { !app.buttons["task.organize.indent"].exists }
+    }
+
     /// Opens a related task from the detail screen by its link.
     private func openRelated(_ app: XCUIApplication, _ identifier: String, _ title: String) {
         let link = app.buttons.matching(NSPredicate(format: "identifier == %@ AND label CONTAINS %@", identifier, title)).firstMatch
@@ -465,12 +475,67 @@ final class OrganizingUITests: XCTestCase {
         XCTAssertTrue(limit.lowercased().contains("depth"), limit)
         XCTAssertEqual(try markdown("atlas-launch"), before, "a refused subtask was written")
 
-        // Outdenting the deepest task lifts it a level.
-        press(app, "detail.outdent")
-        let levelFour = try XCTUnwrap(taskID("Level 4", in: before))
-        eventually("Level 6 moved up beside Level 5") {
-            try self.taskLine("Level 6", in: self.markdown("atlas-launch"))?.contains("parent: \(levelFour)") == true
+        XCTAssertFalse(app.buttons["detail.indent"].exists)
+        XCTAssertFalse(app.buttons["detail.outdent"].exists)
+        XCTAssertFalse(app.buttons["detail.moveUp"].exists)
+        XCTAssertFalse(app.buttons["detail.moveDown"].exists)
+    }
+
+    func testSwipeOrganizeChangesHierarchyAndSiblingOrderWithUndo() throws {
+        let app = launch()
+        tab(app, "Browse")
+        press(app, "browse.project.atlas-launch")
+        let initial = try markdown("atlas-launch")
+        let notes = try XCTUnwrap(taskID("Write release notes", in: initial))
+        let proofread = try XCTUnwrap(taskID("Proofread release notes", in: initial))
+
+        organize(app, "Proofread release notes", "moveDown")
+        eventually("proofreading moved below screenshots") {
+            let text = try self.markdown("atlas-launch")
+            guard let proof = text.range(of: "Task: Proofread release notes"),
+                  let screenshots = text.range(of: "Task: Collect screenshots") else { return false }
+            return screenshots.lowerBound < proof.lowerBound
         }
+        organize(app, "Proofread release notes", "moveUp")
+        eventually("proofreading moved above screenshots") {
+            let text = try self.markdown("atlas-launch")
+            guard let proof = text.range(of: "Task: Proofread release notes"),
+                  let screenshots = text.range(of: "Task: Collect screenshots") else { return false }
+            return proof.lowerBound < screenshots.lowerBound
+        }
+
+        organize(app, "Collect screenshots", "indent")
+        eventually("screenshots became a child of proofreading") {
+            try self.taskLine("Collect screenshots", in: self.markdown("atlas-launch"))?.contains("parent: \(proofread)") == true
+        }
+        organize(app, "Collect screenshots", "outdent")
+        eventually("screenshots returned beside proofreading") {
+            try self.taskLine("Collect screenshots", in: self.markdown("atlas-launch"))?.contains("parent: \(notes)") == true
+        }
+        press(app, "list.undo")
+        eventually("Undo restored the previous parent") {
+            try self.taskLine("Collect screenshots", in: self.markdown("atlas-launch"))?.contains("parent: \(proofread)") == true
+        }
+        XCTAssertFalse(app.staticTexts["detail.title"].exists, "organizing opened task details")
+    }
+
+    func testSwipeOrganizeRefusalAndRootOutdent() throws {
+        let app = launch()
+        tab(app, "Browse")
+        press(app, "browse.project.atlas-launch")
+        let before = try markdown("atlas-launch")
+        // The first task in the project has no predecessor to become its parent.
+        organize(app, "Ship beta build", "indent")
+        require(app.staticTexts["list.failure"], "the indent refusal beside the list")
+        XCTAssertEqual(try markdown("atlas-launch"), before)
+
+        row(app, "Ship beta build").swipeRight()
+        press(app, "task.swipe.organize")
+        let outdent = app.buttons["task.organize.outdent"]
+        require(outdent, "the root task's outdent action")
+        XCTAssertFalse(outdent.isEnabled)
+        app.buttons["Cancel"].firstMatch.tap()
+        XCTAssertEqual(try markdown("atlas-launch"), before, "opening or canceling Organize changed the task")
     }
 
     func testMoveToProjectCarriesItsReferences() throws {

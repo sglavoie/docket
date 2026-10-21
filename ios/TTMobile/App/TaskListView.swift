@@ -109,6 +109,7 @@ struct TaskListView: View {
     @State private var retry = 0
     @State private var acting = false
     @State private var editingRow: TaskRow?
+    @State private var organizingRow: TaskRow?
     @State private var openedNote: NoteRecord?
     @State private var managingProject = false
     @State private var emptyCapture = false
@@ -209,6 +210,20 @@ struct TaskListView: View {
             }
             .sheet(item: $editingRow) { row in
                 TaskEditSheet(workspace: workspace, task: row.item.task)
+            }
+            .sheet(item: $organizingRow) { row in
+                ActionSheet(title: row.item.task.title, actionCount: 4) {
+                    Button("Indent", systemImage: "increase.indent") { organize(row, .indent) }
+                        .accessibilityIdentifier("task.organize.indent")
+                    Button("Outdent", systemImage: "decrease.indent") { organize(row, .outdent) }
+                        .disabled(row.item.task.parentID == nil)
+                        .accessibilityIdentifier("task.organize.outdent")
+                    Button("Move Up", systemImage: "arrow.up") { organize(row, .moveUp) }
+                        .accessibilityIdentifier("task.organize.moveUp")
+                    Button("Move Down", systemImage: "arrow.down") { organize(row, .moveDown) }
+                        .accessibilityIdentifier("task.organize.moveDown")
+                }
+                .disabled(acting || workspace.undoing)
             }
             .sheet(isPresented: $emptyCapture) { CaptureSheet(workspace: workspace) }
             .navigationDestination(item: $openedNote) { note in
@@ -315,9 +330,18 @@ struct TaskListView: View {
                         }
                     }
                     .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                        if !selecting, !row.item.task.state.isTerminal {
-                            planActions(row)
-                                .disabled(acting)
+                        if !selecting {
+                            if !row.item.task.state.isTerminal {
+                                planActions(row)
+                                    .disabled(acting || workspace.undoing)
+                            }
+                            Button("Organize", systemImage: "arrow.up.arrow.down") {
+                                actionFailure = nil
+                                organizingRow = row
+                            }
+                            .tint(.purple)
+                            .disabled(acting || workspace.undoing)
+                            .accessibilityIdentifier("task.swipe.organize")
                         }
                     }
                 }
@@ -492,6 +516,20 @@ struct TaskListView: View {
     }
 
     /// Let the engine judge each action and keep refusals beside the list.
+    private func organize(_ row: TaskRow, _ action: HierarchyAction) {
+        guard !acting, !workspace.undoing else { return }
+        organizingRow = nil
+        acting = true
+        actionFailure = nil
+        Task {
+            actionFailure = await workspace.hierarchy(row.id, action)
+            if let actionFailure {
+                UIAccessibility.post(notification: .announcement, argument: actionFailure)
+            }
+            acting = false
+        }
+    }
+
     private func act(_ locator: TaskLocator, _ action: TaskListAction) {
         guard !acting else { return }
         acting = true
