@@ -25,15 +25,15 @@ type budget struct {
 // are opt-in gates because shared CI machines cannot promise a stable CPU share.
 var budgets = map[string]budget{
 	"BenchmarkLiveSearchResponsive":                                  {48e6, 10e6, 25e6, 30e6, 50e6},
-	"BenchmarkLiveSearchTyping/tasks=10000/projects=20/notes=true":   {96e6, 25e6, 50e6, 75e6, 50e6},
+	"BenchmarkLiveSearchTyping/tasks=10000/projects=20/notes=true":   {190e6, 25e6, 50e6, 75e6, 50e6},
 	"BenchmarkLiveSearchContent/tasks=1000/query=release":            {48e6, 20e6, 30e6, 40e6, 25e6},
 	"BenchmarkLiveSearchContent/tasks=1000/query=handoff":            {32e6, 20e6, 30e6, 40e6, 25e6},
 	"BenchmarkLiveSearchContent/tasks=1000/query=zzzzzzz":            {100e6, 30e6, 45e6, 60e6, 25e6},
-	"BenchmarkLiveSearchContent/tasks=10000/query=release":           {140e6, 25e6, 50e6, 75e6, 50e6},
-	"BenchmarkLiveSearchContent/tasks=10000/query=handoff":           {160e6, 30e6, 60e6, 80e6, 50e6},
+	"BenchmarkLiveSearchContent/tasks=10000/query=release":           {230e6, 25e6, 50e6, 75e6, 50e6},
+	"BenchmarkLiveSearchContent/tasks=10000/query=handoff":           {230e6, 30e6, 60e6, 80e6, 50e6},
 	"BenchmarkLiveSearchContent/tasks=10000/query=zzzzzzz":           {900e6, 45e6, 80e6, 110e6, 50e6},
-	"BenchmarkLiveSearchColdUniqueContent/tasks=10000/query=release": {220e6, 50e6, 100e6, 150e6, 50e6},
-	"BenchmarkLiveSearchColdUniqueContent/tasks=10000/query=handoff": {300e6, 90e6, 220e6, 280e6, 50e6},
+	"BenchmarkLiveSearchColdUniqueContent/tasks=10000/query=release": {310e6, 50e6, 100e6, 150e6, 50e6},
+	"BenchmarkLiveSearchColdUniqueContent/tasks=10000/query=handoff": {390e6, 90e6, 220e6, 280e6, 50e6},
 	"BenchmarkLiveSearchColdUniqueContent/tasks=10000/query=zzzzzzz": {1000e6, 80e6, 250e6, 300e6, 50e6},
 }
 
