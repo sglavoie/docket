@@ -98,6 +98,7 @@ func (d *desktop) capture(text string) ([]app.TaskResult, error) {
 		AllProjects:        snapshot.Projects(),
 		AllowProjectSwitch: true,
 		Shared:             taskform.TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
+		Now:                clockInstant(),
 	}
 	reqs, problems := taskform.ParseCaptureText(preset, state, text)
 	if len(problems) > 0 {

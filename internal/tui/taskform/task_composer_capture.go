@@ -354,5 +354,6 @@ func (m *TaskComposerModel) captureDefaults() capturetext.Defaults {
 		Due:         m.Preset.Shared.Due,
 		Destination: m.Preset.Shared.Destination,
 		SkipProject: !m.Preset.AllowProjectSwitch,
+		Now:         m.Preset.Now,
 	}
 }
