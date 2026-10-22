@@ -48,16 +48,17 @@ func TestBootstrapRecoveryKeepsWorkspaceAndAllReceiptsTogether(t *testing.T) {
 			dir := filepath.Join(root, ".tt", "transactions")
 			service := NewCommitService(dir, []string{root}).WithSyncHistory(history).WithSyncMerger(bootstrapLinearMerger{})
 			prepared := crashDuring(t, func() error {
-				id, accepted, err := service.BootstrapIncoming(manifests, source.history)
+				id, accepted, bootErr := service.BootstrapIncoming(manifests, source.history)
 				if !accepted || id != "" {
-					t.Fatalf("bootstrap did not reach journal boundary: %s, %v, %v", id, accepted, err)
+					t.Fatalf("bootstrap did not reach journal boundary: %s, %v, %v", id, accepted, bootErr)
 				}
-				return err
+				return bootErr
 			})
 			prefix := 0
-			if boundary == "workspace applied" {
+			switch boundary {
+			case "workspace applied":
 				prefix = len(want)
-			} else if boundary == "all applied" {
+			case "all applied":
 				prefix = len(prepared.Ops)
 			}
 			simulateCrashAfter(t, dir, prepared, prefix)

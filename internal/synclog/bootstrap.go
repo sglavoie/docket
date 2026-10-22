@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"sort"
 	"time"
+
+	"github.com/sglavoie/tt/internal/transaction"
 )
 
 // PlanBootstrap rebuilds an empty working copy from a complete, verified
@@ -24,13 +26,13 @@ func (h *History) PlanBootstrap(manifests []*Manifest, blobs BlobSource, merger 
 	// author or a retained branch may already have indexed transactions.
 	// Ordinary reconciliation must include those records, even if all their
 	// working files are absent. Bootstrap is only for a new history.
-	if _, err := os.Lstat(filepath.Join(h.Dir(), "index")); err == nil {
+	if _, err = os.Lstat(filepath.Join(h.Dir(), "index")); err == nil {
 		return nil, nil
 	} else if !os.IsNotExist(err) {
 		return nil, err
 	}
 	occupied := false
-	if err := h.walkSyncedFiles(func(_, _ string, _ fs.FileInfo) error {
+	if err = h.walkSyncedFiles(func(_, _ string, _ fs.FileInfo) error {
 		occupied = true
 		return nil
 	}); err != nil {
@@ -62,9 +64,9 @@ func (h *History) PlanBootstrap(manifests []*Manifest, blobs BlobSource, merger 
 				if digest == nil || o.planned[*digest] {
 					continue
 				}
-				data, err := mz.data(*digest)
-				if err != nil {
-					return nil, err
+				data, dataErr := mz.data(*digest)
+				if dataErr != nil {
+					return nil, dataErr
 				}
 				o.retainBytes(*digest, data)
 			}
@@ -86,35 +88,45 @@ func (h *History) PlanBootstrap(manifests []*Manifest, blobs BlobSource, merger 
 	ops = append(ops, o.blobOps...)
 	ops = append(ops, conflicts...)
 	for _, m := range g.txns {
-		receiptPath := h.receiptPath(m.DeviceID, m.DeviceSeq, m.TxnID)
-		receipt, err := encodeJSON(Receipt{
-			Format: ReceiptFormat, TxnID: m.TxnID, LocalTxnID: localTxnID,
-			ReceivedAt: h.now().UTC().Format(time.RFC3339Nano), Manifest: *m,
-			Conflicts: conflictIDs,
-		})
-		if err != nil {
-			return nil, err
+		records, recordErr := h.bootstrapReceiptOps(m, localTxnID, conflictIDs)
+		if recordErr != nil {
+			return nil, recordErr
 		}
-		record, err := immutableOp(receiptPath, receipt)
-		if err != nil {
-			return nil, err
-		}
-		index, err := encodeJSON(IndexEntry{
-			Format: IndexFormat, TxnID: m.TxnID, DeviceID: m.DeviceID,
-			DeviceSeq: m.DeviceSeq, Origin: "incoming", Record: h.rel(receiptPath),
-		})
-		if err != nil {
-			return nil, err
-		}
-		indexOp, err := immutableOp(h.indexPath(m.TxnID), index)
-		if err != nil {
-			return nil, err
-		}
-		ops = append(ops, record, indexOp)
+		ops = append(ops, records...)
 		state.Heads = mergeHeads(state.Heads, m.Parents, m.TxnID)
 	}
 	plan.Ops, err = h.appendRecords(ops, state, nil)
 	return plan, err
+}
+
+// bootstrapReceiptOps writes one incoming transaction's receipt and its index
+// entry, as ordinary import would have recorded them one at a time.
+func (h *History) bootstrapReceiptOps(m *Manifest, localTxnID string, conflictIDs []string) ([]transaction.Op, error) {
+	receiptPath := h.receiptPath(m.DeviceID, m.DeviceSeq, m.TxnID)
+	receipt, err := encodeJSON(Receipt{
+		Format: ReceiptFormat, TxnID: m.TxnID, LocalTxnID: localTxnID,
+		ReceivedAt: h.now().UTC().Format(time.RFC3339Nano), Manifest: *m,
+		Conflicts: conflictIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+	record, err := immutableOp(receiptPath, receipt)
+	if err != nil {
+		return nil, err
+	}
+	index, err := encodeJSON(IndexEntry{
+		Format: IndexFormat, TxnID: m.TxnID, DeviceID: m.DeviceID,
+		DeviceSeq: m.DeviceSeq, Origin: "incoming", Record: h.rel(receiptPath),
+	})
+	if err != nil {
+		return nil, err
+	}
+	indexOp, err := immutableOp(h.indexPath(m.TxnID), index)
+	if err != nil {
+		return nil, err
+	}
+	return []transaction.Op{record, indexOp}, nil
 }
 
 // bootstrapState admits a complete history without intermediate disk writes.

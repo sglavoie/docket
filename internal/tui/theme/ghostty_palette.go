@@ -51,12 +51,12 @@ func ApplyGhosttyPalette(p GhosttyPalette) error {
 		variant = "light"
 	}
 	bg := p.Background
-	visible := func(index int) string { return legibleHex(p.Palette[index], bg, 4.5) }
-	selected := func(index int) string { return legibleHex(p.Palette[index+8], p.SelectionBackground, 4.5) }
+	visible := func(index int) string { return legibleHex(p.Palette[index], bg) }
+	selected := func(index int) string { return legibleHex(p.Palette[index+8], p.SelectionBackground) }
 	deferred := func(index int) string { return blendHex(bg, visible(index), 0.72) }
 	roles := config.PaletteColors{
 		NormalText: p.Foreground,
-		Muted:      legibleHex(blendHex(bg, p.Foreground, 0.7), bg, 4.5),
+		Muted:      legibleHex(blendHex(bg, p.Foreground, 0.7), bg),
 		Dimmed:     blendHex(bg, p.Foreground, 0.45),
 		DimmedBg:   blendHex(bg, p.Foreground, 0.12),
 		DimmedFg:   blendHex(bg, p.Foreground, 0.76),
@@ -78,7 +78,7 @@ func ApplyGhosttyPalette(p GhosttyPalette) error {
 	palette := config.Theme{
 		Palette: roles, BackgroundColor: bg,
 		CursorColor:     p.SelectionBackground,
-		CursorTextColor: legibleHex(p.SelectionForeground, p.SelectionBackground, 4.5),
+		CursorTextColor: legibleHex(p.SelectionForeground, p.SelectionBackground),
 	}
 	ApplyTheme(ThemeConfig{Name: variant, Override: &palette, Ghostty: &p})
 	return nil
@@ -126,8 +126,11 @@ func contrastHex(a, b string) float64 {
 	return (x + 0.05) / (y + 0.05)
 }
 
-func legibleHex(fg, bg string, minimum float64) string {
-	if contrastHex(fg, bg) >= minimum {
+// legibleContrast is the WCAG AA ratio every derived foreground must reach.
+const legibleContrast = 4.5
+
+func legibleHex(fg, bg string) string {
+	if contrastHex(fg, bg) >= legibleContrast {
 		return fg
 	}
 	target := "#ffffff"
@@ -136,7 +139,7 @@ func legibleHex(fg, bg string, minimum float64) string {
 	}
 	for step := 1; step <= 20; step++ {
 		candidate := blendHex(fg, target, float64(step)/20)
-		if contrastHex(candidate, bg) >= minimum {
+		if contrastHex(candidate, bg) >= legibleContrast {
 			return candidate
 		}
 	}

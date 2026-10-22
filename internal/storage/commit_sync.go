@@ -169,7 +169,7 @@ func (s *CommitService) BootstrapIncoming(manifests []*synclog.Manifest, blobs s
 		id := uuid.NewString()
 		plan, err := s.history.PlanBootstrap(manifests, blobs, s.merger, id)
 		if err != nil || plan == nil {
-			return nil
+			return nil //nolint:nilerr // A declined bootstrap falls back to per-item import, which reports the history itself.
 		}
 		accepted = true
 		if err := s.commitReconcilePlan(journal, id, plan); err != nil {

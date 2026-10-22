@@ -12,21 +12,19 @@ import (
 // watermark. Refuse it before publishing or importing anything: choosing one
 // of its manifests would hide the other working copy's changes.
 func checkAuthorSequences(root string, outgoing ...string) error {
-	type authorSequence struct {
-		device string
-		seq    uint64
-	}
-	seen := make(map[authorSequence]string)
+	seen := make(map[string]map[uint64]string)
 	check := func(rel string) error {
 		device, seq, txnID, ok := ParseManifestPath(rel)
 		if !ok {
 			return nil
 		}
-		key := authorSequence{device, seq}
-		if previous, exists := seen[key]; exists && previous != txnID {
+		if previous, exists := seen[device][seq]; exists && previous != txnID {
 			return fmt.Errorf("sync identity %s reused sequence %d; preserve both working copies and repair their history before exchanging again", device, seq)
 		}
-		seen[key] = txnID
+		if seen[device] == nil {
+			seen[device] = make(map[uint64]string)
+		}
+		seen[device][seq] = txnID
 		return nil
 	}
 	for _, rel := range outgoing {

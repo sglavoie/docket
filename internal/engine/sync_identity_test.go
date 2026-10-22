@@ -137,7 +137,7 @@ func TestInitialImportFallsBackWhenLatestContentIsMissing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Remove(path); err != nil {
+	if err = os.Remove(path); err != nil {
 		t.Fatal(err)
 	}
 	root := filepath.Join(env.root, "partial-join")

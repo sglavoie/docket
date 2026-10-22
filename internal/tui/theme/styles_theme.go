@@ -128,7 +128,7 @@ func ApplyTheme(tc ThemeConfig) {
 	ColorCursorRowBg = lipgloss.Color(dim(effectiveBg, rowFactor))
 	ColorFlashDimBg = lipgloss.Color(dim(effectiveFlash, dimFactor))
 	if tc.Ghostty != nil {
-		ColorSelectedTextFg = lipgloss.Color(legibleHex(tc.Ghostty.SelectionForeground, effectiveBg, 4.5))
+		ColorSelectedTextFg = lipgloss.Color(legibleHex(tc.Ghostty.SelectionForeground, effectiveBg))
 		ColorSelectedDimBg = lipgloss.Color(blendHex(effectiveBgColor, effectiveBg, 0.35))
 	} else if tc.Name == "light" {
 		ColorSelectedTextFg = lipgloss.Color("#0f172a")

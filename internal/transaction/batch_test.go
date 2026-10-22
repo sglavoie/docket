@@ -90,7 +90,7 @@ func TestBatchedApplyFlushFailureRecoversWithOrdinaryJournal(t *testing.T) {
 	j.newBatch = func() fileBatch {
 		return &observedBatch{util.NewDurableBatch(), func() error { return injected }}
 	}
-	if err := j.Commit(m); !errors.Is(err, injected) {
+	if err = j.Commit(m); !errors.Is(err, injected) {
 		t.Fatalf("flush failure hidden: %v", err)
 	}
 	onDisk, err := LoadManifest(j.ManifestPath(m.ID))
