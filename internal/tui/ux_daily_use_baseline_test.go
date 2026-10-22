@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/tui/outliner"
@@ -50,18 +49,14 @@ var uxDailyUseDailySize = [2]int{100, 35}
 // TestUXDailyUseSingletonGroupsLeadWithTheirProject is this contract after
 // one-task project groups merged into their row. Each of the fixture's four
 // projects holds one task, so no group draws a `[slug] (count)` header: the
-// task row leads with its own `[slug]` instead, and the labels pad to the
-// widest, so four projects with four different name lengths still give their
-// four tasks one title column.
+// task row leads with its own `[slug]` instead, and the label stays inline, so
+// four projects with four different name lengths leave no padding gap between
+// a short label and its title.
 //
 // Both halves are asserted, because either alone passes on an arrangement this
-// is meant to refuse: equal title starts alone would still hold if the project
+// is meant to refuse: an inline title alone would still hold if the project
 // were simply never named, and a label alone would hold beside a header that
 // names the project a second time.
-//
-// Columns are measured with lipgloss rather than by byte offset: the tree
-// connectors and the state badge are multi-byte, so a byte index into the line
-// is not the column the terminal draws the fragment in.
 func TestUXDailyUseSingletonGroupsLeadWithTheirProject(t *testing.T) {
 	for _, size := range uxDailyUseMatrixSizes {
 		t.Run(uxDailyUseSizeName(size), func(t *testing.T) {
@@ -69,7 +64,6 @@ func TestUXDailyUseSingletonGroupsLeadWithTheirProject(t *testing.T) {
 			screen := driver.Observe(ObserveOptions{}).PlainScreen
 			lines := strings.Split(screen, "\n")
 
-			starts := map[string]int{}
 			for _, title := range uxDailyUseMultiProjectTitles {
 				index := slices.IndexFunc(lines, func(line string) bool { return strings.Contains(line, title) })
 				if index < 0 {
@@ -83,11 +77,9 @@ func TestUXDailyUseSingletonGroupsLeadWithTheirProject(t *testing.T) {
 				if index > 0 && strings.Contains(lines[index-1], "] (") {
 					t.Fatalf("a project header still opens the one-task group holding %q:\n%s", title, screen)
 				}
-				starts[title] = lipgloss.Width(line[:strings.Index(line, title)])
-			}
-
-			if distinct := uxDailyUseDistinct(starts); len(distinct) != 1 {
-				t.Fatalf("the titles start in %d different columns: %v", len(distinct), starts)
+				if gap := line[strings.Index(line, "]")+1 : strings.Index(line, title)]; strings.Contains(gap, "  ") {
+					t.Fatalf("the label for %q is padded away from its title:\n%s", title, line)
+				}
 			}
 		})
 	}
@@ -101,15 +93,6 @@ var uxDailyUseMultiProjectTitles = []string{
 	"Beta rollout checklist",
 	"Renew passport",
 	"Finish the distributed systems book",
-}
-
-// uxDailyUseDistinct is the set of column positions a map of them holds.
-func uxDailyUseDistinct(starts map[string]int) map[int]bool {
-	distinct := map[int]bool{}
-	for _, start := range starts {
-		distinct[start] = true
-	}
-	return distinct
 }
 
 // uxDailyUseScreenLine is the one screen line carrying a fragment. It fails

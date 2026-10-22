@@ -7,7 +7,7 @@
     { "type": "assert", "label": "each single-task project group merges its header into its one task row", "assert": "count_contains", "value": " 🞑 ", "count": 4 },
     { "type": "assert", "assert": "not_contains", "value": "▾ [" },
     { "type": "assert", "assert": "contains", "value": "[client-alpha] 🞑 Alpha migration kickoff" },
-    { "type": "assert", "assert": "contains", "value": "[client-beta]  🞑 Beta rollout checklist" },
+    { "type": "assert", "assert": "contains", "value": "[client-beta] 🞑 Beta rollout checklist" },
     { "type": "assert", "assert": "contains", "value": "[home-errands] 🞑 Renew passport" },
     { "type": "assert", "assert": "contains", "value": "[reading-list] 🞑 Finish the distributed systems book" },
 
@@ -20,7 +20,7 @@
 
     { "type": "assert", "label": "every project group survives the sort", "assert": "count_contains", "value": " 🞑 ", "count": 4 },
     { "type": "assert", "label": "each group keeps its own single task", "assert": "contains", "value": "[client-alpha] 🞑 Alpha migration kickoff" },
-    { "type": "assert", "assert": "contains", "value": "[client-beta]  🞑 Beta rollout checklist" },
+    { "type": "assert", "assert": "contains", "value": "[client-beta] 🞑 Beta rollout checklist" },
     { "type": "assert", "assert": "contains", "value": "[home-errands] 🞑 Renew passport" },
     { "type": "assert", "assert": "contains", "value": "[reading-list] 🞑 Finish the distributed systems book" },
     { "type": "assert", "assert": "no_layout_issues" },

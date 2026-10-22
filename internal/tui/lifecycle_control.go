@@ -148,33 +148,10 @@ func (m *AppModel) executeControlRequest(request control.Request, reply chan<- c
 	case control.OpAppearance:
 		// Ahead of the busy guard too: a theme changes what is drawn and
 		// nothing an open picker or editor holds.
-		if request.Text != "dark" && request.Text != "light" {
-			answer(reply, false, fmt.Sprintf("unknown appearance %q: want dark or light", request.Text))
-			return nil
-		}
-		applySessionTheme(request.Text)
-		answer(reply, true, "Theme: "+request.Text)
+		controlAppearance(request.Text, reply)
 		return nil
 	case control.OpThemePalette:
-		if request.Text == "" {
-			if m.domain.runtime == nil || m.domain.runtime.Machine() == nil {
-				answer(reply, false, "machine theme is unavailable")
-				return nil
-			}
-			applySessionTheme(m.domain.runtime.Machine().Theme)
-			answer(reply, true, "Theme: saved")
-			return nil
-		}
-		var palette theme.GhosttyPalette
-		if err := json.Unmarshal([]byte(request.Text), &palette); err != nil {
-			answer(reply, false, "invalid theme palette: "+err.Error())
-			return nil
-		}
-		if err := theme.ApplyGhosttyPalette(palette); err != nil {
-			answer(reply, false, "invalid theme palette: "+err.Error())
-			return nil
-		}
-		answer(reply, true, "Theme: "+palette.Name)
+		m.controlThemePalette(request.Text, reply)
 		return nil
 	case control.OpQuit:
 		if reason := m.quitBlockReason(); reason != "" {
@@ -189,20 +166,7 @@ func (m *AppModel) executeControlRequest(request control.Request, reply chan<- c
 		return nil
 	}
 	if !m.safeToAdoptExternalChange() {
-		reason := "finish what is open in tt first"
-		if request.Op == control.OpReveal || request.Op == control.OpView {
-			switch {
-			case m.quitBlockReason() != "":
-				reason = m.quitBlockReason() + " Save or cancel it before navigating."
-			case m.crossOutliner != nil && (m.crossOutliner.IsSearchMode() || m.crossOutliner.HasSearchProjection()):
-				reason = "Close search in tt, then try again."
-			case m.crossOutliner != nil && m.crossOutliner.MultiSelectMode:
-				reason = "Clear the selection in tt, then try again."
-			default:
-				reason = "Close the current panel in tt, then try again."
-			}
-		}
-		answer(reply, false, "tt is busy: "+reason)
+		answer(reply, false, "tt is busy: "+m.controlBusyReason(request.Op))
 		return nil
 	}
 	if request.Op == control.OpView {
@@ -365,5 +329,57 @@ func controlArrivalKind(kind pulse.ArrivalKind) string {
 		return control.ArrivalDeadline
 	default:
 		return control.ArrivalWake
+	}
+}
+
+// controlAppearance switches the session between the dark and light themes.
+func controlAppearance(text string, reply chan<- control.Reply) {
+	if text != "dark" && text != "light" {
+		answer(reply, false, fmt.Sprintf("unknown appearance %q: want dark or light", text))
+		return
+	}
+	applySessionTheme(text)
+	answer(reply, true, "Theme: "+text)
+}
+
+// controlThemePalette applies a Ghostty palette, or restores the machine's
+// saved theme when the request carries none.
+func (m *AppModel) controlThemePalette(text string, reply chan<- control.Reply) {
+	if text == "" {
+		if m.domain.runtime == nil || m.domain.runtime.Machine() == nil {
+			answer(reply, false, "machine theme is unavailable")
+			return
+		}
+		applySessionTheme(m.domain.runtime.Machine().Theme)
+		answer(reply, true, "Theme: saved")
+		return
+	}
+	var palette theme.GhosttyPalette
+	if err := json.Unmarshal([]byte(text), &palette); err != nil {
+		answer(reply, false, "invalid theme palette: "+err.Error())
+		return
+	}
+	if err := theme.ApplyGhosttyPalette(palette); err != nil {
+		answer(reply, false, "invalid theme palette: "+err.Error())
+		return
+	}
+	answer(reply, true, "Theme: "+palette.Name)
+}
+
+// controlBusyReason says what to close before a request that would adopt an
+// external change can run; navigation names the specific obstacle.
+func (m *AppModel) controlBusyReason(op string) string {
+	if op != control.OpReveal && op != control.OpView {
+		return "finish what is open in tt first"
+	}
+	switch {
+	case m.quitBlockReason() != "":
+		return m.quitBlockReason() + " Save or cancel it before navigating."
+	case m.crossOutliner != nil && (m.crossOutliner.IsSearchMode() || m.crossOutliner.HasSearchProjection()):
+		return "Close search in tt, then try again."
+	case m.crossOutliner != nil && m.crossOutliner.MultiSelectMode:
+		return "Clear the selection in tt, then try again."
+	default:
+		return "Close the current panel in tt, then try again."
 	}
 }

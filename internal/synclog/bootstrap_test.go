@@ -65,13 +65,13 @@ func compareBootstrapHistories(t *testing.T, want, got *History) {
 		t.Fatalf("tracking differs\nsequential: %+v\nbootstrap: %+v", a, b)
 	}
 	for rel := range a.Tracked {
-		left, err := os.ReadFile(want.abs(rel))
-		if err != nil {
-			t.Fatal(err)
+		left, readErr := os.ReadFile(want.abs(rel))
+		if readErr != nil {
+			t.Fatal(readErr)
 		}
-		right, err := os.ReadFile(got.abs(rel))
-		if err != nil || !bytes.Equal(left, right) {
-			t.Fatalf("workspace differs at %s: %v", rel, err)
+		right, readErr := os.ReadFile(got.abs(rel))
+		if readErr != nil || !bytes.Equal(left, right) {
+			t.Fatalf("workspace differs at %s: %v", rel, readErr)
 		}
 	}
 	x, err := want.OpenConflicts(synthMerger{})

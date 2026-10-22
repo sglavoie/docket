@@ -47,7 +47,7 @@ internal/storage/commit_artifacts.go:CommitService.commitArtifacts	commit-journa
 internal/storage/commit_locks.go:withWorkspaceCommitLocks	commit-staging	workspace commit lock files; local-only
 internal/storage/commit_multi.go:CommitService.commitMultiLocked	commit-journal	staging for multi-project commits inside the lock
 internal/storage/commit_sync.go:CommitService.CommitIncoming	commit-journal	incoming sync transaction applied with its receipt in one journal manifest
-internal/storage/commit_sync.go:CommitService.commitReconciled	commit-journal	incoming sync transaction reconciled with the history and applied with its receipt and conflict records in one journal manifest
+internal/storage/commit_sync.go:CommitService.commitReconcilePlan	commit-journal	incoming sync transaction reconciled with the history and applied with its receipt and conflict records in one journal manifest
 internal/storage/conflict_store.go:ConflictStore.Delete	conflict-store	removes a resolved conflict bundle
 internal/storage/conflict_store.go:ConflictStore.Save	conflict-store	records a conflict bundle
 internal/storage/export_markdown.go:ExportProjectMarkdown	export	writes one exported project document outside the workspace
@@ -73,6 +73,7 @@ internal/tui/outline_editor_handlers.go:removeOutlineBuffer	external-editor	remo
 internal/tui/taskdetail/comments_external_editor.go:CommentsModel.createCommentTempFile	external-editor	comment buffer for an external editor
 internal/tui/taskdetail/comments_external_editor.go:CommentsModel.editCommentWithExternalEditor	external-editor	removes the comment buffer
 internal/tui/taskdetail/comments_external_editor.go:readEditedCommentText	external-editor	removes the comment buffer after reading it
-internal/util/files.go:AtomicWriteFile	commit-journal	temp-write, fsync, rename primitive every durable writer uses
+internal/util/durable_batch.go:DurableBatch.MkdirAll	commit-journal	creates journal staging directories and queues their new ancestors for the batch durability barrier
+internal/util/files.go:atomicWriteFile	commit-journal	temp-write, fsync, rename primitive behind AtomicWriteFile and DurableBatch.WriteFile that every durable writer uses
 internal/util/files.go:WithFileLock	commit-staging	advisory lock file; local-only
 internal/util/pidlock.go:AcquirePIDLock	machine-local	process lock file

@@ -15,12 +15,12 @@ import (
 // the two bounded exceptions below pair that allowance with the 500-line guard.
 const tuiPackageFileCeiling = 40
 
-// The 500-line splits add 45 Outliner files and 16 shell files. These are
+// The 500-line splits add 45 Outliner files and 21 shell files. These are
 // fixed ceilings, not exemptions: another file still requires an explicit
 // architectural decision, and the package graph remains independently checked.
 var tuiPackageSplitFileCeilings = map[string]int{
 	"outliner":     85,
-	tuiRootPackage: 56,
+	tuiRootPackage: 61,
 }
 
 // TestNoTUIPackageExceedsTheFileCeiling bounds every package, including the shell.

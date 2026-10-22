@@ -44,7 +44,7 @@ func syncBatchDirectoriesWith(dirs []string, syncDirectory, flushDevice func(*os
 		if err != nil {
 			return err
 		}
-		if err := syncDirectory(f); err != nil {
+		if err = syncDirectory(f); err != nil {
 			_ = f.Close()
 			return err
 		}

@@ -90,7 +90,7 @@ func rebuildTagChipColors() {
 	if activeGhosttyPalette != nil {
 		ramp := make([]color.Color, 6)
 		for i := range ramp {
-			ramp[i] = lipgloss.Color(legibleHex(activeGhosttyPalette.Palette[i+1], activeGhosttyPalette.Background, 4.5))
+			ramp[i] = lipgloss.Color(legibleHex(activeGhosttyPalette.Palette[i+1], activeGhosttyPalette.Background))
 		}
 		tagChipColors = ramp
 		return
@@ -137,7 +137,7 @@ func lightenHex(hex string, factor float64) string {
 // rebuildAccentColors sets pipeline accent colors appropriate for the active theme.
 func rebuildAccentColors() {
 	if p := activeGhosttyPalette; p != nil {
-		visible := func(index int) color.Color { return lipgloss.Color(legibleHex(p.Palette[index], p.Background, 4.5)) }
+		visible := func(index int) color.Color { return lipgloss.Color(legibleHex(p.Palette[index], p.Background)) }
 		AccentCapture, AccentTriage, AccentPlan = visible(1), visible(6), visible(2)
 		AccentWork, AccentExecute, AccentSupport, AccentSearch = visible(3), visible(6), visible(8), visible(5)
 		ColorViewStandby, ColorViewSomeday = visible(5), visible(13)

@@ -68,6 +68,9 @@ type TaskComposerPreset struct {
 	// capture grammar and a seed does not, which is what lets a caller start a
 	// draft from field values that would otherwise be read as syntax.
 	Seed *TaskComposerSeed
+	// Now is the instant a parsed due date is measured against for the Today
+	// route; the zero value reads the wall clock.
+	Now time.Time
 }
 
 // TaskComposerSeed is a complete expanded-form draft expressed as plain values.

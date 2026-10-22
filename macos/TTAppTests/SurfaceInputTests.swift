@@ -143,6 +143,8 @@ final class SurfaceInputTests: XCTestCase {
         #!/bin/sh
         printf '\\033[>1u'
         stty raw -echo
+        # login(1) prints a banner without ~/.hushlogin; READY: starts row 0.
+        printf '\\033[H\\033[2J'
         printf 'READY:'
         while :; do
           b=$(dd bs=1 count=1 2>/dev/null | od -An -tx1 | tr -d ' \\n')
