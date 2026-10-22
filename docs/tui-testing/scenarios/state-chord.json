@@ -24,7 +24,7 @@
     { "type": "assert", "label": "nothing opened, so the chord left the outline standing", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Change Status" },
     { "type": "assert", "assert": "contains", "value": "Waiting  (2)" },
-    { "type": "assert", "assert": "contains", "value": "⊘              Build login form" },
+    { "type": "assert", "assert": "contains", "value": "⊘   Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "assert", "label": "at this width the whole sentence fits beside its recovery key", "assert": "contains", "value": "Build login form → Waiting · No check-in · F10: Set up check-ins · u undo" },
     { "type": "resize", "label": "at the floor the line is wider than its row", "width": 60, "height": 20 },
