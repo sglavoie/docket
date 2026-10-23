@@ -353,7 +353,7 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 	}
 	insertCapturedTask(project, task, req.Prepend)
 	prepared := preparedCapture{parent: parent, children: children, destination: captureDestinationEffect{state: normalized.state}}
-	if err := applyCapturedTaskEdges(project, task, prepared); err != nil {
+	if err := applyCapturedTaskEdges(project, task, prepared, now); err != nil {
 		return TaskRef{}, "", err
 	}
 	if err := captureDestinationChildrenGuard(project, task, prepared); err != nil {

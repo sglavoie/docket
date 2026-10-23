@@ -1,6 +1,8 @@
 package outliner
 
 import (
+	"time"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -42,7 +44,7 @@ func (m *OutlinerModel) ReorderTask(delta int) tea.Cmd {
 	if task == nil || other == nil {
 		return nil
 	}
-	project.SwapTasks(task, other)
+	_ = project.SwapSiblingTasksAt(task, other, time.Now())
 	RebuildOutlinerPreservingCursor(m)
 	return nil
 }
@@ -96,7 +98,7 @@ func (m *OutlinerModel) ReorderTaskEdge(delta int) tea.Cmd {
 		}
 		resolved = append(resolved, canonical)
 	}
-	if err := project.ReorderSiblingTasks(resolved); err != nil {
+	if err := project.ReorderSiblingTasksAt(resolved, time.Now()); err != nil {
 		return nil
 	}
 	RebuildOutlinerPreservingCursor(m)

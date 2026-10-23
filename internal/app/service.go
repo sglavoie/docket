@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -160,7 +161,7 @@ func (s *Service) commitProject(ref TaskRef, expectedRevision, undoAction, undoC
 // none do. It is the single-project analog of commitProjects, carrying the same
 // pair of side-effect kinds projectCommit does for a multi-project transaction.
 func (s *Service) commitProjectWithSideEffects(ref TaskRef, expectedRevision string, artifacts []storage.ArtifactChange, ops []storage.AttachmentOp, undoAction, undoContext string) (TaskResult, error) {
-	applyPostMutationHooks(ref.Project)
+	applyPostMutationHooks(ref.Project, s.clock.Now())
 	awaitTaskCommitBarrier(ref, expectedRevision, undoAction)
 	results, err := s.repo.Commit(storage.ChangeSet{
 		Project:          ref.Project,
@@ -230,9 +231,9 @@ type projectCommit struct {
 // mutation actually edited. It is the single place that translation happens, so
 // a task-untouched project keeps the same exemption whichever commit path
 // carries it.
-func changeSetFor(c projectCommit, undoAction, undoContext string) storage.ChangeSet {
+func changeSetFor(c projectCommit, undoAction, undoContext string, now time.Time) storage.ChangeSet {
 	if !c.tasksUntouched {
-		applyPostMutationHooks(c.project)
+		applyPostMutationHooks(c.project, now)
 	}
 	return storage.ChangeSet{
 		Capture:               c.capture,
@@ -260,8 +261,9 @@ type groupedCommitOutcome struct {
 // retained in commit order. A stale revision on any project aborts the whole commit.
 func (s *Service) commitProjects(commits []projectCommit, undoAction, undoContext string) (groupedCommitOutcome, error) {
 	changesets := make([]storage.ChangeSet, len(commits))
+	now := s.clock.Now()
 	for i, c := range commits {
-		changesets[i] = changeSetFor(c, undoAction, undoContext)
+		changesets[i] = changeSetFor(c, undoAction, undoContext, now)
 	}
 	results, err := s.repo.Commit(changesets...)
 	if err != nil {
@@ -291,9 +293,10 @@ func transactionIDAt(results []*storage.CommitResult, i int) string {
 
 // applyPostMutationHooks runs post-mutation reconciliation:
 // illegal completed-parent-with-incomplete-child states are reconciled, the
-// task tree is rebuilt, and root tasks are reordered by completion.
-func applyPostMutationHooks(project *models.Project) {
-	project.ReconcileParentCompletion()
+// task tree is rebuilt, and root tasks are reordered by completion. now is the
+// service clock a reopened parent's state clock and touch time are written at.
+func applyPostMutationHooks(project *models.Project, now time.Time) {
+	project.ReconcileParentCompletionAt(now)
 	project.BuildTaskTree()
 	project.ReorderRootTasksByCompletion()
 }

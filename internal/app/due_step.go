@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // DueStepDirection is the signed direction of one deadline step. The two values
@@ -147,15 +148,23 @@ func stepDueDate(in dueStepInput, direction DueStepDirection, reference calendar
 // the caller naming the date it meant rather than one the zone already rewrote.
 // The storage round trip is checked here too, before any task is touched.
 func materializeDueDate(day calendarDay, clock *DueStepClock) (*time.Time, error) {
-	hour, minute := 0, 0
-	if clock != nil {
-		hour, minute = clock.Hour, clock.Minute
-	}
-	due := time.Date(day.year, day.month, day.day, hour, minute, 0, 0, day.loc)
-	if !dayOf(due).sameDate(day) || due.Hour() != hour || due.Minute() != minute {
-		return nil, invalidInput("due", fmt.Sprintf(
-			"%04d-%02d-%02d %02d:%02d does not exist in %s",
-			day.year, int(day.month), day.day, hour, minute, day.loc))
+	var due time.Time
+	if clock == nil {
+		// A date-only deadline is the start of its date, which is not always
+		// midnight: America/Havana starts 2026-03-08 at 01:00, and that date
+		// exists even though its 00:00 does not.
+		start, err := util.StartOfCalendarDate(day.year, day.month, day.day, day.loc)
+		if err != nil {
+			return nil, invalidInput("due", err.Error())
+		}
+		due = start
+	} else {
+		due = time.Date(day.year, day.month, day.day, clock.Hour, clock.Minute, 0, 0, day.loc)
+		if !dayOf(due).sameDate(day) || due.Hour() != clock.Hour || due.Minute() != clock.Minute {
+			return nil, invalidInput("due", fmt.Sprintf(
+				"%04d-%02d-%02d %02d:%02d does not exist in %s",
+				day.year, int(day.month), day.day, clock.Hour, clock.Minute, day.loc))
+		}
 	}
 	if err := validateStorableDueDate(due, clock != nil); err != nil {
 		return nil, err

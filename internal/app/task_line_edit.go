@@ -156,7 +156,7 @@ func (s *Service) EditTaskLine(req TaskLineEditRequest) (TaskLineEditResult, err
 	}
 
 	changed := applyPreparedTaskLineFields(ref.Task, prepared, s.clock.Now())
-	structuralChanges, err := applyTaskLineEditEdges(ref.Project, ref.Task, prepared.parent, prepared.parentChanged, prepared.children)
+	structuralChanges, err := applyTaskLineEditEdges(ref.Project, ref.Task, prepared.parent, prepared.parentChanged, prepared.children, s.clock.Now())
 	if err != nil {
 		return TaskLineEditResult{}, err
 	}

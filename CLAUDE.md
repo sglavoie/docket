@@ -985,7 +985,7 @@ lookaround, which is what keeps a `#auth` inside a comment literal. It is
 repeatable and needs both delimiters, so `Fix a; then b` stays prose.
 
 Due's last alternative is `[^\s@]\S*` so `@` can never eat `@@`. Deferring
-refuses a terminal task and otherwise claims Backlog.
+refuses a terminal task or an arrived wake instant and otherwise claims Backlog.
 
 `##context` sets the optional singleton task context with tag normalization.
 `##0` clears it and `@@0` a deferral on the edit surfaces; outline omission
@@ -999,7 +999,7 @@ stay unimplemented. Multiline capture validates every nonblank line before
 committing one transaction.
 
 - Reparenting is edit-only (`>parent`, `>0`, `<child`), applied as one
-  `ApplyParentAssignments` batch so cycles and depth are measured on the graph
+  `ApplyParentAssignmentsAt` batch so cycles and depth are measured on the graph
   the edit produces. `%project` also routes on capture.
 - Inline `e` and the `Ctrl+E` title share `ParseQuickEdit`, which reads that
   title only when it changed. A refusal reopens the buffer; saving it unchanged

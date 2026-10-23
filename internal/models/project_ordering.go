@@ -6,10 +6,11 @@ import (
 	"time"
 )
 
-// MoveTaskUp swaps the task with its previous sibling in the Tasks slice.
+// MoveTaskUpAt swaps the task with its previous sibling in the Tasks slice.
 // For root tasks, completed tasks cannot move above uncompleted tasks.
 // Returns nil without changes if the task is already at the top or cannot move.
-func (p *Project) MoveTaskUp(task *Task) error {
+// now is the touch time written to both swapped tasks.
+func (p *Project) MoveTaskUpAt(task *Task, now time.Time) error {
 	if task == nil {
 		return nil
 	}
@@ -52,8 +53,7 @@ func (p *Project) MoveTaskUp(task *Task) error {
 	// Touch both tasks' UpdatedAt: both moved, and the markdown round-trip
 	// records modification timestamps per task, so updating only one leaves
 	// the sibling with a stale timestamp despite its position changing
-	// (mirrors the fix applied to SwapTasks).
-	now := time.Now()
+	// (mirrors the fix applied to SwapSiblingTasksAt).
 	moved.UpdatedAt = now
 	displaced.UpdatedAt = now
 	p.BuildTaskTree()
@@ -61,10 +61,11 @@ func (p *Project) MoveTaskUp(task *Task) error {
 	return nil
 }
 
-// MoveTaskDown swaps the task with its next sibling in the Tasks slice.
+// MoveTaskDownAt swaps the task with its next sibling in the Tasks slice.
 // For root tasks, uncompleted tasks cannot move below completed tasks.
 // Returns nil without changes if the task is already at the bottom or cannot move.
-func (p *Project) MoveTaskDown(task *Task) error {
+// now is the touch time written to both swapped tasks.
+func (p *Project) MoveTaskDownAt(task *Task, now time.Time) error {
 	if task == nil {
 		return nil
 	}
@@ -107,8 +108,7 @@ func (p *Project) MoveTaskDown(task *Task) error {
 	// Touch both tasks' UpdatedAt: both moved, and the markdown round-trip
 	// records modification timestamps per task, so updating only one leaves
 	// the sibling with a stale timestamp despite its position changing
-	// (mirrors the fix applied to SwapTasks).
-	now := time.Now()
+	// (mirrors the fix applied to SwapSiblingTasksAt).
 	moved.UpdatedAt = now
 	displaced.UpdatedAt = now
 	p.BuildTaskTree()
@@ -116,16 +116,16 @@ func (p *Project) MoveTaskDown(task *Task) error {
 	return nil
 }
 
-// SwapSiblingTasks swaps two explicitly selected siblings in the Tasks slice.
+// SwapSiblingTasksAt swaps two explicitly selected siblings in the Tasks slice.
 // This is the safe primitive for filtered or collapsed views: the presentation
 // layer identifies the visible neighbor, while the model refuses to reorder
 // tasks from different parent groups.
-// Both tasks have UpdatedAt set so the markdown round-trip records the
+// Both tasks have UpdatedAt set to now so the markdown round-trip records the
 // reorder for each side (previously only task1 was touched, which left
 // task2 with a stale modification timestamp despite having moved). The task
 // tree is rebuilt after a successful swap so Parent.Children reflects the new
 // flat task order immediately.
-func (p *Project) SwapSiblingTasks(task1, task2 *Task) error {
+func (p *Project) SwapSiblingTasksAt(task1, task2 *Task, now time.Time) error {
 	if task1 == nil || task2 == nil {
 		return nil
 	}
@@ -143,20 +143,19 @@ func (p *Project) SwapSiblingTasks(task1, task2 *Task) error {
 		return fmt.Errorf("tasks %q and %q are not siblings", moved1.ID, moved2.ID)
 	}
 	p.Tasks[idx1], p.Tasks[idx2] = p.Tasks[idx2], p.Tasks[idx1]
-	now := time.Now()
 	moved1.UpdatedAt = now
 	moved2.UpdatedAt = now
 	p.BuildTaskTree()
 	return nil
 }
 
-// ReorderSiblingTasks permutes an explicitly named set of siblings into the
+// ReorderSiblingTasksAt permutes an explicitly named set of siblings into the
 // given top-to-bottom order. Only the slots those tasks already occupy are
 // rewritten, so a sibling the caller did not name — hidden by a filter, a
 // collapsed parent, or another section — keeps its own position. It is the
-// n-task generalization of SwapSiblingTasks and refuses the same cross-parent
+// n-task generalization of SwapSiblingTasksAt and refuses the same cross-parent
 // set.
-func (p *Project) ReorderSiblingTasks(order []*Task) error {
+func (p *Project) ReorderSiblingTasksAt(order []*Task, now time.Time) error {
 	if len(order) < 2 {
 		return nil
 	}
@@ -183,19 +182,12 @@ func (p *Project) ReorderSiblingTasks(order []*Task) error {
 		tasks = append(tasks, resolved)
 	}
 	slices.Sort(slots)
-	now := time.Now()
 	for i, slot := range slots {
 		p.Tasks[slot] = tasks[i]
 		tasks[i].UpdatedAt = now
 	}
 	p.BuildTaskTree()
 	return nil
-}
-
-// SwapTasks is the legacy no-result adapter retained for callers that already
-// resolve visible siblings. Invalid cross-parent swaps are now safe no-ops.
-func (p *Project) SwapTasks(task1, task2 *Task) {
-	_ = p.SwapSiblingTasks(task1, task2)
 }
 
 func sameParent(task1, task2 *Task) bool {

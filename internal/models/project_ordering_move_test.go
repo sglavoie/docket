@@ -36,7 +36,7 @@ func TestMoveTaskUpCompletionBoundary(t *testing.T) {
 	project.Tasks = []*Task{task1, task2}
 
 	// Try to move completed task2 up above uncompleted task1
-	err = project.MoveTaskUp(task2)
+	err = project.MoveTaskUpAt(task2, time.Now())
 	if err != nil {
 		t.Errorf("MoveTaskUp returned error: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestMoveTaskDownCompletionBoundary(t *testing.T) {
 	project.Tasks = []*Task{task1, task2}
 
 	// Try to move uncompleted task1 down below completed task2
-	err = project.MoveTaskDown(task1)
+	err = project.MoveTaskDownAt(task1, time.Now())
 	if err != nil {
 		t.Errorf("MoveTaskDown returned error: %v", err)
 	}
@@ -103,7 +103,7 @@ func TestMoveTaskUpWithinCompletedGroup(t *testing.T) {
 	project.Tasks = []*Task{task1, task2}
 
 	// Move task2 up within completed group - should work
-	err = project.MoveTaskUp(task2)
+	err = project.MoveTaskUpAt(task2, time.Now())
 	if err != nil {
 		t.Errorf("MoveTaskUp returned error: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestMoveTaskDownWithinUncompletedGroup(t *testing.T) {
 	project.Tasks = []*Task{task1, task2}
 
 	// Move task1 down within uncompleted group - should work
-	err = project.MoveTaskDown(task1)
+	err = project.MoveTaskDownAt(task1, time.Now())
 	if err != nil {
 		t.Errorf("MoveTaskDown returned error: %v", err)
 	}
@@ -175,7 +175,7 @@ func TestMoveChildTaskIgnoresBoundary(t *testing.T) {
 	project.BuildTaskTree()
 
 	// Move completed child2 up - should work because it's not a root task
-	err = project.MoveTaskUp(child2)
+	err = project.MoveTaskUpAt(child2, time.Now())
 	if err != nil {
 		t.Errorf("MoveTaskUp returned error: %v", err)
 	}
@@ -210,7 +210,7 @@ func TestSwapTasks(t *testing.T) {
 	project.Tasks = []*Task{task1, task2, task3}
 
 	// Swap task1 and task3 (non-adjacent)
-	project.SwapTasks(task1, task3)
+	project.SwapSiblingTasksAt(task1, task3, time.Now())
 
 	if project.Tasks[0].ID != "3" || project.Tasks[2].ID != "1" {
 		t.Errorf("expected [3, 2, 1] but got [%s, %s, %s]",
@@ -245,7 +245,7 @@ func TestMoveTaskDownRebuildsParentChildrenOrder(t *testing.T) {
 	project.Tasks = []*Task{epic, child1, child2}
 	project.BuildTaskTree()
 
-	err = project.MoveTaskDown(child1)
+	err = project.MoveTaskDownAt(child1, time.Now())
 	if err != nil {
 		t.Errorf("MoveTaskDown returned error: %v", err)
 	}
@@ -285,7 +285,7 @@ func TestSwapTasksRebuildsStoryChildrenOrder(t *testing.T) {
 	project.Tasks = []*Task{epic, story, task1, task2}
 	project.BuildTaskTree()
 
-	project.SwapTasks(task1, task2)
+	project.SwapSiblingTasksAt(task1, task2, time.Now())
 
 	assertTaskIDSequence(t, "project.Tasks after SwapTasks", project.Tasks, []string{"epic", "story", "task2", "task1"})
 	assertTaskIDSequence(t, "story.Children after SwapTasks", story.Children, []string{"task2", "task1"})
@@ -315,7 +315,7 @@ func TestSwapTasksUpdatesCanonicalTimestampsForClonedInputs(t *testing.T) {
 
 	clone1 := *task1
 	clone2 := *task2
-	project.SwapTasks(&clone1, &clone2)
+	project.SwapSiblingTasksAt(&clone1, &clone2, time.Now())
 
 	if !task1.UpdatedAt.After(stale) {
 		t.Fatal("canonical task1 UpdatedAt was not refreshed")
@@ -342,14 +342,14 @@ func TestSwapTasksNilTask(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	project.SwapTasks(task1, notInProject)
+	project.SwapSiblingTasksAt(task1, notInProject, time.Now())
 
 	if project.Tasks[0].ID != "1" {
 		t.Error("swap with non-existent task should be a no-op")
 	}
 
-	project.SwapTasks(nil, task1)
-	project.SwapTasks(task1, nil)
+	project.SwapSiblingTasksAt(nil, task1, time.Now())
+	project.SwapSiblingTasksAt(task1, nil, time.Now())
 
 	if project.Tasks[0].ID != "1" {
 		t.Error("swap with nil task should be a no-op")
@@ -372,10 +372,10 @@ func TestMoveTaskNilTaskNoOp(t *testing.T) {
 	}
 	project.Tasks = []*Task{task1, task2}
 
-	if err := project.MoveTaskUp(nil); err != nil {
+	if err := project.MoveTaskUpAt(nil, time.Now()); err != nil {
 		t.Errorf("MoveTaskUp(nil) returned error: %v", err)
 	}
-	if err := project.MoveTaskDown(nil); err != nil {
+	if err := project.MoveTaskDownAt(nil, time.Now()); err != nil {
 		t.Errorf("MoveTaskDown(nil) returned error: %v", err)
 	}
 

@@ -77,7 +77,7 @@ func TestAddProjectCommentCommitsOneComment(t *testing.T) {
 // move: not their touch times, not their completion state, not their root order.
 //
 // The fixture is deliberately one the post-mutation hooks would rewrite. A
-// terminal parent over an open child is exactly what ReconcileParentCompletion
+// terminal parent over an open child is exactly what ReconcileParentCompletionAt
 // reopens, and a done root ahead of an open one is exactly what
 // ReorderRootTasksByCompletion swaps, so this test fails the moment the commit
 // stops declaring its tasks untouched.

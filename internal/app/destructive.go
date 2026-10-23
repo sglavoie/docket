@@ -292,7 +292,7 @@ func (s *Service) deleteTasks(snap Snapshot, roots []TaskRef, undoContext string
 	var changesets []storage.ChangeSet
 	var touchedOrder []string
 	appendCS := func(c projectCommit) {
-		changesets = append(changesets, changeSetFor(c, "Delete Task", undoContext))
+		changesets = append(changesets, changeSetFor(c, "Delete Task", undoContext, s.clock.Now()))
 		touchedOrder = append(touchedOrder, c.project.ID)
 	}
 	for i, pid := range srcOrder {

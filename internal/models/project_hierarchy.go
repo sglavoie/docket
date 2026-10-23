@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/sglavoie/tt/internal/logging"
 )
@@ -274,9 +275,9 @@ func (p *Project) GetTaskAbove(task *Task) *Task {
 	return nil
 }
 
-// IndentTask makes the task a child of the task visually above it.
+// IndentTaskAt makes the task a child of the task visually above it.
 // Returns an error if the operation is not valid.
-func (p *Project) IndentTask(task *Task) error {
+func (p *Project) IndentTaskAt(task *Task, now time.Time) error {
 	// Get the task above in visual order
 	targetParent := p.GetTaskAbove(task)
 	if targetParent == nil {
@@ -287,15 +288,15 @@ func (p *Project) IndentTask(task *Task) error {
 	if ok, reason := task.CanIndent(targetParent); !ok {
 		return fmt.Errorf("cannot indent: %s", reason)
 	}
-	if err := p.ReparentTask(task, targetParent); err != nil {
+	if err := p.ReparentTaskAt(task, targetParent, now); err != nil {
 		return fmt.Errorf("cannot indent: %w", err)
 	}
 	return nil
 }
 
-// OutdentTask moves the task to be a sibling of its current parent.
+// OutdentTaskAt moves the task to be a sibling of its current parent.
 // Returns an error if the operation is not valid.
-func (p *Project) OutdentTask(task *Task) error {
+func (p *Project) OutdentTaskAt(task *Task, now time.Time) error {
 	// Validate the outdent operation
 	if ok, reason := task.CanOutdent(); !ok {
 		return fmt.Errorf("cannot outdent: %s", reason)
@@ -307,18 +308,18 @@ func (p *Project) OutdentTask(task *Task) error {
 		return fmt.Errorf("cannot outdent: already at root level")
 	}
 
-	if err := p.ReparentTask(task, currentParent.Parent); err != nil {
+	if err := p.ReparentTaskAt(task, currentParent.Parent, now); err != nil {
 		return fmt.Errorf("cannot outdent: %w", err)
 	}
 	return nil
 }
 
-// ReparentTask moves task under newParent, or promotes it to a root when
+// ReparentTaskAt moves task under newParent, or promotes it to a root when
 // newParent is nil. Both non-nil tasks must be the canonical objects owned by
 // this project. Validation is completed before mutation so a rejected request
 // cannot partially rewrite the tree.
-func (p *Project) ReparentTask(task, newParent *Task) error {
-	_, err := p.ApplyParentAssignments([]ParentAssignment{{Task: task, Parent: newParent}})
+func (p *Project) ReparentTaskAt(task, newParent *Task, now time.Time) error {
+	_, err := p.ApplyParentAssignmentsAt([]ParentAssignment{{Task: task, Parent: newParent}}, now)
 	return err
 }
 
@@ -380,7 +381,7 @@ func (p *Project) ReorderRootTasksByCompletion() {
 	p.Tasks = append(uncompleted, completed...)
 }
 
-// ReconcileParentCompletion uncompletes any completed task that has an
+// ReconcileParentCompletionAt uncompletes any completed task that has an
 // incomplete child, so that a parent (task with children) is never left
 // complete while a child is still open. The fixpoint loop repeats until a full
 // pass makes no changes, so reopening a parent propagates upward to
@@ -388,14 +389,15 @@ func (p *Project) ReorderRootTasksByCompletion() {
 // already consistent). Assumes an up-to-date tree (t.Children populated via
 // BuildTaskTree). Callers that record a targeted undo snapshot should add the
 // returned IDs to their undo task set so a single undo reverts the cascade
-// atomically.
-func (p *Project) ReconcileParentCompletion() []string {
+// atomically. now is the reopen instant, so the state clock and touch time are
+// the caller's clock rather than the wall clock.
+func (p *Project) ReconcileParentCompletionAt(now time.Time) []string {
 	var reopened []string
 	for changed := true; changed; {
 		changed = false
 		for _, t := range p.Tasks {
 			if t.IsTerminalState() && t.HasIncompleteChildren() {
-				t.Uncomplete()
+				_ = t.ApplyStateTransitionAt(StateDoing, now)
 				reopened = append(reopened, t.ID)
 				changed = true
 			}

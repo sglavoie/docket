@@ -285,6 +285,25 @@ func TestParseHourWindowAt(t *testing.T) {
 	}
 }
 
+// TestParseDeferInstantAtResolvesDaysFromNow pins the day forms to the supplied
+// clock: "tomorrow" and "+3d" count from now's date, not from the wall clock's,
+// so a caller with an injected clock gets the day it asked about.
+func TestParseDeferInstantAtResolvesDaysFromNow(t *testing.T) {
+	now := time.Date(2031, 2, 3, 15, 30, 0, 0, time.Local)
+	for input, want := range map[string]time.Time{
+		"tomorrow": time.Date(2031, 2, 4, 0, 0, 0, 0, time.Local),
+		"+3d":      time.Date(2031, 2, 6, 0, 0, 0, 0, time.Local),
+	} {
+		got, err := ParseDeferInstantAt(input, now)
+		if err != nil {
+			t.Fatalf("ParseDeferInstantAt(%q) error = %v", input, err)
+		}
+		if !got.Equal(want) {
+			t.Errorf("ParseDeferInstantAt(%q) = %v, want %v", input, got, want)
+		}
+	}
+}
+
 func TestParseDeferInstantAtAcceptsHourOffsets(t *testing.T) {
 	now := time.Date(2026, 8, 14, 15, 30, 0, 0, time.Local)
 
@@ -327,7 +346,7 @@ func TestParseDeferInstantAtKeepsCalendarFormsDayGranular(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseDeferInstantAt(%q) error = %v", "+3m", err)
 	}
-	if want := AddMonthsClamped(today, 3); !got.Equal(want) {
+	if want := AddMonthsClamped(StartOfDay(now), 3); !got.Equal(want) {
 		t.Errorf("ParseDeferInstantAt(%q) = %v, want three months at %v", "+3m", got, want)
 	}
 

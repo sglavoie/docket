@@ -49,7 +49,9 @@ validated before one atomic transaction is committed.
 - `@@defer` hides the task until an instant rather than a day, so it also
   accepts the `+Nh` hour offsets a due date refuses. Deferring carries the same
   lifecycle effect the picker's defer section does: the task moves to Backlog, loses any
-  Today or Next membership, and a terminal task refuses outright. `@@0` clears
+  Today or Next membership, and a terminal task refuses outright. So does an
+  instant that has already arrived: `@@today` names this morning's midnight
+  and refuses, while `@@+Nh` or `@@tomorrow` hides the task. `@@0` clears
   the deferral on the edit surfaces; the outline buffer has no deferral channel
   and rejects the sigil by name.
 - `$destination` accepts `inbox`, `backlog`, `today`, `next`, `doing`,

@@ -37,7 +37,7 @@ func TestTaskLineEditTerminalDestinationJudgesAdoptedChildren(t *testing.T) {
 
 		// A destination naming the state the task already holds is still an
 		// explicit terminal claim, so it must be refused instead of committing and
-		// being reopened to Doing by ReconcileParentCompletion.
+		// being reopened to Doing by ReconcileParentCompletionAt.
 		t.Run("open adopted child blocks a re-applied "+destination, func(t *testing.T) {
 			task := newTask("task", 1, "Edited")
 			task.ApplyWorkflowState(terminal)

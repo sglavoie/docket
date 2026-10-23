@@ -1,6 +1,9 @@
 package models
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func newHierarchyReconcileProject(t *testing.T) *Project {
 	t.Helper()
@@ -32,7 +35,7 @@ func TestReconcileParentCompletionSingleReopen(t *testing.T) {
 	// Child left incomplete → parent is now in an illegal completed state.
 	project.Tasks = []*Task{parent, child}
 
-	reopened := project.ReconcileParentCompletion()
+	reopened := project.ReconcileParentCompletionAt(time.Now())
 	if len(reopened) != 1 {
 		t.Errorf("expected 1 reopened, got %d", len(reopened))
 	}
@@ -62,7 +65,7 @@ func TestReconcileParentCompletionFixpointGrandparent(t *testing.T) {
 	// Leaf task left incomplete → both story and epic are illegal completions.
 	project.Tasks = []*Task{epic, story, task}
 
-	reopened := project.ReconcileParentCompletion()
+	reopened := project.ReconcileParentCompletionAt(time.Now())
 	if len(reopened) != 2 {
 		t.Errorf("expected 2 reopened (story then epic), got %d", len(reopened))
 	}
@@ -85,7 +88,7 @@ func TestReconcileParentCompletionCanceledParent(t *testing.T) {
 	parent.Cancel()
 	project.Tasks = []*Task{parent, child}
 
-	reopened := project.ReconcileParentCompletion()
+	reopened := project.ReconcileParentCompletionAt(time.Now())
 	if len(reopened) != 1 {
 		t.Errorf("expected 1 reopened, got %d", len(reopened))
 	}
@@ -106,7 +109,7 @@ func TestReconcileParentCompletionNoOpWhenConsistent(t *testing.T) {
 	parent.Complete()
 	project.Tasks = []*Task{parent, child}
 
-	reopened := project.ReconcileParentCompletion()
+	reopened := project.ReconcileParentCompletionAt(time.Now())
 	if len(reopened) != 0 {
 		t.Errorf("expected 0 reopened for consistent tree, got %d", len(reopened))
 	}

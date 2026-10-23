@@ -1,6 +1,9 @@
 package models
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestProjectGetSiblings(t *testing.T) {
 	project, err := NewProject("test", "Test", "/tmp/test")
@@ -76,7 +79,7 @@ func TestProjectMoveTaskUp(t *testing.T) {
 	project.Tasks = []*Task{task1, task2, task3}
 
 	// Move task2 up (should swap with task1)
-	err = project.MoveTaskUp(task2)
+	err = project.MoveTaskUpAt(task2, time.Now())
 	if err != nil {
 		t.Errorf("MoveTaskUp returned error: %v", err)
 	}
@@ -90,7 +93,7 @@ func TestProjectMoveTaskUp(t *testing.T) {
 	}
 
 	// Move task2 up again (already at top, should be no-op)
-	err = project.MoveTaskUp(task2)
+	err = project.MoveTaskUpAt(task2, time.Now())
 	if err != nil {
 		t.Errorf("MoveTaskUp at top returned error: %v", err)
 	}
@@ -121,7 +124,7 @@ func TestProjectMoveTaskDown(t *testing.T) {
 	project.Tasks = []*Task{task1, task2, task3}
 
 	// Move task2 down (should swap with task3)
-	err = project.MoveTaskDown(task2)
+	err = project.MoveTaskDownAt(task2, time.Now())
 	if err != nil {
 		t.Errorf("MoveTaskDown returned error: %v", err)
 	}
@@ -135,7 +138,7 @@ func TestProjectMoveTaskDown(t *testing.T) {
 	}
 
 	// Move task2 down again (already at bottom, should be no-op)
-	err = project.MoveTaskDown(task2)
+	err = project.MoveTaskDownAt(task2, time.Now())
 	if err != nil {
 		t.Errorf("MoveTaskDown at bottom returned error: %v", err)
 	}
@@ -171,7 +174,7 @@ func TestProjectMoveTaskUpWithChildren(t *testing.T) {
 	project.BuildTaskTree()
 
 	// Move child2 up (swap with child1)
-	err = project.MoveTaskUp(child2)
+	err = project.MoveTaskUpAt(child2, time.Now())
 	if err != nil {
 		t.Errorf("MoveTaskUp returned error: %v", err)
 	}
@@ -202,7 +205,7 @@ func TestProjectIndentTask(t *testing.T) {
 	project.BuildTaskTree()
 
 	// Indent task under epic
-	err = project.IndentTask(task)
+	err = project.IndentTaskAt(task, time.Now())
 	if err != nil {
 		t.Errorf("IndentTask returned error: %v", err)
 	}
@@ -240,7 +243,7 @@ func TestProjectOutdentTask(t *testing.T) {
 	project.BuildTaskTree()
 
 	// Outdent task (should become child of epic)
-	err = project.OutdentTask(task)
+	err = project.OutdentTaskAt(task, time.Now())
 	if err != nil {
 		t.Errorf("OutdentTask returned error: %v", err)
 	}
@@ -250,7 +253,7 @@ func TestProjectOutdentTask(t *testing.T) {
 	}
 
 	// Outdent story (should become root)
-	err = project.OutdentTask(story)
+	err = project.OutdentTaskAt(story, time.Now())
 	if err != nil {
 		t.Errorf("OutdentTask returned error: %v", err)
 	}
@@ -275,7 +278,7 @@ func TestIndentTaskReturnsErrorWhenNoTaskAbove(t *testing.T) {
 	project.BuildTaskTree()
 
 	// First task has nothing above it
-	err = project.IndentTask(task)
+	err = project.IndentTaskAt(task, time.Now())
 	if err == nil {
 		t.Error("expected error when indenting first task, got nil")
 	}
@@ -299,7 +302,7 @@ func TestIndentTaskAllowsGenericHierarchy(t *testing.T) {
 	project.Tasks = []*Task{task1, task2}
 	project.BuildTaskTree()
 
-	err = project.IndentTask(task2)
+	err = project.IndentTaskAt(task2, time.Now())
 	if err != nil {
 		t.Fatalf("generic indent failed: %v", err)
 	}
@@ -322,7 +325,7 @@ func TestOutdentTaskReturnsErrorAtRoot(t *testing.T) {
 	project.Tasks = []*Task{task}
 	project.BuildTaskTree()
 
-	err = project.OutdentTask(task)
+	err = project.OutdentTaskAt(task, time.Now())
 	if err == nil {
 		t.Error("expected error when outdenting root task, got nil")
 	}

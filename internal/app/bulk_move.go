@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -39,7 +40,7 @@ type bulkMoveSource struct {
 //     is stable for one selection regardless of how the presentation enumerated it.
 //   - Depth. Each subtree lands at the destination root, so depth is measured
 //     once over the graph all the subtrees produce rather than per task — one
-//     ApplyParentAssignments pass naming every moved root as a root, which is the
+//     ApplyParentAssignmentsAt pass naming every moved root as a root, which is the
 //     existing projected-graph validator applied to the final destination.
 //   - Already home. A selected task that already lives in the destination is a
 //     no-op that still commits, matching both the idempotent bulk attribute
@@ -90,11 +91,12 @@ func (s *Service) BulkMoveToProject(locators []TaskLocator, destProjectID string
 		}
 	}()
 
-	delta, err := applyBulkSubtreeMoves(sources, destination)
+	now := s.clock.Now()
+	delta, err := applyBulkSubtreeMoves(sources, destination, now)
 	if err != nil {
 		return BulkResult{}, err
 	}
-	if err = validateBulkMoveDepth(destination, delta.movedRoots); err != nil {
+	if err = validateBulkMoveDepth(destination, delta.movedRoots, now); err != nil {
 		return BulkResult{}, err
 	}
 
@@ -191,14 +193,14 @@ type bulkMoveDelta struct {
 // applyBulkSubtreeMoves performs the in-memory transfer one subtree at a time,
 // in the fixed order, accumulating the deltas the single transaction carries.
 // The caller owns rollback until its grouped commit succeeds.
-func applyBulkSubtreeMoves(sources []bulkMoveSource, destination *models.Project) (bulkMoveDelta, error) {
+func applyBulkSubtreeMoves(sources []bulkMoveSource, destination *models.Project, now time.Time) (bulkMoveDelta, error) {
 	delta := bulkMoveDelta{
 		attachmentOps: make(map[string][]storage.AttachmentOp, len(sources)),
 		moved:         make(map[models.TaskReference]models.TaskReference),
 	}
 	for _, source := range sources {
 		for _, root := range source.roots {
-			move, err := moveTaskSubtreeBetweenProjects(source.project, root, destination, nil)
+			move, err := moveTaskSubtreeBetweenProjects(source.project, root, destination, nil, now)
 			if err != nil {
 				return bulkMoveDelta{}, invalidInput("move", err.Error())
 			}
@@ -222,7 +224,7 @@ func applyBulkSubtreeMoves(sources []bulkMoveSource, destination *models.Project
 // runs the projected-graph depth validator over the graph the whole batch
 // produced — the check a per-task validation could not make — while changing no
 // edge, since each moved root already has its parent cleared.
-func validateBulkMoveDepth(destination *models.Project, movedRoots []*models.Task) error {
+func validateBulkMoveDepth(destination *models.Project, movedRoots []*models.Task, now time.Time) error {
 	if len(movedRoots) == 0 {
 		return nil
 	}
@@ -230,7 +232,7 @@ func validateBulkMoveDepth(destination *models.Project, movedRoots []*models.Tas
 	for _, root := range movedRoots {
 		assignments = append(assignments, models.ParentAssignment{Task: root, Parent: nil})
 	}
-	if _, err := destination.ApplyParentAssignments(assignments); err != nil {
+	if _, err := destination.ApplyParentAssignmentsAt(assignments, now); err != nil {
 		return invalidInput("move", err.Error())
 	}
 	return nil

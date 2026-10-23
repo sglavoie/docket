@@ -13,12 +13,12 @@ import (
 // an intermediate one. It returns the number of tasks whose parent really moved,
 // which is what makes an already-direct child a no-op. With no adopted children
 // the singleton reparent keeps the error vocabulary it has always produced.
-func applyTaskLineEditEdges(project *models.Project, task, parent *models.Task, parentChanged bool, children []*models.Task) (int, error) {
+func applyTaskLineEditEdges(project *models.Project, task, parent *models.Task, parentChanged bool, children []*models.Task, now time.Time) (int, error) {
 	if len(children) == 0 {
 		if !parentChanged {
 			return 0, nil
 		}
-		if err := project.ReparentTask(task, parent); err != nil {
+		if err := project.ReparentTaskAt(task, parent, now); err != nil {
 			return 0, invalidInput("parent", err.Error())
 		}
 		return 1, nil
@@ -30,7 +30,7 @@ func applyTaskLineEditEdges(project *models.Project, task, parent *models.Task, 
 	for _, child := range children {
 		assignments = append(assignments, models.ParentAssignment{Task: child, Parent: task})
 	}
-	changed, err := project.ApplyParentAssignments(assignments)
+	changed, err := project.ApplyParentAssignmentsAt(assignments, now)
 	if err != nil {
 		return 0, invalidInput("child", err.Error())
 	}
@@ -45,7 +45,7 @@ func applyTaskLineEditEdges(project *models.Project, task, parent *models.Task, 
 // It deliberately carries no equal-state shortcut. A destination the task already
 // holds is still an explicit terminal claim, and skipping it would let $done on an
 // already-done task adopt an open child and be silently reopened by
-// ReconcileParentCompletion, which is exactly the outcome the policy forbids.
+// ReconcileParentCompletionAt, which is exactly the outcome the policy forbids.
 func taskLineDestinationChildrenGuard(ref TaskRef, destination *CaptureDestination) error {
 	if destination == nil {
 		return nil

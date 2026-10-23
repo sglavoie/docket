@@ -155,8 +155,15 @@ func parseNaturalMonthDay(input string, today time.Time) (time.Time, bool, error
 // ParseRelativeDate, but respects the weekEndDay setting for the eow token.
 // weekEndDay must be "fri", "sat", or "sun" (invalid values default to "sun").
 func ParseRelativeDateWithConfig(input, weekEndDay string) (time.Time, error) {
+	return ParseRelativeDateWithConfigAt(input, weekEndDay, time.Now())
+}
+
+// ParseRelativeDateWithConfigAt is ParseRelativeDateWithConfig evaluated from
+// now's calendar day rather than the wall clock's, so a caller holding an
+// injected clock resolves "tomorrow" against the same day it judges with.
+func ParseRelativeDateWithConfigAt(input, weekEndDay string, now time.Time) (time.Time, error) {
 	input = normalizeDateInput(input)
-	today := StartOfDay(time.Now())
+	today := StartOfDay(now)
 
 	if date, ok := parseExactDate(input); ok {
 		return date, nil

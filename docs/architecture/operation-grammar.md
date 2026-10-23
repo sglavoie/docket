@@ -653,7 +653,7 @@ unchanged no-op.
 The checked IDs become `TaskLineEditRequest.Children` with the title carried
 verbatim and the parent patch left on `TaskLineParentPreserve`, so the request
 travels the same `applyTaskLineEditEdges` path the `<child` sigil does and lands
-as one `ApplyParentAssignments` batch: cycles and depth are measured on the graph
+as one `ApplyParentAssignmentsAt` batch: cycles and depth are measured on the graph
 the adoption produces, and the inherited `taskLineDestinationChildrenGuard` still
 refuses a terminal destination holding an open adopted child. `TaskLineEditRequest`
 carries an optional `Action` for the undo ledger, defaulted to `Edit Task Line`,
@@ -814,7 +814,7 @@ Project moves and reparenting are expressed in the inline `e` editor with
 `%project`, `>parent`/`>0`, and the repeatable `<child`, so structural edits
 share the same atomic task-line transaction as title and metadata changes. The
 edited task's own parent edge and every adopted child edge are submitted as one
-`models.ApplyParentAssignments` batch, which is what lets a hierarchy inversion
+`models.ApplyParentAssignmentsAt` batch, which is what lets a hierarchy inversion
 commit: cycles and depth are measured on the graph the edit produces rather than
 on the one it replaced. Adoption is additive and reaches only the effective
 project, so unmentioned children keep their parent, an adopted task keeps its

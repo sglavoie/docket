@@ -3,6 +3,7 @@ package app_test
 import (
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -179,6 +180,39 @@ func TestDeferRejectsCompletedAndBacklogsDoing(t *testing.T) {
 	}
 	if inProgress.State() != models.StateBacklog || inProgress.DeferredUntil == nil {
 		t.Fatalf("deferred Doing task = state %s date %v, want Backlog with date", inProgress.State(), inProgress.DeferredUntil)
+	}
+}
+
+// TestDeferRefusesAWakeInstantThatHasArrived is the gap a past deferral fell
+// through: it demoted a Doing task, counted a deferral, and cleared planning
+// while leaving the task awake. The refusal is the model gate, so the service
+// and capture both answer it before anything moves.
+func TestDeferRefusesAWakeInstantThatHasArrived(t *testing.T) {
+	now := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	for _, until := range []time.Time{now.Add(-time.Hour), now} {
+		doing := newTask("t1", 1, "task")
+		doing.Start()
+		project := newProject("proj-1", "Alpha", doing)
+		repo := newFakeRepo(project)
+		svc := newTestServiceWithClock(repo, fixedClock{t: now})
+
+		_, err := svc.Defer(repo.loc("t1"), &until)
+		if !errors.Is(err, app.ErrInvalidInput) || !strings.Contains(err.Error(), "must be in the future") {
+			t.Fatalf("defer to %s: err = %v, want the future refusal", until, err)
+		}
+		if doing.State() != models.StateDoing || doing.DeferredUntil != nil || doing.DeferCount != 0 {
+			t.Fatalf("refused defer moved the task: state %s date %v count %d",
+				doing.State(), doing.DeferredUntil, doing.DeferCount)
+		}
+
+		if _, err := svc.Capture(app.CaptureRequest{
+			ProjectID: project.ID, Title: "Later", DeferSet: true, Defer: &until,
+		}); !errors.Is(err, app.ErrInvalidInput) {
+			t.Fatalf("capture deferred to %s: err = %v, want ErrInvalidInput", until, err)
+		}
+		if len(project.Tasks) != 1 {
+			t.Fatalf("refused capture left %d tasks, want 1", len(project.Tasks))
+		}
 	}
 }
 

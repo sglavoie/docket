@@ -38,11 +38,11 @@ func (s *Service) editTaskLineAcrossProjects(snap Snapshot, sourceRef TaskRef, p
 	}
 	// The subtree lands first, so an adopted child is judged against the task set
 	// the destination actually ends up with.
-	move, err := moveTaskSubtreeBetweenProjects(sourceRef.Project, sourceRef.Task, destination, moveParent)
+	move, err := moveTaskSubtreeBetweenProjects(sourceRef.Project, sourceRef.Task, destination, moveParent, s.clock.Now())
 	if err != nil {
 		return TaskLineEditResult{}, invalidInput("move", err.Error())
 	}
-	if _, edgeErr := applyTaskLineEditEdges(destination, sourceRef.Task, destinationParent, adopting && destinationParent != nil, prepared.children); edgeErr != nil {
+	if _, edgeErr := applyTaskLineEditEdges(destination, sourceRef.Task, destinationParent, adopting && destinationParent != nil, prepared.children, s.clock.Now()); edgeErr != nil {
 		return TaskLineEditResult{}, edgeErr
 	}
 

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"errors"
 	"testing"
 	"time"
 )
@@ -46,6 +47,23 @@ func TestApplyDeferAtCountsTransitionsButNotPendingDateEditsOrWake(t *testing.T)
 	}
 	if task.DeferredUntil == &repeated {
 		t.Fatal("ApplyDeferAt retained the caller's instant pointer")
+	}
+}
+
+func TestApplyDeferAtRefusesAnArrivedWakeInstantBeforeMovingAnything(t *testing.T) {
+	now := time.Date(2026, time.August, 10, 12, 0, 0, 0, time.UTC)
+	for _, until := range []time.Time{now.Add(-12 * time.Hour), now} {
+		task := newLifecycleTestTask(t, "t1", 1)
+		if err := task.ApplyStateTransitionAt(StateDoing, now); err != nil {
+			t.Fatalf("start: %v", err)
+		}
+		if err := task.ApplyDeferAt(until, now); !errors.Is(err, ErrDeferNotInFuture) {
+			t.Fatalf("defer to %s: err = %v, want ErrDeferNotInFuture", until, err)
+		}
+		if task.State() != StateDoing || task.DeferredUntil != nil || task.DeferCount != 0 {
+			t.Fatalf("refused defer moved the task: state %s date %v count %d",
+				task.State(), task.DeferredUntil, task.DeferCount)
+		}
 	}
 }
 
