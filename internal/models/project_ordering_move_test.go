@@ -210,7 +210,9 @@ func TestSwapTasks(t *testing.T) {
 	project.Tasks = []*Task{task1, task2, task3}
 
 	// Swap task1 and task3 (non-adjacent)
-	project.SwapSiblingTasksAt(task1, task3, time.Now())
+	if err := project.SwapSiblingTasksAt(task1, task3, time.Now()); err != nil {
+		t.Fatalf("SwapSiblingTasksAt: %v", err)
+	}
 
 	if project.Tasks[0].ID != "3" || project.Tasks[2].ID != "1" {
 		t.Errorf("expected [3, 2, 1] but got [%s, %s, %s]",
@@ -285,7 +287,9 @@ func TestSwapTasksRebuildsStoryChildrenOrder(t *testing.T) {
 	project.Tasks = []*Task{epic, story, task1, task2}
 	project.BuildTaskTree()
 
-	project.SwapSiblingTasksAt(task1, task2, time.Now())
+	if err := project.SwapSiblingTasksAt(task1, task2, time.Now()); err != nil {
+		t.Fatalf("SwapSiblingTasksAt: %v", err)
+	}
 
 	assertTaskIDSequence(t, "project.Tasks after SwapTasks", project.Tasks, []string{"epic", "story", "task2", "task1"})
 	assertTaskIDSequence(t, "story.Children after SwapTasks", story.Children, []string{"task2", "task1"})
@@ -315,7 +319,9 @@ func TestSwapTasksUpdatesCanonicalTimestampsForClonedInputs(t *testing.T) {
 
 	clone1 := *task1
 	clone2 := *task2
-	project.SwapSiblingTasksAt(&clone1, &clone2, time.Now())
+	if err := project.SwapSiblingTasksAt(&clone1, &clone2, time.Now()); err != nil {
+		t.Fatalf("SwapSiblingTasksAt: %v", err)
+	}
 
 	if !task1.UpdatedAt.After(stale) {
 		t.Fatal("canonical task1 UpdatedAt was not refreshed")
@@ -342,14 +348,20 @@ func TestSwapTasksNilTask(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	project.SwapSiblingTasksAt(task1, notInProject, time.Now())
+	if err := project.SwapSiblingTasksAt(task1, notInProject, time.Now()); err != nil {
+		t.Fatalf("SwapSiblingTasksAt: %v", err)
+	}
 
 	if project.Tasks[0].ID != "1" {
 		t.Error("swap with non-existent task should be a no-op")
 	}
 
-	project.SwapSiblingTasksAt(nil, task1, time.Now())
-	project.SwapSiblingTasksAt(task1, nil, time.Now())
+	if err := project.SwapSiblingTasksAt(nil, task1, time.Now()); err != nil {
+		t.Fatalf("SwapSiblingTasksAt: %v", err)
+	}
+	if err := project.SwapSiblingTasksAt(task1, nil, time.Now()); err != nil {
+		t.Fatalf("SwapSiblingTasksAt: %v", err)
+	}
 
 	if project.Tasks[0].ID != "1" {
 		t.Error("swap with nil task should be a no-op")

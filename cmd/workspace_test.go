@@ -186,8 +186,8 @@ func TestWorkspaceLocationSaysWhenNoWorkspaceIsThere(t *testing.T) {
 		t.Fatalf("workspace location created the directory: %v", statErr)
 	}
 
-	if _, err := LoadCLIWorkspace(); err != nil {
-		t.Fatalf("bootstrap workspace: %v", err)
+	if _, bootErr := LoadCLIWorkspace(); bootErr != nil {
+		t.Fatalf("bootstrap workspace: %v", bootErr)
 	}
 	stdout, _, err = captureDoctorOutput(t, func() error { return runWorkspaceLocation(nil, nil) })
 	if err != nil || strings.Contains(stdout, note) {

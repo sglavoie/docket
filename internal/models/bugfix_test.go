@@ -140,7 +140,9 @@ func TestSwapTasks_UpdatesBothTimestamps(t *testing.T) {
 	task2.UpdatedAt = stale
 	p.Tasks = []*Task{task1, task2}
 
-	p.SwapSiblingTasksAt(task1, task2, time.Now())
+	if err := p.SwapSiblingTasksAt(task1, task2, time.Now()); err != nil {
+		t.Fatalf("SwapSiblingTasksAt: %v", err)
+	}
 
 	if task1.UpdatedAt.Equal(stale) {
 		t.Error("task1.UpdatedAt should be refreshed after swap")
