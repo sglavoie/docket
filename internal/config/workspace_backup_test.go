@@ -68,7 +68,7 @@ func TestWorkspaceBackupVerificationFindsMissingChangedAndUnexpectedFiles(t *tes
 func TestWorkspaceBackupRefusesOverlappingDestination(t *testing.T) {
 	fixture := newEnrollFixture(t)
 	for _, root := range []string{fixture.original, filepath.Join(fixture.original, "backups"), fixture.root} {
-		if _, err := CreateWorkspaceBackup(fixture.original, root); err == nil || !strings.Contains(err.Error(), "backup placement") {
+		if _, err := CreateWorkspaceBackup(fixture.original, root); err == nil || !strings.Contains(err.Error(), "backup placement") || strings.Contains(err.Error(), "move") {
 			t.Fatalf("overlapping root %s: %v", root, err)
 		}
 	}

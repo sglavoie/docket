@@ -49,7 +49,7 @@ func CreateWorkspaceBackup(source, root string) (*WorkspaceBackupReport, error) 
 		return nil, err
 	}
 	if err = ensureNotNested(source, root); err != nil {
-		return nil, fmt.Errorf("backup placement: %w", err)
+		return nil, fmt.Errorf("backup placement: %w; choose a backup directory outside the workspace", err)
 	}
 	if info, statErr := os.Lstat(source); statErr != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return nil, fmt.Errorf("backup source must be an existing, non-symlink directory: %s", source)
@@ -68,7 +68,7 @@ func CreateWorkspaceBackup(source, root string) (*WorkspaceBackupReport, error) 
 		return nil, err
 	}
 	if err = ensureNotNested(resolvedSource, resolvedRoot); err != nil {
-		return nil, fmt.Errorf("backup placement: %w", err)
+		return nil, fmt.Errorf("backup placement: %w; choose a backup directory outside the workspace", err)
 	}
 	var report *WorkspaceBackupReport
 	commits := storage.NewCommitService(TransactionsDir(source), []string{source})

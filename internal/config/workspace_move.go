@@ -79,7 +79,10 @@ func ValidateWorkspaceMovePaths(srcDataDir, dstDataDir string) error {
 	if src == dst {
 		return fmt.Errorf("workspace move: source and destination are the same directory: %s", src)
 	}
-	return ensureNotNested(src, dst)
+	if err := ensureNotNested(src, dst); err != nil {
+		return fmt.Errorf("workspace move aborted: %w", err)
+	}
+	return nil
 }
 
 func moveWorkspace(srcDataDir, dstDataDir string, hooks workspaceMoveHooks) (*MoveReport, error) {
@@ -273,20 +276,21 @@ func isWorkspaceMoveExcluded(rel string) bool {
 	return filepath.Clean(rel) == filepath.Join(dataDirName, "transactions", "commit.lock")
 }
 
-// ensureNotNested refuses a move where source and destination overlap, which a
+// ensureNotNested refuses a source and destination that overlap, which a
 // recursive copy could otherwise loop on or corrupt. Both the lexical paths and
-// their symlink-resolved forms (where they exist) are checked.
+// their symlink-resolved forms (where they exist) are checked. The wording
+// names no command: a move and a backup each say which one refused.
 func ensureNotNested(src, dst string) error {
 	if isSubpath(src, dst) {
-		return fmt.Errorf("workspace move aborted: destination %s is inside the source %s", dst, src)
+		return fmt.Errorf("destination %s is inside the source %s", dst, src)
 	}
 	if isSubpath(dst, src) {
-		return fmt.Errorf("workspace move aborted: source %s is inside the destination %s", src, dst)
+		return fmt.Errorf("source %s is inside the destination %s", src, dst)
 	}
 	rs, err1 := filepath.EvalSymlinks(src)
 	rd, err2 := filepath.EvalSymlinks(dst)
 	if err1 == nil && err2 == nil && (isSubpath(rs, rd) || isSubpath(rd, rs)) {
-		return fmt.Errorf("workspace move aborted: source and destination overlap after resolving symlinks (%s, %s)", rs, rd)
+		return fmt.Errorf("source and destination overlap after resolving symlinks (%s, %s)", rs, rd)
 	}
 	return nil
 }
