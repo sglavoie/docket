@@ -36,10 +36,10 @@ test:
     ./scripts/test_race.sh
 
 # Run tests outside internal/tui without the race detector (fast inner loop).
-# internal/storage's sync fault suite alone runs several minutes on macOS, so
-# this takes test_race.sh's 20m deadline rather than go test's default 10m.
+# -short skips the seeded sync fault histories, which run for minutes; the
+# 20m deadline matches test_race.sh's for the sync suites that remain.
 test-fast:
-    go test -timeout=20m $(go list ./... | grep -v /internal/tui)
+    go test -short -timeout=20m $(go list ./... | grep -v /internal/tui)
 
 # Run one package's tests with the race detector, e.g. `just test-pkg ./cmd`
 test-pkg PKG:

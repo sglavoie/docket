@@ -620,7 +620,6 @@ verify_session_7() {
 		conflicting_resolutions ordinary_edit_keeps_conflict_open crash_restart)
 	local required=(
 		TestSyncFaultScenarios
-		TestSyncFaultPropertiesConverge
 		TestSyncFaultSeedsReplayDeterministically
 		TestSyncFaultSeedsReplayDeterministically/run_1
 		TestSyncFaultSeedsReplayDeterministically/run_2
@@ -631,7 +630,7 @@ verify_session_7() {
 		required+=("TestSyncFaultScenarios/$name")
 	done
 	for seed in 1 2 3 4 5 6; do
-		required+=("TestSyncFaultPropertiesConverge/seed_$seed")
+		required+=("TestSyncFaultPropertiesConvergeSeed$seed")
 	done
 	run_go_suite fault ./internal/storage/ '^TestSyncFault' "${required[@]}"
 
@@ -648,14 +647,17 @@ verify_session_7() {
 
 	# A seed replays exactly in a fresh process: the same summary, transaction
 	# for transaction and fault for fault.
-	TT_SYNC_FAULT_SEED=3 run_go_suite fault-replay ./internal/storage/ '^TestSyncFaultPropertiesConverge$' \
-		TestSyncFaultPropertiesConverge/seed_3
+	TT_SYNC_FAULT_SEED=3 run_go_suite fault-replay ./internal/storage/ '^TestSyncFaultPropertiesConvergeSeed3$' \
+		TestSyncFaultPropertiesConvergeSeed3
 	local first replayed
 	first=$(grep -Eo 'seed 3: .*' "$work_dir/fault.log")
 	replayed=$(grep -Eo 'seed 3: .*' "$work_dir/fault-replay.log")
 	[ -n "$first" ] || fail "fault: seed 3 logged no summary"
 	[ "$first" = "$replayed" ] || fail "fault: replaying seed 3 diverged: '$first' vs '$replayed'"
-	if grep -Fq -- '--- PASS: TestSyncFaultPropertiesConverge/seed_1 (' "$work_dir/fault-replay.log"; then
+	# Every other seed's test steps aside for the one being replayed.
+	TT_SYNC_FAULT_SEED=3 go test -count=1 -v -run '^TestSyncFaultPropertiesConvergeSeed1$' ./internal/storage/ \
+		>"$work_dir/fault-select.log" 2>&1 || fail "fault: selecting seed 3 failed seed 1's test"
+	if ! grep -Fq -- '--- SKIP: TestSyncFaultPropertiesConvergeSeed1 (' "$work_dir/fault-select.log"; then
 		fail "fault: TT_SYNC_FAULT_SEED did not select one seed"
 	fi
 

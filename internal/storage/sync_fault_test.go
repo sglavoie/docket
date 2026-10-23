@@ -291,21 +291,36 @@ func faultCrashRestart(t *testing.T, devices []string) {
 	requireStat(s, "crashes", "restarts")
 }
 
-// TestSyncFaultPropertiesConverge runs seeded histories with every fault at
-// once: delays, duplicates, reordering, truncated and corrupted manifests,
-// lagging and damaged blobs, crashes at every journal point, restarts, and
-// devices going offline for stretches. Each seed must converge on every
-// device and genesis observer, preserve every unresolved user write, ignore
-// redelivery, and keep each commit atomic. Set TT_SYNC_FAULT_SEED to replay one
-// seed.
-func TestSyncFaultPropertiesConverge(t *testing.T) {
-	seeds := []int64{1, 2, 3, 4, 5, 6}
+// The TestSyncFaultPropertiesConvergeSeed tests run seeded histories with
+// every fault at once: delays, duplicates, reordering, truncated and corrupted
+// manifests, lagging and damaged blobs, crashes at every journal point,
+// restarts, and devices going offline for stretches. Each seed must converge
+// on every device and genesis observer, preserve every unresolved user write,
+// ignore redelivery, and keep each commit atomic.
+//
+// Each seed is its own top-level test, so test_sharded.sh deals them to
+// separate processes; they cannot share one, since newFaultSim seeds the
+// process-wide uuid source. Together they run for minutes, so -short skips
+// them. Set TT_SYNC_FAULT_SEED to replay one seed: every other seed skips.
+func TestSyncFaultPropertiesConvergeSeed1(t *testing.T) { faultPropertiesConverge(t, 1) }
+func TestSyncFaultPropertiesConvergeSeed2(t *testing.T) { faultPropertiesConverge(t, 2) }
+func TestSyncFaultPropertiesConvergeSeed3(t *testing.T) { faultPropertiesConverge(t, 3) }
+func TestSyncFaultPropertiesConvergeSeed4(t *testing.T) { faultPropertiesConverge(t, 4) }
+func TestSyncFaultPropertiesConvergeSeed5(t *testing.T) { faultPropertiesConverge(t, 5) }
+func TestSyncFaultPropertiesConvergeSeed6(t *testing.T) { faultPropertiesConverge(t, 6) }
+
+func faultPropertiesConverge(t *testing.T, seed int64) {
+	if testing.Short() {
+		t.Skip("seeded fault histories run for minutes; skipped under -short")
+	}
 	if raw := os.Getenv(faultSeedEnv); raw != "" {
-		seed, err := strconv.ParseInt(raw, 10, 64)
+		replay, err := strconv.ParseInt(raw, 10, 64)
 		if err != nil {
 			t.Fatalf("%s=%q: %v", faultSeedEnv, raw, err)
 		}
-		seeds = []int64{seed}
+		if replay != seed {
+			t.Skipf("%s=%d selects another seed", faultSeedEnv, replay)
+		}
 	}
 	cfg := faultConfig{
 		MaxDelay:    4,
@@ -318,16 +333,12 @@ func TestSyncFaultPropertiesConverge(t *testing.T) {
 		Restart:     0.05,
 		Offline:     0.06,
 	}
-	for _, seed := range seeds {
-		t.Run(fmt.Sprintf("seed_%d", seed), func(t *testing.T) {
-			s := newFaultSim(t, "properties", seed, cfg, "device-a", "device-b", "device-c")
-			for step := 0; step < 60; step++ {
-				s.randomStep()
-			}
-			conflicts := s.finish(2)
-			t.Logf("seed %d: %d transactions, %d open conflicts; %s", seed, len(s.ex.order), len(conflicts), s.summary())
-		})
+	s := newFaultSim(t, "properties", seed, cfg, "device-a", "device-b", "device-c")
+	for step := 0; step < 60; step++ {
+		s.randomStep()
 	}
+	conflicts := s.finish(2)
+	t.Logf("seed %d: %d transactions, %d open conflicts; %s", seed, len(s.ex.order), len(conflicts), s.summary())
 }
 
 // TestSyncFaultSeedsReplayDeterministically runs one seed twice and requires
