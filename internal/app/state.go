@@ -2,9 +2,10 @@ package app
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
-	"github.com/charmbracelet/x/ansi"
+	"github.com/rivo/uniseg"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -68,14 +69,28 @@ func stateChangeUndoContext(ref TaskRef, target models.WorkflowState) string {
 }
 
 // fitStateChangeTitle cuts title to stateChangeTitleWidth terminal columns, its
-// last one an ellipsis, exactly as the TUI's TruncateToVisualWidth does, so a
-// wide CJK or emoji title takes the columns the check-in note gives it rather
-// than a rune count those columns cannot hold.
+// last one an ellipsis, as the TUI's TruncateToVisualWidth does, so a wide CJK
+// or emoji title takes the columns the check-in note gives it rather than a
+// rune count those columns cannot hold. It measures grapheme clusters with
+// uniseg, the width table the TUI's terminal stack is built on, since the
+// runtime may not link that stack itself.
 func fitStateChangeTitle(title string) string {
-	if ansi.StringWidth(title) <= stateChangeTitleWidth {
+	if uniseg.StringWidth(title) <= stateChangeTitleWidth {
 		return title
 	}
-	return ansi.Truncate(title, stateChangeTitleWidth-1, "") + "…"
+	var kept strings.Builder
+	width, state := 0, -1
+	for rest := title; rest != ""; {
+		var cluster string
+		var clusterWidth int
+		cluster, rest, clusterWidth, state = uniseg.FirstGraphemeClusterInString(rest, state)
+		if width+clusterWidth > stateChangeTitleWidth-1 {
+			break
+		}
+		kept.WriteString(cluster)
+		width += clusterWidth
+	}
+	return kept.String() + "…"
 }
 
 // stateChangeTitleWidth matches the width the check-in note gives a title.
