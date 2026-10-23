@@ -151,7 +151,7 @@ func (r *Runtime) SyncExchange(opts SyncExchangeOptions) (*syncexchange.FolderRe
 			return nil, err
 		}
 		if record == nil || record.ExchangeFolder == "" {
-			return nil, fmt.Errorf("this device has no exchange folder configured; run 'tt sync exchange --folder DIR'")
+			return nil, fmt.Errorf("this device has no exchange folder configured; run 'tt sync exchange --exchange DIR'")
 		}
 		folder = record.ExchangeFolder
 	}

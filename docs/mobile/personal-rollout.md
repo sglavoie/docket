@@ -231,7 +231,7 @@ the conflict in the sync sheet and choose. Resolving on one device reaches the
 other at the next exchange.
 
 To report a problem, export diagnostics from both devices. On the Mac, run
-`tt sync diagnostics --output FILE`. On the iPhone, open the sync sheet and tap
+`tt sync diagnostics --file FILE`. On the iPhone, open the sync sheet and tap
 **Export Diagnostics** under Recovery, then **Share Diagnostics**. Both name
 files, devices, and digests, but no task or note text. When both devices show
 the same `workspace_digest`, they hold the same synced files.

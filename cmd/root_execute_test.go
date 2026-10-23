@@ -149,6 +149,10 @@ func TestStrayArgumentsAreRefusedByName(t *testing.T) {
 		{[]string{"conflict", "list", "extra"}, []string{`tt conflict list takes no arguments; got "extra"`}},
 		{[]string{"workspace", "location", "extra"}, []string{`tt workspace location takes no arguments; got "extra"`}},
 		{[]string{"conflict", "show"}, []string{"tt conflict show requires a conflict ID"}},
+		{[]string{"sync", "resolve"}, []string{"tt sync resolve requires a conflict ID", "Run 'tt sync resolve --help' for usage"}},
+		{[]string{"sync", "conflicts", "a", "b"}, []string{"tt sync conflicts takes at most one conflict ID; got 2 arguments"}},
+		{[]string{"sync", "resolve", "3f2a"}, []string{"choose a resolution: --version N, --current, or --file PATH", "Run 'tt sync resolve --help' for usage"}},
+		{[]string{"sync", "resolve", "3f2a", "--current", "--version", "2"}, []string{"--version and --current cannot be combined; choose one"}},
 		{[]string{"doctor", "--bogus"}, []string{"unknown flag: --bogus", "Run 'tt doctor --help' for usage"}},
 	} {
 		t.Run(strings.Join(tc.args, "_"), func(t *testing.T) {
@@ -160,6 +164,7 @@ func TestStrayArgumentsAreRefusedByName(t *testing.T) {
 				rootCmd.SetArgs(nil)
 				rootCmd.SetOut(nil)
 				rootCmd.SetErr(nil)
+				resetSyncResolveFlags(t)
 			})
 
 			err := executeCommand(rootCmd)
@@ -178,10 +183,23 @@ func TestStrayArgumentsAreRefusedByName(t *testing.T) {
 	}
 }
 
+// resetSyncResolveFlags clears what a parsed sync resolve left on the shared
+// command, so a later row's choice is judged on its own flags.
+func resetSyncResolveFlags(t *testing.T) {
+	t.Helper()
+	for _, name := range syncResolveChoiceFlags {
+		flag := syncResolveCmd.Flags().Lookup(name)
+		if err := flag.Value.Set(flag.DefValue); err != nil {
+			t.Fatalf("reset --%s: %v", name, err)
+		}
+		flag.Changed = false
+	}
+}
+
 // TestNoArgLeafCommandsCompleteNoFiles keeps Tab from offering file names to a
-// command that takes no arguments.
+// command that takes no file argument.
 func TestNoArgLeafCommandsCompleteNoFiles(t *testing.T) {
-	for _, command := range []*cobra.Command{doctorCmd, conflictListCmd, workspaceLocationCmd} {
+	for _, command := range []*cobra.Command{doctorCmd, conflictListCmd, workspaceLocationCmd, syncConflictsCmd, syncResolveCmd} {
 		if command.ValidArgsFunction == nil {
 			t.Errorf("%s has no ValidArgsFunction", command.CommandPath())
 			continue

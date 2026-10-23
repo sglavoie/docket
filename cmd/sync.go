@@ -100,9 +100,9 @@ import what other devices published. Content that iCloud has not downloaded
 yet is reported as unavailable and fetched on a later pass; nothing is ever
 deleted because a file is missing.
 
---folder points this device at a different exchange folder from now on.`,
+--exchange points this device at a different exchange folder from now on.`,
 	Example: `  tt sync exchange
-  tt sync exchange --folder ~/Library/Mobile\ Documents/com~apple~CloudDocs/tt-exchange`,
+  tt sync exchange --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/tt-exchange`,
 	Args: noArgs,
 	RunE: runSyncExchange,
 }
@@ -126,7 +126,12 @@ func init() {
 	syncEnrollCmd.Flags().BoolVarP(&syncForce, "force", "f", false, "skip the confirmation prompt only")
 	syncJoinCmd.Flags().StringVar(&syncExchangeFolder, "exchange", "", "the exchange folder the enrolling device published to (required)")
 	syncJoinCmd.Flags().StringVar(&syncWorkingCopy, "working-copy", "", "new local directory for this device's working copy (required)")
+	syncExchangeCmd.Flags().StringVar(&syncExchangeFolder, "exchange", "", "use, and remember, this exchange folder")
+	// --folder is the flag's earlier name, kept so existing scripts still run.
 	syncExchangeCmd.Flags().StringVar(&syncExchangeFolder, "folder", "", "use, and remember, this exchange folder")
+	_ = syncExchangeCmd.Flags().MarkHidden("folder")
+	syncExchangeCmd.MarkFlagsMutuallyExclusive("exchange", "folder")
+	_ = syncExchangeCmd.MarkFlagDirname("exchange")
 	for _, command := range []*cobra.Command{syncStatusCmd, syncExchangeCmd, syncDoctorCmd} {
 		command.Flags().BoolVar(&syncJSON, "json", false, "print the result as JSON")
 	}
@@ -406,7 +411,7 @@ func diagnoseSync(rt *engine.Runtime) ([]syncFinding, error) {
 	record := status.Enrollment
 	switch {
 	case record == nil || record.ExchangeFolder == "":
-		findings = append(findings, issue("exchange", "no exchange folder is configured; run 'tt sync exchange --folder DIR'"))
+		findings = append(findings, issue("exchange", "no exchange folder is configured; run 'tt sync exchange --exchange DIR'"))
 	default:
 		findings = append(findings, diagnoseExchangeFolder(record.ExchangeFolder, status.WorkspaceID))
 	}

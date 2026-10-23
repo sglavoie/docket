@@ -508,7 +508,7 @@ file. A resolution is a new change that reaches your other devices at the next
 exchange, and the iPhone resolves the same conflicts the same way. If the
 conflict changed after you read it — another device resolved it, or an edit
 landed — the resolution is refused and writes nothing; read it again and
-choose. `tt sync diagnostics --output FILE` writes what to share when sync
+choose. `tt sync diagnostics --file FILE` writes what to share when sync
 misbehaves: status, the last exchange and its error, the unpublished work, and
 the conflicts' files, devices, and digests, without task or note content.
 

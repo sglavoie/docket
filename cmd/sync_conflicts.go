@@ -33,8 +33,11 @@ ID is a conflict id or any unique prefix of it.`,
 	Example: `  tt sync conflicts
   tt sync conflicts 3f2a9c
   tt sync conflicts --json`,
-	Args: cobra.MaximumNArgs(1),
-	RunE: runSyncConflicts,
+	Args: atMostOneArg("conflict ID"),
+	// Deriving the open conflicts replays the whole sync history, too costly
+	// for a Tab press, so completion offers nothing rather than file names.
+	ValidArgsFunction: cobra.NoFileCompletions,
+	RunE:              runSyncConflicts,
 }
 
 var syncResolveCmd = &cobra.Command{
@@ -52,12 +55,18 @@ for tasks or a note; it is checked the way tt reads that file.
 
 The conflict must still be the one you read: if another device resolved it or
 an edit changed it since, nothing is written and the refusal says so. Re-read
-it and choose again; every version is still kept.`,
+it and choose again; every version is still kept.
+
+This is not 'tt conflict resolve', which settles a local merge conflict
+between this machine's edits and the file on disk with --use local|remote|file.
+A sync conflict instead holds numbered versions from several devices, so it is
+resolved by naming one.`,
 	Example: `  tt sync resolve 3f2a9c --version 2
   tt sync resolve 3f2a9c --current
   tt sync resolve 3f2a9c --file merged-tasks.md`,
-	Args: cobra.ExactArgs(1),
-	RunE: runSyncResolve,
+	Args:              syncResolveArgs,
+	ValidArgsFunction: cobra.NoFileCompletions,
+	RunE:              runSyncResolve,
 }
 
 var syncDiagnosticsCmd = &cobra.Command{
@@ -68,7 +77,7 @@ exchange (including any transport error), the transactions waiting to
 publish, and each open conflict's files, devices, and digests. It names files
 and devices but holds no task or note content. Nothing is changed.`,
 	Example: `  tt sync diagnostics
-  tt sync diagnostics --output ~/Desktop/tt-sync-diagnostics.json`,
+  tt sync diagnostics --file ~/Desktop/tt-sync-diagnostics.json`,
 	Args: noArgs,
 	RunE: runSyncDiagnostics,
 }
@@ -80,9 +89,12 @@ func init() {
 	syncResolveCmd.Flags().IntVar(&syncResolveVersion, "version", 0, "keep competing version N (numbered from 1)")
 	syncResolveCmd.Flags().BoolVar(&syncResolveCurrent, "current", false, "keep what the workspace holds now")
 	syncResolveCmd.Flags().StringVar(&syncResolveFile, "file", "", "write this file's text as the resolution")
-	syncResolveCmd.MarkFlagsMutuallyExclusive("version", "current", "file")
-	syncResolveCmd.MarkFlagsOneRequired("version", "current", "file")
-	syncDiagnosticsCmd.Flags().StringVarP(&syncDiagnosticsOut, "output", "o", "", "write to this file instead of standard output")
+	syncDiagnosticsCmd.Flags().StringVarP(&syncDiagnosticsOut, "file", "o", "", "write to this file instead of standard output")
+	// --output is the flag's earlier name, kept so existing scripts still run;
+	// --file is the spelling project export uses for the same thing.
+	syncDiagnosticsCmd.Flags().StringVar(&syncDiagnosticsOut, "output", "", "write to this file instead of standard output")
+	_ = syncDiagnosticsCmd.Flags().MarkHidden("output")
+	syncDiagnosticsCmd.MarkFlagsMutuallyExclusive("file", "output")
 }
 
 // openEnrolledRuntime opens the workspace and refuses one that is not enrolled.
@@ -215,6 +227,38 @@ func printConflictBody(content engine.ConflictContent) {
 			fmt.Println("  │ " + line)
 		}
 	}
+}
+
+// syncResolveChoiceFlags are the three ways to resolve a sync conflict, of
+// which exactly one must be given.
+var syncResolveChoiceFlags = []string{"version", "current", "file"}
+
+// validateSyncResolveChoice refuses anything but exactly one choice, spelling
+// the flags as typed; cobra's own flag-group errors drop the dashes and the
+// --help pointer.
+func validateSyncResolveChoice(cmd *cobra.Command) error {
+	var set []string
+	for _, name := range syncResolveChoiceFlags {
+		if cmd.Flags().Changed(name) {
+			set = append(set, "--"+name)
+		}
+	}
+	switch len(set) {
+	case 0:
+		return usageRefusal(cmd, fmt.Errorf("choose a resolution: --version N, --current, or --file PATH"))
+	case 1:
+		return nil
+	}
+	return usageRefusal(cmd, fmt.Errorf("%s cannot be combined; choose one", strings.Join(set, " and ")))
+}
+
+// syncResolveArgs checks the conflict ID and the choice before anything is
+// opened; cobra has parsed the flags by the time it validates arguments.
+func syncResolveArgs(cmd *cobra.Command, args []string) error {
+	if err := exactlyOneArg("conflict ID")(cmd, args); err != nil {
+		return err
+	}
+	return validateSyncResolveChoice(cmd)
 }
 
 func runSyncResolve(_ *cobra.Command, args []string) error {

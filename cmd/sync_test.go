@@ -112,11 +112,11 @@ func TestSyncCommands(t *testing.T) {
 		syncExchangeFolder = fixture.exchange + "-moved"
 		stdout, _, err = captureDoctorOutput(t, func() error { return runSyncExchange(nil, nil) })
 		if err != nil {
-			t.Fatalf("exchange --folder: %v\n%s", err, stdout)
+			t.Fatalf("exchange --exchange: %v\n%s", err, stdout)
 		}
 		record, err := config.LoadEnrollmentRecord(fixture.workingCopy)
 		if err != nil || record.ExchangeFolder != fixture.exchange+"-moved" {
-			t.Fatalf("exchange --folder did not repoint the device: %+v, %v", record, err)
+			t.Fatalf("exchange --exchange did not repoint the device: %+v, %v", record, err)
 		}
 	})
 
