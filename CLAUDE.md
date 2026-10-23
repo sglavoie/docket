@@ -999,7 +999,7 @@ stay unimplemented. Multiline capture validates every nonblank line before
 committing one transaction.
 
 - Reparenting is edit-only (`>parent`, `>0`, `<child`), applied as one
-  `ApplyParentAssignments` batch so cycles and depth are measured on the graph
+  `ApplyParentAssignmentsAt` batch so cycles and depth are measured on the graph
   the edit produces. `%project` also routes on capture.
 - Inline `e` and the `Ctrl+E` title share `ParseQuickEdit`, which reads that
   title only when it changed. A refusal reopens the buffer; saving it unchanged

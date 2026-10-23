@@ -13,7 +13,7 @@ type ParentAssignment struct {
 	Parent *Task
 }
 
-// ApplyParentAssignments validates every requested parent edge against the one
+// ApplyParentAssignmentsAt validates every requested parent edge against the one
 // hierarchy the whole batch would produce, then applies it atomically. Repeated
 // assignments naming the same parent for a task collapse to the first; two
 // assignments naming different parents for one task are rejected. Because
@@ -22,8 +22,9 @@ type ParentAssignment struct {
 // accepted. A rejected batch mutates nothing.
 //
 // Returns the number of tasks whose parent actually changed. Project task order
-// is never touched, so ordering stays with the caller.
-func (p *Project) ApplyParentAssignments(assignments []ParentAssignment) (int, error) {
+// is never touched, so ordering stays with the caller. now is the touch time
+// written to every task whose parent changed.
+func (p *Project) ApplyParentAssignmentsAt(assignments []ParentAssignment, now time.Time) (int, error) {
 	if p == nil {
 		return 0, fmt.Errorf("project is nil")
 	}
@@ -84,7 +85,6 @@ func (p *Project) ApplyParentAssignments(assignments []ParentAssignment) (int, e
 	}
 
 	changed := 0
-	now := time.Now()
 	for _, request := range requests {
 		if taskHasParent(request.Task, request.Parent) {
 			continue

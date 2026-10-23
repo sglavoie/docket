@@ -2,6 +2,7 @@ package tui
 
 import (
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/capturetext"
 	"github.com/sglavoie/tt/internal/models"
@@ -97,7 +98,7 @@ func reopenChildThroughWorkflow(t *testing.T, project *models.Project, childID s
 			t.Fatalf("ApplyStateTransition(ready): %v", err)
 		}
 	})
-	project.ReconcileParentCompletion()
+	project.ReconcileParentCompletionAt(time.Now())
 	project.ReorderRootTasksByCompletion()
 
 	if err := storage.SaveProject(project); err != nil {
@@ -135,7 +136,7 @@ func TestReopenThenOutdentKeepsParentVisible(t *testing.T) {
 	if ok, reason := child.CanOutdent(); !ok {
 		t.Fatalf("expected outdent of child to be allowed: %s", reason)
 	}
-	if err := project.OutdentTask(child); err != nil {
+	if err := project.OutdentTaskAt(child, time.Now()); err != nil {
 		t.Fatalf("outdent child: %v", err)
 	}
 

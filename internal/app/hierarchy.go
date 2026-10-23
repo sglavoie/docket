@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -27,7 +28,7 @@ func resolveChildParent(project *models.Project, parentID string) (*models.Task,
 // a caller that already deduplicated aliases and one that did not produce the
 // same edge set. Depth and cycles are deliberately not checked here: an adopted
 // child is only legal in combination with the new task's own parent edge, which
-// the single ApplyParentAssignments call validates as one graph.
+// the single ApplyParentAssignmentsAt call validates as one graph.
 func resolveAdoptedChildren(project *models.Project, childIDs []string) ([]*models.Task, error) {
 	if len(childIDs) == 0 {
 		return nil, nil
@@ -61,7 +62,7 @@ func resolveAdoptedChildren(project *models.Project, childIDs []string) ([]*mode
 func (s *Service) Reparent(locator TaskLocator, newParentID *string) (TaskResult, error) {
 	return s.mutateHierarchyTaskSelection(locator, "Reparent Task", func(ref TaskRef) error {
 		if newParentID == nil {
-			if err := ref.Project.ReparentTask(ref.Task, nil); err != nil {
+			if err := ref.Project.ReparentTaskAt(ref.Task, nil, s.clock.Now()); err != nil {
 				return invalidInput("parent", err.Error())
 			}
 			return nil
@@ -77,7 +78,7 @@ func (s *Service) Reparent(locator TaskLocator, newParentID *string) (TaskResult
 		if parent == nil {
 			return fmt.Errorf("%w: parent %s", ErrTaskNotFound, parentID)
 		}
-		if err := ref.Project.ReparentTask(ref.Task, parent); err != nil {
+		if err := ref.Project.ReparentTaskAt(ref.Task, parent, s.clock.Now()); err != nil {
 			return invalidInput("parent", err.Error())
 		}
 		return nil
@@ -101,7 +102,7 @@ func (s *Service) MoveTaskUp(locator TaskLocator) (TaskResult, error) {
 		if t.IsRoot() && t.IsComplete() && !siblings[idx-1].IsComplete() {
 			return invalidInput("order", "cannot move completed task above uncompleted task")
 		}
-		return ref.Project.MoveTaskUp(t)
+		return ref.Project.MoveTaskUpAt(t, s.clock.Now())
 	})
 }
 
@@ -120,7 +121,7 @@ func (s *Service) MoveTaskDown(locator TaskLocator) (TaskResult, error) {
 		if t.IsRoot() && !t.IsComplete() && siblings[idx+1].IsComplete() {
 			return invalidInput("order", "cannot move uncompleted task below completed task")
 		}
-		return ref.Project.MoveTaskDown(t)
+		return ref.Project.MoveTaskDownAt(t, s.clock.Now())
 	})
 }
 
@@ -135,7 +136,7 @@ func (s *Service) MoveTaskDown(locator TaskLocator) (TaskResult, error) {
 // reconcile that before migrating.
 func (s *Service) MoveTaskToTop(locator TaskLocator) (TaskResult, error) {
 	return s.mutateHierarchyTaskSelection(locator, "Move to Top", func(ref TaskRef) error {
-		moveTaskToSiblingEdge(ref.Project, ref.Task, true)
+		moveTaskToSiblingEdge(ref.Project, ref.Task, true, s.clock.Now())
 		return nil
 	})
 }
@@ -145,17 +146,17 @@ func (s *Service) MoveTaskToTop(locator TaskLocator) (TaskResult, error) {
 // (an uncompleted root cannot cross below a completed sibling).
 func (s *Service) MoveTaskToBottom(locator TaskLocator) (TaskResult, error) {
 	return s.mutateHierarchyTaskSelection(locator, "Move to Bottom", func(ref TaskRef) error {
-		moveTaskToSiblingEdge(ref.Project, ref.Task, false)
+		moveTaskToSiblingEdge(ref.Project, ref.Task, false, s.clock.Now())
 		return nil
 	})
 }
 
 // moveTaskToSiblingEdge bubbles task toward the top (toTop) or bottom of its
 // model-order siblings via repeated single-step model swaps, delegating the root
-// completion boundary entirely to Project.MoveTaskUp/MoveTaskDown (each is a
+// completion boundary entirely to Project.MoveTaskUpAt/MoveTaskDownAt (each is a
 // silent no-op at a boundary or edge). The loop terminates on the first swap that
 // does not change the task's sibling index — the edge or the boundary.
-func moveTaskToSiblingEdge(project *models.Project, task *models.Task, toTop bool) {
+func moveTaskToSiblingEdge(project *models.Project, task *models.Task, toTop bool, now time.Time) {
 	for {
 		before := project.FindSiblingIndex(task)
 		if before < 0 {
@@ -165,12 +166,12 @@ func moveTaskToSiblingEdge(project *models.Project, task *models.Task, toTop boo
 			if before == 0 {
 				return
 			}
-			_ = project.MoveTaskUp(task)
+			_ = project.MoveTaskUpAt(task, now)
 		} else {
 			if before >= len(project.GetSiblings(task))-1 {
 				return
 			}
-			_ = project.MoveTaskDown(task)
+			_ = project.MoveTaskDownAt(task, now)
 		}
 		if after := project.FindSiblingIndex(task); after == before {
 			return
@@ -195,7 +196,7 @@ func (s *Service) IndentTask(locator TaskLocator) (TaskResult, error) {
 		if ok, reason := t.CanIndent(targetParent); !ok {
 			return invalidInput("indent", reason)
 		}
-		if err := ref.Project.IndentTask(t); err != nil {
+		if err := ref.Project.IndentTaskAt(t, s.clock.Now()); err != nil {
 			return invalidInput("indent", err.Error())
 		}
 		return nil
@@ -212,7 +213,7 @@ func (s *Service) OutdentTask(locator TaskLocator) (TaskResult, error) {
 		if ok, reason := t.CanOutdent(); !ok {
 			return invalidInput("outdent", reason)
 		}
-		if err := ref.Project.OutdentTask(t); err != nil {
+		if err := ref.Project.OutdentTaskAt(t, s.clock.Now()); err != nil {
 			return invalidInput("outdent", err.Error())
 		}
 		return nil
@@ -239,7 +240,7 @@ func (s *Service) ReorderSiblingTasks(taskLocator, targetLocator TaskLocator) (T
 	}
 
 	backup := captureHierarchyProject(ref.Project)
-	if swapErr := ref.Project.SwapSiblingTasks(ref.Task, target.Task); swapErr != nil {
+	if swapErr := ref.Project.SwapSiblingTasksAt(ref.Task, target.Task, s.clock.Now()); swapErr != nil {
 		backup.restore()
 		return TaskResult{}, invalidInput("order", swapErr.Error())
 	}
@@ -289,7 +290,7 @@ func (s *Service) ReorderSiblingOrder(moved TaskLocator, order []TaskLocator) (T
 	}
 
 	backup := captureHierarchyProject(ref.Project)
-	if reorderErr := ref.Project.ReorderSiblingTasks(tasks); reorderErr != nil {
+	if reorderErr := ref.Project.ReorderSiblingTasksAt(tasks, s.clock.Now()); reorderErr != nil {
 		backup.restore()
 		return TaskResult{}, invalidInput("order", reorderErr.Error())
 	}
@@ -373,15 +374,15 @@ type crossProjectSubtreeMove struct {
 // moveTaskSubtreeBetweenProjects performs the in-memory portion of a
 // cross-project move. Callers own rollback until their grouped commit succeeds.
 // An optional destination parent is applied only after the complete subtree is
-// present in the destination, so ReparentTask can validate the final depth and
+// present in the destination, so ReparentTaskAt can validate the final depth and
 // canonical ownership before either project document is committed.
-func moveTaskSubtreeBetweenProjects(source *models.Project, task *models.Task, destination *models.Project, parent *models.Task) (crossProjectSubtreeMove, error) {
+func moveTaskSubtreeBetweenProjects(source *models.Project, task *models.Task, destination *models.Project, parent *models.Task, now time.Time) (crossProjectSubtreeMove, error) {
 	moveResult, err := source.MoveTaskToProject(task, destination)
 	if err != nil {
 		return crossProjectSubtreeMove{}, err
 	}
 	if parent != nil {
-		if err := destination.ReparentTask(task, parent); err != nil {
+		if err := destination.ReparentTaskAt(task, parent, now); err != nil {
 			return crossProjectSubtreeMove{}, err
 		}
 	}

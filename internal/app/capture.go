@@ -153,7 +153,7 @@ func (s *Service) Capture(req CaptureRequest) (TaskResult, error) {
 		return TaskResult{}, err
 	}
 	insertCapturedTask(project, task, req.Prepend)
-	if edgeErr := applyCapturedTaskEdges(project, task, prepared); edgeErr != nil {
+	if edgeErr := applyCapturedTaskEdges(project, task, prepared, s.clock.Now()); edgeErr != nil {
 		return TaskResult{}, edgeErr
 	}
 	if guardErr := captureDestinationChildrenGuard(project, task, prepared); guardErr != nil {
@@ -290,7 +290,7 @@ func (s *Service) captureMany(reqs []CaptureRequest, creation ProjectCreation) (
 	// Every new task is in its project before any edge is applied, so an adopted
 	// child is validated against the batch's final task set.
 	for i, item := range items {
-		if edgeErr := applyCapturedTaskEdges(item.project, item.task, item.prepared); edgeErr != nil {
+		if edgeErr := applyCapturedTaskEdges(item.project, item.task, item.prepared, s.clock.Now()); edgeErr != nil {
 			return nil, captureRequestError(reqs[i], i, edgeErr)
 		}
 		if guardErr := captureDestinationChildrenGuard(item.project, item.task, item.prepared); guardErr != nil {

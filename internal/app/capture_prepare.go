@@ -130,7 +130,7 @@ func (s *Service) prepareCapturedTask(snap Snapshot, project *models.Project, re
 // hierarchy the capture actually produces rather than an intermediate one. With
 // no adopted children the parent edge is already set and already validated, so
 // the capture keeps the error vocabulary resolveChildParent produced.
-func applyCapturedTaskEdges(project *models.Project, task *models.Task, prepared preparedCapture) error {
+func applyCapturedTaskEdges(project *models.Project, task *models.Task, prepared preparedCapture, now time.Time) error {
 	if len(prepared.children) == 0 {
 		return nil
 	}
@@ -141,7 +141,7 @@ func applyCapturedTaskEdges(project *models.Project, task *models.Task, prepared
 	for _, child := range prepared.children {
 		assignments = append(assignments, models.ParentAssignment{Task: child, Parent: task})
 	}
-	if _, err := project.ApplyParentAssignments(assignments); err != nil {
+	if _, err := project.ApplyParentAssignmentsAt(assignments, now); err != nil {
 		return invalidInput("child", err.Error())
 	}
 	return nil

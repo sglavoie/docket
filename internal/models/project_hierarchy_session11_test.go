@@ -3,6 +3,7 @@ package models
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestReparentTaskRejectsSubtreePastMaximumDepthWithoutMutation(t *testing.T) {
@@ -34,7 +35,7 @@ func TestReparentTaskRejectsSubtreePastMaximumDepthWithoutMutation(t *testing.T)
 	project.Tasks = append(chain, moved, child)
 	project.BuildTaskTree()
 
-	err = project.ReparentTask(moved, chain[len(chain)-1])
+	err = project.ReparentTaskAt(moved, chain[len(chain)-1], time.Now())
 	if err == nil || !strings.Contains(err.Error(), "maximum nesting depth") {
 		t.Fatalf("ReparentTask error = %v, want nesting-depth rejection", err)
 	}
@@ -61,7 +62,7 @@ func TestReparentTaskRejectsParentOutsideProject(t *testing.T) {
 	}
 	project.Tasks = []*Task{task}
 
-	if err := project.ReparentTask(task, external); err == nil {
+	if err := project.ReparentTaskAt(task, external, time.Now()); err == nil {
 		t.Fatal("ReparentTask accepted a parent outside the project")
 	}
 	if task.ParentID != nil {
@@ -82,7 +83,7 @@ func TestSwapSiblingTasksRejectsDifferentParentGroups(t *testing.T) {
 	childB.ParentID = &parentB.ID
 	project.Tasks = []*Task{parentA, childA, parentB, childB}
 
-	if err := project.SwapSiblingTasks(childA, childB); err == nil {
+	if err := project.SwapSiblingTasksAt(childA, childB, time.Now()); err == nil {
 		t.Fatal("SwapSiblingTasks accepted tasks with different parents")
 	}
 	assertTaskIDSequence(t, "project.Tasks", project.Tasks, []string{"parent-a", "child-a", "parent-b", "child-b"})

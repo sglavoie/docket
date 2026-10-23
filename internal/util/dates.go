@@ -144,7 +144,7 @@ func ParseDeferInstantAt(input string, now time.Time) (time.Time, error) {
 	}); ok || err != nil {
 		return instant, err
 	}
-	return ParseRelativeDate(input)
+	return ParseRelativeDateWithConfigAt(input, "sun", now)
 }
 
 // ParseDeferInstant parses a deferral target relative to the current time.

@@ -480,7 +480,7 @@ application layer, and both must stay first-occurrence or the preview and the
 commit will disagree about order.
 
 Adoption keeps the flat `p.Tasks` order of every pre-existing task:
-`ApplyParentAssignments` never touches the slice, and
+`ApplyParentAssignmentsAt` never touches the slice, and
 `ReorderRootTasksByCompletion` is a stable partition that moves a task only when
 its root crosses the completed/uncompleted boundary. That hook deliberately does
 not gather each root's descendants into one contiguous run, because gathering

@@ -67,7 +67,7 @@ func TestMoveTaskUp_UpdatesBothTimestamps(t *testing.T) {
 	b.UpdatedAt = past
 	p.Tasks = []*Task{a, b}
 
-	if err := p.MoveTaskUp(b); err != nil {
+	if err := p.MoveTaskUpAt(b, time.Now()); err != nil {
 		t.Fatalf("MoveTaskUp: %v", err)
 	}
 	if p.Tasks[0].ID != "b" || p.Tasks[1].ID != "a" {
@@ -101,7 +101,7 @@ func TestMoveTaskDown_UpdatesBothTimestamps(t *testing.T) {
 	b.UpdatedAt = past
 	p.Tasks = []*Task{a, b}
 
-	if err := p.MoveTaskDown(a); err != nil {
+	if err := p.MoveTaskDownAt(a, time.Now()); err != nil {
 		t.Fatalf("MoveTaskDown: %v", err)
 	}
 	if p.Tasks[0].ID != "b" || p.Tasks[1].ID != "a" {
@@ -140,7 +140,7 @@ func TestSwapTasks_UpdatesBothTimestamps(t *testing.T) {
 	task2.UpdatedAt = stale
 	p.Tasks = []*Task{task1, task2}
 
-	p.SwapTasks(task1, task2)
+	p.SwapSiblingTasksAt(task1, task2, time.Now())
 
 	if task1.UpdatedAt.Equal(stale) {
 		t.Error("task1.UpdatedAt should be refreshed after swap")
