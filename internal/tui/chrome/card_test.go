@@ -130,3 +130,23 @@ func TestFitOverlayTitleSpendsEveryColumnOnTheSubject(t *testing.T) {
 		t.Fatalf("no subject = %q, want the bare title", got)
 	}
 }
+
+// TestTruncateAndPadUsesTheSharedEllipsis keeps a clipped card line on the
+// one-column "…" every other fitted surface draws, at exactly maxWidth.
+func TestTruncateAndPadUsesTheSharedEllipsis(t *testing.T) {
+	for _, tc := range []struct {
+		line  string
+		width int
+		want  string
+	}{
+		{line: "short", width: 8, want: "short   "},
+		{line: "exactly8", width: 8, want: "exactly8"},
+		{line: "much too long", width: 8, want: "much to…"},
+		{line: "日本語の題名", width: 8, want: "日本語… "},
+	} {
+		got := TruncateAndPad(tc.line, tc.width)
+		if got != tc.want || lipgloss.Width(got) != tc.width || strings.Contains(got, "...") {
+			t.Fatalf("TruncateAndPad(%q, %d) = %q, want %q", tc.line, tc.width, got, tc.want)
+		}
+	}
+}

@@ -198,7 +198,7 @@ func recoveredDraftExcerpt(text string, width, maxRows int) []string {
 	}
 	tail := rows[len(rows)-(maxRows-headRows-1):]
 	excerpt := append([]string{}, rows[:headRows]...)
-	excerpt = append(excerpt, fmt.Sprintf("... %s more ...", util.Count(len(rows)-headRows-len(tail), "line")))
+	excerpt = append(excerpt, fmt.Sprintf("… %s more …", util.Count(len(rows)-headRows-len(tail), "line")))
 	return append(excerpt, tail...)
 }
 

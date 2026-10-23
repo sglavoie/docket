@@ -35,7 +35,7 @@ func TestCommentPreviewCountsTheRemainderInAgreement(t *testing.T) {
 	if rendered != 4 {
 		t.Fatalf("fixture renders %d lines, want 4", rendered)
 	}
-	if !strings.Contains(preview, "(2 more lines, press Enter to expand)") || strings.Contains(preview, "bravo") {
+	if !strings.Contains(preview, "… (2 more lines, press Enter to expand)") || strings.Contains(preview, "...") || strings.Contains(preview, "bravo") {
 		t.Fatalf("four-line preview:\n%s", preview)
 	}
 }

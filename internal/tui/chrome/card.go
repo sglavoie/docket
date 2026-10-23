@@ -10,7 +10,7 @@ import (
 )
 
 // TruncateAndPad truncates a line to exactly maxWidth visual characters,
-// padding with spaces if shorter, truncating with "..." if longer.
+// padding with spaces if shorter, truncating with "…" if longer.
 func TruncateAndPad(line string, maxWidth int) string {
 	if maxWidth < 4 {
 		maxWidth = 4
@@ -27,12 +27,10 @@ func TruncateAndPad(line string, maxWidth int) string {
 		return line + strings.Repeat(" ", maxWidth-visualWidth)
 	}
 
-	// Truncate - dense card content is allowed to clip, so use the intentional
-	// ANSI-aware audited helper.
-	truncated := textfit.TruncateIntentional(line, maxWidth-3, "")
-	truncatedWidth := lipgloss.Width(truncated)
-	// Add ellipsis and pad to exact width
-	return truncated + "..." + strings.Repeat(" ", maxWidth-truncatedWidth-3)
+	// Truncate with the shared ellipsis, then pad: a wide rune the cut could not
+	// split leaves the result a column short of maxWidth.
+	truncated := textfit.TruncateToVisualWidth(line, maxWidth)
+	return truncated + strings.Repeat(" ", maxWidth-lipgloss.Width(truncated))
 }
 
 // overlayTitlePartFloor is the fewest columns a subject or a shortened title is

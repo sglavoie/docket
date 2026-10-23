@@ -228,7 +228,7 @@ func (m *CommentsModel) renderCommentsList(b *strings.Builder, availableRows int
 	if len(m.entries) > maxVisible {
 		remaining := len(m.entries) - scrollOffset - maxVisible
 		if remaining > 0 {
-			b.WriteString(theme.MutedStyle.Render(fmt.Sprintf("  ... and %d more (use j/k to scroll)", remaining)))
+			b.WriteString(theme.MutedStyle.Render(fmt.Sprintf("  … and %d more (use j/k to scroll)", remaining)))
 			b.WriteString("\n")
 		}
 	}
@@ -321,7 +321,7 @@ func renderCommentPreview(entry *strings.Builder, text string, maxLen int) {
 	renderedLines := strings.Split(textfit.RenderMarkdown(text, maxLen), "\n")
 	for j, line := range renderedLines {
 		if j > 1 && len(renderedLines) > 3 {
-			fmt.Fprintf(entry, "      ... (%d more lines, press Enter to expand)\n", len(renderedLines)-2)
+			fmt.Fprintf(entry, "      … (%d more lines, press Enter to expand)\n", len(renderedLines)-2)
 			break
 		}
 
