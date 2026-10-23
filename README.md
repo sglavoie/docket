@@ -144,7 +144,8 @@ The Outliner is the only primary task presentation:
 3. `w` opens the workflow chord over the ten destinations the `$destination`
    sigil names.
 4. `wb`, `wn`, and `wt` organize work; `wg` starts it and `wd` completes it.
-5. Direct metadata keys handle priority, state, dates, tags, and pin.
+5. Direct metadata keys handle priority, dates, tags, and pin; state goes
+   through the `w` chord above.
 6. `/` searches for a task.
 7. `Space` opens the occasional task tools, Delete among them, which asks
    before it removes anything.

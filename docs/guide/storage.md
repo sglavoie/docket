@@ -452,7 +452,8 @@ then published to the exchange folder as its first piece of history. If
 enrollment is interrupted, run the same command again: it finishes what is left
 and copies or publishes nothing twice.
 
-An enrolled working copy uses a newer catalog schema, so a `tt` from before sync
+An enrolled working copy uses catalog schema 22, one past the schema-21 chain
+above, so a `tt` from before sync
 refuses to open it rather than write around its history; update `tt` on every
 machine that opens it. Another desktop joins with
 `tt sync join --exchange DIR --working-copy DIR`, which builds its own local
