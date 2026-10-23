@@ -117,7 +117,11 @@ func (t *Task) IsComplete() bool {
 
 // Pin marks the task as pinned.
 func (t *Task) Pin() {
-	now := time.Now()
+	t.PinAt(time.Now())
+}
+
+// PinAt pins the task at now.
+func (t *Task) PinAt(now time.Time) {
 	t.Pinned = true
 	t.PinnedAt = &now
 	t.UpdatedAt = now
@@ -195,9 +199,14 @@ func (t *Task) AcknowledgeReview(now time.Time) error {
 
 // Unpin removes the pinned status.
 func (t *Task) Unpin() {
+	t.UnpinAt(time.Now())
+}
+
+// UnpinAt unpins the task, touching it at now.
+func (t *Task) UnpinAt(now time.Time) {
 	t.Pinned = false
 	t.PinnedAt = nil
-	t.UpdatedAt = time.Now()
+	t.UpdatedAt = now
 }
 
 // TogglePinned toggles the pinned status.

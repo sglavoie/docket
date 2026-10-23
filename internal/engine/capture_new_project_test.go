@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
@@ -27,7 +28,7 @@ func TestCaptureCreatingProjectsIsOneTransaction(t *testing.T) {
 		t.Fatalf("UndoCount: %v", err)
 	}
 
-	creation, err := app.PrepareProjectCreation(runtime.State(), []app.NewProject{{ID: "11111111-1111-4111-8111-111111111111", Name: "garden"}})
+	creation, err := app.PrepareProjectCreation(runtime.State(), []app.NewProject{{ID: "11111111-1111-4111-8111-111111111111", Name: "garden"}}, time.Now())
 	if err != nil {
 		t.Fatalf("PrepareProjectCreation: %v", err)
 	}
@@ -98,7 +99,7 @@ func TestCaptureCreatingProjectsRefusesASlugTakenSinceThePlan(t *testing.T) {
 	runtime := openHeadless(t, env.config(true))
 	ledger := runtime.Ledger()
 
-	creation, err := app.PrepareProjectCreation(runtime.State(), []app.NewProject{{ID: "11111111-1111-4111-8111-111111111111", Name: "garden"}})
+	creation, err := app.PrepareProjectCreation(runtime.State(), []app.NewProject{{ID: "11111111-1111-4111-8111-111111111111", Name: "garden"}}, time.Now())
 	if err != nil {
 		t.Fatalf("PrepareProjectCreation: %v", err)
 	}
@@ -143,7 +144,7 @@ func TestCaptureCreatingProjectsRefusesAProjectWithNoTask(t *testing.T) {
 	runtime := openHeadless(t, env.config(true))
 	unfiled := runtime.State().SystemUnfiledProject()
 
-	creation, err := app.PrepareProjectCreation(runtime.State(), []app.NewProject{{ID: "11111111-1111-4111-8111-111111111111", Name: "garden"}})
+	creation, err := app.PrepareProjectCreation(runtime.State(), []app.NewProject{{ID: "11111111-1111-4111-8111-111111111111", Name: "garden"}}, time.Now())
 	if err != nil {
 		t.Fatalf("PrepareProjectCreation: %v", err)
 	}
@@ -177,7 +178,7 @@ func TestCaptureCreatingProjectsRefusesExistingTasksFile(t *testing.T) {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	creation, err := app.PrepareProjectCreation(runtime.State(), []app.NewProject{{ID: "11111111-1111-4111-8111-111111111111", Name: "garden"}})
+	creation, err := app.PrepareProjectCreation(runtime.State(), []app.NewProject{{ID: "11111111-1111-4111-8111-111111111111", Name: "garden"}}, time.Now())
 	if err != nil {
 		t.Fatalf("PrepareProjectCreation: %v", err)
 	}
@@ -192,7 +193,7 @@ func TestCaptureCreatingProjectsRefusesTasksFileAppearingAfterPreparation(t *tes
 	env := newHeadlessEnvironment(t)
 	runtime := openHeadless(t, env.config(true))
 
-	creation, err := app.PrepareProjectCreation(runtime.State(), []app.NewProject{{ID: "11111111-1111-4111-8111-111111111111", Name: "garden"}})
+	creation, err := app.PrepareProjectCreation(runtime.State(), []app.NewProject{{ID: "11111111-1111-4111-8111-111111111111", Name: "garden"}}, time.Now())
 	if err != nil {
 		t.Fatalf("PrepareProjectCreation: %v", err)
 	}

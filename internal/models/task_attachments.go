@@ -92,12 +92,17 @@ func (t *Task) AddCodeReferenceAt(path string, lineNumber int, now time.Time) er
 // RemoveAttachment removes the attachment at the given index.
 // Returns the removed attachment and true if successful.
 func (t *Task) RemoveAttachment(index int) (Attachment, bool) {
+	return t.RemoveAttachmentAt(index, time.Now())
+}
+
+// RemoveAttachmentAt is RemoveAttachment touching the task at now.
+func (t *Task) RemoveAttachmentAt(index int, now time.Time) (Attachment, bool) {
 	if index < 0 || index >= len(t.Attachments) {
 		return Attachment{}, false
 	}
 	removed := t.Attachments[index]
 	t.Attachments = append(t.Attachments[:index], t.Attachments[index+1:]...)
-	t.UpdatedAt = time.Now()
+	t.UpdatedAt = now
 	return removed, true
 }
 

@@ -51,9 +51,9 @@ func (s *Service) SetPinned(locator TaskLocator, pinned bool) (TaskResult, error
 	}
 	return s.mutateTask(locator, action, "", func(ref TaskRef) error {
 		if pinned {
-			ref.Task.Pin()
+			ref.Task.PinAt(s.clock.Now())
 		} else {
-			ref.Task.Unpin()
+			ref.Task.UnpinAt(s.clock.Now())
 		}
 		return nil
 	})

@@ -63,3 +63,57 @@ func TestProjectMutatorsWriteTheSuppliedClock(t *testing.T) {
 		}
 	})
 }
+
+// TestAttributeMutatorsWriteTheSuppliedClock extends that rule to the attribute
+// and catalog mutators a service reaches: pin, tags, attachment and comment
+// removal, archive, cross-project move, and project creation.
+func TestAttributeMutatorsWriteTheSuppliedClock(t *testing.T) {
+	now := time.Date(2031, time.February, 3, 4, 5, 6, 0, time.UTC)
+	task := newHierarchyReconcileTask(t, "task", 1, "Task")
+	task.Attachments = []Attachment{{Filename: "a.txt"}}
+	task.AddCommentAt("note", now.Add(-time.Hour))
+
+	steps := []struct {
+		name string
+		run  func(time.Time)
+	}{
+		{"PinAt", task.PinAt},
+		{"UnpinAt", task.UnpinAt},
+		{"AddTagAt", func(at time.Time) { task.AddTagAt("garden", at) }},
+		{"RemoveTagAt", func(at time.Time) { task.RemoveTagAt("garden", at) }},
+		{"RemoveAttachmentAt", func(at time.Time) { task.RemoveAttachmentAt(0, at) }},
+		{"RemoveCommentAt", func(at time.Time) { task.RemoveCommentAt(0, at) }},
+	}
+	for i, step := range steps {
+		at := now.Add(time.Duration(i) * time.Minute)
+		step.run(at)
+		if !task.UpdatedAt.Equal(at) {
+			t.Fatalf("%s touched %s, want %s", step.name, task.UpdatedAt, at)
+		}
+	}
+
+	project, err := NewProjectAt("p1", "Garden", "projects/garden", now)
+	if err != nil || !project.CreatedAt.Equal(now) || !project.UpdatedAt.Equal(now) {
+		t.Fatalf("NewProjectAt = %+v, %v, want stamped %s", project, err, now)
+	}
+	later := now.Add(time.Hour)
+	project.ArchiveAt(later)
+	if project.ArchivedAt == nil || !project.ArchivedAt.Equal(later) || !project.UpdatedAt.Equal(later) {
+		t.Fatalf("ArchiveAt left archived %v touched %s, want %s", project.ArchivedAt, project.UpdatedAt, later)
+	}
+	latest := later.Add(time.Hour)
+	project.UnarchiveAt(latest)
+	if !project.UpdatedAt.Equal(latest) {
+		t.Fatalf("UnarchiveAt touched %s, want %s", project.UpdatedAt, latest)
+	}
+
+	source := newHierarchyReconcileProject(t)
+	moved := newHierarchyReconcileTask(t, "moved", 1, "Moved")
+	source.Tasks = []*Task{moved}
+	if _, err := source.MoveTaskToProjectAt(moved, project, latest); err != nil {
+		t.Fatalf("MoveTaskToProjectAt: %v", err)
+	}
+	if !moved.UpdatedAt.Equal(latest) {
+		t.Fatalf("cross-project move touched %s, want %s", moved.UpdatedAt, latest)
+	}
+}

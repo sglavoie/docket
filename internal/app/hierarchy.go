@@ -377,7 +377,7 @@ type crossProjectSubtreeMove struct {
 // present in the destination, so ReparentTaskAt can validate the final depth and
 // canonical ownership before either project document is committed.
 func moveTaskSubtreeBetweenProjects(source *models.Project, task *models.Task, destination *models.Project, parent *models.Task, now time.Time) (crossProjectSubtreeMove, error) {
-	moveResult, err := source.MoveTaskToProject(task, destination)
+	moveResult, err := source.MoveTaskToProjectAt(task, destination, now)
 	if err != nil {
 		return crossProjectSubtreeMove{}, err
 	}

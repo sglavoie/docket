@@ -29,12 +29,17 @@ func (t *Task) AddCommentAt(text string, now time.Time) {
 // RemoveComment removes the comment at the given index.
 // Returns true if a comment was removed.
 func (t *Task) RemoveComment(index int) bool {
+	return t.RemoveCommentAt(index, time.Now())
+}
+
+// RemoveCommentAt is RemoveComment touching the task at now.
+func (t *Task) RemoveCommentAt(index int, now time.Time) bool {
 	if index < 0 || index >= len(t.Comments) {
 		return false
 	}
 	copy(t.Comments[index:], t.Comments[index+1:])
 	t.Comments[len(t.Comments)-1] = nil
 	t.Comments = t.Comments[:len(t.Comments)-1]
-	t.UpdatedAt = time.Now()
+	t.UpdatedAt = now
 	return true
 }

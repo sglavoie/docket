@@ -142,7 +142,7 @@ func (s *Service) RemoveAttachment(locator TaskLocator, index int, deleteFile bo
 			restoreSnapshotProjects(snap, before)
 		}
 	}()
-	removed, ok := ref.Task.RemoveAttachment(index)
+	removed, ok := ref.Task.RemoveAttachmentAt(index, s.clock.Now())
 	if !ok {
 		return RemoveAttachmentResult{}, invalidInput("attachment", fmt.Sprintf("index %d out of range", index))
 	}

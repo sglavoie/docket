@@ -119,7 +119,7 @@ func (s *Service) removeComment(task *models.Task, index int) error {
 	if err := validCommentIndex(index, len(task.Comments)); err != nil {
 		return err
 	}
-	if !task.RemoveComment(index) {
+	if !task.RemoveCommentAt(index, s.clock.Now()) {
 		return invalidInput("comment", fmt.Sprintf("failed to remove comment at index %d", index))
 	}
 	task.UpdatedAt = s.clock.Now()

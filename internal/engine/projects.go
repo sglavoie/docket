@@ -77,7 +77,7 @@ func domainArtifacts(state *config.RuntimeState, catalog *config.WorkspaceCatalo
 // CreateProject creates an empty project and its catalog record as one
 // transaction. id is the new project's identity.
 func CreateProject(state *config.RuntimeState, service *app.Service, id, name string) (ProjectChange, error) {
-	creation, err := app.PrepareProjectCreation(state, []app.NewProject{{ID: id, Name: name}})
+	creation, err := app.PrepareProjectCreation(state, []app.NewProject{{ID: id, Name: name}}, service.Now())
 	if err != nil {
 		return ProjectChange{}, err
 	}
@@ -259,7 +259,7 @@ func ArchiveProject(state *config.RuntimeState, service *app.Service, project *m
 	if err != nil {
 		return ProjectChange{}, err
 	}
-	updated.Archive()
+	updated.ArchiveAt(service.Now())
 	archived := make([]config.ProjectTaskLocator, 0, len(updated.Tasks))
 	for _, task := range updated.Tasks {
 		if task != nil && task.ID != "" {
@@ -297,7 +297,7 @@ func ArchiveProject(state *config.RuntimeState, service *app.Service, project *m
 // archiving dropped stays dropped.
 func UnarchiveProject(state *config.RuntimeState, service *app.Service, project *models.Project) (ProjectChange, error) {
 	updated := *project
-	updated.Unarchive()
+	updated.UnarchiveAt(service.Now())
 	return commitCatalogProject(state, service, &updated, "Restore Project")
 }
 

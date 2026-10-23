@@ -86,9 +86,14 @@ func ValidateProjectSlug(slug string) error {
 	return nil
 }
 
-// NewProject creates a new project with default values.
-// Returns an error if id or name is empty.
+// NewProject creates a new project with default values, stamped with the wall
+// clock. Returns an error if id or name is empty.
 func NewProject(id, name, path string) (*Project, error) {
+	return NewProjectAt(id, name, path, time.Now())
+}
+
+// NewProjectAt is NewProject stamped with now, so a service supplies its clock.
+func NewProjectAt(id, name, path string, now time.Time) (*Project, error) {
 	if strings.TrimSpace(id) == "" {
 		return nil, fmt.Errorf("project ID cannot be empty")
 	}
@@ -105,7 +110,6 @@ func NewProject(id, name, path string) (*Project, error) {
 	if err := ValidateProjectSlug(slug); err != nil {
 		return nil, err
 	}
-	now := time.Now()
 	return &Project{
 		ID:          id,
 		Slug:        slug,
@@ -137,7 +141,11 @@ func Slugify(name string) string {
 
 // Archive marks the project as archived.
 func (p *Project) Archive() {
-	now := time.Now()
+	p.ArchiveAt(time.Now())
+}
+
+// ArchiveAt marks the project as archived at now.
+func (p *Project) ArchiveAt(now time.Time) {
 	p.Archived = true
 	p.ArchivedAt = &now
 	p.UpdatedAt = now
@@ -145,9 +153,14 @@ func (p *Project) Archive() {
 
 // Unarchive removes the archived status.
 func (p *Project) Unarchive() {
+	p.UnarchiveAt(time.Now())
+}
+
+// UnarchiveAt removes the archived status, touching the project at now.
+func (p *Project) UnarchiveAt(now time.Time) {
 	p.Archived = false
 	p.ArchivedAt = nil
-	p.UpdatedAt = time.Now()
+	p.UpdatedAt = now
 }
 
 // Pin marks the project as pinned to appear at the top of lists.

@@ -307,7 +307,7 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 	task.Context = normalized.context
 	task.Description = req.Description
 	for _, tag := range normalized.tags {
-		task.AddTag(tag)
+		task.AddTagAt(tag, now)
 	}
 	if err := s.initializeCreatedTask(task, normalized.state, now); err != nil {
 		return TaskRef{}, "", err
@@ -393,11 +393,12 @@ func (s *Service) AddTaskWithChildren(req AddTaskRequest) (FormCreateResult, err
 			return FormCreateResult{}, invalidInput("title", buildErr.Error())
 		}
 		child.Priority = ref.Task.Priority
-		if stateErr := s.initializeCreatedTask(child, ref.Task.State(), s.clock.Now()); stateErr != nil {
+		now := s.clock.Now()
+		if stateErr := s.initializeCreatedTask(child, ref.Task.State(), now); stateErr != nil {
 			return FormCreateResult{}, stateErr
 		}
 		for _, tag := range ref.Task.Tags {
-			child.AddTag(tag)
+			child.AddTagAt(tag, now)
 		}
 		parentID := ref.Task.ID
 		child.ParentID = &parentID

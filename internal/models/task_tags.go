@@ -119,6 +119,11 @@ func ReplaceTag(tags []string, from, to string) ([]string, bool) {
 // AddTag adds a tag if not already present. The tag is normalized (trimmed)
 // before storing. Invalid tags are silently ignored.
 func (t *Task) AddTag(tag string) {
+	t.AddTagAt(tag, time.Now())
+}
+
+// AddTagAt is AddTag touching the task at now when the tag is new.
+func (t *Task) AddTagAt(tag string, now time.Time) {
 	tag, err := NormalizeTaskTag(tag)
 	if err != nil {
 		return
@@ -126,13 +131,18 @@ func (t *Task) AddTag(tag string) {
 	var added bool
 	t.Tags, added = util.SliceAdd(t.Tags, tag)
 	if added {
-		t.UpdatedAt = time.Now()
+		t.UpdatedAt = now
 	}
 }
 
 // RemoveTag removes a tag if present. The tag is normalized (trimmed)
 // before comparison.
 func (t *Task) RemoveTag(tag string) {
+	t.RemoveTagAt(tag, time.Now())
+}
+
+// RemoveTagAt is RemoveTag touching the task at now when a tag was removed.
+func (t *Task) RemoveTagAt(tag string, now time.Time) {
 	if normalized, err := NormalizeTaskTag(tag); err == nil {
 		tag = normalized
 	} else {
@@ -147,7 +157,7 @@ func (t *Task) RemoveTag(tag string) {
 		}
 	}
 	if removed {
-		t.UpdatedAt = time.Now()
+		t.UpdatedAt = now
 	}
 }
 

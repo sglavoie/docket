@@ -3,6 +3,7 @@ package coordinator
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -246,7 +247,9 @@ func (c CaptureCoordinator) CaptureBulk(reqs []app.CaptureRequest, closeOnSucces
 func (c CaptureCoordinator) CaptureCreatingProjects(state *config.RuntimeState, projects []app.NewProject, reqs []app.CaptureRequest, openContent bool) tea.Cmd {
 	mutator := c.mutator
 	return func() tea.Msg {
-		creation, err := app.PrepareProjectCreation(state, projects)
+		// The capture mutator exposes no clock, so the new projects are stamped
+		// with the wall clock, as the TUI's other unserviced writes are.
+		creation, err := app.PrepareProjectCreation(state, projects, time.Now())
 		if err != nil {
 			return status.ErrorMsg{Err: fmt.Errorf("couldn’t save. Your draft is still open. Fix the problem and retry: %w", err)}
 		}

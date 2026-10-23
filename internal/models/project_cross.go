@@ -13,6 +13,11 @@ type MoveTaskToProjectResult struct {
 // MoveTaskToProject moves a task and all its descendants to another project.
 // Workflow states are preserved and short IDs are regenerated in the destination.
 func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProjectResult, error) {
+	return p.MoveTaskToProjectAt(task, dest, time.Now())
+}
+
+// MoveTaskToProjectAt is MoveTaskToProject touching every moved task at now.
+func (p *Project) MoveTaskToProjectAt(task *Task, dest *Project, now time.Time) (*MoveTaskToProjectResult, error) {
 	if task == nil {
 		return nil, fmt.Errorf("cannot move nil task")
 	}
@@ -58,7 +63,6 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 		movedIDs[t.ID] = true
 	}
 
-	now := time.Now()
 	// Process each task being moved
 	for _, t := range movedTasks {
 		reassignTaskToDest(t, dest, now)

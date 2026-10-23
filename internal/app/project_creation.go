@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -60,7 +61,7 @@ func ProjectSlug(state *config.RuntimeState, name, selfID string) (string, error
 // that adds them all. It writes nothing but the workspace data directory, and
 // refuses a name another project holds or two requests that would share a
 // slug.
-func PrepareProjectCreation(state *config.RuntimeState, requests []NewProject) (ProjectCreation, error) {
+func PrepareProjectCreation(state *config.RuntimeState, requests []NewProject, now time.Time) (ProjectCreation, error) {
 	if len(requests) == 0 {
 		return ProjectCreation{}, invalidInput("project", "no projects to create")
 	}
@@ -77,7 +78,7 @@ func PrepareProjectCreation(state *config.RuntimeState, requests []NewProject) (
 			return ProjectCreation{}, invalidInput("project name", fmt.Sprintf("project slug '%s' is requested twice", slug))
 		}
 		seen[slug] = true
-		project, err := models.NewProject(request.ID, name, state.ProjectPath(slug))
+		project, err := models.NewProjectAt(request.ID, name, state.ProjectPath(slug), now)
 		if err != nil {
 			return ProjectCreation{}, invalidInput("project", err.Error())
 		}

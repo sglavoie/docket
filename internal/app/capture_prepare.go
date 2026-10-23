@@ -174,10 +174,10 @@ func (s *Service) buildPreparedCapturedTask(project *models.Project, prepared pr
 	task.ResumeNote = req.ResumeNote
 	task.Dependencies = models.CloneTaskReferences(prepared.dependencies)
 	for _, tag := range prepared.tags {
-		task.AddTag(tag)
+		task.AddTagAt(tag, now)
 	}
 	for _, tag := range prepared.removeTags {
-		task.RemoveTag(tag)
+		task.RemoveTagAt(tag, now)
 	}
 	if req.Due != nil {
 		task.DueDate = cloneDueDatePtr(req.Due)

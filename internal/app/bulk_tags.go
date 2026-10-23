@@ -152,9 +152,9 @@ func (s *Service) BulkToggleTag(locators []TaskLocator, tag string) (BulkResult,
 	now := s.clock.Now()
 	for _, ref := range refs {
 		if remove {
-			ref.Task.RemoveTag(normalized)
+			ref.Task.RemoveTagAt(normalized, now)
 		} else {
-			ref.Task.AddTag(normalized)
+			ref.Task.AddTagAt(normalized, now)
 		}
 		ref.Task.UpdatedAt = now
 	}

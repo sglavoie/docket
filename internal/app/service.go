@@ -49,6 +49,12 @@ func (s *Service) defaultedPlanningArtifacts(builder PlanningArtifactBuilder) Pl
 // NewServiceWithArtifacts constructs a Service with an explicit note port. A nil
 // port falls back to storage. Callers that need global notes inject
 // NewStorageWorkspaceNotePort with the active workspace data directory.
+// Now is the service clock's current instant, for a caller outside the
+// service that stamps a value the service then commits.
+func (s *Service) Now() time.Time {
+	return s.clock.Now()
+}
+
 func NewServiceWithArtifacts(repo Repository, clock Clock, ids IDGenerator, notes WorkspaceNotePort) *Service {
 	if clock == nil {
 		clock = SystemClock()
