@@ -10,9 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/taskref"
-	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -114,126 +112,6 @@ func (m *OutlinerModel) taskRelationMarker(row OutlinerRow) string {
 	// One unstyled space, then the chip, whose own padding supplies the second
 	// space the marker always led with.
 	return " " + theme.RelationMarkerStyle.Render(marker)
-}
-
-// rankedProjectLabelMaxSlug bounds the slug a ranked row spells: an eighth of
-// the row, never under eight columns and never over twenty-four, so a narrow
-// row keeps its title and a wide one spells a long slug out. It is the one
-// source of that cap; the render and ComputeOutlinerRowLayout both read it.
-func rankedProjectLabelMaxSlug(rowWidth int) int {
-	return min(max(rowWidth/8, 8), 24)
-}
-
-// showsRankedProjectLabel reports whether every task row leads its title with
-// the project: the ranked list across several projects, the one cross-project
-// projection whose rows no group header stands over.
-func (m *OutlinerModel) showsRankedProjectLabel() bool {
-	return m.ShowsRankedList() && m.groupsRowsByProject()
-}
-
-// rowLeadsWithProjectLabel reports whether one task row leads its title with
-// the project: every row of the ranked list, or the row leading a merged
-// singleton group, which no header stands over either.
-func (m *OutlinerModel) rowLeadsWithProjectLabel(row OutlinerRow) bool {
-	return row.LeadsMergedGroup || m.showsRankedProjectLabel()
-}
-
-// rankedProjectSlug is the bare slug a ranked row names, bounded to the label's
-// ceiling so the render and ComputeOutlinerRowLayout measure one string.
-func (m *OutlinerModel) rankedProjectSlug(row OutlinerRow, rowWidth int) string {
-	if row.ProjectID == "" {
-		return ""
-	}
-	slug, _ := m.projectSlugForRow(row)
-	return m.abbreviatedProjectSlug(slug, rankedProjectLabelMaxSlug(rowWidth))
-}
-
-// taskIdentityLabel puts context directly after the project, before alignment
-// padding. Rows under a project header carry only their own context.
-func (m *OutlinerModel) taskIdentityLabel(row OutlinerRow, rowWidth int) string {
-	label := ""
-	context := ""
-	if row.Task != nil {
-		// Identity must leave space for the title and the row's fixed presence
-		// markers. One context spends at most an eighth of the row; a combined
-		// project/context label spends at most a third, brackets included.
-		context = textfit.TruncateToVisualWidth(strings.TrimSpace(row.Task.Context), min(max(rowWidth/8, 8), 20))
-	}
-	if m.rowLeadsWithProjectLabel(row) {
-		slugLimit := rankedProjectLabelMaxSlug(rowWidth)
-		if context != "" {
-			slugLimit = min(slugLimit, max(4, rowWidth/3-lipgloss.Width(context)-5))
-		}
-		slug, _ := m.projectSlugForRow(row)
-		if slug = m.abbreviatedProjectSlug(slug, slugLimit); slug != "" {
-			_, project := m.projectSlugForRow(row)
-			label = theme.ProjectLabel(project, slug)
-		}
-	}
-	if context != "" {
-		if label != "" {
-			label += " "
-		}
-		label += theme.TaskContextBadgeStyle(row.Task).Render("[" + context + "]")
-	}
-	return label
-}
-
-func (m *OutlinerModel) taskProjectLabel(row OutlinerRow, rowWidth int, colLayout *chrome.ColumnLayout) string {
-	label := m.taskIdentityLabel(row, rowWidth)
-	// Only the flat cross-project ranked list needs an identity column.
-	// Grouped rows keep labels inline, so one context or long project slug
-	// cannot leave an empty metadata column on every other task.
-	if colLayout != nil && m.showsRankedProjectLabel() {
-		label += strings.Repeat(" ", max(colLayout.ProjectWidth-lipgloss.Width(label), 0))
-	}
-	if row.LeadsMergedGroup {
-		_, project := m.projectSlugForRow(row)
-		label = m.projectHeaderPinMarker(project) + label
-	}
-	if label == "" {
-		return ""
-	}
-	return label + " "
-}
-
-// taskPinnedMarker names a pin the surrounding rows cannot: the Pinned lane's
-// own rows carry the header instead, exactly as a row showing its child carries
-// no child count.
-func (m *OutlinerModel) taskPinnedMarker(row OutlinerRow) string {
-	if row.Task == nil || !row.Task.Pinned || row.IsPinnedSection {
-		return ""
-	}
-	return listsurface.PinnedMarker()
-}
-
-// matchSourceLabels is the one presentation vocabulary for search attribution:
-// each source the projection can report maps to exactly one word. A title hit is
-// absent deliberately — the highlighted title is already the explanation — as is
-// matchSourceNone, which every ordinary row carries.
-var matchSourceLabels = map[MatchSource]string{
-	MatchSourceDescription: "description",
-	MatchSourceResume:      "resume",
-	MatchSourceChecklist:   "checklist",
-	MatchSourceComment:     "comment",
-	MatchSourceTag:         "tag",
-	MatchSourceContext:     "context",
-	MatchSourceAttachment:  "attachment",
-	MatchSourceProject:     "project",
-	MatchSourceDetails:     "details",
-	MatchSourceNote:        "note",
-}
-
-// taskMatchSourceCue explains why a row whose title shows no match is in the
-// results. It is one segment so ANSI-aware measurement charges it once, and it
-// is muted so it reads as an annotation rather than competing with the semantic
-// title color beside it.
-func taskMatchSourceCue(row OutlinerRow) string {
-	label, ok := matchSourceLabels[row.MatchSource]
-	if !ok {
-		return ""
-	}
-	return theme.MutedStyle.Render("  · " + label)
 }
 
 // buildTaskRowSegments assembles every rendered piece of a task row except the
