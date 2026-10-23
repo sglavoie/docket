@@ -107,7 +107,7 @@ func checkDataDirOverride() error {
 
 // requireExistingWorkspace refuses to inspect a workspace that is not there.
 // Loading a workspace creates one, which a command reading an existing one must
-// never do, so doctor and the conflict commands ask this first and name the path
+// never do, so doctor, the conflict commands, and project export ask this first and name the path
 // they would otherwise have created.
 // The data directory alone proves nothing — the default ~/.tt also holds the
 // machine-local logs every command opens — so a workspace is its internal .tt

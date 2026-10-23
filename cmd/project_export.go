@@ -56,6 +56,9 @@ func runProjectExport(cmd *cobra.Command, args []string) error {
 	if err := validateProjectExportFlags(args); err != nil {
 		return usageRefusal(cmd, err)
 	}
+	if err := requireExistingWorkspace(); err != nil {
+		return err
+	}
 	if projectExportAll {
 		return runProjectExportAll(cmd)
 	}
