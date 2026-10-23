@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/rivo/uniseg"
+
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
