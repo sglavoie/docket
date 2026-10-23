@@ -8,7 +8,7 @@ different keys, thresholds, precedence, wording, or drop positions.
 
 `indicatorDropLadder` is the narrow-row pressure order: position 1 disappears
 first and position 10 disappears last. The final order declared as
-`indicatorDropLadder` in `internal/tui/outliner/outliner_render_task_row.go` is:
+`indicatorDropLadder` in `internal/tui/outliner/outliner_render_task_indicators.go` is:
 
 | Position | Segment | Reason |
 | ---: | --- | --- |
@@ -24,7 +24,7 @@ first and position 10 disappears last. The final order declared as
 | 10 | `check` | It names work already quiet on someone else's desk and remains the last survivor. |
 
 This preserves the existing rationale documented with `indicatorDropLadder` in
-`internal/tui/outliner/outliner_render_task_row.go`: counts leave early while the most
+`internal/tui/outliner/outliner_render_task_indicators.go`: counts leave early while the most
 operational quiet-work signal leaves last. The draw order may group related
 segments, but pressure must follow the table above.
 
