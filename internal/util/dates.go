@@ -27,9 +27,17 @@ const (
 // beyond any realistic task-manager input.
 const maxRelativeOffset = 1_000_000
 
-// StartOfDay returns t truncated to midnight (00:00:00) in t's location.
+// StartOfDay returns the first instant of t's calendar date in t's location:
+// midnight, or the transition instant on a date whose midnight a DST change
+// skipped, which time.Date would otherwise normalize onto the previous day.
 func StartOfDay(t time.Time) time.Time {
-	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+	start, err := StartOfCalendarDate(t.Year(), t.Month(), t.Day(), t.Location())
+	if err != nil {
+		// t is an instant on its own date, so that date exists; this is
+		// unreachable, and midnight is the answer every other date gets.
+		return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+	}
+	return start
 }
 
 // AddMonthsClamped adds months to t, clamping the day to the target month's

@@ -180,6 +180,26 @@ func TestStartOfCalendarDateAcceptsADateWithNoMidnight(t *testing.T) {
 	}
 }
 
+// TestStartOfDayStaysOnADateWithNoMidnight keeps every preset built on
+// StartOfDay on the day it names: midnight in Havana on 2026-03-08 never
+// happened, and time.Date would carry it back to 23:00 on the 7th.
+func TestStartOfDayStaysOnADateWithNoMidnight(t *testing.T) {
+	loc := mustLoadZone(t, "America/Havana")
+	noon := time.Date(2026, time.March, 8, 12, 0, 0, 0, loc)
+	start := StartOfDay(noon)
+	if year, month, day := start.Date(); year != 2026 || month != time.March || day != 8 {
+		t.Fatalf("StartOfDay(%s) = %s, want a time on 2026-03-08", noon, start)
+	}
+	want, err := StartOfCalendarDate(2026, time.March, 8, loc)
+	if err != nil || !start.Equal(want) {
+		t.Fatalf("StartOfDay(%s) = %s, want %s (%v)", noon, start, want, err)
+	}
+	ordinary := time.Date(2026, time.March, 9, 15, 4, 5, 6, loc)
+	if got := StartOfDay(ordinary); !got.Equal(time.Date(2026, time.March, 9, 0, 0, 0, 0, loc)) {
+		t.Fatalf("StartOfDay(%s) = %s, want midnight", ordinary, got)
+	}
+}
+
 // TestStartOfCalendarDateDefaultsToLocal pins the nil-location contract, since a
 // caller passing a zero location means "here" rather than UTC.
 func TestStartOfCalendarDateDefaultsToLocal(t *testing.T) {
