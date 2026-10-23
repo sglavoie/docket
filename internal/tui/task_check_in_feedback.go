@@ -201,8 +201,8 @@ func checkInFeedbackNote(titles []string, spoken, menuKey string) string {
 // width a status change gives it. The prefix it looks for is the one the note
 // itself would draw, cut by visual width and less its ellipsis, so a wide CJK or
 // emoji title is recognized by the same columns it would be named in rather than
-// by a rune count those columns cannot hold. That prefix is never longer than
-// the checkInFeedbackTitleWidth-1 runes a rune-capped line keeps either.
+// by a rune count those columns cannot hold. The status change in internal/app
+// cuts its title to the same columns, so the two always agree on the prefix.
 func lineNamesTitle(spoken, title string) bool {
 	if title == "" {
 		return false

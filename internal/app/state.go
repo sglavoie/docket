@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -63,15 +64,22 @@ func (s *Service) Transition(req StateRequest) (TaskResult, error) {
 // The title is capped so the route a check-in note appends beside it still fits
 // the footer.
 func stateChangeUndoContext(ref TaskRef, target models.WorkflowState) string {
-	title := []rune(ref.Task.Title)
-	if len(title) > stateChangeTitleRunes {
-		title = append(title[:stateChangeTitleRunes-1], '…')
-	}
-	return string(title) + " → " + models.WorkflowStateGroupForState(target).Label()
+	return fitStateChangeTitle(ref.Task.Title) + " → " + models.WorkflowStateGroupForState(target).Label()
 }
 
-// stateChangeTitleRunes matches the width the check-in note gives a title.
-const stateChangeTitleRunes = 24
+// fitStateChangeTitle cuts title to stateChangeTitleWidth terminal columns, its
+// last one an ellipsis, exactly as the TUI's TruncateToVisualWidth does, so a
+// wide CJK or emoji title takes the columns the check-in note gives it rather
+// than a rune count those columns cannot hold.
+func fitStateChangeTitle(title string) string {
+	if ansi.StringWidth(title) <= stateChangeTitleWidth {
+		return title
+	}
+	return ansi.Truncate(title, stateChangeTitleWidth-1, "") + "…"
+}
+
+// stateChangeTitleWidth matches the width the check-in note gives a title.
+const stateChangeTitleWidth = 24
 
 // transitionPlanningArtifacts renders the planning reconciliation a single-task
 // transition implies through the caller-supplied builder, returning the checked
