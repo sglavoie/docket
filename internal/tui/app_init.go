@@ -304,3 +304,13 @@ func (m *AppModel) Init() tea.Cmd {
 	}
 	return tea.Batch(cmds...)
 }
+
+// serviceNow is the application service's clock, which every committed write
+// should be stamped from, or the wall clock where a harness attached no
+// service.
+func (m *AppModel) serviceNow() time.Time {
+	if m.domain.service != nil {
+		return m.domain.service.Now()
+	}
+	return time.Now()
+}

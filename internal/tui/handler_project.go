@@ -73,9 +73,9 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		}
 		updated := *msg.Project
 		if msg.Pinned {
-			updated.Pin()
+			updated.PinAt(m.serviceNow())
 		} else {
-			updated.Unpin()
+			updated.UnpinAt(m.serviceNow())
 		}
 		action := "Pin Project"
 		if !msg.Pinned {

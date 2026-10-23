@@ -165,7 +165,11 @@ func (p *Project) UnarchiveAt(now time.Time) {
 
 // Pin marks the project as pinned to appear at the top of lists.
 func (p *Project) Pin() {
-	now := time.Now()
+	p.PinAt(time.Now())
+}
+
+// PinAt pins the project at now.
+func (p *Project) PinAt(now time.Time) {
 	p.Pinned = true
 	p.PinnedAt = &now
 	p.UpdatedAt = now
@@ -173,9 +177,14 @@ func (p *Project) Pin() {
 
 // Unpin removes the pinned status.
 func (p *Project) Unpin() {
+	p.UnpinAt(time.Now())
+}
+
+// UnpinAt removes the pinned status, touching the project at now.
+func (p *Project) UnpinAt(now time.Time) {
 	p.Pinned = false
 	p.PinnedAt = nil
-	p.UpdatedAt = time.Now()
+	p.UpdatedAt = now
 }
 
 // MutateTask looks up a task by ID, calls fn to mutate it, and sets UpdatedAt.

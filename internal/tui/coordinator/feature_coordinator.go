@@ -238,6 +238,16 @@ func (c CaptureCoordinator) CaptureBulk(reqs []app.CaptureRequest, closeOnSucces
 	}
 }
 
+// mutatorNow is the clock behind a mutator: the application service's own when
+// the mutator is that service, so a project it creates is stamped the way its
+// tasks are, and the wall clock for a stand-in that keeps none.
+func mutatorNow(mutator any) time.Time {
+	if clock, ok := mutator.(interface{ Now() time.Time }); ok {
+		return clock.Now()
+	}
+	return time.Now()
+}
+
 // CaptureCreatingProjects commits a composer capture together with the
 // projects its lines name and nobody holds. The creation is prepared when the
 // command runs, against the catalog revision the runtime holds then, so a
@@ -247,9 +257,7 @@ func (c CaptureCoordinator) CaptureBulk(reqs []app.CaptureRequest, closeOnSucces
 func (c CaptureCoordinator) CaptureCreatingProjects(state *config.RuntimeState, projects []app.NewProject, reqs []app.CaptureRequest, openContent bool) tea.Cmd {
 	mutator := c.mutator
 	return func() tea.Msg {
-		// The capture mutator exposes no clock, so the new projects are stamped
-		// with the wall clock, as the TUI's other unserviced writes are.
-		creation, err := app.PrepareProjectCreation(state, projects, time.Now())
+		creation, err := app.PrepareProjectCreation(state, projects, mutatorNow(mutator))
 		if err != nil {
 			return status.ErrorMsg{Err: fmt.Errorf("couldn’t save. Your draft is still open. Fix the problem and retry: %w", err)}
 		}

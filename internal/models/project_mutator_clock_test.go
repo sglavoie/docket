@@ -106,6 +106,14 @@ func TestAttributeMutatorsWriteTheSuppliedClock(t *testing.T) {
 	if !project.UpdatedAt.Equal(latest) {
 		t.Fatalf("UnarchiveAt touched %s, want %s", project.UpdatedAt, latest)
 	}
+	project.PinAt(later)
+	if project.PinnedAt == nil || !project.PinnedAt.Equal(later) || !project.UpdatedAt.Equal(later) {
+		t.Fatalf("project PinAt left pinned %v touched %s, want %s", project.PinnedAt, project.UpdatedAt, later)
+	}
+	project.UnpinAt(latest)
+	if project.Pinned || !project.UpdatedAt.Equal(latest) {
+		t.Fatalf("project UnpinAt left pinned %v touched %s, want %s", project.Pinned, project.UpdatedAt, latest)
+	}
 
 	source := newHierarchyReconcileProject(t)
 	moved := newHierarchyReconcileTask(t, "moved", 1, "Moved")

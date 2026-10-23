@@ -3,6 +3,7 @@ package coordinator
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
@@ -125,5 +126,23 @@ func TestSubviewCoordinatorPromoteChecklistItemRefusalCarriesNoIdentity(t *testi
 	}
 	if failure.Err == nil || failure.Err.Error() != "the checklist changed" {
 		t.Fatalf("err = %v, want the mutator's refusal", failure.Err)
+	}
+}
+
+type clockedMutator struct{ now time.Time }
+
+func (c clockedMutator) Now() time.Time { return c.now }
+
+// TestMutatorNowReadsTheServiceClock stamps projects a capture creates from the
+// mutator's own clock when it keeps one, and falls back to the wall clock for a
+// stand-in that does not.
+func TestMutatorNowReadsTheServiceClock(t *testing.T) {
+	fixed := time.Date(2031, time.February, 3, 4, 5, 6, 0, time.UTC)
+	if got := mutatorNow(clockedMutator{now: fixed}); !got.Equal(fixed) {
+		t.Fatalf("mutatorNow(clocked) = %s, want %s", got, fixed)
+	}
+	before := time.Now()
+	if got := mutatorNow(struct{}{}); got.Before(before) {
+		t.Fatalf("mutatorNow(unclocked) = %s, want the wall clock", got)
 	}
 }
