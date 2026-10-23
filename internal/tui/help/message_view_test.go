@@ -410,3 +410,11 @@ func TestFilteredMessageCopyExplainsFullHistory(t *testing.T) {
 		t.Fatalf("copy scope mismatch: %q / %q", copied, m.copyNotice)
 	}
 }
+
+func TestCopyAllNoticeAgreesWithCount(t *testing.T) {
+	m := NewMessageView(RecalledMessage{Text: "Hidden", Kind: "Feedback"})
+	m.setCopyNotice(messageCopiedMsg{all: true, count: 1, hidden: 1})
+	if m.copyNotice != "Copied all 1 message, including 1 hidden by the filter" {
+		t.Fatalf("single message copy notice: %q", m.copyNotice)
+	}
+}

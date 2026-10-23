@@ -16,6 +16,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // RecalledMessage is one session feedback event. At is the original event time,
@@ -255,7 +256,7 @@ func (m *MessageView) setCopyNotice(msg messageCopiedMsg) {
 	if msg.all {
 		m.copyNotice = "Copied message history"
 		if msg.hidden > 0 {
-			m.copyNotice = fmt.Sprintf("Copied all %d messages, including %d hidden by the filter", msg.count, msg.hidden)
+			m.copyNotice = fmt.Sprintf("Copied all %s, including %d hidden by the filter", util.Count(msg.count, "message"), msg.hidden)
 		}
 	}
 	if msg.err != nil {

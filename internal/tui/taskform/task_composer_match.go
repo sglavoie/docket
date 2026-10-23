@@ -69,11 +69,7 @@ func (m *TaskComposerModel) matchingTaskDocument(task *models.Task, project *mod
 	}
 	if task.NextCheckIn != nil {
 		lines = append(lines, "Check-in: "+chrome.FormatWeekdayDate(*task.NextCheckIn, now, false))
-		repeat := "off"
-		if task.CheckInRepeatDays > models.CheckInRepeatOff {
-			repeat = fmt.Sprintf("every %d days", task.CheckInRepeatDays)
-		}
-		lines = append(lines, "Repeat: "+repeat)
+		lines = append(lines, "Repeat: "+chrome.FormatCheckInRepeat(task.CheckInRepeatDays))
 	}
 	if len(task.Tags) > 0 {
 		lines = append(lines, "Tags: "+strings.Join(task.Tags, ", "))

@@ -198,15 +198,18 @@ func checkInFeedbackNote(titles []string, spoken, menuKey string) string {
 }
 
 // lineNamesTitle reports whether spoken already names title, whole or cut to the
-// width a status change gives it, which keeps at least the title's first
-// checkInFeedbackTitleWidth-1 runes.
+// width a status change gives it. The prefix it looks for is the one the note
+// itself would draw, cut by visual width and less its ellipsis, so a wide CJK or
+// emoji title is recognized by the same columns it would be named in rather than
+// by a rune count those columns cannot hold. That prefix is never longer than
+// the checkInFeedbackTitleWidth-1 runes a rune-capped line keeps either.
 func lineNamesTitle(spoken, title string) bool {
-	runes := []rune(title)
-	if len(runes) == 0 {
+	if title == "" {
 		return false
 	}
-	if len(runes) >= checkInFeedbackTitleWidth {
-		runes = runes[:checkInFeedbackTitleWidth-1]
+	prefix := textfit.TruncateToVisualWidth(title, checkInFeedbackTitleWidth)
+	if prefix != title {
+		prefix = strings.TrimSuffix(prefix, "…")
 	}
-	return strings.Contains(spoken, string(runes))
+	return prefix != "" && strings.Contains(spoken, prefix)
 }

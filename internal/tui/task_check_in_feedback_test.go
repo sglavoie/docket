@@ -9,12 +9,14 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 )
 
 // commitCheckInState commits one state transition and returns the result message
@@ -412,5 +414,42 @@ func TestCheckInHintFollowsNegotiatedKeyboard(t *testing.T) {
 		if !strings.Contains(line, want+": Set up check-ins") {
 			t.Fatal(line)
 		}
+	}
+}
+
+// TestCheckInEditorBulkSubtitleAgreesWithCount keeps a one-task visual selection
+// from being announced as "1 selected tasks".
+func TestCheckInEditorBulkSubtitleAgreesWithCount(t *testing.T) {
+	task := newBulkPickerTestTask(t, 1, "task")
+	env := newAppBulkPickerEnv(t, []*models.Task{task})
+	model := env.appModel()
+	registerCheckInTestOperations(t, model)
+	context := bulkTaskActionTestContext(env.projects[0], task)
+	editor, err := model.operations.NewCheckInEditor(model, operation.OperationExecutionRequest{ID: operation.OperationTaskSetCheckIn, Context: context})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rendered := ansi.Strip(editor.Render(100))
+	if !strings.Contains(rendered, "Replace schedule on 1 selected task") || strings.Contains(rendered, "1 selected tasks") {
+		t.Fatalf("bulk subtitle for one task:\n%s", rendered)
+	}
+}
+
+// TestCheckInNoteRecognizesAWideTitleByItsVisualCut names a CJK title once. The
+// note cuts a title to checkInFeedbackTitleWidth columns, which a wide title
+// fills in about half as many runes, so a line already carrying that cut — or
+// the longer rune-capped status-change cut — must count as naming the task.
+func TestCheckInNoteRecognizesAWideTitleByItsVisualCut(t *testing.T) {
+	title := strings.Repeat("日本語のタスク", 5)
+	for name, spoken := range map[string]string{
+		"visual cut": "Change Status: " + textfit.TruncateToVisualWidth(title, checkInFeedbackTitleWidth) + " → Doing",
+		"rune cut":   "Change Status: " + string([]rune(title)[:checkInFeedbackTitleWidth-1]) + "… → Doing",
+	} {
+		if got := checkInFeedbackNote([]string{title}, spoken, "F10"); got != "No check-in · F10: Set up check-ins" {
+			t.Fatalf("%s: note named the title twice: %q", name, got)
+		}
+	}
+	if got := checkInFeedbackNote([]string{title}, "Captured 1 task", "F10"); !strings.Contains(got, "No check-in: 日本語") {
+		t.Fatalf("an unnamed wide title was not named: %q", got)
 	}
 }

@@ -181,12 +181,7 @@ func inlinePeekScheduleLine(task *models.Task, now time.Time) string {
 			gloss += ", review owed"
 		}
 		fields.add("Check-in", chrome.FormatWeekdayDate(*task.NextCheckIn, now, false)+" ("+gloss+")")
-		// "every" keeps a cadence from reading as the row's lateness `+Nd`.
-		repeat := "off"
-		if task.CheckInRepeatDays > models.CheckInRepeatOff {
-			repeat = fmt.Sprintf("every %dd", task.CheckInRepeatDays)
-		}
-		fields.add("Repeat", repeat)
+		fields.add("Repeat", chrome.FormatCheckInRepeat(task.CheckInRepeatDays))
 	}
 	return fields.line()
 }

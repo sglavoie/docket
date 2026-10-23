@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -91,7 +92,7 @@ func checkInNowValue(task *models.Task) dateNowValue {
 	}
 	text := task.NextCheckIn.Format("Mon Jan 2")
 	if task.CheckInRepeatDays > models.CheckInRepeatOff {
-		text += " every " + strconv.Itoa(task.CheckInRepeatDays) + "d"
+		text += " " + chrome.FormatCheckInRepeat(task.CheckInRepeatDays)
 	}
 	return dateNowValue{
 		key:  task.NextCheckIn.UTC().Format(time.RFC3339Nano) + "/" + strconv.Itoa(task.CheckInRepeatDays),

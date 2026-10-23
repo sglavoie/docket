@@ -1,6 +1,7 @@
 package chrome
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -93,4 +94,15 @@ func DayGloss(day, now time.Time) string {
 	default:
 		return util.Count(-days, "day") + " ago"
 	}
+}
+
+// FormatCheckInRepeat is the one spelling of a check-in cadence: "every 7d", or
+// "off" when the schedule does not repeat. "every" keeps a cadence from reading
+// as a row's lateness `+Nd`, and the compact day count matches the stored
+// `[check-in ... every Nd]` form.
+func FormatCheckInRepeat(days int) string {
+	if days <= models.CheckInRepeatOff {
+		return "off"
+	}
+	return "every " + strconv.Itoa(days) + "d"
 }

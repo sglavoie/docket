@@ -228,7 +228,7 @@ func (m *CommentsModel) renderCommentsList(b *strings.Builder, availableRows int
 	if len(m.entries) > maxVisible {
 		remaining := len(m.entries) - scrollOffset - maxVisible
 		if remaining > 0 {
-			b.WriteString(theme.MutedStyle.Render(fmt.Sprintf("  ... and %d more (use j/k to scroll)", remaining)))
+			b.WriteString(theme.MutedStyle.Render(fmt.Sprintf("  … and %d more (use j/k to scroll)", remaining)))
 			b.WriteString("\n")
 		}
 	}
@@ -314,12 +314,14 @@ func (m *CommentsModel) renderCommentEntry(index int, entry CommentEntry, maxLen
 }
 
 // renderCommentPreview shows the first two rendered lines of a comment and says
-// how many remain, so a long comment costs the list a fixed three rows.
+// how many remain, so a long comment costs the list a fixed three rows. A
+// comment of exactly three lines spends that third row on its own last line
+// rather than on a notice about it, so the notice always counts two or more.
 func renderCommentPreview(entry *strings.Builder, text string, maxLen int) {
 	renderedLines := strings.Split(textfit.RenderMarkdown(text, maxLen), "\n")
 	for j, line := range renderedLines {
-		if j > 1 {
-			fmt.Fprintf(entry, "      ... (%d more lines, press Enter to expand)\n", len(renderedLines)-2)
+		if j > 1 && len(renderedLines) > 3 {
+			fmt.Fprintf(entry, "      … (%d more lines, press Enter to expand)\n", len(renderedLines)-2)
 			break
 		}
 

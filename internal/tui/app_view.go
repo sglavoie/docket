@@ -42,7 +42,7 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 		if r := recover(); r != nil {
 			stack := debug.Stack()
 			logging.Warn("TUI panic in View: %v\n%s", r, stack)
-			result = tea.NewView(fmt.Sprintf("internal error: %v\n\nPress ctrl+c to quit.", r))
+			result = tea.NewView(viewPanicText(r))
 			result.AltScreen = true
 		}
 	}()
@@ -413,4 +413,10 @@ func (m *AppModel) getCurrentCursorTaskAndProject() (*models.Task, *models.Proje
 		return v.GetTaskRef()
 	}
 	return nil, nil
+}
+
+// viewPanicText is the frame a recovered View panic draws in place of the app.
+// It names the quit key the way every footer spells a key.
+func viewPanicText(r any) string {
+	return fmt.Sprintf("internal error: %v\n\nPress Ctrl+C to quit.", r)
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/syncexchange"
 	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // Automatic and manual exchange share one worker for enrolled desktop sessions.
@@ -180,7 +181,7 @@ func (m *AppModel) reportManualSync(report *syncexchange.FolderReport, err error
 		parts = append(parts, "exchange errors (tt sync doctor)")
 	}
 	if count := len(m.feedback.syncConflicts); count > 0 {
-		parts = append(parts, fmt.Sprintf("%d conflicts (gc to review)", count))
+		parts = append(parts, manualSyncConflictPart(count))
 	}
 	if m.externalReload.owed {
 		parts = append(parts, "view refresh pending")
@@ -219,4 +220,11 @@ func (m *AppModel) syncAfterLocalCommit() tea.Cmd {
 	}
 	sync.sequence = sequence
 	return m.requestAutomaticSync()
+}
+
+// manualSyncConflictPart names the sync conflicts a manual pass left behind in
+// the same words the status strip's conflict line uses, in agreement with the
+// count.
+func manualSyncConflictPart(count int) string {
+	return util.Count(count, "unresolved sync conflict") + " (gc to review)"
 }
