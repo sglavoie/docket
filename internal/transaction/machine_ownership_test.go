@@ -208,7 +208,8 @@ func TestRecover_QuarantinesStaleForeignTransactionOutsideRoots(t *testing.T) {
 
 // TestHeartbeatFresh covers the readings that decide whether a foreign
 // transaction is live, including the future stamp two synced machines with
-// skewed clocks produce.
+// skewed clocks produce: tolerated up to the grace, and stale beyond it, so a
+// crashed transaction from a peer with a fast clock is still adopted.
 func TestHeartbeatFresh(t *testing.T) {
 	j := newMachineJournal(t, t.TempDir(), "machine-a", baseTestClock)
 	tests := []struct {
@@ -221,7 +222,9 @@ func TestHeartbeatFresh(t *testing.T) {
 		{"just now", baseTestClock.Format(time.RFC3339Nano), true},
 		{"inside grace", baseTestClock.Add(-ForeignTransactionGrace + time.Second).Format(time.RFC3339Nano), true},
 		{"past grace", baseTestClock.Add(-ForeignTransactionGrace - time.Second).Format(time.RFC3339Nano), false},
-		{"skewed into the future", baseTestClock.Add(time.Hour).Format(time.RFC3339Nano), true},
+		{"skewed into the future inside grace", baseTestClock.Add(ForeignTransactionGrace - time.Second).Format(time.RFC3339Nano), true},
+		{"skewed into the future past grace", baseTestClock.Add(ForeignTransactionGrace + time.Second).Format(time.RFC3339Nano), false},
+		{"an hour into the future", baseTestClock.Add(time.Hour).Format(time.RFC3339Nano), false},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

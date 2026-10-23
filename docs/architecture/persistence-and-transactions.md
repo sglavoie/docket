@@ -186,7 +186,8 @@ working and will finish it; the alternative is one machine rolling back a commit
 another machine is mid-way through publishing. Once the heartbeat goes stale the
 transaction is ordinary interrupted work again and recovers on the next launch,
 so a machine that dies mid-commit strands nothing permanently. The grace window
-is the only clock skew this design tolerates, which is why the runbook in
+is the only clock skew this design tolerates, in either direction — a
+heartbeat stamped further ahead than the grace reads as stale too — which is why the runbook in
 [`guide/storage.md`](../guide/storage.md) says not to run `tt` on two machines at
 once rather than treating that as a supported mode.
 

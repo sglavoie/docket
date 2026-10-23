@@ -264,9 +264,12 @@ func (j *Journal) foreignLive(m *Manifest, path string) (ForeignTransaction, boo
 // transaction becomes adoptable — the same answer an owner-less manifest gets.
 //
 // A heartbeat stamped in the future, which two machines with skewed clocks
-// inside one synced workspace produce routinely, yields a negative age and so
-// reads as fresh. That is the safe direction: it defers to the other machine
-// rather than adopting a transaction it may still be applying.
+// inside one synced workspace produce routinely, yields a negative age and
+// reads as fresh while that skew is within ForeignTransactionGrace: the safe
+// direction, deferring to the other machine rather than adopting a transaction
+// it may still be applying. Beyond the grace the stamp vouches for nothing,
+// since otherwise a crashed transaction from a peer with a fast clock would
+// stay unadoptable until local time caught up with it.
 func (j *Journal) heartbeatFresh(heartbeat string) bool {
 	if heartbeat == "" {
 		return false
@@ -275,7 +278,8 @@ func (j *Journal) heartbeatFresh(heartbeat string) bool {
 	if err != nil {
 		return false
 	}
-	return j.now().UTC().Sub(beat) < ForeignTransactionGrace
+	age := j.now().UTC().Sub(beat)
+	return age < ForeignTransactionGrace && age > -ForeignTransactionGrace
 }
 
 // recoverManifest acts on a single loadable manifest according to its state. It
