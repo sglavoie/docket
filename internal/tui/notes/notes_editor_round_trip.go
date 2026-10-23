@@ -90,12 +90,14 @@ func ParseProjectNoteEditorResult(original *models.Note, modified string, create
 	if original.Title != "" && original.Title != substituted && updated.Title == substituted {
 		return nil, fmt.Errorf("edited note has empty title (changes not saved)")
 	}
+	// The modification time is the commit's, so it is left for the service to
+	// stamp from its own clock rather than read here from the wall clock.
+	updated.ModifiedAt = time.Time{}
 	if create {
 		updated.Filename = ""
 		updated.RawRevision = ""
 	} else {
 		updated.CreatedAt = original.CreatedAt
-		updated.ModifiedAt = time.Now()
 		updated.Filename = original.Filename
 		updated.RawRevision = original.RawRevision
 	}
