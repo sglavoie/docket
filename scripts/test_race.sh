@@ -5,6 +5,11 @@
 # usage: test_race.sh [COVERPROFILE]
 #
 # With COVERPROFILE, both halves collect coverage and it is merged there.
+#
+# TT_SHARD_INDEX and TT_SHARD_COUNT (default 0 of 1) run one CI runner's slice:
+# test_sharded.sh takes its slice of the long poles' chunks, and this shard
+# takes every TT_SHARD_COUNT-th of the other packages. Every shard's profile
+# merges into the whole suite's with merge_coverage.sh.
 
 set -eu
 
@@ -27,16 +32,31 @@ cd "$root"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
-# The packages whose serial runtime would otherwise set the suite's wall time.
-sharded="github.com/sglavoie/tt/internal/tui github.com/sglavoie/tt/internal/config"
-packages=$(go list ./... | grep -v -e '/internal/tui$' -e '/internal/config$')
+# The packages whose serial runtime would otherwise set the suite's wall time:
+# internal/tui and internal/config, and the sync convergence suites of
+# internal/storage, internal/bridge, internal/syncmerge and internal/synclog,
+# which run one to seven minutes each under -race as one process.
+sharded_names="tui config storage bridge syncmerge synclog"
+sharded=
+pattern=
+for name in $sharded_names; do
+	sharded="$sharded github.com/sglavoie/tt/internal/$name"
+	pattern="$pattern -e /internal/$name\$"
+done
+shard_index=${TT_SHARD_INDEX:-0}
+shard_count=${TT_SHARD_COUNT:-1}
+# shellcheck disable=SC2086
+packages=$(go list ./... | grep -v $pattern |
+	awk -v i="$shard_index" -v n="$shard_count" '(NR - 1) % n == i')
 
-# With those split off, the long poles left here are internal/storage,
-# internal/syncmerge and internal/bridge, whose sync convergence suites run seven
-# to ten minutes each under -race. A 20m deadline still ends a hang with its
-# goroutine dump without failing one of them for slowness. For the sharded
+# A 20m deadline still ends a hang with its goroutine dump. For the sharded
 # packages, each chunk carries its own deadline.
-if [ -n "$coverprofile" ]; then
+# A bare `go test` would test the current directory, so an empty slice runs
+# nothing and leaves an empty profile.
+if [ -z "$packages" ]; then
+	: >"$work/rest.out"
+	true &
+elif [ -n "$coverprofile" ]; then
 	# shellcheck disable=SC2086
 	go test -race -count=1 -timeout=20m -coverprofile="$work/rest.out" $packages &
 else

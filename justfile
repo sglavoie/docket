@@ -93,7 +93,7 @@ lint-ci:
     echo "Running golangci-lint..."
     golangci-lint run
 
-# Run the exact platform-independent gate invoked by GitHub CI.
+# Run the whole gate GitHub CI runs split across checks, race-test shards, and coverage.
 ci:
     ./scripts/ci.sh
 

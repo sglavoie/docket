@@ -18,6 +18,10 @@
 #
 # With -coverprofile, the binaries are built with coverage and the chunks'
 # profiles are merged there.
+#
+# TT_SHARD_INDEX and TT_SHARD_COUNT (default 0 of 1) split the chunks across
+# machines: this run takes every TT_SHARD_COUNT-th chunk of the whole queue,
+# starting at TT_SHARD_INDEX, so CI runners each drain a disjoint slice of it.
 
 set -eu
 
@@ -79,6 +83,19 @@ if [ -z "$jobs" ]; then
 	[ "$jobs" -lt 2 ] && jobs=2
 fi
 positive TT_SHARD_JOBS "$jobs"
+shard_count=${TT_SHARD_COUNT:-1}
+positive TT_SHARD_COUNT "$shard_count"
+shard_index=${TT_SHARD_INDEX:-0}
+case $shard_index in
+	'' | *[!0-9]*)
+		echo "TT_SHARD_INDEX must be a non-negative integer, got '$shard_index'" >&2
+		exit 2
+		;;
+esac
+if [ "$shard_index" -ge "$shard_count" ]; then
+	echo "TT_SHARD_INDEX $shard_index is not below TT_SHARD_COUNT $shard_count" >&2
+	exit 2
+fi
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
@@ -87,24 +104,41 @@ scenarios=TestExampleScenariosPass
 # A coverage-instrumented binary warns on every run without somewhere to write.
 mkdir "$work/listcover"
 
-# One line per chunk: package index, chunk index, test binary, package
-# directory. The chunk's test names are in $work/tests.<package>.<chunk>.
-: >"$work/jobs"
+# The binaries compile concurrently: each link is serial, and the go command
+# shares the build cache between them.
 p=0
+pids=
 for package in "$@"; do
 	binary=$work/pkg$p.test
 	if [ -n "$coverprofile" ]; then
-		go test -race -cover -covermode=atomic -c -o "$binary" "$package"
+		go test -race -cover -covermode=atomic -c -o "$binary" "$package" &
 	else
-		go test -race -c -o "$binary" "$package"
+		go test -race -c -o "$binary" "$package" &
 	fi
+	pids="$pids $!"
+	p=$((p + 1))
+done
+for pid in $pids; do
+	wait "$pid"
+done
+
+# One line per chunk this shard takes: package index, chunk index, test binary,
+# package directory. The chunk's test names are in $work/tests.<package>.<chunk>.
+: >"$work/jobs"
+p=0
+queued=0
+for package in "$@"; do
+	binary=$work/pkg$p.test
 	dir=$(go list -f '{{.Dir}}' "$package")
 	(cd "$dir" && GOCOVERDIR=$work/listcover "$binary" -test.list '.*') |
 		grep '^Test' | grep -vx "$scenarios" |
 		awk -v n="$chunks" -v prefix="$work/tests.$p." '{ print > (prefix ((NR - 1) % n)) }'
 	i=0
 	while [ "$i" -lt "$chunks" ]; do
-		echo "$p $i $binary $dir" >>"$work/jobs"
+		if [ $((queued % shard_count)) = "$shard_index" ]; then
+			echo "$p $i $binary $dir" >>"$work/jobs"
+		fi
+		queued=$((queued + 1))
 		i=$((i + 1))
 	done
 	p=$((p + 1))
@@ -112,6 +146,10 @@ done
 
 started=$(date +%s)
 export TT_SHARD_WORK="$work" TT_SHARD_COVER="$coverprofile" TT_SHARD_CHUNK_COUNT="$chunks"
+if [ ! -s "$work/jobs" ]; then
+	echo "shard $shard_index of $shard_count holds no chunks" >&2
+	exit 2
+fi
 xargs -P "$jobs" -L 1 "$root/scripts/test_sharded.sh" --run-chunk <"$work/jobs"
 
 failed=0
@@ -119,6 +157,10 @@ p=0
 for package in "$@"; do
 	i=0
 	while [ "$i" -lt "$chunks" ]; do
+		if ! grep -q "^$p $i " "$work/jobs"; then
+			i=$((i + 1))
+			continue
+		fi
 		status=$(cat "$work/status.$p.$i" 2>/dev/null || echo missing)
 		if [ "$status" != 0 ]; then
 			failed=1
@@ -138,5 +180,5 @@ if [ -n "$coverprofile" ]; then
 fi
 elapsed=$(($(date +%s) - started))
 for package in "$@"; do
-	echo "ok  	$package	${elapsed}s ($chunks chunks, $jobs jobs shared)"
+	echo "ok  	$package	${elapsed}s ($chunks chunks, $jobs jobs shared, shard $shard_index of $shard_count)"
 done

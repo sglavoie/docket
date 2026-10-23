@@ -1,6 +1,21 @@
 #!/usr/bin/env sh
+# The repository gate. GitHub CI runs `ci.sh checks` once per platform, which
+# is everything but the race tests, and runs test_race.sh split across runners
+# through TT_SHARD_INDEX and TT_SHARD_COUNT, merging their coverage profiles
+# before check_coverage.sh judges the whole.
+#
+# usage: ci.sh [checks]
 
 set -eu
+
+phase=${1:-all}
+case $phase in
+	all | checks) ;;
+	*)
+		echo "usage: $0 [checks]" >&2
+		exit 2
+		;;
+esac
 
 require_tool() {
 	if ! command -v "$1" >/dev/null 2>&1; then
@@ -15,13 +30,15 @@ require_tool deadcode
 echo "Checking documentation..."
 ./scripts/check_docs.sh
 
-# This pass already replays the committed TUI scenarios and the focused
-# migration/recovery tests; run_tui_scenarios.sh only re-selects them for
-# standalone use. golangci-lint runs govet with enable-all, so `go vet` here
-# would be a third pass over the same analyzers.
-echo "Running race tests and collecting coverage..."
-./scripts/test_race.sh coverage.out
-./scripts/check_coverage.sh coverage.out
+if [ "$phase" = all ]; then
+	# This pass already replays the committed TUI scenarios and the focused
+	# migration/recovery tests; run_tui_scenarios.sh only re-selects them for
+	# standalone use. golangci-lint runs govet with enable-all, so `go vet` here
+	# would be a third pass over the same analyzers.
+	echo "Running race tests and collecting coverage..."
+	./scripts/test_race.sh coverage.out
+	./scripts/check_coverage.sh coverage.out
+fi
 
 echo "Checking search allocation budgets..."
 ./scripts/check_search_budget.sh
