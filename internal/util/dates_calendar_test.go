@@ -166,6 +166,11 @@ func TestStartOfCalendarDateAcceptsADateWithNoMidnight(t *testing.T) {
 				t.Skipf("%s no longer skips midnight on that date (hour %d); the rule is unchanged",
 					tc.zone, start.Hour())
 			}
+			// The transition second itself, with no fractional remainder a
+			// bisection over instants would leave behind.
+			if start.Nanosecond() != 0 || start.Minute() != 0 || start.Second() != 0 {
+				t.Fatalf("start of date = %s, want exactly 01:00:00", start)
+			}
 			// The earliest instant in the date, not merely an instant in it: one
 			// second earlier has to fall on the day before.
 			if _, _, day := start.Add(-time.Second).Date(); day == tc.day {

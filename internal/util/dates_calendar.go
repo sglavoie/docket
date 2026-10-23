@@ -72,15 +72,19 @@ func StartOfCalendarDate(year int, month time.Month, day int, loc *time.Location
 	for span := 2; isCalendarDate(before, year, month, day) && span <= 8; span *= 2 {
 		before = noon.Add(time.Duration(-span) * 24 * time.Hour)
 	}
-	for after.Sub(before) > time.Second {
-		mid := before.Add(after.Sub(before) / 2)
-		if isCalendarDate(mid, year, month, day) {
-			after = mid
+	// The search runs over whole Unix seconds so the answer is the transition
+	// second itself: halving an instant span would leave a fractional remainder
+	// that is inside the date but not its start.
+	lo, hi := before.Unix(), after.Unix()
+	for hi-lo > 1 {
+		mid := lo + (hi-lo)/2
+		if isCalendarDate(time.Unix(mid, 0).In(loc), year, month, day) {
+			hi = mid
 		} else {
-			before = mid
+			lo = mid
 		}
 	}
-	return after, nil
+	return time.Unix(hi, 0).In(loc), nil
 }
 
 // IsStartOfCalendarDate reports whether t is the earliest instant of its own

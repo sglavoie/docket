@@ -315,6 +315,29 @@ func TestStepDueDateRefusesADateTheZoneSkipsEntirely(t *testing.T) {
 	})
 }
 
+// TestStepDueDateLandsOnTheStartOfADateWithNoMidnight is the date-only half of
+// the zone checks: America/Havana skips 00:00 on 2026-03-08, but the date
+// itself exists, so a date-only step resolves the start of that date — 01:00 —
+// rather than refusing a midnight nobody asked for by clock.
+func TestStepDueDateLandsOnTheStartOfADateWithNoMidnight(t *testing.T) {
+	zone, err := time.LoadLocation("America/Havana")
+	if err != nil {
+		t.Fatalf("LoadLocation: %v", err)
+	}
+	task := taskWithDue("dateonly", 1, "Date only", dueAt(zone, 2026, time.March, 7, 0, 0))
+	env := newDueStepEnv(time.Date(2026, time.March, 1, 12, 0, 0, 0, zone), newProject("project", "Project", task))
+
+	if _, err := env.step(app.DueStepForward, nil, env.repo.loc(task.ID)); err != nil {
+		t.Fatalf("step: %v", err)
+	}
+	if got := dueString(task.DueDate); got != "2026-03-08 01:00" {
+		t.Fatalf("deadline = %s, want the start of 2026-03-08", got)
+	}
+	if task.DueHasTime() {
+		t.Fatal("the stepped deadline gained a clock")
+	}
+}
+
 func TestStepDueDateRejectsMalformedRequests(t *testing.T) {
 	task := taskWithDue("target", 1, "Target", nil)
 	project := newProject("project", "Project", task)

@@ -340,17 +340,34 @@ func appendCurrentTaskRecordCollectionsFromModel(record *format.V6TaskRecord, ta
 
 // --- stored time values --------------------------------------------------
 
+// parseProjectDocumentDate resolves a stored date-only value as the civil date
+// it names. time.ParseInLocation hands time.Date a local midnight the zone may
+// not have, and its answer there is 23:00 on the day before — the right instant
+// under the wrong question, and a date read back a day early. The components are
+// read in UTC and the start of that date is rebuilt in location, so a stored
+// date round-trips to the value that wrote it.
 func parseProjectDocumentDate(value string, location *time.Location) (*time.Time, error) {
-	parsed, err := time.ParseInLocation("2006-01-02", value, location)
+	if location == nil {
+		location = time.Local
+	}
+	civil, err := time.ParseInLocation(checkInDateLayout, value, time.UTC)
 	if err != nil {
 		return nil, err
 	}
-	return &parsed, nil
+	if civil.Format(checkInDateLayout) != value {
+		return nil, fmt.Errorf("date %q is not a canonical %s value", value, checkInDateLayout)
+	}
+	day, err := util.StartOfCalendarDate(civil.Year(), civil.Month(), civil.Day(), location)
+	if err != nil {
+		return nil, err
+	}
+	return &day, nil
 }
 
 // parseProjectDocumentDueDate resolves the date-only "due" field, then folds in
 // an optional "due_time" (HH:MM) so a timed due date carries its clock. A due
-// date with no due_time stays at local midnight, which is the date-only signal.
+// date with no due_time stays at the start of its date, which is the date-only
+// signal.
 func parseProjectDocumentDueDate(dateValue, timeValue string, location *time.Location) (*time.Time, error) {
 	day, err := parseProjectDocumentDate(dateValue, location)
 	if err != nil {
@@ -373,31 +390,11 @@ func parseProjectDocumentDueDate(dateValue, timeValue string, location *time.Loc
 const checkInDateLayout = "2006-01-02"
 
 // parseProjectDocumentCheckInDate resolves the stored check-in date as the
-// civil date it names. It deliberately does not go through
-// parseProjectDocumentDate: time.ParseInLocation hands time.Date a local
-// midnight the zone may not have, and its answer there is 23:00 on the day
-// before — the right instant under the wrong question, and a check-in read back
-// a day early. The components are read in UTC and the start of that date is
-// rebuilt in location, which is the same instant models.ValidateCheckInSchedule
-// measures a schedule against, so a stored date round-trips to the value that
-// wrote it. The due date's original behavior is deliberately left alone: a
-// deadline has a place to put a clock, so it is a different question.
+// civil date it names, through the same parseProjectDocumentDate the deadline
+// reads, which is the instant models.ValidateCheckInSchedule measures a schedule
+// against.
 func parseProjectDocumentCheckInDate(value string, location *time.Location) (*time.Time, error) {
-	if location == nil {
-		location = time.Local
-	}
-	civil, err := time.ParseInLocation(checkInDateLayout, value, time.UTC)
-	if err != nil {
-		return nil, err
-	}
-	if civil.Format(checkInDateLayout) != value {
-		return nil, fmt.Errorf("check-in date %q is not a canonical %s value", value, checkInDateLayout)
-	}
-	day, err := util.StartOfCalendarDate(civil.Year(), civil.Month(), civil.Day(), location)
-	if err != nil {
-		return nil, err
-	}
-	return &day, nil
+	return parseProjectDocumentDate(value, location)
 }
 
 // formatProjectDocumentCheckInDate writes a check-in date out as the calendar
