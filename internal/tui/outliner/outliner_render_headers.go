@@ -389,9 +389,8 @@ func (m *OutlinerModel) RenderOutlinerChecklistRow(row OutlinerRow, selected boo
 		text = theme.MutedStyle.Render(text)
 	}
 	paint := m.cursorPaintFor(selected)
-	prefixBudget := max(min(rowWidth/3, 12), 4)
 	gutter := paint.bar(lipgloss.NewStyle(), theme.RenderCursorPrefix()) +
-		gutterPiece(paint.gutterBg(), m.treeConnectorStyle(row), compactOutlinerTreePrefix(row.Prefix, prefixBudget))
+		gutterPiece(paint.gutterBg(), m.treeConnectorStyle(row), m.outlinerTreePrefix(row, rowWidth))
 	content := theme.MutedStyle.Render(box) + text
 
 	if selected {

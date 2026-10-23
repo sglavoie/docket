@@ -6,8 +6,11 @@
     { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "label": "context remains visible at minimum width", "assert": "contains", "value": "[platform]" },
-    { "type": "assert", "label": "so a title that once lost its tail to it arrives whole at 60 columns", "assert": "not_clipped", "value": "Add password validation" },
     { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "the row hangs beneath its merged lead's label, which spends a few columns of its own", "width": 64, "height": 20 },
+    { "type": "assert", "label": "so a title that once lost its tail to context arrives whole just above the floor", "assert": "not_clipped", "value": "Add password validation" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "width": 60, "height": 20 },
 
     { "type": "key", "key": "/" },
     { "type": "text", "text": "Add password validation" },

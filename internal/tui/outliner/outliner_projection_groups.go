@@ -183,14 +183,18 @@ func (m *OutlinerModel) appendProjectGroupHeader(
 }
 
 // mergeProjectGroupRows lets the lone top-level task name its project without
-// changing task columns. Its header connector becomes blank space; descendants
-// keep their prefixes so their checkboxes also align with other project trees.
+// changing task columns. Its header connector becomes blank space, and every
+// row after it is its descendant, so each remembers the lead whose label its
+// tree is drawn beneath.
 func (m *OutlinerModel) mergeProjectGroupRows(start int) {
 	if start < 0 || start >= len(m.Rows) {
 		return
 	}
 	m.Rows[start].Prefix = connectorSpace
 	m.Rows[start].LeadsMergedGroup = true
+	for index := start + 1; index < len(m.Rows); index++ {
+		m.Rows[index].MergedLead = m.Rows[start].Task
+	}
 }
 
 // projectGroupPressure counts the overdue and Today-planned work one project

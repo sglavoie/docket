@@ -279,8 +279,7 @@ func (m *OutlinerModel) buildTaskRowSegmentsFor(row OutlinerRow, rowWidth int, c
 			prioritySegment = chrome.DemoteBadge(trimmed) + " "
 		}
 	}
-	prefixBudget := max(min(rowWidth/3, 12), 4)
-	prefix := compactOutlinerTreePrefix(row.Prefix, prefixBudget)
+	prefix := m.outlinerTreePrefix(row, rowWidth)
 	if row.LeadsMergedGroup {
 		// The merged row replaces a project header, so its label starts in
 		// that header's column. Keep the task's fold arrow in the same gutter.
@@ -465,6 +464,26 @@ func (m *OutlinerModel) renderTaskCursorColumn(row OutlinerRow, paint cursorPain
 		return paint.bar(theme.SelectionCheckStyle, selectionMark)
 	}
 	return paint.bar(lipgloss.NewStyle(), theme.RenderCursorPrefix())
+}
+
+// outlinerTreePrefix is the tree a task or checklist row draws before its fold
+// column. A descendant of a merged singleton row trades the lead's own blank
+// connector for the columns the lead spends before its status icon, so its tree
+// hangs beneath the lead's checkbox rather than beneath its project label; the
+// compaction budget still bounds only the tree itself.
+func (m *OutlinerModel) outlinerTreePrefix(row OutlinerRow, rowWidth int) string {
+	prefixBudget := max(min(rowWidth/3, 12), 4)
+	tree, indent := row.Prefix, ""
+	if row.MergedLead != nil && strings.HasPrefix(tree, connectorSpace) {
+		lead := row
+		lead.Task = row.MergedLead
+		lead.LeadsMergedGroup = true
+		lead.IsChecklistItem = false
+		tree = strings.TrimPrefix(tree, connectorSpace)
+		// The lead's fold column is always drawn, arrow or blank.
+		indent = strings.Repeat(" ", 2+lipgloss.Width(m.taskProjectLabel(lead, rowWidth, nil)))
+	}
+	return indent + compactOutlinerTreePrefix(tree, prefixBudget)
 }
 
 func compactOutlinerTreePrefix(prefix string, maxWidth int) string {

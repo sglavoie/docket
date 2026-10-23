@@ -262,6 +262,28 @@ func TestGroupedRowsDoNotReserveSpaceForOtherTasksContexts(t *testing.T) {
 	}
 }
 
+// A merged row's descendants hang beneath its state badge, not beneath the
+// project label the row leads with, so they read as its children.
+func TestMergedRowDescendantsHangBeneathItsBadge(t *testing.T) {
+	outliner, root, child := mergedSingletonFixture(t)
+	root.Context = "infra"
+	for _, width := range []int{60, 80, 120} {
+		layout := outliner.ComputeOutlinerRowLayout(outliner.Rows, width)
+		rootIndex, rootRow := mustRowForTask(t, outliner, root.ID)
+		childIndex, childRow := mustRowForTask(t, outliner, child.ID)
+		if childRow.MergedLead == nil || childRow.MergedLead.ID != root.ID {
+			t.Fatalf("child row = %+v, want it to remember its merged lead", childRow)
+		}
+		parent := ansi.Strip(outliner.RenderOutlinerTaskRow(rootRow, false, width, rootIndex, layout))
+		line := ansi.Strip(outliner.RenderOutlinerTaskRow(childRow, false, width, childIndex, layout))
+		badge := ansi.StringWidth(parent[:strings.Index(parent, "🞑")])
+		connector := ansi.StringWidth(line[:strings.Index(line, connectorLastItem)])
+		if connector != badge {
+			t.Fatalf("width %d: child connector at column %d, want the lead's badge column %d:\n%s\n%s", width, connector, badge, parent, line)
+		}
+	}
+}
+
 func TestMergedRootChecklistRowsSitBeneathIt(t *testing.T) {
 	outliner, _, _ := mergedSingletonFixture(t)
 	task := outliner.Population.Projects[1].Tasks[0]

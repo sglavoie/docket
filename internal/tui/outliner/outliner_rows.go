@@ -68,6 +68,7 @@ type OutlinerRow struct {
 	IsProjectHeader        bool                      // True if this row is a synthetic, cursorable project sub-header (not a task)
 	IsFocusedProjectHeader bool                      // True for the one header a focused projection leads with: project identity, no fold
 	LeadsMergedGroup       bool                      // True for the one top-level task an expanded singleton project group draws in place of its header
+	MergedLead             *models.Task              // The LeadsMergedGroup task this row descends from, whose label its tree indents past
 	IsPinnedSection        bool                      // True for the synthetic Pinned header and every promoted task row beneath it
 	IsTodaySection         bool                      // True for the synthetic Today header and every explicit Today task row beneath it
 	IsNextSection          bool                      // True for the synthetic Next header and every explicit Next task row beneath it
@@ -298,6 +299,9 @@ func (m *OutlinerModel) expandChecklistRows() {
 			child := row
 			child.IsChecklistItem = true
 			child.LeadsMergedGroup = false
+			if row.LeadsMergedGroup {
+				child.MergedLead = row.Task
+			}
 			child.ChecklistIndex = index
 			child.ChecklistDone = item.Done
 			child.HasVisibleChildren = false
