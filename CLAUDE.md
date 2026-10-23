@@ -985,7 +985,7 @@ lookaround, which is what keeps a `#auth` inside a comment literal. It is
 repeatable and needs both delimiters, so `Fix a; then b` stays prose.
 
 Due's last alternative is `[^\s@]\S*` so `@` can never eat `@@`. Deferring
-refuses a terminal task and otherwise claims Backlog.
+refuses a terminal task or an arrived wake instant and otherwise claims Backlog.
 
 `##context` sets the optional singleton task context with tag normalization.
 `##0` clears it and `@@0` a deferral on the edit surfaces; outline omission

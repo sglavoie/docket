@@ -1,6 +1,7 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -224,12 +225,23 @@ func (t *Task) IsDeferredAt(now time.Time) bool {
 	return t.DeferredUntil.After(now)
 }
 
+// ErrDeferNotInFuture is ApplyDeferAt's refusal of a wake instant that has
+// already arrived. Every surface that defers reaches it through that one gate.
+var ErrDeferNotInFuture = errors.New("defer until must be in the future")
+
 // ApplyDeferAt is the canonical defer lifecycle transition. Deferring always
 // claims Backlog, and only a new claim increments DeferCount: moving an
 // unexpired wake instant is an edit to the pending deferral, while setting a
 // new instant after the previous one lapsed is a repeat deferral. The passage
 // of time itself never calls this method and therefore never changes the count.
+//
+// A wake instant not after now is refused before anything moves: it would
+// demote the task, count a deferral, and clear its planning while leaving it
+// awake, which is a deferral in every consequence except the one it names.
 func (t *Task) ApplyDeferAt(until, now time.Time) error {
+	if !until.After(now) {
+		return ErrDeferNotInFuture
+	}
 	wasPending := t.IsDeferredAt(now)
 	if err := t.ApplyStateTransitionAt(StateBacklog, now); err != nil {
 		return err

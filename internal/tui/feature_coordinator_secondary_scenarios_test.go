@@ -181,13 +181,13 @@ func TestBulkDeferScenario(t *testing.T) {
 	b := seedTask(t, 2, "Second", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "bulk-defer", a, b)
 
-	until := time.Date(2026, 8, 10, 0, 0, 0, 0, time.Local)
+	until := time.Date(2036, 8, 10, 0, 0, 0, 0, time.Local)
 	runBatchResult(t, features.Bulk.DeferLocators(envLocators(env, a, b), &until))
 
 	reloaded := env.reload(t)
 	for _, id := range []string{a.ID, b.ID} {
-		if got := reloaded.GetTaskByID(id); got == nil || got.DeferredUntil == nil || got.DeferredUntil.Format("2006-01-02") != "2026-08-10" {
-			t.Fatalf("task %s deferred = %v, want 2026-08-10", id, got)
+		if got := reloaded.GetTaskByID(id); got == nil || got.DeferredUntil == nil || got.DeferredUntil.Format("2006-01-02") != "2036-08-10" {
+			t.Fatalf("task %s deferred = %v, want 2036-08-10", id, got)
 		}
 	}
 
@@ -202,7 +202,7 @@ func TestBulkDeferScenario(t *testing.T) {
 	env.undo(t)
 	reloaded = env.reload(t)
 	for _, id := range []string{a.ID, b.ID} {
-		if got := reloaded.GetTaskByID(id); got == nil || got.DeferredUntil == nil || got.DeferredUntil.Format("2006-01-02") != "2026-08-10" {
+		if got := reloaded.GetTaskByID(id); got == nil || got.DeferredUntil == nil || got.DeferredUntil.Format("2006-01-02") != "2036-08-10" {
 			t.Fatalf("undo did not restore deferral for %s: %v", id, got)
 		}
 	}
