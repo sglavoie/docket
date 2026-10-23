@@ -21,14 +21,38 @@ func syncedPath(rel string) bool {
 	return err == nil && !local
 }
 
+// syncedDir reports whether a directory can hold a synced path. Classify syncs
+// nothing outside projects/ and .tt/ and, inside .tt/, only its top-level files
+// and global-notes/, so the walk skips the history, journal, undo, backup, and
+// conflict stores that every delivery grows. Fingerprinting each delivery
+// spent most of this suite's time listing those directories on macOS.
+func syncedDir(rel string) bool {
+	parts := strings.Split(rel, "/")
+	switch parts[0] {
+	case ".":
+		return true
+	case "projects":
+		return true
+	case ".tt":
+		return len(parts) == 1 || parts[1] == "global-notes"
+	}
+	return false
+}
+
 func (s *faultSim) syncedFiles(d *simDevice) map[string]string {
 	out := map[string]string{}
 	err := filepath.WalkDir(d.root, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil || entry.IsDir() {
+		if err != nil {
 			return err
 		}
 		rel, _ := filepath.Rel(d.root, path)
 		rel = filepath.ToSlash(rel)
+		if entry.IsDir() {
+			if !syncedDir(rel) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
 		if !syncedPath(rel) {
 			return nil
 		}
