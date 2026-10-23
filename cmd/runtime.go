@@ -119,17 +119,31 @@ func requireExistingWorkspace() error {
 	}
 	configPath := config.NewManager(resolveConfigPath()).GetConfigPath()
 	dir := config.WorkspaceRootFromConfigPath(configPath)
+	exists, err := workspaceExists(configPath)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("no tt workspace at %s; this command never creates one: "+
+			"pass --data-dir with an existing workspace, or run 'tt' to create one there", absolutePath(dir))
+	}
+	return nil
+}
+
+// workspaceExists reports whether the workspace configPath belongs to is there,
+// by the markers requireExistingWorkspace documents.
+func workspaceExists(configPath string) (bool, error) {
+	dir := config.WorkspaceRootFromConfigPath(configPath)
 	for _, marker := range []string{config.InternalDir(dir), configPath} {
 		_, err := os.Stat(marker)
 		if err == nil {
-			return nil
+			return true, nil
 		}
 		if !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("failed to inspect workspace at %s: %w", absolutePath(dir), err)
+			return false, fmt.Errorf("failed to inspect workspace at %s: %w", absolutePath(dir), err)
 		}
 	}
-	return fmt.Errorf("no tt workspace at %s; this command never creates one: "+
-		"pass --data-dir with an existing workspace, or run 'tt' to create one there", absolutePath(dir))
+	return false, nil
 }
 
 // absolutePath is path made absolute for an error message, or path unchanged

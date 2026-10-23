@@ -170,6 +170,31 @@ func TestWorkspaceLocationCommand_Runs(t *testing.T) {
 	}
 }
 
+// TestWorkspaceLocationSaysWhenNoWorkspaceIsThere keeps the listed paths from
+// reading as files that exist, and drops the note once a workspace does.
+func TestWorkspaceLocationSaysWhenNoWorkspaceIsThere(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	src := filepath.Join(t.TempDir(), "src")
+	setCommandDataDir(t, src)
+	const note = "(no workspace here yet; run 'tt' to create one)"
+
+	stdout, _, err := captureDoctorOutput(t, func() error { return runWorkspaceLocation(nil, nil) })
+	if err != nil || !strings.Contains(stdout, note) {
+		t.Fatalf("location of a missing workspace = %v, want the note:\n%s", err, stdout)
+	}
+	if _, statErr := os.Stat(src); !os.IsNotExist(statErr) {
+		t.Fatalf("workspace location created the directory: %v", statErr)
+	}
+
+	if _, err := LoadCLIWorkspace(); err != nil {
+		t.Fatalf("bootstrap workspace: %v", err)
+	}
+	stdout, _, err = captureDoctorOutput(t, func() error { return runWorkspaceLocation(nil, nil) })
+	if err != nil || strings.Contains(stdout, note) {
+		t.Fatalf("location of an existing workspace = %v, still notes it missing:\n%s", err, stdout)
+	}
+}
+
 func TestWorkspaceMoveHelpExplainsTUILocksAndForceSafety(t *testing.T) {
 	if !strings.Contains(workspaceMoveCmd.Long, "active TUI blocks the move") {
 		t.Fatalf("workspace move help must explain active TUI exclusion:\n%s", workspaceMoveCmd.Long)

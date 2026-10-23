@@ -33,6 +33,11 @@ func runWorkspaceLocation(_ *cobra.Command, _ []string) error {
 	workspaceDir := config.WorkspaceRootFromConfigPath(configPath)
 
 	fmt.Printf("Workspace data directory: %s\n", config.DisplayPath(workspaceDir))
+	// Every path below is where the workspace would live; say when none does yet
+	// rather than list files that are not there.
+	if exists, err := workspaceExists(configPath); err == nil && !exists {
+		fmt.Println("                          (no workspace here yet; run 'tt' to create one)")
+	}
 	fmt.Printf("Catalog:                  %s\n", config.DisplayPath(config.WorkspaceCatalogPath(workspaceDir)))
 	fmt.Printf("Storage:                  %s\n", config.StorageLocationLabel(workspaceDir))
 
