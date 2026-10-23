@@ -9,6 +9,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
@@ -412,5 +413,23 @@ func TestCheckInHintFollowsNegotiatedKeyboard(t *testing.T) {
 		if !strings.Contains(line, want+": Set up check-ins") {
 			t.Fatal(line)
 		}
+	}
+}
+
+// TestCheckInEditorBulkSubtitleAgreesWithCount keeps a one-task visual selection
+// from being announced as "1 selected tasks".
+func TestCheckInEditorBulkSubtitleAgreesWithCount(t *testing.T) {
+	task := newBulkPickerTestTask(t, 1, "task")
+	env := newAppBulkPickerEnv(t, []*models.Task{task})
+	model := env.appModel()
+	registerCheckInTestOperations(t, model)
+	context := bulkTaskActionTestContext(env.projects[0], task)
+	editor, err := model.operations.NewCheckInEditor(model, operation.OperationExecutionRequest{ID: operation.OperationTaskSetCheckIn, Context: context})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rendered := ansi.Strip(editor.Render(100))
+	if !strings.Contains(rendered, "Replace schedule on 1 selected task") || strings.Contains(rendered, "1 selected tasks") {
+		t.Fatalf("bulk subtitle for one task:\n%s", rendered)
 	}
 }

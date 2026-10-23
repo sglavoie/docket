@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskform"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // CheckInRejectedMsg returns a failed asynchronous commit to the editor with
@@ -37,7 +38,7 @@ func (c *Controller) NewCheckInEditor(
 	if bulk {
 		return taskform.NewCheckInEditorModel(
 			request,
-			fmt.Sprintf("Replace schedule on %d selected tasks", len(refs)),
+			"Replace schedule on "+util.Count(len(refs), "selected task"),
 			models.CheckInSchedule{},
 			true,
 		), nil

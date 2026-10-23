@@ -17,6 +17,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // The shell side of the named-lens picker. The picker itself knows only the
@@ -239,7 +240,7 @@ func (m *AppModel) resolveBrowserConflict(req conflict.ResolveMsg) tea.Cmd {
 			var result *engine.ResolveResult
 			result, err = m.domain.resolveSyncConflict(engine.ResolveRequest{ConflictID: req.ID, Choice: req.Choice, Version: req.Version, Text: req.Text})
 			if err == nil {
-				message = fmt.Sprintf("Resolved %d sync conflict(s)", len(result.Resolved))
+				message = "Resolved " + util.Count(len(result.Resolved), "sync conflict")
 			}
 		}
 	} else if m.domain.resolveProjectConflict == nil {

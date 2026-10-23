@@ -161,3 +161,14 @@ func TestManualSyncReportsPartialExchange(t *testing.T) {
 		t.Fatal("partial exchange errors did not get warning feedback")
 	}
 }
+
+func TestManualSyncConflictPartAgreesWithCount(t *testing.T) {
+	for count, want := range map[int]string{
+		1: "1 unresolved sync conflict (gc to review)",
+		2: "2 unresolved sync conflicts (gc to review)",
+	} {
+		if got := manualSyncConflictPart(count); got != want {
+			t.Fatalf("manualSyncConflictPart(%d) = %q, want %q", count, got, want)
+		}
+	}
+}
