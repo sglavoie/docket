@@ -127,6 +127,24 @@ func TestPickHeroAttribute(t *testing.T) {
 	}
 }
 
+// TestPickHeroAttributeReadsTheSuppliedInstant answers overdue and due-today
+// against the row's instant, not the wall clock, so one render pass cannot
+// call a deadline overdue in its tint and due today in its badge.
+func TestPickHeroAttributeReadsTheSuppliedInstant(t *testing.T) {
+	now := time.Date(2031, time.February, 3, 10, 0, 0, 0, time.Local)
+	due := util.StartOfDay(now)
+	task := &models.Task{ID: "t-due", WorkflowState: models.StateBacklog, DueDate: &due}
+	if got := PickHeroAttribute(task, now); got != HeroDueToday {
+		t.Fatalf("PickHeroAttribute on its due day = %v, want HeroDueToday", got)
+	}
+	if got := PickHeroAttribute(task, now.AddDate(0, 0, 1)); got != HeroOverdue {
+		t.Fatalf("PickHeroAttribute the day after = %v, want HeroOverdue", got)
+	}
+	if got := PickHeroAttribute(task, now.AddDate(0, 0, -1)); got != HeroNone {
+		t.Fatalf("PickHeroAttribute the day before = %v, want HeroNone", got)
+	}
+}
+
 func TestDemoteBadgeEmpty(t *testing.T) {
 	if got := DemoteBadge(""); got != "" {
 		t.Errorf("demoteBadge(\"\") = %q, want \"\"", got)

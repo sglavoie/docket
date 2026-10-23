@@ -195,14 +195,14 @@ func taskWokeRecently(task *models.Task, now time.Time) bool {
 // its overdue text color, which are the operational indicators urgency was
 // always read from and the only ones that survive --no-color anyway. Move off
 // the row and the tint is back.
-func taskRowTint(task *models.Task) (lipgloss.Style, bool) {
-	if task.IsOverdue() {
+func taskRowTint(task *models.Task, now time.Time) (lipgloss.Style, bool) {
+	if task.IsOverdueAt(now) {
 		return theme.OverdueRowStyle, true
 	}
 	return lipgloss.Style{}, false
 }
 
-func applyTaskRowLineStyle(gutter, content string, task *models.Task, paint cursorPaint, rowWidth, rowIndex int) string {
+func applyTaskRowLineStyle(gutter, content string, task *models.Task, now time.Time, paint cursorPaint, rowWidth, rowIndex int) string {
 	if paint.marked {
 		// Background precedence, stated once: the cursor's band owns the marked row
 		// and neither the overdue tint nor the zebra stripe is applied over or under
@@ -210,7 +210,7 @@ func applyTaskRowLineStyle(gutter, content string, task *models.Task, paint curs
 		// foreground that content carries reads on top of it unchanged.
 		return outlinerCursorRow(gutter, content, rowWidth, paint)
 	}
-	tint, tinted := taskRowTint(task)
+	tint, tinted := taskRowTint(task, now)
 
 	// renderTaskTitle floors the title budget at 10 cols, so a deeply-nested row
 	// (a long tree prefix) can assemble wider than rowWidth.

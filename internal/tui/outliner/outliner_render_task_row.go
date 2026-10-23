@@ -28,6 +28,9 @@ type taskRowSegments struct {
 	// or stands alone where a project header already names the project.
 	projectLabel string
 	projectFirst bool
+	// now is the one instant the row was built against; the overdue tint reads
+	// it too, so the tint, the hero badge, and the due segment cannot disagree.
+	now time.Time
 }
 
 func (s taskRowSegments) titleWidth(rowWidth int) int {
@@ -182,6 +185,7 @@ func (m *OutlinerModel) buildTaskRowSegmentsFor(row OutlinerRow, rowWidth int, c
 		indicators:        indicatorSegments.render(),
 		relationMarker:    m.taskRelationMarker(row),
 		matchCue:          taskMatchSourceCue(row),
+		now:               now,
 	}
 
 	// Preserve a readable title before secondary metadata on narrow/deep rows.
@@ -226,7 +230,7 @@ func (m *OutlinerModel) RenderOutlinerTaskRow(
 	segments := m.buildTaskRowSegments(row, rowWidth, colLayout, paint)
 	title := m.renderTaskTitle(row, titleStyle, rowWidth, segments)
 
-	return applyTaskRowLineStyle(segments.gutter(), segments.content(title), task, paint, rowWidth, rowIndex)
+	return applyTaskRowLineStyle(segments.gutter(), segments.content(title), task, segments.now, paint, rowWidth, rowIndex)
 }
 
 // RenderOutlinerPreviewTaskRow draws one task row for a read-only glance at a
@@ -252,7 +256,7 @@ func (m *OutlinerModel) RenderOutlinerPreviewTaskRow(
 	segments := m.buildTaskRowSegmentsFor(row, rowWidth, colLayout, paint, titleTarget, previewIndicatorDropLadder)
 	title := m.renderTaskTitle(row, titleStyle, rowWidth, segments)
 
-	return applyTaskRowLineStyle(segments.gutter(), segments.content(title), task, paint, rowWidth, rowIndex)
+	return applyTaskRowLineStyle(segments.gutter(), segments.content(title), task, segments.now, paint, rowWidth, rowIndex)
 }
 
 // rowIdentity resolves a row's project-qualified task identity, supplying the

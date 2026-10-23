@@ -303,10 +303,14 @@ func (t *Task) IsOverdueAt(now time.Time) bool {
 // Does not check completion status — callers can combine with IsComplete() if needed.
 // Uses day-level comparison (normalizes to midnight local time).
 func (t *Task) IsDueToday() bool {
+	return t.IsDueTodayAt(time.Now())
+}
+
+// IsDueTodayAt reports whether the due date falls on now's calendar day.
+func (t *Task) IsDueTodayAt(now time.Time) bool {
 	if t.DueDate == nil {
 		return false
 	}
-	now := time.Now()
 	today := util.StartOfDay(now)
 	dueDay := util.StartOfDay(*t.DueDate)
 	return dueDay.Equal(today)
