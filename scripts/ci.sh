@@ -43,6 +43,11 @@ fi
 echo "Checking search allocation budgets..."
 ./scripts/check_search_budget.sh
 
+# Deferred from the race suite by TT_DEFER_TIMING_GUARDS, which a loaded
+# machine would fail for contention rather than for growth.
+echo "Checking sync derivation scaling..."
+go test -race -count=1 -run '^TestSyncDerivationScalesNearLinearly$' ./internal/synclog
+
 echo "Running golangci-lint..."
 # golangci-lint otherwise takes a machine-wide lock at $TMPDIR/golangci-lint.lock
 # and exits 3 with "parallel golangci-lint is running" when any other checkout on

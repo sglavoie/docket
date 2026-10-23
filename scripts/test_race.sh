@@ -26,6 +26,11 @@ coverprofile=${1:-}
 GORACE="${GORACE:+$GORACE }atexit_sleep_ms=0"
 export GORACE
 
+# Every worker here competes for the same cores and memory, which skews the
+# guards that compare timings; ci.sh checks runs those alone instead.
+TT_DEFER_TIMING_GUARDS=1
+export TT_DEFER_TIMING_GUARDS
+
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
 

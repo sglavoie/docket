@@ -2,6 +2,7 @@ package synclog
 
 import (
 	"fmt"
+	"os"
 	"runtime"
 	"runtime/debug"
 	"testing"
@@ -121,8 +122,16 @@ func derivationTime(t *testing.T, s *synthHistory) (time.Duration, *materialized
 // TestSyncDerivationScalesNearLinearly is the guard on conflict derivation's
 // growth, which runs after every exchange pass inside the Outliner's update
 // loop. It compares times between history sizes rather than against a clock, so
-// the race detector and a slow machine scale both sides alike.
+// the race detector and a slow machine scale both sides alike. A loaded machine
+// does not: the largest history outgrows the cache that the smallest fits in,
+// so contention for memory slows only one side, and a 3-core CI runner draining
+// race shards measured a ratio of 17 where an idle one measures 6. The race
+// suite therefore sets TT_DEFER_TIMING_GUARDS, and `ci.sh checks` runs this
+// test alone.
 func TestSyncDerivationScalesNearLinearly(t *testing.T) {
+	if os.Getenv("TT_DEFER_TIMING_GUARDS") != "" {
+		t.Skip("TT_DEFER_TIMING_GUARDS is set: ci.sh checks runs this guard on a quiet machine")
+	}
 	shapes := []struct {
 		name  string
 		build func(testing.TB, int) *synthHistory

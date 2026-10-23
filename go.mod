@@ -1,6 +1,6 @@
 module github.com/sglavoie/tt
 
-go 1.26.0
+go 1.26.10
 
 require (
 	github.com/atotto/clipboard v0.1.4 // indirect
