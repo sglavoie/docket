@@ -235,6 +235,58 @@ func TestProjectPreviewTaskRowsFoldsTerminalTasksIntoOneSummary(t *testing.T) {
 	}
 }
 
+func TestProjectPreviewTaskRowsExcludeEffectivelyHiddenWork(t *testing.T) {
+	t.Parallel()
+
+	visible := &models.Task{ID: "visible", ShortID: 1, Title: "Visible", WorkflowState: models.StateBacklog}
+	open := &models.Task{ID: "open", ShortID: 2, Title: "Open child", WorkflowState: models.StateBacklog}
+	quiet := &models.Task{ID: "quiet", ShortID: 3, Title: "Quiet child", WorkflowState: models.StateBacklog, Hidden: true}
+	hiddenRoot := &models.Task{ID: "hidden-root", ShortID: 4, Title: "Hidden root", WorkflowState: models.StateDoing, Hidden: true}
+	inherited := &models.Task{ID: "inherited", ShortID: 5, Title: "Inherited child", WorkflowState: models.StateBacklog}
+	hiddenDone := &models.Task{ID: "hidden-done", ShortID: 6, Title: "Hidden done", WorkflowState: models.StateDone, Hidden: true}
+	inheritedDone := &models.Task{ID: "inherited-done", ShortID: 7, Title: "Inherited done", WorkflowState: models.StateDone}
+	shipped := &models.Task{ID: "shipped", ShortID: 8, Title: "Shipped", WorkflowState: models.StateDone}
+	visibleID, hiddenRootID := visible.ID, hiddenRoot.ID
+	open.ParentID = &visibleID
+	quiet.ParentID = &visibleID
+	visible.Children = []*models.Task{open, quiet}
+	// No Parent pointers and no Children links on the hidden root: inheritance is
+	// read through the stored ParentID against the tasks the pane was handed.
+	inherited.ParentID = &hiddenRootID
+	inheritedDone.ParentID = &hiddenRootID
+
+	rows, settled := projectops.PreviewTaskRows("proj", []*models.Task{
+		visible, open, quiet, hiddenRoot, inherited, hiddenDone, inheritedDone, shipped,
+	})
+	if got, want := settled, (projectops.PreviewSettledTally{Done: 1}); got != want {
+		t.Fatalf("settled = %+v, want %+v: hidden terminal work is not counted", got, want)
+	}
+	titles := make([]string, 0, len(rows))
+	for _, row := range rows {
+		titles = append(titles, row.Task.Title)
+	}
+	if got, want := strings.Join(titles, ", "), "Visible, Open child"; got != want {
+		t.Fatalf("rows = %q, want %q", got, want)
+	}
+	if !rows[0].HasVisibleChildren {
+		t.Fatalf("visible parent lost its open child")
+	}
+	if got, want := rows[1].Prefix, outliner.BuildTreePrefix([]bool{true}, true); got != want {
+		t.Fatalf("open child prefix = %q, want the last-sibling connector %q once its hidden sibling is gone", got, want)
+	}
+
+	// A parent whose only child is hidden draws no fold.
+	lone := &models.Task{ID: "lone", ShortID: 1, Title: "Lone", WorkflowState: models.StateBacklog}
+	secret := &models.Task{ID: "secret", ShortID: 2, Title: "Secret", WorkflowState: models.StateBacklog, Hidden: true}
+	loneID := lone.ID
+	secret.ParentID = &loneID
+	lone.Children = []*models.Task{secret}
+	rows, _ = projectops.PreviewTaskRows("proj", []*models.Task{lone, secret})
+	if len(rows) != 1 || rows[0].HasVisibleChildren {
+		t.Fatalf("rows = %d (children %v), want the lone parent with no visible children", len(rows), len(rows) > 0 && rows[0].HasVisibleChildren)
+	}
+}
+
 func TestProjectHubPreviewSummarizesSettledWorkInOneRow(t *testing.T) {
 	app := projectHubDiskApp(t)
 	tree := projectHubDiskProject(app, "tree", "Tree")

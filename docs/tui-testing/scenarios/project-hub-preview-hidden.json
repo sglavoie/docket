@@ -1,0 +1,28 @@
+{
+  "name": "project-hub-preview-hidden",
+  "fixture": "fresh",
+  "size": "120x40",
+  "actions": [
+    { "type": "key", "label": "capture two tasks into Unfiled", "key": "a" },
+    { "type": "text", "text": "Alpha keep" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "key", "key": "a" },
+    { "type": "text", "text": "Quiet target" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "key", "key": "home" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "onto the task to hide", "key": "j" },
+    { "type": "key", "key": "w" },
+    { "type": "key", "label": "hide the cursor task", "key": "h" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Hidden 1 task" },
+    { "type": "key", "label": "open Select Project", "key": "P" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "assert", "label": "the preview keeps visible work", "assert": "contains", "value": "Alpha keep" },
+    { "type": "assert", "label": "the preview drops hidden work", "assert": "not_contains", "value": "Quiet target" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

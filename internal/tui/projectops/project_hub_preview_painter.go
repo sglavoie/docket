@@ -118,14 +118,23 @@ func (t PreviewSettledTally) Label() string {
 // Roots are the tasks no other task claims as a child rather than the tasks
 // reporting no parent, so a task whose parent reference dangles is still listed
 // once instead of disappearing between the two readings.
+//
+// Effectively hidden work is outside every view, this pane included, and the
+// pane has no facet to open it: a hidden task and its descendants are neither
+// rows nor counted in the tally. Skipping a hidden task skips its subtree, which
+// is hidden by inheritance anyway, so the open tree keeps its shape.
 func PreviewTaskRows(projectID string, tasks []*models.Task) ([]outliner.OutlinerRow, PreviewSettledTally) {
 	if len(tasks) == 0 {
 		return nil, PreviewSettledTally{}
 	}
+	// The tasks may come from a tally over a project whose record holds none, so
+	// ancestors resolve against the tasks the pane was handed.
+	lookup := &models.Project{ID: projectID, Tasks: tasks}
+	hidden := func(task *models.Task) bool { return models.TaskEffectivelyHidden(lookup, task) }
 	var settled PreviewSettledTally
 	counted := make(map[string]bool, len(tasks))
 	for _, task := range tasks {
-		if task == nil || counted[task.ID] {
+		if task == nil || counted[task.ID] || hidden(task) {
 			continue
 		}
 		counted[task.ID] = true
@@ -140,7 +149,7 @@ func PreviewTaskRows(projectID string, tasks []*models.Task) ([]outliner.Outline
 	open := func(siblings []*models.Task) []*models.Task {
 		kept := make([]*models.Task, 0, len(siblings))
 		for _, task := range siblings {
-			if task != nil && !task.IsTerminalState() {
+			if task != nil && !task.IsTerminalState() && !hidden(task) {
 				kept = append(kept, task)
 			}
 		}

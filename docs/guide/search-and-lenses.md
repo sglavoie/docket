@@ -39,10 +39,10 @@ names matching tasks that are still hidden.
 ### Hidden tasks
 
 `wh` hides the cursor task, or the selection, from every view: every mode,
-`/` search, lens results, the workspace pulse, Review, and Today's pace. Its
-children go with it. Hiding changes nothing else about the task — state,
-plans, pin, review flag, deadline, and check-in stay as they were — and one `u`
-takes it back. Nothing you type in a capture or edit line can hide a task, and
+`/` search, lens results, the Select Project preview, the workspace pulse,
+Review, and Today's pace. Its children go with it. Hiding changes nothing else
+about the task — state, plans, pin, review flag, deadline, and check-in stay as
+they were — and one `u` takes it back. Nothing you type in a capture or edit line can hide a task, and
 editing a hidden task keeps it hidden.
 
 `fH` narrows the current mode and scope to hidden tasks, including children
