@@ -130,6 +130,11 @@ const (
 	QueryFieldParked QueryField = "parked"
 	// QueryFieldArchived is the archived population axis.
 	QueryFieldArchived QueryField = "archived"
+	// QueryFieldHidden is the hidden population axis. It is the one population
+	// read at task level: a task is in it when TaskEffectivelyHidden says so,
+	// and every reader excludes that population unless a positive clause opens
+	// it, the way the parked and archived projects stay out of the base load.
+	QueryFieldHidden QueryField = "hidden"
 )
 
 // Population axis values. Include loads a population without narrowing to it;
@@ -211,6 +216,7 @@ var queryFieldSpecs = []queryFieldSpec{
 	{QueryFieldProjectTag, QueryJoinOR, []QueryOperator{QueryOperatorIs, QueryOperatorNone}, true},
 	{QueryFieldParked, QueryJoinOR, []QueryOperator{QueryOperatorIs}, true},
 	{QueryFieldArchived, QueryJoinOR, []QueryOperator{QueryOperatorIs}, true},
+	{QueryFieldHidden, QueryJoinOR, []QueryOperator{QueryOperatorIs}, true},
 }
 
 // queryOperatorOrder ranks operators for within-field canonical ordering.
@@ -252,8 +258,9 @@ func QueryFieldJoin(field QueryField) (QueryJoin, error) {
 	return spec.join, nil
 }
 
-// QueryFieldRequiresReload reports whether a field names a project population
-// that has to be loaded before any task of it can be evaluated. It is the one
+// QueryFieldRequiresReload reports whether a field names a population that has
+// to be loaded before any task of it can be evaluated: a project population, or
+// the hidden tasks every reader leaves out of the one it assembles. It is the one
 // predicate the reload obligation is computed from: a clause carries the answer
 // on QueryClause.RequiresReload, and a caller holding only a field — a facet key
 // deciding whether applying it rebuilds rows or reloads projects — asks here.

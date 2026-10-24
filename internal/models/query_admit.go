@@ -110,9 +110,11 @@ func queryClauseMatches(clause QueryClause, task *Task, project *Project, now ti
 	case QueryFieldReview:
 		return task.Review
 	case QueryFieldNeedsReview:
-		return TaskNeedsAttention(task, now)
+		// Hidden work is never owed attention, so neither attention question
+		// admits it, even where a hidden clause has opened that population.
+		return TaskNeedsAttention(task, now) && !TaskEffectivelyHidden(project, task)
 	case QueryFieldStale:
-		return QueryTaskIsStale(task, now)
+		return QueryTaskIsStale(task, now) && !TaskEffectivelyHidden(project, task)
 	case QueryFieldDeferred:
 		return task.IsDeferredAt(now)
 	case QueryFieldCompleted:
@@ -141,6 +143,8 @@ func queryClauseMatches(clause QueryClause, task *Task, project *Project, now ti
 		return queryPopulationMatches(clause.Value, ProjectTagsParked(project.Tags))
 	case QueryFieldArchived:
 		return queryPopulationMatches(clause.Value, project.Archived)
+	case QueryFieldHidden:
+		return queryPopulationMatches(clause.Value, TaskEffectivelyHidden(project, task))
 	default:
 		return false
 	}

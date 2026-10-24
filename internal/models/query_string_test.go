@@ -46,6 +46,8 @@ func TestQueryClauseStringRendersEveryFieldsToken(t *testing.T) {
 		{"+parked:only", QueryFieldParked, QueryOperatorIs, QueryPopulationOnly},
 		{"+archived", QueryFieldArchived, QueryOperatorIs, QueryPopulationInclude},
 		{"+archived:only", QueryFieldArchived, QueryOperatorIs, QueryPopulationOnly},
+		{"+hidden", QueryFieldHidden, QueryOperatorIs, QueryPopulationInclude},
+		{"+hidden:only", QueryFieldHidden, QueryOperatorIs, QueryPopulationOnly},
 	}
 
 	covered := make(map[QueryField]bool, len(cases))

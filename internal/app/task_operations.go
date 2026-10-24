@@ -35,12 +35,16 @@ const (
 	// SetDueDate: a deadline is when work is owed and can carry Today planning
 	// with it, while a check-in is when it should be looked at again and never
 	// moves a task into Today.
-	TaskOperationSetCheckIn      TaskOperation = "set_check_in"
-	TaskOperationSetDefer        TaskOperation = "set_defer"
-	TaskOperationSetTags         TaskOperation = "set_tags"
-	TaskOperationToggleTag       TaskOperation = "toggle_tag"
-	TaskOperationSetPinned       TaskOperation = "set_pinned"
-	TaskOperationToggleReview    TaskOperation = "toggle_review"
+	TaskOperationSetCheckIn   TaskOperation = "set_check_in"
+	TaskOperationSetDefer     TaskOperation = "set_defer"
+	TaskOperationSetTags      TaskOperation = "set_tags"
+	TaskOperationToggleTag    TaskOperation = "toggle_tag"
+	TaskOperationSetPinned    TaskOperation = "set_pinned"
+	TaskOperationToggleReview TaskOperation = "toggle_review"
+	// TaskOperationSetHidden writes one hidden flag across the whole selection;
+	// TaskOperationToggleHidden decides that direction from the commit snapshot.
+	TaskOperationSetHidden       TaskOperation = "set_hidden"
+	TaskOperationToggleHidden    TaskOperation = "toggle_hidden"
 	TaskOperationSetDependencies TaskOperation = "set_dependencies"
 	// TaskOperationRenameTaskName renames or merges one tag or context across the
 	// whole workspace. It is the one operation here that carries no targets: its
@@ -86,6 +90,8 @@ type TaskOperationRequest struct {
 	Context    string
 	Tag        string
 	Pinned     bool
+	// Hidden is the flag TaskOperationSetHidden writes.
+	Hidden bool
 	// Dependencies carries the soft-reference intent of SetDependencies. Its zero
 	// value expresses nothing, so a request that never mentions a reference
 	// preserves every target's stored set — the same preserve-by-default rule the
@@ -248,6 +254,14 @@ func (s *Service) ExecuteTaskOperation(req TaskOperationRequest) (TaskOperationR
 
 	case TaskOperationToggleReview:
 		result, err := s.bulkToggleReview(req.Targets)
+		return bulkTaskOperationResult(result, err)
+
+	case TaskOperationSetHidden:
+		result, err := s.SetHidden(req.Targets, req.Hidden)
+		return bulkTaskOperationResult(result, err)
+
+	case TaskOperationToggleHidden:
+		result, err := s.ToggleHidden(req.Targets)
 		return bulkTaskOperationResult(result, err)
 
 	case TaskOperationRenameTaskName:

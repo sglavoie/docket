@@ -48,9 +48,19 @@ func projectCarriesPrefix(project *models.Project, prefix string) bool {
 // work sit outside the base population every projection loads, and only a query
 // naming them puts them back. Terminal is read first, so terminal work that also
 // carries a live deferral is decided by the state it ended in.
-func (p *SearchPredicates) AdmitsPopulation(task *models.Task) bool {
-	if p == nil || task == nil {
+//
+// Hidden work is read ahead of both and against the task's own project, since
+// an ancestor's flag hides it: it stays out unless the facets opened that
+// population, and a nil gate, which opens nothing, keeps it out too.
+func (p *SearchPredicates) AdmitsPopulation(task *models.Task, project *models.Project) bool {
+	if task == nil {
 		return p == nil
+	}
+	if !p.AllowsHidden() && models.TaskEffectivelyHidden(project, task) {
+		return false
+	}
+	if p == nil {
+		return true
 	}
 	if task.IsTerminalState() {
 		return p.admitsTerminal

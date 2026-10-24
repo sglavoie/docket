@@ -137,6 +137,16 @@ func (q Query) OpensDeferredPopulation() bool {
 	})
 }
 
+// OpensHiddenPopulation is the same rule read on the hidden axis: an
+// effectively hidden task is outside every population a reader assembles until
+// a positive hidden clause names it. Include opens it beside everything else;
+// only also narrows to it, which Admits applies as a row predicate.
+func (q Query) OpensHiddenPopulation() bool {
+	return slices.ContainsFunc(q.Clauses, func(clause QueryClause) bool {
+		return clause.Polarity == QueryPolarityPositive && clause.Field == QueryFieldHidden
+	})
+}
+
 // Canonical returns an equivalent query whose clauses are deduplicated, given
 // their derived reload obligation, and sorted into canonical order: by field in
 // QueryFieldOrder, then positives before negatives, then by operator rank, then

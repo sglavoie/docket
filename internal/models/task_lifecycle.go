@@ -159,6 +159,21 @@ func (t *Task) ApplyReview(review bool, now time.Time) bool {
 	return true
 }
 
+// ApplyHidden moves the task to the requested hidden state and reports whether
+// anything changed. Hiding is orthogonal to every other axis, so it writes the
+// flag and the touch time and nothing else: the state and its clock, planning
+// membership, pin, review flag, check-in, and deadline all stay where they were.
+// Only the toggled task stores the flag; its descendants are hidden by
+// TaskEffectivelyHidden, never by a copy of it.
+func (t *Task) ApplyHidden(hidden bool, now time.Time) bool {
+	if t.Hidden == hidden {
+		return false
+	}
+	t.Hidden = hidden
+	t.UpdatedAt = now
+	return true
+}
+
 // AcknowledgeReview records that a task has been reviewed: the flag comes off,
 // the review history is stamped, and the touch clock moves, unconditionally. It
 // is not ApplyReview(false): clearing a flag that is already clear changes

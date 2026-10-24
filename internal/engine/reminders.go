@@ -124,6 +124,8 @@ func (r *Runtime) Reminders(opts ReminderOptions) (ReminderPlan, error) {
 // flag has no moment and is never a reminder. A deadline is planned only when
 // it carries a time of day, on open work not deferred past it; a deferral is
 // planned when it lapses (a day-long deferral that morning), on open work.
+// An effectively hidden task raises nothing: hidden work is never owed
+// attention.
 func PlanReminders(projects []*models.Project, opts ReminderOptions) ReminderPlan {
 	horizon := opts.Horizon
 	if horizon == 0 {
@@ -139,7 +141,7 @@ func PlanReminders(projects []*models.Project, opts ReminderOptions) ReminderPla
 	var plan []Reminder
 	for _, project := range projects {
 		for _, task := range project.Tasks {
-			if task == nil || task.IsTerminalState() {
+			if task == nil || task.IsTerminalState() || models.TaskEffectivelyHidden(project, task) {
 				continue
 			}
 			base := Reminder{

@@ -58,7 +58,7 @@ func TestCompileSearchQueryWithoutDropsOneClause(t *testing.T) {
 		t.Fatal("#home alone admits exactly the tagged task")
 	}
 	done := &models.Task{ID: "done", Tags: []string{"home"}, WorkflowState: models.StateDone}
-	if !alone.AdmitsPopulation(done) {
+	if !alone.AdmitsPopulation(done, project) {
 		t.Fatal("a clause asked alone opens every population")
 	}
 }

@@ -36,7 +36,8 @@ type Arrival struct {
 // never name something the Outliner would not show as arrived: a check-in whose
 // day came (and is not suppressed by a deferral), a timed deadline that passed,
 // or a deferral that ended. A date-only deadline is not an arrival: its day is
-// the Today lane's and the overdue count's, not a moment.
+// the Today lane's and the overdue count's, not a moment. Hidden work never
+// arrives, since it is never owed attention.
 func Arrivals(projects []*models.Project, since, now time.Time) []Arrival {
 	var arrivals []Arrival
 	for _, project := range projects {
@@ -44,7 +45,7 @@ func Arrivals(projects []*models.Project, since, now time.Time) []Arrival {
 			continue
 		}
 		for _, task := range project.Tasks {
-			if task == nil || task.IsTerminalState() {
+			if task == nil || task.IsTerminalState() || models.TaskEffectivelyHidden(project, task) {
 				continue
 			}
 			arrival := Arrival{

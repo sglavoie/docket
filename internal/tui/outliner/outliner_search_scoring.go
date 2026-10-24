@@ -66,7 +66,7 @@ func searchProjectionMatchesWithinContext(
 			if ctx.Err() != nil {
 				return nil
 			}
-			if task == nil || !predicates.AdmitsPopulation(task) {
+			if task == nil || !predicates.AdmitsPopulation(task, project) {
 				sourceIndex++
 				continue
 			}
@@ -246,7 +246,7 @@ func exactProjectShortIDMatchesWithin(
 			if task == nil || task.ShortID != shortID {
 				continue
 			}
-			if !predicates.AdmitsPopulation(task) {
+			if !predicates.AdmitsPopulation(task, project) {
 				continue
 			}
 			if predicates.Admits(task, project) {

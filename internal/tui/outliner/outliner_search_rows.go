@@ -97,7 +97,7 @@ func countWithheldSearchMatches(ctx context.Context, projects []*models.Project,
 		}
 		hidden[project.ID] = nil
 		for _, task := range tasks {
-			if task != nil && !gate.AdmitsPopulation(task) {
+			if task != nil && !gate.AdmitsPopulation(task, project) {
 				hidden[project.ID] = append(hidden[project.ID], task)
 			}
 		}
@@ -105,7 +105,7 @@ func countWithheldSearchMatches(ctx context.Context, projects []*models.Project,
 	matches := searchProjectionMatchesWithinContext(ctx, projects, text, hidden, matcher, gate.WithEveryPopulation(), cache)
 	var withheld searchWithheldMatches
 	for _, match := range matches {
-		if gate.AdmitsPopulation(match.task) {
+		if gate.AdmitsPopulation(match.task, match.project) {
 			continue
 		}
 		if match.task.IsTerminalState() {

@@ -92,8 +92,12 @@ type SearchPredicates struct {
 	// patched afterwards by the carrier that compiled the query.
 	admitsTerminal bool
 	admitsDeferred bool
-	now            time.Time
-	guidance       string
+	// admitsHidden is the hidden population answer. No sigil spells it, so only
+	// the facets open it, and no diagnostic widening ever does: a withheld count
+	// names a sigil that would show the work, and hidden work has none.
+	admitsHidden bool
+	now          time.Time
+	guidance     string
 	// sigils records that the query carried at least one sigil token. It is
 	// read off the parse rather than off the compiled conjuncts so that a
 	// destination or pin sigil, which compiles into a field rather than into a
@@ -158,6 +162,7 @@ func compileSearchTokens(
 	predicates.compileDerivedContext(projects)
 	predicates.admitsTerminal = predicates.admitsTerminal || facets.OpensTerminalPopulation()
 	predicates.admitsDeferred = predicates.admitsDeferred || facets.OpensDeferredPopulation()
+	predicates.admitsHidden = facets.OpensHiddenPopulation()
 	return parsed.Text, predicates
 }
 
@@ -360,8 +365,15 @@ func (p *SearchPredicates) AllowsDeferred() bool {
 	return p != nil && p.admitsDeferred
 }
 
+// AllowsHidden reports whether the facets opened the hidden population. A nil
+// gate opens nothing, so hidden work stays out of a view with no query at all.
+func (p *SearchPredicates) AllowsHidden() bool {
+	return p != nil && p.admitsHidden
+}
+
 // WithEveryPopulation is a copy of this gate that admits terminal and deferred
 // work alongside the base population, with every narrowing conjunct unchanged.
+// The hidden population is not among them: it has no sigil to name.
 // It is a question, not a gate: it counts what the population rule withheld
 // from the result so search can name the sigil that shows it, and
 // it is never installed, since a population opens only when the query says so.

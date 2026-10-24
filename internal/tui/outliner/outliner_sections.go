@@ -204,7 +204,7 @@ func (m *OutlinerModel) buildReviewSection(
 		identity := taskref.For(task, project)
 		if task == nil || project == nil ||
 			(task.IsDeferredAt(now) && !input.IncludeDeferred) ||
-			!models.TaskNeedsAttention(task, now) ||
+			!taskOwedAttention(task, project, now) ||
 			pinned[identity] || today[identity] || next[identity] ||
 			(!task.Review && doing[identity]) {
 			continue

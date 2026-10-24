@@ -40,6 +40,8 @@ func CommonFilterStateFromQuery(query models.Query) CommonFilterState {
 			filter.Pinned = true
 		case models.QueryFieldReview:
 			filter.Review = true
+		case models.QueryFieldHidden:
+			filter.HiddenMode = populationModeFromClause(clause)
 		case models.QueryFieldParent:
 			filter.Hierarchy = HierarchyParent
 		case models.QueryFieldLeaf:

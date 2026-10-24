@@ -47,7 +47,7 @@ func validateQueryValue(field QueryField, operator QueryOperator, value string) 
 		return validateQueryStateValue(value)
 	case QueryFieldCompleted:
 		return validateQueryAgeValue(value)
-	case QueryFieldParked, QueryFieldArchived:
+	case QueryFieldParked, QueryFieldArchived, QueryFieldHidden:
 		return validateQueryPopulationValue(field, value)
 	default:
 		return "", fmt.Errorf("query field %q does not carry a value", field)

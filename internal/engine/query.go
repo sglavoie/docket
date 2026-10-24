@@ -58,7 +58,9 @@ type QueryResult struct {
 //     narrows loading to one project;
 //   - lifecycle: done and canceled work stays out unless the query opens the
 //     terminal population, and undeferred work unless it opens the deferred one
-//     or the task carries its manual review flag;
+//     or the task carries its manual review flag, and effectively hidden work
+//     (the task or an ancestor flagged) unless a positive hidden clause opens
+//     it, in every mode including Recent;
 //   - census: parent, leaf, child, blocked, and blocking are answered against
 //     the loaded population's census, never a single task;
 //   - mode: Today and Next are the planning collections, Inbox and Backlog the
@@ -102,6 +104,7 @@ func (r *Runtime) Query(query models.Query) (QueryResult, error) {
 	recent := query.Mode == models.QueryModeRecent
 	admitsTerminal := recent || query.OpensTerminalPopulation()
 	admitsDeferred := recent || query.OpensDeferredPopulation()
+	admitsHidden := query.OpensHiddenPopulation()
 
 	type candidate struct {
 		item  QueryItem
@@ -120,6 +123,9 @@ func (r *Runtime) Query(query models.Query) (QueryResult, error) {
 				continue
 			}
 			if task.IsDeferredAt(now) && !admitsDeferred && !task.Review {
+				continue
+			}
+			if !admitsHidden && models.TaskEffectivelyHidden(project, task) {
 				continue
 			}
 			if !modeAdmits(query.Mode, task, inToday, inNext, now) {

@@ -94,7 +94,8 @@ func completionActivityFromSnapshot(snapshot Snapshot, now time.Time) Completion
 
 // completionActivityFromProjects counts over an already-selected population;
 // choosing it is the caller's job, so a cached project's stale catalog metadata
-// is never consulted here.
+// is never consulted here. Hidden work is out of the pace as it is out of every
+// count beside it.
 func completionActivityFromProjects(projects []*models.Project, now time.Time) CompletionActivity {
 	calendarAnchor := time.Date(now.Year(), now.Month(), now.Day(), 12, 0, 0, 0, now.Location())
 	activityDays := make([]time.Time, 0, completionActivityWindowDays)
@@ -112,7 +113,8 @@ func completionActivityFromProjects(projects []*models.Project, now time.Time) C
 			continue
 		}
 		for _, task := range project.Tasks {
-			if task == nil || task.WorkflowState != models.StateDone || task.CompletedAt == nil {
+			if task == nil || task.WorkflowState != models.StateDone || task.CompletedAt == nil ||
+				models.TaskEffectivelyHidden(project, task) {
 				continue
 			}
 			completedDay := util.StartOfDay(task.CompletedAt.In(now.Location()))

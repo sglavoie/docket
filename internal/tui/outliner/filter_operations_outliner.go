@@ -443,6 +443,13 @@ func (m *OutlinerModel) admitsDeferredPopulation() bool {
 		(m.FilterQuery.OpensDeferredPopulation() || m.activeNarrowingGate().AllowsDeferred())
 }
 
+// AdmitsHiddenPopulation is that same rule read on the hidden axis. Only the
+// filter query can open it, since no sigil spells it; a saved lens carries its
+// hidden clause into that query with the rest of its facets.
+func (m *OutlinerModel) AdmitsHiddenPopulation() bool {
+	return m != nil && m.FilterQuery.OpensHiddenPopulation()
+}
+
 // activeNarrowingGate is the compiled query the current projection was built
 // from: a lens's saved query when a lens owns the view, otherwise the search
 // input's. Exactly one can be live, because slash search under a lens edits that

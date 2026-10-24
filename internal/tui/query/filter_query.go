@@ -45,6 +45,7 @@ var filterQueryRowFields = []models.QueryField{
 	models.QueryFieldStale,
 	models.QueryFieldDeferred,
 	models.QueryFieldCompleted,
+	models.QueryFieldHidden,
 }
 
 // FilterQueryHierarchyFields are the clause fields the fh facet owns. They are
@@ -250,6 +251,7 @@ func CommonFilterClauses(f *CommonFilterState) []models.QueryClause {
 		clauses = AppendFilterClause(clauses, models.QueryFieldReview,
 			models.QueryOperatorPresent, "")
 	}
+	clauses = append(clauses, PopulationClauses(models.QueryFieldHidden, f.HiddenMode)...)
 	return clauses
 }
 

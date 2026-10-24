@@ -45,6 +45,10 @@ type CommonFilterState struct {
 	// facet rather than a tag name, because review is a boolean beside the pin
 	// and no longer a value the tag vocabulary can mint or misspell.
 	Review bool
+	// HiddenMode is the hidden population axis. Exclude, the zero value, is the
+	// base population every reader assembles; Only is the +hidden:only facet,
+	// and Include opens hidden work beside everything else.
+	HiddenMode ProjectPopulationMode
 
 	// statesSet distinguishes no state predicate from an explicit empty
 	// match-nothing set produced by intersecting contradictory legacy filters.
@@ -116,7 +120,8 @@ func HasActiveCommonFilters(f *CommonFilterState) bool {
 		f.Stale ||
 		f.Deferred ||
 		f.Pinned ||
-		f.Review
+		f.Review ||
+		f.HiddenMode != ProjectPopulationExclude
 }
 
 // CommonFilterFacetCount reports independently clearable task facets. The
@@ -167,6 +172,9 @@ func CommonFilterFacetCount(f *CommonFilterState) int {
 		count++
 	}
 	if f.Review {
+		count++
+	}
+	if f.HiddenMode != ProjectPopulationExclude {
 		count++
 	}
 	return count

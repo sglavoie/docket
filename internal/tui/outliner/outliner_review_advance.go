@@ -28,7 +28,7 @@ const reviewAdvanceExhaustedStatus = "No further visible review candidates"
 // planning code cannot see, and landing on a second copy of a row the user has
 // already answered is not advancing.
 //
-// Candidacy is models.TaskNeedsAttention: the automatic question, so a pass
+// Candidacy is taskOwedAttention: the automatic question, so a pass
 // visits what raised its hand — a flag, or a check-in whose day has come — and
 // not everything a person could choose to acknowledge. An early review is still
 // allowed by name on the task under the cursor; it is only the advancing that
@@ -56,11 +56,28 @@ func (m *OutlinerModel) PlanReviewAdvance(capture *OutlinerRelocationCapture) {
 			continue
 		}
 		seen[identity] = true
-		if !models.TaskNeedsAttention(row.Task, now) {
+		if !taskOwedAttention(row.Task, m.reviewRowProject(row), now) {
 			continue
 		}
 		capture.ReviewSuccessors = append(capture.ReviewSuccessors, identity)
 	}
+}
+
+// taskOwedAttention is the attention question every review reader asks:
+// models.TaskNeedsAttention over work that is not effectively hidden. It reads
+// no facet, so the Review lane, its count, and a review pass skip hidden work
+// even where fH has put it on screen, since hidden work is never owed attention.
+func taskOwedAttention(task *models.Task, project *models.Project, now time.Time) bool {
+	return models.TaskNeedsAttention(task, now) && !models.TaskEffectivelyHidden(project, task)
+}
+
+// reviewRowProject resolves the project a row's task is read inside, the way
+// TaskIdentityForRow does, so the ancestor walk sees the task's own tree.
+func (m *OutlinerModel) reviewRowProject(row OutlinerRow) *models.Project {
+	if m.Project != nil {
+		return m.Project
+	}
+	return m.crossResolveProject(row.ProjectID)
 }
 
 // finishReviewAdvance seats the cursor on the first recorded successor that is
@@ -91,7 +108,7 @@ func (m *OutlinerModel) finishReviewAdvance(capture *OutlinerRelocationCapture) 
 			continue
 		}
 		row := m.Rows[index]
-		if row.Task == nil || !models.TaskNeedsAttention(row.Task, now) {
+		if row.Task == nil || !taskOwedAttention(row.Task, m.reviewRowProject(row), now) {
 			continue
 		}
 		m.Cursor = index

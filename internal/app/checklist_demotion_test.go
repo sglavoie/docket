@@ -97,6 +97,7 @@ func TestMakeChecklistItemRefusesLossAndStaleRow(t *testing.T) {
 		{"working", func(_, c *models.Task) { c.WorkflowState = models.StateDoing }},
 		{"check-in", func(_, c *models.Task) { c.NextCheckIn = &checkIn; c.CheckInRepeatDays = 7 }},
 		{"review history", func(_, c *models.Task) { c.LastReviewedAt = &reviewed }},
+		{"hidden", func(_, c *models.Task) { c.Hidden = true }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			owner := newTask("owner", 1, "Owner")

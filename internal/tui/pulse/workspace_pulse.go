@@ -63,6 +63,8 @@ type WorkspacePulseAware interface {
 // Today membership is project-qualified and counted at most once per planning
 // identity. Stale references, ineligible tasks, and references to excluded
 // projects do not contribute because only loaded eligible tasks are considered.
+// Effectively hidden work never contributes, whatever the view's facets say: a
+// hidden task is never owed attention.
 func ComputeWorkspacePulse(projects []*models.Project, todayIDs map[taskref.TaskIdentity]bool, now time.Time) WorkspacePulse {
 	var pulse WorkspacePulse
 	countedToday := make(map[taskref.TaskIdentity]bool, len(todayIDs))
@@ -71,7 +73,8 @@ func ComputeWorkspacePulse(projects []*models.Project, todayIDs map[taskref.Task
 			continue
 		}
 		for _, task := range project.Tasks {
-			if task == nil || task.State().IsTerminal() || task.IsDeferredAt(now) {
+			if task == nil || task.State().IsTerminal() || task.IsDeferredAt(now) ||
+				models.TaskEffectivelyHidden(project, task) {
 				continue
 			}
 

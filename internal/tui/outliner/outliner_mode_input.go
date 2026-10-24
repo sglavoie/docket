@@ -152,10 +152,18 @@ func (m *OutlinerModel) FacetPredicateAt(now time.Time) func(*models.Task, *mode
 
 // facetPredicateForRowsAt also evaluates a diagnostic's detached row query,
 // preserving the live hierarchy and dependency restrictions.
+//
+// The hidden population is decided here too, ahead of the facets, because this
+// is the one gate every mode, section, lane, and picker count reads: an
+// effectively hidden task is out unless the filter query opens that population.
 func (m *OutlinerModel) facetPredicateForRowsAt(query models.Query, now time.Time) func(*models.Task, *models.Project) bool {
 	narrows := len(query.Clauses) > 0
+	admitsHidden := m.AdmitsHiddenPopulation()
 	return func(t *models.Task, project *models.Project) bool {
 		if t == nil {
+			return false
+		}
+		if !admitsHidden && models.TaskEffectivelyHidden(m.filterQueryProject(project), t) {
 			return false
 		}
 		if narrows && !query.Admits(t, m.filterQueryProject(project), now) {

@@ -82,7 +82,7 @@ func (c QueryClause) token() string {
 			return "+#" + queryClearValue
 		}
 		return "+#" + c.Value
-	case QueryFieldParked, QueryFieldArchived:
+	case QueryFieldParked, QueryFieldArchived, QueryFieldHidden:
 		if c.Value == QueryPopulationOnly {
 			return "+" + string(c.Field) + ":" + QueryPopulationOnly
 		}
@@ -325,7 +325,7 @@ func splitDerivedQueryToken(body string) (QueryField, QueryOperator, string, err
 func splitPopulationQueryToken(body string) (QueryField, QueryOperator, string, error) {
 	name, value, qualified := strings.Cut(body, ":")
 	field := QueryField(name)
-	if field != QueryFieldParked && field != QueryFieldArchived {
+	if field != QueryFieldParked && field != QueryFieldArchived && field != QueryFieldHidden {
 		return "", "", "", fmt.Errorf("unknown population query token +%s", body)
 	}
 	if !qualified {
