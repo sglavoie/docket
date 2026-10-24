@@ -56,6 +56,12 @@ const (
 	// narrowing by the same flag this writes.
 	OperationTaskToggleReview OperationID = "tui.task.toggle-review"
 
+	// OperationTaskToggleHidden is `wh`. Hidden is a stored boolean axis beside
+	// Pinned and Review, so it toggles the way they do rather than joining the
+	// lifecycle destinations; it sits in the workflow chord because moving a task
+	// out of every view is a workflow act, and `fH` narrows by the flag it writes.
+	OperationTaskToggleHidden OperationID = "tui.task.toggle-hidden"
+
 	// OperationTaskMarkReviewed acknowledges a task the review pass is for and
 	// moves the cursor to the next visible candidate. It is not the toggle's
 	// other half: the toggle writes the flag in either direction on any task,

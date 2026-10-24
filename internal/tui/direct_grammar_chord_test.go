@@ -105,11 +105,14 @@ func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 		"m": {operation: operation.OperationTaskSetState, value: models.StateSomeday, hasValue: true, display: stateSpelling, group: status},
 		"d": {operation: operation.OperationTaskSetState, value: models.StateDone, hasValue: true, display: stateSpelling, group: status},
 		"c": {operation: operation.OperationTaskSetState, value: models.StateCanceled, hasValue: true, display: stateSpelling, group: status},
+		// wh is not a status, but the chord mints no third heading, so hiding
+		// closes the Status run.
+		"h": {operation: operation.OperationTaskToggleHidden, display: "wh", group: status},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("state chord terminals = %v, want %v", got, want)
 	}
-	if wantOrder := []string{"n", "t", "i", "b", "g", "w", "p", "m", "d", "c"}; !reflect.DeepEqual(gotOrder, wantOrder) {
+	if wantOrder := []string{"n", "t", "i", "b", "g", "w", "p", "m", "d", "c", "h"}; !reflect.DeepEqual(gotOrder, wantOrder) {
 		t.Fatalf("state chord terminal order = %v, want %v", gotOrder, wantOrder)
 	}
 	for key, terminal := range want {

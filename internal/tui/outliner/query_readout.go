@@ -275,6 +275,13 @@ func commonFilterReadoutRows(f *query.CommonFilterState) []queryReadoutRow {
 			[]models.QueryField{models.QueryFieldReview},
 			query.FilterClauseList(models.QueryFieldReview, models.QueryOperatorPresent, ""), ""))
 	}
+	// Hidden is a row facet that owes a reload, since hidden work only enters a
+	// projection once a query opens its population; the note says so, as the
+	// population rows below do.
+	if clauses := query.PopulationClauses(models.QueryFieldHidden, f.HiddenMode); len(clauses) > 0 {
+		rows = append(rows, clauseReadoutRow("filter",
+			[]models.QueryField{models.QueryFieldHidden}, clauses, "reload"))
+	}
 	return rows
 }
 

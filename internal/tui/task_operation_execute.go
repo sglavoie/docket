@@ -36,6 +36,9 @@ func (m *AppModel) executeTaskOperation(
 	if invocation.Descriptor.ID == operation.OperationTaskToggleReview {
 		return m.executeTaskToggleReviewOperation(invocation)
 	}
+	if invocation.Descriptor.ID == operation.OperationTaskToggleHidden {
+		return m.executeTaskToggleHiddenOperation(invocation)
+	}
 	if invocation.Descriptor.ID == operation.OperationTaskMarkReviewed {
 		return m.executeTaskMarkReviewedOperation(invocation)
 	}
@@ -147,6 +150,78 @@ func (m *AppModel) executeTaskToggleReviewOperation(
 			"",
 		), capture),
 	}}
+}
+
+// executeTaskToggleHiddenOperation applies the pin toggle's rule to the hidden
+// flag: if every target stores it, unhide all of them, otherwise hide all of
+// them. The direction is read here, as the pin toggle reads its own, because the
+// toast has to say which way the rows went: a hidden row departs every view but
+// fH, so the line names the key that brings it back. The stored flag is what is
+// read, never inheritance, which is the same rule the application layer applies.
+func (m *AppModel) executeTaskToggleHiddenOperation(
+	invocation operation.OperationInvocation,
+) operation.OperationHandlerResult {
+	capture := m.captureOutlinerRelocationForTargets(invocation.Targets)
+	locators := make([]app.TaskLocator, 0, len(invocation.Targets.Targets))
+	allHidden := true
+	for _, target := range invocation.Targets.Targets {
+		if !target.Task.Valid() {
+			return operation.OperationHandlerResult{Err: fmt.Errorf(
+				"operation %s resolved an invalid task",
+				invocation.Descriptor.ID,
+			)}
+		}
+		task, _ := m.taskAndProjectForIdentity(target.Task)
+		if task == nil {
+			return operation.OperationHandlerResult{Err: fmt.Errorf("task is no longer available")}
+		}
+		allHidden = allHidden && task.Hidden
+		locators = append(locators, target.Task.Locator())
+	}
+	hidden := !allHidden
+	action, headline := "Hide Tasks", hiddenToggleHeadline(true, len(locators))
+	if !hidden {
+		action, headline = "Unhide Tasks", hiddenToggleHeadline(false, len(locators))
+	}
+	cmd := m.secondaryFeatures.TaskItem.ExecuteOperation(
+		app.TaskOperationRequest{
+			Operation: app.TaskOperationSetHidden,
+			Targets:   locators,
+			Hidden:    hidden,
+		},
+		action,
+		headline,
+	)
+	return operation.OperationHandlerResult{Message: operation.OperationCommandResultMsg{
+		Cmd: withOutlinerRelocationCapture(withRecoveryHeadline(cmd, headline), capture),
+	}}
+}
+
+// hiddenToggleHeadline is the sentence a hide or unhide answers with. Hiding
+// names fH because the rows have just left every view that does not ask for
+// them; unhiding returns them to views that already show them, so it says no
+// more than what happened.
+func hiddenToggleHeadline(hidden bool, count int) string {
+	if hidden {
+		return "Hidden " + util.Count(count, "task") + " · fH to view"
+	}
+	return "Unhidden " + util.Count(count, "task")
+}
+
+// withRecoveryHeadline stamps a committed batch's toast sentence. A refusal
+// passes through untouched, so it still reads as the error it is.
+func withRecoveryHeadline(cmd tea.Cmd, headline string) tea.Cmd {
+	if cmd == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		msg := cmd()
+		if batch, ok := msg.(coordinator.BatchTransactionResultMsg); ok {
+			batch.RecoveryHeadline = headline
+			return batch
+		}
+		return msg
+	}
 }
 
 // dueStepDirectionForOperation reads the direction off the descriptor rather

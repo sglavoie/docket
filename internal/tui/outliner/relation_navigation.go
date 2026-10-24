@@ -86,6 +86,9 @@ func (m *OutlinerModel) PopRelationReturn() bool {
 	return true
 }
 
+// RelationHiddenTargetRefusal is what g~ says about a hidden target.
+const RelationHiddenTargetRefusal = "That task is hidden · fH to view"
+
 // jumpToRelation opens the target's project and reveals the task, publishing a
 // return frame only once that succeeded. It reports a refusal, or the empty
 // string. A refusal restores the presentation it captured, so a hop that cannot
@@ -96,6 +99,11 @@ func (m *OutlinerModel) jumpToRelation(task *models.Task, project *models.Projec
 	}
 	if m.Project != nil && m.Project.ID != project.ID {
 		return "This view holds one project and cannot open " + project.Name
+	}
+	// A hidden target is outside every view but fH, so the hop refuses rather
+	// than open the hidden population on the user's behalf; under fH it lands.
+	if models.TaskEffectivelyHidden(project, task) && !m.AdmitsHiddenPopulation() {
+		return RelationHiddenTargetRefusal
 	}
 	frame := relationReturnFrame{
 		presentation: m.CaptureOutlinerPresentationCheckpoint(),
@@ -156,6 +164,13 @@ func (m *OutlinerModel) revealTaskForNavigation(task *models.Task, project *mode
 	if task.IsDeferred() {
 		clauses = query.AppendFilterClause(clauses, models.QueryFieldDeferred,
 			models.QueryOperatorPresent, "")
+	}
+	// The hidden clause is one of the task fields replaced below, so a hidden
+	// target keeps the only form that admits it. Every caller has already refused
+	// a hidden target the view did not admit.
+	if models.TaskEffectivelyHidden(project, task) {
+		clauses = append(clauses,
+			query.PopulationClauses(models.QueryFieldHidden, query.ProjectPopulationOnly)...)
 	}
 	m.ReplaceFilterClauses(query.FilterQueryTaskFields(), clauses)
 	if scopeProject {

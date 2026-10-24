@@ -81,8 +81,18 @@ func inlinePeekStatusLine(task *models.Task, planning string, now time.Time) str
 	if task.Review {
 		fields.flag("Review")
 	}
+	// Only fH puts a hidden task on screen, so the marker is what says this row
+	// is one wh would bring back. It reads inheritance, the way the views do, so
+	// a child hidden by its parent wears it too.
+	if models.TaskEffectivelyHidden(nil, task) {
+		fields.flag(InlinePeekHiddenMarker)
+	}
 	return fields.line()
 }
+
+// InlinePeekHiddenMarker is the status line's flag for an effectively hidden
+// task.
+const InlinePeekHiddenMarker = "(hidden)"
 
 func inlinePeekStatusLines(task *models.Task, planning string, now time.Time, indent string, width int) []string {
 	return inlinePeekStyledLines("", inlinePeekStatusLine(task, planning, now), indent, width)
@@ -115,6 +125,7 @@ func inlinePeekStatusKey(task *models.Task, planning string) string {
 		"priority:" + strconv.Itoa(task.Priority),
 		"pinned:" + strconv.FormatBool(task.Pinned),
 		"review:" + strconv.FormatBool(task.Review),
+		"hidden:" + strconv.FormatBool(models.TaskEffectivelyHidden(nil, task)),
 		inlinePeekScheduleKey(task),
 	}, "|")
 }

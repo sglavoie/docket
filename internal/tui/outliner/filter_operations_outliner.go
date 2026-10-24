@@ -156,6 +156,16 @@ func (m *OutlinerModel) RowFilterClauseEdit(invocation operation.OperationInvoca
 			Clauses: query.FilterClauseList(models.QueryFieldPinned, models.QueryOperatorPresent, ""),
 			Status:  "Filtering Pinned",
 		}, nil
+	case operation.OperationFilterHidden:
+		// fH toggles the hidden population's only form. It is a population clause
+		// because hidden work is never loaded into a row until a query opens it.
+		if m.Filter.HiddenMode == query.ProjectPopulationOnly {
+			return FilterClauseEdit{Status: "Hidden filter cleared"}, nil
+		}
+		return FilterClauseEdit{
+			Clauses: query.PopulationClauses(models.QueryFieldHidden, query.ProjectPopulationOnly),
+			Status:  "Showing only hidden tasks",
+		}, nil
 	case operation.OperationFilterClear:
 		return FilterClauseEdit{Status: "Filters cleared"}, nil
 	default:
@@ -234,6 +244,8 @@ func FilterOperationFields(id operation.OperationID) []models.QueryField {
 		return []models.QueryField{models.QueryFieldPinned}
 	case operation.OperationFilterReview:
 		return []models.QueryField{models.QueryFieldReview}
+	case operation.OperationFilterHidden:
+		return []models.QueryField{models.QueryFieldHidden}
 	case operation.OperationFilterClear:
 		return query.FilterQueryTaskFields()
 	case operation.OperationFilterProjectTags:
@@ -255,8 +267,17 @@ func FilterOperationFields(id operation.OperationID) []models.QueryField {
 // population rather than rebuilding the rows. It is computed from the fields the
 // operation writes rather than declared beside its handler, so a facet cannot be
 // registered claiming one obligation and implemented honoring another.
+//
+// Clear Filters is the one operation that writes the hidden field without
+// owing its reload. Hidden work is already in memory, only the row predicate
+// keeps it out, so dropping the clause with the rest of the row half is a
+// rebuild; fH and its readout peel keep the reload and the ranked-list refusal
+// that come with opening the population.
 func FilterOperationRequiresReload(id operation.OperationID) bool {
 	for _, field := range FilterOperationFields(id) {
+		if field == models.QueryFieldHidden && id == operation.OperationFilterClear {
+			continue
+		}
 		if models.QueryFieldRequiresReload(field) {
 			return true
 		}

@@ -150,7 +150,7 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 			return true, nil
 		}
 		return true, m.setRecoveryFeedbackWithContext(
-			m.feedback.recoveryFallback, msg.TransactionID, m.feedback.recoveryContext, true)
+			m.feedback.recoveryFallback, msg.TransactionID, m.feedback.recoveryWords, true)
 	default:
 		return false, nil
 	}

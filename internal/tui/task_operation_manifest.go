@@ -52,6 +52,7 @@ func taskDirectOperationManifest() []operation.OperationManifestEntry {
 		{ID: operation.OperationTaskSetTags, Label: "Set Tags & Context", Aliases: []string{"labels", "context"}, Provider: operation.ValueProviderTags, Category: taskActionCategoryOrganize, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operation.OperationTaskTogglePin, Label: "Toggle Pin", Aliases: []string{"pin task", "unpin task", "keep on top"}, Category: taskActionCategoryOrganize, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operation.OperationTaskToggleReview, Label: "Toggle Review", Aliases: []string{"flag for review", "clear review", "needs a second look"}, Category: taskActionCategoryOrganize, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
+		{ID: operation.OperationTaskToggleHidden, Label: "Toggle Hidden", Aliases: []string{"hide task", "unhide task", "out of view"}, Category: taskActionCategoryOrganize, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
 		// Not Bulk: acknowledging is a pass over candidates one at a time, and the
 		// advance to the next one is half of what the key does — a selection has no
 		// next. Leaving the flag off is also what refuses it under a visual

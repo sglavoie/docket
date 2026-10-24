@@ -18,6 +18,7 @@ const (
 	OperationFilterDependency    OperationID = "tui.filter.dependency"
 	OperationFilterStale         OperationID = "tui.filter.stale"
 	OperationFilterPinned        OperationID = "tui.filter.pinned"
+	OperationFilterHidden        OperationID = "tui.filter.hidden"
 	OperationFilterClear         OperationID = "tui.filter.clear"
 )
 

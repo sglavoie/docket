@@ -129,6 +129,10 @@ func (m *OutlinerModel) withheldSearchHint() string {
 	return strings.Join(parts, " and ")
 }
 
+// OutlinerEmptyHiddenMessage is what fH answers when it finds nothing: the view
+// holds no hidden task, and wh is how one gets there.
+const OutlinerEmptyHiddenMessage = "Nothing hidden here. Press wh on a task to hide it."
+
 func (m *OutlinerModel) OutlinerEmptyMessage() string {
 	if m.Search.flight != nil && m.Search.flight.result == nil {
 		return "Searching… Keep typing to refine; Esc returns to your view."
@@ -172,6 +176,8 @@ func (m *OutlinerModel) OutlinerEmptyMessage() string {
 		return "No tasks match this lens. Press Esc to leave the lens."
 	case outlinerEmptyFiltered:
 		return listsurface.EmptyStateFiltered
+	case outlinerEmptyHidden:
+		return OutlinerEmptyHiddenMessage
 	case outlinerEmptyFocus:
 		return "No tasks are visible in this Focus. Press Esc to leave Focus."
 	case OutlinerEmptySection:

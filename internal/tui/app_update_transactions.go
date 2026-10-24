@@ -162,7 +162,8 @@ func (m *AppModel) handleBatchTransactionResult(msg coordinator.BatchTransaction
 		successMessage = m.feedback.message
 	}
 	saveCmd := m.handleSaveComplete(status.SaveCompleteMsg{})
-	feedbackCmd := m.setRecoveryFeedbackWithContext(successMessage, msg.TransactionID, msg.RecoveryContext, false)
+	feedbackCmd := m.setRecoveryFeedbackWithContext(successMessage, msg.TransactionID,
+		recoveryWords{Context: msg.RecoveryContext, Headline: msg.RecoveryHeadline}, false)
 	return tea.Batch(saveCmd, feedbackCmd)
 }
 

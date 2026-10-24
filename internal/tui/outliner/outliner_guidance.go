@@ -22,6 +22,7 @@ const (
 	outlinerEmptyLens
 	outlinerEmptyFocus
 	OutlinerEmptySection
+	outlinerEmptyHidden
 )
 
 // The Outliner has no GetHelpItems of its own: `?` is a core input operation, so
@@ -263,7 +264,7 @@ func (m *OutlinerModel) emptyGuidance() chrome.GuidanceSpec {
 		} else {
 			required = "Tab next mode"
 		}
-	case outlinerEmptyFiltered:
+	case outlinerEmptyFiltered, outlinerEmptyHidden:
 		required = "fx clear filters"
 	case outlinerEmptyProjectFiltered:
 		required = "Fx clear project filters"
@@ -325,6 +326,12 @@ func (m *OutlinerModel) ClassifyEmptyCause() outlinerEmptyCause {
 		return OutlinerEmptySection
 	}
 	if query.HasActiveCommonFilters(&m.Filter.CommonFilterState) {
+		// fH alone is a question with its own answer: nothing here is hidden, and
+		// the key that would hide something is the next step, not a filter.
+		if m.Filter.HiddenMode == query.ProjectPopulationOnly &&
+			query.CommonFilterFacetCount(&m.Filter.CommonFilterState) == 1 {
+			return outlinerEmptyHidden
+		}
 		return outlinerEmptyFiltered
 	}
 	if m.Focus.Active() {

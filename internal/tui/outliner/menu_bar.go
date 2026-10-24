@@ -162,6 +162,7 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 				{OperationID: operation.OperationFilterDependency},
 				{OperationID: operation.OperationFilterStale},
 				{OperationID: operation.OperationFilterPinned},
+				{OperationID: operation.OperationFilterHidden, Label: "Show hidden"},
 				{OperationID: operation.OperationFilterClear},
 				{OperationID: operation.OperationFilterProjectTags},
 				{OperationID: operation.OperationFilterShowParked},

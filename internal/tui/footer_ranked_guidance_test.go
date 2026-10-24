@@ -14,7 +14,7 @@ import (
 
 // TestPendingChordGuidanceUsesAtMostThreeNonwrappingHintLines holds the shell's
 // chord footer to the minimum terminal width, where the three-row budget is what
-// lets the workflow chord name every one of its ten entries. It stays in the shell because
+// lets the workflow chord name every one of its eleven entries. It stays in the shell because
 // pendingChordGuidanceSpec takes a ChordHint, which belongs to the operation
 // layer above chrome; chrome's own packing invariants live beside the packer in
 // internal/tui/chrome/footer_helpers_test.go.
@@ -132,6 +132,7 @@ func workflowChordHintsForTest() []operation.ChordHint {
 		{Key: "m", Label: "someday", Group: chrome.StatusHintGroup},
 		{Key: "d", Label: "done", Group: chrome.StatusHintGroup, Keep: true},
 		{Key: "c", Label: "canceled", Group: chrome.StatusHintGroup},
+		{Key: "h", Label: "hide/unhide", Group: chrome.StatusHintGroup},
 	}
 }
 

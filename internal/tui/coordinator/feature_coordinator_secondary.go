@@ -220,6 +220,11 @@ type BatchTransactionResultMsg struct {
 	// say, while the press the user just made must be answered with the deadline
 	// it produced. An empty value leaves the ledger's context alone.
 	RecoveryContext string
+	// RecoveryHeadline replaces the ledger entry's action and context together
+	// in the undoable toast, for an outcome the `Action: context` sentence cannot
+	// say. Hiding is its one writer: the rows leave the view, so the toast names
+	// the key that brings them back. An empty value leaves both alone.
+	RecoveryHeadline string
 }
 
 // FinalizeStaleSelectionBatchResult clears exactly the project-qualified

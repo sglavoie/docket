@@ -288,6 +288,10 @@ func SimplifiedInputStrategy() InputStrategy {
 			{HelpGroup: "Other statuses", HelpOrder: 353, OperationID: OperationTaskSetState, Sequence: []string{"w", "m"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "someday", HintGroup: chrome.StatusHintGroup, HelpLabel: "Save for Someday", PresetValue: models.StateSomeday, HasPresetValue: true},
 			{HelpGroup: "Status", HelpOrder: 201, OperationID: OperationTaskSetState, Sequence: []string{"w", "d"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "done", HintGroup: chrome.StatusHintGroup, HintKeep: true, HelpLabel: "Complete task", PresetValue: models.StateDone, HasPresetValue: true},
 			{HelpGroup: "Other statuses", HelpOrder: 354, OperationID: OperationTaskSetState, Sequence: []string{"w", "c"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "canceled", HintGroup: chrome.StatusHintGroup, HelpLabel: "Cancel task", PresetValue: models.StateCanceled, HasPresetValue: true},
+			// Hidden is not a status, but moving a task out of every view is a
+			// workflow act and the chord has two headings and no third word, so it
+			// closes the Status run as the entry the narrow row sheds first.
+			{HelpGroup: "Other statuses", HelpOrder: 357, OperationID: OperationTaskToggleHidden, Sequence: []string{"w", "h"}, DisplayKey: "wh", HintLabel: "hide/unhide", HintGroup: chrome.StatusHintGroup, HelpLabel: "Hide / unhide task"},
 			// The f chord's facets are declared as two runs, the way the workflow
 			// chord's terminals are: the fields a task stores, then the facts
 			// computed from it. Declaration order is all the division changed, so
@@ -332,6 +336,12 @@ func SimplifiedInputStrategy() InputStrategy {
 			// is the single-project scope rather than a facet. It is declared after
 			// fx so a narrow which-key row sheds it before clear all.
 			{OperationID: OperationFilterProjects, Sequence: []string{"f", "%"}, DisplayKey: "f%", HintLabel: "projects"},
+			// Hidden narrows to hidden tasks only (+hidden:only), and H because fh is
+			// the hierarchy facet. It would close the Field run, but there it costs
+			// the floor f~, so it is declared last with no group: at the minimum
+			// width it is the first entry the row sheds and every other entry is
+			// drawn exactly as before. The empty state and the hide toast name it.
+			{OperationID: OperationFilterHidden, Sequence: []string{"f", "H"}, DisplayKey: "fH", HintLabel: "hidden"},
 			{OperationID: OperationFilterProjectTags, Sequence: []string{"F", "#"}, DisplayKey: "F#", HintLabel: "project tags"},
 			{OperationID: OperationFilterShowParked, Sequence: []string{"F", "p"}, DisplayKey: "Fp", HintLabel: "include parked"},
 			{OperationID: OperationFilterOnlyParked, Sequence: []string{"F", "P"}, DisplayKey: "FP", HintLabel: "only parked"},

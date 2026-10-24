@@ -38,7 +38,7 @@ func FilterOperationDescriptors() []operation.OperationDescriptor {
 		descriptor(operation.OperationFilterContexts, "Filter by Context", operation.ValueProviderFilterContexts, "context filter"),
 		descriptor(operation.OperationFilterProjects, "Filter by Projects", operation.ValueProviderFilterProjects, "project filter"),
 		descriptor(operation.OperationFilterReview, "Filter Review", "", "review flag filter", "flagged for review"),
-		descriptor(operation.OperationFilterDue, "Filter by Due or Deferred", operation.ValueProviderFilterDue, "due filter", "deferred", "hidden"),
+		descriptor(operation.OperationFilterDue, "Filter by Due or Deferred", operation.ValueProviderFilterDue, "due filter", "deferred"),
 		descriptor(operation.OperationFilterCompletionAge, "Filter by Completion Age", operation.ValueProviderFilterCompletionAge, "completion age", "cleanup age"),
 		descriptor(operation.OperationFilterHierarchy, "Filter by Hierarchy", operation.ValueProviderFilterHierarchy, "hierarchy position", "parent or child"),
 		descriptor(operation.OperationFilterDependency, "Filter by Dependency", operation.ValueProviderFilterDependency, "?blocked", "?blocking", "references"),
@@ -47,6 +47,9 @@ func FilterOperationDescriptors() []operation.OperationDescriptor {
 		// along; only the key was missing, so this is a binding for an existing
 		// facet rather than a new one.
 		descriptor(operation.OperationFilterPinned, "Filter Pinned", "", "pinned work", "pinned tasks"),
+		// Hidden writes a population clause, so applying it reloads rather than
+		// rebuilds and it refuses under the ranked list like the F chord does.
+		descriptor(operation.OperationFilterHidden, "Filter Hidden", "", "hidden tasks", "show hidden", "unhide"),
 		descriptor(operation.OperationFilterClear, "Clear Filters", "", "reset filters"),
 	}
 }

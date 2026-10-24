@@ -184,7 +184,7 @@ preview leaves it to that row; Peek leads its summary with it. That division is 
 over the one binding, changing no sequence and no dispatch, and a heading rides
 its run's first entry rather than standing alone, so the packer cannot strand
 one over members it shed. A pending chord alone asks for
-`chrome.MaxGuidanceRows`, three, which holds all ten at the floor; `HintKeep`
+`chrome.MaxGuidanceRows`, three, which holds all 11 at the floor; `HintKeep`
 ranks `wd` with its run's head, shed last and never drawn under `Plan:`.
 
 The active interaction owns guidance. `route.ActiveGuidanceOwner` resolves it in

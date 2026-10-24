@@ -190,7 +190,17 @@ func (m *AppModel) setUndoableStatus(msg string, undoCb func() tea.Cmd) tea.Cmd 
 // unreadable, or superseded correlation degrades to the ordinary text-sized
 // success status without leaving an undo callback armed.
 func (m *AppModel) setRecoveryFeedback(successMessage, transactionID string, originRecorded bool) tea.Cmd {
-	return m.setRecoveryFeedbackWithContext(successMessage, transactionID, "", originRecorded)
+	return m.setRecoveryFeedbackWithContext(successMessage, transactionID, recoveryWords{}, originRecorded)
+}
+
+// recoveryWords are what a committed mutation may say in place of its ledger
+// entry's own. Context replaces the entry's context alone; Headline replaces the
+// action and context together, for an outcome whose sentence is not
+// `Action: context` — hiding, which has to say where the rows went. Both empty
+// keep the ledger's words.
+type recoveryWords struct {
+	Context  string
+	Headline string
 }
 
 // setRecoveryFeedbackWithContext is that same toast with the committed outcome
@@ -199,7 +209,8 @@ func (m *AppModel) setRecoveryFeedback(successMessage, transactionID string, ori
 // today is the deadline stepper alone; an empty override keeps the ledger's own
 // words, so every other caller reads exactly as before.
 func (m *AppModel) setRecoveryFeedbackWithContext(
-	successMessage, transactionID, contextOverride string,
+	successMessage, transactionID string,
+	words recoveryWords,
 	originRecorded bool,
 ) tea.Cmd {
 	transactionID = strings.TrimSpace(transactionID)
@@ -212,13 +223,16 @@ func (m *AppModel) setRecoveryFeedbackWithContext(
 		m.setSuccessStatus(successMessage)
 		return m.statusReadingTimeout()
 	}
-	context := entry.Context
-	if override := strings.TrimSpace(contextOverride); override != "" {
+	action, context := entry.Action, entry.Context
+	if override := strings.TrimSpace(words.Context); override != "" {
 		context = override
 	}
+	if headline := strings.TrimSpace(words.Headline); headline != "" {
+		action, context = headline, ""
+	}
 	undoCb := func() tea.Cmd { return m.handleLedgerTaskUndoRedo(false) }
-	cmd := m.setUndoableStatus(formatRecoveryFeedback(entry.Action, context, originRecorded), undoCb)
-	m.feedback.correlate(transactionID, successMessage, contextOverride)
+	cmd := m.setUndoableStatus(formatRecoveryFeedback(action, context, originRecorded), undoCb)
+	m.feedback.correlate(transactionID, successMessage, words)
 	return cmd
 }
 
