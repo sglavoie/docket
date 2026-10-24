@@ -3,6 +3,7 @@ package outliner
 import (
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
@@ -117,4 +118,75 @@ func TestReviewPassSkipsHiddenWorkEvenUnderTheFacet(t *testing.T) {
 
 func taskIdentityOf(task *models.Task, project *models.Project) taskref.TaskIdentity {
 	return taskref.For(task, project)
+}
+
+// hiddenAttentionFixture pairs visible work owed review or gone stale with the
+// same two attention facts on a directly hidden task and on a child hidden only
+// by inheritance, beside a quiet hidden task neither question admits.
+func hiddenAttentionFixture() *OutlinerModel {
+	old := time.Now().AddDate(0, 0, -(models.StaleTaskThresholdDays + 30))
+	visibleReview := primaryRowsTask("seen-review", models.StateBacklog)
+	visibleReview.Review = true
+	visibleStale := primaryRowsTask("seen-stale", models.StateBacklog)
+	visibleStale.UpdatedAt = old
+	flagged := primaryRowsTask("hid-review", models.StateBacklog)
+	flagged.Hidden, flagged.Review = true, true
+	staleHidden := primaryRowsTask("hid-stale", models.StateBacklog)
+	staleHidden.Hidden, staleHidden.UpdatedAt = true, old
+	parent := primaryRowsTask("hid-parent", models.StateBacklog)
+	parent.Hidden = true
+	child := primaryRowsTask("hid-child", models.StateBacklog)
+	child.ParentID = &parent.ID
+	child.Review, child.UpdatedAt = true, old
+	return scopeTestOutliner(primaryRowsProject("alpha",
+		visibleReview, visibleStale, flagged, staleHidden, parent, child))
+}
+
+func hiddenIncludeQuery(t *testing.T) models.Query {
+	t.Helper()
+	clauses := query.PopulationClauses(models.QueryFieldHidden, query.ProjectPopulationInclude)
+	if len(clauses) != 1 {
+		t.Fatalf("+hidden spelled %d clauses", len(clauses))
+	}
+	return models.Query{Clauses: clauses}
+}
+
+// TestSearchAttentionPredicatesNeverAdmitHiddenWork: ?review and ?stale answer
+// exactly as the canonical query clauses do, so hidden work, direct or
+// inherited, is never owed attention even where fH has opened its population,
+// and the negations admit it as work owing none. Text search and the stored
+// =review flag still reach hidden work once the facet opens it.
+func TestSearchAttentionPredicatesNeverAdmitHiddenWork(t *testing.T) {
+	cases := []struct {
+		label  string
+		facet  func(*testing.T) models.Query
+		search string
+		want   []string
+	}{
+		{"base ?review", nil, "?review", []string{"seen-review"}},
+		{"base ?stale", nil, "?stale", []string{"seen-stale"}},
+		{"base -?review", nil, "-?review", []string{"seen-stale"}},
+		{"include ?review", hiddenIncludeQuery, "?review", []string{"seen-review"}},
+		{"include ?stale", hiddenIncludeQuery, "?stale", []string{"seen-stale"}},
+		{"include -?review", hiddenIncludeQuery, "-?review",
+			[]string{"seen-stale", "hid-review", "hid-stale", "hid-parent", "hid-child"}},
+		{"include -?stale", hiddenIncludeQuery, "-?stale",
+			[]string{"seen-review", "hid-review", "hid-stale", "hid-parent", "hid-child"}},
+		{"only ?review", hiddenOnlyQuery, "?review", nil},
+		{"only ?stale", hiddenOnlyQuery, "?stale", nil},
+		{"only -?review", hiddenOnlyQuery, "-?review",
+			[]string{"hid-review", "hid-stale", "hid-parent", "hid-child"}},
+		{"only -?stale", hiddenOnlyQuery, "-?stale",
+			[]string{"hid-review", "hid-stale", "hid-parent", "hid-child"}},
+		{"only =review", hiddenOnlyQuery, "=review", []string{"hid-review", "hid-child"}},
+		{"only text", hiddenOnlyQuery, "hid", []string{"hid-review", "hid-stale", "hid-parent", "hid-child"}},
+	}
+	for _, tc := range cases {
+		outliner := hiddenAttentionFixture()
+		if tc.facet != nil {
+			outliner.SetFilterQuery(tc.facet(t))
+		}
+		searchRankedList(outliner, tc.search)
+		requireVisibleTaskSet(t, outliner, tc.label, tc.want...)
+	}
 }

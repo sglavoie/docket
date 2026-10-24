@@ -321,7 +321,7 @@ func (p *SearchPredicates) matchesDerived(
 			TaskID:    identity.TaskID,
 		}],
 	}
-	return models.TaskMatchesDerived(predicate.Name, predicate.Days, task, census, p.now)
+	return models.TaskMatchesDerived(predicate.Name, predicate.Days, project, task, census, p.now)
 }
 
 // taskCarriesTagPrefix matches over normalized tag names only. Search keeps the

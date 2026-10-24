@@ -110,11 +110,9 @@ func queryClauseMatches(clause QueryClause, task *Task, project *Project, now ti
 	case QueryFieldReview:
 		return task.Review
 	case QueryFieldNeedsReview:
-		// Hidden work is never owed attention, so neither attention question
-		// admits it, even where a hidden clause has opened that population.
-		return TaskNeedsAttention(task, now) && !TaskEffectivelyHidden(project, task)
+		return taskOwesReviewAttention(project, task, now)
 	case QueryFieldStale:
-		return QueryTaskIsStale(task, now) && !TaskEffectivelyHidden(project, task)
+		return taskOwesStaleAttention(project, task, now)
 	case QueryFieldDeferred:
 		return task.IsDeferredAt(now)
 	case QueryFieldCompleted:
@@ -171,6 +169,19 @@ func queryPopulationMatches(value string, carries bool) bool {
 		return carries
 	}
 	return true
+}
+
+// taskOwesReviewAttention and taskOwesStaleAttention are the two attention
+// questions every query surface asks. Hidden work is never owed attention, so
+// neither admits it, even where a hidden clause has opened that population;
+// the filter clause and the search ?review/?stale predicates share them so the
+// two readings cannot disagree.
+func taskOwesReviewAttention(project *Project, task *Task, now time.Time) bool {
+	return TaskNeedsAttention(task, now) && !TaskEffectivelyHidden(project, task)
+}
+
+func taskOwesStaleAttention(project *Project, task *Task, now time.Time) bool {
+	return QueryTaskIsStale(task, now) && !TaskEffectivelyHidden(project, task)
 }
 
 // QueryTaskIsStale reports whether ordinary open work has gone untouched for at

@@ -59,10 +59,12 @@ type DerivedCensus struct {
 
 // TaskMatchesDerived answers one derived property for one task. days is read by
 // DerivedCompleted alone and means "at least that many days ago"; zero asks the
-// unqualified question.
+// unqualified question. project resolves the ancestors the attention questions
+// read, since review and stale never admit effectively hidden work.
 func TaskMatchesDerived(
 	property DerivedProperty,
 	days int,
+	project *Project,
 	task *Task,
 	census DerivedCensus,
 	now time.Time,
@@ -72,9 +74,9 @@ func TaskMatchesDerived(
 	}
 	switch property {
 	case DerivedStale:
-		return QueryTaskIsStale(task, now)
+		return taskOwesStaleAttention(project, task, now)
 	case DerivedReview:
-		return TaskNeedsAttention(task, now)
+		return taskOwesReviewAttention(project, task, now)
 	case DerivedDeferred:
 		return task.IsDeferredAt(now)
 	case DerivedLeaf:
