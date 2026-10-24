@@ -203,7 +203,7 @@ func TestAutomaticSyncDetectsExternalImportWithoutFocus(t *testing.T) {
 	runSession2AppCommand(t, model, model.Init())
 	retitleOnDisk(t, pair.laptop, "Imported elsewhere")
 	exchangeOnce(t, pair.laptop)
-	exchangeOnce(t, pair.desk)
+	exchangeOnce(t, pair.reopenDesk(t))
 
 	model.setInfoStatus("Keep the active feedback")
 	setTestPresentationPath(model, presentation.ViewCrossProjectOutliner, presentation.ViewNotes)

@@ -48,6 +48,9 @@ type CommitService struct {
 	// merger, when non-nil, reconciles incoming sync transactions concurrent
 	// with local history instead of refusing them. See WithSyncMerger.
 	merger synclog.Merger
+	// ownWrites, when non-nil, records the stamp each committed path was left
+	// with. See WithOwnWrites.
+	ownWrites *OwnWrites
 }
 
 // OnMachine binds this service to an explicit machine identity and returns the
@@ -388,7 +391,7 @@ func (s *CommitService) CommitPlannedOpsWithArtifacts(
 					return fmt.Errorf("creating commit target directory: %w", err)
 				}
 			}
-			if err := commitJournal(journal, manifest); err != nil {
+			if err := s.commitJournal(journal, manifest); err != nil {
 				return fmt.Errorf("committing transaction: %w", err)
 			}
 			return nil
@@ -473,7 +476,7 @@ func (s *CommitService) commitOps(request OpsCommitRequest, recordUndo bool) (st
 					// Prepare or an earlier move provides write parents. Deletes need none.
 				}
 			}
-			if err := commitJournal(journal, manifest); err != nil {
+			if err := s.commitJournal(journal, manifest); err != nil {
 				return fmt.Errorf("committing transaction: %w", err)
 			}
 			if ledgerPlan != nil {

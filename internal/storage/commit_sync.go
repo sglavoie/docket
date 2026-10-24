@@ -106,7 +106,7 @@ func (s *CommitService) CommitIncoming(manifest *synclog.Manifest, blobs synclog
 					return fmt.Errorf("creating commit target directory: %w", err)
 				}
 			}
-			if err := commitJournal(journal, prepared); err != nil {
+			if err := s.commitJournal(journal, prepared); err != nil {
 				return fmt.Errorf("committing incoming transaction: %w", err)
 			}
 			txnID = prepared.ID
@@ -208,7 +208,7 @@ func (s *CommitService) commitReconcilePlan(journal *transaction.Journal, id str
 				return fmt.Errorf("creating commit target directory: %w", err)
 			}
 		}
-		if err := commitJournal(journal, prepared); err != nil {
+		if err := s.commitJournal(journal, prepared); err != nil {
 			return fmt.Errorf("committing incoming transaction: %w", err)
 		}
 		return nil
@@ -333,7 +333,7 @@ func (s *CommitService) CommitSyncPublished(txnIDs []string) error {
 		if err != nil {
 			return fmt.Errorf("preparing publication record: %w", err)
 		}
-		return commitJournal(journal, prepared)
+		return s.commitJournal(journal, prepared)
 	})
 }
 
@@ -408,7 +408,7 @@ func (s *CommitService) commitExternalLocked(journal *transaction.Journal, index
 	if err != nil {
 		return nil, fmt.Errorf("preparing external-change record: %w", err)
 	}
-	if err := commitJournal(journal, prepared); err != nil {
+	if err := s.commitJournal(journal, prepared); err != nil {
 		return nil, fmt.Errorf("committing external-change record: %w", err)
 	}
 	report.TransactionID = prepared.ID
@@ -443,7 +443,7 @@ func (s *CommitService) CommitSyncGenesis() (*synclog.Manifest, error) {
 		if err != nil {
 			return fmt.Errorf("preparing enrollment genesis: %w", err)
 		}
-		if err := commitJournal(journal, prepared); err != nil {
+		if err := s.commitJournal(journal, prepared); err != nil {
 			return fmt.Errorf("committing enrollment genesis: %w", err)
 		}
 		genesis = plan.Manifest

@@ -266,7 +266,7 @@ func (s *CommitService) commitMultiLocked(journal *transaction.Journal, changese
 			return nil, fmt.Errorf("creating commit target directory: %w", err)
 		}
 	}
-	if err := commitJournal(journal, manifest); err != nil {
+	if err := s.commitJournal(journal, manifest); err != nil {
 		return nil, fmt.Errorf("committing transaction: %w", err)
 	}
 	if ledgerPlan != nil {

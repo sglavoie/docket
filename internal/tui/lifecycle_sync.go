@@ -7,10 +7,13 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/engine"
 	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/syncexchange"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/tt/internal/workspace"
 )
 
 // Automatic and manual exchange share one worker for enrolled desktop sessions.
@@ -20,14 +23,23 @@ const automaticSyncInterval = 5 * time.Second
 // Only enrolled sessions own this timer. Folder I/O runs on an independent
 // engine snapshot; all scheduling and view adoption stay on the UI goroutine.
 type automaticSyncState struct {
-	exchange      func() (*syncexchange.FolderReport, error)
+	exchange func() (*syncexchange.FolderReport, error)
+	// readStatus reads the sync status a finished pass leaves, on the pass's
+	// own goroutine, so that read never runs on the UI goroutine. Without one
+	// the finished pass reads it there.
+	readStatus    func() syncStatusRead
 	running       bool
 	pending       bool
 	localSequence func() (uint64, error)
 	sequence      uint64
-	fingerprint   string
-	manual        bool // An explicit request wants completion feedback, even for a running pass.
-	err           error
+	// stamps is the workspace as the session last adopted it. Commits made in
+	// this process advance it without a reload; any other change owes one.
+	stamps workspace.Stamps
+	// ownWrites is what this session's commits wrote, its sync worker's
+	// included: the changes stamps advances over without a reload.
+	ownWrites *storage.OwnWrites
+	manual    bool // An explicit request wants completion feedback, even for a running pass.
+	err       error
 	// outcome is what the last finished pass left for the sync line to say; a
 	// pass repeating it has nothing new for the status to report.
 	outcome string
@@ -38,6 +50,9 @@ type automaticSyncFinishedMsg struct {
 	report  *syncexchange.FolderReport
 	changed bool
 	err     error
+	// status is the sync status the pass read after exchanging, when the rule
+	// syncStatusReadOwed applies said it would be needed.
+	status *syncStatusRead
 }
 
 func (m *AppModel) automaticSyncTickCmd() tea.Cmd {
@@ -55,12 +70,46 @@ func (m *AppModel) startAutomaticSync() tea.Cmd {
 		return nil
 	}
 	sync.running = true
-	exchange := sync.exchange
+	exchange, readStatus := sync.exchange, sync.readStatus
+	// What the finished handler will compare against is read here: one pass
+	// runs at a time, and only its own finish moves the outcome.
+	manual, owed, previous := sync.manual, m.feedback.syncRefreshOwed, sync.outcome
 	return func() tea.Msg {
 		report, err := exchange()
 		changed := report != nil && (report.Imported > 0 ||
 			(report.External != nil && report.External.TransactionID != ""))
-		return automaticSyncFinishedMsg{report: report, changed: changed, err: err}
+		msg := automaticSyncFinishedMsg{report: report, changed: changed, err: err}
+		if readStatus != nil && syncStatusReadOwed(msg, manual, owed, previous) {
+			read := readStatus()
+			msg.status = &read
+		}
+		return msg
+	}
+}
+
+// syncStatusReadOwed is whether a finished pass must re-read the sync status.
+// Reading it derives the open conflicts from the whole history, so only a pass
+// that could have moved it pays for one: it changed history, published (a
+// resolution among what it may have published), was asked for, or left the
+// sync line something new to say, or the last read failed and is still owed.
+func syncStatusReadOwed(msg automaticSyncFinishedMsg, manual, owed bool, previous string) bool {
+	published := msg.report != nil && len(msg.report.Published) > 0
+	return msg.changed || published || manual || owed ||
+		automaticSyncOutcome(msg.report, msg.err) != previous
+}
+
+// backgroundSyncStatusReader reads the sync status from a runtime of its own
+// on each call, which is what lets a pass read it off the UI goroutine.
+func backgroundSyncStatusReader(load func() (*engine.Runtime, error)) func() syncStatusRead {
+	if load == nil {
+		return nil
+	}
+	return func() syncStatusRead {
+		rt, err := load()
+		if err != nil {
+			return syncStatusRead{statusErr: err}
+		}
+		return readSyncStatus(rt.SyncStatus, rt.SyncConflicts)
 	}
 }
 
@@ -81,16 +130,18 @@ func (m *AppModel) handleAutomaticSyncMessage(msg tea.Msg) (bool, tea.Cmd) {
 			m.externalReload.owed = true
 		}
 		m.pollExternalWorkspaceChanges()
-		// Reading the sync status derives the open conflicts from the whole
-		// history, so only a pass that could have moved it pays for one: it
-		// changed history, published (a resolution among what it may have
-		// published), was asked for, or left the sync line something new to
-		// say, or the last read failed and is still owed. Any other pass only
-		// keeps that line's age current.
+		// Any pass syncStatusReadOwed spares only keeps the sync line's age
+		// current. One it does not spare applies what it read off the UI
+		// goroutine, and reads here only when it carried none: a manual
+		// request that joined it, or a failed read owed since it started.
 		outcome := automaticSyncOutcome(msg.report, msg.err)
-		published := msg.report != nil && len(msg.report.Published) > 0
-		if msg.changed || published || m.automaticSync.manual || outcome != m.automaticSync.outcome || m.feedback.syncRefreshOwed {
-			m.refreshOutstandingConflicts()
+		if syncStatusReadOwed(msg, m.automaticSync.manual, m.feedback.syncRefreshOwed, m.automaticSync.outcome) {
+			if msg.status != nil {
+				m.applySyncStatus(*msg.status)
+				m.recountOutstandingConflicts()
+			} else {
+				m.refreshOutstandingConflicts()
+			}
 		} else {
 			if status := m.feedback.syncStatus; status != nil && msg.report != nil && msg.report.Succeeded {
 				status.LastSuccess = msg.report.At

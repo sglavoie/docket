@@ -53,7 +53,7 @@ func (l *WorkspaceLedger) RedoWithEntry(scope LedgerScope) (LedgerEntry, string,
 // expectTransactionID refuses, before any durable change, unless the selected
 // entry is that transaction.
 func (l *WorkspaceLedger) restore(scope LedgerScope, redo bool, expectTransactionID string) (LedgerEntry, string, error) {
-	service := NewCommitService(l.transactionsDir, l.roots).OnMachine(l.machineID)
+	service := NewCommitService(l.transactionsDir, l.roots).OnMachine(l.machineID).WithOwnWrites(l.ownWrites)
 	var restored LedgerEntry
 	err := service.withWorkspaceCommitLock(func() error {
 		journal := service.journal()
@@ -128,7 +128,7 @@ func (l *WorkspaceLedger) restore(scope LedgerScope, redo bool, expectTransactio
 			if prepareErr != nil {
 				return l.retireDriftedEntry(journal, lf, entry, idx, redo, prepareErr)
 			}
-			if commitErr := commitJournal(journal, manifest); commitErr != nil {
+			if commitErr := service.commitJournal(journal, manifest); commitErr != nil {
 				return fmt.Errorf("committing %s transaction: %w", label, commitErr)
 			}
 			l.gcBlobs(lf)
