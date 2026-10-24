@@ -49,7 +49,7 @@ jobs:
 
       - name: Restore Go caches
         id: go-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/go/pkg/mod
@@ -82,7 +82,7 @@ jobs:
 
       - name: Save Go caches
         if: ${{ !cancelled() && github.ref == 'refs/heads/main' && steps.go-cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: |
             ~/go/pkg/mod
@@ -121,7 +121,7 @@ jobs:
 
       - name: Restore Go caches
         id: go-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/go/pkg/mod
@@ -148,7 +148,7 @@ jobs:
 
       - name: Save Go caches
         if: ${{ !cancelled() && github.ref == 'refs/heads/main' && steps.go-cache.outputs.cache-hit != 'true' && matrix.shard == 0 }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: |
             ~/go/pkg/mod
@@ -246,7 +246,7 @@ jobs:
           echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
 
       - name: Cache pinned desktop dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             macos/Vendor
