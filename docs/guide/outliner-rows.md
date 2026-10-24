@@ -26,7 +26,9 @@ fit. `b` shows the complete title and every detail the row omits.
 Peek's status summary includes **Overdue** and **Check-in owed** when applicable,
 before priority and flags, so attention is visible beside the resume note.
 Under `fH`, a hidden task's status ends with the bare flag `(hidden)`, which a
-child hidden only through its parent wears too.
+child hidden only through its parent wears too. A `Dependencies` or
+`Dependents` entry naming a hidden task ends with that same `(hidden)` after
+its state; the entry and the `~S/N` count stay.
 The full dates and repeat schedule remain in the scrollable details.
 
 **Before a bulk action:** read the selection count. Hidden selected tasks still

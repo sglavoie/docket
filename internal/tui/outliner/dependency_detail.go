@@ -22,29 +22,42 @@ const DependencyDetailUnavailable = "unavailable"
 // reference and an incoming one are described in the same vocabulary and a
 // reader never has to work out which list they are looking at.
 //
-// A loaded entry names its project, short ID, title, and state. An unloaded one
+// A loaded entry names its project, short ID, title, and state, and wears the
+// hidden marker when the target is effectively hidden, so a reference into work
+// no view draws says so rather than reading as ordinary. An unloaded one
 // keeps its stable locator and says only that it is unavailable, which preserves
 // the durable value rather than dropping the entry.
 type DependencyDetail struct {
-	Label string
-	State string
+	Label  string
+	State  string
+	Hidden bool
 }
 
-// String renders one entry as `Project #7 Fix login (doing)`.
+// String renders one entry as `Project #7 Fix login (doing)`, followed by
+// `(hidden)` for an effectively hidden target.
 func (d DependencyDetail) String() string {
-	if d.State == "" {
-		return d.Label
+	text := d.Label
+	if d.State != "" {
+		text += " (" + d.State + ")"
 	}
-	return d.Label + " (" + d.State + ")"
+	if d.Hidden {
+		text += " " + InlinePeekHiddenMarker
+	}
+	return text
 }
 
-// dependencyDetailFor describes one loaded task.
+// dependencyDetailFor describes one loaded task. Hiddenness reads inheritance
+// inside the target's own project, so a task hidden by its ancestor is marked.
 func dependencyDetailFor(project *models.Project, task *models.Task) DependencyDetail {
 	label := fmt.Sprintf("#%d %s", task.ShortID, task.Title)
 	if project != nil && project.Name != "" {
 		label = project.Name + " " + label
 	}
-	return DependencyDetail{Label: label, State: string(task.State())}
+	return DependencyDetail{
+		Label:  label,
+		State:  string(task.State()),
+		Hidden: models.TaskEffectivelyHidden(project, task),
+	}
 }
 
 // dependencyDetailUnresolved describes a reference whose project this view did

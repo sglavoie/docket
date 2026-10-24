@@ -213,3 +213,61 @@ func TestInlinePeekReferenceLinesNameEveryEntry(t *testing.T) {
 		t.Fatal("an empty reference list produced a line")
 	}
 }
+
+// TestDependencyDetailsMarkEffectivelyHiddenTargets holds Peek's reference
+// details to the hidden axis in both directions: a target hidden itself or by an
+// ancestor keeps its entry, its state, and its stored order and gains the marker,
+// while a visible target and an unavailable locator wear none. The marker rides
+// the content key, so toggling it refreshes the rendered detail.
+func TestDependencyDetailsMarkEffectivelyHiddenTargets(t *testing.T) {
+	alpha, beta := dependencyPresentationFixture(t)
+	source := alpha.GetTaskByID("source")
+	sibling := alpha.GetTaskByID("sibling")
+	remote := beta.GetTaskByID("remote")
+
+	visible := outgoingDependencyDetails(source, dependencyTestIndex(alpha, beta))
+	visibleKey := inlinePeekReferenceKey(visible)
+	for _, detail := range visible {
+		if detail.Hidden || strings.Contains(detail.String(), InlinePeekHiddenMarker) {
+			t.Fatalf("visible target marked hidden: %q", detail.String())
+		}
+	}
+
+	// Hide the sibling directly and the remote through a hidden ancestor.
+	sibling.Hidden = true
+	holder := renderFixtureTask(t, "holder", 2, "Hidden holder", models.StateBacklog, 0, models.StateBacklog)
+	holder.Hidden = true
+	beta.Tasks = append(beta.Tasks, holder)
+	holderID := holder.ID
+	remote.ParentID = &holderID
+
+	hidden := outgoingDependencyDetails(source, dependencyTestIndex(alpha, beta))
+	if len(hidden) != 2 {
+		t.Fatalf("details = %#v, want both stored references kept", hidden)
+	}
+	if got := hidden[0].String(); got != "Alpha #2 Agree the schema (backlog) (hidden)" {
+		t.Fatalf("directly hidden entry = %q", got)
+	}
+	if got := hidden[1].String(); got != "Beta #1 Publish the contract (waiting) (hidden)" {
+		t.Fatalf("ancestor-hidden entry = %q", got)
+	}
+	if inlinePeekReferenceKey(hidden) == visibleKey {
+		t.Fatal("reference content key ignores hiddenness")
+	}
+	if census := DependencyCensusFor(source, dependencyTestIndex(alpha, beta)); census.total != 2 {
+		t.Fatalf("census total = %d, want every stored locator", census.total)
+	}
+
+	// An unavailable target cannot be read, so it is never called hidden.
+	fallback := outgoingDependencyDetails(source, dependencyTestIndex(alpha))
+	if got := fallback[1].String(); got != "proj-b:remote (unavailable)" {
+		t.Fatalf("unavailable entry = %q", got)
+	}
+
+	// Incoming direction: a hidden referrer is marked too.
+	source.Hidden = true
+	dependents := incomingDependencyDetails(taskref.TaskIdentity{ProjectID: "proj-b", TaskID: "remote"}, dependencyTestIndex(alpha, beta))
+	if len(dependents) != 1 || dependents[0].String() != "Alpha #1 Wire the importer (doing) (hidden)" {
+		t.Fatalf("dependents = %#v, want the hidden referrer marked", dependents)
+	}
+}
