@@ -331,7 +331,7 @@ func TestGuideDocumentsStorageAndMigration(t *testing.T) {
 	requireDocumentationText(t, content, []string{
 		"workspace.json",
 		"planning.json",
-		"schema-19 Markdown and generic `Task` headings",
+		"schema-20 Markdown and generic `Task` headings",
 		"A project file may also hold comments that belong to the project itself rather than to " +
 			"any one task",
 		"Schema 19 upgrades task Markdown to schema 17 by adding the optional `PROJECT-COMMENTS` " +

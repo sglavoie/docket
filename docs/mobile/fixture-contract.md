@@ -35,7 +35,7 @@ A fixture workspace holds portable artifacts only: no `machine.json`,
   "name": "representative",
   "workspace": "representative",
   "description": "Desktop workspace exercising relationships, planning, check-ins, rich records, lenses, and archived and parked projects.",
-  "schemas": { "domain_envelope": 1, "catalog": 21, "task_markdown": 19 },
+  "schemas": { "domain_envelope": 1, "catalog": 23, "task_markdown": 20 },
   "expect": { "projects": 5, "archived_projects": 1, "parked_projects": 1, "tasks": 15, "today": 2, "next": 2, "lenses": 2, "project_notes": 1, "global_notes": 1, "attachment_files": 1 },
   "coverage": ["relationship.parent_child", "planning.today", "project.archived"]
 }

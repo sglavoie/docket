@@ -9,10 +9,10 @@ import (
 	"github.com/sglavoie/tt/internal/transaction"
 )
 
-// LiveSchemas are the artifact schemas this engine writes for a workspace
-// that is not enrolled in sync, as a sync manifest and a device advertisement
-// name them. An enrolled workspace's catalog is at the enrolled schema
-// instead; see workspaceSchemas.
+// LiveSchemas are the artifact schemas this engine writes, as a sync manifest
+// and a device advertisement name them. From catalog schema 23 an enrolled
+// workspace's catalog is at the current schema too; workspaceSchemas still
+// reads the loaded catalog's own schema rather than assuming it.
 func LiveSchemas() map[string]int {
 	return map[string]int{
 		synclog.SchemaDomainEnvelope: config.CurrentDomainSchemaVersion,

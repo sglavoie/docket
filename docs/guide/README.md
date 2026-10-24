@@ -15,7 +15,7 @@ door. Mechanism lives in [`../architecture.md`](../architecture.md).
 | [`search-and-lenses.md`](search-and-lenses.md) | Finding work, explaining restrictions, saving views, and sorting |
 | [`search-reference.md`](search-reference.md) | Exact matching rules, all filters, lens management, and ordering details |
 | [`projects-and-notes.md`](projects-and-notes.md) | Project scope, Select Project, project tags including `parked`, and All Notes |
-| [`storage.md`](storage.md) | The durable layout, the undo ledger, conflict recovery, and the migration chain up to the schema-21 catalog and its schema-19 task files |
+| [`storage.md`](storage.md) | The durable layout, the undo ledger, conflict recovery, and the migration chain up to the schema-23 catalog and its schema-20 task files |
 | [`retired-keys.md`](retired-keys.md) | Every retired key, per surface, and what answers it now |
 
 ## Find an answer

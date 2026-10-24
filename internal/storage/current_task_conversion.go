@@ -80,6 +80,7 @@ func taskFromCurrentTaskRecord(record currentTaskRecord, location *time.Location
 		CompletedAt: cloneProjectDocumentTime(record.CompletedAt),
 		Pinned:      record.Pinned, PinnedAt: cloneProjectDocumentTime(record.PinnedAt),
 		Review:            record.Review,
+		Hidden:            record.Hidden,
 		ResumeNote:        record.ResumeNote,
 		ChecklistOrigin:   record.ChecklistOrigin,
 		CheckInRepeatDays: record.CheckInRepeatDays,
@@ -213,7 +214,7 @@ func currentTaskRecordFromModel(task *models.Task) (currentTaskRecord, error) {
 	base, dueTime := currentTaskBaseFieldsFromModel(task)
 	appendCurrentTaskRecordCollectionsFromModel(&base, task)
 
-	record := format.V18TaskRecord{V17TaskRecord: format.V17TaskRecord{V16TaskRecord: format.V16TaskRecord{
+	record := format.V19TaskRecord{V18TaskRecord: format.V18TaskRecord{V17TaskRecord: format.V17TaskRecord{V16TaskRecord: format.V16TaskRecord{
 		V15TaskRecord: format.V15TaskRecord{
 			V14TaskRecord: format.V14TaskRecord{
 				V13TaskRecord: format.V13TaskRecord{
@@ -235,6 +236,8 @@ func currentTaskRecordFromModel(task *models.Task) (currentTaskRecord, error) {
 		NextCheckIn:       formatProjectDocumentCheckInDate(task.NextCheckIn),
 		CheckInRepeatDays: task.CheckInRepeatDays,
 		LastReviewedAt:    cloneProjectDocumentTime(task.LastReviewedAt),
+	},
+		Hidden: task.Hidden,
 	}
 	for _, dependency := range task.Dependencies {
 		record.Dependencies = append(record.Dependencies, format.V14TaskDependency{

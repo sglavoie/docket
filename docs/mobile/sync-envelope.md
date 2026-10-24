@@ -37,8 +37,8 @@ blob write identical bytes. A file that is missing or still downloading means
   "kind": "user",
   "local_txn_id": "1f0e5a3c-6d2b-4c8e-8f1a-9b7d3e2c5a40",
   "created_at": "2026-10-06T18:22:04.512Z",
-  "schemas": { "domain_envelope": 1, "catalog": 21, "task_markdown": 19 },
-  "requires": ["project-document.v19", "planning.v1"],
+  "schemas": { "domain_envelope": 1, "catalog": 23, "task_markdown": 20 },
+  "requires": ["project-document.v20", "planning.v1"],
   "effects": [
     {
       "kind": "project_document",
@@ -235,12 +235,12 @@ Each device keeps one advertisement at `devices/<device-id>.json`:
   "app_version": "1.0.0 (42)",
   "bridge_versions": [1],
   "sync_format_versions": [1],
-  "schemas": { "domain_envelope": 1, "catalog": 21, "task_markdown": 19 },
+  "schemas": { "domain_envelope": 1, "catalog": 23, "task_markdown": 20 },
   "capabilities": [
-    "catalog.v21",
+    "catalog.v23",
     "planning.v1",
     "lenses.v1",
-    "project-document.v19",
+    "project-document.v20",
     "project-comments.v1",
     "check-ins.v1",
     "notes.v1",
@@ -257,7 +257,7 @@ The rules:
 
 1. **Writers declare their needs.** A manifest's `requires` lists every
    capability its effects need. For example, a `project_document` effect at
-   schema 19 requires `project-document.v19`.
+   schema 20 requires `project-document.v20`.
 2. **Readers hold what they cannot apply.** A reader applies a manifest only if
    all of these hold: it supports `format_version`, no schema in the
    manifest's `schemas` is newer than its own, every older schema governs none
@@ -289,14 +289,16 @@ The rules:
 
 A workspace syncs only once it is enrolled (`tt sync enroll`, `engine.Enroll`).
 Enrollment keeps the original workspace as it is, snapshots it, and builds a
-local working copy outside iCloud whose catalog is at the enrolled schema
-(`config.SyncEnrolledConfigVersion`, 22) and carries a `sync` block naming the
-exchange format. The schema and the block are one fact: neither validates
-without the other. Every workspace that is not enrolled stays at catalog
-schema 21, and a `tt` that predates sync refuses an enrolled working copy
-before it writes anything. The catalog schema is therefore part of every
-manifest an enrolled device writes, and devices of one enrolled workspace
-share it.
+local working copy outside iCloud whose catalog is at the current schema
+(`config.SyncEnrolledConfigVersion`, 23) and carries a `sync` block naming the
+exchange format. From schema 23 the block alone marks enrollment, and every
+`tt` older than schema 23 refuses the catalog before it writes anything, so a
+`tt` that predates sync can never be handed an enrolled working copy. Before
+schema 23 enrollment wrote schema 22, which was reserved for enrolled catalogs:
+a catalog still at 22 must carry the block, the block needs schema 22 or later,
+and the schema-23 migration carries a schema-22 working copy across with its
+block. The catalog schema is part of every manifest an enrolled device writes,
+and devices of one enrolled workspace share it once each has upgraded.
 
 The working copy's history begins with its genesis: one `kind: enroll`
 transaction at `device_seq` 1 with no parents whose effects create every

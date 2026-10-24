@@ -226,7 +226,7 @@ recreate the directory preflight is about to find absent.
 
 ## Concurrent edits and conflicts
 
-Project revisions hash canonical schema-19 content. A stale writer is compared
+Project revisions hash canonical schema-20 content. A stale writer is compared
 with its base and current remote document. Independent additions and
 non-overlapping field edits can merge; competing edits, delete-versus-edit,
 incompatible hierarchy/order changes, or opaque-block divergence produce a

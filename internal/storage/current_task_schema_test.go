@@ -75,6 +75,7 @@ func currentSchemaFixtureProject() *models.Project {
 		Pinned:          true,
 		PinnedAt:        &pinnedAt,
 		Review:          true,
+		Hidden:          true,
 		ResumeNote:      "waiting on the staging deploy",
 		Comments:        []*models.Comment{{Text: "a stored comment", CreatedAt: base.Add(30 * time.Minute)}},
 		Attachments: []models.Attachment{
@@ -108,8 +109,8 @@ func persistedTaskJSON(t *testing.T, task *models.Task) string {
 // trivially, so a new persisted field fails here until the fixture carries a
 // real value for it.
 //
-// There is deliberately no exemption list. One existed while the schema-19
-// record codec sat beside the live schema-18 one without being selected; the
+// There is deliberately no exemption list. One existed while a newer record
+// codec sat beside the live one without being selected; the
 // change that advanced the live schema deleted it, because a named exemption
 // that outlives its reason is a round trip quietly proving less than it looks
 // like it does.
@@ -173,13 +174,13 @@ func TestCurrentTaskSchemaGoldenBytes(t *testing.T) {
 		t.Fatalf("WriteProjectMarkdown: %v", err)
 	}
 	const golden = "# Project: Fixture\n" +
-		"<!-- tt-schema: 19 -->\n" +
+		"<!-- tt-schema: 20 -->\n" +
 		"\n" +
 		"## Task: Parent\n" +
 		"<!-- id: task-parent, short_id: 1, state: backlog, priority: 0, created: 2026-08-01T12:00:00Z, updated: 2026-08-01T12:00:00Z, state_changed: 2026-08-01T12:00:00Z -->\n" +
 		"\n" +
 		"### Task: Every persisted field\n" +
-		"<!-- id: task-child, short_id: 2, state: done, priority: 2, parent: task-parent, tags: alpha;beta, created: 2026-08-01T12:00:00Z, updated: 2026-08-01T14:00:00Z, state_changed: 2026-08-01T13:00:00Z, completed: 2026-08-01T15:00:00Z, due: 2026-08-14, deferred: 2026-08-20T09:00:00Z, pinned: true, pinned_at: 2026-08-01T13:30:00Z, attachments: file|notes.md|%2Ftmp%2Fnotes.md|0|2026-08-01T12:00:00Z, checklist: 1|step+one, context: deep-work, defer_count: 3, due_time: 09:30, depends: project-beta:task-9, review: true, check_in: 2026-08-25, check_in_repeat: 7, reviewed: 2026-08-01T12:45:00Z -->\n" +
+		"<!-- id: task-child, short_id: 2, state: done, priority: 2, parent: task-parent, tags: alpha;beta, created: 2026-08-01T12:00:00Z, updated: 2026-08-01T14:00:00Z, state_changed: 2026-08-01T13:00:00Z, completed: 2026-08-01T15:00:00Z, due: 2026-08-14, deferred: 2026-08-20T09:00:00Z, pinned: true, pinned_at: 2026-08-01T13:30:00Z, attachments: file|notes.md|%2Ftmp%2Fnotes.md|0|2026-08-01T12:00:00Z, checklist: 1|step+one, context: deep-work, defer_count: 3, due_time: 09:30, depends: project-beta:task-9, review: true, check_in: 2026-08-25, check_in_repeat: 7, reviewed: 2026-08-01T12:45:00Z, hidden: true -->\n" +
 		"<!-- checklist-origin: {\"project_id\":\"project-alpha\",\"task_id\":\"task-parent\",\"index\":3} -->\n" +
 		"<!-- RESUME -->\n" +
 		"waiting on the staging deploy\n" +

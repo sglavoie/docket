@@ -129,6 +129,13 @@ func WriteV18TaskMetadata(task V18TaskRecord) (string, error) {
 	if err := validateV18TaskRecord(task, false); err != nil {
 		return "", err
 	}
+	return wrapTaskMetadata(v18MetadataParts(task)), nil
+}
+
+// v18MetadataParts renders the schema-18 metadata fields in canonical order,
+// split from the writer above the way v15MetadataParts is, so a later schema
+// appending keys of its own spells this order once rather than copying it.
+func v18MetadataParts(task V18TaskRecord) []string {
 	parts := v15MetadataParts(task.V15TaskRecord)
 	if task.NextCheckIn != "" {
 		parts = append(parts, v18CheckInMetadataKey+": "+task.NextCheckIn)
@@ -139,7 +146,7 @@ func WriteV18TaskMetadata(task V18TaskRecord) (string, error) {
 	if task.LastReviewedAt != nil {
 		parts = append(parts, v18ReviewedMetadataKey+": "+formatV6Time(*task.LastReviewedAt))
 	}
-	return wrapTaskMetadata(parts), nil
+	return parts
 }
 
 // ParseV18TaskMetadata strictly parses one schema-18 metadata comment.
@@ -148,6 +155,20 @@ func ParseV18TaskMetadata(comment string) (V18TaskRecord, error) {
 	if err != nil {
 		return V18TaskRecord{}, err
 	}
+	task, err := v18RecordFromMetadataValues(values)
+	if err != nil {
+		return V18TaskRecord{}, err
+	}
+	if err := validateV18TaskRecord(task, false); err != nil {
+		return V18TaskRecord{}, err
+	}
+	return task, nil
+}
+
+// v18RecordFromMetadataValues decodes the schema-18 metadata fields from the
+// already-split key/value pairs. It is the kernel a later schema reuses to read
+// the fields it inherits, the way v15RecordFromMetadataValues is.
+func v18RecordFromMetadataValues(values map[string]string) (V18TaskRecord, error) {
 	base, err := v15RecordFromMetadataValues(values)
 	if err != nil {
 		return V18TaskRecord{}, err
@@ -173,9 +194,6 @@ func ParseV18TaskMetadata(comment string) (V18TaskRecord, error) {
 			return V18TaskRecord{}, fmt.Errorf("parse v18 %s: %w", v18ReviewedMetadataKey, parseErr)
 		}
 		task.LastReviewedAt = &reviewed
-	}
-	if err := validateV18TaskRecord(task, false); err != nil {
-		return V18TaskRecord{}, err
 	}
 	return task, nil
 }

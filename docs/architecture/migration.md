@@ -17,8 +17,9 @@ path, a schema-15 workspace crosses the schema-16 portable-lens path, a
 schema-16 workspace crosses the schema-17 stored-review path, a schema-17
 workspace crosses the schema-18 resume-note path, a schema-18 workspace crosses
 the schema-19 project-comment path, a schema-19 workspace crosses the schema-20
-checklist-origin path, and a schema-20 workspace finishes on the schema-21
-check-in path:
+checklist-origin path, a schema-20 workspace crosses the schema-21 check-in
+path, and a schema-21 workspace, or a working copy enrolled in sync at schema
+22, finishes on the schema-23 hidden-flag path:
 
 1. Decode the v4 catalog, planning, settings, automation, machine state, task
    Markdown, completed archives, notes, blockers, and legacy indexes with
@@ -197,6 +198,21 @@ check-in path:
    collection is not restaged: existing `=review` and Stale lenses keep their
    meanings. The additive Needs Review template uses `?review`; it does not
    rewrite a saved lens or turn its stored flag query into scheduled attention.
+38. Validate every schema-19 project document, then lift it to schema 20 by
+   admitting the optional `hidden: true` metadata key. No task was hidden before
+   this boundary, so `V20ProjectDocumentFromV19` is a pure marker lift and each
+   document comes out byte-identical to its schema-19 source apart from the
+   marker line. The source catalog is schema 21, or schema 22 for a working copy
+   enrolled in sync; both hold schema-19 task Markdown, and the enrolled copy's
+   `sync` block is carried across untouched.
+39. Publish `pre-hidden-v23-<UTC>.tar.gz` plus its audit, atomically activate
+   catalog schema 23 and task Markdown schema 20 across active, parked, and
+   archived projects, and clear undo/redo history whose retained bytes carry the
+   schema-19 task-document marker. The audit names the source catalog schema.
+   There is no schema-22 step: 22 was the enrolled marker, never a link in the
+   chain, and from schema 23 the `sync` block alone marks enrollment, since
+   every older `tt` already refuses schema 23. The portable lens collection is
+   not restaged: no lens could name the hidden flag before this schema.
 
 `planV17LensDefinitions` is why the lens rewrite is part of that boundary rather
 than cleanup after it. Schema 15 removes the review tag from every task as it
@@ -214,7 +230,7 @@ with no `lenses.json` stages nothing: the machine-local collection it falls back
 to is lifted on every load and rewritten on that machine's next commit, which is
 the only upgrade path a file this transaction does not own can have.
 
-Each boundary is idempotent: repeated schema-21 startup neither reconverts data
+Each boundary is idempotent: repeated schema-23 startup neither reconverts data
 nor creates another rollback pair. Corrupt or future input and an existing
 `unfiled` project/directory fail before mutation with concrete rename/move guidance.
 No boundary rewrites `.tt/conflicts/`, so a bundle recorded before one keeps the

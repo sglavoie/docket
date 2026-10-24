@@ -16,7 +16,7 @@ func v19ProjectTestDocument(t *testing.T) V19ProjectDocument {
 	}
 	return V19ProjectDocument{
 		ProjectName: "Check-ins",
-		Tasks:       []format.V18TaskRecord{record},
+		Tasks:       []format.V18TaskRecord{record.V18TaskRecord},
 	}
 }
 

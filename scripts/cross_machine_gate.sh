@@ -1503,9 +1503,14 @@ case_eleven_check_ins() {
 # builds a local working copy at the enrolled catalog schema, and publishes the
 # copy's history. A tt from before enrollment must refuse that working copy as
 # newer than it supports, writing nothing, while it keeps opening the original
-# it already knew. The older binary here is the newest one that reads every
-# workspace the current one mints without enrolling, so the refusal proves the
-# enrolled marker rather than an unrelated schema bump.
+# it already knew. The older binary here is the newest one from before
+# enrollment. Until catalog schema 23 it read every workspace the current one
+# mints without enrolling, so the refusal proved the enrolled marker rather than
+# an unrelated schema bump. From schema 23 the sync block alone marks
+# enrollment and every older binary refuses the current schema outright, so the
+# control and the original are refused the same way; the case then requires that
+# refusal to be "newer than supported" too, which is what proves the original
+# was not misread rather than merely unread.
 
 enroll_old_binary_ref() {
 	if [ -n "${TT_ENROLL_OLD_BINARY_REF:-}" ]; then
@@ -1545,6 +1550,21 @@ ensure_enroll_old_binary() {
 	return 0
 }
 
+# case12_old_reads_or_refuses_newer accepts the older binary either reading a
+# workspace that was never enrolled or refusing it as newer than supported: the
+# latter is every unenrolled workspace from catalog schema 23 on, which no tt from
+# before enrollment can read. Any other failure is still a failure.
+case12_old_reads_or_refuses_newer() {
+	set +e
+	HOME="$2" "$enroll_old_binary" doctor --data-dir "$1" >"$3" 2>&1
+	status=$?
+	set -e
+	if [ "$status" -eq 0 ]; then
+		return 0
+	fi
+	grep -q "newer than supported" "$3"
+}
+
 case_twelve_enrolled_refusal() {
 	ensure_enroll_old_binary || return
 	original="$work_dir/case12/original"
@@ -1557,7 +1577,7 @@ case_twelve_enrolled_refusal() {
 		report_fail "case12: could not mint the original (see $work_dir/case12-mint.log)"
 		return
 	fi
-	if ! HOME="$home_old" "$enroll_old_binary" doctor --data-dir "$original" >"$work_dir/case12-old-control.log" 2>&1; then
+	if ! case12_old_reads_or_refuses_newer "$original" "$home_old" "$work_dir/case12-old-control.log"; then
 		report_fail "case12: the older binary cannot read a workspace that was never enrolled (see $work_dir/case12-old-control.log)"
 		return
 	fi
@@ -1591,7 +1611,7 @@ case_twelve_enrolled_refusal() {
 		report_fail "case12: the older binary's refusal modified the working copy (see $work_dir/case12-diff.log)"
 		return
 	fi
-	if ! HOME="$home_old" "$enroll_old_binary" doctor --data-dir "$original" >"$work_dir/case12-old-original.log" 2>&1; then
+	if ! case12_old_reads_or_refuses_newer "$original" "$home_old" "$work_dir/case12-old-original.log"; then
 		report_fail "case12: the older binary can no longer read the original (see $work_dir/case12-old-original.log)"
 		return
 	fi
@@ -1599,7 +1619,7 @@ case_twelve_enrolled_refusal() {
 		report_fail "case12: sync doctor reports issues on the fresh enrollment (see $work_dir/case12-sync-doctor.log)"
 		return
 	fi
-	report_pass "a tt from before enrollment refuses the enrolled working copy byte-identically and still reads the original"
+	report_pass "a tt from before enrollment refuses the enrolled working copy byte-identically and reads or cleanly refuses the original"
 }
 
 # snapshot_workspace writes a sorted path/size/checksum listing of every file

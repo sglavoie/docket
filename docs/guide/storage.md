@@ -139,7 +139,7 @@ catalog, whether the location is local or synced, the machine-local
 active-workspace pointer, and the logs, `backups/`, `exports/`, and
 `conflicts/` paths.
 
-Project task files use strict schema-19 Markdown and generic `Task` headings.
+Project task files use strict schema-20 Markdown and generic `Task` headings.
 `workspace.json` contains the lean project catalog, project tags, and the
 protected Unfiled ID. `planning.json` contains Today and
 Next ordering only.
@@ -149,6 +149,10 @@ in 00:00–23:59 that pairs with the calendar `due` date; midnight is reserved f
 date-only due dates, so a date-only task omits it.
 Each task may carry an optional `review` flag; false is the flag's absence, so
 an unflagged task omits it.
+Each task may carry an optional `hidden: true` flag the same way. A hidden task
+keeps its state, planning, pin, review flag, check-in, and deadline; it is only
+left out of what you see. False is the flag's absence, so a task that is not
+hidden writes exactly the bytes schema 19 wrote.
 Each task may finally carry an optional `depends` list of soft references to
 other tasks, each a `project-id:task-id` pair; an empty list is omitted. A
 reference is durable and one-directional: only the referring task stores it, so
@@ -239,7 +243,9 @@ two synced files, `workspace.json` and `planning.json`, do not merge — a chang
 that lands under one of those is refused and reported, because there is no
 order-independent way to combine two project catalogs.
 
-Startup migrates supported schema-20 workspaces to schema 21, supported
+Startup migrates supported schema-21 workspaces, and working copies enrolled
+in sync at schema 22, to schema 23, supported
+schema-20 workspaces to schema 21, supported
 schema-19 workspaces to schema 20, supported
 schema-18 workspaces to schema 19, supported
 schema-17 workspaces to schema 18, supported
@@ -265,8 +271,9 @@ for v6→v7, `pre-tag-v8-<UTC>.tar.gz` for v7→v8,
 `pre-stored-review-v17-<UTC>.tar.gz` for v16→v17,
 `pre-resume-note-v18-<UTC>.tar.gz` for v17→v18,
 `pre-project-comments-v19-<UTC>.tar.gz` for v18→v19,
-`pre-checklist-origin-v20-<UTC>.tar.gz` for v19→v20, and
-`pre-check-ins-v21-<UTC>.tar.gz` for v20→v21.
+`pre-checklist-origin-v20-<UTC>.tar.gz` for v19→v20,
+`pre-check-ins-v21-<UTC>.tar.gz` for v20→v21, and
+`pre-hidden-v23-<UTC>.tar.gz` for v21→v23 and v22→v23.
 
 The two structural conversions state themselves. The schema-6 conversion
 preserves notes and attachment bytes, converts retained decision text into
@@ -299,6 +306,7 @@ already say.
 | Schema 19 upgrades task Markdown to schema 17 by adding the optional `PROJECT-COMMENTS` block that holds a project's own comments | No existing project has a comment to lift, so every document comes out byte-identical to its schema-16 source apart from the schema marker line, and every migrated project — active, parked, or archived — starts with none. Your saved lenses are not rewritten: a project comment is prose on a project rather than a value a task query narrows by, so every lens keeps selecting exactly the rows it selected before |
 | Schema 20 upgrades task Markdown to schema 18 by adding the optional checklist-origin line that records where a promoted task came from | No existing task was promoted under a schema that recorded an origin, so every document comes out byte-identical to its schema-17 source apart from the schema marker line. Your saved lenses are not rewritten, because an origin is not something a query narrows by |
 | Schema 21 upgrades task Markdown to schema 19 by adding the optional `check_in` date, its `check_in_repeat` cadence, and the `reviewed` instant | This is the one boundary since schema 17 that writes a value rather than only a marker. Every Waiting task that carries a due date is given a one-off check-in on that same date, because the deadline you set on work you are waiting for is the day you meant to look at it again; the date is copied exactly, so the deadline, its `due_time`, the timestamps, the body, and the comments are untouched. No cadence and no review instant are invented, so a seeded check-in fires once and the workspace never claims a task was reviewed on a day nobody reviewed it. Every catalog-owned project is migrated, parked and archived ones included, and a task that already holds a check-in is left alone, so running the step again changes nothing. Your saved lenses are not rewritten |
+| Schema 23 upgrades task Markdown to schema 20 by adding the optional `hidden` flag | No existing task is hidden, so every document comes out byte-identical to its schema-19 source apart from the schema marker line. There is no schema-22 step: 22 was the catalog schema of a working copy enrolled in sync, and such a copy migrates to 23 like a schema-21 workspace and keeps its `sync` block, which from schema 23 alone marks enrollment. Your saved lenses are not rewritten, because no lens could name the flag before this schema |
 
 Invalid or future-schema input aborts without changing workspace data. An
 existing `unfiled` project or directory also aborts before snapshot publication
@@ -313,8 +321,9 @@ schema-14 boundary, `pre-dependencies-v15-<UTC>.tar.gz` for schema 15,
 `pre-stored-review-v17-<UTC>.tar.gz` for schema 17,
 `pre-resume-note-v18-<UTC>.tar.gz` for schema 18,
 `pre-project-comments-v19-<UTC>.tar.gz` for schema 19,
-`pre-checklist-origin-v20-<UTC>.tar.gz` for schema 20, or
-`pre-check-ins-v21-<UTC>.tar.gz` for schema 21 — into a
+`pre-checklist-origin-v20-<UTC>.tar.gz` for schema 20,
+`pre-check-ins-v21-<UTC>.tar.gz` for schema 21, or
+`pre-hidden-v23-<UTC>.tar.gz` for schema 23 — into a
 separate directory and open that copy with a compatible build. Migration
 snapshots themselves are never modified.
 
@@ -452,10 +461,10 @@ then published to the exchange folder as its first piece of history. If
 enrollment is interrupted, run the same command again: it finishes what is left
 and copies or publishes nothing twice.
 
-An enrolled working copy uses catalog schema 22, one past the schema-21 chain
-above, so a `tt` from before sync
-refuses to open it rather than write around its history; update `tt` on every
-machine that opens it. Another desktop joins with
+An enrolled working copy uses the current catalog schema, 23, with a `sync`
+block, so a `tt` from before sync refuses to open it rather than write around
+its history; update `tt` on every machine that opens it. A copy enrolled by an
+older `tt` at schema 22 migrates to 23 on first open and stays enrolled. Another desktop joins with
 `tt sync join --exchange DIR --working-copy DIR`, which builds its own local
 copy from the published history alone.
 

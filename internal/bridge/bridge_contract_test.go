@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -111,7 +112,7 @@ func TestBridgeRefusesMalformedAndMisaddressedRequests(t *testing.T) {
 func TestBridgeCapturesCompletesAndReopens(t *testing.T) {
 	h := newHarness(t, representativeFixture)
 	status := h.open(false)
-	if status.Schemas.Catalog != 21 || status.Schemas.TaskMarkdown != storage.CurrentTaskSchemaVersion || status.Schemas.Bridge != Version {
+	if status.Schemas.Catalog != config.CurrentConfigVersion || status.Schemas.TaskMarkdown != storage.CurrentTaskSchemaVersion || status.Schemas.Bridge != Version {
 		t.Fatalf("status reports schemas %+v", status.Schemas)
 	}
 	unfiled := h.unfiled()
@@ -290,7 +291,7 @@ func rewriteCatalogSchema(t *testing.T, path string, schema int) {
 func TestBridgeCreatesAFreshWorkspace(t *testing.T) {
 	h := newHarness(t, "")
 	status := h.open(true)
-	if status.Workspace == "" || status.Schemas.Catalog != 21 {
+	if status.Workspace == "" || status.Schemas.Catalog != config.CurrentConfigVersion {
 		t.Fatalf("fresh status %+v", status)
 	}
 	unfiled := h.unfiled()

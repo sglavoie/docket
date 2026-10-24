@@ -6,8 +6,8 @@
   "description": "Desktop workspace exercising relationships, planning, check-ins, rich records, lenses, and archived and parked projects.",
   "schemas": {
     "domain_envelope": 1,
-    "catalog": 21,
-    "task_markdown": 19
+    "catalog": 23,
+    "task_markdown": 20
   },
   "expect": {
     "projects": 5,

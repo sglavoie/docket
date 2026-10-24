@@ -14,7 +14,7 @@ func TestLiveProjectDocumentRoundTripsSchema12Fields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("WriteCurrent: %v", err)
 	}
-	if !strings.Contains(content, schemaMarkerV19) || !strings.Contains(content, "context: platform-api") ||
+	if !strings.Contains(content, schemaMarkerV20) || !strings.Contains(content, "context: platform-api") ||
 		!strings.Contains(content, "defer_count: 3") {
 		t.Fatalf("live document omitted schema-12 fields:\n%s", content)
 	}

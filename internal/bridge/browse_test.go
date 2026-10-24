@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/engine"
 	"github.com/sglavoie/tt/internal/syncexchange"
 )
@@ -264,7 +265,7 @@ func TestBridgeJoinsFromAStagedInbox(t *testing.T) {
 	t.Run("joined_copy_browses", func(t *testing.T) {
 		var joined joinResult
 		h.ok(join("phone-a", h.dataDir, inbox), &joined)
-		if joined.Workspace != workspaceID || joined.DeviceID != "phone-a" || joined.Schemas.Catalog != 22 {
+		if joined.Workspace != workspaceID || joined.DeviceID != "phone-a" || joined.Schemas.Catalog != config.SyncEnrolledConfigVersion {
 			t.Fatalf("joined status = %+v", joined.statusResult)
 		}
 		if joined.Import == nil || len(joined.Import.Results) == 0 {

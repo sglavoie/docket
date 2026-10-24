@@ -82,8 +82,8 @@ inbox, backlog, doing, waiting, paused, someday, done, canceled
 Review is not a lifecycle state. It is a stored boolean axis beside `Pinned`,
 written by the sigil `=` and narrowed by the facet `f=`, toggled on a row by
 that same root key, and it promotes an All-mode lane. Retired fields/states: migration DTOs/audits only. Task Markdown schema
-19 uses generic `Task` headings, project-local ShortID, retained fields, the
-stored `review` flag, optional single-valued task `Context`, and an optional
+20 uses generic `Task` headings, project-local ShortID, retained fields, the
+stored `review` and `hidden` flags, optional single-valued task `Context`, and an optional
 `depends` list of outgoing soft task references. `DueDate` is a calendar date with
 optional `due_time`; `DeferredUntil` is an RFC3339Nano instant that can expire
 later the same day. Optional `ResumeNote` is one trimmed line of at most 240
@@ -1109,14 +1109,14 @@ Lens and history writes open no workspace transaction and record no undo entry.
 Preserve approved roots, symlink-aware containment, checked revisions,
 deterministic locks, and recovery manifests.
 
-Schema 22 marks an enrolled catalog.
-Schema-21 catalogs hold schema-19 task Markdown. That pairing is descriptive,
-never derived: v16 advanced no task grammar, so it rewrote no `tasks.md`, v17
-lifts `review` off the tag list onto the stored flag, v18 admits the
-`RESUME` block no existing task fills, v19 admits the `PROJECT-COMMENTS`
-block no existing project fills, and v20 admits the checklist-origin line no
-existing task fills, so each of those three rewrites is the marker line alone
-and none restages a lens. v21 is not the marker alone: `SeedWaitingCheckInsV19`
+Schema 22 marked an enrolled catalog; from 23 the `sync` block alone does.
+Schema-23 catalogs hold schema-20 task Markdown. That pairing is descriptive,
+never derived: v16 advanced no task grammar or `tasks.md`, v17
+lifts `review` off the tag list onto the stored flag, and v18, v19, v20, and v23
+admit the `RESUME` block, `PROJECT-COMMENTS` block, checklist-origin line, and
+`hidden: true` key nothing fills yet, so each rewrites the marker line alone
+and restages no lens; v23 also reads an enrolled schema-22 one. v21 is not
+the marker alone: `SeedWaitingCheckInsV19`
 copies each Waiting task's canonical `due` string into `check_in`, the only
 value any boundary mints. It moves no deadline, invents no repeat and no review
 instant, skips an already-seeded task, and sits beside
@@ -1133,7 +1133,7 @@ bodies under the shared prose escaping, instants in UTC, order creation time
 then identity, block omitted when empty. `WriteProjectMarkdown` renders the
 complete project and is what every production rewrite site spells; there is no
 name-plus-task-list renderer to fall back to.
-Migration v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15→v16→v17→v18→v19→v20→v21 validates each candidate first,
+Migration v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15→v16→v17→v18→v19→v20→v21→v23 validates each candidate first,
 publishes an immutable archive/audit pair, then atomically activates the next
 schema and removes retired storage. Nothing may publish partial output before a
 snapshot boundary. v4/v5/v6/v11 decoders are migration-only: runtime code

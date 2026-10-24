@@ -386,3 +386,22 @@ func TestEscapeExportInlineTextLeavesOrdinaryProseAlone(t *testing.T) {
 		}
 	}
 }
+
+// TestWriteProjectMarkdownClean_Hidden keeps a hidden task in the export and
+// names the flag in its badge, since the export is the project's record and
+// every view leaves the task out.
+func TestWriteProjectMarkdownClean_Hidden(t *testing.T) {
+	task := mustTask("t1", 1, "Out of sight")
+	task.Priority = 0
+	task.Hidden = true
+	p := newProject("Hidden", task)
+
+	out := WriteProjectMarkdownClean(p)
+	if !strings.Contains(out, "Out of sight [hidden]") {
+		t.Errorf("expected the hidden task with its badge: %q", out)
+	}
+	task.Hidden = false
+	if visible := WriteProjectMarkdownClean(p); strings.Contains(visible, "hidden") {
+		t.Errorf("an unhidden task named the flag: %q", visible)
+	}
+}

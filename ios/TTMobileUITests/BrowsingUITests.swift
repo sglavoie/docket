@@ -68,7 +68,7 @@ final class BrowsingUITests: XCTestCase {
             tasks.removeSubrange(start.lowerBound..<end.lowerBound)
         case .newerSchema:
             let catalog = target.appendingPathComponent(".tt/workspace.json")
-            let text = try replacing("\"schema_version\": 21", with: "\"schema_version\": 99", in: String(contentsOf: catalog, encoding: .utf8))
+            let text = try replacing("\"schema_version\": 23", with: "\"schema_version\": 99", in: String(contentsOf: catalog, encoding: .utf8))
             try text.write(to: catalog, atomically: true, encoding: .utf8)
         }
         try tasks.write(to: atlas, atomically: true, encoding: .utf8)

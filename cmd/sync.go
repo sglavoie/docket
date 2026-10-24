@@ -31,8 +31,8 @@ snapshots it, and builds a new local working copy outside iCloud that becomes
 the enrolled workspace; only immutable history is written to the exchange
 folder. A workspace that was never enrolled keeps working as it always has.
 
-Enrolled workspaces use catalog schema ` + fmt.Sprint(config.SyncEnrolledConfigVersion) + `, which a tt older than sync refuses
-to open rather than write around the history.`,
+Enrolled workspaces use catalog schema ` + fmt.Sprint(config.SyncEnrolledConfigVersion) + ` with a sync block, which a tt older than
+this one refuses to open rather than write around the history.`,
 	Example: `  tt sync enroll --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/tt-exchange --working-copy ~/tt-synced
   tt sync status
   tt sync exchange

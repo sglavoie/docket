@@ -40,7 +40,7 @@ func TestCrossMachineHelperSeedsLegacyCheckIns(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	current, err := storage.ParseV19ProjectDocument(string(raw))
+	current, err := storage.ParseV20ProjectDocument(string(raw))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -155,8 +155,9 @@ func TestSyncEnrollInterruptedMigration(t *testing.T) {
 }
 
 // TestSyncEnrolledCatalogSchema holds the enrolled schema and the sync block
-// to each other, and keeps every workspace never enrolled at the current
-// schema.
+// to each other: the legacy enrolled schema 22 requires the block, the block
+// requires schema 22 or later, and from schema 23 the block alone marks
+// enrollment, so the current schema reads with or without it.
 func TestSyncEnrolledCatalogSchema(t *testing.T) {
 	enrolledAt := time.Date(2026, time.October, 6, 12, 0, 0, 0, time.UTC)
 	cases := []struct {
@@ -166,8 +167,9 @@ func TestSyncEnrolledCatalogSchema(t *testing.T) {
 	}{
 		{"current_without_sync", WorkspaceCatalog{SchemaVersion: CurrentConfigVersion}, ""},
 		{"enrolled_with_sync", WorkspaceCatalog{SchemaVersion: SyncEnrolledConfigVersion, Sync: &CatalogSync{EnrolledAt: enrolledAt, Exchange: SyncExchangeFormat}}, ""},
-		{"enrolled_without_sync", WorkspaceCatalog{SchemaVersion: SyncEnrolledConfigVersion}, "reserved for workspaces enrolled"},
-		{"sync_at_current_schema", WorkspaceCatalog{SchemaVersion: CurrentConfigVersion, Sync: &CatalogSync{EnrolledAt: enrolledAt, Exchange: SyncExchangeFormat}}, "requires schema version"},
+		{"legacy_enrolled_with_sync", WorkspaceCatalog{SchemaVersion: V22ConfigSchemaVersion, Sync: &CatalogSync{EnrolledAt: enrolledAt, Exchange: SyncExchangeFormat}}, ""},
+		{"legacy_enrolled_without_sync", WorkspaceCatalog{SchemaVersion: V22ConfigSchemaVersion}, "reserved for workspaces enrolled"},
+		{"sync_before_enrolled_schema", WorkspaceCatalog{SchemaVersion: V21ConfigSchemaVersion, Sync: &CatalogSync{EnrolledAt: enrolledAt, Exchange: SyncExchangeFormat}}, "requires schema version"},
 		{"unknown_exchange", WorkspaceCatalog{SchemaVersion: SyncEnrolledConfigVersion, Sync: &CatalogSync{EnrolledAt: enrolledAt, Exchange: "tt-sync/v9"}}, "not supported"},
 		{"newer_than_supported", WorkspaceCatalog{SchemaVersion: SupportedConfigVersion + 1}, "newer than supported"},
 	}

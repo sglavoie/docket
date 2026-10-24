@@ -65,6 +65,11 @@ type Task struct {
 	// competes with one: a task carries its state and, independently, whether it
 	// is waiting on a look. It is its own boolean axis exactly as Pinned is.
 	Review bool `json:"review,omitempty"`
+	// Hidden is the stored hidden flag. Hidden is not a lifecycle state, a
+	// planning collection, or a mode: a task keeps its state and, independently,
+	// whether it is moved out of every view. It is its own boolean axis exactly
+	// as Pinned and Review are, and only the task that was toggled stores it.
+	Hidden bool `json:"hidden,omitempty"`
 	// ResumeNote is the task's single dedicated "where was I" line, retained
 	// until it is explicitly cleared. It is one line by contract, bounded by
 	// MaxResumeNoteLength, and validated by ValidateResumeNote; the empty string

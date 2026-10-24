@@ -42,7 +42,7 @@ func buildCheckInFixture(w *uitestWorkspace) error {
 		if readErr != nil {
 			return readErr
 		}
-		current, parseErr := storage.ParseV19ProjectDocument(string(raw))
+		current, parseErr := storage.ParseV20ProjectDocument(string(raw))
 		if parseErr != nil {
 			return parseErr
 		}

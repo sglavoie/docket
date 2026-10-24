@@ -333,6 +333,12 @@ func buildExportBadge(task *models.Task) string {
 		}
 		parts = append(parts, segment)
 	}
+	// The export writes every stored task, hidden ones included, because it is a
+	// record of the project rather than a view of it; the badge says which tasks
+	// every view leaves out, so a reader is not surprised by work they never saw.
+	if task.Hidden {
+		parts = append(parts, "hidden")
+	}
 
 	if len(parts) == 0 {
 		return ""

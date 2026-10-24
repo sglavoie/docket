@@ -162,7 +162,7 @@ func checklistDemotionPreconditions(
 func childCarriesUnretainableContent(task *models.Task) bool {
 	return task.Description != "" || task.Priority != models.PriorityUnset ||
 		len(task.Tags) != 0 || task.Context != "" || task.DeferCount != 0 || task.DueDate != nil ||
-		task.Pinned || task.PinnedAt != nil || task.Review || task.ResumeNote != "" ||
+		task.Pinned || task.PinnedAt != nil || task.Review || task.Hidden || task.ResumeNote != "" ||
 		len(task.Comments) != 0 || len(task.Attachments) != 0 || task.DeferredUntil != nil ||
 		!task.CheckIn().IsEmpty() || task.LastReviewedAt != nil ||
 		len(task.Checklist) != 0 || len(task.Dependencies) != 0

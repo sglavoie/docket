@@ -208,7 +208,7 @@ exported commit, undo, redo, migrate, adopt, recover, and restore method on
 | `Manager.AdoptPortableLenses` | domain-store | One-time adoption per machine. It republishes `lenses.json` and leaves a `.bak` sidecar, so a changed digest is the only evidence that warrants an outbound effect. |
 | `Manager.RecoverWorkspace` | commit-journal | Journal recovery, then the local migration chain, then lens adoption. |
 | `Manager.RestoreConfigFromBackup` | domain-store | Restores domains from `.bak`. A restored synced domain is published as a domain change. |
-| `Manager.MigrateWorkspaceToV5` … `Manager.MigrateWorkspaceToV21` | migration | Local only. Migrations are never exchanged; see [schemas move by upgrade](sync-envelope.md#capability-negotiation). |
+| `Manager.MigrateWorkspaceToV5` … `Manager.MigrateWorkspaceToV23` | migration | Local only. Migrations are never exchanged; see [schemas move by upgrade](sync-envelope.md#capability-negotiation). |
 
 The migration entry points named one by one: `Manager.MigrateWorkspaceToV5`,
 `Manager.MigrateWorkspaceToV6`, `Manager.MigrateWorkspaceToV7`,
@@ -218,7 +218,9 @@ The migration entry points named one by one: `Manager.MigrateWorkspaceToV5`,
 `Manager.MigrateWorkspaceToV14`, `Manager.MigrateWorkspaceToV15`,
 `Manager.MigrateWorkspaceToV16`, `Manager.MigrateWorkspaceToV17`,
 `Manager.MigrateWorkspaceToV18`, `Manager.MigrateWorkspaceToV19`,
-`Manager.MigrateWorkspaceToV20`, `Manager.MigrateWorkspaceToV21`.
+`Manager.MigrateWorkspaceToV20`, `Manager.MigrateWorkspaceToV21`,
+`Manager.MigrateWorkspaceToV23`. There is no `MigrateWorkspaceToV22`: schema 22
+was the enrolled marker, never a step.
 
 ## External Markdown editing
 

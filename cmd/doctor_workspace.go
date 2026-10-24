@@ -29,15 +29,15 @@ func checkWorkspaceHealth(workspace *CLIWorkspace, results *doctorResults) {
 
 	schema := catalog.SchemaVersion
 	switch {
+	case schema == config.CurrentConfigVersion && catalog.Enrolled():
+		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{
+			project: "Migration",
+			detail:  fmt.Sprintf("workspace schema %d is current for a workspace enrolled in sync", schema),
+		})
 	case schema == config.CurrentConfigVersion:
 		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{
 			project: "Migration",
 			detail:  fmt.Sprintf("workspace schema %d is current", schema),
-		})
-	case schema == config.SyncEnrolledConfigVersion && catalog.Enrolled():
-		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{
-			project: "Migration",
-			detail:  fmt.Sprintf("workspace schema %d is current for a workspace enrolled in sync", schema),
 		})
 	case schema < config.CurrentConfigVersion:
 		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{

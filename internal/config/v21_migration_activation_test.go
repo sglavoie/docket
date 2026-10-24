@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -438,16 +439,12 @@ func TestV21MigrationCarriesArchivedAndParkedProjects(t *testing.T) {
 }
 
 // TestFreshWorkspaceStartsAtTheCheckInSchemaWithNoCheckIns proves the other end of
-// the boundary: a workspace created by this build is already at schema 21 and
-// crossed no migration, so it publishes no rollback snapshot and its tasks carry
-// no check-in.
+// the boundary: a workspace created by this build is already at the current
+// schema and crossed no migration, so its tasks carry no check-in.
 func TestFreshWorkspaceStartsAtTheCheckInSchemaWithNoCheckIns(t *testing.T) {
 	catalog := NewWorkspaceCatalog()
-	if catalog.SchemaVersion != V21ConfigSchemaVersion {
-		t.Fatalf("fresh catalog schema = %d, want %d", catalog.SchemaVersion, V21ConfigSchemaVersion)
-	}
-	if CurrentConfigVersion != V21ConfigSchemaVersion {
-		t.Fatalf("CurrentConfigVersion = %d, want %d", CurrentConfigVersion, V21ConfigSchemaVersion)
+	if catalog.SchemaVersion != CurrentConfigVersion {
+		t.Fatalf("fresh catalog schema = %d, want %d", catalog.SchemaVersion, CurrentConfigVersion)
 	}
 
 	// A workspace created here crosses no boundary, so the absent check-in is the
@@ -463,7 +460,7 @@ func TestFreshWorkspaceStartsAtTheCheckInSchemaWithNoCheckIns(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(content, "<!-- tt-schema: 19 -->") {
+	if !strings.Contains(content, fmt.Sprintf("<!-- tt-schema: %d -->", storage.CurrentTaskSchemaVersion)) {
 		t.Fatalf("fresh project is not at the current task schema:\n%s", content)
 	}
 	for _, key := range []string{"check_in:", "check_in_repeat:", "reviewed:"} {

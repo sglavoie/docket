@@ -128,7 +128,7 @@ type WorkspaceCatalog struct {
 	Projects               []CatalogProject `json:"projects"`
 	SystemUnfiledProjectID string           `json:"system_unfiled_project_id"`
 	// Sync is present exactly when the workspace is enrolled in device sync,
-	// and then the catalog is at SyncEnrolledConfigVersion.
+	// and then the catalog is at schema 22 or later; see validateSyncEnrollment.
 	Sync *CatalogSync `json:"sync,omitempty"`
 }
 
@@ -285,19 +285,20 @@ func projectMatches(projID, projSlug, id, slug string) bool {
 	return refMatches(projID, id, slug) || refMatches(projSlug, id, slug)
 }
 
-// validateSyncEnrollment ties the enrolled schema to the sync block: an
-// enrolled catalog is at SyncEnrolledConfigVersion and carries the block, and
-// a catalog at any other schema carries none. Neither half can be written
-// without the other, so no tt that predates sync can be handed a catalog it
-// would read as an ordinary workspace.
+// validateSyncEnrollment ties the sync block to a schema that every tt older
+// than sync refuses. Schema 22 was reserved for enrolled catalogs, so a catalog
+// still at it must carry the block; from schema 23 the block alone marks
+// enrollment, and a catalog older than 22 carries none. No tt that predates
+// sync can therefore be handed a catalog it would read as an ordinary
+// workspace.
 func (w *WorkspaceCatalog) validateSyncEnrollment() error {
 	switch {
-	case w.SchemaVersion == SyncEnrolledConfigVersion && w.Sync == nil:
+	case w.SchemaVersion == V22ConfigSchemaVersion && w.Sync == nil:
 		return fmt.Errorf("workspace catalog: schema version %d is reserved for workspaces enrolled in sync, and this catalog has no sync block", w.SchemaVersion)
 	case w.Sync == nil:
 		return nil
-	case w.SchemaVersion != SyncEnrolledConfigVersion:
-		return fmt.Errorf("workspace catalog: a sync block requires schema version %d, got %d", SyncEnrolledConfigVersion, w.SchemaVersion)
+	case w.SchemaVersion < V22ConfigSchemaVersion:
+		return fmt.Errorf("workspace catalog: a sync block requires schema version %d or later, got %d", V22ConfigSchemaVersion, w.SchemaVersion)
 	case w.Sync.Exchange != SyncExchangeFormat:
 		return fmt.Errorf("workspace catalog: sync exchange %q is not supported; want %q", w.Sync.Exchange, SyncExchangeFormat)
 	case w.Sync.EnrolledAt.IsZero():

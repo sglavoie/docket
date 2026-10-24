@@ -46,7 +46,7 @@ func TestConvertedDecisionCommentUsesOrdinaryLivePaths(t *testing.T) {
 		ProjectName: "Converted",
 		Tasks:       []format.V6TaskRecord{converted.Task},
 	})
-	tasks, err := modelsFromCurrentTaskDocument(V19ProjectDocumentFromV18(V18ProjectDocumentFromV17(V17ProjectDocumentFromV16(V16ProjectDocumentFromV15(V15ProjectDocumentFromV14(V14ProjectDocumentFromV13(V13ProjectDocumentFromV12(V12ProjectDocumentFromV11(V11ProjectDocumentFromV10(projectDocument))))))))), time.UTC)
+	tasks, err := modelsFromCurrentTaskDocument(V20ProjectDocumentFromV19(V19ProjectDocumentFromV18(V18ProjectDocumentFromV17(V17ProjectDocumentFromV16(V16ProjectDocumentFromV15(V15ProjectDocumentFromV14(V14ProjectDocumentFromV13(V13ProjectDocumentFromV12(V12ProjectDocumentFromV11(V11ProjectDocumentFromV10(projectDocument)))))))))), time.UTC)
 	if err != nil {
 		t.Fatalf("modelsFromCurrentTaskDocument: %v", err)
 	}
@@ -114,7 +114,7 @@ func testConvertedCommentUndoRedo(t *testing.T, record format.V6TaskRecord, orig
 	service := NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
 	project := newCommitTestProject(t, dataDir, "converted", record.Title)
 	v10 := V8ProjectDocumentFromV7(V7ProjectDocument{ProjectName: project.Name, Tasks: []format.V6TaskRecord{record}})
-	tasks, err := modelsFromCurrentTaskDocument(V19ProjectDocumentFromV18(V18ProjectDocumentFromV17(V17ProjectDocumentFromV16(V16ProjectDocumentFromV15(V15ProjectDocumentFromV14(V14ProjectDocumentFromV13(V13ProjectDocumentFromV12(V12ProjectDocumentFromV11(V11ProjectDocumentFromV10(v10))))))))), time.UTC)
+	tasks, err := modelsFromCurrentTaskDocument(V20ProjectDocumentFromV19(V19ProjectDocumentFromV18(V18ProjectDocumentFromV17(V17ProjectDocumentFromV16(V16ProjectDocumentFromV15(V15ProjectDocumentFromV14(V14ProjectDocumentFromV13(V13ProjectDocumentFromV12(V12ProjectDocumentFromV11(V11ProjectDocumentFromV10(v10)))))))))), time.UTC)
 	if err != nil {
 		t.Fatalf("modelsFromCurrentTaskDocument: %v", err)
 	}
