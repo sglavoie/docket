@@ -116,9 +116,37 @@ func projectKeyParts(key string) (projectID, rest string, ok bool) {
 }
 
 // loadGraph reads every transaction the history indexes, plus extra, and
-// orders them.
+// orders them. The Outliner derives conflicts from the whole history after
+// every pass that publishes, so a manifest an earlier call decoded is reused
+// rather than read again, and the index is not walked at all while the state
+// file is the one the last walk saw: every plan that indexes a transaction
+// rewrites that file in the same journal transaction.
 func (h *History) loadGraph(extra *Manifest) (*graph, error) {
+	cache := h.manifests
+	cache.mu.Lock()
+	defer cache.mu.Unlock()
+	state, statErr := os.Stat(h.StatePath())
+	if statErr != nil || cache.state == nil || !sameFile(cache.state, state) {
+		if err := h.walkIndex(cache); err != nil {
+			return nil, err
+		}
+		cache.state = state
+		if statErr != nil {
+			cache.state = nil
+		}
+	}
+	manifests := append(make([]*Manifest, 0, len(cache.indexed)+1), cache.indexed...)
+	if extra != nil {
+		manifests = append(manifests, extra)
+	}
+	return buildGraph(manifests)
+}
+
+// walkIndex replaces cache's indexed manifests with every transaction the
+// index names, decoding only the ones the cache does not already hold.
+func (h *History) walkIndex(cache *manifestCache) error {
 	var manifests []*Manifest
+	seen := make(map[string]*Manifest, len(cache.byID))
 	root := filepath.Join(h.Dir(), "index")
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -131,20 +159,27 @@ func (h *History) loadGraph(extra *Manifest) (*graph, error) {
 			return nil
 		}
 		txnID := "sha256:" + strings.TrimSuffix(filepath.Base(p), ".json")
-		m, loadErr := h.Transaction(txnID)
-		if loadErr != nil {
-			return loadErr
+		m, ok := cache.byID[txnID]
+		if !ok {
+			var loadErr error
+			if m, loadErr = h.Transaction(txnID); loadErr != nil {
+				return loadErr
+			}
 		}
+		seen[txnID] = m
 		manifests = append(manifests, m)
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("reading sync history: %w", err)
+		cache.state = nil
+		return fmt.Errorf("reading sync history: %w", err)
 	}
-	if extra != nil {
-		manifests = append(manifests, extra)
-	}
-	return buildGraph(manifests)
+	cache.byID, cache.indexed = seen, manifests
+	return nil
+}
+
+func sameFile(a, b os.FileInfo) bool {
+	return os.SameFile(a, b) && a.Size() == b.Size() && a.ModTime().Equal(b.ModTime())
 }
 
 // buildGraph orders manifests parents first, breaking ties by txn id so every

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sglavoie/tt/internal/transaction"
@@ -56,6 +57,19 @@ type History struct {
 	schemas      map[string]int
 	capabilities map[string]bool
 	now          func() time.Time
+	// manifests holds what loadGraph last read. A txn id is its manifest's
+	// content address, so a decoded manifest never goes stale; only the set of
+	// indexed ids changes.
+	manifests *manifestCache
+}
+
+type manifestCache struct {
+	mu sync.Mutex
+	// state is the state file as it stood before the walk that filled indexed;
+	// nil means the next load walks.
+	state   os.FileInfo
+	indexed []*Manifest
+	byID    map[string]*Manifest
 }
 
 // New validates cfg and returns the device's history. It writes nothing.
@@ -93,6 +107,7 @@ func New(cfg Config) (*History, error) {
 		schemas:      schemas,
 		capabilities: capabilitySet,
 		now:          now,
+		manifests:    &manifestCache{byID: map[string]*Manifest{}},
 	}, nil
 }
 

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 
 	"github.com/sglavoie/tt/internal/synclog"
 	"github.com/sglavoie/tt/internal/transaction"
@@ -112,14 +114,40 @@ func (s *CommitService) WithConflictStore(store *ConflictStore) *CommitService {
 // commit can never be exposed as a partial workspace snapshot. A quarantined
 // transaction returns ErrCommitBlocked and keeps startup fail-closed until the
 // quarantine is resolved.
+//
+// The orphan-staging sweep walks every approved root, and the machine-local
+// root holds every backup ever taken, so only the first recovery of a journal
+// and root set in this process sweeps; later ones complete pending
+// transactions alone. A workspace load recovers once per migration step, and
+// an enrolled session loads one every sync pass under the lock every mutation
+// waits on. Unswept stages are inert, as RecoverPending documents, and the
+// next process sweeps them.
 func (s *CommitService) RecoverWorkspace() (*transaction.RecoveryReport, error) {
+	key := s.sweepKey()
+	_, swept := sweptJournals.Load(key)
 	var report *transaction.RecoveryReport
 	err := s.withWorkspaceCommitLock(func() error {
+		journal := s.journal()
+		pass := journal.Recover
+		if swept {
+			pass = journal.RecoverPending
+		}
 		var recoverErr error
-		report, recoverErr = s.checkRecovery(s.journal().Recover())
+		report, recoverErr = s.checkRecovery(pass())
 		return recoverErr
 	})
+	if err == nil && !swept {
+		sweptJournals.Store(key, struct{}{})
+	}
 	return report, err
+}
+
+// sweptJournals holds the sweepKey of every journal and root set this process
+// has swept for orphan staging files.
+var sweptJournals sync.Map
+
+func (s *CommitService) sweepKey() string {
+	return strings.Join(append([]string{s.transactionsDir}, s.roots...), "\x00")
 }
 
 // Commit applies a single-project changeset atomically. It is a thin convenience
