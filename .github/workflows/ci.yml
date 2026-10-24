@@ -140,7 +140,7 @@ jobs:
 
       - name: Keep this shard's coverage
         if: ${{ runner.os == 'Linux' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-${{ matrix.shard }}
           path: coverage.out
@@ -213,7 +213,7 @@ jobs:
 
       - name: Keep result bundles, summaries, and screenshots
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ios-results
           path: ios-results
@@ -259,7 +259,7 @@ jobs:
 
       - name: Keep desktop test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: macos-results
           path: macos-results
