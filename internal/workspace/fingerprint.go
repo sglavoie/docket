@@ -98,9 +98,3 @@ func (s Stamps) ChangedElsewhere(current Stamps, own *storage.OwnWrites) bool {
 	}
 	return false
 }
-
-// Fingerprint is StampWorkspace digested: one value that changes whenever a
-// file a reload reads does. An empty dataDir has no fingerprint.
-func Fingerprint(dataDir string, projects []*models.Project) string {
-	return StampWorkspace(dataDir, projects).Fingerprint()
-}

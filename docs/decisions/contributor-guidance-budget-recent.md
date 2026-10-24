@@ -496,3 +496,12 @@ trimmed to pay for it.
 Raise from 76980 to 77480 for desktop draft ownership, content-aware
 quit, and the explicit Peek size preference. Detailed protocol and
 history behavior lives in docs/architecture/tui-architecture.md.
+
+Raise from 77480 to 78320 for the stored Hidden flag. 840 bytes buy the
+rules the flag is held to: it is orthogonal to every other axis and writes
+`UpdatedAt` alone, it is inherited through one predicate while only the
+toggled task stores it, it is excluded at read time unless a positive
+hidden clause opens it, attention readers never admit it, and no edit
+surface may drop it because it has no sigil; plus where `fH` and `wh` sit
+in their chords. Behavior lives in docs/guide/search-and-lenses.md and
+docs/guide/storage.md. No rule elsewhere was trimmed to pay for it.

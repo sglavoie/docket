@@ -91,6 +91,16 @@ runes, empty meaning absent, in an escaped `RESUME` block above DESCRIPTION;
 `models.ValidateResumeNote` is its one gate, so no surface may accept a note the
 canonical writer would refuse.
 
+Hidden is a third stored boolean axis, orthogonal to state, planning, pin,
+review, check-in, and deadline: `ApplyHidden` writes it and `UpdatedAt` alone.
+It is inherited, so `models.TaskEffectivelyHidden`, the task or an ancestor, is
+the one predicate and only the toggled task stores the flag. Exclusion is at
+read time, like parking: every mode, `/`, lens, pulse, reminder, and pace reader
+drops effectively hidden work unless a positive `QueryFieldHidden` clause opens
+it, and `+hidden:only` is the facet's clause; Review and `R` never admit it. It
+has no sigil, so every edit surface preserves it, `D` seeds none, and checklist
+demotion refuses it.
+
 The check-in is `NextCheckIn`, `CheckInRepeatDays`, and `LastReviewedAt`, stored
 as `check_in`, `check_in_repeat`, `reviewed` and omitted when unset.
 `models.CheckInSchedule` is the pair as one value and
@@ -909,7 +919,9 @@ that does not spell its sigil: `$` is typed and pressed nowhere, and `f$` is
 retired with it. Every other facet carrying a sigil answers to that sigil, so
 pinned is `f*`, references are `f~`, review is `f=`; states follow the chord to
 `fw`, and the letters `fp` and `fr` stay retired. `f%` is a slug row facet,
-not `P`'s scope. A picker row is the canonical
+not `P`'s scope. `fH` writes `+hidden:only`, owes a reload, and is declared last
+and ungrouped, so the floor sheds it first; `wh` ends the Status run and toggles
+by the `*` rule over the frozen targets. A picker row is the canonical
 token it writes — the `f@` five are `@overdue`, `@today`, `@week`, `@0`,
 `?deferred` — and `AcceptsPresetValue` refuses a binding naming any other
 spelling, so a picker mints no vocabulary of its own.

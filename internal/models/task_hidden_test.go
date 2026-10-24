@@ -128,3 +128,33 @@ func TestQueryAttentionClausesNeverAdmitHiddenWork(t *testing.T) {
 		parent.Hidden = true
 	}
 }
+
+func TestQueryHiddenClauseSurvivesALensPartitionAndJoin(t *testing.T) {
+	clauses, remainder := PartitionQueryString("+hidden:only invoice *pin")
+	if got := clauses.String(); got != "*pin +hidden:only" {
+		t.Fatalf("partitioned clauses = %q, want the hidden clause lifted canonically", got)
+	}
+	if remainder != "invoice" {
+		t.Fatalf("remainder = %q, want the prose alone", remainder)
+	}
+	joined := JoinQueryString(clauses, remainder)
+	if joined != "*pin +hidden:only invoice" {
+		t.Fatalf("joined = %q", joined)
+	}
+	if again := JoinQueryString(PartitionQueryString(joined)); again != joined {
+		t.Fatalf("join is not idempotent: %q then %q", joined, again)
+	}
+	if !clauses.OpensHiddenPopulation() {
+		t.Fatal("a lens carrying +hidden:only does not open the hidden population")
+	}
+}
+
+func TestQueryNegatedHiddenClauseOpensNothing(t *testing.T) {
+	negated := Query{Clauses: []QueryClause{negativeClause(t, QueryFieldHidden, QueryOperatorIs, QueryPopulationOnly)}}
+	if negated.OpensHiddenPopulation() {
+		t.Fatal("-+hidden:only opened the hidden population")
+	}
+	if got := negated.String(); got != "-+hidden:only" {
+		t.Fatalf("negated hidden clause renders %q", got)
+	}
+}

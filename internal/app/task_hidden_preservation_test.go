@@ -13,8 +13,8 @@ import (
 // it found it. The paths are enumerated rather than sampled, because each writes
 // the task through different code.
 
-func hiddenTask(id string, shortID int, title string) *models.Task {
-	task := newTask(id, shortID, title)
+func hiddenTask(id, title string) *models.Task {
+	task := newTask(id, 1, title)
 	task.Hidden = true
 	return task
 }
@@ -96,7 +96,7 @@ func TestEveryEditSurfacePreservesTheHiddenFlag(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			repo := newFakeRepo(newProject("project", "Project", hiddenTask("quiet", 1, "Quiet"), newTask("other", 2, "Other")))
+			repo := newFakeRepo(newProject("project", "Project", hiddenTask("quiet", "Quiet"), newTask("other", 2, "Other")))
 			if err := mutate(newTestService(repo), repo, repo.loc("quiet")); err != nil {
 				t.Fatalf("mutation: %v", err)
 			}
@@ -112,7 +112,7 @@ func TestEveryEditSurfacePreservesTheHiddenFlag(t *testing.T) {
 // a task from one document and write it into another, including a descendant the
 // selection never named.
 func TestMovesAcrossProjectsPreserveTheHiddenFlag(t *testing.T) {
-	root := hiddenTask("root", 1, "Root")
+	root := hiddenTask("root", "Root")
 	child := childOf("child", 2, "Child", root)
 	child.Hidden = true
 	repo := newFakeRepo(newProject("source", "Source", root, child), newProject("destination", "Destination"))
@@ -122,7 +122,7 @@ func TestMovesAcrossProjectsPreserveTheHiddenFlag(t *testing.T) {
 	requireHidden(t, repo, "destination", "root", "bulk move")
 	requireHidden(t, repo, "destination", "child", "bulk move of an unnamed child")
 
-	single := newFakeRepo(newProject("proj-a", "Alpha", hiddenTask("t1", 1, "Quiet")), newProject("proj-b", "Beta"))
+	single := newFakeRepo(newProject("proj-a", "Alpha", hiddenTask("t1", "Quiet")), newProject("proj-b", "Beta"))
 	if _, err := newTestService(single).EditTaskLine(app.TaskLineEditRequest{
 		Source: single.loc("t1"), Title: "Quiet", DestinationProjectID: "proj-b",
 	}); err != nil {
@@ -134,7 +134,7 @@ func TestMovesAcrossProjectsPreserveTheHiddenFlag(t *testing.T) {
 // TestRepeatDraftDoesNotCopyTheHiddenFlag is repetition's boundary: `D` creates
 // fresh work, which is visible, and the hidden source keeps its own flag.
 func TestRepeatDraftDoesNotCopyTheHiddenFlag(t *testing.T) {
-	repo := newFakeRepo(newProject("proj-a", "Alpha", hiddenTask("t1", 1, "Quarterly report")))
+	repo := newFakeRepo(newProject("proj-a", "Alpha", hiddenTask("t1", "Quarterly report")))
 	svc := newTestService(repo)
 	draft, err := svc.PrepareTaskRepeatDraft(repo.loc("t1"))
 	if err != nil {

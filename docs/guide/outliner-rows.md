@@ -13,6 +13,7 @@ The keys are in [`outliner-keys.md`](outliner-keys.md).
 | Scroll details | `Ctrl+D` / `Ctrl+U`, `Ctrl+F` / `Ctrl+B` | Move half a page or a full page |
 | Open children or checklist | `l` / `→` | Open children first, then checklist items |
 | Select work together | `v`, `V`, `Ctrl+A` | Select several tasks, then `wn` to plan them for Next |
+| Put a task out of sight | `wh`, then `fH` to see it | Hide a task and its children from every view; `u` takes it back |
 
 Task titles carry the visual emphasis. Project labels keep their identity color
 without bold text, lane headings have no filled background, and `‹` / `›N`
@@ -24,6 +25,8 @@ fit. `b` shows the complete title and every detail the row omits.
 
 Peek's status summary includes **Overdue** and **Check-in owed** when applicable,
 before priority and flags, so attention is visible beside the resume note.
+Under `fH`, a hidden task's status ends with the bare flag `(hidden)`, which a
+child hidden only through its parent wears too.
 The full dates and repeat schedule remain in the scrollable details.
 
 **Before a bulk action:** read the selection count. Hidden selected tasks still

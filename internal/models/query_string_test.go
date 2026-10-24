@@ -78,6 +78,8 @@ func TestQueryStringRoundTripsThroughParseQuery(t *testing.T) {
 		"~project-beta:task-7 !0 ##0 @0 +#0",
 		"@+6h @@2026-09-01 ?completed:90d ?parent -?child ?leaf ?blocked -?blocking",
 		"+parked +archived:only +#infra",
+		"!1 *pin +hidden:only",
+		"+hidden -+parked",
 		"%alpha %beta -%gamma",
 		"&any -&none",
 		"&none -&any",

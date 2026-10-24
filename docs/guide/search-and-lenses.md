@@ -16,6 +16,7 @@ returns to the view you searched from.
 | Search one project | Choose it with `P`, then `/` |
 | Keep only certain task rows | `f` |
 | Include parked or archived projects | `F` outside ranked search |
+| See hidden tasks | `fH` outside ranked search |
 | Explain missing work | `Q` |
 | Save this view | `\` → Save current view |
 | Change order | `o` |
@@ -34,6 +35,22 @@ By default search includes open tasks and excludes deferred work. The context
 row names that population when space permits; `Q` keeps the full explanation.
 Add `?completed` or `?deferred` to admit those tasks. An `Also matches` message
 names matching tasks that are still hidden.
+
+### Hidden tasks
+
+`wh` hides the cursor task, or the selection, from every view: every mode,
+`/` search, lens results, the workspace pulse, Review, and Today's pace. Its
+children go with it. Hiding changes nothing else about the task — state,
+plans, pin, review flag, deadline, and check-in stay as they were — and one `u`
+takes it back. Nothing you type in a capture or edit line can hide a task, and
+editing a hidden task keeps it hidden.
+
+`fH` narrows the current mode and scope to hidden tasks, including children
+hidden through a parent. `Q` names it `+hidden:only`, a lens saved with it
+reopens it, and it needs a fresh load, so the ranked list refuses it: press
+`or` first. Peek marks a hidden task `(hidden)`, and `wh` under `fH` unhides
+it. A task hidden only because its parent is hidden comes back when the parent
+does.
 
 Use `or` to switch from ranked search to searching within the current mode's
 lanes. Press it again to return to ranked results. `Esc` restores the mode,
@@ -92,7 +109,8 @@ value merges them. See [rename scope and recovery](search-reference.md#renaming-
 ### Named lenses
 
 A lens saves a useful combination of mode, query, filters, sort, and optional
-project scope. To save one, arrange the view, press `\`, select **Save current
+project scope. A lens saved under `fH` keeps `+hidden:only`, so it reopens on
+hidden work. To save one, arrange the view, press `\`, select **Save current
 view**, and name it. Reopen it from the same picker with `Enter` or its numbered
 shortcut. **Add built-in view** offers ready-made views such as Waiting and
 Needs Review.

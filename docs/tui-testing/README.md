@@ -303,6 +303,9 @@ The committed suite exercises the product contracts directly:
 | Relation marker in both directions, reserved across a resize | `outliner-parent-marker.json`, `capture-child-adoption.json` |
 | `*pin` at capture and the edit-only `*unpin` clear | `capture-pin.json` |
 | `wh` hiding the cursor task with the `fH to view` toast and the departure sweep, `fH` narrowing to `+hidden:only` in `Q`, Peek's `(hidden)` marker, unhiding under `fH` into its empty state, and one `u` taking a hide back | `outliner-hide-toggle.json` |
+| A hidden parent hiding its child, `/` search finding neither, `fH` showing both, and one `u` restoring both | `outliner-hide-inherited-search.json` |
+| `wh` fitting the `w` chord at the 60-column floor while `fH` is the first entry the `f` chord sheds and still dispatches | `hidden-chord-packing-narrow.json` |
+| A lens saved under `fH` reapplying `+hidden:only` after a restart, and the first `Esc` returning to the view without hidden work | `named-lens-hidden-facet.json` |
 | `&link` and `;comment;` committing with the task they create, the prose both sigils leave alone, and a quoted `&link` path whose spaces survive capture | `capture-attachment.json`, `capture-comment.json` |
 | The expanded form's Extras tab attaching a draft that commits with the task, the whole nested attachment flow completing at the app's own 60-column floor, and the draft surviving repeated resizing | `form-extras-attachments-narrow.json`, `form-extras-attachments-minimum-layout.json` |
 | Every form tab and its nested pickers at 60×20: priority, state, flags, due date, and the shared check-in editor each keeping a whole frame, the last Basics field reached by the window, a checklist item added, and a dirty cancel answered | `form-minimum-width-tabs-and-pickers.json` |

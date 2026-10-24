@@ -26,11 +26,11 @@ func TestFingerprintTracksTasksAndDomains(t *testing.T) {
 	project := &models.Project{ID: "alpha", Path: filepath.Join(dataDir, "projects", "alpha")}
 	projects := []*models.Project{project, nil}
 
-	if Fingerprint("", projects) != "" {
+	if StampWorkspace("", projects).Fingerprint() != "" {
 		t.Fatal("an empty data dir produced a fingerprint")
 	}
-	first := Fingerprint(dataDir, projects)
-	if Fingerprint(dataDir, projects) != first {
+	first := StampWorkspace(dataDir, projects).Fingerprint()
+	if StampWorkspace(dataDir, projects).Fingerprint() != first {
 		t.Fatal("the fingerprint moved with nothing on disk changing")
 	}
 
@@ -40,7 +40,7 @@ func TestFingerprintTracksTasksAndDomains(t *testing.T) {
 	if err := os.WriteFile(storage.TasksFilePath(project.Path), []byte("# Alpha\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	afterTasks := Fingerprint(dataDir, projects)
+	afterTasks := StampWorkspace(dataDir, projects).Fingerprint()
 	if afterTasks == first {
 		t.Fatal("writing tasks.md left the fingerprint unchanged")
 	}
@@ -49,14 +49,14 @@ func TestFingerprintTracksTasksAndDomains(t *testing.T) {
 	if err := os.Chtimes(catalog, later, later); err != nil {
 		t.Fatal(err)
 	}
-	if Fingerprint(dataDir, projects) == afterTasks {
+	if StampWorkspace(dataDir, projects).Fingerprint() == afterTasks {
 		t.Fatal("touching a domain file left the fingerprint unchanged")
 	}
 }
 
 func TestFingerprintTracksImportedNotesThroughSyncState(t *testing.T) {
 	dataDir := t.TempDir()
-	before := Fingerprint(dataDir, nil)
+	before := StampWorkspace(dataDir, nil).Fingerprint()
 	state := filepath.Join(dataDir, ".tt", "sync", "devices", "desktop", "state.json")
 	if err := os.MkdirAll(filepath.Dir(state), 0o700); err != nil {
 		t.Fatal(err)
@@ -64,7 +64,7 @@ func TestFingerprintTracksImportedNotesThroughSyncState(t *testing.T) {
 	if err := os.WriteFile(state, []byte(`{"received":{"phone":1}}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	firstImport := Fingerprint(dataDir, nil)
+	firstImport := StampWorkspace(dataDir, nil).Fingerprint()
 	if firstImport == before {
 		t.Fatal("first import left the fingerprint unchanged")
 	}
@@ -72,7 +72,7 @@ func TestFingerprintTracksImportedNotesThroughSyncState(t *testing.T) {
 	if err := os.Chtimes(state, later, later); err != nil {
 		t.Fatal(err)
 	}
-	if Fingerprint(dataDir, nil) == firstImport {
+	if StampWorkspace(dataDir, nil).Fingerprint() == firstImport {
 		t.Fatal("later import left the fingerprint unchanged")
 	}
 }

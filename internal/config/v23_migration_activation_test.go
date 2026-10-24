@@ -112,8 +112,8 @@ func TestV23MigrationCarriesALegacyEnrolledCatalog(t *testing.T) {
 	if !migrated.Enrolled() || !migrated.Sync.EnrolledAt.Equal(enrolledAt) || migrated.Sync.Exchange != SyncExchangeFormat {
 		t.Fatalf("migrated catalog lost its sync block: %+v", migrated.Sync)
 	}
-	if err := migrated.Validate(); err != nil {
-		t.Fatalf("migrated enrolled catalog: %v", err)
+	if validateErr := migrated.Validate(); validateErr != nil {
+		t.Fatalf("migrated enrolled catalog: %v", validateErr)
 	}
 	audits, _ := filepath.Glob(filepath.Join(PreScopeV7BackupsDir(root), preHiddenV23SnapshotPrefix+"*"+preScopeV7AuditSuffix))
 	if len(audits) != 1 {

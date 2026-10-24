@@ -134,6 +134,18 @@ func queryClauseMatches(clause QueryClause, task *Task, project *Project, now ti
 		// here, and a stray clause that reached this far names a fact the
 		// predicate has no way to establish.
 		return false
+	case QueryFieldProjectTag, QueryFieldParked, QueryFieldArchived, QueryFieldHidden:
+		return queryPopulationClauseMatches(clause, task, project)
+	default:
+		return false
+	}
+}
+
+// queryPopulationClauseMatches answers the clauses whose field names a
+// population — the project tags, parking, archiving, and hiding — rather than a
+// task value.
+func queryPopulationClauseMatches(clause QueryClause, task *Task, project *Project) bool {
+	switch clause.Field {
 	case QueryFieldProjectTag:
 		if clause.Operator == QueryOperatorNone {
 			return len(project.Tags) == 0

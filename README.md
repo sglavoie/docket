@@ -174,12 +174,12 @@ and the rare.
 | --- | --- |
 | `Tab` `g` `Enter` `Esc` | cycle modes · go to a mode · zoom in · unwind one rung |
 | `a` `A` `e` `E` `Ctrl+E` | capture · child · inline edit · description · external editor |
-| `w` | the workflow chord: `wi` `wb` `wn` `wt` `wg` `ww` `wp` `wm` `wd` `wc` |
+| `w` | the workflow chord: `wi` `wb` `wn` `wt` `wg` `ww` `wp` `wm` `wd` `wc`, and `wh` hide/unhide |
 | `!` `@` `#` `*` | priority · due, defer, and check-in · tags and context · pin |
 | `-` `+` | step the deadline one day earlier · one day later |
 | `[` `]` `>` `<` `%` `~` | outdent · indent · set parent · adopt children · move project · dependencies |
 | `J`/`K` `Ctrl+J`/`Ctrl+K` | reorder one step · reorder to the far end |
-| `/` `f` `F` `o` | search · row facets · which projects load · sort |
+| `/` `f` `F` `o` | search · row facets, `fH` the hidden tasks · which projects load · sort |
 | `P` `Ctrl+P` `\` | project scope · pinned projects · named lenses |
 | `v` `V` `Ctrl+A` | select one · select a range · select every visible row |
 | `&` `;` `b` `O` | attachments · comments · Peek · outline-edit the project |

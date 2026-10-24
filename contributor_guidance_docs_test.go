@@ -16,7 +16,7 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// Historical budget decisions are preserved in
 	// docs/decisions/contributor-guidance-budget-{early,middle,recent}.md.
 	// Record future increases there with their rationale.
-	const budget = 77480
+	const budget = 78320
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

@@ -1,0 +1,29 @@
+{
+  "name": "hidden-chord-packing-narrow",
+  "fixture": "rich",
+  "size": "60x20",
+  "actions": [
+    { "type": "key", "label": "open the workflow chord at the supported minimum", "key": "w" },
+    { "type": "assert", "label": "hide closes the Status run and still fits the floor", "assert": "contains", "value": "h hide/unhide" },
+    { "type": "assert", "label": "Plan heads the first run", "assert": "contains", "value": "Plan:" },
+    { "type": "assert", "assert": "contains", "value": "Status:" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+    { "type": "key", "label": "open the filter chord at the same floor", "key": "f" },
+    { "type": "assert", "label": "hidden is the first entry the floor sheds", "assert": "not_contains", "value": "H hidden" },
+    { "type": "assert", "assert": "contains", "value": "x clear all" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "the shed key still dispatches", "key": "H" },
+    { "type": "wait" },
+    { "type": "assert", "label": "nothing is hidden in the rich fixture yet", "assert": "contains", "value": "Nothing hidden here. Press wh on a task to hide it." },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "with room, both chords name the hidden keys", "width": 140, "height": 20 },
+    { "type": "key", "key": "f" },
+    { "type": "assert", "assert": "contains", "value": "H hidden" },
+    { "type": "key", "key": "esc" },
+    { "type": "key", "key": "w" },
+    { "type": "assert", "assert": "contains", "value": "h hide/unhide" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

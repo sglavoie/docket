@@ -152,7 +152,9 @@ an unflagged task omits it.
 Each task may carry an optional `hidden: true` flag the same way. A hidden task
 keeps its state, planning, pin, review flag, check-in, and deadline; it is only
 left out of what you see. False is the flag's absence, so a task that is not
-hidden writes exactly the bytes schema 19 wrote.
+hidden writes exactly the bytes schema 19 wrote. Only the task you hid stores
+it: its children are hidden through it and keep no flag of their own. See
+[hidden tasks](search-and-lenses.md#hidden-tasks).
 Each task may finally carry an optional `depends` list of soft references to
 other tasks, each a `project-id:task-id` pair; an empty list is omitted. A
 reference is durable and one-directional: only the referring task stores it, so
