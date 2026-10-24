@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/engine"
 	"github.com/sglavoie/tt/internal/syncexchange"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -37,6 +38,11 @@ func newCountedSyncSession(t *testing.T, rt *engine.Runtime) *countedSyncSession
 	model.domain.syncStatus = func() (*engine.SyncStatus, error) {
 		session.reads++
 		return read()
+	}
+	// A pass reads through the session's ports here, so the reads it takes off
+	// the UI goroutine are counted and fail with them.
+	model.automaticSync.readStatus = func() syncStatusRead {
+		return readSyncStatus(model.domain.syncStatus, model.domain.syncConflicts)
 	}
 	runSession2AppCommand(t, model, model.Init())
 	return session
@@ -209,5 +215,50 @@ func TestAutomaticSyncRetriesFailedRefresh(t *testing.T) {
 					session.reads, model.feedback.outstandingConflictCount())
 			}
 		})
+	}
+}
+
+// TestAutomaticSyncAdoptsItsOwnCommitWithoutRereading pins what a local edit
+// costs the UI goroutine afterwards: the pass that publishes it reads the sync
+// status on its own goroutine, and the commit the session made itself owes no
+// reload of the workspace it already holds.
+func TestAutomaticSyncAdoptsItsOwnCommitWithoutRereading(t *testing.T) {
+	pair := newEnrolledPair(t)
+	model, err := NewAppModel(pair.desk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runSession2AppCommand(t, model, model.Init())
+	uiReads, passReads := 0, 0
+	readOnUI, readInPass := model.domain.syncStatus, model.automaticSync.readStatus
+	if readInPass == nil {
+		t.Fatal("an enrolled session reads the sync status on the UI goroutine")
+	}
+	model.domain.syncStatus = func() (*engine.SyncStatus, error) {
+		uiReads++
+		return readOnUI()
+	}
+	model.automaticSync.readStatus = func() syncStatusRead {
+		passReads++
+		return readInPass()
+	}
+
+	if _, err := pair.desk.Service().Capture(app.CaptureRequest{
+		ProjectID: pair.desk.State().SystemUnfiledProject().ID, Title: "Captured here",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	_, cmd := model.Update(automaticSyncTickMsg{})
+	runSession2AppCommand(t, model, cmd)
+
+	if model.externalReload.owed {
+		t.Fatal("the session's own commit owed a reload")
+	}
+	if passReads != 1 || uiReads != 0 {
+		t.Fatalf("the publishing pass read the sync status %d times in the pass and %d on the UI goroutine, want 1 and 0",
+			passReads, uiReads)
+	}
+	if model.feedback.syncStatus == nil || model.feedback.syncStatus.OutstandingUp != 0 {
+		t.Fatalf("the publishing pass left sync status %+v, want the published commit read", model.feedback.syncStatus)
 	}
 }

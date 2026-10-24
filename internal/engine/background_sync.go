@@ -16,14 +16,35 @@ func (r *Runtime) BackgroundSyncExchanger(opts SyncExchangeOptions) func() (*syn
 	if r.manager == nil || !r.state.Catalog().Enrolled() {
 		return nil
 	}
-	manager := *r.manager
+	load := r.BackgroundRuntime()
 	return func() (*syncexchange.FolderReport, error) {
+		worker, err := load()
+		if err != nil {
+			return nil, err
+		}
+		return worker.SyncExchange(opts)
+	}
+}
+
+// BackgroundRuntime captures a loader of independent runtimes over this
+// workspace, for work a frontend runs off its owning goroutine: each call reads
+// its own snapshot, so nothing it does touches the frontend's, while what it
+// commits is recorded among this runtime's own writes. Construct it on the
+// owning goroutine. A runtime with no manager has none.
+func (r *Runtime) BackgroundRuntime() func() (*Runtime, error) {
+	if r.manager == nil {
+		return nil
+	}
+	manager := *r.manager
+	own := r.OwnWrites()
+	return func() (*Runtime, error) {
 		state, err := manager.LoadRuntimeState()
 		if err != nil {
 			return nil, err
 		}
 		worker := Attach(state, &manager, nil, nil)
-		return worker.SyncExchange(opts)
+		worker.repo.svc.WithOwnWrites(own)
+		return worker, nil
 	}
 }
 

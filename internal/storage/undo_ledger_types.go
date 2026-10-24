@@ -217,6 +217,9 @@ type WorkspaceLedger struct {
 	// transaction staged in the restore's own journal manifest. The commit
 	// service that attaches the history propagates it here.
 	history *synclog.History
+	// ownWrites, when non-nil, records what each undo and redo wrote. The
+	// commit service that attaches the registry propagates it here.
+	ownWrites *OwnWrites
 }
 
 // WorkspaceLedgerValidation summarizes a successful read-only validation.

@@ -339,9 +339,20 @@ last-success time and redraws the line through `renderSyncAdvisory`. In a
 session exchanging on its own timer the 60s tick takes
 `recountOutstandingConflicts`, which recounts the bundles against the sync
 conflicts last read and never calls the port; a session with no exchange timer
-still reads both halves on that tick. What another process imported is noticed
-through `workspace.Fingerprint`, which covers the sync tracking state: the
-change owes a reload, and adopting it reads both halves.
+still reads both halves on that tick. A pass that `syncStatusReadOwed` says
+must read takes that read on its own goroutine, through
+`automaticSync.readStatus` over a runtime `engine.BackgroundRuntime` loads, and
+the finished message carries it for `applySyncStatus`: the UI goroutine never
+walks the history after an exchange. It reads there only when the pass carried
+nothing, as when a manual request joined a pass already running. What another
+process imported is noticed through `workspace.StampWorkspace`, which covers the
+sync tracking state: a stamp `ChangedElsewhere` cannot account for owes a
+reload, and adopting it reads both halves. What it can account for is the
+session's own: every commit its services make, the sync worker's included,
+records the stamp it left in the runtime's `storage.OwnWrites`, so the poll
+after a local edit advances its stamps instead of rereading what the session
+already holds. A separate tt process shares no registry, so its commits always
+owe the reload.
 
 The pulse the title row does carry has one home, and that is a correction rather
 than a restatement. `OutlinerModel` embeds `listsurface.BaseSearchableView`,

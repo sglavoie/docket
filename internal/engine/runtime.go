@@ -147,7 +147,8 @@ func Attach(state *config.RuntimeState, manager *config.Manager, clock app.Clock
 	// Today/Next exclusivity folds into every workflow-state transition this
 	// service commits, whichever frontend raised it.
 	repo := NewRepository(dataDir, deps, ledger, owner)
-	repo.svc.WithSyncHistory(syncHistory(dataDir, owner, clock, workspaceSchemas(state))).WithSyncMerger(syncmerge.Merger{})
+	repo.svc.WithSyncHistory(syncHistory(dataDir, owner, clock, workspaceSchemas(state))).WithSyncMerger(syncmerge.Merger{}).
+		WithOwnWrites(storage.NewOwnWrites())
 	service := NewService(repo, clock, ids).WithPlanningArtifacts(PlanningArtifacts(manager))
 	return &Runtime{manager: manager, state: state, ledger: ledger, service: service, repo: repo, clock: clock, ids: ids}
 }
@@ -229,6 +230,11 @@ func (r *Runtime) Manager() *config.Manager { return r.manager }
 // State is the loaded configuration-domain snapshot. Commits through Service
 // do not refresh it; Refresh does.
 func (r *Runtime) State() *config.RuntimeState { return r.state }
+
+// OwnWrites is the registry of what this runtime's commits wrote, shared with
+// the background runtimes it loads, so a frontend can tell its own commits from
+// changes made elsewhere.
+func (r *Runtime) OwnWrites() *storage.OwnWrites { return r.repo.svc.OwnWrites() }
 
 // Ledger is the shared workspace undo ledger every commit records into.
 func (r *Runtime) Ledger() *storage.WorkspaceLedger { return r.ledger }

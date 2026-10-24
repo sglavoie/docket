@@ -85,7 +85,7 @@ func (s *CommitService) CommitPlannedArtifacts(plan func() ([]ArtifactChange, er
 					return fmt.Errorf("creating commit target directory: %w", err)
 				}
 			}
-			if err := commitJournal(journal, manifest); err != nil {
+			if err := s.commitJournal(journal, manifest); err != nil {
 				return fmt.Errorf("committing transaction: %w", err)
 			}
 			txnID = manifest.ID
@@ -277,7 +277,7 @@ func (s *CommitService) commitArtifacts(request ArtifactCommitRequest, recordUnd
 						return fmt.Errorf("creating commit target directory: %w", err)
 					}
 				}
-				if err := commitJournal(journal, manifest); err != nil {
+				if err := s.commitJournal(journal, manifest); err != nil {
 					return fmt.Errorf("committing transaction: %w", err)
 				}
 				if ledgerPlan != nil {

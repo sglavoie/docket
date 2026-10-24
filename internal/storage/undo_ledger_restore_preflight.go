@@ -111,6 +111,7 @@ func (l *WorkspaceLedger) retireDriftedEntry(
 	if err := commitJournal(journal, manifest); err != nil {
 		return cause
 	}
+	l.ownWrites.record(manifest)
 	l.gcBlobs(lf)
 	return &RetiredEntryError{Entry: entry, Redo: redo, Conflict: conflict}
 }

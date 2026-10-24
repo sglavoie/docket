@@ -35,11 +35,16 @@ type externalReloadState struct {
 // and every catalog project, parked and archived included, since a reload
 // rereads them all.
 func (m *AppModel) workspaceFingerprint() string {
+	return m.workspaceStamps().Fingerprint()
+}
+
+// workspaceStamps is workspace.StampWorkspace over the same files.
+func (m *AppModel) workspaceStamps() workspace.Stamps {
 	rs := m.domain.runtime
 	if rs == nil {
-		return ""
+		return nil
 	}
-	return workspace.Fingerprint(rs.DataDir(), rs.AllProjects())
+	return workspace.StampWorkspace(rs.DataDir(), rs.AllProjects())
 }
 
 // handleFocusMessage answers the terminal's focus reports. A blur records the
@@ -104,7 +109,7 @@ func (m *AppModel) adoptExternalWorkspaceChange() tea.Cmd {
 	if !m.externalReload.owed || !m.safeToAdoptExternalChange() {
 		return nil
 	}
-	fingerprint := m.workspaceFingerprint()
+	stamps := m.workspaceStamps()
 	if !m.refreshRuntime() && m.domain.runtime != nil && m.domain.runtime.DataDir() != "" {
 		return nil // Keep the reload owed; a transient read failure is retried.
 	}
@@ -120,7 +125,7 @@ func (m *AppModel) adoptExternalWorkspaceChange() tea.Cmd {
 	cmds := m.refreshTaskViews(true, true)
 	cmds = append(cmds, m.requestNoteSearchIndexLoad())
 	if !m.externalReload.owed {
-		m.automaticSync.fingerprint = fingerprint
+		m.automaticSync.stamps = stamps
 	}
 	// A refresh is ambient; it must not replace the save, undo, or refusal
 	// the interaction that just closed is still reporting.
@@ -136,9 +141,13 @@ func (m *AppModel) pollExternalWorkspaceChanges() {
 	if m.automaticSync.exchange == nil || m.automaticSync.running {
 		return
 	}
-	fingerprint := m.workspaceFingerprint()
-	if fingerprint != m.automaticSync.fingerprint {
-		m.externalReload.owed = true
-		m.externalReload.quiet = true
+	stamps := m.workspaceStamps()
+	if !m.automaticSync.stamps.ChangedElsewhere(stamps, m.automaticSync.ownWrites) {
+		// Whatever moved, this process's own commits moved it, and the session
+		// already holds what they wrote: advance rather than reread it.
+		m.automaticSync.stamps = stamps
+		return
 	}
+	m.externalReload.owed = true
+	m.externalReload.quiet = true
 }

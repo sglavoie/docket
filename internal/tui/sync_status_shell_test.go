@@ -20,6 +20,20 @@ import (
 type enrolledPair struct {
 	desk, laptop *engine.Runtime
 	original     *engine.Runtime
+	deskMachine  engine.Machine
+}
+
+// reopenDesk opens a second runtime over the desk working copy as the same
+// machine, the way a tt command run beside a session would: it shares nothing
+// with a session opened over pair.desk, so what it commits is a change made
+// elsewhere.
+func (p enrolledPair) reopenDesk(t *testing.T) *engine.Runtime {
+	t.Helper()
+	rt, err := engine.Open(engine.Config{DataDir: p.desk.DataDir(), Machine: p.deskMachine})
+	if err != nil {
+		t.Fatalf("reopen working copy: %v", err)
+	}
+	return rt
 }
 
 func newEnrolledPair(t *testing.T) enrolledPair {
@@ -59,7 +73,7 @@ func newEnrolledPair(t *testing.T) enrolledPair {
 	if err != nil {
 		t.Fatalf("open working copy: %v", err)
 	}
-	return enrolledPair{desk: desk, laptop: laptop, original: original}
+	return enrolledPair{desk: desk, laptop: laptop, original: original, deskMachine: deskMachine}
 }
 
 // retitleOnDisk edits the shared task's title in a device's tasks.md the way

@@ -76,3 +76,65 @@ func TestFingerprintTracksImportedNotesThroughSyncState(t *testing.T) {
 		t.Fatal("later import left the fingerprint unchanged")
 	}
 }
+
+// TestChangedElsewhereIgnoresOwnCommits pins the polling rule: what a commit
+// recorded in the registry wrote is not a change made elsewhere, while a commit
+// by a service sharing no registry, and a write after the recorded one, are.
+func TestChangedElsewhereIgnoresOwnCommits(t *testing.T) {
+	dataDir := t.TempDir()
+	project := &models.Project{ID: "alpha", Path: filepath.Join(dataDir, "projects", "alpha")}
+	projects := []*models.Project{project}
+	tasks := storage.TasksFilePath(project.Path)
+	if err := os.MkdirAll(project.Path, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(tasks, []byte("# Alpha\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	own := storage.NewOwnWrites()
+	transactions := filepath.Join(dataDir, ".tt", "transactions")
+	svc := storage.NewCommitService(transactions, []string{dataDir}).WithOwnWrites(own)
+
+	if (Stamps(nil)).ChangedElsewhere(nil, own) {
+		t.Fatal("no stamps changed against no stamps")
+	}
+	baseline := StampWorkspace(dataDir, projects)
+	if baseline.ChangedElsewhere(StampWorkspace(dataDir, projects), own) {
+		t.Fatal("an untouched workspace changed elsewhere")
+	}
+
+	if _, err := svc.CommitArtifacts([]storage.ArtifactChange{
+		{Path: filepath.Join(dataDir, ".tt", "workspace.json"), Data: []byte("{}")},
+		{Path: tasks, Data: []byte("# Alpha\n\n## Task\n")},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	committed := StampWorkspace(dataDir, projects)
+	if committed.Fingerprint() == baseline.Fingerprint() {
+		t.Fatal("the commit left the fingerprint unchanged")
+	}
+	if baseline.ChangedElsewhere(committed, own) {
+		t.Fatal("a recorded commit read as a change made elsewhere")
+	}
+	if !baseline.ChangedElsewhere(committed, nil) {
+		t.Fatal("with no registry, the commit did not read as a change made elsewhere")
+	}
+
+	unrelated := storage.NewCommitService(transactions, []string{dataDir})
+	if _, err := unrelated.CommitArtifacts([]storage.ArtifactChange{
+		{Path: filepath.Join(dataDir, ".tt", "planning.json"), Data: []byte("{}")},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if !committed.ChangedElsewhere(StampWorkspace(dataDir, projects), own) {
+		t.Fatal("a commit by a service sharing no registry did not read as a change made elsewhere")
+	}
+
+	later := time.Now().Add(time.Minute)
+	if err := os.Chtimes(tasks, later, later); err != nil {
+		t.Fatal(err)
+	}
+	if !baseline.ChangedElsewhere(StampWorkspace(dataDir, projects), own) {
+		t.Fatal("a write after the commit did not read as a change made elsewhere")
+	}
+}

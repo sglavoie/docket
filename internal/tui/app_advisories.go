@@ -120,35 +120,64 @@ func (m *AppModel) refreshSyncStatus() {
 	if m == nil {
 		return
 	}
+	m.applySyncStatus(readSyncStatus(m.domain.syncStatus, m.domain.syncConflicts))
+}
+
+// syncStatusRead is one read of the sync status and, when that status names
+// open conflicts, of those conflicts. It holds only what was read, so it can be
+// taken off the UI goroutine and applied on it.
+type syncStatusRead struct {
+	status       *engine.SyncStatus
+	statusErr    error
+	conflicts    []engine.ConflictView
+	conflictsErr error
+}
+
+// readSyncStatus reads through the given ports. A missing status port reads
+// nothing; a missing conflicts port reads no conflicts.
+func readSyncStatus(
+	status func() (*engine.SyncStatus, error),
+	conflicts func(map[string]string) ([]engine.ConflictView, error),
+) syncStatusRead {
+	var read syncStatusRead
+	if status == nil {
+		return read
+	}
+	read.status, read.statusErr = status()
+	if read.statusErr != nil || read.status == nil || !read.status.Enrolled ||
+		len(read.status.Conflicts) == 0 || conflicts == nil {
+		return read
+	}
+	read.conflicts, read.conflictsErr = conflicts(nil)
+	return read
+}
+
+// applySyncStatus replaces the feedback cluster's sync status with a read.
+func (m *AppModel) applySyncStatus(read syncStatusRead) {
 	m.feedback.syncStatus, m.feedback.syncAdvisory, m.feedback.syncConflicts = nil, "", nil
 	m.feedback.syncRefreshOwed = false
-	if m.domain.syncStatus == nil {
-		return
-	}
-	status, err := m.domain.syncStatus()
-	if err != nil {
-		logging.Warn("reading sync status: %v", err)
+	if read.statusErr != nil {
+		logging.Warn("reading sync status: %v", read.statusErr)
 		m.feedback.syncRefreshOwed = true
 		if m.automaticSync.err != nil {
 			m.feedback.syncAdvisory = "sync: automatic exchange failed (tt sync doctor)"
 		}
 		return
 	}
+	status := read.status
 	if status == nil || !status.Enrolled {
 		return
 	}
 	m.feedback.syncStatus = status
 	m.renderSyncAdvisory()
-	if len(status.Conflicts) == 0 || m.domain.syncConflicts == nil {
-		return
-	}
-	views, err := m.domain.syncConflicts(nil)
-	if err != nil {
-		logging.Warn("reading sync conflicts: %v", err)
+	if read.conflictsErr != nil {
+		logging.Warn("reading sync conflicts: %v", read.conflictsErr)
 		m.feedback.syncRefreshOwed = true
 		return
 	}
-	m.feedback.syncConflicts = syncConflictEntries(views)
+	if read.conflicts != nil {
+		m.feedback.syncConflicts = syncConflictEntries(read.conflicts)
+	}
 }
 
 // renderSyncAdvisory redraws the strip's sync line from the status last read,
