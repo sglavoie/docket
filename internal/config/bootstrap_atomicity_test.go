@@ -251,9 +251,14 @@ func TestManagerLoadOrCreateDomains_ConcurrentInitializersConverge(t *testing.T)
 	ready.Wait()
 	close(start)
 
-	workspaceID := ""
+	// Drain every initializer before judging any, so a failure cannot leave
+	// writers running into the TempDir cleanup.
+	collected := make([]result, 0, initializerCount)
 	for range initializerCount {
-		got := <-results
+		collected = append(collected, <-results)
+	}
+	workspaceID := ""
+	for _, got := range collected {
 		if got.err != nil {
 			t.Fatalf("concurrent LoadOrCreateDomains: %v", got.err)
 		}

@@ -46,6 +46,12 @@ func (m *Manager) LoadOrCreateDomains() (*Domains, error) {
 	store := m.domainStore()
 	state, partialErr := m.classifyDomainState(store)
 	if state == domainStatePartial {
+		var err error
+		if state, partialErr, err = m.classifySettledDomainState(store); err != nil {
+			return nil, err
+		}
+	}
+	if state == domainStatePartial {
 		return nil, partialErr
 	}
 	if state == domainStateComplete {
@@ -200,6 +206,24 @@ func validateDomainBundleWithCatalogPolicy(domains *Domains, validateCatalog fun
 		}
 	}
 	return nil
+}
+
+// classifySettledDomainState repeats the classification under the workspace
+// commit lock. An unlocked reading can land between the files of another
+// initializer's bootstrap transaction, so only a partial set that survives the
+// lock and its recovery pass is real corruption.
+func (m *Manager) classifySettledDomainState(store *DomainFileStore) (domainStateKind, *PartialDomainStateError, error) {
+	dataDir := m.workspaceDataDir()
+	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, m.localDataRoot()}).OnMachine(m.machineID())
+	var state domainStateKind
+	var partialErr *PartialDomainStateError
+	if err := storage.WithWorkspaceCommitLocks([]*storage.CommitService{commit}, func() error {
+		state, partialErr = m.classifyDomainState(store)
+		return nil
+	}); err != nil {
+		return state, nil, fmt.Errorf("failed to settle split configuration domains: %w", err)
+	}
+	return state, partialErr, nil
 }
 
 // loadAfterBootstrapRace resolves the only expected create conflict: another

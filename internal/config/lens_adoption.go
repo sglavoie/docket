@@ -348,6 +348,24 @@ func RemapActiveLensID(active string, before, merged NamedLensList) string {
 // file, so one call writes both homes, and a failure to publish leaves the
 // marker unwritten and the whole step to be retried on the next launch.
 func (m *Manager) AdoptPortableLenses() error {
+	// Another process on this machine may write machine.json between this
+	// step's read and its checked write — a concurrent first launch saving the
+	// adopted marker it was born with. Adoption is derived from disk alone, so
+	// a stale refusal is retried, and the re-read sees whatever that writer left.
+	var err error
+	for attempt := 0; attempt < lensAdoptionAttempts; attempt++ {
+		if err = m.adoptPortableLensesOnce(); !errors.Is(err, ErrStaleObject) {
+			return err
+		}
+	}
+	return err
+}
+
+// lensAdoptionAttempts bounds AdoptPortableLenses' retry of a stale machine
+// write.
+const lensAdoptionAttempts = 3
+
+func (m *Manager) adoptPortableLensesOnce() error {
 	store := m.domainStore()
 	catalog, catalogRev, err := store.LoadCatalogChecked()
 	if err != nil {
