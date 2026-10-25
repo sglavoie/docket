@@ -1,6 +1,6 @@
 #!/usr/bin/env swift
 //
-// Renders tt.app's icons into macos/TTApp/Resources/Assets.xcassets:
+// Renders the desktop app's icons into macos/TTApp/Resources/Assets.xcassets:
 //
 //   AppIcon.appiconset     the full-color Dock/Finder icon, every mac size
 //   StatusIcon.imageset    the monochrome menu-bar template image
@@ -12,7 +12,7 @@
 //
 // Everything is drawn from code (no source image), on the macOS icon grid: an
 // 824-point rounded square centered in a 1024 canvas. The glyph is a shell
-// prompt, `tt`, and an underline cursor: the app is a terminal that runs tt. Sizes
+// prompt, `dkt`, and an underline cursor: the app is a terminal that runs dkt. Sizes
 // of 32 pixels and under drop the prompt and cursor, which blur at that scale.
 
 import AppKit
@@ -129,9 +129,9 @@ func appIcon(pixels: Int, mobile: Bool = false) -> Data {
         let green = rgb(0xA6E3B8)
         let body = CGRect(x: 100, y: 100, width: 824, height: 700)
         if detailed {
-            // `› tt▌` on one baseline, centered in the area under the title band.
-            let prompt = textPath("›", size: 230, weight: .bold)
-            let word = textPath("tt", size: 280, weight: .bold)
+            // `› dkt▌` on one baseline, centered in the area under the title band.
+            let prompt = textPath("›", size: 190, weight: .bold)
+            let word = textPath("dkt", size: 210, weight: .bold)
             let promptBox = prompt.boundingBoxOfPath
             let wordBox = word.boundingBoxOfPath
             let gap: CGFloat = 40
@@ -155,8 +155,8 @@ func appIcon(pixels: Int, mobile: Bool = false) -> Data {
             ctx.setFillColor(rgb(0xA6E3B8, 0.75))
             ctx.fill(CGRect(x: x, y: baseline + wordBox.minY, width: cursorWidth, height: 44))
         } else {
-            // Small sizes: a heavier `tt` filling the tile.
-            let word = centered(textPath("tt", size: 520, weight: .heavy), in: tile)
+            // Small sizes: a heavier `dkt` filling the tile.
+            let word = centered(textPath("dkt", size: 340, weight: .heavy), in: tile)
             ctx.addPath(word)
             ctx.setFillColor(green)
             ctx.fillPath()
@@ -166,7 +166,7 @@ func appIcon(pixels: Int, mobile: Bool = false) -> Data {
 
 // MARK: - Status icon
 
-/// The menu-bar template: `tt` inside a rounded terminal frame, black on
+/// The menu-bar template: `dkt` inside a rounded terminal frame, black on
 /// clear. AppKit tints it for light, dark, and highlighted menu bars.
 func statusIcon(pixels: Int) -> Data {
     bitmap(pixels) { ctx in
@@ -177,7 +177,7 @@ func statusIcon(pixels: Int) -> Data {
         ctx.setStrokeColor(rgb(0x000000))
         ctx.setLineWidth(1.5)
         ctx.strokePath()
-        let word = centered(textPath("tt", size: 11, weight: .bold), in: frame, dy: -0.25)
+        let word = centered(textPath("dkt", size: 7.5, weight: .bold), in: frame, dy: -0.25)
         ctx.addPath(word)
         ctx.setFillColor(rgb(0x000000))
         ctx.fillPath()
