@@ -1,7 +1,7 @@
 package tui
 
 // This file defines the shared data contract for the LLM-driven TUI review
-// harness (`tt tui-test`, wired up in later sessions). The types here are pure
+// harness (`docket tui-test`, wired up in later sessions). The types here are pure
 // data structures with JSON tags so scenarios and observations can round-trip
 // through files and stdout. Session 1 establishes the foundation: the driver,
 // screen normalization, and key parsing. Later sessions extend these types
@@ -131,7 +131,7 @@ type UITestCommand struct {
 }
 
 // TUITestInspectable is implemented by view models that expose a compact,
-// stable semantic snapshot of their state for the `tt tui-test` review harness.
+// stable semantic snapshot of their state for the `docket tui-test` review harness.
 // Snapshots are intentionally small: high-signal fields (counts, cursor,
 // selected-item title, active mode/tab/filter) rather than whole
 // task/project structs. The returned map is JSON-marshaled directly into an

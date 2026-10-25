@@ -25,9 +25,9 @@ from rich.console import Console
 from rich.terminal_theme import TerminalTheme
 from rich.text import Text
 
-TITLE = "tt — Terminal Tasks"
+TITLE = "Docket"
 
-# Match tt's dark palette; explicit ANSI colors retain their original values.
+# Match Docket's dark palette; explicit ANSI colors retain their original values.
 PALETTE = TerminalTheme(
     (26, 27, 38), (192, 202, 245),
     [(26, 27, 38), (247, 118, 142), (158, 206, 106), (224, 175, 104),

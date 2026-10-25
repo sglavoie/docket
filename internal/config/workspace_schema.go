@@ -2,7 +2,7 @@ package config
 
 import "fmt"
 
-// SchemaTooNewError reports a workspace artifact written by a newer tt than
+// SchemaTooNewError reports a workspace artifact written by a newer Docket than
 // this build. A frontend that must not guess at an unknown format matches it
 // with errors.As rather than reading the message.
 type SchemaTooNewError struct {
@@ -15,7 +15,7 @@ type SchemaTooNewError struct {
 }
 
 func (e *SchemaTooNewError) Error() string {
-	return fmt.Sprintf("%s schema %d is newer than supported schema %d; upgrade tt", e.Artifact, e.Found, e.Supported)
+	return fmt.Sprintf("%s schema %d is newer than supported schema %d; upgrade Docket", e.Artifact, e.Found, e.Supported)
 }
 
 // WorkspaceCatalogSchema reports the payload schema of the workspace catalog at

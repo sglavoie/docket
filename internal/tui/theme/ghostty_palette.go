@@ -40,7 +40,7 @@ func (p GhosttyPalette) Validate() error {
 	return nil
 }
 
-// ApplyGhosttyPalette maps Ghostty's ANSI colors to tt's semantic roles and
+// ApplyGhosttyPalette maps Ghostty's ANSI colors to Docket's semantic roles and
 // repaints the whole TUI. Ghostty's background and foreground are used exactly.
 func ApplyGhosttyPalette(p GhosttyPalette) error {
 	if err := p.Validate(); err != nil {

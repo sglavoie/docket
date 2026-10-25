@@ -232,7 +232,7 @@ relaxes case alone and never widens the sigil gate. The rule covers the
 Outliner's `/`, Notes search, and both help searches; the `project#42`
 shorthand, autocomplete, and pickers stay case-insensitive.
 
-When a ranked search is empty, `tt` checks each ordinary row filter separately
+When a ranked search is empty, Docket checks each ordinary row filter separately
 to see whether clearing it would reveal matching tasks. With one filter, the
 empty view says, for example, `4 matches hidden by your priority filter`. With
 several, it says `Clearing your priority filter reveals 4 matches.` Only proven

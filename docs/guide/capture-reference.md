@@ -438,7 +438,7 @@ and a new task is created. Dropping the marker from an existing line does both
 halves at once: the line becomes a new task, and the task the marker named is
 deleted, since nothing in the buffer names it any more. Delete a line and the task is deleted:
 the buffer is the project's whole tree, so absence is how you remove work and
-there is no `$delete` sigil. Before anything is applied, `tt` names the tasks
+there is no `$delete` sigil. Before anything is applied, Docket names the tasks
 that would go and the attachments that would go with them and asks you to
 confirm. Declining cancels the entire apply, edits included, and keeps the file
 so you can reopen it. An emptied buffer is the same rule at its limit and

@@ -27,7 +27,7 @@ func TestOutlineDumpRendersIndentedParentageAndMarkers(t *testing.T) {
 	}
 
 	want := []string{
-		"# tt outline · project: Sonar · mode: Backlog · 2026-08-10 14:02",
+		"# Docket outline · project: Sonar · mode: Backlog · 2026-08-10 14:02",
 		"Ship auth rewrite !1 @2026-08-20 #epic ##platform $doing  [[tt:4f2a9c11]]",
 		"  Token refresh path #backend $backlog  [[tt:9b31de07]]",
 		"    Retry budget $backlog  [[tt:c0184aa2]]",

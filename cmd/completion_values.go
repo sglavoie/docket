@@ -45,7 +45,7 @@ func completeProjectSlugs(cmd *cobra.Command, args []string, toComplete string) 
 	return out, cobra.ShellCompDirectiveNoFileComp
 }
 
-// completeConflictIDs offers the short conflict IDs `tt conflict list` prints,
+// completeConflictIDs offers the short conflict IDs `docket conflict list` prints,
 // described by the conflicted project's name.
 func completeConflictIDs(_ *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 	if len(args) > 0 {

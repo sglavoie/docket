@@ -17,7 +17,7 @@ simply gives the rows back.
 ## Expanded form width
 
 Every field is reachable at any supported width too. The expanded composer opens
-wherever the rest of `tt` opens — down to the same 60-column minimum every other
+wherever the rest of Docket opens — down to the same 60-column minimum every other
 surface accepts — rather than replacing itself with a "terminal too small"
 notice on anything under 68 columns. A narrow terminal shortens what a row can
 spare and nothing else: the grey key hints beside a focused row go before its
@@ -54,7 +54,7 @@ too narrow for all of it never draws a heading without its first entry. At the
 narrowest terminal `f` keeps `x clear all` and gives up `a completion age` and
 `% projects`, and `g` over a task row gives up the `Sync:` pair whole; every
 shed key still works and `?` help still lists it. Required commit and cancellation controls survive before
-optional hints, and they survive whole at the narrowest terminal `tt` runs in,
+optional hints, and they survive whole at the narrowest terminal Docket runs in,
 so the way out of a state is never half a sentence. Transient pickers and action
 sheets own their local guidance while leaving the host title and workspace pulse
 visible.
@@ -197,7 +197,7 @@ to. A live visual selection is no exception, because the strip never carries one
 in the first place: the selection states itself on the second header row, once,
 and the strip is left free for the feedback your next bulk gesture writes there.
 
-`tt --control PATH` serves a Unix socket at `PATH`, readable by your user
+`docket --control PATH` serves a Unix socket at `PATH`, readable by your user
 alone, for a host app such as tt.app. Over it the session reports the pulse
 whenever it changes and each tick's arrivals with the identity of every task,
 and it takes seven requests: show a task, acknowledge one as `R` does, mark
@@ -209,8 +209,8 @@ commit and the same undo entry, so `u` takes it back. A request that changes
 something is refused, never queued, while you are inside a picker, an editor, a
 selection, or another view — completions and previews change nothing, so they
 are answered even then — and a session that lost focus first adopts any change made on disk since,
-so what it commits is never against a stale read. tt.app starts tt this way, and
-falls back to `--notify` for a tt too old to have the flag.
+so what it commits is never against a stale read. tt.app starts Docket this way, and
+falls back to `--notify` for a Docket too old to have the flag.
 
 The strip is also where `Q` expands the narrowing readout: one numbered row per
 narrowing the view is under, then an `Also in view` block for the axes nothing
@@ -236,7 +236,7 @@ scope, search, filters, and folds stay exactly as you left them and the message
 names the destination instead, as `now in Design (Done)`. An entry that was aimed
 at many tasks at once, or at a project, says neither and moves nothing, so a
 selection you are still holding survives its own undo. The correlation is
-session-only: after restarting `tt`, undo still restores the same work but never
+session-only: after restarting Docket, undo still restores the same work but never
 moves the cursor.
 
 It is muted, closed with a rule, and never the cursor's: it is not a row, so

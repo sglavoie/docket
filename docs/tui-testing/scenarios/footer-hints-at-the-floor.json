@@ -5,7 +5,7 @@
   "actions": [
     { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
 
-    { "type": "key", "label": "hold the workflow prefix at the narrowest terminal tt runs in", "key": "w" },
+    { "type": "key", "label": "hold the workflow prefix at the narrowest terminal Docket runs in", "key": "w" },
     { "type": "assert", "label": "the two planning collections still lead under Plan", "assert": "contains", "value": "Plan: n next · t today" },
     { "type": "assert", "label": "and the lifecycle states open under Status", "assert": "contains", "value": "Status: i inbox" },
     { "type": "assert", "assert": "contains", "value": "b backlog" },

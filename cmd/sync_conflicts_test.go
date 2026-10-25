@@ -57,7 +57,7 @@ func retitleOnDisk(t *testing.T, dataDir, from, to string) {
 }
 
 // TestSyncConflictCommands resolves a sync conflict from the desktop through
-// `tt sync conflicts` and `tt sync resolve`: the conflict between this
+// `docket sync conflicts` and `docket sync resolve`: the conflict between this
 // desktop and a second device is shown with its base, both versions, and who
 // wrote each; diagnostics export its structure without content; the
 // resolution travels and both replicas converge; and a resolution of a
@@ -106,7 +106,7 @@ func TestSyncConflictCommands(t *testing.T) {
 	for _, want := range []string{
 		"Tasks in Atlas Launch", "Started from:", "│ ## Task: Ship beta build\n",
 		"## Task: Ship beta build (studio)", "## Task: Ship beta build (laptop)",
-		"edit outside tt on", "laptop-b", ", this device", "What differs:", "docket sync resolve " + prefix,
+		"edit outside Docket on", "laptop-b", ", this device", "What differs:", "docket sync resolve " + prefix,
 	} {
 		if !strings.Contains(shown, want) {
 			t.Fatalf("conflicts %s lacks %q:\n%s", prefix, want, shown)

@@ -26,7 +26,7 @@ type Arrival struct {
 	TaskID    string
 	Title     string
 	// Reviewable is whether acknowledging the task is allowed at now, so a
-	// notification offers that action only where tt would accept it.
+	// notification offers that action only where Docket would accept it.
 	Reviewable bool
 }
 
@@ -78,11 +78,11 @@ func ArrivalNotification(arrivals []Arrival) (title, body string) {
 		a := arrivals[0]
 		switch a.Kind {
 		case ArrivalCheckIn:
-			return "tt · check-in", a.Title
+			return "Docket · check-in", a.Title
 		case ArrivalDeadline:
-			return "tt · deadline passed", a.Title
+			return "Docket · deadline passed", a.Title
 		default:
-			return "tt · deferral ended", a.Title
+			return "Docket · deferral ended", a.Title
 		}
 	}
 	var counts [3]int
@@ -99,7 +99,7 @@ func ArrivalNotification(arrivals []Arrival) (title, body string) {
 	if n := counts[ArrivalWake]; n > 0 {
 		parts = append(parts, plural(n, "deferral ended", "deferrals ended"))
 	}
-	return "tt", strings.Join(parts, " · ")
+	return "Docket", strings.Join(parts, " · ")
 }
 
 func plural(n int, one, many string) string {

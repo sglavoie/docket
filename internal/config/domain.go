@@ -202,7 +202,7 @@ func (w *WorkspaceCatalog) validate(allowRepairableColorSlots bool, supported in
 	}
 	if w.SchemaVersion > supported {
 		return fmt.Errorf(
-			"workspace catalog: schema version %d is newer than supported version %d; upgrade tt",
+			"workspace catalog: schema version %d is newer than supported version %d; upgrade Docket",
 			w.SchemaVersion,
 			supported,
 		)
@@ -285,10 +285,10 @@ func projectMatches(projID, projSlug, id, slug string) bool {
 	return refMatches(projID, id, slug) || refMatches(projSlug, id, slug)
 }
 
-// validateSyncEnrollment ties the sync block to a schema that every tt older
+// validateSyncEnrollment ties the sync block to a schema that every Docket older
 // than sync refuses. Schema 22 was reserved for enrolled catalogs, so a catalog
 // still at it must carry the block; from schema 23 the block alone marks
-// enrollment, and a catalog older than 22 carries none. No tt that predates
+// enrollment, and a catalog older than 22 carries none. No Docket that predates
 // sync can therefore be handed a catalog it would read as an ordinary
 // workspace.
 func (w *WorkspaceCatalog) validateSyncEnrollment() error {

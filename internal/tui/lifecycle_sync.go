@@ -191,7 +191,7 @@ func (m *AppModel) startManualSync() tea.Cmd {
 		return nil
 	}
 	if m.automaticSync.exchange == nil {
-		m.setWarningStatus("This workspace is not enrolled in sync; use tt sync enroll or tt sync join")
+		m.setWarningStatus("This workspace is not enrolled in sync; use docket sync enroll or docket sync join")
 		return m.statusReadingTimeout()
 	}
 	m.automaticSync.manual = true
@@ -205,11 +205,11 @@ func (m *AppModel) startManualSync() tea.Cmd {
 
 func (m *AppModel) reportManualSync(report *syncexchange.FolderReport, err error) tea.Cmd {
 	if err != nil {
-		m.setWarningStatus("Sync failed: " + err.Error() + " (tt sync doctor)")
+		m.setWarningStatus("Sync failed: " + err.Error() + " (docket sync doctor)")
 		return m.statusReadingTimeout()
 	}
 	if report == nil {
-		m.setWarningStatus("Sync returned no result; check tt sync status")
+		m.setWarningStatus("Sync returned no result; check docket sync status")
 		return m.statusReadingTimeout()
 	}
 	parts := []string{fmt.Sprintf("Sync: %d published, %d imported", len(report.Published), report.Imported)}
@@ -223,13 +223,13 @@ func (m *AppModel) reportManualSync(report *syncexchange.FolderReport, err error
 		parts = append(parts, "files not downloaded yet")
 	}
 	if len(report.Held) > 0 {
-		parts = append(parts, "update tt to apply held changes (tt sync status)")
+		parts = append(parts, "update Docket to apply held changes (docket sync status)")
 	}
 	if report.External != nil && len(report.External.Held) > 0 {
-		parts = append(parts, "local edits held (tt sync status)")
+		parts = append(parts, "local edits held (docket sync status)")
 	}
 	if len(report.Errors) > 0 {
-		parts = append(parts, "exchange errors (tt sync doctor)")
+		parts = append(parts, "exchange errors (docket sync doctor)")
 	}
 	if count := len(m.feedback.syncConflicts); count > 0 {
 		parts = append(parts, manualSyncConflictPart(count))

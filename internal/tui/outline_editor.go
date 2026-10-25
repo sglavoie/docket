@@ -122,7 +122,7 @@ func outlineBufferHeader(projectName, modeLabel string, now time.Time) string {
 		scope += " · mode: " + modeLabel
 	}
 	return strings.Join([]string{
-		fmt.Sprintf("# tt outline · %s · %s", scope, now.Format("2006-01-02 15:04")),
+		fmt.Sprintf("# Docket outline · %s · %s", scope, now.Format("2006-01-02 15:04")),
 		fmt.Sprintf("# Indent = parentage (%d spaces). Sigils: %s", grammar.OutlineIndentWidth, outlineGrammarForms()),
 		"# Lines are declarative: an omitted sigil clears that value.",
 		fmt.Sprintf("# Keep %sxxxxxxxx%s to edit a task. No marker = new task.", grammar.OutlineMarkerPrefix, grammar.OutlineMarkerSuffix),

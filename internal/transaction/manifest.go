@@ -1,5 +1,5 @@
 // Package transaction implements the durable transaction journal that backs
-// tt's crash-safe workspace mutations. A transaction stages the replacement
+// Docket's crash-safe workspace mutations. A transaction stages the replacement
 // bytes for every file it intends to write (at the target's eventual
 // same-directory stage location, or at the corresponding source location when
 // an earlier directory move will carry it there), fsyncs that staged data, then

@@ -67,7 +67,7 @@ type lifecycleController struct {
 	// not move it.
 	launchFocus bool
 
-	// colorDisabled is a --no-color run. The terminal background tt announces
+	// colorDisabled is a --no-color run. The terminal background Docket announces
 	// is written outside the renderer's color profile, so that run announces
 	// none rather than color the terminal behind a colorless frame.
 	colorDisabled bool
@@ -283,7 +283,7 @@ type notificationState struct {
 
 // WithNotifications marks a --notify run: the session sends a desktop
 // notification escape when work arrives while it runs. It is opt-in because a
-// terminal that honors the escape shows it whether or not tt is in view.
+// terminal that honors the escape shows it whether or not Docket is in view.
 func WithNotifications() AppOption {
 	return func(m *AppModel) {
 		m.notifications.enabled = true

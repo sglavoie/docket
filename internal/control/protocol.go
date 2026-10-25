@@ -1,4 +1,4 @@
-// Package control is the inbound half of a hosted tt session: a Unix socket a
+// Package control is the inbound half of a hosted Docket session: a Unix socket a
 // host such as tt.app connects to, so it can ask the running TUI to act and hear
 // what the TUI reports, instead of reading the window title back and typing
 // keys into the terminal.
@@ -10,13 +10,13 @@
 // the user is mid-interaction is refused by the same guards.
 //
 // The protocol is newline-delimited JSON in both directions. A host writes
-// Request lines; tt writes one Reply per request, carrying the request's id,
+// Request lines; Docket writes one Reply per request, carrying the request's id,
 // and Event lines whenever it has something to report. Every connection hears
 // every event, and a new connection hears the latest pulse at once.
 //
-// OpQuit is how a host ends the session it hosts: tt quits as its quit key
+// OpQuit is how a host ends the session it hosts: Docket quits as its quit key
 // would, or refuses while content is unsaved or a save is pending. A host treats the connection
-// ending as the OK it may never read, and falls back to a hangup for a tt that
+// ending as the OK it may never read, and falls back to a hangup for a Docket that
 // answers "unknown operation".
 package control
 
@@ -43,7 +43,7 @@ const (
 	OpCaptureOnce    = "capture_once"
 	OpCaptureContext = "capture_context"
 	// OpComplete asks what the composer would suggest for Text, read as the
-	// draft up to the caret. It reads and never writes, so tt answers it even
+	// draft up to the caret. It reads and never writes, so Docket answers it even
 	// while the user is mid-interaction.
 	OpComplete = "complete"
 	// OpPreview describes the full capture draft without writing anything.
@@ -55,9 +55,9 @@ const (
 	// same answer.
 	OpQuit = "quit"
 	// OpAppearance applies Text, "dark" or "light", as this session's theme.
-	// It is presentation alone: tt answers it even while the user is
+	// It is presentation alone: Docket answers it even while the user is
 	// mid-interaction, writes no machine state, and records no ledger entry,
-	// so a tt launched from a terminal keeps its own saved theme.
+	// so a Docket launched from a terminal keeps its own saved theme.
 	OpAppearance = "appearance"
 	// OpThemePalette applies a Ghostty palette sent by the host to the running
 	// TUI. Empty Text restores the saved machine theme. Like OpAppearance it
@@ -69,13 +69,13 @@ const (
 	OpView = "view"
 	// OpUndo undoes the transaction Text names, as u would, only while it is
 	// still the newest undo entry, so a host never takes back something newer
-	// the user did in tt. It is refused while the user is mid-interaction.
+	// the user did in Docket. It is refused while the user is mid-interaction.
 	OpUndo = "undo"
 	// OpEdit acts on the focused draft or the existing workspace undo/search operation.
 	OpEdit = "edit"
 )
 
-// The events tt reports.
+// The events Docket reports.
 const (
 	// EventPulse carries the workspace pulse whenever it changes.
 	EventPulse   = "pulse"
@@ -106,7 +106,7 @@ type Request struct {
 	Minutes   int    `json:"minutes,omitempty"`
 }
 
-// Reply answers the Request whose ID it carries. Message is what tt said: the
+// Reply answers the Request whose ID it carries. Message is what Docket said: the
 // outcome on success, the refusal otherwise. Completion answers OpComplete
 // alone, and is absent when the caret stands on no sigil the grammar completes.
 // Preview answers OpPreview with the full draft's human-readable route and date.
@@ -160,11 +160,11 @@ type Arrival struct {
 	Task    string `json:"task"`
 	Title   string `json:"title"`
 	// Reviewable is whether acknowledging it is allowed now, so a host offers
-	// that action only where tt would accept it.
+	// that action only where Docket would accept it.
 	Reviewable bool `json:"reviewable,omitempty"`
 }
 
-// Event is one line tt writes unprompted. Title and Body word an arrivals
+// Event is one line Docket writes unprompted. Title and Body word an arrivals
 // event as one notification, the way --notify would.
 type Event struct {
 	Event    string    `json:"event"`

@@ -42,7 +42,7 @@ type RecordedConflict struct {
 	ProjectID   string
 	ProjectName string
 	// ConflictID is the id of the durably recorded conflict bundle; resolve it
-	// through the shared resolution service (tt conflict resolve / the TUI).
+	// through the shared resolution service (docket conflict resolve / the TUI).
 	ConflictID string
 }
 

@@ -9,7 +9,7 @@ import (
 	"github.com/sglavoie/docket/internal/tui/presentation"
 )
 
-// The shell half of tt's background attention: the focus reload's owed state
+// The shell half of Docket's background attention: the focus reload's owed state
 // and the --notify gate. The fingerprint and the arrival rules are tested where
 // they live, in internal/workspace and internal/tui/pulse.
 

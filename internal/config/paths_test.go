@@ -22,7 +22,7 @@ func TestActiveDefaultDataDirOn_ICloudPresentButNoWorkspaceStaysLocal(t *testing
 	t.Setenv("HOME", home)
 	makeICloudDrive(t, home)
 
-	// iCloud Drive is available but holds no tt workspace: local-first wins and
+	// iCloud Drive is available but holds no Docket workspace: local-first wins and
 	// no automatic iCloud selection occurs.
 	want := filepath.Join(home, dataDirName)
 	if got := activeDefaultDataDirOn(""); got != want {

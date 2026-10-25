@@ -105,7 +105,7 @@ func copyDestinationFiles(entries []workspaceEntry, dst string, report *MoveRepo
 }
 
 // validateSourceSnapshot proves every inventoried source file still has the
-// hash captured under the workspace locks. Ordinary tt commits cannot reach
+// hash captured under the workspace locks. Ordinary Docket commits cannot reach
 // this point concurrently; this guard catches direct filesystem writers.
 func validateSourceSnapshot(entries []workspaceEntry) error {
 	for _, e := range entries {

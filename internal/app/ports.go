@@ -1,4 +1,4 @@
-// Package app is the presentation-neutral application service layer for tt. It
+// Package app is the presentation-neutral application service layer for Docket. It
 // exposes narrow task-mutation use cases (capture, edit, state transition, due
 // date, priority, tag, pin, deferral, park, completion) that validate input,
 // apply domain rules through the models package, and emit exactly one storage

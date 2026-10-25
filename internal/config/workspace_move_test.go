@@ -377,7 +377,7 @@ func TestMoveWorkspaceRejectsActiveSourceOrDestinationTUI(t *testing.T) {
 			if moveErr == nil {
 				t.Fatalf("expected active %s TUI rejection", role)
 			}
-			if message := moveErr.Error(); !strings.Contains(message, role+" TUI safety lock") || !strings.Contains(message, "close the active tt TUI") {
+			if message := moveErr.Error(); !strings.Contains(message, role+" TUI safety lock") || !strings.Contains(message, "close the active Docket TUI") {
 				t.Fatalf("active %s TUI error is not actionable: %v", role, moveErr)
 			}
 			if _, ok := ReadActiveWorkspacePointer(); ok {

@@ -352,7 +352,7 @@ func (h *History) OpenConflicts(merger Merger) ([]Conflict, error) {
 // candidate while materialization computes a different, unretained merge. That
 // synthetic result is neither a readable current version nor a valid write
 // precondition. Include the observed file digest in the conflict ID so changes
-// after inspection are still refused, including edits made outside tt.
+// after inspection are still refused, including edits made outside Docket.
 // OpenConflicts remains the deterministic history-only projection.
 func (h *History) WorkspaceConflicts(merger Merger) ([]Conflict, error) {
 	conflicts, err := h.OpenConflicts(merger)

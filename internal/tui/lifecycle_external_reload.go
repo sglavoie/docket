@@ -13,7 +13,7 @@ import (
 
 // externalReloadState is the shell's memory of what the workspace looked like
 // on disk when the terminal last lost focus. A long-lived session — tt.app hides
-// its window rather than ending tt — otherwise never re-reads a workspace that
+// its window rather than ending Docket — otherwise never re-reads a workspace that
 // a synced machine changed underneath it, and learns of that change only when
 // its own next commit records a conflict.
 //
@@ -23,7 +23,7 @@ type externalReloadState struct {
 	// blurFingerprint is the workspace fingerprint taken at the last blur; empty
 	// while focused and before the first blur, which is what keeps a launch from
 	// reloading. A control-socket commit made while blurred advances it, since
-	// that change is tt's own.
+	// that change is Docket's own.
 	blurFingerprint string
 	// owed records a detected change the shell could not yet adopt because the
 	// user was mid-interaction. The periodic tick and the next focus retry it.

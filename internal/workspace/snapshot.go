@@ -1,5 +1,5 @@
 // Package workspace provides an immutable read model over the loaded projects
-// of a tt workspace. A Snapshot loads every requested project exactly once and
+// of a Docket workspace. A Snapshot loads every requested project exactly once and
 // exposes derived indexes (task lookup, qualified references, per-project
 // revisions) plus diagnostics for projects that could
 // not be loaded. Read-only consumers — workspace pulse, cross-scope task views,

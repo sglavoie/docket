@@ -16,7 +16,7 @@ import (
 // TestBridgeResolvesSyncConflictsFromEitherDevice drives conflict resolution
 // from both interfaces over one engine: the phone through conflict.list,
 // conflict.show and conflict.resolve, and the desktop through the engine call
-// `tt sync resolve` makes. Each side reads the base and every competing
+// `docket sync resolve` makes. Each side reads the base and every competing
 // version with the device and change that wrote it, resolves by keeping a
 // version, the current bytes, or replacement text, and every replica converges
 // once the resolution travels. A change that spanned files is resolved whole;
@@ -169,7 +169,7 @@ func (h *harness) resolve(request engine.ResolveRequest) engine.ResolveResult {
 	return result
 }
 
-// desktopResolve is the desktop's resolution: the engine call `tt sync
+// desktopResolve is the desktop's resolution: the engine call `docket sync
 // resolve` makes, on the desktop's own runtime.
 func (h *harness) desktopResolve(request engine.ResolveRequest) *engine.ResolveResult {
 	h.t.Helper()

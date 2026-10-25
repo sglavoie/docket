@@ -38,7 +38,7 @@ func (p *Project) GetTaskByShortID(shortID int) *Task {
 }
 
 // GetNextShortID returns and increments the next available short ID.
-// Not goroutine-safe: tt is single-goroutine for project mutations,
+// Not goroutine-safe: Docket is single-goroutine for project mutations,
 // so no synchronization is needed here.
 func (p *Project) GetNextShortID() int {
 	id := p.NextShortID

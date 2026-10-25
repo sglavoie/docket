@@ -59,13 +59,13 @@ func TestArrivalsReportOnlyWhatCrossedTheWindow(t *testing.T) {
 
 func TestArrivalNotificationWording(t *testing.T) {
 	title, body := ArrivalNotification([]Arrival{{Kind: ArrivalCheckIn, Title: "Call the bank"}})
-	if title != "tt · check-in" || body != "Call the bank" {
+	if title != "Docket · check-in" || body != "Call the bank" {
 		t.Fatalf("single = %q / %q", title, body)
 	}
 	title, body = ArrivalNotification([]Arrival{
 		{Kind: ArrivalCheckIn}, {Kind: ArrivalCheckIn}, {Kind: ArrivalWake},
 	})
-	if title != "tt" || body != "2 check-ins · 1 deferral ended" {
+	if title != "Docket" || body != "2 check-ins · 1 deferral ended" {
 		t.Fatalf("several = %q / %q", title, body)
 	}
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/sglavoie/docket/internal/models"
 )
 
-// LoadProjectForRepair is LoadProjectForRewrite for `tt doctor`, and for it
+// LoadProjectForRepair is LoadProjectForRewrite for `docket doctor`, and for it
 // alone: it admits exactly the two task defects doctor --fix repairs — a
 // duplicated project-local short ID and a parent reference naming no task in
 // the project — and keeps them in the loaded model, so doctor reports each one

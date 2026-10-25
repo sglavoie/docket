@@ -23,7 +23,7 @@ import (
 // The control socket: a host asking the running session to act
 // =============================================================================
 //
-// `tt --control PATH` serves internal/control's socket for a host such as
+// `docket --control PATH` serves internal/control's socket for a host such as
 // tt.app. Every request arrives here as a controlRequestMsg and is answered
 // from inside Update, so it reads the same state a keystroke would and commits
 // through the same coordinator, transaction, and undo ledger. A request is
@@ -36,7 +36,7 @@ type controlPublisher interface {
 	Publish(control.Event)
 }
 
-// controlState is the shell's link to the socket, nil-safe when tt runs
+// controlState is the shell's link to the socket, nil-safe when Docket runs
 // without one.
 type controlState struct {
 	versionLine string

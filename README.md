@@ -1,6 +1,6 @@
-# tt — Terminal Tasks
+# Docket
 
-`tt` is a local-first task manager for the terminal. Capture, plan, and finish
+Docket is a local-first task manager for the terminal. Capture, plan, and finish
 work in one keyboard-driven outline. Your tasks live in readable Markdown
 files on your own disk.
 
@@ -11,11 +11,11 @@ wraps it with quick capture, menus, and notifications; the
 working copies in sync through a folder you provide, including iCloud Drive.
 There is no hosted server, account, or web interface.
 
-There is no `tt add`: the command line is deliberately limited to diagnostics, conflict
-recovery, device sync, workspace relocation, project export, and shell completion. Run `tt`
+There is no `docket add`: the command line is deliberately limited to diagnostics, conflict
+recovery, device sync, workspace relocation, project export, and shell completion. Run `docket`
 and the interface is the product.
 
-![Terminal Tasks capturing "Draft the release notes %website !1 #docs" into Inbox, reading it in Peek, starting it with w then g, searching, planning another task for Today, completing it in Today mode, and undoing.](docs/images/demo.svg)
+![Docket capturing "Draft the release notes %website !1 #docs" into Inbox, reading it in Peek, starting it with w then g, searching, planning another task for Today, completing it in Today mode, and undoing.](docs/images/demo.svg)
 
 Work is grouped into lanes and projects; Peek below the outline shows the selected
 task's details. The animation is recorded from the real app over fictional tasks;
@@ -25,9 +25,9 @@ the key pressed is named in the title bar.
 
 ### Your first five minutes
 
-Run `tt` after [installing it](#install-and-start). No project setup is needed:
+Run `docket` after [installing it](#install-and-start). No project setup is needed:
 
-1. Press `a`, type `Try Terminal Tasks`, and press `Enter`. Your task lands in
+1. Press `a`, type `Try Docket`, and press `Enter`. Your task lands in
    Inbox under Unfiled.
 2. Move to its row with the arrow keys, then press `w` followed by `t` to plan
    it for Today. Press `g` followed by `t` to open Today.
@@ -85,7 +85,7 @@ On macOS or Linux, install the release build with Homebrew:
 
 ```bash
 brew install --cask sglavoie/tap/tt
-tt
+docket
 ```
 
 Spell the tap out: Homebrew's own `tt` formula is an unrelated program that
@@ -96,15 +96,15 @@ With Go instead:
 
 ```bash
 go install github.com/sglavoie/tt@latest
-tt
+docket
 ```
 
 That needs Go 1.25.13 or newer and `$(go env GOPATH)/bin` — usually `~/go/bin` —
 on your `PATH`. To build from a clone instead:
 
 ```bash
-go build -o tt .
-./tt
+go build -o docket .
+./docket
 ```
 
 On macOS, [tt.app](macos/README.md) runs the same program in its own window and
@@ -112,7 +112,7 @@ adds a menu-bar shortcut, quick capture, and notifications. From a clone, run
 `just mac-install` to build and install it; this requires the full Xcode app.
 
 A new workspace starts locally in `~/.tt/`. Use `--data-dir`, `DOCKET_DATA_DIR`, or
-`tt workspace move` to select a different location. Moving into iCloud Drive or
+`docket workspace move` to select a different location. Moving into iCloud Drive or
 another synced directory is an explicit choice; an existing selected iCloud
 workspace is preserved.
 
@@ -122,7 +122,7 @@ explains saved views and how to reveal tasks hidden by filters.
 
 ## Platform support
 
-`tt` is developed and used daily on macOS. The full test suite also runs on
+Docket is developed and used daily on macOS. The full test suite also runs on
 Linux in CI on every push, so Linux is exercised but not daily-driven. Windows
 is not supported.
 
@@ -141,8 +141,8 @@ the working-copy layout and recovery instructions.
 Keep a backup of your workspace before upgrading. Migrations save a snapshot
 first, but are one-way: older builds refuse a migrated workspace.
 
-If something looks wrong, start with `tt doctor` for read-only diagnostics.
-See [storage and recovery](docs/guide/storage.md) before using `tt doctor --fix`
+If something looks wrong, start with `docket doctor` for read-only diagnostics.
+See [storage and recovery](docs/guide/storage.md) before using `docket doctor --fix`
 or restoring a backup.
 
 ## Daily loop
@@ -203,30 +203,30 @@ descriptors that dispatch the keys, for whichever surface you are on.
 ## Maintenance CLI
 
 ```text
-tt [--no-advisories] [--notify] [--control PATH]
-tt doctor [--fix] [--json]
-tt conflict list [--json]
-tt conflict show <id> [--json]
-tt conflict resolve <id> --use local|remote|file [--file PATH]
-tt sync enroll --exchange DIR --working-copy DIR [--snapshot-dir DIR] [--force]
-tt sync join --exchange DIR --working-copy DIR
-tt sync status [--json]
-tt sync exchange [--folder DIR] [--json]
-tt sync doctor [--json]
-tt sync conflicts [ID] [--json]
-tt sync resolve ID --version N|--current|--file PATH [--json]
-tt sync diagnostics [--output FILE]
-tt workspace [location]
-tt workspace move <destination> [--force]
-tt workspace backup <backup-directory>
-tt workspace verify-backup <snapshot-directory>
-tt completion bash|zsh|fish
-tt project export <slug-or-id> [--file PATH|-]
-tt project export --all [--dir DIR]
-tt --version
+docket [--no-advisories] [--notify] [--control PATH]
+docket doctor [--fix] [--json]
+docket conflict list [--json]
+docket conflict show <id> [--json]
+docket conflict resolve <id> --use local|remote|file [--file PATH]
+docket sync enroll --exchange DIR --working-copy DIR [--snapshot-dir DIR] [--force]
+docket sync join --exchange DIR --working-copy DIR
+docket sync status [--json]
+docket sync exchange [--folder DIR] [--json]
+docket sync doctor [--json]
+docket sync conflicts [ID] [--json]
+docket sync resolve ID --version N|--current|--file PATH [--json]
+docket sync diagnostics [--output FILE]
+docket workspace [location]
+docket workspace move <destination> [--force]
+docket workspace backup <backup-directory>
+docket workspace verify-backup <snapshot-directory>
+docket completion bash|zsh|fish
+docket project export <slug-or-id> [--file PATH|-]
+docket project export --all [--dir DIR]
+docket --version
 ```
 
-Global flags are `--data-dir` and `--no-color`. Run `tt help <command>` for
+Global flags are `--data-dir` and `--no-color`. Run `docket help <command>` for
 per-command syntax.
 
 For device sync, [enroll once or join an existing exchange](docs/guide/storage.md#syncing-through-an-exchange-folder).

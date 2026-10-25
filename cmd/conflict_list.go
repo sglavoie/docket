@@ -80,7 +80,7 @@ func shortConflictID(id string) string {
 
 // resolveConflictID resolves a possibly-abbreviated id against the store,
 // returning the full id or an error listing candidates on ambiguity. It lets the
-// user pass the short id printed by `tt conflict list`.
+// user pass the short id printed by `docket conflict list`.
 func resolveConflictID(store *storage.ConflictStore, ref string) (string, error) {
 	records, err := store.List()
 	if err != nil {

@@ -1,6 +1,6 @@
 # Behavior guide
 
-The full behavior reference for `tt`. Use it to look up an action or rule — [`../../README.md`](../../README.md) is the front
+The full behavior reference for Docket. Use it to look up an action or rule — [`../../README.md`](../../README.md) is the front
 door. Mechanism lives in [`../architecture.md`](../architecture.md).
 
 | Guide | Covers |

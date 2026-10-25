@@ -381,3 +381,150 @@ func TestCurrentProductDocsExcludeRetiredConcepts(t *testing.T) {
 		}
 	}
 }
+
+// retiredProductNamePattern matches tt as a standalone word: the retired
+// product and command name. Formats and markers that only start with it
+// (tt-sync/v1, <!-- tt-schema: N -->, [[tt:…]]) and the `.tt` directory are
+// on-disk inputs rather than names, so they fall outside the word boundary.
+var retiredProductNamePattern = regexp.MustCompile(`(^|[^A-Za-z0-9_./\[~-])tt($|[^A-Za-z0-9_:-])`)
+
+// retiredProductNameAllowed lists, per file, the exact spellings that still
+// legitimately say tt. Each one is an input or protocol a later step of the
+// rename owns, or a name that never was this product's: removing the entry is
+// how that step proves it renamed both sides.
+// retiredProductNameAllowedEverywhere is the macOS app bundle, named tt.app until
+// the app and its targets are renamed together.
+var retiredProductNameAllowedEverywhere = []string{"tt.app"}
+
+var retiredProductNameAllowed = map[string][]string{
+	// The default data directory, its iCloud Drive folder, and the enrollment
+	// staging marker are on-disk names the workspace migration owns.
+	"cmd/helpers.go":                         {"iCloud Drive tt workspace"},
+	"internal/config/paths.go":               {`"tt"`},
+	"internal/config/sync_enroll_staging.go": {`"tt enrollment staging\n"`},
+	// Replies and the window title a host app parses; the macOS app reads the
+	// same spellings, so both sides are renamed together.
+	"internal/control/server.go":              {`"tt did not answer in time"`},
+	"internal/tui/lifecycle_control.go":       {`"tt is busy: "`, `"tt did not commit the change"`, "open in tt first", "search in tt,", "selection in tt,", "panel in tt,"},
+	"internal/tui/lifecycle_control_tasks.go": {"changed in tt;"},
+	"internal/tui/pulse/workspace_pulse.go":   {`"tt"`},
+	"docs/guide/outliner-chrome.md":           {"`tt · inbox"},
+	// Homebrew's own tt formula is an unrelated program, and the published
+	// cask keeps its name until the release that renames it.
+	"README.md": {"Homebrew's own `tt` formula", "brew upgrade --cask tt", "sglavoie/tap/tt", "sglavoie/tt@latest"},
+}
+
+// retiredProductNameMigrationHeading marks a Markdown section that describes
+// the rename itself, where the old name is the subject rather than a slip.
+var retiredProductNameMigrationHeading = regexp.MustCompile(`(?i)^#+ .*migrat`)
+
+// TestRetiredProductNameStaysInMigrationSections keeps tt from creeping back
+// after the rename to Docket. The command is spelled docket and the product
+// Docket; the old name may only appear where a migration reads it, inside a
+// Markdown migration section, or in the allowlist above. Go string literals
+// are scanned because they are what users read; comments are not product text.
+func TestRetiredProductNameStaysInMigrationSections(t *testing.T) {
+	t.Parallel()
+	checkRetiredProductNameInGoLiterals(t)
+	checkRetiredProductNameInDocs(t)
+}
+
+// checkRetiredProductName reports text that still says tt once the spellings
+// allowed everywhere and in this file are removed.
+func checkRetiredProductName(t *testing.T, relative string, line int, text string) {
+	t.Helper()
+	for _, allowed := range retiredProductNameAllowedEverywhere {
+		text = strings.ReplaceAll(text, allowed, "")
+	}
+	for _, allowed := range retiredProductNameAllowed[relative] {
+		text = strings.ReplaceAll(text, allowed, "")
+	}
+	if retiredProductNamePattern.MatchString(text) {
+		t.Errorf("%s:%d: names the retired product tt; say docket for the command or Docket for the product: %q", relative, line, strings.TrimSpace(text))
+	}
+}
+
+// checkRetiredProductNameInGoLiterals scans every production string literal
+// outside the migration and legacy files, which read the old name as input.
+func checkRetiredProductNameInGoLiterals(t *testing.T) {
+	t.Helper()
+	fileSet := token.NewFileSet()
+	err := filepath.WalkDir(".", func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			if path != "." && (gotree.Ignored(entry.Name()) || entry.Name() == "vendor") {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		name := entry.Name()
+		if filepath.Ext(path) != ".go" || strings.HasSuffix(name, "_test.go") || strings.Contains(name, "migration") || strings.Contains(name, "legacy") {
+			return nil
+		}
+		relative := filepath.ToSlash(path)
+		file, parseErr := parser.ParseFile(fileSet, path, nil, 0)
+		if parseErr != nil {
+			return parseErr
+		}
+		ast.Inspect(file, func(node ast.Node) bool {
+			if literal, ok := node.(*ast.BasicLit); ok && literal.Kind == token.STRING {
+				checkRetiredProductName(t, relative, fileSet.Position(literal.Pos()).Line, literal.Value)
+			}
+			return true
+		})
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// checkRetiredProductNameInDocs scans the user-facing docs and scenarios line
+// by line, skipping each Markdown section whose heading names a migration.
+func checkRetiredProductNameInDocs(t *testing.T) {
+	t.Helper()
+	docs := []string{"README.md", "docs/architecture.md", "docs/tui-testing/README.md"}
+	for _, source := range []struct {
+		root      string
+		extension string
+	}{
+		{root: "docs/architecture", extension: ".md"},
+		{root: "docs/guide", extension: ".md"},
+		{root: "docs/tui-testing/scenarios", extension: ".json"},
+	} {
+		err := filepath.WalkDir(source.root, func(path string, entry fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if !entry.IsDir() && filepath.Ext(path) == source.extension {
+				docs = append(docs, filepath.ToSlash(path))
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, path := range docs {
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			t.Fatalf("read %s: %v", path, readErr)
+		}
+		inMigration, migrationLevel := false, 0
+		for index, line := range strings.Split(string(data), "\n") {
+			if level := len(line) - len(strings.TrimLeft(line, "#")); level > 0 && strings.HasPrefix(line[level:], " ") {
+				switch {
+				case retiredProductNameMigrationHeading.MatchString(line):
+					inMigration, migrationLevel = true, level
+				case inMigration && level <= migrationLevel:
+					inMigration = false
+				}
+			}
+			if !inMigration {
+				checkRetiredProductName(t, path, index+1, line)
+			}
+		}
+	}
+}

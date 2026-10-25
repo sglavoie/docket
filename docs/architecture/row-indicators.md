@@ -445,7 +445,7 @@ naming the token by its text so a host never counts Go's bytes), `MarkReviewed` 
 under a locator relocation capture, and `NavigateToTaskInProject` then
 `coreGotoTaskProject` for reveal. A commit's message returns wrapped in
 `controlCommittedMsg`, which `handleGlobalSaveMessage` handles unchanged and
-which advances a blurred session's fingerprint, so a focus does not read tt's
+which advances a blurred session's fingerprint, so a focus does not read Docket's
 own commit as another machine's. A capture travels as `TasksCapturedMsg`, never
 `TaskCreatedMsg`, whose pop would close a view the user never opened. Events
 carry stored project and task IDs, never a slug or ShortID: the pulse is

@@ -175,7 +175,7 @@ func requireCrossMachineCreationWasClassifiedAndRetried(t *testing.T, race cross
 	}
 
 	// The bundle is read off disk rather than taken from the helper's word: a
-	// classified refusal that recorded nothing would leave `tt conflict` with
+	// classified refusal that recorded nothing would leave `docket conflict` with
 	// nothing to list, which is the whole difference this classification makes.
 	records, err := storage.NewConflictStore(config.ConflictsDir(race.dataDir)).List()
 	if err != nil {

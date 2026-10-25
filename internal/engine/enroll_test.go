@@ -326,7 +326,7 @@ func enrollmentAnIncompatiblePeerHoldsAndNamesTheUpgrade(t *testing.T) {
 	recordsBefore := treeDigests(t, historyDir)
 	captureIn(t, laptop, "Written by the laptop meanwhile")
 	report := exchangeNow(t, laptop)
-	if len(report.Held) != 1 || !strings.Contains(report.Held[0].Upgrade, "update tt on this device") ||
+	if len(report.Held) != 1 || !strings.Contains(report.Held[0].Upgrade, "update Docket on this device") ||
 		!strings.Contains(report.Held[0].Upgrade, fmt.Sprintf("catalog schema %d", config.SupportedConfigVersion+1)) {
 		t.Fatalf("the laptop did not hold the newer transaction with its upgrade: %+v", report.Held)
 	}

@@ -64,7 +64,7 @@ type AddTaskRequest struct {
 	PlanningArtifacts PlanningArtifactBuilder
 
 	// The following fields are populated only by the task form (via
-	// AddTaskWithChildren); the CLI `tt task add` path leaves them zero/nil so its
+	// AddTaskWithChildren); the CLI `docket task add` path leaves them zero/nil so its
 	// behavior is unchanged.
 
 	// DueDate carries the form's calendar-date planning metadata.
@@ -81,11 +81,11 @@ type AddTaskRequest struct {
 	Review bool
 	// Attachments are raw &link values in line order, carried through the same
 	// classification and the same ChangeSet as CaptureRequest.Attachments. The CLI
-	// `tt task add` path leaves it nil.
+	// `docket task add` path leaves it nil.
 	Attachments []string
 	// Comments are raw ;comment; texts in line order, carried through the same
 	// normalization and the same ChangeSet as CaptureRequest.Comments. The CLI
-	// `tt task add` path leaves it nil.
+	// `docket task add` path leaves it nil.
 	Comments []string
 	// Subtasks are child tasks created under the new task in the SAME ChangeSet
 	// (task-form Epic/Story create). Each inherits the parent's priority, state,

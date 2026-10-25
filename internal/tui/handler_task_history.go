@@ -63,7 +63,7 @@ func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
 
 // restoreLedgerEntry is handleLedgerTaskUndoRedo's restore, also reporting the
 // outcome it puts on the status line and whether the entry was restored, so a
-// control request can answer with tt's own words. A non-empty transactionID
+// control request can answer with Docket's own words. A non-empty transactionID
 // names the undo entry the caller means: the ledger compares it with the newest
 // entry under the restore's own lock and refuses with
 // storage.ErrUndoSuperseded, changing nothing, when another commit got there

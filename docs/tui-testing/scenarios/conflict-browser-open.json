@@ -30,7 +30,7 @@
     { "type": "assert", "assert": "contains", "value": "[2] hierarchy" },
     { "type": "assert", "assert": "contains", "value": "detail:  both sides reparented this task" },
     { "type": "assert", "label": "a retry-only bundle offers current state and retry", "assert": "contains", "value": "r keep current state" },
-    { "type": "assert", "assert": "not_contains", "value": "Resolve with: tt conflict resolve" },
+    { "type": "assert", "assert": "not_contains", "value": "Resolve with: docket conflict resolve" },
     { "type": "assert", "label": "the detail pane drops the list's own header", "assert": "not_contains", "value": "Enter to inspect" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "Esc returns to the list rather than closing the overlay", "key": "esc" },

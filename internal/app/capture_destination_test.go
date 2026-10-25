@@ -176,7 +176,7 @@ func TestExpandedPlanningDestinationFailureRollsBackProject(t *testing.T) {
 
 // A deferral and a check-in are written after the lifecycle initialization, so
 // every clock a capture stamps must come from the one service instant: a state
-// clock read later than the touch time is what tt doctor reports as a task that
+// clock read later than the touch time is what Docket doctor reports as a task that
 // changed state after it was last touched.
 func TestCaptureStampsEveryCreationClockFromOneInstant(t *testing.T) {
 	wantNow := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)

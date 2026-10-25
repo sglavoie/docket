@@ -15,7 +15,7 @@ import (
 // with. A scenario is validated strictly before any action runs (unknown action
 // types, malformed sizes, invalid keys, and empty scenarios all fail up front),
 // then executed through the driver into a stable structured result shape. The
-// hidden `tt tui-test run` CLI (session 5) wires these helpers to stdin/stdout.
+// hidden `docket tui-test run` CLI (session 5) wires these helpers to stdin/stdout.
 
 const (
 	// defaultScenarioFixture backs a scenario that omits `fixture`.
@@ -41,7 +41,7 @@ var uitestAssertKinds = map[string]bool{
 }
 
 // UITestScenarioResult is the structured outcome of running a scenario. It is
-// the JSON contract returned by `tt tui-test run`.
+// the JSON contract returned by `docket tui-test run`.
 type UITestScenarioResult struct {
 	// OK is true when every action ran without failing.
 	OK bool `json:"ok"`

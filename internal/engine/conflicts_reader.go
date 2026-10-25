@@ -151,7 +151,7 @@ func changeLabel(kind synclog.Kind) string {
 	case synclog.KindUser:
 		return "edit"
 	case synclog.KindExternal:
-		return "edit outside tt"
+		return "edit outside Docket"
 	case synclog.KindResolution:
 		return "conflict resolution"
 	case synclog.KindUndo:

@@ -111,7 +111,7 @@ saved until every line is valid. `Esc` closes capture and keeps its draft;
 ### Close and resume a draft
 
 In compact capture and its expanded form, `Esc` keeps the draft on this machine.
-Open capture from the same context to resume it, including after restarting tt.
+Open capture from the same context to resume it, including after restarting Docket.
 The text, caret, selected project, and expanded fields are retained. A child
 capture stays tied to its original parent. Closing an open suggestion list or
 field picker first returns to the editor.

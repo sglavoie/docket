@@ -35,7 +35,7 @@ func WithWorkspaceCommitLocks(services []*CommitService, fn func() error) error 
 // withWorkspaceCommitLock runs fn while holding an exclusive lock on one stable
 // per-workspace lock file. It serializes the whole commit pipeline — crash
 // recovery and the project-scoped apply together — across every committer of the
-// same workspace, whether concurrent goroutines in one process or separate tt
+// same workspace, whether concurrent goroutines in one process or separate Docket
 // processes (for example a CLI invocation racing the TUI).
 //
 // The per-project locks alone are not enough: journal.Recover() runs before the

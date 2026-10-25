@@ -20,7 +20,7 @@ import (
 // local state, and a new working copy is built from it outside iCloud: that
 // copy is the enrolled workspace, the one its sync history and every later
 // device descend from. The working copy's catalog is at
-// SyncEnrolledConfigVersion and carries the sync block, so a tt that predates
+// SyncEnrolledConfigVersion and carries the sync block, so a Docket that predates
 // sync refuses it as newer than it supports rather than writing around a
 // history it cannot see. A workspace that is never enrolled keeps its schema
 // and its behavior.
@@ -191,7 +191,7 @@ func EnrollWorkspace(opts EnrollOptions) (*EnrollReport, error) {
 		return nil, fmt.Errorf("%w: %s is a working copy; enroll the workspace it came from, or keep using it", ErrAlreadyEnrolled, original)
 	}
 	if catalog.SchemaVersion != CurrentConfigVersion || catalog.WorkspaceID == "" {
-		return nil, fmt.Errorf("enroll: %s is at schema %d; open it with this tt once so it migrates to schema %d, then enroll", original, catalog.SchemaVersion, CurrentConfigVersion)
+		return nil, fmt.Errorf("enroll: %s is at schema %d; open it with this Docket once so it migrates to schema %d, then enroll", original, catalog.SchemaVersion, CurrentConfigVersion)
 	}
 	if resumed, resumeErr := resumeEnrollment(workingCopy, catalog.WorkspaceID, original); resumeErr != nil || resumed != nil {
 		if resumed != nil {
@@ -292,7 +292,7 @@ func enrollPaths(opts EnrollOptions) (original, workingCopy, exchange string, er
 		return "", "", "", err
 	}
 	if info, statErr := os.Stat(InternalDir(original)); statErr != nil || !info.IsDir() {
-		return "", "", "", fmt.Errorf("enroll: no tt workspace at %s", original)
+		return "", "", "", fmt.Errorf("enroll: no Docket workspace at %s", original)
 	}
 	if err := ValidateWorkspaceMovePaths(original, workingCopy); err != nil {
 		return "", "", "", fmt.Errorf("enroll: %w", err)

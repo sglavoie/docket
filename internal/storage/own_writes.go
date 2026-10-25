@@ -47,7 +47,7 @@ func NewOwnWrites() *OwnWrites { return &OwnWrites{stamps: map[string]FileStamp{
 
 // record stamps every path a committed manifest touched. It runs after the
 // commit returns, so a write landing between the journal's rename and this stat
-// is attributed to the commit; another tt process cannot land one there, since
+// is attributed to the commit; another Docket process cannot land one there, since
 // it waits on the same workspace commit lock.
 func (w *OwnWrites) record(manifest *transaction.Manifest) {
 	if w == nil || manifest == nil {

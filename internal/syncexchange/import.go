@@ -57,7 +57,7 @@ type Result struct {
 	Outcome   Outcome `json:"outcome"`
 	Reason    string  `json:"reason,omitempty"`
 	// Upgrade names the update a held manifest waits for: which device has to
-	// update tt, and why.
+	// update Docket, and why.
 	Upgrade string `json:"upgrade,omitempty"`
 	// LocalTxnID is the journal transaction that applied an imported manifest.
 	LocalTxnID string `json:"local_txn_id,omitempty"`

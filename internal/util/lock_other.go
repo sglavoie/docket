@@ -12,7 +12,7 @@ import (
 var errLockWouldBlock = errors.New("lock would block")
 
 // errLockUnsupported is returned by the locking primitives on platforms without
-// a supported flock implementation. tt targets macOS and Linux; this stub only
+// a supported flock implementation. Docket targets macOS and Linux; this stub only
 // exists so the util package still compiles elsewhere.
 var errLockUnsupported = errors.New("file locking not supported on this platform")
 

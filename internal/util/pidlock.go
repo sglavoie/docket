@@ -47,7 +47,7 @@ func AcquirePIDLock(path string) (*PIDLock, error) {
 		if errors.Is(lockErr, errLockWouldBlock) {
 			diag := formatLockOwner(readLockOwner(f))
 			_ = f.Close()
-			return nil, fmt.Errorf("tt TUI already running%s", diag)
+			return nil, fmt.Errorf("docket TUI already running%s", diag)
 		}
 		_ = f.Close()
 		return nil, fmt.Errorf("acquire lock: %w", lockErr)

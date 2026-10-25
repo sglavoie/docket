@@ -434,7 +434,7 @@ func diffTrees(before, after map[string]string) string {
 	return strings.Join(lines, "\n")
 }
 
-// TestCompatExternalMarkdownEditIsObservable covers the one durable write tt
+// TestCompatExternalMarkdownEditIsObservable covers the one durable write Docket
 // does not perform: a person editing tasks.md in their own editor. Sync has no
 // hook inside that editor, so its integration point is observation — a valid
 // external edit must change the canonical revision the next load computes, and

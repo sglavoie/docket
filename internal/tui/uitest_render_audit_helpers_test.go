@@ -9,7 +9,7 @@ import (
 	"github.com/sglavoie/docket/internal/tui/textfit"
 )
 
-// This file adds render-time audit plumbing for the `tt tui-test` review
+// This file adds render-time audit plumbing for the `docket tui-test` review
 // harness. Geometry problems (invalid UTF-8, width/height overflow) are caught
 // after the fact by normalizeScreen, but *required* text that a renderer clips
 // to make it fit (footer help, layout chrome, indicators) leaves no geometric

@@ -89,7 +89,7 @@ func isPreSimplificationV5Excluded(rel string) bool {
 	}
 	// Advisory locks and interrupted atomic-write temporaries are coordination
 	// state, not rollback data. Excluding them also keeps repeated snapshots
-	// stable after ordinary tt operations.
+	// stable after ordinary Docket operations.
 	base := filepath.Base(clean)
 	return strings.HasSuffix(base, ".lock") ||
 		strings.Contains(base, ".tmp.") ||

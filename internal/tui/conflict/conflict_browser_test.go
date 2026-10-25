@@ -81,7 +81,7 @@ func pressConflictBrowserKey(
 	return dismissed, msg
 }
 
-// TestConflictDetailLinesRenderTheCLIRecord holds the detail pane to `tt conflict
+// TestConflictDetailLinesRenderTheCLIRecord holds the detail pane to `docket conflict
 // show`'s field set and, above all, to its closing command: a retry-only bundle
 // may only be cleared by adopting remote, and saying otherwise would invite a
 // merge decision the store refuses.
@@ -274,7 +274,7 @@ func TestConflictBrowserListsSyncConflicts(t *testing.T) {
 			{Blob: "sha256:1111111111111111", Current: true, Content: []string{"## Task: Desk title"},
 				Writers: []SyncConflictWriter{{TxnID: "sha256:aaaaaaaaaaaaaaaa", Device: "desk", ThisDevice: true, Change: "edit", At: "2026-10-06T09:00:00Z"}}},
 			{Blob: "sha256:2222222222222222", Content: []string{"## Task: Laptop title"}, AlsoResolves: []string{"Today and Next"},
-				Writers: []SyncConflictWriter{{TxnID: "sha256:bbbbbbbbbbbbbbbb", Device: "laptop", DeviceName: "Laptop", Change: "edit outside tt"}}},
+				Writers: []SyncConflictWriter{{TxnID: "sha256:bbbbbbbbbbbbbbbb", Device: "laptop", DeviceName: "Laptop", Change: "edit outside Docket"}}},
 		},
 		Result:  "sha256:1111111111111111",
 		Details: []string{"task title: competing edits"},
@@ -301,7 +301,7 @@ func TestConflictBrowserListsSyncConflicts(t *testing.T) {
 	browser.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	detail := strings.Join(browser.detail, "\n")
 	for _, want := range []string{"Sync conflict abcdef0123456789", "Tasks in Unfiled", "[1] content 11111111 · held meanwhile", "[2] content 22222222",
-		"edit on desk, this device at 2026-10-06T09:00:00Z · aaaaaaaa", "edit outside tt on Laptop (laptop) · bbbbbbbb",
+		"edit on desk, this device at 2026-10-06T09:00:00Z · aaaaaaaa", "edit outside Docket on Laptop (laptop) · bbbbbbbb",
 		"Started from:", "│ ## Task: Shared task", "│ ## Task: Laptop title", "Keeping this version also resolves: Today and Next",
 		"Holding:   content 11111111", "task title: competing edits", "nothing was lost", "v keep selected version"} {
 		if !strings.Contains(detail, want) {
@@ -309,7 +309,7 @@ func TestConflictBrowserListsSyncConflicts(t *testing.T) {
 		}
 	}
 	summaryEnd := strings.Index(detail, "File contents")
-	for _, want := range []string{"Tasks in Unfiled", "task title: competing edits", "edit on desk (this device)", "edit outside tt on Laptop", "Keeping this version also resolves: Today and Next"} {
+	for _, want := range []string{"Tasks in Unfiled", "task title: competing edits", "edit on desk (this device)", "edit outside Docket on Laptop", "Keeping this version also resolves: Today and Next"} {
 		if at := strings.Index(detail, want); at < 0 || at >= summaryEnd {
 			t.Fatalf("decision summary omitted %q before file contents:\n%s", want, detail)
 		}

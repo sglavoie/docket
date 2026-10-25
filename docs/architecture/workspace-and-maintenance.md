@@ -5,7 +5,7 @@
 Workspace selection precedence is explicit `--data-dir`, `DOCKET_DATA_DIR`, the
 machine-local active-workspace pointer, then the local default. A previously
 existing iCloud workspace is preserved for compatibility, but new cloud use is
-chosen through `tt workspace move`.
+chosen through `docket workspace move`.
 
 Move acquires TUI process locks for source and destination, recovers both commit
 roots, inventories and hash-binds the source, copies without overwriting a
@@ -16,7 +16,7 @@ validation.
 
 ## Device sync enrollment
 
-`tt sync enroll` is the one way a workspace starts syncing, and it never
+`docket sync enroll` is the one way a workspace starts syncing, and it never
 converts the workspace in place. `engine.Enroll` runs `config.EnrollWorkspace`
 under the original's TUI and commit locks: it snapshots the original, hash
 verified, under `~/.tt/enrollments/<workspace-id>/<instant>/` with a
@@ -35,17 +35,17 @@ again rather than copied twice, and a recorded genesis is not recorded twice.
 
 The enrolled catalog schema is not a step in the migration chain. A workspace
 that is never enrolled stays at `CurrentConfigVersion` and keeps its behavior;
-`SupportedConfigVersion` is what this build reads, so an older `tt` refuses an
+`SupportedConfigVersion` is what this build reads, so an older Docket refuses an
 enrolled working copy as newer than it supports and writes nothing.
-`tt sync join` builds another desktop's working copy from the exchange alone,
-`tt sync exchange` runs one pass of `syncexchange.ExchangeFolder`, and
-`tt sync status` and `tt sync doctor` read `engine.Runtime.SyncStatus`. The
+`docket sync join` builds another desktop's working copy from the exchange alone,
+`docket sync exchange` runs one pass of `syncexchange.ExchangeFolder`, and
+`docket sync status` and `docket sync doctor` read `engine.Runtime.SyncStatus`. The
 contract is in [`docs/mobile/sync-envelope.md`](../mobile/sync-envelope.md).
 
 ## Backup and restore
 
 Back up the complete selected data directory, including `.tt/`, project notes,
-and attachment binaries. Stop active `tt` processes for a plain filesystem copy,
+and attachment binaries. Stop active `docket` processes for a plain filesystem copy,
 or use a snapshot mechanism that captures the directory atomically. Keep an
 independent backup outside the same sync provider when provider deletion or
 account loss is in scope.
@@ -53,8 +53,8 @@ account loss is in scope.
 Test a restored copy with:
 
 ```bash
-tt --data-dir <restore> doctor
-tt --data-dir <restore> project export <project>
+docket --data-dir <restore> doctor
+docket --data-dir <restore> project export <project>
 ```
 
 Machine state is optional for canonical recovery; tasks, notes, attachments,
@@ -118,9 +118,9 @@ Distribution is a tagged release or `go install
 github.com/sglavoie/tt@latest`. Pushing a `v*` tag runs every CI check, then
 GoReleaser (`.goreleaser.yaml`) publishes darwin and linux archives for amd64
 and arm64, each carrying the binary and its shell completions, and writes the
-`tt` cask in `sglavoie/homebrew-tap`; that cask is generated, so a lasting fix
+`docket` cask in `sglavoie/homebrew-tap`; that cask is generated, so a lasting fix
 belongs in `.goreleaser.yaml`. For `go install`, the module's own `go`
-directive is the only platform gate the toolchain enforces. `tt` is developed and used daily
+directive is the only platform gate the toolchain enforces. Docket is developed and used daily
 on macOS; the full suite also runs on Linux in CI on every push, so Linux is
 exercised but not daily-driven; Windows is not supported. Because no ldflags
 reach a `go install` build, `resolveBuildInfo` reads `debug.ReadBuildInfo` when

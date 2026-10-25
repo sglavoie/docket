@@ -68,7 +68,7 @@ func (m *Manager) MigrateWorkspaceToV8() error {
 		return nil
 	}
 	if schema > V8ConfigSchemaVersion {
-		return fmt.Errorf("workspace schema %d is newer than supported schema %d; upgrade tt", schema, V8ConfigSchemaVersion)
+		return fmt.Errorf("workspace schema %d is newer than supported schema %d; upgrade Docket", schema, V8ConfigSchemaVersion)
 	}
 	if schema != V7ConfigSchemaVersion {
 		return fmt.Errorf("workspace schema %d cannot be migrated directly to schema %d", schema, V8ConfigSchemaVersion)

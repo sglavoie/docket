@@ -160,7 +160,7 @@ func (m *AppModel) applySyncStatus(read syncStatusRead) {
 		logging.Warn("reading sync status: %v", read.statusErr)
 		m.feedback.syncRefreshOwed = true
 		if m.automaticSync.err != nil {
-			m.feedback.syncAdvisory = "sync: automatic exchange failed (tt sync doctor)"
+			m.feedback.syncAdvisory = "sync: automatic exchange failed (docket sync doctor)"
 		}
 		return
 	}
@@ -193,7 +193,7 @@ func (m *AppModel) renderSyncAdvisory() {
 	// configuration) has no persisted report to show in the ordinary status.
 	if m.automaticSync.err != nil && (status.LastExchange == nil || status.LastExchange.Succeeded) {
 		pending := strings.TrimPrefix(m.feedback.syncAdvisory, "sync: ")
-		m.feedback.syncAdvisory = "sync: automatic exchange failed (tt sync doctor)"
+		m.feedback.syncAdvisory = "sync: automatic exchange failed (docket sync doctor)"
 		if pending != "" {
 			m.feedback.syncAdvisory += " · " + pending
 		}
@@ -207,17 +207,17 @@ func (m *AppModel) renderSyncAdvisory() {
 func syncAdvisoryText(status *engine.SyncStatus, now time.Time) string {
 	var parts []string
 	if len(status.Upgrades) > 0 || len(status.Held) > 0 {
-		parts = append(parts, "update tt to apply held changes (tt sync status)")
+		parts = append(parts, "update Docket to apply held changes (docket sync status)")
 	}
 	if last := status.LastExchange; last != nil && !last.Succeeded {
-		parts = append(parts, "last exchange failed (tt sync doctor)")
+		parts = append(parts, "last exchange failed (docket sync doctor)")
 	}
 	if last := status.LastExchange; last != nil {
 		if len(last.Unavailable) > 0 {
 			parts = append(parts, util.Count(len(last.Unavailable), "file")+" waiting to download")
 		}
 		if last.Succeeded && len(last.Errors) > 0 {
-			parts = append(parts, "exchange errors (tt sync doctor)")
+			parts = append(parts, "exchange errors (docket sync doctor)")
 		}
 	}
 	if status.OutstandingUp > 0 {

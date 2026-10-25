@@ -214,7 +214,7 @@ func mergeTestDocAdding(doc *ProjectDocument, id, title string, shortID int) *Pr
 // The claim is that this is classified rather than merely refused. Before the
 // merge audit knew about short ids the commit boundary failed while rendering the
 // merged document: nothing was written and no update was lost, but the loser got
-// a bare error naming no conflict bundle, so there was nothing for `tt conflict`
+// a bare error naming no conflict bundle, so there was nothing for `docket conflict`
 // to show and nothing to resolve. It is now the ordinary retry-only conflict, and
 // the retry — which reads the document the winner left — is what actually
 // completes the losing machine's creation.

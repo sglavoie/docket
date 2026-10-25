@@ -448,7 +448,7 @@ func ReadExchangeIdentity(folder string) (string, error) {
 		if placeholderExists(path) {
 			return "", fmt.Errorf("the exchange identity %s is not downloaded yet", path)
 		}
-		return "", fmt.Errorf("%s holds no tt exchange: %w", folder, err)
+		return "", fmt.Errorf("%s holds no Docket exchange: %w", folder, err)
 	}
 	var identity exchangeIdentity
 	if err := json.Unmarshal(data, &identity); err != nil || identity.Format != exchangeIdentityFormat || identity.WorkspaceID == "" {

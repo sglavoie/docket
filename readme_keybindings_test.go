@@ -87,7 +87,7 @@ func TestReadREADMEForContractTestUsesStableBaseDir(t *testing.T) {
 	}
 
 	content := readREADMEForContractTest(t)
-	if !strings.Contains(content, "# tt — Terminal Tasks") {
+	if !strings.Contains(content, "# Docket") {
 		t.Fatal("expected README content to load regardless of cwd")
 	}
 }

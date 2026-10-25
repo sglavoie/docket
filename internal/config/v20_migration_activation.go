@@ -77,7 +77,7 @@ func (m *Manager) migrateWorkspaceToV20(hooks v20MigrationActivationHooks) error
 		if schema <= SupportedConfigVersion {
 			return nil
 		}
-		return fmt.Errorf("workspace schema %d is newer than supported schema %d; upgrade tt", schema, SupportedConfigVersion)
+		return fmt.Errorf("workspace schema %d is newer than supported schema %d; upgrade Docket", schema, SupportedConfigVersion)
 	}
 	if schema != V19ConfigSchemaVersion {
 		return fmt.Errorf("workspace schema %d cannot be migrated directly to schema %d", schema, V20ConfigSchemaVersion)
@@ -245,7 +245,7 @@ func v20ChecklistOriginAuditReport(createdAt time.Time, files int) string {
 		"so replaying an entry would restore a document the new loader cannot read. This report is the only " +
 		"place that can explain the empty history.\n\n")
 	report.WriteString("Conflict bundles under `.tt/conflicts/` are not rewritten either, here or at any " +
-		"boundary. A bundle recorded before this migration keeps its schema-17 documents, so `tt conflict " +
+		"boundary. A bundle recorded before this migration keeps its schema-17 documents, so `docket conflict " +
 		"show`, `--use remote`, and `--use file` keep working from its metadata while `--use local` and a " +
 		"forced re-merge refuse by name: those two need the stored document to parse under the current reader, " +
 		"and it no longer does. Nothing removes such a bundle for you.\n")

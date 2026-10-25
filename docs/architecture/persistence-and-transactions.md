@@ -188,7 +188,7 @@ transaction is ordinary interrupted work again and recovers on the next launch,
 so a machine that dies mid-commit strands nothing permanently. The grace window
 is the only clock skew this design tolerates, in either direction — a
 heartbeat stamped further ahead than the grace reads as stale too — which is why the runbook in
-[`guide/storage.md`](../guide/storage.md) says not to run `tt` on two machines at
+[`guide/storage.md`](../guide/storage.md) says not to run Docket on two machines at
 once rather than treating that as a supported mode.
 
 The ledger retains at most 50 transactions across undo and redo. `u` and
@@ -324,7 +324,7 @@ the minting machine can see, so two machines creating a task at the same time
 both pick the same number; the merge itself is clean, since the two additions
 touch nothing in common. Without the audit the whole was rejected later, while
 rendering the merged document at the commit boundary — no data was lost, but
-the losing machine received a bare render error, `tt conflict` had no bundle to
+the losing machine received a bare render error, `docket conflict` had no bundle to
 list, and the retry that would have succeeded was never suggested. Auditing it
 here makes that outcome the third ordinary one: nothing partial on disk, a
 classified bundle naming `short_id`, and a retry that mints against the merged

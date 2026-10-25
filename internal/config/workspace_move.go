@@ -195,7 +195,7 @@ func acquireWorkspaceTUILocks(targets []workspaceTUILockTarget, fn func() error)
 	}
 	lock, err := util.AcquirePIDLock(target.path)
 	if err != nil {
-		return fmt.Errorf("workspace move blocked by %s TUI safety lock: %w; close the active tt TUI using this workspace and retry", target.role, err)
+		return fmt.Errorf("workspace move blocked by %s TUI safety lock: %w; close the active Docket TUI using this workspace and retry", target.role, err)
 	}
 	defer lock.Release()
 	return acquireWorkspaceTUILocks(targets[1:], fn)

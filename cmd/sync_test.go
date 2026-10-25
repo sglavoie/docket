@@ -57,7 +57,7 @@ func (f syncCommandFixture) enroll(t *testing.T) string {
 	return stdout
 }
 
-// TestSyncCommands enrolls through `tt sync enroll`, then reads the result back
+// TestSyncCommands enrolls through `docket sync enroll`, then reads the result back
 // through `status`, `exchange`, and `doctor`, and holds a workspace never
 // enrolled to its old behavior.
 func TestSyncCommands(t *testing.T) {

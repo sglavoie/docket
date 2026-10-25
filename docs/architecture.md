@@ -1,6 +1,6 @@
 # Architecture, data, migration, and recovery
 
-`tt` is an Outliner-first local application. The Bubble Tea TUI is the product
+Docket is an Outliner-first local application. The Bubble Tea TUI is the product
 surface; Cobra exposes only maintenance commands. Both use the same application
 services and revision-checked storage boundaries.
 

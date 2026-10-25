@@ -21,7 +21,7 @@ import (
 
 // ErrWorkspaceNotFound reports an Open without CreateIfMissing against a data
 // directory that holds no workspace.
-var ErrWorkspaceNotFound = errors.New("no tt workspace at the configured data directory")
+var ErrWorkspaceNotFound = errors.New("no Docket workspace at the configured data directory")
 
 // ErrInvalidConfig marks a Config that names no usable workspace or machine.
 // Every validation failure matches it with errors.Is and keeps its own message.

@@ -58,7 +58,7 @@ vocabulary.
 
 On a terminal wide enough for two panes, the right one belongs to the project
 under the cursor. It opens with the project's name and a single muted line —
-`Active · 4 open · 4 tasks · slug tt` (`Parked` or `Archived` for those), with
+`Active · 4 open · 4 tasks · slug docket` (`Parked` or `Archived` for those), with
 ` · pinned` appended only when the project is pinned — followed by up to two
 lines of its description. The rest of the pane is the project's own tasks, every
 one of them, in tree order with the same connectors, badges, and indicators the
@@ -73,7 +73,7 @@ loaded.` rather than passing for the first. The list pane is no wider than its w
 needs, up to its default 55% share, so short project names leave the preview
 more room. `<` and `>` move the divider between
 the two panes left and right, 5% of the width a press from where it is drawn,
-between a quarter and three quarters of it; the position holds until `tt` exits, so reopening Select
+between a quarter and three quarters of it; the position holds until Docket exits, so reopening Select
 Project finds it where you left it. While you type a query they are just
 characters. Below the two-pane minimum width the pane is gone and the paging and
 split keys go quiet with it.
@@ -169,7 +169,7 @@ destination before starting the editor, `e` renames the note under the cursor,
 and `%` moves the selected note to
 another such owner as one atomic workspace transaction. `Enter` opens and edits the selected
 note in
-`DOCKET_EDITOR`, then `VISUAL`, then `EDITOR`; if none is set, `tt` reports how to
+`DOCKET_EDITOR`, then `VISUAL`, then `EDITOR`; if none is set, Docket reports how to
 configure one. `y` and `Y` copy that note's title and its full file path, and
 because a global note and a project note live in different directories the
 copied path says which collection it came from without a word of context.

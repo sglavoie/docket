@@ -18,7 +18,7 @@ import (
 // SaveProject call as a forbidden reintroduction and flags every direct storage
 // save inside cmd/.
 //
-// The allowlist is empty: `tt doctor --fix` commits through the journaled
+// The allowlist is empty: `docket doctor --fix` commits through the journaled
 // CommitProjectRepair. A future entry must name an explicit privileged
 // repair/restore path or a branch reachable only with a test repository.
 var cmdLegacySaveAllowlist = map[string]string{}

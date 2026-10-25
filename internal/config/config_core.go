@@ -14,7 +14,7 @@ const CurrentConfigVersion = V23ConfigSchemaVersion
 
 // SyncEnrolledConfigVersion is the catalog schema enrollment and joining write
 // into the working copy they create. From schema 23 it is the current schema:
-// the catalog's sync block alone marks enrollment, and every tt older than
+// the catalog's sync block alone marks enrollment, and every Docket older than
 // this one already refuses schema 23 as newer than it supports, so a number
 // reserved for enrolled catalogs would buy nothing. Before schema 23 enrollment
 // wrote V22ConfigSchemaVersion, which only an enrolled catalog may still carry

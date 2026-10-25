@@ -14,13 +14,13 @@ import (
 
 // Path resolution constants. All default data-dir and config-path decisions
 // route through the helpers in this file so there is a single source of truth
-// for where tt keeps durable data, its config file, and machine-local runtime
+// for where Docket keeps durable data, its config file, and machine-local runtime
 // state.
 const (
-	// dataDirName is the local (home-relative) tt data directory name.
+	// dataDirName is the local (home-relative) Docket data directory name.
 	dataDirName = ".tt"
 
-	// iCloudDataDirName is the tt data directory name inside iCloud Drive.
+	// iCloudDataDirName is the Docket data directory name inside iCloud Drive.
 	// iCloud Drive folders are user-visible in Finder, so the synced root drops
 	// the leading dot used by the local root.
 	iCloudDataDirName = "tt"
@@ -287,7 +287,7 @@ func localDataRootOn(machineHome string) string {
 	return filepath.Join(home, dataDirName)
 }
 
-// iCloudDataRoot returns the tt data directory inside iCloud Drive and whether
+// iCloudDataRoot returns the Docket data directory inside iCloud Drive and whether
 // iCloud Drive is available on this machine. Availability is determined by the
 // presence of the iCloud Drive container directory under the home directory.
 func iCloudDataRoot() (string, bool) {
@@ -326,7 +326,7 @@ func hasSplitDomainMarker(dataDir string) bool {
 	return false
 }
 
-// activeDefaultDataDirOn returns the data directory tt uses by default when the
+// activeDefaultDataDirOn returns the data directory Docket uses by default when the
 // user has made no explicit workspace selection, resolved against an explicit
 // machine home so a named machine selects its own default workspace rather than
 // the process home's. The empty machine home is exactly the process home.
@@ -335,7 +335,7 @@ func hasSplitDomainMarker(dataDir string) bool {
 // iCloud Drive workspace already exists (an existing active iCloud install), in
 // which case that workspace is preserved. Automatic migration of a local
 // install into iCloud has been removed; relocating a workspace to (or from)
-// iCloud is now an explicit action — see MoveWorkspace and `tt workspace move`.
+// iCloud is now an explicit action — see MoveWorkspace and `docket workspace move`.
 func activeDefaultDataDirOn(machineHome string) string {
 	if root, ok := iCloudDataRootOn(machineHome); ok {
 		if hasSplitDomainMarker(root) {

@@ -95,7 +95,7 @@ func TestControlAcknowledgeReviewsTheNamedTask(t *testing.T) {
 		t.Fatal("the review flag survived the acknowledgement")
 	}
 
-	// Nothing is left to acknowledge, and tt says so rather than commit.
+	// Nothing is left to acknowledge, and Docket says so rather than commit.
 	if reply := env.request(t, env.taskRequest(control.OpAcknowledge, flagged)); reply.OK {
 		t.Fatalf("a settled task was acknowledged again: %+v", reply)
 	}
@@ -356,7 +356,7 @@ func TestControlArrivalsCarryIdentityWithoutNotify(t *testing.T) {
 		t.Fatalf("events = %+v", publisher.events)
 	}
 	event := publisher.events[0]
-	if event.Event != control.EventArrivals || event.Title != "tt · check-in" || len(event.Arrivals) != 1 {
+	if event.Event != control.EventArrivals || event.Title != "Docket · check-in" || len(event.Arrivals) != 1 {
 		t.Fatalf("event = %+v", event)
 	}
 	if got := event.Arrivals[0]; got.Kind != control.ArrivalCheckIn || got.Task != "t" || !got.Reviewable {
@@ -397,7 +397,7 @@ func TestControlRevealSeatsTheCursorOnTheTask(t *testing.T) {
 
 // TestControlAppearanceAppliesForTheSessionAlone: a host's appearance op
 // changes the theme on screen, even while the user is mid-interaction, and
-// writes no machine state, so a terminal-launched tt keeps its saved theme.
+// writes no machine state, so a terminal-launched Docket keeps its saved theme.
 func TestControlAppearanceAppliesForTheSessionAlone(t *testing.T) {
 	env := controlEnv(t, reviewSettledTask(t, 1, "existing"))
 	t.Cleanup(func() { applySessionTheme(env.model.domain.runtime.Machine().Theme) })

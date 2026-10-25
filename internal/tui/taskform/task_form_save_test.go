@@ -1,4 +1,4 @@
-// Package tui contains the TUI implementation for tt.
+// Package tui contains the TUI implementation for Docket.
 //
 // This file is intentionally empty after refactoring.
 // All save-related tests have been split into smaller, focused test files:

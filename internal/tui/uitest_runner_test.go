@@ -117,7 +117,7 @@ func (d *UITestDriver) stepObservation(opts ObserveOptions) UITestObservation {
 // state across calls, and returns the resulting observation. On failure it
 // returns a *UITestActionError carrying the failure-point observation, mirroring
 // RunScenario's error contract. It is the per-request entry point the
-// interactive `tt tui-test session` mode drives, one stdin line at a time.
+// interactive `docket tui-test session` mode drives, one stdin line at a time.
 func (d *UITestDriver) ApplyAction(a UITestAction, opts ObserveOptions) (UITestObservation, error) {
 	d.stepObserveOptions = opts
 	defer func() { d.stepObserveOptions = ObserveOptions{} }()

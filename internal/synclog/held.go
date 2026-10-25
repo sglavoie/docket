@@ -62,7 +62,7 @@ func (e *HeldError) UpgradeAuthor() bool {
 }
 
 // RequiredUpgrade names the update a held manifest is waiting for, in the
-// words a status surface shows: which device has to update tt, and the schema
+// words a status surface shows: which device has to update Docket, and the schema
 // or capability that decides it. It is empty for an error that is not a hold.
 // A held manifest is never lost: it waits, and so does everything after it
 // from the same author, until that update.
@@ -72,16 +72,16 @@ func RequiredUpgrade(err error, author string) string {
 		return ""
 	}
 	if held.UpgradeAuthor() {
-		return fmt.Sprintf("update tt on device %s: it writes %s", author, held.schemaSummary())
+		return fmt.Sprintf("update Docket on device %s: it writes %s", author, held.schemaSummary())
 	}
 	switch {
 	case held.FormatVersion != 0:
-		return fmt.Sprintf("update tt on this device: device %s writes sync format %d, this device reads %d",
+		return fmt.Sprintf("update Docket on this device: device %s writes sync format %d, this device reads %d",
 			author, held.FormatVersion, ManifestFormatVersion)
 	case len(held.Schemas) > 0:
-		return fmt.Sprintf("update tt on this device: device %s writes %s", author, held.schemaSummary())
+		return fmt.Sprintf("update Docket on this device: device %s writes %s", author, held.schemaSummary())
 	default:
-		return fmt.Sprintf("update tt on this device: device %s requires %s", author, strings.Join(held.Missing, ", "))
+		return fmt.Sprintf("update Docket on this device: device %s requires %s", author, strings.Join(held.Missing, ", "))
 	}
 }
 

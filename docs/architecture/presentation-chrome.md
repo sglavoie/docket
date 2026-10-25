@@ -351,7 +351,7 @@ reload, and adopting it reads both halves. What it can account for is the
 session's own: every commit its services make, the sync worker's included,
 records the stamp it left in the runtime's `storage.OwnWrites`, so the poll
 after a local edit advances its stamps instead of rereading what the session
-already holds. A separate tt process shares no registry, so its commits always
+already holds. A separate Docket process shares no registry, so its commits always
 owe the reload.
 
 The pulse the title row does carry has one home, and that is a correction rather

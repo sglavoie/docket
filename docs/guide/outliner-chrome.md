@@ -43,7 +43,7 @@ the other results retain their category order. Clearing the search restores the
 ordinary grouped reference, and category tabs still constrain both kinds of match.
 
 Help remembers its query, category, and scroll position separately for each
-surface until you quit `tt`. Press `?` to close a filtered reference and reopen
+surface until you quit Docket. Press `?` to close a filtered reference and reopen
 it later in the same place; `Backspace` clears the query and returns to All.
 Available actions refresh on every opening. If a category has disappeared,
 Help returns to All, and shorter results or a resized window clamp the scroll.
@@ -211,23 +211,23 @@ recalled text are historical text, not controls in this viewer.
 
 Unresolved conflicts and projects that failed to load appear as persistent
 advisories. The conflict notice names `gc` to review them; it disappears after
-the last conflict is resolved. Use `tt conflict list` from a shell.
+the last conflict is resolved. Use `docket conflict list` from a shell.
 
 View → Advisories saves whether these notices are shown on this machine.
-`tt --no-advisories` hides them for one launch. Hiding notices changes no data
+`docket --no-advisories` hides them for one launch. Hiding notices changes no data
 and does not suppress operation errors, the `Q` explanation, or the error when
 every project failed to load.
 
-### While tt is in the background
+### While Docket is in the background
 
-tt names its window after the workspace pulse — `tt · inbox 2 · today 3 ·
+Docket names its window after the workspace pulse — `tt · inbox 2 · today 3 ·
 overdue 1`, nonzero counts only — so a terminal tab or title bar reads it
-without switching to tt; a view that names its own title keeps it, and quitting
+without switching to Docket; a view that names its own title keeps it, and quitting
 clears it.
 
-In a terminal that reports focus, tt notes the workspace on disk when it loses
-focus and compares on return. If another machine's sync, or another `tt`,
-changed it meanwhile, tt reloads the catalog, planning, and every project, and
+In a terminal that reports focus, Docket notes the workspace on disk when it loses
+focus and compares on return. If another machine's sync, or another Docket,
+changed it meanwhile, Docket reloads the catalog, planning, and every project, and
 says `Reloaded: the workspace changed on disk`. It waits while you are inside a
 picker, an editor, a visual selection, a ranked search, or another view, and
 reloads as soon as you leave the last protected interaction, so nothing you are
@@ -236,16 +236,16 @@ preserved where still available, and a refresh does not replace save or undo
 feedback. A failed read stays pending for the normal timer to retry. A reload
 writes nothing.
 
-`tt --notify` also sends a desktop notification (OSC 777) when work arrives
+`docket --notify` also sends a desktop notification (OSC 777) when work arrives
 while the session runs: a check-in whose day comes, a timed deadline that
 passes, or a deferral that ends. One arrival names its task; several are
 counted, `2 check-ins · 1 deferral ended`. It reports only what crossed over
 since the last minute's tick, so launching reports nothing already standing and
 waking from sleep reports the gap once. A date-only deadline is not an arrival:
 its day is the Today lane's and the overdue count's. It is opt-in because a
-terminal that honors the escape shows it whether or not tt is in view.
+terminal that honors the escape shows it whether or not Docket is in view.
 
-`tt --control PATH` lets a host such as tt.app request capture and task actions
+`docket --control PATH` lets a host such as tt.app request capture and task actions
 through the running session. Those actions use the same validation and undo as
 the keyboard. Read-only completion and preview requests remain available during
 editing; mutations are refused while a protected interaction is open.
@@ -280,7 +280,7 @@ returns to the relocated task. Recovery keys remain visible in narrow windows.
 Undo and redo follow a restored single task when it is visible, offering
 `Ctrl+O origin` to return. If the task is hidden, the message names its destination
 without changing the view. Bulk and project undo preserve the current selection
-and position. After restarting tt, undo still restores data but does not move
+and position. After restarting Docket, undo still restores data but does not move
 the cursor.
 
 ## Read cursor and context markers

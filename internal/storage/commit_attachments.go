@@ -124,7 +124,7 @@ func resolveAttachmentMove(op AttachmentOp) (ops []transaction.Op, destParent st
 
 // resolveAttachmentDelete builds the delete ops for an attachment removal. When
 // op.Filename is set it removes just that one file, leaving the directory and any
-// sibling attachments intact (the single-attachment `tt attachment remove` case);
+// sibling attachments intact (the single-attachment `docket attachment remove` case);
 // otherwise it removes every file in the task's attachments directory plus the
 // directory itself (the whole-task deletion case). It is a no-op when the target
 // is absent — a missing single file is tolerated the same way the legacy

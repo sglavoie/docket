@@ -155,7 +155,7 @@ type AppModel struct {
 	// notifications is a --notify run's arrival reporting. See lifecycle_controller.go.
 	notifications notificationState
 
-	// control is the session's link to a host's control socket, when tt runs
+	// control is the session's link to a host's control socket, when Docket runs
 	// with one. See lifecycle_controller.go.
 	control controlState
 

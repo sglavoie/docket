@@ -77,7 +77,7 @@ func (m *Manager) migrateWorkspaceToV18(hooks v18MigrationActivationHooks) error
 		if schema <= SupportedConfigVersion {
 			return nil
 		}
-		return fmt.Errorf("workspace schema %d is newer than supported schema %d; upgrade tt", schema, SupportedConfigVersion)
+		return fmt.Errorf("workspace schema %d is newer than supported schema %d; upgrade Docket", schema, SupportedConfigVersion)
 	}
 	if schema != V17ConfigSchemaVersion {
 		return fmt.Errorf("workspace schema %d cannot be migrated directly to schema %d", schema, V18ConfigSchemaVersion)

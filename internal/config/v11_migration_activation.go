@@ -79,7 +79,7 @@ func (m *Manager) migrateWorkspaceToV11(hooks v11MigrationActivationHooks) error
 		return nil
 	}
 	if schema > V11ConfigSchemaVersion {
-		return fmt.Errorf("workspace schema %d is newer than supported schema %d; upgrade tt", schema, V11ConfigSchemaVersion)
+		return fmt.Errorf("workspace schema %d is newer than supported schema %d; upgrade Docket", schema, V11ConfigSchemaVersion)
 	}
 	if schema != V10ConfigSchemaVersion {
 		return fmt.Errorf("workspace schema %d cannot be migrated directly to schema %d", schema, V11ConfigSchemaVersion)

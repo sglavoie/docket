@@ -24,7 +24,7 @@ type enrolledPair struct {
 }
 
 // reopenDesk opens a second runtime over the desk working copy as the same
-// machine, the way a tt command run beside a session would: it shares nothing
+// machine, the way a Docket command run beside a session would: it shares nothing
 // with a session opened over pair.desk, so what it commits is a change made
 // elsewhere.
 func (p enrolledPair) reopenDesk(t *testing.T) *engine.Runtime {
@@ -152,7 +152,7 @@ func TestSyncStatusReachesTheStripAndTheConflictBrowser(t *testing.T) {
 		model.conflictBrowser.HandleKey(tea.KeyPressMsg{Code: 'j', Text: "j"})
 		inspected += model.conflictBrowser.RenderWithin(200, 60)
 	}
-	for _, want := range []string{"Started from:", "Shared task", "Desk title", "Laptop title", ", this device", "edit outside tt on", "v keep selected version"} {
+	for _, want := range []string{"Started from:", "Shared task", "Desk title", "Laptop title", ", this device", "edit outside Docket on", "v keep selected version"} {
 		if !strings.Contains(inspected, want) {
 			t.Fatalf("the inspected sync conflict lacks %q:\n%s", want, inspected)
 		}
@@ -182,14 +182,14 @@ func TestSyncAdvisoryTextNamesEachStateApart(t *testing.T) {
 	}{
 		{"download_request_failed", engine.SyncStatus{Enrolled: true, LastSuccess: now,
 			LastExchange: &syncexchange.FolderReport{Succeeded: true, Unavailable: []string{"manifest"}, Errors: []string{"provider offline"}}},
-			"sync: 1 file waiting to download · exchange errors (tt sync doctor) · exchanged <1m ago"},
+			"sync: 1 file waiting to download · exchange errors (docket sync doctor) · exchanged <1m ago"},
 		{"nothing_waiting", engine.SyncStatus{Enrolled: true, LastSuccess: now.Add(-time.Hour)}, ""},
 		{"unpublished", engine.SyncStatus{Enrolled: true, OutstandingUp: 2, LastSuccess: now.Add(-5 * time.Minute)},
 			"sync: 2 saved here, not yet published · exchanged 5m ago"},
 		{"never_exchanged", engine.SyncStatus{Enrolled: true, OutstandingUp: 1},
 			"sync: 1 saved here, not yet published · never exchanged"},
-		{"held", engine.SyncStatus{Enrolled: true, OutstandingDown: 1, Upgrades: []string{"update tt on this device"}, LastSuccess: now.Add(-3 * time.Hour)},
-			"sync: update tt to apply held changes (tt sync status) · 1 waiting to apply · exchanged 3h ago"},
+		{"held", engine.SyncStatus{Enrolled: true, OutstandingDown: 1, Upgrades: []string{"update Docket on this device"}, LastSuccess: now.Add(-3 * time.Hour)},
+			"sync: update Docket to apply held changes (docket sync status) · 1 waiting to apply · exchanged 3h ago"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

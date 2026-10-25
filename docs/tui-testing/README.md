@@ -3,7 +3,7 @@
 The repository includes a test-only driver for the real Bubble Tea
 `AppModel`. It uses the production operation registry, input strategy,
 navigation, persistence, and renderer while replacing terminal I/O with
-deterministic actions and normalized observations. It is not a public `tt`
+deterministic actions and normalized observations. It is not a public `docket`
 command.
 
 Fixtures live in isolated temporary workspaces. They never open or mutate the
@@ -99,7 +99,7 @@ assertions, and trailing JSON are rejected before execution.
 | `resize` | `width`, `height` | Resize the simulated terminal. |
 | `wait` | optional `duration` | Let time pass: drain pending asynchronous work and advance the virtual clock so due timers fire. `duration` is Go duration syntax (`"90s"`, `"2m"`) and moves the clock only, since the drain budget bounds real work; omit it for the short default. |
 | `command` | `command` | Invoke a stable harness or production operation ID. |
-| `restart` | none | Rebuild the app from durable state alone, the way relaunching `tt` does. |
+| `restart` | none | Rebuild the app from durable state alone, the way relaunching Docket does. |
 | `switch_machine` | optional `machine` | Move machine-local state to another machine's home, then restart, the way opening the same synced workspace on a second machine does. Without `machine` the home is always one no machine has used. |
 | `assert` | `assert`, optional `value` | Check a fresh normalized observation. |
 

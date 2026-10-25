@@ -72,13 +72,13 @@ func (m *Manager) migrateWorkspaceToV7(hooks v7MigrationActivationHooks) error {
 		return nil
 	case schema > V7ConfigSchemaVersion:
 		return fmt.Errorf(
-			"workspace schema %d is newer than supported schema %d; upgrade tt",
+			"workspace schema %d is newer than supported schema %d; upgrade Docket",
 			schema,
 			V7ConfigSchemaVersion,
 		)
 	case schema != V6ConfigSchemaVersion:
 		return fmt.Errorf(
-			"workspace schema %d cannot be migrated directly to schema %d; restore a supported v4, v5, or v6 workspace or use a compatible tt release",
+			"workspace schema %d cannot be migrated directly to schema %d; restore a supported v4, v5, or v6 workspace or use a compatible Docket release",
 			schema,
 			V7ConfigSchemaVersion,
 		)

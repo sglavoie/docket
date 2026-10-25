@@ -69,7 +69,7 @@ func (b *Bridge) conflictShow(request Request) (any, error) {
 }
 
 // conflictResolve commits a resolution through the engine the desktop's
-// `tt sync resolve` uses. A conflict that changed since it was read refuses
+// `docket sync resolve` uses. A conflict that changed since it was read refuses
 // stale_revision, writes nothing, and reports the conflicts open now.
 func (b *Bridge) conflictResolve(request Request) (any, error) {
 	var payload engine.ResolveRequest

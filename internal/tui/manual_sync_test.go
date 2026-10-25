@@ -151,7 +151,7 @@ func TestManualSyncReportsPartialExchange(t *testing.T) {
 	runSession2AppCommand(t, model, pressFilterChord(t, model, "gs"))
 	for _, want := range []string{
 		"1 published, 2 imported", "1 waiting to publish", "3 waiting to apply",
-		"files not downloaded yet", "exchange errors (tt sync doctor)",
+		"files not downloaded yet", "exchange errors (docket sync doctor)",
 	} {
 		if !strings.Contains(model.feedback.message, want) {
 			t.Fatalf("partial exchange omits %q: %q", want, model.feedback.message)

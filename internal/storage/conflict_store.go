@@ -63,7 +63,7 @@ func (r ConflictRecord) OperationRetryRequired() bool {
 
 // ConflictBundle is a fully-loaded conflict: its metadata plus the three parsed
 // documents (the common base, the caller's local edits, and the remote/on-disk
-// state at the time the conflict was recorded). It is the unit `tt conflict show`
+// state at the time the conflict was recorded). It is the unit `docket conflict show`
 // and the TUI resolution view render. Explicit project-only bundles may be
 // applied by the resolver; commit-origin and pre-policy bundles are retry-only.
 type ConflictBundle struct {

@@ -297,9 +297,9 @@ func peerUpgrade(own map[string]int, peer syncexchange.DeviceAdvertisement) stri
 		case !ok || theirs == own[key]:
 			continue
 		case theirs < own[key]:
-			return fmt.Sprintf("update tt on device %s: it reads %s schema %d, older than this device's %d", peer.DeviceID, key, theirs, own[key])
+			return fmt.Sprintf("update Docket on device %s: it reads %s schema %d, older than this device's %d", peer.DeviceID, key, theirs, own[key])
 		default:
-			return fmt.Sprintf("update tt on this device: device %s writes %s schema %d, newer than this device's %d", peer.DeviceID, key, theirs, own[key])
+			return fmt.Sprintf("update Docket on this device: device %s writes %s schema %d, newer than this device's %d", peer.DeviceID, key, theirs, own[key])
 		}
 	}
 	return ""

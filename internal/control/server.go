@@ -15,7 +15,7 @@ import (
 
 // maxLineBytes bounds one request line. A capture may span several lines of
 // text inside its JSON string, so the bound is generous, but a host that never
-// writes a newline cannot grow tt's memory without limit.
+// writes a newline cannot grow Docket's memory without limit.
 const maxLineBytes = 1 << 20
 
 // outboxDepth is how many lines a connection may have queued before events
@@ -60,7 +60,7 @@ func (c *conn) close() {
 }
 
 // Listen opens the socket at path, replacing a stale file a crashed session
-// left there, and starts accepting. Only the user who runs tt may connect.
+// left there, and starts accepting. Only the user who runs Docket may connect.
 func Listen(path string, dispatch Dispatch) (*Server, error) {
 	if dispatch == nil {
 		return nil, errors.New("control: a dispatch function is required")

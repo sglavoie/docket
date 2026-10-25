@@ -42,7 +42,7 @@ def main():
             theme = TerminalTheme(background, foreground, [background, foreground] * 4)
             console = Console(file=io.StringIO(), record=True, width=int(columns), color_system="truecolor")
             console.print(Text.from_ansi(source.read_text()), end="", soft_wrap=True)
-            svg = console.export_svg(title=f"tt · {columns}×{rows} · {label}", theme=theme)
+            svg = console.export_svg(title=f"Docket · {columns}×{rows} · {label}", theme=theme)
             svg = re.sub(r"@font-face\s*\{[^}]*\}", "", svg)
             # Rich supplies a viewBox only. Give <img> its real intrinsic size
             # so the browser's default SVG dimensions do not shrink the replay.
@@ -65,7 +65,7 @@ def main():
     data = json.dumps(groups, ensure_ascii=True).replace("<", "\\u003c")
     page = """<!doctype html>
 <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
-<title>tt transition review</title>
+<title>Docket transition review</title>
 <style>
 body{margin:24px;background:#20222a;color:#eee;font:16px system-ui}
 header{position:sticky;top:0;background:#20222a;padding:12px 0;z-index:1}
@@ -73,7 +73,7 @@ select,button,input{font:inherit;margin:4px;padding:6px}
 button{cursor:pointer} #stage{overflow:auto;min-height:65vh}
 img{display:block;max-width:none} #detail{margin:10px 4px;color:#cbd0dd}
 </style>
-<header><h1>tt transition review</h1>
+<header><h1>Docket transition review</h1>
 <p>Follow the selected row, reading passage, and active draft across each sequence.
 Left/right arrow keys step through frames. Images share one scale and top-left origin.</p>
 <label>Sequence <select id="sequence"></select></label>

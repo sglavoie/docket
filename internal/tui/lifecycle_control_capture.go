@@ -104,7 +104,7 @@ func (m *AppModel) controlPreview(text string, reply chan<- control.Reply) {
 
 // adoptControlCommit reloads what a socket request committed through the save
 // pipeline's own handler, then records the workspace a blurred session now
-// holds, so the next focus does not mistake tt's own commit for another
+// holds, so the next focus does not mistake Docket's own commit for another
 // machine's.
 func (m *AppModel) adoptControlCommit(msg controlCommittedMsg) tea.Cmd {
 	_, refresh := m.handleGlobalSaveMessage(msg.inner)

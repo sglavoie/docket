@@ -84,7 +84,7 @@ func (m *Manager) migrateWorkspaceToV21(hooks v21MigrationActivationHooks) error
 		if schema <= SupportedConfigVersion {
 			return nil
 		}
-		return fmt.Errorf("workspace schema %d is newer than supported schema %d; upgrade tt", schema, SupportedConfigVersion)
+		return fmt.Errorf("workspace schema %d is newer than supported schema %d; upgrade Docket", schema, SupportedConfigVersion)
 	}
 	if schema != V20ConfigSchemaVersion {
 		return fmt.Errorf("workspace schema %d cannot be migrated directly to schema %d", schema, V21ConfigSchemaVersion)
@@ -293,7 +293,7 @@ func v21CheckInsAuditReport(createdAt time.Time, files, seeded int) string {
 		"history, and the seeded check-ins above are not undoable for the same reason: rolling back this " +
 		"boundary means restoring the archive beside this report.\n\n")
 	report.WriteString("Conflict bundles under `.tt/conflicts/` are not rewritten either, here or at any " +
-		"boundary. A bundle recorded before this migration keeps its schema-18 documents, so `tt conflict " +
+		"boundary. A bundle recorded before this migration keeps its schema-18 documents, so `docket conflict " +
 		"show`, `--use remote`, and `--use file` keep working from its metadata while `--use local` and a " +
 		"forced re-merge refuse by name: those two need the stored document to parse under the current reader, " +
 		"and it no longer does. Nothing removes such a bundle for you.\n")

@@ -8,16 +8,16 @@ recovery, and the schema chain a startup migrates through.
 | Goal | Action | What to expect |
 | --- | --- | --- |
 | Reverse an accidental change | `u`; `Ctrl+R` to redo | One whole transaction, including its related files |
-| Inspect workspace health | `tt doctor` | Read-only diagnostics |
-| Inspect a conflict | `tt conflict list`, then `tt conflict show <id>` | Review both versions before choosing one |
-| Resolve a conflict | `tt conflict resolve <id> --use local` (or `remote`) | Keep the version you chose |
-| Locate or move data | `tt workspace location`; `tt workspace move <destination>` | Inspect the current location before moving |
+| Inspect workspace health | `docket doctor` | Read-only diagnostics |
+| Inspect a conflict | `docket conflict list`, then `docket conflict show <id>` | Review both versions before choosing one |
+| Resolve a conflict | `docket conflict resolve <id> --use local` (or `remote`) | Keep the version you chose |
+| Locate or move data | `docket workspace location`; `docket workspace move <destination>` | Inspect the current location before moving |
 | Set up device exchange | [Exchange-folder instructions](#syncing-through-an-exchange-folder) | Each device retains its own working copy |
 
 For example, after an accidental bulk move, press `u` once to reverse the whole
 move. If undo refuses because a file changed outside that transaction, read the
 named file and entry before trying the previous history entry. Before upgrading,
-run `tt workspace backup DIR` and keep the verified snapshot: migrations are one-way.
+run `docket workspace backup DIR` and keep the verified snapshot: migrations are one-way.
 
 
 ## Undo, recovery, and conflicts
@@ -32,7 +32,7 @@ recovery toast advertises and then consumes the key in silence.
 
 An undo or redo is refused when a file it would restore was changed by something
 the ledger did not record — a change synced from another device, or an edit made
-outside `tt`. Nothing is written, and that entry is dropped from history, since
+outside Docket. Nothing is written, and that entry is dropped from history, since
 the file can no longer return to the state the entry expects. The message names
 the entry and the file; press the key again to reach the entry before it.
 
@@ -42,11 +42,11 @@ prepared transaction forward before loading the workspace. Concurrent edits
 that cannot be merged produce durable conflict bundles:
 
 ```bash
-tt conflict list
-tt conflict show <id>
-tt conflict resolve <id> --use local
-tt conflict resolve <id> --use remote
-tt conflict resolve <id> --use file --file merged.md
+docket conflict list
+docket conflict show <id>
+docket conflict resolve <id> --use local
+docket conflict resolve <id> --use remote
+docket conflict resolve <id> --use file --file merged.md
 ```
 
 Startup can also meet a transaction that is not interrupted work but another
@@ -57,11 +57,11 @@ the workspace normally. Nothing is rolled back and nothing is blocked: the
 machine that started it is the one that finishes it. Each transaction skipped
 that way is written to the log with its owner and heartbeat, so an edit that
 exists on the other machine and has not landed here yet has a recorded reason;
-`tt doctor` names the same transactions while they are still live. If that machine never does —
+`docket doctor` names the same transactions while they are still live. If that machine never does —
 it crashed, or you stopped syncing it — the heartbeat goes stale within ten
 minutes and the transaction becomes ordinary interrupted work the next launch
-recovers. That window is the only clock difference between machines `tt`
-tolerates, which is why the runbook below asks you not to run `tt` on two
+recovers. That window is the only clock difference between machines Docket
+tolerates, which is why the runbook below asks you not to run Docket on two
 machines at the same time rather than describing it as a supported way to work.
 
 A recorded bundle no longer waits to be discovered. While the TUI is open, the
@@ -93,13 +93,13 @@ the draft; `e` resumes it. Leaving an edited conflict asks before discarding the
 draft. Validation errors and stale conflicts keep the draft available. Every
 resolution checks for newer edits before committing and refreshes the conflict
 count and workspace views. See [`outliner-chrome.md`](outliner-chrome.md).
-The count can be hidden with `tt --no-advisories` or `View → Advisories`, which
+The count can be hidden with `docket --no-advisories` or `View → Advisories`, which
 changes nothing about the bundles themselves.
 
 A bundle stores its three documents as the markdown of the schema that was live
 the day it was recorded, and migrations never rewrite them. So a bundle that
 outlived a schema bump holds documents this version cannot read. It stays
-resolvable: `tt conflict list` and `tt conflict show` still describe it — `show`
+resolvable: `docket conflict list` and `docket conflict show` still describe it — `show`
 names each document it could not read and why — `--use remote` still adopts what
 is on disk and clears the record, and `--use file` still commits a merge you
 made by hand from the files in the bundle directory. Only `--use local` refuses,
@@ -129,12 +129,12 @@ The live portable layout is deliberately small:
     └── .attachments/
 ```
 
-`exports/` is where `tt project export` writes `<slug>.md` by default, a
+`exports/` is where `docket project export` writes `<slug>.md` by default, a
 sibling of `projects/`. Nothing in it is read back: an export is a document for
 you, so deleting one costs nothing but the file. Logs are not in the workspace
 at all. They are machine-local, under `~/.tt/logs` as timestamped `.log`
 files, and any older than 30 days are removed the next time a command logs.
-`tt workspace location` prints the data directory, its `workspace.json`
+`docket workspace location` prints the data directory, its `workspace.json`
 catalog, whether the location is local or synced, the machine-local
 active-workspace pointer, and the logs, `backups/`, `exports/`, and
 `conflicts/` paths.
@@ -231,7 +231,7 @@ keep your change and the other machine keeps theirs; neither write is lost and
 neither is refused. The one exception is a list hand-built to collide: if a
 single lens id has been made to carry more different definitions than the merge
 has identities to hand out, the merge refuses the whole list rather than saving
-it one definition short. Nothing on disk changes, and no list a `tt` session
+it one definition short. Nothing on disk changes, and no list a Docket session
 wrote can reach that shape. Merging the same pair of lists again adds nothing, so a sync
 service delivering the same copy twice cannot leave you with duplicates. If the
 merge has to give one of your lenses a new identity — that happens only when two
@@ -315,7 +315,7 @@ existing `unfiled` project or directory also aborts before snapshot publication
 with rename/move guidance. Interrupted activation is recovered before ordinary
 loading, and repeated startup is idempotent.
 
-There is no down-migration. An older `tt` refuses a migrated workspace as newer
+There is no down-migration. An older Docket refuses a migrated workspace as newer
 than its supported schema, and no build converts a workspace back. Recovery is
 manual: extract the matching archive — `pre-due-time-v14-<UTC>.tar.gz` for the
 schema-14 boundary, `pre-dependencies-v15-<UTC>.tar.gz` for schema 15,
@@ -334,17 +334,17 @@ before a version jump. The published archive is a migration record rather than a
 backup you are meant to rely on, and a copy you made yourself is the only thing
 that lets you go back to the build you were running.
 
-Run `tt doctor` for read-only integrity checks or `tt doctor --fix` for
+Run `docket doctor` for read-only integrity checks or `docket doctor --fix` for
 explicitly supported repairs. `--fix` commits each repair as a journaled
 transaction that refuses if the file changed since doctor read it, then runs
 every check again, so the verdict describes the workspace after fixing.
-`tt doctor --json` prints one JSON report on stdout and nothing else. Doctor
+`docket doctor --json` prints one JSON report on stdout and nothing else. Doctor
 exits 0 when every check passes, 2 when it ran and found issues, and 1 when it
 could not run or a repair failed.
 
 ## Running one workspace on more than one machine
 
-A `tt` workspace is an ordinary directory, so putting it on iCloud Drive,
+A Docket workspace is an ordinary directory, so putting it on iCloud Drive,
 Dropbox, Syncthing, or any other file sync service works. What follows is what
 the design assumes of that service. None of it can be verified in CI: a sync
 client's eviction, conflict-copy, and versioning behavior lives in a daemon on a
@@ -362,13 +362,13 @@ the layout above is live state, including the ones that look like scratch space:
 | `.tt/lenses.json` | Your saved lenses on the machines that did not write them |
 | `.tt/global-notes/`, `projects/<slug>/notes/` | Note bodies, silently. The catalog still names the collection |
 | `projects/<slug>/tasks.md` | The tasks themselves |
-| `projects/<slug>/.attachments/` | Attachment bytes, while the tasks keep pointing at them. A leading dot makes this the one most likely to be skipped by a rule you did not write for `tt` |
+| `projects/<slug>/.attachments/` | Attachment bytes, while the tasks keep pointing at them. A leading dot makes this the one most likely to be skipped by a rule you did not write for Docket |
 | `.tt/transactions/` | A commit that was interrupted on the other machine can no longer be finished or cleaned up, which is the one exclusion that can leave a half-written file behind |
 | `.tt/undo/` | Undo history, which is per-workspace rather than per-machine |
 | `.tt/conflicts/` | Recorded conflict bundles, so the machine that has to resolve one may not be the machine that can see it |
 | `.tt/backups/` | The migration archives, the record of what each schema step replaced. They are not a backup to rely on: keep your own copy of the workspace before a version jump |
 
-**Do not run `tt` on two machines at the same time.** The safeguards are real —
+**Do not run Docket on two machines at the same time.** The safeguards are real —
 revision checks refuse a stale write, lens lists merge instead of overwriting,
 and another machine's live commit is left for its owner to finish — but they are
 there to survive an overlap, not to make one a way of working. Sync services
@@ -378,24 +378,24 @@ writes at unpredictable moments; the ten-minute heartbeat window above
 clock difference between machines the design accounts for. Quit on one
 machine, let the sync settle, then open on the other.
 
-**A `.conflicted copy` file is your sync client's, not `tt`'s.** When two
+**A `.conflicted copy` file is your sync client's, not Docket's.** When two
 machines write `tasks.md` or `lenses.json` before either has seen the other's
 version, the sync client may keep both, leaving something like
 `tasks (Case Conflict).md`, `tasks.md.sync-conflict-20250831-…`, or
-`lenses (conflicted copy).json` beside the original. `tt` never writes those
+`lenses (conflicted copy).json` beside the original. Docket never writes those
 names and never reads them. Its own conflict record is a bundle under
-`.tt/conflicts/`, which is what `tt conflict list` shows and the status strip
+`.tt/conflicts/`, which is what `docket conflict list` shows and the status strip
 counts. So:
 
 - A file with a client-invented suffix is a copy you resolve yourself. Compare
   it with the original, keep the content you want under the original name, and
-  delete the copy. `tt doctor` will not touch it.
-- A bundle in `.tt/conflicts/` is resolved with `tt conflict resolve`.
+  delete the copy. `docket doctor` will not touch it.
+- A bundle in `.tt/conflicts/` is resolved with `docket conflict resolve`.
 
 Provider-specific notes:
 
 - **iCloud Drive** may evict a file's contents while leaving its name in place,
-  which reads to `tt` as an unreadable file rather than a missing one. Turn off
+  which reads to Docket as an unreadable file rather than a missing one. Turn off
   "Optimize Mac Storage" for the workspace, or open the directory in Finder and
   download it before launching. Attachments and notes are the usual victims,
   because they are the largest and the least recently touched.
@@ -404,28 +404,28 @@ Provider-specific notes:
   machine still exists on the service, so the workspace looks intact from the
   other machine and incomplete from this one.
 - **Syncthing** keeps its own file versions under a `.stversions` directory. That
-  is a Syncthing archive, not `tt` state; restoring from it means copying a file
+  is a Syncthing archive, not Docket state; restoring from it means copying a file
   back over the original by hand. Syncthing also does not synchronize clocks, and
   a machine whose clock is well behind the others will write timestamps that read
   as older than they are — which is what the state clock, the check-in
   schedule, and the explicit Stale filter are all measured against.
 
-**After a sync problem, run `tt doctor`.** Its checks are ordered so the ones
+**After a sync problem, run `docket doctor`.** Its checks are ordered so the ones
 that block anything else come first: saved lenses, the transaction journal and
 anything sitting in quarantine, recorded conflict bundles, stale lock files left
 behind by a session that never exited, and the migration archives. Then the
 per-project checks, of which one is the expected cross-machine skew: Today and
 Next membership disagreeing with a task's own state, because two machines can
 write the planning file and the task file in either order. That one is fixable,
-so `tt doctor --fix` repairs it.
+so `docket doctor --fix` repairs it.
 
 A quarantined transaction is the one state that stops the workspace outright,
-because a manifest `tt` cannot safely finish or undo must not be worked around.
+because a manifest Docket cannot safely finish or undo must not be worked around.
 Mutations are refused until it is cleared, and there is no CLI command that
 clears it — the recovery step is manual and deliberately so:
 
-1. Quit `tt` on every machine and let the sync settle.
-2. Run `tt doctor`. It names each quarantined transaction, where its manifest
+1. Quit Docket on every machine and let the sync settle.
+2. Run `docket doctor`. It names each quarantined transaction, where its manifest
    sits and what state it stopped in, the machine that wrote it, whether the
    manifest is readable, and the recovery step itself — the same sentence a
    blocked startup prints, so the two never disagree.
@@ -435,7 +435,7 @@ clears it — the recovery step is manual and deliberately so:
 5. Move the quarantine directory aside — `.tt/transactions/quarantine.bak` is
    enough — which unblocks mutations. This abandons those transactions; the work
    they carried is lost, which is why the backup comes first.
-6. Run `tt doctor` again. It should report no quarantine, and mutations work
+6. Run `docket doctor` again. It should report no quarantine, and mutations work
    again.
 
 If the same transaction quarantines repeatedly, the cause is usually a partial
@@ -452,25 +452,25 @@ folder*, typically one in iCloud Drive. It is opt-in, and a workspace that is
 never enrolled keeps working exactly as before.
 
 ```bash
-tt sync enroll --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/tt-exchange --working-copy ~/tt-synced
+docket sync enroll --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/tt-exchange --working-copy ~/tt-synced
 ```
 
 Enrolling does not convert your workspace. It keeps the current one untouched,
 saves a verified snapshot of it under `~/.tt/enrollments/`, builds a new local
 working copy at `--working-copy` — which must be outside iCloud Drive — and makes
-that copy the workspace `tt` opens from then on. The copy's whole content is
+that copy the workspace Docket opens from then on. The copy's whole content is
 then published to the exchange folder as its first piece of history. If
 enrollment is interrupted, run the same command again: it finishes what is left
 and copies or publishes nothing twice.
 
 An enrolled working copy uses the current catalog schema, 23, with a `sync`
-block, so a `tt` from before sync refuses to open it rather than write around
-its history; update `tt` on every machine that opens it. A copy enrolled by an
-older `tt` at schema 22 migrates to 23 on first open and stays enrolled. Another desktop joins with
-`tt sync join --exchange DIR --working-copy DIR`, which builds its own local
+block, so a Docket from before sync refuses to open it rather than write around
+its history; update Docket on every machine that opens it. A copy enrolled by an
+older Docket at schema 22 migrates to 23 on first open and stays enrolled. Another desktop joins with
+`docket sync join --exchange DIR --working-copy DIR`, which builds its own local
 copy from the published history alone.
 
-An enrolled desktop workspace exchanges automatically while `tt` is running,
+An enrolled desktop workspace exchanges automatically while Docket is running,
 including inside tt.app: at launch, when the terminal regains focus, and every
 five seconds. Local saves trigger an exchange immediately; a save or focus event
 while a pass is running queues one follow-up pass. The periodic poll also detects
@@ -486,7 +486,7 @@ helper installation. It does not wait for delivery or treat a request as a
 completed download. Files are verified and imported on a later pass, and download
 request failures appear in sync status. Other platforms leave file delivery to
 the shared-folder provider. Unavailable folders and files are retried on later
-passes. Closing tt.app's window keeps its session syncing; quitting `tt` stops automatic exchange.
+passes. Closing tt.app's window keeps its session syncing; quitting Docket stops automatic exchange.
 Cloud delivery can take longer than the polling interval.
 
 In the Outliner, press `gs` (or choose **Go → Sync Now**) to exchange immediately.
@@ -495,32 +495,32 @@ still waiting, and failures or conflicts that need attention. It also refreshes
 the workspace from disk, waiting until any active selection or editor is closed.
 A pass already in progress is reused. `?` lists the shortcut.
 
-`tt sync exchange` runs the same exchange from the command line, publishing what
+`docket sync exchange` runs the same exchange from the command line, publishing what
 you committed and applying what other devices published. The Outliner's status
 strip shows a `sync:` line while anything is waiting — work saved here and not yet published, work found and not yet
-applied, or a change held until a device updates `tt` — and counts open sync
+applied, or a change held until a device updates Docket — and counts open sync
 conflicts beside the merge conflicts, which `gc` lists. A file iCloud has not
 downloaded yet is reported as unavailable and fetched on a later exchange; a
-missing file never deletes anything. `tt sync status` shows the same state in
-full, and `tt sync doctor` checks the working copy's placement, the exchange
+missing file never deletes anything. `docket sync status` shows the same state in
+full, and `docket sync doctor` checks the working copy's placement, the exchange
 folder, the history, and which device needs an update.
 
 When two devices change the same thing while apart, both versions are kept as a
 sync conflict until you choose; nothing is decided by timestamp. `gc` shows each
-one with diff and resolution controls, and `tt sync conflicts ID` prints it in full: the version both
+one with diff and resolution controls, and `docket sync conflicts ID` prints it in full: the version both
 sides started from, every competing version with the device and the kind of
 change that wrote it, and what the workspace holds meanwhile. Resolve it in `gc`
 as described above, or with
-`tt sync resolve ID --version N`, which keeps that version's side of what
+`docket sync resolve ID --version N`, which keeps that version's side of what
 conflicted and everything else both devices changed; when the same change also
 left conflicts in other files, their versions from that change are kept too, in
 one resolution. `--current` keeps what the workspace holds, and `--file PATH`
-writes replacement text for tasks or a note, checked the way `tt` reads that
+writes replacement text for tasks or a note, checked the way Docket reads that
 file. A resolution is a new change that reaches your other devices at the next
 exchange, and the iPhone resolves the same conflicts the same way. If the
 conflict changed after you read it — another device resolved it, or an edit
 landed — the resolution is refused and writes nothing; read it again and
-choose. `tt sync diagnostics --file FILE` writes what to share when sync
+choose. `docket sync diagnostics --file FILE` writes what to share when sync
 misbehaves: status, the last exchange and its error, the unpublished work, and
 the conflicts' files, devices, and digests, without task or note content.
 

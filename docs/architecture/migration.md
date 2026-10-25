@@ -211,7 +211,7 @@ path, and a schema-21 workspace, or a working copy enrolled in sync at schema
    schema-19 task-document marker. The audit names the source catalog schema.
    There is no schema-22 step: 22 was the enrolled marker, never a link in the
    chain, and from schema 23 the `sync` block alone marks enrollment, since
-   every older `tt` already refuses schema 23. The portable lens collection is
+   every older Docket already refuses schema 23. The portable lens collection is
    not restaged: no lens could name the hidden flag before this schema.
 
 `planV17LensDefinitions` is why the lens rewrite is part of that boundary rather
@@ -238,7 +238,7 @@ documents it was recorded with and the recovery limits
 [`persistence-and-transactions.md`](persistence-and-transactions.md) states
 apply to it unchanged; nothing removes such a bundle on the workspace's behalf,
 and each migration audit says so in its own report.
-Snapshot artifacts are application-owned and immutable to `tt`. Downgrade or a
+Snapshot artifacts are application-owned and immutable to Docket. Downgrade or a
 clean migration retry requires restoring the complete matching snapshot into a
 separate workspace with a compatible build; the schema-6 and schema-7 activation
 tests also exercise this restore-and-reactivate path.

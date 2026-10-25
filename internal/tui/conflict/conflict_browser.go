@@ -18,7 +18,7 @@ const (
 	conflictBrowserTitle      = "Merge Conflicts"
 	conflictBrowserIntro      = "Enter to inspect, compare changes, and resolve"
 	// conflictBrowserShortIDWidth matches the CLI's own shortening, so an id read
-	// off this list can be typed straight into `tt conflict resolve`.
+	// off this list can be typed straight into `docket conflict resolve`.
 	conflictBrowserShortIDWidth = 8
 	// conflictBrowserTimeFormat is the CLI's recorded-at format. The list drops
 	// the seconds the detail pane keeps, because a row is a locator and the pane
@@ -142,7 +142,7 @@ func conflictBrowserItemID(id string) listsurface.ListItemID {
 	return listsurface.ListItemID(conflictBrowserItemPrefix + id)
 }
 
-// conflictBrowserShortID is the CLI's own id shortening, which `tt conflict
+// conflictBrowserShortID is the CLI's own id shortening, which `docket conflict
 // resolve` accepts back as a prefix.
 func conflictBrowserShortID(id string) string {
 	if len(id) <= conflictBrowserShortIDWidth {
@@ -151,7 +151,7 @@ func conflictBrowserShortID(id string) string {
 	return id[:conflictBrowserShortIDWidth]
 }
 
-// conflictShortRevision trims a hex revision the way `tt conflict show` does,
+// conflictShortRevision trims a hex revision the way `docket conflict show` does,
 // naming an absent one rather than printing nothing.
 func conflictShortRevision(revision string) string {
 	if revision == "" {
@@ -175,7 +175,7 @@ func conflictBrowserRowTitle(record storage.ConflictRecord) string {
 	return conflictBrowserShortID(record.ID) + "  " + name
 }
 
-// conflictBrowserRowSummary carries the remaining `tt conflict list` columns:
+// conflictBrowserRowSummary carries the remaining `docket conflict list` columns:
 // how many structured conflicts the bundle holds, what mutation recorded it, and
 // when.
 func conflictBrowserRowSummary(record storage.ConflictRecord) string {

@@ -7,7 +7,7 @@ them. The keys themselves are in [`outliner-keys.md`](outliner-keys.md).
 `Shift+Tab` reverses that cycle. The `g` chord jumps straight to one mode;
 [`outliner-keys.md`](outliner-keys.md) spells its continuations.
 
-Opening `tt` puts the cursor on the first task the list draws rather than on the
+Opening Docket puts the cursor on the first task the list draws rather than on the
 section heading above it, so the first `j` moves to the second task and the
 first `Enter`, `@`, or `Space` answers for real work. It waits for the workspace
 to finish loading, and for a saved lens to finish opening, so the task it picks

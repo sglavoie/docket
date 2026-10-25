@@ -113,7 +113,7 @@ func (m *OutlinerModel) conflictIndicator() string {
 
 // The sync line is the strip's account of an enrolled workspace's exchange:
 // work committed here and not yet published, work found and not yet applied,
-// a transaction held until some device updates tt, and an exchange that last
+// a transaction held until some device updates Docket, and an exchange that last
 // failed. It is ambient state like the conflict count, so it is an advisory,
 // and the shell writes its text; open sync conflicts are counted in the
 // conflict line instead. A workspace that is not enrolled, or one with

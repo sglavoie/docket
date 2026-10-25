@@ -75,7 +75,7 @@ func TruncateIntentional(text string, width int, tail string) string {
 // truncateRequired performs ANSI-aware truncation for layout chrome, footer
 // help, and indicators that are required to stay fully visible. When a clip
 // actually occurs it records a required-text-truncation audit issue against
-// site (e.g. "status footer left") so the `tt tui-test` render audit can flag
+// site (e.g. "status footer left") so the `docket tui-test` render audit can flag
 // chrome the layout failed to fit; when the text already fits it is a no-op.
 // Use "" as the truncation tail so audited chrome never spends a column on an
 // ellipsis. Returns the (possibly clipped) text.
