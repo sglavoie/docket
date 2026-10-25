@@ -30,7 +30,7 @@ func writeRawManifest(t *testing.T, path, contents string) {
 // journal newMachineJournal would build for the same arguments.
 func inspectAs(t *testing.T, root, machineID string) *Inventory {
 	t.Helper()
-	inv, err := Inspect(filepath.Join(root, ".tt", "transactions"), []string{root}, machineID)
+	inv, err := Inspect(filepath.Join(root, ".docket", "transactions"), []string{root}, machineID)
 	if err != nil {
 		t.Fatalf("Inspect: %v", err)
 	}
@@ -51,7 +51,7 @@ func findPending(t *testing.T, inv *Inventory, id string) PendingTransaction {
 
 func TestInspect_MissingDirectoryIsAnEmptyInventory(t *testing.T) {
 	root := t.TempDir()
-	dir := filepath.Join(root, ".tt", "transactions")
+	dir := filepath.Join(root, ".docket", "transactions")
 
 	inv, err := Inspect(dir, []string{root}, "machine-a")
 	if err != nil {
@@ -171,7 +171,7 @@ func TestInspect_ReportsPathsOutsideTheRoots(t *testing.T) {
 	elsewhere := t.TempDir()
 
 	foreign := newMachineJournal(t, elsewhere, "machine-a", baseTestClock)
-	foreign.dir = filepath.Join(root, ".tt", "transactions")
+	foreign.dir = filepath.Join(root, ".docket", "transactions")
 	write := prepareWrite(t, foreign, filepath.Join(elsewhere, "projects", "a", "tasks.md"), "other path")
 
 	pending := findPending(t, inspectAs(t, root, "machine-b"), write.ID)
@@ -206,7 +206,7 @@ func TestInspect_ReportsPathsOutsideTheRoots(t *testing.T) {
 // is unknowable.
 func TestInspect_UnreadableManifestReportsLoadError(t *testing.T) {
 	root := t.TempDir()
-	dir := filepath.Join(root, ".tt", "transactions")
+	dir := filepath.Join(root, ".docket", "transactions")
 	writeRawManifest(t, filepath.Join(dir, "corrupt.json"), "{not json")
 	writeRawManifest(t, filepath.Join(dir, "forward.json"), `{"schema_version":99,"id":"forward","state":"prepared","ops":[]}`)
 
@@ -235,7 +235,7 @@ func TestInspect_UnreadableManifestReportsLoadError(t *testing.T) {
 // staging files and the quarantine directory share the transactions directory.
 func TestInspect_IgnoresNonManifestEntries(t *testing.T) {
 	root := t.TempDir()
-	dir := filepath.Join(root, ".tt", "transactions")
+	dir := filepath.Join(root, ".docket", "transactions")
 	writeRawManifest(t, filepath.Join(dir, "notes.txt"), "not a manifest")
 	if err := os.MkdirAll(filepath.Join(dir, "subdir.json"), 0o755); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
@@ -255,7 +255,7 @@ func TestInspect_ListsQuarantineWithoutClearingIt(t *testing.T) {
 	elsewhere := t.TempDir()
 
 	foreign := newMachineJournal(t, elsewhere, "machine-a", baseTestClock)
-	foreign.dir = filepath.Join(root, ".tt", "transactions")
+	foreign.dir = filepath.Join(root, ".docket", "transactions")
 	m := prepareWrite(t, foreign, filepath.Join(elsewhere, "projects", "a", "tasks.md"), "other path")
 
 	here := newMachineJournal(t, root, "machine-b", baseTestClock.Add(ForeignTransactionGrace+time.Minute))
@@ -307,7 +307,7 @@ func TestInspect_ListsQuarantineWithoutClearingIt(t *testing.T) {
 func TestInspect_UnreadableDirectoriesAreErrors(t *testing.T) {
 	t.Run("transactions directory is a file", func(t *testing.T) {
 		root := t.TempDir()
-		dir := filepath.Join(root, ".tt", "transactions")
+		dir := filepath.Join(root, ".docket", "transactions")
 		writeRawManifest(t, dir, "not a directory")
 
 		if _, err := Inspect(dir, []string{root}, "machine-a"); err == nil {
@@ -317,7 +317,7 @@ func TestInspect_UnreadableDirectoriesAreErrors(t *testing.T) {
 
 	t.Run("quarantine directory is a file", func(t *testing.T) {
 		root := t.TempDir()
-		dir := filepath.Join(root, ".tt", "transactions")
+		dir := filepath.Join(root, ".docket", "transactions")
 		writeRawManifest(t, QuarantineDirFor(dir), "not a directory")
 
 		if _, err := Inspect(dir, []string{root}, "machine-a"); err == nil {

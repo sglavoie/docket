@@ -154,7 +154,7 @@ func TestManagerSnapshotFirstV13MigrationAddsZeroDeferCountAndClearsHistory(t *t
 			if archived := entries["workspace/"+filepath.ToSlash(projectRel)]; !bytes.Equal(archived, beforeProject) {
 				t.Fatal("rollback archive project bytes differ from the live pre-migration document")
 			}
-			if archived := entries["workspace/.tt/workspace.json"]; !bytes.Equal(archived, beforeCatalog) {
+			if archived := entries["workspace/.docket/workspace.json"]; !bytes.Equal(archived, beforeCatalog) {
 				t.Fatal("rollback archive catalog bytes differ from the live pre-migration catalog")
 			}
 			schema, exists, schemaErr := workspaceCatalogPayloadSchema(root)

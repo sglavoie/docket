@@ -25,8 +25,8 @@ just cross-machine
 
 Go tests target packages, not files. `just cross-machine` stays outside `just
 ci`; GitHub CI runs it separately with a pinned schema-19 binary and no skips.
-`just mac-test` and `just mac-install` build the macOS app in `macos/` and stay
-outside `just ci` too, since they need Xcode and Zig.
+`just mac-test` and `just mac-install` build the macOS app and stay outside it
+too: they need Xcode and Zig.
 
 ## Architecture
 
@@ -1091,18 +1091,12 @@ scenarios, and parity tests together.
 Portable live state consists of:
 
 ```text
-.tt/workspace.json
-.tt/planning.json
-.tt/lenses.json
-.tt/global-notes/
-.tt/transactions/
-.tt/undo/
-.tt/conflicts/
-.tt/backups/
-projects/<slug>/tasks.md
-projects/<slug>/notes/
-projects/<slug>/.attachments/
+.docket/{workspace,planning,lenses}.json
+.docket/{global-notes,transactions,undo,conflicts,backups}/
+projects/<slug>/{tasks.md,notes/,.attachments/}
 ```
+
+`.tt/` is the tombstone older builds refuse; never sync it.
 
 Machine-local `~/.docket/runtime/<workspace-id>/machine.json` holds theme,
 menu-bar and advisory visibility, submitted search history, and the active-lens
@@ -1114,7 +1108,7 @@ omission means none. Never persist drafts, active queries, recall position, or
 caret. Save failure leaves search usable; clear commits before forgetting and
 changes no projection or lens.
 
-Lens definitions are portable in `.tt/lenses.json`: six axes over one bounded
+Lens definitions are portable in `.docket/lenses.json`: six axes over one bounded
 canonical query, no filter carrier. Machine-local adoption merges each machine's
 lenses once after schema migration, never inside the synced migration chain.
 Lens and history writes open no workspace transaction and record no undo entry.
@@ -1122,7 +1116,8 @@ Preserve approved roots, symlink-aware containment, checked revisions,
 deterministic locks, and recovery manifests.
 
 Schema 22 marked an enrolled catalog; from 23 the `sync` block alone does.
-Schema-23 catalogs hold schema-20 task Markdown. That pairing is descriptive,
+Schema-23/24 catalogs hold schema-20 task Markdown; v24 only moves `.tt/` to
+`.docket/`. That pairing is descriptive,
 never derived: v16 advanced no task grammar or `tasks.md`, v17
 lifts `review` off the tag list onto the stored flag, and v18, v19, v20, and v23
 admit the `RESUME` block, `PROJECT-COMMENTS` block, checklist-origin line, and
@@ -1145,7 +1140,7 @@ bodies under the shared prose escaping, instants in UTC, order creation time
 then identity, block omitted when empty. `WriteProjectMarkdown` renders the
 complete project and is what every production rewrite site spells; there is no
 name-plus-task-list renderer to fall back to.
-Migration v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15→v16→v17→v18→v19→v20→v21→v23 validates each candidate first,
+Migration v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15→v16→v17→v18→v19→v20→v21→v23→v24 validates each candidate first,
 publishes an immutable archive/audit pair, then atomically activates the next
 schema and removes retired storage. Nothing may publish partial output before a
 snapshot boundary. v4/v5/v6/v11 decoders are migration-only: runtime code
@@ -1156,11 +1151,11 @@ attachment transactions. A successful forward mutation clears redo; failure
 records nothing. Restore locks outermost directories only; a nested lock
 recreates the directory the entry removed.
 
-`.tt/transactions/` is portable, so recovery reads a manifest's `Machine` and
-`Heartbeat`: another machine's live transaction inside `ForeignTransactionGrace`
-is left untouched, never rolled either way and never quarantined. Machine
-identity is recomputed per call, never cached, so a `HOME` switch is a different
-machine. Neither field advances the journal schema.
+`.docket/transactions/` is portable, so recovery reads a manifest's `Machine`
+and `Heartbeat`: another machine's live transaction inside
+`ForeignTransactionGrace` is left untouched, never rolled or quarantined.
+Machine identity is recomputed per call, so a `HOME` switch is another machine.
+Neither field advances the journal schema.
 
 `auditMergedDocument` judges the merged whole, so a merge that is field-wise
 clean but yields a document `WriteV8ProjectDocument` would refuse is a recorded
@@ -1189,7 +1184,7 @@ two comments added under one id, and that moved instant are each a
 id, summaries naming instants and a digest, never prose; the merged collection is
 sorted and detached from all three inputs.
 
-No migration rewrites `.tt/conflicts/`, so a bundle's documents stay frozen at
+No migration rewrites `.docket/conflicts/`, so a bundle's documents stay frozen at
 the schema that recorded them: undecodable is allowed, unresolvable is not. A
 parse failure degrades like a missing file, naming a reason on
 `BaseUnreadable`/`LocalUnreadable`, and only `--use local` and a forced re-merge

@@ -169,7 +169,7 @@ func buildV16MigrationPlan(dataDir string) (v16MigrationPlan, error) {
 	plan.artifacts = append(plan.artifacts, storage.ArtifactChange{
 		Path: catalogPath, Data: publishedCatalog, Mode: FilePermissions, ExpectedRevision: &catalogRevision,
 	})
-	// Undo entries snapshot `.tt/workspace.json` alongside task Markdown, so an
+	// Undo entries snapshot `.docket/workspace.json` alongside task Markdown, so an
 	// entry recorded before this boundary carries a schema-15 catalog. Replaying
 	// one would silently walk the workspace back across the boundary and strand
 	// the lens definitions this schema announces.
@@ -230,7 +230,7 @@ func v16PortableLensesAuditReport(createdAt time.Time, files int) string {
 		"Every project document is still read and validated as strict schema 14 before anything is published, " +
 		"so an unreadable workspace is refused rather than half-migrated.\n\n")
 	report.WriteString("Undo/redo history is dropped at this boundary. Ledger entries snapshot " +
-		"`.tt/workspace.json` beside task Markdown, so an entry recorded before activation carries a " +
+		"`.docket/workspace.json` beside task Markdown, so an entry recorded before activation carries a " +
 		"schema-15 catalog; replaying it would walk the workspace back across the boundary. This report is " +
 		"the only place that can explain the empty history.\n")
 	return report.String()

@@ -151,7 +151,7 @@ func TestManagerActivatesSnapshotFirstV6MigrationAndIsIdempotent(t *testing.T) {
 	}
 	entries := readPreSimplificationV5Archive(t, pairs[0][0])
 	for _, path := range []string{
-		"workspace/.tt/undo/ledger.json",
+		"workspace/.docket/undo/ledger.json",
 		"workspace/projects/alpha/tasks.md",
 		"workspace/projects/alpha/.attachments/task-rich/specification.txt",
 	} {
@@ -385,10 +385,10 @@ func TestManagerV6MigrationRestoredSnapshotCanBeReactivated(t *testing.T) {
 	}
 
 	for _, rel := range []string{
-		".tt/workspace.json",
-		".tt/planning.json",
-		".tt/global-notes/global-brief.md",
-		".tt/undo/ledger.json",
+		".docket/workspace.json",
+		".docket/planning.json",
+		".docket/global-notes/global-brief.md",
+		".docket/undo/ledger.json",
 		"projects/alpha/tasks.md",
 		"projects/alpha/notes/project-brief.md",
 		"projects/alpha/.attachments/task-rich/specification.txt",
@@ -413,7 +413,7 @@ func TestManagerV6MigrationRestoredSnapshotCanBeReactivated(t *testing.T) {
 		t.Fatalf("restored pre-v6 undo ledger survived activation: %v", statErr)
 	}
 	for _, rel := range []string{
-		".tt/global-notes/global-brief.md",
+		".docket/global-notes/global-brief.md",
 		"projects/alpha/notes/project-brief.md",
 		"projects/alpha/.attachments/" + v6AttachmentTaskDirName("task-rich") + "/specification.txt",
 	} {

@@ -14,7 +14,7 @@ import (
 // project editor commits through a real config manager, so a stray absolute
 // path would otherwise land in the developer's own ~/.tt.
 //
-// residue.Run also fails the run when it leaves .tt/, projects/, or a lock file
+// residue.Run also fails the run when it leaves .docket/, projects/, or a lock file
 // in the package directory, which is what an unrooted runtime or project writes.
 func TestMain(m *testing.M) {
 	nofsync.Enable()

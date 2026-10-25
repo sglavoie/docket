@@ -251,7 +251,7 @@ func bumpLedgerSchemaVersion(t *testing.T, path string, version int) {
 // bytes whose owner may still abort.
 func TestRecoverWorkspaceLeavesAnotherMachinesLiveTransactionAlone(t *testing.T) {
 	root := t.TempDir()
-	transactionsDir := filepath.Join(root, ".tt", "transactions")
+	transactionsDir := filepath.Join(root, ".docket", "transactions")
 	target := filepath.Join(root, "projects", "alpha", "tasks.md")
 
 	owner := transaction.NewJournal(transactionsDir, []string{root}, "machine-a")
@@ -299,7 +299,7 @@ func TestRecoverWorkspaceLeavesAnotherMachinesLiveTransactionAlone(t *testing.T)
 func TestRecoverWorkspaceIgnoresLiveForeignTransactionFromAnotherPath(t *testing.T) {
 	root := t.TempDir()
 	elsewhere := t.TempDir()
-	transactionsDir := filepath.Join(root, ".tt", "transactions")
+	transactionsDir := filepath.Join(root, ".docket", "transactions")
 
 	// The other machine's journal writes its manifest into the synced transactions
 	// directory while staging bytes beside its own copy of the workspace.
@@ -355,7 +355,7 @@ func TestSyncedProjectLockDoesNotWedgeTheSecondMachine(t *testing.T) {
 		t.Fatalf("age the synced lock file: %v", err)
 	}
 
-	transactionsDir := filepath.Join(root, ".tt", "transactions")
+	transactionsDir := filepath.Join(root, ".docket", "transactions")
 	service := NewCommitService(transactionsDir, []string{root}).OnMachine("machine-b")
 	if _, err := service.CommitArtifacts([]ArtifactChange{{
 		Path: filepath.Join(projectDir, "tasks.md"), Data: []byte("# Tasks\n\n## Task\n"), Mode: FilePermissions,

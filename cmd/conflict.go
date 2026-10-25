@@ -9,7 +9,7 @@ import (
 
 // conflictCmd is the parent for the conflict-management surfaces. Three-way merge
 // conflicts (see `internal/storage/project_merge.go`) are persisted as bundles
-// under `<data>/.tt/conflicts/`; these subcommands list, inspect, and resolve
+// under `<data>/.docket/conflicts/`; these subcommands list, inspect, and resolve
 // them without ever committing a partial merge.
 var conflictCmd = &cobra.Command{
 	Use:   "conflict",

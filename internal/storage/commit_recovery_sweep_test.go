@@ -16,7 +16,7 @@ import (
 // transaction.
 func TestRecoverWorkspaceSweepsOrphansOncePerProcess(t *testing.T) {
 	root := t.TempDir()
-	transactionsDir := filepath.Join(root, ".tt", "transactions")
+	transactionsDir := filepath.Join(root, ".docket", "transactions")
 	orphan := func(id string) string {
 		path := filepath.Join(root, "projects", "alpha", ".tt-stage-"+id+"-000.stage")
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

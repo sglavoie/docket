@@ -15,7 +15,7 @@ import (
 // appears or a `.tt` domain file is touched.
 func TestFingerprintTracksTasksAndDomains(t *testing.T) {
 	dataDir := t.TempDir()
-	domains := filepath.Join(dataDir, ".tt")
+	domains := filepath.Join(dataDir, ".docket")
 	if err := os.MkdirAll(domains, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestFingerprintTracksTasksAndDomains(t *testing.T) {
 func TestFingerprintTracksImportedNotesThroughSyncState(t *testing.T) {
 	dataDir := t.TempDir()
 	before := StampWorkspace(dataDir, nil).Fingerprint()
-	state := filepath.Join(dataDir, ".tt", "sync", "devices", "desktop", "state.json")
+	state := filepath.Join(dataDir, ".docket", "sync", "devices", "desktop", "state.json")
 	if err := os.MkdirAll(filepath.Dir(state), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestChangedElsewhereIgnoresOwnCommits(t *testing.T) {
 		t.Fatal(err)
 	}
 	own := storage.NewOwnWrites()
-	transactions := filepath.Join(dataDir, ".tt", "transactions")
+	transactions := filepath.Join(dataDir, ".docket", "transactions")
 	svc := storage.NewCommitService(transactions, []string{dataDir}).WithOwnWrites(own)
 
 	if (Stamps(nil)).ChangedElsewhere(nil, own) {
@@ -104,7 +104,7 @@ func TestChangedElsewhereIgnoresOwnCommits(t *testing.T) {
 	}
 
 	if _, err := svc.CommitArtifacts([]storage.ArtifactChange{
-		{Path: filepath.Join(dataDir, ".tt", "workspace.json"), Data: []byte("{}")},
+		{Path: filepath.Join(dataDir, ".docket", "workspace.json"), Data: []byte("{}")},
 		{Path: tasks, Data: []byte("# Alpha\n\n## Task\n")},
 	}); err != nil {
 		t.Fatal(err)
@@ -122,7 +122,7 @@ func TestChangedElsewhereIgnoresOwnCommits(t *testing.T) {
 
 	unrelated := storage.NewCommitService(transactions, []string{dataDir})
 	if _, err := unrelated.CommitArtifacts([]storage.ArtifactChange{
-		{Path: filepath.Join(dataDir, ".tt", "planning.json"), Data: []byte("{}")},
+		{Path: filepath.Join(dataDir, ".docket", "planning.json"), Data: []byte("{}")},
 	}); err != nil {
 		t.Fatal(err)
 	}

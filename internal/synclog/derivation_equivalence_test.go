@@ -25,7 +25,7 @@ var synthFiles = []synthFile{
 	// writer left: the genesis path.
 	{kind: EffectNote, projectID: "p1", rest: "notes/seed.md"},
 	{kind: EffectProjectDocument, projectID: "p2", rest: "tasks.md"},
-	{kind: EffectPlanning, rest: ".tt/planning.json"},
+	{kind: EffectPlanning, rest: ".docket/planning.json"},
 }
 
 // synthDevice is one seeded device: the heads it has seen and the workspace it

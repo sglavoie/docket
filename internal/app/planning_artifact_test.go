@@ -302,7 +302,7 @@ func memoryPlanningBuilder(planning *config.PlanningState) app.PlanningArtifactB
 		data := []byte("planning-" + string(rune('0'+build)))
 		previous = data
 		return []storage.ArtifactChange{{
-			Path: "mem-workspace/.tt/planning.json", Data: data, ExpectedRevision: &rev,
+			Path: "mem-workspace/.docket/planning.json", Data: data, ExpectedRevision: &rev,
 		}}, nil
 	}
 }

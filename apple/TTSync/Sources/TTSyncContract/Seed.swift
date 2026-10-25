@@ -56,7 +56,8 @@ public enum SeedTransfer {
             return false
         }
         switch parts.first {
-        case ".tt":
+        // The pre-v24 .tt/ holds only the tombstone, which no device syncs.
+        case ".docket":
             if parts.count == 2 {
                 return ["workspace.json", "planning.json", "lenses.json"].contains(parts[1])
             }

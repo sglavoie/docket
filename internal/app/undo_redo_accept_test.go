@@ -144,8 +144,8 @@ func (r *storageRepo) RawSaveProject(project *models.Project) error {
 // fully reversible through the transactional undo ledger.
 func TestDeleteUndoRedoAcceptance(t *testing.T) {
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
-	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 
 	project := realTestProject(t, dataDir, "alpha", "delete me")
 	task := project.Tasks[0]
@@ -183,8 +183,8 @@ func TestDeleteUndoRedoAcceptance(t *testing.T) {
 // of the move command's durable planning-ref cleanup riding the same transaction.
 func TestDeleteConfigArtifactUndoRedoAcceptance(t *testing.T) {
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
-	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 
 	project := realTestProject(t, dataDir, "alpha", "delete me")
 	task := project.Tasks[0]
@@ -233,8 +233,8 @@ func TestDeleteConfigArtifactUndoRedoAcceptance(t *testing.T) {
 // attachment bytes survive intact.
 func TestDeleteRollsBackWhenArtifactEscapesRoot(t *testing.T) {
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
-	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 
 	project := realTestProject(t, dataDir, "alpha", "keep me")
 	task := project.Tasks[0]

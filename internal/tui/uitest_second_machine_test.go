@@ -76,7 +76,7 @@ func TestSecondMachineDriverReadsTheSyncedWorkspace(t *testing.T) {
 	if got := workspace.machineHomes["laptop"]; !strings.HasPrefix(got, workspace.Root) {
 		t.Fatalf("laptop home = %q, want it inside the workspace temp root %q", got, workspace.Root)
 	}
-	if _, err := os.Stat(filepath.Join(workspace.DataDir, ".tt", "workspace.json")); err != nil {
+	if _, err := os.Stat(filepath.Join(workspace.DataDir, ".docket", "workspace.json")); err != nil {
 		t.Fatalf("the synced catalog should be untouched by a machine switch: %v", err)
 	}
 }
@@ -99,7 +99,7 @@ func TestSyncSnapshotAndApplyCarryTheWorkspace(t *testing.T) {
 	if len(full) == 0 {
 		t.Fatal("snapshot captured no files")
 	}
-	if _, ok := full[".tt/workspace.json"]; !ok {
+	if _, ok := full[".docket/workspace.json"]; !ok {
 		t.Fatalf("snapshot missing the catalog; captured %d files", len(full))
 	}
 

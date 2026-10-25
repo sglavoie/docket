@@ -51,8 +51,8 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 		p.Path = filepath.Join(dataDir, "projects", p.Slug)
 	}
 
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
-	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 	repo := &failableScenarioRepo{scenarioRepo: newScenarioRepo(commitSvc, projects...)}
 	repo.seed(t)
 

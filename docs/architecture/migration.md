@@ -2,8 +2,11 @@
 
 ## Snapshot-first schema migration
 
-Workspace recovery reads the catalog payload schema before ordinary loading.
-Schema 21 proceeds directly. A supported schema-4 split-domain workspace first
+Workspace recovery first runs the schema-24 layout activation, which moves a
+pre-v24 internal `.tt/` to `.docket/` at whatever schema it holds, because every
+reader now looks under `.docket/` (steps 40–41). It then reads the catalog
+payload schema before ordinary loading.
+Schema 24 proceeds directly. A supported schema-4 split-domain workspace first
 crosses the schema-5 boundary, a supported schema-5 workspace then enters the
 schema-6 consolidation path, a schema-6 workspace crosses the schema-7
 scope-folding path, a schema-7 workspace crosses the schema-8 tag path, a
@@ -19,7 +22,8 @@ workspace crosses the schema-18 resume-note path, a schema-18 workspace crosses
 the schema-19 project-comment path, a schema-19 workspace crosses the schema-20
 checklist-origin path, a schema-20 workspace crosses the schema-21 check-in
 path, and a schema-21 workspace, or a working copy enrolled in sync at schema
-22, finishes on the schema-23 hidden-flag path:
+22, crosses the schema-23 hidden-flag path, and a schema-23 workspace finishes
+on the schema-24 layout path:
 
 1. Decode the v4 catalog, planning, settings, automation, machine state, task
    Markdown, completed archives, notes, blockers, and legacy indexes with
@@ -29,7 +33,7 @@ path, and a schema-21 workspace, or a working copy enrolled in sync at schema
    canonical output byte. Corrupt or future-schema input stops here without
    creating a snapshot or changing workspace data.
 3. Under the workspace commit lock, publish an immutable rollback pair:
-   `.tt/backups/pre-simplification-v5-<UTC>.tar.gz` and the matching
+   `.docket/backups/pre-simplification-v5-<UTC>.tar.gz` and the matching
    `.audit.md`. The archive contains portable config, machine state, project
    metadata, task Markdown/archives, and notes. Attachment binaries stay in
    place and are checksum-inventoried in the audit.
@@ -128,7 +132,7 @@ path, and a schema-21 workspace, or a working copy enrolled in sync at schema
    refuse a workspace this build cannot read.
 27. Publish `pre-portable-lenses-v16-<UTC>.tar.gz` plus its audit, atomically
    activate catalog schema 16 over unchanged schema-14 task Markdown, and clear
-   undo/redo history, whose entries snapshot `.tt/workspace.json` beside task
+   undo/redo history, whose entries snapshot `.docket/workspace.json` beside task
    Markdown and would otherwise walk the catalog back across the boundary.
 28. Validate every schema-14 project document, then lift it to schema 15 by
    moving review off the tag list and onto the stored `review` flag. A task
@@ -138,7 +142,7 @@ path, and a schema-21 workspace, or a working copy enrolled in sync at schema
    round-trips byte-identical, the key being omitted when the flag is off.
 29. Publish `pre-stored-review-v17-<UTC>.tar.gz` plus its audit, atomically
    activate catalog schema 17 and task Markdown schema 15 across active and
-   archived projects, rewrite the portable `.tt/lenses.json` collection onto the
+   archived projects, rewrite the portable `.docket/lenses.json` collection onto the
    canonical query shape, and clear undo/redo history whose retained bytes carry
    the schema-14 task-document marker.
 30. Validate every schema-15 project document, then lift it to schema 16 by
@@ -213,6 +217,49 @@ path, and a schema-21 workspace, or a working copy enrolled in sync at schema
    chain, and from schema 23 the `sync` block alone marks enrollment, since
    every older Docket already refuses schema 23. The portable lens collection is
    not restaged: no lens could name the hidden flag before this schema.
+40. `ActivateV24Layout` runs ahead of everything else in `RecoverWorkspace`.
+   It recovers the `.tt/transactions/` journal and refuses while any manifest
+   or quarantine remains there, since manifests name `.tt/` paths; it refuses a
+   symlink or other non-regular file under `.tt/`; and it publishes
+   `pre-docket-layout-v24-<UTC>.tar.gz` plus its audit into `.tt/backups/`,
+   holding every byte of `.tt/` but the journal and the backups. Under the
+   legacy commit lock it rechecks that `.tt/` still matches the archive,
+   assembles `.docket-v24-stage/` from it byte for byte — undo excepted, whose
+   entries name absolute `.tt/` paths — with `backups/` copied as it is, syncs
+   and re-verifies every file, and renames the stage to `.docket/`. That rename
+   is the commit point. It then renames `.tt/` to `.tt-v24-retired/`, puts the
+   tombstone in its place through `.tt-v24-tombstone-stage/`, and removes the
+   retired directory. The tombstone is a catalog declaring schema 24 under the
+   workspace's identity, a `planning.json` note, and an empty
+   `transactions/commit.lock`: an older build opens the lock, finds a complete
+   domain set, and refuses the schema as newer than it supports, writing
+   nothing; a lone catalog would read as a partial workspace instead. The
+   catalog keeps its schema through the move, so the chain above then runs
+   inside `.docket/`. One process moves a workspace: the move runs under
+   `.tt/v24-activation.lock`, so a second opener waits and then settles what it
+   finds, and the mover locks the stage's `transactions/commit.lock` before the
+   rename, which makes it `.docket/`'s commit lock — the one every settle and
+   tombstone write takes — for the rest of the move.
+41. `MigrateWorkspaceToV24` closes the chain: a schema-23 catalog advances to 24
+   in one transaction with its expected revision and the undo ledger's cleanup.
+   Only that number changes; no task grammar, lens, or conflict bundle moves.
+   Bootstrap, enrollment, and join give a workspace born at schema 24 its own
+   tombstone, and recovery writes a missing one.
+
+Interrupted activation recovery reads the two directories. A stage of either
+kind is never authoritative and is deleted on sight. No `.docket/` and a live
+`.tt/` is a crash before the commit point: start over, publishing a fresh
+archive. `.docket/` with a live `.tt/` is a crash after it: when `.docket/`
+still holds every byte the move carries, `.tt/` is retired and deleted, and
+otherwise — an older build kept writing it while the move synced — it is kept
+under `.docket/backups/kept-pre-v24-internal-<UTC>/` before the tombstone
+replaces it. `.docket/` with no `.tt/` gets the tombstone and loses any retired
+directory. A tombstone with no `.docket/` is a move another machine made that
+has not arrived: `WorkspaceMovedElsewhereError` refuses it, and
+`WorkspaceCatalogSchema` and `LoadDomains` do the same without writing.
+`internal/synclog` reads a pre-v24 record's `.tt/` paths through
+`CanonicalPath`, so sealed history, tracked state, and index records keep
+resolving, while `Classify` calls the tombstone device-local.
 
 `planV17LensDefinitions` is why the lens rewrite is part of that boundary rather
 than cleanup after it. Schema 15 removes the review tag from every task as it
@@ -230,10 +277,10 @@ with no `lenses.json` stages nothing: the machine-local collection it falls back
 to is lifted on every load and rewritten on that machine's next commit, which is
 the only upgrade path a file this transaction does not own can have.
 
-Each boundary is idempotent: repeated schema-23 startup neither reconverts data
+Each boundary is idempotent: repeated schema-24 startup neither reconverts data
 nor creates another rollback pair. Corrupt or future input and an existing
 `unfiled` project/directory fail before mutation with concrete rename/move guidance.
-No boundary rewrites `.tt/conflicts/`, so a bundle recorded before one keeps the
+No boundary rewrites `.docket/conflicts/` (the v24 move copies it byte for byte), so a bundle recorded before one keeps the
 documents it was recorded with and the recovery limits
 [`persistence-and-transactions.md`](persistence-and-transactions.md) states
 apply to it unchanged; nothing removes such a bundle on the workspace's behalf,

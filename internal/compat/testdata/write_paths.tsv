@@ -19,13 +19,21 @@ internal/config/local_draft.go:LocalDraft.Replace	machine-local	checked capture 
 internal/config/manager_backup.go:Manager.BackupConfig	domain-store	writes .bak sidecars for every domain file; local-only and excluded from exchange
 internal/config/manager_backup.go:Manager.RestoreConfigFromBackup	domain-store	restores domain files from .bak sidecars; the restored synced domains publish as a domain change
 internal/config/paths.go:WriteActiveWorkspacePointer	machine-local	machine-local active-workspace pointer
-internal/config/runtime_state.go:RuntimeState.EnsureDataDir	commit-staging	creates the data/.tt/projects skeleton before a first commit; directories alone carry no synced content
+internal/config/runtime_state.go:RuntimeState.EnsureDataDir	commit-staging	creates the data/.docket/projects skeleton before a first commit; directories alone carry no synced content
 internal/config/sync_enroll.go:PrepareJoinedWorkingCopy	sync-enrollment	creates the empty local directory a joining device imports the published history into
-internal/config/sync_enroll.go:writeEnrollmentRecord	sync-enrollment	device-local enrollment record under .tt/sync naming this device exchange folder; never exchanged
+internal/config/sync_enroll.go:writeEnrollmentRecord	sync-enrollment	device-local enrollment record under .docket/sync naming this device exchange folder; never exchanged
 internal/config/sync_enroll_staging.go:enrollStagedCatalog	sync-enrollment	drops the staged catalog sidecar after advancing the staged working copy to the enrolled schema
 internal/config/sync_enroll_staging.go:publishWorkingCopy	sync-enrollment	publishes the staged working copy by one rename; the copy produces no transactions
 internal/config/sync_enroll_staging.go:snapshotWorkspace	sync-enrollment	hash-verified snapshots for enrollment and workspace backup; the copies are never synced
 internal/config/sync_enroll_staging.go:stageWorkingCopy	sync-enrollment	stages the working copy beside its final path; replaced only when marked as enrollment staging
+internal/config/v24_migration_activation.go:Manager.relocateV24Layout	workspace-relocation	schema-24 layout activation moving .tt/ to .docket/ and leaving the tombstone; local only, the next observation publishes nothing for it
+internal/config/v24_migration_activation.go:activateV24Stage	workspace-relocation	schema-24 layout activation moving .tt/ to .docket/ and leaving the tombstone; local only, the next observation publishes nothing for it
+internal/config/v24_migration_activation.go:copyV24File	workspace-relocation	schema-24 layout activation moving .tt/ to .docket/ and leaving the tombstone; local only, the next observation publishes nothing for it
+internal/config/v24_migration_activation.go:placeV24Tombstone	workspace-relocation	schema-24 layout activation moving .tt/ to .docket/ and leaving the tombstone; local only, the next observation publishes nothing for it
+internal/config/v24_migration_activation.go:removeV24Retired	workspace-relocation	schema-24 layout activation moving .tt/ to .docket/ and leaving the tombstone; local only, the next observation publishes nothing for it
+internal/config/v24_migration_activation.go:settleV24Layout	workspace-relocation	schema-24 layout activation moving .tt/ to .docket/ and leaving the tombstone; local only, the next observation publishes nothing for it
+internal/config/v24_migration_activation.go:stageV24Layout	workspace-relocation	schema-24 layout activation moving .tt/ to .docket/ and leaving the tombstone; local only, the next observation publishes nothing for it
+internal/config/v24_migration_activation.go:withV24DocketLock	commit-staging	creates .docket/transactions for the commit lock serializing schema-24 tombstone writes; directories alone carry no synced content
 internal/config/workspace_backup.go:CreateWorkspaceBackup	workspace-backup	creates a hash-verified snapshot outside the workspace under the workspace commit lock
 internal/config/workspace_move.go:acquireWorkspaceTUILocks	machine-local	process-lock directory for workspace move
 internal/config/workspace_move.go:moveWorkspace	workspace-relocation	workspace move creates the destination root; relocation re-enrolls rather than syncing
@@ -63,7 +71,7 @@ internal/syncexchange/folder.go:saveFolderStatus	sync-transport	device-local tra
 internal/syncexchange/folder.go:writeExchangeFile	sync-transport	writes immutable content-addressed history the identity and this device advertisement into the exchange folder
 internal/syncexchange/folder_fetch.go:pruneInbox	sync-transport	removes spent copies from the device-local sync inbox; never touches the exchange
 internal/syncexchange/folder_fetch.go:stageInbox	sync-transport	stages verified exchange files into the device-local inbox before import through the journal
-internal/synclog/stat_cache.go:History.saveStatCache	machine-local	device-local observation stat cache under .tt/sync; derived from the synced files it names and safe to delete; never exchanged
+internal/synclog/stat_cache.go:History.saveStatCache	machine-local	device-local observation stat cache under .docket/sync; derived from the synced files it names and safe to delete; never exchanged
 internal/transaction/journal.go:Journal.prepareWithID	commit-journal	removes stale staging during prepare
 internal/transaction/journal.go:NewJournal	commit-journal	binds the journal's write/rename/remove primitives: the one publish path
 internal/tui/handler_task_content.go:removeTaskContentBuffer	external-editor	removes the task content buffer after an external edit

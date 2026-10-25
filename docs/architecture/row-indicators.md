@@ -426,7 +426,7 @@ The frame also titles the window `pulse.WindowTitle` (OSC 2) unless the view
 names its own, and asks for focus reports (mode 1004). The title's
 `overdue N` spelling is read back by tt.app for its Dock badge
 (`TTWindowTitle`), so it is a contract across the two languages. A blur stores
-`workspace.Fingerprint` — the stat identity of `.tt/*.json` and every catalog
+`workspace.Fingerprint` — the stat identity of `.docket/*.json` and every catalog
 tasks.md, the signal `workspace.Loader` already trusts — and a focus that finds
 it moved owes a reload; `adoptExternalWorkspaceChange` pays it under the same
 guard as a time-driven invalidation plus the Outliner being the live route, or

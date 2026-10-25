@@ -237,7 +237,7 @@ func TestCommitService_AttachmentMoveRecoversWithMetadata(t *testing.T) {
 	srcContent := mustWriteCurrentProject(t, src)
 	dstContent := mustWriteCurrentProject(t, dst)
 
-	txnDir := filepath.Join(dataDir, ".tt", "transactions")
+	txnDir := filepath.Join(dataDir, ".docket", "transactions")
 	journal := transaction.NewJournal(txnDir, []string{dataDir}, "")
 	if _, err := journal.Prepare([]transaction.Op{
 		{Kind: transaction.OpWrite, Target: tasksFilePath(src.Path), Data: []byte(srcContent), Mode: FilePermissions},

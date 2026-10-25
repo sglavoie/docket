@@ -23,17 +23,17 @@ func legacyV4DomainArtifactsForTest(t *testing.T, settingsRel string) LegacyV4Do
 		return data
 	}
 	return LegacyV4DomainArtifacts{
-		Workspace:  read("workspace/.tt/workspace.json"),
-		Planning:   read("workspace/.tt/planning.json"),
+		Workspace:  read("workspace/.docket/workspace.json"),
+		Planning:   read("workspace/.docket/planning.json"),
 		Settings:   read(settingsRel),
-		Automation: read("workspace/.tt/automation.json"),
+		Automation: read("workspace/.docket/automation.json"),
 		Machine:    read("machine/runtime/" + legacyV4WorkspaceID + "/machine.json"),
 	}
 }
 
 //nolint:gocyclo // This end-to-end fixture asserts the complete conversion contract.
 func TestConvertLegacyV4DomainsMixedFixture(t *testing.T) {
-	artifacts := legacyV4DomainArtifactsForTest(t, "workspace/.tt/settings.json")
+	artifacts := legacyV4DomainArtifactsForTest(t, "workspace/.docket/settings.json")
 	sourceCopy := cloneLegacyV4DomainArtifactBytes(artifacts)
 	legacy, err := DecodeLegacyV4Domains(artifacts)
 	if err != nil {
@@ -170,7 +170,7 @@ func TestConvertLegacyV4DomainsThemeAndContextRepairs(t *testing.T) {
 }
 
 func TestDecodeLegacyV4DomainsRejectsUnsupportedAndMismatchedInputs(t *testing.T) {
-	artifacts := legacyV4DomainArtifactsForTest(t, "workspace/.tt/settings.json")
+	artifacts := legacyV4DomainArtifactsForTest(t, "workspace/.docket/settings.json")
 	future, err := os.ReadFile(filepath.Join(legacyV4FixtureRoot, "unsupported/future-workspace.json"))
 	if err != nil {
 		t.Fatalf("read future fixture: %v", err)
@@ -180,7 +180,7 @@ func TestDecodeLegacyV4DomainsRejectsUnsupportedAndMismatchedInputs(t *testing.T
 		t.Fatalf("future workspace error = %v", decodeErr)
 	}
 
-	artifacts = legacyV4DomainArtifactsForTest(t, "workspace/.tt/settings.json")
+	artifacts = legacyV4DomainArtifactsForTest(t, "workspace/.docket/settings.json")
 	var env map[string]any
 	if decodeErr := json.Unmarshal(artifacts.Machine, &env); decodeErr != nil {
 		t.Fatalf("decode machine fixture: %v", decodeErr)

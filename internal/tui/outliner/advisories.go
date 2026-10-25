@@ -77,7 +77,7 @@ func (m *OutlinerModel) LoadFailureAdvisory(failures []ProjectLoadFailure) tea.C
 }
 
 // The outstanding-conflict indicator is workspace state, not an event: it is a
-// line the status strip carries for as long as `.tt/conflicts/` holds a bundle,
+// line the status strip carries for as long as `.docket/conflicts/` holds a bundle,
 // and it disappears once the CLI resolves the last one. The count itself is
 // cached on the shell and injected as an accessor; see conflict_indicator_shell.go
 // for where it is read.

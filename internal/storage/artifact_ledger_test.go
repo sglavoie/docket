@@ -13,8 +13,8 @@ import (
 func newArtifactLedgerTestService(t *testing.T) (*CommitService, *WorkspaceLedger, string) {
 	t.Helper()
 	dataDir := t.TempDir()
-	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
-	service := NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
+	service := NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 	return service, ledger, dataDir
 }
 
@@ -126,7 +126,7 @@ func TestCommitArtifactTransaction_StaleRevisionIsAllOrNone(t *testing.T) {
 func TestCommitArtifactTransaction_PreconditionsAreReadOnlyAndAllOrNone(t *testing.T) {
 	t.Run("stale", func(t *testing.T) {
 		service, ledger, dataDir := newArtifactLedgerTestService(t)
-		guardPath := filepath.Join(dataDir, ".tt", "workspace.json")
+		guardPath := filepath.Join(dataDir, ".docket", "workspace.json")
 		targetPath := filepath.Join(dataDir, "notes", "guarded.md")
 		observed := []byte("catalog before")
 		concurrent := []byte("catalog concurrent")
@@ -155,7 +155,7 @@ func TestCommitArtifactTransaction_PreconditionsAreReadOnlyAndAllOrNone(t *testi
 
 	t.Run("successful guard is excluded from history", func(t *testing.T) {
 		service, ledger, dataDir := newArtifactLedgerTestService(t)
-		guardPath := filepath.Join(dataDir, ".tt", "workspace.json")
+		guardPath := filepath.Join(dataDir, ".docket", "workspace.json")
 		targetPath := filepath.Join(dataDir, "notes", "guarded.md")
 		guardBytes := []byte("catalog stable")
 		writeArtifactBytes(t, guardPath, guardBytes)
@@ -214,7 +214,7 @@ func TestCommitArtifactTransaction_RecoveryPrecedesCapture(t *testing.T) {
 	service, ledger, dataDir := newArtifactLedgerTestService(t)
 	recoveredPath := filepath.Join(dataDir, "notes", "recovered.md")
 	requestPath := filepath.Join(dataDir, "notes", "request.md")
-	journal := transaction.NewJournal(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, "")
+	journal := transaction.NewJournal(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, "")
 	if _, err := journal.Prepare([]transaction.Op{{
 		Kind: transaction.OpWrite, Target: recoveredPath, Data: []byte("recovered"), Mode: FilePermissions,
 	}}); err != nil {
@@ -263,7 +263,7 @@ func TestCommitArtifactTransaction_PreparedJournalRecoversArtifactsAndLedger(t *
 	}
 	ops := []transaction.Op{{Kind: transaction.OpWrite, Target: path, Data: after, Mode: FilePermissions}}
 	ops = append(ops, plan.ops...)
-	journal := transaction.NewJournal(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, "")
+	journal := transaction.NewJournal(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, "")
 	if _, err := journal.PrepareWithID(txnID, ops); err != nil {
 		t.Fatalf("PrepareWithID: %v", err)
 	}
@@ -272,7 +272,7 @@ func TestCommitArtifactTransaction_PreparedJournalRecoversArtifactsAndLedger(t *
 		t.Fatalf("prepared ledger visible before recovery: ok=%v err=%v", ok, err)
 	}
 
-	report, err := transaction.NewJournal(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, "").Recover()
+	report, err := transaction.NewJournal(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, "").Recover()
 	if err != nil {
 		t.Fatalf("Recover: %v", err)
 	}
@@ -319,7 +319,7 @@ func TestCommitArtifactTransaction_LedgerOutsideJournalRootIsAllOrNone(t *testin
 	dataDir := t.TempDir()
 	outsideDir := t.TempDir()
 	ledger := NewWorkspaceLedger(filepath.Join(outsideDir, "undo"), []string{dataDir})
-	service := NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	service := NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 	path := filepath.Join(dataDir, "notes", "must-not-land.md")
 
 	_, err := service.CommitArtifactTransaction(ArtifactCommitRequest{
@@ -378,7 +378,7 @@ func TestCommitArtifactTransaction_RedoInvalidationAndScope(t *testing.T) {
 // do not create user-visible workspace undo entries.
 func TestCommitArtifacts_LedgerBackedServiceStillSkipsHistory(t *testing.T) {
 	service, ledger, dataDir := newArtifactLedgerTestService(t)
-	path := filepath.Join(dataDir, ".tt", "planning.json")
+	path := filepath.Join(dataDir, ".docket", "planning.json")
 	if _, err := service.CommitArtifacts([]ArtifactChange{{Path: path, Data: []byte("{}")}}); err != nil {
 		t.Fatalf("CommitArtifacts: %v", err)
 	}

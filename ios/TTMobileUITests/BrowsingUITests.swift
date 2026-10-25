@@ -67,7 +67,7 @@ final class BrowsingUITests: XCTestCase {
             }
             tasks.removeSubrange(start.lowerBound..<end.lowerBound)
         case .newerSchema:
-            let catalog = target.appendingPathComponent(".tt/workspace.json")
+            let catalog = target.appendingPathComponent(".docket/workspace.json")
             let text = try replacing("\"schema_version\": 23", with: "\"schema_version\": 99", in: String(contentsOf: catalog, encoding: .utf8))
             try text.write(to: catalog, atomically: true, encoding: .utf8)
         }
@@ -454,7 +454,7 @@ final class BrowsingUITests: XCTestCase {
 
     func testRefreshFailureKeepsTheListAndRetryRecovers() throws {
         let app = try launchSeeded()
-        let catalog = root.appendingPathComponent("workspaces/seeded/.tt/workspace.json")
+        let catalog = root.appendingPathComponent("workspaces/seeded/.docket/workspace.json")
         let permissions = try FileManager.default.attributesOfItem(atPath: catalog.path)[.posixPermissions]!
         try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: catalog.path)
         defer { try? FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: catalog.path) }
@@ -478,7 +478,7 @@ final class BrowsingUITests: XCTestCase {
         let app = try launchSeeded()
         row(app, "Ship beta build").tap()
         require(app.staticTexts["detail.title"], "the task detail")
-        let catalog = root.appendingPathComponent("workspaces/seeded/.tt/workspace.json")
+        let catalog = root.appendingPathComponent("workspaces/seeded/.docket/workspace.json")
         let permissions = try FileManager.default.attributesOfItem(atPath: catalog.path)[.posixPermissions]!
         defer { try? FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: catalog.path) }
         try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: catalog.path)

@@ -145,11 +145,11 @@ func TestWorkspaceLocationCommand_Runs(t *testing.T) {
 	}
 	for _, want := range []string{
 		"Workspace data directory: ",
-		"Catalog:                  " + config.DisplayPath(filepath.Join(src, ".tt", "workspace.json")),
+		"Catalog:                  " + config.DisplayPath(filepath.Join(src, ".docket", "workspace.json")),
 		"Logs:                     " + config.DisplayPath(filepath.Join(home, ".docket", "logs")) + " (machine-local)",
-		"Backups:                  " + config.DisplayPath(filepath.Join(src, ".tt", "backups")),
+		"Backups:                  " + config.DisplayPath(filepath.Join(src, ".docket", "backups")),
 		"Exports:                  " + config.DisplayPath(filepath.Join(src, "exports")),
-		"Conflicts:                " + config.DisplayPath(filepath.Join(src, ".tt", "conflicts")),
+		"Conflicts:                " + config.DisplayPath(filepath.Join(src, ".docket", "conflicts")),
 	} {
 		if !strings.Contains(stdout, want) {
 			t.Errorf("workspace location output lacks %q:\n%s", want, stdout)

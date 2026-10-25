@@ -62,7 +62,7 @@ func syncSnapshotExcept(root string, skip func(rel string) bool) (syncedTree, er
 // syncTransactionsPrefix is the synced transaction directory, relative to the
 // workspace root. It is the one part of a workspace whose partial arrival is
 // recoverable rather than corrupt, which is why it gets its own helper.
-const syncTransactionsPrefix = ".tt/transactions/"
+const syncTransactionsPrefix = ".docket/transactions/"
 
 // syncSnapshotPartialTransactions captures a workspace mid-transfer: everything
 // arrived except the tail of the transaction directory. This is the shape a sync

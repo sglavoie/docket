@@ -26,8 +26,12 @@ func (e *SchemaTooNewError) Error() string {
 // SyncEnrolledConfigVersion, which this build reads.
 func WorkspaceCatalogSchema(dataDir string) (int, bool, error) {
 	schema, exists, err := workspaceCatalogPayloadSchema(dataDir)
-	if err != nil || !exists {
-		return 0, exists, err
+	if err != nil {
+		return 0, false, err
+	}
+	if !exists {
+		// A pre-v24 workspace keeps its catalog under .tt/ until it is opened.
+		return legacyWorkspaceCatalogSchema(dataDir)
 	}
 	if schema > SupportedConfigVersion {
 		return schema, true, &SchemaTooNewError{Artifact: "workspace catalog", Found: schema, Supported: SupportedConfigVersion}

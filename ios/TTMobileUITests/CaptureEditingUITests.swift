@@ -63,7 +63,7 @@ final class CaptureEditingUITests: XCTestCase {
     }
 
     private func planning() throws -> String {
-        try String(contentsOf: workspace.appendingPathComponent(".tt/planning.json"), encoding: .utf8)
+        try String(contentsOf: workspace.appendingPathComponent(".docket/planning.json"), encoding: .utf8)
     }
 
     /// The device-local draft files, which never live inside the workspace.

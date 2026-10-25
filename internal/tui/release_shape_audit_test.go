@@ -52,14 +52,16 @@ func TestReleaseAddedNoOutlinerMode(t *testing.T) {
 // TestReleaseSchemaVersionsIncludeCheckIns pins the live task and catalog
 // boundaries. The stored check-in arrived at task schema 19 and catalog schema
 // 21; the stored hidden flag lifted them to task schema 20 and catalog schema
-// 23, skipping 22, which was the enrolled marker rather than a step. Moving
+// 23, skipping 22, which was the enrolled marker rather than a step; catalog
+// schema 24 moved the internal directory to .docket/ and left task Markdown at
+// 20. Moving
 // either number is a migration, not a refactor, so the pair is spelled here
 // rather than derived.
 func TestReleaseSchemaVersionsIncludeCheckIns(t *testing.T) {
 	if got, want := storage.CurrentTaskSchemaVersion, 20; got != want {
 		t.Errorf("live task Markdown is schema %d, want %d", got, want)
 	}
-	if got, want := config.CurrentConfigVersion, 23; got != want {
+	if got, want := config.CurrentConfigVersion, 24; got != want {
 		t.Errorf("the catalog is schema %d, want %d", got, want)
 	}
 }

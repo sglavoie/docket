@@ -96,7 +96,7 @@ func (b bitset) intersect(other bitset) bitset {
 // key.
 func LogicalKey(effect Effect, path string) string {
 	if !effect.Kind.projectScoped() {
-		return path
+		return CanonicalPath(path)
 	}
 	parts := strings.SplitN(path, "/", 3)
 	rest := ""
@@ -252,6 +252,7 @@ func buildGraph(manifests []*Manifest) (*graph, error) {
 func transactionWrites(m *Manifest) map[string]keyWrite {
 	out := map[string]keyWrite{}
 	touch := func(effect Effect, path string, value, base *string) {
+		path = CanonicalPath(path)
 		key := LogicalKey(effect, path)
 		write, seen := out[key]
 		if !seen {

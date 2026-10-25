@@ -87,7 +87,7 @@ report_same_schema() {
 # machine_home_count counts the machine.json files under one simulated home, so a
 # test can prove a machine wrote its own machine-local state and only its own.
 machine_home_count() {
-	find "$1/.tt/runtime" -name machine.json 2>/dev/null | wc -l | tr -d ' '
+	find "$1/.docket/runtime" -name machine.json 2>/dev/null | wc -l | tr -d ' '
 }
 
 # await_file blocks until another process creates a file, which is the only
@@ -114,11 +114,26 @@ helper_outcome() {
 }
 
 # fresh_workspace_dir makes the directory a first launch would create a
-# workspace in. `tt doctor` never creates a workspace where there is none, so an
-# empty internal .tt directory is what marks the place one belongs; doctor then
-# bootstraps the domains into it exactly as a first launch does.
+# workspace in. `docket doctor` never creates a workspace where there is none, so
+# an empty internal directory is what marks the place one belongs; doctor then
+# bootstraps the domains into it exactly as a first launch does. The current
+# binary's internal directory is .docket; an older binary minting a workspace of
+# its own passes .tt, the one it still reads.
 fresh_workspace_dir() {
-	mkdir -p "$1/.tt"
+	mkdir -p "$1/${2:-.docket}"
+}
+
+# require_tombstone holds a workspace the current binary wrote to the schema-24
+# layout: .docket/ beside a .tt/ that is nothing but the tombstone — the
+# schema-24 catalog, its planning note, and the commit lock — which is what an
+# older binary reads and refuses.
+require_tombstone() {
+	if [ ! -d "$2/.docket" ] || [ ! -f "$2/.tt/workspace.json" ] ||
+		[ -n "$(find "$2/.tt" -type f ! -name workspace.json ! -name planning.json ! -name commit.lock 2>/dev/null)" ]; then
+		report_fail "$1: $2 does not hold .docket/ beside a schema-24 tombstone at .tt/"
+		return 1
+	fi
+	return 0
 }
 
 # mint_workspace creates an empty workspace with the current binary, the way a
@@ -193,7 +208,7 @@ case_one() {
 		report_fail "each home must hold exactly one machine.json"
 		return
 	fi
-	if [ ! -f "$shared/.tt/lenses.json" ]; then
+	if [ ! -f "$shared/.docket/lenses.json" ]; then
 		report_fail "joining should have published the portable lens home"
 		return
 	fi
@@ -240,8 +255,8 @@ case_two() {
 
 	# A quarantine is the one outcome that would wedge the workspace for every
 	# machine, and it is exactly what an unowned rollforward produces.
-	if [ -d "$shared/.tt/transactions/quarantine" ] &&
-		[ -n "$(find "$shared/.tt/transactions/quarantine" -name '*.json' 2>/dev/null)" ]; then
+	if [ -d "$shared/.docket/transactions/quarantine" ] &&
+		[ -n "$(find "$shared/.docket/transactions/quarantine" -name '*.json' 2>/dev/null)" ]; then
 		report_fail "concurrent machines quarantined a transaction"
 		return
 	fi
@@ -343,6 +358,8 @@ case_three() {
 		return
 	fi
 
+	require_tombstone case3 "$shared" || return
+
 	before="$work_dir/case3-before.txt"
 	after="$work_dir/case3-after.txt"
 	snapshot_workspace "$shared" "$before"
@@ -370,7 +387,7 @@ case_three() {
 		report_fail "the older binary's refusal modified the workspace (see $work_dir/case3-diff.log)"
 		return
 	fi
-	report_pass "tt at $ref refuses a newer catalog and leaves it byte-identical"
+	report_pass "tt at $ref refuses the schema-24 tombstone as a newer catalog and leaves the workspace byte-identical"
 }
 
 # --- Case 4: a catalog change under a rename another process is holding -------
@@ -544,8 +561,8 @@ case_five() {
 		report_fail "machine B committed a resume note that is not in $document"
 		return
 	fi
-	if [ -d "$shared/.tt/transactions/quarantine" ] &&
-		[ -n "$(find "$shared/.tt/transactions/quarantine" -name '*.json' 2>/dev/null)" ]; then
+	if [ -d "$shared/.docket/transactions/quarantine" ] &&
+		[ -n "$(find "$shared/.docket/transactions/quarantine" -name '*.json' 2>/dev/null)" ]; then
 		report_fail "concurrent resume notes quarantined a transaction"
 		return
 	fi
@@ -576,7 +593,7 @@ case_six() {
 	home_old="$work_dir/case6/home-old"
 	home_new="$work_dir/case6/home-new"
 	mkdir -p "$home_old" "$home_new"
-	fresh_workspace_dir "$shared"
+	fresh_workspace_dir "$shared" .tt
 
 	if ! HOME="$home_old" "$old_binary" doctor --data-dir "$shared" >"$work_dir/case6-old.log" 2>&1; then
 		report_fail "tt at $ref could not mint a workspace of its own (see $work_dir/case6-old.log)"
@@ -615,6 +632,7 @@ case_six() {
 		report_fail "the current binary could not migrate the older workspace (see $work_dir/case6-migrate.log)"
 		return
 	fi
+	require_tombstone case6 "$shared" || return
 	migrated_marker=$(task_schema_marker "$shared")
 	if [ "$migrated_marker" != "$current_marker" ]; then
 		report_fail "migrated task schema is '$migrated_marker', want '$current_marker'"
@@ -623,9 +641,9 @@ case_six() {
 
 	# A migration publishes an immutable archive/audit pair before it activates,
 	# and the pair is the only durable evidence the boundary was crossed properly.
-	if [ -z "$(find "$shared/.tt/backups" -name '*.tar.gz' 2>/dev/null)" ] ||
-		[ -z "$(find "$shared/.tt/backups" -name '*.audit.md' 2>/dev/null)" ]; then
-		report_fail "the migration published no archive/audit pair under $shared/.tt/backups"
+	if [ -z "$(find "$shared/.docket/backups" -name '*.tar.gz' 2>/dev/null)" ] ||
+		[ -z "$(find "$shared/.docket/backups" -name '*.audit.md' 2>/dev/null)" ]; then
+		report_fail "the migration published no archive/audit pair under $shared/.docket/backups"
 		return
 	fi
 
@@ -676,7 +694,7 @@ case_six() {
 		report_fail "tt at $ref did not refuse the workspace it minted and this binary migrated (see $work_dir/case6-old-again.log)"
 		return
 	fi
-	report_pass "a workspace minted at $ref migrates, carries a resume note and project comments, and is then refused by $ref"
+	report_pass "a workspace minted at $ref migrates through v24 to .docket/, carries a resume note and project comments, and its tombstone is then refused by $ref"
 }
 
 # --- Case 7: two machines applying the release's new mutations at once --------
@@ -877,8 +895,8 @@ race_interrupted_mutation() {
 # what doctor is for.
 require_clean_workspace() {
 	tag=$1
-	if [ -d "$shared/.tt/transactions/quarantine" ] &&
-		[ -n "$(find "$shared/.tt/transactions/quarantine" -name '*.json' 2>/dev/null)" ]; then
+	if [ -d "$shared/.docket/transactions/quarantine" ] &&
+		[ -n "$(find "$shared/.docket/transactions/quarantine" -name '*.json' 2>/dev/null)" ]; then
 		report_fail "$tag: the race quarantined a transaction"
 		return 1
 	fi
@@ -1011,7 +1029,7 @@ case_seven_creations() {
 	fi
 	# The refusal has to have left something for `tt conflict` to list. That is the
 	# whole difference between this classification and the bare error it replaced.
-	if [ -z "$(find "$shared/.tt/conflicts" -name '*.json' 2>/dev/null)" ]; then
+	if [ -z "$(find "$shared/.docket/conflicts" -name '*.json' 2>/dev/null)" ]; then
 		report_fail "$tag: a creation was refused as a conflict but recorded no bundle"
 		return
 	fi
@@ -1076,11 +1094,11 @@ require_stored_comment_count() {
 require_recorded_comment_conflict() {
 	cf_tag=$1
 	cf_field=$2
-	if [ -z "$(find "$shared/.tt/conflicts" -name '*.json' 2>/dev/null)" ]; then
+	if [ -z "$(find "$shared/.docket/conflicts" -name '*.json' 2>/dev/null)" ]; then
 		report_fail "$cf_tag: a refused project comment recorded no conflict bundle"
 		return 1
 	fi
-	if ! grep -rq "$cf_field" "$shared/.tt/conflicts" 2>/dev/null; then
+	if ! grep -rq "$cf_field" "$shared/.docket/conflicts" 2>/dev/null; then
 		report_fail "$cf_tag: the recorded bundle does not name a $cf_field divergence"
 		return 1
 	fi
@@ -1281,7 +1299,7 @@ case_eight_comment_versus_task() {
 # catch.
 require_no_recorded_conflict() {
 	nc_tag=$1
-	if [ -n "$(find "$shared/.tt/conflicts" -name '*.json' 2>/dev/null)" ]; then
+	if [ -n "$(find "$shared/.docket/conflicts" -name '*.json' 2>/dev/null)" ]; then
 		report_fail "$nc_tag: a refusal that stages nothing recorded a conflict bundle"
 		return 1
 	fi
@@ -1590,6 +1608,8 @@ case_twelve_enrolled_refusal() {
 		report_fail "case12: enrollment published no initial history"
 		return
 	fi
+
+	require_tombstone case12 "$working_copy" || return
 
 	before="$work_dir/case12-before.txt"
 	after="$work_dir/case12-after.txt"

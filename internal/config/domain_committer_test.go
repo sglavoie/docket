@@ -130,7 +130,7 @@ func TestDomainCoordinator_CheckedNonCatalogCommitDoesNotMintWorkspaceID(t *test
 }
 
 // TestDomainCoordinator_RefusesEmptyDataDir pins the synced-write refusal: a
-// coordinator rooted at no data directory would otherwise resolve .tt/ beneath
+// coordinator rooted at no data directory would otherwise resolve .docket/ beneath
 // the working directory. A relative catalog is seeded there first, so the
 // refusal is the data-dir guard and not a missing workspace identity.
 func TestDomainCoordinator_RefusesEmptyDataDir(t *testing.T) {

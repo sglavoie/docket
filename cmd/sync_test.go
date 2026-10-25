@@ -31,7 +31,7 @@ func newSyncCommandFixture(t *testing.T) syncCommandFixture {
 		workingCopy: filepath.Join(root, "local", "synced"),
 		exchange:    filepath.Join(root, "exchange"),
 	}
-	if err := os.MkdirAll(filepath.Join(fixture.original, ".tt"), 0o700); err != nil {
+	if err := os.MkdirAll(filepath.Join(fixture.original, ".docket"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.MkdirAll(fixture.exchange, 0o700); err != nil {

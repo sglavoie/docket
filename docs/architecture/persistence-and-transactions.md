@@ -6,7 +6,7 @@ The portable workspace rooted at `<data>` is:
 
 ```text
 <data>/
-├── .tt/
+├── .docket/
 │   ├── workspace.json       # lean catalog, project tags, Unfiled ID
 │   ├── planning.json        # Today and Next order only
 │   ├── global-notes/        # minimal Markdown notes
@@ -14,6 +14,7 @@ The portable workspace rooted at `<data>` is:
 │   ├── undo/                # workspace ledger and retained artifact images
 │   ├── conflicts/           # merge bundles
 │   └── backups/             # immutable migration rollback pairs
+├── .tt/                     # schema-24 tombstone older builds refuse
 └── projects/
     └── <safe-slug>/
         ├── tasks.md         # strict schema-17 generic Task Markdown
@@ -156,7 +157,7 @@ workspace on every edit would make save latency grow with retained sync history.
 Independent writes share durability barriers before the prepared and committed
 markers. Moves, deletes, and overlapping writes retain their ordered barriers.
 
-Because `.tt/transactions/` is portable, recovery can meet a journal that is not
+Because `.docket/transactions/` is portable, recovery can meet a journal that is not
 an interrupted transaction at all but another machine's live one, delivered
 mid-commit by a sync service. A manifest therefore records who wrote it and when
 it was last touched: `Manifest.Machine` is the first `machineIDLength` hex
@@ -172,7 +173,7 @@ That per-call identity answers which machine is running now, and a working
 copy's sync history asks a different question: whose history this is. So the
 desktop derives a sync device identity only for a working copy that has recorded
 nothing; afterwards `synclog.RecordedDeviceID` reads it back from
-`.tt/sync/devices/`, and a renamed host goes on recording as the device that
+`.docket/sync/devices/`, and a renamed host goes on recording as the device that
 enrolled. Deriving it afresh would start a second history beside the first, with
 its own genesis and nothing received, so every peer transaction would arrive
 "before 1". A working copy already holding several identities answers with the
@@ -336,7 +337,7 @@ transaction may require adopting remote and retrying the original operation so
 all side effects are rebuilt together.
 
 A bundle's three documents are rendered by `WriteCurrent()` at the schema live
-when it was recorded, and no migration rewrites `.tt/conflicts/`, so a bundle
+when it was recorded, and no migration rewrites `.docket/conflicts/`, so a bundle
 that outlives a schema bump holds markdown the current parser refuses. That
 makes a stored document undecodable; it must not make the record unresolvable.
 `loadDocumentFile` therefore degrades a parse failure the way it already degrades

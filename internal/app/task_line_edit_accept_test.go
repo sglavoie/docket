@@ -14,8 +14,8 @@ import (
 
 func TestTaskLineEditUndoRedoAcceptance(t *testing.T) {
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
-	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 
 	project := realTestProject(t, dataDir, "alpha", "Before")
 	task := project.Tasks[0]
@@ -53,8 +53,8 @@ func TestTaskLineEditUndoRedoAcceptance(t *testing.T) {
 
 func TestTaskLineEditCrossProjectUndoRedoAcceptance(t *testing.T) {
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
-	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 
 	source := realTestProject(t, dataDir, "source", "Before")
 	root := source.Tasks[0]
@@ -69,7 +69,7 @@ func TestTaskLineEditCrossProjectUndoRedoAcceptance(t *testing.T) {
 	destination := realTestProject(t, dataDir, "destination", "Destination parent")
 	parent := destination.Tasks[0]
 
-	planningPath := filepath.Join(dataDir, ".tt", "planning.json")
+	planningPath := filepath.Join(dataDir, ".docket", "planning.json")
 	if mkdirErr := os.MkdirAll(filepath.Dir(planningPath), 0o755); mkdirErr != nil {
 		t.Fatalf("mkdir planning dir: %v", mkdirErr)
 	}
@@ -146,7 +146,7 @@ func TestTaskLineEditCrossProjectUndoRedoAcceptance(t *testing.T) {
 
 func TestTaskLineEditAttachmentRelocationFailureLeavesDocumentsUntouched(t *testing.T) {
 	dataDir := t.TempDir()
-	commitSvc := storage.NewCommitService(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir})
+	commitSvc := storage.NewCommitService(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir})
 	source := realTestProject(t, dataDir, "source", "Before")
 	root := source.Tasks[0]
 	destination := realTestProject(t, dataDir, "destination", "Destination task")

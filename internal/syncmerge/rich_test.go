@@ -26,8 +26,8 @@ const (
 	homeSlug    = "home-renovation"
 	atlasDoc    = "projects/atlas-launch/tasks.md"
 	runbookNote = "projects/atlas-launch/notes/2026-09-03-090000_0a1b2c3d-release-runbook.md"
-	weeklyNote  = ".tt/global-notes/2026-09-02-180000_4e5f6a7b-weekly-review.md"
-	lensesFile  = ".tt/lenses.json"
+	weeklyNote  = ".docket/global-notes/2026-09-02-180000_4e5f6a7b-weekly-review.md"
+	lensesFile  = ".docket/lenses.json"
 )
 
 var richInstant = time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC)

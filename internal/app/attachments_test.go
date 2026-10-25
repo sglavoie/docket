@@ -280,8 +280,8 @@ func TestAttachFileCommitErrorRestoresMetadata(t *testing.T) {
 // undo removes the ingested bytes, and redo re-ingests them.
 func TestAttachFileUndoRedoAcceptance(t *testing.T) {
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
-	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 
 	project := realTestProject(t, dataDir, "alpha", "attach me")
 	task := project.Tasks[0]
@@ -326,8 +326,8 @@ func TestAttachFileUndoRedoAcceptance(t *testing.T) {
 // same directory is never touched.
 func TestRemoveAttachmentUndoRedoAcceptance(t *testing.T) {
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
-	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 
 	project := realTestProject(t, dataDir, "alpha", "has attachments")
 	task := project.Tasks[0]

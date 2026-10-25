@@ -13,7 +13,7 @@ public enum WorkingCopyIdentity {
         }
 
         var recorded: [String] = []
-        let devices = dataDirectory.appendingPathComponent(".tt/sync/devices", isDirectory: true)
+        let devices = dataDirectory.appendingPathComponent(".docket/sync/devices", isDirectory: true)
         if manager.fileExists(atPath: devices.path) {
             struct History: Decodable {
                 var device_id: String

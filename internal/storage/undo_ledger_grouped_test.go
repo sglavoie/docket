@@ -65,7 +65,7 @@ func TestWorkspaceLedger_GroupedArtifactKindsRestoreTogether(t *testing.T) {
 		},
 		{
 			name:   "projects",
-			path:   filepath.Join(root, ".tt", "workspace.json"),
+			path:   filepath.Join(root, ".docket", "workspace.json"),
 			before: `{"projects":["before"]}`,
 			after:  `{"projects":["after"]}`,
 		},
@@ -268,8 +268,8 @@ func TestWorkspaceLedger_RejectsPathOutsideRoots(t *testing.T) {
 // bytes captured before the delete.
 func TestCommitService_LedgerRecordsAndUndoesAttachmentDelete(t *testing.T) {
 	dataDir := t.TempDir()
-	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
-	svc := NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
+	svc := NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 
 	project := newCommitTestProject(t, dataDir, "alpha", "attach me")
 	task := project.Tasks[0]
@@ -316,7 +316,7 @@ func TestCommitService_NoLedgerSkipsRecording(t *testing.T) {
 	if _, err := svc.Commit(ChangeSet{Project: project}); err != nil {
 		t.Fatalf("Commit: %v", err)
 	}
-	requireAbsent(t, filepath.Join(dataDir, ".tt", "undo", "ledger.json"))
+	requireAbsent(t, filepath.Join(dataDir, ".docket", "undo", "ledger.json"))
 }
 
 func TestWorkspaceLedger_LeavesLegacyProjectUndoDirectoryUntouched(t *testing.T) {

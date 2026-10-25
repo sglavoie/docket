@@ -132,7 +132,7 @@ func TestV17MigrationSnapshotArchivesTheSourceLensDefinitions(t *testing.T) {
 	}
 
 	entries := readPreSimplificationV5Archive(t, v17StoredReviewSnapshotArchive(t, root))
-	archived, ok := entries["workspace/.tt/lenses.json"]
+	archived, ok := entries["workspace/.docket/lenses.json"]
 	if !ok {
 		names := make([]string, 0, len(entries))
 		for name := range entries {

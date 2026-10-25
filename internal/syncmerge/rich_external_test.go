@@ -108,17 +108,17 @@ func testExternalInvalidDomainEditsAreHeld(t *testing.T) {
 	c := newCluster(t, "a")
 	a := c.r("a")
 	a.index()
-	planning := a.read(".tt/planning.json")
-	a.write(".tt/planning.json", []byte("{ not json"))
+	planning := a.read(".docket/planning.json")
+	a.write(".docket/planning.json", []byte("{ not json"))
 	a.write(lensesFile, bytes.Replace(a.read(lensesFile), []byte(`"kind": "lenses"`), []byte(`"kind": "planning"`), 1))
 	report := a.observe()
 	if report.Imported != nil || len(report.Held) != 2 {
 		t.Fatalf("invalid domain files were not held: %+v", report)
 	}
-	if !bytes.Equal(a.read(".tt/planning.json"), []byte("{ not json")) {
+	if !bytes.Equal(a.read(".docket/planning.json"), []byte("{ not json")) {
 		t.Fatal("the held planning file was changed")
 	}
-	a.write(".tt/planning.json", planning)
+	a.write(".docket/planning.json", planning)
 	if report = a.observe(); len(report.Held) != 1 || report.Held[0].Path != lensesFile {
 		t.Fatalf("after restoring planning: %+v", report)
 	}

@@ -226,7 +226,7 @@ func TestRenameProjectCommitsThroughRealJournal(t *testing.T) {
 	repo := &journalOpsRepo{
 		fakeRepo: newFakeRepo(),
 		commit: storage.NewCommitService(
-			filepath.Join(dataDir, ".tt", "transactions"),
+			filepath.Join(dataDir, ".docket", "transactions"),
 			[]string{dataDir},
 		),
 	}
@@ -262,7 +262,7 @@ func TestRenameProjectCommitsThroughRealJournal(t *testing.T) {
 	if got, readErr := os.ReadFile(filepath.Join(dataDir, "config.json")); readErr != nil || string(got) != `{"slug":"beta"}` {
 		t.Fatalf("catalog artifact = %q, %v", got, readErr)
 	}
-	entries, readErr := os.ReadDir(filepath.Join(dataDir, ".tt", "transactions"))
+	entries, readErr := os.ReadDir(filepath.Join(dataDir, ".docket", "transactions"))
 	if readErr != nil {
 		t.Fatalf("read transactions dir: %v", readErr)
 	}
@@ -280,11 +280,11 @@ func TestRenameProjectCommitsThroughRealJournal(t *testing.T) {
 func TestRenameProjectResultCorrelatesLedgerTransactionID(t *testing.T) {
 	dataDir := t.TempDir()
 	project := seedProjectDir(t, dataDir, "alpha", "Alpha")
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
 	repo := &journalOpsRepo{
 		fakeRepo: newFakeRepo(),
 		commit: storage.NewCommitServiceWithLedger(
-			filepath.Join(dataDir, ".tt", "transactions"),
+			filepath.Join(dataDir, ".docket", "transactions"),
 			[]string{dataDir},
 			ledger,
 		),
@@ -339,7 +339,7 @@ func TestRenameProjectRealCommitRejectsConcurrentTaskEdit(t *testing.T) {
 	repo := &journalOpsRepo{
 		fakeRepo: newFakeRepo(),
 		commit: storage.NewCommitService(
-			filepath.Join(dataDir, ".tt", "transactions"),
+			filepath.Join(dataDir, ".docket", "transactions"),
 			[]string{dataDir},
 		),
 	}

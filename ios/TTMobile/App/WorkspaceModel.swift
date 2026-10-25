@@ -214,7 +214,9 @@ final class WorkspaceModel {
     func open(_ location: WorkspaceLocation, create: Bool) async {
         guard !isDeletingWorkspace else { return }
         phase = .loading
-        if !create, !FileManager.default.fileExists(atPath: location.data.appendingPathComponent(".tt").path) {
+        // A pre-v24 workspace still keeps .tt/ until the engine migrates it.
+        let marked = [".docket", ".tt"].contains { FileManager.default.fileExists(atPath: location.data.appendingPathComponent($0).path) }
+        if !create, !marked {
             phase = .unavailable("The workspace “\(location.name)” is no longer on this iPhone.")
             return
         }

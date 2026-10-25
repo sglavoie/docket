@@ -10,7 +10,7 @@
 // neither: a committed edit is never missing its outgoing record, and an
 // incoming transaction is never acknowledged without being applied.
 //
-// The history lives in <data>/.tt/sync/. It is device-local: it is never
+// The history lives in <data>/.docket/sync/. It is device-local: it is never
 // exchanged as files, only published as the manifests and blobs it holds.
 package synclog
 
@@ -280,7 +280,7 @@ func (e Effect) validate() error {
 	if err := validRelativePath(e.Path); err != nil {
 		return err
 	}
-	kind, _, local, err := Classify(e.Path)
+	kind, _, local, err := Classify(CanonicalPath(e.Path))
 	if err != nil {
 		return err
 	}
@@ -314,7 +314,7 @@ func (e Effect) validate() error {
 		if err := validRelativePath(e.TargetPath); err != nil {
 			return fmt.Errorf("target_path: %w", err)
 		}
-		targetKind, _, targetLocal, err := Classify(e.TargetPath)
+		targetKind, _, targetLocal, err := Classify(CanonicalPath(e.TargetPath))
 		if err != nil {
 			return err
 		}

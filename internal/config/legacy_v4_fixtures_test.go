@@ -44,7 +44,7 @@ func decodeLegacyV4Payload(t *testing.T, rel, kind string, out any) {
 
 func TestLegacyV4SplitDomainFixtureDecodesEveryDomain(t *testing.T) {
 	var catalog LegacyV4WorkspaceCatalog
-	decodeLegacyV4Payload(t, "workspace/.tt/workspace.json", "workspace", &catalog)
+	decodeLegacyV4Payload(t, "workspace/.docket/workspace.json", "workspace", &catalog)
 	if catalog.SchemaVersion != legacyV4ConfigSchema {
 		t.Fatalf("catalog schema = %d, want v%d", catalog.SchemaVersion, legacyV4ConfigSchema)
 	}
@@ -62,13 +62,13 @@ func TestLegacyV4SplitDomainFixtureDecodesEveryDomain(t *testing.T) {
 	}
 
 	var planning LegacyV4PlanningState
-	decodeLegacyV4Payload(t, "workspace/.tt/planning.json", "planning", &planning)
+	decodeLegacyV4Payload(t, "workspace/.docket/planning.json", "planning", &planning)
 	if planning.TUIStateVersion != 4 ||
 		len(planning.FocusQueue) != 2 ||
 		len(planning.DailyPlan) != 2 {
 		t.Fatalf("planning fixture does not cover legacy planning collections: %+v", planning)
 	}
-	planningEnvelope := readLegacyV4Envelope(t, "workspace/.tt/planning.json")
+	planningEnvelope := readLegacyV4Envelope(t, "workspace/.docket/planning.json")
 	for _, token := range [][]byte{[]byte(`"alert_dismissals"`), []byte(`"streak_count"`)} {
 		if !bytes.Contains(planningEnvelope.Data, token) {
 			t.Fatalf("planning fixture does not cover retired field %s: %s", token, planningEnvelope.Data)
@@ -76,12 +76,12 @@ func TestLegacyV4SplitDomainFixtureDecodesEveryDomain(t *testing.T) {
 	}
 
 	var settings LegacyV4Settings
-	decodeLegacyV4Payload(t, "workspace/.tt/settings.json", "settings", &settings)
+	decodeLegacyV4Payload(t, "workspace/.docket/settings.json", "settings", &settings)
 	if settings.TUIStateVersion != 4 ||
 		settings.ActiveTheme != "synthetic-custom" {
 		t.Fatalf("settings fixture does not cover v4 appearance/behavior fields: %+v", settings)
 	}
-	settingsEnvelope := readLegacyV4Envelope(t, "workspace/.tt/settings.json")
+	settingsEnvelope := readLegacyV4Envelope(t, "workspace/.docket/settings.json")
 	for _, token := range [][]byte{[]byte(`"theme_dark_name"`), []byte(`"onboarding"`), []byte(`"state_group_limits"`)} {
 		if !bytes.Contains(settingsEnvelope.Data, token) {
 			t.Fatalf("settings fixture does not cover retired field %s: %s", token, settingsEnvelope.Data)
@@ -89,8 +89,8 @@ func TestLegacyV4SplitDomainFixtureDecodesEveryDomain(t *testing.T) {
 	}
 
 	var automation LegacyV4AutomationConfig
-	decodeLegacyV4Payload(t, "workspace/.tt/automation.json", "automation", &automation)
-	automationEnvelope := readLegacyV4Envelope(t, "workspace/.tt/automation.json")
+	decodeLegacyV4Payload(t, "workspace/.docket/automation.json", "automation", &automation)
+	automationEnvelope := readLegacyV4Envelope(t, "workspace/.docket/automation.json")
 	for _, token := range [][]byte{[]byte(`"workflow_rules"`), []byte(`"task_templates"`), []byte(`"scoring_profiles"`), []byte(`"workflow_eval_states"`), []byte(`"project_scoring_profile"`)} {
 		if !bytes.Contains(automationEnvelope.Data, token) {
 			t.Fatalf("automation fixture is missing %s: %s", token, automationEnvelope.Data)
@@ -119,7 +119,7 @@ func TestLegacyV4ThemeVariantsCoverBothV5Mappings(t *testing.T) {
 	}
 
 	var custom LegacyV4Settings
-	decodeLegacyV4Payload(t, "workspace/.tt/settings.json", "settings", &custom)
+	decodeLegacyV4Payload(t, "workspace/.docket/settings.json", "settings", &custom)
 	if custom.ActiveTheme == "dark" || custom.ActiveTheme == "light" {
 		t.Fatalf("custom fixture active theme = %q, want a custom variant that maps to dark", custom.ActiveTheme)
 	}
@@ -147,12 +147,12 @@ func TestLegacyV4UnsupportedConfigFixturesHaveExpectedFailureShape(t *testing.T)
 	}
 
 	partialRoot := t.TempDir()
-	partialSrc := filepath.Join(legacyV4FixtureRoot, "unsupported/partial/workspace/.tt/workspace.json")
+	partialSrc := filepath.Join(legacyV4FixtureRoot, "unsupported/partial/workspace/.docket/workspace.json")
 	partialBytes, err := os.ReadFile(partialSrc)
 	if err != nil {
 		t.Fatalf("read partial fixture: %v", err)
 	}
-	partialDest := filepath.Join(partialRoot, ".tt", "workspace.json")
+	partialDest := filepath.Join(partialRoot, ".docket", "workspace.json")
 	if err = os.MkdirAll(filepath.Dir(partialDest), DirPermissions); err != nil {
 		t.Fatalf("create partial fixture directory: %v", err)
 	}

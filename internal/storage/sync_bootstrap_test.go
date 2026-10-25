@@ -45,7 +45,7 @@ func TestBootstrapRecoveryKeepsWorkspaceAndAllReceiptsTogether(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			dir := filepath.Join(root, ".tt", "transactions")
+			dir := filepath.Join(root, ".docket", "transactions")
 			service := NewCommitService(dir, []string{root}).WithSyncHistory(history).WithSyncMerger(bootstrapLinearMerger{})
 			prepared := crashDuring(t, func() error {
 				id, accepted, bootErr := service.BootstrapIncoming(manifests, source.history)

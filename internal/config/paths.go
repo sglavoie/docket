@@ -22,7 +22,8 @@ const (
 	localRootName = ".docket"
 
 	// internalDirName is the internal directory inside every data directory.
-	internalDirName = ".tt"
+	// Before schema 24 it was the legacy name the v24 activation moves from.
+	internalDirName = ".docket"
 
 	// iCloudDataDirName is the Docket data directory name inside iCloud Drive.
 	// iCloud Drive folders are user-visible in Finder, so the synced root drops
@@ -54,7 +55,7 @@ const (
 	machineStateFileName = "machine.json"
 )
 
-// InternalDir returns the internal ".tt" directory inside a data directory.
+// InternalDir returns the internal ".docket" directory inside a data directory.
 // It contains the portable catalog and planning files plus transaction and
 // migration artifacts. The helper is available without a loaded Config so all
 // path derivation shares one root.
@@ -110,7 +111,7 @@ func AutomationPath(dataDir string) string {
 
 // TransactionsDir returns the durable directory that holds prepared and
 // recovering transaction manifests for a data dir. It lives under the synced
-// internal ".tt" directory so any machine that opens the workspace can inspect
+// internal ".docket" directory so any machine that opens the workspace can inspect
 // in-flight transactions and drive crash recovery.
 func TransactionsDir(dataDir string) string {
 	return filepath.Join(InternalDir(dataDir), "transactions")
@@ -118,7 +119,7 @@ func TransactionsDir(dataDir string) string {
 
 // UndoLedgerDir returns the durable directory that holds the workspace undo
 // ledger and its retained before/after artifact blobs for a data dir. It lives
-// under the synced internal ".tt" directory so the append-only global
+// under the synced internal ".docket" directory so the append-only global
 // transaction ledger travels with the workspace, mirroring TransactionsDir.
 func UndoLedgerDir(dataDir string) string {
 	return filepath.Join(InternalDir(dataDir), "undo")
@@ -126,7 +127,7 @@ func UndoLedgerDir(dataDir string) string {
 
 // ConflictsDir returns the durable directory that holds persisted three-way
 // merge conflict bundles (base/local/remote documents plus structured conflict
-// metadata) for a data dir. It lives under the synced internal ".tt" directory
+// metadata) for a data dir. It lives under the synced internal ".docket" directory
 // so a recorded conflict travels with the workspace and can be inspected and
 // resolved from any machine that opens it, mirroring TransactionsDir.
 func ConflictsDir(dataDir string) string {
@@ -315,13 +316,16 @@ func iCloudDataRootOn(machineHome string) (string, bool) {
 // hasSplitDomainMarker reports whether a data directory contains any synced
 // split-domain artifact. A single marker is enough: selecting a partial iCloud
 // workspace lets normal loading surface the corruption instead of silently
-// falling back to an unrelated local workspace.
+// falling back to an unrelated local workspace. A workspace still holding its
+// pre-v24 internal directory, or the tombstone left where one was, counts too:
+// opening it is what migrates or refuses it.
 func hasSplitDomainMarker(dataDir string) bool {
 	for _, path := range []string{
 		WorkspaceCatalogPath(dataDir),
 		PlanningStatePath(dataDir),
 		SettingsPath(dataDir),
 		AutomationPath(dataDir),
+		filepath.Join(LegacyInternalDir(dataDir), "workspace.json"),
 	} {
 		if _, err := os.Stat(path); err == nil {
 			return true

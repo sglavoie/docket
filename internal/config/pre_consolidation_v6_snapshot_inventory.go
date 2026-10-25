@@ -142,13 +142,13 @@ func preConsolidationV6Kind(rel string) string {
 	clean := filepath.ToSlash(filepath.Clean(rel))
 	base := filepath.Base(clean)
 	switch {
-	case clean == ".tt/workspace.json", clean == ".tt/planning.json":
+	case clean == internalDirName+"/workspace.json", clean == internalDirName+"/planning.json":
 		return "synced domain"
-	case strings.HasPrefix(clean, ".tt/transactions/"):
+	case strings.HasPrefix(clean, internalDirName+"/transactions/"):
 		return "transaction state"
-	case strings.HasPrefix(clean, ".tt/undo/"):
+	case strings.HasPrefix(clean, internalDirName+"/undo/"):
 		return "undo ledger"
-	case strings.HasPrefix(clean, ".tt/global-notes/"), strings.Contains(clean, "/notes/"):
+	case strings.HasPrefix(clean, internalDirName+"/global-notes/"), strings.Contains(clean, "/notes/"):
 		return "note"
 	case strings.Contains(clean, "/.attachments/"):
 		return "attachment"

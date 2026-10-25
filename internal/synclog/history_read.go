@@ -20,7 +20,7 @@ func RecordedDeviceID(dataDir string) string {
 	if dataDir == "" {
 		return ""
 	}
-	devices := filepath.Join(dataDir, ".tt", "sync", "devices")
+	devices := filepath.Join(dataDir, internalDir, "sync", "devices")
 	entries, err := os.ReadDir(devices)
 	if err != nil {
 		return ""
@@ -72,6 +72,14 @@ func (h *History) LoadState() (*State, error) {
 	}
 	if state.Tracked == nil {
 		state.Tracked = map[string]string{}
+	}
+	// A state written before schema 24 tracks .tt/ paths; the files it tracked
+	// are the same ones at their .docket/ paths now.
+	for rel, digest := range state.Tracked {
+		if canonical := CanonicalPath(rel); canonical != rel {
+			delete(state.Tracked, rel)
+			state.Tracked[canonical] = digest
+		}
 	}
 	return &state, nil
 }

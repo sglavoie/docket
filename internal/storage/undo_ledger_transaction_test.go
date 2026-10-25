@@ -104,8 +104,8 @@ func TestLedgerRestoreCrashRecoveryConvergesAtEveryOperation(t *testing.T) {
 // outcomes: commit-then-undo, or undo followed by a stale commit rejection.
 func TestUndoConcurrentCommitSerializesLedgerRestore(t *testing.T) {
 	root := t.TempDir()
-	ledger := NewWorkspaceLedger(filepath.Join(root, ".tt", "undo"), []string{root})
-	service := NewCommitServiceWithLedger(filepath.Join(root, ".tt", "transactions"), []string{root}, ledger)
+	ledger := NewWorkspaceLedger(filepath.Join(root, ".docket", "undo"), []string{root})
+	service := NewCommitServiceWithLedger(filepath.Join(root, ".docket", "transactions"), []string{root}, ledger)
 	path := filepath.Join(root, "notes", "race.md")
 	writeFile(t, path, "before")
 	beforeRevision := RawArtifactRevision([]byte("before"))
@@ -249,8 +249,8 @@ type ledgerRestoreCrashFixture struct {
 func prepareLedgerRestoreCrashFixture(t *testing.T) ledgerRestoreCrashFixture {
 	t.Helper()
 	root := t.TempDir()
-	transactionsDir := filepath.Join(root, ".tt", "transactions")
-	ledger := NewWorkspaceLedger(filepath.Join(root, ".tt", "undo"), []string{root})
+	transactionsDir := filepath.Join(root, ".docket", "transactions")
+	ledger := NewWorkspaceLedger(filepath.Join(root, ".docket", "undo"), []string{root})
 	editedPath := filepath.Join(root, "projects", "alpha", "tasks.md")
 	createdPath := filepath.Join(root, "notes", "created.md")
 	writeFile(t, editedPath, "edited after")

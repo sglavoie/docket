@@ -137,11 +137,11 @@ func TestCaptureReceiptsRefuseCorruptionAndPathEscapes(t *testing.T) {
 	if _, err := svc.LookupCaptureReceipt(receipt.CaptureSubmission); err == nil {
 		t.Fatal("corrupt receipt was treated as an unsubmitted draft")
 	}
-	if err := os.RemoveAll(filepath.Join(root, ".tt", "control-captures")); err != nil {
+	if err := os.RemoveAll(filepath.Join(root, ".docket", "control-captures")); err != nil {
 		t.Fatal(err)
 	}
 	outside := t.TempDir()
-	if err := os.Symlink(outside, filepath.Join(root, ".tt", "control-captures")); err != nil {
+	if err := os.Symlink(outside, filepath.Join(root, ".docket", "control-captures")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := svc.LookupCaptureReceipt(receipt.CaptureSubmission); err == nil {

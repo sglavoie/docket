@@ -185,7 +185,7 @@ func TestManagerActivatesSnapshotFirstV5MigrationAndIsIdempotent(t *testing.T) {
 	}
 	archiveEntries := readPreSimplificationV5Archive(t, snapshots.Pairs[0].ArchivePath)
 	for _, path := range []string{
-		"workspace/.tt/themes/custom.json",
+		"workspace/.docket/themes/custom.json",
 		"workspace/themes/legacy.json",
 	} {
 		if _, ok := archiveEntries[path]; !ok {

@@ -61,7 +61,7 @@ func TestCommitMultiProjectPreconditionExpiresBeforeMergeOrConflictRecording(t *
 
 func TestCommitMultiProjectPreconditionIsReadOnlyAndExcludedFromUndo(t *testing.T) {
 	dataDir := t.TempDir()
-	transactionsDir := filepath.Join(dataDir, ".tt", "transactions")
+	transactionsDir := filepath.Join(dataDir, ".docket", "transactions")
 	alpha := newCommitTestProject(t, dataDir, "alpha", "alpha before")
 	beta := newCommitTestProject(t, dataDir, "beta", "beta stable")
 	seed := NewCommitService(transactionsDir, []string{dataDir})
@@ -77,7 +77,7 @@ func TestCommitMultiProjectPreconditionIsReadOnlyAndExcludedFromUndo(t *testing.
 		t.Fatalf("LoadProjectDocument beta: %v", err)
 	}
 
-	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
+	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
 	service := NewCommitServiceWithLedger(transactionsDir, []string{dataDir}, ledger)
 	alphaLocalDoc := cloneEdit(alphaBase, func(task *models.Task) { task.Title = "alpha after" })
 	if _, commitErr := service.Commit(ChangeSet{
@@ -117,7 +117,7 @@ func TestCommitMultiProjectPreconditionIsReadOnlyAndExcludedFromUndo(t *testing.
 
 func TestCommitMultiRejectsProjectPreconditionPathBeforeEffects(t *testing.T) {
 	dataDir := t.TempDir()
-	transactionsDir := filepath.Join(dataDir, ".tt", "transactions")
+	transactionsDir := filepath.Join(dataDir, ".docket", "transactions")
 	project := newCommitTestProject(t, dataDir, "alpha", "alpha")
 	outside := filepath.Join(t.TempDir(), "escaped-project")
 
@@ -140,7 +140,7 @@ func TestCommitMultiRejectsProjectPreconditionPathBeforeEffects(t *testing.T) {
 
 func TestCommitMultiDeduplicatesResolvedProjectPreconditionLocks(t *testing.T) {
 	dataDir := t.TempDir()
-	transactionsDir := filepath.Join(dataDir, ".tt", "transactions")
+	transactionsDir := filepath.Join(dataDir, ".docket", "transactions")
 	alpha := newCommitTestProject(t, dataDir, "alpha", "alpha before")
 	beta := newCommitTestProject(t, dataDir, "beta", "beta stable")
 	service := NewCommitService(transactionsDir, []string{dataDir})

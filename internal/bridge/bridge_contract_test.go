@@ -244,7 +244,7 @@ func TestBridgeOpenRefusesToMigrate(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			h := newHarness(t, representativeFixture)
-			catalogPath := filepath.Join(h.dataDir, ".tt", "workspace.json")
+			catalogPath := filepath.Join(h.dataDir, ".docket", "workspace.json")
 			rewriteCatalogSchema(t, catalogPath, tc.schema)
 			before, err := os.ReadFile(catalogPath)
 			if err != nil {

@@ -21,9 +21,9 @@ func TestRecurrenceCannotEnterLivePersistenceMergeExportOrHistory(t *testing.T) 
 	}
 
 	dataDir := t.TempDir()
-	ledgerDir := filepath.Join(dataDir, ".tt", "undo")
+	ledgerDir := filepath.Join(dataDir, ".docket", "undo")
 	ledger := NewWorkspaceLedger(ledgerDir, []string{dataDir})
-	service := NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	service := NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 	project := newCommitTestProject(t, dataDir, "retirement", "Finish once")
 	if _, err := service.Commit(ChangeSet{Project: project, UndoAction: "create task"}); err != nil {
 		t.Fatalf("Commit: %v", err)
@@ -32,7 +32,7 @@ func TestRecurrenceCannotEnterLivePersistenceMergeExportOrHistory(t *testing.T) 
 	assertTreeHasNoRecurrenceMetadata(t, ledgerDir)
 
 	document := ToProjectDocument(project)
-	store := NewConflictStore(filepath.Join(dataDir, ".tt", "conflicts"))
+	store := NewConflictStore(filepath.Join(dataDir, ".docket", "conflicts"))
 	conflictID, err := store.Save(ConflictRecord{
 		ProjectID: project.ID,
 		Conflicts: []MergeConflict{{Kind: MergeConflictFieldEdit, Field: "title"}},

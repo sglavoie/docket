@@ -109,9 +109,9 @@ func TestConvertedDecisionCommentUsesOrdinaryLivePaths(t *testing.T) {
 func testConvertedCommentUndoRedo(t *testing.T, record format.V6TaskRecord, originalText string) {
 	t.Helper()
 	dataDir := t.TempDir()
-	ledgerDir := filepath.Join(dataDir, ".tt", "undo")
+	ledgerDir := filepath.Join(dataDir, ".docket", "undo")
 	ledger := NewWorkspaceLedger(ledgerDir, []string{dataDir})
-	service := NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	service := NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 	project := newCommitTestProject(t, dataDir, "converted", record.Title)
 	v10 := V8ProjectDocumentFromV7(V7ProjectDocument{ProjectName: project.Name, Tasks: []format.V6TaskRecord{record}})
 	tasks, err := modelsFromCurrentTaskDocument(V20ProjectDocumentFromV19(V19ProjectDocumentFromV18(V18ProjectDocumentFromV17(V17ProjectDocumentFromV16(V16ProjectDocumentFromV15(V15ProjectDocumentFromV14(V14ProjectDocumentFromV13(V13ProjectDocumentFromV12(V12ProjectDocumentFromV11(V11ProjectDocumentFromV10(v10)))))))))), time.UTC)
@@ -248,9 +248,9 @@ func TestDecisionRetirementBackendInventory(t *testing.T) {
 
 func TestDecisionMetadataCannotEnterLiveStorageOrHistory(t *testing.T) {
 	dataDir := t.TempDir()
-	ledgerDir := filepath.Join(dataDir, ".tt", "undo")
+	ledgerDir := filepath.Join(dataDir, ".docket", "undo")
 	ledger := NewWorkspaceLedger(ledgerDir, []string{dataDir})
-	service := NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	service := NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 	project := newCommitTestProject(t, dataDir, "retirement", "No decision records")
 	project.Tasks[0].Comments = []*models.Comment{{Text: "Decision: retained only as ordinary comment", CreatedAt: time.Now().UTC()}}
 	if _, err := service.Commit(ChangeSet{Project: project, UndoAction: "create task"}); err != nil {

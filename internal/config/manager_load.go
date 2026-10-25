@@ -74,6 +74,11 @@ func (m *Manager) LoadOrCreateDomains() (*Domains, error) {
 		}
 		return nil, fmt.Errorf("failed to create split configuration domains: %w", err)
 	}
+	// A workspace born at schema 24 gets the tombstone a migrated one carries,
+	// so a Docket that still reads .tt/ refuses it instead of creating its own.
+	if err := EnsureV24Tombstone(dataDir); err != nil {
+		return nil, fmt.Errorf("failed to place the schema-24 tombstone: %w", err)
+	}
 	// The portable lens home is published beside the machine file the bundle
 	// just wrote, so a workspace has one from its first launch instead of
 	// acquiring it on the next. It stays outside the synced bootstrap

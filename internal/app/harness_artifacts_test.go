@@ -20,7 +20,7 @@ type memArtifactPort struct{ repo *fakeRepo }
 
 func (m *memArtifactPort) noteDir(location app.NoteLocation, project *models.Project) (string, error) {
 	if location.Scope == app.NoteScopeGlobal {
-		return filepath.Join("mem-workspace", ".tt", "global-notes"), nil
+		return filepath.Join("mem-workspace", ".docket", "global-notes"), nil
 	}
 	if project == nil {
 		return "", fmt.Errorf("project is required")

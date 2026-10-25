@@ -283,7 +283,7 @@ func TestPinnedReorderIsUndoable(t *testing.T) {
 	}
 	assertOrder(t, "committed pin", diskPinOrder(t, project), []string{"Bravo", "Alpha"})
 
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
 	if _, err := ledger.Undo(storage.GlobalScope()); err != nil {
 		t.Fatalf("ledger undo: %v", err)
 	}

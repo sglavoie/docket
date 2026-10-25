@@ -48,7 +48,7 @@ func TestArtifactBackupsAcrossCommitEntryPoints(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			service, root := newCommitTestService(t)
-			primary := filepath.Join(root, ".tt", "planning.json")
+			primary := filepath.Join(root, ".docket", "planning.json")
 			backup := primary + ".bak"
 			commit := tc.committer(t, service, root)
 
@@ -172,7 +172,7 @@ func TestArtifactBackupValidationRejectsBeforeFilesystemSideEffects(t *testing.T
 			primary := filepath.Join(root, "planning.json")
 			writeArtifactBytes(t, primary, []byte("current"))
 			outside := filepath.Join(t.TempDir(), "planning.json.bak")
-			transactionsDir := filepath.Join(root, ".tt", "transactions")
+			transactionsDir := filepath.Join(root, ".docket", "transactions")
 			service := NewCommitService(transactionsDir, []string{root})
 
 			err := tc.committer(t, service, root, ArtifactChange{Path: primary, Data: []byte("next"), BackupPath: outside})
@@ -229,7 +229,7 @@ func TestArtifactBackupValidationRejectsSelfReferenceAndCollisions(t *testing.T)
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
-			service := NewCommitService(filepath.Join(root, ".tt", "transactions"), []string{root})
+			service := NewCommitService(filepath.Join(root, ".docket", "transactions"), []string{root})
 			artifacts := tc.artifacts(root)
 			_, err := service.CommitArtifacts(artifacts)
 			if err == nil {
@@ -241,7 +241,7 @@ func TestArtifactBackupValidationRejectsSelfReferenceAndCollisions(t *testing.T)
 					requireAbsent(t, artifact.BackupPath)
 				}
 			}
-			requireAbsent(t, filepath.Join(root, ".tt", "transactions"))
+			requireAbsent(t, filepath.Join(root, ".docket", "transactions"))
 		})
 	}
 }
@@ -259,7 +259,7 @@ func TestArtifactBackupValidationRejectsSymlinkEscape(t *testing.T) {
 	primary := filepath.Join(root, "planning.json")
 	writeArtifactBytes(t, primary, []byte("current"))
 	backup := filepath.Join(escape, "planning.json.bak")
-	service := NewCommitService(filepath.Join(root, ".tt", "transactions"), []string{root})
+	service := NewCommitService(filepath.Join(root, ".docket", "transactions"), []string{root})
 
 	_, err := service.CommitArtifacts([]ArtifactChange{{Path: primary, Data: []byte("next"), BackupPath: backup}})
 	if !errors.Is(err, transaction.ErrTargetOutsideRoot) {
@@ -285,14 +285,14 @@ func TestArtifactBackupPreparedManifestRecoversBackupAndPrimaryTogether(t *testi
 		t.Fatalf("backup op = %#v, want v1 at 0600", ops[0])
 	}
 
-	journal := transaction.NewJournal(filepath.Join(root, ".tt", "transactions"), []string{root}, "")
+	journal := transaction.NewJournal(filepath.Join(root, ".docket", "transactions"), []string{root}, "")
 	if _, prepareErr := journal.Prepare(ops); prepareErr != nil {
 		t.Fatalf("Prepare: %v", prepareErr)
 	}
 	assertArtifactBytes(t, primary, []byte("v1"))
 	requireAbsent(t, backup)
 
-	report, err := transaction.NewJournal(filepath.Join(root, ".tt", "transactions"), []string{root}, "").Recover()
+	report, err := transaction.NewJournal(filepath.Join(root, ".docket", "transactions"), []string{root}, "").Recover()
 	if err != nil {
 		t.Fatalf("Recover: %v", err)
 	}

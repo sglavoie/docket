@@ -34,11 +34,11 @@ func seedProjectContent(t *testing.T, projectPath string) map[string][]byte {
 
 func deleteLedgerRepo(t *testing.T, dataDir string) (*journalOpsRepo, *storage.WorkspaceLedger) {
 	t.Helper()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
 	return &journalOpsRepo{
 		fakeRepo: newFakeRepo(),
 		commit: storage.NewCommitServiceWithLedger(
-			filepath.Join(dataDir, ".tt", "transactions"),
+			filepath.Join(dataDir, ".docket", "transactions"),
 			[]string{dataDir},
 			ledger,
 		),
@@ -81,8 +81,8 @@ func TestDeleteProjectRemovesEverythingInOneTransaction(t *testing.T) {
 	repo, ledger := deleteLedgerRepo(t, dataDir)
 	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 
-	catalog := filepath.Join(dataDir, ".tt", "workspace.json")
-	planning := filepath.Join(dataDir, ".tt", "planning.json")
+	catalog := filepath.Join(dataDir, ".docket", "workspace.json")
+	planning := filepath.Join(dataDir, ".docket", "planning.json")
 	transactionID, err := svc.DeleteProjectResult(app.DeleteProjectRequest{
 		Project: project,
 		DataDir: dataDir,
@@ -144,7 +144,7 @@ func TestDeleteProjectUndoRestoresTasksNotesAndAttachments(t *testing.T) {
 	repo, ledger := deleteLedgerRepo(t, dataDir)
 	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 
-	catalog := filepath.Join(dataDir, ".tt", "workspace.json")
+	catalog := filepath.Join(dataDir, ".docket", "workspace.json")
 	if err := os.MkdirAll(filepath.Dir(catalog), 0o755); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
 	}

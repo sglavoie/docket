@@ -17,7 +17,7 @@ func TestCommitMultiRejectsProjectPathAtEveryPositionBeforeEffects(t *testing.T)
 		t.Run(fmt.Sprintf("bad-project-at-%d", pos), func(t *testing.T) {
 			base := t.TempDir()
 			root := filepath.Join(base, "workspace")
-			transactionsDir := filepath.Join(root, ".tt", "transactions")
+			transactionsDir := filepath.Join(root, ".docket", "transactions")
 			svc := NewCommitService(transactionsDir, []string{root})
 			projects := make([]ChangeSet, 3)
 			for i := range projects {
@@ -46,7 +46,7 @@ func TestCommitRejectsTraversalProjectPathBeforeEffects(t *testing.T) {
 	root := filepath.Join(base, "workspace")
 	project := newCommitTestProject(t, root, "escape", "task")
 	project.Path = filepath.Join(root, "projects", "..", "..", "outside")
-	transactionsDir := filepath.Join(root, ".tt", "transactions")
+	transactionsDir := filepath.Join(root, ".docket", "transactions")
 
 	_, err := NewCommitService(transactionsDir, []string{root}).Commit(ChangeSet{Project: project})
 	if !errors.Is(err, transaction.ErrTargetOutsideRoot) {
@@ -91,7 +91,7 @@ func TestCommitRejectsExistingProjectSymlinkEscapesBeforeEffects(t *testing.T) {
 				}
 			}
 
-			transactionsDir := filepath.Join(root, ".tt", "transactions")
+			transactionsDir := filepath.Join(root, ".docket", "transactions")
 			_, err := NewCommitService(transactionsDir, []string{root}).Commit(ChangeSet{Project: project})
 			if !errors.Is(err, transaction.ErrTargetOutsideRoot) {
 				t.Fatalf("Commit error = %v, want ErrTargetOutsideRoot", err)
@@ -126,7 +126,7 @@ func TestCommitMultiRejectsSymlinkAliasOfSameProject(t *testing.T) {
 	aliasProject := newCommitTestProject(t, root, "alias", "alias")
 	realProject.Path = realPath
 	aliasProject.Path = aliasPath
-	transactionsDir := filepath.Join(root, ".tt", "transactions")
+	transactionsDir := filepath.Join(root, ".docket", "transactions")
 
 	_, err := NewCommitService(transactionsDir, []string{root}).CommitMulti([]ChangeSet{
 		{Project: realProject},

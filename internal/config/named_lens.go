@@ -15,7 +15,7 @@ import (
 )
 
 // Named lenses are portable, workspace-scoped Outliner projections: their
-// definitions live in the synced .tt/lenses.json, and only the active-lens
+// definitions live in the synced .docket/lenses.json, and only the active-lens
 // pointer stays machine-local. The config layer owns their durable shape so the
 // TUI never persists its own integer enums: every axis below is a stable string
 // token whose spelling is the durable identity of that choice.
@@ -145,7 +145,7 @@ type namedLensPayload struct {
 // query as it reads it.
 //
 // The lift is here rather than in the migration alone because the two homes
-// upgrade at different times: the portable .tt/lenses.json is rewritten by the
+// upgrade at different times: the portable .docket/lenses.json is rewritten by the
 // guarded v17 transaction, while a machine-local named_lenses list written by an
 // older build is only rewritten the next time that machine commits its own
 // state. Refusing the old shape would make such a machine unable to load at all,

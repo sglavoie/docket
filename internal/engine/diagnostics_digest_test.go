@@ -43,7 +43,7 @@ func TestSyncDiagnosticsWorkspaceDigest(t *testing.T) {
 	}
 
 	before := digest(desk)
-	local := filepath.Join(env.workingCopy, ".tt", "undo", "qualification-probe")
+	local := filepath.Join(env.workingCopy, ".docket", "undo", "qualification-probe")
 	if err := os.MkdirAll(filepath.Dir(local), 0o755); err != nil {
 		t.Fatal(err)
 	}

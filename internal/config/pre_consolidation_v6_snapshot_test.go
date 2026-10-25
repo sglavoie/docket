@@ -63,11 +63,11 @@ func TestCreatePreConsolidationV6SnapshotCapturesCompleteWorkspaceAndAudit(t *te
 
 	entries := readPreSimplificationV5Archive(t, report.ArchivePath)
 	wantPaths := []string{
-		"workspace/.tt/workspace.json",
-		"workspace/.tt/planning.json",
-		"workspace/.tt/global-notes/global-brief.md",
-		"workspace/.tt/transactions/source-state.snapshot",
-		"workspace/.tt/undo/ledger.json",
+		"workspace/.docket/workspace.json",
+		"workspace/.docket/planning.json",
+		"workspace/.docket/global-notes/global-brief.md",
+		"workspace/.docket/transactions/source-state.snapshot",
+		"workspace/.docket/undo/ledger.json",
 		"workspace/projects/alpha/tasks.md",
 		"workspace/projects/alpha/notes/project-brief.md",
 		"workspace/projects/alpha/.attachments/task-rich/specification.txt",
@@ -82,7 +82,7 @@ func TestCreatePreConsolidationV6SnapshotCapturesCompleteWorkspaceAndAudit(t *te
 	}
 	undoBlobCount := 0
 	for path := range entries {
-		if strings.HasPrefix(path, "workspace/.tt/undo/blobs/") {
+		if strings.HasPrefix(path, "workspace/.docket/undo/blobs/") {
 			undoBlobCount++
 		}
 	}
@@ -294,8 +294,8 @@ func copyPreConsolidationV6Fixture(t *testing.T) PreConsolidationV6SnapshotOptio
 		t.Fatal(err)
 	}
 	writeFileTree(t, root, map[string]string{
-		".tt/transactions/commit.lock":           "",
-		".tt/transactions/source-state.snapshot": "prepared migration boundary\n",
+		".docket/transactions/commit.lock":           "",
+		".docket/transactions/source-state.snapshot": "prepared migration boundary\n",
 	})
 	return PreConsolidationV6SnapshotOptions{DataDir: root}
 }

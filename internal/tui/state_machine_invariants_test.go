@@ -379,8 +379,8 @@ func newFocusToggleTestAppState(t *testing.T) (*AppModel, *models.Task) {
 	project.NextShortID = 2
 	project.BuildTaskTree()
 
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
-	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 	repo := newScenarioRepo(commitSvc, project)
 	repo.seed(t)
 	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)

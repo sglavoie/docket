@@ -23,7 +23,7 @@ func NotesDir(project *models.Project) string {
 
 // GlobalNotesDir returns the path to the global notes directory.
 func GlobalNotesDir(dataDir string) string {
-	return filepath.Join(dataDir, ".tt", "global-notes")
+	return filepath.Join(dataDir, ".docket", "global-notes")
 }
 
 func validateNoteFilename(filename string) error {

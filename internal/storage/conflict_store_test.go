@@ -10,7 +10,7 @@ import (
 
 func newConflictStore(t *testing.T) *ConflictStore {
 	t.Helper()
-	return NewConflictStore(filepath.Join(t.TempDir(), ".tt", "conflicts"))
+	return NewConflictStore(filepath.Join(t.TempDir(), ".docket", "conflicts"))
 }
 
 // TestConflictRecord_MissingRetryPolicyFailsClosed verifies bundles written by

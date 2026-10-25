@@ -32,7 +32,7 @@ func testRichNotes(t *testing.T) {
 	c := newCluster(t, "a", "b")
 	a := c.r("a")
 	projectNote := "projects/atlas-launch/notes/2026-10-06-120000_5e6f7a8b-sync-checklist.md"
-	globalNote := ".tt/global-notes/2026-10-06-120000_6f7a8b9c-sync-retro.md"
+	globalNote := ".docket/global-notes/2026-10-06-120000_6f7a8b9c-sync-retro.md"
 	projectBody := []byte("---\ntitle: Sync checklist\ncreated: \"2026-10-06T12:00:00Z\"\nmodified: \"2026-10-06T12:00:00Z\"\n---\n\n- [ ] pair the phone\n")
 	globalBody := []byte("---\ntitle: Sync retro\ncreated: \"2026-10-06T12:00:00Z\"\nmodified: \"2026-10-06T12:00:00Z\"\n---\n\nWhat went well.\n")
 	runbook := append(a.read(runbookNote), []byte("4. Announce\n")...)
@@ -220,7 +220,7 @@ func testRichMobileEditPreservesUnexposedFields(t *testing.T) {
 	for _, effect := range edit.Effects {
 		paths[effect.Path] = true
 	}
-	if len(edit.Effects) != 2 || !paths[atlasDoc] || !paths[".tt/planning.json"] {
+	if len(edit.Effects) != 2 || !paths[atlasDoc] || !paths[".docket/planning.json"] {
 		t.Fatalf("the transition published %+v, want the project document and planning", edit.Effects)
 	}
 

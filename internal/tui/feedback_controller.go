@@ -85,7 +85,7 @@ type feedbackController struct {
 	flash    footerFlashState
 	flashSeq uint64
 
-	// outstandingConflicts is how many bundles `.tt/conflicts/` holds, cached so
+	// outstandingConflicts is how many bundles `.docket/conflicts/` holds, cached so
 	// no render reads the directory. It is deliberately not part of
 	// WorkspacePulse: that ladder is a closed ordinal with no seam for
 	// filesystem-derived state.

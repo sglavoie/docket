@@ -127,7 +127,7 @@ func TestManagerSnapshotFirstV16MigrationLeavesTaskMarkdownAndClearsHistory(t *t
 		"Task Markdown stays at schema 14",
 		"nothing derives one version from the other",
 		"Undo/redo history is dropped at this boundary",
-		"`.tt/workspace.json`",
+		"`.docket/workspace.json`",
 	} {
 		if !strings.Contains(string(auditBytes), want) {
 			t.Fatalf("audit does not state %q:\n%s", want, auditBytes)

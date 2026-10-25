@@ -15,8 +15,8 @@ import (
 // one undo step rather than two.
 func TestTaskLineEditCommitsDescriptionWithTheTitlePatch(t *testing.T) {
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
-	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 
 	project := realTestProject(t, dataDir, "alpha", "Before")
 	task := project.Tasks[0]
@@ -74,7 +74,7 @@ func TestTaskLineEditCommitsDescriptionWithTheTitlePatch(t *testing.T) {
 // the no-op path, where the shell would report "Task unchanged" and drop it.
 func TestTaskLineEditReportsADescriptionOnlySaveAsChanged(t *testing.T) {
 	dataDir := t.TempDir()
-	commitSvc := storage.NewCommitService(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir})
+	commitSvc := storage.NewCommitService(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir})
 
 	project := realTestProject(t, dataDir, "alpha", "Unchanged")
 	task := project.Tasks[0]

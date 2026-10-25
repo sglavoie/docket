@@ -220,7 +220,7 @@ func TestReliability_ExternalFileEditDetectedByRevisionCheck(t *testing.T) {
 // stranded work and lands its own change.
 func TestReliability_CommitDrivesCrashRecoveryRollForward(t *testing.T) {
 	svc, dataDir := newCommitTestService(t)
-	transactionsDir := dataDir + "/.tt/transactions"
+	transactionsDir := dataDir + "/.docket/transactions"
 
 	// Simulate a crash after a transaction staged a write to project "beta" and
 	// durably wrote its manifest, but before it applied. The project directory

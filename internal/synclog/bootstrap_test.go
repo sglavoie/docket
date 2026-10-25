@@ -184,7 +184,7 @@ func TestBootstrapRefusesIncompleteOrIncompatibleHistory(t *testing.T) {
 
 func TestBootstrapPreservesExistingWorkspace(t *testing.T) {
 	s, h := linearHistory(t, 3), bootstrapTestHistory(t)
-	path := h.abs(".tt/global-notes/local.md")
+	path := h.abs(".docket/global-notes/local.md")
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		t.Fatal(err)
 	}

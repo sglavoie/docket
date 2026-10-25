@@ -6,7 +6,7 @@ func TestIgnoredMatchesTheGoTool(t *testing.T) {
 	for name, want := range map[string]bool{
 		".git":      true,
 		".cache":    true,
-		".tt":       true,
+		".docket":   true,
 		"_scratch":  true,
 		"testdata":  true,
 		"internal":  false,

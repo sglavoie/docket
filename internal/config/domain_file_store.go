@@ -92,8 +92,8 @@ func validateWorkspaceID(workspaceID string) error {
 // DomainFileStore persists the three runtime configuration domains to their
 // own JSON files, mirroring the durable layout in context.md:
 //
-//   - <data>/.tt/workspace.json   (synced)  — WorkspaceCatalog
-//   - <data>/.tt/planning.json    (synced)  — PlanningState
+//   - <data>/.docket/workspace.json   (synced)  — WorkspaceCatalog
+//   - <data>/.docket/planning.json    (synced)  — PlanningState
 //   - ~/.docket/runtime/<workspace-id>/machine.json (machine-local) — MachineState
 //
 // Every file is wrapped in a versioned envelope carrying a schema version and

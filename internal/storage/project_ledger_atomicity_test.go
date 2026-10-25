@@ -16,7 +16,7 @@ import (
 // entry for both tasks.md files and their companion artifact.
 func TestCommitMultiProjectAndArtifactLedgerIsOneUndo(t *testing.T) {
 	dataDir := t.TempDir()
-	transactionsDir := filepath.Join(dataDir, ".tt", "transactions")
+	transactionsDir := filepath.Join(dataDir, ".docket", "transactions")
 	seedService := NewCommitService(transactionsDir, []string{dataDir})
 	alpha := newCommitTestProject(t, dataDir, "alpha", "alpha before")
 	beta := newCommitTestProject(t, dataDir, "beta", "beta before")
@@ -29,14 +29,14 @@ func TestCommitMultiProjectAndArtifactLedgerIsOneUndo(t *testing.T) {
 	betaPath := tasksFilePath(beta.Path)
 	alphaBefore := mustReadProjectLedgerFile(t, alphaPath)
 	betaBefore := mustReadProjectLedgerFile(t, betaPath)
-	artifactPath := filepath.Join(dataDir, ".tt", "planning.json")
+	artifactPath := filepath.Join(dataDir, ".docket", "planning.json")
 	artifactBefore := []byte(`{"state":"before"}`)
 	artifactAfter := []byte(`{"state":"after"}`)
 	writeArtifactBytes(t, artifactPath, artifactBefore)
 	alpha.Tasks[0].Title = "alpha after"
 	beta.Tasks[0].Title = "beta after"
 
-	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
+	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
 	service := NewCommitServiceWithLedger(transactionsDir, []string{dataDir}, ledger)
 	results, err := service.CommitMulti([]ChangeSet{
 		{
@@ -84,7 +84,7 @@ func TestCommitMultiProjectAndArtifactLedgerIsOneUndo(t *testing.T) {
 // stages or applies any user operation.
 func TestCommitMultiLedgerPreparationFailureChangesNoUserArtifacts(t *testing.T) {
 	dataDir := t.TempDir()
-	transactionsDir := filepath.Join(dataDir, ".tt", "transactions")
+	transactionsDir := filepath.Join(dataDir, ".docket", "transactions")
 	seedService := NewCommitService(transactionsDir, []string{dataDir})
 	alpha := newCommitTestProject(t, dataDir, "alpha", "alpha before")
 	beta := newCommitTestProject(t, dataDir, "beta", "beta before")
@@ -103,14 +103,14 @@ func TestCommitMultiLedgerPreparationFailureChangesNoUserArtifacts(t *testing.T)
 	if err != nil {
 		t.Fatalf("read beta before: %v", err)
 	}
-	artifactPath := filepath.Join(dataDir, ".tt", "planning.json")
+	artifactPath := filepath.Join(dataDir, ".docket", "planning.json")
 	artifactBefore := []byte(`{"state":"before"}`)
 	writeArtifactBytes(t, artifactPath, artifactBefore)
 
 	alpha.Tasks[0].Title = "alpha after"
 	beta.Tasks[0].Title = "beta after"
 	malformed := []byte("{not-json")
-	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
+	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
 	writeArtifactBytes(t, ledger.ledgerPath(), malformed)
 	service := NewCommitServiceWithLedger(transactionsDir, []string{dataDir}, ledger)
 
@@ -196,7 +196,7 @@ type projectLedgerCrashFixture struct {
 func prepareProjectLedgerCrashFixture(t *testing.T) projectLedgerCrashFixture {
 	t.Helper()
 	dataDir := t.TempDir()
-	transactionsDir := filepath.Join(dataDir, ".tt", "transactions")
+	transactionsDir := filepath.Join(dataDir, ".docket", "transactions")
 	alpha := newCommitTestProject(t, dataDir, "alpha", "alpha before")
 	beta := newCommitTestProject(t, dataDir, "beta", "beta before")
 	seedService := NewCommitService(transactionsDir, []string{dataDir})
@@ -206,7 +206,7 @@ func prepareProjectLedgerCrashFixture(t *testing.T) projectLedgerCrashFixture {
 
 	alphaPath := tasksFilePath(alpha.Path)
 	betaPath := tasksFilePath(beta.Path)
-	artifactPath := filepath.Join(dataDir, ".tt", "planning.json")
+	artifactPath := filepath.Join(dataDir, ".docket", "planning.json")
 	artifactBefore := []byte(`{"state":"before"}`)
 	artifactAfter := []byte(`{"state":"after"}`)
 	writeArtifactBytes(t, artifactPath, artifactBefore)
@@ -251,7 +251,7 @@ func prepareProjectLedgerCrashFixture(t *testing.T) projectLedgerCrashFixture {
 		{Kind: transaction.OpWrite, Target: artifactPath, Data: artifactAfter, Mode: FilePermissions},
 		{Kind: transaction.OpWrite, Target: betaPath, Data: betaAfter, Mode: FilePermissions},
 	}
-	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
+	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
 	service := NewCommitServiceWithLedger(transactionsDir, []string{dataDir}, ledger)
 	journal := transaction.NewJournal(transactionsDir, []string{dataDir}, "")
 	manifest, ledgerPlan, err := service.prepareTransaction(journal, userOps, &LedgerRecord{
@@ -327,7 +327,7 @@ func assertProjectLedgerVisibility(t *testing.T, fixture projectLedgerCrashFixtu
 func recoverAndAssertProjectLedgerState(t *testing.T, fixture projectLedgerCrashFixture, committed bool) {
 	t.Helper()
 	report, err := transaction.NewJournal(
-		filepath.Join(fixture.dataDir, ".tt", "transactions"),
+		filepath.Join(fixture.dataDir, ".docket", "transactions"),
 		[]string{fixture.dataDir}, "",
 	).Recover()
 	if err != nil {

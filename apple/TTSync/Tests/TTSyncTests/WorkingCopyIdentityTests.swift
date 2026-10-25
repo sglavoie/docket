@@ -23,7 +23,7 @@ final class WorkingCopyIdentityTests: XCTestCase {
     func testRetainedHistoryRestoresTheAuthorWhenRuntimeIdentityIsMissing() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
-        let directory = root.appendingPathComponent("workspace/.tt/sync/devices/recorded-author")
+        let directory = root.appendingPathComponent("workspace/.docket/sync/devices/recorded-author")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try Data(#"{"format":"tt-sync-history","device_id":"recorded-author"}"#.utf8)
             .write(to: directory.appendingPathComponent("state.json"))

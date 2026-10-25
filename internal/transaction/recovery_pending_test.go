@@ -63,7 +63,7 @@ func TestRecoverPendingStillBlocksCorruptJournal(t *testing.T) {
 // Keep the cost of a foreground recovery independent of retained sync history.
 func BenchmarkRecoveryWithHistory(b *testing.B) {
 	root := b.TempDir()
-	dir := filepath.Join(root, ".tt", "sync", "index")
+	dir := filepath.Join(root, ".docket", "sync", "index")
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		b.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func BenchmarkRecoveryWithHistory(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
-	j := NewJournal(filepath.Join(root, ".tt", "transactions"), []string{root}, "benchmark")
+	j := NewJournal(filepath.Join(root, ".docket", "transactions"), []string{root}, "benchmark")
 	for _, pending := range []bool{false, true} {
 		name := "full"
 		if pending {

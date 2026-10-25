@@ -17,7 +17,7 @@ func TestManagerV5MigrationCorruptInputRefusesBeforeSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notePath := filepath.Join(root, ".tt", "global-notes", "global-reference.md")
+	notePath := filepath.Join(root, ".docket", "global-notes", "global-reference.md")
 	originalWorkspace, err := os.ReadFile(WorkspaceCatalogPath(root))
 	if err != nil {
 		t.Fatal(err)

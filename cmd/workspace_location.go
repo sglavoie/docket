@@ -13,7 +13,7 @@ var workspaceLocationCmd = &cobra.Command{
 	Use:   "location",
 	Short: "Show the current workspace data directory",
 	Long: `Show where the current workspace stores its data, the workspace catalog
-(.tt/workspace.json) inside it, whether that location is local or synced, the
+(.docket/workspace.json) inside it, whether that location is local or synced, the
 machine-local active-workspace pointer (if one has been set by 'docket workspace
 move'), and where logs, migration backups, project exports, and merge
 conflicts live.`,

@@ -65,9 +65,9 @@ func syncCatalog(projects map[string]string) []byte {
 // catalog naming alpha and beta, both projects' tasks.md, and a beta note.
 func seedSyncWorkspace(t *testing.T, root string) {
 	t.Helper()
-	writeFile(t, filepath.Join(root, ".tt", "workspace.json"), string(syncCatalog(map[string]string{"alpha": "project-alpha", "beta": "project-beta"})))
-	writeFile(t, filepath.Join(root, ".tt", "planning.json"), `{"today":[]}`)
-	seed := NewCommitService(filepath.Join(root, ".tt", "transactions"), []string{root})
+	writeFile(t, filepath.Join(root, ".docket", "workspace.json"), string(syncCatalog(map[string]string{"alpha": "project-alpha", "beta": "project-beta"})))
+	writeFile(t, filepath.Join(root, ".docket", "planning.json"), `{"today":[]}`)
+	seed := NewCommitService(filepath.Join(root, ".docket", "transactions"), []string{root})
 	for slug, id := range map[string]string{"alpha": "project-alpha", "beta": "project-beta"} {
 		project := newCommitTestProject(t, root, slug, slug+" task")
 		project.ID = id
@@ -89,8 +89,8 @@ func openSyncWorkspace(t *testing.T, root, device string) *syncWorkspace {
 	if err != nil {
 		t.Fatalf("synclog.New: %v", err)
 	}
-	transactionsDir := filepath.Join(root, ".tt", "transactions")
-	ledger := NewWorkspaceLedger(filepath.Join(root, ".tt", "undo"), []string{root})
+	transactionsDir := filepath.Join(root, ".docket", "transactions")
+	ledger := NewWorkspaceLedger(filepath.Join(root, ".docket", "undo"), []string{root})
 	service := NewCommitServiceWithLedger(transactionsDir, []string{root}, ledger).WithSyncHistory(history)
 	w := &syncWorkspace{root: root, transactionsDir: transactionsDir, ledger: ledger, history: history, service: service}
 	w.alpha = w.loadProject(t, "alpha", "project-alpha")

@@ -56,7 +56,7 @@ type fakeRepo struct {
 // fakeCatalogPath is the in-memory stand-in for workspace.json. The census
 // reports it and its raw revision the way the production repository reports the
 // real catalog, so a test can advance it in preCommit and watch the guard fire.
-var fakeCatalogPath = filepath.Clean("mem-workspace/.tt/workspace.json")
+var fakeCatalogPath = filepath.Clean("mem-workspace/.docket/workspace.json")
 
 // WorkspaceCensus implements app.WorkspaceCensusSource over the seeded snapshot
 // population, which is the fake's analog of "every unarchived project": the

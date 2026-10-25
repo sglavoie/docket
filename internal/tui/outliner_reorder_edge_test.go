@@ -143,7 +143,7 @@ func TestHierarchicalReorderEdge(t *testing.T) {
 		}
 		assertTreeUnchanged(t, project, []string{ids[1], ids[2], ids[3], ids[0]})
 
-		ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
+		ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
 		if _, err := ledger.Undo(storage.GlobalScope()); err != nil {
 			t.Fatalf("ledger undo: %v", err)
 		}

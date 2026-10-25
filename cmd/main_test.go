@@ -55,7 +55,7 @@ func saveTestRuntime(manager *config.Manager, runtime *config.RuntimeState) erro
 // once that tier becomes part of Manager persistence. Tests that override $HOME
 // via t.Setenv restore to this throwaway directory rather than the real home.
 //
-// residue.Run also fails the run when it leaves .tt/, projects/, or a lock file
+// residue.Run also fails the run when it leaves .docket/, projects/, or a lock file
 // in the package directory, which is what an unrooted runtime or project writes.
 func TestMain(m *testing.M) {
 	nofsync.Enable()

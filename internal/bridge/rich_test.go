@@ -191,7 +191,7 @@ func richNotesLifecycle(t *testing.T, h *harness) {
 	if created.Note == nil || created.Committed.TransactionID == "" || *created.Note.Body != body {
 		t.Fatalf("create answered %+v", created)
 	}
-	stored, err := os.ReadFile(filepath.Join(h.dataDir, ".tt", "global-notes", created.Note.Filename))
+	stored, err := os.ReadFile(filepath.Join(h.dataDir, ".docket", "global-notes", created.Note.Filename))
 	if err != nil || !strings.Contains(string(stored), body) {
 		t.Fatalf("the global note file holds %q (%v)", stored, err)
 	}

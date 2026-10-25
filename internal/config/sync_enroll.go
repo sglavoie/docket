@@ -72,7 +72,7 @@ type EnrollOptions struct {
 }
 
 // EnrollmentRecord is the device-local record of how this device's working
-// copy was enrolled, kept under the working copy's .tt/sync/, which is never
+// copy was enrolled, kept under the working copy's .docket/sync/, which is never
 // exchanged. It is where this device's exchange folder is configured.
 type EnrollmentRecord struct {
 	Format         string    `json:"format"`
@@ -247,6 +247,11 @@ func EnrollWorkspace(opts EnrollOptions) (*EnrollReport, error) {
 			if recordErr := writeEnrollmentRecord(staging, record); recordErr != nil {
 				return recordErr
 			}
+			// The working copy carries no .tt/ from the original, so it is given
+			// its own tombstone before it is published.
+			if tombstoneErr := placeV24Tombstone(staging); tombstoneErr != nil {
+				return tombstoneErr
+			}
 			if validateErr := validateSourceSnapshot(entries); validateErr != nil {
 				return validateErr
 			}
@@ -291,7 +296,7 @@ func enrollPaths(opts EnrollOptions) (original, workingCopy, exchange string, er
 	if exchange, err = filepath.Abs(opts.Exchange); err != nil {
 		return "", "", "", err
 	}
-	if info, statErr := os.Stat(InternalDir(original)); statErr != nil || !info.IsDir() {
+	if !dirExists(InternalDir(original)) && !dirExists(LegacyInternalDir(original)) {
 		return "", "", "", fmt.Errorf("enroll: no Docket workspace at %s", original)
 	}
 	if err := ValidateWorkspaceMovePaths(original, workingCopy); err != nil {

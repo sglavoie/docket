@@ -236,7 +236,7 @@ func TestManagerSnapshotFirstV21MigrationSeedsWaitingCheckIns(t *testing.T) {
 		"including parked and archived ones",
 		"Saved lens definitions are not rewritten",
 		"Undo/redo history is dropped at this boundary",
-		"Conflict bundles under `.tt/conflicts/` are not rewritten",
+		"Conflict bundles under `.docket/conflicts/` are not rewritten",
 	} {
 		if !strings.Contains(string(auditBytes), want) {
 			t.Fatalf("audit does not state %q:\n%s", want, auditBytes)

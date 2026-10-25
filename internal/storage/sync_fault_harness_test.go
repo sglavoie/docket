@@ -283,14 +283,14 @@ func (s *faultSim) open(d *simDevice) {
 	if err != nil {
 		s.fatalf("%s: synclog.New: %v", d.name, err)
 	}
-	ledger := storage.NewWorkspaceLedger(filepath.Join(d.root, ".tt", "undo"), []string{d.root})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(d.root, ".docket", "undo"), []string{d.root})
 	d.history = history
 	d.svc = storage.NewCommitServiceWithLedger(d.txDir(), []string{d.root}, ledger).
 		WithSyncHistory(history).
 		WithSyncMerger(syncmerge.Merger{})
 }
 
-func (d *simDevice) txDir() string { return filepath.Join(d.root, ".tt", "transactions") }
+func (d *simDevice) txDir() string { return filepath.Join(d.root, ".docket", "transactions") }
 
 func (d *simDevice) path(rel string) string { return filepath.Join(d.root, filepath.FromSlash(rel)) }
 

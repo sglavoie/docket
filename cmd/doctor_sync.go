@@ -217,7 +217,7 @@ func checkTransactionJournal(runtime *config.RuntimeState, results *doctorResult
 func quarantineRecoveryStep(quarantineDir string) string {
 	return fmt.Sprintf(
 		"recovery step: every workspace mutation is blocked while %s holds manifests. "+
-			"Inspect them, restore any file they name from .tt/backups if its contents are wrong, "+
+			"Inspect them, restore any file they name from .docket/backups if its contents are wrong, "+
 			"then move the directory aside (for example to %s.bak) to unblock mutations.",
 		quarantineDir, quarantineDir,
 	)

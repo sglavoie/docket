@@ -29,7 +29,7 @@ const tuiTestMainFloor = 3
 // TestMain actually has. The shape is the contract, not the symbol: a TestMain
 // that runs the suite without swapping $HOME satisfies a symbol check and still
 // lets a test resolve ~/.docket/runtime/<workspace-id>/machine.json into the
-// developer's real home directory, which is how internal/tui/.tt/ and
+// developer's real home directory, which is how internal/tui/.docket/ and
 // internal/tui/projects/ became git-tracked residue.
 type homeIsolation struct {
 	file           string

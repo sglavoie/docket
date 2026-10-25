@@ -138,7 +138,7 @@ func TestRecordedICloudExchangeEvidence(t *testing.T) {
 	check(ev.Exchange.RunFolder == "runs/"+ev.RunID, "run folder %s", ev.Exchange.RunFolder)
 
 	// Disposable: the fixture's identity, in run-scoped directories.
-	fixture, err := os.ReadFile(filepath.Join("..", "compat", "testdata", "workspaces", "representative", ".tt", "workspace.json"))
+	fixture, err := os.ReadFile(filepath.Join("..", "compat", "testdata", "workspaces", "representative", ".docket", "workspace.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

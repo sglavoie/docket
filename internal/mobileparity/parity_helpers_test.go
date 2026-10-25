@@ -251,7 +251,7 @@ func (p *pair) requireSameWorkspace() {
 // requireSameFiles compares the same files after normalize.
 func (p *pair) requireSameFiles(normalize func([]byte) []byte) {
 	p.t.Helper()
-	files := []string{filepath.Join(".tt", "planning.json")}
+	files := []string{filepath.Join(".docket", "planning.json")}
 	matches, err := filepath.Glob(filepath.Join(p.desktop.dataDir, "projects", "*", "tasks.md"))
 	if err != nil || len(matches) == 0 {
 		p.t.Fatalf("no desktop task files: %v", err)
@@ -277,7 +277,7 @@ func fingerprint(t *testing.T, dataDir string) string {
 	t.Helper()
 	var b strings.Builder
 	paths, _ := filepath.Glob(filepath.Join(dataDir, "projects", "*", "tasks.md"))
-	paths = append(paths, filepath.Join(dataDir, ".tt", "planning.json"))
+	paths = append(paths, filepath.Join(dataDir, ".docket", "planning.json"))
 	for _, path := range paths {
 		data, err := os.ReadFile(path)
 		if err != nil {

@@ -201,7 +201,7 @@ func parityBulk(t *testing.T) {
 // frontends write.
 func catalogProjects(t *testing.T, dataDir string) string {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join(dataDir, ".tt", "workspace.json"))
+	data, err := os.ReadFile(filepath.Join(dataDir, ".docket", "workspace.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

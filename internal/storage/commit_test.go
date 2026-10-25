@@ -51,7 +51,7 @@ func newCommitTestProject(t *testing.T, dataDir, slug, title string) *models.Pro
 func newCommitTestService(t *testing.T) (*CommitService, string) {
 	t.Helper()
 	dataDir := t.TempDir()
-	svc := NewCommitService(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir})
+	svc := NewCommitService(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir})
 	return svc, dataDir
 }
 
@@ -77,7 +77,7 @@ func TestCommitResultTransactionIDAndWritesProjectAndArtifact(t *testing.T) {
 	svc, dataDir := newCommitTestService(t)
 	project := newCommitTestProject(t, dataDir, "alpha", "write me")
 
-	artifactPath := filepath.Join(dataDir, ".tt", "planning.json")
+	artifactPath := filepath.Join(dataDir, ".docket", "planning.json")
 	result, err := svc.Commit(ChangeSet{
 		Project:   project,
 		Artifacts: []ArtifactChange{{Path: artifactPath, Data: []byte(`{"queue":[]}`)}},
@@ -115,7 +115,7 @@ func TestCommitResultTransactionIDAndWritesProjectAndArtifact(t *testing.T) {
 	}
 
 	// The journal is clean: no leftover manifests after a successful commit.
-	entries, _ := os.ReadDir(filepath.Join(dataDir, ".tt", "transactions"))
+	entries, _ := os.ReadDir(filepath.Join(dataDir, ".docket", "transactions"))
 	for _, e := range entries {
 		if filepath.Ext(e.Name()) == ".json" {
 			t.Fatalf("unexpected leftover manifest: %s", e.Name())
@@ -269,7 +269,7 @@ func TestCommitService_BlockedByQuarantine(t *testing.T) {
 	project := newCommitTestProject(t, dataDir, "alpha", "should not write")
 
 	// Plant a corrupt manifest so startup recovery quarantines it.
-	txnDir := filepath.Join(dataDir, ".tt", "transactions")
+	txnDir := filepath.Join(dataDir, ".docket", "transactions")
 	if err := os.MkdirAll(txnDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -296,7 +296,7 @@ func commitProjectExists(project *models.Project) bool {
 // which would mean a commit did not reclaim its transaction.
 func assertJournalClean(t *testing.T, dataDir string) {
 	t.Helper()
-	entries, _ := os.ReadDir(filepath.Join(dataDir, ".tt", "transactions"))
+	entries, _ := os.ReadDir(filepath.Join(dataDir, ".docket", "transactions"))
 	for _, e := range entries {
 		if filepath.Ext(e.Name()) == ".json" {
 			t.Fatalf("unexpected leftover manifest: %s", e.Name())

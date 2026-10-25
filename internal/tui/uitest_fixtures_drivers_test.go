@@ -47,7 +47,7 @@ func NewCopiedWorkspaceDriver(sourceConfigPath string, width, height int) (*UITe
 		return nil, nil, fmt.Errorf("source config path is required")
 	}
 	// Persistence is the decomposed domain files under the workspace root, so the
-	// source "config" is the whole workspace directory (the .tt/ config domain
+	// source "config" is the whole workspace directory (the .docket/ config domain
 	// files plus the project data), not a single monolithic file. Copy that durable
 	// tree into a fresh temporary workspace first, then load from the copy.
 	srcRoot := config.WorkspaceRootFromConfigPath(sourceConfigPath)

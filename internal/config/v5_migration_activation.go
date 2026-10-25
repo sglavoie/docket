@@ -138,7 +138,12 @@ func (m *Manager) migrateWorkspaceToV5(hooks v5MigrationActivationHooks) error {
 }
 
 func workspaceCatalogPayloadSchema(dataDir string) (int, bool, error) {
-	path := WorkspaceCatalogPath(dataDir)
+	return catalogPayloadSchemaAt(WorkspaceCatalogPath(dataDir))
+}
+
+// catalogPayloadSchemaAt is workspaceCatalogPayloadSchema for a catalog at an
+// explicit path, which is how the v24 activation reads a pre-v24 .tt/ catalog.
+func catalogPayloadSchemaAt(path string) (int, bool, error) {
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return 0, false, nil

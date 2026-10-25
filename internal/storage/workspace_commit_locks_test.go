@@ -20,8 +20,8 @@ func TestWithWorkspaceCommitLocksRecoversEveryJournalBeforeCallback(t *testing.T
 
 	targetA := filepath.Join(rootA, "recovered.txt")
 	targetB := filepath.Join(rootB, "recovered.txt")
-	journalA := transaction.NewJournal(filepath.Join(rootA, ".tt", "transactions"), []string{rootA}, "")
-	journalB := transaction.NewJournal(filepath.Join(rootB, ".tt", "transactions"), []string{rootB}, "")
+	journalA := transaction.NewJournal(filepath.Join(rootA, ".docket", "transactions"), []string{rootA}, "")
+	journalB := transaction.NewJournal(filepath.Join(rootB, ".docket", "transactions"), []string{rootB}, "")
 	manifestA, err := journalA.Prepare([]transaction.Op{{Kind: transaction.OpWrite, Target: targetA, Data: []byte("a")}})
 	if err != nil {
 		t.Fatalf("prepare journal A: %v", err)
@@ -31,8 +31,8 @@ func TestWithWorkspaceCommitLocksRecoversEveryJournalBeforeCallback(t *testing.T
 		t.Fatalf("prepare journal B: %v", err)
 	}
 
-	serviceA := NewCommitService(filepath.Join(rootA, ".tt", "transactions"), []string{rootA})
-	serviceB := NewCommitService(filepath.Join(rootB, ".tt", "transactions"), []string{rootB})
+	serviceA := NewCommitService(filepath.Join(rootA, ".docket", "transactions"), []string{rootA})
+	serviceB := NewCommitService(filepath.Join(rootB, ".docket", "transactions"), []string{rootB})
 	if err := WithWorkspaceCommitLocks([]*CommitService{serviceB, serviceA, serviceA}, func() error {
 		for path, want := range map[string]string{targetA: "a", targetB: "b"} {
 			got, readErr := os.ReadFile(path)
@@ -58,8 +58,8 @@ func TestWithWorkspaceCommitLocksRecoversEveryJournalBeforeCallback(t *testing.T
 func TestWithWorkspaceCommitLocksOppositeDirectionsSerializeWithoutDeadlock(t *testing.T) {
 	rootA := filepath.Join(t.TempDir(), "a")
 	rootB := filepath.Join(t.TempDir(), "b")
-	serviceA := NewCommitService(filepath.Join(rootA, ".tt", "transactions"), []string{rootA})
-	serviceB := NewCommitService(filepath.Join(rootB, ".tt", "transactions"), []string{rootB})
+	serviceA := NewCommitService(filepath.Join(rootA, ".docket", "transactions"), []string{rootA})
+	serviceB := NewCommitService(filepath.Join(rootB, ".docket", "transactions"), []string{rootB})
 
 	firstEntered := make(chan struct{})
 	releaseFirst := make(chan struct{})

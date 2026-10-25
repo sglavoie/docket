@@ -264,7 +264,7 @@ func vocabularyRenamePendingSelection(
 // vocabularyRenameLensImpacts reads the effective saved-lens collection and
 // reports the ones whose predicates may select differently afterwards. The
 // collection read here is the one the lens picker reads: the portable
-// .tt/lenses.json has already replaced the machine-local list at load when it
+// .docket/lenses.json has already replaced the machine-local list at load when it
 // was defined, and the machine-local list survives when it was not, so this
 // inherits that fallback rather than restating it.
 //

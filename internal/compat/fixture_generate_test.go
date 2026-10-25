@@ -332,10 +332,10 @@ func writeFixtureAttachment(t *testing.T, project *models.Project) {
 func copyPortableWorkspace(t *testing.T, source, target string) {
 	t.Helper()
 	excludedDirs := map[string]bool{
-		filepath.Join(".tt", "transactions"): true,
-		filepath.Join(".tt", "undo"):         true,
-		filepath.Join(".tt", "backups"):      true,
-		filepath.Join(".tt", "conflicts"):    true,
+		filepath.Join(".docket", "transactions"): true,
+		filepath.Join(".docket", "undo"):         true,
+		filepath.Join(".docket", "backups"):      true,
+		filepath.Join(".docket", "conflicts"):    true,
 	}
 	err := filepath.WalkDir(source, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {

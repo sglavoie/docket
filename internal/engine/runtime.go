@@ -207,12 +207,13 @@ func newManager(dataDir string, machine Machine) *config.Manager {
 }
 
 // workspaceExists reports whether the data directory holds a workspace: its
-// internal .tt directory, which every schema since v4 keeps, or the legacy
+// internal .docket directory, the .tt one a pre-v24 workspace (or the tombstone
+// a migrated one) keeps, or the legacy
 // aggregate config an older workspace still needs migrating from.
 func workspaceExists(manager *config.Manager) (bool, error) {
 	configPath := manager.GetConfigPath()
 	dataDir := config.WorkspaceRootFromConfigPath(configPath)
-	for _, marker := range []string{config.InternalDir(dataDir), configPath} {
+	for _, marker := range append(config.WorkspaceDirMarkers(dataDir), configPath) {
 		_, err := os.Stat(marker)
 		if err == nil {
 			return true, nil

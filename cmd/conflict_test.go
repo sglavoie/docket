@@ -152,7 +152,7 @@ func TestConflictResolveUseLocal(t *testing.T) {
 
 // retireCLIBundleDocuments rewrites a recorded bundle's documents as schema-2
 // markdown, the state an old bundle reaches on its own: nothing migrates
-// `.tt/conflicts/` when the schema advances.
+// `.docket/conflicts/` when the schema advances.
 func retireCLIBundleDocuments(t *testing.T, store *storage.ConflictStore, id string) {
 	t.Helper()
 	retired := "# Alpha\n\n<!-- tt-schema: 2 -->\n\n## Task: base title\n\n- state: backlog\n"

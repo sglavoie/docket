@@ -110,9 +110,10 @@ func checkDataDirOverride() error {
 // never do, so doctor, the conflict commands, and project export ask this first and name the path
 // they would otherwise have created.
 // The data directory alone proves nothing — the default ~/.docket also holds the
-// machine-local logs every command opens — so a workspace is its internal .tt
-// directory, which every schema since v4 keeps, or the legacy aggregate config
-// file an older workspace still needs migrating from.
+// machine-local logs every command opens — so a workspace is its internal
+// .docket directory, the .tt one a pre-v24 workspace still keeps (or the
+// tombstone a migrated one leaves), or the legacy aggregate config file an older
+// workspace still needs migrating from.
 func requireExistingWorkspace() error {
 	if err := checkDataDirOverride(); err != nil {
 		return err
@@ -134,7 +135,7 @@ func requireExistingWorkspace() error {
 // by the markers requireExistingWorkspace documents.
 func workspaceExists(configPath string) (bool, error) {
 	dir := config.WorkspaceRootFromConfigPath(configPath)
-	for _, marker := range []string{config.InternalDir(dir), configPath} {
+	for _, marker := range append(config.WorkspaceDirMarkers(dir), configPath) {
 		_, err := os.Stat(marker)
 		if err == nil {
 			return true, nil

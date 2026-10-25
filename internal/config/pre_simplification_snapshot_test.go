@@ -121,12 +121,12 @@ func TestCreatePreSimplificationV5SnapshotCapturesRollbackDataAndInventoriesAtta
 
 	entries := readPreSimplificationV5Archive(t, report.ArchivePath)
 	for path, want := range map[string]string{
-		"workspace/.tt/workspace.json":                          `"kind":"workspace"`,
-		"workspace/.tt/planning.json":                           `"kind":"planning"`,
-		"workspace/.tt/settings.json":                           `"kind":"settings"`,
-		"workspace/.tt/automation.json":                         `"kind":"automation"`,
-		"workspace/.tt/global-notes/global.md":                  "Global note",
-		"workspace/.tt/trash/deleted/data/tasks.md":             "Deleted task",
+		"workspace/.docket/workspace.json":                      `"kind":"workspace"`,
+		"workspace/.docket/planning.json":                       `"kind":"planning"`,
+		"workspace/.docket/settings.json":                       `"kind":"settings"`,
+		"workspace/.docket/automation.json":                     `"kind":"automation"`,
+		"workspace/.docket/global-notes/global.md":              "Global note",
+		"workspace/.docket/trash/deleted/data/tasks.md":         "Deleted task",
 		"workspace/projects/alpha/tasks.md":                     "Active task",
 		"workspace/projects/alpha/completed.md":                 "Archived task",
 		"workspace/projects/alpha/.completed.index.json":        `"version":2`,
@@ -150,7 +150,7 @@ func TestCreatePreSimplificationV5SnapshotCapturesRollbackDataAndInventoriesAtta
 	if _, ok := entries["workspace/logs/tt.log"]; ok {
 		t.Fatal("machine-local log was copied into rollback archive")
 	}
-	if _, ok := entries["workspace/.tt/backups/older.tar.gz"]; ok {
+	if _, ok := entries["workspace/.docket/backups/older.tar.gz"]; ok {
 		t.Fatal("an existing backup was recursively copied into the new archive")
 	}
 
@@ -235,10 +235,10 @@ func TestCreatePreSimplificationV5SnapshotCoversLegacyV4FixtureCorpus(t *testing
 	}
 	entries := readPreSimplificationV5Archive(t, report.ArchivePath)
 	for _, path := range []string{
-		"workspace/.tt/automation.json",
-		"workspace/.tt/global-notes/global-reference.md",
-		"workspace/.tt/trash/project-deleted__1769947200000000000/data/tasks.md",
-		"workspace/.tt/trash/project-deleted__1769947200000000000/tombstone.json",
+		"workspace/.docket/automation.json",
+		"workspace/.docket/global-notes/global-reference.md",
+		"workspace/.docket/trash/project-deleted__1769947200000000000/data/tasks.md",
+		"workspace/.docket/trash/project-deleted__1769947200000000000/tombstone.json",
 		"workspace/projects/_sandbox/tasks.md",
 		"workspace/projects/alpha/.completed.index.json",
 		"workspace/projects/alpha/blockers.md",
@@ -268,13 +268,13 @@ func TestCreatePreSimplificationV5SnapshotCoversLegacyV4FixtureCorpus(t *testing
 func seedPreSimplificationV5Workspace(t *testing.T, root, workspaceID string) {
 	t.Helper()
 	writeFileTree(t, root, map[string]string{
-		".tt/workspace.json":                                      workspaceEnvelopeFixture(workspaceID, "workspace"),
-		".tt/planning.json":                                       workspaceEnvelopeFixture(workspaceID, "planning"),
-		".tt/settings.json":                                       workspaceEnvelopeFixture(workspaceID, "settings"),
-		".tt/automation.json":                                     workspaceEnvelopeFixture(workspaceID, "automation"),
-		".tt/global-notes/global.md":                              "Global note\n",
-		".tt/trash/deleted/data/tasks.md":                         "Deleted task\n",
-		".tt/backups/older.tar.gz":                                "older snapshot",
+		".docket/workspace.json":                                  workspaceEnvelopeFixture(workspaceID, "workspace"),
+		".docket/planning.json":                                   workspaceEnvelopeFixture(workspaceID, "planning"),
+		".docket/settings.json":                                   workspaceEnvelopeFixture(workspaceID, "settings"),
+		".docket/automation.json":                                 workspaceEnvelopeFixture(workspaceID, "automation"),
+		".docket/global-notes/global.md":                          "Global note\n",
+		".docket/trash/deleted/data/tasks.md":                     "Deleted task\n",
+		".docket/backups/older.tar.gz":                            "older snapshot",
 		"projects/alpha/tasks.md":                                 "Active task\n",
 		"projects/alpha/completed.md":                             "Archived task\n",
 		"projects/alpha/.completed.index.json":                    `{"version":2}`,
@@ -300,7 +300,7 @@ func seedDeterministicPreSimplificationV5Workspace(t *testing.T, root string) {
 	t.Helper()
 	writeFileTree(t, root, map[string]string{
 		"projects/alpha/tasks.md": "Active task\n",
-		".tt/settings.json":       `{"stable":true}`,
+		".docket/settings.json":   `{"stable":true}`,
 	})
 }
 

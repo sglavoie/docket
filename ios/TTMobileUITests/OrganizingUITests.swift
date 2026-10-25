@@ -67,7 +67,7 @@ final class OrganizingUITests: XCTestCase {
 
     /// One project's catalog record, read as JSON.
     private func project(_ slug: String) throws -> [String: Any]? {
-        let data = try Data(contentsOf: workspace.appendingPathComponent(".tt/workspace.json"))
+        let data = try Data(contentsOf: workspace.appendingPathComponent(".docket/workspace.json"))
         let document = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         let projects = (document?["data"] as? [String: Any])?["projects"] as? [[String: Any]] ?? []
         return projects.first { $0["slug"] as? String == slug }
@@ -82,7 +82,7 @@ final class OrganizingUITests: XCTestCase {
     }
 
     private func planning() throws -> String {
-        try String(contentsOf: workspace.appendingPathComponent(".tt/planning.json"), encoding: .utf8)
+        try String(contentsOf: workspace.appendingPathComponent(".docket/planning.json"), encoding: .utf8)
     }
 
     /// One task's heading, at any depth, through its metadata line.
@@ -280,7 +280,7 @@ final class OrganizingUITests: XCTestCase {
     }
 
     func testLongPressReordersNext() throws {
-        let file = workspace.appendingPathComponent(".tt/planning.json")
+        let file = workspace.appendingPathComponent(".docket/planning.json")
         var document = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
         var data = try XCTUnwrap(document["data"] as? [String: Any])
         data["next"] = data["today"]
@@ -408,7 +408,7 @@ final class OrganizingUITests: XCTestCase {
         XCTAssertFalse(app.buttons["checkin.save"].isEnabled)
         require(app.staticTexts["checkin.validation"], "the invalid interval explanation")
         replace(app, "checkin.repeat", with: "8")
-        let catalog = workspace.appendingPathComponent(".tt/workspace.json")
+        let catalog = workspace.appendingPathComponent(".docket/workspace.json")
         let permissions = try FileManager.default.attributesOfItem(atPath: catalog.path)[.posixPermissions]!
         defer { try? FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: catalog.path) }
         try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: catalog.path)

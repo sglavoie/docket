@@ -223,8 +223,8 @@ func TestManagerActivatesSnapshotFirstV7MigrationAndIsIdempotent(t *testing.T) {
 	}
 	entries := readPreSimplificationV5Archive(t, pairs[0][0])
 	for _, path := range []string{
-		"workspace/.tt/workspace.json",
-		"workspace/.tt/planning.json",
+		"workspace/.docket/workspace.json",
+		"workspace/.docket/planning.json",
 		"workspace/projects/alpha/tasks.md",
 		preScopeV7AuditEntry,
 	} {

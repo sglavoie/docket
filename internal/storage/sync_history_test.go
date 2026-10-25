@@ -38,9 +38,9 @@ func localMutations() []localMutation {
 			run: func(w *syncWorkspace) error {
 				_, err := w.service.CommitArtifactTransaction(ArtifactCommitRequest{
 					Artifacts: []ArtifactChange{
-						{Path: w.path(".tt/planning.json"), Data: []byte(`{"today":["x"]}`), BackupPath: w.path(".tt/planning.json.bak")},
+						{Path: w.path(".docket/planning.json"), Data: []byte(`{"today":["x"]}`), BackupPath: w.path(".docket/planning.json.bak")},
 						{Path: w.path("projects/beta/notes/plan.md"), Delete: true},
-						{Path: w.path(".tt/global-notes/inbox.md"), Data: []byte("global")},
+						{Path: w.path(".docket/global-notes/inbox.md"), Data: []byte("global")},
 					},
 					ProjectIDs: []string{"project-beta"},
 					UndoAction: "artifacts",
@@ -52,7 +52,7 @@ func localMutations() []localMutation {
 			name: "config_artifacts", kind: synclog.KindUser,
 			run: func(w *syncWorkspace) error {
 				_, err := w.service.CommitArtifacts([]ArtifactChange{{
-					Path: w.path(".tt/lenses.json"), Data: []byte(`{"lenses":[]}`),
+					Path: w.path(".docket/lenses.json"), Data: []byte(`{"lenses":[]}`),
 				}})
 				return err
 			},
@@ -63,7 +63,7 @@ func localMutations() []localMutation {
 				_, err := w.service.CommitOpsTransaction(OpsCommitRequest{
 					Ops: []transaction.Op{{Kind: transaction.OpMove, Source: w.path("projects/beta"), Target: w.path("projects/gamma")}},
 					Artifacts: []ArtifactChange{{
-						Path: w.path(".tt/workspace.json"),
+						Path: w.path(".docket/workspace.json"),
 						Data: syncCatalog(map[string]string{"alpha": "project-alpha", "gamma": "project-beta"}),
 					}},
 					ProjectIDs: []string{"project-beta"},
@@ -161,7 +161,7 @@ func TestSyncLocalRecordsNameProjectsAndAncestry(t *testing.T) {
 	if _, err := w.service.CommitOpsTransaction(OpsCommitRequest{
 		Ops: []transaction.Op{{Kind: transaction.OpMove, Source: w.path("projects/beta"), Target: w.path("projects/gamma")}},
 		Artifacts: []ArtifactChange{{
-			Path: w.path(".tt/workspace.json"),
+			Path: w.path(".docket/workspace.json"),
 			Data: syncCatalog(map[string]string{"alpha": "project-alpha", "gamma": "project-beta"}),
 		}},
 		UndoAction: "rename",

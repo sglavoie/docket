@@ -34,7 +34,7 @@ func TestCommitMerge_ComplexConflictNeverPartiallyAppliesIntent(t *testing.T) {
 	})
 	localB := projectFromDocument(projB, localBDoc)
 
-	artifactPath := filepath.Join(env.dataDir, ".tt", "planning.json")
+	artifactPath := filepath.Join(env.dataDir, ".docket", "planning.json")
 	sourcePath := filepath.Join(env.dataDir, "evidence.txt")
 	if err := os.WriteFile(sourcePath, []byte("attachment bytes"), FilePermissions); err != nil {
 		t.Fatalf("write attachment source: %v", err)
@@ -107,7 +107,7 @@ func TestCommitMerge_ComplexConflictNeverPartiallyAppliesIntent(t *testing.T) {
 	}
 	assertComplexIntentAbsent("after aborted commit")
 
-	resolveSvc := NewCommitService(filepath.Join(env.dataDir, ".tt", "transactions"), []string{env.dataDir})
+	resolveSvc := NewCommitService(filepath.Join(env.dataDir, ".docket", "transactions"), []string{env.dataDir})
 	res, resolveErr := ResolveConflict(env.store, resolveSvc, id, ResolveUseLocal, "")
 	if !errors.Is(resolveErr, ErrConflictRetryRequired) {
 		t.Fatalf("ResolveConflict err = %v, want ErrConflictRetryRequired", resolveErr)

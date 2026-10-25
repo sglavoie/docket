@@ -4,7 +4,7 @@
   "rules": [
     {
       "id": "snapshot-portable-config",
-      "fixture": "workspace/.tt/workspace.json",
+      "fixture": "workspace/.docket/workspace.json",
       "outcome": "snapshot"
     },
     {
@@ -24,12 +24,12 @@
     },
     {
       "id": "snapshot-project-metadata",
-      "fixture": "workspace/.tt/workspace.json",
+      "fixture": "workspace/.docket/workspace.json",
       "outcome": "snapshot"
     },
     {
       "id": "snapshot-global-and-project-notes",
-      "fixture": "workspace/.tt/global-notes/global-reference.md",
+      "fixture": "workspace/.docket/global-notes/global-reference.md",
       "outcome": "snapshot"
     },
     {
@@ -134,7 +134,7 @@
     },
     {
       "id": "dark-or-custom-theme-becomes-dark",
-      "fixture": "workspace/.tt/settings.json",
+      "fixture": "workspace/.docket/settings.json",
       "outcome": "convert"
     },
     {
@@ -144,7 +144,7 @@
     },
     {
       "id": "project-trash-snapshot-only",
-      "fixture": "workspace/.tt/trash/project-deleted__1769947200000000000/tombstone.json",
+      "fixture": "workspace/.docket/trash/project-deleted__1769947200000000000/tombstone.json",
       "outcome": "snapshot"
     },
     {
@@ -184,7 +184,7 @@
     },
     {
       "id": "settings-and-automation-domains-dropped",
-      "fixture": "workspace/.tt/automation.json",
+      "fixture": "workspace/.docket/automation.json",
       "outcome": "snapshot"
     },
     {
@@ -204,12 +204,12 @@
     },
     {
       "id": "retained-lean-project-fields",
-      "fixture": "workspace/.tt/workspace.json",
+      "fixture": "workspace/.docket/workspace.json",
       "outcome": "convert"
     },
     {
       "id": "planning-retains-today-and-next-order-only",
-      "fixture": "workspace/.tt/planning.json",
+      "fixture": "workspace/.docket/planning.json",
       "outcome": "convert"
     },
     {
@@ -231,7 +231,7 @@
     },
     {
       "id": "partial-split-domain-bundle",
-      "fixture": "unsupported/partial/workspace/.tt/workspace.json",
+      "fixture": "unsupported/partial/workspace/.docket/workspace.json",
       "outcome": "fail"
     },
     {

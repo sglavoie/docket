@@ -89,8 +89,8 @@ func TestSyncManifestRefusesIncompleteEffects(t *testing.T) {
 		"delete without base":   {Kind: EffectNote, ProjectID: "p", Path: "projects/a/notes/n.md", Op: OpDelete},
 		"put without blob":      {Kind: EffectNote, ProjectID: "p", Path: "projects/a/notes/n.md", Op: OpPut},
 		"escaping path":         {Kind: EffectNote, ProjectID: "p", Path: "../projects/a/notes/n.md", Op: OpPut, Blob: &digest},
-		"absolute path":         {Kind: EffectCatalog, Path: "/.tt/workspace.json", Op: OpPut, Blob: &digest},
-		"device-local path":     {Kind: EffectCatalog, Path: ".tt/undo/ledger.json", Op: OpPut, Blob: &digest},
+		"absolute path":         {Kind: EffectCatalog, Path: "/.docket/workspace.json", Op: OpPut, Blob: &digest},
+		"device-local path":     {Kind: EffectCatalog, Path: ".docket/undo/ledger.json", Op: OpPut, Blob: &digest},
 		"kind mismatch":         {Kind: EffectNote, ProjectID: "p", Path: "projects/a/tasks.md", Op: OpPut, Blob: &digest},
 		"project kind no id":    {Kind: EffectProjectDocument, Path: "projects/a/tasks.md", Op: OpPut, Blob: &digest},
 		"move changing content": {Kind: EffectNote, ProjectID: "p", Path: "projects/a/notes/n.md", TargetPath: "projects/a/notes/m.md", Op: OpMove, BaseBlob: &digest, Blob: &other},
@@ -112,10 +112,10 @@ func TestSyncManifestRefusesIncompleteEffects(t *testing.T) {
 // TestSyncClassifyPaths pins which paths are exchanged and which never are.
 func TestSyncClassifyPaths(t *testing.T) {
 	synced := map[string]EffectKind{
-		".tt/workspace.json":                       EffectCatalog,
-		".tt/planning.json":                        EffectPlanning,
-		".tt/lenses.json":                          EffectLenses,
-		".tt/global-notes/2026-weekly.md":          EffectGlobalNote,
+		".docket/workspace.json":                   EffectCatalog,
+		".docket/planning.json":                    EffectPlanning,
+		".docket/lenses.json":                      EffectLenses,
+		".docket/global-notes/2026-weekly.md":      EffectGlobalNote,
 		"projects/atlas/tasks.md":                  EffectProjectDocument,
 		"projects/atlas/notes/runbook.md":          EffectNote,
 		"projects/atlas/.attachments/abc/file.txt": EffectAttachment,
@@ -128,17 +128,38 @@ func TestSyncClassifyPaths(t *testing.T) {
 		}
 	}
 	for _, rel := range []string{
-		".tt/transactions/x.json", ".tt/undo/ledger.json", ".tt/sync/devices/d/state.json",
-		".tt/backups/snap/workspace.json", ".tt/conflicts/c.json", ".tt/workspace.json.bak",
-		"projects/atlas/.tasks.md.lock", ".tt/planning.json.lock", "projects/atlas/.tt-stage-x-001.stage",
+		".docket/transactions/x.json", ".docket/undo/ledger.json", ".docket/sync/devices/d/state.json",
+		".docket/backups/snap/workspace.json", ".docket/conflicts/c.json", ".docket/workspace.json.bak",
+		"projects/atlas/.tasks.md.lock", ".docket/planning.json.lock", "projects/atlas/.tt-stage-x-001.stage",
 	} {
 		if _, _, local, err := Classify(rel); err != nil || !local {
 			t.Fatalf("Classify(%s) local=%v err=%v, want device-local", rel, local, err)
 		}
 	}
-	for _, rel := range []string{"stray.txt", ".tt/index.json", "projects/tasks.md"} {
+	for _, rel := range []string{"stray.txt", ".docket/index.json", "projects/tasks.md"} {
 		if _, _, _, err := Classify(rel); !errors.Is(err, ErrUnclassifiedPath) {
 			t.Fatalf("Classify(%s) err=%v, want ErrUnclassifiedPath", rel, err)
 		}
+	}
+}
+
+// TestClassifyReadsPreV24RecordsThroughTheirCanonicalPath keeps a record sealed
+// before schema 24 valid while the tombstone now at .tt/ is never synced.
+func TestClassifyReadsPreV24RecordsThroughTheirCanonicalPath(t *testing.T) {
+	if got := CanonicalPath(".tt/workspace.json"); got != ".docket/workspace.json" {
+		t.Fatalf("CanonicalPath = %q", got)
+	}
+	for _, rel := range []string{"projects/atlas/tasks.md", ".tt-stage-x", ".docket/planning.json"} {
+		if got := CanonicalPath(rel); got != rel {
+			t.Fatalf("CanonicalPath(%q) = %q, want it unchanged", rel, got)
+		}
+	}
+	if _, _, local, err := Classify(".tt/workspace.json"); err != nil || !local {
+		t.Fatalf("the tombstone catalog classifies as local=%v err=%v, want device-local", local, err)
+	}
+	digest := Digest([]byte("catalog"))
+	legacy := Effect{Kind: EffectCatalog, Path: ".tt/workspace.json", Op: OpPut, Blob: &digest}
+	if err := legacy.validate(); err != nil {
+		t.Fatalf("a pre-v24 catalog effect no longer validates: %v", err)
 	}
 }

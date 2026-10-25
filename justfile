@@ -113,9 +113,9 @@ readme-media:
 readme-media-check:
     ./scripts/readme_media.sh --check
 
-# Run the two-machine hazard gate (outside `just ci`; see DOCKET_OLD_BINARY_REF)
+# Run the two-machine hazard gate (outside `just ci`; DOCKET_OLD_BINARY_REF defaults to CI's schema-19 build)
 cross-machine:
-    ./scripts/cross_machine_gate.sh
+    DOCKET_OLD_BINARY_REF="${DOCKET_OLD_BINARY_REF:-08c0cb08fec10154e6d2c9455e32d4c4ffa5f72d}" ./scripts/cross_machine_gate.sh
 
 # Build and vendor the pinned GhosttyKit.xcframework for the macOS app (outside `just ci`)
 mac-ghosttykit:

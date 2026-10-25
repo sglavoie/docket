@@ -91,7 +91,7 @@ func TestWorkspaceNoteMovesBetweenAllLocationsAndUndoRedo(t *testing.T) {
 				t.Fatalf("undo count = %d, want %d", got, baselineUndo+1)
 			}
 
-			ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
+			ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
 			entry, ok, err := ledger.SelectNewestUndo(storage.GlobalScope())
 			if err != nil || !ok {
 				t.Fatalf("select move undo entry: ok=%v err=%v", ok, err)

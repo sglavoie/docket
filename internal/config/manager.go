@@ -264,6 +264,9 @@ func (m *Manager) rejectLegacyOnlyState(store *DomainFileStore) error {
 	if info, err := os.Stat(m.workspaceDataDir()); err == nil && !info.IsDir() {
 		return fmt.Errorf("workspace data directory %s is not a directory", absoluteArtifactPath(m.workspaceDataDir()))
 	}
+	if err := pendingV24LayoutError(m.workspaceDataDir()); err != nil {
+		return err
+	}
 	if _, err := os.Stat(m.configPath); err == nil {
 		return &LegacyConfigRequiresMigrationError{Path: m.configPath}
 	} else if !errors.Is(err, os.ErrNotExist) {
@@ -277,6 +280,11 @@ func (m *Manager) rejectLegacyOnlyState(store *DomainFileStore) error {
 // recovery cannot create transaction directories or locks beside an aggregate
 // config that still requires migration.
 func (m *Manager) RecoverWorkspace() error {
+	// The layout activation comes first: every reader below looks under
+	// .docket/, so a pre-v24 .tt/ must have moved before anything is read.
+	if err := m.ActivateV24Layout(); err != nil {
+		return fmt.Errorf("failed to activate the schema-24 workspace layout: %w", err)
+	}
 	store := m.domainStore()
 	if err := m.rejectLegacyOnlyState(store); err != nil {
 		return err
@@ -326,6 +334,9 @@ func (m *Manager) RecoverWorkspace() error {
 		}
 		if err := m.MigrateWorkspaceToV23(); err != nil {
 			return fmt.Errorf("failed to activate workspace schema v23: %w", err)
+		}
+		if err := m.MigrateWorkspaceToV24(); err != nil {
+			return fmt.Errorf("failed to activate workspace schema v24: %w", err)
 		}
 		// Adoption is deliberately outside the chain above: it is keyed off
 		// machine-local state rather than the synced catalog schema, so it runs

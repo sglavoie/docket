@@ -15,7 +15,7 @@ func TestSnapshotReportsOnlyNewResidue(t *testing.T) {
 	if err := check(); err != nil {
 		t.Fatalf("pre-existing residue reported: %v", err)
 	}
-	if err := os.Mkdir(".tt", 0o700); err != nil {
+	if err := os.Mkdir(".docket", 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile("tasks.md.lock", nil, 0o600); err != nil {
@@ -25,7 +25,7 @@ func TestSnapshotReportsOnlyNewResidue(t *testing.T) {
 	if err == nil {
 		t.Fatal("new residue went unreported")
 	}
-	for _, want := range []string{".tt", "tasks.md.lock"} {
+	for _, want := range []string{".docket", "tasks.md.lock"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("report %q does not name %s", err, want)
 		}

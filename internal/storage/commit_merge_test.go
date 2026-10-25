@@ -21,8 +21,8 @@ type mergeCommitEnv struct {
 func newMergeCommitEnv(t *testing.T) mergeCommitEnv {
 	t.Helper()
 	dataDir := t.TempDir()
-	store := NewConflictStore(filepath.Join(dataDir, ".tt", "conflicts"))
-	svc := NewCommitService(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}).
+	store := NewConflictStore(filepath.Join(dataDir, ".docket", "conflicts"))
+	svc := NewCommitService(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}).
 		WithConflictStore(store)
 	return mergeCommitEnv{svc: svc, store: store, dataDir: dataDir}
 }
@@ -224,7 +224,7 @@ func TestCommitMerge_RecordedConflictResolvesThroughSharedService(t *testing.T) 
 	// A local resolution must fail closed: the conflict bundle does not persist the
 	// complete original ChangeSet, even when this particular fixture has only one
 	// project document.
-	resolveSvc := NewCommitService(filepath.Join(env.dataDir, ".tt", "transactions"), []string{env.dataDir})
+	resolveSvc := NewCommitService(filepath.Join(env.dataDir, ".docket", "transactions"), []string{env.dataDir})
 	res, err := ResolveConflict(env.store, resolveSvc, id, ResolveUseLocal, "")
 	if !errors.Is(err, ErrConflictRetryRequired) {
 		t.Fatalf("ResolveConflict err = %v, want ErrConflictRetryRequired", err)

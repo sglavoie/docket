@@ -3,7 +3,7 @@ package config
 import "fmt"
 
 // WorkspaceLensDefinitions is the portable, workspace-side home for named lens
-// definitions. It maps to <data>/.tt/lenses.json and holds nothing but the
+// definitions. It maps to <data>/.docket/lenses.json and holds nothing but the
 // collection: a lens definition references a project by workspace-scoped ID and
 // carries no other external reference, so it is content that belongs to the
 // workspace rather than to the machine that authored it.

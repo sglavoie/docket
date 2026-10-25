@@ -22,11 +22,11 @@ func TestCommitResultTransactionIDSharedByCommitMulti(t *testing.T) {
 	alpha := newCommitTestProject(t, dataDir, "alpha", "alpha task")
 	beta := newCommitTestProject(t, dataDir, "beta", "beta task")
 
-	planning := filepath.Join(dataDir, ".tt", "planning.json")
+	planning := filepath.Join(dataDir, ".docket", "planning.json")
 	note := filepath.Join(dataDir, "projects", "alpha", "notes", "n1.md")
 	blocker := filepath.Join(dataDir, "projects", "beta", "blockers.md")
 	archive := filepath.Join(dataDir, "projects", "alpha", "archive.md")
-	index := filepath.Join(dataDir, ".tt", "index.json")
+	index := filepath.Join(dataDir, ".docket", "index.json")
 
 	results, err := svc.CommitMulti([]ChangeSet{
 		{Project: alpha, Artifacts: []ArtifactChange{

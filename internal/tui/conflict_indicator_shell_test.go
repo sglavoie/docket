@@ -27,7 +27,7 @@ func recordTestConflict(t *testing.T, store *storage.ConflictStore, projectName 
 
 // TestOutstandingConflictCountTracksTheStore covers the three states the
 // indicator has to distinguish: a workspace that never recorded a conflict has
-// no `.tt/conflicts/` directory at all, a workspace holding bundles counts them,
+// no `.docket/conflicts/` directory at all, a workspace holding bundles counts them,
 // and resolving the last one through the store returns the count to zero.
 func TestOutstandingConflictCountTracksTheStore(t *testing.T) {
 	dataDir := t.TempDir()

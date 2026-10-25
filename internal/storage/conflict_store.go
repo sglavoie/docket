@@ -75,7 +75,7 @@ type ConflictBundle struct {
 	// BaseUnreadable and LocalUnreadable name why a stored document could not be
 	// parsed at the current schema; empty means readable, or absent. A bundle is
 	// durable state whose documents were rendered at whatever schema was live the
-	// day it was recorded, and nothing migrates `.tt/conflicts/` when the schema
+	// day it was recorded, and nothing migrates `.docket/conflicts/` when the schema
 	// advances. So an old bundle can become undecodable — but it must not become
 	// unresolvable: its metadata still reads, adopting remote still clears it, and
 	// a hand-merged file still commits. Only the resolutions that read a stored

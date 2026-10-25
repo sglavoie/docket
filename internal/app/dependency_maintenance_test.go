@@ -348,8 +348,8 @@ func TestArchivingAProjectLeavesReferencesUntouched(t *testing.T) {
 // bytes back. Undo replays the recorded images; it never reruns the pass.
 func TestCrossProjectMoveReferenceUndoAcceptance(t *testing.T) {
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
-	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 
 	source := realTestProject(t, dataDir, "source", "Target")
 	destination := realTestProject(t, dataDir, "dest", "Anchor")

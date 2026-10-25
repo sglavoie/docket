@@ -114,17 +114,17 @@ func preSimplificationV5Kind(rel string) string {
 	base := filepath.Base(clean)
 	switch {
 	case clean == configFileName,
-		clean == ".tt/workspace.json",
-		clean == ".tt/planning.json",
-		clean == ".tt/settings.json",
-		clean == ".tt/automation.json",
-		strings.HasPrefix(clean, ".tt/themes/"),
+		clean == internalDirName+"/workspace.json",
+		clean == internalDirName+"/planning.json",
+		clean == internalDirName+"/settings.json",
+		clean == internalDirName+"/automation.json",
+		strings.HasPrefix(clean, internalDirName+"/themes/"),
 		strings.HasPrefix(clean, "themes/"):
 		return "portable configuration"
-	case strings.HasPrefix(clean, ".tt/global-notes/"),
+	case strings.HasPrefix(clean, internalDirName+"/global-notes/"),
 		strings.Contains(clean, "/notes/"):
 		return "note"
-	case strings.HasPrefix(clean, ".tt/trash/"):
+	case strings.HasPrefix(clean, internalDirName+"/trash/"):
 		return "project trash"
 	case strings.HasPrefix(base, "completed") && strings.HasSuffix(base, ".md"):
 		return "archived task Markdown"

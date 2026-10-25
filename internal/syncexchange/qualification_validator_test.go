@@ -17,7 +17,7 @@ import (
 // record, so the validator's refusals can be proven one omission at a time.
 func syntheticQualification(t *testing.T) *qualificationEvidence {
 	t.Helper()
-	fixture, err := os.ReadFile(filepath.Join("..", "compat", "testdata", "workspaces", "representative", ".tt", "workspace.json"))
+	fixture, err := os.ReadFile(filepath.Join("..", "compat", "testdata", "workspaces", "representative", ".docket", "workspace.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

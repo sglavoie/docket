@@ -54,6 +54,7 @@ func (p *Project) IsLoaded() bool {
 }
 
 var reservedProjectSlugs = map[string]bool{
+	".docket":  true,
 	".tt":      true,
 	"projects": true,
 	"new":      true,

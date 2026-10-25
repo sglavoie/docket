@@ -12,8 +12,8 @@ import (
 
 // Runtime configuration is split into three explicit persistence domains:
 //
-//   - WorkspaceCatalog -> <data>/.tt/workspace.json
-//   - PlanningState    -> <data>/.tt/planning.json
+//   - WorkspaceCatalog -> <data>/.docket/workspace.json
+//   - PlanningState    -> <data>/.docket/planning.json
 //   - MachineState     -> ~/.docket/runtime/<workspace-id>/machine.json
 //
 // Each aggregate owns its defaults, validation, project-reference cleanup, and
@@ -121,7 +121,7 @@ func (p CatalogProject) ToModel(dataDir string) *models.Project {
 }
 
 // WorkspaceCatalog owns the workspace identity and the project catalog. It maps
-// to <data>/.tt/workspace.json.
+// to <data>/.docket/workspace.json.
 type WorkspaceCatalog struct {
 	SchemaVersion          int              `json:"schema_version"`
 	WorkspaceID            string           `json:"workspace_id,omitempty"`

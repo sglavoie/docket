@@ -51,7 +51,7 @@ func TestArtifactContainmentRejectsBeforeFilesystemSideEffects(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			root := filepath.Join(t.TempDir(), "workspace")
-			transactionsDir := filepath.Join(root, ".tt", "transactions")
+			transactionsDir := filepath.Join(root, ".docket", "transactions")
 			svc := NewCommitService(transactionsDir, []string{root})
 			outsideBase := t.TempDir()
 			outsideParent := filepath.Join(outsideBase, "must-not-exist", "nested")
@@ -84,7 +84,7 @@ func TestArtifactContainmentRejectsSymlinkEscapeBeforeLockCreation(t *testing.T)
 		t.Skipf("symlinks unavailable: %v", err)
 	}
 
-	transactionsDir := filepath.Join(root, ".tt", "transactions")
+	transactionsDir := filepath.Join(root, ".docket", "transactions")
 	artifactPath := filepath.Join(escape, "must-not-exist", "planning.json")
 	svc := NewCommitService(transactionsDir, []string{root})
 	_, err := svc.CommitArtifacts([]ArtifactChange{{Path: artifactPath, Data: []byte("nope")}})
@@ -107,7 +107,7 @@ func TestArtifactContainmentRejectsSymlinkEscapeBeforeLockCreation(t *testing.T)
 // "<artifact>.lock" path is a sibling outside that root.
 func TestArtifactLockContainmentRejectsEscapingAdjacentLock(t *testing.T) {
 	root := t.TempDir()
-	transactionsDir := filepath.Join(root, ".tt", "transactions")
+	transactionsDir := filepath.Join(root, ".docket", "transactions")
 	lockPath := root + ".lock"
 	svc := NewCommitService(transactionsDir, []string{root})
 
@@ -140,7 +140,7 @@ func TestArtifactLockContainmentRejectsSymlinkEscape(t *testing.T) {
 	if err := os.Symlink(externalLock, lockPath); err != nil {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
-	transactionsDir := filepath.Join(root, ".tt", "transactions")
+	transactionsDir := filepath.Join(root, ".docket", "transactions")
 	svc := NewCommitService(transactionsDir, []string{root})
 
 	_, err := svc.CommitArtifacts([]ArtifactChange{{Path: artifactPath, Data: []byte("nope")}})
@@ -164,7 +164,7 @@ func TestArtifactLockContainmentRejectsSymlinkEscape(t *testing.T) {
 func TestArtifactChange_ExpectedRevisionMatchCommits(t *testing.T) {
 	svc, dataDir := newCommitTestService(t)
 	project := newCommitTestProject(t, dataDir, "alpha", "task")
-	artifactPath := filepath.Join(dataDir, ".tt", "planning.json")
+	artifactPath := filepath.Join(dataDir, ".docket", "planning.json")
 
 	// Seed the artifact so it has a known revision.
 	seed := []byte(`{"queue":["a"]}`)
@@ -193,7 +193,7 @@ func TestArtifactChange_ExpectedRevisionMatchCommits(t *testing.T) {
 func TestArtifactChange_StaleExpectedRevisionAbortsAll(t *testing.T) {
 	svc, dataDir := newCommitTestService(t)
 	project := newCommitTestProject(t, dataDir, "alpha", "task")
-	artifactPath := filepath.Join(dataDir, ".tt", "planning.json")
+	artifactPath := filepath.Join(dataDir, ".docket", "planning.json")
 
 	current := []byte(`{"queue":["current"]}`)
 	if _, err := svc.CommitArtifacts([]ArtifactChange{{Path: artifactPath, Data: current}}); err != nil {
@@ -229,7 +229,7 @@ func TestArtifactChange_StaleExpectedRevisionAbortsAll(t *testing.T) {
 // absent file succeeds; a create against an existing file aborts as a conflict.
 func TestArtifactChange_ExpectedAbsenceContract(t *testing.T) {
 	svc, dataDir := newCommitTestService(t)
-	artifactPath := filepath.Join(dataDir, ".tt", "settings.json")
+	artifactPath := filepath.Join(dataDir, ".docket", "settings.json")
 
 	// Absent → require-absent create succeeds.
 	if _, err := svc.CommitArtifacts([]ArtifactChange{{Path: artifactPath, Data: []byte("first"), ExpectedRevision: strptr("")}}); err != nil {
@@ -251,7 +251,7 @@ func TestArtifactChange_ExpectedAbsenceContract(t *testing.T) {
 // pre-coordinator behavior for callers that do not track a load revision.
 func TestArtifactChange_NilExpectedRevisionIsUnchecked(t *testing.T) {
 	svc, dataDir := newCommitTestService(t)
-	artifactPath := filepath.Join(dataDir, ".tt", "automation.json")
+	artifactPath := filepath.Join(dataDir, ".docket", "automation.json")
 
 	if _, err := svc.CommitArtifacts([]ArtifactChange{{Path: artifactPath, Data: []byte("v1")}}); err != nil {
 		t.Fatalf("first unchecked write: %v", err)
@@ -269,9 +269,9 @@ func TestArtifactChange_NilExpectedRevisionIsUnchecked(t *testing.T) {
 // journal.
 func TestCommitArtifacts_WritesAndDeletesAtomically(t *testing.T) {
 	svc, dataDir := newCommitTestService(t)
-	catalog := filepath.Join(dataDir, ".tt", "workspace.json")
-	planning := filepath.Join(dataDir, ".tt", "planning.json")
-	doomed := filepath.Join(dataDir, ".tt", "obsolete.json")
+	catalog := filepath.Join(dataDir, ".docket", "workspace.json")
+	planning := filepath.Join(dataDir, ".docket", "planning.json")
+	doomed := filepath.Join(dataDir, ".docket", "obsolete.json")
 
 	if err := os.MkdirAll(filepath.Dir(doomed), DirPermissions); err != nil {
 		t.Fatal(err)
@@ -309,9 +309,9 @@ func TestCommitArtifacts_WritesAndDeletesAtomically(t *testing.T) {
 // process's recovery so every artifact lands together.
 func TestCommitArtifacts_RecoversAfterInterruption(t *testing.T) {
 	_, dataDir := newCommitTestService(t)
-	txnDir := filepath.Join(dataDir, ".tt", "transactions")
-	catalog := filepath.Join(dataDir, ".tt", "workspace.json")
-	planning := filepath.Join(dataDir, ".tt", "planning.json")
+	txnDir := filepath.Join(dataDir, ".docket", "transactions")
+	catalog := filepath.Join(dataDir, ".docket", "workspace.json")
+	planning := filepath.Join(dataDir, ".docket", "planning.json")
 
 	journal := transaction.NewJournal(txnDir, []string{dataDir}, "")
 	if _, err := journal.Prepare([]transaction.Op{
@@ -374,7 +374,7 @@ func TestConcurrentUpdatesToDifferentProjects(t *testing.T) {
 // with an *ArtifactConflictError, and the on-disk content is the winner's.
 func TestConcurrentUpdatesToSameDomainNoLostUpdate(t *testing.T) {
 	svc, dataDir := newCommitTestService(t)
-	planning := filepath.Join(dataDir, ".tt", "planning.json")
+	planning := filepath.Join(dataDir, ".docket", "planning.json")
 
 	base := []byte(`{"queue":["base"]}`)
 	if _, err := svc.CommitArtifacts([]ArtifactChange{{Path: planning, Data: base}}); err != nil {

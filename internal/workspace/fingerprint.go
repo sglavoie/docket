@@ -12,7 +12,7 @@ import (
 )
 
 // Stamps is the stat identity of every file a workspace reload reads, by
-// path: the `.tt/*.json` domains under the data directory and each project's
+// path: the `.docket/*.json` domains under the data directory and each project's
 // tasks.md, plus the sync tracking state. The latter catches imports of notes
 // and attachments already applied by another process. It uses the same stat
 // identity as Loader, reads no file content, and records a missing file as part
@@ -25,8 +25,8 @@ func StampWorkspace(dataDir string, projects []*models.Project) Stamps {
 	if dataDir == "" {
 		return nil
 	}
-	paths, _ := filepath.Glob(filepath.Join(dataDir, ".tt", "*.json"))
-	syncStates, _ := filepath.Glob(filepath.Join(dataDir, ".tt", "sync", "devices", "*", "state.json"))
+	paths, _ := filepath.Glob(filepath.Join(dataDir, ".docket", "*.json"))
+	syncStates, _ := filepath.Glob(filepath.Join(dataDir, ".docket", "sync", "devices", "*", "state.json"))
 	paths = append(paths, syncStates...)
 	for _, project := range projects {
 		if project != nil && project.Path != "" {

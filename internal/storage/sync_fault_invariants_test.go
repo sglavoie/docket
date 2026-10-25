@@ -22,7 +22,7 @@ func syncedPath(rel string) bool {
 }
 
 // syncedDir reports whether a directory can hold a synced path. Classify syncs
-// nothing outside projects/ and .tt/ and, inside .tt/, only its top-level files
+// nothing outside projects/ and .docket/ and, inside .docket/, only its top-level files
 // and global-notes/, so the walk skips the history, journal, undo, backup, and
 // conflict stores that every delivery grows. Fingerprinting each delivery
 // spent most of this suite's time listing those directories on macOS.
@@ -33,7 +33,7 @@ func syncedDir(rel string) bool {
 		return true
 	case "projects":
 		return true
-	case ".tt":
+	case ".docket":
 		return len(parts) == 1 || parts[1] == "global-notes"
 	}
 	return false
@@ -131,7 +131,7 @@ func (s *faultSim) conflictsJSON(d *simDevice) string {
 // requireValidWorkspace reads a replica through the live readers.
 func (s *faultSim) requireValidWorkspace(d *simDevice) {
 	var env faultEnvelope
-	if err := json.Unmarshal(s.read(d, ".tt/workspace.json"), &env); err != nil {
+	if err := json.Unmarshal(s.read(d, ".docket/workspace.json"), &env); err != nil {
 		s.fatalf("%s: catalog envelope: %v", d.name, err)
 	}
 	catalog := &config.WorkspaceCatalog{}
@@ -141,7 +141,7 @@ func (s *faultSim) requireValidWorkspace(d *simDevice) {
 	if err := catalog.Validate(); err != nil {
 		s.fatalf("%s: catalog invalid: %v", d.name, err)
 	}
-	if err := json.Unmarshal(s.read(d, ".tt/planning.json"), &env); err != nil {
+	if err := json.Unmarshal(s.read(d, ".docket/planning.json"), &env); err != nil {
 		s.fatalf("%s: planning envelope: %v", d.name, err)
 	}
 	planning := &config.PlanningState{}

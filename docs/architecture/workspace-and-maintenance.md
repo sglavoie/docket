@@ -21,10 +21,11 @@ converts the workspace in place. `engine.Enroll` runs `config.EnrollWorkspace`
 under the original's TUI and commit locks: it snapshots the original, hash
 verified, under `~/.docket/enrollments/<workspace-id>/<instant>/` with a
 `snapshot.json` listing, stages a working copy beside the requested path
-(leaving the original's `.tt/sync`, `.tt/undo`, `.tt/transactions`, and
-`.tt/backups` behind), advances the staged catalog to
+(leaving the original's `.docket/sync`, `.docket/undo`, `.docket/transactions`,
+`.docket/backups`, and `.tt/` tombstone behind, and giving the copy its own
+tombstone), advances the staged catalog to
 `SyncEnrolledConfigVersion` with its `sync` block, writes the device-local
-`.tt/sync/enrollment.json`, publishes the copy with one rename, and points the
+`.docket/sync/enrollment.json`, publishes the copy with one rename, and points the
 active-workspace pointer at it. The working copy may not be inside iCloud
 Drive, the original, or the exchange folder. The first runtime opened over the
 copy records the `kind: enroll` genesis through
@@ -44,7 +45,7 @@ contract is in [`docs/mobile/sync-envelope.md`](../mobile/sync-envelope.md).
 
 ## Backup and restore
 
-Back up the complete selected data directory, including `.tt/`, project notes,
+Back up the complete selected data directory, including `.docket/`, project notes,
 and attachment binaries. Stop active `docket` processes for a plain filesystem copy,
 or use a snapshot mechanism that captures the directory atomically. Keep an
 independent backup outside the same sync provider when provider deletion or

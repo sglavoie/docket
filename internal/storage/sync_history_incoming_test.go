@@ -262,7 +262,7 @@ func TestSyncIncomingKeepsCausalOrderAndConcurrentHeads(t *testing.T) {
 		t.Fatalf("device b's commit parents = %v, want device a's head", local.Parents)
 	}
 	if _, err := a.service.CommitArtifactTransaction(ArtifactCommitRequest{
-		Artifacts: []ArtifactChange{{Path: a.path(".tt/planning.json"), Data: []byte(`{"today":["a"]}`)}},
+		Artifacts: []ArtifactChange{{Path: a.path(".docket/planning.json"), Data: []byte(`{"today":["a"]}`)}},
 	}); err != nil {
 		t.Fatal(err)
 	}

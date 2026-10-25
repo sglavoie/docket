@@ -125,7 +125,7 @@ func TestCompatFixtureManifestsDeclareLiveSchemas(t *testing.T) {
 		if strings.TrimSpace(manifest.Description) == "" {
 			t.Errorf("%s: description is required", manifest.Name)
 		}
-		if info, err := os.Stat(filepath.Join(fixturesDir, manifest.Workspace, ".tt")); err != nil || !info.IsDir() {
+		if info, err := os.Stat(filepath.Join(fixturesDir, manifest.Workspace, ".docket")); err != nil || !info.IsDir() {
 			t.Errorf("%s: workspace %q has no .tt directory", manifest.Name, manifest.Workspace)
 		}
 		want := fixtureSchemas{
@@ -378,10 +378,10 @@ func TestCompatDesktopOpenLeavesFixtureUntouched(t *testing.T) {
 func hashPortableTree(t *testing.T, root string) map[string]string {
 	t.Helper()
 	local := map[string]bool{
-		filepath.Join(".tt", "transactions"): true,
-		filepath.Join(".tt", "undo"):         true,
-		filepath.Join(".tt", "backups"):      true,
-		filepath.Join(".tt", "conflicts"):    true,
+		filepath.Join(".docket", "transactions"): true,
+		filepath.Join(".docket", "undo"):         true,
+		filepath.Join(".docket", "backups"):      true,
+		filepath.Join(".docket", "conflicts"):    true,
 	}
 	hashes := map[string]string{}
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {

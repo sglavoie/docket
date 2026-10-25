@@ -122,7 +122,7 @@ func mutateNoteTestCatalog(t *testing.T, dataDir string, mutate func(*config.Wor
 
 func noteUndoCount(t *testing.T, dataDir string) int {
 	t.Helper()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
 	count, err := ledger.UndoCount(storage.GlobalScope())
 	if err != nil {
 		t.Fatalf("UndoCount: %v", err)

@@ -13,13 +13,13 @@ import (
 //
 // Machine-local state stays outside the synced workspace set: a machine commit
 // writes machine.json through its own checked save (machine.json lives under the
-// local runtime root, not the synced <data>/.tt/ directory), so it never rides a
+// local runtime root, not the synced <data>/.docket/ directory), so it never rides a
 // synced transaction while still refusing to overwrite a concurrently advanced
 // file.
 //
 // Lens definitions are the one portable domain that keeps that write policy
 // while abandoning that location. CommitLensDefinitions writes a synced file,
-// <data>/.tt/lenses.json, through the same checked save: no workspace
+// <data>/.docket/lenses.json, through the same checked save: no workspace
 // transaction is opened and no undo ledger entry is recorded, so `u` never takes
 // a lens back even though the definitions now travel between machines.
 //
@@ -119,7 +119,7 @@ func (c *DomainCoordinator) CommitPlanning(planning *PlanningState) error {
 
 // CommitMachine persists only the machine-local domain under an optimistic
 // concurrency check. machine.json lives under the local runtime root, outside the
-// synced <data>/.tt/ set, so it never rides a synced transaction.
+// synced <data>/.docket/ set, so it never rides a synced transaction.
 func (c *DomainCoordinator) CommitMachine(machine *MachineState) error {
 	if machine == nil {
 		return fmt.Errorf("machine state is required")

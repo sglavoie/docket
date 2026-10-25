@@ -124,7 +124,7 @@ func TestV5ConsolidationFixtureRetainsNotesAttachmentsAndUndoRedoHistory(t *test
 		t.Fatalf("load project-note fixture: %v", err)
 	}
 	globalNote, err := LoadNoteFrom(
-		filepath.Join(v5ConsolidationFixtureRoot, "workspace", ".tt", "global-notes"),
+		filepath.Join(v5ConsolidationFixtureRoot, "workspace", ".docket", "global-notes"),
 		"global-brief.md",
 	)
 	if err != nil {
@@ -146,7 +146,7 @@ func TestV5ConsolidationFixtureRetainsNotesAttachmentsAndUndoRedoHistory(t *test
 	}
 
 	ledger := NewWorkspaceLedger(
-		filepath.Join(v5ConsolidationFixtureRoot, "workspace", ".tt", "undo"),
+		filepath.Join(v5ConsolidationFixtureRoot, "workspace", ".docket", "undo"),
 		[]string{"/synthetic/workspace"},
 	)
 	status, err := ledger.Validate()

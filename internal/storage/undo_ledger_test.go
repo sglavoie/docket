@@ -13,7 +13,7 @@ import (
 func newTestLedger(t *testing.T) (*WorkspaceLedger, string) {
 	t.Helper()
 	root := t.TempDir()
-	dir := filepath.Join(root, ".tt", "undo")
+	dir := filepath.Join(root, ".docket", "undo")
 	return NewWorkspaceLedger(dir, []string{root}), root
 }
 
@@ -216,7 +216,7 @@ func TestWorkspaceLedger_DriftedEntryIsRetired(t *testing.T) {
 // blocked behind the newer one, not dead, and must survive the refusal.
 func TestWorkspaceLedger_DriftExplainedByANewerEntryIsNotRetired(t *testing.T) {
 	ledger, root := newTestLedger(t)
-	shared := filepath.Join(root, ".tt", "planning.json")
+	shared := filepath.Join(root, ".docket", "planning.json")
 	writeFile(t, shared, "s2")
 	mustRecord(t, ledger, "txn-1", "alpha", shared, "s1", "s2")
 	writeFile(t, shared, "s3")

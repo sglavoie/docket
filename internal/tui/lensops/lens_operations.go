@@ -38,7 +38,7 @@ func (c *Controller) ReplacementDetails(shell Shell, targets operation.ResolvedO
 }
 
 // Named lens definitions are portable: they live in the synced
-// .tt/lenses.json, and only the active-lens pointer stays machine-local. This
+// .docket/lenses.json, and only the active-lens pointer stays machine-local. This
 // file still edits them through the machine domain, because that domain carries
 // the in-memory collection and its commit publishes the portable home behind
 // it. That is the whole shape of this file. Every mutation here clones the

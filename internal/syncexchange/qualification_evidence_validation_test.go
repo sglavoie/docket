@@ -124,7 +124,7 @@ func (v *qualificationValidator) installation() {
 	v.check(ev.Exchange.Provider == "iCloud Drive" && strings.Contains(ev.Exchange.Folder, "/Library/Mobile Documents/com~apple~CloudDocs/") &&
 		filepath.Base(ev.Exchange.Folder) == ev.RunID, "exchange %s at %s is not the run's iCloud Drive folder", ev.Exchange.Provider, ev.Exchange.Folder)
 
-	fixture, err := os.ReadFile(filepath.Join("..", "compat", "testdata", "workspaces", "representative", ".tt", "workspace.json"))
+	fixture, err := os.ReadFile(filepath.Join("..", "compat", "testdata", "workspaces", "representative", ".docket", "workspace.json"))
 	if err != nil {
 		v.t.Fatal(err)
 	}

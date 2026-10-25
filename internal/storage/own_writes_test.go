@@ -13,10 +13,10 @@ import (
 func TestCommitRecordsOwnWrites(t *testing.T) {
 	root := t.TempDir()
 	own := NewOwnWrites()
-	svc := NewCommitService(filepath.Join(root, ".tt", "transactions"), []string{root}).WithOwnWrites(own)
-	other := NewCommitService(filepath.Join(root, ".tt", "transactions"), []string{root})
-	written := filepath.Join(root, ".tt", "workspace.json")
-	removed := filepath.Join(root, ".tt", "planning.json")
+	svc := NewCommitService(filepath.Join(root, ".docket", "transactions"), []string{root}).WithOwnWrites(own)
+	other := NewCommitService(filepath.Join(root, ".docket", "transactions"), []string{root})
+	written := filepath.Join(root, ".docket", "workspace.json")
+	removed := filepath.Join(root, ".docket", "planning.json")
 	if err := os.MkdirAll(filepath.Dir(removed), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestCommitRecordsOwnWrites(t *testing.T) {
 		t.Fatal("a write outside the commit still matches the recorded stamp")
 	}
 
-	elsewhere := filepath.Join(root, ".tt", "lenses.json")
+	elsewhere := filepath.Join(root, ".docket", "lenses.json")
 	if _, err := other.CommitArtifacts([]ArtifactChange{{Path: elsewhere, Data: []byte("[]")}}); err != nil {
 		t.Fatal(err)
 	}

@@ -1,8 +1,8 @@
 // Package residue guards a test binary's working directory against workspace
 // artifacts. A test whose runtime or project is rooted at an empty path resolves
-// `.tt/`, `projects/`, and lock files beneath the package directory, which is the
-// source tree; a TestMain snapshots that directory before the run and refuses
-// whatever appeared during it.
+// `.docket/`, the `.tt/` tombstone, `projects/`, and lock files beneath the
+// package directory, which is the source tree; a TestMain snapshots that
+// directory before the run and refuses whatever appeared during it.
 package residue
 
 import (
@@ -12,7 +12,7 @@ import (
 )
 
 // Names are the workspace artifacts a stray write leaves in a working directory.
-var Names = []string{".tt", "projects", ".lock", "tasks.md.lock", ".tasks.md.lock"}
+var Names = []string{".docket", ".tt", "projects", ".lock", "tasks.md.lock", ".tasks.md.lock"}
 
 // Snapshot records which of Names already exist in the working directory and
 // returns the check to run after m.Run: it reports every name that appeared

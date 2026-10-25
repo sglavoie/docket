@@ -57,7 +57,7 @@ func publishNote(t *testing.T, root, device string, seq uint64) (manifestRel, bl
 		Schemas:       map[string]int{synclog.SchemaCatalog: 1, synclog.SchemaDomainEnvelope: 1, synclog.SchemaTaskMarkdown: 1},
 		Requires:      []string{},
 		Effects: []synclog.Effect{{
-			Kind: synclog.EffectGlobalNote, Path: fmt.Sprintf(".tt/global-notes/%s-%d.md", device, seq),
+			Kind: synclog.EffectGlobalNote, Path: fmt.Sprintf(".docket/global-notes/%s-%d.md", device, seq),
 			Op: synclog.OpPut, Blob: &blob,
 		}},
 	}

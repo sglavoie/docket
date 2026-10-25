@@ -19,7 +19,7 @@ var baseTestClock = time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
 // they stamp and the identity they compare against during recovery.
 func newMachineJournal(t *testing.T, root, machineID string, at time.Time) *Journal {
 	t.Helper()
-	j := NewJournal(filepath.Join(root, ".tt", "transactions"), []string{root}, machineID)
+	j := NewJournal(filepath.Join(root, ".docket", "transactions"), []string{root}, machineID)
 	var seq int
 	j.newID = func() string {
 		seq++
@@ -190,7 +190,7 @@ func TestRecover_QuarantinesStaleForeignTransactionOutsideRoots(t *testing.T) {
 	elsewhere := t.TempDir()
 
 	foreignRoot := newMachineJournal(t, elsewhere, "machine-a", baseTestClock)
-	foreignRoot.dir = filepath.Join(root, ".tt", "transactions")
+	foreignRoot.dir = filepath.Join(root, ".docket", "transactions")
 	m := prepareWrite(t, foreignRoot, filepath.Join(elsewhere, "projects", "a", "tasks.md"), "other path")
 
 	here := newMachineJournal(t, root, "machine-b", baseTestClock.Add(ForeignTransactionGrace+time.Minute))

@@ -257,7 +257,7 @@ func TestAutomaticSyncRetriesViewRefreshAfterReadFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	runSession2AppCommand(t, model, model.Init())
-	path := filepath.Join(pair.desk.DataDir(), ".tt", "workspace.json")
+	path := filepath.Join(pair.desk.DataDir(), ".docket", "workspace.json")
 	before, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)

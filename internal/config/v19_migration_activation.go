@@ -250,7 +250,7 @@ func v19ProjectCommentsAuditReport(createdAt time.Time, files int) string {
 		"carrying `<!-- tt-schema: 16 -->`; the schema-17 project-document scanner rejects that marker outright, " +
 		"so replaying an entry would restore a document the new loader cannot read. This report is the only " +
 		"place that can explain the empty history.\n\n")
-	report.WriteString("Conflict bundles under `.tt/conflicts/` are not rewritten either, here or at any " +
+	report.WriteString("Conflict bundles under `.docket/conflicts/` are not rewritten either, here or at any " +
 		"boundary. A bundle recorded before this migration keeps its schema-16 documents, so `docket conflict " +
 		"show`, `--use remote`, and `--use file` keep working from its metadata while `--use local` and a " +
 		"forced re-merge refuse by name: those two need the stored document to parse under the current reader, " +

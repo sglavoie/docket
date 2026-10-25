@@ -23,8 +23,8 @@ func newConflictTestEnv(t *testing.T) conflictTestEnv {
 	t.Helper()
 	dataDir := t.TempDir()
 	return conflictTestEnv{
-		store:   NewConflictStore(filepath.Join(dataDir, ".tt", "conflicts")),
-		svc:     NewCommitService(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}),
+		store:   NewConflictStore(filepath.Join(dataDir, ".docket", "conflicts")),
+		svc:     NewCommitService(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}),
 		project: &models.Project{ID: "p1", Name: "Alpha", Slug: "alpha", Path: filepath.Join(dataDir, "projects", "alpha")},
 		dataDir: dataDir,
 	}
@@ -223,7 +223,7 @@ func TestResolveConflict_UseFileRejectsInvalid(t *testing.T) {
 
 // retireBundleDocuments rewrites a recorded bundle's three markdown files as
 // schema-2 documents, reproducing a bundle recorded before the migration chain
-// that made the current parser strict. Nothing migrates `.tt/conflicts/`, so this
+// that made the current parser strict. Nothing migrates `.docket/conflicts/`, so this
 // is exactly the state an old bundle reaches on its own.
 func retireBundleDocuments(t *testing.T, env conflictTestEnv, id string) {
 	t.Helper()

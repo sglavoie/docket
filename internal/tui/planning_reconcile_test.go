@@ -36,8 +36,8 @@ type planningReconcileEnv struct {
 func newPlanningReconcileEnv(t *testing.T) *planningReconcileEnv {
 	t.Helper()
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
-	commitService := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
+	commitService := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 
 	project, err := models.NewProject(uuid.New().String(), "planning-reconcile", "")
 	if err != nil {
@@ -218,7 +218,7 @@ func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 
 		// Durability: a fresh ledger over the same data dir (simulating a restart)
 		// undoes the transaction and restores the exact pre-mutation state.
-		freshLedger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
+		freshLedger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
 		if _, _, err := freshLedger.UndoWithEntry(storage.GlobalScope()); err != nil {
 			t.Fatalf("durable undo from fresh ledger: %v", err)
 		}

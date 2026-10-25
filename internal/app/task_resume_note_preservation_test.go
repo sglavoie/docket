@@ -195,8 +195,8 @@ func reloadedResumeNote(t *testing.T, project *models.Project, taskID string) st
 // absence is a value the ledger has to restore exactly as a note is.
 func TestResumeNoteSurvivesReloadAndUndoRedo(t *testing.T) {
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
-	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 
 	project := realTestProject(t, dataDir, "alpha", "Noted")
 	task := project.Tasks[0]
@@ -254,8 +254,8 @@ func TestResumeNoteSurvivesReloadAndUndoRedo(t *testing.T) {
 // rolled back with it — and a note that predates both must come back unchanged.
 func TestUndoingAnUnrelatedEditLeavesTheResumeNoteAlone(t *testing.T) {
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
-	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 
 	project := realTestProject(t, dataDir, "alpha", "Before")
 	task := project.Tasks[0]

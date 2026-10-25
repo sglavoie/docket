@@ -39,7 +39,7 @@ func TestCommit_MultipleArtifactsAtomic(t *testing.T) {
 	j := newTestJournal(t, root)
 
 	tasks := filepath.Join(root, "projects", "a", "tasks.md")
-	artifact := filepath.Join(root, ".tt", "planning.json")
+	artifact := filepath.Join(root, ".docket", "planning.json")
 	m, err := j.Prepare([]Op{
 		{Kind: OpWrite, Target: tasks, Data: []byte("# tasks")},
 		{Kind: OpWrite, Target: artifact, Data: []byte("{}")},
@@ -276,7 +276,7 @@ func TestRenameRecoveryConvergesAtEveryCommitBoundary(t *testing.T) {
 				t.Fatal("Commit unexpectedly crossed injected crash boundary")
 			}
 
-			restarted := NewJournal(filepath.Join(root, ".tt", "transactions"), []string{root}, "")
+			restarted := NewJournal(filepath.Join(root, ".docket", "transactions"), []string{root}, "")
 			report, err := restarted.Recover()
 			if err != nil {
 				t.Fatalf("Recover: %v", err)

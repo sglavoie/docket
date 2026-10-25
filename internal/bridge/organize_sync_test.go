@@ -170,11 +170,11 @@ func syncedFiles(t *testing.T, dataDir string) map[string][]byte {
 	t.Helper()
 	files := make(map[string][]byte)
 	for _, name := range []string{"workspace.json", "planning.json", "lenses.json"} {
-		if data, err := os.ReadFile(filepath.Join(dataDir, ".tt", name)); err == nil {
-			files[".tt/"+name] = data
+		if data, err := os.ReadFile(filepath.Join(dataDir, ".docket", name)); err == nil {
+			files[".docket/"+name] = data
 		}
 	}
-	for _, root := range []string{filepath.Join(dataDir, "projects"), filepath.Join(dataDir, ".tt", "global-notes")} {
+	for _, root := range []string{filepath.Join(dataDir, "projects"), filepath.Join(dataDir, ".docket", "global-notes")} {
 		walkSyncedFiles(t, dataDir, root, files)
 	}
 	return files

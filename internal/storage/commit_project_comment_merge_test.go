@@ -135,7 +135,7 @@ func TestCommitMerge_DivergentCommentEditsRecordAConflictAndWriteNothing(t *test
 
 	// The retry-only path: adopting remote writes nothing, clears the bundle, and
 	// leaves the remote comment intact for the retry to build on.
-	resolveSvc := NewCommitService(filepath.Join(env.dataDir, ".tt", "transactions"), []string{env.dataDir})
+	resolveSvc := NewCommitService(filepath.Join(env.dataDir, ".docket", "transactions"), []string{env.dataDir})
 	res, err := ResolveConflict(env.store, resolveSvc, conflict.Conflicts[0].ConflictID, ResolveUseRemote, "")
 	if err != nil {
 		t.Fatalf("ResolveConflict(remote): %v", err)
@@ -176,9 +176,9 @@ func TestCommitMerge_DivergentCommentEditsRecordAConflictAndWriteNothing(t *test
 func newLedgeredCommentEnv(t *testing.T) (mergeCommitEnv, *WorkspaceLedger) {
 	t.Helper()
 	dataDir := t.TempDir()
-	store := NewConflictStore(filepath.Join(dataDir, ".tt", "conflicts"))
-	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
-	svc := NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger).
+	store := NewConflictStore(filepath.Join(dataDir, ".docket", "conflicts"))
+	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
+	svc := NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger).
 		WithConflictStore(store)
 	return mergeCommitEnv{svc: svc, store: store, dataDir: dataDir}, ledger
 }

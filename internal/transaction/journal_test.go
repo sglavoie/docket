@@ -18,7 +18,7 @@ import (
 // id/clock seams so tests can assert exact paths and timestamps.
 func newTestJournal(t *testing.T, root string) *Journal {
 	t.Helper()
-	j := NewJournal(filepath.Join(root, ".tt", "transactions"), []string{root}, "")
+	j := NewJournal(filepath.Join(root, ".docket", "transactions"), []string{root}, "")
 	var seq int
 	j.newID = func() string {
 		seq++

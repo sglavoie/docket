@@ -113,7 +113,7 @@ The live portable layout is deliberately small:
 
 ```text
 <data>/
-├── .tt/
+├── .docket/
 │   ├── workspace.json
 │   ├── planning.json
 │   ├── lenses.json
@@ -122,6 +122,7 @@ The live portable layout is deliberately small:
 │   ├── undo/
 │   ├── conflicts/
 │   └── backups/
+├── .tt/                  tombstone: workspace.json, planning.json, transactions/commit.lock
 ├── exports/
 └── projects/<slug>/
     ├── tasks.md
@@ -149,6 +150,27 @@ naming any other workspace is left as it is. If `iCloud Drive/Docket` already
 exists beside a `tt` workspace, or a rename fails, nothing moves and the
 command stops, naming both folders; once `~/.docket` exists it never runs
 again.
+
+Schema 24 moves the workspace's internal directory from `.tt/` to `.docket/`
+and changes nothing else: no task document, catalog field, or conflict bundle
+is rewritten, and task Markdown stays at schema 20. Opening a pre-v24 workspace
+first publishes `pre-docket-layout-v24-<UTC>.tar.gz` and its audit under
+`.docket/backups/`, then builds `.docket/` beside it from the catalog, planning,
+lenses, global notes, conflict bundles, sync history, and backups, byte for
+byte, checks every copied byte, and renames it into place. That rename is the
+point of no return: a crash before it leaves `.tt/` untouched and the next
+opening starts again, a crash after it is finished forward. The schema chain
+then runs inside `.docket/`, and the catalog's schema number advances to 24
+last. Undo history does not move, because its entries name the `.tt/` paths they
+restore. `.tt/` is then replaced by a tombstone, a catalog declaring schema 24
+beside a planning note and the commit lock, so a version that still reads `.tt/`
+refuses the workspace as newer than it supports instead of finding nothing and
+creating an empty workspace over synced data. Every workspace created at schema
+24 gets one too. Do not delete it. A `.tt/` tombstone with no `.docket/` beside
+it means another machine moved the workspace and the move has not synced here
+yet: Docket refuses to open it, by name, rather than creating anything. A live
+`.tt/` found beside `.docket/` that holds bytes `.docket/` does not is kept,
+whole, under `.docket/backups/kept-pre-v24-internal-<UTC>/`.
 
 Project task files use strict schema-20 Markdown and generic `Task` headings.
 `workspace.json` contains the lean project catalog, project tags, and the
@@ -256,8 +278,9 @@ two synced files, `workspace.json` and `planning.json`, do not merge — a chang
 that lands under one of those is refused and reported, because there is no
 order-independent way to combine two project catalogs.
 
-Startup migrates supported schema-21 workspaces, and working copies enrolled
-in sync at schema 22, to schema 23, supported
+Startup migrates schema-23 workspaces to schema 24, supported schema-21
+workspaces, and working copies enrolled in sync at schema 22, to schema 23,
+supported
 schema-20 workspaces to schema 21, supported
 schema-19 workspaces to schema 20, supported
 schema-18 workspaces to schema 19, supported
@@ -285,8 +308,9 @@ for v6→v7, `pre-tag-v8-<UTC>.tar.gz` for v7→v8,
 `pre-resume-note-v18-<UTC>.tar.gz` for v17→v18,
 `pre-project-comments-v19-<UTC>.tar.gz` for v18→v19,
 `pre-checklist-origin-v20-<UTC>.tar.gz` for v19→v20,
-`pre-check-ins-v21-<UTC>.tar.gz` for v20→v21, and
-`pre-hidden-v23-<UTC>.tar.gz` for v21→v23 and v22→v23.
+`pre-check-ins-v21-<UTC>.tar.gz` for v20→v21,
+`pre-hidden-v23-<UTC>.tar.gz` for v21→v23 and v22→v23, and
+`pre-docket-layout-v24-<UTC>.tar.gz` for v23→v24.
 
 The two structural conversions state themselves. The schema-6 conversion
 preserves notes and attachment bytes, converts retained decision text into
@@ -320,6 +344,7 @@ already say.
 | Schema 20 upgrades task Markdown to schema 18 by adding the optional checklist-origin line that records where a promoted task came from | No existing task was promoted under a schema that recorded an origin, so every document comes out byte-identical to its schema-17 source apart from the schema marker line. Your saved lenses are not rewritten, because an origin is not something a query narrows by |
 | Schema 21 upgrades task Markdown to schema 19 by adding the optional `check_in` date, its `check_in_repeat` cadence, and the `reviewed` instant | This is the one boundary since schema 17 that writes a value rather than only a marker. Every Waiting task that carries a due date is given a one-off check-in on that same date, because the deadline you set on work you are waiting for is the day you meant to look at it again; the date is copied exactly, so the deadline, its `due_time`, the timestamps, the body, and the comments are untouched. No cadence and no review instant are invented, so a seeded check-in fires once and the workspace never claims a task was reviewed on a day nobody reviewed it. Every catalog-owned project is migrated, parked and archived ones included, and a task that already holds a check-in is left alone, so running the step again changes nothing. Your saved lenses are not rewritten |
 | Schema 23 upgrades task Markdown to schema 20 by adding the optional `hidden` flag | No existing task is hidden, so every document comes out byte-identical to its schema-19 source apart from the schema marker line. There is no schema-22 step: 22 was the catalog schema of a working copy enrolled in sync, and such a copy migrates to 23 like a schema-21 workspace and keeps its `sync` block, which from schema 23 alone marks enrollment. Your saved lenses are not rewritten, because no lens could name the flag before this schema |
+| Schema 24 leaves task Markdown at schema 20 and moves `.tt/` to `.docket/` | It changes the layout alone, described above. The undo history is dropped because its entries name `.tt/` paths, and `.tt/` keeps only the tombstone that makes an older version refuse the workspace |
 
 Invalid or future-schema input aborts without changing workspace data. An
 existing `unfiled` project or directory also aborts before snapshot publication
@@ -335,8 +360,10 @@ schema-14 boundary, `pre-dependencies-v15-<UTC>.tar.gz` for schema 15,
 `pre-resume-note-v18-<UTC>.tar.gz` for schema 18,
 `pre-project-comments-v19-<UTC>.tar.gz` for schema 19,
 `pre-checklist-origin-v20-<UTC>.tar.gz` for schema 20,
-`pre-check-ins-v21-<UTC>.tar.gz` for schema 21, or
-`pre-hidden-v23-<UTC>.tar.gz` for schema 23 — into a
+`pre-check-ins-v21-<UTC>.tar.gz` for schema 21,
+`pre-hidden-v23-<UTC>.tar.gz` for schema 23, or
+`pre-docket-layout-v24-<UTC>.tar.gz` for schema 24, whose `workspace/.tt/` is
+restored over the tombstone — into a
 separate directory and open that copy with a compatible build. Migration
 snapshots themselves are never modified.
 
@@ -369,15 +396,15 @@ the layout above is live state, including the ones that look like scratch space:
 
 | Directory | Excluding it costs you |
 | --- | --- |
-| `.tt/workspace.json`, `.tt/planning.json` | The project catalog and Today/Next ordering. Without them the other machine sees an empty or partial workspace |
-| `.tt/lenses.json` | Your saved lenses on the machines that did not write them |
-| `.tt/global-notes/`, `projects/<slug>/notes/` | Note bodies, silently. The catalog still names the collection |
+| `.docket/workspace.json`, `.docket/planning.json` | The project catalog and Today/Next ordering. Without them the other machine sees an empty or partial workspace |
+| `.docket/lenses.json` | Your saved lenses on the machines that did not write them |
+| `.docket/global-notes/`, `projects/<slug>/notes/` | Note bodies, silently. The catalog still names the collection |
 | `projects/<slug>/tasks.md` | The tasks themselves |
 | `projects/<slug>/.attachments/` | Attachment bytes, while the tasks keep pointing at them. A leading dot makes this the one most likely to be skipped by a rule you did not write for Docket |
-| `.tt/transactions/` | A commit that was interrupted on the other machine can no longer be finished or cleaned up, which is the one exclusion that can leave a half-written file behind |
-| `.tt/undo/` | Undo history, which is per-workspace rather than per-machine |
-| `.tt/conflicts/` | Recorded conflict bundles, so the machine that has to resolve one may not be the machine that can see it |
-| `.tt/backups/` | The migration archives, the record of what each schema step replaced. They are not a backup to rely on: keep your own copy of the workspace before a version jump |
+| `.docket/transactions/` | A commit that was interrupted on the other machine can no longer be finished or cleaned up, which is the one exclusion that can leave a half-written file behind |
+| `.docket/undo/` | Undo history, which is per-workspace rather than per-machine |
+| `.docket/conflicts/` | Recorded conflict bundles, so the machine that has to resolve one may not be the machine that can see it |
+| `.docket/backups/` | The migration archives, the record of what each schema step replaced. They are not a backup to rely on: keep your own copy of the workspace before a version jump |
 
 **Do not run Docket on two machines at the same time.** The safeguards are real —
 revision checks refuse a stale write, lens lists merge instead of overwriting,
@@ -395,13 +422,13 @@ version, the sync client may keep both, leaving something like
 `tasks (Case Conflict).md`, `tasks.md.sync-conflict-20250831-…`, or
 `lenses (conflicted copy).json` beside the original. Docket never writes those
 names and never reads them. Its own conflict record is a bundle under
-`.tt/conflicts/`, which is what `docket conflict list` shows and the status strip
+`.docket/conflicts/`, which is what `docket conflict list` shows and the status strip
 counts. So:
 
 - A file with a client-invented suffix is a copy you resolve yourself. Compare
   it with the original, keep the content you want under the original name, and
   delete the copy. `docket doctor` will not touch it.
-- A bundle in `.tt/conflicts/` is resolved with `docket conflict resolve`.
+- A bundle in `.docket/conflicts/` is resolved with `docket conflict resolve`.
 
 Provider-specific notes:
 
@@ -441,9 +468,9 @@ clears it — the recovery step is manual and deliberately so:
    manifest is readable, and the recovery step itself — the same sentence a
    blocked startup prints, so the two never disagree.
 3. Back up the whole data directory before touching anything.
-4. Inspect the manifests under `.tt/transactions/quarantine/`. If a file one of
-   them names has wrong contents, restore that file from `.tt/backups` first.
-5. Move the quarantine directory aside — `.tt/transactions/quarantine.bak` is
+4. Inspect the manifests under `.docket/transactions/quarantine/`. If a file one of
+   them names has wrong contents, restore that file from `.docket/backups` first.
+5. Move the quarantine directory aside — `.docket/transactions/quarantine.bak` is
    enough — which unblocks mutations. This abandons those transactions; the work
    they carried is lost, which is why the backup comes first.
 6. Run `docket doctor` again. It should report no quarantine, and mutations work
@@ -547,7 +574,7 @@ never exchanged with another device.
 
 The Mac quick-capture panel gives each submitted draft a unique identity bound
 to its workspace. The task transaction also writes an immutable receipt under
-`.tt/control-captures/`. Tasks, planning changes, attachments, undo history, and
+`.docket/control-captures/`. Tasks, planning changes, attachments, undo history, and
 the receipt recover together after an interruption. A retry returns the original
 transaction and titles; the same identity with different text is refused.
 

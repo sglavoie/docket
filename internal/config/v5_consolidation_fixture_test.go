@@ -19,7 +19,7 @@ const (
 
 func TestV5ConsolidationDomainFixturesCoverProtectedIdentityAndContexts(t *testing.T) {
 	var catalog V5WorkspaceCatalogCandidate
-	readV5ConsolidationDomain(t, "workspace/.tt/workspace.json", "workspace", &catalog)
+	readV5ConsolidationDomain(t, "workspace/.docket/workspace.json", "workspace", &catalog)
 	if err := catalog.Validate(); err != nil {
 		t.Fatalf("validate workspace fixture: %v", err)
 	}
@@ -69,9 +69,9 @@ func TestV5ConsolidationDomainFixturesCoverProtectedIdentityAndContexts(t *testi
 
 func TestV5ConsolidationPlanningFixtureCharacterizesContradictions(t *testing.T) {
 	var catalog V5WorkspaceCatalogCandidate
-	readV5ConsolidationDomain(t, "workspace/.tt/workspace.json", "workspace", &catalog)
+	readV5ConsolidationDomain(t, "workspace/.docket/workspace.json", "workspace", &catalog)
 	var planning V5PlanningCandidate
-	readV5ConsolidationDomain(t, "workspace/.tt/planning.json", "planning", &planning)
+	readV5ConsolidationDomain(t, "workspace/.docket/planning.json", "planning", &planning)
 	if err := planning.Validate(catalog); err != nil {
 		t.Fatalf("schema-5 planning fixture must remain structurally valid: %v", err)
 	}

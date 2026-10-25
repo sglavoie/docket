@@ -41,7 +41,7 @@ func TestCommitMultiArtifactPreconditionExpiresBeforeMergeOrConflictRecording(t 
 	alpha := env.project("alpha-id", "Alpha", "alpha")
 	base := env.commitDoc(t, alpha, mergeTestDoc("Alpha", mergeTestTask("alpha-task", "alpha base")), "", nil)
 
-	catalogPath := filepath.Join(env.dataDir, ".tt", "workspace.json")
+	catalogPath := filepath.Join(env.dataDir, ".docket", "workspace.json")
 	censusRevision := writeGuardedArtifact(t, catalogPath, `{"version":17,"projects":["alpha"]}`)
 
 	remote := cloneEdit(base, func(task *models.Task) { task.Priority = models.PriorityMin })
@@ -87,7 +87,7 @@ func TestCommitMultiArtifactPreconditionExpiresBeforeMergeOrConflictRecording(t 
 // undoing that entry leaves the guarded artifact alone.
 func TestCommitMultiArtifactPreconditionIsReadOnlyAndExcludedFromUndo(t *testing.T) {
 	dataDir := t.TempDir()
-	transactionsDir := filepath.Join(dataDir, ".tt", "transactions")
+	transactionsDir := filepath.Join(dataDir, ".docket", "transactions")
 	alpha := newCommitTestProject(t, dataDir, "alpha", "alpha before")
 	if _, err := NewCommitService(transactionsDir, []string{dataDir}).Commit(ChangeSet{Project: alpha}); err != nil {
 		t.Fatalf("seed Commit: %v", err)
@@ -97,11 +97,11 @@ func TestCommitMultiArtifactPreconditionIsReadOnlyAndExcludedFromUndo(t *testing
 		t.Fatalf("LoadProjectDocument alpha: %v", err)
 	}
 
-	catalogPath := filepath.Join(dataDir, ".tt", "workspace.json")
+	catalogPath := filepath.Join(dataDir, ".docket", "workspace.json")
 	const catalogContent = `{"version":17,"projects":["alpha"]}`
 	censusRevision := writeGuardedArtifact(t, catalogPath, catalogContent)
 
-	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
+	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
 	service := NewCommitServiceWithLedger(transactionsDir, []string{dataDir}, ledger)
 	localDoc := cloneEdit(alphaBase, func(task *models.Task) { task.Title = "alpha after" })
 	if _, commitErr := service.Commit(ChangeSet{
@@ -143,7 +143,7 @@ func TestCommitMultiArtifactPreconditionIsReadOnlyAndExcludedFromUndo(t *testing
 // workspace lock creates the transactions directory or any lock file.
 func TestCommitMultiRejectsArtifactPreconditionPathBeforeEffects(t *testing.T) {
 	dataDir := t.TempDir()
-	transactionsDir := filepath.Join(dataDir, ".tt", "transactions")
+	transactionsDir := filepath.Join(dataDir, ".docket", "transactions")
 	project := newCommitTestProject(t, dataDir, "alpha", "alpha")
 	outside := filepath.Join(t.TempDir(), "escaped-catalog.json")
 
@@ -167,7 +167,7 @@ func TestCommitMultiRejectsArtifactPreconditionPathBeforeEffects(t *testing.T) {
 // write must resolve to one held lock instead of deadlocking on two.
 func TestCommitMultiDeduplicatesResolvedArtifactPreconditionLocks(t *testing.T) {
 	dataDir := t.TempDir()
-	transactionsDir := filepath.Join(dataDir, ".tt", "transactions")
+	transactionsDir := filepath.Join(dataDir, ".docket", "transactions")
 	alpha := newCommitTestProject(t, dataDir, "alpha", "alpha before")
 	service := NewCommitService(transactionsDir, []string{dataDir})
 	if _, err := service.Commit(ChangeSet{Project: alpha}); err != nil {
@@ -178,10 +178,10 @@ func TestCommitMultiDeduplicatesResolvedArtifactPreconditionLocks(t *testing.T) 
 		t.Fatalf("LoadProjectDocument alpha: %v", err)
 	}
 
-	catalogPath := filepath.Join(dataDir, ".tt", "workspace.json")
+	catalogPath := filepath.Join(dataDir, ".docket", "workspace.json")
 	censusRevision := writeGuardedArtifact(t, catalogPath, `{"version":17,"projects":["alpha"]}`)
 	alias := filepath.Join(dataDir, "tt-alias")
-	if err := os.Symlink(filepath.Join(dataDir, ".tt"), alias); err != nil {
+	if err := os.Symlink(filepath.Join(dataDir, ".docket"), alias); err != nil {
 		t.Fatalf("symlink workspace alias: %v", err)
 	}
 	expected := censusRevision

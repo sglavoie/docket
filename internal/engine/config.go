@@ -45,7 +45,7 @@ var ErrMigrationRequired = errors.New("the workspace schema is older than this e
 // are values rather than environment and are what every frontend uses outside
 // tests.
 type Config struct {
-	// DataDir is the workspace root holding .tt/ and projects/. A frontend with
+	// DataDir is the workspace root holding .docket/ and projects/. A frontend with
 	// no meaningful working directory passes an absolute path; the desktop passes
 	// the path its flags resolved, unchanged, because the machine-local process
 	// lock is keyed by that spelling and workspace relocation must find it.

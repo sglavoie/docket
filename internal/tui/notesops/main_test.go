@@ -15,7 +15,7 @@ import (
 // test that later reaches ~/.docket/runtime/<workspace-id>/machine.json cannot
 // write into the developer's real home directory.
 //
-// residue.Run also fails the run when it leaves .tt/, projects/, or a lock file
+// residue.Run also fails the run when it leaves .docket/, projects/, or a lock file
 // in the package directory, which is what an unrooted runtime or project writes.
 func TestMain(m *testing.M) {
 	nofsync.Enable()

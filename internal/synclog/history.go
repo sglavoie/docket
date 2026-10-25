@@ -33,7 +33,7 @@ const (
 
 // Config names the device a history speaks for and the schemas it writes.
 type Config struct {
-	// DataDir is the workspace root holding .tt/ and projects/.
+	// DataDir is the workspace root holding .docket/ and projects/.
 	DataDir string
 	// DeviceID is this device's stable sync identity.
 	DeviceID string
@@ -161,8 +161,8 @@ func (h *History) Schemas() map[string]int {
 // Capabilities are what this device can apply, sorted.
 func (h *History) Capabilities() []string { return sortedKeys(h.capabilities) }
 
-// Dir is <data>/.tt/sync.
-func (h *History) Dir() string { return filepath.Join(h.dataDir, ".tt", "sync") }
+// Dir is <data>/.docket/sync.
+func (h *History) Dir() string { return filepath.Join(h.dataDir, internalDir, "sync") }
 
 func (h *History) deviceDir() string { return filepath.Join(h.Dir(), "devices", h.deviceID) }
 
@@ -200,7 +200,7 @@ func (h *History) rel(abs string) string {
 }
 
 func (h *History) abs(rel string) string {
-	return filepath.Join(h.dataDir, filepath.FromSlash(rel))
+	return filepath.Join(h.dataDir, filepath.FromSlash(CanonicalPath(rel)))
 }
 
 // State is a device's mutable sync tracking. It is rewritten only inside the
@@ -393,7 +393,7 @@ func parseCatalog(data []byte) (*catalogIdentity, error) {
 	return identity, nil
 }
 
-const catalogRel = ".tt/workspace.json"
+const catalogRel = internalDir + "/workspace.json"
 
 // mergeHeads drops parents from heads and adds txnID.
 func mergeHeads(heads, parents []string, txnID string) []string {

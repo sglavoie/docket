@@ -27,7 +27,7 @@ func TestArtifactsContract(t *testing.T) {
 
 	t.Run("filesystem", func(t *testing.T) {
 		dataDir := t.TempDir()
-		commitSvc := storage.NewCommitService(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir})
+		commitSvc := storage.NewCommitService(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir})
 		project := realTestProject(t, dataDir, "alpha", "seed task")
 		repo := newStorageRepo(commitSvc, project)
 		repo.seed(t)

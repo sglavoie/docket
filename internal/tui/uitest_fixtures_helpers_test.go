@@ -74,7 +74,7 @@ func (w *uitestWorkspace) Cleanup() error {
 
 // switchMachineHome points machine-local state at a home inside this
 // workspace's temp tree. Machine identity is the home directory — machine.json
-// lives at <$HOME>/.tt/runtime/<workspace-id>/machine.json — so moving it is
+// lives at <$HOME>/.docket/runtime/<workspace-id>/machine.json — so moving it is
 // what makes the same synced workspace look like it was opened elsewhere. The
 // synced directory is not touched.
 //
@@ -294,7 +294,7 @@ func (w *uitestWorkspace) relaunchApp() (*AppModel, error) {
 
 // adoptPortableLenses runs the one-time-per-machine merge a real launch runs
 // between loading the domains and handing them to the TUI. It is a no-op once
-// this machine's marker is set, and it is what publishes `.tt/lenses.json`, so
+// this machine's marker is set, and it is what publishes `.docket/lenses.json`, so
 // a fixture workspace keeps its lens definitions where a synced workspace keeps
 // them rather than where an unadopted machine would.
 func (w *uitestWorkspace) adoptPortableLenses() error {
@@ -327,7 +327,7 @@ func (w *uitestWorkspace) persistNoteSeeds() error {
 		})
 	}
 	committer := storage.NewCommitService(
-		filepath.Join(w.DataDir, ".tt", "transactions"),
+		filepath.Join(w.DataDir, ".docket", "transactions"),
 		[]string{w.DataDir},
 	)
 	if _, err := committer.CommitArtifacts(artifacts); err != nil {

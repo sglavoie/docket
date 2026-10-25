@@ -124,7 +124,7 @@ func (h *History) walkSyncedFiles(fn func(rel, abs string, info fs.FileInfo) err
 		rel := h.rel(abs)
 		if d.IsDir() {
 			parts := strings.Split(rel, "/")
-			if len(parts) == 2 && parts[0] == ".tt" && localInternalDirs[parts[1]] {
+			if rel == legacyInternalDir || (len(parts) == 2 && parts[0] == internalDir && localInternalDirs[parts[1]]) {
 				return filepath.SkipDir
 			}
 			return nil

@@ -101,8 +101,8 @@ func newPlanningLedgerApp(t *testing.T, state models.WorkflowState) (*AppModel, 
 	project.NextShortID = 2
 	project.BuildTaskTree()
 
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
-	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 	repo := &failableScenarioRepo{scenarioRepo: newScenarioRepo(commitSvc, project)}
 	repo.seed(t)
 
@@ -182,7 +182,7 @@ func TestPlanningNextToTodayIsAtomicAndDurable(t *testing.T) {
 
 		// Durability: a fresh ledger over the same data dir (a restart) undoes the
 		// whole move, restoring the exact workflow state, Next ordering, and Today.
-		fresh := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
+		fresh := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
 		if _, _, err := fresh.UndoWithEntry(storage.GlobalScope()); err != nil {
 			t.Fatalf("durable undo from fresh ledger: %v", err)
 		}

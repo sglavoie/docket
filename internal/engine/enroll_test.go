@@ -53,8 +53,7 @@ func enrollmentEnrollsFromASnapshotIntoALocalWorkingCopy(t *testing.T) {
 	delete(snapshotTree, "snapshot.json")
 	durable := map[string]string{}
 	for rel, digest := range before {
-		// The commit lock is the one file a copy never carries.
-		if rel != ".tt/transactions/commit.lock" {
+		if snapshotCarries(rel) {
 			durable[rel] = digest
 		}
 	}
@@ -67,7 +66,7 @@ func enrollmentEnrollsFromASnapshotIntoALocalWorkingCopy(t *testing.T) {
 	if catalog.SchemaVersion != config.SyncEnrolledConfigVersion || !catalog.Enrolled() {
 		t.Fatalf("working copy catalog is schema %d enrolled=%v, want the enrolled schema", catalog.SchemaVersion, catalog.Enrolled())
 	}
-	for _, local := range []string{".tt/undo", ".tt/backups"} {
+	for _, local := range []string{".docket/undo", ".docket/backups"} {
 		if _, statErr := os.Stat(filepath.Join(env.workingCopy, local)); statErr == nil {
 			t.Fatalf("working copy carried the original's device-local %s", local)
 		}
@@ -222,7 +221,7 @@ func enrollmentARenamedMachineKeepsItsDeviceIdentity(t *testing.T) {
 	if after.LocalTransactions != before.LocalTransactions+1 {
 		t.Fatalf("local transactions = %d, want the genesis history plus one capture (%d)", after.LocalTransactions, before.LocalTransactions+1)
 	}
-	devices, err := os.ReadDir(filepath.Join(env.workingCopy, ".tt", "sync", "devices"))
+	devices, err := os.ReadDir(filepath.Join(env.workingCopy, ".docket", "sync", "devices"))
 	if err != nil || len(devices) != 1 {
 		t.Fatalf("working copy records %d device identities (err %v), want one", len(devices), err)
 	}
@@ -296,7 +295,7 @@ func enrollmentExternalEditsArePublishedAndInvalidOnesHeld(t *testing.T) {
 	exchangeNow(t, laptop)
 	requireSameTree(t, "after an external edit", syncedDigests(t, env.workingCopy), syncedDigests(t, laptop.DataDir()))
 
-	planning := filepath.Join(env.workingCopy, ".tt", "planning.json")
+	planning := filepath.Join(env.workingCopy, ".docket", "planning.json")
 	if err := os.WriteFile(planning, []byte("{ not json"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -322,7 +321,7 @@ func enrollmentAnIncompatiblePeerHoldsAndNamesTheUpgrade(t *testing.T) {
 	captureIn(t, desk, "Written by the upgraded desk")
 	exchangeNow(t, desk)
 
-	historyDir := filepath.Join(laptop.DataDir(), ".tt", "sync")
+	historyDir := filepath.Join(laptop.DataDir(), ".docket", "sync")
 	recordsBefore := treeDigests(t, historyDir)
 	captureIn(t, laptop, "Written by the laptop meanwhile")
 	report := exchangeNow(t, laptop)
@@ -414,4 +413,11 @@ func TestSyncEnrollmentRefusesUnsafePlacement(t *testing.T) {
 	if data, err := os.ReadFile(filepath.Join(occupied, "keep.txt")); err != nil || string(data) != "mine" {
 		t.Fatal("a refused enrollment touched an occupied directory")
 	}
+}
+
+// snapshotCarries reports whether an enrollment snapshot copies rel. The commit
+// lock is the one file a copy never carries, and the .tt/ tombstone is no
+// workspace data: each copy gets its own.
+func snapshotCarries(rel string) bool {
+	return rel != ".docket/transactions/commit.lock" && !strings.HasPrefix(rel, ".tt/")
 }

@@ -257,8 +257,8 @@ func TestOutlinePlanReparentsASurvivorWhoseParentLineWasDeleted(t *testing.T) {
 // because the whole buffer is a single ledger entry.
 func TestOutlinePlanDeletionUndoRestoresTheProject(t *testing.T) {
 	dataDir := t.TempDir()
-	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
-	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, ledger)
+	ledger := storage.NewWorkspaceLedger(filepath.Join(dataDir, ".docket", "undo"), []string{dataDir})
+	commitSvc := storage.NewCommitServiceWithLedger(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir}, ledger)
 
 	project := realTestProject(t, dataDir, "alpha", "Keep me")
 	kept := project.Tasks[0]

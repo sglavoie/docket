@@ -152,7 +152,7 @@ func (s *faultSim) deleteLeaf(d *simDevice) {
 		return
 	}
 	task := doc.Tasks[s.rng.Intn(len(doc.Tasks))]
-	planned := string(s.read(d, ".tt/planning.json"))
+	planned := string(s.read(d, ".docket/planning.json"))
 	for _, other := range doc.Tasks {
 		if other.ParentID != nil && *other.ParentID == task.ID {
 			return
@@ -196,7 +196,7 @@ func (s *faultSim) appendNote(d *simDevice) {
 
 // plan moves a seeded open atlas task into Today or Next, or reverses Today.
 func (s *faultSim) plan(d *simDevice) {
-	raw := s.read(d, ".tt/planning.json")
+	raw := s.read(d, ".docket/planning.json")
 	var env faultEnvelope
 	if err := json.Unmarshal(raw, &env); err != nil {
 		s.fatalf("%s: planning envelope: %v", d.name, err)
@@ -232,7 +232,7 @@ func (s *faultSim) plan(d *simDevice) {
 	if err != nil {
 		s.fatalf("encode planning envelope: %v", err)
 	}
-	s.commitLocal(d, "plan "+task.ID[len(task.ID)-3:], s.put(d, ".tt/planning.json", out))
+	s.commitLocal(d, "plan "+task.ID[len(task.ID)-3:], s.put(d, ".docket/planning.json", out))
 }
 
 type faultEnvelope struct {

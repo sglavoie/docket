@@ -174,7 +174,7 @@ func TestManagerSnapshotFirstV19MigrationAdvancesTheMarkerAndClearsHistory(t *te
 		"byte-identical to its schema-16",
 		"Saved lens definitions are not rewritten",
 		"Undo/redo history is dropped at this boundary",
-		"Conflict bundles under `.tt/conflicts/` are not rewritten",
+		"Conflict bundles under `.docket/conflicts/` are not rewritten",
 	} {
 		if !strings.Contains(string(auditBytes), want) {
 			t.Fatalf("audit does not state %q:\n%s", want, auditBytes)

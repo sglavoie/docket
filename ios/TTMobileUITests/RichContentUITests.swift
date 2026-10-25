@@ -245,14 +245,14 @@ final class RichContentUITests: XCTestCase {
         replace(app, "note.title", with: "Packing list")
         replace(app, "note.body", with: "passport")
         app.buttons["note.save"].firstMatch.tap()
-        eventually("the note was written") { self.note(titled: "Packing list", under: ".tt/global-notes")?.contains("passport") == true }
+        eventually("the note was written") { self.note(titled: "Packing list", under: ".docket/global-notes")?.contains("passport") == true }
 
         replace(app, "note.body", with: "passport and charger")
         app.buttons["note.save"].firstMatch.tap()
-        eventually("the edit was written") { self.note(titled: "Packing list", under: ".tt/global-notes")?.contains("passport and charger") == true }
+        eventually("the edit was written") { self.note(titled: "Packing list", under: ".docket/global-notes")?.contains("passport and charger") == true }
 
         // The desktop edits the note while the phone holds it open.
-        let file = try XCTUnwrap(files(under: ".tt/global-notes").first {
+        let file = try XCTUnwrap(files(under: ".docket/global-notes").first {
             (try? String(contentsOf: $0, encoding: .utf8))?.contains("title: Packing list\n") == true
         })
         let desktop = try String(contentsOf: file, encoding: .utf8) + "\nDesktop: add the adapter.\n"
@@ -263,7 +263,7 @@ final class RichContentUITests: XCTestCase {
         XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), desktop, "a stale save overwrote the other writer")
         press(app, "note.saveCopy")
         eventually("the phone's text was kept as its own note") {
-            self.note(titled: "Packing list (iPhone)", under: ".tt/global-notes")?.contains("phone rewrite of the list") == true
+            self.note(titled: "Packing list (iPhone)", under: ".docket/global-notes")?.contains("phone rewrite of the list") == true
         }
         XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), desktop)
 
@@ -275,7 +275,7 @@ final class RichContentUITests: XCTestCase {
         choose(app, "note.actions", "Move to Atlas Launch")
         eventually("the note moved") {
             self.note(titled: "Weekly review", under: "projects/atlas-launch/notes") != nil &&
-                self.note(titled: "Weekly review", under: ".tt/global-notes") == nil
+                self.note(titled: "Weekly review", under: ".docket/global-notes") == nil
         }
     }
 

@@ -11,14 +11,14 @@ the migration must make every repair explicitly:
   nine schema-5 workflow states, all six schema-5 priority values, hierarchy,
   rich text, tags, dates, pinning, comments, decisions, recurrence,
   dependencies, attachments, and checklist items.
-- `workspace/.tt/planning.json` overlaps Today and Next ordering, references
+- `workspace/.docket/planning.json` overlaps Today and Next ordering, references
   terminal and missing tasks, orders tasks that are not in StateNext, and omits
   one StateNext task from the saved order.
-- `workspace/.tt/workspace.json` preserves the protected Inbox project ID and
+- `workspace/.docket/workspace.json` preserves the protected Inbox project ID and
   several ordinary project context labels.
 - `machine/` contains custom contexts plus the retained theme selection.
 - Project/global notes and a task attachment exercise retained side artifacts.
-- `workspace/.tt/undo/` contains one undo entry and one redo entry with valid
+- `workspace/.docket/undo/` contains one undo entry and one redo entry with valid
   content-addressed blobs. The absolute artifact paths are intentionally rooted
   at `/synthetic/workspace` so validation never targets a real workspace.
 - `transformation-matrix.json` is the machine-readable source of truth for

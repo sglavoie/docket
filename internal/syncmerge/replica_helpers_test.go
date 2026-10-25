@@ -91,8 +91,8 @@ func (c *cluster) open(device, root string) *replica {
 	if err != nil {
 		c.t.Fatalf("synclog.New: %v", err)
 	}
-	ledger := storage.NewWorkspaceLedger(filepath.Join(root, ".tt", "undo"), []string{root})
-	svc := storage.NewCommitServiceWithLedger(filepath.Join(root, ".tt", "transactions"), []string{root}, ledger).
+	ledger := storage.NewWorkspaceLedger(filepath.Join(root, ".docket", "undo"), []string{root})
+	svc := storage.NewCommitServiceWithLedger(filepath.Join(root, ".docket", "transactions"), []string{root}, ledger).
 		WithSyncHistory(history).
 		WithSyncMerger(syncmerge.Merger{})
 	return &replica{t: c.t, device: device, root: root, history: history, svc: svc, ledger: ledger}
@@ -282,7 +282,7 @@ func encodeDomain(t *testing.T, env envelope, payload any) []byte {
 func (r *replica) catalog() (*config.WorkspaceCatalog, envelope) {
 	r.t.Helper()
 	catalog := &config.WorkspaceCatalog{}
-	env := decodeDomain(r.t, r.read(".tt/workspace.json"), catalog)
+	env := decodeDomain(r.t, r.read(".docket/workspace.json"), catalog)
 	return catalog, env
 }
 
@@ -290,22 +290,22 @@ func (r *replica) catalogArtifact(edit func(*config.WorkspaceCatalog)) storage.A
 	r.t.Helper()
 	catalog, env := r.catalog()
 	edit(catalog)
-	return r.put(".tt/workspace.json", encodeDomain(r.t, env, catalog))
+	return r.put(".docket/workspace.json", encodeDomain(r.t, env, catalog))
 }
 
 func (r *replica) planning() *config.PlanningState {
 	r.t.Helper()
 	planning := &config.PlanningState{}
-	decodeDomain(r.t, r.read(".tt/planning.json"), planning)
+	decodeDomain(r.t, r.read(".docket/planning.json"), planning)
 	return planning
 }
 
 func (r *replica) planningArtifact(edit func(*config.PlanningState)) storage.ArtifactChange {
 	r.t.Helper()
 	planning := &config.PlanningState{}
-	env := decodeDomain(r.t, r.read(".tt/planning.json"), planning)
+	env := decodeDomain(r.t, r.read(".docket/planning.json"), planning)
 	edit(planning)
-	return r.put(".tt/planning.json", encodeDomain(r.t, env, planning))
+	return r.put(".docket/planning.json", encodeDomain(r.t, env, planning))
 }
 
 // renameProject moves a project's directory and rewrites its catalog slug in
