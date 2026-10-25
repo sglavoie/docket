@@ -11,7 +11,7 @@ from .core import (
 
 
 def drive_tui(trial, keys, binary=None):
-    """Runs the Mac's trial tt in a pseudo-terminal, as a person at the
+    """Runs the Mac's trial Docket in a pseudo-terminal, as a person at the
     keyboard would, sends each key string in turn, then Ctrl+C."""
     import pty
     import select
@@ -21,8 +21,8 @@ def drive_tui(trial, keys, binary=None):
     env = {**os.environ, "HOME": trial.home, "TERM": "xterm-256color"}
     pid, fd = pty.fork()
     if pid == 0:
-        os.execve(binary or os.path.join(trial.dir, "bin", "tt"),
-                  [binary or "tt", "--data-dir", trial.working], env)
+        os.execve(binary or os.path.join(trial.dir, "bin", "docket"),
+                  [binary or "docket", "--data-dir", trial.working], env)
     fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", 40, 140, 0, 0))
 
     def drain(seconds):

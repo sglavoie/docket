@@ -3,7 +3,6 @@ package tui
 import (
 	"crypto/sha256"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
@@ -24,7 +23,7 @@ import (
 // =============================================================================
 //
 // `docket --control PATH` serves internal/control's socket for a host such as
-// tt.app. Every request arrives here as a controlRequestMsg and is answered
+// Docket.app. Every request arrives here as a controlRequestMsg and is answered
 // from inside Update, so it reads the same state a keystroke would and commits
 // through the same coordinator, transaction, and undo ledger. A request is
 // refused, never queued, while the user is mid-interaction: the guard is the
@@ -155,7 +154,7 @@ func (m *AppModel) executeControlRequest(request control.Request, reply chan<- c
 		return nil
 	case control.OpQuit:
 		if reason := m.quitBlockReason(); reason != "" {
-			answer(reply, false, "tt is busy: "+reason)
+			answer(reply, false, "Docket is busy: "+reason)
 			return nil
 		}
 		answer(reply, true, "quitting")
@@ -166,7 +165,7 @@ func (m *AppModel) executeControlRequest(request control.Request, reply chan<- c
 		return nil
 	}
 	if !m.safeToAdoptExternalChange() {
-		answer(reply, false, "tt is busy: "+m.controlBusyReason(request.Op))
+		answer(reply, false, "Docket is busy: "+m.controlBusyReason(request.Op))
 		return nil
 	}
 	if request.Op == control.OpView {
@@ -260,6 +259,9 @@ func replyWhenCommitted(cmd tea.Cmd, reply chan<- control.Reply, success string)
 	}
 }
 
+// controlNotCommitted answers a request whose outcome named no error.
+const controlNotCommitted = "Docket did not commit the change"
+
 // commitRefusal is the error a coordinator's message carries, or "" when it
 // committed.
 func commitRefusal(msg tea.Msg) string {
@@ -272,10 +274,10 @@ func commitRefusal(msg tea.Msg) string {
 	case coordinator.TransactionResultMsg, coordinator.BatchTransactionResultMsg, coordinator.TasksCapturedMsg:
 		return ""
 	default:
-		err = errors.New("tt did not commit the change")
+		return controlNotCommitted
 	}
 	if err == nil {
-		return "tt did not commit the change"
+		return controlNotCommitted
 	}
 	return err.Error()
 }
@@ -370,16 +372,16 @@ func (m *AppModel) controlThemePalette(text string, reply chan<- control.Reply) 
 // external change can run; navigation names the specific obstacle.
 func (m *AppModel) controlBusyReason(op string) string {
 	if op != control.OpReveal && op != control.OpView {
-		return "finish what is open in tt first"
+		return "finish what is open in Docket first"
 	}
 	switch {
 	case m.quitBlockReason() != "":
 		return m.quitBlockReason() + " Save or cancel it before navigating."
 	case m.crossOutliner != nil && (m.crossOutliner.IsSearchMode() || m.crossOutliner.HasSearchProjection()):
-		return "Close search in tt, then try again."
+		return "Close search in Docket, then try again."
 	case m.crossOutliner != nil && m.crossOutliner.MultiSelectMode:
-		return "Clear the selection in tt, then try again."
+		return "Clear the selection in Docket, then try again."
 	default:
-		return "Close the current panel in tt, then try again."
+		return "Close the current panel in Docket, then try again."
 	}
 }

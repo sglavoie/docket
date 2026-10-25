@@ -43,7 +43,7 @@ def is_synced(rel):
     name = parts[-1]
     if name.endswith((".bak", ".lock")) or name.startswith(".tt-stage-"):
         return False
-    if parts[0] == ".tt":
+    if parts[0] == ".docket":
         return (len(parts) == 2 and name in ("workspace.json", "planning.json", "lenses.json")) or \
             (len(parts) >= 3 and parts[1] == "global-notes")
     return parts[0] == "projects" and len(parts) >= 3 and parts[1] != ""
@@ -89,7 +89,7 @@ def cmd_procedure(args):
         trial.state.setdefault("superseded_procedures", []).append({"procedure": name, "superseded_at": stamp(), "record": earlier})
     if name == "backup":
         backup_root = os.path.join(trial.dir, "backups")
-        # The recorder's tt closes after every step, so no commit is in flight.
+        # The recorder's Docket closes after every step, so no commit is in flight.
         if not trial.mac_exchange():
             fail("Mac exchange failed before the backup")
         observation = trial.mac_observation()
@@ -98,15 +98,15 @@ def cmd_procedure(args):
         if (observation["outstanding_up"] or observation["outstanding_down"] or
                 observation["held"]):
             fail("Mac still has sync work waiting; finish the exchange before backing up")
-        created = trial.tt("workspace", "backup", backup_root, "--data-dir", trial.working)
+        created = trial.docket("workspace", "backup", backup_root, "--data-dir", trial.working)
         match = re.search(r"^Backup verified: (.+) \(\d+ files\)$", created.stdout, re.M)
         if not match:
-            fail("tt workspace backup did not report its snapshot path")
+            fail("docket workspace backup did not report its snapshot path")
         backup = os.path.realpath(match.group(1))
         expected_root = os.path.realpath(os.path.join(backup_root, trial.state["workspace"]["workspace_id"]))
         if os.path.dirname(backup) != expected_root:
-            fail("tt workspace backup reported a snapshot outside the trial backup root")
-        verified = trial.tt("workspace", "verify-backup", backup, check=False)
+            fail("docket workspace backup reported a snapshot outside the trial backup root")
+        verified = trial.docket("workspace", "verify-backup", backup, check=False)
         checks = {"backup": os.path.relpath(backup, os.path.realpath(trial.dir)),
                   "verified_after_creation": verified.returncode == 0,
                   "matches_working_copy": digest_tree(backup) == digest_tree(trial.working)}
@@ -120,23 +120,23 @@ def cmd_procedure(args):
         backup = os.path.realpath(os.path.join(trial_dir, backup_rel))
         if os.path.commonpath([trial_dir, backup]) != trial_dir:
             fail("recorded backup is outside the qualification trial")
-        verified = trial.tt("workspace", "verify-backup", backup, check=False)
+        verified = trial.docket("workspace", "verify-backup", backup, check=False)
         if verified.returncode != 0:
             fail("recorded backup failed verification before the restore drill")
         if not trial.mac_exchange():
             fail("Mac exchange failed before the recovery drill")
         mac_digest = trial.mac_observation()["digest"]
-        # A replacement Mac: a new HOME is a new device to tt. Join, then
+        # A replacement Mac: a new HOME is a new device to Docket. Join, then
         # exchange until nothing more arrives, as the guide says.
         rejoined = os.path.join(trial.dir, "recovered", now().strftime("%Y%m%dT%H%M%SZ"))
         home = rejoined + "-home"
         os.makedirs(home)
-        tt = os.path.join(trial.dir, "bin", "tt")
-        joined = run([tt, "sync", "join", "--exchange", trial.exchange, "--working-copy", rejoined],
-                     env={"HOME": home}, check=False, log=os.path.join(trial.dir, "tt.log"))
+        docket = os.path.join(trial.dir, "bin", "docket")
+        joined = run([docket, "sync", "join", "--exchange", trial.exchange, "--working-copy", rejoined],
+                     env={"HOME": home}, check=False, log=os.path.join(trial.dir, "docket.log"))
         for _ in range(5):
-            passed = run([tt, "sync", "exchange", "--data-dir", rejoined, "--json"], env={"HOME": home}, check=False,
-                         log=os.path.join(trial.dir, "tt.log"))
+            passed = run([docket, "sync", "exchange", "--data-dir", rejoined, "--json"], env={"HOME": home}, check=False,
+                         log=os.path.join(trial.dir, "docket.log"))
             if passed.returncode != 0 or not json.loads(passed.stdout or "{}").get("imported"):
                 break
         rejoined_digest = synced_digest(trial, rejoined, home)
@@ -150,7 +150,7 @@ def cmd_procedure(args):
         os.rename(trial.working, aside)
         try:
             restore_snapshot_contents(backup, trial.working)
-            restored_doctor = trial.tt("doctor", "--data-dir", trial.working, check=False)
+            restored_doctor = trial.docket("doctor", "--data-dir", trial.working, check=False)
             restored_digest = synced_digest(trial, trial.working)
         finally:
             shutil.rmtree(trial.working, ignore_errors=True)
@@ -164,8 +164,8 @@ def cmd_procedure(args):
                   "working_copy_unchanged_after_drill": trial.mac_observation()["digest"] == before}
         trial.state["procedures"]["recovery"] = procedure_record("recovery", [], checks, performed_by="recorder")
     elif name == "troubleshooting":
-        doctor = trial.tt("sync", "doctor", "--data-dir", trial.working, "--json", check=False)
-        diagnostics = trial.tt("sync", "diagnostics", "--data-dir", trial.working, check=False)
+        doctor = trial.docket("sync", "doctor", "--data-dir", trial.working, "--json", check=False)
+        diagnostics = trial.docket("sync", "diagnostics", "--data-dir", trial.working, check=False)
         checks = {"sync_doctor_passes": doctor.returncode == 0,
                   "diagnostics_export": diagnostics.returncode == 0 and '"workspace_digest"' in diagnostics.stdout,
                   "revoked_access_recorded": "revoked_access" in trial.state["scenarios"]}
@@ -179,13 +179,13 @@ def cmd_procedure(args):
 
 
 def synced_digest(trial, directory, home=None):
-    """The synced-file digest tt reports for an enrolled directory, read under
+    """The synced-file digest Docket reports for an enrolled directory, read under
     a HOME of its own (or the device's own HOME) so this machine's identity
     and selection stay as they are."""
     scratch = None if home else tempfile.mkdtemp(dir=trial.dir, prefix="digest-home.")
     try:
-        result = run([os.path.join(trial.dir, "bin", "tt"), "sync", "diagnostics", "--data-dir", directory],
-                     env={"HOME": home or scratch}, check=False, log=os.path.join(trial.dir, "tt.log"))
+        result = run([os.path.join(trial.dir, "bin", "docket"), "sync", "diagnostics", "--data-dir", directory],
+                     env={"HOME": home or scratch}, check=False, log=os.path.join(trial.dir, "docket.log"))
         return json.loads(result.stdout).get("workspace_digest") if result.returncode == 0 else None
     finally:
         if scratch:

@@ -50,7 +50,7 @@ elif tool == "xcrun":
         sys.exit("unexpected device command")
 elif tool == "xcodebuild":
     stage = "build"
-    (pathlib.Path(value("-derivedDataPath")) / "Build/Products/Debug-iphoneos/tt.app").mkdir(parents=True, exist_ok=True)
+    (pathlib.Path(value("-derivedDataPath")) / "Build/Products/Debug-iphoneos/Docket.app").mkdir(parents=True, exist_ok=True)
 if os.environ.get("FAIL_AT") == stage:
     sys.exit("injected " + stage + " failure")
 ''')
@@ -102,7 +102,7 @@ if os.environ.get("FAIL_AT") == stage:
         self.env.pop("DOCKET_IOS_DEVELOPMENT_TEAM")
         derived = self.root / "custom derived"
         self.env["DOCKET_IOS_DEVICE_DERIVED"] = str(derived)
-        app = derived / "Build/Products/Debug-iphoneos/tt.app"
+        app = derived / "Build/Products/Debug-iphoneos/Docket.app"
         app.mkdir(parents=True)
         result = self.run_install(launch=False)
         self.assertEqual(result.returncode, 0, result.stderr)

@@ -1,8 +1,0 @@
-framework module "TTBridgeCore" {
-	header "ref.h"
-    header "Ttbridge.objc.h"
-    header "Universe.objc.h"
-    header "TTBridgeCore.h"
-
-    export *
-}

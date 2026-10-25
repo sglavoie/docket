@@ -357,7 +357,7 @@ that succeeded, are kept in `.tt/sync/transport/status.json`, which is what
 `tt sync status`, `tt sync doctor`, and the Outliner's strip read. A pass that
 reports what the stored one does, apart from its times, leaves the file alone
 until those times are a minute old. It speaks
-the same layout as `apple/TTSync`, so a desktop and an iPhone share one
+the same layout as `apple/DocketSync`, so a desktop and an iPhone share one
 folder.
 
 ## Reconciliation
@@ -499,8 +499,8 @@ incomplete result lists the missing digests and the workspace paths whose new
 content they are, so a status surface can show them as unavailable. The local
 files stay as they are.
 
-`apple/TTSync` is the transport on Apple platforms. The iPhone app and the
-macOS helper (`tt-sync-helper`, which drives a desktop engine running as
+`apple/DocketSync` is the transport on Apple platforms. The iPhone app and the
+macOS helper (`docket-sync-helper`, which drives a desktop engine running as
 `mobile/bridgehost`) share it:
 
 - **Coordinated access.** `CoordinatedFolderProvider` reads and writes through
@@ -555,17 +555,17 @@ Nothing is ever deleted from the exchange or from the workspace because a file
 is missing. A folder whose `workspace.json` names another workspace is refused
 (`foreignExchange`).
 
-`TTSyncContract` is the two-device exchange contract. The originator commits a
+`DocketSyncContract` is the two-device exchange contract. The originator commits a
 task and an attachment and publishes them. The responder imports both,
 verified, then commits and publishes its own pair. The originator then imports
-those, and both end with the same workspace bytes. `apple/TTSync`'s suite runs
+those, and both end with the same workspace bytes. `apple/DocketSync`'s suite runs
 it against a fake iCloud with upload and download lag, placeholders,
 truncated transfers, account loss, expired and unrenewable grants, failing
 writes, a restart mid-upload, vanished exchange files, and a foreign exchange.
 It runs the same contract over a real coordinated folder, with every device a
 real `bridgehost` engine. `ios/scripts/record-icloud-exchange.sh` runs it for
 real: the Mac is the originator and a physical iPhone, as the hosted
-`TTMobileDeviceTests` suite, is the responder, with iCloud Drive between them.
+`DocketMobileDeviceTests` suite, is the responder, with iCloud Drive between them.
 The run uses a disposable copy of the representative fixture, seeded through
 the run's own folder. It writes `docs/mobile/evidence/session-8-icloud-exchange.json`,
 which `scripts/verify_mobile_session.sh 8` checks against the Swift source

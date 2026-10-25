@@ -1,6 +1,6 @@
 #!/usr/bin/env swift
 //
-// Renders the desktop app's icons into macos/TTApp/Resources/Assets.xcassets:
+// Renders the desktop app's icons into macos/DocketApp/Resources/Assets.xcassets:
 //
 //   AppIcon.appiconset     the full-color Dock/Finder icon, every mac size
 //   StatusIcon.imageset    the monochrome menu-bar template image
@@ -20,7 +20,7 @@ import CoreText
 
 let scriptURL = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL
 let macosDir = scriptURL.deletingLastPathComponent().deletingLastPathComponent()
-let assets = macosDir.appendingPathComponent("TTApp/Resources/Assets.xcassets")
+let assets = macosDir.appendingPathComponent("DocketApp/Resources/Assets.xcassets")
 
 // MARK: - Drawing helpers
 
@@ -200,7 +200,7 @@ let fm = FileManager.default
 
 if CommandLine.arguments.dropFirst().contains("--ios") {
     let mobileAssets = macosDir.deletingLastPathComponent()
-        .appendingPathComponent("ios/TTMobile/Resources/Assets.xcassets")
+        .appendingPathComponent("ios/DocketMobile/Resources/Assets.xcassets")
     let iconDir = mobileAssets.appendingPathComponent("AppIcon.appiconset")
     let launchDir = mobileAssets.appendingPathComponent("LaunchIcon.imageset")
     for dir in [iconDir, launchDir] {

@@ -51,7 +51,7 @@ def scenario_airplane(trial):
     say(f"""
 Turn on Airplane Mode on the iPhone (Wi-Fi off too). Keep the cable connected.
 Skip any of these you have already done in this trial.
-In tt on the iPhone capture two tasks titled exactly:
+In Docket on the iPhone capture two tasks titled exactly:
   {phone[0]}
   {phone[1]}
 and complete one existing task. Once you confirm, the Mac captures its own task.""")
@@ -62,7 +62,7 @@ and complete one existing task. Once you confirm, the Mac captures its own task.
         mac_capture(trial, mac[0])
     offline = checkpoint(trial, s, "offline", phone + mac,
                          {"converged": False, "present": mac, "absent": phone, "isolated": True})
-    say("Turn Airplane Mode off on the iPhone and open tt.")
+    say("Turn Airplane Mode off on the iPhone and open Docket.")
     wait_enter()
     online = checkpoint(trial, s, "online", phone + mac)
     return [offline, online], {}
@@ -78,13 +78,13 @@ def scenario_simultaneous(trial):
     say(f"""
 Now edit the same task on the iPhone while it cannot exchange:
   1. Turn on Airplane Mode on the iPhone.
-  2. In tt on the iPhone, rename {shared!r} to {phone_title!r}.
+  2. In Docket on the iPhone, rename {shared!r} to {phone_title!r}.
   3. Capture a task titled {phone_own!r}.
 Leave Airplane Mode on for now; the Mac makes its own edit next.""")
     wait_enter()
     mac_rename(trial, shared, mac_title)
     mac_capture(trial, mac_own)
-    say("Now turn Airplane Mode off on the iPhone and open tt.")
+    say("Now turn Airplane Mode off on the iPhone and open Docket.")
     wait_enter()
     both = [phone_own, mac_own]
     conflicted = checkpoint(trial, s, "conflicted", both + [phone_title, mac_title],
@@ -104,15 +104,15 @@ def scenario_termination(trial):
     phone = [trial.marker(s, "iphone-1"), trial.marker(s, "iphone-2")]
     mac = trial.marker(s, "mac-1")
     say(f"""
-On the iPhone, capture {phone[0]!r} and immediately swipe tt away in the App
-Switcher. Reopen tt, capture {phone[1]!r}, and swipe it away again right after
-saving, while it exchanges. Reopen tt once more.""")
+On the iPhone, capture {phone[0]!r} and immediately swipe Docket away in the App
+Switcher. Reopen Docket, capture {phone[1]!r}, and swipe it away again right after
+saving, while it exchanges. Reopen Docket once more.""")
     wait_enter()
     mac_capture(trial, mac)
     interrupted = 0
     # Small exchanges can finish in less than 200 ms on a fast Mac.
     for delay in (0.02, 0.05, 0.1, 0.2, 0.5, 1.0):
-        process = subprocess.Popen([os.path.join(trial.dir, "bin", "tt"), "sync", "exchange", "--data-dir", trial.working],
+        process = subprocess.Popen([os.path.join(trial.dir, "bin", "docket"), "sync", "exchange", "--data-dir", trial.working],
                                    env={**os.environ, "HOME": trial.home}, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         time.sleep(delay)
         if process.poll() is None:
@@ -128,7 +128,7 @@ def scenario_delayed(trial):
     s = "delayed_delivery"
     mac, phone = trial.marker(s, "mac-1"), trial.marker(s, "iphone-1")
     say(f"""
-Turn on Airplane Mode on the iPhone, then capture {phone!r} in tt.
+Turn on Airplane Mode on the iPhone, then capture {phone!r} in Docket.
 Keep Airplane Mode on: the Mac publishes next, and the iPhone has to stay
 offline for at least {DELAY_MIN_SECONDS // 60} minutes after that. You'll be told when.""")
     if RESUME_AFTER_IPHONE:
@@ -146,7 +146,7 @@ offline for at least {DELAY_MIN_SECONDS // 60} minutes after that. You'll be tol
          f"{stamp(published + datetime.timedelta(seconds=DELAY_MIN_SECONDS))}")
     while (now() - published).total_seconds() < DELAY_MIN_SECONDS:
         time.sleep(15)
-    say("Turn Airplane Mode off on the iPhone and open tt.")
+    say("Turn Airplane Mode off on the iPhone and open Docket.")
     wait_enter()
     record = checkpoint(trial, s, "delivered", [mac, phone])
     return [record], {"mac_published_at": stamp(published), "online_after_seconds": int((now() - published).total_seconds())}
@@ -158,22 +158,22 @@ def scenario_revoked(trial):
     say(f"""
 Revoked access, on the iPhone:
   1. Settings > your name > iCloud > Drive, and turn off Sync this iPhone.
-  2. Open tt and capture a task titled exactly {phone!r}.
-  3. Read the banner tt shows. Keep Sync this iPhone off for now.""")
+  2. Open Docket and capture a task titled exactly {phone!r}.
+  3. Read the banner Docket shows. Keep Sync this iPhone off for now.""")
     wait_enter()
     if trial.marker_counts([mac])[mac] == 0:
         mac_capture(trial, mac)
     revoked = checkpoint(trial, s, "revoked", [phone, mac],
                          {"converged": False, "present": [mac], "absent": [phone], "isolated": True,
                           "iphone_unreachable": True})
-    banner = ask_yes("Did tt say your work is saved on the iPhone and offer Retry?")
+    banner = ask_yes("Did Docket say your work is saved on the iPhone and offer Retry?")
     say(f"""
 Restore access on the iPhone:
   1. Settings > your name > iCloud > Drive, and turn Sync this iPhone back on.
   2. In Files, long-press iCloud Drive > tt-qualification > {trial.run_id} and choose Keep Downloaded.
-  3. Open tt. It should reopen the trial workspace by itself. If it asks you to choose a
+  3. Open Docket. It should reopen the trial workspace by itself. If it asks you to choose a
      workspace, pick the existing one from the list (not Join from an Exchange Folder…).
-  4. Turning sync off removed tt's permission to the folder, and Retry cannot renew it: tap the
+  4. Turning sync off removed Docket's permission to the folder, and Retry cannot renew it: tap the
      sync status button, then Choose Exchange Folder…, pick iCloud Drive > tt-qualification >
      {trial.run_id}, tap Open, then Exchange Now.""")
     wait_enter()
@@ -217,16 +217,16 @@ def scenario_upgrade(trial):
     if not ref or not team:
         fail("set DOCKET_QUALIFICATION_UPGRADE_FROM to the commit of the build being upgraded from, and DOCKET_IOS_DEVELOPMENT_TEAM")
     commit = run(["git", "rev-parse", ref + "^{commit}"]).stdout.strip()
-    old_tt = os.path.join(trial.dir, "bin", "tt-old")
+    old_docket = os.path.join(trial.dir, "bin", "docket-old")
     if RESUME_INSTALLED_OLD:
         # An interrupted run already installed the earlier app on the iPhone
-        # and built the earlier tt. Its signed digests were not kept and a
+        # and built the earlier Docket. Its signed digests were not kept and a
         # rebuild re-signs, so they are not recreated: the earlier app proves
         # itself by its export, which predates the qualification fields.
-        if not os.path.exists(old_tt):
-            fail(f"no earlier tt at {old_tt} to resume with")
-        built = run([old_tt, "--version"], check=False).stdout.strip()
-        note(f"resuming with the earlier app already on the iPhone and {old_tt} ({built or 'no version'})")
+        if not os.path.exists(old_docket):
+            fail(f"no earlier Docket at {old_docket} to resume with")
+        built = run([old_docket, "--version"], check=False).stdout.strip()
+        note(f"resuming with the earlier app already on the iPhone and {old_docket} ({built or 'no version'})")
         old_executables = {}
     else:
         source = os.path.join(trial.dir, "old-source")
@@ -235,42 +235,42 @@ def scenario_upgrade(trial):
         run(["git", "worktree", "add", "--detach", source, commit])
         try:
             log = os.path.join(trial.dir, "build-old.log")
-            note(f"building tt and the app at {commit[:12]}")
-            build_mac(source, old_tt)
+            note(f"building Docket and the app at {commit[:12]}")
+            build_mac(source, old_docket)
             app, old_executables = build_app(source, trial.state["iphone"]["udid"], team, "ios/.cache/QualificationDerivedData", log)
             install(trial, app)
         finally:
             run(["git", "worktree", "remove", "--force", source], check=False)
         if any(old_executables == i["app_executables"] for i in trial.state["builds"].get("installs", [])):
             fail(f"{ref} builds the same app as the trial: pick the commit of an earlier build")
-    wrapper = os.path.join(trial.dir, "bin", "tt-trial-old")
+    wrapper = os.path.join(trial.dir, "bin", "docket-trial-old")
     with open(wrapper, "w") as handle:
-        handle.write(f"#!/bin/sh\nHOME='{trial.home}' exec '{old_tt}' --data-dir '{trial.working}' \"$@\"\n")
+        handle.write(f"#!/bin/sh\nHOME='{trial.home}' exec '{old_docket}' --data-dir '{trial.working}' \"$@\"\n")
     os.chmod(wrapper, 0o755)
     old_phone, old_mac = trial.marker(s, "iphone-old"), trial.marker(s, "mac-old")
     pending, new_mac = trial.marker(s, "iphone-pending"), trial.marker(s, "mac-new")
     say(f"""
 {"(Already relayed: finish those steps, then reply done.)" if RESUME_INSTALLED_OLD else ""}The earlier build is installed on the iPhone. In this order:
-  1. Turn Airplane Mode OFF (Wi-Fi on), open tt, and capture {old_phone!r}.
+  1. Turn Airplane Mode OFF (Wi-Fi on), open Docket, and capture {old_phone!r}.
   2. Turn Airplane Mode ON, then capture {pending!r}, so work is waiting
      to publish across the upgrade.
   3. Leave Airplane Mode on.""")
-    mac_capture(trial, old_mac, binary=old_tt)
+    mac_capture(trial, old_mac, binary=old_docket)
     wait_enter()
     before = checkpoint(trial, s, "before", [old_phone, old_mac, pending],
                         {"converged": False, "present": [old_mac], "absent": [pending],
-                         "iphone_build": None, "mac_binary": old_tt, "earlier_build": True})
+                         "iphone_build": None, "mac_binary": old_docket, "earlier_build": True})
     note("installing the current build over it")
     install_current(trial, "upgrade")
     say(f"""
-Upgraded, following "Upgrade" in {ROLLOUT_DOC}. Open tt on the iPhone: it must
+Upgraded, following "Upgrade" in {ROLLOUT_DOC}. Open Docket on the iPhone: it must
 still show {pending!r}. Then turn Airplane Mode off.""")
     mac_capture(trial, new_mac)
     wait_enter()
     after = checkpoint(trial, s, "after", [old_phone, old_mac, pending, new_mac])
     trial.state["procedures"]["upgrade"] = procedure_record("upgrade", ["before", "after"], {"from_commit": commit})
     return [before, after], {"from_commit": commit, "from_app_executables": old_executables,
-                             "from_tt_sha256": sha256_file(old_tt).removeprefix("sha256:")}
+                             "from_tt_sha256": sha256_file(old_docket).removeprefix("sha256:")}
 
 
 SCENARIO_RUNNERS = {

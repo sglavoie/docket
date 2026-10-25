@@ -1,7 +1,7 @@
 // Package bridge is the versioned request/response protocol the mobile app
 // speaks to the engine: one JSON request in, one JSON response out, decoded
 // strictly and answered through the shared headless runtime. The gomobile
-// binding in mobile/ttbridge is a two-function shell over Call; nothing here
+// binding in mobile/docketbridge is a two-function shell over Call; nothing here
 // depends on gomobile, so the protocol is tested as ordinary Go.
 //
 // docs/mobile/bridge-contract.md is the contract this package implements.

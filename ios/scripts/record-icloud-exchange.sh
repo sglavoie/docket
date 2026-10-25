@@ -3,13 +3,13 @@
 # Record a disposable real iCloud exchange between this Mac and a physical
 # iPhone, and write it as evidence the session-8 verifier validates.
 #
-# The Mac runs the originator of the exchange contract through tt-sync-helper
+# The Mac runs the originator of the exchange contract through docket-sync-helper
 # and a bridgehost engine; the iPhone runs the responder as the hosted
-# TTMobileDeviceTests suite inside the signed app. Both use a fresh copy of the
+# DocketMobileDeviceTests suite inside the signed app. Both use a fresh copy of the
 # representative compatibility fixture, seeded through the exchange folder
 # into runs/RUN_ID, so no real workspace is read or written. The folder is an
 # iCloud Drive folder: the Mac reaches it by path, and the iPhone through the
-# bookmark the app's document picker left (open tt on the iPhone, Sync >
+# bookmark the app's document picker left (open Docket on the iPhone, Sync >
 # Choose Exchange Folder…, and pick the same folder once).
 #
 #   ios/scripts/record-icloud-exchange.sh
@@ -77,17 +77,17 @@ mkdir -p "$folder"
 
 note "building the Mac side"
 go build -trimpath -o "$out/bridgehost" ./mobile/bridgehost
-(cd apple/TTSync && swift build -c release --product tt-sync-helper >"$out/helper-build.log" 2>&1) ||
-	fail "building tt-sync-helper failed: $out/helper-build.log"
-helper=apple/TTSync/.build/release/tt-sync-helper
+(cd apple/DocketSync && swift build -c release --product docket-sync-helper >"$out/helper-build.log" 2>&1) ||
+	fail "building docket-sync-helper failed: $out/helper-build.log"
+helper=apple/DocketSync/.build/release/docket-sync-helper
 
 note "building the signed iPhone app and its device suite"
 ios/scripts/generate-project.sh >"$out/generate.log" 2>&1 || fail "project generation failed: $out/generate.log"
 derived=ios/.cache/DeviceDerivedData
-xcodebuild build-for-testing -project ios/TTMobile.xcodeproj -scheme TTMobile \
+xcodebuild build-for-testing -project ios/DocketMobile.xcodeproj -scheme DocketMobile \
 	-destination "id=$device" -derivedDataPath "$derived" -allowProvisioningUpdates \
 	DEVELOPMENT_TEAM="$team" >"$out/build.log" 2>&1 || fail "device build failed: $out/build.log"
-app="$derived/Build/Products/Debug-iphoneos/tt.app"
+app="$derived/Build/Products/Debug-iphoneos/Docket.app"
 [ -d "$app" ] || fail "no app at $app"
 
 note "starting the Mac originator"
@@ -100,9 +100,9 @@ helper_pid=$!
 note "running the iPhone responder (keep the iPhone unlocked)"
 device_status=0
 TEST_RUNNER_DOCKET_EXCHANGE_RUN_ID="$run" TEST_RUNNER_DOCKET_EXCHANGE_TIMEOUT="$timeout" \
-	xcodebuild test-without-building -project ios/TTMobile.xcodeproj -scheme TTMobile \
+	xcodebuild test-without-building -project ios/DocketMobile.xcodeproj -scheme DocketMobile \
 	-destination "id=$device" -derivedDataPath "$derived" \
-	-only-testing:TTMobileDeviceTests/ICloudExchangeDeviceTests/testRespondsToTheMacOverICloudDrive \
+	-only-testing:DocketMobileDeviceTests/ICloudExchangeDeviceTests/testRespondsToTheMacOverICloudDrive \
 	-resultBundlePath "$out/device.xcresult" >"$out/device-test.log" 2>&1 || device_status=$?
 helper_status=0
 wait "$helper_pid" || helper_status=$?
@@ -133,7 +133,7 @@ def digest(path):
     return "sha256:" + hashlib.sha256(open(path, "rb").read()).hexdigest()
 
 app_executables = {}
-for name in ("tt", "tt.debug.dylib"):
+for name in ("Docket", "Docket.debug.dylib"):
     path = os.path.join(app, name)
     if os.path.exists(path):
         app_executables[name] = digest(path)

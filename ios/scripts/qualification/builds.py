@@ -44,10 +44,10 @@ def build_mac(source, out):
 
 def build_app(source, udid, team, derived, log):
     run(["ios/scripts/generate-project.sh"], cwd=source, log=log)
-    run(["xcodebuild", "build", "-project", "ios/TTMobile.xcodeproj", "-scheme", "TTMobile",
+    run(["xcodebuild", "build", "-project", "ios/DocketMobile.xcodeproj", "-scheme", "DocketMobile",
          "-destination", f"id={udid}", "-derivedDataPath", derived, "-allowProvisioningUpdates",
          f"DEVELOPMENT_TEAM={team}"], cwd=source, log=log)
-    app = os.path.join(source, derived, "Build", "Products", "Debug-iphoneos", "tt.app")
+    app = os.path.join(source, derived, "Build", "Products", "Debug-iphoneos", "Docket.app")
     if not os.path.isdir(app):
         fail(f"no app at {app}")
     return app, app_executables(app)
@@ -55,7 +55,7 @@ def build_app(source, udid, team, derived, log):
 
 def app_executables(app):
     return {name: sha256_file(os.path.join(app, name))
-            for name in ("tt", "tt.debug.dylib") if os.path.exists(os.path.join(app, name))}
+            for name in ("Docket", "Docket.debug.dylib") if os.path.exists(os.path.join(app, name))}
 
 
 def signing(app):

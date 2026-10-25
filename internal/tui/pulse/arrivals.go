@@ -110,7 +110,7 @@ func plural(n int, one, many string) string {
 }
 
 // DesktopNotification is the rxvt-unicode notify escape (OSC 777), which
-// carries a title as well as a body; Ghostty, and therefore tt.app, presents it
+// carries a title as well as a body; Ghostty, and therefore Docket.app, presents it
 // as a system notification. The title ends at the first ';', so one in it is
 // replaced; control characters would end or corrupt the sequence anywhere.
 func DesktopNotification(title, body string) string {

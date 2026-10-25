@@ -136,7 +136,7 @@ type RunOptions struct {
 	// timed deadline passes, or a deferral ends. See notifyArrivals below.
 	Notify bool
 	// ControlSocket serves internal/control's socket at this path for the life
-	// of the session, so a host such as tt.app can ask it to act and hear its
+	// of the session, so a host such as Docket.app can ask it to act and hear its
 	// pulse and arrivals. See the control-socket section below.
 	ControlSocket string
 }

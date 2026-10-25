@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 #
 # Build GhosttyKit.xcframework from the Ghostty tag pinned in
-# macos/GHOSTTY_VERSION and vendor it, with ghostty.h and the resources tt.app
+# macos/GHOSTTY_VERSION and vendor it, with ghostty.h and the resources Docket.app
 # bundles (themes, shell integration, terminfo), into macos/Vendor/.
 # Idempotent: a matching stamp in Vendor/ skips the whole build.
 #
@@ -279,7 +279,7 @@ cp -R "$built" "$vendor_dir/GhosttyKit.xcframework"
 cp "$header" "$vendor_dir/ghostty.h"
 
 # libghostty finds its resources beside the terminfo sentinel under the app's
-# Contents/Resources, so tt.app bundles both directories as Ghostty.app does.
+# Contents/Resources, so Docket.app bundles both directories as Ghostty.app does.
 # The man pages and HTML docs are Ghostty.app's alone.
 mkdir -p "$vendor_dir/resources/ghostty"
 cp -R "$share/terminfo" "$vendor_dir/resources/terminfo"

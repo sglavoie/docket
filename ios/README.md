@@ -1,4 +1,4 @@
-# tt for iPhone
+# Docket for iPhone
 
 A native SwiftUI app over the Go engine. Go keeps task rules, persistence, and
 queries; Swift calls them through the versioned bridge in
@@ -48,19 +48,19 @@ sync history needs repair instead of silently skipping changes.
 
 | Path | Holds |
 | --- | --- |
-| `TTEngine/` | Swift package: the bridge models and the `TTEngine` actor |
-| `TTEngine/Frameworks/TTBridgeCore.xcframework` | the Go engine bound by gomobile (generated, gitignored) |
-| `TTMobile/` | the app target |
-| `TTReminders/` | Swift package: the reminder scheduler, its reconciliation, and notification action routing, tested against a fake notification center |
-| `TTShared/` | Swift package shared with the extensions: the App Group capture inbox, the widget snapshot and its freshness, and `tt://` links |
-| `TTShare/` | the share extension, which saves what was shared to the capture inbox |
-| `TTWidgets/` | the Today and Inbox widgets, drawn from the App Group snapshot |
+| `DocketEngine/` | Swift package: the bridge models and the `DocketEngine` actor |
+| `DocketEngine/Frameworks/DocketBridgeCore.xcframework` | the Go engine bound by gomobile (generated, gitignored) |
+| `DocketMobile/` | the app target |
+| `DocketReminders/` | Swift package: the reminder scheduler, its reconciliation, and notification action routing, tested against a fake notification center |
+| `DocketShared/` | Swift package shared with the extensions: the App Group capture inbox, the widget snapshot and its freshness, and `docket://` links |
+| `DocketShare/` | the share extension, which saves what was shared to the capture inbox |
+| `DocketWidgets/` | the Today and Inbox widgets, drawn from the App Group snapshot |
 | `Config/` | the app's and extensions' Info.plist additions and App Group entitlements |
-| `TTMobileUITests/` | the seeded UI suites (browsing, capture and editing, organizing, rich content, conflicts, share and widgets, accessibility), on a simulator against the real engine, and the reminder delivery suite, on a physical iPhone |
-| `TTMobileDeviceTests/` | the responder of the real iCloud exchange, hosted in the app on a physical iPhone |
-| `TTMobileTests/` | app scheduling and attention tests, including structured edits through the real engine on a simulator |
-| `../apple/TTSync/` | Swift package shared with the macOS helper: the exchange transport and its contract |
-| `project.yml` | XcodeGen spec for `TTMobile.xcodeproj` (generated, gitignored) |
+| `DocketMobileUITests/` | the seeded UI suites (browsing, capture and editing, organizing, rich content, conflicts, share and widgets, accessibility), on a simulator against the real engine, and the reminder delivery suite, on a physical iPhone |
+| `DocketMobileDeviceTests/` | the responder of the real iCloud exchange, hosted in the app on a physical iPhone |
+| `DocketMobileTests/` | app scheduling and attention tests, including structured edits through the real engine on a simulator |
+| `../apple/DocketSync/` | Swift package shared with the macOS helper: the exchange transport and its contract |
+| `project.yml` | XcodeGen spec for `DocketMobile.xcodeproj` (generated, gitignored) |
 | `scripts/` | the bridge build, project generation, the suites, and the app automation behind the `ios-*` recipes |
 
 ## Prerequisites
@@ -74,9 +74,9 @@ dependencies, built into `ios/.cache/`, and XcodeGen is the release
 
 | Recipe | Does |
 | --- | --- |
-| `just ios-bridge` | Bind `mobile/ttbridge` into the device and simulator slices |
-| `just ios-project` | The bridge, then `TTMobile.xcodeproj` from `project.yml` |
-| `just ios-build` | `tt.app` for the simulator, with its result bundle and build diagnostics |
+| `just ios-bridge` | Bind `mobile/docketbridge` into the device and simulator slices |
+| `just ios-project` | The bridge, then `DocketMobile.xcodeproj` from `project.yml` |
+| `just ios-build` | `Docket.app` for the simulator, with its result bundle and build diagnostics |
 | `just ios-install [TEAMID] [UDID]` | Build, sign, install, and launch on a paired iPhone, keeping its app data |
 | `just ios-test [unit\|bridge\|app\|sync\|all]` | Swift package, engine, app, and sync tests, each on its own |
 | `just ios-qualify [run\|start\|status\|resume] [OUTPUT]` | Unattended simulator qualification, including sync failures, upgrades, compatibility and backup checks |
@@ -118,7 +118,7 @@ than one iPhone is paired, use `just ios-install TEAMID UDID`; run
 Build and device logs are kept in `ios/.cache/results/device-install.*/`
 (or beneath `DOCKET_IOS_RESULTS`); failures print the log path and its last lines.
 An installation failure stops before launch. If installation succeeds but
-launch fails, the message says so and you can open tt on the phone.
+launch fails, the message says so and you can open Docket on the phone.
 
 The app icon and launch artwork reuse the desktop icon's renderer. Regenerate
 the committed PNGs with `swift macos/scripts/make-icons.swift --ios` after
@@ -141,7 +141,7 @@ reopens it on a simulator. `DOCKET_IOS_SIMULATOR` picks the simulator by UDID.
 resulting Markdown through Go.
 
 `ios/scripts/test-ui.sh OUTPUT_DIR` runs the browsing UI suite. It enrolls a
-disposable copy of the fixture with the `tt` this tree builds, so the join test
+disposable copy of the fixture with the `docket` this tree builds, so the join test
 has an exchange folder to read. Each test then seeds its own root under
 `OUTPUT_DIR/work`, and the app reads that root from `DOCKET_UITEST_ROOT` in place
 of its container. `bash scripts/verify_mobile_session.sh 10` runs it with the
@@ -170,19 +170,19 @@ Every recipe writes under `ios/.cache/` (gitignored): results under
 or `DOCKET_IOS_RUN`.
 
 **Suites.** `just ios-test` runs five separately reported suites through
-`ios/scripts/test-suites.sh`: `unit` is `swift test` in `TTShared` and
-`TTReminders` on the Mac; `bridge` is the `TTEngine` suite on a simulator
+`ios/scripts/test-suites.sh`: `unit` is `swift test` in `DocketShared` and
+`DocketReminders` on the Mac; `bridge` is the `DocketEngine` suite on a simulator
 against the gomobile-bound engine (`test-engine.sh`); `app` runs the hosted
-`TTMobileTests`, including schedule round trips through that engine
+`DocketMobileTests`, including schedule round trips through that engine
 (`test-app.sh`); `sync` is the
-`apple/TTSync` exchange and join scenarios between real `bridgehost` engines.
+`apple/DocketSync` exchange and join scenarios between real `bridgehost` engines.
 `results/<suite>/summary.json` lists each with its status and its executed,
 failed, and skipped counts; a suite that executes nothing or skips a test
 fails. `just ios-ui-test` runs the UI suite (`test-ui.sh`) and leaves, under
 `results/ui-<device>/`, the result bundle, `summary.json` and `tests.json`
 (the bundle's structured results, failures included), and every screenshot
 and recording under `attachments/` with their `manifest.json`. `small` runs
-on a simulator named `tt-small`, an iPhone SE (3rd generation) that
+on a simulator named `docket-small`, an iPhone SE (3rd generation) that
 `ios/scripts/simulator.sh` creates on the newest runtime the first time.
 
 **Accessibility.** `AccessibilityUITests` holds the main workflows to the
@@ -214,7 +214,7 @@ workspace at all, for `empty`), so every run starts from the same state. The
 app never touches its real container: `DOCKET_UITEST_ROOT` points it at that root,
 and `DOCKET_UITEST_STATE_EXPORT` has it keep `run/state.json` current. That
 document (`tt-mobile-state/v1`, described in
-`TTMobile/App/AutomationState.swift`) names the phase, the workspace, the tab
+`DocketMobile/App/AutomationState.swift`) names the phase, the workspace, the tab
 and sheet showing, the appearance and text size actually drawn, sync status,
 pending captures, unsaved drafts, and the rows Today and Inbox show.
 `just ios-export` prints it and saves it under `run/export/` beside the app's
@@ -225,7 +225,7 @@ the same options, so a workflow repeats from the same start.
 ## The app
 
 The first launch offers two choices: start a workspace kept on the iPhone, or
-join the one the Mac enrolled. Joining is `tt sync enroll` on the Mac, then
+join the one the Mac enrolled. Joining is `docket sync enroll` on the Mac, then
 picking that exchange folder. Each workspace lives under
 `Application Support/workspaces/<name>`, and the selection survives
 relaunches. A workspace an earlier build kept at `Application
@@ -377,7 +377,7 @@ their local time when the iPhone changes time zone, while a deferral ends at
 the same instant everywhere. Settings and the recent-action list are kept
 under `Application Support/reminders/` and never synced.
 
-`cd ios/TTReminders && swift test` runs the scheduling and action suite on the
+`cd ios/DocketReminders && swift test` runs the scheduling and action suite on the
 Mac against a fake notification center. Delivery itself is proven on a
 physical iPhone: `DOCKET_IOS_DEVELOPMENT_TEAM=… ios/scripts/record-reminder-evidence.sh`
 builds the signed app, runs `ReminderDeliveryUITests` there (each test seeds a
@@ -391,9 +391,9 @@ tree; a simulator run does not count.
 
 ## Share, Shortcuts, and widgets
 
-The app shares the App Group `group.io.github.sglavoie.tt` with its share
+The app shares the App Group `group.io.github.sglavoie.docket` with its share
 extension and widgets ([capture-inbox.md](../docs/mobile/capture-inbox.md)).
-**Share → tt** reads the shared words, links, and files, proposes a title and
+**Share → Docket** reads the shared words, links, and files, proposes a title and
 a note, and saves them to the capture inbox in the container. The **Capture a
 Task** shortcut saves its text the same way, read as capture shorthand. Neither
 opens the workspace. The app imports every saved capture through the engine
@@ -407,12 +407,12 @@ the engine refused shows its reason there and can be corrected or discarded.
 The **Today** and **Inbox** widgets draw the snapshot the app writes after
 every change (`query.widget_snapshot`). They say how old it is, mark it as
 possibly out of date after three hours, and stop presenting it as current at
-local midnight. Each row opens its task. **Open tt** opens Today, the Inbox, or
-capture, and so do the links `tt://view/today`, `tt://view/inbox`,
-`tt://capture`, and `tt://task/<workspace>/<project>/<task>`. A task link for
+local midnight. Each row opens its task. **Open Docket** opens Today, the Inbox, or
+capture, and so do the links `docket://view/today`, `docket://view/inbox`,
+`docket://capture`, and `docket://task/<workspace>/<project>/<task>`. A task link for
 another workspace is refused.
 
-`cd ios/TTShared && swift test` runs the package suite. With `DOCKET_BRIDGEHOST` (a
+`cd ios/DocketShared && swift test` runs the package suite. With `DOCKET_BRIDGEHOST` (a
 built `mobile/bridgehost`) and `DOCKET_CAPTURE_FIXTURE` (the representative
 fixture), it also runs the contract between the package's writer and the real
 engine's importer. `DOCKET_UITEST_ONLY=ShareCaptureUITests ios/scripts/test-ui.sh
@@ -426,12 +426,12 @@ so `DOCKET_UITEST_SHARED_CONTAINER` stands one in on the host, and
 The app exchanges through a folder the user picks from the sync status button,
 under **Choose Exchange Folder…**. It exchanges at launch, when it returns to the foreground,
 after every commit, and on pull to refresh. The transport is
-[`apple/TTSync`](../apple/TTSync/Package.swift). Its contract suite runs on the
+[`apple/DocketSync`](../apple/DocketSync/Package.swift). Its contract suite runs on the
 Mac against the real engine:
 
 ```sh
 go build -trimpath -o /tmp/bridgehost ./mobile/bridgehost
-(cd apple/TTSync && DOCKET_BRIDGEHOST=/tmp/bridgehost swift test)
+(cd apple/DocketSync && DOCKET_BRIDGEHOST=/tmp/bridgehost swift test)
 ```
 
 The sync sheet lists the open conflicts from the phone's own history, so they

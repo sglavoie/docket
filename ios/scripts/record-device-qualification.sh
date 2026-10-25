@@ -2,7 +2,7 @@
 #
 # Run the real Mac/iPhone device qualification and write it as evidence the
 # session-18 verifier validates. A person drives the iPhone and the Mac's trial
-# tt; this script builds and installs the signed app, enrolls a disposable
+# Docket; this script builds and installs the signed app, enrolls a disposable
 # copy of the representative fixture, prompts for each step, and records what
 # both devices report after it. docs/mobile/personal-rollout.md is the guide.
 #
@@ -23,7 +23,7 @@
 #   DOCKET_QUALIFICATION_UPGRADE_FROM  commit of the earlier build (scenario upgrade)
 #   DOCKET_QUALIFICATION_EVIDENCE      output (default docs/mobile/evidence/session-18-qualification.json)
 #
-# The evidence is bound to the sources: changing the app, the bridge, or tt
+# The evidence is bound to the sources: changing the app, the bridge, or Docket
 # during a trial makes it stale, so finish the trial on one tree.
 
 set -euo pipefail

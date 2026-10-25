@@ -143,7 +143,7 @@ func parseDocument(t *testing.T, path string) *storage.ProjectDocument {
 // the Swift writer on one field set, so a renamed key fails here rather than
 // as a strict-decode refusal at verification time.
 func TestSimulatorEvidenceShapeMatchesTheSwiftRecord(t *testing.T) {
-	source, err := os.ReadFile(filepath.Join("..", "..", "ios", "TTEngine", "Tests", "TTEngineTests", "BridgeSimulatorTests.swift"))
+	source, err := os.ReadFile(filepath.Join("..", "..", "ios", "DocketEngine", "Tests", "DocketEngineTests", "BridgeSimulatorTests.swift"))
 	if err != nil {
 		t.Fatal(err)
 	}

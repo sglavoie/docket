@@ -17,7 +17,7 @@ import (
 // The folder exchange is the desktop's own transport: one pass between a
 // device's history and an exchange folder it can reach as an ordinary
 // directory — iCloud Drive on a Mac, any shared folder on Linux. It speaks the
-// same tt-sync/v1 layout apple/TTSync does, so a desktop and an iPhone can
+// same tt-sync/v1 layout apple/DocketSync does, so a desktop and an iPhone can
 // share one folder. It never deletes anything from the exchange, it never
 // reads a file iCloud has not downloaded (a ".name.icloud" placeholder is
 // reported unavailable, never as missing content), and it applies nothing

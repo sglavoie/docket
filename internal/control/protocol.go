@@ -1,5 +1,5 @@
 // Package control is the inbound half of a hosted Docket session: a Unix socket a
-// host such as tt.app connects to, so it can ask the running TUI to act and hear
+// host such as Docket.app connects to, so it can ask the running TUI to act and hear
 // what the TUI reports, instead of reading the window title back and typing
 // keys into the terminal.
 //

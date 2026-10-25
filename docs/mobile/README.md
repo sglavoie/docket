@@ -71,7 +71,7 @@ behavior.
 ## Implementation
 
 `internal/bridge` serves the bridge contract over the shared runtime in
-`internal/engine`, and `mobile/ttbridge` is the gomobile binding. The iPhone
+`internal/engine`, and `mobile/docketbridge` is the gomobile binding. The iPhone
 app, its Swift package, and the XCFramework build are described in
 [`ios/README.md`](../../ios/README.md).
 

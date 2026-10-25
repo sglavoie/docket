@@ -1,4 +1,0 @@
-module TTReminders {
-header "TTReminders-Swift.h"
-export *
-}

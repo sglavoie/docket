@@ -14,7 +14,7 @@ import (
 
 // Export the actual product frames for the opt-in Ghostty pixel review. The
 // ordinary suite also checks their geometry; the native test renders these
-// bytes through the same Metal surface as tt.app, rather than an SVG emulator.
+// bytes through the same Metal surface as Docket.app, rather than an SVG emulator.
 func TestPolishVisualReviewFrames(t *testing.T) {
 	defer theme.ApplyTheme(theme.ThemeConfig{})
 	root := os.Getenv("DOCKET_TERMINAL_REVIEW_DIR")

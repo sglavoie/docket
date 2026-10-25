@@ -20,7 +20,7 @@ import (
 
 // controlUndoSuperseded is the refusal for a transaction that is no longer the
 // newest undo entry: u would take back the newer change instead.
-const controlUndoSuperseded = "Something newer was changed in tt; undo it there"
+const controlUndoSuperseded = "Something newer was changed in Docket; undo it there"
 
 // controlUndoAfterPreview runs between controlUndo's unlocked preview and the
 // guarded restore. Tests alone set it, to land a competing commit there.

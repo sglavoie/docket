@@ -231,7 +231,7 @@ func (s *Server) answer(req Request, done <-chan struct{}) Reply {
 		reply.ID = req.ID
 		return reply
 	case <-timer.C:
-		return Reply{ID: req.ID, OK: false, Message: "tt did not answer in time"}
+		return Reply{ID: req.ID, OK: false, Message: "Docket did not answer in time"}
 	case <-done:
 		return Reply{ID: req.ID}
 	}

@@ -21,7 +21,7 @@ const (
 	qualificationLargeMinBytes = 25 << 20
 	qualificationDelaySeconds  = 600
 	qualificationMinDays       = 7
-	qualificationAppGroup      = "group.io.github.sglavoie.tt"
+	qualificationAppGroup      = "group.io.github.sglavoie.docket"
 )
 
 type qualificationDevice struct {
@@ -72,7 +72,7 @@ type qualificationEvidence struct {
 	Builds        struct {
 		SourceFingerprint string            `json:"source_fingerprint"`
 		BridgeFingerprint string            `json:"bridge_fingerprint"`
-		TTSHA256          string            `json:"tt_sha256"`
+		DocketSHA256      string            `json:"tt_sha256"`
 		AppExecutables    map[string]string `json:"app_executables"`
 		// Installs are every install of the trial's own app, oldest first.
 		// A rebuild re-signs the app, so its executable digests change; each

@@ -1,10 +1,10 @@
 #!/usr/bin/env sh
 #
-# Run the TTEngine simulator suite against the real gomobile-bound engine.
+# Run the DocketEngine simulator suite against the real gomobile-bound engine.
 # Builds the bridge (a no-op while current), copies the representative
 # compatibility fixture into OUTPUT_DIR/workspace, and runs `xcodebuild test`
 # on an iOS simulator with OUTPUT_DIR/evidence as the suite's evidence
-# directory. The result bundle is OUTPUT_DIR/TTEngine.xcresult and the log
+# directory. The result bundle is OUTPUT_DIR/DocketEngine.xcresult and the log
 # OUTPUT_DIR/xcodebuild-test.log.
 #
 #   ios/scripts/test-engine.sh OUTPUT_DIR
@@ -44,22 +44,22 @@ if [ -z "$simulator" ]; then
 	exit 1
 fi
 
-rm -rf "$output/workspace" "$output/evidence" "$output/TTEngine.xcresult"
+rm -rf "$output/workspace" "$output/evidence" "$output/DocketEngine.xcresult"
 cp -R "$fixture" "$output/workspace"
 mkdir -p "$output/evidence"
 
-echo "Testing TTEngine on simulator $simulator..." >&2
-cd "$ios_dir/TTEngine"
+echo "Testing DocketEngine on simulator $simulator..." >&2
+cd "$ios_dir/DocketEngine"
 TEST_RUNNER_DOCKET_BRIDGE_FIXTURE_DIR="$output/workspace" \
 	TEST_RUNNER_DOCKET_BRIDGE_EVIDENCE_DIR="$output/evidence" \
 	xcodebuild test \
-	-scheme TTEngine \
+	-scheme DocketEngine \
 	-destination "platform=iOS Simulator,id=$simulator" \
 	-derivedDataPath "$cache_root/DerivedData" \
-	-resultBundlePath "$output/TTEngine.xcresult" \
+	-resultBundlePath "$output/DocketEngine.xcresult" \
 	>"$output/xcodebuild-test.log" 2>&1 || {
 	tail -50 "$output/xcodebuild-test.log" >&2
 	echo "xcodebuild test failed; full log at $output/xcodebuild-test.log" >&2
 	exit 1
 }
-echo "TTEngine suite passed; evidence in $output/evidence" >&2
+echo "DocketEngine suite passed; evidence in $output/evidence" >&2

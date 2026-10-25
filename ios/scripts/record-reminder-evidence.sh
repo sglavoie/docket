@@ -6,7 +6,7 @@
 # Builds the signed app and its UI tests for the iPhone, then runs
 # ReminderDeliveryUITests there: each test seeds a disposable workspace inside
 # the app's own container (no workspace already on the iPhone is read or
-# written), lets the system deliver a real local notification while tt is in
+# written), lets the system deliver a real local notification while Docket is in
 # the background, and acts on it through SpringBoard — Acknowledge on a
 # check-in, Defer 1 Hour on a deferral, and a tap that opens the task. The
 # running app must report the executable digests of the build this script
@@ -77,10 +77,10 @@ bridge_fp=$(ios/scripts/build-bridge.sh --fingerprint)
 note "building the signed app and its UI tests for the iPhone"
 ios/scripts/generate-project.sh >"$out/generate.log" 2>&1 || fail "project generation failed: $out/generate.log"
 derived=ios/.cache/DeviceDerivedData
-xcodebuild build-for-testing -project ios/TTMobile.xcodeproj -scheme TTMobile \
+xcodebuild build-for-testing -project ios/DocketMobile.xcodeproj -scheme DocketMobile \
 	-destination "id=$device" -derivedDataPath "$derived" -allowProvisioningUpdates \
 	DEVELOPMENT_TEAM="$team" >"$out/build.log" 2>&1 || fail "device build failed: $out/build.log"
-app="$derived/Build/Products/Debug-iphoneos/tt.app"
+app="$derived/Build/Products/Debug-iphoneos/Docket.app"
 [ -d "$app" ] || fail "no app at $app"
 [ "$(ios/scripts/reminder-evidence-fingerprint.sh)" = "$source_fp" ] || fail "the Swift sources changed during the build"
 
@@ -88,7 +88,7 @@ app="$derived/Build/Products/Debug-iphoneos/tt.app"
 executables=$(python3 -I - "$app" <<'PY'
 import hashlib, os, sys
 parts = []
-for name in ("tt", "tt.debug.dylib"):
+for name in ("Docket", "Docket.debug.dylib"):
     path = os.path.join(sys.argv[1], name)
     if os.path.exists(path):
         parts.append(name + "=sha256:" + hashlib.sha256(open(path, "rb").read()).hexdigest())
@@ -100,9 +100,9 @@ PY
 note "running ReminderDeliveryUITests on the iPhone (keep it unlocked, about five minutes)"
 test_status=0
 TEST_RUNNER_DOCKET_EXPECTED_APP_EXECUTABLES="$executables" \
-	xcodebuild test-without-building -project ios/TTMobile.xcodeproj -scheme TTMobile \
+	xcodebuild test-without-building -project ios/DocketMobile.xcodeproj -scheme DocketMobile \
 	-destination "id=$device" -derivedDataPath "$derived" \
-	-only-testing:TTMobileUITests/ReminderDeliveryUITests \
+	-only-testing:DocketMobileUITests/ReminderDeliveryUITests \
 	-resultBundlePath "$out/device.xcresult" >"$out/device-test.log" 2>&1 || test_status=$?
 [ "$test_status" -eq 0 ] || { grep -E "error:|Test Case" "$out/device-test.log" | tail -40 >&2; fail "the iPhone run failed ($out/device-test.log)"; }
 

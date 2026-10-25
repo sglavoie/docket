@@ -1,8 +1,8 @@
 # XcodeGen spec for the iPhone app. ios/scripts/generate-project.sh builds the
-# Go bridge and generates ios/TTMobile.xcodeproj from this file with the
+# Go bridge and generates ios/DocketMobile.xcodeproj from this file with the
 # XcodeGen macos/XCODEGEN_VERSION pins; the generated project is gitignored,
 # so edit this file instead.
-name: TTMobile
+name: DocketMobile
 options:
   bundleIdPrefix: io.github.sglavoie
   deploymentTarget:
@@ -10,18 +10,18 @@ options:
   createIntermediateGroups: true
 packages:
   # The typed engine adapter and the gomobile XCFramework it wraps.
-  TTEngine:
-    path: TTEngine
+  DocketEngine:
+    path: DocketEngine
   # The exchange transport shared with the macOS helper.
-  TTSync:
-    path: ../apple/TTSync
+  DocketSync:
+    path: ../apple/DocketSync
   # Local notifications for check-ins, timed deadlines, and deferrals.
-  TTReminders:
-    path: TTReminders
+  DocketReminders:
+    path: DocketReminders
   # The capture inbox, widget snapshot, and deep links the app shares with
   # its share extension, widgets, and shortcuts through the App Group.
-  TTShared:
-    path: TTShared
+  DocketShared:
+    path: DocketShared
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -29,19 +29,19 @@ settings:
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: ""
 targets:
-  TTMobile:
+  DocketMobile:
     type: application
     platform: iOS
     sources:
-      - path: TTMobile
+      - path: DocketMobile
     settings:
       base:
-        PRODUCT_NAME: tt
-        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.tt.mobile
+        PRODUCT_NAME: Docket
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.docket.mobile
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_FILE: Config/TTMobile-Info.plist
-        CODE_SIGN_ENTITLEMENTS: Config/TTMobile.entitlements
-        INFOPLIST_KEY_CFBundleDisplayName: tt
+        INFOPLIST_FILE: Config/DocketMobile-Info.plist
+        CODE_SIGN_ENTITLEMENTS: Config/DocketMobile.entitlements
+        INFOPLIST_KEY_CFBundleDisplayName: Docket
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
@@ -49,137 +49,137 @@ targets:
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
     dependencies:
-      - package: TTEngine
-        product: TTEngine
-      - package: TTSync
-        product: TTSync
-      - package: TTReminders
-        product: TTReminders
-      - package: TTShared
-        product: TTShared
-      - target: TTShare
+      - package: DocketEngine
+        product: DocketEngine
+      - package: DocketSync
+        product: DocketSync
+      - package: DocketReminders
+        product: DocketReminders
+      - package: DocketShared
+        product: DocketShared
+      - target: DocketShare
         embed: true
-      - target: TTWidgets
+      - target: DocketWidgets
         embed: true
     scheme:
       testTargets:
-        - TTMobileTests
-        - TTMobileDeviceTests
-        - TTMobileUITests
-        - TTMobileUpgradeUITests
-  # The share sheet's tt entry: saves what was shared to the App Group
+        - DocketMobileTests
+        - DocketMobileDeviceTests
+        - DocketMobileUITests
+        - DocketMobileUpgradeUITests
+  # The share sheet's Docket entry: saves what was shared to the App Group
   # capture inbox and never opens the workspace.
-  TTShare:
+  DocketShare:
     type: app-extension
     platform: iOS
     sources:
-      - path: TTShare
+      - path: DocketShare
     settings:
       base:
-        PRODUCT_NAME: TTShare
-        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.tt.mobile.share
+        PRODUCT_NAME: DocketShare
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.docket.mobile.share
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_FILE: Config/TTShare-Info.plist
-        INFOPLIST_KEY_CFBundleDisplayName: tt
-        CODE_SIGN_ENTITLEMENTS: Config/TTShare.entitlements
+        INFOPLIST_FILE: Config/DocketShare-Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: Docket
+        CODE_SIGN_ENTITLEMENTS: Config/DocketShare.entitlements
         TARGETED_DEVICE_FAMILY: "1"
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
     dependencies:
-      - package: TTShared
-        product: TTShared
+      - package: DocketShared
+        product: DocketShared
   # Today and Inbox widgets drawn from the App Group snapshot.
-  TTWidgets:
+  DocketWidgets:
     type: app-extension
     platform: iOS
     sources:
-      - path: TTWidgets
+      - path: DocketWidgets
     settings:
       base:
-        PRODUCT_NAME: TTWidgets
-        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.tt.mobile.widgets
+        PRODUCT_NAME: DocketWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.docket.mobile.widgets
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_FILE: Config/TTWidgets-Info.plist
-        INFOPLIST_KEY_CFBundleDisplayName: tt
-        CODE_SIGN_ENTITLEMENTS: Config/TTWidgets.entitlements
+        INFOPLIST_FILE: Config/DocketWidgets-Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: Docket
+        CODE_SIGN_ENTITLEMENTS: Config/DocketWidgets.entitlements
         TARGETED_DEVICE_FAMILY: "1"
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
     dependencies:
-      - package: TTShared
-        product: TTShared
+      - package: DocketShared
+        product: DocketShared
       - sdk: WidgetKit.framework
       - sdk: SwiftUI.framework
-  TTMobileTests:
+  DocketMobileTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - path: TTMobileTests
+      - path: DocketMobileTests
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.tt.mobile.tests
-        TEST_HOST: $(BUILT_PRODUCTS_DIR)/tt.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/tt
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.docket.mobile.tests
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Docket.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Docket
         BUNDLE_LOADER: $(TEST_HOST)
     dependencies:
-      - target: TTMobile
-      - package: TTEngine
-        product: TTEngine
-      - package: TTSync
-        product: TTSync
+      - target: DocketMobile
+      - package: DocketEngine
+        product: DocketEngine
+      - package: DocketSync
+        product: DocketSync
   # Hosted in the app, so it runs with the app's container and the exchange
   # folder bookmark the document picker left there. Physical iPhone only:
   # ios/scripts/record-icloud-exchange.sh drives it.
-  TTMobileDeviceTests:
+  DocketMobileDeviceTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - path: TTMobileDeviceTests
+      - path: DocketMobileDeviceTests
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.tt.mobile.devicetests
-        TEST_HOST: $(BUILT_PRODUCTS_DIR)/tt.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/tt
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.docket.mobile.devicetests
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Docket.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Docket
         BUNDLE_LOADER: $(TEST_HOST)
     dependencies:
-      - target: TTMobile
-      - package: TTEngine
-        product: TTEngine
-      - package: TTSync
-        product: TTSyncContract
+      - target: DocketMobile
+      - package: DocketEngine
+        product: DocketEngine
+      - package: DocketSync
+        product: DocketSyncContract
   # Seeded browsing UI tests on a simulator against the real gomobile engine.
   # ios/scripts/test-ui.sh prepares the disposable workspaces and runs them.
-  TTMobileUITests:
+  DocketMobileUITests:
     type: bundle.ui-testing
     platform: iOS
     sources:
-      - path: TTMobileUITests
+      - path: DocketMobileUITests
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.tt.mobile.uitests
-        TEST_TARGET_NAME: TTMobile
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.docket.mobile.uitests
+        TEST_TARGET_NAME: DocketMobile
     dependencies:
-      - target: TTMobile
-      - package: TTEngine
-        product: TTEngine
-      - package: TTSync
-        product: TTSync
+      - target: DocketMobile
+      - package: DocketEngine
+        product: DocketEngine
+      - package: DocketSync
+        product: DocketSync
       # The share and widget suite writes captures with the extension's own
       # inbox writer and reads the widget snapshot with the widgets' reader.
-      - package: TTShared
-        product: TTShared
+      - package: DocketShared
+        product: DocketShared
   # Invoked separately: seed with a pinned previous app, then verify with the
   # current app over the same simulator and disposable workspace.
-  TTMobileUpgradeUITests:
+  DocketMobileUpgradeUITests:
     type: bundle.ui-testing
     platform: iOS
     sources:
-      - path: TTMobileUpgradeUITests
+      - path: DocketMobileUpgradeUITests
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.tt.mobile.upgradetests
-        TEST_TARGET_NAME: TTMobile
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.docket.mobile.upgradetests
+        TEST_TARGET_NAME: DocketMobile
     dependencies:
-      - target: TTMobile
+      - target: DocketMobile

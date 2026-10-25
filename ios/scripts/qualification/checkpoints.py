@@ -20,7 +20,7 @@ from .builds import (
 )
 
 
-EXPORT = ("On the iPhone, in tt: pull down to refresh, then tap the sync status button and "
+EXPORT = ("On the iPhone, in Docket: pull down to refresh, then tap the sync status button and "
           "Export Diagnostics under Recovery. Keep the iPhone unlocked and connected by cable.")
 
 

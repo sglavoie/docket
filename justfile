@@ -121,7 +121,7 @@ cross-machine:
 mac-ghosttykit:
     ./macos/scripts/build-ghosttykit.sh
 
-# Build macos/build/tt.app (Debug, or Release bundling `just build`'s docket; outside `just ci`)
+# Build macos/build/Docket.app (Debug, or Release bundling `just build`'s docket; outside `just ci`)
 mac-app configuration="Debug":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -131,11 +131,11 @@ mac-app configuration="Debug":
     fi
     ./macos/scripts/build-app.sh {{ configuration }}
 
-# Run the tt.app XCTest suite with xcodebuild test (outside `just ci`)
+# Run the Docket.app XCTest suite with xcodebuild test (outside `just ci`)
 mac-test:
     ./macos/scripts/test-app.sh
 
-# Build the Release tt.app and install it to /Applications (outside `just ci`)
+# Build the Release Docket.app and install it to /Applications (outside `just ci`)
 mac-install: (mac-app "Release")
     ./macos/scripts/install-app.sh
 
@@ -143,11 +143,11 @@ mac-install: (mac-app "Release")
 ios-bridge:
     ./ios/scripts/build-bridge.sh
 
-# Build the iOS bridge and generate ios/TTMobile.xcodeproj (outside `just ci`)
+# Build the iOS bridge and generate ios/DocketMobile.xcodeproj (outside `just ci`)
 ios-project:
     ./ios/scripts/generate-project.sh
 
-# Build tt.app for the simulator; result bundle and diagnostics in ios/.cache/results/build (outside `just ci`)
+# Build Docket.app for the simulator; result bundle and diagnostics in ios/.cache/results/build (outside `just ci`)
 ios-build:
     ./ios/scripts/app.sh build
 
@@ -177,7 +177,7 @@ ios-ui-test only="" device="default":
     DOCKET_UITEST_ONLY="{{ only }}" DOCKET_IOS_DEVICE="{{ device }}" DOCKET_UITEST_MAX_WIDTH="$max_width" \
         ./ios/scripts/test-ui.sh "${DOCKET_IOS_RESULTS:-ios/.cache/results}/ui-{{ device }}"
 
-# Launch tt on a simulator over a fresh copy of a fixture (representative or empty), light or dark, at a text size (outside `just ci`)
+# Launch Docket on a simulator over a fresh copy of a fixture (representative or empty), light or dark, at a text size (outside `just ci`)
 ios-run fixture="representative" appearance="light" text_size="large" device="default":
     ./ios/scripts/app.sh run {{ fixture }} {{ appearance }} {{ text_size }} {{ device }}
 

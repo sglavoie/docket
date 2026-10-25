@@ -230,12 +230,12 @@ func TestAppViewTaskComposerBudgetsForATallerFooter(t *testing.T) {
 }
 
 // TestAppViewTitlesTheWindowWithThePulse: with no view naming a title, the
-// window title is the workspace pulse tt.app reads its Dock badge from, and the
+// window title is the workspace pulse Docket.app reads its Dock badge from, and the
 // closing frame clears it.
 func TestAppViewTitlesTheWindowWithThePulse(t *testing.T) {
 	app := newTestAppModel()
 	app.workspacePulse = pulse.WorkspacePulse{Today: 2, Overdue: 3}
-	if got := app.View().WindowTitle; got != "tt · today 2 · overdue 3" {
+	if got := app.View().WindowTitle; got != "Docket · today 2 · overdue 3" {
 		t.Fatalf("window title = %q, want the pulse", got)
 	}
 	if !app.View().ReportFocus {

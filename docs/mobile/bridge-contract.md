@@ -150,7 +150,7 @@ There is no bridge-only mutation path.
 
 ## Served operations
 
-`internal/bridge` implements this contract and `mobile/ttbridge` binds it. An op
+`internal/bridge` implements this contract and `mobile/docketbridge` binds it. An op
 listed above that a build does not serve yet answers `unknown_op` with
 `details.reserved` set to `true`, so a client can tell an op the build lacks
 from one the protocol never had. The current build serves these:

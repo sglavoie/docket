@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 #
-# Sign tt.app inside out: the bundled docket, then the app. By default with this
+# Sign Docket.app inside out: the bundled docket, then the app. By default with this
 # Mac's first Apple Development identity, else ad-hoc; either runs on this Mac
 # only. A certificate gives the app a designated requirement that survives a
 # rebuild, so privacy grants (Documents, notifications) are asked for once
@@ -60,7 +60,7 @@ fi
 
 bundled="$app/Contents/Resources/bin/docket"
 if [ -f "$bundled" ]; then
-	codesign "$@" --identifier io.github.sglavoie.tt.cli "$bundled"
+	codesign "$@" --identifier io.github.sglavoie.docket.cli "$bundled"
 fi
 codesign "$@" "$app"
 codesign --verify --strict --verbose=1 "$app"
@@ -77,7 +77,7 @@ fi
 
 require_tool xcrun
 require_tool ditto
-archive=$(mktemp -d)/tt.zip
+archive=$(mktemp -d)/docket.zip
 trap 'rm -rf "$(dirname -- "$archive")"' EXIT HUP INT TERM
 ditto -c -k --keepParent "$app" "$archive"
 echo "Submitting $app for notarization..."

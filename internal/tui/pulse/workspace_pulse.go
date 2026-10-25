@@ -142,14 +142,14 @@ func formatWorkspacePulseComponents(pulse WorkspacePulse, level workspacePulseLe
 	return theme.MutedStyle.Render("workspace: ") + strings.Join(parts, theme.MutedStyle.Render(" · "))
 }
 
-// WindowTitle is the pulse as the terminal's window title: `tt`, then each
+// WindowTitle is the pulse as the terminal's window title: `Docket`, then each
 // nonzero component in the readout's order and spelling, without Done, which
 // is progress rather than something waiting. It is plain text and never
-// shortened, since a title bar elides on its own. tt.app reads the overdue
-// component back for its Dock badge (macos/TTApp/Shell/TTWindowTitle.swift),
+// shortened, since a title bar elides on its own. Docket.app reads the overdue
+// component back for its Dock badge (DocketWindowTitle in macos/DocketApp/Shell/DocketAttention.swift),
 // so the spelling `overdue N` is a contract with that parser.
 func WindowTitle(pulse WorkspacePulse) string {
-	parts := []string{"tt"}
+	parts := []string{"Docket"}
 	if pulse.Inbox > 0 {
 		parts = append(parts, fmt.Sprintf("inbox %d", pulse.Inbox))
 	}

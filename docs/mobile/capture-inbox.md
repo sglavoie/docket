@@ -1,12 +1,12 @@
 # Capture inbox and widget snapshot
 
 The iPhone app shares one App Group container,
-`group.io.github.sglavoie.tt`, with its share extension, its widgets, and the
+`group.io.github.sglavoie.docket`, with its share extension, its widgets, and the
 shortcuts it serves. The container holds two things: a durable inbox the
 extension and shortcuts save captures into, and a snapshot the app writes for
 its widgets. Neither one is the workspace. Only the app's engine changes the
 workspace, so an extension never opens it, never locks it, and never races the
-app for it. `ios/TTShared` holds the Swift side of both and
+app for it. `ios/DocketShared` holds the Swift side of both and
 `internal/bridge/capture_inbox_ops.go` and `internal/bridge/widget_ops.go` the
 engine side.
 
@@ -115,7 +115,7 @@ captures still waiting in the inbox.
 ## Links
 
 Widgets, shortcuts, and notifications open the app through the `tt` scheme:
-`tt://task/<workspace>/<project_id>/<task_id>`, `tt://view/today`,
-`tt://view/inbox`, and `tt://capture`. A task link carries its workspace. The
+`docket://task/<workspace>/<project_id>/<task_id>`, `docket://view/today`,
+`docket://view/inbox`, and `docket://capture`. A task link carries its workspace. The
 app refuses a link for a workspace other than the open one, rather than
 looking the task up somewhere else.

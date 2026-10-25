@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 #
-# Run the TTAppTests XCTest suite: generate macos/tt.xcodeproj
+# Run the DocketAppTests XCTest suite: generate macos/Docket.xcodeproj
 # (generate-project.sh), then `xcodebuild test`. The tests are hosted in the
 # app, so they build it too.
 #
@@ -25,8 +25,8 @@ if [ -n "${DOCKET_MACOS_RESULTS:-}" ]; then
 fi
 
 xcodebuild test "$@" \
-	-project "$macos_dir/tt.xcodeproj" \
-	-scheme tt \
+	-project "$macos_dir/Docket.xcodeproj" \
+	-scheme Docket \
 	-destination "platform=macOS,arch=$(uname -m)" \
 	-derivedDataPath "$macos_dir/DerivedData" \
 	-quiet

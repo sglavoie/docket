@@ -16,7 +16,7 @@ explicitly waived it. The one waiver is named under session 9.
 - Workspace: a new, empty throwaway at `~/tt-asl-11.2-throwaway`, passed to tt
   as `DOCKET_DATA_DIR` through the app's `ttEnvironment` default. tt created it on
   its first start.
-- Defaults: `io.github.sglavoie.tt` was exported before testing and restored
+- Defaults: the app's defaults domain (since renamed to `io.github.sglavoie.docket`) was exported before testing and restored
   exactly afterwards. Testing set `ttBinaryPath` to the missing
   `/tmp/asl-11.2-missing/tt`, and Settings then moved it to `./tt`.
 - Date: 2026-10-14, 14:02–14:38 local.

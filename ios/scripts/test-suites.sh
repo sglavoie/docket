@@ -6,13 +6,13 @@
 #   ios/scripts/test-suites.sh SUITE OUTPUT_DIR
 #
 # SUITE is one of:
-#   unit     the SwiftPM packages' own tests: TTShared (the App Group capture
+#   unit     the SwiftPM packages' own tests: DocketShared (the App Group capture
 #            inbox, widget snapshot, links, and its contract with a real
-#            bridgehost engine) and TTReminders (scheduling and actions over
+#            bridgehost engine) and DocketReminders (scheduling and actions over
 #            a fake notification center), on this Mac
-#   bridge   the TTEngine suite on an iOS simulator against the
+#   bridge   the DocketEngine suite on an iOS simulator against the
 #            gomobile-bound engine (test-engine.sh)
-#   sync     the exchange transport scenarios in apple/TTSync: two or more
+#   sync     the exchange transport scenarios in apple/DocketSync: two or more
 #            bridgehost engines exchanging over a fake iCloud provider and a
 #            real coordinated folder, and joining from an enrolled exchange
 #   app      hosted app scheduling and presentation tests on a simulator
@@ -82,8 +82,8 @@ bridgehost() {
 
 run_unit() {
 	host=$(bridgehost)
-	DOCKET_BRIDGEHOST="$host" DOCKET_CAPTURE_FIXTURE="$fixture" swift_package unit-shared "$ios_dir/TTShared"
-	swift_package unit-reminders "$ios_dir/TTReminders"
+	DOCKET_BRIDGEHOST="$host" DOCKET_CAPTURE_FIXTURE="$fixture" swift_package unit-shared "$ios_dir/DocketShared"
+	swift_package unit-reminders "$ios_dir/DocketReminders"
 }
 
 run_simulator_suite() {
@@ -113,32 +113,32 @@ run_simulator_suite() {
 }
 
 # The sync scenarios' join test reads an exchange a desktop enrollment of the
-# fixture published, made here with the tt this tree builds.
+# fixture published, made here with the Docket this tree builds.
 run_sync() {
 	host=$(bridgehost)
 	enroll="$output/sync-enrollment"
 	rm -rf "$enroll"
 	mkdir -p "$enroll/exchange"
-	(cd "$repo_root" && go build -o "$enroll/tt" .)
+	(cd "$repo_root" && go build -o "$enroll/docket" .)
 	cp -R "$fixture" "$enroll/original"
-	HOME="$enroll/home" "$enroll/tt" --data-dir "$enroll/original" sync enroll \
+	HOME="$enroll/home" "$enroll/docket" --data-dir "$enroll/original" sync enroll \
 		--exchange "$enroll/exchange" --working-copy "$enroll/desk" --force >"$enroll/enroll.log" 2>&1 || {
 		cat "$enroll/enroll.log" >&2
 		echo "enrolling the fixture failed" >&2
 		exit 1
 	}
-	DOCKET_BRIDGEHOST="$host" DOCKET_ENROLLED_EXCHANGE="$enroll/exchange" swift_package sync "$repo_root/apple/TTSync"
+	DOCKET_BRIDGEHOST="$host" DOCKET_ENROLLED_EXCHANGE="$enroll/exchange" swift_package sync "$repo_root/apple/DocketSync"
 }
 
 case "$suite" in
 unit) run_unit ;;
-bridge) run_simulator_suite bridge test-engine.sh TTEngine ;;
-app) run_simulator_suite app test-app.sh TTMobileTests ;;
+bridge) run_simulator_suite bridge test-engine.sh DocketEngine ;;
+app) run_simulator_suite app test-app.sh DocketMobileTests ;;
 sync) run_sync ;;
 all)
 	run_unit
-	run_simulator_suite bridge test-engine.sh TTEngine
-	run_simulator_suite app test-app.sh TTMobileTests
+	run_simulator_suite bridge test-engine.sh DocketEngine
+	run_simulator_suite app test-app.sh DocketMobileTests
 	run_sync
 	;;
 *)

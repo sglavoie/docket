@@ -10,8 +10,8 @@
 #   ios/scripts/app.sh export
 #   ios/scripts/app.sh stop
 #
-# build       Generates the project and builds tt.app for the simulator.
-#             Writes RESULTS/build/{TTMobile-build.xcresult,xcodebuild.log,
+# build       Generates the project and builds Docket.app for the simulator.
+#             Writes RESULTS/build/{DocketMobile-build.xcresult,xcodebuild.log,
 #             summary.json} and prints the app's path.
 # run         Builds, boots the simulator, installs the app, and launches it
 #             over a fresh isolated root seeded from a fixture:
@@ -29,7 +29,7 @@
 #             same start.
 # screenshot  Saves RUN/screenshots/NAME.png and prints its path.
 # export      Prints the app's semantic state (schema tt-mobile-state/v1, see
-#             ios/TTMobile/App/AutomationState.swift) and writes it, with the
+#             ios/DocketMobile/App/AutomationState.swift) and writes it, with the
 #             app's recent unified log as NDJSON and a summary of the session,
 #             under RUN/export/.
 # stop        Terminates the app.
@@ -48,9 +48,9 @@ repo_root=$(dirname -- "$ios_dir")
 cache_root="${DOCKET_IOS_CACHE:-$ios_dir/.cache}"
 results="${DOCKET_IOS_RESULTS:-$cache_root/results}"
 run_dir="${DOCKET_IOS_RUN:-$cache_root/run}"
-bundle_id=io.github.sglavoie.tt.mobile
+bundle_id=io.github.sglavoie.docket.mobile
 derived="$cache_root/AppDerivedData"
-app_path="$derived/Build/Products/Debug-iphonesimulator/tt.app"
+app_path="$derived/Build/Products/Debug-iphonesimulator/Docket.app"
 
 die() {
 	echo "app.sh: $*" >&2
@@ -65,20 +65,20 @@ absolute() {
 build() {
 	out=$(absolute "$results/build")
 	"$script_dir/generate-project.sh"
-	rm -rf "$out/TTMobile-build.xcresult"
-	echo "Building tt.app for the simulator..." >&2
+	rm -rf "$out/DocketMobile-build.xcresult"
+	echo "Building Docket.app for the simulator..." >&2
 	status=0
 	xcodebuild build \
-		-project "$ios_dir/TTMobile.xcodeproj" \
-		-scheme TTMobile \
+		-project "$ios_dir/DocketMobile.xcodeproj" \
+		-scheme DocketMobile \
 		-destination "generic/platform=iOS Simulator" \
 		-derivedDataPath "$derived" \
-		-resultBundlePath "$out/TTMobile-build.xcresult" \
+		-resultBundlePath "$out/DocketMobile-build.xcresult" \
 		CODE_SIGNING_ALLOWED=NO \
 		>"$out/xcodebuild.log" 2>&1 || status=$?
 	# The structured diagnostics: the build's result, errors, and warnings
 	# as the result bundle records them.
-	xcrun xcresulttool get build-results --path "$out/TTMobile-build.xcresult" >"$out/summary.json" 2>/dev/null || true
+	xcrun xcresulttool get build-results --path "$out/DocketMobile-build.xcresult" >"$out/summary.json" 2>/dev/null || true
 	if [ "$status" -ne 0 ]; then
 		grep -E 'error:' "$out/xcodebuild.log" >&2 || tail -40 "$out/xcodebuild.log" >&2
 		die "xcodebuild build failed; log at $out/xcodebuild.log, diagnostics at $out/summary.json"
@@ -141,7 +141,7 @@ launch() {
 			sleep 0.5
 		done
 	fi
-	echo "tt is running on $udid over $root ($fixture); state at $run_dir/state.json" >&2
+	echo "Docket is running on $udid over $root ($fixture); state at $run_dir/state.json" >&2
 }
 
 run() {
@@ -176,7 +176,7 @@ export_state() {
 	sleep 1
 	cp "$run_dir/state.json" "$out/state.json"
 	xcrun simctl spawn "$udid" log show --last 5m --style ndjson \
-		--predicate "subsystem BEGINSWITH \"$bundle_id\" OR process == \"tt\"" >"$out/log.ndjson" 2>/dev/null || true
+		--predicate "subsystem BEGINSWITH \"$bundle_id\" OR process == \"Docket\"" >"$out/log.ndjson" 2>/dev/null || true
 	name=$(xcrun simctl list devices | awk -v id="$udid" 'index($0, id) { sub(/^ +/, ""); sub(/ \(.*/, ""); print; exit }')
 	cat >"$out/session.json" <<EOF
 {

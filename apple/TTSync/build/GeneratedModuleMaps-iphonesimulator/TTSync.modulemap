@@ -1,4 +1,0 @@
-module TTSync {
-header "TTSync-Swift.h"
-export *
-}

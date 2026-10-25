@@ -509,7 +509,7 @@ older Docket at schema 22 migrates to 23 on first open and stays enrolled. Anoth
 copy from the published history alone.
 
 An enrolled desktop workspace exchanges automatically while Docket is running,
-including inside tt.app: at launch, when the terminal regains focus, and every
+including inside Docket.app: at launch, when the terminal regains focus, and every
 five seconds. Local saves trigger an exchange immediately; a save or focus event
 while a pass is running queues one follow-up pass. The periodic poll also detects
 changes another process already applied to the working copy, without requiring
@@ -524,7 +524,7 @@ helper installation. It does not wait for delivery or treat a request as a
 completed download. Files are verified and imported on a later pass, and download
 request failures appear in sync status. Other platforms leave file delivery to
 the shared-folder provider. Unavailable folders and files are retried on later
-passes. Closing tt.app's window keeps its session syncing; quitting Docket stops automatic exchange.
+passes. Closing Docket.app's window keeps its session syncing; quitting Docket stops automatic exchange.
 Cloud delivery can take longer than the polling interval.
 
 In the Outliner, press `gs` (or choose **Go → Sync Now**) to exchange immediately.
@@ -565,7 +565,7 @@ the conflicts' files, devices, and digests, without task or note content.
 ### Quick-capture retry receipts
 
 The Mac panel keeps its editable draft and any pending submission together in
-`~/Library/Application Support/io.github.sglavoie.tt/pending-capture.json`.
+`~/Library/Application Support/io.github.sglavoie.docket/pending-capture.json`.
 Each edit replaces this local recovery file atomically. Restoring it fills the
 field only; capture still requires Enter or Ctrl+N. A successful reply clears
 its submission and the matching draft in one write, preserving newer text typed

@@ -96,7 +96,7 @@ func (v *qualificationValidator) header(wantSource, wantBridge, wantTT string) {
 	v.started, v.finished = v.parse("started_at", ev.StartedAt), v.parse("finished_at", ev.FinishedAt)
 	v.check(ev.Builds.SourceFingerprint == wantSource, "the trial ran Swift sources %s, the tree is %s: run a new trial", ev.Builds.SourceFingerprint, wantSource)
 	v.check(ev.Builds.BridgeFingerprint == wantBridge, "the trial ran bridge %s, the tree builds %s", ev.Builds.BridgeFingerprint, wantBridge)
-	v.check(ev.Builds.TTSHA256 == wantTT, "the trial ran tt %s, the tree builds %s", ev.Builds.TTSHA256, wantTT)
+	v.check(ev.Builds.DocketSHA256 == wantTT, "the trial ran tt %s, the tree builds %s", ev.Builds.DocketSHA256, wantTT)
 	v.check(len(ev.Builds.AppExecutables) > 0, "no app build hashes")
 	v.check(len(ev.Builds.Installs) > 0 && maps.Equal(ev.Builds.Installs[0].AppExecutables, ev.Builds.AppExecutables),
 		"the trial's first install is not the build it started with")

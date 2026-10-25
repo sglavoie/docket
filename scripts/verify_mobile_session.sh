@@ -268,17 +268,17 @@ verify_session_3() {
 		internal/bridge/protocol.go \
 		internal/bridge/bridge.go \
 		internal/bridge/ops.go \
-		mobile/ttbridge/ttbridge.go \
+		mobile/docketbridge/docketbridge.go \
 		mobile/bridgehost/main.go \
 		ios/project.yml \
 		ios/scripts/build-bridge.sh \
 		ios/scripts/generate-project.sh \
 		ios/scripts/test-engine.sh \
-		ios/TTEngine/Package.swift \
-		ios/TTEngine/Sources/TTEngine/TTEngine.swift \
-		ios/TTEngine/Sources/TTEngine/BridgeModels.swift \
-		ios/TTEngine/Tests/TTEngineTests/BridgeSimulatorTests.swift \
-		ios/TTMobile/App/TTMobileApp.swift
+		ios/DocketEngine/Package.swift \
+		ios/DocketEngine/Sources/DocketEngine/DocketEngine.swift \
+		ios/DocketEngine/Sources/DocketEngine/BridgeModels.swift \
+		ios/DocketEngine/Tests/DocketEngineTests/BridgeSimulatorTests.swift \
+		ios/DocketMobile/App/DocketMobileApp.swift
 	grep -Eq '^[[:space:]]+golang.org/x/mobile/cmd/gomobile$' go.mod || fail "go.mod pins no gomobile tool"
 	grep -Eq '^[[:space:]]+golang.org/x/mobile/cmd/gobind$' go.mod || fail "go.mod pins no gobind tool"
 
@@ -309,59 +309,59 @@ verify_session_3() {
 
 	# Both slices from the pinned generator, published only with the
 	# fingerprint the current sources carry, and reused while it holds.
-	note "building TTBridgeCore.xcframework"
+	note "building DocketBridgeCore.xcframework"
 	ios/scripts/build-bridge.sh >"$work_dir/build-bridge.log" 2>&1 || {
 		cat "$work_dir/build-bridge.log" >&2
 		fail "ios/scripts/build-bridge.sh failed"
 	}
-	local framework=ios/TTEngine/Frameworks/TTBridgeCore.xcframework
-	local stamp=ios/TTEngine/Frameworks/TTBridgeCore.fingerprint
+	local framework=ios/DocketEngine/Frameworks/DocketBridgeCore.xcframework
+	local stamp=ios/DocketEngine/Frameworks/DocketBridgeCore.fingerprint
 	require_files "$framework/Info.plist" "$stamp" \
-		"$framework/ios-arm64/TTBridgeCore.framework/TTBridgeCore" \
-		"$framework/ios-arm64_x86_64-simulator/TTBridgeCore.framework/TTBridgeCore"
+		"$framework/ios-arm64/DocketBridgeCore.framework/DocketBridgeCore" \
+		"$framework/ios-arm64_x86_64-simulator/DocketBridgeCore.framework/DocketBridgeCore"
 	[ "$(cat "$stamp")" = "$(ios/scripts/build-bridge.sh --fingerprint)" ] ||
 		fail "the published framework's fingerprint is not the current sources'"
 	ios/scripts/build-bridge.sh >"$work_dir/build-bridge-again.log" 2>&1 ||
 		fail "rerunning ios/scripts/build-bridge.sh failed"
 	grep -q 'is current' "$work_dir/build-bridge-again.log" ||
 		fail "an unchanged bridge was rebuilt rather than reused: $(cat "$work_dir/build-bridge-again.log")"
-	require_slice_platform device "$framework/ios-arm64/TTBridgeCore.framework/TTBridgeCore" arm64 2
-	require_slice_platform simulator "$framework/ios-arm64_x86_64-simulator/TTBridgeCore.framework/TTBridgeCore" "arm64 x86_64" 7
+	require_slice_platform device "$framework/ios-arm64/DocketBridgeCore.framework/DocketBridgeCore" arm64 2
+	require_slice_platform simulator "$framework/ios-arm64_x86_64-simulator/DocketBridgeCore.framework/DocketBridgeCore" "arm64 x86_64" 7
 	note "XCFramework: device and simulator slices at fingerprint $(cat "$stamp")"
 
 	# The generated app links each slice: built for a simulator and, unsigned,
 	# for a device.
-	note "generating ios/TTMobile.xcodeproj"
+	note "generating ios/DocketMobile.xcodeproj"
 	ios/scripts/generate-project.sh >"$work_dir/generate-project.log" 2>&1 || {
 		cat "$work_dir/generate-project.log" >&2
 		fail "ios/scripts/generate-project.sh failed"
 	}
-	require_files ios/TTMobile.xcodeproj/project.pbxproj
+	require_files ios/DocketMobile.xcodeproj/project.pbxproj
 	local destination products
 	for destination in 'iOS Simulator:iphonesimulator' 'iOS:iphoneos'; do
-		products="$work_dir/app-derived/Build/Products/Debug-${destination#*:}/tt.app"
-		note "building TTMobile for generic/platform=${destination%%:*}"
-		xcodebuild build -project ios/TTMobile.xcodeproj -scheme TTMobile \
+		products="$work_dir/app-derived/Build/Products/Debug-${destination#*:}/Docket.app"
+		note "building DocketMobile for generic/platform=${destination%%:*}"
+		xcodebuild build -project ios/DocketMobile.xcodeproj -scheme DocketMobile \
 			-destination "generic/platform=${destination%%:*}" \
 			-derivedDataPath "$work_dir/app-derived" CODE_SIGNING_ALLOWED=NO \
 			>"$work_dir/app-${destination#*:}.log" 2>&1 || {
 			tail -40 "$work_dir/app-${destination#*:}.log" >&2
-			fail "TTMobile does not build for ${destination%%:*}"
+			fail "DocketMobile does not build for ${destination%%:*}"
 		}
-		[ -d "$products" ] || fail "no tt.app was produced for ${destination%%:*}"
-		# A Debug build moves the app's code into tt.debug.dylib; read both.
-		nm -arch arm64 "$products"/tt "$products"/tt.debug.dylib >"$work_dir/app-symbols.txt" 2>/dev/null || true
-		grep -q '_TtbridgeCall$' "$work_dir/app-symbols.txt" ||
-			fail "tt.app for ${destination%%:*} does not link the Go bridge"
+		[ -d "$products" ] || fail "no Docket.app was produced for ${destination%%:*}"
+		# A Debug build moves the app's code into Docket.debug.dylib; read both.
+		nm -arch arm64 "$products"/Docket "$products"/Docket.debug.dylib >"$work_dir/app-symbols.txt" 2>/dev/null || true
+		grep -q '_DocketbridgeCall$' "$work_dir/app-symbols.txt" ||
+			fail "Docket.app for ${destination%%:*} does not link the Go bridge"
 	done
 
 	# The simulator suite over the real engine, then Go reading what it wrote.
-	note "running the TTEngine simulator suite"
+	note "running the DocketEngine simulator suite"
 	ios/scripts/test-engine.sh "$work_dir/ios" >"$work_dir/test-engine.log" 2>&1 || {
 		cat "$work_dir/test-engine.log" >&2
 		fail "ios/scripts/test-engine.sh failed"
 	}
-	require_xcresult_passed "$work_dir/ios/TTEngine.xcresult" \
+	require_xcresult_passed "$work_dir/ios/DocketEngine.xcresult" \
 		'testLinkedEngineSpeaksTheModelsBridgeVersion()' \
 		'testEngineRefusalsArriveAsTypedErrors()' \
 		'testOpenFixtureCaptureCompleteReopen()'
@@ -720,15 +720,15 @@ verify_session_8() {
 		internal/syncexchange/exchange.go \
 		internal/syncexchange/import.go \
 		internal/bridge/sync_ops.go \
-		apple/TTSync/Package.swift \
-		apple/TTSync/Sources/TTSync/ExchangeTransport.swift \
-		apple/TTSync/Sources/TTSync/CoordinatedFolderProvider.swift \
-		apple/TTSync/Sources/TTSync/FolderAccess.swift \
-		apple/TTSync/Sources/TTSync/TransferState.swift \
-		apple/TTSync/Sources/TTSyncContract/ExchangeContract.swift \
-		apple/TTSync/Sources/tt-sync-helper/main.swift \
-		apple/TTSync/Tests/TTSyncTests/ExchangeContractTests.swift \
-		ios/TTMobileDeviceTests/ICloudExchangeDeviceTests.swift \
+		apple/DocketSync/Package.swift \
+		apple/DocketSync/Sources/DocketSync/ExchangeTransport.swift \
+		apple/DocketSync/Sources/DocketSync/CoordinatedFolderProvider.swift \
+		apple/DocketSync/Sources/DocketSync/FolderAccess.swift \
+		apple/DocketSync/Sources/DocketSync/TransferState.swift \
+		apple/DocketSync/Sources/DocketSyncContract/ExchangeContract.swift \
+		apple/DocketSync/Sources/docket-sync-helper/main.swift \
+		apple/DocketSync/Tests/DocketSyncTests/ExchangeContractTests.swift \
+		ios/DocketMobileDeviceTests/ICloudExchangeDeviceTests.swift \
 		ios/scripts/record-icloud-exchange.sh \
 		ios/scripts/icloud-exchange-fingerprint.sh
 
@@ -753,8 +753,8 @@ verify_session_8() {
 	# coordinated folder, each device a real bridgehost engine.
 	local bridgehost="$work_dir/bridgehost"
 	go build -trimpath -o "$bridgehost" ./mobile/bridgehost || fail "building bridgehost failed"
-	local class=TTSyncTests.ExchangeContractTests
-	DOCKET_BRIDGEHOST="$bridgehost" run_swift_suite transport apple/TTSync \
+	local class=DocketSyncTests.ExchangeContractTests
+	DOCKET_BRIDGEHOST="$bridgehost" run_swift_suite transport apple/DocketSync \
 		"$class/testContractRoundTripOverFakeICloud" \
 		"$class/testAccountUnavailabilityKeepsLocalWorkAndQueues" \
 		"$class/testExpiredFolderAccessIsRenewedOrReported" \
@@ -906,17 +906,17 @@ verify_session_10() {
 	require_files \
 		internal/bridge/browse_ops.go \
 		internal/bridge/browse_test.go \
-		apple/TTSync/Sources/TTSync/JoiningSyncEngine.swift \
-		apple/TTSync/Tests/TTSyncTests/JoinTests.swift \
+		apple/DocketSync/Sources/DocketSync/JoiningSyncEngine.swift \
+		apple/DocketSync/Tests/DocketSyncTests/JoinTests.swift \
 		ios/scripts/test-ui.sh \
-		ios/TTMobile/App/OnboardingView.swift \
-		ios/TTMobile/App/MainTabView.swift \
-		ios/TTMobile/App/BrowseView.swift \
-		ios/TTMobile/App/TaskListView.swift \
-		ios/TTMobile/App/TaskDetailView.swift \
-		ios/TTMobile/App/StateViews.swift \
-		ios/TTMobileUITests/BrowsingUITests.swift
-	grep -q 'TTMobileUITests' ios/project.yml || fail "ios/project.yml declares no UI test target"
+		ios/DocketMobile/App/OnboardingView.swift \
+		ios/DocketMobile/App/MainTabView.swift \
+		ios/DocketMobile/App/BrowseView.swift \
+		ios/DocketMobile/App/TaskListView.swift \
+		ios/DocketMobile/App/TaskDetailView.swift \
+		ios/DocketMobile/App/StateViews.swift \
+		ios/DocketMobileUITests/BrowsingUITests.swift
+	grep -q 'DocketMobileUITests' ios/project.yml || fail "ios/project.yml declares no UI test target"
 
 	# The engine half: every mode, lenses, the search box and its refusal,
 	# sorting, hierarchy, dependencies and an unavailable reference, and the
@@ -944,12 +944,12 @@ verify_session_10() {
 	# workspaces browsed offline, onboarding (create and join), workspace
 	# access, sync status, and the loading, empty, unavailable, and error
 	# states.
-	note "running the TTMobile UI suite"
+	note "running the DocketMobile UI suite"
 	ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
 		cat "$work_dir/test-ui.log" >&2
 		fail "ios/scripts/test-ui.sh failed"
 	}
-	require_xcresult_passed "$work_dir/ui/TTMobileUITests.xcresult" \
+	require_xcresult_passed "$work_dir/ui/DocketMobileUITests.xcresult" \
 		'testSeededTodayInboxAndBrowseModes()' \
 		'testProjectsOutlineAndRelations()' \
 		'testLensesSearchFiltersAndSorting()' \
@@ -964,8 +964,8 @@ verify_session_10() {
 	local bridgehost="$work_dir/bridgehost"
 	go build -trimpath -o "$bridgehost" ./mobile/bridgehost || fail "building bridgehost failed"
 	require_files "$work_dir/ui/exchange/tt-sync/v1/workspace.json"
-	local class=TTSyncTests.JoinTests
-	DOCKET_BRIDGEHOST="$bridgehost" DOCKET_ENROLLED_EXCHANGE="$work_dir/ui/exchange" run_swift_suite transport-join apple/TTSync \
+	local class=DocketSyncTests.JoinTests
+	DOCKET_BRIDGEHOST="$bridgehost" DOCKET_ENROLLED_EXCHANGE="$work_dir/ui/exchange" run_swift_suite transport-join apple/DocketSync \
 		"$class/testJoinBuildsAWorkingCopyFromTheExchange" \
 		"$class/testJoinRefusesAFolderWithoutAnExchange" \
 		"$class/testFailedJoinLeavesNoWorkingCopy"
@@ -981,17 +981,17 @@ verify_session_11() {
 		internal/bridge/capture_ops.go \
 		internal/bridge/capture_edit_test.go \
 		internal/mobileparity/parity_test.go \
-		ios/TTMobile/App/CaptureView.swift \
-		ios/TTMobile/App/TaskEditView.swift \
-		ios/TTMobile/App/DraftStore.swift \
-		ios/TTMobileUITests/CaptureEditingUITests.swift
+		ios/DocketMobile/App/CaptureView.swift \
+		ios/DocketMobile/App/TaskEditView.swift \
+		ios/DocketMobile/App/DraftStore.swift \
+		ios/DocketMobileUITests/CaptureEditingUITests.swift
 
 	# The capture grammar now reaches the phone: the bound package must link
 	# the parser without the terminal stack it moved out of.
 	local frontend
-	frontend=$(go list -deps ./mobile/ttbridge | grep -E '^(github.com/sglavoie/docket/internal/tui|charm.land/|github.com/charmbracelet/)' || true)
+	frontend=$(go list -deps ./mobile/docketbridge | grep -E '^(github.com/sglavoie/docket/internal/tui|charm.land/|github.com/charmbracelet/)' || true)
 	[ -z "$frontend" ] || fail "the mobile binding links frontend packages: $frontend"
-	go list -deps ./mobile/ttbridge | grep -qx 'github.com/sglavoie/docket/internal/capturetext' ||
+	go list -deps ./mobile/docketbridge | grep -qx 'github.com/sglavoie/docket/internal/capturetext' ||
 		fail "the mobile binding does not link the shared capture parser"
 
 	# Desktop and phone over two copies of one workspace: the composer's
@@ -1038,12 +1038,12 @@ verify_session_11() {
 	# capture with its preview, a structured capture, the structured edit, plan
 	# and status, explained refusals, and drafts kept across a refused save and
 	# a killed app, each checked against the seeded workspace's files.
-	note "running the TTMobile capture and editing UI suite"
+	note "running the DocketMobile capture and editing UI suite"
 	DOCKET_UITEST_ONLY=CaptureEditingUITests ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
 		cat "$work_dir/test-ui.log" >&2
 		fail "ios/scripts/test-ui.sh failed"
 	}
-	require_xcresult_passed "$work_dir/ui/TTMobileUITests.xcresult" \
+	require_xcresult_passed "$work_dir/ui/DocketMobileUITests.xcresult" \
 		'testShorthandCaptureWithLivePreview()' \
 		'testRefusedCaptureKeepsItsDraftAcrossARelaunch()' \
 		'testStructuredCaptureCarriesEveryField()' \
@@ -1061,9 +1061,9 @@ verify_session_12() {
 		internal/bridge/organize_test.go \
 		internal/bridge/organize_sync_test.go \
 		internal/mobileparity/organize_parity_test.go \
-		ios/TTMobile/App/OrganizeSections.swift \
-		ios/TTMobile/App/ProjectSettingsView.swift \
-		ios/TTMobileUITests/OrganizingUITests.swift
+		ios/DocketMobile/App/OrganizeSections.swift \
+		ios/DocketMobile/App/ProjectSettingsView.swift \
+		ios/DocketMobileUITests/OrganizingUITests.swift
 
 	# The desktop's project hub commits through the engine's one project
 	# lifecycle, the same functions the bridge serves.
@@ -1127,12 +1127,12 @@ verify_session_12() {
 
 	# The iPhone on a simulator against the gomobile-bound engine, each
 	# outcome read back from the seeded workspace's files.
-	note "running the TTMobile organizing UI suite"
+	note "running the DocketMobile organizing UI suite"
 	DOCKET_UITEST_ONLY=OrganizingUITests ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
 		cat "$work_dir/test-ui.log" >&2
 		fail "ios/scripts/test-ui.sh failed"
 	}
-	require_xcresult_passed "$work_dir/ui/TTMobileUITests.xcresult" \
+	require_xcresult_passed "$work_dir/ui/DocketMobileUITests.xcresult" \
 		'testChecklistEditingAndPromotion()' \
 		'testRecurringCheckInScheduleAndAcknowledge()' \
 		'testSubtasksHierarchyLimitAndBlockedCompletion()' \
@@ -1150,11 +1150,11 @@ verify_session_13() {
 		internal/bridge/rich_test.go \
 		internal/bridge/rich_sync_test.go \
 		internal/storage/project_merge_conflict_value_test.go \
-		ios/TTEngine/Sources/TTEngine/RichContent.swift \
-		ios/TTMobile/App/AttachmentImporter.swift \
-		ios/TTMobile/App/RichSections.swift \
-		ios/TTMobile/App/NotesViews.swift \
-		ios/TTMobileUITests/RichContentUITests.swift
+		ios/DocketEngine/Sources/DocketEngine/RichContent.swift \
+		ios/DocketMobile/App/AttachmentImporter.swift \
+		ios/DocketMobile/App/RichSections.swift \
+		ios/DocketMobile/App/NotesViews.swift \
+		ios/DocketMobileUITests/RichContentUITests.swift
 
 	# The rich-content ops are served, not reserved.
 	local served
@@ -1202,17 +1202,17 @@ verify_session_13() {
 	local bridgehost="$work_dir/bridgehost"
 	go build -trimpath -o "$bridgehost" ./mobile/bridgehost || fail "building bridgehost failed"
 	DOCKET_BRIDGEHOST="$bridgehost" DOCKET_SWIFT_FILTER='ExchangeContractTests/testExplicitDownloadRequestsUnavailableContentNow' \
-		run_swift_suite transport-download apple/TTSync \
-		TTSyncTests.ExchangeContractTests/testExplicitDownloadRequestsUnavailableContentNow
+		run_swift_suite transport-download apple/DocketSync \
+		DocketSyncTests.ExchangeContractTests/testExplicitDownloadRequestsUnavailableContentNow
 
 	# The iPhone on a simulator against the gomobile-bound engine, offline,
 	# each outcome read back from the seeded workspace's files.
-	note "running the TTMobile rich-content UI suite"
+	note "running the DocketMobile rich-content UI suite"
 	DOCKET_UITEST_ONLY=RichContentUITests ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
 		cat "$work_dir/test-ui.log" >&2
 		fail "ios/scripts/test-ui.sh failed"
 	}
-	require_xcresult_passed "$work_dir/ui/TTMobileUITests.xcresult" \
+	require_xcresult_passed "$work_dir/ui/DocketMobileUITests.xcresult" \
 		'testTaskCommentsEditRefuseAndKeepADraftAcrossARelaunch()' \
 		'testNotesCreateEditMoveAndKeepAStaleEditAsACopy()' \
 		'testAttachmentImportResumesAfterTerminationAndShares()' \
@@ -1230,9 +1230,9 @@ verify_session_14() {
 		internal/bridge/conflict_sync_test.go \
 		cmd/sync_conflicts.go \
 		cmd/sync_conflicts_test.go \
-		ios/TTEngine/Sources/TTEngine/Conflicts.swift \
-		ios/TTMobile/App/ConflictViews.swift \
-		ios/TTMobileUITests/ConflictRecoveryUITests.swift
+		ios/DocketEngine/Sources/DocketEngine/Conflicts.swift \
+		ios/DocketMobile/App/ConflictViews.swift \
+		ios/DocketMobileUITests/ConflictRecoveryUITests.swift
 
 	# The conflict ops are served, not reserved.
 	local served
@@ -1283,28 +1283,28 @@ verify_session_14() {
 	# it, writes replacement text, survives a stale resolution, and keeps
 	# working through a lost exchange folder with a retry and a diagnostics
 	# export.
-	note "running the TTMobile conflict and recovery UI suite"
+	note "running the DocketMobile conflict and recovery UI suite"
 	DOCKET_UITEST_ONLY=ConflictRecoveryUITests ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
 		cat "$work_dir/test-ui.log" >&2
 		fail "ios/scripts/test-ui.sh failed"
 	}
-	require_xcresult_passed "$work_dir/ui/TTMobileUITests.xcresult" \
+	require_xcresult_passed "$work_dir/ui/DocketMobileUITests.xcresult" \
 		'testKeepingAVersionResolvesTheWholeChangeAndPublishesIt()' \
 		'testReplacementTextAndAStaleResolutionKeepEveryEdit()' \
 		'testTransportFailureKeepsLocalContentRetriesAndExportsDiagnostics()'
 
 	# Every replica converges on the phone's resolution: both Macs apply what
 	# the phone published and end with its bytes and nothing open.
-	local phone_root conflict="$work_dir/ui/conflict" tt="$work_dir/ui/enroll/tt" who path
+	local phone_root conflict="$work_dir/ui/conflict" docket="$work_dir/ui/enroll/docket" who path
 	phone_root=$(find "$work_dir/ui/work" -maxdepth 1 -type d -name '*testKeepingAVersion*' | head -1)
 	[ -n "$phone_root" ] && [ -d "$phone_root/exchange" ] || fail "the phone's resolution test left no exchange"
 	for who in studio laptop; do
-		HOME="$conflict/$who-home" "$tt" --data-dir "$conflict/$who" sync exchange --folder "$phone_root/exchange" \
+		HOME="$conflict/$who-home" "$docket" --data-dir "$conflict/$who" sync exchange --folder "$phone_root/exchange" \
 			>"$work_dir/$who-exchange.log" 2>&1 || {
 			cat "$work_dir/$who-exchange.log" >&2
 			fail "the $who Mac could not apply the phone's resolution"
 		}
-		HOME="$conflict/$who-home" "$tt" --data-dir "$conflict/$who" sync conflicts --json >"$work_dir/$who-conflicts.json" ||
+		HOME="$conflict/$who-home" "$docket" --data-dir "$conflict/$who" sync conflicts --json >"$work_dir/$who-conflicts.json" ||
 			fail "the $who Mac could not list its conflicts"
 		python3 -I -c 'import json, sys; sys.exit(0 if json.load(open(sys.argv[1]))["conflicts"] == [] else 1)' \
 			"$work_dir/$who-conflicts.json" || {
@@ -1331,16 +1331,16 @@ verify_session_15() {
 		internal/bridge/reminder_ops.go \
 		internal/bridge/reminders_test.go \
 		internal/bridge/reminder_evidence_test.go \
-		ios/TTEngine/Sources/TTEngine/Reminders.swift \
-		ios/TTReminders/Package.swift \
-		ios/TTReminders/Sources/TTReminders/ReminderScheduler.swift \
-		ios/TTReminders/Sources/TTReminders/ReminderReconciler.swift \
-		ios/TTReminders/Sources/TTReminders/ReminderActions.swift \
-		ios/TTReminders/Sources/TTReminders/SystemNotificationCenter.swift \
-		ios/TTReminders/Tests/TTRemindersTests/FakeNotificationCenter.swift \
-		ios/TTMobile/App/ReminderModel.swift \
-		ios/TTMobile/App/ReminderSettingsView.swift \
-		ios/TTMobileUITests/ReminderDeliveryUITests.swift \
+		ios/DocketEngine/Sources/DocketEngine/Reminders.swift \
+		ios/DocketReminders/Package.swift \
+		ios/DocketReminders/Sources/DocketReminders/ReminderScheduler.swift \
+		ios/DocketReminders/Sources/DocketReminders/ReminderReconciler.swift \
+		ios/DocketReminders/Sources/DocketReminders/ReminderActions.swift \
+		ios/DocketReminders/Sources/DocketReminders/SystemNotificationCenter.swift \
+		ios/DocketReminders/Tests/DocketRemindersTests/FakeNotificationCenter.swift \
+		ios/DocketMobile/App/ReminderModel.swift \
+		ios/DocketMobile/App/ReminderSettingsView.swift \
+		ios/DocketMobileUITests/ReminderDeliveryUITests.swift \
 		ios/scripts/record-reminder-evidence.sh \
 		ios/scripts/reminder-evidence-fingerprint.sh
 	grep -Fq '"query.reminders":' internal/bridge/bridge.go || fail "the bridge does not serve query.reminders"
@@ -1362,8 +1362,8 @@ verify_session_15() {
 	# trigger zones, replace/keep/cancel reconciliation, opt-in, a harmless
 	# permission denial, time-zone and incoming-change replanning, a failed
 	# plan, a switched workspace, and every action routed to its command.
-	local scheduling=TTRemindersTests.ReminderSchedulingTests actions=TTRemindersTests.ReminderActionTests
-	run_swift_suite reminders ios/TTReminders \
+	local scheduling=DocketRemindersTests.ReminderSchedulingTests actions=DocketRemindersTests.ReminderActionTests
+	run_swift_suite reminders ios/DocketReminders \
 		"$scheduling/testSchedulesThePlanWithExplicitZones" \
 		"$scheduling/testReconcileReplacesMovedRemovesStaleAndKeepsUnchanged" \
 		"$scheduling/testTimeZoneChangeReplansWallClockReminders" \
@@ -1403,19 +1403,19 @@ verify_session_16() {
 		internal/bridge/widget_ops.go \
 		internal/app/capture_task_id_test.go \
 		docs/mobile/capture-inbox.md \
-		ios/TTShared/Package.swift \
-		ios/TTShared/Sources/TTShared/CaptureInbox.swift \
-		ios/TTShared/Sources/TTShared/WidgetSnapshot.swift \
-		ios/TTShared/Sources/TTShared/DeepLink.swift \
-		ios/TTShared/Sources/TTShared/SharedItems.swift \
-		ios/TTShared/Tests/TTSharedTests/CaptureImportContractTests.swift \
-		ios/TTEngine/Sources/TTEngine/Captures.swift \
-		ios/TTShare/ShareViewController.swift \
-		ios/TTWidgets/TTWidgets.swift \
-		ios/TTMobile/App/CaptureInboxModel.swift \
-		ios/TTMobile/App/PendingCapturesSection.swift \
-		ios/TTMobile/App/Shortcuts.swift \
-		ios/TTMobileUITests/ShareCaptureUITests.swift
+		ios/DocketShared/Package.swift \
+		ios/DocketShared/Sources/DocketShared/CaptureInbox.swift \
+		ios/DocketShared/Sources/DocketShared/WidgetSnapshot.swift \
+		ios/DocketShared/Sources/DocketShared/DeepLink.swift \
+		ios/DocketShared/Sources/DocketShared/SharedItems.swift \
+		ios/DocketShared/Tests/DocketSharedTests/CaptureImportContractTests.swift \
+		ios/DocketEngine/Sources/DocketEngine/Captures.swift \
+		ios/DocketShare/ShareViewController.swift \
+		ios/DocketWidgets/DocketWidgets.swift \
+		ios/DocketMobile/App/CaptureInboxModel.swift \
+		ios/DocketMobile/App/PendingCapturesSection.swift \
+		ios/DocketMobile/App/Shortcuts.swift \
+		ios/DocketMobileUITests/ShareCaptureUITests.swift
 
 	local served
 	for served in capture.import query.widget_snapshot; do
@@ -1453,9 +1453,9 @@ verify_session_16() {
 	# processes, and the engine's snapshot read back with its links.
 	local bridgehost="$work_dir/bridgehost"
 	go build -trimpath -o "$bridgehost" ./mobile/bridgehost || fail "building bridgehost failed"
-	local inbox=TTSharedTests.CaptureInboxTests share=TTSharedTests.SharedItemsTests widget=TTSharedTests.WidgetAndLinkTests contract=TTSharedTests.CaptureImportContractTests
+	local inbox=DocketSharedTests.CaptureInboxTests share=DocketSharedTests.SharedItemsTests widget=DocketSharedTests.WidgetAndLinkTests contract=DocketSharedTests.CaptureImportContractTests
 	DOCKET_BRIDGEHOST="$bridgehost" DOCKET_CAPTURE_FIXTURE="$repo_root/internal/compat/testdata/workspaces/representative" \
-		run_swift_suite shared ios/TTShared \
+		run_swift_suite shared ios/DocketShared \
 		"$inbox/testSavePublishesTheEnvelopeAndVerifiableFiles" \
 		"$inbox/testATerminatedSaveLeavesNothingPendingAndItsRetryPublishesOnce" \
 		"$inbox/testDeliveringTheSameCaptureTwiceKeepsOneEntry" \
@@ -1476,43 +1476,43 @@ verify_session_16() {
 	# delivery, a refusal corrected in the app; the widget snapshot following
 	# the workspace with rows that open their tasks; and links to views,
 	# capture, and another workspace's task.
-	note "running the TTMobile share and widget UI suite"
+	note "running the DocketMobile share and widget UI suite"
 	DOCKET_UITEST_ONLY=ShareCaptureUITests ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
 		cat "$work_dir/test-ui.log" >&2
 		fail "ios/scripts/test-ui.sh failed"
 	}
-	require_xcresult_passed "$work_dir/ui/TTMobileUITests.xcresult" \
+	require_xcresult_passed "$work_dir/ui/DocketMobileUITests.xcresult" \
 		'testSavedCapturesStayPendingUntilImportedAndLandOnce()' \
 		'testTheWidgetSnapshotFollowsTheWorkspaceAndItsRowsOpenTheirTasks()' \
 		'testLinksOpenViewsAndCaptureAndRefuseAnotherWorkspace()'
 
 	# The app that suite ran embeds the share extension and the widgets,
-	# declares the tt scheme and its shortcuts, and neither extension links
+	# declares the docket scheme and its shortcuts, and neither extension links
 	# the engine, so neither can rewrite the workspace.
-	local app="${DOCKET_IOS_CACHE:-ios/.cache}/UIDerivedData/Build/Products/Debug-iphonesimulator/tt.app"
+	local app="${DOCKET_IOS_CACHE:-ios/.cache}/UIDerivedData/Build/Products/Debug-iphonesimulator/Docket.app"
 	[ -d "$app" ] || fail "no simulator app at $app"
-	[ "$(plutil -extract NSExtension.NSExtensionPointIdentifier raw "$app/PlugIns/TTShare.appex/Info.plist")" = com.apple.share-services ] ||
+	[ "$(plutil -extract NSExtension.NSExtensionPointIdentifier raw "$app/PlugIns/DocketShare.appex/Info.plist")" = com.apple.share-services ] ||
 		fail "the app embeds no share extension"
-	[ "$(plutil -extract NSExtension.NSExtensionPointIdentifier raw "$app/PlugIns/TTWidgets.appex/Info.plist")" = com.apple.widgetkit-extension ] ||
+	[ "$(plutil -extract NSExtension.NSExtensionPointIdentifier raw "$app/PlugIns/DocketWidgets.appex/Info.plist")" = com.apple.widgetkit-extension ] ||
 		fail "the app embeds no widget extension"
-	[ "$(plutil -extract CFBundleURLTypes.0.CFBundleURLSchemes.0 raw "$app/Info.plist")" = tt ] || fail "the app does not declare the tt scheme"
+	[ "$(plutil -extract CFBundleURLTypes.0.CFBundleURLSchemes.0 raw "$app/Info.plist")" = docket ] || fail "the app does not declare the docket scheme"
 	grep -rqF CaptureTaskIntent "$app/Metadata.appintents" || fail "the app declares no capture shortcut"
 	# The app itself links the engine, which is what makes the check below
 	# able to see a link at all.
 	local linked="" binary
-	for binary in "$app/tt" "$app/tt.debug.dylib"; do
+	for binary in "$app/Docket" "$app/Docket.debug.dylib"; do
 		[ -f "$binary" ] && linked="$linked$(otool -L "$binary")"
 	done
-	printf '%s' "$linked" | grep -q 'TTEngine' || fail "cannot see the app's own link to the engine, so the extension check proves nothing"
-	for binary in "$app"/PlugIns/TTShare.appex/* "$app"/PlugIns/TTWidgets.appex/*; do
+	printf '%s' "$linked" | grep -q 'DocketEngine' || fail "cannot see the app's own link to the engine, so the extension check proves nothing"
+	for binary in "$app"/PlugIns/DocketShare.appex/* "$app"/PlugIns/DocketWidgets.appex/*; do
 		[ -f "$binary" ] && file "$binary" | grep -q Mach-O || continue
-		if otool -L "$binary" | grep -qE 'TTEngine|TTBridgeCore'; then
+		if otool -L "$binary" | grep -qE 'DocketEngine|DocketBridgeCore'; then
 			fail "$(basename "$(dirname "$binary")") links the engine"
 		fi
 	done
 	# PlugIns also holds the hosted device test bundle, which links the engine
 	# on purpose; only the two extensions are held to this.
-	if find "$app/PlugIns/TTShare.appex" "$app/PlugIns/TTWidgets.appex" -name 'TTBridgeCore*' | grep -q .; then
+	if find "$app/PlugIns/DocketShare.appex" "$app/PlugIns/DocketWidgets.appex" -name 'DocketBridgeCore*' | grep -q .; then
 		fail "an extension embeds the engine framework"
 	fi
 	note "the share extension and widgets are embedded and link no engine"
@@ -1599,8 +1599,8 @@ verify_session_17() {
 		ios/scripts/simulator.sh \
 		ios/scripts/test-suites.sh \
 		ios/scripts/test-ui.sh \
-		ios/TTMobile/App/AutomationState.swift \
-		ios/TTMobileUITests/AccessibilityUITests.swift \
+		ios/DocketMobile/App/AutomationState.swift \
+		ios/DocketMobileUITests/AccessibilityUITests.swift \
 		ios/README.md \
 		.github/workflows/ci.yml
 	command -v just >/dev/null || fail "just is required to exercise the recipes"
@@ -1639,7 +1639,7 @@ verify_session_17() {
 	note "running just ios-build"
 	just ios-build >"$work_dir/ios-build.log" 2>&1 || { tail -40 "$work_dir/ios-build.log" >&2; fail "just ios-build failed"; }
 	require_files "$DOCKET_IOS_RESULTS/build/summary.json"
-	[ -d "$DOCKET_IOS_RESULTS/build/TTMobile-build.xcresult" ] || fail "the build left no result bundle"
+	[ -d "$DOCKET_IOS_RESULTS/build/DocketMobile-build.xcresult" ] || fail "the build left no result bundle"
 	[ "$(plutil -extract status raw -o - "$DOCKET_IOS_RESULTS/build/summary.json")" = succeeded ] || fail "the build diagnostics do not report success"
 	[ "$(plutil -extract errorCount raw -o - "$DOCKET_IOS_RESULTS/build/summary.json")" -eq 0 ] || fail "the build diagnostics report errors"
 
@@ -1649,16 +1649,16 @@ verify_session_17() {
 	local suites="$DOCKET_IOS_RESULTS/all"
 	require_suite_summary "$suites/summary.json" unit-shared unit-reminders bridge sync
 	require_xctest_passed "$suites/unit-shared.log" \
-		TTSharedTests.CaptureInboxTests/testSavePublishesTheEnvelopeAndVerifiableFiles \
-		TTSharedTests.CaptureImportContractTests/testCapturesThisPackageWritesImportOnceAcrossDeliveriesAndRestarts
+		DocketSharedTests.CaptureInboxTests/testSavePublishesTheEnvelopeAndVerifiableFiles \
+		DocketSharedTests.CaptureImportContractTests/testCapturesThisPackageWritesImportOnceAcrossDeliveriesAndRestarts
 	require_xctest_passed "$suites/unit-reminders.log" \
-		TTRemindersTests.ReminderSchedulingTests/testSchedulesThePlanWithExplicitZones \
-		TTRemindersTests.ReminderActionTests/testAcknowledgeRoutesToTheEngine
+		DocketRemindersTests.ReminderSchedulingTests/testSchedulesThePlanWithExplicitZones \
+		DocketRemindersTests.ReminderActionTests/testAcknowledgeRoutesToTheEngine
 	require_xctest_passed "$suites/sync.log" \
-		TTSyncTests.ExchangeContractTests/testContractRoundTripOverFakeICloud \
-		TTSyncTests.ExchangeContractTests/testContractRoundTripOverACoordinatedFolder \
-		TTSyncTests.JoinTests/testJoinBuildsAWorkingCopyFromTheExchange
-	require_xcresult_passed "$suites/bridge/TTEngine.xcresult" \
+		DocketSyncTests.ExchangeContractTests/testContractRoundTripOverFakeICloud \
+		DocketSyncTests.ExchangeContractTests/testContractRoundTripOverACoordinatedFolder \
+		DocketSyncTests.JoinTests/testJoinBuildsAWorkingCopyFromTheExchange
+	require_xcresult_passed "$suites/bridge/DocketEngine.xcresult" \
 		'testLinkedEngineSpeaksTheModelsBridgeVersion()' \
 		'testOpenFixtureCaptureCompleteReopen()'
 
@@ -1680,7 +1680,7 @@ verify_session_17() {
 			fail "just ios-ui-test AccessibilityUITests $device failed"
 		}
 		require_files "$results/summary.json" "$results/tests.json" "$results/attachments/manifest.json"
-		require_xcresult_passed "$results/TTMobileUITests.xcresult" "${a11y_tests[@]}"
+		require_xcresult_passed "$results/DocketMobileUITests.xcresult" "${a11y_tests[@]}"
 		require_ui_screenshots "$results" today-largest-text detail-largest-text capture-largest-text \
 			sync-voiceover-labels today-dark detail-dark capture-dark browse-dark \
 			today-small-screen capture-small-screen capture-keyboard-restored \
@@ -1787,14 +1787,14 @@ verify_session_18() {
 
 	# The recorded real-device trial, held to the builds the current tree
 	# produces: the app's Swift sources, the iPhone bridge, and a reproducible
-	# tt for the Mac.
-	local source_fp bridge_fp tt_sha
+	# docket for the Mac.
+	local source_fp bridge_fp docket_sha
 	source_fp=$(ios/scripts/qualification-fingerprint.sh) || fail "fingerprinting the app sources failed"
 	bridge_fp=$(ios/scripts/build-bridge.sh --fingerprint) || fail "fingerprinting the bridge failed"
-	go build -trimpath -buildvcs=false -o "$work_dir/tt" . || fail "building tt failed"
-	tt_sha=$(shasum -a 256 "$work_dir/tt" | cut -d' ' -f1)
+	go build -trimpath -buildvcs=false -o "$work_dir/docket" . || fail "building docket failed"
+	docket_sha=$(shasum -a 256 "$work_dir/docket" | cut -d' ' -f1)
 	require_files docs/mobile/evidence/session-18-qualification.json
-	DOCKET_QUALIFICATION_SOURCE_FINGERPRINT="$source_fp" DOCKET_IOS_BRIDGE_FINGERPRINT="$bridge_fp" DOCKET_QUALIFICATION_DOCKET_SHA256="$tt_sha" \
+	DOCKET_QUALIFICATION_SOURCE_FINGERPRINT="$source_fp" DOCKET_IOS_BRIDGE_FINGERPRINT="$bridge_fp" DOCKET_QUALIFICATION_DOCKET_SHA256="$docket_sha" \
 		run_go_suite qualification-evidence ./internal/syncexchange/ '^TestRecordedDeviceQualificationEvidence$' \
 		TestRecordedDeviceQualificationEvidence
 	note "real-device trial: run $(grep -Eo '"run_id": "[^"]+"' docs/mobile/evidence/session-18-qualification.json | head -1)"
@@ -1815,7 +1815,7 @@ verify_session_18() {
 	require_suite_summary "$DOCKET_IOS_RESULTS/all/summary.json" unit-shared unit-reminders bridge sync
 	note "running just ios-ui-test"
 	just ios-ui-test >"$work_dir/ios-ui-test.log" 2>&1 || { tail -60 "$work_dir/ios-ui-test.log" >&2; fail "just ios-ui-test failed"; }
-	require_xcresult_passed "$DOCKET_IOS_RESULTS/ui-default/TTMobileUITests.xcresult" \
+	require_xcresult_passed "$DOCKET_IOS_RESULTS/ui-default/DocketMobileUITests.xcresult" \
 		'testJoinFromAnExchangeFolder()' \
 		'testTransportFailureKeepsLocalContentRetriesAndExportsDiagnostics()' \
 		'testKeepingAVersionResolvesTheWholeChangeAndPublishesIt()' \

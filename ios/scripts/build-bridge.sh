@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 #
-# Build ios/TTEngine/Frameworks/TTBridgeCore.xcframework, the Go engine bound
+# Build ios/DocketEngine/Frameworks/DocketBridgeCore.xcframework, the Go engine bound
 # with gomobile, with a device slice (ios-arm64) and a simulator slice
 # (ios-arm64_x86_64-simulator). A no-op while its fingerprint is current.
 #
@@ -42,10 +42,10 @@ require_tool shasum
 require_tool plutil
 
 ios_version=18.0
-package=./mobile/ttbridge
-framework_dir="$ios_dir/TTEngine/Frameworks"
-framework="$framework_dir/TTBridgeCore.xcframework"
-stamp="$framework_dir/TTBridgeCore.fingerprint"
+package=./mobile/docketbridge
+framework_dir="$ios_dir/DocketEngine/Frameworks"
+framework="$framework_dir/DocketBridgeCore.xcframework"
+stamp="$framework_dir/DocketBridgeCore.fingerprint"
 cache_root="${DOCKET_IOS_CACHE:-$ios_dir/.cache}"
 
 cd "$repo_root"
@@ -78,7 +78,7 @@ if [ "${1:-}" = --fingerprint ]; then
 fi
 if [ "${DOCKET_IOS_FORCE_BRIDGE:-0}" != 1 ] && [ -d "$framework" ] && [ -f "$stamp" ] &&
 	[ "$(cat "$stamp")" = "$want" ]; then
-	echo "TTBridgeCore.xcframework is current ($want)"
+	echo "DocketBridgeCore.xcframework is current ($want)"
 	exit 0
 fi
 
@@ -97,11 +97,11 @@ PATH="$tool_bin:$PATH" gomobile bind \
 	-target=ios,iossimulator \
 	-iosversion="$ios_version" \
 	-trimpath \
-	-o "$work/TTBridgeCore.xcframework" \
+	-o "$work/DocketBridgeCore.xcframework" \
 	"$package"
 
 # Both slices, or nothing is published.
-libraries=$(plutil -extract AvailableLibraries json -o - "$work/TTBridgeCore.xcframework/Info.plist")
+libraries=$(plutil -extract AvailableLibraries json -o - "$work/DocketBridgeCore.xcframework/Info.plist")
 for slice in '"ios-arm64"' '"ios-arm64_x86_64-simulator"'; do
 	case "$libraries" in
 	*"$slice"*) ;;
@@ -113,6 +113,6 @@ for slice in '"ios-arm64"' '"ios-arm64_x86_64-simulator"'; do
 done
 
 rm -rf "$framework" "$stamp"
-mv "$work/TTBridgeCore.xcframework" "$framework"
+mv "$work/DocketBridgeCore.xcframework" "$framework"
 echo "$want" >"$stamp"
 echo "Built $framework ($want)"

@@ -132,7 +132,7 @@ class DeviceQualificationTests(unittest.TestCase):
         (snapshot / "snapshot.json").write_text("manifest\n")
         calls = []
 
-        def tt(*args, **kwargs):
+        def docket(*args, **kwargs):
             calls.append(args)
             if args[:2] == ("workspace", "backup"):
                 return subprocess.CompletedProcess(args, 0, f"Backup verified: {snapshot} (1 files)\n", "")
@@ -144,7 +144,7 @@ class DeviceQualificationTests(unittest.TestCase):
             stack.enter_context(patch.object(trial, "mac_observation", return_value={
                 "outstanding_up": 0, "outstanding_down": 0, "local_transactions": 7, "held": 0,
             }))
-            stack.enter_context(patch.object(trial, "tt", side_effect=tt))
+            stack.enter_context(patch.object(trial, "docket", side_effect=docket))
             stack.enter_context(contextlib.redirect_stderr(io.StringIO()))
             procedures.cmd_procedure(["backup"])
 
@@ -166,11 +166,11 @@ class DeviceQualificationTests(unittest.TestCase):
                 stack.enter_context(patch.object(core.Trial, "current", return_value=trial))
                 stack.enter_context(patch.object(trial, "mac_exchange", return_value=True))
                 stack.enter_context(patch.object(trial, "mac_observation", return_value=observation))
-                tt = stack.enter_context(patch.object(trial, "tt"))
+                docket = stack.enter_context(patch.object(trial, "docket"))
                 stack.enter_context(contextlib.redirect_stderr(io.StringIO()))
                 with self.assertRaises(SystemExit):
                     procedures.cmd_procedure(["backup"])
-                tt.assert_not_called()
+                docket.assert_not_called()
                 self.assertNotIn("backup", json.loads(self.state_path.read_text())["procedures"])
 
     def test_restore_snapshot_preserves_nested_user_file_named_snapshot_json(self):
@@ -253,7 +253,7 @@ class DeviceQualificationTests(unittest.TestCase):
             scenarios.scenario_delayed(trial)
         wait.assert_called_once_with()
         self.assertEqual(interaction._pending,
-                         ["Turn Airplane Mode off on the iPhone and open tt."])
+                         ["Turn Airplane Mode off on the iPhone and open Docket."])
 
 
 if __name__ == "__main__":

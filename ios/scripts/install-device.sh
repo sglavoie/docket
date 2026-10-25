@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Build tt for a physical iPhone, signed by your team, and install it over the
+# Build Docket for a physical iPhone, signed by your team, and install it over the
 # cable. Installing over an earlier build keeps the app's data, so the same
 # command is the upgrade. --launch also opens the updated app. The installed
 # app's absolute path is the only stdout output (qualification consumes it).
@@ -36,7 +36,7 @@ for tool in xcrun xcodebuild codesign python3; do
 done
 derived=${DOCKET_IOS_DEVICE_DERIVED:-ios/.cache/QualificationDerivedData}
 case "$derived" in /*) ;; *) derived="$repo_root/$derived" ;; esac
-app="$derived/Build/Products/Debug-iphoneos/tt.app"
+app="$derived/Build/Products/Debug-iphoneos/Docket.app"
 team=${DOCKET_IOS_DEVELOPMENT_TEAM:-}
 if [ -z "$team" ] && [ -d "$app" ]; then
 	team=$(codesign -d --verbose=4 "$app" 2>&1 | awk -F= '/^TeamIdentifier=/ && $2 != "not set" { print $2 }') || true
@@ -73,7 +73,7 @@ PY
 
 echo "install-device: building for $device with team $team (log: $log)" >&2
 ios/scripts/generate-project.sh >>"$log" 2>&1 || fail "project generation failed: $log"
-xcodebuild build -project ios/TTMobile.xcodeproj -scheme TTMobile \
+xcodebuild build -project ios/DocketMobile.xcodeproj -scheme DocketMobile \
 	-configuration Debug -destination "id=$device" -destination-timeout 60 \
 	-derivedDataPath "$derived" -allowProvisioningUpdates \
 	DEVELOPMENT_TEAM="$team" >>"$log" 2>&1 || fail "the signed build failed: $log"
@@ -84,10 +84,10 @@ echo "install-device: installing (keep the iPhone unlocked)" >&2
 xcrun devicectl device install app --device "$device" --timeout 120 \
 	--json-output "$output/install.json" "$app" >>"$log" 2>&1 || fail "installation failed; connect and unlock the iPhone, then rerun"
 if "$launch"; then
-	echo "install-device: launching tt" >&2
+	echo "install-device: launching Docket" >&2
 	xcrun devicectl device process launch --device "$device" --timeout 60 \
-		--terminate-existing --json-output "$output/launch.json" io.github.sglavoie.tt.mobile \
-		>>"$log" 2>&1 || fail "the update is installed, but launch failed; unlock the iPhone and open tt"
+		--terminate-existing --json-output "$output/launch.json" io.github.sglavoie.docket.mobile \
+		>>"$log" 2>&1 || fail "the update is installed, but launch failed; unlock the iPhone and open Docket"
 fi
 echo "install-device: installed successfully (log: $log)" >&2
 echo "$app"

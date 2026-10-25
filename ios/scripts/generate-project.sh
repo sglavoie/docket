@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 #
-# Prepare ios/TTMobile.xcodeproj: build the Go bridge XCFramework (a no-op while
+# Prepare ios/DocketMobile.xcodeproj: build the Go bridge XCFramework (a no-op while
 # its fingerprint is current), resolve the pinned XcodeGen, and generate the
 # project from ios/project.yml.
 #

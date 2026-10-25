@@ -12,7 +12,7 @@ import (
 // =============================================================================
 
 // externalReloadState is the shell's memory of what the workspace looked like
-// on disk when the terminal last lost focus. A long-lived session — tt.app hides
+// on disk when the terminal last lost focus. A long-lived session — Docket.app hides
 // its window rather than ending Docket — otherwise never re-reads a workspace that
 // a synced machine changed underneath it, and learns of that change only when
 // its own next commit records a conflict.

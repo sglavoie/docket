@@ -1,4 +1,0 @@
-module TTEngine {
-header "TTEngine-Swift.h"
-export *
-}

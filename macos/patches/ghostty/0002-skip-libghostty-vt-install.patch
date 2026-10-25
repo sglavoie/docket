@@ -7,7 +7,7 @@ index f9d861b..6c41ba2 100644
      };
      libghostty_vt_shared.install(libvt_step);
 -    libghostty_vt_shared.install(b.getInstallStep());
-+    // tt.app: libghostty-vt is built by `zig build lib-vt` only; its bundled
++    // Docket.app: libghostty-vt is built by `zig build lib-vt` only; its bundled
 +    // libc++ does not compile against the macOS 27 SDK and the app never uses it.
  
      // Helpgen

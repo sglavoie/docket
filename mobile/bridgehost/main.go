@@ -11,7 +11,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/sglavoie/docket/mobile/ttbridge"
+	"github.com/sglavoie/docket/mobile/docketbridge"
 )
 
 // maxRequestBytes bounds one request line.
@@ -19,7 +19,7 @@ const maxRequestBytes = 16 << 20
 
 func main() {
 	if len(os.Args) == 2 && os.Args[1] == "--version" {
-		fmt.Println(ttbridge.BridgeVersion())
+		fmt.Println(docketbridge.BridgeVersion())
 		return
 	}
 	if len(os.Args) != 1 {
@@ -42,7 +42,7 @@ func serve(in io.Reader, w io.Writer) error {
 		if len(scanner.Bytes()) == 0 {
 			continue
 		}
-		if _, err := fmt.Fprintln(out, ttbridge.Call(scanner.Text())); err != nil {
+		if _, err := fmt.Fprintln(out, docketbridge.Call(scanner.Text())); err != nil {
 			return err
 		}
 		if err := out.Flush(); err != nil {

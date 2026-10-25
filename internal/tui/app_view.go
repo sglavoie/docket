@@ -34,7 +34,7 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 		// changed elsewhere while it sat in the background.
 		result.ReportFocus = true
 		// A view naming its own title keeps it; otherwise the title is the
-		// pulse, which tt.app reads back for its Dock badge.
+		// pulse, which Docket.app reads back for its Dock badge.
 		if !m.lifecycle.quitting && result.WindowTitle == "" {
 			result.WindowTitle = pulse.WindowTitle(m.workspacePulse)
 		}
@@ -300,7 +300,7 @@ func (m *AppModel) applyBackground(content string) string {
 
 // terminalBackground is the theme background announced to the terminal as its
 // default (OSC 11), so the terminal's padding — and a host window that follows
-// it, as tt.app's does — matches the cells applyBackground paints. Bubble Tea
+// it, as Docket.app's does — matches the cells applyBackground paints. Bubble Tea
 // restores the terminal's own color when the program exits, and nil, on the
 // way out or under --no-color, restores it at once.
 func (m *AppModel) terminalBackground() color.Color {

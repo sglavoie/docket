@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 #
-# Prepare macos/tt.xcodeproj: vendor GhosttyKit (a no-op when current), ensure
+# Prepare macos/Docket.xcodeproj: vendor GhosttyKit (a no-op when current), ensure
 # the pinned XcodeGen, and generate the project from macos/project.yml.
 # build-app.sh and test-app.sh both start here.
 #
@@ -20,7 +20,7 @@ script_dir=$(CDPATH="" cd -- "$(dirname -- "$0")" && pwd)
 macos_dir=$(dirname -- "$script_dir")
 
 if [ "$(uname -s)" != Darwin ]; then
-	echo "tt.app builds on macOS only" >&2
+	echo "Docket.app builds on macOS only" >&2
 	exit 1
 fi
 

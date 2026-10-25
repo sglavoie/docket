@@ -4,7 +4,7 @@ Docket is a local-first task manager for the terminal. Capture, plan, and finish
 work in one keyboard-driven outline. Your tasks live in readable Markdown
 files on your own disk.
 
-The terminal is the core interface. [tt.app for macOS](macos/README.md)
+The terminal is the core interface. [Docket.app for macOS](macos/README.md)
 wraps it with quick capture, menus, and notifications; the
 [native iPhone app](ios/README.md) uses the same Go engine. Optional
 [file exchange](docs/guide/storage.md#syncing-through-an-exchange-folder) keeps enrolled
@@ -107,7 +107,7 @@ go build -o docket .
 ./docket
 ```
 
-On macOS, [tt.app](macos/README.md) runs the same program in its own window and
+On macOS, [Docket.app](macos/README.md) runs the same program in its own window and
 adds a menu-bar shortcut, quick capture, and notifications. From a clone, run
 `just mac-install` to build and install it; this requires the full Xcode app.
 

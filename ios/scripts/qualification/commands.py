@@ -68,8 +68,8 @@ def cmd_start(_args):
     log = os.path.join(directory, "build.log")
 
     note(f"trial {run_id} in {directory}")
-    note("building tt for the Mac")
-    tt_sha = build_mac(REPO, os.path.join(directory, "bin", "tt"))
+    note("building Docket for the Mac")
+    docket_sha = build_mac(REPO, os.path.join(directory, "bin", "docket"))
     note("building, signing, and installing the iPhone app as the rollout guide does")
     app = run(["ios/scripts/install-device.sh"], env={"DOCKET_IOS_DEVICE": iphone["udid"]}, log=log).stdout.strip()
     executables = app_executables(app)
@@ -82,7 +82,7 @@ def cmd_start(_args):
         "builds": {
             "source_fingerprint": run(["ios/scripts/qualification-fingerprint.sh"]).stdout.strip(),
             "bridge_fingerprint": run(["ios/scripts/build-bridge.sh", "--fingerprint"]).stdout.strip(),
-            "tt_sha256": tt_sha,
+            "tt_sha256": docket_sha,
             "app_executables": executables,
             "installs": [],
         },
@@ -105,14 +105,14 @@ def cmd_start(_args):
     shutil.copytree(os.path.join(REPO, FIXTURE), trial.state["mac"]["original"])
     os.makedirs(exchange, exist_ok=True)
     note("enrolling the disposable workspace")
-    trial.tt("sync", "enroll", "--data-dir", trial.state["mac"]["original"], "--exchange", exchange,
+    trial.docket("sync", "enroll", "--data-dir", trial.state["mac"]["original"], "--exchange", exchange,
              "--working-copy", trial.working, "--force")
     mac = trial.mac_observation()
     trial.state["workspace"]["workspace_id"] = mac["workspace_id"]
     trial.state["mac"]["device_id"] = mac["device_id"]
-    wrapper = os.path.join(directory, "bin", "tt-trial")
+    wrapper = os.path.join(directory, "bin", "docket-trial")
     with open(wrapper, "w") as handle:
-        handle.write(f"#!/bin/sh\nHOME='{trial.home}' exec '{directory}/bin/tt' --data-dir '{trial.working}' \"$@\"\n")
+        handle.write(f"#!/bin/sh\nHOME='{trial.home}' exec '{directory}/bin/docket' --data-dir '{trial.working}' \"$@\"\n")
     os.chmod(wrapper, 0o755)
     trial.save()
     os.makedirs(root, exist_ok=True)
@@ -121,10 +121,10 @@ def cmd_start(_args):
 
     say(f"""
 Join the trial on the iPhone, following "Enrollment" in {ROLLOUT_DOC}:
-  1. Open tt (the build just installed). If a workspace is open, use Choose
+  1. Open Docket (the build just installed). If a workspace is open, use Choose
      Another Workspace so the one you have is left alone.
   2. Tap Join from an Exchange Folder… and pick iCloud Drive/{os.path.relpath(exchange, os.path.dirname(exchange_root))}.
-The Mac's trial tt is {wrapper}; open it any time to read or edit the trial.""")
+The Mac's trial Docket is {wrapper}; open it any time to read or edit the trial.""")
     record_enrollment(trial)
 
 
@@ -133,7 +133,7 @@ def record_enrollment(trial):
     it for the current trial when a pause interrupted it."""
     record = checkpoint(trial, "enrollment", "joined")
     trial.state["checkpoints"] = [c for c in trial.state["checkpoints"] if c["scenario"] != "enrollment"] + [record]
-    snapshot_root = os.path.join(trial.home, ".tt", "enrollments")
+    snapshot_root = os.path.join(trial.home, ".docket", "enrollments")
     trial.state["procedures"]["enrollment"] = procedure_record(
         "enrollment", [record["label"]],
         {"snapshot_kept": os.path.isdir(snapshot_root) and bool(os.listdir(snapshot_root)),
@@ -148,7 +148,7 @@ def cmd_enrollment(_args):
     trial = Trial.current()
     say(f"""
 The trial workspace should already be joined on the iPhone, from iCloud Drive/tt-qualification/{trial.run_id}.
-If tt says the exchange has not delivered the workspace yet, long-press that folder in Files,
+If Docket says the exchange has not delivered the workspace yet, long-press that folder in Files,
 choose Keep Downloaded, and join again.""")
     record_enrollment(trial)
 
@@ -158,7 +158,7 @@ def cmd_day(_args):
     today = datetime.date.today().isoformat()
     mac, phone = trial.marker("day", today + " mac"), trial.marker("day", today + " iphone")
     say(f"""
-Daily-use checkpoint for {today}. Use tt on the iPhone in the trial workspace
+Daily-use checkpoint for {today}. Use Docket on the iPhone in the trial workspace
 for real work today: capture, complete, edit, plan. Also capture {phone!r} on
 the iPhone. The Mac adds its own marker.""")
     mac_capture(trial, mac)

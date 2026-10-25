@@ -4,7 +4,7 @@
 // manifests a transport delivered into a local inbox. It never touches the
 // exchange folder itself: moving files to and from it — coordinated access,
 // downloads, retries, and the durable transfer queues — is the transport's
-// (apple/TTSync on Apple platforms), so the engine judges only bytes that are
+// (apple/DocketSync on Apple platforms), so the engine judges only bytes that are
 // already local and verified.
 package syncexchange
 

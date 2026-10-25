@@ -53,7 +53,7 @@ func TestControlUndoRefusesWhenSomethingNewerChanged(t *testing.T) {
 		t.Fatalf("capture reply = %+v", second)
 	}
 	reply := env.request(t, control.Request{Op: control.OpUndo, Text: first.Transaction})
-	if reply.OK || reply.Message != "Something newer was changed in tt; undo it there" {
+	if reply.OK || reply.Message != "Something newer was changed in Docket; undo it there" {
 		t.Fatalf("undo reply = %+v", reply)
 	}
 	if !env.hasTitle(t, "First") || !env.hasTitle(t, "Second") {
@@ -124,7 +124,7 @@ func TestControlUndoRefusesWhileTheUserIsMidInteraction(t *testing.T) {
 	captured := env.request(t, control.Request{Op: control.OpCapture, Text: "Buy milk"})
 	setTestPresentationPath(env.model, presentation.ViewCrossProjectOutliner, presentation.ViewNotes)
 	reply := env.request(t, control.Request{Op: control.OpUndo, Text: captured.Transaction})
-	if reply.OK || reply.Message != "tt is busy: finish what is open in tt first" {
+	if reply.OK || reply.Message != "Docket is busy: finish what is open in Docket first" {
 		t.Fatalf("undo reply = %+v", reply)
 	}
 	if !env.hasTitle(t, "Buy milk") {

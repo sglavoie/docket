@@ -103,7 +103,7 @@ func TestControlAcknowledgeReviewsTheNamedTask(t *testing.T) {
 
 func TestControlVersionReadsTheRunningBuildWhileEditing(t *testing.T) {
 	env := controlEnv(t, reviewSettledTask(t, 1, "existing"))
-	env.model.control.versionLine = "tt version original (commit: abc, built: then)"
+	env.model.control.versionLine = "docket version original (commit: abc, built: then)"
 	setTestPresentationPath(env.model, presentation.ViewCrossProjectOutliner, presentation.ViewNotes)
 	reply := env.request(t, control.Request{Op: control.OpVersion})
 	if !reply.OK || reply.Version != env.model.control.versionLine {
@@ -161,7 +161,7 @@ func TestControlDoneRefusesWhileTheUserIsMidInteraction(t *testing.T) {
 	setTestPresentationPath(env.model, presentation.ViewCrossProjectOutliner, presentation.ViewNotes)
 
 	reply := env.request(t, env.taskRequest(control.OpDone, task))
-	if reply.OK || reply.Message != "tt is busy: finish what is open in tt first" {
+	if reply.OK || reply.Message != "Docket is busy: finish what is open in Docket first" {
 		t.Fatalf("reply = %+v", reply)
 	}
 	if env.storedTask(t, 1).WorkflowState != models.StateBacklog {
@@ -273,7 +273,7 @@ func TestControlRefusesWhileTheUserIsMidInteraction(t *testing.T) {
 	setTestPresentationPath(env.model, presentation.ViewCrossProjectOutliner, presentation.ViewNotes)
 
 	reply := env.request(t, env.taskRequest(control.OpAcknowledge, flagged))
-	if reply.OK || reply.Message != "tt is busy: finish what is open in tt first" {
+	if reply.OK || reply.Message != "Docket is busy: finish what is open in Docket first" {
 		t.Fatalf("reply = %+v", reply)
 	}
 	if !env.storedTask(t, 1).Review {
@@ -513,7 +513,7 @@ func TestControlViewSwitchesModeAsTheJumpDoes(t *testing.T) {
 	}
 
 	searchRankedList(env.outliner, "kept")
-	if reply := env.request(t, control.Request{Op: control.OpView, Text: "inbox"}); reply.OK || reply.Message != "tt is busy: Close search in tt, then try again." {
+	if reply := env.request(t, control.Request{Op: control.OpView, Text: "inbox"}); reply.OK || reply.Message != "Docket is busy: Close search in Docket, then try again." {
 		t.Fatalf("view under the ranked list answered %+v", reply)
 	}
 	if env.outliner.PrimaryMode != chrome.ModeDue {
@@ -522,7 +522,7 @@ func TestControlViewSwitchesModeAsTheJumpDoes(t *testing.T) {
 	env.outliner.ClearSearch()
 
 	setTestPresentationPath(env.model, presentation.ViewCrossProjectOutliner, presentation.ViewNotes)
-	if reply := env.request(t, control.Request{Op: control.OpView, Text: "inbox"}); reply.OK || reply.Message != "tt is busy: Close the current panel in tt, then try again." {
+	if reply := env.request(t, control.Request{Op: control.OpView, Text: "inbox"}); reply.OK || reply.Message != "Docket is busy: Close the current panel in Docket, then try again." {
 		t.Fatalf("view mid-interaction answered %+v", reply)
 	}
 	if env.outliner.PrimaryMode != chrome.ModeDue {

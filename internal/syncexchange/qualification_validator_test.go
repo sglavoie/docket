@@ -29,7 +29,7 @@ func syntheticQualification(t *testing.T) *qualificationEvidence {
 
 	ev := &qualificationEvidence{Format: "tt-device-qualification-evidence", FormatVersion: 1, RunID: run,
 		StartedAt: start.Format(time.RFC3339), FinishedAt: start.Add(9 * 24 * time.Hour).Format(time.RFC3339)}
-	ev.Builds.SourceFingerprint, ev.Builds.BridgeFingerprint, ev.Builds.TTSHA256 = "src", "bridge", "tt"
+	ev.Builds.SourceFingerprint, ev.Builds.BridgeFingerprint, ev.Builds.DocketSHA256 = "src", "bridge", "tt"
 	ev.Builds.AppExecutables = app
 	ev.Builds.Installs = []qualificationInstall{{At: start.Format(time.RFC3339), Reason: "start", AppExecutables: app,
 		SourceFingerprint: "src", BridgeFingerprint: "bridge"}}
@@ -37,7 +37,7 @@ func syntheticQualification(t *testing.T) *qualificationEvidence {
 	ev.Signing.Authorities = []string{"Apple Development: Me (XYZ)", "Apple Worldwide Developer Relations Certification Authority"}
 	ev.Signing.Verified = true
 	ev.Signing.ApplicationGroups = []string{qualificationAppGroup}
-	ev.Signing.ApplicationIdentifier = "ABCDE12345.io.github.sglavoie.tt.mobile"
+	ev.Signing.ApplicationIdentifier = "ABCDE12345.io.github.sglavoie.docket.mobile"
 	ev.Signing.InstalledAt, ev.Signing.InstalledWith = ev.StartedAt, "devicectl"
 	ev.Mac.Model, ev.Mac.OSVersion, ev.Mac.DeviceID = "Mac14,14", "27.0", "mac-device"
 	ev.Mac.Home, ev.Mac.Original, ev.Mac.DataDirectory = trial+"home", trial+"original", trial+"working"
@@ -195,7 +195,7 @@ func TestQualificationValidatorRefusesIncompleteEvidence(t *testing.T) {
 		want   string
 	}{
 		"stale sources":     {func(ev *qualificationEvidence) { ev.Builds.SourceFingerprint = "old" }, "Swift sources"},
-		"stale tt":          {func(ev *qualificationEvidence) { ev.Builds.TTSHA256 = "old" }, "the trial ran tt"},
+		"stale tt":          {func(ev *qualificationEvidence) { ev.Builds.DocketSHA256 = "old" }, "the trial ran tt"},
 		"unsigned":          {func(ev *qualificationEvidence) { ev.Signing.Verified = false }, "not verified as signed"},
 		"no app group":      {func(ev *qualificationEvidence) { ev.Signing.ApplicationGroups = nil }, "app groups"},
 		"simulator":         {func(ev *qualificationEvidence) { ev.IPhone.Reality, ev.IPhone.Model = "simulated", "arm64" }, "not a physical iPhone"},

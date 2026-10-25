@@ -12,7 +12,7 @@ import tempfile
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 FIXTURE = "internal/compat/testdata/workspaces/representative"
-BUNDLE_ID = "io.github.sglavoie.tt.mobile"
+BUNDLE_ID = "io.github.sglavoie.docket.mobile"
 SUPPORT = "Library/Application Support"
 ROLLOUT_DOC = "docs/mobile/personal-rollout.md"
 FORMAT = "tt-device-qualification-evidence"
@@ -110,9 +110,9 @@ class Trial:
     def exchange(self):
         return self.state["exchange"]["folder"]
 
-    def tt(self, *args, binary=None, check=True):
-        return run([binary or os.path.join(self.dir, "bin", "tt"), *args],
-                   env={"HOME": self.home}, check=check, log=os.path.join(self.dir, "tt.log"))
+    def docket(self, *args, binary=None, check=True):
+        return run([binary or os.path.join(self.dir, "bin", "docket"), *args],
+                   env={"HOME": self.home}, check=check, log=os.path.join(self.dir, "docket.log"))
 
     # A scenario rerun after an interrupted attempt left its markers behind
     # uses fresh ones, suffixed "aN"; the attempt is recorded so the
@@ -130,10 +130,10 @@ class Trial:
     # The Mac side.
 
     def mac_exchange(self, binary=None):
-        return self.tt("sync", "exchange", "--data-dir", self.working, binary=binary, check=False).returncode == 0
+        return self.docket("sync", "exchange", "--data-dir", self.working, binary=binary, check=False).returncode == 0
 
     def mac_observation(self, binary=None):
-        report = json.loads(self.tt("sync", "diagnostics", "--data-dir", self.working, binary=binary).stdout)
+        report = json.loads(self.docket("sync", "diagnostics", "--data-dir", self.working, binary=binary).stdout)
         status = report.get("status") or {}
         return {
             "digest": report.get("workspace_digest", ""),
@@ -196,7 +196,7 @@ class Trial:
             with open(selected) as handle:
                 name = handle.read().strip()
             if not name:
-                note("tt on the iPhone has no workspace selected")
+                note("Docket on the iPhone has no workspace selected")
                 return None
             pulled = os.path.join(scratch, "diagnostics")
             if not self.copy_from_iphone(f"{SUPPORT}/devices/{name}/diagnostics", pulled):

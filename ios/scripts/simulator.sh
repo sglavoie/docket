@@ -7,7 +7,7 @@
 # default   DOCKET_IOS_SIMULATOR when set, else the first available iPhone on an
 #           iOS 18 or later runtime.
 # small     DOCKET_IOS_SMALL_SIMULATOR when set, else a simulator named
-#           "tt-small" (an iPhone SE (3rd generation), 375 x 667 points, the
+#           "docket-small" (an iPhone SE (3rd generation), 375 x 667 points, the
 #           narrowest iPhone the newest runtime still creates), made on the
 #           newest iOS runtime the first time it is asked for.
 
@@ -39,7 +39,7 @@ small)
 		exit 0
 	fi
 	existing=$(xcrun simctl list devices available | awk '
-		/^    tt-small \(/ && match($0, /\([0-9A-F-]{36}\)/) { print substr($0, RSTART + 1, RLENGTH - 2); exit }')
+		/^    docket-small \(/ && match($0, /\([0-9A-F-]{36}\)/) { print substr($0, RSTART + 1, RLENGTH - 2); exit }')
 	if [ -n "$existing" ]; then
 		echo "$existing"
 		exit 0
@@ -54,7 +54,7 @@ small)
 		exit 1
 	fi
 	for device in iPhone-SE-3rd-generation iPhone-13-mini; do
-		if created=$(xcrun simctl create tt-small "com.apple.CoreSimulator.SimDeviceType.$device" "$runtime" 2>/dev/null); then
+		if created=$(xcrun simctl create docket-small "com.apple.CoreSimulator.SimDeviceType.$device" "$runtime" 2>/dev/null); then
 			echo "$created"
 			exit 0
 		fi

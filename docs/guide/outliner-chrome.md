@@ -121,7 +121,7 @@ operations. To insert a newline in capture, comments, or the text editor,
 use `Alt+Enter`; `Shift+Enter` remains an alias. Multiline paste works in capture
 too. The menu keeps every operation available by arrow keys and Enter.
 
-tt.app can follow macOS appearance for the current session without changing
+Docket.app can follow macOS appearance for the current session without changing
 the saved terminal theme.
 
 ## Read workload and feedback
@@ -220,7 +220,7 @@ every project failed to load.
 
 ### While Docket is in the background
 
-Docket names its window after the workspace pulse — `tt · inbox 2 · today 3 ·
+Docket names its window after the workspace pulse — `Docket · inbox 2 · today 3 ·
 overdue 1`, nonzero counts only — so a terminal tab or title bar reads it
 without switching to Docket; a view that names its own title keeps it, and quitting
 clears it.
@@ -245,11 +245,11 @@ waking from sleep reports the gap once. A date-only deadline is not an arrival:
 its day is the Today lane's and the overdue count's. It is opt-in because a
 terminal that honors the escape shows it whether or not Docket is in view.
 
-`docket --control PATH` lets a host such as tt.app request capture and task actions
+`docket --control PATH` lets a host such as Docket.app request capture and task actions
 through the running session. Those actions use the same validation and undo as
 the keyboard. Read-only completion and preview requests remain available during
 editing; mutations are refused while a protected interaction is open.
-See [tt.app](../../macos/README.md#talking-to-tt) for host behavior and
+See [Docket.app](../../macos/README.md#talking-to-tt) for host behavior and
 [the architecture](../architecture.md) for the control protocol.
 
 ## Resolve a conflict

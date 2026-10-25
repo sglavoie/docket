@@ -8,7 +8,7 @@ trial directory, an exchange folder of its own in iCloud Drive, and on the
 iPhone a joined workspace beside any other. No real workspace is read or
 written.
 
-A person performs the iPhone steps and the Mac edits in the trial's own tt;
+A person performs the iPhone steps and the Mac edits in the trial's own Docket;
 this script prompts for them, exchanges the Mac, reads the iPhone's exported
 diagnostics over the cable, and records raw observations: both devices'
 synced-file digests, outstanding work, open conflicts, transport condition,

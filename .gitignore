@@ -36,19 +36,22 @@ macos/DerivedData/
 # ios/project.yml, and SwiftPM keeps its own state beside the package.
 ios/.cache/
 /ios-results/
-ios/TTEngine/Frameworks/
-ios/TTEngine/.build/
-ios/TTEngine/.swiftpm/
+ios/DocketEngine/Frameworks/
+ios/DocketEngine/.build/
+ios/DocketEngine/.swiftpm/
 
-# The Apple sync transport package (apple/TTSync) keeps SwiftPM state beside
+# The Apple sync transport package (apple/DocketSync) keeps SwiftPM state beside
 # itself.
-apple/TTSync/.build/
-apple/TTSync/.swiftpm/
-apple/TTSync/build/
-# The reminder scheduling package (ios/TTReminders) keeps SwiftPM state beside
+apple/DocketSync/.build/
+apple/DocketSync/.swiftpm/
+# The reminder scheduling package (ios/DocketReminders) keeps SwiftPM state beside
 # its sources.
-ios/TTReminders/.build/
-ios/TTReminders/.swiftpm/
-# The App Group package (ios/TTShared) keeps SwiftPM state beside its sources.
-ios/TTShared/.build/
-ios/TTShared/.swiftpm/
+ios/DocketReminders/.build/
+ios/DocketReminders/.swiftpm/
+# The App Group package (ios/DocketShared) keeps SwiftPM state beside its sources.
+ios/DocketShared/.build/
+ios/DocketShared/.swiftpm/
+# xcodebuild run from ios/ or a package directory drops its products in build/.
+ios/build/
+ios/*/build/
+apple/*/build/

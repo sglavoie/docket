@@ -143,13 +143,13 @@ def baseline_source(root):
     archive.unlink()
     # Add only the current upgrade TEST harness and its target. All app/engine
     # sources remain exactly those of BASELINE, including the old UI behavior.
-    shutil.copytree(REPO / "ios/TTMobileUpgradeUITests", destination / "ios/TTMobileUpgradeUITests")
+    shutil.copytree(REPO / "ios/DocketMobileUpgradeUITests", destination / "ios/DocketMobileUpgradeUITests")
     spec = destination / "ios/project.yml"
     text = spec.read_text()
-    assert "        - TTMobileUITests\n" in text
-    text = text.replace("        - TTMobileUITests\n", "        - TTMobileUITests\n        - TTMobileUpgradeUITests\n", 1)
+    assert "        - DocketMobileUITests\n" in text
+    text = text.replace("        - DocketMobileUITests\n", "        - DocketMobileUITests\n        - DocketMobileUpgradeUITests\n", 1)
     current = (REPO / "ios/project.yml").read_text()
-    text += "\n  TTMobileUpgradeUITests:\n" + current.split("  TTMobileUpgradeUITests:\n", 1)[1]
+    text += "\n  DocketMobileUpgradeUITests:\n" + current.split("  DocketMobileUpgradeUITests:\n", 1)[1]
     spec.write_text(text)
     # The script only selects the test bundle and exports XCTest artifacts.
     shutil.copy2(REPO / "ios/scripts/test-ui.sh", destination / "ios/scripts/test-ui.sh")
@@ -170,7 +170,7 @@ def run_stage(name, directory, state, root, env):
             cwd = baseline_source(root)
             state["upgrade_root"] = str(directory / "retained-app-data")
         env["TEST_RUNNER_DOCKET_UITEST_UPGRADE_ROOT"] = state["upgrade_root"]
-        env["DOCKET_UITEST_TARGET"] = "TTMobileUpgradeUITests"
+        env["DOCKET_UITEST_TARGET"] = "DocketMobileUpgradeUITests"
         env["DOCKET_UITEST_ONLY"] = "SimulatorUpgradeUITests/" + ("testSeedUpgrade" if name == "upgrade-before" else "testVerifyUpgrade")
         env["DOCKET_IOS_CACHE"] = str(cwd / "ios/.cache")
         command = ["ios/scripts/test-ui.sh", str(directory)]
@@ -194,9 +194,9 @@ def run_stage(name, directory, state, root, env):
                     assert method in tree, f"required UI case missing: {method}"
             artifacts.append(tests)
             if name.startswith("upgrade-"):
-                app = Path(env["DOCKET_IOS_CACHE"]) / "UIDerivedData/Build/Products/Debug-iphonesimulator/tt.app"
-                executables = {p.name: digest(p) for p in (app / "tt", app / "tt.debug.dylib") if p.is_file()}
-                assert "tt" in executables, "upgrade app executable missing"
+                app = Path(env["DOCKET_IOS_CACHE"]) / "UIDerivedData/Build/Products/Debug-iphonesimulator/Docket.app"
+                executables = {p.name: digest(p) for p in (app / "Docket", app / "Docket.debug.dylib") if p.is_file()}
+                assert "Docket" in executables, "upgrade app executable missing"
                 build = directory / "app-build.json"
                 write_json(build, {"source_commit": BASELINE if name == "upgrade-before" else output("git", "rev-parse", "HEAD"),
                                    "executables": executables})

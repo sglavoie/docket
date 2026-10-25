@@ -102,7 +102,7 @@ func TestServerTimesOutASilentTUI(t *testing.T) {
 
 	c := dial(t, server.Path())
 	c.send(t, `{"id":1,"op":"capture","text":"x"}`)
-	if got := c.next(t); got["ok"] != false || got["message"] != "tt did not answer in time" {
+	if got := c.next(t); got["ok"] != false || got["message"] != "Docket did not answer in time" {
 		t.Fatalf("reply = %v", got)
 	}
 }

@@ -13,7 +13,7 @@ validated section changes.
 
 You need a Mac with Xcode, an iPhone paired with it over a cable, the same
 Apple Account signed into iCloud Drive on both, and an Apple Developer team
-that can sign apps with the App Group `group.io.github.sglavoie.tt`. Your team
+that can sign apps with the App Group `group.io.github.sglavoie.docket`. Your team
 ID appears under Membership details in the developer account. A free personal
 team's signature expires after seven days, so with one, reinstall before then
 (see [Upgrade](#upgrade)); the app's data stays put.
@@ -114,7 +114,7 @@ A second Mac joins with
 `tt sync join --exchange DIR --working-copy DIR`.
 
 Keep `tt` running on the Mac to exchange automatically: it syncs at launch,
-on focus, and every five seconds, including while tt.app's window is hidden.
+on focus, and every five seconds, including while Docket.app's window is hidden.
 The iPhone exchanges at launch, on foreground, after saves, and on refresh.
 An offline folder is retried automatically on the Mac. iCloud delivery can
 take longer; `tt sync status` shows what is still waiting, and `tt sync exchange`
