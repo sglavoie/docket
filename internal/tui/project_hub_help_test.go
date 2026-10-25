@@ -51,8 +51,8 @@ func TestProjectHubHelpSpellsEachKeyOnce(t *testing.T) {
 	for key, want := range map[string]string{
 		"j/k":      "Move selection",
 		"Ctrl+D/U": "Move half page",
-		"<":        "Move pane split left",
-		">":        "Move pane split right",
+		"<":        "Move Pane Split Left",
+		">":        "Move Pane Split Right",
 		"Ctrl+R":   "Redo workspace change",
 	} {
 		if got := documented[key]; got != want {
@@ -91,7 +91,7 @@ func TestProjectHubHelpKeyRaisesTheHubGrammar(t *testing.T) {
 	for _, item := range raised.Items {
 		documented[item.Key] = item.Description
 	}
-	if documented["Enter"] != "Open project" {
+	if documented["Enter"] != "Open Project" {
 		t.Fatalf("Hub help describes Enter as %q, want the Hub's own grammar: %+v", documented["Enter"], raised.Items)
 	}
 	// `?` documents itself only because the keymap names it: the core descriptor

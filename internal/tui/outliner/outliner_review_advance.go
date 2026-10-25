@@ -68,7 +68,7 @@ func (m *OutlinerModel) PlanReviewAdvance(capture *OutlinerRelocationCapture) {
 // no facet, so the Review lane, its count, and a review pass skip hidden work
 // even where fH has put it on screen, since hidden work is never owed attention.
 func taskOwedAttention(task *models.Task, project *models.Project, now time.Time) bool {
-	return models.TaskNeedsAttention(task, now) && !models.TaskEffectivelyHidden(project, task)
+	return models.TaskOwesReviewAttention(project, task, now)
 }
 
 // reviewRowProject resolves the project a row's task is read inside, the way

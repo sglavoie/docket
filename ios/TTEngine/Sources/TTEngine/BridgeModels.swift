@@ -148,12 +148,14 @@ public struct TaskSnapshot: Decodable, Hashable, Sendable, Identifiable {
     public var commentCount: Int?
     public var attachmentCount: Int?
     public var dependencyCount: Int?
+    /// Effective hiding, stored or inherited; absent means visible.
+    public var hidden: Bool?
 
     public var locator: TaskLocator { TaskLocator(projectID: projectID, taskID: taskID) }
     public var id: TaskLocator { locator }
 
     enum CodingKeys: String, CodingKey {
-        case title, description, state, priority, tags, context, pinned, review, checklist
+        case title, description, state, priority, tags, context, pinned, review, checklist, hidden
         case projectID = "project_id"
         case taskID = "task_id"
         case shortID = "short_id"

@@ -41,16 +41,16 @@ func (m *CommentsModel) BuildKeyMap() *keymap.KeyMap {
 		keymap.Bind("home", "Jump to first comment", "Navigation", keymap.WithHelpKey("gg/Home"), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("G", "Jump to last comment", "Navigation", keymap.WithHelpKey("G/End"), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("end", "Jump to last comment", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
-		keymap.Bind("a", "Add comment", "Actions", keymap.WithFooter(2, "add", false), keymap.WithGate(inBrowseMode)),
-		keymap.Bind("e", "Edit comment", "Actions", keymap.WithFooter(3, "edit", false), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("a", "Add Comment", "Actions", keymap.WithFooter(2, "add", false), keymap.WithGate(inBrowseMode)),
+		keymap.Bind("e", "Edit Comment", "Actions", keymap.WithFooter(3, "edit", false), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("E", "Edit in external editor", "Actions", keymap.WithFooter(7, "editor", false), keymap.WithGate(hasBrowseSelection)),
 		// Space takes the slot Delete gave up: it is the only route to Delete, so
 		// a narrow footer must shed a copy variant and the editor hint before it
 		// sheds the menu.
-		keymap.Bind("space", "Comment actions", "Actions", keymap.WithFooter(4, "actions", false), keymap.WithFooterKey("Space"), keymap.WithGate(hasBrowseSelection)),
-		keymap.Bind("y", "Copy comment text", "Actions", keymap.WithFooter(5, "copy", false), keymap.WithGate(hasBrowseSelection)),
-		keymap.Bind("Y", "Copy all as Markdown", "Actions", keymap.WithFooter(6, "copy all", false), keymap.WithGate(hasBrowseSelection)),
-		keymap.Bind("enter", "Expand comment", "Actions", keymap.WithFooter(1, "expand", false), keymap.WithFooterKey("Enter"), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("space", "Comment Actions", "Actions", keymap.WithFooter(4, "actions", false), keymap.WithFooterKey("Space"), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("y", "Copy Comment Text", "Actions", keymap.WithFooter(5, "copy", false), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("Y", "Copy All as Markdown", "Actions", keymap.WithFooter(6, "copy all", false), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("enter", "Expand Comment", "Actions", keymap.WithFooter(1, "expand", false), keymap.WithFooterKey("Enter"), keymap.WithGate(hasBrowseSelection)),
 		// Deliberately unranked. The core undo descriptors answer only to the
 		// Outliner, so this keymap is the only place that can put u and Ctrl+R in
 		// the panel's `?` help; the footer stays spent on the acts the panel exists

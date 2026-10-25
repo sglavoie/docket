@@ -198,6 +198,7 @@ type relationView struct {
 	Title       string `json:"title,omitempty"`
 	State       string `json:"state,omitempty"`
 	ProjectName string `json:"project_name,omitempty"`
+	Hidden      bool   `json:"hidden,omitempty"`
 }
 
 // relations are what a task detail navigates: the ancestor chain root first,
@@ -220,6 +221,7 @@ func relate(snapshot app.Snapshot, target app.TaskLocator) relationView {
 	view.Title = ref.Task.Title
 	view.State = string(ref.Task.WorkflowState)
 	view.ProjectName = ref.Project.Name
+	view.Hidden = models.TaskEffectivelyHidden(ref.Project, ref.Task)
 	return view
 }
 
@@ -241,8 +243,13 @@ func taskRelations(snapshot app.Snapshot, project *models.Project, task *models.
 		}
 		parent = ref.Task.ParentID
 	}
+	// Children and dependents are computed, so a visible task lists none that
+	// every view hides; its own stored references stay, marked, since they are
+	// its values. A hidden task's family is hidden with it and is listed whole.
+	subjectHidden := models.TaskEffectivelyHidden(project, task)
 	for _, child := range project.Tasks {
-		if child != nil && child.ParentID != nil && *child.ParentID == task.ID {
+		if child != nil && child.ParentID != nil && *child.ParentID == task.ID &&
+			(subjectHidden || !models.TaskEffectivelyHidden(project, child)) {
 			result.Children = append(result.Children, relate(snapshot, app.TaskLocator{ProjectID: project.ID, TaskID: child.ID}))
 		}
 	}
@@ -252,7 +259,8 @@ func taskRelations(snapshot app.Snapshot, project *models.Project, task *models.
 	self := models.TaskReference{ProjectID: project.ID, TaskID: task.ID}
 	for _, other := range snapshot.Projects() {
 		for _, candidate := range other.Tasks {
-			if candidate != nil && slices.Contains(candidate.Dependencies, self) {
+			if candidate != nil && slices.Contains(candidate.Dependencies, self) &&
+				(subjectHidden || !models.TaskEffectivelyHidden(other, candidate)) {
 				result.Dependents = append(result.Dependents, relate(snapshot, app.TaskLocator{ProjectID: other.ID, TaskID: candidate.ID}))
 			}
 		}

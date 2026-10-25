@@ -66,7 +66,7 @@ func TestProjectActionSheetProjectsTheOutlinerProjectManifest(t *testing.T) {
 		t.Fatalf("project sheet IDs = %v, want exact two %v", ids, wantIDs)
 	}
 	wantLabels := []string{
-		"Archive project", "Delete project",
+		"Archive Project", "Delete Project",
 	}
 	for index, id := range ids {
 		descriptor, ok := registry.Descriptor(id)

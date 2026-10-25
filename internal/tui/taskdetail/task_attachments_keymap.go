@@ -40,8 +40,8 @@ func (m *TaskAttachmentsModel) BuildKeyMap() *keymap.KeyMap {
 		keymap.Bind("G", "Jump to last attachment", "Navigation", keymap.WithHelpKey("G/End"), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("end", "Jump to last attachment", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
 
-		keymap.Bind("enter", "Open attachment", "Actions", keymap.WithFooter(1, "open", false), keymap.WithFooterKey("Enter"), keymap.WithGate(hasBrowseSelection)),
-		keymap.Bind("a", "Add attachment", "Actions", keymap.WithFooter(2, "add", false), keymap.WithGate(inBrowseMode)),
+		keymap.Bind("enter", "Open Attachment", "Actions", keymap.WithFooter(1, "open", false), keymap.WithFooterKey("Enter"), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("a", "Add Attachment", "Actions", keymap.WithFooter(2, "add", false), keymap.WithGate(inBrowseMode)),
 		// E, not e: the footer says "editor" the way Comments does, because the
 		// panel has nothing to rename and e means edit everywhere else.
 		keymap.Bind("E", "Open in external editor", "Actions", keymap.WithFooter(3, "editor", false), keymap.WithGate(func() bool {
@@ -51,10 +51,10 @@ func (m *TaskAttachmentsModel) BuildKeyMap() *keymap.KeyMap {
 		// Space outranks the two niche hints below it: it is the only route to
 		// five operations, two of them destructive, so a narrow footer must shed
 		// a copy variant and a reorder before it sheds the menu.
-		keymap.Bind("space", "Attachment actions", "Actions", keymap.WithFooter(5, "actions", false), keymap.WithFooterKey("Space"), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("space", "Attachment Actions", "Actions", keymap.WithFooter(5, "actions", false), keymap.WithFooterKey("Space"), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("Y", "Copy path with line", "Actions", keymap.WithFooter(6, "copy path:line", false), keymap.WithGate(selectedIsCodeRef)),
-		keymap.Bind("J", "Reorder attachment down", "Actions", keymap.WithFooter(7, "reorder", false), keymap.WithFooterKey("J/K"), keymap.WithGate(hasMultipleAttachments)),
-		keymap.Bind("K", "Reorder attachment up", "Actions", keymap.AsHidden(), keymap.WithGate(hasMultipleAttachments)),
+		keymap.Bind("J", "Reorder Attachment Down", "Actions", keymap.WithFooter(7, "reorder", false), keymap.WithFooterKey("J/K"), keymap.WithGate(hasMultipleAttachments)),
+		keymap.Bind("K", "Reorder Attachment Up", "Actions", keymap.AsHidden(), keymap.WithGate(hasMultipleAttachments)),
 		// Deliberately unranked. The core undo descriptors answer only to the
 		// Outliner, so this keymap is the only place that can put u and Ctrl+R in
 		// the panel's `?` help; the footer stays spent on the acts the panel exists
@@ -68,7 +68,7 @@ func (m *TaskAttachmentsModel) BuildKeyMap() *keymap.KeyMap {
 		keymap.Bind("?", "Help", "System", keymap.WithFooter(12, "help", true), keymap.WithGate(inBrowseMode)),
 		keymap.Bind("esc", "Close attachments", "Navigation", keymap.WithFooter(11, "close", true), keymap.WithFooterKey("Esc"), keymap.WithGate(inBrowseMode)),
 
-		keymap.Bind("enter", "Add attachment", "Actions", keymap.WithFooter(1, addLabel, true), keymap.WithFooterKey("Enter"), keymap.WithGate(inAddMode)),
+		keymap.Bind("enter", "Add Attachment", "Actions", keymap.WithFooter(1, addLabel, true), keymap.WithFooterKey("Enter"), keymap.WithGate(inAddMode)),
 		// Two gated rows for one key, as in the comments panel: a typed path is
 		// work Esc asks about, an empty box is not.
 		keymap.Bind("esc", "Discard attachment input", "Navigation", keymap.WithFooter(2, "discard", true), keymap.WithFooterKey("Esc"), keymap.WithGate(addModeDraft)),

@@ -271,10 +271,10 @@ func TestLensPickerRendersEmptyNoMatchAndOversizedRows(t *testing.T) {
 	if !strings.Contains(empty, "No saved lenses yet") {
 		t.Errorf("empty render names no empty state:\n%s", empty)
 	}
-	if !strings.Contains(empty, "Save current view") {
+	if !strings.Contains(empty, "Save Current View") {
 		t.Errorf("empty render dropped the save row:\n%s", empty)
 	}
-	if !strings.Contains(empty, "Add built-in view") {
+	if !strings.Contains(empty, "Add Built-in View") {
 		t.Errorf("empty render dropped the add row:\n%s", empty)
 	}
 }

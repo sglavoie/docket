@@ -13,7 +13,7 @@
     { "type": "key", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "label": "saving leaves the view under the lens it just wrote", "assert": "contains", "value": "Lens: Priority Sweep" },
-    { "type": "assert", "label": "and closes the whole overlay stack", "assert": "not_contains", "value": "Save current view" },
+    { "type": "assert", "label": "and closes the whole overlay stack", "assert": "not_contains", "value": "Save Current View" },
     { "type": "assert", "label": "machine-local writes record no undo entry", "assert": "not_contains", "value": "u undo" },
     { "type": "assert", "assert": "no_layout_issues" },
 

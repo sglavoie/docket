@@ -90,10 +90,10 @@ func lensOperationDescriptors() []operation.OperationDescriptor {
 		}
 	}
 	return []operation.OperationDescriptor{
-		targeted(lens.OperationLensApply, "Apply lens", "Open this saved view", operation.OperationRiskReadOnly),
+		targeted(lens.OperationLensApply, "Apply Lens", "Open this saved view", operation.OperationRiskReadOnly),
 		{
 			ID:                   lens.OperationLensCreate,
-			Label:                "Save current view",
+			Label:                "Save Current View",
 			Description:          "Save the current view as a new lens",
 			Category:             operation.OperationCategoryFilter,
 			TargetSource:         operation.OperationTargetGlobal,
@@ -107,7 +107,7 @@ func lensOperationDescriptors() []operation.OperationDescriptor {
 			// stable UUID, so it resolves no target either: the value is which
 			// template, not which saved record.
 			ID:                   lens.OperationLensAddTemplate,
-			Label:                "Add built-in view",
+			Label:                "Add Built-in View",
 			Description:          "Add one of the built-in views as a saved lens",
 			Category:             operation.OperationCategoryFilter,
 			TargetSource:         operation.OperationTargetGlobal,
@@ -117,11 +117,11 @@ func lensOperationDescriptors() []operation.OperationDescriptor {
 			ValueProviderID:      operation.ValueProviderLensTemplate,
 		},
 		operation.WithValueProvider(
-			targeted(lens.OperationLensRename, "Rename lens", "Give this lens a new name", operation.OperationRiskMutation),
+			targeted(lens.OperationLensRename, "Rename Lens", "Give this lens a new name", operation.OperationRiskMutation),
 			operation.ValueProviderLensName,
 		),
 		operation.WithValueProvider(
-			targeted(lens.OperationLensDuplicate, "Duplicate lens", "Copy this saved view under a new name", operation.OperationRiskMutation),
+			targeted(lens.OperationLensDuplicate, "Duplicate Lens", "Copy this saved view under a new name", operation.OperationRiskMutation),
 			operation.ValueProviderLensName,
 		),
 		// Replace and Delete overwrite or drop a saved record with no undo entry
@@ -131,11 +131,11 @@ func lensOperationDescriptors() []operation.OperationDescriptor {
 			lens.OperationLensReplace,
 			// Named for the source rather than the target, because the sheet row
 			// sits under the lens's own name: what needs saying is which view wins.
-			"Replace from current view",
+			"Replace from Current View",
 			"Overwrite this lens with the current view",
 			operation.OperationRiskDestructive,
 		),
-		targeted(lens.OperationLensDelete, "Delete lens", "Delete this saved lens", operation.OperationRiskDestructive),
+		targeted(lens.OperationLensDelete, "Delete Lens", "Delete this saved lens", operation.OperationRiskDestructive),
 	}
 }
 

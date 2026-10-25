@@ -267,7 +267,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"the uppercase `F` facets — `F#` project tags, `Fp`/`FP` parked, `Fa`/`FA` archived, `Fx` clear — decide which projects the snapshot contains at all",
 		"Each axis is exclude, include, or only, the lowercase key owns include and the uppercase key owns only",
 		"`Fp`, `FP`, and the `parked` row inside the `F#` picker write the same `ParkedMode` field",
-		"`Space` on a tag row opens a sheet closed over Rename everywhere, Remove everywhere, Park all members, and Unpark all members",
+		"`Space` on a tag row opens a sheet closed over Rename Everywhere, Remove Everywhere, Park All Members, and Unpark All Members",
 		"filtered at read time instead of being cleared",
 		"`p` opens the searchable scope picker",
 		"`/` edits the accepted search",

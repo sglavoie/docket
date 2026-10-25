@@ -63,7 +63,7 @@ strategy carries their footer hints.
 
 Select Project is a `ListSelectionMulti` surface: `v` toggles the row under the
 cursor, `Ctrl+A` selects every match, and `Space` over a non-empty selection
-opens a bulk sheet closed over Add tag, Remove tag, Park, and Unpark.
+opens a bulk sheet closed over Add Tag, Remove Tag, Park, and Unpark.
 The four descriptors resolve `OperationTargetSelectedEntities`, so the sheet
 freezes the project identities into the command context rather than into a host
 value, leaving the executor's central value-provider step free to open the tag
@@ -422,7 +422,7 @@ A bulk tag edit is resolved before anything commits: every named project is
 looked up, its replacement tag set computed, and no-op projects dropped, so the
 prompt can name the real impact and a request that would write nothing says so
 instead. The resolved effect decides the prompt rather than the chosen action,
-which makes typing `parked` into Add tag confirm exactly like Park does, and the
+which makes typing `parked` into Add Tag confirm exactly like Park does, and the
 whole edit lands as one catalog transaction and therefore one undo entry. A bulk
 park reuses the same cursor anchor as the single-project path, passing every
 departing project so the anchor skips them all; `anchorOutlinerCursorAfterProjectPark`
@@ -432,13 +432,13 @@ project, which stops resolving after the reload and settles the cursor at the
 top of the projection.
 
 The `F#` picker doubles as the tag vocabulary editor: `v` toggles a facet and
-`Space` on a tag row opens a sheet closed over Rename everywhere, Remove
-everywhere, Park all members, and Unpark all members. The sheet freezes the
+`Space` on a tag row opens a sheet closed over Rename Everywhere, Remove
+Everywhere, Park All Members, and Unpark All Members. The sheet freezes the
 tag's member projects into the command context and emits an ordinary
 `ProjectBulkTagsMsg`, so it inherits the park confirmation, the single catalog
 transaction, and the undo entry. The edited tag lives on the AppModel rather
 than in the sheet's frozen value because a nested value step overwrites that
-value on its way back to the executor. Remove everywhere routes through a value
+value on its way back to the executor. Remove Everywhere routes through a value
 provider that returns an immediate empty value when no member would be left
 without any tag, and opens a destination picker only when one would.
 

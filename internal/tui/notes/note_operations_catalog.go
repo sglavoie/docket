@@ -38,15 +38,15 @@ func NoteOperationDescriptors() []operation.OperationDescriptor {
 		return descriptor(id, label, description, risk, noteOperationApplicable)
 	}
 	return []operation.OperationDescriptor{
-		note(OperationNoteOpen, "Open note", "Open this note in the external editor", operation.OperationRiskMutation),
+		note(OperationNoteOpen, "Open Note", "Open this note in the external editor", operation.OperationRiskMutation),
 		operation.WithValueProvider(
-			note(OperationNoteRename, "Rename note", "Give this note a new title", operation.OperationRiskMutation),
+			note(OperationNoteRename, "Rename Note", "Give this note a new title", operation.OperationRiskMutation),
 			operation.ValueProviderNoteTitle,
 		),
-		note(OperationNoteMove, "Move note", "Move this note to another location", operation.OperationRiskMutation),
-		note(OperationNoteCopyTitle, "Copy note title", "Copy this note's title to the clipboard", operation.OperationRiskReadOnly),
-		note(OperationNoteCopyPath, "Copy note path", "Copy this note's file path to the clipboard", operation.OperationRiskReadOnly),
-		note(OperationNoteDelete, "Delete note", "Delete this note", operation.OperationRiskDestructive),
+		note(OperationNoteMove, "Move Note", "Move this note to another location", operation.OperationRiskMutation),
+		note(OperationNoteCopyTitle, "Copy Note Title", "Copy this note's title to the clipboard", operation.OperationRiskReadOnly),
+		note(OperationNoteCopyPath, "Copy Note Path", "Copy this note's file path to the clipboard", operation.OperationRiskReadOnly),
+		note(OperationNoteDelete, "Delete Note", "Delete this note", operation.OperationRiskDestructive),
 	}
 }
 

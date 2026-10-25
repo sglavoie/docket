@@ -120,7 +120,7 @@ func TestProjectNotesRefreshPreservesCursor(t *testing.T) {
 	out.Cursor = noteRowIndexes(out)[0]
 	identity, _ := out.CursorNoteIdentity()
 	out.Search.CaptureNoteCursor(identity)
-	newer := noteIndexRow(app.ProjectNoteLocation("alpha"), "alpha", "New note", "new.md")
+	newer := noteIndexRow(app.ProjectNoteLocation("alpha"), "alpha", "New Note", "new.md")
 	newer.Note.ModifiedAt = time.Now().Add(time.Hour)
 	index = append(index, newer)
 	out.RebuildRows()

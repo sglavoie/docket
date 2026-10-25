@@ -254,7 +254,7 @@ declared their text required, while this reads the finished screen.
   glyph and no counts, `HasContentRows` rather than the row count deciding an
   empty projection, `HasProjectHeaderCursor` as the gate every other project
   operation reads, and `outlinerProjectOperationTargetsHeader` narrowing Edit
-  project, Add project comment, and Project comments.
+  Project, Add Project Comment, and Project Comments.
   `docs/architecture/selection-and-project-tags.md`,
   `docs/guide/outliner-modes.md`.
 

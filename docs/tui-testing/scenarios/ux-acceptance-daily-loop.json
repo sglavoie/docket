@@ -936,7 +936,7 @@
       "assert": "contains",
       "value": "No check-in"
     },
-    { "type": "assert", "label": "and routes it to the keyless menu entry rather than interrupting", "assert": "contains", "value": "F10: Set up check-ins" },
+    { "type": "assert", "label": "and routes it to the keyless menu entry rather than interrupting", "assert": "contains", "value": "F10: Set Up Check-Ins" },
     {
       "type": "assert",
       "assert": "no_layout_issues"

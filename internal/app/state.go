@@ -210,7 +210,9 @@ func incompleteDirectChildren(task *models.Task, project *models.Project) []*mod
 func newChildrenBlockedError(task *models.Task, children []*models.Task) error {
 	kids := make([]IncompleteChild, 0, len(children))
 	for _, c := range children {
-		kids = append(kids, IncompleteChild{ShortID: c.ShortID, Title: c.Title, Status: string(c.State())})
+		kids = append(kids, IncompleteChild{
+			ShortID: c.ShortID, Title: c.Title, Status: string(c.State()), Hidden: models.TaskEffectivelyHidden(nil, c),
+		})
 	}
 	return &ChildrenBlockedError{ParentShortID: task.ShortID, Children: kids}
 }

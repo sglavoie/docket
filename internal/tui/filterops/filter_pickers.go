@@ -337,7 +337,7 @@ func renderProspectiveFilterCount(count int) string {
 func (c *Controller) NewFilterTagsPicker(shell Shell,
 	request operation.OperationExecutionRequest,
 ) (*valuepicker.OperationValuePickerModel, error) {
-	tagList := query.BuildProjectsTagList(c.FilterScopeProjects(shell), false)
+	tagList := query.BuildProjectsTagList(c.facetCensusProjects(shell), false)
 	source := valuepicker.TaskTagListSource(tagList, false)
 	selected := []listsurface.ListItemID(nil)
 	if shell.Outliner() != nil {
@@ -367,6 +367,37 @@ func (c *Controller) FilterScopeProjects(shell Shell) []*models.Project {
 	return shell.TaskWorkspaceProjects()
 }
 
+// facetCensusProjects is FilterScopeProjects narrowed to the hidden population
+// the view admits, so a facet row's count is what choosing it draws: hidden work
+// counts only once fH opens it, and then it is all that counts. The narrowing
+// copies the project shell alone, judging inheritance against the original tree.
+func (c *Controller) facetCensusProjects(shell Shell) []*models.Project {
+	projects := c.FilterScopeProjects(shell)
+	mode := query.ProjectPopulationExclude
+	if shell.Outliner() != nil {
+		mode = shell.Outliner().Filter.HiddenMode
+	}
+	if mode == query.ProjectPopulationInclude {
+		return projects
+	}
+	wantHidden := mode == query.ProjectPopulationOnly
+	narrowed := make([]*models.Project, 0, len(projects))
+	for _, project := range projects {
+		if project == nil {
+			continue
+		}
+		census := *project
+		census.Tasks = make([]*models.Task, 0, len(project.Tasks))
+		for _, task := range project.Tasks {
+			if task != nil && models.TaskEffectivelyHidden(project, task) == wantHidden {
+				census.Tasks = append(census.Tasks, task)
+			}
+		}
+		narrowed = append(narrowed, &census)
+	}
+	return narrowed
+}
+
 // newFilterContextsPicker is the fc multi-select picker over the active scope's
 // context vocabulary, seeded from the active context filter facet. The rows
 // compose with OR because a task carries at most one context, and the leading
@@ -379,7 +410,7 @@ func taskCountLabel(count int) string {
 func (c *Controller) NewFilterContextsPicker(shell Shell,
 	request operation.OperationExecutionRequest,
 ) (*valuepicker.OperationValuePickerModel, error) {
-	projects := c.FilterScopeProjects(shell)
+	projects := c.facetCensusProjects(shell)
 	facets := query.BuildTagFacetList(projects, false)
 	items := make([]listsurface.ListItem, 0, len(facets)+1)
 	items = append(items, listsurface.ListItem{
@@ -432,7 +463,7 @@ func (c *Controller) NewFilterContextsPicker(shell Shell,
 func (c *Controller) NewFilterProjectsPicker(shell Shell,
 	request operation.OperationExecutionRequest,
 ) (*valuepicker.OperationValuePickerModel, error) {
-	projects := slices.Clone(c.FilterScopeProjects(shell))
+	projects := slices.Clone(c.facetCensusProjects(shell))
 	slices.SortStableFunc(projects, func(a, b *models.Project) int {
 		return cmp.Or(
 			cmp.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name)),

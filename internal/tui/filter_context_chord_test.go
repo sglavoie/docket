@@ -219,3 +219,44 @@ func TestFilterTagsPickerNarrowsTagsAloneWithNoContextSection(t *testing.T) {
 		t.Fatalf("f# jump hint = %q, want the tag section alone", got)
 	}
 }
+
+// TestFilterContextPickerCountsWhatTheHiddenAxisAdmits keeps a facet row to what
+// choosing it would draw: a context only hidden work carries offers no row and
+// the counts leave hidden tasks out, until fH opens that population and then it
+// is all that counts.
+func TestFilterContextPickerCountsWhatTheHiddenAxisAdmits(t *testing.T) {
+	app := newContextFilterTestApp(t)
+	project := app.crossOutliner.Population.Projects[0]
+	project.Tasks[0].Hidden = true // one of the two errands
+	project.Tasks = append(project.Tasks, &models.Task{
+		ID: "secret", ShortID: 6, Title: "Secret", WorkflowState: models.StateBacklog, Context: "vault", Hidden: true,
+	})
+	project.BuildTaskTree()
+
+	counts := func() map[listsurface.ListItemID]string {
+		t.Helper()
+		cmd := pressFilterChord(t, app, "fc")
+		if cmd == nil {
+			t.Fatal("fc produced no value-request command")
+		}
+		app.handleOperationOverlayMessage(cmd())
+		got := map[listsurface.ListItemID]string{}
+		for _, item := range app.operations.ValuePicker.Surface().Items() {
+			got[item.ID] = item.SecondaryText
+		}
+		app.operations.ValuePicker = nil
+		return got
+	}
+	visible := counts()
+	if _, ok := visible["filter-context:vault"]; ok || visible["filter-context:errand"] != "1 task" {
+		t.Fatalf("visible census = %v, want no vault row and one errand", visible)
+	}
+	app.crossOutliner.Filter.HiddenMode = query.ProjectPopulationOnly
+	hidden := counts()
+	if hidden["filter-context:vault"] != "1 task" || hidden["filter-context:errand"] != "1 task" {
+		t.Fatalf("hidden census = %v, want the hidden vault and errand alone", hidden)
+	}
+	if _, ok := hidden["filter-context:deep"]; ok {
+		t.Fatalf("hidden census offered a context only visible work carries: %v", hidden)
+	}
+}

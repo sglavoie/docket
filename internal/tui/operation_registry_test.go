@@ -42,7 +42,7 @@ func TestOperationRegistryRejectsDuplicateIDsAndUnconditionalShortcutCollisions(
 		t.Fatalf("Register shortcut collision error = %v, want shortcut error", err)
 	}
 
-	projectOnly := operationTestDescriptor("project.edit", "Edit project")
+	projectOnly := operationTestDescriptor("project.edit", "Edit Project")
 	projectOnly.DirectKey = "e"
 	projectOnly.RequiredCapabilities = operation.NewCapabilitySet(operation.CapabilityProjectScope)
 	taskOnly := operationTestDescriptor("task.edit-detail", "Edit task detail")

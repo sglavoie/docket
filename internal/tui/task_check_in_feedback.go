@@ -29,7 +29,7 @@ import (
 //
 // spoken makes the note a once-per-session reminder rather than a refrain: the
 // first unscheduled Doing or Waiting commit teaches the route, and every later
-// one stays quiet, since the keyless `Set up check-ins` entry is still in the
+// one stays quiet, since the keyless `Set Up Check-Ins` entry is still in the
 // menu bar for whoever wants it.
 type checkInFeedbackController struct {
 	seen   map[string]bool
@@ -165,7 +165,7 @@ func (m *AppModel) committedCheckInTitles(results []app.TaskResult) []string {
 //
 // The route is the keyless, target-free menu entry, deliberately not a key: `@`
 // and the row menu operate on the cursor, and the task this note is about may
-// have moved out from under it the moment it changed state. Set up check-ins
+// have moved out from under it the moment it changed state. Set Up Check-Ins
 // names its own population — unscheduled Doing and Waiting work — which always
 // contains whatever the sentence just counted. The note names the negotiated menu shortcut, the
 // key that opens the Task menu holding that entry, since "menu" alone does not
@@ -187,13 +187,13 @@ func checkInFeedbackNote(titles []string, spoken, menuKey string) string {
 		return ""
 	case 1:
 		if lineNamesTitle(spoken, titles[0]) {
-			return "No check-in · " + menuKey + ": Set up check-ins"
+			return "No check-in · " + menuKey + ": Set Up Check-Ins"
 		}
 		return "No check-in: " +
 			textfit.TruncateToVisualWidth(titles[0], checkInFeedbackTitleWidth) +
-			" · " + menuKey + ": Set up check-ins"
+			" · " + menuKey + ": Set Up Check-Ins"
 	default:
-		return fmt.Sprintf("No check-in: %d tasks · %s: Set up check-ins", len(titles), menuKey)
+		return fmt.Sprintf("No check-in: %d tasks · %s: Set Up Check-Ins", len(titles), menuKey)
 	}
 }
 

@@ -156,28 +156,28 @@ func NotesSurfaceOperationDescriptors() []operation.OperationDescriptor {
 	return []operation.OperationDescriptor{
 		surface(
 			OperationNotesCreate,
-			"New note",
+			"New Note",
 			"Create a note after choosing its location",
 			operation.OperationCategoryNote,
 			operation.OperationRiskMutation,
 		),
 		surface(
 			OperationNotesSearch,
-			"Search notes",
+			"Search Notes",
 			"Search note titles and bodies",
 			operation.OperationCategoryFilter,
 			operation.OperationRiskReadOnly,
 		),
 		surface(
 			OperationNotesScope,
-			"Choose Notes scope",
+			"Choose Notes Scope",
 			"Show all notes, global notes, or one project's notes",
 			operation.OperationCategoryNote,
 			operation.OperationRiskReadOnly,
 		),
 		surface(
 			OperationNotesActions,
-			"Note actions",
+			"Note Actions",
 			"Open the action sheet for the note under the cursor",
 			operation.OperationCategoryNote,
 			operation.OperationRiskReadOnly,
@@ -197,16 +197,16 @@ func NotesSurfaceOperationDescriptors() []operation.OperationDescriptor {
 // unchanged.
 func NotesOperationManifest() []operation.OperationManifestEntry {
 	return []operation.OperationManifestEntry{
-		{ID: OperationNoteOpen, Label: "Open note", Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: OperationNotesCreate, Label: "New note", Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: OperationNoteRename, Label: "Rename note", Provider: operation.ValueProviderNoteTitle, Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: OperationNoteMove, Label: "Move note", Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: OperationNotesSearch, Label: "Search notes", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: OperationNotesScope, Label: "Choose Notes scope", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: OperationNoteCopyTitle, Label: "Copy note title", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: OperationNoteCopyPath, Label: "Copy note path", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: OperationNotesActions, Label: "Note actions", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: OperationNoteDelete, Label: "Delete note", Risk: operation.OperationRiskDestructive},
+		{ID: OperationNoteOpen, Label: "Open Note", Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: OperationNotesCreate, Label: "New Note", Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: OperationNoteRename, Label: "Rename Note", Provider: operation.ValueProviderNoteTitle, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: OperationNoteMove, Label: "Move Note", Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: OperationNotesSearch, Label: "Search Notes", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: OperationNotesScope, Label: "Choose Notes Scope", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: OperationNoteCopyTitle, Label: "Copy Note Title", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: OperationNoteCopyPath, Label: "Copy Note Path", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: OperationNotesActions, Label: "Note Actions", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: OperationNoteDelete, Label: "Delete Note", Risk: operation.OperationRiskDestructive},
 	}
 }
 

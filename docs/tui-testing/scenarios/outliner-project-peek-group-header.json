@@ -19,7 +19,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "C on that same header writes a project comment", "key": "C" },
-    { "type": "assert", "assert": "contains", "value": "Add project comment" },
+    { "type": "assert", "assert": "contains", "value": "Add Project Comment" },
     { "type": "text", "text": "Kickoff moved to Monday morning" },
     { "type": "key", "label": "a body of its own newlines, which the pane spends a row each on", "key": "enter" },
     { "type": "text", "text": "Room four is booked" },

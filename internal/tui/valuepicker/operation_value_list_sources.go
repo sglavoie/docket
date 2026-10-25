@@ -29,7 +29,7 @@ type datePreset struct {
 // deferral is an instant, so it also offers hour offsets and a morning row.
 func OperationDatePresets(deferred bool, now time.Time) []datePreset {
 	dayOffset := func(n int) func() time.Time {
-		return func() time.Time { return util.StartOfDay(now).AddDate(0, 0, n) }
+		return func() time.Time { return util.StartOfCalendarDaysAfter(now, n) }
 	}
 	hourOffset := func(n int) func() time.Time {
 		return func() time.Time { return now.Add(time.Duration(n) * time.Hour) }

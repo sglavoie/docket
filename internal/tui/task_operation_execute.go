@@ -302,9 +302,12 @@ func (m *AppModel) executeTaskMarkReviewedOperation(
 			invocation.Descriptor.ID,
 		)}
 	}
-	task, _ := m.taskAndProjectForIdentity(identity)
+	task, project := m.taskAndProjectForIdentity(identity)
 	if task == nil {
 		return operation.OperationHandlerResult{Err: fmt.Errorf("task is no longer available")}
+	}
+	if models.TaskEffectivelyHidden(project, task) {
+		return operation.OperationHandlerResult{Err: fmt.Errorf("task is hidden: unhide it with wh to review it")}
 	}
 	if !models.TaskAllowsExplicitReview(task, time.Now()) {
 		return operation.OperationHandlerResult{Err: fmt.Errorf(

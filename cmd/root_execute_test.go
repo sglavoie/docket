@@ -154,6 +154,7 @@ func TestStrayArgumentsAreRefusedByName(t *testing.T) {
 		{[]string{"sync", "resolve", "3f2a"}, []string{"choose a resolution: --version N, --current, or --file PATH", "Run 'tt sync resolve --help' for usage"}},
 		{[]string{"sync", "resolve", "3f2a", "--current", "--version", "2"}, []string{"--version and --current cannot be combined; choose one"}},
 		{[]string{"doctor", "--bogus"}, []string{"unknown flag: --bogus", "Run 'tt doctor --help' for usage"}},
+		{[]string{"sync", "enroll"}, []string{`required flag(s) "exchange", "working-copy" not set`, "Run 'tt sync enroll --help' for usage"}},
 	} {
 		t.Run(strings.Join(tc.args, "_"), func(t *testing.T) {
 			var out strings.Builder

@@ -21,7 +21,12 @@ func TestCheckInSetupDeterministicActivePopulation(t *testing.T) {
 	first, second := active("a", 1, models.StateDoing), active("b", 2, models.StateWaiting)
 	scheduled := active("scheduled", 3, models.StateDoing)
 	scheduled.NextCheckIn = checkInSchedule(2, 0).Next
-	p := newProject("p", "Alpha", second, scheduled, first, newTask("backlog", 4, "backlog"))
+	// Hidden work stays out, whether it stores the flag or inherits it.
+	hiddenParent := active("hidden", 5, models.StateDoing)
+	hiddenParent.Hidden = true
+	hiddenChild := childOf("hidden-child", 6, "hidden-child", hiddenParent)
+	hiddenChild.ApplyWorkflowState(models.StateWaiting)
+	p := newProject("p", "Alpha", second, scheduled, first, newTask("backlog", 4, "backlog"), hiddenParent, hiddenChild)
 	p.Slug = "alpha"
 	q := newProject("q", "Beta", active("q1", 1, models.StateDoing))
 	q.Slug = "beta"

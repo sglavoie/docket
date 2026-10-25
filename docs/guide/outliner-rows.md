@@ -195,8 +195,9 @@ word is left off, since the lane's heading already says it. `review` and
 `review today` share the teal of a due-today date, and a late `review +<age>`
 turns amber, a warning rather than a missed deadline. Moving a task to Waiting with
 `ww` opens nothing: the move commits, and when the task has no check-in the
-footer says so — `No check-in: <task> · F10: Set up check-ins` — naming the
-keyless Task menu entry, which `F10` opens, that schedules one rather than
+footer says so — `No check-in: <task> · F10: Set Up Check-Ins`, with `Ctrl+M`
+in place of `F10` once the terminal confirms enhanced keyboard support — naming
+the keyless Task menu entry, which that key opens, that schedules one rather than
 asking for a date there and then. It is a reminder, not a refrain: the first such
 commit in a session says it, and later ones stay quiet.
 

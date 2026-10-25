@@ -6,11 +6,12 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-// ParseDate parses a natural language date string into a time.Time.
-// This is a convenience wrapper around util.ParseCalendarDate, so every
-// day-granular surface refuses the defer-only hour form by name.
-func ParseDate(input string) (time.Time, error) {
-	return util.ParseCalendarDate(input)
+// ParseDateAt parses a natural language date string into a time.Time,
+// resolving relative days against now. This is a convenience wrapper around
+// util.ParseCalendarDateAt, so every day-granular surface refuses the
+// defer-only hour form by name.
+func ParseDateAt(input string, now time.Time) (time.Time, error) {
+	return util.ParseCalendarDateAt(input, now)
 }
 
 // ParseDueDateValue parses a due-date value that may carry an optional trailing

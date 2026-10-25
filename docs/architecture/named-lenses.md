@@ -92,7 +92,7 @@ unowned axis cannot be diverged from — which is also
 what makes a later scope push or pop a real divergence. `LensModified` carves
 scope out of "navigating" for exactly that reason: moving the cursor, folding,
 selecting, and opening Peek all leave an unmodified lens unmodified, while
-entering or leaving a project scope marks it, and `Replace from current view` is
+entering or leaving a project scope marks it, and `Replace from Current View` is
 what adopts the scope the user moved to. `LensRestorationPoint`
 reuses the original capture whenever a lens is already live, so switching lenses
 replaces the definition while keeping the baseline: one `Esc` lands on the view

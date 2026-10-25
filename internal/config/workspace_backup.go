@@ -94,6 +94,36 @@ func CreateWorkspaceBackup(source, root string) (*WorkspaceBackupReport, error) 
 	return report, err
 }
 
+// missingBackupError names a directory holding no backup manifest in plain
+// words, while still unwrapping to the underlying fs.ErrNotExist.
+type missingBackupError struct {
+	dir string
+	err error
+}
+
+func (e *missingBackupError) Error() string {
+	return fmt.Sprintf("no backup at %s (%s is missing)", DisplayPath(e.dir), snapshotManifest)
+}
+
+func (e *missingBackupError) Unwrap() error { return e.err }
+
+// readWorkspaceBackupManifest decodes the manifest at the backup root, naming a
+// directory that holds none in plain words.
+func readWorkspaceBackupManifest(path string) (workspaceBackupManifest, error) {
+	var manifest workspaceBackupManifest
+	data, err := os.ReadFile(filepath.Join(path, snapshotManifest))
+	if errors.Is(err, fs.ErrNotExist) {
+		return manifest, &missingBackupError{dir: path, err: err}
+	}
+	if err != nil {
+		return manifest, fmt.Errorf("reading backup manifest: %w", err)
+	}
+	if err = json.Unmarshal(data, &manifest); err != nil {
+		return manifest, fmt.Errorf("decoding backup manifest: %w", err)
+	}
+	return manifest, nil
+}
+
 // VerifyWorkspaceBackup reads every file and checks that the backup contains
 // exactly the regular files named by its manifest, with matching SHA-256 bytes.
 // It never opens or changes the live source workspace.
@@ -102,14 +132,9 @@ func VerifyWorkspaceBackup(path string) (*WorkspaceBackupReport, error) {
 	if err != nil {
 		return nil, err
 	}
-	manifestPath := filepath.Join(path, snapshotManifest)
-	data, err := os.ReadFile(manifestPath)
+	manifest, err := readWorkspaceBackupManifest(path)
 	if err != nil {
-		return nil, fmt.Errorf("reading backup manifest: %w", err)
-	}
-	var manifest workspaceBackupManifest
-	if err = json.Unmarshal(data, &manifest); err != nil {
-		return nil, fmt.Errorf("decoding backup manifest: %w", err)
+		return nil, err
 	}
 	if manifest.Format != workspaceBackupFormat || manifest.FormatVersion != workspaceBackupFormatVersion ||
 		manifest.Source == "" || manifest.CreatedAt.IsZero() || len(manifest.Files) == 0 {

@@ -53,15 +53,15 @@ func ProjectBulkOperationDescriptors() []operation.OperationDescriptor {
 	}
 	return []operation.OperationDescriptor{
 		operation.WithValueProvider(
-			descriptor(operationProjectBulkAddTag, "Add tag", "Add one tag to every selected project", "bulk tag projects"),
+			descriptor(operationProjectBulkAddTag, "Add Tag", "Add one tag to every selected project", "bulk tag projects"),
 			operation.ValueProviderTagName,
 		),
 		operation.WithValueProvider(
-			descriptor(operationProjectBulkRemoveTag, "Remove tag", "Remove one tag from every selected project", "bulk untag projects"),
+			descriptor(operationProjectBulkRemoveTag, "Remove Tag", "Remove one tag from every selected project", "bulk untag projects"),
 			operation.ValueProviderTagName,
 		),
-		descriptor(operationProjectBulkPark, "Park projects", "Hide every selected project from Active Projects"),
-		descriptor(operationProjectBulkUnpark, "Unpark projects", "Return every selected project to Active Projects"),
+		descriptor(operationProjectBulkPark, "Park Projects", "Hide every selected project from Active Projects"),
+		descriptor(operationProjectBulkUnpark, "Unpark Projects", "Return every selected project to Active Projects"),
 	}
 }
 

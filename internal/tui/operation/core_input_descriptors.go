@@ -253,8 +253,8 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		withTaskTarget(core(OperationCoreExternalEditor, "Open in External Editor", OperationCategoryTask, TargetCardinalityOne, OperationRiskMutation, "edit task externally", "external editor")),
 		outlineEditor,
 		core(OperationCoreBacklog, "Move to Backlog", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "backlog"),
-		core(OperationCoreToday, "Toggle Today plan", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "today"),
-		core(OperationCoreNext, "Toggle Next plan", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "next"),
+		core(OperationCoreToday, "Toggle Today Plan", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "today"),
+		core(OperationCoreNext, "Toggle Next Plan", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskMutation, "next"),
 		core(OperationCoreActions, "Task Actions", OperationCategoryTask, TargetCardinalityOneOrMore, OperationRiskReadOnly, "action sheet"),
 		core(OperationCoreCursorDown, "Move Cursor Down", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(OperationCoreCursorUp, "Move Cursor Up", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
@@ -364,9 +364,9 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		// session's chrome, never on a task or a project. `--no-advisories` is the
 		// other way in, so nothing here spends a root key on it.
 		core(OperationCoreToggleAdvisories, "Toggle Advisories", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "conflict count", "hide warnings"),
-		core(OperationCoreLastMessage, "Recent messages", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "feedback", "last error", "last message"),
-		core(OperationCoreClearSearchHistory, "Clear search history", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "forget queries", "recall"),
-		core(OperationCoreSetUpCheckIns, "Set up check-ins", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "schedule active work", "check-in setup"),
+		core(OperationCoreLastMessage, "Recent Messages", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "feedback", "last error", "last message"),
+		core(OperationCoreClearSearchHistory, "Clear Search History", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "forget queries", "recall"),
+		core(OperationCoreSetUpCheckIns, "Set Up Check-Ins", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "schedule active work", "check-in setup"),
 		core(OperationCoreUndo, "Undo", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation),
 		core(OperationCoreRedo, "Redo", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation),
 		core(OperationCoreBack, "Back", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),

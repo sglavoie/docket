@@ -50,7 +50,7 @@ func requireCheckInNote(t *testing.T, model *AppModel, want string) {
 	// so the task is still named exactly once on the footer.
 	title, single := strings.CutPrefix(want, "No check-in: ")
 	if single && strings.Contains(model.feedback.message, title) &&
-		strings.Contains(model.feedback.message, "No check-in · F10: Set up check-ins") {
+		strings.Contains(model.feedback.message, "No check-in · F10: Set Up Check-Ins") {
 		return
 	}
 	t.Fatalf("footer = %q, want %q", model.feedback.message, want)
@@ -288,17 +288,17 @@ func TestCheckInFeedbackRidesTheLiveLineAndStandsAlone(t *testing.T) {
 			case "plain":
 				cluster.message = "Captured 1 task"
 			}
-			appended := cluster.appendNote("No check-in: one · F10: Set up check-ins")
+			appended := cluster.appendNote("No check-in: one · F10: Set Up Check-Ins")
 			if appended != (live != "none") {
 				t.Fatalf("appendNote=%v with a %s line", appended, live)
 			}
 			switch live {
 			case "recovery":
-				if cluster.message != "Set Doing: 1 task · No check-in: one · F10: Set up check-ins · u undo · Ctrl+O origin" {
+				if cluster.message != "Set Doing: 1 task · No check-in: one · F10: Set Up Check-Ins · u undo · Ctrl+O origin" {
 					t.Fatalf("recovery line = %q", cluster.message)
 				}
 			case "plain":
-				if cluster.message != "Captured 1 task · No check-in: one · F10: Set up check-ins" {
+				if cluster.message != "Captured 1 task · No check-in: one · F10: Set Up Check-Ins" {
 					t.Fatalf("plain line = %q", cluster.message)
 				}
 			default:
@@ -328,7 +328,7 @@ func TestCheckInFeedbackUnderNestedOverlayStillSpeaks(t *testing.T) {
 	if model.operations.CheckInEditor != blocker {
 		t.Fatal("feedback replaced the mounted overlay")
 	}
-	if !strings.Contains(model.feedback.message, "Change Status: task → Doing · No check-in · F10: Set up check-ins") {
+	if !strings.Contains(model.feedback.message, "Change Status: task → Doing · No check-in · F10: Set Up Check-Ins") {
 		t.Fatalf("footer under an overlay = %q", model.feedback.message)
 	}
 }
@@ -411,7 +411,7 @@ func TestCheckInHintFollowsNegotiatedKeyboard(t *testing.T) {
 			t.Fatalf("flags %d: hint %s", flags, model.menuOpenHint())
 		}
 		line := checkInFeedbackNote([]string{"task"}, "", model.menuOpenHint())
-		if !strings.Contains(line, want+": Set up check-ins") {
+		if !strings.Contains(line, want+": Set Up Check-Ins") {
 			t.Fatal(line)
 		}
 	}
@@ -445,7 +445,7 @@ func TestCheckInNoteRecognizesAWideTitleByItsVisualCut(t *testing.T) {
 		"visual cut": "Change Status: " + textfit.TruncateToVisualWidth(title, checkInFeedbackTitleWidth) + " → Doing",
 		"rune cut":   "Change Status: " + string([]rune(title)[:checkInFeedbackTitleWidth-1]) + "… → Doing",
 	} {
-		if got := checkInFeedbackNote([]string{title}, spoken, "F10"); got != "No check-in · F10: Set up check-ins" {
+		if got := checkInFeedbackNote([]string{title}, spoken, "F10"); got != "No check-in · F10: Set Up Check-Ins" {
 			t.Fatalf("%s: note named the title twice: %q", name, got)
 		}
 	}

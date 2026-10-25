@@ -60,7 +60,7 @@ func TestLensPickerSpaceOpensManagementActionsOverThePicker(t *testing.T) {
 	if model.lenses.Picker() == nil {
 		t.Error("the picker must stay mounted beneath the action sheet")
 	}
-	want := []string{"Rename lens", "Replace from current view", "Duplicate lens", "Delete lens"}
+	want := []string{"Rename Lens", "Replace from Current View", "Duplicate Lens", "Delete Lens"}
 	if got := sheetRowTitles(t, model); !slices.Equal(got, want) {
 		t.Fatalf("sheet rows = %v, want %v", got, want)
 	}

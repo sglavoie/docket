@@ -18,7 +18,7 @@ returns to the view you searched from.
 | Include parked or archived projects | `F` outside ranked search |
 | See hidden tasks | `fH` outside ranked search |
 | Explain missing work | `Q` |
-| Save this view | `\` → Save current view |
+| Save this view | `\` → Save Current View |
 | Change order | `o` |
 
 ## Filters and search
@@ -112,12 +112,12 @@ A lens saves a useful combination of mode, query, filters, sort, and optional
 project scope. A lens saved under `fH` keeps `+hidden:only`, so it reopens on
 hidden work. To save one, arrange the view, press `\`, select **Save current
 view**, and name it. Reopen it from the same picker with `Enter` or its numbered
-shortcut. **Add built-in view** offers ready-made views such as Waiting and
+shortcut. **Add Built-in View** offers ready-made views such as Waiting and
 Needs Review.
 
 A `*` beside an active lens means the view differs from its saved settings.
 `Q` shows what changed. To save those changes, open the lens picker, select the
-lens, and use `Space` → **Replace from current view**. Review the change summary;
+lens, and use `Space` → **Replace from Current View**. Review the change summary;
 lens edits are not part of task undo history.
 
 `Esc` leaves a lens. Searching while one is active temporarily suspends it;

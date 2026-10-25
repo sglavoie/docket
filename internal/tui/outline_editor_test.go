@@ -40,6 +40,29 @@ func TestOutlineDumpRendersIndentedParentageAndMarkers(t *testing.T) {
 	}
 }
 
+// TestOutlineDumpNamesEachHiddenSubtreeInAComment keeps hidden work in the
+// buffer, so removing a parent never orphans it, and names each hidden subtree
+// once in a comment the parser skips: the round trip still yields every line.
+func TestOutlineDumpNamesEachHiddenSubtreeInAComment(t *testing.T) {
+	project := outlineTestProject(t)
+	project.Tasks[1].Hidden = true // Token refresh path, parent of Retry budget
+	project.Tasks[2].Hidden = true // stored again inside the hidden subtree
+	buffer, dumped, err := dumpOutlineBuffer(project, nil, "All", time.Now())
+	if err != nil {
+		t.Fatalf("dump: %v", err)
+	}
+	if got := strings.Count(buffer, outlineHiddenSubtreeComment+"\n"); got != 1 {
+		t.Fatalf("hidden comments = %d, want one per hidden subtree:\n%s", got, buffer)
+	}
+	if !strings.Contains(buffer, outlineHiddenSubtreeComment+"\n  Token refresh path") {
+		t.Fatalf("the comment does not stand above the hidden subtree:\n%s", buffer)
+	}
+	lines, problems := grammar.ParseOutlineBuffer(buffer, project, nil)
+	if len(problems) != 0 || len(lines) != len(dumped) {
+		t.Fatalf("round trip = %d lines, %v; want %d lines", len(lines), problems, len(dumped))
+	}
+}
+
 // TestOutlineDumpIsDeterministic keeps the buffer a stable function of the
 // project, so an unedited round trip can never report a change nobody made.
 func TestOutlineDumpIsDeterministic(t *testing.T) {

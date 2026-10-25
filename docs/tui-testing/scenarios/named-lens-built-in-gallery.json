@@ -27,7 +27,7 @@
     { "type": "wait" },
     { "type": "assert", "label": "the added template is the live lens", "assert": "contains", "value": "Lens: Overdue" },
     { "type": "assert", "label": "and both overlays closed behind it", "assert": "not_contains", "value": "Add Built-in View" },
-    { "type": "assert", "assert": "not_contains", "value": "Save current view" },
+    { "type": "assert", "assert": "not_contains", "value": "Save Current View" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" },
 
@@ -46,8 +46,8 @@
     { "type": "resize", "width": 100, "height": 35 },
 
     { "type": "key", "label": "Esc leaves the gallery for the picker that opened it", "key": "esc" },
-    { "type": "assert", "assert": "not_contains", "value": "Add Built-in View" },
-    { "type": "assert", "assert": "contains", "value": "Save current view" },
+    { "type": "assert", "label": "the gallery's own rows are gone; the picker still offers its row", "assert": "not_contains", "value": "Already added as \"Overdue\"" },
+    { "type": "assert", "assert": "contains", "value": "Save Current View" },
     { "type": "key", "label": "and the next Esc closes the picker without changing the view", "key": "esc" },
     { "type": "assert", "assert": "contains", "value": "Lens: Overdue" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },

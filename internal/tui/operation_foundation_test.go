@@ -225,7 +225,7 @@ func TestOperationTargetResolverResolvesTypedEntityIdentities(t *testing.T) {
 	}
 
 	current := operation.OperationDescriptor{
-		ID: "note.rename", Label: "Rename note", Category: operation.OperationCategoryNote,
+		ID: "note.rename", Label: "Rename Note", Category: operation.OperationCategoryNote,
 		TargetSource: operation.OperationTargetCurrentEntity, TargetCardinality: operation.TargetCardinalityOne,
 		Risk: operation.OperationRiskMutation,
 	}

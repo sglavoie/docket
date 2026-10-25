@@ -161,19 +161,32 @@ func ParseRelativeDateWithConfig(input, weekEndDay string) (time.Time, error) {
 // ParseRelativeDateWithConfigAt is ParseRelativeDateWithConfig evaluated from
 // now's calendar day rather than the wall clock's, so a caller holding an
 // injected clock resolves "tomorrow" against the same day it judges with.
+//
+// The arithmetic runs on now's civil date copied into UTC, the same discipline
+// ParseCheckInDateAt follows, and the start of the resulting date is rebuilt in
+// now's location only once, at the end. Stepping a local day-start instead goes
+// wrong in a zone whose daylight-saving change skips midnight: America/Havana
+// has no 00:00 on 2026-03-08, so AddDate from 03-07 lands on 23:00 the 7th, and
+// AddDate from that date's 01:00 start carries the hour onto the next day, where
+// it reads as a due time nobody typed.
 func ParseRelativeDateWithConfigAt(input, weekEndDay string, now time.Time) (time.Time, error) {
 	input = normalizeDateInput(input)
-	today := StartOfDay(now)
 
 	if date, ok := parseExactDate(input); ok {
 		return date, nil
 	}
-	return parseRelativeDateFromDay(input, weekEndDay, today)
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	civil, err := parseRelativeDateFromDay(input, weekEndDay, today)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return StartOfCalendarDate(civil.Year(), civil.Month(), civil.Day(), now.Location())
 }
 
 // parseRelativeDateFromDay evaluates normalized date expressions from the
-// supplied day. Check-ins use a UTC civil day here to keep local midnight gaps
-// out of the arithmetic; due and defer retain their local StartOfDay base.
+// supplied day. Every caller hands it a UTC civil day, which keeps local
+// midnight gaps out of the arithmetic; the caller rebuilds the result's start in
+// the location it means.
 func parseRelativeDateFromDay(input, weekEndDay string, today time.Time) (time.Time, error) {
 	if date, ok := parseKeywordDate(input, weekEndDay, today); ok {
 		return date, nil

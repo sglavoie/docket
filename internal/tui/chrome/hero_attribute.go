@@ -66,7 +66,7 @@ func PickHeroAttribute(t *models.Task, now time.Time) HeroKind {
 	if t.IsOverdueAt(now) {
 		return HeroOverdue
 	}
-	if models.TaskNeedsAttention(t, now) {
+	if models.TaskOwesReviewAttention(nil, t, now) {
 		return HeroReview
 	}
 	if t.IsDueTodayAt(now) {

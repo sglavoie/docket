@@ -86,12 +86,12 @@
     },
     {
       "type": "command",
-      "command": "Set up check-ins"
+      "command": "Set Up Check-Ins"
     },
     {
       "type": "assert",
       "assert": "contains",
-      "value": "Set up check-ins"
+      "value": "Set Up Check-Ins"
     },
     {
       "type": "assert",

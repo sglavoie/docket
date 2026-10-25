@@ -272,6 +272,12 @@ func TestMarkReviewedRefusesIneligibleTasks(t *testing.T) {
 			task.ApplyWorkflowState(models.StateCanceled)
 			task.UpdatedAt = markReviewedStale
 		}},
+		// Hiding suspends the review: even named, a hidden task is refused.
+		{"hidden and flagged", func(task *models.Task) {
+			task.Review = true
+			task.Hidden = true
+			task.UpdatedAt = markReviewedFresh
+		}},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			task := newTask("t1", 1, "Chase the vendor")

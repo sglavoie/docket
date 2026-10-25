@@ -285,8 +285,8 @@ func TestHelpTaskGroupsKeepDailyWorkAheadOfDetails(t *testing.T) {
 
 func TestHelpShortcutColumnsAlignAcrossGroupsAndCategories(t *testing.T) {
 	items := []operation.HelpItem{
-		{Key: "wg", Description: "Start task", Category: "Tasks", Group: "Status", Order: 200},
-		{Key: "wd", Description: "Complete task", Category: "Tasks", Group: "Status", Order: 201},
+		{Key: "wg", Description: "Start Task", Category: "Tasks", Group: "Status", Order: 200},
+		{Key: "wd", Description: "Complete Task", Category: "Tasks", Group: "Status", Order: 201},
 		{Key: "u", Description: "Undo", Category: "Tasks", Group: "Recovery", Order: 300},
 		{Key: "Ctrl+R", Description: "Redo", Category: "Tasks", Group: "Recovery", Order: 301},
 		{Key: "o@", Description: "Sort by Due Date", Category: "Sorting"},

@@ -188,6 +188,16 @@ func ParseCalendarDate(input string) (time.Time, error) {
 	return ParseRelativeDate(input)
 }
 
+// ParseCalendarDateAt is ParseCalendarDate read against a supplied now, so a
+// caller holding one clock for a whole pass resolves relative days against it.
+func ParseCalendarDateAt(input string, now time.Time) (time.Time, error) {
+	input = normalizeDateInput(input)
+	if relativeHoursRe.MatchString(input) {
+		return time.Time{}, errHoursAreDeferOnly
+	}
+	return ParseRelativeDateWithConfigAt(input, "sun", now)
+}
+
 // clockTimeRe matches an explicit hh:mm clock time (00:00–23:59 is enforced by
 // ParseDueDate, not the pattern, so the caller can name an out-of-range value).
 var clockTimeRe = regexp.MustCompile(`^([0-9]{1,2}):([0-9]{2})$`)
@@ -244,8 +254,22 @@ func normalizeDateInput(input string) string {
 	return strings.Join(strings.Fields(strings.ToLower(strings.TrimSpace(input))), " ")
 }
 
+// parseExactDate reads a written date as the start of that date in the local
+// zone. The spelling is parsed in UTC and rebuilt through StartOfCalendarDate,
+// because parsing in a zone whose midnight a DST change skipped answers with
+// 23:00 on the previous day. A date the local zone does not have at all is not
+// a match, so the caller reports it as unrecognized rather than storing a
+// neighbor.
 func parseExactDate(input string) (time.Time, bool) {
-	return parseExactDateIn(input, time.Local)
+	civil, ok := parseExactDateIn(input, time.UTC)
+	if !ok {
+		return time.Time{}, false
+	}
+	start, err := StartOfCalendarDate(civil.Year(), civil.Month(), civil.Day(), time.Local)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return start, true
 }
 
 // parseExactDateIn is parseExactDate with the location named, so a caller that
@@ -280,5 +304,5 @@ func daysUntilWeekday(today time.Time, targetDay time.Weekday, includeToday bool
 // day that falls on weekday, so it never answers today: on a Monday the next
 // Monday is a week away, and on a Saturday the coming Saturday is too.
 func NextWeekdayAfter(now time.Time, weekday time.Weekday) time.Time {
-	return StartOfDay(now).AddDate(0, 0, daysUntilWeekday(now, weekday, false))
+	return StartOfCalendarDaysAfter(now, daysUntilWeekday(now, weekday, false))
 }

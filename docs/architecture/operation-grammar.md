@@ -75,7 +75,7 @@ because its rows name more than one kind of entity. `Space` resolves against the
 row under the cursor — a checklist item, a project group header, or a task — and
 `outlinerProjectOperationManifest` is the third answer. One-path is per-surface,
 so an operation may legitimately be a direct key on one surface and a menu row
-on another. Edit project used to be that example — `e` on the Project Hub, a menu
+on another. Edit Project used to be that example — `e` on the Project Hub, a menu
 row here — and stopped being one when the Outliner's `e` learned to read the row
 under the cursor: `e` edits the task, the checklist item, or the project the
 cursor names, exactly one of the three descriptors applying at any cursor, so the
@@ -85,10 +85,10 @@ Delete. The narrowing that makes it safe is
 the cursor is the only thing that says which project was meant, and
 `ProjectOperationApplicable`'s sole-scope fallback — right for a Hub row that
 already named its project — would otherwise edit the one scoped project from a
-section header or an empty projection. Add project comment is the second
+section header or an empty projection. Add Project Comment is the second
 operation behind that same narrowing, for the same reason and on the same terms:
 `C` is a root key too, and a quick comment that borrowed the sole scoped project
-from a section header would write to a project the user never pointed at. Project comments is the third,
+from a section header would write to a project the user never pointed at. Project Comments is the third,
 and the reason the set is a set rather than a special case: `;` is a root key on
 the same terms, so it declares itself in that map instead of restating the
 guard. `validateOutlinerOperationOnePath`
@@ -538,7 +538,7 @@ whether or not it offered anything, so a duplicate delivery, a reload, and a
 navigation redraw all say nothing a second time.
 
 The note names what was committed and routes to the keyless, target-free
-`Set up check-ins` menu entry. It never names `@` or `Space`, because those
+`Set Up Check-Ins` menu entry. It never names `@` or `Space`, because those
 operate on the cursor and the committed task may be a lane away by the time the
 line is read. A single task is named by a title truncated to
 `checkInFeedbackTitleWidth`, 24 columns and the twin of the 24 runes

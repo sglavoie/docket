@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/app"
@@ -42,6 +43,22 @@ func TestTransitionCompleteBlockedByIncompleteChild(t *testing.T) {
 	}
 	if len(repo.commits) != 0 {
 		t.Errorf("blocked completion committed %d times, want 0", len(repo.commits))
+	}
+}
+
+// TestTransitionBlockedByAHiddenChildSaysItIsHidden names the one blocker the
+// parent's own rows cannot show, so the refusal explains itself.
+func TestTransitionBlockedByAHiddenChildSaysItIsHidden(t *testing.T) {
+	project := parentWithChild(models.StateBacklog)
+	project.GetTaskByID("c").Hidden = true
+	repo := newFakeRepo(project)
+	_, err := newTestService(repo).Transition(app.StateRequest{Locator: repo.loc("p"), Target: models.StateDone})
+	var blocked *app.ChildrenBlockedError
+	if !errors.As(err, &blocked) || len(blocked.Children) != 1 || !blocked.Children[0].Hidden {
+		t.Fatalf("err = %v, want the blocking child marked hidden", err)
+	}
+	if !strings.Contains(err.Error(), "#2 child (backlog, hidden)") {
+		t.Fatalf("refusal = %q, want it to name the child as hidden", err.Error())
 	}
 }
 

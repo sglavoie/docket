@@ -22,8 +22,8 @@
 
     { "type": "key", "label": "the sheet fits the same terminal", "key": "space" },
     { "type": "assert", "assert": "contains", "value": "Comment Actions" },
-    { "type": "assert", "assert": "contains", "value": "Delete comment" },
-    { "type": "assert", "label": "the direct keys never repeat as menu rows", "assert": "not_contains", "value": "Expand comment" },
+    { "type": "assert", "assert": "contains", "value": "Delete Comment" },
+    { "type": "assert", "label": "the direct keys never repeat as menu rows", "assert": "not_contains", "value": "Expand Comment" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "close the sheet", "key": "esc" },
 

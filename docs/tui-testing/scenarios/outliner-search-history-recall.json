@@ -42,7 +42,7 @@
     {"type": "assert", "assert": "contains", "value": "Search: > zzq"},
     {"type": "assert", "assert": "no_layout_issues"},
     {"type": "key", "key": "enter"},
-    {"type": "command", "command": "Clear search history"},
+    {"type": "command", "command": "Clear Search History"},
     {"type": "assert", "label": "clearing history keeps the active query", "assert": "contains", "value": "zzq"},
     {"type": "key", "key": "esc"},
     {"type": "restart"},

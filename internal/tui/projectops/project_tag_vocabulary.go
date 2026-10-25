@@ -62,15 +62,15 @@ func projectTagVocabularyDescriptors() []operation.OperationDescriptor {
 	}
 	return []operation.OperationDescriptor{
 		operation.WithValueProvider(
-			descriptor(OperationProjectTagRenameAll, "Rename everywhere", "Rename this tag on every project carrying it"),
+			descriptor(OperationProjectTagRenameAll, "Rename Everywhere", "Rename this tag on every project carrying it"),
 			operation.ValueProviderTagName,
 		),
 		operation.WithValueProvider(
-			descriptor(OperationProjectTagRemoveAll, "Remove everywhere", "Remove this tag from every project carrying it"),
+			descriptor(OperationProjectTagRemoveAll, "Remove Everywhere", "Remove this tag from every project carrying it"),
 			operation.ValueProviderProjectTagDestination,
 		),
-		descriptor(OperationProjectTagParkAll, "Park all members", "Park every project carrying this tag"),
-		descriptor(OperationProjectTagUnparkAll, "Unpark all members", "Unpark every project carrying this tag"),
+		descriptor(OperationProjectTagParkAll, "Park All Members", "Park every project carrying this tag"),
+		descriptor(OperationProjectTagUnparkAll, "Unpark All Members", "Unpark every project carrying this tag"),
 	}
 }
 

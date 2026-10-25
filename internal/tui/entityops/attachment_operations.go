@@ -110,19 +110,19 @@ func attachmentOperationDescriptors() []operation.OperationDescriptor {
 		}
 	}
 	return []operation.OperationDescriptor{
-		attachment(OperationAttachmentAdd, "Add attachment", "Attach a file, URL, or code reference", operation.OperationRiskMutation),
-		attachment(OperationAttachmentOpen, "Open attachment", "Open this attachment with the system handler", operation.OperationRiskReadOnly),
-		attachment(OperationAttachmentOpenInEditor, "Open attachment in editor", "Open this attachment in the external editor", operation.OperationRiskReadOnly),
-		attachment(OperationAttachmentOpenOriginalDirectory, "Open original directory", "Open the directory the attached file was copied from", operation.OperationRiskReadOnly),
-		attachment(OperationAttachmentRevealOriginal, "Reveal original file", "Reveal the attached file's source in the file manager", operation.OperationRiskReadOnly),
-		attachment(OperationAttachmentOpenFolder, "Open attachments directory", "Open the task's attachments directory", operation.OperationRiskReadOnly),
-		attachment(OperationAttachmentDelete, "Delete attachment", "Remove this attachment and its stored copy", operation.OperationRiskDestructive),
-		attachment(OperationAttachmentUnlink, "Unlink attachment", "Remove this attachment but keep its stored copy", operation.OperationRiskDestructive),
-		attachment(OperationAttachmentCopyPath, "Copy attachment path", "Copy this attachment's path to the clipboard", operation.OperationRiskReadOnly),
-		attachment(OperationAttachmentCopyPathWithLine, "Copy attachment path with line", "Copy this code reference as path:line", operation.OperationRiskReadOnly),
-		attachment(OperationAttachmentReorderUp, "Reorder attachment up", "Move this attachment one position earlier", operation.OperationRiskMutation),
-		attachment(OperationAttachmentReorderDown, "Reorder attachment down", "Move this attachment one position later", operation.OperationRiskMutation),
-		attachment(OperationAttachmentActions, "Attachment actions", "Open the action sheet for the attachment under the cursor", operation.OperationRiskReadOnly),
+		attachment(OperationAttachmentAdd, "Add Attachment", "Attach a file, URL, or code reference", operation.OperationRiskMutation),
+		attachment(OperationAttachmentOpen, "Open Attachment", "Open this attachment with the system handler", operation.OperationRiskReadOnly),
+		attachment(OperationAttachmentOpenInEditor, "Open Attachment in Editor", "Open this attachment in the external editor", operation.OperationRiskReadOnly),
+		attachment(OperationAttachmentOpenOriginalDirectory, "Open Original Directory", "Open the directory the attached file was copied from", operation.OperationRiskReadOnly),
+		attachment(OperationAttachmentRevealOriginal, "Reveal Original File", "Reveal the attached file's source in the file manager", operation.OperationRiskReadOnly),
+		attachment(OperationAttachmentOpenFolder, "Open Attachments Directory", "Open the task's attachments directory", operation.OperationRiskReadOnly),
+		attachment(OperationAttachmentDelete, "Delete Attachment", "Remove this attachment and its stored copy", operation.OperationRiskDestructive),
+		attachment(OperationAttachmentUnlink, "Unlink Attachment", "Remove this attachment but keep its stored copy", operation.OperationRiskDestructive),
+		attachment(OperationAttachmentCopyPath, "Copy Attachment Path", "Copy this attachment's path to the clipboard", operation.OperationRiskReadOnly),
+		attachment(OperationAttachmentCopyPathWithLine, "Copy Attachment Path with Line", "Copy this code reference as path:line", operation.OperationRiskReadOnly),
+		attachment(OperationAttachmentReorderUp, "Reorder Attachment Up", "Move this attachment one position earlier", operation.OperationRiskMutation),
+		attachment(OperationAttachmentReorderDown, "Reorder Attachment Down", "Move this attachment one position later", operation.OperationRiskMutation),
+		attachment(OperationAttachmentActions, "Attachment Actions", "Open the action sheet for the attachment under the cursor", operation.OperationRiskReadOnly),
 	}
 }
 
@@ -133,19 +133,19 @@ func attachmentOperationDescriptors() []operation.OperationDescriptor {
 // behind the panel's own confirmation.
 func AttachmentOperationManifest() []operation.OperationManifestEntry {
 	return []operation.OperationManifestEntry{
-		{ID: OperationAttachmentAdd, Label: "Add attachment", Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: OperationAttachmentOpen, Label: "Open attachment", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: OperationAttachmentOpenInEditor, Label: "Open attachment in editor", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: OperationAttachmentCopyPath, Label: "Copy attachment path", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: OperationAttachmentCopyPathWithLine, Label: "Copy attachment path with line", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: OperationAttachmentReorderUp, Label: "Reorder attachment up", Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: OperationAttachmentReorderDown, Label: "Reorder attachment down", Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: OperationAttachmentActions, Label: "Attachment actions", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: OperationAttachmentRevealOriginal, Label: "Reveal original file", Risk: operation.OperationRiskReadOnly},
-		{ID: OperationAttachmentOpenOriginalDirectory, Label: "Open original directory", Risk: operation.OperationRiskReadOnly},
-		{ID: OperationAttachmentOpenFolder, Label: "Open attachments directory", Risk: operation.OperationRiskReadOnly},
-		{ID: OperationAttachmentUnlink, Label: "Unlink attachment", Risk: operation.OperationRiskDestructive},
-		{ID: OperationAttachmentDelete, Label: "Delete attachment", Risk: operation.OperationRiskDestructive},
+		{ID: OperationAttachmentAdd, Label: "Add Attachment", Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: OperationAttachmentOpen, Label: "Open Attachment", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: OperationAttachmentOpenInEditor, Label: "Open Attachment in Editor", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: OperationAttachmentCopyPath, Label: "Copy Attachment Path", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: OperationAttachmentCopyPathWithLine, Label: "Copy Attachment Path with Line", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: OperationAttachmentReorderUp, Label: "Reorder Attachment Up", Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: OperationAttachmentReorderDown, Label: "Reorder Attachment Down", Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: OperationAttachmentActions, Label: "Attachment Actions", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: OperationAttachmentRevealOriginal, Label: "Reveal Original File", Risk: operation.OperationRiskReadOnly},
+		{ID: OperationAttachmentOpenOriginalDirectory, Label: "Open Original Directory", Risk: operation.OperationRiskReadOnly},
+		{ID: OperationAttachmentOpenFolder, Label: "Open Attachments Directory", Risk: operation.OperationRiskReadOnly},
+		{ID: OperationAttachmentUnlink, Label: "Unlink Attachment", Risk: operation.OperationRiskDestructive},
+		{ID: OperationAttachmentDelete, Label: "Delete Attachment", Risk: operation.OperationRiskDestructive},
 	}
 }
 

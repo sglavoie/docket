@@ -111,7 +111,7 @@ func TestUXDailyUseIntegratedDailyLoopHoldsEveryChangeTogether(t *testing.T) {
 	uxDailyUseIntegratedSettle(t, driver)
 	uxDailyUseIntegratedRequireState(t, view, uxDailyUseIntegratedCapture, "doing")
 	footer := uxClarityFooter(driver)
-	if !strings.Contains(footer, "No check-in") || !strings.Contains(footer, "Set up check-ins") {
+	if !strings.Contains(footer, "No check-in") || !strings.Contains(footer, "Set Up Check-Ins") {
 		t.Fatalf("entering Doing left no note naming the unscheduled task and its route:\n%s", footer)
 	}
 	for _, interrupted := range []string{"Set Check-In", "Esc skips setup"} {
@@ -127,9 +127,9 @@ func TestUXDailyUseIntegratedDailyLoopHoldsEveryChangeTogether(t *testing.T) {
 	// route, and this is the step that spends it: the entry raises the setup pass
 	// over the list it was read from, which is the only thing entering Doing was
 	// allowed not to do on its own.
-	uxClarityPress(t, driver, UITestAction{Type: UITestActionCommand, Command: "Set up check-ins"})
+	uxClarityPress(t, driver, UITestAction{Type: UITestActionCommand, Command: "Set Up Check-Ins"})
 	setup := driver.Observe(ObserveOptions{})
-	if !strings.Contains(setup.PlainScreen, "Set up check-ins") {
+	if !strings.Contains(setup.PlainScreen, "Set Up Check-Ins") {
 		t.Fatalf("the check-in entry the footer names opened nothing\n%s", setup.PlainScreen)
 	}
 	if !strings.Contains(setup.PlainScreen, "Next check-in:") {

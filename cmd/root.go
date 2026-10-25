@@ -109,6 +109,15 @@ and migration-snapshot diagnostics.`, config.CurrentConfigVersion, storage.Curre
 	// nearest one, so a child's would shadow this hook and skip logging.
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		cmd.SilenceUsage = true
+		// Cobra checks required flags and flag groups only after this hook,
+		// and raises those refusals bare. Checking them here first gives them
+		// the same --help pointer every other command-line refusal carries.
+		if err := cmd.ValidateRequiredFlags(); err != nil {
+			return usageRefusal(cmd, err)
+		}
+		if err := cmd.ValidateFlagGroups(); err != nil {
+			return usageRefusal(cmd, err)
+		}
 		if commandLogs(cmd) {
 			openLogging()
 		}

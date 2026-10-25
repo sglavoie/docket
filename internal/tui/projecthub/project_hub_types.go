@@ -122,23 +122,35 @@ type ProjectTaskTally struct {
 
 // OverdueAt counts the tasks whose deadline has passed at now, by the one
 // definition the Outliner's project headers and the workspace pulse count with,
-// so the Hub can never report a different number for the same project.
+// so the Hub can never report a different number for the same project. Hidden
+// work is not counted, as the preview pane draws none of it.
 func (t ProjectTaskTally) OverdueAt(now time.Time) int {
+	lookup := &models.Project{Tasks: t.Tasks}
 	overdue := 0
 	for _, task := range t.Tasks {
-		if pulse.TaskIsOverdueAt(task, now) {
+		if pulse.TaskIsOverdueAt(task, now) && !models.TaskEffectivelyHidden(lookup, task) {
 			overdue++
 		}
 	}
 	return overdue
 }
 
+// ProjectTaskTallyOf counts the project's work outside the hidden population,
+// so a project whose open work is all hidden reads as having none, matching the
+// preview. Tasks keeps the whole tree, since inherited hiding resolves through
+// an ancestor the counts left out.
 func ProjectTaskTallyOf(project *models.Project) ProjectTaskTally {
-	return ProjectTaskTally{
-		Open:  project.CountActiveTasks(),
-		Total: project.CountTasks(),
-		Tasks: project.Tasks,
+	tally := ProjectTaskTally{Tasks: project.Tasks}
+	for _, task := range project.Tasks {
+		if task == nil || models.TaskEffectivelyHidden(project, task) {
+			continue
+		}
+		tally.Total++
+		if !task.IsTerminalState() {
+			tally.Open++
+		}
 	}
+	return tally
 }
 
 // projectHubActionTarget freezes project identity before an action sheet or

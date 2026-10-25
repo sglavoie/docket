@@ -101,7 +101,7 @@ func assertPolishFrameReading(t *testing.T, screen, state string, width int) {
 			t.Fatal("blank row below Help footer")
 		}
 		if width >= 60 {
-			for _, action := range []string{"Capture", "Edit Task", "Toggle Today plan", "Toggle Next plan", "Start task", "Complete task", "Undo", "Search", "Peek"} {
+			for _, action := range []string{"Capture", "Edit Task", "Toggle Today Plan", "Toggle Next Plan", "Start Task", "Complete Task", "Undo", "Search", "Peek"} {
 				if !strings.Contains(screen, action) {
 					t.Fatalf("first Help screen lost %q:\n%s", action, screen)
 				}

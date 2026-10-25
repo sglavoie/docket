@@ -201,6 +201,40 @@ func TestBridgeNamesAnUnavailableDependency(t *testing.T) {
 	h.rejects(h.call("query.task", map[string]any{"task": map[string]string{"project_id": atlasProject, "task_id": signingTask}}), CodeNotFound)
 }
 
+// TestBridgeKeepsHiddenWorkOutOfComputedRelations drops a hidden child from a
+// visible parent's subtasks, while the hidden task itself still reads as hidden
+// and still names the ancestors it inherits nothing from.
+func TestBridgeKeepsHiddenWorkOutOfComputedRelations(t *testing.T) {
+	h := newHarness(t, representativeFixture)
+	tasks := filepath.Join(h.dataDir, "projects", "atlas-launch", "tasks.md")
+	data, err := os.ReadFile(tasks)
+	if err != nil {
+		t.Fatal(err)
+	}
+	marker := "id: " + screenshotsTask + ", "
+	text := string(data)
+	start := strings.Index(text, marker)
+	if start < 0 {
+		t.Fatalf("fixture no longer holds %s", screenshotsTask)
+	}
+	end := start + strings.Index(text[start:], " -->")
+	text = text[:end] + ", hidden: true" + text[end:]
+	if err := os.WriteFile(tasks, []byte(text), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h.open(false)
+	notes := h.detail(atlasProject, releaseNotesTask)
+	requireTitles(t, "visible parent's children", relationTitles(notes.Relations.Children), []string{"Proofread release notes"})
+	if notes.Task.Hidden {
+		t.Fatal("a visible parent reads as hidden")
+	}
+	screenshots := h.detail(atlasProject, screenshotsTask)
+	if !screenshots.Task.Hidden {
+		t.Fatal("the hidden task does not say it is hidden")
+	}
+	requireTitles(t, "hidden task's ancestors", relationTitles(screenshots.Relations.Ancestors), []string{"Ship beta build", "Write release notes"})
+}
+
 // TestBridgeJoinsFromAStagedInbox is the iPhone's onboarding join: a desktop
 // enrolls the representative workspace and publishes it, the transport stages
 // the exchange into an inbox, and workspace.join builds and opens a working

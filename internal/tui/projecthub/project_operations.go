@@ -31,20 +31,20 @@ func ProjectOperationDescriptors() []operation.OperationDescriptor {
 		}
 	}
 	return []operation.OperationDescriptor{
-		descriptor(operation.OperationProjectOpen, "Open project", "Focus the Outliner on this project", operation.OperationCategoryProject, operation.OperationRiskReadOnly, "focus project"),
-		descriptor(operation.OperationScopeRenameProject, "Edit project", "Edit lean project metadata", operation.OperationCategoryProject, operation.OperationRiskMutation, "project settings"),
-		descriptor(operation.OperationScopePinProject, "Toggle project pin", "Pin or unpin the project", operation.OperationCategoryProject, operation.OperationRiskMutation, "pin project", "unpin project"),
-		descriptor(operation.OperationScopeArchiveProject, "Archive project", "Archive the project", operation.OperationCategoryProject, operation.OperationRiskDestructive),
-		descriptor(operation.OperationScopeRestoreProject, "Unarchive project", "Return the project to active", operation.OperationCategoryProject, operation.OperationRiskMutation, "restore archived project"),
-		descriptor(operation.OperationProjectDelete, "Delete project", "Delete the project and everything it owns", operation.OperationCategoryProject, operation.OperationRiskDestructive, "remove project", "destroy project"),
-		descriptor(operation.OperationScopeOpenProjectNote, "Open project notes", "Open notes owned by this project", operation.OperationCategoryNote, operation.OperationRiskReadOnly),
+		descriptor(operation.OperationProjectOpen, "Open Project", "Focus the Outliner on this project", operation.OperationCategoryProject, operation.OperationRiskReadOnly, "focus project"),
+		descriptor(operation.OperationScopeRenameProject, "Edit Project", "Edit lean project metadata", operation.OperationCategoryProject, operation.OperationRiskMutation, "project settings"),
+		descriptor(operation.OperationScopePinProject, "Toggle Project Pin", "Pin or unpin the project", operation.OperationCategoryProject, operation.OperationRiskMutation, "pin project", "unpin project"),
+		descriptor(operation.OperationScopeArchiveProject, "Archive Project", "Archive the project", operation.OperationCategoryProject, operation.OperationRiskDestructive),
+		descriptor(operation.OperationScopeRestoreProject, "Unarchive Project", "Return the project to active", operation.OperationCategoryProject, operation.OperationRiskMutation, "restore archived project"),
+		descriptor(operation.OperationProjectDelete, "Delete Project", "Delete the project and everything it owns", operation.OperationCategoryProject, operation.OperationRiskDestructive, "remove project", "destroy project"),
+		descriptor(operation.OperationScopeOpenProjectNote, "Open Project Notes", "Open notes owned by this project", operation.OperationCategoryNote, operation.OperationRiskReadOnly),
 		operation.WithValueProvider(
-			descriptor(operation.OperationProjectSetTags, "Set project tags", "Edit the tags carried by this project", operation.OperationCategoryProject, operation.OperationRiskMutation, "project tags", "park project", "unpark project"),
+			descriptor(operation.OperationProjectSetTags, "Set Project Tags", "Edit the tags carried by this project", operation.OperationCategoryProject, operation.OperationRiskMutation, "project tags", "park project", "unpark project"),
 			operation.ValueProviderProjectTags,
 		),
-		descriptor(operation.OperationProjectComments, "Project comments", "Read, edit, and delete this project's comments", operation.OperationCategoryProject, operation.OperationRiskReadOnly, "project comment panel", "read project comments"),
+		descriptor(operation.OperationProjectComments, "Project Comments", "Read, edit, and delete this project's comments", operation.OperationCategoryProject, operation.OperationRiskReadOnly, "project comment panel", "read project comments"),
 		operation.WithValueProvider(
-			descriptor(operation.OperationProjectAddComment, "Add project comment", "Append one comment to this project", operation.OperationCategoryProject, operation.OperationRiskMutation, "comment on project", "project comment"),
+			descriptor(operation.OperationProjectAddComment, "Add Project Comment", "Append one comment to this project", operation.OperationCategoryProject, operation.OperationRiskMutation, "comment on project", "project comment"),
 			operation.ValueProviderProjectComment,
 		),
 	}

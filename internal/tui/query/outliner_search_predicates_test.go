@@ -390,3 +390,30 @@ func TestSearchAttachmentPresenceSplitsThePopulation(t *testing.T) {
 		t.Error("&any &none admitted a task; a contradiction admits nothing")
 	}
 }
+
+// TestSearchDueOffsetsMatchTheirPersistedQueryReading holds the typed `/`
+// search and the persisted query a lens or the bridge reads to one meaning for
+// every relative due value, so a lens saved from a search admits what it showed.
+func TestSearchDueOffsetsMatchTheirPersistedQueryReading(t *testing.T) {
+	now := time.Date(2026, 8, 25, 12, 0, 0, 0, time.Local)
+	project := &models.Project{ID: "alpha", Slug: "alpha"}
+	at := func(days, hours int) *time.Time {
+		instant := time.Date(2026, 8, 25+days, 0, 0, 0, 0, time.Local).Add(time.Duration(hours) * time.Hour)
+		return &instant
+	}
+	dues := []*time.Time{nil, at(-3, 0), at(0, 0), at(0, 9), at(0, 14), at(0, 20), at(1, 0), at(2, 0),
+		at(3, 0), at(3, 18), at(4, 0), at(13, 0), at(14, 0), at(15, 0)}
+	for _, value := range []string{"+4h", "+12h", "+1d", "+3d", "+2w"} {
+		persisted, remainder := models.PartitionQueryString("@" + value)
+		if remainder != "" || len(persisted.Clauses) != 1 {
+			t.Fatalf("@%s persisted as %+v with remainder %q, want one clause", value, persisted, remainder)
+		}
+		search := &SearchPredicates{now: now, due: compileSearchDue(value, now)}
+		for _, due := range dues {
+			task := &models.Task{ID: "t", WorkflowState: models.StateBacklog, DueDate: due}
+			if typed, saved := search.Admits(task, project), persisted.Admits(task, project, now); typed != saved {
+				t.Errorf("@%s due %v: search admits %t, persisted query %t", value, due, typed, saved)
+			}
+		}
+	}
+}

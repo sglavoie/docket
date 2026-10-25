@@ -20,7 +20,8 @@ import (
 // deliberately not models.TaskNeedsAttention — that one is what a pass navigates
 // by — and it is no longer the retired flagged-stale-or-Waiting predicate: a
 // task nobody flagged and nothing scheduled has nothing here to acknowledge, and
-// staleness is cleanup `fs` and `?stale` answer.
+// staleness is cleanup `fs` and `?stale` answer. Hidden work is never admitted,
+// even when a positive hidden clause draws it: hiding a task suspends its review.
 //
 // Eligibility is rechecked here against this service's clock rather than trusted
 // from the caller. A surface admits the operation from what it drew, and what it
@@ -34,6 +35,9 @@ func (s *Service) MarkReviewed(locator TaskLocator) (TaskResult, error) {
 	ref, _, revision, err := s.loadTaskSelection("", locator)
 	if err != nil {
 		return TaskResult{}, err
+	}
+	if models.TaskEffectivelyHidden(ref.Project, ref.Task) {
+		return TaskResult{}, invalidInput("task", "task is hidden: unhide it with wh to review it")
 	}
 	now := s.clock.Now()
 	if !models.TaskAllowsExplicitReview(ref.Task, now) {

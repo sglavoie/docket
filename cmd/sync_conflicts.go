@@ -127,10 +127,27 @@ func findSyncConflict(views []engine.ConflictView, id string) (engine.ConflictVi
 	return engine.ConflictView{}, fmt.Errorf("%s names %d open conflicts; give more of the id", id, len(found))
 }
 
+// Read-only sync reports (status, doctor, conflicts, diagnostics) answer a
+// workspace that is not enrolled with notEnrolledHint and exit 0: there is
+// nothing to report, and nothing failed. Actions (exchange, resolve) refuse it
+// through openEnrolledRuntime instead.
+
 func runSyncConflicts(_ *cobra.Command, args []string) error {
-	rt, err := openEnrolledRuntime()
+	rt, err := openSyncRuntime()
 	if err != nil {
 		return err
+	}
+	if !rt.State().Catalog().Enrolled() {
+		if syncJSON {
+			if len(args) > 0 {
+				return fmt.Errorf("%s", notEnrolledHint)
+			}
+			return printJSON(struct {
+				Conflicts []engine.ConflictView `json:"conflicts"`
+			}{[]engine.ConflictView{}})
+		}
+		fmt.Println(notEnrolledHint)
+		return nil
 	}
 	views, err := rt.SyncConflicts(nil)
 	if err != nil {
@@ -305,9 +322,15 @@ func runSyncResolve(_ *cobra.Command, args []string) error {
 }
 
 func runSyncDiagnostics(_ *cobra.Command, _ []string) error {
-	rt, err := openEnrolledRuntime()
+	rt, err := openSyncRuntime()
 	if err != nil {
 		return err
+	}
+	if !rt.State().Catalog().Enrolled() {
+		// No document is written: a diagnostics file for a workspace that
+		// does not sync would describe nothing.
+		fmt.Println(notEnrolledHint)
+		return nil
 	}
 	report, err := rt.SyncDiagnostics(nil)
 	if err != nil {

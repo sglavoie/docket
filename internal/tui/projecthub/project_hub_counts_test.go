@@ -4,7 +4,9 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -262,5 +264,32 @@ func TestProjectHubKeepsUnknownCountForUnreadableProject(t *testing.T) {
 	}
 	if hub.notice != "" {
 		t.Fatalf("unreadable project raised notice %q, want the Hub silent", hub.notice)
+	}
+}
+
+// TestProjectTaskTallyCountsNoHiddenWork holds the Hub's numbers to the preview
+// beside them: hidden work, stored or inherited, adds to neither count nor the
+// overdue tally, while Tasks keeps the whole tree for inheritance to resolve.
+func TestProjectTaskTallyCountsNoHiddenWork(t *testing.T) {
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	past := now.AddDate(0, 0, -3)
+	project := scopeTestProject("alpha", "Alpha", "1", "2", "3")
+	shown, root, child := project.Tasks[0], project.Tasks[1], project.Tasks[2]
+	root.Hidden = true
+	rootID := root.ID
+	child.ParentID = &rootID
+	root.Children = []*models.Task{child}
+	root.DueDate, child.DueDate = &past, &past
+
+	tally := ProjectTaskTallyOf(project)
+	if tally.Open != 1 || tally.Total != 1 || len(tally.Tasks) != 3 {
+		t.Fatalf("tally = open %d total %d tasks %d, want 1/1 over all 3", tally.Open, tally.Total, len(tally.Tasks))
+	}
+	if got := tally.OverdueAt(now); got != 0 {
+		t.Fatalf("overdue = %d, want hidden deadlines uncounted", got)
+	}
+	shown.DueDate = &past
+	if got := tally.OverdueAt(now); got != 1 {
+		t.Fatalf("overdue = %d, want the visible task alone", got)
 	}
 }

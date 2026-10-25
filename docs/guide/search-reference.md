@@ -85,6 +85,7 @@ facets, and query, and disappear when nothing matching is withheld.
 | `f~` | Pick one soft-reference position: `?blocked` names other work, `?blocking` is named by other work; each row is labeled with the token it writes |
 | `fs` | Toggle open, undeferred work untouched for at least 90 local-calendar days; unavailable in Recent, whose entry clears only Stale and reports `Stale filter cleared: Recent only includes the last 30 days` |
 | `f*` | Toggle the pinned facet, the same `*pin` a typed query spells |
+| `fH` | Toggle showing only hidden tasks, including children hidden through a parent; it writes `+hidden:only`, needs a fresh load, and so is refused in the ranked list until `or` |
 | `fx` | Clear every facet |
 | `/` | Search title, description, resume note, checklist, comment, tag, context, attachment, and project as one flat ranked list over the project scope, gated by any capture sigils the query carries; `or` reads the same query as a narrowing of the mode |
 
@@ -92,8 +93,8 @@ facets, and query, and disappear when nothing matching is withheld.
 
 The ranked list has no project headings, so across several projects each row
 opens with its project's `[slug]`, in the color that project's heading wears in
-the main view, and the titles line up after it. A long slug is shortened to a
-eighth of the row — at least twelve columns and at most twenty-four — so a narrow
+the main view, and the titles line up after it. A long slug is shortened to an
+eighth of the row — at least eight columns and at most twenty-four — so a narrow
 terminal keeps its titles and a wide one spells the slug out. Scoped to one project, the heading
 at the top names it and the rows carry no label.
 
@@ -154,7 +155,7 @@ filter, and a query with no sigils behaves exactly as it did before:
 | `#tag` | Match a tag by normalized-name prefix; repeatable, combined with AND |
 | `##context` | Match the task context by prefix, a separate axis from tags |
 | `@overdue`, `@today`, `@week`, `@none` | Match the same due buckets `f@` offers |
-| `@2026-03-05` | Match that exact calendar due day |
+| `@2026-03-05`, `@+3d` | Match that exact calendar due day, or the one that many days out |
 | `@+4h` | Match tasks due at or before that rolling window, including already-overdue work |
 | `@@any`, `@@none` | Split the currently deferred population, the way `f@`'s deferred facet does |
 | `@@tomorrow`, `@@+2h` | Match tasks whose wake instant falls on that day |
@@ -264,7 +265,7 @@ browses every query. A prefix with no matches leaves the input unchanged and
 shows `No history matches this prefix`. While walking, `History 2 of 5` counts
 only matching queries; another Up at the oldest match says `Oldest matching
 query`. These quiet labels appear beside the input when space permits, clear
-when typing or returning to the draft, and never enter Recent messages.
+when typing or returning to the draft, and never enter Recent Messages.
 Each distinct query is held once however often you
 submit it, only a submitted query joins the ring — one abandoned with `Esc` does
 not — and typing ends the walk, so the next `↑` starts from the newest match for the edited prefix.
@@ -283,7 +284,7 @@ Outside the search box, `Ctrl+R` remains Redo.
 
 The last 50 distinct submitted queries survive a restart on this machine,
 separately for each workspace. Launch still starts with no active search; drafts
-and caret positions are never saved. `View → Clear search history` forgets the
+and caret positions are never saved. `View → Clear Search History` forgets the
 retained queries without clearing the current search or changing any saved lens.
 If saving history fails, search still works and the footer reports the failure. While
 the suggestion pane is open — up to ten rows, fewer on a short terminal so the
@@ -325,8 +326,8 @@ and the facet is there again.
 
 `Fp`, `FP`, and selecting `parked` inside `F#` are the same switch, so they can
 never disagree about which population is loaded. Inside `F#`, `v` toggles a tag
-and `Space` over a tag row offers Rename everywhere, Remove everywhere, Park all
-members, and Unpark all members across every project carrying it, as one undo
+and `Space` over a tag row offers Rename Everywhere, Remove Everywhere, Park All
+Members, and Unpark All Members across every project carrying it, as one undo
 entry. Removing a tag that is a project's only tag asks where those projects
 should land first.
 
@@ -451,8 +452,8 @@ project facet, written as one query — and the sort axis. Applying one writes
 every axis it names at once, so a lens is a view you return to rather than a
 filter you rebuild.
 
-The list opens on two action rows — `Save current view` and, directly beneath
-it, `Add built-in view` — followed by every saved lens in alphabetical order.
+The list opens on two action rows — `Save Current View` and, directly beneath
+it, `Add Built-in View` — followed by every saved lens in alphabetical order.
 Scoped lens previews include `Project: web`, using the project's current slug;
 an unavailable project keeps its stored ID with an `unavailable` label. Lenses
 without a saved scope leave that label out because they keep the current scope.
@@ -472,9 +473,9 @@ default ordering.
 
 | Keys | Effect inside the picker |
 | --- | --- |
-| `Enter` | Apply the lens under the cursor; on `Save current view`, name and save what you are looking at; on `Add built-in view`, open the built-in gallery |
+| `Enter` | Apply the lens under the cursor; on `Save Current View`, name and save what you are looking at; on `Add Built-in View`, open the built-in gallery |
 | `1`–`9` | Apply the Nth saved lens shown, exactly as `Enter` on that row would; the digit is drawn in a column ahead of the row it names. Both action rows are unnumbered, and a narrowed list renumbers from one, so a digit always counts the saved rows on screen. A tenth saved lens carries no digit |
-| `Space` | Open the management sheet for the lens under the cursor: Rename, Replace from current view, Duplicate, Delete. On either action row it says which key that row answers to instead |
+| `Space` | Open the management sheet for the lens under the cursor: Rename, Replace from Current View, Duplicate, Delete. On either action row it says which key that row answers to instead |
 | `/` | Narrow the saved list by name or summary, including project scope; both action rows stay put while the saved rows filter. While editing, `Esc` clears the typed query, then leaves the search, then closes the picker. After `Enter` accepts the search, `/` edits it again and `Esc` closes the picker |
 | `Esc` | Close the picker without changing the view |
 
@@ -493,7 +494,7 @@ failure on screen.
 An active lens names itself in the title row as `Lens: <name>`, and gains a `*`
 as soon as the live view stops matching what was saved — a mode change, a
 filter, a sort, or a scope move. Open `Q` to see which settings changed, such as
-`Changed: sort, project scope`. The confirmation for `Replace from current view`
+`Changed: sort, project scope`. The confirmation for `Replace from Current View`
 also names the settings that would change in the selected saved lens, even when
 that lens is not active, and shows their saved and replacement values. For
 example, `Sort: priority ↑ → due date ↑`. An empty query reads `none`; a lens
@@ -556,7 +557,7 @@ replace, and delete reach them like any other record, and deleting every lens is
 durable rather than a request to reseed.
 
 Those three starters are the only ones seeded for you, but they are three of a
-catalog of ten. `Add built-in view` opens `Add Built-in View`, the gallery of
+catalog of ten. `Add Built-in View` opens `Add Built-in View`, the gallery of
 all ten, in alphabetical order with the projection each one installs:
 
 | Built-in view | Projection |

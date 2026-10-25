@@ -765,7 +765,7 @@ only after jump history records an origin; `Alt+→` returns to the relocated
 task.
 
 Shell warnings and errors use `footerRefusalLines` for up to three wrapped rows;
-overflow names the full-text Recent messages viewer. The same line calculation
+overflow names the full-text Recent Messages viewer. The same line calculation
 feeds warning reading time, including the warning icon: `RefusalDuration` grants
 six to twelve seconds based on text length and wrapping at publication. Ordinary
 success/info timing and the six-second undo window are unchanged. Existing

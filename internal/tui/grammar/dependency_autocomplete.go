@@ -25,7 +25,8 @@ type DependencyCandidate struct {
 // DependencyAdditionCandidates offers every open task in every loaded project.
 // An addition records a soft reference, so the only requirements are the ones
 // the application layer enforces: a real, loaded, still-open target that is not
-// the source task and is not already referenced.
+// the source task and is not already referenced. Effectively hidden tasks are
+// withheld from the offer alone; a typed reference still resolves to one.
 func DependencyAdditionCandidates(projects []*models.Project, sourceTaskID string, excluded map[app.TaskLocator]bool) []DependencyCandidate {
 	candidates := make([]DependencyCandidate, 0, len(projects))
 	for _, project := range projects {
@@ -33,7 +34,8 @@ func DependencyAdditionCandidates(projects []*models.Project, sourceTaskID strin
 			continue
 		}
 		for _, task := range project.Tasks {
-			if task == nil || task.ID == sourceTaskID || task.IsTerminalState() {
+			if task == nil || task.ID == sourceTaskID || task.IsTerminalState() ||
+				models.TaskEffectivelyHidden(project, task) {
 				continue
 			}
 			locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}

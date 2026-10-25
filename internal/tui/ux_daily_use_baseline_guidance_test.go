@@ -80,7 +80,7 @@ func TestUXDailyUseStateChangeNotesTheMissingCheckIn(t *testing.T) {
 	driver, _ := uxDailyUseStagedDriver(t, "check-in-offer", uxDailyUseDailySize[0], uxDailyUseDailySize[1])
 	screen := driver.Observe(ObserveOptions{}).PlainScreen
 
-	for _, fragment := range []string{"No check-in", "Set up check-ins"} {
+	for _, fragment := range []string{"No check-in", "Set Up Check-Ins"} {
 		if !strings.Contains(screen, fragment) {
 			t.Fatalf("a state change no longer notes the missing check-in; %q is not on screen:\n%s", fragment, screen)
 		}

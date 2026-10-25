@@ -42,8 +42,8 @@ const (
 // act the picker was opened from, and browsing the catalog is the fallback for a
 // workspace that has nothing worth saving yet.
 const (
-	LensPickerCreateLabel           = "Save current view…"
-	LensPickerAddTemplateLabel      = "Add built-in view…"
+	LensPickerCreateLabel           = "Save Current View…"
+	LensPickerAddTemplateLabel      = "Add Built-in View…"
 	LensPickerAddTemplateSecondary  = "Browse ready-made views"
 	LensPickerCreateSpaceNotice     = "Press Enter to save the current view"
 	LensPickerAddTemplateSpaceHint  = "Press Enter to browse built-in views"

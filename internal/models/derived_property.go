@@ -76,7 +76,7 @@ func TaskMatchesDerived(
 	case DerivedStale:
 		return taskOwesStaleAttention(project, task, now)
 	case DerivedReview:
-		return taskOwesReviewAttention(project, task, now)
+		return TaskOwesReviewAttention(project, task, now)
 	case DerivedDeferred:
 		return task.IsDeferredAt(now)
 	case DerivedLeaf:

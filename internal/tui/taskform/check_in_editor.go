@@ -108,7 +108,7 @@ func NewCheckInEditorModel(
 // shell owns Skip and Escape, while the two-field draft remains shared.
 func (model *CheckInEditorModel) ConfigureSetup() {
 	model.setup = true
-	model.title = "Set up check-ins"
+	model.title = "Set Up Check-Ins"
 }
 
 func repeatDisplay(days int) string {

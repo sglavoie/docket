@@ -116,7 +116,7 @@ func TestCheckInVisualAcceptance(t *testing.T) {
 				if _, err := driver.ApplyAction(UITestAction{Type: UITestActionKey, Key: "esc"}, ObserveOptions{}); err != nil {
 					t.Fatal(err)
 				}
-				if _, err := driver.ApplyAction(UITestAction{Type: UITestActionCommand, Command: "Set up check-ins"}, ObserveOptions{}); err != nil {
+				if _, err := driver.ApplyAction(UITestAction{Type: UITestActionCommand, Command: "Set Up Check-Ins"}, ObserveOptions{}); err != nil {
 					t.Fatal(err)
 				}
 				capture("setup", "Setup active work", "Next check-in:", "Ctrl+N skip", "Esc exit")

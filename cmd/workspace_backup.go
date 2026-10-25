@@ -17,8 +17,8 @@ given directory. The backup includes task files, attachments, undo history, and
 sync state. tt never overwrites a finished backup. It verifies every copied
 file and writes a hash manifest. The live workspace remains selected. Choose a
 directory outside the workspace, ideally on another drive. Run
-'tt workspace verify-backup' later to read every file
-again without touching the live workspace.`,
+'tt workspace verify-backup' later to read every file again without touching
+the live workspace.`,
 	Example: `  tt workspace backup ~/Backups/tt
   tt workspace verify-backup ~/Backups/tt/<workspace-id>/<timestamp>`,
 	Args:              exactlyOneArg("backup directory"),

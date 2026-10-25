@@ -67,7 +67,7 @@ func inlinePeekStatusLine(task *models.Task, planning string, now time.Time) str
 	if task.IsOverdueAt(now) {
 		fields.parts = append(fields.parts, theme.ProjectPressureOverdueStyle.Render("Overdue"))
 	}
-	if task.CheckInIsDueAt(now) && models.TaskNeedsAttention(task, now) {
+	if task.CheckInIsDueAt(now) && models.TaskOwesReviewAttention(nil, task, now) {
 		fields.flag("Check-in owed")
 	}
 	// The same gate theme.PriorityIcon takes, so a task the row draws no priority

@@ -54,6 +54,9 @@ type IncompleteChild struct {
 	Title string
 	// Status is the child's workflow-state label (e.g. "backlog", "doing").
 	Status string
+	// Hidden marks a child every view hides, so the refusal can say why the
+	// parent's rows show nothing blocking it.
+	Hidden bool
 }
 
 // ChildrenBlockedError describes a terminal transition refused because the task
@@ -69,7 +72,11 @@ func (e *ChildrenBlockedError) Error() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "task #%d has %d incomplete children:", e.ParentShortID, len(e.Children))
 	for _, c := range e.Children {
-		fmt.Fprintf(&b, "\n  - #%d %s (%s)", c.ShortID, c.Title, c.Status)
+		status := c.Status
+		if c.Hidden {
+			status += ", hidden"
+		}
+		fmt.Fprintf(&b, "\n  - #%d %s (%s)", c.ShortID, c.Title, status)
 	}
 	return b.String()
 }

@@ -322,16 +322,17 @@ func (q *QuickCaptureInput) effectiveProject(draftedLine textgrammar.Result) *mo
 }
 
 // StructuralCandidates returns the tasks a >parent or <child completion offers.
-// Completed tasks are withheld from the suggestion list only; a manually typed
-// reference still resolves against every task in the project, so an intentional
-// reference to finished work is never blocked by this policy.
+// Completed and effectively hidden tasks are withheld from the suggestion list
+// only; a manually typed reference still resolves against every task in the
+// project, so an intentional reference to finished or hidden work is never
+// blocked by this policy.
 func StructuralCandidates(project *models.Project) []*models.Task {
 	if project == nil {
 		return nil
 	}
 	candidates := make([]*models.Task, 0, len(project.Tasks))
 	for _, task := range project.Tasks {
-		if task != nil && !task.IsComplete() {
+		if task != nil && !task.IsComplete() && !models.TaskEffectivelyHidden(project, task) {
 			candidates = append(candidates, task)
 		}
 	}

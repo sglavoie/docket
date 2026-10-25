@@ -134,6 +134,7 @@ func TestSyncCommands(t *testing.T) {
 		if err != nil || !strings.Contains(stdout, "not enrolled") {
 			t.Fatalf("doctor: %v\n%s", err, stdout)
 		}
+		requireNotEnrolledReportsSucceed(t)
 	})
 
 	t.Run("enroll_refuses_unconfirmed_and_an_icloud_working_copy", func(t *testing.T) {
@@ -184,5 +185,26 @@ func TestSyncCommandsReportDownloadRequestFailure(t *testing.T) {
 	out, _, err = captureDoctorOutput(t, func() error { return runSyncDoctor(nil, nil) })
 	if err == nil || !strings.Contains(out, "iCloud download request refused") {
 		t.Fatalf("doctor hid download error: %s (%v)", out, err)
+	}
+}
+
+// requireNotEnrolledReportsSucceed holds the read-only reports doctor sits
+// beside to the same answer for a workspace that does not sync: the hint, exit 0.
+func requireNotEnrolledReportsSucceed(t *testing.T) {
+	t.Helper()
+	stdout, _, err := captureDoctorOutput(t, func() error { return runSyncConflicts(nil, nil) })
+	if err != nil || !strings.Contains(stdout, notEnrolledHint) {
+		t.Fatalf("conflicts: %v\n%s", err, stdout)
+	}
+	syncDiagnosticsOut = ""
+	stdout, _, err = captureDoctorOutput(t, func() error { return runSyncDiagnostics(nil, nil) })
+	if err != nil || !strings.Contains(stdout, notEnrolledHint) {
+		t.Fatalf("diagnostics: %v\n%s", err, stdout)
+	}
+	syncJSON = true
+	t.Cleanup(func() { syncJSON = false })
+	stdout, _, err = captureDoctorOutput(t, func() error { return runSyncConflicts(nil, nil) })
+	if err != nil || !strings.Contains(stdout, `"conflicts": []`) {
+		t.Fatalf("conflicts --json: %v\n%s", err, stdout)
 	}
 }

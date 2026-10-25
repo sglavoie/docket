@@ -62,6 +62,9 @@ type taskView struct {
 	Comments          int         `json:"comment_count"`
 	Attachments       int         `json:"attachment_count"`
 	Dependencies      int         `json:"dependency_count"`
+	// Hidden is effective hiding, stored or inherited from an ancestor, so a
+	// client reading a hidden-only lens can say why every view drops the task.
+	Hidden bool `json:"hidden,omitempty"`
 }
 
 // checkItem is one checklist row in stored order.
@@ -96,6 +99,7 @@ func viewTask(projectID string, task *models.Task) taskView {
 		Comments:          len(task.Comments),
 		Attachments:       len(task.Attachments),
 		Dependencies:      len(task.Dependencies),
+		Hidden:            models.TaskEffectivelyHidden(nil, task),
 	}
 	for _, item := range task.Checklist {
 		view.Checklist = append(view.Checklist, checkItem{Text: item.Text, Done: item.Done})

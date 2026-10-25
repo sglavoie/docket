@@ -204,7 +204,7 @@ func TestEscSpendsTheTrailBeforeARestoredSearch(t *testing.T) {
 func TestEscSpendsTheTrailBeforeARestoredLens(t *testing.T) {
 	env := newRelationLifecycleEnv(t)
 	env.press(t, "\\")
-	env.selectPickerRow(t, "Save current view…")
+	env.selectPickerRow(t, "Save Current View…")
 	env.settle(t, "enter")
 	env.press(t, "C", "a", "s", "c", "a", "d", "e")
 	env.settle(t, "enter")

@@ -24,6 +24,9 @@ func NewQueryCensus(projects []*Project) QueryCensus {
 
 // QueryOpenChildCounts counts each task's open direct children across the
 // population, keyed by the qualified reference. A task with none is absent.
+// A visible parent does not count a child that stores the hidden flag, so its
+// marker, `?parent`, and `?leaf` describe what expanding it shows; a hidden
+// parent's children are all hidden with it and all count.
 func QueryOpenChildCounts(projects []*Project) map[TaskReference]int {
 	counts := make(map[TaskReference]int)
 	for _, project := range projects {
@@ -34,7 +37,7 @@ func QueryOpenChildCounts(projects []*Project) map[TaskReference]int {
 			if task == nil || task.ID == "" {
 				continue
 			}
-			if open := len(task.IncompleteChildren()); open > 0 {
+			if open := queryOpenChildCount(project, task); open > 0 {
 				counts[TaskReference{ProjectID: project.ID, TaskID: task.ID}] = open
 			}
 		}

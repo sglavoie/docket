@@ -96,7 +96,7 @@ func TestGuideDocumentsExactTaskMenu(t *testing.T) {
 		"Repeat offers Off, 1, 3, 7, 14, and 30 days, or a custom positive day count",
 		"an empty bulk draft never clears schedules",
 		"Comments and Attachments left this menu when they gained `;` and `&`",
-		"Project Actions holds Archive project and Delete project under Danger, and nothing else",
+		"Project Actions holds Archive Project and Delete Project under Danger, and nothing else",
 		"Editing left this menu when the header gained `e`, and pinning left it when the " +
 			"header gained `*`",
 		"`Enter` and `Ctrl+N` already reach both from that row",
@@ -183,7 +183,7 @@ func TestGuideDocumentsFiltersAndSearch(t *testing.T) {
 		"`Fx` | Clear every project filter",
 		"Each population axis has three states — excluded, included, isolated",
 		"`Fp`, `FP`, and selecting `parked` inside `F#` are the same switch",
-		"`Space` over a tag row offers Rename everywhere, Remove everywhere, Park all members, and Unpark all members",
+		"`Space` over a tag row offers Rename Everywhere, Remove Everywhere, Park All Members, and Unpark All Members",
 		// The vocabulary rename `f#` and `fc` offer. The four facts a reader
 		// cannot get from the screen are pinned: the change is not scoped by the
 		// view it was started from, the pseudo-row is a facet rather than a name,

@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -157,4 +158,31 @@ func TestFindMenuOffersShowHiddenAfterPinned(t *testing.T) {
 		t.Fatal("the Find menu has no Show hidden entry")
 	}
 	t.Fatal("no Find menu")
+}
+
+// TestHiddenRowsAdvertiseNoOwedReview keeps the row badge, the hero ladder, and
+// Peek's check-in flag on the one attention predicate the Review lane and R read,
+// so a hidden task drawn under fH names no review it cannot be given.
+func TestHiddenRowsAdvertiseNoOwedReview(t *testing.T) {
+	parent := primaryRowsTask("parent", models.StateBacklog)
+	parent.Hidden = true
+	parent.Review = true
+	child := primaryRowsTask("child", models.StateBacklog)
+	child.ParentID = &parent.ID
+	child.Review = true
+	visible := primaryRowsTask("visible", models.StateBacklog)
+	visible.Review = true
+	primaryRowsProject("alpha", parent, child, visible)
+	now := time.Now()
+	for _, task := range []*models.Task{parent, child} {
+		if got := formatReviewIndicator(task, now); got != "" {
+			t.Fatalf("%s review badge = %q, want none while hidden", task.ID, got)
+		}
+		if got := chrome.PickHeroAttribute(task, now); got == chrome.HeroReview {
+			t.Fatalf("%s took the review hero while hidden", task.ID)
+		}
+	}
+	if formatReviewIndicator(visible, now) == "" || chrome.PickHeroAttribute(visible, now) != chrome.HeroReview {
+		t.Fatal("a visible flagged task lost its review badge")
+	}
 }

@@ -146,7 +146,10 @@ func (c *captureCandidates) addTask(def textgrammar.Definition, project *models.
 			c.add(task.Context, "##"+task.Context)
 		}
 	case textgrammar.FieldParent, textgrammar.FieldChild, textgrammar.FieldDependency:
-		if task.IsComplete() || effective == nil || (def.Field != textgrammar.FieldDependency && project.ID != effective.ID) {
+		// Hidden work is withheld from the offer alone, as the composer does; a
+		// typed reference still resolves to it.
+		if task.IsComplete() || effective == nil || (def.Field != textgrammar.FieldDependency && project.ID != effective.ID) ||
+			models.TaskEffectivelyHidden(project, task) {
 			return
 		}
 		for _, token := range c.used {

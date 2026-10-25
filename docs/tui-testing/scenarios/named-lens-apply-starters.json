@@ -9,7 +9,7 @@
     { "type": "key", "label": "apply High Priority", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "Lens: High Priority" },
-    { "type": "assert", "label": "the picker closed onto the view it installed", "assert": "not_contains", "value": "Save current view" },
+    { "type": "assert", "label": "the picker closed onto the view it installed", "assert": "not_contains", "value": "Save Current View" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "switch straight to Stale", "key": "\\" },
     { "type": "key", "key": "j" },

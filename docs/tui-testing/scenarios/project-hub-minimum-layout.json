@@ -9,8 +9,8 @@
 
     { "type": "key", "label": "the single-project sheet fits the same terminal", "key": "space" },
     { "type": "assert", "assert": "contains", "value": "Actions" },
-    { "type": "assert", "assert": "contains", "value": "Archive project" },
-    { "type": "assert", "label": "the direct keys never repeat as menu rows", "assert": "not_contains", "value": "Open project" },
+    { "type": "assert", "assert": "contains", "value": "Archive Project" },
+    { "type": "assert", "label": "the direct keys never repeat as menu rows", "assert": "not_contains", "value": "Open Project" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "close the sheet", "key": "esc" },
 
@@ -21,8 +21,8 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "the bulk sheet fits it too", "key": "space" },
-    { "type": "assert", "assert": "contains", "value": "Add tag" },
-    { "type": "assert", "assert": "contains", "value": "Park projects" },
+    { "type": "assert", "assert": "contains", "value": "Add Tag" },
+    { "type": "assert", "assert": "contains", "value": "Park Projects" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "close the bulk sheet", "key": "esc" },
 

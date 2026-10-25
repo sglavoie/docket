@@ -136,7 +136,7 @@ func TestOpenProjectNotesRejectsArchivedProject(t *testing.T) {
 		operation.OperationInvocation{Descriptor: descriptor},
 		operation.OperationTargetFor(operation.ProjectEntity("archived")),
 	)
-	if handlerResult.Err == nil || handlerResult.Err.Error() != "Open project notes is unavailable while Archived is archived" {
+	if handlerResult.Err == nil || handlerResult.Err.Error() != "Open Project Notes is unavailable while Archived is archived" {
 		t.Fatalf("archived handler error = %v, want the shared lifecycle refusal", handlerResult.Err)
 	}
 	if _, ok := handlerResult.Message.(notes.ShowNotesManagerMsg); ok {

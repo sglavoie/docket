@@ -11,7 +11,7 @@ This pass improves the existing task loop:
   to which closing search returns.
 - Warnings and errors wrap within three footer rows. Warnings last 6–12 seconds,
   depending on text and wrapping; success and undo timing stay unchanged. Very
-  long refusals point to Recent messages for the full text.
+  long refusals point to Recent Messages for the full text.
 - [Capture](../guide/capture.md) and [search](../guide/search-and-lenses.md) start
   with everyday recipes and link to complete references, preserving old anchors.
 - Search benchmarks cover substantial descriptions, comments, and Unicode;

@@ -209,8 +209,12 @@ struct TaskDetailView: View {
                 if task.priority > 0 {
                     LabeledContent("Priority", value: "P\(task.priority)")
                 }
-                if task.pinned || task.review {
-                    LabeledContent("Flags", value: [task.pinned ? "Pinned" : nil, task.review ? "Review" : nil].compactMap { $0 }.joined(separator: " · "))
+                if task.pinned || task.review || task.hidden == true {
+                    LabeledContent("Flags", value: [
+                        task.pinned ? "Pinned" : nil,
+                        task.review ? "Review" : nil,
+                        task.hidden == true ? "Hidden" : nil,
+                    ].compactMap { $0 }.joined(separator: " · "))
                 }
             }
             workflow(detail)

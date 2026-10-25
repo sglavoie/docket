@@ -49,7 +49,7 @@ func TestLensAddTemplateIsAZeroTargetPickedMutation(t *testing.T) {
 	if descriptor.ID != "tui.lens.add-template" {
 		t.Fatalf("descriptor ID = %q, want the stable tui.lens.add-template", descriptor.ID)
 	}
-	if descriptor.Label != "Add built-in view" {
+	if descriptor.Label != "Add Built-in View" {
 		t.Fatalf("descriptor label = %q", descriptor.Label)
 	}
 	if descriptor.Category != operation.OperationCategoryFilter {

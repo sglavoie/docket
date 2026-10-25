@@ -13,13 +13,13 @@
 
     { "type": "key", "label": "Space on a project header opens the project sheet", "key": "space" },
     { "type": "assert", "assert": "contains", "value": "Project Actions: Client Alpha" },
-    { "type": "assert", "label": "editing left this menu when the header gained `e`", "assert": "not_contains", "value": "Edit project" },
-    { "type": "assert", "label": "pinning left this menu when the header gained `*`", "assert": "not_contains", "value": "Toggle project pin" },
+    { "type": "assert", "label": "editing left this menu when the header gained `e`", "assert": "not_contains", "value": "Edit Project" },
+    { "type": "assert", "label": "pinning left this menu when the header gained `*`", "assert": "not_contains", "value": "Toggle Project Pin" },
     { "type": "assert", "assert": "contains", "value": "DANGER" },
-    { "type": "assert", "assert": "contains", "value": "Archive project  confirmation required" },
-    { "type": "assert", "assert": "contains", "value": "Delete project  confirmation required" },
-    { "type": "assert", "label": "Enter and Ctrl+N already reach these from the same row, so neither repeats as a menu row", "assert": "not_contains", "value": "Open project" },
-    { "type": "assert", "label": "an Outliner header is always an active project", "assert": "not_contains", "value": "Unarchive project" },
+    { "type": "assert", "assert": "contains", "value": "Archive Project  confirmation required" },
+    { "type": "assert", "assert": "contains", "value": "Delete Project  confirmation required" },
+    { "type": "assert", "label": "Enter and Ctrl+N already reach these from the same row, so neither repeats as a menu row", "assert": "not_contains", "value": "Open Project" },
+    { "type": "assert", "label": "an Outliner header is always an active project", "assert": "not_contains", "value": "Unarchive Project" },
     { "type": "assert", "label": "the task menu's rows never leak into the project sheet", "assert": "not_contains", "value": "Attachments" },
     { "type": "assert", "assert": "no_layout_issues" },
 
@@ -30,14 +30,14 @@
     { "type": "key", "label": "unfolding seats the cursor on the task the summary covered", "key": "l" },
     { "type": "key", "label": "the same key on that row is the task menu, because the row names a task", "key": "space" },
     { "type": "assert", "assert": "contains", "value": "Task Actions: Alpha migration kickoff" },
-    { "type": "assert", "assert": "not_contains", "value": "Delete project" },
+    { "type": "assert", "assert": "not_contains", "value": "Delete Project" },
     { "type": "key", "key": "esc" },
 
     { "type": "resize", "label": "the sheet survives the narrowest supported terminal", "width": 60, "height": 20 },
     { "type": "key", "label": "folding the cursor's own group gives the header back", "key": "h" },
     { "type": "key", "key": "space" },
     { "type": "assert", "assert": "contains", "value": "Project Actions: Client Alpha" },
-    { "type": "assert", "assert": "contains", "value": "Delete project" },
+    { "type": "assert", "assert": "contains", "value": "Delete Project" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

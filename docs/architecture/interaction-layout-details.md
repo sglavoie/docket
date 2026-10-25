@@ -175,7 +175,7 @@ set a row aside for a footer the dock's own paging keys can wrap, so an ordinary
 one-line message costs it nothing further and the dock stays exactly where it
 was: no message and no cursor ever moves it.
 
-Surfaces that draw their own footer — Help, Notes, the Hub, Recent messages —
+Surfaces that draw their own footer — Help, Notes, the Hub, Recent Messages —
 keep it. The message is placed directly above that footer's divider rather than
 over its keys, and the frame stays exactly as tall as the terminal. Everywhere
 else, the comments panel, the project editor, and expanded capture included, the

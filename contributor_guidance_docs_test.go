@@ -50,7 +50,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`*`, `#`, `C`, `;`, `e`, and `Space` are the shared keys, the cursor deciding: task or " +
 			"project pin, task or project tags, task or project comment, task or project comment panel, " +
 			"checklist-item or task or project edit, and checklist, project, or task actions",
-		"Edit project, Add project comment, and Project comments narrow to an Outliner project " +
+		"Edit Project, Add Project Comment, and Project Comments narrow to an Outliner project " +
 			"header through `outlinerProjectOperationTargetsHeader`",
 		"Add Item also answers from the owner task's row, since an empty checklist has no item row",
 		"Its reveal rides `TransactionResultMsg.RevealChecklistFor`, so a refused append moves nothing",

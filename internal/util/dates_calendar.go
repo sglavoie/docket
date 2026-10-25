@@ -35,6 +35,21 @@ func AddCalendarDays(t time.Time, days int) (time.Time, error) {
 	return StartOfCalendarDate(year, month, day, t.Location())
 }
 
+// StartOfCalendarDaysAfter is AddCalendarDays for a caller with no error to
+// report, such as a picker row computing its value: the start of the calendar
+// day days whole days after t's date, in t's location, never an instant stepped
+// by AddDate from a day-start (which a zone skipping midnight turns into the
+// wrong date or a time of day). Where AddCalendarDays refuses — the offset is
+// out of its range, or the zone has no such date at all — it answers with the
+// start of the date holding noon of that civil day, which is the surviving
+// neighbor the zone itself resolves to.
+func StartOfCalendarDaysAfter(t time.Time, days int) time.Time {
+	if start, err := AddCalendarDays(t, days); err == nil {
+		return start
+	}
+	return StartOfDay(time.Date(t.Year(), t.Month(), t.Day()+days, 12, 0, 0, 0, t.Location()))
+}
+
 // StartOfCalendarDate rebuilds the start of one named calendar date in loc, and
 // refuses a date loc does not have. time.Date normalizes rather than fails, so
 // asking whether the date exists has to be a separate question from asking where

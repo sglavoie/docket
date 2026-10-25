@@ -11,7 +11,8 @@ var conflictShowJSON bool
 var conflictShowCmd = &cobra.Command{
 	Use:   "show <id>",
 	Short: "Show the details of a merge conflict",
-	Long:  `Show the base, local, and remote revisions and every structured conflict for one recorded merge conflict.`,
+	Long: `Show the base, local, and remote revisions and every structured conflict
+for one recorded merge conflict.`,
 	Example: `  tt conflict show 3f2a9c1e
   tt conflict show 3f2a --json`,
 	Args:              exactlyOneArg("conflict ID"),

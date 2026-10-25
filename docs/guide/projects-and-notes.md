@@ -94,8 +94,8 @@ removal, never a state that traps a project in the catalog.
 
 `/` opens project search and `Esc` leaves the query for the matches it found.
 `v` selects the project under the cursor and `Ctrl+A` selects every project
-matching the current search. With a selection, `Space` offers Add tag, Remove
-tag, Park and Unpark across all of it, and the whole edit commits as one undo
+matching the current search. With a selection, `Space` offers Add Tag, Remove
+Tag, Park and Unpark across all of it, and the whole edit commits as one undo
 entry. Without one, `Space` offers Archive on an active project and Unarchive on
 an archived one — the two lifecycle actions no direct key reaches. `Esc` unwinds
 one rung at a time: the action sheet, then the query, then the selection, then

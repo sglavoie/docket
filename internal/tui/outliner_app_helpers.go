@@ -327,14 +327,14 @@ var outlinerProjectActionCategories = []listsurface.ListCategory{
 // therefore one-way from here — the Hub is where an archived project comes back.
 func outlinerProjectOperationManifest() []operation.OperationManifestEntry {
 	return []operation.OperationManifestEntry{
-		{ID: operation.OperationProjectSetTags, Label: "Set project tags", Aliases: []string{"project tags"}, Provider: operation.ValueProviderProjectTags, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: operation.OperationProjectActions, Label: "Project actions", Aliases: []string{"project action sheet"}, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: operation.OperationScopeRenameProject, Label: "Edit project", Aliases: []string{"project settings"}, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: operation.OperationProjectAddComment, Label: "Add project comment", Aliases: []string{"comment on project", "project comment"}, Provider: operation.ValueProviderProjectComment, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: operation.OperationProjectComments, Label: "Project comments", Aliases: []string{"read project comments"}, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: operation.OperationScopePinProject, Label: "Toggle project pin", Aliases: []string{"pin project", "unpin project"}, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: operation.OperationScopeArchiveProject, Label: "Archive project", Category: outlinerProjectActionCategoryDanger, Risk: operation.OperationRiskDestructive},
-		{ID: operation.OperationProjectDelete, Label: "Delete project", Aliases: []string{"remove project", "destroy project"}, Category: outlinerProjectActionCategoryDanger, Risk: operation.OperationRiskDestructive},
+		{ID: operation.OperationProjectSetTags, Label: "Set Project Tags", Aliases: []string{"project tags"}, Provider: operation.ValueProviderProjectTags, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operation.OperationProjectActions, Label: "Project Actions", Aliases: []string{"project action sheet"}, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operation.OperationScopeRenameProject, Label: "Edit Project", Aliases: []string{"project settings"}, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operation.OperationProjectAddComment, Label: "Add Project Comment", Aliases: []string{"comment on project", "project comment"}, Provider: operation.ValueProviderProjectComment, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operation.OperationProjectComments, Label: "Project Comments", Aliases: []string{"read project comments"}, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operation.OperationScopePinProject, Label: "Toggle Project Pin", Aliases: []string{"pin project", "unpin project"}, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operation.OperationScopeArchiveProject, Label: "Archive Project", Category: outlinerProjectActionCategoryDanger, Risk: operation.OperationRiskDestructive},
+		{ID: operation.OperationProjectDelete, Label: "Delete Project", Aliases: []string{"remove project", "destroy project"}, Category: outlinerProjectActionCategoryDanger, Risk: operation.OperationRiskDestructive},
 	}
 }
 

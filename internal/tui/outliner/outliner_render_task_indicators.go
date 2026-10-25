@@ -134,7 +134,8 @@ func renderDependencyIndicator(task *models.Task, index *app.DependencyIndex) st
 }
 
 // formatReviewIndicator announces a task that is asking to be looked at, which
-// models.TaskNeedsAttention answers and this only spells: the stored review flag,
+// models.TaskOwesReviewAttention answers and this only spells, so a hidden row
+// drawn under fH advertises no review `R` would refuse: the stored review flag,
 // or a scheduled check-in whose calendar day has arrived and whose task is
 // eligible to raise it. A future schedule belongs in Peek, while a terminal task
 // stays silent and a deferred one suppresses its schedule. The row and the
@@ -148,7 +149,7 @@ func renderDependencyIndicator(task *models.Task, index *app.DependencyIndex) st
 // day to be late against — and it stays as long as the flag does, since `=` set
 // it and `R` is what takes it off.
 func formatReviewIndicator(task *models.Task, now time.Time) string {
-	if !models.TaskNeedsAttention(task, now) {
+	if !models.TaskOwesReviewAttention(nil, task, now) {
 		return ""
 	}
 	if !task.CheckInIsDueAt(now) {

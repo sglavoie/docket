@@ -309,7 +309,7 @@ func TestTaskForm_Extras_CommentKeysAreTabScoped(t *testing.T) {
 	if got := descFor(extras, "c"); got != "Toggle comments section" {
 		t.Errorf("Extras c = %q, want the comments toggle", got)
 	}
-	if got := descFor(extras, "ctrl+y"); got != "Add comment" {
+	if got := descFor(extras, "ctrl+y"); got != "Add Comment" {
 		t.Errorf("Extras Ctrl+Y = %q, want the add-comment row", got)
 	}
 

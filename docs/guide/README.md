@@ -41,7 +41,7 @@ press `Enter`. Then press `wp` to pause it. Later, `b` shows the note in Peek;
 `wg` resumes Doing.
 
 **Keep a review view ready.** Press `/`, type `?review`, and press `Enter`.
-Open Named Lenses with `\`, choose `Save current view`, and name it
+Open Named Lenses with `\`, choose `Save Current View`, and name it
 “Weekly review.” Reopen that lens whenever you review your work; it shows
 flagged tasks and tasks whose check-in is due. Use `R` to acknowledge each
 candidate. The name is a reminder of your routine, not an automatic schedule.
@@ -67,11 +67,11 @@ hidden. See [filters and search](search-and-lenses.md#filters-and-search).
 **Recover a mistaken change.** Press `u` to undo or `Ctrl+R` to redo. If the
 restored task is visible, the cursor follows it; otherwise the feedback names
 where it went. For a visible single-task restoration, `Ctrl+O` returns to your
-previous position. Open `Help → Recent messages` to reread feedback that has
+previous position. Open `Help → Recent Messages` to reread feedback that has
 expired. See [the Outliner chrome](outliner-chrome.md).
 
 **Update a saved view.** A `*` after a lens name means its settings have changed.
 Open `Q` to see which ones. Then open Named Lenses with `\`, select the lens,
-press `Space`, and choose `Replace from current view`. Check the change summary
+press `Space`, and choose `Replace from Current View`. Check the change summary
 before confirming. This replaces the saved settings and cannot be undone with
 `u`. See [named lenses](search-and-lenses.md#named-lenses).

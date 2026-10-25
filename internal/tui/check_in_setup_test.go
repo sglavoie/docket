@@ -221,12 +221,12 @@ func TestCheckInSetupMenuHelpAndViewPreservation(t *testing.T) {
 	}
 	checkpoint := view.CaptureOutlinerPresentationCheckpoint()
 	menu := menuWithID(t, resolveOutlinerMenus(t, model, chrome.ModeAll), outliner.MenuIDTask)
-	if !menuHasLabel(menu, "Set up check-ins") {
+	if !menuHasLabel(menu, "Set Up Check-Ins") {
 		t.Fatal("setup missing from global menu")
 	}
 	found := false
 	for _, item := range model.coreInputHelpItems() {
-		if item.Description == "Set up check-ins" && strings.Contains(item.Key, "F10") {
+		if item.Description == "Set Up Check-Ins" && strings.Contains(item.Key, "F10") {
 			found = true
 		}
 	}
@@ -239,7 +239,7 @@ func TestCheckInSetupMenuHelpAndViewPreservation(t *testing.T) {
 		t.Fatalf("hidden tasks missing from setup: %v", model.feedback.err)
 	}
 	screen := driver.Observe(ObserveOptions{}).PlainScreen
-	for _, text := range []string{"Set up check-ins", "remaining after this", "Ctrl+N", candidates[0].Title} {
+	for _, text := range []string{"Set Up Check-Ins", "remaining after this", "Ctrl+N", candidates[0].Title} {
 		if !strings.Contains(screen, text) {
 			t.Fatalf("missing %q:\n%s", text, screen)
 		}

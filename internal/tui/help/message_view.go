@@ -74,7 +74,7 @@ func (m *MessageView) Init() tea.Cmd          { return nil }
 func (m *MessageView) IsFullHeight() bool     { return true }
 func (m *MessageView) HasTextInput() bool     { return m.searching }
 func (m *MessageView) ShouldCaptureEsc() bool { return m.searching || m.query != "" }
-func (m *MessageView) StatusBarLabel() string { return "Recent messages" }
+func (m *MessageView) StatusBarLabel() string { return "Recent Messages" }
 
 func (m *MessageView) SetSize(width, height int) {
 	m.width, m.height = max(width, 1), max(height, 1)
@@ -285,7 +285,7 @@ func (m *MessageView) View() tea.View {
 		}
 		subtitle += " · Read-only"
 	}
-	title := chrome.RenderFullscreenTitleWithPulse("Recent messages", subtitle, m.CurrentWorkspacePulse(), m.width)
+	title := chrome.RenderFullscreenTitleWithPulse("Recent Messages", subtitle, m.CurrentWorkspacePulse(), m.width)
 	if m.searching || m.query != "" {
 		title += "\n" + m.searchInput.View(m.query, m.searching, m.width)
 	}

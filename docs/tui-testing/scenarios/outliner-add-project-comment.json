@@ -8,7 +8,7 @@
     { "type": "key", "label": "step down onto the project header", "key": "j" },
 
     { "type": "key", "label": "C on a project header comments on the project", "key": "C" },
-    { "type": "assert", "assert": "contains", "value": "Add project comment" },
+    { "type": "assert", "assert": "contains", "value": "Add Project Comment" },
     { "type": "assert", "label": "the popup names the project it froze", "assert": "contains", "value": "Checklist Delivery" },
     { "type": "assert", "label": "the same multiline terms as the task popup", "assert": "contains", "value": "Ctrl+S save" },
     { "type": "assert", "assert": "no_layout_issues" },

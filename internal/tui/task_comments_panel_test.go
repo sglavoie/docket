@@ -214,10 +214,10 @@ func TestCommentsHelpKeyRaisesTheCommentsGrammar(t *testing.T) {
 	for _, item := range raised.Items {
 		documented[item.Key] = item.Description
 	}
-	if documented["enter"] != "Expand comment" {
+	if documented["enter"] != "Expand Comment" {
 		t.Fatalf("Comments help describes Enter as %q, want the panel's own grammar: %+v", documented["enter"], raised.Items)
 	}
-	if documented["space"] != "Comment actions" {
+	if documented["space"] != "Comment Actions" {
 		t.Fatalf("Comments help omits the Space sheet: %+v", raised.Items)
 	}
 	// `?` documents itself only because the keymap names it: the core descriptor

@@ -110,7 +110,7 @@ func queryClauseMatches(clause QueryClause, task *Task, project *Project, now ti
 	case QueryFieldReview:
 		return task.Review
 	case QueryFieldNeedsReview:
-		return taskOwesReviewAttention(project, task, now)
+		return TaskOwesReviewAttention(project, task, now)
 	case QueryFieldStale:
 		return taskOwesStaleAttention(project, task, now)
 	case QueryFieldDeferred:
@@ -118,11 +118,11 @@ func queryClauseMatches(clause QueryClause, task *Task, project *Project, now ti
 	case QueryFieldCompleted:
 		return queryCompletedMatches(task, clause, now)
 	case QueryFieldParent:
-		return queryOpenChildCount(task) > 0
+		return queryOpenChildCount(project, task) > 0
 	case QueryFieldChild:
 		return task.ParentID != nil
 	case QueryFieldLeaf:
-		return queryOpenChildCount(task) == 0
+		return queryOpenChildCount(project, task) == 0
 	case QueryFieldBlocked:
 		return len(task.Dependencies) > 0
 	case QueryFieldBlocking:
@@ -171,12 +171,13 @@ func queryPopulationMatches(value string, carries bool) bool {
 	return true
 }
 
-// taskOwesReviewAttention and taskOwesStaleAttention are the two attention
+// TaskOwesReviewAttention and taskOwesStaleAttention are the two attention
 // questions every query surface asks. Hidden work is never owed attention, so
 // neither admits it, even where a hidden clause has opened that population;
-// the filter clause and the search ?review/?stale predicates share them so the
-// two readings cannot disagree.
-func taskOwesReviewAttention(project *Project, task *Task, now time.Time) bool {
+// the filter clause, the search ?review/?stale predicates, and the row's review
+// badge share them so the readings cannot disagree. A nil project resolves
+// inheritance through the task's Parent pointers.
+func TaskOwesReviewAttention(project *Project, task *Task, now time.Time) bool {
 	return TaskNeedsAttention(task, now) && !TaskEffectivelyHidden(project, task)
 }
 
@@ -271,19 +272,19 @@ func queryDueMatches(task *Task, clause QueryClause, now time.Time) bool {
 	return queryDayMatches(*task.DueDate, clause.Value, now)
 }
 
+// queryDueWindowMatches reads a relative due value the way the typed `/`
+// search does, so a lens saved from a search admits what the search showed: an
+// hour window is everything due by its end, overdue work included, and a day or
+// week offset is the one calendar day that far out, like any other date.
 func queryDueWindowMatches(task *Task, value string, now time.Time) bool {
 	count, hours, err := parseQueryWindow(value)
 	if err != nil {
 		return false
 	}
 	if hours {
-		if task.DueDate.Before(now) {
-			return false
-		}
 		return !task.DueDate.After(now.Add(time.Duration(count) * time.Hour))
 	}
-	days := util.DaysBetween(now, *task.DueDate)
-	return days >= 0 && days <= count
+	return util.DaysBetween(now, *task.DueDate) == count
 }
 
 func queryDeferDayMatches(task *Task, value string, now time.Time) bool {
@@ -321,11 +322,15 @@ func queryCompletedMatches(task *Task, clause QueryClause, now time.Time) bool {
 // queryOpenChildCount counts the open direct children the task carries as it was
 // handed over. A projection that rewrites Children to express a promoted or
 // flattened view is therefore answered about the tree it is actually showing,
-// which is the same census the row's own child marker reads.
-func queryOpenChildCount(task *Task) int {
+// which is the same census the row's own child marker reads. A visible parent
+// does not count a child storing the hidden flag, so parent and leaf describe
+// what expanding it shows; a hidden parent's children are hidden with it and
+// all count.
+func queryOpenChildCount(project *Project, task *Task) int {
+	parentHidden := TaskEffectivelyHidden(project, task)
 	count := 0
 	for _, child := range task.Children {
-		if child != nil && !child.IsTerminalState() {
+		if child != nil && !child.IsTerminalState() && (parentHidden || !child.Hidden) {
 			count++
 		}
 	}

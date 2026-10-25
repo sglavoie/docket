@@ -1,6 +1,8 @@
 package config
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -85,5 +87,20 @@ func TestWorkspaceBackupDoesNotReplaceAWorkspaceSnapshotManifest(t *testing.T) {
 	}
 	if data, err := os.ReadFile(path); err != nil || string(data) != "existing user file" {
 		t.Fatalf("source file changed: %q, %v", data, err)
+	}
+}
+
+func TestWorkspaceBackupVerificationNamesAMissingBackupPlainly(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "nowhere")
+	_, err := VerifyWorkspaceBackup(dir)
+	if err == nil {
+		t.Fatal("verifying a directory with no backup succeeded")
+	}
+	if !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("error does not unwrap to fs.ErrNotExist: %v", err)
+	}
+	if !strings.HasPrefix(err.Error(), "no backup at ") || !strings.Contains(err.Error(), "(snapshot.json is missing)") ||
+		strings.Contains(err.Error(), "no such file") {
+		t.Fatalf("error = %q", err)
 	}
 }

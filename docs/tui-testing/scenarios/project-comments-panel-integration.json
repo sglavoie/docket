@@ -18,7 +18,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "C on that header writes the project's first comment", "key": "C" },
-    { "type": "assert", "assert": "contains", "value": "Add project comment" },
+    { "type": "assert", "assert": "contains", "value": "Add Project Comment" },
     { "type": "text", "text": "Charter draft is with legal" },
     { "type": "key", "key": "ctrl+s" },
     { "type": "wait" },
@@ -53,7 +53,7 @@
     { "type": "key", "label": "Space is the only route to Delete, and it confirms first", "key": "space" },
     { "type": "assert", "assert": "contains", "value": "Delete" },
     { "type": "key", "key": "enter" },
-    { "type": "assert", "assert": "contains", "value": "Delete comment" },
+    { "type": "assert", "label": "the confirmation asks before deleting", "assert": "contains", "value": "Delete comment [" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "key": "y" },
     { "type": "wait" },

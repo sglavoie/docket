@@ -697,7 +697,7 @@ Preview updates also compare other valid draft lines by parsed title and resolve
 project identity. The first matching line number is cached for both preview
 renderings; layout never reparses the batch for duplicate notices.
 
-Recent messages holds a bounded 20-event session history in the feedback controller.
+Recent Messages holds a bounded 20-event session history in the feedback controller.
 The existing post-update observation point records it; amendments of a status
 generation replace that entry, and expiry and ambient advisories record nothing.
 The viewer reads a detached newest-first snapshot. Copy notices stay local, and

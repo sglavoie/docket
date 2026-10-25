@@ -218,7 +218,7 @@ func compileSearchDue(value string, now time.Time) searchDuePredicate {
 	case "none":
 		return searchDuePredicate{bucket: DueDateNone, hasBucket: true}
 	}
-	day, err := capturetext.ParseDate(value)
+	day, err := capturetext.ParseDateAt(value, now)
 	if err != nil {
 		return searchDuePredicate{}
 	}

@@ -32,7 +32,7 @@ func TestLensPickerNoticeWrapsWithinBudget(t *testing.T) {
 			if !utf8.ValidString(rendered) || lipgloss.Width(rendered) > chrome.MinTerminalWidth || lipgloss.Height(rendered) > chrome.MinTerminalHeight {
 				t.Fatalf("notice exceeds terminal or breaks Unicode:\n%s", rendered)
 			}
-			for _, control := range []string{"Search:", "Enter apply search", "Esc cancel search", "Save current view"} {
+			for _, control := range []string{"Search:", "Enter apply search", "Esc cancel search", "Save Current View"} {
 				if !strings.Contains(rendered, control) {
 					t.Fatalf("missing %q:\n%s", control, rendered)
 				}

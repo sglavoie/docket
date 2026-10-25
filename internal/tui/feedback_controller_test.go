@@ -236,7 +236,7 @@ func TestFeedbackControllerAppendDetailKeepsRecoveryControlsTrailing(t *testing.
 func TestFeedbackLineTooWideKeepsItsRecoveryControls(t *testing.T) {
 	t.Parallel()
 
-	const head = "✓ Status: Draft the quarterly plan → Waiting · No check-in: Draft the quarterly plan · Ctrl+M: Set up check-ins"
+	const head = "✓ Status: Draft the quarterly plan → Waiting · No check-in: Draft the quarterly plan · Ctrl+M: Set Up Check-Ins"
 	for _, suffix := range []string{" · u undo", " · u undo · Ctrl+O origin", " · Ctrl+O origin"} {
 		for _, width := range []int{60, 72, 80, 100} {
 			got := fitRecoveryFeedback(head+suffix, width)
@@ -270,7 +270,7 @@ func TestFeedbackLineTooWideKeepsItsRecoveryControls(t *testing.T) {
 func TestFooterFeedbackRowKeepsUndoAtTheFloor(t *testing.T) {
 	app := typedTestApp(t)
 	app.viewNav.width = 60
-	app.feedback.announce("Status: Draft the quarterly planning document → Waiting · No check-in · Ctrl+M: Set up check-ins · u undo", false, time.Now())
+	app.feedback.announce("Status: Draft the quarterly planning document → Waiting · No check-in · Ctrl+M: Set Up Check-Ins · u undo", false, time.Now())
 
 	row := ansi.Strip(app.footerFeedbackLine())
 	if got := lipgloss.Width(row); got != 60 {

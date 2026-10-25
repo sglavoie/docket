@@ -141,10 +141,10 @@ func TestParseDate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ParseDate(tt.input)
+			got, err := ParseDateAt(tt.input, time.Now())
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ParseDate(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+				t.Errorf("ParseDateAt(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
 				return
 			}
 
@@ -154,7 +154,7 @@ func TestParseDate(t *testing.T) {
 				wantDate := time.Date(tt.want.Year(), tt.want.Month(), tt.want.Day(), 0, 0, 0, 0, time.UTC)
 
 				if !gotDate.Equal(wantDate) {
-					t.Errorf("ParseDate(%q) = %v, want %v", tt.input, gotDate.Format("2006-01-02"), wantDate.Format("2006-01-02"))
+					t.Errorf("ParseDateAt(%q) = %v, want %v", tt.input, gotDate.Format("2006-01-02"), wantDate.Format("2006-01-02"))
 				}
 			}
 		})
@@ -187,26 +187,26 @@ func TestParseDateWeekdays(t *testing.T) {
 
 	for _, tt := range weekdayTests {
 		t.Run(tt.input, func(t *testing.T) {
-			got, err := ParseDate(tt.input)
+			got, err := ParseDateAt(tt.input, time.Now())
 			if err != nil {
-				t.Errorf("ParseDate(%q) unexpected error: %v", tt.input, err)
+				t.Errorf("ParseDateAt(%q) unexpected error: %v", tt.input, err)
 				return
 			}
 
 			// The result should be the next occurrence of the weekday
 			if got.Weekday() != tt.weekday {
-				t.Errorf("ParseDate(%q) weekday = %v, want %v", tt.input, got.Weekday(), tt.weekday)
+				t.Errorf("ParseDateAt(%q) weekday = %v, want %v", tt.input, got.Weekday(), tt.weekday)
 			}
 
 			// It should be in the future (or today if same weekday - but always at least +1 day)
 			if !got.After(today) {
-				t.Errorf("ParseDate(%q) = %v, should be after today %v", tt.input, got, today)
+				t.Errorf("ParseDateAt(%q) = %v, should be after today %v", tt.input, got, today)
 			}
 
 			// It should be at most 7 days from today
 			maxDate := today.AddDate(0, 0, 7)
 			if got.After(maxDate) {
-				t.Errorf("ParseDate(%q) = %v, should be within 7 days from today", tt.input, got)
+				t.Errorf("ParseDateAt(%q) = %v, should be within 7 days from today", tt.input, got)
 			}
 		})
 	}
@@ -240,27 +240,27 @@ func TestParseDateNextWeekday(t *testing.T) {
 
 	for _, tt := range nextWeekdayTests {
 		t.Run(tt.input, func(t *testing.T) {
-			got, err := ParseDate(tt.input)
+			got, err := ParseDateAt(tt.input, time.Now())
 			if err != nil {
-				t.Errorf("ParseDate(%q) unexpected error: %v", tt.input, err)
+				t.Errorf("ParseDateAt(%q) unexpected error: %v", tt.input, err)
 				return
 			}
 
 			// The result should be the correct weekday
 			if got.Weekday() != tt.weekday {
-				t.Errorf("ParseDate(%q) weekday = %v, want %v", tt.input, got.Weekday(), tt.weekday)
+				t.Errorf("ParseDateAt(%q) weekday = %v, want %v", tt.input, got.Weekday(), tt.weekday)
 			}
 
 			// "next <weekday>" should always be at least 7 days away
 			minDate := today.AddDate(0, 0, 7)
 			if got.Before(minDate) {
-				t.Errorf("ParseDate(%q) = %v, should be at least 7 days from today %v", tt.input, got, today)
+				t.Errorf("ParseDateAt(%q) = %v, should be at least 7 days from today %v", tt.input, got, today)
 			}
 
 			// It should be at most 14 days from today
 			maxDate := today.AddDate(0, 0, 14)
 			if got.After(maxDate) {
-				t.Errorf("ParseDate(%q) = %v, should be within 14 days from today", tt.input, got)
+				t.Errorf("ParseDateAt(%q) = %v, should be within 14 days from today", tt.input, got)
 			}
 		})
 	}

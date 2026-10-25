@@ -16,7 +16,7 @@ import (
 
 func TestOperationExecutionResultStatusDeliveryPrecedence(t *testing.T) {
 	failure := errors.New("copy failed")
-	confirmation := &operation.OperationConfirmationRequestMsg{Label: "Delete note"}
+	confirmation := &operation.OperationConfirmationRequestMsg{Label: "Delete Note"}
 	value := &operation.OperationValueRequestMsg{Provider: operation.ValueProviderNoteTitle}
 
 	tests := []struct {
@@ -81,7 +81,7 @@ func TestOperationExecutionResultStatusDeliveryPrecedence(t *testing.T) {
 func TestOperationExecutorStatusOnlyResultReachesTheMessageSeam(t *testing.T) {
 	registry := operation.NewOperationRegistry()
 	reporting := operation.OperationDescriptor{
-		ID: "note.copy-title", Label: "Copy note title", Category: operation.OperationCategoryNote,
+		ID: "note.copy-title", Label: "Copy Note Title", Category: operation.OperationCategoryNote,
 		TargetSource: operation.OperationTargetGlobal, TargetCardinality: operation.TargetCardinalityNone,
 		Risk: operation.OperationRiskReadOnly,
 	}
@@ -150,12 +150,12 @@ func TestOperationExecutorStatusOnlyResultReachesTheMessageSeam(t *testing.T) {
 func TestOperationExecutorMessageAndStatusWithInstalledReporterDeliverOnce(t *testing.T) {
 	registry := operation.NewOperationRegistry()
 	speaking := operation.OperationDescriptor{
-		ID: "task.done", Label: "Complete task", Category: operation.OperationCategoryTask,
+		ID: "task.done", Label: "Complete Task", Category: operation.OperationCategoryTask,
 		TargetSource: operation.OperationTargetGlobal, TargetCardinality: operation.TargetCardinalityNone,
 		Risk: operation.OperationRiskReadOnly,
 	}
 	statusOnly := operation.OperationDescriptor{
-		ID: "note.copy-title", Label: "Copy note title", Category: operation.OperationCategoryNote,
+		ID: "note.copy-title", Label: "Copy Note Title", Category: operation.OperationCategoryNote,
 		TargetSource: operation.OperationTargetGlobal, TargetCardinality: operation.TargetCardinalityNone,
 		Risk: operation.OperationRiskReadOnly,
 	}

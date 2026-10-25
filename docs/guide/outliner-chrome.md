@@ -11,9 +11,9 @@ tag wears.
 | --- | --- | --- |
 | Find a shortcut | `?`, then `/` | Search `defer` to find scheduling controls |
 | Explain a narrow view | `Q` | Remove one restriction with its numbered key |
-| Open the menus | `F10` | Task → Set up check-ins |
+| Open the menus | `F10` | Task → Set Up Check-Ins |
 | Keep the menu bar visible | `M` | Press again to hide it |
-| Reread feedback | Help → Recent messages | Recover the full text of an expired message |
+| Reread feedback | Help → Recent Messages | Recover the full text of an expired message |
 
 Help puts capture, search, Peek, and editing together under Everyday, followed
 by Plan, the Doing/Done Status actions, and Recovery. These actions through
@@ -104,7 +104,7 @@ An action with no available history remains visible with “Nothing to undo” o
 Entries with no shortcut are available only through the menus. View → Clear All
 Folds opens every folded section, project group, and task subtree, reporting
 `All folds cleared` or `Nothing is folded`. View → Advisories toggles ambient
-workspace notices. Task → Set up check-ins schedules the tasks named by a
+workspace notices. Task → Set Up Check-Ins schedules the tasks named by a
 recent check-in reminder.
 
 Menu-bar visibility is saved on this machine, as are the theme and advisory
@@ -171,7 +171,7 @@ Ordinary feedback lasts two to six seconds, depending on its length; undo
 feedback lasts six seconds. Warnings allow six to twelve seconds, based on text
 length and wrapped rows when published. Warnings and errors wrap across up to
 three rows so the reason and recovery action can be read together. Longer
-diagnostics point to Help → Recent messages for their full text.
+diagnostics point to Help → Recent Messages for their full text.
 A mode change clears transient view feedback.
 A save failure with a retained draft stays visible until that field is edited
 or the draft is saved or discarded. Moving the cursor, waiting, or opening Help
@@ -179,7 +179,7 @@ does not dismiss it. The selection count stays in the second header row.
 
 ### Reread a message
 
-`F10` → Help → Recent messages opens the latest feedback in a read-only,
+`F10` → Help → Recent Messages opens the latest feedback in a read-only,
 scrollable viewer, even after it has expired or a mode change has cleared it.
 The viewer keeps the latest 20 messages for this session, including operation
 errors and transient view feedback. Left visits older messages and Right returns

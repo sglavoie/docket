@@ -96,14 +96,14 @@ func commentOperationDescriptors() []operation.OperationDescriptor {
 		}
 	}
 	return []operation.OperationDescriptor{
-		comment(OperationCommentAdd, "Add comment", "Write a new comment on this task", operation.OperationRiskMutation),
-		comment(OperationCommentEdit, "Edit comment", "Edit this comment inline", operation.OperationRiskMutation),
-		comment(OperationCommentEditExternal, "Edit comment in external editor", "Edit this comment in the external editor", operation.OperationRiskMutation),
-		comment(OperationCommentDelete, "Delete comment", "Remove this comment from the task", operation.OperationRiskDestructive),
-		comment(OperationCommentCopy, "Copy comment text", "Copy this comment's text to the clipboard", operation.OperationRiskReadOnly),
-		comment(OperationCommentCopyAll, "Copy all as Markdown", "Copy every comment as a numbered Markdown list", operation.OperationRiskReadOnly),
-		comment(OperationCommentExpand, "Expand comment", "Show this comment's full text", operation.OperationRiskReadOnly),
-		comment(OperationCommentActions, "Comment actions", "Open the action sheet for the comment under the cursor", operation.OperationRiskReadOnly),
+		comment(OperationCommentAdd, "Add Comment", "Write a new comment on this task", operation.OperationRiskMutation),
+		comment(OperationCommentEdit, "Edit Comment", "Edit this comment inline", operation.OperationRiskMutation),
+		comment(OperationCommentEditExternal, "Edit Comment in External Editor", "Edit this comment in the external editor", operation.OperationRiskMutation),
+		comment(OperationCommentDelete, "Delete Comment", "Remove this comment from the task", operation.OperationRiskDestructive),
+		comment(OperationCommentCopy, "Copy Comment Text", "Copy this comment's text to the clipboard", operation.OperationRiskReadOnly),
+		comment(OperationCommentCopyAll, "Copy All as Markdown", "Copy every comment as a numbered Markdown list", operation.OperationRiskReadOnly),
+		comment(OperationCommentExpand, "Expand Comment", "Show this comment's full text", operation.OperationRiskReadOnly),
+		comment(OperationCommentActions, "Comment Actions", "Open the action sheet for the comment under the cursor", operation.OperationRiskReadOnly),
 	}
 }
 
@@ -113,14 +113,14 @@ func commentOperationDescriptors() []operation.OperationDescriptor {
 // key at all.
 func CommentOperationManifest() []operation.OperationManifestEntry {
 	return []operation.OperationManifestEntry{
-		{ID: OperationCommentExpand, Label: "Expand comment", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: OperationCommentAdd, Label: "Add comment", Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: OperationCommentEdit, Label: "Edit comment", Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: OperationCommentEditExternal, Label: "Edit comment in external editor", Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: OperationCommentCopy, Label: "Copy comment text", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: OperationCommentCopyAll, Label: "Copy all as Markdown", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: OperationCommentActions, Label: "Comment actions", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: OperationCommentDelete, Label: "Delete comment", Risk: operation.OperationRiskDestructive},
+		{ID: OperationCommentExpand, Label: "Expand Comment", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: OperationCommentAdd, Label: "Add Comment", Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: OperationCommentEdit, Label: "Edit Comment", Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: OperationCommentEditExternal, Label: "Edit Comment in External Editor", Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: OperationCommentCopy, Label: "Copy Comment Text", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: OperationCommentCopyAll, Label: "Copy All as Markdown", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: OperationCommentActions, Label: "Comment Actions", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: OperationCommentDelete, Label: "Delete Comment", Risk: operation.OperationRiskDestructive},
 	}
 }
 

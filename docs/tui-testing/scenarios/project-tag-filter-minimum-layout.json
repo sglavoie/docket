@@ -19,7 +19,7 @@
 
     { "type": "key", "label": "the tag actions sheet fits the same terminal", "key": "space" },
     { "type": "assert", "assert": "contains", "value": "Tag Actions" },
-    { "type": "assert", "assert": "contains", "value": "Park all members" },
+    { "type": "assert", "assert": "contains", "value": "Park All Members" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "key": "esc" },

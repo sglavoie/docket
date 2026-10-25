@@ -217,3 +217,36 @@ func TestCaptureLeavesProseTildesAlone(t *testing.T) {
 		t.Fatalf("prose minted dependencies: %v", dependencyLocatorStrings(result.DependencyLocators()))
 	}
 }
+
+// TestSuggestionCandidatesWithholdHiddenWork keeps hidden work out of the
+// completion and picker offers for `>`, `<`, and `~`, stored or inherited, while
+// a typed alias still resolves to it.
+func TestSuggestionCandidatesWithholdHiddenWork(t *testing.T) {
+	home, routed := dependencyWorkspace()
+	parentID := "home-2"
+	home.Tasks[1].Hidden = true
+	home.Tasks = append(home.Tasks, &models.Task{
+		ID: "home-5", ShortID: 5, Title: "Inherits hiding", WorkflowState: models.StateBacklog, ParentID: &parentID,
+	})
+	routed.Tasks[0].Hidden = true
+	home.BuildTaskTree()
+	routed.BuildTaskTree()
+
+	var structural []string
+	for _, task := range StructuralCandidates(home) {
+		structural = append(structural, task.ID)
+	}
+	if want := []string{"home-1", "home-4"}; !slices.Equal(structural, want) {
+		t.Fatalf("structural candidates = %v, want %v", structural, want)
+	}
+	var dependency []string
+	for _, candidate := range DependencyAdditionCandidates([]*models.Project{home, routed}, "home-1", nil) {
+		dependency = append(dependency, candidate.Task.ID)
+	}
+	if want := []string{"home-4", "routed-2"}; !slices.Equal(dependency, want) {
+		t.Fatalf("dependency candidates = %v, want %v", dependency, want)
+	}
+	if task, err := capturetext.ResolveParent("2", home); err != nil || task == nil || task.ID != "home-2" {
+		t.Fatalf("typed >2 resolved to %v (%v), want the hidden task", task, err)
+	}
+}

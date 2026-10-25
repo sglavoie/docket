@@ -81,6 +81,10 @@ func (m *AppModel) controlReveal(task *models.Task, project *models.Project, rep
 // controlAcknowledge reviews one task as R does, without the advance: the
 // cursor is not where the request came from.
 func (m *AppModel) controlAcknowledge(task *models.Task, project *models.Project, reply chan<- control.Reply) tea.Cmd {
+	if models.TaskEffectivelyHidden(project, task) {
+		answer(reply, false, "task is hidden")
+		return nil
+	}
 	if !models.TaskAllowsExplicitReview(task, time.Now()) {
 		answer(reply, false, "task has no review to acknowledge")
 		return nil

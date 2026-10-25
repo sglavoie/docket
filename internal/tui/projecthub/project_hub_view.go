@@ -233,15 +233,15 @@ func ProjectHubOperationDescriptors() []operation.OperationDescriptor {
 		return descriptor
 	}
 	return []operation.OperationDescriptor{
-		surface(operation.OperationScopeCreateProject, "New project", operation.OperationCategoryProject, operation.OperationRiskMutation, "create project"),
-		surface(OperationProjectHubSearch, "Search projects", operation.OperationCategoryFilter, operation.OperationRiskReadOnly, "filter the project list"),
-		needsRow(surface(OperationProjectHubToggleSelection, "Select project", operation.OperationCategoryProject, operation.OperationRiskReadOnly, "toggle project selection")),
-		needsRow(surface(OperationProjectHubSelectAll, "Select every matching project", operation.OperationCategoryProject, operation.OperationRiskReadOnly, "select all projects")),
-		needsRow(surface(OperationProjectHubActions, "Project actions", operation.OperationCategoryProject, operation.OperationRiskReadOnly, "project action sheet")),
+		surface(operation.OperationScopeCreateProject, "New Project", operation.OperationCategoryProject, operation.OperationRiskMutation, "create project"),
+		surface(OperationProjectHubSearch, "Search Projects", operation.OperationCategoryFilter, operation.OperationRiskReadOnly, "filter the project list"),
+		needsRow(surface(OperationProjectHubToggleSelection, "Toggle Project Selection", operation.OperationCategoryProject, operation.OperationRiskReadOnly, "toggle project selection")),
+		needsRow(surface(OperationProjectHubSelectAll, "Select Every Matching Project", operation.OperationCategoryProject, operation.OperationRiskReadOnly, "select all projects")),
+		needsRow(surface(OperationProjectHubActions, "Project Actions", operation.OperationCategoryProject, operation.OperationRiskReadOnly, "project action sheet")),
 		surface(OperationProjectHubTaskFilter, "Cycle every project, only those holding open tasks, only those holding none open", operation.OperationCategoryFilter, operation.OperationRiskReadOnly, "projects holding open tasks", "projects holding no open tasks"),
-		needsRow(surface(OperationProjectHubPreviewPageDown, "Page project tasks down", operation.OperationCategoryNavigation, operation.OperationRiskReadOnly, "scroll project preview down")),
-		needsRow(surface(OperationProjectHubPreviewPageUp, "Page project tasks up", operation.OperationCategoryNavigation, operation.OperationRiskReadOnly, "scroll project preview up")),
-		needsRow(surface(OperationProjectHubSplitLeft, "Move pane split left", operation.OperationCategoryNavigation, operation.OperationRiskReadOnly, "widen project preview")),
-		needsRow(surface(OperationProjectHubSplitRight, "Move pane split right", operation.OperationCategoryNavigation, operation.OperationRiskReadOnly, "widen project list")),
+		needsRow(surface(OperationProjectHubPreviewPageDown, "Page Project Tasks Down", operation.OperationCategoryNavigation, operation.OperationRiskReadOnly, "scroll project preview down")),
+		needsRow(surface(OperationProjectHubPreviewPageUp, "Page Project Tasks Up", operation.OperationCategoryNavigation, operation.OperationRiskReadOnly, "scroll project preview up")),
+		needsRow(surface(OperationProjectHubSplitLeft, "Move Pane Split Left", operation.OperationCategoryNavigation, operation.OperationRiskReadOnly, "widen project preview")),
+		needsRow(surface(OperationProjectHubSplitRight, "Move Pane Split Right", operation.OperationCategoryNavigation, operation.OperationRiskReadOnly, "widen project list")),
 	}
 }

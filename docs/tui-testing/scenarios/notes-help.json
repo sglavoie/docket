@@ -11,12 +11,12 @@
 
     { "type": "key", "label": "open the manager's own help", "key": "?" },
     { "type": "assert", "assert": "view", "value": "Help" },
-    { "type": "assert", "assert": "contains", "value": "Copy note title" },
-    { "type": "assert", "assert": "contains", "value": "Copy note path" },
-    { "type": "assert", "label": "the copies sit beside the rest of the Notes grammar", "assert": "contains", "value": "Move note" },
+    { "type": "assert", "assert": "contains", "value": "Copy Note Title" },
+    { "type": "assert", "assert": "contains", "value": "Copy Note Path" },
+    { "type": "assert", "label": "the copies sit beside the rest of the Notes grammar", "assert": "contains", "value": "Move Note" },
     { "type": "assert", "label": "both ends are spelled as the whole paths the manager answers", "assert": "contains", "value": "gg/Home" },
     { "type": "assert", "assert": "contains", "value": "G/End" },
-    { "type": "assert", "label": "Delete reaches the user through the Space sheet alone", "assert": "not_contains", "value": "Delete note" },
+    { "type": "assert", "label": "Delete reaches the user through the Space sheet alone", "assert": "not_contains", "value": "Delete Note" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "close help back onto the manager", "key": "?" },

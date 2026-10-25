@@ -112,3 +112,36 @@ func TestCompareTasksBySortFieldOrdersEachField(t *testing.T) {
 		t.Errorf("the default order compared %d, want a tie the caller breaks", c)
 	}
 }
+
+// TestQueryOpenChildCountsSkipsAChildHiddenFromItsVisibleParent holds the
+// census to what expanding the parent shows: a visible parent does not count a
+// child storing the hidden flag, while a hidden parent counts every open child,
+// since they are all hidden with it.
+func TestQueryOpenChildCountsSkipsAChildHiddenFromItsVisibleParent(t *testing.T) {
+	visibleID, hiddenID := "visible", "hidden"
+	visible := &Task{ID: visibleID, Title: "Visible"}
+	shown := &Task{ID: "shown", ParentID: &visibleID}
+	tucked := &Task{ID: "tucked", ParentID: &visibleID, Hidden: true}
+	visible.Children = []*Task{shown, tucked}
+	onlyHidden := &Task{ID: "only-hidden", Title: "Only hidden"}
+	onlyHiddenID := onlyHidden.ID
+	alone := &Task{ID: "alone", ParentID: &onlyHiddenID, Hidden: true}
+	onlyHidden.Children = []*Task{alone}
+	hidden := &Task{ID: hiddenID, Hidden: true}
+	inherited := &Task{ID: "inherited", ParentID: &hiddenID}
+	stored := &Task{ID: "stored", ParentID: &hiddenID, Hidden: true}
+	hidden.Children = []*Task{inherited, stored}
+	project := &Project{ID: "alpha", Tasks: []*Task{visible, shown, tucked, onlyHidden, alone, hidden, inherited, stored}}
+
+	counts := QueryOpenChildCounts([]*Project{project})
+	ref := func(id string) TaskReference { return TaskReference{ProjectID: "alpha", TaskID: id} }
+	if got := counts[ref(visibleID)]; got != 1 {
+		t.Errorf("visible parent counts %d open children, want 1", got)
+	}
+	if got, ok := counts[ref(onlyHiddenID)]; ok {
+		t.Errorf("parent of a lone hidden child counts %d, want absent", got)
+	}
+	if got := counts[ref(hiddenID)]; got != 2 {
+		t.Errorf("hidden parent counts %d open children, want 2", got)
+	}
+}

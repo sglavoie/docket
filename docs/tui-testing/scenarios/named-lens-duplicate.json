@@ -8,7 +8,7 @@
     { "type": "assert", "assert": "contains", "value": "Lens: Waiting" },
     { "type": "key", "key": "\\" },
     { "type": "key", "key": "space" },
-    { "type": "assert", "assert": "contains", "value": "Duplicate lens" },
+    { "type": "assert", "assert": "contains", "value": "Duplicate Lens" },
     { "type": "key", "key": "down" },
     { "type": "key", "key": "down" },
     { "type": "key", "key": "enter" },

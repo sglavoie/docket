@@ -87,20 +87,31 @@ func dumpOutlineBuffer(project *models.Project, projects []*models.Project, mode
 	}
 
 	dumped := make([]string, 0, len(project.Tasks))
-	var walk func(task *models.Task, depth int)
-	walk = func(task *models.Task, depth int) {
+	var walk func(task *models.Task, depth int, insideHidden bool)
+	walk = func(task *models.Task, depth int, insideHidden bool) {
+		// Hidden work stays in the dump, since leaving it out would let a
+		// removed parent orphan it, but every view hides it, so a comment the
+		// parser skips names the subtree before anyone edits it unawares.
+		if task.Hidden && !insideHidden {
+			builder.WriteString(outlineHiddenSubtreeComment)
+			builder.WriteString("\n")
+		}
 		builder.WriteString(outlineDumpLine(task, depth, project, projects))
 		builder.WriteString("\n")
 		dumped = append(dumped, task.ID)
 		for _, child := range children[task.ID] {
-			walk(child, depth+1)
+			walk(child, depth+1, insideHidden || task.Hidden)
 		}
 	}
 	for _, root := range roots {
-		walk(root, 0)
+		walk(root, 0, false)
 	}
 	return builder.String(), dumped, nil
 }
+
+// outlineHiddenSubtreeComment stands above each hidden subtree in a dump. It
+// sits in the first column, which is what makes the buffer parser skip it.
+const outlineHiddenSubtreeComment = "# hidden: the next line and its subtasks (wh unhides)"
 
 // outlineBufferHeader is the comment block every dump opens with. It states the
 // two rules a text buffer cannot show on its own: indentation is parentage, and

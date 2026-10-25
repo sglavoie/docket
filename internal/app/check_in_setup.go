@@ -26,7 +26,7 @@ type CheckInSetupCandidate struct {
 
 func checkInSetupEligible(project *models.Project, task *models.Task) bool {
 	return project != nil && !project.Archived && !models.ProjectTagsParked(project.Tags) &&
-		task != nil && task.CheckIn().IsEmpty() &&
+		task != nil && !models.TaskEffectivelyHidden(project, task) && task.CheckIn().IsEmpty() &&
 		(task.State() == models.StateDoing || task.State() == models.StateWaiting)
 }
 

@@ -120,7 +120,7 @@ retain that draft; the frozen qualified targets are re-resolved at commit.
 
 No commit opens that draft. Entering Doing or Waiting without a schedule is
 committed evidence, `TaskStateEffect.OffersCheckIn()`, and its one consequence
-is a footer note naming the committed subset and the keyless `Set up check-ins`
+is a footer note naming the committed subset and the keyless `Set Up Check-Ins`
 entry — never `@` or `Space`, which read a cursor the committed task may have
 left. It publishes once per session and transaction ID from the one deferred
 closure, so a reload, a redraw, or a redelivery says nothing, and it rides the line
@@ -262,7 +262,7 @@ key earns nothing. The menu bar is not a sheet but a projection of the registry,
 the class `?` help and the footer ranks belong to, so it names directly-bound
 operations freely. What it may not do is make an entity operation keyless: a
 menu-only operation's `TargetSource` is target-free or view-scoped, never a task
-or project. Clear All Folds, Advisories, Recent messages and Set up check-ins:
+or project. Clear All Folds, Advisories, Recent Messages and Set Up Check-Ins:
 keyless, target-free. The
 task-row `Space` menu holds Set Check-In under `Schedule` and Delete, identical
 to the bulk menu: the editor saves with `Ctrl+S`; Delete confirms first. The Hub sheet is
@@ -292,8 +292,8 @@ task or project pin, task or project tags, task or project comment, task or
 project comment panel, checklist-item or task or project edit, and checklist,
 project, or task actions. Keep each set
 distinct so the footer and `?` help carry honest labels; never branch one
-descriptor's target source on runtime context. Edit project, Add project
-comment, and Project comments narrow to an Outliner project header through
+descriptor's target source on runtime context. Edit Project, Add Project
+Comment, and Project Comments narrow to an Outliner project header through
 `outlinerProjectOperationTargetsHeader`: the sole-scope fallback is the Hub's,
 where the row already named its project.
 

@@ -109,8 +109,9 @@ func validateQueryStateValue(value string) (string, error) {
 }
 
 // validateQueryDueValue accepts a relative bucket, an exact calendar day, or a
-// forward window. A window is what lets a due clause say "the next few hours"
-// without freezing an instant into a persisted query.
+// relative offset: `+Nh` is everything due within the next N hours, overdue
+// included, and `+Nd`/`+Nw` the one day that far out. An offset is what lets a
+// persisted query say "the next few hours" without freezing an instant.
 func validateQueryDueValue(value string) (string, error) {
 	switch value {
 	case QueryDueOverdue, QueryDueToday, QueryDueWeek:

@@ -229,7 +229,7 @@ func TestNavigationLeavesLensDefinitionsAndTheActivePointerAlone(t *testing.T) {
 	// An explicit lens edit does persist, which is what gives the rest of the test
 	// a pointer to hold still.
 	env.press(t, "\\")
-	env.selectPickerRow(t, "Save current view…")
+	env.selectPickerRow(t, "Save Current View…")
 	env.settle(t, "enter")
 	env.press(t, "T", "r", "a", "i", "l")
 	env.settle(t, "enter")
