@@ -9,7 +9,7 @@ import (
 )
 
 // Adoption fixtures. Machine identity is exactly the home directory: machine.json
-// lives at <home>/.tt/runtime/<workspace-id>/machine.json, so two homes over one
+// lives at <home>/.docket/runtime/<workspace-id>/machine.json, so two homes over one
 // data directory are two machines sharing one workspace.
 const (
 	adoptionLensAlphaID  = "11111111-1111-4111-8111-111111111111"

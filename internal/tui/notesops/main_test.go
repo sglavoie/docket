@@ -12,7 +12,7 @@ import (
 // TestMain isolates $HOME for every test in the notesops package. The note
 // mutations here travel through the shell port rather than the filesystem, but
 // every test-bearing package under internal/tui carries the same guard so a
-// test that later reaches ~/.tt/runtime/<workspace-id>/machine.json cannot
+// test that later reaches ~/.docket/runtime/<workspace-id>/machine.json cannot
 // write into the developer's real home directory.
 //
 // residue.Run also fails the run when it leaves .tt/, projects/, or a lock file

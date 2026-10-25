@@ -10,7 +10,7 @@ import (
 // TestMain isolates $HOME for every test in the projectops package. The project
 // commits here travel through the shell port rather than the filesystem, but
 // every test-bearing package under internal/tui carries the same guard so a
-// test that later reaches ~/.tt/runtime/<workspace-id>/machine.json cannot
+// test that later reaches ~/.docket/runtime/<workspace-id>/machine.json cannot
 // write into the developer's real home directory.
 func TestMain(m *testing.M) {
 	nofsync.Enable()

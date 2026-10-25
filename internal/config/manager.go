@@ -169,7 +169,7 @@ func (m *Manager) workspaceDataDir() string {
 	return WorkspaceRootFromConfigPath(m.configPath)
 }
 
-// localDataRoot is this manager's machine-local ~/.tt root. Every approved
+// localDataRoot is this manager's machine-local ~/.docket root. Every approved
 // commit root and runtime path must come through here rather than the package
 // LocalDataRoot(), or a named machine would write its transactions beneath the
 // process home instead of its own.
@@ -200,7 +200,7 @@ func (m *Manager) TransactionOwner() string {
 	return m.machineID()
 }
 
-// LocalDataRoot is this manager's machine-local ~/.tt root, the approved commit
+// LocalDataRoot is this manager's machine-local ~/.docket root, the approved commit
 // root beside the workspace that machine.json writes resolve beneath.
 func (m *Manager) LocalDataRoot() string {
 	return m.localDataRoot()

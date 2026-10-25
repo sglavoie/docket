@@ -186,7 +186,7 @@ func TestDoctorJSONPrintsOnlyAParseableReport(t *testing.T) {
 		t.Fatalf("report = %+v", report)
 	}
 
-	logs, globErr := filepath.Glob(filepath.Join(home, ".tt", "logs", "tt-*.log"))
+	logs, globErr := filepath.Glob(filepath.Join(home, ".docket", "logs", "docket-*.log"))
 	if globErr != nil || len(logs) != 1 {
 		t.Fatalf("log files = %v (%v), want exactly one", logs, globErr)
 	}

@@ -273,7 +273,7 @@ func isWorkspaceMoveExcluded(rel string) bool {
 	if isMigrationRootExcluded(rel) {
 		return true
 	}
-	return filepath.Clean(rel) == filepath.Join(dataDirName, "transactions", "commit.lock")
+	return filepath.Clean(rel) == filepath.Join(internalDirName, "transactions", "commit.lock")
 }
 
 // ensureNotNested refuses a source and destination that overlap, which a

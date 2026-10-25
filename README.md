@@ -111,7 +111,7 @@ On macOS, [tt.app](macos/README.md) runs the same program in its own window and
 adds a menu-bar shortcut, quick capture, and notifications. From a clone, run
 `just mac-install` to build and install it; this requires the full Xcode app.
 
-A new workspace starts locally in `~/.tt/`. Use `--data-dir`, `DOCKET_DATA_DIR`, or
+A new workspace starts locally in `~/.docket/`. Use `--data-dir`, `DOCKET_DATA_DIR`, or
 `docket workspace move` to select a different location. Moving into iCloud Drive or
 another synced directory is an explicit choice; an existing selected iCloud
 workspace is preserved.
@@ -129,7 +129,7 @@ is not supported.
 ## Your data
 
 The Go engine makes no network calls and sends no telemetry. By default, the
-terminal workspace lives under `~/.tt/`: a JSON catalog plus one readable
+terminal workspace lives under `~/.docket/`: a JSON catalog plus one readable
 Markdown file per project. You can read, grep, edit, and back it up with ordinary
 tools. An enrolled Mac or iPhone keeps its own local working copy and exchanges
 changes through the chosen folder; when that folder is in iCloud Drive, Apple’s

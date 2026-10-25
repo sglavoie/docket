@@ -11,7 +11,7 @@ import (
 // writes durable state on purpose, but the guard is unconditional across
 // internal/tui: a compiled predicate reads whatever population a test hands it,
 // and the moment one of those fixtures reaches the real storage stack the
-// developer's own ~/.tt is what it would touch.
+// developer's own ~/.docket is what it would touch.
 func TestMain(m *testing.M) {
 	nofsync.Enable()
 	tmp, err := os.MkdirTemp("", "tt-query-home-*")

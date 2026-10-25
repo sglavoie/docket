@@ -14,7 +14,7 @@ import (
 //
 //   - WorkspaceCatalog -> <data>/.tt/workspace.json
 //   - PlanningState    -> <data>/.tt/planning.json
-//   - MachineState     -> ~/.tt/runtime/<workspace-id>/machine.json
+//   - MachineState     -> ~/.docket/runtime/<workspace-id>/machine.json
 //
 // Each aggregate owns its defaults, validation, project-reference cleanup, and
 // persistence lifecycle. RuntimeState composes the three loaded domains for

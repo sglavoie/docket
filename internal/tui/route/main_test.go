@@ -11,7 +11,7 @@ import (
 // writes durable state on purpose, but the guard is unconditional across
 // internal/tui: a route fixture carries whatever params a test hands it, and
 // the moment one of those reaches the real storage stack the developer's own
-// ~/.tt is what it would touch.
+// ~/.docket is what it would touch.
 func TestMain(m *testing.M) {
 	nofsync.Enable()
 	tmp, err := os.MkdirTemp("", "tt-route-home-*")

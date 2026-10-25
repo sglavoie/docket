@@ -210,8 +210,8 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
             try "#!/bin/sh\n".write(to: url, atomically: true, encoding: .utf8)
             try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
         }
-        let old = "tt version a (commit: a, built: 2026-01-01T00:00:00Z)"
-        let new = "tt version b (commit: b, built: 2026-02-01T00:00:00Z)"
+        let old = "docket version a (commit: a, built: 2026-01-01T00:00:00Z)"
+        let new = "docket version b (commit: b, built: 2026-02-01T00:00:00Z)"
         let versions = [bundled.path: new, local.path: old]
 
         let model = PreferencesModel(defaults: defaults)
@@ -245,8 +245,8 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
         let path = dir.appendingPathComponent("tt")
         try "old executable".write(to: path, atomically: true, encoding: .utf8)
         let resolution = TTBinaryResolver.Resolution(url: path, source: .userDefaultsOverride)
-        let old = TTVersion.parse("tt version old")!
-        let new = TTVersion.parse("tt version new")!
+        let old = TTVersion.parse("docket version old")!
+        let new = TTVersion.parse("docket version new")!
         let model = PreferencesModel(defaults: defaults)
         model.runningBinary = resolution
         model.runningVersion = old

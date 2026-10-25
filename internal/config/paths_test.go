@@ -24,7 +24,7 @@ func TestActiveDefaultDataDirOn_ICloudPresentButNoWorkspaceStaysLocal(t *testing
 
 	// iCloud Drive is available but holds no Docket workspace: local-first wins and
 	// no automatic iCloud selection occurs.
-	want := filepath.Join(home, dataDirName)
+	want := filepath.Join(home, localRootName)
 	if got := activeDefaultDataDirOn(""); got != want {
 		t.Fatalf("activeDefaultDataDirOn(\"\") = %q, want local root %q", got, want)
 	}
@@ -110,7 +110,7 @@ func TestActiveDefaultDataDirOn_ICloudAbsent(t *testing.T) {
 	t.Setenv("HOME", home)
 	// No iCloud drive dir created.
 
-	want := filepath.Join(home, dataDirName)
+	want := filepath.Join(home, localRootName)
 	if got := activeDefaultDataDirOn(""); got != want {
 		t.Fatalf("activeDefaultDataDirOn(\"\") = %q, want local root %q", got, want)
 	}
@@ -119,11 +119,11 @@ func TestActiveDefaultDataDirOn_ICloudAbsent(t *testing.T) {
 func TestActiveDefaultDataDirOn_HomeFailureFallback(t *testing.T) {
 	t.Setenv("HOME", "")
 
-	if got := LocalDataRoot(); got != dataDirName {
-		t.Fatalf("LocalDataRoot() with no home = %q, want %q", got, dataDirName)
+	if got := LocalDataRoot(); got != localRootName {
+		t.Fatalf("LocalDataRoot() with no home = %q, want %q", got, localRootName)
 	}
-	if got := activeDefaultDataDirOn(""); got != dataDirName {
-		t.Fatalf("activeDefaultDataDirOn(\"\") with no home = %q, want %q", got, dataDirName)
+	if got := activeDefaultDataDirOn(""); got != localRootName {
+		t.Fatalf("activeDefaultDataDirOn(\"\") with no home = %q, want %q", got, localRootName)
 	}
 	if _, ok := iCloudDataRoot(); ok {
 		t.Fatal("iCloudDataRoot() should report unavailable when home is unknown")
@@ -161,7 +161,7 @@ func TestLocalRuntimeDirForDataDir(t *testing.T) {
 
 	local := LocalDataRoot()
 	// The local default data dir maps to the local root itself so the historical
-	// ~/.tt/logs layout is preserved.
+	// ~/.docket/logs layout is preserved.
 	if got := LocalRuntimeDirForDataDir(local); got != local {
 		t.Fatalf("LocalRuntimeDirForDataDir(local) = %q, want %q", got, local)
 	}
@@ -189,7 +189,7 @@ func TestMachineStatePathUsesValidatedWorkspaceIDForLocalAndExternal(t *testing.
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
-	want := filepath.Join(home, dataDirName, runtimeDirName, testWorkspaceIDA, machineStateFileName)
+	want := filepath.Join(home, localRootName, runtimeDirName, testWorkspaceIDA, machineStateFileName)
 	localPath, err := MachineStatePath(testWorkspaceIDA)
 	if err != nil {
 		t.Fatalf("MachineStatePath(local workspace): %v", err)

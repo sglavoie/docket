@@ -7,7 +7,7 @@ import (
 
 // TestExportPathDerivesFromConfigDir verifies the export directory and per-project
 // export path are rooted at the config file's directory rather than a hardcoded
-// ~/.tt/exports, so exports follow the active (possibly iCloud) data dir.
+// ~/.docket/exports, so exports follow the active (possibly iCloud) data dir.
 func TestExportPathDerivesFromConfigDir(t *testing.T) {
 	dataDir := filepath.Join(t.TempDir(), "tt")
 	configPath := filepath.Join(dataDir, ".tt.json")

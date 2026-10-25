@@ -119,6 +119,11 @@ and migration-snapshot diagnostics.`, config.CurrentConfigVersion, storage.Curre
 			return usageRefusal(cmd, err)
 		}
 		if commandLogs(cmd) {
+			// Before logging opens and before the active-workspace pointer is
+			// read, both of which live under the machine-local root it moves.
+			if err := config.AdoptLegacyRoots(); err != nil {
+				return err
+			}
 			openLogging()
 		}
 		return nil
@@ -148,9 +153,9 @@ func executeCommand(command *cobra.Command) error {
 }
 
 // commandLogs reports whether cmd may write a log, and so whether the pre-run
-// hook opens one. Help, shell completion, and root --version never log, so they
-// must not create ~/.tt/logs. --help needs no case: cobra answers it before any
-// pre-run hook runs.
+// hook adopts the legacy roots and opens one. Help, shell completion, and root
+// --version never log, so they must not touch ~/.docket. --help needs no case:
+// cobra answers it before any pre-run hook runs.
 func commandLogs(cmd *cobra.Command) bool {
 	switch cmd.Name() {
 	case "help", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd, "completion":

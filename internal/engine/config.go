@@ -77,7 +77,7 @@ type Config struct {
 //     process's home directory and hostname, recomputed on every journal.
 type Machine struct {
 	// Home is the root machine-local state resolves beneath, as
-	// <Home>/.tt/runtime/<workspace-id>/machine.json.
+	// <Home>/.docket/runtime/<workspace-id>/machine.json.
 	Home string
 	// DeviceID is the stable transaction owner recovery compares against.
 	DeviceID string

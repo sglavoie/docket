@@ -22,7 +22,7 @@ while the pin and the patches are unchanged.
 ## Build and install
 
 ```bash
-just mac-install        # Release build, bundled tt, ad-hoc signed, into /Applications
+just mac-install        # Release build, bundled docket, ad-hoc signed, into /Applications
 ```
 
 That is the whole install from a clean clone. It runs `just mac-app Release`,
@@ -49,9 +49,9 @@ gitignored: edit the spec, not the project.
 ### Which tt runs
 
 The first executable of: the Settings override (`ttBinaryPath`), the
-bundled `Contents/Resources/bin/tt`, `~/.local/bin/tt`, then `PATH`. A Release
+bundled `Contents/Resources/bin/docket`, `~/.local/bin/docket`, then `PATH`. A Release
 build always bundles one, so an installed app runs the `tt` it was built with,
-with one exception: a `~/.local/bin/tt` whose `--version` reports a later
+with one exception: a `~/.local/bin/docket` whose `--version` reports a later
 `built:` time than the bundled copy's runs instead, since the older binary
 refuses a workspace the newer one has migrated. A Debug build bundles none and
 falls through to `just install`'s copy. Settings › Advanced names the binary

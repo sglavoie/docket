@@ -59,7 +59,7 @@ var syncEnrollCmd = &cobra.Command{
 Enrollment never converts the workspace in place. It:
 
   1. snapshots the current workspace, verified file by file, under
-     ~/.tt/enrollments/ (or --snapshot-dir);
+     ~/.docket/enrollments/ (or --snapshot-dir);
   2. builds a new local working copy at --working-copy, which must be outside
      iCloud Drive, and selects it as this machine's workspace;
   3. records the working copy's initial history and publishes it to the
@@ -122,7 +122,7 @@ func init() {
 
 	syncEnrollCmd.Flags().StringVar(&syncExchangeFolder, "exchange", "", "exchange folder shared by the devices, typically in iCloud Drive (required)")
 	syncEnrollCmd.Flags().StringVar(&syncWorkingCopy, "working-copy", "", "new local directory for the enrolled working copy, outside iCloud (required)")
-	syncEnrollCmd.Flags().StringVar(&syncSnapshotDir, "snapshot-dir", "", "where to keep the snapshot of the original (default ~/.tt/enrollments)")
+	syncEnrollCmd.Flags().StringVar(&syncSnapshotDir, "snapshot-dir", "", "where to keep the snapshot of the original (default ~/.docket/enrollments)")
 	syncEnrollCmd.Flags().BoolVarP(&syncForce, "force", "f", false, "skip the confirmation prompt only")
 	syncJoinCmd.Flags().StringVar(&syncExchangeFolder, "exchange", "", "the exchange folder the enrolling device published to (required)")
 	syncJoinCmd.Flags().StringVar(&syncWorkingCopy, "working-copy", "", "new local directory for this device's working copy (required)")

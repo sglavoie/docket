@@ -129,7 +129,7 @@ func isPreConsolidationV6Excluded(rel string) bool {
 	if isMigrationRootExcluded(clean) {
 		return true
 	}
-	if clean == filepath.Join(dataDirName, "backups") {
+	if clean == filepath.Join(internalDirName, "backups") {
 		return true
 	}
 	base := filepath.Base(clean)

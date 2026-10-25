@@ -6,7 +6,7 @@
 # Usage: build-app.sh [Debug|Release]   (default Debug)
 #
 # Environment:
-#   DOCKET_BINARY               tt to bundle at Contents/Resources/bin/tt; required
+#   DOCKET_BINARY               tt to bundle at Contents/Resources/bin/docket; required
 #                           for Release (`just mac-app Release` builds it with
 #                           the `just build` ldflags), optional for Debug, which
 #                           otherwise resolves ~/.local/bin/tt then PATH
@@ -76,8 +76,8 @@ ditto "$product" "$out"
 
 if [ -n "$tt_binary" ]; then
 	mkdir -p "$out/Contents/Resources/bin"
-	cp "$tt_binary" "$out/Contents/Resources/bin/tt"
-	chmod 755 "$out/Contents/Resources/bin/tt"
+	cp "$tt_binary" "$out/Contents/Resources/bin/docket"
+	chmod 755 "$out/Contents/Resources/bin/docket"
 fi
 "$script_dir/sign.sh" "$out"
 

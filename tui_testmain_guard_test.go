@@ -28,7 +28,7 @@ const tuiTestMainFloor = 3
 // homeIsolation records which parts of the shared TestMain shape one package's
 // TestMain actually has. The shape is the contract, not the symbol: a TestMain
 // that runs the suite without swapping $HOME satisfies a symbol check and still
-// lets a test resolve ~/.tt/runtime/<workspace-id>/machine.json into the
+// lets a test resolve ~/.docket/runtime/<workspace-id>/machine.json into the
 // developer's real home directory, which is how internal/tui/.tt/ and
 // internal/tui/projects/ became git-tracked residue.
 type homeIsolation struct {

@@ -1,9 +1,9 @@
 import Foundation
 
-/// Finds the `tt` binary the surface runs, first match wins: the
+/// Finds the `docket` binary the surface runs, first match wins: the
 /// `UserDefaults` override, the copy bundled in `Contents/Resources/bin`,
-/// `~/.local/bin/tt` (where `just install` puts it), then `PATH`. A
-/// `~/.local/bin/tt` built after the bundled copy runs instead of it, since the
+/// `~/.local/bin/docket` (where `just install` puts it), then `PATH`. A
+/// `~/.local/bin/docket` built after the bundled copy runs instead of it, since the
 /// older one would refuse a workspace the newer one has already migrated.
 struct TTBinaryResolver {
     /// The `UserDefaults` key holding an explicit binary path.
@@ -13,7 +13,7 @@ struct TTBinaryResolver {
         case userDefaultsOverride
         case bundled
         case localBin
-        /// `~/.local/bin/tt`, chosen over an older bundled copy.
+        /// `~/.local/bin/docket`, chosen over an older bundled copy.
         case newerLocalBin
         case path
     }
@@ -24,7 +24,7 @@ struct TTBinaryResolver {
     }
 
     /// Nothing resolved. An override that names no executable fails here
-    /// rather than quietly running some other `tt`.
+    /// rather than quietly running some other `docket`.
     struct NotFound: Error, Equatable {
         /// The override that was set but does not name an executable file.
         let invalidOverride: String?
@@ -34,17 +34,17 @@ struct TTBinaryResolver {
         var message: String {
             var lines: [String] = []
             if let invalidOverride {
-                lines.append("The tt binary override does not name an executable file:")
+                lines.append("The docket binary override does not name an executable file:")
                 lines.append("  \(invalidOverride)")
                 lines.append("")
                 lines.append("Fix it, or remove it to use the default search:")
                 lines.append("  defaults delete io.github.sglavoie.tt \(TTBinaryResolver.overrideDefaultsKey)")
             } else {
-                lines.append("tt.app could not find the tt binary. Looked in:")
+                lines.append("tt.app could not find the docket binary. Looked in:")
                 lines.append(contentsOf: tried.map { "  \($0)" })
                 lines.append("")
                 lines.append("Install it with `just install`, or point tt.app at one:")
-                lines.append("  defaults write io.github.sglavoie.tt \(TTBinaryResolver.overrideDefaultsKey) /path/to/tt")
+                lines.append("  defaults write io.github.sglavoie.tt \(TTBinaryResolver.overrideDefaultsKey) /path/to/docket")
             }
             return lines.joined(separator: "\n")
         }
@@ -82,11 +82,11 @@ struct TTBinaryResolver {
 
         var candidates: [(String, Source)] = []
         if let bundleResourcesURL {
-            candidates.append((bundleResourcesURL.appendingPathComponent("bin/tt").path, .bundled))
+            candidates.append((bundleResourcesURL.appendingPathComponent("bin/docket").path, .bundled))
         }
         candidates.append((localBinPath, .localBin))
         for dir in searchPath.split(separator: ":") where !dir.isEmpty {
-            candidates.append((URL(fileURLWithPath: expandingTilde(String(dir))).appendingPathComponent("tt").path, .path))
+            candidates.append((URL(fileURLWithPath: expandingTilde(String(dir))).appendingPathComponent("docket").path, .path))
         }
 
         var tried: [String] = []
@@ -102,7 +102,7 @@ struct TTBinaryResolver {
         return .failure(NotFound(invalidOverride: nil, tried: tried))
     }
 
-    /// `~/.local/bin/tt`, when it is executable and built after `bundled`.
+    /// `~/.local/bin/docket`, when it is executable and built after `bundled`.
     private func newerLocalBin(than bundled: String) -> String? {
         let local = localBinPath
         guard isExecutableFile(local),
@@ -115,7 +115,7 @@ struct TTBinaryResolver {
     }
 
     var localBinPath: String {
-        homeDirectory.appendingPathComponent(".local/bin/tt").path
+        homeDirectory.appendingPathComponent(".local/bin/docket").path
     }
 
     private func expandingTilde(_ path: String) -> String {

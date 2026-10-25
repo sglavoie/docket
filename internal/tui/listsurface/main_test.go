@@ -11,7 +11,7 @@ import (
 // surfaces themselves persist nothing, but the guard is unconditional across
 // internal/tui: the tag and parent selectors are seeded from real
 // models.Project and models.Task values here, and the moment one of those
-// fixtures reaches the storage stack the developer's own ~/.tt is what it
+// fixtures reaches the storage stack the developer's own ~/.docket is what it
 // would touch.
 func TestMain(m *testing.M) {
 	nofsync.Enable()

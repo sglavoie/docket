@@ -141,7 +141,7 @@ func SetupTestDeps[T any](t *testing.T, newState func(dataDir string) T) *TestDe
 		t.Fatal("SetupTestDeps requires a state factory")
 	}
 
-	// Isolate machine-local state (~/.tt/runtime/<workspace-id>/machine.json,
+	// Isolate machine-local state (~/.docket/runtime/<workspace-id>/machine.json,
 	// keyed off $HOME) into a throwaway directory so
 	// no test writes into the developer's real home directory once Manager
 	// persistence begins touching that tier.

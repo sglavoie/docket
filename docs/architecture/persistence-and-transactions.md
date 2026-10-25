@@ -68,7 +68,7 @@ Machine state contains only the dark/light theme selection and the active-lens
 pointer:
 
 ```text
-~/.tt/runtime/<workspace-id>/machine.json
+~/.docket/runtime/<workspace-id>/machine.json
 ```
 
 The workspace ID prevents unrelated workspaces from sharing machine state.

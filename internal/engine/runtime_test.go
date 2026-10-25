@@ -353,7 +353,7 @@ func TestRuntimeBindsTheConfiguredDevice(t *testing.T) {
 	if owner := manager.TransactionOwner(); owner != "headless-device-1" {
 		t.Fatalf("manager owner = %q, want the configured device", owner)
 	}
-	if root := manager.LocalDataRoot(); root != filepath.Join(env.machineHome, ".tt") {
+	if root := manager.LocalDataRoot(); root != filepath.Join(env.machineHome, ".docket") {
 		t.Fatalf("manager local root = %q, want beneath the machine home", root)
 	}
 	other := config.NewManagerForDevice(config.ConfigPathForDataDir(env.dataDir), env.machineHome, "headless-device-2")

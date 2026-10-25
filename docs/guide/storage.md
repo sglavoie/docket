@@ -132,12 +132,23 @@ The live portable layout is deliberately small:
 `exports/` is where `docket project export` writes `<slug>.md` by default, a
 sibling of `projects/`. Nothing in it is read back: an export is a document for
 you, so deleting one costs nothing but the file. Logs are not in the workspace
-at all. They are machine-local, under `~/.tt/logs` as timestamped `.log`
+at all. They are machine-local, under `~/.docket/logs` as timestamped `.log`
 files, and any older than 30 days are removed the next time a command logs.
 `docket workspace location` prints the data directory, its `workspace.json`
 catalog, whether the location is local or synced, the machine-local
 active-workspace pointer, and the logs, `backups/`, `exports/`, and
 `conflicts/` paths.
+
+Releases named `tt` kept the machine-local root at `~/.tt` and an iCloud Drive
+workspace in `iCloud Drive/tt`. The first Docket command that logs, while
+`~/.docket` does not exist yet, renames `~/.tt` to `~/.docket` in one step —
+runtime state, the active-workspace pointer, logs, and the default workspace
+when `~/.tt` held one — and an `iCloud Drive/tt` workspace to
+`iCloud Drive/Docket`, rewriting the pointer when it named either. A pointer
+naming any other workspace is left as it is. If `iCloud Drive/Docket` already
+exists beside a `tt` workspace, or a rename fails, nothing moves and the
+command stops, naming both folders; once `~/.docket` exists it never runs
+again.
 
 Project task files use strict schema-20 Markdown and generic `Task` headings.
 `workspace.json` contains the lean project catalog, project tags, and the
@@ -198,7 +209,7 @@ durable, on every machine rather than on the one you deleted from. Each record
 names its mode, its project scope, its sort, and one query holding every facet
 it narrows by, so what a lens selects is one line you can read.
 
-Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
+Machine-local `~/.docket/runtime/<workspace-id>/machine.json` contains only the
 dark/light theme choice, whether the Outliner draws its menu bar, whether it
 draws ambient advisories, a pointer to the lens that was last open, and the last
 50 submitted search queries for this workspace. These
@@ -456,7 +467,7 @@ docket sync enroll --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/tt
 ```
 
 Enrolling does not convert your workspace. It keeps the current one untouched,
-saves a verified snapshot of it under `~/.tt/enrollments/`, builds a new local
+saves a verified snapshot of it under `~/.docket/enrollments/`, builds a new local
 working copy at `--working-copy` — which must be outside iCloud Drive — and makes
 that copy the workspace Docket opens from then on. The copy's whole content is
 then published to the exchange folder as its first piece of history. If

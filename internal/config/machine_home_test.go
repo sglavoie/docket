@@ -10,7 +10,7 @@ import (
 )
 
 // Two machines sharing one workspace are two homes over one data directory:
-// machine.json lives at <home>/.tt/runtime/<workspace-id>/machine.json, so the
+// machine.json lives at <home>/.docket/runtime/<workspace-id>/machine.json, so the
 // home is the machine identity. The adoption tests express that through $HOME
 // because they run one machine at a time; these tests inject the home instead,
 // which is the only way two machines can be live at once — a process has exactly
@@ -96,7 +96,7 @@ func TestMachineHomeOverridesTheEnvironment(t *testing.T) {
 	}
 	// The process home must be untouched: a named machine that still wrote there
 	// would collide with every other machine in the same process.
-	if _, err := os.Stat(filepath.Join(processHome, dataDirName, runtimeDirName)); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(processHome, localRootName, runtimeDirName)); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("process home runtime dir stat = %v, want it never created", err)
 	}
 }

@@ -37,7 +37,7 @@ Layer ownership is strict: `internal/models` pure invariants, `internal/app` use
 cases and mutation policy, `internal/storage` task Markdown, transactions,
 conflicts and undo, `internal/config` the catalog/planning domains
 and migration, `internal/textgrammar` the capture/edit sigils. `internal/tui` is
-itself nine layers, acyclic, and every concern belongs to exactly one:
+nine layers, acyclic, and every concern belongs to exactly one:
 
 ```text
 L0 presentation theme textfit taskref status pulse keymap
@@ -1104,7 +1104,7 @@ projects/<slug>/notes/
 projects/<slug>/.attachments/
 ```
 
-Machine-local `~/.tt/runtime/<workspace-id>/machine.json` holds theme,
+Machine-local `~/.docket/runtime/<workspace-id>/machine.json` holds theme,
 menu-bar and advisory visibility, submitted search history, and the active-lens
 pointer. Validate that pointer for shape alone, never referentially. Chrome
 flags carry `omitempty`; absence is the default, never seeded.

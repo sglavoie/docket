@@ -83,8 +83,8 @@ func isPreSimplificationV5Excluded(rel string) bool {
 		return true
 	}
 	switch clean {
-	case filepath.Join(dataDirName, "backups"),
-		filepath.Join(dataDirName, "transactions"):
+	case filepath.Join(internalDirName, "backups"),
+		filepath.Join(internalDirName, "transactions"):
 		return true
 	}
 	// Advisory locks and interrupted atomic-write temporaries are coordination

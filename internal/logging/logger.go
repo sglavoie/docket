@@ -34,14 +34,14 @@ const (
 // re-tightens the directory mode, so a read-only directory no longer fails it.
 var openFile = os.OpenFile
 
-// Dir returns the directory Init writes log files into, ~/.tt/logs. It creates
+// Dir returns the directory Init writes log files into, ~/.docket/logs. It creates
 // nothing.
 func Dir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".tt", "logs"), nil
+	return filepath.Join(home, ".docket", "logs"), nil
 }
 
 // Init creates the log directory and opens a timestamped log file.
@@ -116,7 +116,7 @@ func pruneOldLogs() {
 }
 
 func logFileName(now time.Time) string {
-	return fmt.Sprintf("tt-%s.log", now.Format("2006-01-02-150405.000000000"))
+	return fmt.Sprintf("docket-%s.log", now.Format("2006-01-02-150405.000000000"))
 }
 
 // Warn writes a formatted warning to the log file.

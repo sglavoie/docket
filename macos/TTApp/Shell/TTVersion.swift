@@ -1,6 +1,6 @@
 import Foundation
 
-/// What `tt --version` reports: `tt version V (commit: C, built: T)`.
+/// What `docket --version` reports: `docket version V (commit: C, built: T)`.
 struct TTVersion: Equatable {
     /// The whole first line, for display.
     let line: String
@@ -9,7 +9,7 @@ struct TTVersion: Equatable {
 
     static func parse(_ output: String) -> TTVersion? {
         guard let line = output.split(whereSeparator: \.isNewline).first.map(String.init),
-              line.hasPrefix("tt version ") else {
+              line.hasPrefix("docket version ") else {
             return nil
         }
         var built: Date?

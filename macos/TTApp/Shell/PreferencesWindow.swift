@@ -218,8 +218,8 @@ final class PreferencesModel: ObservableObject {
     /// A second copy that disagrees with the running one, and what to do.
     @Published private(set) var binarySkewNote: String?
     /// Where the bundled and `~/.local/bin` copies live; the app's own by default.
-    var bundledBinaryPath = Bundle.main.resourceURL?.appendingPathComponent("bin/tt").path
-    var localBinaryPath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".local/bin/tt").path
+    var bundledBinaryPath = Bundle.main.resourceURL?.appendingPathComponent("bin/docket").path
+    var localBinaryPath = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".local/bin/docket").path
     var readVersion: (String) -> TTVersion? = { TTVersion.read(binary: $0) }
 
     /// What the last Reload in Settings › Terminal found; nil until one.
@@ -653,8 +653,8 @@ struct PreferencesView: View {
                         Button("Relaunch tt") { model.onRelaunch?() }
                     }
                 }
-                note("Leave empty to use the bundled tt, ~/.local/bin/tt, then PATH; "
-                    + "a ~/.local/bin/tt built after the bundled one wins. "
+                note("Leave empty to use the bundled docket, ~/.local/bin/docket, then PATH; "
+                    + "a ~/.local/bin/docket built after the bundled one wins. "
                     + "Takes effect when tt next starts.")
             }
 

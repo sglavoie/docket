@@ -19,7 +19,7 @@ validation.
 `docket sync enroll` is the one way a workspace starts syncing, and it never
 converts the workspace in place. `engine.Enroll` runs `config.EnrollWorkspace`
 under the original's TUI and commit locks: it snapshots the original, hash
-verified, under `~/.tt/enrollments/<workspace-id>/<instant>/` with a
+verified, under `~/.docket/enrollments/<workspace-id>/<instant>/` with a
 `snapshot.json` listing, stages a working copy beside the requested path
 (leaving the original's `.tt/sync`, `.tt/undo`, `.tt/transactions`, and
 `.tt/backups` behind), advances the staged catalog to

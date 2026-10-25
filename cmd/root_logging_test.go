@@ -15,6 +15,13 @@ import (
 func runRootForLogging(t *testing.T, args ...string) string {
 	t.Helper()
 	home := t.TempDir()
+	runRootForLoggingIn(t, home, args...)
+	return home
+}
+
+// runRootForLoggingIn is runRootForLogging under a HOME the caller prepared.
+func runRootForLoggingIn(t *testing.T, home string, args ...string) {
+	t.Helper()
 	t.Setenv("HOME", home)
 	rootCmd.SetArgs(args)
 	rootCmd.SetOut(io.Discard)
@@ -37,10 +44,42 @@ func runRootForLogging(t *testing.T, args ...string) string {
 	if err := executeCommand(rootCmd); err != nil {
 		t.Fatalf("docket %s: %v", strings.Join(args, " "), err)
 	}
-	return home
 }
 
-// A command that never logs must not create ~/.tt/logs, so --version and shell
+// A logging command adopts a tt-era ~/.tt before it opens its log or reads the
+// active-workspace pointer, so logging opens under ~/.docket and the pointer
+// follows the workspace it named.
+func TestLoggingCommandAdoptsLegacyLocalRoot(t *testing.T) {
+	home := t.TempDir()
+	legacy := filepath.Join(home, ".tt")
+	pointer := filepath.Join("runtime", "active-workspace.json")
+	if err := os.MkdirAll(filepath.Join(legacy, "runtime"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(legacy, pointer), []byte(`{"schema_version":1,"data_dir":"`+legacy+`"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	runRootForLoggingIn(t, home, "workspace", "location")
+
+	if _, err := os.Lstat(legacy); !os.IsNotExist(err) {
+		t.Fatalf("%s survived adoption (lstat err = %v)", legacy, err)
+	}
+	adopted := filepath.Join(home, ".docket")
+	data, err := os.ReadFile(filepath.Join(adopted, pointer))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `"data_dir": "`+adopted+`"`) {
+		t.Fatalf("pointer was not rewritten to %s: %s", adopted, data)
+	}
+	// An empty log file is removed at close, but its directory stays.
+	if info, err := os.Stat(filepath.Join(adopted, "logs")); err != nil || !info.IsDir() {
+		t.Fatalf("logging did not open under %s (stat err = %v)", adopted, err)
+	}
+}
+
+// A command that never logs must not create ~/.docket/logs, so --version and shell
 // completion leave HOME untouched.
 func TestNonLoggingCommandsCreateNoLogDirectory(t *testing.T) {
 	for _, args := range [][]string{
@@ -51,8 +90,8 @@ func TestNonLoggingCommandsCreateNoLogDirectory(t *testing.T) {
 	} {
 		t.Run(strings.Join(args, "_"), func(t *testing.T) {
 			home := runRootForLogging(t, args...)
-			if _, err := os.Stat(filepath.Join(home, ".tt")); !os.IsNotExist(err) {
-				t.Fatalf("docket %s created %s (stat err = %v)", strings.Join(args, " "), filepath.Join(home, ".tt"), err)
+			if _, err := os.Stat(filepath.Join(home, ".docket")); !os.IsNotExist(err) {
+				t.Fatalf("docket %s created %s (stat err = %v)", strings.Join(args, " "), filepath.Join(home, ".docket"), err)
 			}
 		})
 	}

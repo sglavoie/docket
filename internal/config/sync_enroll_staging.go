@@ -99,7 +99,7 @@ func snapshotWorkspace(entries []workspaceEntry, original, root string, at time.
 // stay with the workspace whose files they are about.
 func workingCopyExcluded(rel string) bool {
 	parts := strings.Split(filepath.ToSlash(rel), "/")
-	if len(parts) >= 2 && parts[0] == dataDirName {
+	if len(parts) >= 2 && parts[0] == internalDirName {
 		switch parts[1] {
 		case "sync", "undo", "transactions", "backups":
 			return true

@@ -17,13 +17,17 @@ import (
 // for where Docket keeps durable data, its config file, and machine-local runtime
 // state.
 const (
-	// dataDirName is the local (home-relative) Docket data directory name.
-	dataDirName = ".tt"
+	// localRootName is the home-relative machine-local root: runtime state,
+	// logs, the active-workspace pointer, and the default local workspace.
+	localRootName = ".docket"
+
+	// internalDirName is the internal directory inside every data directory.
+	internalDirName = ".tt"
 
 	// iCloudDataDirName is the Docket data directory name inside iCloud Drive.
 	// iCloud Drive folders are user-visible in Finder, so the synced root drops
 	// the leading dot used by the local root.
-	iCloudDataDirName = "tt"
+	iCloudDataDirName = "Docket"
 
 	// configFileName is the JSON config file stored inside the data directory.
 	configFileName = ".tt.json"
@@ -55,7 +59,7 @@ const (
 // migration artifacts. The helper is available without a loaded Config so all
 // path derivation shares one root.
 func InternalDir(dataDir string) string {
-	return filepath.Join(dataDir, dataDirName)
+	return filepath.Join(dataDir, internalDirName)
 }
 
 // ConfigPathForDataDir returns the legacy single-file config path inside a data
@@ -131,7 +135,7 @@ func ConflictsDir(dataDir string) string {
 
 // MachineStatePath returns the canonical machine-local machine.json path for a
 // workspace ID. Every workspace, including the default local workspace, is
-// isolated beneath ~/.tt/runtime/<workspace-id>. The ID must be a canonical
+// isolated beneath ~/.docket/runtime/<workspace-id>. The ID must be a canonical
 // UUID before it is used as a path component.
 func MachineStatePath(workspaceID string) (string, error) {
 	return machineStatePathOn("", workspaceID)
@@ -150,7 +154,7 @@ func machineStatePathOn(machineHome, workspaceID string) (string, error) {
 // legacyMachineStatePaths returns the two locations used before machine state
 // was keyed by workspace identity. The path derived from the workspace's
 // current data directory wins; the historical default-local path is consulted
-// only when that path is absent. Duplicate paths are removed for ~/.tt itself.
+// only when that path is absent. Duplicate paths are removed for ~/.docket itself.
 func legacyMachineStatePaths(dataDir string) []string {
 	return legacyMachineStatePathsOn("", dataDir)
 }
@@ -257,7 +261,7 @@ func HomeDir() (string, bool) {
 
 // resolveMachineHome is the injectable machine-identity seam over
 // resolveHomeDir. Machine identity is exactly the home directory — machine.json
-// lives at <home>/.tt/runtime/<workspace-id>/machine.json — so naming a home is
+// lives at <home>/.docket/runtime/<workspace-id>/machine.json — so naming a home is
 // how a caller says "resolve this as a different machine". The empty string is
 // the default and means this process's own $HOME, which keeps every existing
 // caller on the environment; only a caller that explicitly carries a machine
@@ -271,9 +275,9 @@ func resolveMachineHome(machineHome string) (string, bool) {
 	return resolveHomeDir()
 }
 
-// LocalDataRoot returns the local (non-synced) default data directory, ~/.tt.
+// LocalDataRoot returns the local (non-synced) default data directory, ~/.docket.
 // When the home directory cannot be determined it falls back to a relative
-// ".tt" so callers still receive a usable path.
+// ".docket" so callers still receive a usable path.
 func LocalDataRoot() string {
 	return localDataRootOn("")
 }
@@ -282,9 +286,9 @@ func LocalDataRoot() string {
 func localDataRootOn(machineHome string) string {
 	home, ok := resolveMachineHome(machineHome)
 	if !ok {
-		return dataDirName
+		return localRootName
 	}
-	return filepath.Join(home, dataDirName)
+	return filepath.Join(home, localRootName)
 }
 
 // iCloudDataRoot returns the Docket data directory inside iCloud Drive and whether
@@ -331,7 +335,7 @@ func hasSplitDomainMarker(dataDir string) bool {
 // machine home so a named machine selects its own default workspace rather than
 // the process home's. The empty machine home is exactly the process home.
 //
-// New installations are local-first: the local ~/.tt root is used unless an
+// New installations are local-first: the local ~/.docket root is used unless an
 // iCloud Drive workspace already exists (an existing active iCloud install), in
 // which case that workspace is preserved. Automatic migration of a local
 // install into iCloud has been removed; relocating a workspace to (or from)
@@ -375,8 +379,8 @@ func DisplayPath(path string) string {
 // LocalRuntimeDirForDataDir returns a machine-local directory for runtime state
 // that must never sync (logs, TUI PID locks) even when the durable data
 // directory lives on iCloud Drive. Runtime state always lives under the local
-// ~/.tt root: when the data directory is that same local root the local root is
-// returned directly (preserving the historical ~/.tt/logs layout), otherwise
+// ~/.docket root: when the data directory is that same local root the local root is
+// returned directly (preserving the historical ~/.docket/logs layout), otherwise
 // the path is keyed by a short hash of the cleaned data-directory path so
 // distinct data directories get isolated runtime state.
 func LocalRuntimeDirForDataDir(dataDir string) string {

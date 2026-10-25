@@ -13,6 +13,8 @@ internal/bridge/capture_inbox_files.go:writeFileAtomically	machine-local	capture
 internal/config/domain_file_store_io.go:DomainFileStore.recoverEnvelopeFromBackup	domain-store	restores a corrupt domain artifact from its .bak sidecar; the repaired artifact is republished as a domain change
 internal/config/domain_file_store_io.go:DomainFileStore.saveObserved	domain-store	checked catalog/planning/lenses/machine save; synced kinds become catalog/planning/lenses effects and machine.json stays local
 internal/config/domain_file_store_io.go:backupDomainArtifact	domain-store	.bak sidecar beside a domain artifact; local-only and excluded from exchange
+internal/config/legacy_root_adoption.go:adoptLegacyRootsOn	workspace-relocation	one-time rename of ~/.tt to ~/.docket and iCloud Drive/tt to iCloud Drive/Docket at startup; puts back a partial move
+internal/config/legacy_root_adoption.go:rewriteAdoptedPointer	machine-local	rewrites the machine-local active-workspace pointer after that rename
 internal/config/local_draft.go:LocalDraft.Replace	machine-local	checked capture recovery copies under the workspace's machine runtime directory; never synced
 internal/config/manager_backup.go:Manager.BackupConfig	domain-store	writes .bak sidecars for every domain file; local-only and excluded from exchange
 internal/config/manager_backup.go:Manager.RestoreConfigFromBackup	domain-store	restores domain files from .bak sidecars; the restored synced domains publish as a domain change
@@ -24,16 +26,16 @@ internal/config/sync_enroll_staging.go:enrollStagedCatalog	sync-enrollment	drops
 internal/config/sync_enroll_staging.go:publishWorkingCopy	sync-enrollment	publishes the staged working copy by one rename; the copy produces no transactions
 internal/config/sync_enroll_staging.go:snapshotWorkspace	sync-enrollment	hash-verified snapshots for enrollment and workspace backup; the copies are never synced
 internal/config/sync_enroll_staging.go:stageWorkingCopy	sync-enrollment	stages the working copy beside its final path; replaced only when marked as enrollment staging
+internal/config/workspace_backup.go:CreateWorkspaceBackup	workspace-backup	creates a hash-verified snapshot outside the workspace under the workspace commit lock
 internal/config/workspace_move.go:acquireWorkspaceTUILocks	machine-local	process-lock directory for workspace move
 internal/config/workspace_move.go:moveWorkspace	workspace-relocation	workspace move creates the destination root; relocation re-enrolls rather than syncing
 internal/config/workspace_move_copy.go:copyFileVerified	workspace-relocation	hash-verified copy of every artifact during workspace move
 internal/config/workspace_move_copy.go:createDestinationDirs	workspace-relocation	destination tree for workspace move
-internal/config/workspace_backup.go:CreateWorkspaceBackup	workspace-backup	creates a hash-verified snapshot outside the workspace under the workspace commit lock
 internal/control/server.go:Listen	machine-local	control socket for --control sessions
 internal/control/server.go:Server.Close	machine-local	removes the control socket
 internal/engine/repository.go:Repository.CommitOps	commit-journal	delegates to CommitService; the direct-write branch is the test-double fallback
 internal/external/vscode.go:createTempFileWithContentInDir	external-editor	temp buffer handed to an external editor; its result re-enters through a commit
-internal/logging/logger.go:Init	machine-local	~/.tt/logs directory and log file
+internal/logging/logger.go:Init	machine-local	~/.docket/logs directory and log file
 internal/logging/logger.go:closeLocked	machine-local	removes an empty log file
 internal/logging/logger.go:pruneOldLogs	machine-local	log retention
 internal/logging/logger.go:var openFile	machine-local	os.OpenFile seam for log files
@@ -57,10 +59,10 @@ internal/storage/markdown_load_save.go:SaveProject	commit-journal	raw tasks.md s
 internal/storage/markdown_load_save.go:deleteProjectDir	commit-journal	test-double repository path; production delete is PlanProjectDelete through the journal
 internal/storage/undo_ledger_maintenance.go:WorkspaceLedger.gcBlobs	ledger-restore	garbage-collects retained undo images; ledger is local
 internal/syncexchange/folder.go:ExchangeFolder	sync-transport	creates the device-local transport directory that holds the exchange lock; never exchanged
-internal/syncexchange/folder_fetch.go:pruneInbox	sync-transport	removes spent copies from the device-local sync inbox; never touches the exchange
 internal/syncexchange/folder.go:saveFolderStatus	sync-transport	device-local transport status for status surfaces; never exchanged
-internal/syncexchange/folder_fetch.go:stageInbox	sync-transport	stages verified exchange files into the device-local inbox before import through the journal
 internal/syncexchange/folder.go:writeExchangeFile	sync-transport	writes immutable content-addressed history the identity and this device advertisement into the exchange folder
+internal/syncexchange/folder_fetch.go:pruneInbox	sync-transport	removes spent copies from the device-local sync inbox; never touches the exchange
+internal/syncexchange/folder_fetch.go:stageInbox	sync-transport	stages verified exchange files into the device-local inbox before import through the journal
 internal/synclog/stat_cache.go:History.saveStatCache	machine-local	device-local observation stat cache under .tt/sync; derived from the synced files it names and safe to delete; never exchanged
 internal/transaction/journal.go:Journal.prepareWithID	commit-journal	removes stale staging during prepare
 internal/transaction/journal.go:NewJournal	commit-journal	binds the journal's write/rename/remove primitives: the one publish path
@@ -74,6 +76,6 @@ internal/tui/taskdetail/comments_external_editor.go:CommentsModel.createCommentT
 internal/tui/taskdetail/comments_external_editor.go:CommentsModel.editCommentWithExternalEditor	external-editor	removes the comment buffer
 internal/tui/taskdetail/comments_external_editor.go:readEditedCommentText	external-editor	removes the comment buffer after reading it
 internal/util/durable_batch.go:DurableBatch.MkdirAll	commit-journal	creates journal staging directories and queues their new ancestors for the batch durability barrier
-internal/util/files.go:atomicWriteFile	commit-journal	temp-write, fsync, rename primitive behind AtomicWriteFile and DurableBatch.WriteFile that every durable writer uses
 internal/util/files.go:WithFileLock	commit-staging	advisory lock file; local-only
+internal/util/files.go:atomicWriteFile	commit-journal	temp-write, fsync, rename primitive behind AtomicWriteFile and DurableBatch.WriteFile that every durable writer uses
 internal/util/pidlock.go:AcquirePIDLock	machine-local	process lock file

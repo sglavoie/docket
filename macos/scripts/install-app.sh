@@ -24,8 +24,8 @@ require_tool ditto
 require_tool codesign
 
 app="$macos_dir/build/tt.app"
-if [ ! -x "$app/Contents/Resources/bin/tt" ]; then
-	echo "$app has no bundled tt; build it with \`just mac-app Release\`" >&2
+if [ ! -x "$app/Contents/Resources/bin/docket" ]; then
+	echo "$app has no bundled docket; build it with \`just mac-app Release\`" >&2
 	exit 1
 fi
 codesign --verify --strict "$app"

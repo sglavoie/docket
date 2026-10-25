@@ -42,21 +42,21 @@ final class TTBinaryResolverTests: XCTestCase {
         )
     }
 
-    private var bundled: URL { resources.appendingPathComponent("bin/tt") }
-    private var localBin: URL { home.appendingPathComponent(".local/bin/tt") }
+    private var bundled: URL { resources.appendingPathComponent("bin/docket") }
+    private var localBin: URL { home.appendingPathComponent(".local/bin/docket") }
 
     func testOverrideWinsOverEverything() throws {
-        let custom = try makeBinary(root.appendingPathComponent("custom/tt"))
+        let custom = try makeBinary(root.appendingPathComponent("custom/docket"))
         try makeBinary(bundled)
         try makeBinary(localBin)
-        try makeBinary(pathA.appendingPathComponent("tt"))
+        try makeBinary(pathA.appendingPathComponent("docket"))
         XCTAssertEqual(try resolver(override: custom.path).resolve().get(),
                        .init(url: custom, source: .userDefaultsOverride))
     }
 
     func testOverrideExpandsTilde() throws {
         try makeBinary(localBin)
-        XCTAssertEqual(try resolver(override: "~/.local/bin/tt").resolve().get(),
+        XCTAssertEqual(try resolver(override: "~/.local/bin/docket").resolve().get(),
                        .init(url: localBin, source: .userDefaultsOverride))
     }
 
@@ -67,7 +67,7 @@ final class TTBinaryResolverTests: XCTestCase {
 
     func testInvalidOverrideFailsClosed() throws {
         try makeBinary(bundled)
-        let missing = root.appendingPathComponent("nope/tt").path
+        let missing = root.appendingPathComponent("nope/docket").path
         guard case .failure(let error) = resolver(override: missing).resolve() else {
             return XCTFail("an unusable override must not fall back")
         }
@@ -79,7 +79,7 @@ final class TTBinaryResolverTests: XCTestCase {
     func testBundledBeatsLocalBinAndPath() throws {
         try makeBinary(bundled)
         try makeBinary(localBin)
-        try makeBinary(pathA.appendingPathComponent("tt"))
+        try makeBinary(pathA.appendingPathComponent("docket"))
         XCTAssertEqual(try resolver().resolve().get(), .init(url: bundled, source: .bundled))
     }
 
@@ -99,7 +99,7 @@ final class TTBinaryResolverTests: XCTestCase {
     }
 
     func testOverrideBeatsNewerLocalBin() throws {
-        let custom = try makeBinary(root.appendingPathComponent("custom/tt"))
+        let custom = try makeBinary(root.appendingPathComponent("custom/docket"))
         try makeBinary(bundled)
         try makeBinary(localBin)
         let r = resolver(override: custom.path, built: [bundled: .distantPast, localBin: .distantFuture])
@@ -107,22 +107,22 @@ final class TTBinaryResolverTests: XCTestCase {
     }
 
     func testVersionParsing() {
-        let v = TTVersion.parse("tt version v0.0.0-2026-abc+dirty (commit: 7516e86a, built: 2026-10-01T02:45:16Z)\n")
-        XCTAssertEqual(v?.line, "tt version v0.0.0-2026-abc+dirty (commit: 7516e86a, built: 2026-10-01T02:45:16Z)")
+        let v = TTVersion.parse("docket version v0.0.0-2026-abc+dirty (commit: 7516e86a, built: 2026-10-01T02:45:16Z)\n")
+        XCTAssertEqual(v?.line, "docket version v0.0.0-2026-abc+dirty (commit: 7516e86a, built: 2026-10-01T02:45:16Z)")
         XCTAssertEqual(v?.built, ISO8601DateFormatter().date(from: "2026-10-01T02:45:16Z"))
-        XCTAssertNil(TTVersion.parse("tt version dev (commit: unknown, built: unknown)")?.built)
+        XCTAssertNil(TTVersion.parse("docket version dev (commit: unknown, built: unknown)")?.built)
         XCTAssertNil(TTVersion.parse("Error: unknown flag"))
     }
 
     func testLocalBinBeatsPath() throws {
         try makeBinary(localBin)
-        try makeBinary(pathA.appendingPathComponent("tt"))
+        try makeBinary(pathA.appendingPathComponent("docket"))
         XCTAssertEqual(try resolver().resolve().get(), .init(url: localBin, source: .localBin))
     }
 
     func testPathIsSearchedInOrderSkippingNonExecutablesAndDirectories() throws {
-        try makeBinary(pathA.appendingPathComponent("tt"), executable: false)
-        let second = try makeBinary(pathB.appendingPathComponent("tt"))
+        try makeBinary(pathA.appendingPathComponent("docket"), executable: false)
+        let second = try makeBinary(pathB.appendingPathComponent("docket"))
         XCTAssertEqual(try resolver().resolve().get(), .init(url: second, source: .path))
 
         try FileManager.default.removeItem(at: second)
@@ -138,8 +138,8 @@ final class TTBinaryResolverTests: XCTestCase {
         XCTAssertEqual(error.tried, [
             bundled.path,
             localBin.path,
-            pathA.appendingPathComponent("tt").path,
-            pathB.appendingPathComponent("tt").path,
+            pathA.appendingPathComponent("docket").path,
+            pathB.appendingPathComponent("docket").path,
         ])
         for path in error.tried {
             XCTAssertTrue(error.message.contains(path))

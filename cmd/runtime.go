@@ -109,7 +109,7 @@ func checkDataDirOverride() error {
 // Loading a workspace creates one, which a command reading an existing one must
 // never do, so doctor, the conflict commands, and project export ask this first and name the path
 // they would otherwise have created.
-// The data directory alone proves nothing — the default ~/.tt also holds the
+// The data directory alone proves nothing — the default ~/.docket also holds the
 // machine-local logs every command opens — so a workspace is its internal .tt
 // directory, which every schema since v4 keeps, or the legacy aggregate config
 // file an older workspace still needs migrating from.

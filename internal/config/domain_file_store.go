@@ -94,7 +94,7 @@ func validateWorkspaceID(workspaceID string) error {
 //
 //   - <data>/.tt/workspace.json   (synced)  — WorkspaceCatalog
 //   - <data>/.tt/planning.json    (synced)  — PlanningState
-//   - ~/.tt/runtime/<workspace-id>/machine.json (machine-local) — MachineState
+//   - ~/.docket/runtime/<workspace-id>/machine.json (machine-local) — MachineState
 //
 // Every file is wrapped in a versioned envelope carrying a schema version and
 // the workspace ID, written atomically under a per-file lock with a .bak backup

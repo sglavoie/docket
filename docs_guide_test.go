@@ -348,7 +348,7 @@ func TestGuideDocumentsStorageAndMigration(t *testing.T) {
 		"Each task may finally carry an optional `depends` list of soft references",
 		"Each task may carry an optional non-negative `defer_count`; zero is omitted",
 		"`lenses.json` contains your saved named-lens definitions",
-		"Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the dark/light theme " +
+		"Machine-local `~/.docket/runtime/<workspace-id>/machine.json` contains only the dark/light theme " +
 			"choice, whether the Outliner draws its menu bar, whether it draws ambient advisories, " +
 			"a pointer to the lens that was last open, and the last 50 submitted search queries for this workspace",
 		"A machine that has never pressed `M` writes no menu-bar key at all, and the absent key is what " +

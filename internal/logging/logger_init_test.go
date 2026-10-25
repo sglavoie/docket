@@ -171,7 +171,7 @@ func TestInitCreatesPrivateLogDirAndFile(t *testing.T) {
 	for _, preexisting := range []bool{false, true} {
 		home := t.TempDir()
 		t.Setenv("HOME", home)
-		logsDir := filepath.Join(home, ".tt", "logs")
+		logsDir := filepath.Join(home, ".docket", "logs")
 		if preexisting {
 			if err := os.MkdirAll(logsDir, 0o755); err != nil {
 				t.Fatalf("setup mkdir: %v", err)
@@ -232,9 +232,9 @@ func TestInitClearsLogDirPathOnMkdirFailure(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
-	// Make $HOME/.tt a regular file so creating $HOME/.tt/logs fails.
-	if err := os.WriteFile(filepath.Join(home, ".tt"), []byte("not a directory"), 0o644); err != nil {
-		t.Fatalf("setup .tt file: %v", err)
+	// Make $HOME/.docket a regular file so creating $HOME/.docket/logs fails.
+	if err := os.WriteFile(filepath.Join(home, ".docket"), []byte("not a directory"), 0o644); err != nil {
+		t.Fatalf("setup .docket file: %v", err)
 	}
 
 	logDirPath = "stale-before-init"

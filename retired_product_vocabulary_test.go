@@ -397,10 +397,8 @@ var retiredProductNamePattern = regexp.MustCompile(`(^|[^A-Za-z0-9_./\[~-])tt($|
 var retiredProductNameAllowedEverywhere = []string{"tt.app"}
 
 var retiredProductNameAllowed = map[string][]string{
-	// The default data directory, its iCloud Drive folder, and the enrollment
-	// staging marker are on-disk names the workspace migration owns.
-	"cmd/helpers.go":                         {"iCloud Drive tt workspace"},
-	"internal/config/paths.go":               {`"tt"`},
+	// The enrollment staging marker is an in-workspace name the workspace
+	// migration owns.
 	"internal/config/sync_enroll_staging.go": {`"tt enrollment staging\n"`},
 	// Replies and the window title a host app parses; the macOS app reads the
 	// same spellings, so both sides are renamed together.

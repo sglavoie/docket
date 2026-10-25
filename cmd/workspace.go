@@ -9,7 +9,7 @@ var workspaceCmd = &cobra.Command{
 	Short: "Inspect, back up, and relocate the workspace",
 	Long: `Inspect, back up, verify, and relocate the workspace data directory.
 
-New installations are local-first: Docket stores data under ~/.tt unless an iCloud
+New installations are local-first: Docket stores data under ~/.docket unless an iCloud
 Drive workspace already exists. iCloud (or any other location) is chosen
 explicitly with 'docket workspace move'; there is no automatic migration. Use
 'docket workspace backup' to save a verified copy outside the live workspace.

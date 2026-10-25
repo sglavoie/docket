@@ -126,7 +126,7 @@ A successful capture removes its recovery copy.
 If a previous save was interrupted, the recovered draft explains that the task
 may already exist and prevents resubmission. Check the task list before discarding
 that recovery copy. Recovery files live under
-`~/.tt/runtime/<workspace-id>/capture-drafts/` and do not sync.
+`~/.docket/runtime/<workspace-id>/capture-drafts/` and do not sync.
 
 [Validation and recovery details](capture-reference.md#correct-a-refused-capture)
 cover the expanded form and scheduling errors.

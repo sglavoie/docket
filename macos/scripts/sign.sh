@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 #
-# Sign tt.app inside out: the bundled tt, then the app. By default with this
+# Sign tt.app inside out: the bundled docket, then the app. By default with this
 # Mac's first Apple Development identity, else ad-hoc; either runs on this Mac
 # only. A certificate gives the app a designated requirement that survives a
 # rebuild, so privacy grants (Documents, notifications) are asked for once
@@ -58,7 +58,7 @@ else
 	set -- --force --sign "$identity" --options runtime --timestamp
 fi
 
-bundled="$app/Contents/Resources/bin/tt"
+bundled="$app/Contents/Resources/bin/docket"
 if [ -f "$bundled" ]; then
 	codesign "$@" --identifier io.github.sglavoie.tt.cli "$bundled"
 fi

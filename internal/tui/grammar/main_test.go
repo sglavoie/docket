@@ -9,7 +9,7 @@ import (
 
 // TestMain isolates $HOME for every test in the grammar package. TUI tests that
 // build a config.Manager and persist through it resolve machine-local state
-// under ~/.tt/runtime/<workspace-id>/machine.json relative to $HOME.
+// under ~/.docket/runtime/<workspace-id>/machine.json relative to $HOME.
 // Isolating it here keeps those paths from writing into the developer's real
 // home directory once that tier becomes part of Manager persistence. Tests that
 // override $HOME via t.Setenv restore to this throwaway directory rather than

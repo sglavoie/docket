@@ -10,7 +10,7 @@ import (
 // TestMain isolates $HOME for every test in the coordinator package. The
 // scenario tests here drive the real transactional storage stack and the
 // workspace undo ledger, so this guard is what keeps a committed mutation from
-// reaching ~/.tt/runtime/<workspace-id>/machine.json in the developer's real
+// reaching ~/.docket/runtime/<workspace-id>/machine.json in the developer's real
 // home directory.
 func TestMain(m *testing.M) {
 	nofsync.Enable()

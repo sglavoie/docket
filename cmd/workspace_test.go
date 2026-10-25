@@ -146,7 +146,7 @@ func TestWorkspaceLocationCommand_Runs(t *testing.T) {
 	for _, want := range []string{
 		"Workspace data directory: ",
 		"Catalog:                  " + config.DisplayPath(filepath.Join(src, ".tt", "workspace.json")),
-		"Logs:                     " + config.DisplayPath(filepath.Join(home, ".tt", "logs")) + " (machine-local)",
+		"Logs:                     " + config.DisplayPath(filepath.Join(home, ".docket", "logs")) + " (machine-local)",
 		"Backups:                  " + config.DisplayPath(filepath.Join(src, ".tt", "backups")),
 		"Exports:                  " + config.DisplayPath(filepath.Join(src, "exports")),
 		"Conflicts:                " + config.DisplayPath(filepath.Join(src, ".tt", "conflicts")),
@@ -155,7 +155,7 @@ func TestWorkspaceLocationCommand_Runs(t *testing.T) {
 			t.Errorf("workspace location output lacks %q:\n%s", want, stdout)
 		}
 	}
-	if _, statErr := os.Stat(filepath.Join(home, ".tt", "logs")); !os.IsNotExist(statErr) {
+	if _, statErr := os.Stat(filepath.Join(home, ".docket", "logs")); !os.IsNotExist(statErr) {
 		t.Errorf("workspace location created the logs dir: %v", statErr)
 	}
 	// --data-dir is in effect here, so the pointer line must not claim the
