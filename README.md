@@ -81,6 +81,19 @@ explains how each view groups your work.
 
 ## Install and start
 
+On macOS or Linux, install the release build with Homebrew:
+
+```bash
+brew install --cask sglavoie/tap/tt
+tt
+```
+
+Spell the tap out: Homebrew's own `tt` formula is an unrelated program that
+installs a binary of the same name. The cask also installs bash, zsh, and fish
+completions; `brew upgrade --cask tt` takes new releases.
+
+With Go instead:
+
 ```bash
 go install github.com/sglavoie/tt@latest
 tt
@@ -93,9 +106,6 @@ on your `PATH`. To build from a clone instead:
 go build -o tt .
 ./tt
 ```
-
-There are no prebuilt binaries and no package-manager recipes for the terminal
-program; `go install` is its distribution path.
 
 On macOS, [tt.app](macos/README.md) runs the same program in its own window and
 adds a menu-bar shortcut, quick capture, and notifications. From a clone, run

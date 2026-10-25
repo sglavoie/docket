@@ -20,6 +20,8 @@ internal/**/*.lock
 !internal/**/testdata/**
 coverage.html
 /dist/
+# Written by the GoReleaser before hook.
+/completions/
 
 # macOS app: the vendored GhosttyKit is built by `just mac-ghosttykit`, and the
 # Xcode project is generated from macos/project.yml.

@@ -1,0 +1,66 @@
+# Builds release binaries when a v* tag is pushed (.github/workflows/release.yml).
+# Check locally with `goreleaser check` and `goreleaser release --snapshot --clean`.
+version: 2
+
+before:
+  hooks:
+    - go mod tidy -diff
+    # Shell completions, shipped in the archives and installed by the cask.
+    - sh -c 'rm -rf completions && mkdir completions && for sh in bash zsh fish; do go run . completion "$sh" > "completions/tt.$sh"; done'
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    # Windows is not supported.
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      # The tag keeps its v, matching what `go install …@v0.1.0` reports.
+      - -X github.com/sglavoie/tt/cmd.Version={{ .Tag }}
+      - -X github.com/sglavoie/tt/cmd.GitCommit={{ .ShortCommit }}
+      - -X github.com/sglavoie/tt/cmd.BuildTime={{ .Date }}
+
+archives:
+  - formats: [tar.gz]
+    files:
+      - LICENSE
+      - README.md
+      - completions/*
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      # With or without a scope, as in chore(deps): from Dependabot.
+      - "^docs(\\(.*\\))?:"
+      - "^test(\\(.*\\))?:"
+      - "^chore(\\(.*\\))?:"
+
+homebrew_casks:
+  - repository:
+      owner: sglavoie
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Casks
+    homepage: https://github.com/sglavoie/tt
+    description: Local-first, keyboard-driven task manager for the terminal
+    license: MIT
+    completions:
+      bash: completions/tt.bash
+      zsh: completions/tt.zsh
+      fish: completions/tt.fish
+    hooks:
+      post:
+        # The binaries are not notarized: let macOS run them.
+        # install_steps writes Homebrew's postflight_steps; install wrote the
+        # deprecated postflight, which warns on every install.
+        install_steps: |
+          on_macos do
+            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/tt"]
+          end

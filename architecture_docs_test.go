@@ -323,7 +323,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"prepared activation journal",
 		"## Workspace location and cloud consent",
 		"## Maintenance CLI and platform support",
-		"There are no release artifacts",
+		"GoReleaser (`.goreleaser.yaml`) publishes darwin and linux archives",
 		"developed and used daily on macOS",
 		"Windows is not supported",
 		"`resolveBuildInfo` reads `debug.ReadBuildInfo` when the compiled-in version is still " +

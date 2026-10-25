@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # The release workflow runs every check before it builds.
+  workflow_call:
 
 permissions:
   contents: read

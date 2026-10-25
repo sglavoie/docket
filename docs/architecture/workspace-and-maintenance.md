@@ -114,10 +114,13 @@ ambient rows to hide, runs long enough to see work arrive, or has a session for
 a host to talk to. It has no task
 mutation or undo/redo command.
 
-There are no release artifacts. Distribution is `go install
-github.com/sglavoie/tt@latest` alone: no prebuilt binaries, no package-manager
-recipes, and no cross-compilation matrix, so the module's own `go` directive is
-the only platform gate the toolchain enforces. `tt` is developed and used daily
+Distribution is a tagged release or `go install
+github.com/sglavoie/tt@latest`. Pushing a `v*` tag runs every CI check, then
+GoReleaser (`.goreleaser.yaml`) publishes darwin and linux archives for amd64
+and arm64, each carrying the binary and its shell completions, and writes the
+`tt` cask in `sglavoie/homebrew-tap`; that cask is generated, so a lasting fix
+belongs in `.goreleaser.yaml`. For `go install`, the module's own `go`
+directive is the only platform gate the toolchain enforces. `tt` is developed and used daily
 on macOS; the full suite also runs on Linux in CI on every push, so Linux is
 exercised but not daily-driven; Windows is not supported. Because no ldflags
 reach a `go install` build, `resolveBuildInfo` reads `debug.ReadBuildInfo` when
