@@ -122,15 +122,26 @@ func LoadFolderStatus(history *synclog.History) (*FolderReport, time.Time, error
 	if err != nil {
 		return nil, time.Time{}, fmt.Errorf("reading sync transport status: %w", err)
 	}
-	var status struct {
-		Last        FolderReport `json:"last"`
-		LastSuccess time.Time    `json:"last_success"`
-	}
+	var status folderStatus
 	if err := json.Unmarshal(data, &status); err != nil {
 		return nil, time.Time{}, fmt.Errorf("decoding sync transport status: %w", err)
 	}
 	return &status.Last, status.LastSuccess, nil
 }
+
+// folderStatus is the shape of status.json.
+type folderStatus struct {
+	Last        FolderReport `json:"last"`
+	LastSuccess time.Time    `json:"last_success"`
+}
+
+// statusRefreshInterval bounds how far behind status.json's times may fall
+// while passes find nothing new. Automatic passes run every few seconds and
+// each rewrite costs two full flushes (the file and its directory), so an
+// unchanged report is only rewritten once its times are this old. The
+// Outliner's strip reads the age as "<1m" anyway, and the shell keeps its own
+// copy current from each pass's report.
+const statusRefreshInterval = time.Minute
 
 // ExchangeFolder runs one pass: observe external changes, publish every
 // outgoing transaction and its content, advertise this device, fetch what
@@ -367,24 +378,27 @@ func writeExchangeFile(path string, data []byte) error {
 }
 
 // saveFolderStatus keeps the pass's report, and the time of the last pass
-// that succeeded, as this device's transport status.
+// that succeeded, as this device's transport status. A report that says what
+// the stored one says, apart from its times, is not rewritten until those
+// times are statusRefreshInterval old.
 func saveFolderStatus(history *synclog.History, report *FolderReport) error {
-	_, lastSuccess, err := LoadFolderStatus(history)
-	if err != nil {
-		lastSuccess = time.Time{}
+	path := StatusPath(history)
+	previous, previousErr := readFolderStatus(path)
+	var lastSuccess time.Time
+	if previousErr == nil && previous != nil {
+		lastSuccess = previous.LastSuccess
 	}
 	if report.Succeeded {
 		lastSuccess = report.At
 	}
-	status := struct {
-		Last        *FolderReport `json:"last"`
-		LastSuccess time.Time     `json:"last_success"`
-	}{Last: report, LastSuccess: lastSuccess}
+	status := folderStatus{Last: *report, LastSuccess: lastSuccess}
+	if previousErr == nil && previous != nil && statusCurrent(*previous, status) {
+		return nil
+	}
 	data, err := json.MarshalIndent(status, "", "  ")
 	if err != nil {
 		return err
 	}
-	path := StatusPath(history)
 	if err := os.MkdirAll(filepath.Dir(path), util.DirPermissions); err != nil {
 		return fmt.Errorf("creating the sync transport directory: %w", err)
 	}
@@ -392,6 +406,38 @@ func saveFolderStatus(history *synclog.History, report *FolderReport) error {
 		return fmt.Errorf("writing sync transport status: %w", err)
 	}
 	return nil
+}
+
+// readFolderStatus reads status.json; a device that never exchanged reports
+// (nil, nil).
+func readFolderStatus(path string) (*folderStatus, error) {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var status folderStatus
+	if err := json.Unmarshal(data, &status); err != nil {
+		return nil, err
+	}
+	return &status, nil
+}
+
+// statusCurrent reports whether stored already says what next says, apart
+// from times younger than statusRefreshInterval. A clock that moved backwards
+// counts as stale, so the file never keeps a time from the future.
+func statusCurrent(stored, next folderStatus) bool {
+	age := next.Last.At.Sub(stored.Last.At)
+	if age < 0 || age >= statusRefreshInterval {
+		return false
+	}
+	if stored.LastSuccess.IsZero() != next.LastSuccess.IsZero() {
+		return false
+	}
+	stored.Last.At, stored.LastSuccess = next.Last.At, next.LastSuccess
+	return sameJSON(stored, next)
 }
 
 // ReadExchangeIdentity reads the workspace an exchange folder belongs to.

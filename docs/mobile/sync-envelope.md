@@ -354,7 +354,9 @@ and its intact content into the device-local `.tt/sync/transport/inbox`, and
 imports through `ImportInbox`. A `.name.icloud` placeholder is reported
 unavailable and never read. The pass's report, and the time of the last pass
 that succeeded, are kept in `.tt/sync/transport/status.json`, which is what
-`tt sync status`, `tt sync doctor`, and the Outliner's strip read. It speaks
+`tt sync status`, `tt sync doctor`, and the Outliner's strip read. A pass that
+reports what the stored one does, apart from its times, leaves the file alone
+until those times are a minute old. It speaks
 the same layout as `apple/TTSync`, so a desktop and an iPhone share one
 folder.
 
