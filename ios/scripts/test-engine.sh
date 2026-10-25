@@ -10,9 +10,9 @@
 #   ios/scripts/test-engine.sh OUTPUT_DIR
 #
 # Environment:
-#   TT_IOS_SIMULATOR        simulator UDID (default: the first available
+#   DOCKET_IOS_SIMULATOR        simulator UDID (default: the first available
 #                           iPhone on an iOS 18 or later runtime)
-#   TT_IOS_CACHE            cache root (default ios/.cache, gitignored)
+#   DOCKET_IOS_CACHE            cache root (default ios/.cache, gitignored)
 
 set -eu
 
@@ -24,7 +24,7 @@ fi
 script_dir=$(CDPATH="" cd -- "$(dirname -- "$0")" && pwd)
 ios_dir=$(dirname -- "$script_dir")
 repo_root=$(dirname -- "$ios_dir")
-cache_root="${TT_IOS_CACHE:-$ios_dir/.cache}"
+cache_root="${DOCKET_IOS_CACHE:-$ios_dir/.cache}"
 
 mkdir -p "$1"
 output=$(CDPATH="" cd -- "$1" && pwd)
@@ -33,14 +33,14 @@ fixture="$repo_root/internal/compat/testdata/workspaces/representative"
 "$script_dir/build-bridge.sh"
 
 # The first available iPhone under an "-- iOS N.M --" heading with N >= 18.
-simulator=${TT_IOS_SIMULATOR:-$(xcrun simctl list devices available | awk '
+simulator=${DOCKET_IOS_SIMULATOR:-$(xcrun simctl list devices available | awk '
 	/^-- iOS [0-9]+/ { split($3, version, "."); eligible = (version[1] + 0 >= 18); next }
 	/^-- / { eligible = 0; next }
 	eligible && /iPhone/ && match($0, /\([0-9A-F-]{36}\)/) {
 		print substr($0, RSTART + 1, RLENGTH - 2); exit
 	}')}
 if [ -z "$simulator" ]; then
-	echo "no available iPhone simulator on iOS 18 or later; set TT_IOS_SIMULATOR" >&2
+	echo "no available iPhone simulator on iOS 18 or later; set DOCKET_IOS_SIMULATOR" >&2
 	exit 1
 fi
 
@@ -50,8 +50,8 @@ mkdir -p "$output/evidence"
 
 echo "Testing TTEngine on simulator $simulator..." >&2
 cd "$ios_dir/TTEngine"
-TEST_RUNNER_TT_BRIDGE_FIXTURE_DIR="$output/workspace" \
-	TEST_RUNNER_TT_BRIDGE_EVIDENCE_DIR="$output/evidence" \
+TEST_RUNNER_DOCKET_BRIDGE_FIXTURE_DIR="$output/workspace" \
+	TEST_RUNNER_DOCKET_BRIDGE_EVIDENCE_DIR="$output/evidence" \
 	xcodebuild test \
 	-scheme TTEngine \
 	-destination "platform=iOS Simulator,id=$simulator" \

@@ -7,10 +7,10 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/engine"
-	"github.com/sglavoie/tt/internal/tui/conflict"
-	"github.com/sglavoie/tt/internal/tui/help"
-	"github.com/sglavoie/tt/internal/tui/textfit"
+	"github.com/sglavoie/docket/internal/engine"
+	"github.com/sglavoie/docket/internal/tui/conflict"
+	"github.com/sglavoie/docket/internal/tui/help"
+	"github.com/sglavoie/docket/internal/tui/textfit"
 )
 
 // feedbackController is the shell's status and feedback cluster: the one line

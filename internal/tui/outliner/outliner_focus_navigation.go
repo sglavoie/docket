@@ -1,7 +1,7 @@
 package outliner
 
 import (
-	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
 // focusSubtreeAtCursor enters a descendants-only projection rooted at the

@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sglavoie/tt/internal/transaction"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/transaction"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // State and record format identifiers.

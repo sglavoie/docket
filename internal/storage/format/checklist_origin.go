@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // This file owns the one-line checklist-origin record: where it sits in a task

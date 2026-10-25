@@ -7,11 +7,11 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/fuzzy"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/notes"
-	"github.com/sglavoie/tt/internal/tui/route"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/fuzzy"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/notes"
+	"github.com/sglavoie/docket/internal/tui/route"
 )
 
 // TestNoteRowDropsItsCueThenItsLabelAsWidthFalls holds the note row to the task

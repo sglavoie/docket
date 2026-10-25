@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/taskdetail"
+	"github.com/sglavoie/docket/internal/tui/taskdetail"
 )
 
 // This file asks the one question the panel's own tests cannot: does the

@@ -1,6 +1,6 @@
 package storage
 
-import "github.com/sglavoie/tt/internal/storage/format"
+import "github.com/sglavoie/docket/internal/storage/format"
 
 // SchemaVersionV13 adds the optional due-date clock time (due_time).
 const SchemaVersionV13 = 13

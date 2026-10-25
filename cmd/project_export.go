@@ -9,10 +9,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tterrors"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/tterrors"
 )
 
 var (
@@ -28,17 +28,17 @@ var projectExportCmd = &cobra.Command{
 	Use:   "export [slug-or-id]",
 	Short: "Export a project to clean Markdown",
 	Long: `Export a project to a human-readable Markdown file in the exports/ folder
-of your tt data directory.
+of your Docket data directory.
 
 Name the project by slug or ID, or pass --all to export every project,
 archived ones included, as one <slug>.md file each.
 Use --file to write one project to an arbitrary path, or --file - to print it.
 Use --dir with --all to write somewhere other than exports/.`,
-	Example: `  tt project export my-project
-  tt project export my-project --file /tmp/my-project.md
-  tt project export my-project --file -
-  tt project export --all
-  tt project export --all --dir /tmp/tt-export`,
+	Example: `  docket project export my-project
+  docket project export my-project --file /tmp/my-project.md
+  docket project export my-project --file -
+  docket project export --all
+  docket project export --all --dir /tmp/tt-export`,
 	Args:              atMostOneArg("project slug or ID"),
 	RunE:              runProjectExport,
 	ValidArgsFunction: completeProjectSlugs,

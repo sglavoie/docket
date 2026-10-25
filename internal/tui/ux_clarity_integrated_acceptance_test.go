@@ -8,8 +8,8 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/tui/outliner"
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/tui/outliner"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // This file is the UX clarity refinement's integrated acceptance pass. Every

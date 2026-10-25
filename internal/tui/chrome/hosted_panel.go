@@ -5,7 +5,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // HostedPanelLayout divides one content area between a bounded panel pinned to

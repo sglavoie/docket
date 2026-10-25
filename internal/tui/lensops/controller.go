@@ -13,10 +13,10 @@ package lensops
 import (
 	"errors"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/tui/lens"
-	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/outliner"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/tui/lens"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/outliner"
 )
 
 // Shell is what the named-lens cluster needs from the shell that owns it.

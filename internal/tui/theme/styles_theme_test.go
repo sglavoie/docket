@@ -6,7 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/docket/internal/config"
 )
 
 func TestColorProgressEmptyLightTheme(t *testing.T) {

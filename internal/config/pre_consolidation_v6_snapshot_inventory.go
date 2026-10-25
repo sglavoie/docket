@@ -11,7 +11,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 //nolint:govet // Walk callbacks use scoped errors independently of the outer traversal result.

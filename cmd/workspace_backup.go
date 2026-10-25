@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/docket/internal/config"
 )
 
 var workspaceBackupCmd = &cobra.Command{
@@ -14,13 +14,13 @@ var workspaceBackupCmd = &cobra.Command{
 	Short: "Create a verified workspace backup",
 	Long: `Copy the current workspace into a new timestamped backup below the
 given directory. The backup includes task files, attachments, undo history, and
-sync state. tt never overwrites a finished backup. It verifies every copied
+sync state. Docket never overwrites a finished backup. It verifies every copied
 file and writes a hash manifest. The live workspace remains selected. Choose a
 directory outside the workspace, ideally on another drive. Run
-'tt workspace verify-backup' later to read every file again without touching
+'docket workspace verify-backup' later to read every file again without touching
 the live workspace.`,
-	Example: `  tt workspace backup ~/Backups/tt
-  tt workspace verify-backup ~/Backups/tt/<workspace-id>/<timestamp>`,
+	Example: `  docket workspace backup ~/Backups/tt
+  docket workspace verify-backup ~/Backups/tt/<workspace-id>/<timestamp>`,
 	Args:              exactlyOneArg("backup directory"),
 	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE: func(_ *cobra.Command, args []string) error {
@@ -38,7 +38,7 @@ the live workspace.`,
 			return err
 		}
 		fmt.Printf("Backup verified: %s (%d files)\n", config.DisplayPath(report.Path), report.Files)
-		fmt.Printf("Verify again: tt workspace verify-backup %q\n", report.Path)
+		fmt.Printf("Verify again: docket workspace verify-backup %q\n", report.Path)
 		return nil
 	},
 }
@@ -50,7 +50,7 @@ var workspaceVerifyBackupCmd = &cobra.Command{
 reject missing, unexpected, or unsafe files. This does not open or change the
 current workspace. A verified backup records its original workspace path;
 restore only after checking the recovery procedure for an enrolled workspace.`,
-	Example:           `  tt workspace verify-backup ~/Backups/tt/<workspace-id>/<timestamp>`,
+	Example:           `  docket workspace verify-backup ~/Backups/tt/<workspace-id>/<timestamp>`,
 	Args:              exactlyOneArg("snapshot directory"),
 	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE: func(_ *cobra.Command, args []string) error {

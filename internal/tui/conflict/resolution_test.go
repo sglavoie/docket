@@ -8,7 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 func TestUnifiedDiff(t *testing.T) {

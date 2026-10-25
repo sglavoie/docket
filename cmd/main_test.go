@@ -4,12 +4,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/testutil/nofsync"
+	"github.com/sglavoie/docket/internal/testutil/nofsync"
 
-	"github.com/sglavoie/tt/internal/testutil/residue"
+	"github.com/sglavoie/docket/internal/testutil/residue"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/testutil"
 )
 
 type testDeps = testutil.TestDeps[*config.RuntimeState]

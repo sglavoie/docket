@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // This file exercises project-comment merging at the real commit boundary rather

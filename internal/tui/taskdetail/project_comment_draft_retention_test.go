@@ -6,7 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // retainedDraft is the text every subtest below types. It is short enough to

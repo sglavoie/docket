@@ -3,8 +3,8 @@ package bridge
 import (
 	"time"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // The rich-content ops: task and project comments, project and global notes,

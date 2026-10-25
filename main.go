@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/sglavoie/tt/cmd"
+	"github.com/sglavoie/docket/cmd"
 )
 
 func main() {

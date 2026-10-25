@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/capturetext"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/textgrammar"
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/docket/internal/capturetext"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/textgrammar"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/grammar"
 )
 
 // The outline editor is the bulk-restructuring escape hatch: one project's task

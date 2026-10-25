@@ -1,6 +1,6 @@
 package storage
 
-import "github.com/sglavoie/tt/internal/storage/format"
+import "github.com/sglavoie/docket/internal/storage/format"
 
 // SchemaVersionV12 adds the optional task deferral count.
 const SchemaVersionV12 = 12

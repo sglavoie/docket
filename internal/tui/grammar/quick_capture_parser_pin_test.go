@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/capturetext"
-	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/docket/internal/capturetext"
+	"github.com/sglavoie/docket/internal/textgrammar"
 )
 
 func TestParseQuickCapturePinSetsPinnedResult(t *testing.T) {

@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/synclog"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/synclog"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // The folder exchange is the desktop's own transport: one pass between a

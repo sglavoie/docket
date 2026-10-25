@@ -6,12 +6,12 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/listsurface"
-	"github.com/sglavoie/tt/internal/tui/query"
-	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/listsurface"
+	"github.com/sglavoie/docket/internal/tui/query"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
 // hopToRelation opens the picker over one task, puts the cursor on one listed

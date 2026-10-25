@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // ConflictResolution names the three ways a persisted conflict can be resolved.

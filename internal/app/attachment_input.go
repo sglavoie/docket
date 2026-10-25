@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // AttachmentInputKind names the three shapes a pasted attachment value can take.

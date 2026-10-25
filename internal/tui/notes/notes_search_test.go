@@ -9,11 +9,11 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/fuzzy"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/route"
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/fuzzy"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/route"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 func TestNotesSearchBodyMatchingIsCaseInsensitiveAndRequiresEveryTerm(t *testing.T) {
@@ -141,7 +141,7 @@ func titleMatchIdentity(note *models.Note) NoteRowIdentity {
 }
 
 func TestNotesSearchLiveInputNavigationAndEscTransitions(t *testing.T) {
-	t.Setenv("TT_EDITOR", "true")
+	t.Setenv("DOCKET_EDITOR", "true")
 	t.Setenv("VISUAL", "")
 	t.Setenv("EDITOR", "")
 	project := &models.Project{ID: "alpha", Name: "Alpha", Path: t.TempDir()}

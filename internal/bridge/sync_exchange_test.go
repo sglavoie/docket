@@ -7,7 +7,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/syncexchange"
+	"github.com/sglavoie/docket/internal/syncexchange"
 )
 
 // openAs opens the harness workspace under a named device.

@@ -4,9 +4,9 @@
 #
 #   ios/scripts/simulator.sh [default|small]
 #
-# default   TT_IOS_SIMULATOR when set, else the first available iPhone on an
+# default   DOCKET_IOS_SIMULATOR when set, else the first available iPhone on an
 #           iOS 18 or later runtime.
-# small     TT_IOS_SMALL_SIMULATOR when set, else a simulator named
+# small     DOCKET_IOS_SMALL_SIMULATOR when set, else a simulator named
 #           "tt-small" (an iPhone SE (3rd generation), 375 x 667 points, the
 #           narrowest iPhone the newest runtime still creates), made on the
 #           newest iOS runtime the first time it is asked for.
@@ -17,8 +17,8 @@ kind=${1:-default}
 
 case "$kind" in
 default)
-	if [ -n "${TT_IOS_SIMULATOR:-}" ]; then
-		echo "$TT_IOS_SIMULATOR"
+	if [ -n "${DOCKET_IOS_SIMULATOR:-}" ]; then
+		echo "$DOCKET_IOS_SIMULATOR"
 		exit 0
 	fi
 	simulator=$(xcrun simctl list devices available | awk '
@@ -28,14 +28,14 @@ default)
 			print substr($0, RSTART + 1, RLENGTH - 2); exit
 		}')
 	if [ -z "$simulator" ]; then
-		echo "no available iPhone simulator on iOS 18 or later; set TT_IOS_SIMULATOR" >&2
+		echo "no available iPhone simulator on iOS 18 or later; set DOCKET_IOS_SIMULATOR" >&2
 		exit 1
 	fi
 	echo "$simulator"
 	;;
 small)
-	if [ -n "${TT_IOS_SMALL_SIMULATOR:-}" ]; then
-		echo "$TT_IOS_SMALL_SIMULATOR"
+	if [ -n "${DOCKET_IOS_SMALL_SIMULATOR:-}" ]; then
+		echo "$DOCKET_IOS_SMALL_SIMULATOR"
 		exit 0
 	fi
 	existing=$(xcrun simctl list devices available | awk '
@@ -59,7 +59,7 @@ small)
 			exit 0
 		fi
 	done
-	echo "the $runtime runtime makes no small iPhone; set TT_IOS_SMALL_SIMULATOR" >&2
+	echo "the $runtime runtime makes no small iPhone; set DOCKET_IOS_SMALL_SIMULATOR" >&2
 	exit 1
 	;;
 *)

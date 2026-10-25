@@ -5,9 +5,9 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/grammar"
 )
 
 // The fixtures below are the shell's copies of helpers that moved into

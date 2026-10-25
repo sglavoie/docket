@@ -7,9 +7,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/external"
-	"github.com/sglavoie/tt/internal/tui/status"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/external"
+	"github.com/sglavoie/docket/internal/tui/status"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // commentEditorFinishedMsg carries an external editor's result back into

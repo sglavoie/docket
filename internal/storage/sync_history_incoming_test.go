@@ -9,7 +9,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/synclog"
+	"github.com/sglavoie/docket/internal/synclog"
 )
 
 // devicePair is two devices that started from the same workspace bytes.

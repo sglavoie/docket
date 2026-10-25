@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 // writeProject creates a real project directory with a tasks.md containing the

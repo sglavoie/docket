@@ -5,11 +5,11 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/tui/listsurface"
-	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/outliner"
-	"github.com/sglavoie/tt/internal/tui/taskref"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/tui/listsurface"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/outliner"
+	"github.com/sglavoie/docket/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 const (

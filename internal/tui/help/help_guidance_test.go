@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/operation"
 )
 
 // guidanceText and assertGuidance are this package's own copies of the two

@@ -244,8 +244,8 @@ final class SyncModel {
         let base = CoordinatedFolderProvider(access: access)
         #if DEBUG && targetEnvironment(simulator)
         let environment = ProcessInfo.processInfo.environment
-        if let root = environment["TT_UITEST_ROOT"], !root.isEmpty,
-           environment["TT_UITEST_SYNC_CONTROL"] == "1" {
+        if let root = environment["DOCKET_UITEST_ROOT"], !root.isEmpty,
+           environment["DOCKET_UITEST_SYNC_CONTROL"] == "1" {
             return SimulatorExchangeProvider(
                 base: base, control: URL(fileURLWithPath: root).appendingPathComponent("exchange-control.json")
             )

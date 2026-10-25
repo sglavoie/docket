@@ -6,10 +6,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/tui/lens"
-	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/outliner"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/tui/lens"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/outliner"
 )
 
 // ReplacementDetails compares the selected saved lens with the view that will

@@ -9,10 +9,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // opsRepo wraps fakeRepo and applies planned lifecycle operations directly on a

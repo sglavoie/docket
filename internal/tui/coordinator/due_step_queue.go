@@ -6,8 +6,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // DueStepGesture is one keypress worth of deadline stepping, frozen at the

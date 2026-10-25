@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // PlanIncoming plans applying another device's transaction to this workspace

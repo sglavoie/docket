@@ -3,7 +3,7 @@ package query
 import (
 	"sort"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // TagInfo holds a task tag name and its usage count. ContextCount is the share

@@ -3,7 +3,7 @@ package bridge
 import (
 	"errors"
 
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 // A receipt names the exact transaction it can undo. Selection and restore

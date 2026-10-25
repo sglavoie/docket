@@ -6,18 +6,18 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/external"
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/help"
-	"github.com/sglavoie/tt/internal/tui/outliner"
-	"github.com/sglavoie/tt/internal/tui/presentation"
-	"github.com/sglavoie/tt/internal/tui/projecthub"
-	"github.com/sglavoie/tt/internal/tui/route"
-	"github.com/sglavoie/tt/internal/tui/status"
-	"github.com/sglavoie/tt/internal/tui/taskdetail"
-	"github.com/sglavoie/tt/internal/tui/taskform"
-	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/external"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/help"
+	"github.com/sglavoie/docket/internal/tui/outliner"
+	"github.com/sglavoie/docket/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/tui/projecthub"
+	"github.com/sglavoie/docket/internal/tui/route"
+	"github.com/sglavoie/docket/internal/tui/status"
+	"github.com/sglavoie/docket/internal/tui/taskdetail"
+	"github.com/sglavoie/docket/internal/tui/taskform"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
 // handleViewMessages handles view navigation and display messages.

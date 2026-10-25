@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"github.com/sglavoie/tt/internal/storage/format"
+	"github.com/sglavoie/docket/internal/storage/format"
 )
 
 // SchemaVersionV8 adds the durable state clock to every task while retaining

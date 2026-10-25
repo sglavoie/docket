@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 // The cross-machine helper roles for the two mutations this release added: one
@@ -34,8 +34,8 @@ const (
 	// variables because the retry is a second contract, not a second direction: a
 	// role that always retried could never report a bare refusal, and the refusal
 	// is what the multi-project case is about.
-	helperDueStepEnv  = "TT_HELPER_DUE_STEP"
-	helperDueRetryEnv = "TT_HELPER_DUE_RETRY"
+	helperDueStepEnv  = "DOCKET_HELPER_DUE_STEP"
+	helperDueRetryEnv = "DOCKET_HELPER_DUE_RETRY"
 	// helperDueUntouchedEnv asks a refused step to prove it left the workspace
 	// exactly as it found it. It is opt-in because the claim is only true when no
 	// other machine in the race writes this selection: two machines stepping one
@@ -44,7 +44,7 @@ const (
 	// would be calling a correct race a lost update. The pairing it is set for is
 	// the one where the interfering write names a different task and a different
 	// action, which is exactly where "nothing moved" is a claim about this process.
-	helperDueUntouchedEnv = "TT_HELPER_DUE_UNTOUCHED"
+	helperDueUntouchedEnv = "DOCKET_HELPER_DUE_UNTOUCHED"
 
 	helperDueStepForward  = "forward"
 	helperDueStepBackward = "backward"
@@ -53,9 +53,9 @@ const (
 	// the two index variables address the item it makes it about. A checklist item
 	// carries no stored identity, so a position is the only thing the gate script
 	// and the in-suite race can both spell.
-	helperChecklistEnv      = "TT_HELPER_CHECKLIST"
-	helperChecklistIndexEnv = "TT_HELPER_CHECKLIST_INDEX"
-	helperChecklistToEnv    = "TT_HELPER_CHECKLIST_TO"
+	helperChecklistEnv      = "DOCKET_HELPER_CHECKLIST"
+	helperChecklistIndexEnv = "DOCKET_HELPER_CHECKLIST_INDEX"
+	helperChecklistToEnv    = "DOCKET_HELPER_CHECKLIST_TO"
 
 	helperChecklistEdit    = "edit"
 	helperChecklistReorder = "reorder"
@@ -69,7 +69,7 @@ const (
 	helperSeedItemB = "Name the rollback owner"
 	helperSeedItemC = "Book the cutover window"
 
-	// helperTitleSeparator lets one TT_HELPER_TASK_TITLE name a whole selection.
+	// helperTitleSeparator lets one DOCKET_HELPER_TASK_TITLE name a whole selection.
 	// A deadline step is a batch operation over targets that may live in different
 	// projects, and one variable holding an ordered list is what keeps the gate
 	// script from having to invent a second, differently-shaped one.

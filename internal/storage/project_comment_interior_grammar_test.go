@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/storage/format"
+	"github.com/sglavoie/docket/internal/storage/format"
 )
 
 // This file is the interior contract of the PROJECT-COMMENTS block. The

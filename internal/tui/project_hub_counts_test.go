@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tui/route"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/tui/route"
 )
 
 // How the Hub draws a tally moved into internal/tui/projecthub with the surface.

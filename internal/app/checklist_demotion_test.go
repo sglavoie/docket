@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 func demotionService(t *testing.T, owner, child *models.Task) (*fakeRepo, *app.Service) {

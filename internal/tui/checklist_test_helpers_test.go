@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/outliner"
+	"github.com/sglavoie/docket/internal/tui/outliner"
 )
 
 // checklistFixtureApp launches the checklist fixture and returns the driver, the

@@ -6,10 +6,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/tui/listsurface"
-	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/presentation"
-	"github.com/sglavoie/tt/internal/tui/taskdetail"
+	"github.com/sglavoie/docket/internal/tui/listsurface"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/tui/taskdetail"
 )
 
 // Comment operation IDs. They name what the Comments panel does to the comment

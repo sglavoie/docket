@@ -3,7 +3,7 @@ package route
 import (
 	"image/color"
 
-	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/tui/presentation"
 )
 
 // ViewAccentColor returns the accent color for a view type, or nil if unmapped.

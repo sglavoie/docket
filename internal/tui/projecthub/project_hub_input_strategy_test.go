@@ -3,7 +3,7 @@ package projecthub
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/operation"
 )
 
 // TestProjectHubOperationsCannotAppearInBothDirectGrammarAndMenu holds the Hub

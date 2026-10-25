@@ -1,12 +1,12 @@
 package outliner
 
 import (
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/grammar"
-	"github.com/sglavoie/tt/internal/tui/listsurface"
-	"github.com/sglavoie/tt/internal/tui/notes"
-	"github.com/sglavoie/tt/internal/tui/query"
-	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/grammar"
+	"github.com/sglavoie/docket/internal/tui/listsurface"
+	"github.com/sglavoie/docket/internal/tui/notes"
+	"github.com/sglavoie/docket/internal/tui/query"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
 // adoptFilterCarriers installs the predicate a test's hand-authored carriers

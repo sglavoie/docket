@@ -11,8 +11,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/synclog"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/synclog"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // fetchHistory is what a fetch reads of this device's history.

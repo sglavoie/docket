@@ -5,7 +5,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/docket/internal/config"
 )
 
 // tagChipGoldenSlots pins the hash and the ramp length — the two inputs that

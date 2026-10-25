@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // EditRequest describes an in-place edit of a task's core content. Each pointer

@@ -8,7 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/docket/internal/tui/status"
 )
 
 // The harness gives every driver its own virtual clock. A timer scheduled

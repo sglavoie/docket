@@ -5,9 +5,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // DeleteRequest asks to permanently delete a task and its whole subtree.

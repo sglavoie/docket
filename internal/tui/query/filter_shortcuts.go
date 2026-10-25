@@ -3,7 +3,7 @@ package query
 import (
 	"strings"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // FilterShortcut is one preset row of a facet whose vocabulary is closed: the

@@ -5,7 +5,7 @@
 # generation both resolve it here, so one pin and one cache serve both.
 #
 # Environment:
-#   TT_MACOS_CACHE          cache root (default macos/.cache, gitignored)
+#   DOCKET_MACOS_CACHE          cache root (default macos/.cache, gitignored)
 
 set -eu
 
@@ -28,7 +28,7 @@ require_tool unzip
 : "${XCODEGEN_VERSION:?missing in XCODEGEN_VERSION}"
 : "${XCODEGEN_SHA256:?missing in XCODEGEN_VERSION}"
 
-cache_root="${TT_MACOS_CACHE:-$macos_dir/.cache}"
+cache_root="${DOCKET_MACOS_CACHE:-$macos_dir/.cache}"
 mkdir -p "$cache_root"
 
 # --- XcodeGen ------------------------------------------------------------------

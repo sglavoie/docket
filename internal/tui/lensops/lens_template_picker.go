@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/tui/lens"
-	"github.com/sglavoie/tt/internal/tui/listsurface"
-	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/valuepicker"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/tui/lens"
+	"github.com/sglavoie/docket/internal/tui/listsurface"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/valuepicker"
 )
 
 // lensTemplatePickerPrefix namespaces the gallery's row IDs. The row identity is

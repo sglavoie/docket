@@ -9,10 +9,10 @@ from .core import (
 )
 
 
-# With TT_QUALIFICATION_MAILBOX set to an ASL plan directory, every prompt is
+# With DOCKET_QUALIFICATION_MAILBOX set to an ASL plan directory, every prompt is
 # asked through that plan's mailbox (asl ask --wait) and the person's reply is
 # the answer; otherwise the prompts read the terminal.
-MAILBOX = os.environ.get("TT_QUALIFICATION_MAILBOX")
+MAILBOX = os.environ.get("DOCKET_QUALIFICATION_MAILBOX")
 MAILBOX_WAIT_ROUNDS = 12  # 30 minutes each
 _pending = []
 

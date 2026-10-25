@@ -1,8 +1,8 @@
 package taskref
 
 import (
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // TaskProjectRef represents a task and its owning project across single-task and

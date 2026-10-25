@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # The repository gate. GitHub CI runs `ci.sh checks` once per platform, which
 # is everything but the race tests, and runs test_race.sh split across runners
-# through TT_SHARD_INDEX and TT_SHARD_COUNT, merging their coverage profiles
+# through DOCKET_SHARD_INDEX and DOCKET_SHARD_COUNT, merging their coverage profiles
 # before check_coverage.sh judges the whole.
 #
 # usage: ci.sh [checks]
@@ -43,7 +43,7 @@ fi
 echo "Checking search allocation budgets..."
 ./scripts/check_search_budget.sh
 
-# Deferred from the race suite by TT_DEFER_TIMING_GUARDS, which a loaded
+# Deferred from the race suite by DOCKET_DEFER_TIMING_GUARDS, which a loaded
 # machine would fail for contention rather than for growth.
 echo "Checking sync derivation scaling..."
 go test -race -count=1 -run '^TestSyncDerivationScalesNearLinearly$' ./internal/synclog

@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/listsurface"
-	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/projecthub"
-	"github.com/sglavoie/tt/internal/tui/theme"
-	"github.com/sglavoie/tt/internal/tui/valuepicker"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/listsurface"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/projecthub"
+	"github.com/sglavoie/docket/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/tui/valuepicker"
 )
 
 // NewProjectTagsPicker offers the project's own tag set. Behavioral tags are

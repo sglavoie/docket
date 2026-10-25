@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/syncexchange"
+	"github.com/sglavoie/docket/internal/syncexchange"
 )
 
 func TestFolderExchangeRequestsCloudContentAndImportsOnRetry(t *testing.T) {

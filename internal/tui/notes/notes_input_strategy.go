@@ -3,10 +3,10 @@ package notes
 import (
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/presentation"
-	"github.com/sglavoie/tt/internal/tui/route"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/tui/route"
 )
 
 // Note operation IDs. Every one of them targets a single note identity, which

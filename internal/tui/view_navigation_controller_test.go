@@ -8,8 +8,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/route"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/route"
 )
 
 func TestViewNavigationControllerResizeSizesViewsToBudget(t *testing.T) {

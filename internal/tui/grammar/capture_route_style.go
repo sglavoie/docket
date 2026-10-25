@@ -3,9 +3,9 @@ package grammar
 import (
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // CapturePlanAccentStyle is the inline badge a planning destination's plan

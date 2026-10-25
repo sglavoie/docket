@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/control"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/control"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/tui/presentation"
 )
 
 func (e *reviewAsyncEnv) hasTitle(t *testing.T, title string) bool {

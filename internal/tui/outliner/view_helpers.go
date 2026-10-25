@@ -3,7 +3,7 @@ package outliner
 import (
 	"strings"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // outlinerFocusContextPrefix labels the Focus breadcrumb on the context row.

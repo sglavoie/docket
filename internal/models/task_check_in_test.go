@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // checkInClock is the fixed instant every test here works from. Nothing in this

@@ -7,11 +7,11 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/grammar"
 )
 
 // ParseCaptureText reads text exactly as the compact composer would on

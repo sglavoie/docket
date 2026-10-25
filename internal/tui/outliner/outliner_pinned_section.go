@@ -3,7 +3,7 @@ package outliner
 import (
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
 const (

@@ -3,9 +3,9 @@ package query
 import (
 	"strings"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/pulse"
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/pulse"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // NoContextFilterKey is the pseudo-entry the context picker offers for tasks

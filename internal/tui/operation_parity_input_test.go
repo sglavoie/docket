@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/operation"
 )
 
 func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {

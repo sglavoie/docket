@@ -5,11 +5,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/entityops"
+	"github.com/sglavoie/docket/internal/tui/entityops"
 
-	"github.com/sglavoie/tt/internal/tui/notes"
-	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/projecthub"
+	"github.com/sglavoie/docket/internal/tui/notes"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/projecthub"
 )
 
 // TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce runs per strategy because

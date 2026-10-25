@@ -7,12 +7,12 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/keymap"
-	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/status"
-	"github.com/sglavoie/tt/internal/tui/textfit"
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/keymap"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/status"
+	"github.com/sglavoie/docket/internal/tui/textfit"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // ContextActionSheetHost names the surface that opened one contextual sheet.

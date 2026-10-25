@@ -82,8 +82,8 @@ final class BridgeSimulatorTests: XCTestCase {
     }
 
     func testOpenFixtureCaptureCompleteReopen() async throws {
-        let fixture = try requiredDirectory("TT_BRIDGE_FIXTURE_DIR")
-        let evidence = try requiredDirectory("TT_BRIDGE_EVIDENCE_DIR")
+        let fixture = try requiredDirectory("DOCKET_BRIDGE_FIXTURE_DIR")
+        let evidence = try requiredDirectory("DOCKET_BRIDGE_EVIDENCE_DIR")
         let runtime = evidence.appendingPathComponent("device", isDirectory: true)
         let title = "Ship the iOS bridge"
 

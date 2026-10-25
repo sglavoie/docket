@@ -366,7 +366,7 @@ verify_session_3() {
 		'testEngineRefusalsArriveAsTypedErrors()' \
 		'testOpenFixtureCaptureCompleteReopen()'
 	require_files "$work_dir/ios/evidence/evidence.json"
-	TT_BRIDGE_SIMULATOR_EVIDENCE="$work_dir/ios/evidence/evidence.json" \
+	DOCKET_BRIDGE_SIMULATOR_EVIDENCE="$work_dir/ios/evidence/evidence.json" \
 		run_go_suite simulator-evidence ./internal/bridge/ '^TestBridgeSimulatorEvidence$' \
 		TestBridgeSimulatorEvidence \
 		TestBridgeSimulatorEvidence/fixture_tasks_survive \
@@ -647,7 +647,7 @@ verify_session_7() {
 
 	# A seed replays exactly in a fresh process: the same summary, transaction
 	# for transaction and fault for fault.
-	TT_SYNC_FAULT_SEED=3 run_go_suite fault-replay ./internal/storage/ '^TestSyncFaultPropertiesConvergeSeed3$' \
+	DOCKET_SYNC_FAULT_SEED=3 run_go_suite fault-replay ./internal/storage/ '^TestSyncFaultPropertiesConvergeSeed3$' \
 		TestSyncFaultPropertiesConvergeSeed3
 	local first replayed
 	first=$(grep -Eo 'seed 3: .*' "$work_dir/fault.log")
@@ -655,10 +655,10 @@ verify_session_7() {
 	[ -n "$first" ] || fail "fault: seed 3 logged no summary"
 	[ "$first" = "$replayed" ] || fail "fault: replaying seed 3 diverged: '$first' vs '$replayed'"
 	# Every other seed's test steps aside for the one being replayed.
-	TT_SYNC_FAULT_SEED=3 go test -count=1 -v -run '^TestSyncFaultPropertiesConvergeSeed1$' ./internal/storage/ \
+	DOCKET_SYNC_FAULT_SEED=3 go test -count=1 -v -run '^TestSyncFaultPropertiesConvergeSeed1$' ./internal/storage/ \
 		>"$work_dir/fault-select.log" 2>&1 || fail "fault: selecting seed 3 failed seed 1's test"
 	if ! grep -Fq -- '--- SKIP: TestSyncFaultPropertiesConvergeSeed1 (' "$work_dir/fault-select.log"; then
-		fail "fault: TT_SYNC_FAULT_SEED did not select one seed"
+		fail "fault: DOCKET_SYNC_FAULT_SEED did not select one seed"
 	fi
 
 	# Conflicts now stay open until a resolution; the reconciliation and rich
@@ -696,8 +696,8 @@ run_swift_suite() {
 	local label=$1 package=$2
 	shift 2
 	local log="$work_dir/$label.log"
-	note "running $label: swift test${TT_SWIFT_FILTER:+ --filter $TT_SWIFT_FILTER} in $package"
-	if ! (cd "$package" && swift test ${TT_SWIFT_FILTER:+--filter "$TT_SWIFT_FILTER"}) >"$log" 2>&1; then
+	note "running $label: swift test${DOCKET_SWIFT_FILTER:+ --filter $DOCKET_SWIFT_FILTER} in $package"
+	if ! (cd "$package" && swift test ${DOCKET_SWIFT_FILTER:+--filter "$DOCKET_SWIFT_FILTER"}) >"$log" 2>&1; then
 		grep -E 'error:|failed' "$log" >&2 || tail -40 "$log" >&2
 		fail "$label: swift test failed"
 	fi
@@ -754,7 +754,7 @@ verify_session_8() {
 	local bridgehost="$work_dir/bridgehost"
 	go build -trimpath -o "$bridgehost" ./mobile/bridgehost || fail "building bridgehost failed"
 	local class=TTSyncTests.ExchangeContractTests
-	TT_BRIDGEHOST="$bridgehost" run_swift_suite transport apple/TTSync \
+	DOCKET_BRIDGEHOST="$bridgehost" run_swift_suite transport apple/TTSync \
 		"$class/testContractRoundTripOverFakeICloud" \
 		"$class/testAccountUnavailabilityKeepsLocalWorkAndQueues" \
 		"$class/testExpiredFolderAccessIsRenewedOrReported" \
@@ -774,7 +774,7 @@ verify_session_8() {
 	bridge_fp=$(ios/scripts/build-bridge.sh --fingerprint) || fail "fingerprinting the bridge failed"
 	bridgehost_sha=$(shasum -a 256 "$bridgehost" | cut -d' ' -f1)
 	require_files docs/mobile/evidence/session-8-icloud-exchange.json
-	TT_ICLOUD_SOURCE_FINGERPRINT="$source_fp" TT_IOS_BRIDGE_FINGERPRINT="$bridge_fp" TT_BRIDGEHOST_SHA256="$bridgehost_sha" \
+	DOCKET_ICLOUD_SOURCE_FINGERPRINT="$source_fp" DOCKET_IOS_BRIDGE_FINGERPRINT="$bridge_fp" DOCKET_BRIDGEHOST_SHA256="$bridgehost_sha" \
 		run_go_suite icloud-evidence ./internal/syncexchange/ '^TestRecordedICloudExchangeEvidence$' \
 		TestRecordedICloudExchangeEvidence
 	note "real iCloud exchange: run $(grep -Eo '"run_id": "[^"]+"' docs/mobile/evidence/session-8-icloud-exchange.json | head -1)"
@@ -878,7 +878,7 @@ verify_session_9() {
 	enroll_ref=$(enrollment_old_binary_ref) || fail "resolving the pre-enrollment ref failed"
 	local gate_log="$work_dir/cross-machine.log"
 	note "running the cross-machine gate (old binary 08c0cb08, pre-enrollment binary $enroll_ref)"
-	if ! TT_OLD_BINARY_REF=08c0cb08fec10154e6d2c9455e32d4c4ffa5f72d TT_ENROLL_OLD_BINARY_REF="$enroll_ref" \
+	if ! DOCKET_OLD_BINARY_REF=08c0cb08fec10154e6d2c9455e32d4c4ffa5f72d DOCKET_ENROLL_OLD_BINARY_REF="$enroll_ref" \
 		sh scripts/cross_machine_gate.sh >"$gate_log" 2>&1; then
 		cat "$gate_log" >&2
 		fail "the cross-machine gate failed"
@@ -965,7 +965,7 @@ verify_session_10() {
 	go build -trimpath -o "$bridgehost" ./mobile/bridgehost || fail "building bridgehost failed"
 	require_files "$work_dir/ui/exchange/tt-sync/v1/workspace.json"
 	local class=TTSyncTests.JoinTests
-	TT_BRIDGEHOST="$bridgehost" TT_ENROLLED_EXCHANGE="$work_dir/ui/exchange" run_swift_suite transport-join apple/TTSync \
+	DOCKET_BRIDGEHOST="$bridgehost" DOCKET_ENROLLED_EXCHANGE="$work_dir/ui/exchange" run_swift_suite transport-join apple/TTSync \
 		"$class/testJoinBuildsAWorkingCopyFromTheExchange" \
 		"$class/testJoinRefusesAFolderWithoutAnExchange" \
 		"$class/testFailedJoinLeavesNoWorkingCopy"
@@ -989,9 +989,9 @@ verify_session_11() {
 	# The capture grammar now reaches the phone: the bound package must link
 	# the parser without the terminal stack it moved out of.
 	local frontend
-	frontend=$(go list -deps ./mobile/ttbridge | grep -E '^(github.com/sglavoie/tt/internal/tui|charm.land/|github.com/charmbracelet/)' || true)
+	frontend=$(go list -deps ./mobile/ttbridge | grep -E '^(github.com/sglavoie/docket/internal/tui|charm.land/|github.com/charmbracelet/)' || true)
 	[ -z "$frontend" ] || fail "the mobile binding links frontend packages: $frontend"
-	go list -deps ./mobile/ttbridge | grep -qx 'github.com/sglavoie/tt/internal/capturetext' ||
+	go list -deps ./mobile/ttbridge | grep -qx 'github.com/sglavoie/docket/internal/capturetext' ||
 		fail "the mobile binding does not link the shared capture parser"
 
 	# Desktop and phone over two copies of one workspace: the composer's
@@ -1039,7 +1039,7 @@ verify_session_11() {
 	# and status, explained refusals, and drafts kept across a refused save and
 	# a killed app, each checked against the seeded workspace's files.
 	note "running the TTMobile capture and editing UI suite"
-	TT_UITEST_ONLY=CaptureEditingUITests ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
+	DOCKET_UITEST_ONLY=CaptureEditingUITests ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
 		cat "$work_dir/test-ui.log" >&2
 		fail "ios/scripts/test-ui.sh failed"
 	}
@@ -1128,7 +1128,7 @@ verify_session_12() {
 	# The iPhone on a simulator against the gomobile-bound engine, each
 	# outcome read back from the seeded workspace's files.
 	note "running the TTMobile organizing UI suite"
-	TT_UITEST_ONLY=OrganizingUITests ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
+	DOCKET_UITEST_ONLY=OrganizingUITests ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
 		cat "$work_dir/test-ui.log" >&2
 		fail "ios/scripts/test-ui.sh failed"
 	}
@@ -1201,14 +1201,14 @@ verify_session_13() {
 	# on and retries a backed-off transfer now.
 	local bridgehost="$work_dir/bridgehost"
 	go build -trimpath -o "$bridgehost" ./mobile/bridgehost || fail "building bridgehost failed"
-	TT_BRIDGEHOST="$bridgehost" TT_SWIFT_FILTER='ExchangeContractTests/testExplicitDownloadRequestsUnavailableContentNow' \
+	DOCKET_BRIDGEHOST="$bridgehost" DOCKET_SWIFT_FILTER='ExchangeContractTests/testExplicitDownloadRequestsUnavailableContentNow' \
 		run_swift_suite transport-download apple/TTSync \
 		TTSyncTests.ExchangeContractTests/testExplicitDownloadRequestsUnavailableContentNow
 
 	# The iPhone on a simulator against the gomobile-bound engine, offline,
 	# each outcome read back from the seeded workspace's files.
 	note "running the TTMobile rich-content UI suite"
-	TT_UITEST_ONLY=RichContentUITests ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
+	DOCKET_UITEST_ONLY=RichContentUITests ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
 		cat "$work_dir/test-ui.log" >&2
 		fail "ios/scripts/test-ui.sh failed"
 	}
@@ -1284,7 +1284,7 @@ verify_session_14() {
 	# working through a lost exchange folder with a retry and a diagnostics
 	# export.
 	note "running the TTMobile conflict and recovery UI suite"
-	TT_UITEST_ONLY=ConflictRecoveryUITests ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
+	DOCKET_UITEST_ONLY=ConflictRecoveryUITests ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
 		cat "$work_dir/test-ui.log" >&2
 		fail "ios/scripts/test-ui.sh failed"
 	}
@@ -1387,7 +1387,7 @@ verify_session_15() {
 	source_fp=$(ios/scripts/reminder-evidence-fingerprint.sh) || fail "fingerprinting the Swift sources failed"
 	bridge_fp=$(ios/scripts/build-bridge.sh --fingerprint) || fail "fingerprinting the bridge failed"
 	require_files docs/mobile/evidence/session-15-reminders.json
-	TT_REMINDER_SOURCE_FINGERPRINT="$source_fp" TT_IOS_BRIDGE_FINGERPRINT="$bridge_fp" \
+	DOCKET_REMINDER_SOURCE_FINGERPRINT="$source_fp" DOCKET_IOS_BRIDGE_FINGERPRINT="$bridge_fp" \
 		run_go_suite reminder-evidence ./internal/bridge/ '^TestRecordedReminderDeviceEvidence$' \
 		TestRecordedReminderDeviceEvidence
 	note "real iPhone reminders: run $(grep -Eo '"run_id": "[^"]+"' docs/mobile/evidence/session-15-reminders.json | head -1)"
@@ -1454,7 +1454,7 @@ verify_session_16() {
 	local bridgehost="$work_dir/bridgehost"
 	go build -trimpath -o "$bridgehost" ./mobile/bridgehost || fail "building bridgehost failed"
 	local inbox=TTSharedTests.CaptureInboxTests share=TTSharedTests.SharedItemsTests widget=TTSharedTests.WidgetAndLinkTests contract=TTSharedTests.CaptureImportContractTests
-	TT_BRIDGEHOST="$bridgehost" TT_CAPTURE_FIXTURE="$repo_root/internal/compat/testdata/workspaces/representative" \
+	DOCKET_BRIDGEHOST="$bridgehost" DOCKET_CAPTURE_FIXTURE="$repo_root/internal/compat/testdata/workspaces/representative" \
 		run_swift_suite shared ios/TTShared \
 		"$inbox/testSavePublishesTheEnvelopeAndVerifiableFiles" \
 		"$inbox/testATerminatedSaveLeavesNothingPendingAndItsRetryPublishesOnce" \
@@ -1477,7 +1477,7 @@ verify_session_16() {
 	# the workspace with rows that open their tasks; and links to views,
 	# capture, and another workspace's task.
 	note "running the TTMobile share and widget UI suite"
-	TT_UITEST_ONLY=ShareCaptureUITests ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
+	DOCKET_UITEST_ONLY=ShareCaptureUITests ios/scripts/test-ui.sh "$work_dir/ui" >"$work_dir/test-ui.log" 2>&1 || {
 		cat "$work_dir/test-ui.log" >&2
 		fail "ios/scripts/test-ui.sh failed"
 	}
@@ -1489,7 +1489,7 @@ verify_session_16() {
 	# The app that suite ran embeds the share extension and the widgets,
 	# declares the tt scheme and its shortcuts, and neither extension links
 	# the engine, so neither can rewrite the workspace.
-	local app="${TT_IOS_CACHE:-ios/.cache}/UIDerivedData/Build/Products/Debug-iphonesimulator/tt.app"
+	local app="${DOCKET_IOS_CACHE:-ios/.cache}/UIDerivedData/Build/Products/Debug-iphonesimulator/tt.app"
 	[ -d "$app" ] || fail "no simulator app at $app"
 	[ "$(plutil -extract NSExtension.NSExtensionPointIdentifier raw "$app/PlugIns/TTShare.appex/Info.plist")" = com.apple.share-services ] ||
 		fail "the app embeds no share extension"
@@ -1624,7 +1624,7 @@ verify_session_17() {
 		ios = jobs.fetch("ios") { abort "no ios job" }
 		abort "the ios job does not run on macOS" unless ios["runs-on"].to_s.start_with?("macos")
 		runs = ios["steps"].map { |s| s["run"].to_s }
-		[%q[just ios-qualify run "$TT_IOS_RESULTS/qualification"], "just ios-ui-test AccessibilityUITests small"].each do |want|
+		[%q[just ios-qualify run "$DOCKET_IOS_RESULTS/qualification"], "just ios-ui-test AccessibilityUITests small"].each do |want|
 			abort "the ios job does not run #{want}" unless runs.any? { |r| r.strip == want }
 		end
 		abort "the ios job repeats the Go gate" if runs.any? { |r| r.include?("scripts/ci.sh") || r.include?("go test") }
@@ -1633,20 +1633,20 @@ verify_session_17() {
 	' || fail "the CI configuration does not run the simulator suites as required"
 	note "CI: Go on Linux and macOS, plus the iOS simulator job"
 
-	export TT_IOS_RESULTS="$work_dir/results" TT_IOS_RUN="$work_dir/run"
+	export DOCKET_IOS_RESULTS="$work_dir/results" DOCKET_IOS_RUN="$work_dir/run"
 
 	# Build: the app, its result bundle, and the structured build diagnostics.
 	note "running just ios-build"
 	just ios-build >"$work_dir/ios-build.log" 2>&1 || { tail -40 "$work_dir/ios-build.log" >&2; fail "just ios-build failed"; }
-	require_files "$TT_IOS_RESULTS/build/summary.json"
-	[ -d "$TT_IOS_RESULTS/build/TTMobile-build.xcresult" ] || fail "the build left no result bundle"
-	[ "$(plutil -extract status raw -o - "$TT_IOS_RESULTS/build/summary.json")" = succeeded ] || fail "the build diagnostics do not report success"
-	[ "$(plutil -extract errorCount raw -o - "$TT_IOS_RESULTS/build/summary.json")" -eq 0 ] || fail "the build diagnostics report errors"
+	require_files "$DOCKET_IOS_RESULTS/build/summary.json"
+	[ -d "$DOCKET_IOS_RESULTS/build/TTMobile-build.xcresult" ] || fail "the build left no result bundle"
+	[ "$(plutil -extract status raw -o - "$DOCKET_IOS_RESULTS/build/summary.json")" = succeeded ] || fail "the build diagnostics do not report success"
+	[ "$(plutil -extract errorCount raw -o - "$DOCKET_IOS_RESULTS/build/summary.json")" -eq 0 ] || fail "the build diagnostics report errors"
 
 	# The four Swift suites, each run and reported on its own.
 	note "running just ios-test all"
 	just ios-test all >"$work_dir/ios-test.log" 2>&1 || { tail -40 "$work_dir/ios-test.log" >&2; fail "just ios-test all failed"; }
-	local suites="$TT_IOS_RESULTS/all"
+	local suites="$DOCKET_IOS_RESULTS/all"
 	require_suite_summary "$suites/summary.json" unit-shared unit-reminders bridge sync
 	require_xctest_passed "$suites/unit-shared.log" \
 		TTSharedTests.CaptureInboxTests/testSavePublishesTheEnvelopeAndVerifiableFiles \
@@ -1673,7 +1673,7 @@ verify_session_17() {
 	)
 	local device results
 	for device in default small; do
-		results="$TT_IOS_RESULTS/ui-$device"
+		results="$DOCKET_IOS_RESULTS/ui-$device"
 		note "running just ios-ui-test AccessibilityUITests $device"
 		just ios-ui-test AccessibilityUITests "$device" >"$work_dir/ios-ui-test-$device.log" 2>&1 || {
 			tail -60 "$work_dir/ios-ui-test-$device.log" >&2
@@ -1688,7 +1688,7 @@ verify_session_17() {
 	done
 	# The small run really was on a small screen.
 	local width
-	width=$(python3 -I - "$TT_IOS_RESULTS/ui-small/attachments" <<'PY'
+	width=$(python3 -I - "$DOCKET_IOS_RESULTS/ui-small/attachments" <<'PY'
 import json, os, re, sys
 directory = sys.argv[1]
 for test in json.load(open(os.path.join(directory, "manifest.json"))):
@@ -1705,12 +1705,12 @@ PY
 	# Launch, look, export, reset, and repeat from the command line.
 	note "running just ios-run"
 	just ios-run >"$work_dir/ios-run.log" 2>&1 || { tail -40 "$work_dir/ios-run.log" >&2; fail "just ios-run failed"; }
-	local state="$TT_IOS_RUN/state.json" first="$work_dir/first-state.json" second="$work_dir/second-state.json"
+	local state="$DOCKET_IOS_RUN/state.json" first="$work_dir/first-state.json" second="$work_dir/second-state.json"
 	[ "$(state_field "$state" phase)" = ready ] || fail "ios-run did not leave the workspace open"
 	just ios-screenshot launch >/dev/null 2>&1 || fail "just ios-screenshot failed"
-	file "$TT_IOS_RUN/screenshots/launch.png" | grep -q 'PNG image' || fail "the screenshot is not a PNG"
+	file "$DOCKET_IOS_RUN/screenshots/launch.png" | grep -q 'PNG image' || fail "the screenshot is not a PNG"
 	just ios-export >"$first" 2>"$work_dir/ios-export.log" || { cat "$work_dir/ios-export.log" >&2; fail "just ios-export failed"; }
-	require_files "$TT_IOS_RUN/export/state.json" "$TT_IOS_RUN/export/session.json" "$TT_IOS_RUN/export/log.ndjson"
+	require_files "$DOCKET_IOS_RUN/export/state.json" "$DOCKET_IOS_RUN/export/session.json" "$DOCKET_IOS_RUN/export/log.ndjson"
 	[ "$(state_field "$first" schema)" = tt-mobile-state/v1 ] || fail "the export is not tt-mobile-state/v1"
 	[ "$(state_field "$first" environment.color_scheme)" = light ] || fail "the default run is not light"
 	[ "$(state_field "$first" screen.tab)" = today ] || fail "the launch does not show Today"
@@ -1736,11 +1736,11 @@ PY
 
 	note "running just ios-run empty"
 	just ios-run empty >"$work_dir/ios-run-empty.log" 2>&1 || { tail -40 "$work_dir/ios-run-empty.log" >&2; fail "the empty-fixture run failed"; }
-	[ "$(state_field "$TT_IOS_RUN/state.json" phase)" = onboarding ] || fail "the empty fixture did not start at onboarding"
+	[ "$(state_field "$DOCKET_IOS_RUN/state.json" phase)" = onboarding ] || fail "the empty fixture did not start at onboarding"
 	just ios-stop >/dev/null 2>&1 || fail "just ios-stop failed"
 	# Leave the simulator at its ordinary appearance and size.
 	local udid
-	udid=$(sed -n 's/^udid=//p' "$TT_IOS_RUN/session.env")
+	udid=$(sed -n 's/^udid=//p' "$DOCKET_IOS_RUN/session.env")
 	xcrun simctl ui "$udid" appearance light >/dev/null 2>&1 || true
 	xcrun simctl ui "$udid" content_size large >/dev/null 2>&1 || true
 
@@ -1794,7 +1794,7 @@ verify_session_18() {
 	go build -trimpath -buildvcs=false -o "$work_dir/tt" . || fail "building tt failed"
 	tt_sha=$(shasum -a 256 "$work_dir/tt" | cut -d' ' -f1)
 	require_files docs/mobile/evidence/session-18-qualification.json
-	TT_QUALIFICATION_SOURCE_FINGERPRINT="$source_fp" TT_IOS_BRIDGE_FINGERPRINT="$bridge_fp" TT_QUALIFICATION_TT_SHA256="$tt_sha" \
+	DOCKET_QUALIFICATION_SOURCE_FINGERPRINT="$source_fp" DOCKET_IOS_BRIDGE_FINGERPRINT="$bridge_fp" DOCKET_QUALIFICATION_DOCKET_SHA256="$tt_sha" \
 		run_go_suite qualification-evidence ./internal/syncexchange/ '^TestRecordedDeviceQualificationEvidence$' \
 		TestRecordedDeviceQualificationEvidence
 	note "real-device trial: run $(grep -Eo '"run_id": "[^"]+"' docs/mobile/evidence/session-18-qualification.json | head -1)"
@@ -1806,16 +1806,16 @@ verify_session_18() {
 
 	# The mobile automated suites: the build, the four Swift suites, and the
 	# whole UI suite.
-	export TT_IOS_RESULTS="$work_dir/results" TT_IOS_RUN="$work_dir/run"
+	export DOCKET_IOS_RESULTS="$work_dir/results" DOCKET_IOS_RUN="$work_dir/run"
 	note "running just ios-build"
 	just ios-build >"$work_dir/ios-build.log" 2>&1 || { tail -40 "$work_dir/ios-build.log" >&2; fail "just ios-build failed"; }
-	[ "$(plutil -extract status raw -o - "$TT_IOS_RESULTS/build/summary.json")" = succeeded ] || fail "the build diagnostics do not report success"
+	[ "$(plutil -extract status raw -o - "$DOCKET_IOS_RESULTS/build/summary.json")" = succeeded ] || fail "the build diagnostics do not report success"
 	note "running just ios-test all"
 	just ios-test all >"$work_dir/ios-test.log" 2>&1 || { tail -40 "$work_dir/ios-test.log" >&2; fail "just ios-test all failed"; }
-	require_suite_summary "$TT_IOS_RESULTS/all/summary.json" unit-shared unit-reminders bridge sync
+	require_suite_summary "$DOCKET_IOS_RESULTS/all/summary.json" unit-shared unit-reminders bridge sync
 	note "running just ios-ui-test"
 	just ios-ui-test >"$work_dir/ios-ui-test.log" 2>&1 || { tail -60 "$work_dir/ios-ui-test.log" >&2; fail "just ios-ui-test failed"; }
-	require_xcresult_passed "$TT_IOS_RESULTS/ui-default/TTMobileUITests.xcresult" \
+	require_xcresult_passed "$DOCKET_IOS_RESULTS/ui-default/TTMobileUITests.xcresult" \
 		'testJoinFromAnExchangeFolder()' \
 		'testTransportFailureKeepsLocalContentRetriesAndExportsDiagnostics()' \
 		'testKeepingAVersionResolvesTheWholeChangeAndPublishesIt()' \

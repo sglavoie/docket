@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/taskdetail"
+	"github.com/sglavoie/docket/internal/tui/taskdetail"
 )
 
 // mountedProjectCommentsPanel is the panel `;` put on the route, or a failure

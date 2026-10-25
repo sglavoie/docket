@@ -4,7 +4,7 @@ import (
 	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/textinput"
 
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // FormFactory is a shared factory instance for resizing form fields.

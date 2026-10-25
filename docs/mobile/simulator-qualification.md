@@ -71,7 +71,7 @@ the previous app; the test never manufactures those expected writes.
 ## Controlled failures and results
 
 A Debug simulator build can wrap its real coordinated-folder provider when
-`TT_UITEST_ROOT` and `TT_UITEST_SYNC_CONTROL=1` are supplied. The test atomically
+`DOCKET_UITEST_ROOT` and `DOCKET_UITEST_SYNC_CONTROL=1` are supplied. The test atomically
 writes `exchange-control.json` under that isolated root. It controls access
 failure and withheld reads; it cannot fabricate a successful engine operation.
 Invalid controls fail the exchange. The wrapper is absent from Release and

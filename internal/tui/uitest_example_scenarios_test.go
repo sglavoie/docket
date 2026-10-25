@@ -9,7 +9,7 @@ import (
 )
 
 // scenarioRepositoryRoot resolves the repository root from this file's own
-// source path, so both the committed corpus and a relative TT_TUI_SCENARIO are
+// source path, so both the committed corpus and a relative DOCKET_TUI_SCENARIO are
 // found from whatever package depth this test ends up at.
 func scenarioRepositoryRoot(t *testing.T) string {
 	t.Helper()
@@ -199,29 +199,29 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 	}
 }
 
-// scenarioShard reads TT_TUI_SCENARIO_SHARD, "i/n" with 0 <= i < n, which
+// scenarioShard reads DOCKET_TUI_SCENARIO_SHARD, "i/n" with 0 <= i < n, which
 // scripts/test_sharded.sh sets so each of its n processes replays a disjoint
 // slice of the corpus. Unset means the whole corpus, as one shard of one.
 func scenarioShard(t *testing.T) (index, count int) {
 	t.Helper()
-	raw := os.Getenv("TT_TUI_SCENARIO_SHARD")
+	raw := os.Getenv("DOCKET_TUI_SCENARIO_SHARD")
 	if raw == "" {
 		return 0, 1
 	}
 	if _, err := fmt.Sscanf(raw, "%d/%d", &index, &count); err != nil || count < 1 || index < 0 || index >= count {
-		t.Fatalf("TT_TUI_SCENARIO_SHARD=%q, want i/n with 0 <= i < n", raw)
+		t.Fatalf("DOCKET_TUI_SCENARIO_SHARD=%q, want i/n with 0 <= i < n", raw)
 	}
 	return index, count
 }
 
 // TestExampleScenariosPass loads every committed example scenario, runs it
 // against its own fixture, and asserts it passes with a clean result. Set
-// TT_TUI_SCENARIO to one path while authoring; the default discovers every
-// committed JSON file, of which TT_TUI_SCENARIO_SHARD keeps one slice.
+// DOCKET_TUI_SCENARIO to one path while authoring; the default discovers every
+// committed JSON file, of which DOCKET_TUI_SCENARIO_SHARD keeps one slice.
 func TestExampleScenariosPass(t *testing.T) {
 	scenariosDir := exampleScenariosDir(t)
 	var paths []string
-	if selected := os.Getenv("TT_TUI_SCENARIO"); selected != "" {
+	if selected := os.Getenv("DOCKET_TUI_SCENARIO"); selected != "" {
 		if !filepath.IsAbs(selected) {
 			selected = filepath.Join(scenarioRepositoryRoot(t), selected)
 		}

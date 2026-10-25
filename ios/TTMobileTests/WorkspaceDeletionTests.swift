@@ -8,7 +8,7 @@ final class WorkspaceDeletionTests: XCTestCase {
 
     override func setUpWithError() throws {
         root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        launch = LaunchConfiguration(environment: ["TT_UITEST_ROOT": root.path])
+        launch = LaunchConfiguration(environment: ["DOCKET_UITEST_ROOT": root.path])
     }
 
     override func tearDownWithError() throws {

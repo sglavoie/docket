@@ -3,8 +3,8 @@ package app_test
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // TestDependencyIsolationLeavesLifecycleUntouched is the positive half of the

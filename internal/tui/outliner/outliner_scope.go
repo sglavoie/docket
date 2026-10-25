@@ -3,8 +3,8 @@ package outliner
 import (
 	"slices"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/query"
 )
 
 // captureScopeFrame snapshots the current restorable state into a frame. Every

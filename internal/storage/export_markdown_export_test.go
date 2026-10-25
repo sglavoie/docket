@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 func saveExportNoteFixture(t *testing.T, dir string, note *models.Note) {

@@ -10,8 +10,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sglavoie/tt/internal/synclog"
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/synclog"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // prepareRestoreTransaction validates the complete selected entry before it

@@ -1,7 +1,7 @@
 .github/skills/
 coverage.out
 /coverage*.out
-tt
+/docket
 .tasks.md.lock
 
 # Editor and tooling state, kept out of a fresh clone rather than out of one

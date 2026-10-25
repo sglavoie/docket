@@ -3,7 +3,7 @@ package app
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // taskContextEdit is an optional singleton-context write carried by a tag

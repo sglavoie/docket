@@ -21,8 +21,8 @@ final class RichContentUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
-        guard let path = ProcessInfo.processInfo.environment["TT_UITEST_WORK_DIR"], FileManager.default.fileExists(atPath: path) else {
-            XCTFail("TT_UITEST_WORK_DIR must name an existing host path")
+        guard let path = ProcessInfo.processInfo.environment["DOCKET_UITEST_WORK_DIR"], FileManager.default.fileExists(atPath: path) else {
+            XCTFail("DOCKET_UITEST_WORK_DIR must name an existing host path")
             throw MissingInput()
         }
         root = URL(fileURLWithPath: path, isDirectory: true)
@@ -39,8 +39,8 @@ final class RichContentUITests: XCTestCase {
     /// The representative fixture with its one wall-clock deferral removed,
     /// selected so the app opens it.
     private func seed() throws {
-        guard let fixture = ProcessInfo.processInfo.environment["TT_UITEST_FIXTURE"], FileManager.default.fileExists(atPath: fixture) else {
-            XCTFail("TT_UITEST_FIXTURE must name the representative workspace")
+        guard let fixture = ProcessInfo.processInfo.environment["DOCKET_UITEST_FIXTURE"], FileManager.default.fileExists(atPath: fixture) else {
+            XCTFail("DOCKET_UITEST_FIXTURE must name the representative workspace")
             throw MissingInput()
         }
         try FileManager.default.createDirectory(at: workspace.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -53,7 +53,7 @@ final class RichContentUITests: XCTestCase {
 
     private func launch(_ extra: [String: String] = [:]) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchEnvironment = ["TT_UITEST_ROOT": root.path, "TT_UITEST_DEVICE_ID": "ui-test-phone"].merging(extra) { $1 }
+        app.launchEnvironment = ["DOCKET_UITEST_ROOT": root.path, "DOCKET_UITEST_DEVICE_ID": "ui-test-phone"].merging(extra) { $1 }
         app.launch()
         require(app.tabBars.buttons["Today"], "the open workspace")
         return app
@@ -287,7 +287,7 @@ final class RichContentUITests: XCTestCase {
 
         // The import is staged and recorded, and the process ends before the
         // commit.
-        var app = launch(["TT_UITEST_IMPORT_SOURCE": source.path, "TT_UITEST_HOLD_IMPORTS": "1"])
+        var app = launch(["DOCKET_UITEST_IMPORT_SOURCE": source.path, "DOCKET_UITEST_HOLD_IMPORTS": "1"])
         openTask(app, "Ship beta build")
         choose(app, "attachments.add", "Import from Files")
         let importing = app.staticTexts["attachment.importing.field-notes.txt"].firstMatch

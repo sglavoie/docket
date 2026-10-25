@@ -7,8 +7,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/control"
-	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/docket/internal/control"
+	"github.com/sglavoie/docket/internal/tui/grammar"
 )
 
 func polishDriver(t *testing.T) *UITestDriver {

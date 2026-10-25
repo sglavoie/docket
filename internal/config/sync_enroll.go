@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // Enrollment turns a desktop workspace into the first device of a synced one.

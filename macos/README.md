@@ -31,7 +31,7 @@ as `just install`'s), builds the app, copies `tt` to
 `tt.app/Contents/Resources/bin/tt`, signs, and then copies
 `macos/build/tt.app` to `/Applications`. It refuses while tt.app is running,
 since replacing the bundle would end its session: quit it from the menu-bar
-icon first. `TT_APP_INSTALL_DIR` installs elsewhere.
+icon first. `DOCKET_APP_INSTALL_DIR` installs elsewhere.
 
 The other recipes:
 
@@ -70,8 +70,8 @@ tt runs.
 
 A Finder-launched app inherits almost no environment, so tt.app asks your
 login shell, interactively (`$SHELL -l -i`), for `PATH`, `EDITOR`, `VISUAL`,
-`TT_EDITOR`, and `TT_DATA_DIR`, and passes those to tt: `Ctrl+E` opens the
-editor your terminal would, and `TT_DATA_DIR` picks the same workspace. A
+`DOCKET_EDITOR`, and `DOCKET_DATA_DIR`, and passes those to tt: `Ctrl+E` opens the
+editor your terminal would, and `DOCKET_DATA_DIR` picks the same workspace. A
 shell that cannot run interactively within five seconds is asked again as a
 plain login shell.
 
@@ -94,7 +94,7 @@ Settings offers Relaunch tt while the running one has the old values. A
 the first Apple Development identity in your keychain (Xcode › Settings ›
 Accounts creates one), else signs ad-hoc; either way the app runs on the Mac
 that built it, and Gatekeeper (`spctl`) rejects it anywhere else.
-`TT_CODESIGN_IDENTITY=-` forces ad-hoc.
+`DOCKET_CODESIGN_IDENTITY=-` forces ad-hoc.
 
 The certificate matters for privacy prompts. tt.app's login-shell probe runs
 your shell startup files, so a `~/.zshrc` that reads from `~/Documents` makes
@@ -106,14 +106,14 @@ switching from ad-hoc asks once more.
 To sign for distribution:
 
 ```bash
-export TT_CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)"
+export DOCKET_CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)"
 xcrun notarytool store-credentials tt-notary   # once; prompts for the Apple ID
-export TT_NOTARY_PROFILE=tt-notary
+export DOCKET_NOTARY_PROFILE=tt-notary
 just mac-app Release
 ```
 
 With a Developer ID, both binaries are signed with the hardened runtime and a
-secure timestamp, which notarization requires. With `TT_NOTARY_PROFILE` too,
+secure timestamp, which notarization requires. With `DOCKET_NOTARY_PROFILE` too,
 the app is zipped, submitted with `notarytool --wait`, and the ticket stapled.
 No entitlements are needed: the app only spawns `tt`, and Ghostty's own
 entitlements exist for the arbitrary shells Ghostty.app hosts.
@@ -478,4 +478,4 @@ The `macOS desktop shell` CI job builds and runs `just mac-test` on every pull
 request and push to main. Its dependency cache is keyed by architecture, Xcode
 and SDK versions, the Ghostty/Zig and XcodeGen pins, and build patches/scripts.
 XCTest result bundles, including failures, are uploaded as `macos-results`.
-Locally, set `TT_MACOS_RESULTS` to keep a result bundle for each test run.
+Locally, set `DOCKET_MACOS_RESULTS` to keep a result bundle for each test run.

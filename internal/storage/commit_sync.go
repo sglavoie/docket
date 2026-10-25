@@ -9,8 +9,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sglavoie/tt/internal/synclog"
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/synclog"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // commitJournal is the one place a commit path hands a prepared manifest to

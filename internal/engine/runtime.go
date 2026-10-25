@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/logging"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/syncmerge"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/logging"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/syncmerge"
 )
 
 // Runtime is one open workspace: the startup-loaded configuration domains, the

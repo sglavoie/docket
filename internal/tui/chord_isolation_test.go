@@ -7,7 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/operation"
 )
 
 // TestChordPrefixesNeverFallThroughToRootOperations presses every root key of

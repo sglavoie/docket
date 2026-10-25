@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/testutil/gotree"
+	"github.com/sglavoie/docket/internal/testutil/gotree"
 )
 
 // tuiPackageFileCeiling is the default bound on production files in a TUI

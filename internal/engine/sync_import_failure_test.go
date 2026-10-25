@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/syncexchange"
+	"github.com/sglavoie/docket/internal/syncexchange"
 )
 
 func TestFolderExchangeReportsFailedImportAndRetriesAfterRepair(t *testing.T) {

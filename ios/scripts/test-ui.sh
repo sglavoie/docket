@@ -20,13 +20,13 @@
 #   ios/scripts/test-ui.sh OUTPUT_DIR
 #
 # Environment:
-#   TT_IOS_DEVICE           default or small, the simulator simulator.sh picks
-#   TT_IOS_SIMULATOR        simulator UDID for default (default: the first
+#   DOCKET_IOS_DEVICE           default or small, the simulator simulator.sh picks
+#   DOCKET_IOS_SIMULATOR        simulator UDID for default (default: the first
 #                           available iPhone on an iOS 18 or later runtime)
-#   TT_UITEST_MAX_WIDTH     the widest window the small-screen test accepts
-#   TT_IOS_CACHE            cache root (default ios/.cache, gitignored)
-#   TT_UITEST_ONLY          one UI test class/method (default: every class)
-#   TT_UITEST_TARGET        UI test bundle (default: TTMobileUITests)
+#   DOCKET_UITEST_MAX_WIDTH     the widest window the small-screen test accepts
+#   DOCKET_IOS_CACHE            cache root (default ios/.cache, gitignored)
+#   DOCKET_UITEST_ONLY          one UI test class/method (default: every class)
+#   DOCKET_UITEST_TARGET        UI test bundle (default: TTMobileUITests)
 
 set -eu
 
@@ -38,7 +38,7 @@ fi
 script_dir=$(CDPATH="" cd -- "$(dirname -- "$0")" && pwd)
 ios_dir=$(dirname -- "$script_dir")
 repo_root=$(dirname -- "$ios_dir")
-cache_root="${TT_IOS_CACHE:-$ios_dir/.cache}"
+cache_root="${DOCKET_IOS_CACHE:-$ios_dir/.cache}"
 
 mkdir -p "$1"
 output=$(CDPATH="" cd -- "$1" && pwd)
@@ -46,7 +46,7 @@ fixture="$repo_root/internal/compat/testdata/workspaces/representative"
 
 "$script_dir/generate-project.sh"
 
-simulator=$("$script_dir/simulator.sh" "${TT_IOS_DEVICE:-default}")
+simulator=$("$script_dir/simulator.sh" "${DOCKET_IOS_DEVICE:-default}")
 # The tests read the system's appearance and text size unless they set their
 # own, and `just ios-run` changes both, so every run starts from the defaults.
 xcrun simctl boot "$simulator" >/dev/null 2>&1 || true
@@ -115,15 +115,15 @@ HOME="$conflict/studio-home" "$output/enroll/tt" --data-dir "$conflict/studio" s
 
 echo "Testing TTMobileUITests on simulator $simulator..." >&2
 status=0
-TEST_RUNNER_TT_UITEST_FIXTURE="$fixture" \
-	TEST_RUNNER_TT_UITEST_CONFLICT_EXCHANGE="$conflict/exchange" \
-	TEST_RUNNER_TT_UITEST_EXCHANGE="$output/exchange" \
-	TEST_RUNNER_TT_UITEST_WORK_DIR="$output/work" \
-	TEST_RUNNER_TT_UITEST_MAX_WIDTH="${TT_UITEST_MAX_WIDTH:-}" \
+TEST_RUNNER_DOCKET_UITEST_FIXTURE="$fixture" \
+	TEST_RUNNER_DOCKET_UITEST_CONFLICT_EXCHANGE="$conflict/exchange" \
+	TEST_RUNNER_DOCKET_UITEST_EXCHANGE="$output/exchange" \
+	TEST_RUNNER_DOCKET_UITEST_WORK_DIR="$output/work" \
+	TEST_RUNNER_DOCKET_UITEST_MAX_WIDTH="${DOCKET_UITEST_MAX_WIDTH:-}" \
 	xcodebuild test \
 	-project "$ios_dir/TTMobile.xcodeproj" \
 	-scheme TTMobile \
-	-only-testing:"${TT_UITEST_TARGET:-TTMobileUITests}${TT_UITEST_ONLY:+/$TT_UITEST_ONLY}" \
+	-only-testing:"${DOCKET_UITEST_TARGET:-TTMobileUITests}${DOCKET_UITEST_ONLY:+/$DOCKET_UITEST_ONLY}" \
 	-parallel-testing-enabled NO \
 	-destination "platform=iOS Simulator,id=$simulator" \
 	-derivedDataPath "$cache_root/UIDerivedData" \

@@ -21,7 +21,7 @@ team's signature expires after seven days, so with one, reinstall before then
 Install the app on the iPhone, unlocked and connected:
 
 ```sh
-TT_IOS_DEVELOPMENT_TEAM=TEAMID ios/scripts/install-device.sh
+DOCKET_IOS_DEVELOPMENT_TEAM=TEAMID ios/scripts/install-device.sh
 ```
 
 The script builds the app for that iPhone, checks the signature, and installs
@@ -46,7 +46,7 @@ any other. Nothing you already have is read or written. On the Mac you edit the
 trial with the `tt-trial` command the script writes into the trial directory.
 
 ```sh
-export TT_IOS_DEVELOPMENT_TEAM=TEAMID
+export DOCKET_IOS_DEVELOPMENT_TEAM=TEAMID
 ios/scripts/record-device-qualification.sh start          # signed install, enrollment, join
 ios/scripts/record-device-qualification.sh scenario airplane_mode
 ios/scripts/record-device-qualification.sh scenario simultaneous_edits
@@ -54,7 +54,7 @@ ios/scripts/record-device-qualification.sh scenario termination
 ios/scripts/record-device-qualification.sh scenario delayed_delivery
 ios/scripts/record-device-qualification.sh scenario revoked_access
 ios/scripts/record-device-qualification.sh scenario large_attachments
-TT_QUALIFICATION_UPGRADE_FROM=<earlier commit> \
+DOCKET_QUALIFICATION_UPGRADE_FROM=<earlier commit> \
   ios/scripts/record-device-qualification.sh scenario upgrade
 ios/scripts/record-device-qualification.sh procedure backup
 ios/scripts/record-device-qualification.sh procedure recovery
@@ -243,7 +243,7 @@ older device until it is upgraded too, and `tt sync doctor` names the device
 that needs an update.
 
 - **iPhone.** Connect and unlock it, then run
-  `TT_IOS_DEVELOPMENT_TEAM=TEAMID ios/scripts/install-device.sh`. Installing
+  `DOCKET_IOS_DEVELOPMENT_TEAM=TEAMID ios/scripts/install-device.sh`. Installing
   over the earlier build keeps the app's data, including work not yet
   published, which publishes once the new build opens.
 - **Mac.** Quit `tt`, run `just install` from the new checkout, and start `tt`.

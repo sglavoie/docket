@@ -5,11 +5,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/fuzzy"
-	"github.com/sglavoie/tt/internal/tui/listsurface"
-	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/fuzzy"
+	"github.com/sglavoie/docket/internal/tui/listsurface"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // items renders both action rows plus every saved lens the query admits.

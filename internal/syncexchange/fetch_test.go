@@ -9,7 +9,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/synclog"
+	"github.com/sglavoie/docket/internal/synclog"
 )
 
 // countingHistory is a device's history as fetch reads it, counting the index

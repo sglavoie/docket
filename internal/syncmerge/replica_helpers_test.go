@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/synclog"
-	"github.com/sglavoie/tt/internal/syncmerge"
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/synclog"
+	"github.com/sglavoie/docket/internal/syncmerge"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // The replicas below start from one copy of the representative compatibility

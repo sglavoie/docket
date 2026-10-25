@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // This file owns the durable half of scheduling a check-in: one typed schedule

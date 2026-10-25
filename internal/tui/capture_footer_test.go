@@ -8,9 +8,9 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/testutil"
-	"github.com/sglavoie/tt/internal/tui/taskform"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/testutil"
+	"github.com/sglavoie/docket/internal/tui/taskform"
 )
 
 // TestCaptureFooterWrapsAt60ColumnsWithoutTruncation verifies that the

@@ -3,7 +3,7 @@ package config
 import (
 	"path/filepath"
 
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // ExportsDir returns the directory where project export files are stored:

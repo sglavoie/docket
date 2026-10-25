@@ -3,9 +3,9 @@ package outliner
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
 // The contract these tests hold is one rule for every mutation path: a task that

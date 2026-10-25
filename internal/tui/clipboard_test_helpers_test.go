@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/docket/internal/external"
 )
 
 // withFakeClipboard swaps external.CopyText for the duration of the test,

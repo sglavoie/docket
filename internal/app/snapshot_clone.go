@@ -1,8 +1,8 @@
 package app
 
 import (
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 // cloneSnapshot returns a detached copy suitable for rollback after an

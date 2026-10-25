@@ -7,10 +7,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 var doctorCmd = &cobra.Command{
@@ -30,9 +30,9 @@ nothing else.
 
 Exit status: 0 when every check passes, 2 when doctor ran and found issues,
 and 1 when doctor could not run or a repair failed.`,
-	Example: `  tt doctor
-  tt doctor --fix
-  tt doctor --json`,
+	Example: `  docket doctor
+  docket doctor --fix
+  docket doctor --json`,
 	Args:              noArgs,
 	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE:              runDoctor,
@@ -257,9 +257,9 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	if results.totalIssues() > 0 {
 		if !asJSON {
 			if !fix && results.fixableIssues() > 0 {
-				fmt.Println(verdictGap + "Run 'tt doctor --fix' to automatically fix fixable issues.")
+				fmt.Println(verdictGap + "Run 'docket doctor --fix' to automatically fix fixable issues.")
 			} else {
-				fmt.Println(verdictGap + "Resolve the reported integrity issues, then re-run 'tt doctor'.")
+				fmt.Println(verdictGap + "Resolve the reported integrity issues, then re-run 'docket doctor'.")
 			}
 		}
 		return &doctorIssuesError{count: results.totalIssues(), quiet: asJSON}

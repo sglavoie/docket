@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 var (
@@ -38,9 +38,9 @@ cannot safely replay only its project document. In that case local and file
 resolution fail closed: adopt remote to clear the record, then retry the original
 operation so every project, configuration artifact, and attachment is rebuilt in
 one transaction.`,
-	Example: `  tt conflict resolve 1a2b3c4d --use local
-  tt conflict resolve 1a2b3c4d --use remote
-  tt conflict resolve 1a2b3c4d --use file --file merged.md`,
+	Example: `  docket conflict resolve 1a2b3c4d --use local
+  docket conflict resolve 1a2b3c4d --use remote
+  docket conflict resolve 1a2b3c4d --use file --file merged.md`,
 	Args:              exactlyOneArg("conflict ID"),
 	RunE:              runConflictResolve,
 	ValidArgsFunction: completeConflictIDs,
@@ -88,7 +88,7 @@ func runConflictResolve(cmd *cobra.Command, args []string) error {
 		if errors.Is(err, storage.ErrRemoteReconflict) {
 			fmt.Printf("The remote changed during resolution and the re-merge conflicts.\n")
 			fmt.Printf("A new conflict was recorded: %s\n", shortConflictID(result.NewConflictID))
-			fmt.Printf("Review it with: tt conflict show %s\n", shortConflictID(result.NewConflictID))
+			fmt.Printf("Review it with: docket conflict show %s\n", shortConflictID(result.NewConflictID))
 			return err
 		}
 		var revConflict *storage.RevisionConflictError

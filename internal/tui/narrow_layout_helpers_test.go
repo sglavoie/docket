@@ -6,7 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/tui/textfit"
+	"github.com/sglavoie/docket/internal/tui/textfit"
 )
 
 func TestTruncateToVisualWidthUsesDisplayWidth(t *testing.T) {

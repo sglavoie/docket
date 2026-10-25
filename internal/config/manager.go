@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // ErrPartialDomainState is returned when only some synced domain artifacts are
@@ -70,7 +70,7 @@ func (e *CorruptWorkspaceCatalogError) Error() string {
 		restore = fmt.Sprintf("restore it from its last good copy %s or from a snapshot under %s",
 			DisplayPath(e.BackupPath), DisplayPath(e.BackupsDir))
 	}
-	return fmt.Sprintf("workspace catalog %s is not valid JSON (%v); %s, then run 'tt doctor'",
+	return fmt.Sprintf("workspace catalog %s is not valid JSON (%v); %s, then run 'docket doctor'",
 		DisplayPath(e.Path), e.Err, restore)
 }
 

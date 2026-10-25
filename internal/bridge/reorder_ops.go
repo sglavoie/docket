@@ -1,8 +1,8 @@
 package bridge
 
 import (
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/config"
 )
 
 type reorderPayload struct {

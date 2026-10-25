@@ -3,8 +3,8 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 // conflictCmd is the parent for the conflict-management surfaces. Three-way merge
@@ -16,7 +16,7 @@ var conflictCmd = &cobra.Command{
 	Short: "List, inspect, and resolve merge conflicts",
 	Long: `Manage persisted three-way merge conflicts.
 
-When a concurrent change to the same project cannot be merged automatically, tt
+When a concurrent change to the same project cannot be merged automatically, Docket
 records the base, local, and remote documents plus structured conflict metadata.
 Use these commands to review what diverged and to resolve each conflict by
 keeping your local edits, adopting the remote state, or supplying a merged file.

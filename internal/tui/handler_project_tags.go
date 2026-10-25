@@ -7,13 +7,13 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/coordinator"
-	"github.com/sglavoie/tt/internal/tui/filterops"
-	"github.com/sglavoie/tt/internal/tui/projecthub"
-	"github.com/sglavoie/tt/internal/tui/projectops"
-	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/coordinator"
+	"github.com/sglavoie/docket/internal/tui/filterops"
+	"github.com/sglavoie/docket/internal/tui/projecthub"
+	"github.com/sglavoie/docket/internal/tui/projectops"
+	"github.com/sglavoie/docket/internal/tui/status"
 )
 
 // requestProjectTags applies a replacement project tag set, prompting first only

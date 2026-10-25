@@ -3,8 +3,8 @@ package projectops
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/projecthub"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/projecthub"
 )
 
 func (c *Controller) RegisterProjectBulkOperations(shell Shell) error {

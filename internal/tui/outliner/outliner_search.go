@@ -7,12 +7,12 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/fuzzy"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/query"
-	"github.com/sglavoie/tt/internal/tui/taskref"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/fuzzy"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/query"
+	"github.com/sglavoie/docket/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // hasSearchProjection reports that a slash-search frame is open, which is the

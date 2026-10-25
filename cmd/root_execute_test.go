@@ -29,7 +29,7 @@ func TestExecuteReturnsNilOnSuccess(t *testing.T) {
 func TestExecuteReturnsErrorNotExit(t *testing.T) {
 	// Use a fresh command so we don't disturb global rootCmd state.
 	failing := &cobra.Command{
-		Use: "tt",
+		Use: "docket",
 		RunE: func(*cobra.Command, []string) error {
 			return errors.New("injected failure")
 		},
@@ -44,7 +44,7 @@ func TestExecuteReturnsErrorNotExit(t *testing.T) {
 func TestExecuteCommandReturnsRunErrorAndClosesLogging(t *testing.T) {
 	expected := errors.New("boom")
 	command := &cobra.Command{
-		Use: "tt",
+		Use: "docket",
 		RunE: func(*cobra.Command, []string) error {
 			return expected
 		},
@@ -78,7 +78,7 @@ func TestExecuteCommandReturnsRunErrorAndClosesLogging(t *testing.T) {
 
 func TestExecuteCommandReturnsCobraValidationError(t *testing.T) {
 	command := &cobra.Command{
-		Use:  "tt",
+		Use:  "docket",
 		Args: cobra.NoArgs,
 		RunE: func(*cobra.Command, []string) error {
 			t.Fatal("RunE should not execute when args validation fails")
@@ -143,18 +143,18 @@ func TestStrayArgumentsAreRefusedByName(t *testing.T) {
 		args []string
 		want []string
 	}{
-		{[]string{"doctr"}, []string{`unknown command "doctr" for "tt"`, "Did you mean this?", "\tdoctor", "Run 'tt --help' for usage"}},
-		{[]string{"conflict", "lis"}, []string{`unknown command "lis" for "tt conflict"`, "\tlist", "Run 'tt conflict --help' for usage"}},
-		{[]string{"doctor", "extra"}, []string{`tt doctor takes no arguments; got "extra"`, "Run 'tt doctor --help' for usage"}},
-		{[]string{"conflict", "list", "extra"}, []string{`tt conflict list takes no arguments; got "extra"`}},
-		{[]string{"workspace", "location", "extra"}, []string{`tt workspace location takes no arguments; got "extra"`}},
-		{[]string{"conflict", "show"}, []string{"tt conflict show requires a conflict ID"}},
-		{[]string{"sync", "resolve"}, []string{"tt sync resolve requires a conflict ID", "Run 'tt sync resolve --help' for usage"}},
-		{[]string{"sync", "conflicts", "a", "b"}, []string{"tt sync conflicts takes at most one conflict ID; got 2 arguments"}},
-		{[]string{"sync", "resolve", "3f2a"}, []string{"choose a resolution: --version N, --current, or --file PATH", "Run 'tt sync resolve --help' for usage"}},
+		{[]string{"doctr"}, []string{`unknown command "doctr" for "docket"`, "Did you mean this?", "\tdoctor", "Run 'docket --help' for usage"}},
+		{[]string{"conflict", "lis"}, []string{`unknown command "lis" for "docket conflict"`, "\tlist", "Run 'docket conflict --help' for usage"}},
+		{[]string{"doctor", "extra"}, []string{`docket doctor takes no arguments; got "extra"`, "Run 'docket doctor --help' for usage"}},
+		{[]string{"conflict", "list", "extra"}, []string{`docket conflict list takes no arguments; got "extra"`}},
+		{[]string{"workspace", "location", "extra"}, []string{`docket workspace location takes no arguments; got "extra"`}},
+		{[]string{"conflict", "show"}, []string{"docket conflict show requires a conflict ID"}},
+		{[]string{"sync", "resolve"}, []string{"docket sync resolve requires a conflict ID", "Run 'docket sync resolve --help' for usage"}},
+		{[]string{"sync", "conflicts", "a", "b"}, []string{"docket sync conflicts takes at most one conflict ID; got 2 arguments"}},
+		{[]string{"sync", "resolve", "3f2a"}, []string{"choose a resolution: --version N, --current, or --file PATH", "Run 'docket sync resolve --help' for usage"}},
 		{[]string{"sync", "resolve", "3f2a", "--current", "--version", "2"}, []string{"--version and --current cannot be combined; choose one"}},
-		{[]string{"doctor", "--bogus"}, []string{"unknown flag: --bogus", "Run 'tt doctor --help' for usage"}},
-		{[]string{"sync", "enroll"}, []string{`required flag(s) "exchange", "working-copy" not set`, "Run 'tt sync enroll --help' for usage"}},
+		{[]string{"doctor", "--bogus"}, []string{"unknown flag: --bogus", "Run 'docket doctor --help' for usage"}},
+		{[]string{"sync", "enroll"}, []string{`required flag(s) "exchange", "working-copy" not set`, "Run 'docket sync enroll --help' for usage"}},
 	} {
 		t.Run(strings.Join(tc.args, "_"), func(t *testing.T) {
 			var out strings.Builder
@@ -170,7 +170,7 @@ func TestStrayArgumentsAreRefusedByName(t *testing.T) {
 
 			err := executeCommand(rootCmd)
 			if err == nil {
-				t.Fatalf("tt %s was accepted", strings.Join(tc.args, " "))
+				t.Fatalf("docket %s was accepted", strings.Join(tc.args, " "))
 			}
 			for _, want := range tc.want {
 				if !strings.Contains(err.Error(), want) {

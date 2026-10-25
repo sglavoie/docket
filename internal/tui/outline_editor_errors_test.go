@@ -9,8 +9,8 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/tui/grammar"
-	"github.com/sglavoie/tt/internal/tui/outliner"
+	"github.com/sglavoie/docket/internal/tui/grammar"
+	"github.com/sglavoie/docket/internal/tui/outliner"
 )
 
 func outlineErrorsFixture(count int) *outliner.OutlineErrorsViewModel {

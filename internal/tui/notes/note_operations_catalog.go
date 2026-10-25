@@ -1,7 +1,7 @@
 package notes
 
 import (
-	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/operation"
 )
 
 // NoteOperationDescriptors is the authoritative catalog of note-targeted

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/chrome"
 )
 
 // ContextualGuidance returns the controls for the Notes interaction that owns

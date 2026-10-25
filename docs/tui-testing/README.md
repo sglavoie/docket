@@ -362,7 +362,7 @@ install scenarios. The `check-ins` fixture activates historical documents throug
 the manager before launching its JSON scenarios; recovery fault injection stays
 at the real storage/startup boundary.
 
-For visual review, set `TT_CHECK_IN_REVIEW_DIR` to an artifact directory while
+For visual review, set `DOCKET_CHECK_IN_REVIEW_DIR` to an artifact directory while
 running `TestCheckInVisualAcceptance`. It writes the rendered ANSI screens and
 the same screens passed through the terminal monochrome profile. Scenario
 `wait` advances timer delivery only; exact calendar-boundary assertions use an
@@ -373,7 +373,7 @@ For ordered feedback, completion, Peek-resize, and capture frames, see the
 Ghostty capture and an offline replay with frame stepping.
 
 Release compatibility requires actual old-binary execution:
-`env TT_OLD_BINARY_REF=08c0cb08fec10154e6d2c9455e32d4c4ffa5f72d just cross-machine`.
+`env DOCKET_OLD_BINARY_REF=08c0cb08fec10154e6d2c9455e32d4c4ffa5f72d just cross-machine`.
 That schema-19 binary validates the legacy Waiting seed before the new binary
 activates it. The gate then checks one-off review, setup eligibility, early
 recurrence, completion/reopen and the preserved timed deadline. The check-in
@@ -393,7 +393,7 @@ a whole day over the same fixture.
 map for the later, independently numbered UX clarity plan, which reads the same
 fixture. It names the regression home for each of that plan's sessions, records
 the layout measurements and the combined states the plan replaces, and documents
-`TT_UX_CLARITY_REVIEW_DIR`, the directory
+`DOCKET_UX_CLARITY_REVIEW_DIR`, the directory
 `internal/tui/ux_clarity_review_matrix_test.go` exports its reviewable ANSI,
 plain-text, and monochrome before-frames to. It also records the after-frames,
 re-exported once the plan landed, with every moved measurement attributed to the
@@ -407,7 +407,7 @@ so no two of those numberings can share a document. It names the regression home
 for each of its sessions, records the before-frame layout and clipped-line
 measurements, assigns every recorded expectation and every prose contract the
 plan replaces to its owning session, and documents
-`TT_UX_DAILY_USE_REVIEW_DIR`, the directory
+`DOCKET_UX_DAILY_USE_REVIEW_DIR`, the directory
 `internal/tui/ux_daily_use_review_matrix_test.go` exports its eight ANSI,
 plain-text, and monochrome before-frames to at 60×20, 80×24, 100×35, and
 120×40. The baseline files listed in the map record the expectations it

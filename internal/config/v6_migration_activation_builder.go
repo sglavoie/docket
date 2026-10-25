@@ -9,8 +9,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 type v6ActivationBuilder struct {

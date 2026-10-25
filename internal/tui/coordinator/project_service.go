@@ -1,9 +1,9 @@
 package coordinator
 
 import (
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/workspace"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/workspace"
 )
 
 // Persister defines the interface for project persistence operations.

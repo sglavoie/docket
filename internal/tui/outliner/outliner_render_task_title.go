@@ -13,10 +13,10 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/fuzzy"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/query"
-	"github.com/sglavoie/tt/internal/tui/textfit"
+	"github.com/sglavoie/docket/internal/fuzzy"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/query"
+	"github.com/sglavoie/docket/internal/tui/textfit"
 )
 
 func (m *OutlinerModel) renderTaskTitle(row OutlinerRow, titleStyle lipgloss.Style, rowWidth int, segments taskRowSegments) string {

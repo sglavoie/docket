@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/chrome"
 )
 
 func (model *OperationValuePickerModel) QuitBlockReason() string {

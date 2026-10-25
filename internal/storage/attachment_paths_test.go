@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 func GetTaskAttachmentsDir(project *models.Project, task *models.Task) string {

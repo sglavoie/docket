@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/tui/entityops"
+	"github.com/sglavoie/docket/internal/tui/entityops"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/coordinator"
-	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/status"
-	"github.com/sglavoie/tt/internal/tui/taskdetail"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/coordinator"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/status"
+	"github.com/sglavoie/docket/internal/tui/taskdetail"
 )
 
 // fakeAttachmentMutator records the application use cases the attachments view

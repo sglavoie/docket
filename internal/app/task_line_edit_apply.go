@@ -4,7 +4,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // applyTaskLineEditEdges submits the edited task's own parent change together

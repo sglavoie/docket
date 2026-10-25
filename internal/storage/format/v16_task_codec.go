@@ -1,7 +1,7 @@
 package format
 
 import (
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // V16TaskRecord is the complete schema-16 storage shape: the schema-15 fields

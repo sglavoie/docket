@@ -10,8 +10,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/tui/status"
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/tui/status"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // Ordered frames exercise the real shell between states, including timers and
@@ -19,7 +19,7 @@ import (
 // filenames preserve each sequence's order and identify its actual grid size.
 func TestPolishTransitionReviewFrames(t *testing.T) {
 	defer theme.ApplyTheme(theme.ThemeConfig{})
-	root := os.Getenv("TT_TERMINAL_REVIEW_DIR")
+	root := os.Getenv("DOCKET_TERMINAL_REVIEW_DIR")
 	if root == "" {
 		root = t.TempDir()
 	}

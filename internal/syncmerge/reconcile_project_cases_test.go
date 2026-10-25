@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/synclog"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/synclog"
 )
 
 // TestSyncReconcileProjectMoves lands an edit made under a project's old slug

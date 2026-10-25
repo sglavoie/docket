@@ -15,11 +15,11 @@
 #   ios/scripts/record-icloud-exchange.sh
 #
 # Environment:
-#   TT_IOS_DEVELOPMENT_TEAM    signing team for the device build (required)
-#   TT_IOS_DEVICE              iPhone UDID (default: the first physical iPhone)
-#   TT_ICLOUD_EXCHANGE_FOLDER  exchange folder (default: iCloud Drive/tt-sync-evidence)
-#   TT_EXCHANGE_TIMEOUT        seconds each side waits for the other (default 1500)
-#   TT_ICLOUD_EVIDENCE         output (default docs/mobile/evidence/session-8-icloud-exchange.json)
+#   DOCKET_IOS_DEVELOPMENT_TEAM    signing team for the device build (required)
+#   DOCKET_IOS_DEVICE              iPhone UDID (default: the first physical iPhone)
+#   DOCKET_ICLOUD_EXCHANGE_FOLDER  exchange folder (default: iCloud Drive/tt-sync-evidence)
+#   DOCKET_EXCHANGE_TIMEOUT        seconds each side waits for the other (default 1500)
+#   DOCKET_ICLOUD_EVIDENCE         output (default docs/mobile/evidence/session-8-icloud-exchange.json)
 
 set -euo pipefail
 
@@ -36,22 +36,22 @@ note() {
 }
 
 [ "$(uname -s)" = Darwin ] || fail "a real iCloud exchange needs macOS"
-team=${TT_IOS_DEVELOPMENT_TEAM:-}
-[ -n "$team" ] || fail "set TT_IOS_DEVELOPMENT_TEAM to the signing team"
-folder=${TT_ICLOUD_EXCHANGE_FOLDER:-"$HOME/Library/Mobile Documents/com~apple~CloudDocs/tt-sync-evidence"}
+team=${DOCKET_IOS_DEVELOPMENT_TEAM:-}
+[ -n "$team" ] || fail "set DOCKET_IOS_DEVELOPMENT_TEAM to the signing team"
+folder=${DOCKET_ICLOUD_EXCHANGE_FOLDER:-"$HOME/Library/Mobile Documents/com~apple~CloudDocs/tt-sync-evidence"}
 case "$folder" in
 *"/Library/Mobile Documents/"*) ;;
 *) fail "$folder is not inside iCloud Drive" ;;
 esac
-timeout=${TT_EXCHANGE_TIMEOUT:-1500}
-evidence=${TT_ICLOUD_EVIDENCE:-docs/mobile/evidence/session-8-icloud-exchange.json}
+timeout=${DOCKET_EXCHANGE_TIMEOUT:-1500}
+evidence=${DOCKET_ICLOUD_EVIDENCE:-docs/mobile/evidence/session-8-icloud-exchange.json}
 run=$(date -u +%Y%m%dT%H%M%SZ)
 out=$(mktemp -d "${TMPDIR:-/tmp}/tt-icloud-exchange.XXXXXX")
 note "run $run, scratch $out"
 
 # The iPhone: physical only, never a simulator.
 xcrun devicectl list devices --json-output "$out/devices.json" >/dev/null
-device=${TT_IOS_DEVICE:-$(python3 -I - "$out/devices.json" <<'PY'
+device=${DOCKET_IOS_DEVICE:-$(python3 -I - "$out/devices.json" <<'PY'
 import json, sys
 for d in json.load(open(sys.argv[1]))["result"]["devices"]:
     hw = d["hardwareProperties"]
@@ -99,7 +99,7 @@ helper_pid=$!
 
 note "running the iPhone responder (keep the iPhone unlocked)"
 device_status=0
-TEST_RUNNER_TT_EXCHANGE_RUN_ID="$run" TEST_RUNNER_TT_EXCHANGE_TIMEOUT="$timeout" \
+TEST_RUNNER_DOCKET_EXCHANGE_RUN_ID="$run" TEST_RUNNER_DOCKET_EXCHANGE_TIMEOUT="$timeout" \
 	xcodebuild test-without-building -project ios/TTMobile.xcodeproj -scheme TTMobile \
 	-destination "id=$device" -derivedDataPath "$derived" \
 	-only-testing:TTMobileDeviceTests/ICloudExchangeDeviceTests/testRespondsToTheMacOverICloudDrive \

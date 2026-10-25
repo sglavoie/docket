@@ -9,7 +9,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // Export the actual product frames for the opt-in Ghostty pixel review. The
@@ -17,7 +17,7 @@ import (
 // bytes through the same Metal surface as tt.app, rather than an SVG emulator.
 func TestPolishVisualReviewFrames(t *testing.T) {
 	defer theme.ApplyTheme(theme.ThemeConfig{})
-	root := os.Getenv("TT_TERMINAL_REVIEW_DIR")
+	root := os.Getenv("DOCKET_TERMINAL_REVIEW_DIR")
 	if root == "" {
 		root = t.TempDir()
 	}

@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // Destination is the canonical lifecycle/planning destination shared by all

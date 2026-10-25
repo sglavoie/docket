@@ -5,7 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 func TestDeferredRefreshAdoptsOnInteractionExit(t *testing.T) {

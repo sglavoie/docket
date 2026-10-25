@@ -9,12 +9,12 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/engine"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/syncexchange"
-	"github.com/sglavoie/tt/internal/tui/presentation"
-	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/engine"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/syncexchange"
+	"github.com/sglavoie/docket/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/tui/status"
 )
 
 func TestAutomaticSyncExchangesAndDefersViewAdoption(t *testing.T) {

@@ -1,6 +1,6 @@
 package config
 
-import "github.com/sglavoie/tt/internal/models"
+import "github.com/sglavoie/docket/internal/models"
 
 // GetProject rehydrates a cataloged project by ID or slug, or nil if none
 // matches. It mirrors (*Config).GetProject over the in-memory catalog snapshot.

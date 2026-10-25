@@ -1,6 +1,6 @@
 package pulse
 
-import "github.com/sglavoie/tt/internal/app"
+import "github.com/sglavoie/docket/internal/app"
 
 // TodayPaceState is the read-only completion activity injected by AppModel
 // immediately before an Outliner paint. The Today open count remains sourced

@@ -7,8 +7,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // TestCommitService_AttachmentCopyCommitsWithProject confirms an attachment copy

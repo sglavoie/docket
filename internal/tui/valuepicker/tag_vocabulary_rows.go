@@ -3,8 +3,8 @@ package valuepicker
 import (
 	"strings"
 
-	"github.com/sglavoie/tt/internal/tui/listsurface"
-	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/docket/internal/tui/listsurface"
+	"github.com/sglavoie/docket/internal/tui/query"
 )
 
 // The two categories every tag list seats its rows in. Behavioral tags are

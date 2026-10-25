@@ -1,6 +1,6 @@
 package coordinator
 
-import "github.com/sglavoie/tt/internal/app"
+import "github.com/sglavoie/docket/internal/app"
 
 // undoFocusHistoryLimit matches the workspace undo ledger's own depth, for the
 // same reason dueClockHistoryLimit does: a correlation is only ever spent by a

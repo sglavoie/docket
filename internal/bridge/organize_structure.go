@@ -3,8 +3,8 @@ package bridge
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // checklistPayload is one checklist action on one task. An item has no stored

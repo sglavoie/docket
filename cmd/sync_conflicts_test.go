@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/engine"
+	"github.com/sglavoie/docket/internal/engine"
 )
 
 const atlasTasksPath = "projects/atlas-launch/tasks.md"
@@ -106,7 +106,7 @@ func TestSyncConflictCommands(t *testing.T) {
 	for _, want := range []string{
 		"Tasks in Atlas Launch", "Started from:", "│ ## Task: Ship beta build\n",
 		"## Task: Ship beta build (studio)", "## Task: Ship beta build (laptop)",
-		"edit outside tt on", "laptop-b", ", this device", "What differs:", "tt sync resolve " + prefix,
+		"edit outside tt on", "laptop-b", ", this device", "What differs:", "docket sync resolve " + prefix,
 	} {
 		if !strings.Contains(shown, want) {
 			t.Fatalf("conflicts %s lacks %q:\n%s", prefix, want, shown)

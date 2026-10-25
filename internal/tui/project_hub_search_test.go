@@ -6,11 +6,11 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/tui/outliner"
-	"github.com/sglavoie/tt/internal/tui/presentation"
-	"github.com/sglavoie/tt/internal/tui/projecthub"
-	"github.com/sglavoie/tt/internal/tui/route"
-	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/docket/internal/tui/outliner"
+	"github.com/sglavoie/docket/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/tui/projecthub"
+	"github.com/sglavoie/docket/internal/tui/route"
+	"github.com/sglavoie/docket/internal/tui/status"
 )
 
 // The browse grammar itself moved to internal/tui/projecthub with the surface.

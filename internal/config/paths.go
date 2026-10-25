@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // Path resolution constants. All default data-dir and config-path decisions

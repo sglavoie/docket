@@ -3,7 +3,7 @@ package workspace
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 func makeTask(id string, shortID int) *models.Task {

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/storage/format"
+	"github.com/sglavoie/docket/internal/storage/format"
 )
 
 var (

@@ -10,8 +10,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 func TestCreateDomainBundle_ValidatesBeforeBootstrapEffects(t *testing.T) {

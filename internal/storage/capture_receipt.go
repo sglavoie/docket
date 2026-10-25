@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // CaptureSubmission identifies one host submission independently of a socket

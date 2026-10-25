@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/textgrammar"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/textgrammar"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 func (p *quickCaptureParser) applySharedTokens(parsed textgrammar.Result) {

@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage/format"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage/format"
 )
 
 // SchemaVersionV5 is the strict live task Markdown schema.

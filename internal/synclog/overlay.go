@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // vfile is one file as a transaction under construction sees it: the on-disk

@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/engine"
-	"github.com/sglavoie/tt/internal/syncexchange"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/engine"
+	"github.com/sglavoie/docket/internal/syncexchange"
 )
 
 // Fixture identities the browsing tests navigate by.

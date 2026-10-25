@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/docket/internal/app"
 )
 
 // This file exercises the primary-view feature coordinators end to end through

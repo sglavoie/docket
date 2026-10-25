@@ -5,11 +5,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/lens"
-	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/lens"
+	"github.com/sglavoie/docket/internal/tui/query"
 )
 
 // A named lens is a saved Outliner projection: the mode it opens, the narrowing

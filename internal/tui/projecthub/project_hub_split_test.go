@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/docket/internal/tui/listsurface"
 )
 
 // projectHubDividerColumn is where the frame's pane divider sits, read off the

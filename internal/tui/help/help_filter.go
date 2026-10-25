@@ -4,8 +4,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/fuzzy"
-	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/fuzzy"
+	"github.com/sglavoie/docket/internal/tui/operation"
 )
 
 // buildSectionCategories returns the sections present in m.items, ordered by the

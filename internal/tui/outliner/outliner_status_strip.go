@@ -6,8 +6,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/tui/theme"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // statusStripBody builds the outstanding-conflict indicator, the focus notice,

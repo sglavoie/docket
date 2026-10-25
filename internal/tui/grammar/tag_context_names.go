@@ -4,7 +4,7 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // CollectTagNamesForProject returns the sorted unique tag names a project's

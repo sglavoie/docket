@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // This file holds the checklist use cases backing the task subview panel. They

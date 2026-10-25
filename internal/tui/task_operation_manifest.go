@@ -3,9 +3,9 @@ package tui
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
 // taskOperationManifest is the authoritative ordered single-task action list.

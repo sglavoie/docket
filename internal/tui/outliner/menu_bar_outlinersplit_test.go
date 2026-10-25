@@ -3,7 +3,7 @@ package outliner
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/operation"
 )
 
 // The menu bar is a projection of the operation catalog, so these are the

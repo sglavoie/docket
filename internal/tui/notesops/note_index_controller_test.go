@@ -3,8 +3,8 @@ package notesops
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/tui/notes"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/tui/notes"
 )
 
 // TestNoteIndexControllerSupersedesAReadInFlight pins the generation discipline

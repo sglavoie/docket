@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/synclog"
+	"github.com/sglavoie/docket/internal/synclog"
 )
 
 // DeviceAdvertisement is the tt-sync-device record each device keeps at

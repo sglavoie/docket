@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 func precheckPreScopeV7Targets(paths ...string) error {

@@ -3,7 +3,7 @@ package taskform
 import (
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/docket/internal/testutil"
 )
 
 func newTestTaskForm() *TaskFormModel {

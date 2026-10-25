@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/docket/internal/logging"
 )
 
 // editorPattern defines how an editor handles opening a file at a specific line.

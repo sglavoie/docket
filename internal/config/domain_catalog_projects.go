@@ -5,7 +5,7 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // This file owns catalog project membership: the durable color-slot assignment

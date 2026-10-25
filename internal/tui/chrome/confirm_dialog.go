@@ -6,8 +6,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/icons"
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/icons"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // ConfirmDialogProvider is implemented by view models that have a confirm dialog.

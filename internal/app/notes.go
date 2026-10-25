@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // This file holds the note vocabulary the rest of the workspace speaks: the

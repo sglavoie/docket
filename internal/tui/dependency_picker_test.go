@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/grammar"
 )
 
 // TestReferencePickerAgreesWithTheQuickEditRouteOnThePatchHalves is the

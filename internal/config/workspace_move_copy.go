@@ -10,7 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // precheckDestination verifies every destination file is absent or byte-

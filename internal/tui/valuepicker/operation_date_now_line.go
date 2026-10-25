@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
 // The `@` picker's rows are presets, so no row shows what the task holds now.

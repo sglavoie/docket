@@ -169,7 +169,7 @@ destination before starting the editor, `e` renames the note under the cursor,
 and `%` moves the selected note to
 another such owner as one atomic workspace transaction. `Enter` opens and edits the selected
 note in
-`TT_EDITOR`, then `VISUAL`, then `EDITOR`; if none is set, `tt` reports how to
+`DOCKET_EDITOR`, then `VISUAL`, then `EDITOR`; if none is set, `tt` reports how to
 configure one. `y` and `Y` copy that note's title and its full file path, and
 because a global note and a project note live in different directories the
 copied path says which collection it came from without a word of context.

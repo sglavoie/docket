@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/synclog"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/synclog"
 )
 
 // outgoing is every transaction a device authored, oldest first.

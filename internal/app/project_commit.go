@@ -3,7 +3,7 @@ package app
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // ProjectCommitOptions labels an already-applied project mutation and names the

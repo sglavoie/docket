@@ -3,8 +3,8 @@ package outliner
 import (
 	"strings"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/tui/query"
 )
 
 // Applying a named lens is one atomic, reversible act. The frame below is what

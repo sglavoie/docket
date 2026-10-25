@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/testutil"
-	"github.com/sglavoie/tt/internal/tterrors"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/testutil"
+	"github.com/sglavoie/docket/internal/tterrors"
 )
 
 // TestLoadProjectRejectsBrokenHierarchyRatherThanRepairing pins why the load

@@ -3,8 +3,8 @@ package tui
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/projecthub"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/projecthub"
 )
 
 // A section header names a lane, not a project. ProjectOperationApplicable ends

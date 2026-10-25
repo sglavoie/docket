@@ -8,9 +8,9 @@ import XCTest
 /// empty, unavailable, and error states.
 ///
 /// ios/scripts/test-ui.sh runs it and passes, through TEST_RUNNER_ variables:
-///   TT_UITEST_FIXTURE   the representative compatibility workspace
-///   TT_UITEST_EXCHANGE  an exchange folder a desktop `tt sync enroll` published
-///   TT_UITEST_WORK_DIR  a host directory each test makes its own root under
+///   DOCKET_UITEST_FIXTURE   the representative compatibility workspace
+///   DOCKET_UITEST_EXCHANGE  an exchange folder a desktop `tt sync enroll` published
+///   DOCKET_UITEST_WORK_DIR  a host directory each test makes its own root under
 /// The suite fails rather than skips when any is missing.
 final class BrowsingUITests: XCTestCase {
     /// A required input is missing; the failure is already recorded.
@@ -21,7 +21,7 @@ final class BrowsingUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
-        let work = try environmentURL("TT_UITEST_WORK_DIR")
+        let work = try environmentURL("DOCKET_UITEST_WORK_DIR")
         root = work.appendingPathComponent("\(name.filter { $0.isLetter || $0.isNumber })-\(UUID().uuidString.prefix(8))", isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     }
@@ -51,7 +51,7 @@ final class BrowsingUITests: XCTestCase {
     private func seed(_ name: String, _ seed: Seed) throws -> URL {
         let target = root.appendingPathComponent("workspaces/\(name)", isDirectory: true)
         try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try FileManager.default.copyItem(at: environmentURL("TT_UITEST_FIXTURE"), to: target)
+        try FileManager.default.copyItem(at: environmentURL("DOCKET_UITEST_FIXTURE"), to: target)
         let atlas = target.appendingPathComponent("projects/atlas-launch/tasks.md")
         var tasks = try String(contentsOf: atlas, encoding: .utf8)
         tasks = try replacing(", deferred: 2026-10-07T09:00:00Z", with: "", in: tasks)
@@ -89,7 +89,7 @@ final class BrowsingUITests: XCTestCase {
 
     private func launch(_ extra: [String: String] = [:]) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchEnvironment = ["TT_UITEST_ROOT": root.path, "TT_UITEST_DEVICE_ID": "ui-test-phone"].merging(extra) { $1 }
+        app.launchEnvironment = ["DOCKET_UITEST_ROOT": root.path, "DOCKET_UITEST_DEVICE_ID": "ui-test-phone"].merging(extra) { $1 }
         app.launch()
         return app
     }
@@ -516,7 +516,7 @@ final class BrowsingUITests: XCTestCase {
         let gate = root.appendingPathComponent("hold-open")
         try Data().write(to: gate)
         defer { try? FileManager.default.removeItem(at: gate) }
-        let app = launch(["TT_UITEST_HOLD_OPEN": "1"])
+        let app = launch(["DOCKET_UITEST_HOLD_OPEN": "1"])
         let loading = app.descendants(matching: .any)["state.loading"].firstMatch
         require(loading, "the loading state")
         try FileManager.default.removeItem(at: gate)
@@ -658,8 +658,8 @@ final class BrowsingUITests: XCTestCase {
 
     func testJoinFromAnExchangeFolder() throws {
         let exchange = root.appendingPathComponent("exchange", isDirectory: true)
-        try FileManager.default.copyItem(at: environmentURL("TT_UITEST_EXCHANGE"), to: exchange)
-        let app = launch(["TT_UITEST_EXCHANGE_DIR": exchange.path])
+        try FileManager.default.copyItem(at: environmentURL("DOCKET_UITEST_EXCHANGE"), to: exchange)
+        let app = launch(["DOCKET_UITEST_EXCHANGE_DIR": exchange.path])
         require(app.buttons["onboarding.join"], "onboarding")
         app.buttons["onboarding.join"].tap()
         require(text(app, "Ship beta build"), "the joined workspace's Today")

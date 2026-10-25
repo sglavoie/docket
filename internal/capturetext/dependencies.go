@@ -3,8 +3,8 @@ package capturetext
 import (
 	"slices"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/textgrammar"
 )
 
 // parseDependencyTokens collects every ~task reference in input order. Removal

@@ -6,14 +6,14 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/logging"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/transaction"
-	"github.com/sglavoie/tt/internal/util"
-	"github.com/sglavoie/tt/internal/workspace"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/logging"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/transaction"
+	"github.com/sglavoie/docket/internal/util"
+	"github.com/sglavoie/docket/internal/workspace"
 )
 
 // Repository is the production app.Repository every frontend's application

@@ -3,7 +3,7 @@ package route
 import (
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/tui/presentation"
 )
 
 // ViewRegistry manages view instances and provides centralized view operations.

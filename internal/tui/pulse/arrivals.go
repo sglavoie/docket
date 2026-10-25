@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // ArrivalKind is why a task asks for attention now and did not before.

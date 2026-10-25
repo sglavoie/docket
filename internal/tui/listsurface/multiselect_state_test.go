@@ -3,7 +3,7 @@ package listsurface
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
 func TestToggleMode(t *testing.T) {

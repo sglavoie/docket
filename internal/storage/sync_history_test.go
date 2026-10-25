@@ -7,8 +7,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/synclog"
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/synclog"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // localMutation is one entry point of the common commit boundary.

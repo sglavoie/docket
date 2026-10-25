@@ -1,8 +1,8 @@
 package tui
 
 import (
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // The coordinator package keeps its own copy of this double for its unit tests.

@@ -109,14 +109,14 @@ copy, and launches it. Workspaces, drafts, and settings stay in the app's
 container. It uses the signing team from the previous device build.
 
 For the first install on this Mac, use `just ios-install TEAMID` (or export
-`TT_IOS_DEVELOPMENT_TEAM`). Xcode must have your signing account configured,
+`DOCKET_IOS_DEVELOPMENT_TEAM`). Xcode must have your signing account configured,
 and the iPhone must trust this Mac and have Developer Mode enabled. If more
 than one iPhone is paired, use `just ios-install TEAMID UDID`; run
 `xcrun devicectl list devices` to find its UDID. You can also select it with
-`TT_IOS_DEVICE`. The recipe refuses to choose an arbitrary phone.
+`DOCKET_IOS_DEVICE`. The recipe refuses to choose an arbitrary phone.
 
 Build and device logs are kept in `ios/.cache/results/device-install.*/`
-(or beneath `TT_IOS_RESULTS`); failures print the log path and its last lines.
+(or beneath `DOCKET_IOS_RESULTS`); failures print the log path and its last lines.
 An installation failure stops before launch. If installation succeeds but
 launch fails, the message says so and you can open tt on the phone.
 
@@ -132,20 +132,20 @@ the deployment target, `go.mod` and `go.sum`, the script, and every in-module
 source file the bound package compiles for iOS. A run whose fingerprint
 matches the published one builds nothing; any change to those inputs rebuilds.
 `--fingerprint` prints the current one without building, and
-`TT_IOS_FORCE_BRIDGE=1` rebuilds regardless.
+`DOCKET_IOS_FORCE_BRIDGE=1` rebuilds regardless.
 
 `ios/scripts/test-engine.sh OUTPUT_DIR` copies the representative compatibility
 fixture into `OUTPUT_DIR`, then opens it, captures and completes a task, and
-reopens it on a simulator. `TT_IOS_SIMULATOR` picks the simulator by UDID.
+reopens it on a simulator. `DOCKET_IOS_SIMULATOR` picks the simulator by UDID.
 `bash scripts/verify_mobile_session.sh 3` runs that suite and then checks the
 resulting Markdown through Go.
 
 `ios/scripts/test-ui.sh OUTPUT_DIR` runs the browsing UI suite. It enrolls a
 disposable copy of the fixture with the `tt` this tree builds, so the join test
 has an exchange folder to read. Each test then seeds its own root under
-`OUTPUT_DIR/work`, and the app reads that root from `TT_UITEST_ROOT` in place
+`OUTPUT_DIR/work`, and the app reads that root from `DOCKET_UITEST_ROOT` in place
 of its container. `bash scripts/verify_mobile_session.sh 10` runs it with the
-engine's browsing tests and the transport's join tests. `TT_UITEST_ONLY` names
+engine's browsing tests and the transport's join tests. `DOCKET_UITEST_ONLY` names
 one test class to run alone; `bash scripts/verify_mobile_session.sh 11` runs
 `CaptureEditingUITests` that way, beside the Go tests that hold the desktop and
 the bridge to byte-identical capture and editing outcomes, and
@@ -159,15 +159,15 @@ under its own `HOME`) that change one task title and one note line while apart,
 so `OUTPUT_DIR/conflict/exchange` holds a coupled conflict for the phone to join;
 the verifier then applies what the phone published on both Macs and compares
 their files with the phone's. Two launch variables stand
-in for what XCUITest cannot drive: `TT_UITEST_IMPORT_SOURCE` names the file the
-Files picker would have returned, and `TT_UITEST_HOLD_IMPORTS=1` stops each
+in for what XCUITest cannot drive: `DOCKET_UITEST_IMPORT_SOURCE` names the file the
+Files picker would have returned, and `DOCKET_UITEST_HOLD_IMPORTS=1` stops each
 import after it is staged, as a termination before the commit would.
 
 ## Automation
 
 Every recipe writes under `ios/.cache/` (gitignored): results under
-`results/`, or `TT_IOS_RESULTS`, and the running app's session under `run/`,
-or `TT_IOS_RUN`.
+`results/`, or `DOCKET_IOS_RESULTS`, and the running app's session under `run/`,
+or `DOCKET_IOS_RUN`.
 
 **Suites.** `just ios-test` runs five separately reported suites through
 `ios/scripts/test-suites.sh`: `unit` is `swift test` in `TTShared` and
@@ -211,8 +211,8 @@ appearance and text size (`simctl ui`; `accessibility-extra-extra-extra-large`
 is the largest), installs the app, and launches it over `run/root`, a fresh
 copy of the representative fixture without its one wall-clock deferral (or no
 workspace at all, for `empty`), so every run starts from the same state. The
-app never touches its real container: `TT_UITEST_ROOT` points it at that root,
-and `TT_UITEST_STATE_EXPORT` has it keep `run/state.json` current. That
+app never touches its real container: `DOCKET_UITEST_ROOT` points it at that root,
+and `DOCKET_UITEST_STATE_EXPORT` has it keep `run/state.json` current. That
 document (`tt-mobile-state/v1`, described in
 `TTMobile/App/AutomationState.swift`) names the phase, the workspace, the tab
 and sheet showing, the appearance and text size actually drawn, sync status,
@@ -379,10 +379,10 @@ under `Application Support/reminders/` and never synced.
 
 `cd ios/TTReminders && swift test` runs the scheduling and action suite on the
 Mac against a fake notification center. Delivery itself is proven on a
-physical iPhone: `TT_IOS_DEVELOPMENT_TEAM=… ios/scripts/record-reminder-evidence.sh`
+physical iPhone: `DOCKET_IOS_DEVELOPMENT_TEAM=… ios/scripts/record-reminder-evidence.sh`
 builds the signed app, runs `ReminderDeliveryUITests` there (each test seeds a
-disposable workspace in the app's own container through `TT_UITEST_SCRATCH`
-and `TT_UITEST_SEED_REMINDER`, waits for the real notification, and acts on it
+disposable workspace in the app's own container through `DOCKET_UITEST_SCRATCH`
+and `DOCKET_UITEST_SEED_REMINDER`, waits for the real notification, and acts on it
 through SpringBoard), and writes `docs/mobile/evidence/session-15-reminders.json`
 naming the source fingerprint, the bridge fingerprint, and the executable
 digests the running app reported. `bash scripts/verify_mobile_session.sh 15`
@@ -412,13 +412,13 @@ capture, and so do the links `tt://view/today`, `tt://view/inbox`,
 `tt://capture`, and `tt://task/<workspace>/<project>/<task>`. A task link for
 another workspace is refused.
 
-`cd ios/TTShared && swift test` runs the package suite. With `TT_BRIDGEHOST` (a
-built `mobile/bridgehost`) and `TT_CAPTURE_FIXTURE` (the representative
+`cd ios/TTShared && swift test` runs the package suite. With `DOCKET_BRIDGEHOST` (a
+built `mobile/bridgehost`) and `DOCKET_CAPTURE_FIXTURE` (the representative
 fixture), it also runs the contract between the package's writer and the real
-engine's importer. `TT_UITEST_ONLY=ShareCaptureUITests ios/scripts/test-ui.sh
+engine's importer. `DOCKET_UITEST_ONLY=ShareCaptureUITests ios/scripts/test-ui.sh
 OUT` runs the simulator suite. The unsigned UI test build holds no App Group,
-so `TT_UITEST_SHARED_CONTAINER` stands one in on the host, and
-`TT_UITEST_HOLD_CAPTURES=1` leaves saved captures pending.
+so `DOCKET_UITEST_SHARED_CONTAINER` stands one in on the host, and
+`DOCKET_UITEST_HOLD_CAPTURES=1` leaves saved captures pending.
 `bash scripts/verify_mobile_session.sh 16` runs all of it.
 
 ## Sync exchange
@@ -431,7 +431,7 @@ Mac against the real engine:
 
 ```sh
 go build -trimpath -o /tmp/bridgehost ./mobile/bridgehost
-(cd apple/TTSync && TT_BRIDGEHOST=/tmp/bridgehost swift test)
+(cd apple/TTSync && DOCKET_BRIDGEHOST=/tmp/bridgehost swift test)
 ```
 
 The sync sheet lists the open conflicts from the phone's own history, so they
@@ -463,7 +463,7 @@ diagnostics file (under `devices/<name>/diagnostics/`) to share.
 `ios/scripts/record-icloud-exchange.sh` records the same contract between this
 Mac and a physical iPhone over iCloud Drive. First install the app on the
 iPhone once, open it, and choose `iCloud Drive/tt-sync-evidence` as its exchange
-folder. Then run the script with `TT_IOS_DEVELOPMENT_TEAM` set to your signing
+folder. Then run the script with `DOCKET_IOS_DEVELOPMENT_TEAM` set to your signing
 team and the iPhone unlocked. Each run uses its own disposable workspace and its
 own `runs/<id>` folder. The script rewrites
 `docs/mobile/evidence/session-8-icloud-exchange.json`, which
@@ -473,7 +473,7 @@ own `runs/<id>` folder. The script rewrites
 
 `just ios-install` uses `ios/scripts/install-device.sh` to build and sign the
 app, install it over the earlier copy, and launch it, keeping the app's data.
-The signing team comes from `TT_IOS_DEVELOPMENT_TEAM`, the recipe's optional
+The signing team comes from `DOCKET_IOS_DEVELOPMENT_TEAM`, the recipe's optional
 argument, or the previous device build. `ios/scripts/record-device-qualification.sh`
 runs the guided real-device trial (airplane mode, simultaneous edits,
 termination, delayed delivery, revoked folder access, large attachments, an

@@ -3,8 +3,8 @@ package outliner
 import (
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/chrome"
 )
 
 // ComputeOutlinerRowLayout is the one measurement of a projection's shared row

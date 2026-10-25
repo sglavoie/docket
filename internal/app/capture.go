@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/textgrammar"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/textgrammar"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // CaptureDestination is the unified creation destination accepted by every

@@ -9,9 +9,9 @@ import XCTest
 /// keeps a screenshot of what it checked.
 ///
 /// ios/scripts/test-ui.sh runs it and passes, through TEST_RUNNER_ variables:
-///   TT_UITEST_FIXTURE   the representative compatibility workspace
-///   TT_UITEST_WORK_DIR  a host directory each test makes its own root under
-///   TT_UITEST_MAX_WIDTH optional: the widest window, in points, the small
+///   DOCKET_UITEST_FIXTURE   the representative compatibility workspace
+///   DOCKET_UITEST_WORK_DIR  a host directory each test makes its own root under
+///   DOCKET_UITEST_MAX_WIDTH optional: the widest window, in points, the small
 ///                       screen test accepts (set for the small simulator)
 /// The suite fails rather than skips when a required input is missing.
 final class AccessibilityUITests: XCTestCase {
@@ -23,8 +23,8 @@ final class AccessibilityUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
-        guard let path = ProcessInfo.processInfo.environment["TT_UITEST_WORK_DIR"], FileManager.default.fileExists(atPath: path) else {
-            XCTFail("TT_UITEST_WORK_DIR must name an existing host path")
+        guard let path = ProcessInfo.processInfo.environment["DOCKET_UITEST_WORK_DIR"], FileManager.default.fileExists(atPath: path) else {
+            XCTFail("DOCKET_UITEST_WORK_DIR must name an existing host path")
             throw MissingInput()
         }
         root = URL(fileURLWithPath: path, isDirectory: true)
@@ -38,8 +38,8 @@ final class AccessibilityUITests: XCTestCase {
     /// The representative fixture with its one wall-clock deferral removed,
     /// selected so the app opens it.
     private func seed() throws {
-        guard let fixture = ProcessInfo.processInfo.environment["TT_UITEST_FIXTURE"], FileManager.default.fileExists(atPath: fixture) else {
-            XCTFail("TT_UITEST_FIXTURE must name the representative workspace")
+        guard let fixture = ProcessInfo.processInfo.environment["DOCKET_UITEST_FIXTURE"], FileManager.default.fileExists(atPath: fixture) else {
+            XCTFail("DOCKET_UITEST_FIXTURE must name the representative workspace")
             throw MissingInput()
         }
         let workspace = root.appendingPathComponent("workspaces/\(workspaceName)", isDirectory: true)
@@ -62,10 +62,10 @@ final class AccessibilityUITests: XCTestCase {
     private func launch(dark: Bool = false, textSize: TextSize = .standard) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment = [
-            "TT_UITEST_ROOT": root.path,
-            "TT_UITEST_DEVICE_ID": "ui-test-phone",
-            "TT_UITEST_STATE_EXPORT": stateFile.path,
-            "TT_UITEST_APPEARANCE": dark ? "dark" : "light",
+            "DOCKET_UITEST_ROOT": root.path,
+            "DOCKET_UITEST_DEVICE_ID": "ui-test-phone",
+            "DOCKET_UITEST_STATE_EXPORT": stateFile.path,
+            "DOCKET_UITEST_APPEARANCE": dark ? "dark" : "light",
         ]
         app.launchArguments = ["-UIPreferredContentSizeCategoryName", textSize.rawValue]
         app.launch()
@@ -389,7 +389,7 @@ final class AccessibilityUITests: XCTestCase {
         let app = launch(textSize: .accessibility2)
         requireState("phase", "ready")
         let window = app.windows.firstMatch.frame
-        if let limit = ProcessInfo.processInfo.environment["TT_UITEST_MAX_WIDTH"].flatMap(Double.init) {
+        if let limit = ProcessInfo.processInfo.environment["DOCKET_UITEST_MAX_WIDTH"].flatMap(Double.init) {
             XCTAssertLessThanOrEqual(window.width, limit, "this run was meant for a small screen")
         }
         let note = XCTAttachment(string: "window \(Int(window.width)) x \(Int(window.height)) points")

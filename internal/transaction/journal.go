@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // stagePrefix names staging files written beside their targets. The prefix is

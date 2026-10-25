@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/storage/format"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/storage/format"
 )
 
 func appendV5MigrationTaskAudit(

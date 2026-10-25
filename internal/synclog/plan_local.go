@@ -7,7 +7,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // pendingEffect is an effect still waiting for its project identity.

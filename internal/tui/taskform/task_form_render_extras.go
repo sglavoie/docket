@@ -3,8 +3,8 @@ package taskform
 import (
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // renderExtrasTab renders the Extras tab: the collapsible Attachments and

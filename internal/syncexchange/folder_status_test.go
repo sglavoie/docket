@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/synclog"
+	"github.com/sglavoie/docket/internal/synclog"
 )
 
 func statusHistory(t *testing.T) *synclog.History {

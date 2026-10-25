@@ -8,8 +8,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/icons"
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/icons"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // PriorityIcon returns the icon for an assigned priority level (1-3). Unset and

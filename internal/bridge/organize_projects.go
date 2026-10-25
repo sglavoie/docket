@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sglavoie/tt/internal/engine"
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/engine"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 // impactView is what deleting a project would remove, with a digest of the

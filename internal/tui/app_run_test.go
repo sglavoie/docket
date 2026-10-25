@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/docket/internal/config"
 )
 
 // TestMachineStateAndPIDLockPathsRemainDistinct verifies that PID locks remain

@@ -1,8 +1,8 @@
 package taskdetail
 
 import (
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/keymap"
 )
 
 // discardConfirmAction names the questions these panels raise over unsaved text

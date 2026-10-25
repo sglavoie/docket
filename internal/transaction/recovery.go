@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // ErrRecoveryQuarantine is wrapped by RecoveryReport.Err when recovery moved one

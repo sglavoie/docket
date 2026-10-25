@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // V22ConfigSchemaVersion is the catalog schema a workspace enrolled in device

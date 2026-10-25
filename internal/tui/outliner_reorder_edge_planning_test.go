@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/chrome"
 )
 
 func TestPlanningReorderEdge(t *testing.T) {

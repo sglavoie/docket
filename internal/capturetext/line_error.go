@@ -1,6 +1,6 @@
 package capturetext
 
-import "github.com/sglavoie/tt/internal/models"
+import "github.com/sglavoie/docket/internal/models"
 
 // LineError is one refusal reported against one input line. Both the multiline
 // composer and the outline buffer validate every nonblank line before they

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/docket/internal/textgrammar"
 )
 
 // The capture half of this contract — the autocomplete triggers, the static

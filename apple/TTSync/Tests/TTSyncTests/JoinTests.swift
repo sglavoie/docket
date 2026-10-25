@@ -5,8 +5,8 @@ import XCTest
 
 /// Joining an enrolled workspace the way the iPhone onboards: the ordinary
 /// transport downloads the exchange's whole history into the inbox and the
-/// first import is workspace.join. TT_ENROLLED_EXCHANGE names an exchange a
-/// desktop `tt sync enroll` published, TT_BRIDGEHOST the engine; the suite
+/// first import is workspace.join. DOCKET_ENROLLED_EXCHANGE names an exchange a
+/// desktop `tt sync enroll` published, DOCKET_BRIDGEHOST the engine; the suite
 /// fails rather than skips without either.
 final class JoinTests: XCTestCase {
     private var root: URL!
@@ -31,7 +31,7 @@ final class JoinTests: XCTestCase {
     }
 
     private func client() throws -> BridgeClient {
-        let bridge = try ProcessBridge(executable: environment("TT_BRIDGEHOST"))
+        let bridge = try ProcessBridge(executable: environment("DOCKET_BRIDGEHOST"))
         bridges.append(bridge)
         return BridgeClient(call: { bridge.call($0) })
     }
@@ -40,7 +40,7 @@ final class JoinTests: XCTestCase {
     /// shared one.
     private func exchangeCopy() throws -> URL {
         let copy = root.appendingPathComponent("exchange", isDirectory: true)
-        try FileManager.default.copyItem(at: environment("TT_ENROLLED_EXCHANGE"), to: copy)
+        try FileManager.default.copyItem(at: environment("DOCKET_ENROLLED_EXCHANGE"), to: copy)
         return copy
     }
 

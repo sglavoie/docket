@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/external"
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/external"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // withFakeClipboard swaps external.CopyText for the duration of the test,

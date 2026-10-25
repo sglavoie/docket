@@ -9,9 +9,9 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/storage/format"
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/storage/format"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 var legacyV4ArchiveFileName = regexp.MustCompile(`^completed(?:\.[1-9][0-9]*)?\.md$`)

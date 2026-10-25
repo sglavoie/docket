@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/grammar"
 )
 
 func TestOutlineMarkerStripLeavesCaptureText(t *testing.T) {

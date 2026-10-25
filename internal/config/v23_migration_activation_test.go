@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 // TestV23MigrationIsTheMarkerAlone is what makes the schema-23 boundary a

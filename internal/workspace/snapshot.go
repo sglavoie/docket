@@ -11,7 +11,7 @@ package workspace
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // DiagnosticKind classifies why a project failed to contribute complete data to

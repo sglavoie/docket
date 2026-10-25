@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/docket/internal/logging"
 )
 
 // MaxNestingDepth is the maximum allowed nesting depth for tasks in a tree.

@@ -3,7 +3,7 @@
 package textgrammar
 
 import (
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 type Surface uint8

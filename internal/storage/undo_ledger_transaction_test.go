@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // TestLedgerRestoreAtomicPreflightRejectsMissingBlob proves a grouped restore

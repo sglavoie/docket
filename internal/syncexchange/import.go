@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/sglavoie/tt/internal/synclog"
+	"github.com/sglavoie/docket/internal/synclog"
 )
 
 // Outcome is what importing one staged manifest came to.

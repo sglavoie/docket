@@ -6,9 +6,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/engine"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tui/conflict"
+	"github.com/sglavoie/docket/internal/engine"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/tui/conflict"
 )
 
 func conflictKey(t *testing.T, m *AppModel, key string) tea.Msg {

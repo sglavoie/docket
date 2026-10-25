@@ -1,9 +1,9 @@
 package coordinator
 
 import (
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
 // The messages below are the coordinator's outward vocabulary beyond the two

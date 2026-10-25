@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // markReviewedNow is the instant every test below acknowledges at, and

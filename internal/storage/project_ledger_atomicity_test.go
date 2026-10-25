@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/synclog"
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/synclog"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // TestCommitMultiProjectAndArtifactLedgerIsOneUndo proves the production

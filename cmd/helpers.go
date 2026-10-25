@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/icons"
+	"github.com/sglavoie/docket/internal/icons"
 )
 
 const defaultDataDirDisplay = "~/.tt, or an existing iCloud Drive tt workspace"

@@ -3,12 +3,12 @@ package projectops
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/outliner"
-	"github.com/sglavoie/tt/internal/tui/projecthub"
-	"github.com/sglavoie/tt/internal/tui/route"
-	"github.com/sglavoie/tt/internal/workspace"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/outliner"
+	"github.com/sglavoie/docket/internal/tui/projecthub"
+	"github.com/sglavoie/docket/internal/tui/route"
+	"github.com/sglavoie/docket/internal/workspace"
 )
 
 // The shell half of the Project Hub: the registrar, the handler the registry

@@ -18,7 +18,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/synclog"
+	"github.com/sglavoie/docket/internal/synclog"
 )
 
 var manifestPathPattern = regexp.MustCompile(`^txns/([A-Za-z0-9][A-Za-z0-9._-]{0,63})/([0-9]{10})-([0-9a-f]{64})\.json$`)

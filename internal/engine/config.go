@@ -16,7 +16,7 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/docket/internal/app"
 )
 
 // ErrWorkspaceNotFound reports an Open without CreateIfMissing against a data

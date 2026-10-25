@@ -1,6 +1,6 @@
 package help
 
-import "github.com/sglavoie/tt/internal/tui/operation"
+import "github.com/sglavoie/docket/internal/tui/operation"
 
 type browseState struct {
 	query, category string

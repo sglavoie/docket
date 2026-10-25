@@ -1,7 +1,7 @@
 package help
 
 import (
-	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/docket/internal/tui/keymap"
 )
 
 // buildKeyMap constructs the declarative KeyMap for HelpViewModel.

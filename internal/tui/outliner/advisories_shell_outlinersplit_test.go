@@ -3,8 +3,8 @@ package outliner
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/operation"
 )
 
 // The shell half of the advisory coverage: the `--no-advisories` option, the

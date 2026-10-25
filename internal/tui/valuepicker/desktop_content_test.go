@@ -3,8 +3,8 @@ package valuepicker
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/listsurface"
-	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/listsurface"
+	"github.com/sglavoie/docket/internal/tui/operation"
 )
 
 func TestQuitDistinguishesBrowsingFromUnappliedPickerEdits(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 //nolint:govet // Scoped errors keep each snapshot validation and transaction stage local.

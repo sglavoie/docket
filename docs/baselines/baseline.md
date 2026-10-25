@@ -60,10 +60,10 @@ Four packages carry a higher per-package floor, listed in `.coverage-packages`:
 
 | Package | Floor |
 | --- | --- |
-| `github.com/sglavoie/tt/internal/app/` | 80% |
-| `github.com/sglavoie/tt/internal/config/` | 74% |
-| `github.com/sglavoie/tt/internal/storage/format/` | 80% |
-| `github.com/sglavoie/tt/internal/transaction/` | 80% |
+| `github.com/sglavoie/docket/internal/app/` | 80% |
+| `github.com/sglavoie/docket/internal/config/` | 74% |
+| `github.com/sglavoie/docket/internal/storage/format/` | 80% |
+| `github.com/sglavoie/docket/internal/transaction/` | 80% |
 
 `scripts/ci.sh` collects the profile with
 `go test -race -count=1 -timeout=0 -coverprofile=coverage.out ./...` and then

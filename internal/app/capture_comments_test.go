@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/docket/internal/app"
 )
 
 func TestCaptureRecordsCommentsInLineOrder(t *testing.T) {

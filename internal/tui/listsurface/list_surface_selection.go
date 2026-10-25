@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/operation"
 )
 
 // SelectCurrent stores the enabled cursor item. Single selection replaces the

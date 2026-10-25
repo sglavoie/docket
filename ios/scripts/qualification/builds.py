@@ -97,7 +97,7 @@ def install_current(trial, reason):
     """Builds, signs, and installs the trial's app again through the rollout
     guide's script, and records the install."""
     log = os.path.join(trial.dir, "build.log")
-    app = run(["ios/scripts/install-device.sh"], env={"TT_IOS_DEVICE": trial.state["iphone"]["udid"]}, log=log).stdout.strip()
+    app = run(["ios/scripts/install-device.sh"], env={"DOCKET_IOS_DEVICE": trial.state["iphone"]["udid"]}, log=log).stdout.strip()
     record_install(trial, app_executables(app), reason)
     note(f"installed the trial's app again ({reason})")
 

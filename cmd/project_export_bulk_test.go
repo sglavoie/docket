@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/testutil"
-	"github.com/sglavoie/tt/internal/tterrors"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/testutil"
+	"github.com/sglavoie/docket/internal/tterrors"
 )
 
 // resetProjectExportFlags restores the export flag globals after a test.
@@ -184,7 +184,7 @@ func TestRunProjectExportRefusesConflictingFlags(t *testing.T) {
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("error = %v, want one containing %q", err, tc.want)
 			}
-			if !strings.Contains(err.Error(), "Run 'tt project export --help' for usage") {
+			if !strings.Contains(err.Error(), "Run 'docket project export --help' for usage") {
 				t.Fatalf("error = %v, want it to point at --help", err)
 			}
 		})

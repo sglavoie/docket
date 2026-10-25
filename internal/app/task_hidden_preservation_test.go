@@ -3,8 +3,8 @@ package app_test
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // This file is the hidden flag's preservation contract. The flag has no sigil,

@@ -9,17 +9,17 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/control"
-	"github.com/sglavoie/tt/internal/engine"
-	"github.com/sglavoie/tt/internal/logging"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tui/outliner"
-	"github.com/sglavoie/tt/internal/tui/presentation"
-	"github.com/sglavoie/tt/internal/tui/pulse"
-	"github.com/sglavoie/tt/internal/tui/status"
-	"github.com/sglavoie/tt/internal/util"
-	"github.com/sglavoie/tt/internal/workspace"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/control"
+	"github.com/sglavoie/docket/internal/engine"
+	"github.com/sglavoie/docket/internal/logging"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/tui/outliner"
+	"github.com/sglavoie/docket/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/tui/pulse"
+	"github.com/sglavoie/docket/internal/tui/status"
+	"github.com/sglavoie/docket/internal/util"
+	"github.com/sglavoie/docket/internal/workspace"
 )
 
 // periodicSaveInterval is the cadence of the recurring maintenance timer. It is the
@@ -193,7 +193,7 @@ func RunApp(rt *engine.Runtime, runOpts RunOptions, opts ...AppOption) error {
 			p.Kill()
 			_ = p.ReleaseTerminal()
 			fmt.Fprintf(os.Stderr, "\ntt: unexpected panic: %v\n", r)
-			fmt.Fprintf(os.Stderr, "Please report this at https://github.com/sglavoie/tt/issues\n")
+			fmt.Fprintf(os.Stderr, "Please report this at https://github.com/sglavoie/docket/issues\n")
 			os.Exit(1)
 		}
 	}()

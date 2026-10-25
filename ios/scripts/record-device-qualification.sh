@@ -16,12 +16,12 @@
 #   ios/scripts/record-device-qualification.sh finish       # writes the evidence
 #
 # Environment:
-#   TT_IOS_DEVELOPMENT_TEAM        signing team (start, scenario upgrade)
-#   TT_IOS_DEVICE                  iPhone UDID (default: the first physical iPhone)
-#   TT_QUALIFICATION_ROOT          trial directories (default ~/.tt-qualification)
-#   TT_QUALIFICATION_EXCHANGE      exchange parent (default iCloud Drive/tt-qualification)
-#   TT_QUALIFICATION_UPGRADE_FROM  commit of the earlier build (scenario upgrade)
-#   TT_QUALIFICATION_EVIDENCE      output (default docs/mobile/evidence/session-18-qualification.json)
+#   DOCKET_IOS_DEVELOPMENT_TEAM        signing team (start, scenario upgrade)
+#   DOCKET_IOS_DEVICE                  iPhone UDID (default: the first physical iPhone)
+#   DOCKET_QUALIFICATION_ROOT          trial directories (default ~/.tt-qualification)
+#   DOCKET_QUALIFICATION_EXCHANGE      exchange parent (default iCloud Drive/tt-qualification)
+#   DOCKET_QUALIFICATION_UPGRADE_FROM  commit of the earlier build (scenario upgrade)
+#   DOCKET_QUALIFICATION_EVIDENCE      output (default docs/mobile/evidence/session-18-qualification.json)
 #
 # The evidence is bound to the sources: changing the app, the bridge, or tt
 # during a trial makes it stale, so finish the trial on one tree.

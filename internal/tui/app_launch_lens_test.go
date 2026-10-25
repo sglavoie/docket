@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/docket/internal/config"
 )
 
 // launchLensApp pairs a bare AppModel with a populated cross-project Outliner,

@@ -5,8 +5,8 @@
 # project from ios/project.yml.
 #
 # Environment:
-#   TT_IOS_CACHE            bridge tool cache (default ios/.cache, gitignored)
-#   TT_MACOS_CACHE          XcodeGen cache (default macos/.cache, gitignored)
+#   DOCKET_IOS_CACHE            bridge tool cache (default ios/.cache, gitignored)
+#   DOCKET_MACOS_CACHE          XcodeGen cache (default macos/.cache, gitignored)
 
 set -eu
 

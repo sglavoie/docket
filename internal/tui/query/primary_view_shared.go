@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sglavoie/tt/internal/icons"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/icons"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // This file hosts symbols formerly declared in the project_tree*.go family that

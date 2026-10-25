@@ -27,7 +27,7 @@ if [ -s "$actionable_output" ]; then
 	exit 1
 fi
 
-if git grep -n 'github.com/sglavoie/tt/internal/testutil' -- '*.go' ':!*_test.go' >"$import_output"; then
+if git grep -n 'github.com/sglavoie/docket/internal/testutil' -- '*.go' ':!*_test.go' >"$import_output"; then
 	echo "production source imports internal/testutil:" >&2
 	cat "$import_output" >&2
 	exit 1

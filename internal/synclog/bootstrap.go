@@ -8,7 +8,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // PlanBootstrap rebuilds an empty working copy from a complete, verified

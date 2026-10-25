@@ -6,9 +6,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // recentModeCutoffDays bounds Recent: activity older than this is no longer

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sglavoie/tt/internal/storage/format"
+	"github.com/sglavoie/docket/internal/storage/format"
 )
 
 // SchemaVersionV10 carries the deferral value as a canonical RFC3339Nano

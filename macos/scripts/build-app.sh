@@ -6,12 +6,12 @@
 # Usage: build-app.sh [Debug|Release]   (default Debug)
 #
 # Environment:
-#   TT_BINARY               tt to bundle at Contents/Resources/bin/tt; required
+#   DOCKET_BINARY               tt to bundle at Contents/Resources/bin/tt; required
 #                           for Release (`just mac-app Release` builds it with
 #                           the `just build` ldflags), optional for Debug, which
 #                           otherwise resolves ~/.local/bin/tt then PATH
-#   TT_MACOS_CACHE          cache root (default macos/.cache, gitignored)
-#   TT_CODESIGN_IDENTITY    see sign.sh (default Apple Development, else ad-hoc)
+#   DOCKET_MACOS_CACHE          cache root (default macos/.cache, gitignored)
+#   DOCKET_CODESIGN_IDENTITY    see sign.sh (default Apple Development, else ad-hoc)
 
 set -eu
 
@@ -34,13 +34,13 @@ Debug | Release) ;;
 	;;
 esac
 
-tt_binary="${TT_BINARY:-}"
+tt_binary="${DOCKET_BINARY:-}"
 if [ "$configuration" = Release ] && [ -z "$tt_binary" ]; then
-	echo "a Release build bundles tt: set TT_BINARY, or run \`just mac-app Release\`" >&2
+	echo "a Release build bundles tt: set DOCKET_BINARY, or run \`just mac-app Release\`" >&2
 	exit 1
 fi
 if [ -n "$tt_binary" ] && [ ! -x "$tt_binary" ]; then
-	echo "TT_BINARY is not an executable file: $tt_binary" >&2
+	echo "DOCKET_BINARY is not an executable file: $tt_binary" >&2
 	exit 1
 fi
 

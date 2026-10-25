@@ -7,8 +7,8 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/fuzzy"
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/fuzzy"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 func TestCompactRowTitle(t *testing.T) {
@@ -20,7 +20,7 @@ func TestCompactRowTitle(t *testing.T) {
 		{"url with one segment", "Read http://example.com/post", "Read example.com/post"},
 		{"url with a query", "See https://example.com/search?q=tt", "See example.com/search/…"},
 		{"bare host", "Open https://example.com", "Open example.com"},
-		{"wrapped url keeps its punctuation", "Notes (https://github.com/sglavoie/tt/issues/12).", "Notes (github.com/sglavoie/…)."},
+		{"wrapped url keeps its punctuation", "Notes (https://github.com/sglavoie/docket/issues/12).", "Notes (github.com/sglavoie/…)."},
 		{"home path keeps last segment", "Clean /Users/me/Downloads/old/report.pdf", "Clean ~/…/report.pdf"},
 		{"home path directly in home", "Edit /Users/me/notes.md", "Edit ~/notes.md"},
 		{"path outside home is left alone", "Read /etc/hosts/file", "Read /etc/hosts/file"},
@@ -42,7 +42,7 @@ func TestCompactRowTitle(t *testing.T) {
 
 func TestSearchTitleKeepsBuriedMatch(t *testing.T) {
 	for _, tc := range []struct{ title, query string }{
-		{"Reply https://github.com/sglavoie/tt/issues/123456", "123456"},
+		{"Reply https://github.com/sglavoie/docket/issues/123456", "123456"},
 		{"Read /Users/me/projects/special-directory/docs/report.md", "special-directory"},
 		{"A long title with lots of context before the distinctive finish", "distinctive"},
 		{"確認確認確認確認確認確認確認確認 équipe 👩‍💻 review", "équipe"},

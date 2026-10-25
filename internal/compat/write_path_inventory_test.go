@@ -164,7 +164,7 @@ func mutatorImports(file *ast.File) map[string]string {
 		switch importPath {
 		case "os":
 			imports[local] = "os"
-		case "github.com/sglavoie/tt/internal/util":
+		case "github.com/sglavoie/docket/internal/util":
 			imports[local] = "util"
 		}
 	}

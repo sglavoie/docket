@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 const maxHeadingLevel = 6

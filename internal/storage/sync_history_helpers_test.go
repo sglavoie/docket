@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/synclog"
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/synclog"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // errInjectedCrash stands in for the process dying between journal

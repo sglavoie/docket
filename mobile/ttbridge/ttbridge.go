@@ -9,7 +9,7 @@ import (
 	// zone workspace.open names is resolved from the embedded database.
 	_ "time/tzdata"
 
-	"github.com/sglavoie/tt/internal/bridge"
+	"github.com/sglavoie/docket/internal/bridge"
 )
 
 var shared = bridge.New(bridge.Options{})

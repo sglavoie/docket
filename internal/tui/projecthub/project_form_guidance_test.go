@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/chrome"
 )
 
 // The project creator and editor are the two forms this package owns, and their

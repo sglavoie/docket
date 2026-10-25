@@ -6,13 +6,13 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	appservice "github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/outliner"
-	"github.com/sglavoie/tt/internal/tui/taskform"
-	"github.com/sglavoie/tt/internal/tui/taskref"
+	appservice "github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/outliner"
+	"github.com/sglavoie/docket/internal/tui/taskform"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
 func findTaskRow(rows []outliner.OutlinerRow, taskID string) int {

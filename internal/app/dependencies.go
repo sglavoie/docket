@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // DependencyPatch is the preserve-by-default dependency intent one mutation

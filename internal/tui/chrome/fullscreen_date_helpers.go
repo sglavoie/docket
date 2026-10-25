@@ -6,9 +6,9 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tui/theme"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // FormatTimestampBracket returns "[2006-01-02 15:04] 3 hours ago" in local time.

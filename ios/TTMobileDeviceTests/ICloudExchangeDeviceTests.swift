@@ -15,8 +15,8 @@ import XCTest
 final class ICloudExchangeDeviceTests: XCTestCase {
     func testRespondsToTheMacOverICloudDrive() throws {
         let environment = ProcessInfo.processInfo.environment
-        let run = try XCTUnwrap(environment["TT_EXCHANGE_RUN_ID"], "TT_EXCHANGE_RUN_ID names the contract run")
-        let timeout = TimeInterval(environment["TT_EXCHANGE_TIMEOUT"] ?? "") ?? 1200
+        let run = try XCTUnwrap(environment["DOCKET_EXCHANGE_RUN_ID"], "DOCKET_EXCHANGE_RUN_ID names the contract run")
+        let timeout = TimeInterval(environment["DOCKET_EXCHANGE_TIMEOUT"] ?? "") ?? 1200
         let bookmark = try ExchangeFolderBookmark.defaultURL()
         XCTAssertTrue(FileManager.default.fileExists(atPath: bookmark.path),
                       "no exchange folder was picked: open tt on this iPhone and choose the evidence folder")

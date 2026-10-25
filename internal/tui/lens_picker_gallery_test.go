@@ -4,11 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/lensops"
+	"github.com/sglavoie/docket/internal/tui/lensops"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/tui/lens"
-	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/tui/lens"
+	"github.com/sglavoie/docket/internal/tui/operation"
 )
 
 func TestLensPickerCreateClosesEveryOverlayAndLeavesTheNewLensActive(t *testing.T) {

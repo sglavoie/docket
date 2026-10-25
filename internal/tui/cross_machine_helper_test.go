@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/tui/coordinator"
 )
 
 // Helper processes for scripts/cross_machine_gate.sh. Each test below is one
@@ -20,7 +20,7 @@ import (
 // disk. They are compiled once with `go test -c ./internal/tui` and invoked by
 // name, so the gate spends one build on a binary it then forks repeatedly.
 //
-// Every role skips unless TT_HELPER_DATA_DIR names the workspace it is to open,
+// Every role skips unless DOCKET_HELPER_DATA_DIR names the workspace it is to open,
 // which is what keeps them inert under `just ci`: an ordinary `go test ./...`
 // runs each one, finds no workspace, and skips.
 //
@@ -28,19 +28,19 @@ import (
 // one, so two helpers are always two machines without the gate arranging it.
 
 const (
-	helperDataDirEnv = "TT_HELPER_DATA_DIR"
-	helperReadyEnv   = "TT_HELPER_READY_FILE"
-	helperGoEnv      = "TT_HELPER_GO_FILE"
-	helperResultEnv  = "TT_HELPER_RESULT_FILE"
-	helperTitleEnv   = "TT_HELPER_TASK_TITLE"
-	helperNoteEnv    = "TT_HELPER_RESUME_NOTE"
+	helperDataDirEnv = "DOCKET_HELPER_DATA_DIR"
+	helperReadyEnv   = "DOCKET_HELPER_READY_FILE"
+	helperGoEnv      = "DOCKET_HELPER_GO_FILE"
+	helperResultEnv  = "DOCKET_HELPER_RESULT_FILE"
+	helperTitleEnv   = "DOCKET_HELPER_TASK_TITLE"
+	helperNoteEnv    = "DOCKET_HELPER_RESUME_NOTE"
 	// helperMutationEnv names which mutation the general role runs and
 	// helperTextEnv carries the one value that mutation needs — a comment's text,
 	// a new task's title, or nothing the review case reads. They are one pair
 	// rather than one variable per role because the three mutations differ only
 	// in which call they make, not in how they race.
-	helperMutationEnv = "TT_HELPER_MUTATION"
-	helperTextEnv     = "TT_HELPER_TEXT"
+	helperMutationEnv = "DOCKET_HELPER_MUTATION"
+	helperTextEnv     = "DOCKET_HELPER_TEXT"
 
 	helperMutationComment = "comment"
 	helperMutationReview  = "review"
@@ -57,9 +57,9 @@ const (
 	// comment's UUID is minted by the seed, so naming one would mean passing a
 	// value through a file, while the text is something the gate script, the seed,
 	// and the in-suite race can all spell.
-	helperProjectEnv        = "TT_HELPER_PROJECT"
-	helperProjectCommentEnv = "TT_HELPER_PROJECT_COMMENT"
-	helperTargetEnv         = "TT_HELPER_TARGET_TEXT"
+	helperProjectEnv        = "DOCKET_HELPER_PROJECT"
+	helperProjectCommentEnv = "DOCKET_HELPER_PROJECT_COMMENT"
+	helperTargetEnv         = "DOCKET_HELPER_TARGET_TEXT"
 
 	helperProjectCommentAdd    = "add"
 	helperProjectCommentEdit   = "edit"

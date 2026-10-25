@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // mergeCommitEnv is a commit boundary wired with a durable conflict store, so a

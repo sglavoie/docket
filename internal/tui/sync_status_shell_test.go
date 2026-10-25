@@ -10,9 +10,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/engine"
-	"github.com/sglavoie/tt/internal/syncexchange"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/engine"
+	"github.com/sglavoie/docket/internal/syncexchange"
 )
 
 // enrolledPair enrolls a workspace on one device and joins it from another,

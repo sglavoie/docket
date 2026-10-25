@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/capturetext"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/capturetext"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 func TestParseDateIntegration(t *testing.T) {

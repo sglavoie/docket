@@ -8,9 +8,9 @@ import XCTest
 /// reads the outcome back from the files on the host.
 ///
 /// ios/scripts/test-ui.sh runs it and passes, through TEST_RUNNER_ variables:
-///   TT_UITEST_CONFLICT_EXCHANGE  the exchange holding the two Macs' conflict
-///   TT_UITEST_EXCHANGE           a plain enrolled exchange
-///   TT_UITEST_WORK_DIR           a host directory each test makes its root under
+///   DOCKET_UITEST_CONFLICT_EXCHANGE  the exchange holding the two Macs' conflict
+///   DOCKET_UITEST_EXCHANGE           a plain enrolled exchange
+///   DOCKET_UITEST_WORK_DIR           a host directory each test makes its root under
 /// The suite fails rather than skips when any is missing.
 final class ConflictRecoveryUITests: XCTestCase {
     private struct MissingInput: Error {}
@@ -22,7 +22,7 @@ final class ConflictRecoveryUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
-        let work = try environmentURL("TT_UITEST_WORK_DIR")
+        let work = try environmentURL("DOCKET_UITEST_WORK_DIR")
         root = work.appendingPathComponent("\(name.filter { $0.isLetter || $0.isNumber })-\(UUID().uuidString.prefix(8))", isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     }
@@ -49,9 +49,9 @@ final class ConflictRecoveryUITests: XCTestCase {
         try FileManager.default.copyItem(at: environmentURL(source), to: exchange)
         let app = XCUIApplication()
         app.launchEnvironment = [
-            "TT_UITEST_ROOT": root.path,
-            "TT_UITEST_DEVICE_ID": "ui-test-phone",
-            "TT_UITEST_EXCHANGE_DIR": exchange.path,
+            "DOCKET_UITEST_ROOT": root.path,
+            "DOCKET_UITEST_DEVICE_ID": "ui-test-phone",
+            "DOCKET_UITEST_EXCHANGE_DIR": exchange.path,
         ]
         app.launch()
         require(app.buttons["onboarding.join"], "onboarding")
@@ -151,7 +151,7 @@ final class ConflictRecoveryUITests: XCTestCase {
     /// publishes for the Macs to converge on (the verifier applies it on the
     /// studio Mac and compares).
     func testKeepingAVersionResolvesTheWholeChangeAndPublishesIt() throws {
-        let app = try join("TT_UITEST_CONFLICT_EXCHANGE")
+        let app = try join("DOCKET_UITEST_CONFLICT_EXCHANGE")
         openSync(app)
         // The conflict rows sit below the status sections; a list draws only
         // the rows on screen.
@@ -199,7 +199,7 @@ final class ConflictRecoveryUITests: XCTestCase {
     /// elsewhere is refused without writing, read again, and then kept beside
     /// that edit.
     func testReplacementTextAndAStaleResolutionKeepEveryEdit() throws {
-        let app = try join("TT_UITEST_CONFLICT_EXCHANGE")
+        let app = try join("DOCKET_UITEST_CONFLICT_EXCHANGE")
         openSync(app)
         openConflict(app, "Release runbook")
         press(app, "conflict.replace")
@@ -251,7 +251,7 @@ final class ConflictRecoveryUITests: XCTestCase {
     }
 
     func testConflictReadFailureOffersRetryAndClearsAfterRecovery() throws {
-        let app = try join("TT_UITEST_CONFLICT_EXCHANGE")
+        let app = try join("DOCKET_UITEST_CONFLICT_EXCHANGE")
         // A permission-only fault can disappear when a background exchange
         // atomically replaces the file. A directory at the file path keeps
         // the read failing until this test explicitly restores the note.
@@ -276,7 +276,7 @@ final class ConflictRecoveryUITests: XCTestCase {
     }
 
     func testReplacementDraftSurvivesCloseRelaunchAndConfirmedDiscard() throws {
-        let app = try join("TT_UITEST_CONFLICT_EXCHANGE")
+        let app = try join("DOCKET_UITEST_CONFLICT_EXCHANGE")
         openSync(app)
         openConflict(app, "Release runbook")
         press(app, "conflict.replace")
@@ -322,7 +322,7 @@ final class ConflictRecoveryUITests: XCTestCase {
     /// diagnostics export records it. Once the folder is back, a retry
     /// publishes what waited.
     func testTransportFailureKeepsLocalContentRetriesAndExportsDiagnostics() throws {
-        let app = try join("TT_UITEST_EXCHANGE")
+        let app = try join("DOCKET_UITEST_EXCHANGE")
         require(app.staticTexts["Ship beta build"].firstMatch, "the joined Today")
         let away = root.appendingPathComponent("exchange-away", isDirectory: true)
         try FileManager.default.moveItem(at: exchange, to: away)

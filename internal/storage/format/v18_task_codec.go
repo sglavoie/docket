@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // V18TaskRecord is the complete schema-18 storage shape: the schema-17 fields

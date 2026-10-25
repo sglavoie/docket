@@ -8,9 +8,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/theme"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // TaskFormDueDatePickedMsg is emitted from the inline due-date preset picker.

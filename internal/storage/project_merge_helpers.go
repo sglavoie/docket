@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 func indexTasks(tasks []*models.Task) map[string]*models.Task {

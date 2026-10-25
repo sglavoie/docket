@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/capturetext"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/docket/internal/capturetext"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/testutil"
 )
 
 // TestCaptureCreatesInboxTask verifies that a plain quick-capture input (no

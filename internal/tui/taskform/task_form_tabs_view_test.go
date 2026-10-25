@@ -6,7 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/docket/internal/tui/status"
 )
 
 func TestTaskForm_TabSwitchForward(t *testing.T) {

@@ -10,9 +10,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/sglavoie/tt/internal/syncexchange"
-	"github.com/sglavoie/tt/internal/synclog"
-	"github.com/sglavoie/tt/internal/syncmerge"
+	"github.com/sglavoie/docket/internal/syncexchange"
+	"github.com/sglavoie/docket/internal/synclog"
+	"github.com/sglavoie/docket/internal/syncmerge"
 )
 
 // maxConflictText bounds the content a conflict view spells inline; larger or

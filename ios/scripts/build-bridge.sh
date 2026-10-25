@@ -15,8 +15,8 @@
 # and builds nothing, so a verifier can compare it with the published stamp.
 #
 # Environment:
-#   TT_IOS_CACHE            cache root (default ios/.cache, gitignored)
-#   TT_IOS_FORCE_BRIDGE=1   rebuild even when the fingerprint is current
+#   DOCKET_IOS_CACHE            cache root (default ios/.cache, gitignored)
+#   DOCKET_IOS_FORCE_BRIDGE=1   rebuild even when the fingerprint is current
 
 set -eu
 
@@ -46,7 +46,7 @@ package=./mobile/ttbridge
 framework_dir="$ios_dir/TTEngine/Frameworks"
 framework="$framework_dir/TTBridgeCore.xcframework"
 stamp="$framework_dir/TTBridgeCore.fingerprint"
-cache_root="${TT_IOS_CACHE:-$ios_dir/.cache}"
+cache_root="${DOCKET_IOS_CACHE:-$ios_dir/.cache}"
 
 cd "$repo_root"
 
@@ -76,7 +76,7 @@ if [ "${1:-}" = --fingerprint ]; then
 	echo "$want"
 	exit 0
 fi
-if [ "${TT_IOS_FORCE_BRIDGE:-0}" != 1 ] && [ -d "$framework" ] && [ -f "$stamp" ] &&
+if [ "${DOCKET_IOS_FORCE_BRIDGE:-0}" != 1 ] && [ -d "$framework" ] && [ -f "$stamp" ] &&
 	[ "$(cat "$stamp")" = "$want" ]; then
 	echo "TTBridgeCore.xcframework is current ($want)"
 	exit 0

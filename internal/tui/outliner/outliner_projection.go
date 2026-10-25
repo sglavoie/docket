@@ -4,8 +4,8 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
 // sectionRowForest is a presentation-only hierarchy over rows that already

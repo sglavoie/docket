@@ -35,7 +35,7 @@ search opening/results/context and wrapped refusal/expiry; refusal setup uses
 the same frame synchronization as the application's update boundary.
 
 ```sh
-TT_TERMINAL_REVIEW_DIR=/tmp/tt-daily-polish-review \
+DOCKET_TERMINAL_REVIEW_DIR=/tmp/tt-daily-polish-review \
   go test ./internal/tui -run '^TestPolishTransitionReviewFrames$' -count=1
 uv run scripts/render_transition_review.py /tmp/tt-daily-polish-review
 ```
@@ -217,7 +217,7 @@ search allocates about 32% less than the preceding cache baseline, and warm
 comment search about 54% less. Cold first queries still have visible pauses;
 these measurements do not imply every key renders within one display frame.
 
-The full race suite passed with `TT_SHARD_JOBS=4`, reaching 70.63% overall
+The full race suite passed with `DOCKET_SHARD_JOBS=4`, reaching 70.63% overall
 coverage and meeting every package threshold. The cache race tests were rerun
 after the final cache-key cleanup. Documentation, lint, module metadata,
 production and test-inclusive dead-code audits, and the build also passed.
@@ -345,7 +345,7 @@ plus an unavailable-action explanation (64 frames). Export it together with
 the existing 232 review frames:
 
 ```sh
-TT_TERMINAL_REVIEW_DIR="$PWD/macos/.cache/everyday-polish-review" \
+DOCKET_TERMINAL_REVIEW_DIR="$PWD/macos/.cache/everyday-polish-review" \
   go test ./internal/tui \
   -run '^(TestEverydayPolishReviewFrames|TestPolishVisualReviewFrames|TestPolishTransitionReviewFrames)$' \
   -count=1
@@ -367,7 +367,7 @@ sequences. The remaining 64 frames are the existing standalone review states.
 The complete race-test set passed after the inventory updates were checked and
 storage was rerun separately. The initial CI invocation reached its 20-minute
 storage deadline during the sync fault properties; running that package with
-`TT_SHARD_JOBS=4 ./scripts/test_sharded.sh` completed all 24 shards in 192 seconds.
+`DOCKET_SHARD_JOBS=4 ./scripts/test_sharded.sh` completed all 24 shards in 192 seconds.
 The original 48 UI/configuration shards also passed. Combined coverage is
 70.70%, meeting every package floor. Focused menu, modal, picker, and daily-loop
 scenario checks were rerun after the border correction. All eleven search

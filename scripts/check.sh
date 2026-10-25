@@ -10,7 +10,7 @@ if [ -n "$unformatted" ]; then
 	exit 1
 fi
 
-unimported=$(goimports -l -local "github.com/sglavoie/tt" $(git ls-files '*.go'))
+unimported=$(goimports -l -local "github.com/sglavoie/docket" $(git ls-files '*.go'))
 if [ -n "$unimported" ]; then
 	echo "goimports reports misordered imports (run 'just fmt'):" >&2
 	echo "$unimported" >&2

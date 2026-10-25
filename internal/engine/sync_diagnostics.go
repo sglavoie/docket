@@ -3,8 +3,8 @@ package engine
 import (
 	"time"
 
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/synclog"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/synclog"
 )
 
 // SyncDiagnostics is what a person sends when sync misbehaves: the device's

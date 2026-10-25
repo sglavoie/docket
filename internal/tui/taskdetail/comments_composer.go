@@ -3,7 +3,7 @@ package taskdetail
 import (
 	"strings"
 
-	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/chrome"
 
 	tea "charm.land/bubbletea/v2"
 )

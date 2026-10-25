@@ -3,7 +3,7 @@ package route
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/tui/presentation"
 )
 
 // OverlayKind classifies transient presentations independently from primary

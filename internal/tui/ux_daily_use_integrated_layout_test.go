@@ -7,7 +7,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/tui/outliner"
+	"github.com/sglavoie/docket/internal/tui/outliner"
 )
 
 // uxDailyUseIntegratedCombinedState is one pair of occupants raised together and

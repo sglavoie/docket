@@ -6,8 +6,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/testutil"
 )
 
 func TestTaskForm_Children_FieldCount_DefaultTask(t *testing.T) {

@@ -3,7 +3,7 @@ package outliner
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // That every group answers a theme role is theme's own invariant and is

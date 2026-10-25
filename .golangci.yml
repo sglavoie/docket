@@ -22,7 +22,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/sglavoie/tt
+        - github.com/sglavoie/docket
 
 linters:
   enable:

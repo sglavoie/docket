@@ -5,7 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/docket/internal/tui/query"
 )
 
 // TestTagAdderStripsLeadingHash verifies that a tag entered with a leading

@@ -3,8 +3,8 @@ package outliner
 import (
 	"sort"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
 // ClipboardSelectionOrder is the order a copied selection reads in: the members

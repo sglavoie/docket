@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/synclog"
+	"github.com/sglavoie/docket/internal/synclog"
 )
 
 const (
@@ -301,7 +301,7 @@ func faultCrashRestart(t *testing.T, devices []string) {
 // Each seed is its own top-level test, so test_sharded.sh deals them to
 // separate processes; they cannot share one, since newFaultSim seeds the
 // process-wide uuid source. Together they run for minutes, so -short skips
-// them. Set TT_SYNC_FAULT_SEED to replay one seed: every other seed skips.
+// them. Set DOCKET_SYNC_FAULT_SEED to replay one seed: every other seed skips.
 func TestSyncFaultPropertiesConvergeSeed1(t *testing.T) { faultPropertiesConverge(t, 1) }
 func TestSyncFaultPropertiesConvergeSeed2(t *testing.T) { faultPropertiesConverge(t, 2) }
 func TestSyncFaultPropertiesConvergeSeed3(t *testing.T) { faultPropertiesConverge(t, 3) }
@@ -414,7 +414,7 @@ func TestSyncFaultFailuresReportSeedAndTrace(t *testing.T) {
 	for _, want := range []string{
 		"sync fault failure: device-a and device-b disagree on projects/atlas-launch/tasks.md",
 		"scenario=report seed=7",
-		"replay: TT_SYNC_FAULT_SEED=7 go test -count=1 -run '^TestSyncFaultFailuresReportSeedAndTrace$' ./internal/storage/",
+		"replay: DOCKET_SYNC_FAULT_SEED=7 go test -count=1 -run '^TestSyncFaultFailuresReportSeedAndTrace$' ./internal/storage/",
 		"device-a publish",
 		"device-b apply",
 		"FAIL device-a and device-b disagree",

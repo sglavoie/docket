@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/docket/internal/testutil"
 )
 
 func TestParseTaskContent(t *testing.T) {

@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/capturetext"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/docket/internal/capturetext"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/textgrammar"
 )
 
 // The three contracts below are the capture half of the canonical-registry

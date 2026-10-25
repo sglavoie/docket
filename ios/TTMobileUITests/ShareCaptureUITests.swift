@@ -24,8 +24,8 @@ final class ShareCaptureUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
-        guard let path = ProcessInfo.processInfo.environment["TT_UITEST_WORK_DIR"], FileManager.default.fileExists(atPath: path) else {
-            XCTFail("TT_UITEST_WORK_DIR must name an existing host path")
+        guard let path = ProcessInfo.processInfo.environment["DOCKET_UITEST_WORK_DIR"], FileManager.default.fileExists(atPath: path) else {
+            XCTFail("DOCKET_UITEST_WORK_DIR must name an existing host path")
             throw MissingInput()
         }
         root = URL(fileURLWithPath: path, isDirectory: true)
@@ -41,8 +41,8 @@ final class ShareCaptureUITests: XCTestCase {
     private var inbox: CaptureInbox { CaptureInbox(container: shared) }
 
     private func seed() throws {
-        guard let fixture = ProcessInfo.processInfo.environment["TT_UITEST_FIXTURE"], FileManager.default.fileExists(atPath: fixture) else {
-            XCTFail("TT_UITEST_FIXTURE must name the representative workspace")
+        guard let fixture = ProcessInfo.processInfo.environment["DOCKET_UITEST_FIXTURE"], FileManager.default.fileExists(atPath: fixture) else {
+            XCTFail("DOCKET_UITEST_FIXTURE must name the representative workspace")
             throw MissingInput()
         }
         try FileManager.default.createDirectory(at: workspace.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -57,8 +57,8 @@ final class ShareCaptureUITests: XCTestCase {
     private func launch(_ extra: [String: String] = [:]) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment = [
-            "TT_UITEST_ROOT": root.path, "TT_UITEST_DEVICE_ID": "ui-test-phone",
-            "TT_UITEST_SHARED_CONTAINER": shared.path,
+            "DOCKET_UITEST_ROOT": root.path, "DOCKET_UITEST_DEVICE_ID": "ui-test-phone",
+            "DOCKET_UITEST_SHARED_CONTAINER": shared.path,
         ].merging(extra) { $1 }
         app.launch()
         require(app.tabBars.buttons["Today"], "the open workspace")
@@ -135,7 +135,7 @@ final class ShareCaptureUITests: XCTestCase {
         ))
 
         // Held: every saved capture is shown as waiting, and none is a task.
-        var app = launch(["TT_UITEST_HOLD_CAPTURES": "1"])
+        var app = launch(["DOCKET_UITEST_HOLD_CAPTURES": "1"])
         tab(app, "Inbox")
         require(app.staticTexts["captures.pending.header"], "the pending captures section")
         require(pendingRow(app, "Call the venue"), "the pending shortcut capture")

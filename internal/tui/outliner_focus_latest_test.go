@@ -1,6 +1,6 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/tui/outliner"
+import "github.com/sglavoie/docket/internal/tui/outliner"
 
 // cursorTaskID returns the task ID under the cursor, or "" when the cursor does
 // not name a task row.

@@ -21,7 +21,7 @@
 #                           accessibility-extra-extra-extra-large is the
 #                           largest Dynamic Type size
 #               device      default or small (see simulator.sh)
-#             The app never reads its real container: TT_UITEST_ROOT points it
+#             The app never reads its real container: DOCKET_UITEST_ROOT points it
 #             at RUN/root, and it writes its semantic state to RUN/state.json.
 #             Waits until that state reports the workspace open.
 # reset       Terminates the app, reseeds RUN/root from the same fixture, and
@@ -35,19 +35,19 @@
 # stop        Terminates the app.
 #
 # Environment:
-#   TT_IOS_RESULTS          where build results go (default ios/.cache/results)
-#   TT_IOS_RUN              the run session directory (default ios/.cache/run)
-#   TT_IOS_CACHE            cache root (default ios/.cache, gitignored)
-#   TT_IOS_SIMULATOR, TT_IOS_SMALL_SIMULATOR   see simulator.sh
+#   DOCKET_IOS_RESULTS          where build results go (default ios/.cache/results)
+#   DOCKET_IOS_RUN              the run session directory (default ios/.cache/run)
+#   DOCKET_IOS_CACHE            cache root (default ios/.cache, gitignored)
+#   DOCKET_IOS_SIMULATOR, DOCKET_IOS_SMALL_SIMULATOR   see simulator.sh
 
 set -eu
 
 script_dir=$(CDPATH="" cd -- "$(dirname -- "$0")" && pwd)
 ios_dir=$(dirname -- "$script_dir")
 repo_root=$(dirname -- "$ios_dir")
-cache_root="${TT_IOS_CACHE:-$ios_dir/.cache}"
-results="${TT_IOS_RESULTS:-$cache_root/results}"
-run_dir="${TT_IOS_RUN:-$cache_root/run}"
+cache_root="${DOCKET_IOS_CACHE:-$ios_dir/.cache}"
+results="${DOCKET_IOS_RESULTS:-$cache_root/results}"
+run_dir="${DOCKET_IOS_RUN:-$cache_root/run}"
 bundle_id=io.github.sglavoie.tt.mobile
 derived="$cache_root/AppDerivedData"
 app_path="$derived/Build/Products/Debug-iphonesimulator/tt.app"
@@ -119,10 +119,10 @@ launch() {
 	xcrun simctl terminate "$udid" "$bundle_id" >/dev/null 2>&1 || true
 	seed "$fixture" "$root"
 	rm -f "$run_dir/state.json"
-	SIMCTL_CHILD_TT_UITEST_ROOT="$root" \
-		SIMCTL_CHILD_TT_UITEST_DEVICE_ID=automation-phone \
-		SIMCTL_CHILD_TT_UITEST_SHARED_CONTAINER="$root/shared" \
-		SIMCTL_CHILD_TT_UITEST_STATE_EXPORT="$run_dir/state.json" \
+	SIMCTL_CHILD_DOCKET_UITEST_ROOT="$root" \
+		SIMCTL_CHILD_DOCKET_UITEST_DEVICE_ID=automation-phone \
+		SIMCTL_CHILD_DOCKET_UITEST_SHARED_CONTAINER="$root/shared" \
+		SIMCTL_CHILD_DOCKET_UITEST_STATE_EXPORT="$run_dir/state.json" \
 		xcrun simctl launch "$udid" "$bundle_id" >/dev/null
 	want=ready
 	[ "$fixture" = empty ] && want=onboarding

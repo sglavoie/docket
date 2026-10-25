@@ -3,9 +3,9 @@ package chrome
 import (
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/pulse"
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/pulse"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // OutlinerModeStateGroup names the workflow-state group a mode borrows its

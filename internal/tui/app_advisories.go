@@ -5,13 +5,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/logging"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/logging"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/util"
 
-	"github.com/sglavoie/tt/internal/engine"
-	"github.com/sglavoie/tt/internal/tui/conflict"
+	"github.com/sglavoie/docket/internal/engine"
+	"github.com/sglavoie/docket/internal/tui/conflict"
 )
 
 // The shell half of the advisory opt-out. advisories.go owns what an advisory

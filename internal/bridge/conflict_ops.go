@@ -3,7 +3,7 @@ package bridge
 import (
 	"errors"
 
-	"github.com/sglavoie/tt/internal/engine"
+	"github.com/sglavoie/docket/internal/engine"
 )
 
 // conflictListPayload optionally names the devices the transport read from

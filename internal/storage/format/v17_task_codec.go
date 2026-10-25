@@ -1,7 +1,7 @@
 package format
 
 import (
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // V17TaskRecord adds the optional origin of a promoted checklist item.

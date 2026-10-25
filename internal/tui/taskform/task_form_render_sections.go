@@ -6,8 +6,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/tui/textfit"
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/tui/textfit"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // The Children and Extras tabs are four instances of one shape: a collapsible

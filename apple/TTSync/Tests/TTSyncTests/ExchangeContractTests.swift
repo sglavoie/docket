@@ -5,7 +5,7 @@ import XCTest
 
 /// The exchange contract against the fake iCloud provider and against a real
 /// coordinated folder, with the real Go engine behind each device as a
-/// bridgehost process. TT_BRIDGEHOST names that binary; the suite fails rather
+/// bridgehost process. DOCKET_BRIDGEHOST names that binary; the suite fails rather
 /// than skips without it.
 final class ExchangeContractTests: XCTestCase {
     private var root: URL!
@@ -28,8 +28,8 @@ final class ExchangeContractTests: XCTestCase {
     }
 
     private func bridgehost() throws -> URL {
-        guard let path = ProcessInfo.processInfo.environment["TT_BRIDGEHOST"], FileManager.default.isExecutableFile(atPath: path) else {
-            throw ContractFailure("TT_BRIDGEHOST must name a built mobile/bridgehost binary")
+        guard let path = ProcessInfo.processInfo.environment["DOCKET_BRIDGEHOST"], FileManager.default.isExecutableFile(atPath: path) else {
+            throw ContractFailure("DOCKET_BRIDGEHOST must name a built mobile/bridgehost binary")
         }
         return URL(fileURLWithPath: path)
     }

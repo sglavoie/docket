@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 func TestDuplicateSingletonDiagnosticsComeFromCardinality(t *testing.T) {

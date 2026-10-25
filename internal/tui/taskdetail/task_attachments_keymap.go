@@ -3,7 +3,7 @@ package taskdetail
 import (
 	"strings"
 
-	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/docket/internal/tui/keymap"
 )
 
 // BuildKeyMap constructs the declarative KeyMap for TaskAttachmentsModel.

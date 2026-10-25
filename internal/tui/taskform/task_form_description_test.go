@@ -6,7 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/chrome"
 )
 
 func TestTaskForm_BasicsTab_DescriptionEmpty_ShowsNone(t *testing.T) {

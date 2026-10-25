@@ -3,9 +3,9 @@ package tui
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/notes"
-	"github.com/sglavoie/tt/internal/tui/presentation"
-	"github.com/sglavoie/tt/internal/tui/route"
+	"github.com/sglavoie/docket/internal/tui/notes"
+	"github.com/sglavoie/docket/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/tui/route"
 )
 
 func TestAllNotesOpenPathsUseShellLedger(t *testing.T) {

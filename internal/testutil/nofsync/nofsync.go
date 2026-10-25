@@ -4,7 +4,7 @@ package nofsync
 import (
 	"os"
 
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // Enable sets util.SkipFsyncEnv for this process and every child it starts, so

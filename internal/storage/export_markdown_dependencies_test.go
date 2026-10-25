@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // An export is a document, not a view, so a reference has to survive as prose.

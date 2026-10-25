@@ -3,7 +3,7 @@ package testutil
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 func TestMockRepositorySaveDeepCopiesMutableTaskFields(t *testing.T) {

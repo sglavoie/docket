@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 func TestCommitMultiRejectsProjectPathAtEveryPositionBeforeEffects(t *testing.T) {

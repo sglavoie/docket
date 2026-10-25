@@ -1,6 +1,6 @@
 package storage
 
-import "github.com/sglavoie/tt/internal/util"
+import "github.com/sglavoie/docket/internal/util"
 
 // This file is the single storage-level entry point for filesystem containment.
 // Every create/rename/delete that combines a workspace root directory with an

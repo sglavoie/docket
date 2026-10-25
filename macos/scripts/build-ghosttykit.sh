@@ -6,7 +6,7 @@
 # Idempotent: a matching stamp in Vendor/ skips the whole build.
 #
 # Environment:
-#   TT_MACOS_CACHE          cache root (default macos/.cache, gitignored)
+#   DOCKET_MACOS_CACHE          cache root (default macos/.cache, gitignored)
 #   GHOSTTYKIT_TARGET       xcframework target: universal (default) or native
 #   GHOSTTYKIT_FORCE=1      rebuild even when the stamp matches
 
@@ -69,7 +69,7 @@ require_tool tar
 require_tool xcrun
 require_tool xcodebuild
 
-cache_root="${TT_MACOS_CACHE:-$macos_dir/.cache}"
+cache_root="${DOCKET_MACOS_CACHE:-$macos_dir/.cache}"
 mkdir -p "$cache_root"
 
 # --- Metal toolchain -----------------------------------------------------------

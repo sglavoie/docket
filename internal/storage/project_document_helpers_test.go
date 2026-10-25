@@ -3,7 +3,7 @@ package storage
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // These are the two current-schema setup helpers this package's tests share.

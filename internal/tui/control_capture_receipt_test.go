@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sglavoie/tt/internal/control"
+	"github.com/sglavoie/docket/internal/control"
 )
 
 func TestControlCaptureOnceReconcilesAfterRelaunchAndUndo(t *testing.T) {

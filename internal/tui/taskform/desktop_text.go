@@ -1,6 +1,6 @@
 package taskform
 
-import "github.com/sglavoie/tt/internal/tui/chrome"
+import "github.com/sglavoie/docket/internal/tui/chrome"
 
 func (m *TaskComposerModel) DesktopTextBuffer() *chrome.DesktopTextBuffer {
 	if m.SubmissionInFlight || m.ConfirmDiscard || m.projectOffer != nil || m.matchingTaskPreview != nil || m.HelpExpanded {

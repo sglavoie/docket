@@ -56,7 +56,7 @@ func TestRenderMarkdownMalformedPipeTableStaysWithinWidth(t *testing.T) {
 		"| --- | --- |", // ragged: missing a delimiter cell
 		"| id | ExtremelyLongUnbreakableIdentifierValueThatCannotWrapNicely | see below |",
 		"| quote | \"a quoted phrase with, commas and 'nested' quotes\" | ok |",
-		"| code | `github.com/sglavoie/tt/internal/tui/textfit.RenderMarkdown` | backticked path |",
+		"| code | `github.com/sglavoie/docket/internal/tui/textfit.RenderMarkdown` | backticked path |",
 		"| broken row without trailing pipe and extra | | pipes | | scattered", // malformed
 		"|||", // degenerate empty row
 		"",

@@ -3,7 +3,7 @@ package coordinator
 import (
 	"time"
 
-	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/docket/internal/app"
 )
 
 // dueClockHistoryLimit matches the workspace undo ledger's own depth. Memory

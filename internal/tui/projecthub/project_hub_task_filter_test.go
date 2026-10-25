@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/docket/internal/tui/listsurface"
 )
 
 // newTaskFilterFixture catalogs a project the count pass read as empty beside

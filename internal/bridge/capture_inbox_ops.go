@@ -15,7 +15,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/docket/internal/app"
 )
 
 // CaptureFormat names the envelope a share extension or a shortcut leaves in

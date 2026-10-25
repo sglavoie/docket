@@ -108,9 +108,9 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
 
     func testEnvironmentOverridesKeepKnownSingleLineValuesOnly() {
         TTEnvironmentOverrides.save([
-            "EDITOR": "  hx  ", "VISUAL": "", "PATH": "a\nb", "HOME": "/elsewhere", "TT_DATA_DIR": "~/tt",
+            "EDITOR": "  hx  ", "VISUAL": "", "PATH": "a\nb", "HOME": "/elsewhere", "DOCKET_DATA_DIR": "~/tt",
         ], to: defaults)
-        XCTAssertEqual(TTEnvironmentOverrides.load(from: defaults), ["EDITOR": "hx", "TT_DATA_DIR": "~/tt"])
+        XCTAssertEqual(TTEnvironmentOverrides.load(from: defaults), ["EDITOR": "hx", "DOCKET_DATA_DIR": "~/tt"])
         TTEnvironmentOverrides.save([:], to: defaults)
         XCTAssertNil(defaults.object(forKey: TTEnvironmentOverrides.defaultsKey))
         XCTAssertEqual(TTEnvironmentOverrides.names.first, "PATH")
@@ -118,12 +118,12 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
 
     func testOverridesReplaceTheShellsValuesAndKeepTheRest() {
         let shell = LaunchEnvironment(home: "/Users/me", path: "/bin", forwarded: ["EDITOR": "nvim", "VISUAL": "nvim"])
-        let applied = shell.applying(["PATH": "/opt/bin:/bin", "EDITOR": "hx", "TT_DATA_DIR": "/data", "HOME": "/x"])
+        let applied = shell.applying(["PATH": "/opt/bin:/bin", "EDITOR": "hx", "DOCKET_DATA_DIR": "/data", "HOME": "/x"])
         XCTAssertEqual(applied.commandEnvironment, [
-            "HOME": "/Users/me", "PATH": "/opt/bin:/bin", "EDITOR": "hx", "VISUAL": "nvim", "TT_DATA_DIR": "/data",
+            "HOME": "/Users/me", "PATH": "/opt/bin:/bin", "EDITOR": "hx", "VISUAL": "nvim", "DOCKET_DATA_DIR": "/data",
         ])
         XCTAssertEqual(applied.value(of: "PATH"), "/opt/bin:/bin")
-        XCTAssertNil(shell.value(of: "TT_EDITOR"))
+        XCTAssertNil(shell.value(of: "DOCKET_EDITOR"))
     }
 
     func testAnEnvironmentEditAwaitsARelaunchOnlyWhileTheOldValuesRun() {

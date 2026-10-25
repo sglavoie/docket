@@ -4,8 +4,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/textgrammar"
-	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/textgrammar"
+	"github.com/sglavoie/docket/internal/tui/operation"
 )
 
 // helpGrammarCategory is the `?` section the shared sigil grammar renders under,

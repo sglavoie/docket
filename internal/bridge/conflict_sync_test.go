@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/engine"
-	"github.com/sglavoie/tt/internal/syncmerge"
+	"github.com/sglavoie/docket/internal/engine"
+	"github.com/sglavoie/docket/internal/syncmerge"
 )
 
 // TestBridgeResolvesSyncConflictsFromEitherDevice drives conflict resolution

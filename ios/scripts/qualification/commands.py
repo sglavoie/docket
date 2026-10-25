@@ -48,21 +48,21 @@ from .procedures import (
 def cmd_start(_args):
     if sys.platform != "darwin":
         fail("a device qualification needs macOS")
-    team = os.environ.get("TT_IOS_DEVELOPMENT_TEAM")
+    team = os.environ.get("DOCKET_IOS_DEVELOPMENT_TEAM")
     if not team:
-        fail("set TT_IOS_DEVELOPMENT_TEAM to the signing team")
+        fail("set DOCKET_IOS_DEVELOPMENT_TEAM to the signing team")
     root = qualification_root()
     pointer = os.path.join(root, "current")
-    if os.path.exists(pointer) and not os.environ.get("TT_QUALIFICATION_RESTART"):
-        fail(f"a trial is already running ({open(pointer).read().strip()}); finish it, or set TT_QUALIFICATION_RESTART=1")
+    if os.path.exists(pointer) and not os.environ.get("DOCKET_QUALIFICATION_RESTART"):
+        fail(f"a trial is already running ({open(pointer).read().strip()}); finish it, or set DOCKET_QUALIFICATION_RESTART=1")
     run_id = now().strftime("%Y%m%dT%H%M%SZ")
     directory = os.path.join(root, run_id)
-    exchange_root = os.environ.get("TT_QUALIFICATION_EXCHANGE") or os.path.expanduser(
+    exchange_root = os.environ.get("DOCKET_QUALIFICATION_EXCHANGE") or os.path.expanduser(
         "~/Library/Mobile Documents/com~apple~CloudDocs/tt-qualification")
     if "/Library/Mobile Documents/" not in exchange_root:
         fail(f"{exchange_root} is not inside iCloud Drive")
     exchange = os.path.join(exchange_root, run_id)
-    iphone = device_info(os.environ.get("TT_IOS_DEVICE"))
+    iphone = device_info(os.environ.get("DOCKET_IOS_DEVICE"))
     os.makedirs(os.path.join(directory, "bin"))
     os.makedirs(os.path.join(directory, "home"))
     log = os.path.join(directory, "build.log")
@@ -71,7 +71,7 @@ def cmd_start(_args):
     note("building tt for the Mac")
     tt_sha = build_mac(REPO, os.path.join(directory, "bin", "tt"))
     note("building, signing, and installing the iPhone app as the rollout guide does")
-    app = run(["ios/scripts/install-device.sh"], env={"TT_IOS_DEVICE": iphone["udid"]}, log=log).stdout.strip()
+    app = run(["ios/scripts/install-device.sh"], env={"DOCKET_IOS_DEVICE": iphone["udid"]}, log=log).stdout.strip()
     executables = app_executables(app)
     signed = signing(app)
     signed["installed_at"] = stamp()
@@ -191,11 +191,11 @@ def cmd_finish(_args):
     trial = Trial.current()
     state = dict(trial.state)
     state["finished_at"] = stamp()
-    evidence = os.environ.get("TT_QUALIFICATION_EVIDENCE") or os.path.join(REPO, "docs/mobile/evidence/session-18-qualification.json")
+    evidence = os.environ.get("DOCKET_QUALIFICATION_EVIDENCE") or os.path.join(REPO, "docs/mobile/evidence/session-18-qualification.json")
     os.makedirs(os.path.dirname(evidence), exist_ok=True)
     with open(evidence, "w") as handle:
         json.dump(state, handle, indent=2, sort_keys=True)
         handle.write("\n")
     note(f"wrote {evidence}; bash scripts/verify_mobile_session.sh 18 validates it")
-    if os.environ.get("TT_QUALIFICATION_KEEP") != "1":
+    if os.environ.get("DOCKET_QUALIFICATION_KEEP") != "1":
         os.remove(os.path.join(qualification_root(), "current"))

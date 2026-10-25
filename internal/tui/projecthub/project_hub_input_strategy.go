@@ -1,6 +1,6 @@
 package projecthub
 
-import "github.com/sglavoie/tt/internal/tui/operation"
+import "github.com/sglavoie/docket/internal/tui/operation"
 
 // Project Hub surface operation IDs. They name what the Hub grammar does to its
 // own list rather than to a project, so they stay apart from the tui.scope.* and

@@ -8,12 +8,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 // simulatorEvidenceEnv names the evidence.json the iOS simulator suite wrote.
 // scripts/verify_mobile_session.sh 3 sets it after that suite passes.
-const simulatorEvidenceEnv = "TT_BRIDGE_SIMULATOR_EVIDENCE"
+const simulatorEvidenceEnv = "DOCKET_BRIDGE_SIMULATOR_EVIDENCE"
 
 // simulatorEvidence is what BridgeSimulatorTests.testOpenFixtureCaptureCompleteReopen
 // records about the workspace it changed.

@@ -1,6 +1,6 @@
 package route
 
-import "github.com/sglavoie/tt/internal/tui/presentation"
+import "github.com/sglavoie/docket/internal/tui/presentation"
 
 // presentationChromeKind identifies which layer owns persistent presentation
 // chrome. Full-screen presentations own the workspace pulse and their guidance;

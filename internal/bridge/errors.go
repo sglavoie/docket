@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io/fs"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/engine"
-	"github.com/sglavoie/tt/internal/logging"
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/engine"
+	"github.com/sglavoie/docket/internal/logging"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 // classify maps an engine failure onto the contract's error codes by its

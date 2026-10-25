@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/docket/internal/app"
 )
 
 // A capture that names its task identity creates the task under exactly that

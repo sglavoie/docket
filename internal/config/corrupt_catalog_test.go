@@ -50,7 +50,7 @@ func TestLoadOrCreateDomainsNamesACorruptCatalogBeforeMigrating(t *testing.T) {
 				t.Errorf("load error %v does not wrap the JSON syntax error", err)
 			}
 			message := err.Error()
-			wants := []string{DisplayPath(catalogPath), DisplayPath(PreScopeV7BackupsDir(dataDir)), "tt doctor"}
+			wants := []string{DisplayPath(catalogPath), DisplayPath(PreScopeV7BackupsDir(dataDir)), "docket doctor"}
 			if tc.withBackup {
 				wants = append(wants, DisplayPath(catalogPath+".bak"))
 			}

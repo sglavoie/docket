@@ -1,7 +1,7 @@
 package taskdetail
 
 import (
-	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/docket/internal/tui/keymap"
 )
 
 // BuildKeyMap constructs the declarative KeyMap for CommentsModel. It is the

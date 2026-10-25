@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/docket/internal/textgrammar"
 )
 
 func TestBridgeCaptureSuggestionsEverySigil(t *testing.T) {

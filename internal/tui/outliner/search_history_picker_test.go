@@ -9,7 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/docket/internal/tui/status"
 )
 
 func TestSearchHistoryPickerFindsNonPrefixAndReturnsEditableQuery(t *testing.T) {

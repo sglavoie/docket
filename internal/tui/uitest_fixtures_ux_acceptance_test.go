@@ -3,8 +3,8 @@ package tui
 import (
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // UX-acceptance fixture identities. Scenarios assert on these exact strings, so

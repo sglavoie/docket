@@ -20,9 +20,9 @@
 # Automation must be enabled in Settings > Developer.
 #
 # Environment:
-#   TT_IOS_DEVELOPMENT_TEAM   signing team for the device build (required)
-#   TT_IOS_DEVICE             iPhone UDID (default: the first physical iPhone)
-#   TT_REMINDER_EVIDENCE      output (default docs/mobile/evidence/session-15-reminders.json)
+#   DOCKET_IOS_DEVELOPMENT_TEAM   signing team for the device build (required)
+#   DOCKET_IOS_DEVICE             iPhone UDID (default: the first physical iPhone)
+#   DOCKET_REMINDER_EVIDENCE      output (default docs/mobile/evidence/session-15-reminders.json)
 
 set -euo pipefail
 
@@ -39,16 +39,16 @@ note() {
 }
 
 [ "$(uname -s)" = Darwin ] || fail "a physical iPhone run needs macOS"
-team=${TT_IOS_DEVELOPMENT_TEAM:-}
-[ -n "$team" ] || fail "set TT_IOS_DEVELOPMENT_TEAM to the signing team"
-evidence=${TT_REMINDER_EVIDENCE:-docs/mobile/evidence/session-15-reminders.json}
+team=${DOCKET_IOS_DEVELOPMENT_TEAM:-}
+[ -n "$team" ] || fail "set DOCKET_IOS_DEVELOPMENT_TEAM to the signing team"
+evidence=${DOCKET_REMINDER_EVIDENCE:-docs/mobile/evidence/session-15-reminders.json}
 run=$(date -u +%Y%m%dT%H%M%SZ)
 out=$(mktemp -d "${TMPDIR:-/tmp}/tt-reminder-evidence.XXXXXX")
 note "run $run, scratch $out"
 
 # The iPhone: physical only, never a simulator.
 xcrun devicectl list devices --json-output "$out/devices.json" >/dev/null
-device=${TT_IOS_DEVICE:-$(python3 -I - "$out/devices.json" <<'PY'
+device=${DOCKET_IOS_DEVICE:-$(python3 -I - "$out/devices.json" <<'PY'
 import json, sys
 for d in json.load(open(sys.argv[1]))["result"]["devices"]:
     hw = d["hardwareProperties"]
@@ -99,7 +99,7 @@ PY
 
 note "running ReminderDeliveryUITests on the iPhone (keep it unlocked, about five minutes)"
 test_status=0
-TEST_RUNNER_TT_EXPECTED_APP_EXECUTABLES="$executables" \
+TEST_RUNNER_DOCKET_EXPECTED_APP_EXECUTABLES="$executables" \
 	xcodebuild test-without-building -project ios/TTMobile.xcodeproj -scheme TTMobile \
 	-destination "id=$device" -derivedDataPath "$derived" \
 	-only-testing:TTMobileUITests/ReminderDeliveryUITests \

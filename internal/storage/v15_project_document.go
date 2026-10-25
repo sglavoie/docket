@@ -1,6 +1,6 @@
 package storage
 
-import "github.com/sglavoie/tt/internal/storage/format"
+import "github.com/sglavoie/docket/internal/storage/format"
 
 // SchemaVersionV15 lifts review off the tag list and onto a stored flag.
 const SchemaVersionV15 = 15

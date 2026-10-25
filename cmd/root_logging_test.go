@@ -35,7 +35,7 @@ func runRootForLogging(t *testing.T, args ...string) string {
 		_ = rootCmd.Flags().Set("version", "false")
 	})
 	if err := executeCommand(rootCmd); err != nil {
-		t.Fatalf("tt %s: %v", strings.Join(args, " "), err)
+		t.Fatalf("docket %s: %v", strings.Join(args, " "), err)
 	}
 	return home
 }
@@ -52,7 +52,7 @@ func TestNonLoggingCommandsCreateNoLogDirectory(t *testing.T) {
 		t.Run(strings.Join(args, "_"), func(t *testing.T) {
 			home := runRootForLogging(t, args...)
 			if _, err := os.Stat(filepath.Join(home, ".tt")); !os.IsNotExist(err) {
-				t.Fatalf("tt %s created %s (stat err = %v)", strings.Join(args, " "), filepath.Join(home, ".tt"), err)
+				t.Fatalf("docket %s created %s (stat err = %v)", strings.Join(args, " "), filepath.Join(home, ".tt"), err)
 			}
 		})
 	}

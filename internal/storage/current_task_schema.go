@@ -1,6 +1,6 @@
 package storage
 
-import "github.com/sglavoie/tt/internal/storage/format"
+import "github.com/sglavoie/docket/internal/storage/format"
 
 // This file is the current-version authority for live task Markdown. Live reads
 // and writes select their codec here and nowhere else, so advancing the live

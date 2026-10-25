@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 // TestCrossMachineHelperSetsResumeNote is run twice at once, each side naming
@@ -61,7 +61,7 @@ func TestCrossMachineHelperSetsResumeNote(t *testing.T) {
 // writes into one shared tasks.md, so all three carry the same lost-update
 // hazard and all three are held at the same seam; only the call and the
 // on-disk claim differ, which is why they are one role selected by
-// TT_HELPER_MUTATION rather than three near-copies.
+// DOCKET_HELPER_MUTATION rather than three near-copies.
 //
 // Creation is the sharpest of the three. The other two rewrite a task each
 // machine already resolved, while two creations mint two identities and two
@@ -161,7 +161,7 @@ func TestCrossMachineHelperAppliesTaskMutation(t *testing.T) {
 // sibling of the task-mutation role: two machines adding, editing, or deleting
 // comments on one project, each held at the same commit seam its partner is.
 //
-// It is a role of its own rather than a fourth TT_HELPER_MUTATION value for two
+// It is a role of its own rather than a fourth DOCKET_HELPER_MUTATION value for two
 // reasons. A project comment names no task, so it resolves its target through a
 // comment identity rather than a locator and its barrier target carries no task
 // id at all. And the two roles have to be able to be the two sides of one race —

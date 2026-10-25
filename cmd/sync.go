@@ -10,9 +10,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/engine"
-	"github.com/sglavoie/tt/internal/syncexchange"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/engine"
+	"github.com/sglavoie/docket/internal/syncexchange"
 )
 
 // syncCmd is the parent for device sync maintenance: enrolling this desktop's
@@ -26,17 +26,17 @@ var syncCmd = &cobra.Command{
 	Long: `Sync one workspace between this desktop and other devices through an
 exchange folder, typically in iCloud Drive.
 
-Sync is opt-in. 'tt sync enroll' keeps the current workspace exactly as it is,
+Sync is opt-in. 'docket sync enroll' keeps the current workspace exactly as it is,
 snapshots it, and builds a new local working copy outside iCloud that becomes
 the enrolled workspace; only immutable history is written to the exchange
 folder. A workspace that was never enrolled keeps working as it always has.
 
-Enrolled workspaces use catalog schema ` + fmt.Sprint(config.SyncEnrolledConfigVersion) + ` with a sync block, which a tt older than
+Enrolled workspaces use catalog schema ` + fmt.Sprint(config.SyncEnrolledConfigVersion) + ` with a sync block, which a Docket older than
 this one refuses to open rather than write around the history.`,
-	Example: `  tt sync enroll --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/tt-exchange --working-copy ~/tt-synced
-  tt sync status
-  tt sync exchange
-  tt sync doctor`,
+	Example: `  docket sync enroll --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/tt-exchange --working-copy ~/tt-synced
+  docket sync status
+  docket sync exchange
+  docket sync doctor`,
 	Args: noArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		return cmd.Help()
@@ -67,7 +67,7 @@ Enrollment never converts the workspace in place. It:
 
 The original workspace is left untouched. Re-run the same command after an
 interruption to finish; nothing is copied or published twice.`,
-	Example: `  tt sync enroll --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/tt-exchange --working-copy ~/tt-synced`,
+	Example: `  docket sync enroll --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/tt-exchange --working-copy ~/tt-synced`,
 	Args:    noArgs,
 	RunE:    runSyncEnroll,
 }
@@ -78,7 +78,7 @@ var syncJoinCmd = &cobra.Command{
 	Long: `Join a workspace another device enrolled, from the history in its exchange
 folder alone. The new working copy at --working-copy must be outside iCloud
 Drive; it becomes this machine's workspace.`,
-	Example: `  tt sync join --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/tt-exchange --working-copy ~/tt-synced`,
+	Example: `  docket sync join --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/tt-exchange --working-copy ~/tt-synced`,
 	Args:    noArgs,
 	RunE:    runSyncJoin,
 }
@@ -86,8 +86,8 @@ Drive; it becomes this machine's workspace.`,
 var syncStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show what is committed, outstanding, held, and in conflict",
-	Example: `  tt sync status
-  tt sync status --json`,
+	Example: `  docket sync status
+  docket sync status --json`,
 	Args: noArgs,
 	RunE: runSyncStatus,
 }
@@ -101,8 +101,8 @@ yet is reported as unavailable and fetched on a later pass; nothing is ever
 deleted because a file is missing.
 
 --exchange points this device at a different exchange folder from now on.`,
-	Example: `  tt sync exchange
-  tt sync exchange --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/tt-exchange`,
+	Example: `  docket sync exchange
+  docket sync exchange --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/tt-exchange`,
 	Args: noArgs,
 	RunE: runSyncExchange,
 }
@@ -110,8 +110,8 @@ deleted because a file is missing.
 var syncDoctorCmd = &cobra.Command{
 	Use:   "doctor",
 	Short: "Diagnose sync: placement, exchange folder, history, holds, and upgrades",
-	Example: `  tt sync doctor
-  tt sync doctor --json`,
+	Example: `  docket sync doctor
+  docket sync doctor --json`,
 	Args: noArgs,
 	RunE: runSyncDoctor,
 }
@@ -243,7 +243,7 @@ func runSyncStatus(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-const notEnrolledHint = "This workspace is not enrolled in sync. Run 'tt sync enroll --exchange DIR --working-copy DIR' to enroll it."
+const notEnrolledHint = "This workspace is not enrolled in sync. Run 'docket sync enroll --exchange DIR --working-copy DIR' to enroll it."
 
 func printSyncStatus(dataDir string, status *engine.SyncStatus) {
 	if !status.Enrolled {
@@ -411,7 +411,7 @@ func diagnoseSync(rt *engine.Runtime) ([]syncFinding, error) {
 	record := status.Enrollment
 	switch {
 	case record == nil || record.ExchangeFolder == "":
-		findings = append(findings, issue("exchange", "no exchange folder is configured; run 'tt sync exchange --exchange DIR'"))
+		findings = append(findings, issue("exchange", "no exchange folder is configured; run 'docket sync exchange --exchange DIR'"))
 	default:
 		findings = append(findings, diagnoseExchangeFolder(record.ExchangeFolder, status.WorkspaceID))
 	}
@@ -426,7 +426,7 @@ func diagnoseSync(rt *engine.Runtime) ([]syncFinding, error) {
 		findings = append(findings, note("history", "%s recorded on device %s, %d to publish",
 			Pluralize(int(status.LocalTransactions), "transaction", "transactions"), status.DeviceID, status.OutstandingUp))
 	} else {
-		findings = append(findings, issue("history", "the initial history is not recorded; run 'tt sync exchange'"))
+		findings = append(findings, issue("history", "the initial history is not recorded; run 'docket sync exchange'"))
 	}
 	if last := status.LastExchange; last != nil {
 		switch {
@@ -447,7 +447,7 @@ func diagnoseSync(rt *engine.Runtime) ([]syncFinding, error) {
 			findings = append(findings, note("downloads", "%s not downloaded yet", Pluralize(len(last.Unavailable), "exchange file", "exchange files")))
 		}
 	} else {
-		findings = append(findings, issue("last pass", "this device has never exchanged; run 'tt sync exchange'"))
+		findings = append(findings, issue("last pass", "this device has never exchanged; run 'docket sync exchange'"))
 	}
 	for _, held := range status.Held {
 		findings = append(findings, issue("held", "%s from %s seq %d waits: %s", shortTxn(held.TxnID), held.DeviceID, held.DeviceSeq, held.Reason))

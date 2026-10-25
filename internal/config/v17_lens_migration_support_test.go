@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // This file exercises the one thing the v17 boundary owes a saved lens: schema

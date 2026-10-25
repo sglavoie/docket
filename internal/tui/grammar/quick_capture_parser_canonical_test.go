@@ -3,9 +3,9 @@ package grammar
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/capturetext"
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/capturetext"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 func TestParseQuickCaptureLegacyFormsRemainTitleText(t *testing.T) {

@@ -4,10 +4,10 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/textgrammar"
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/outliner"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/textgrammar"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/outliner"
 )
 
 // lensNarrowedIDs installs one lens query and returns the task order the mode

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 // applyOutlinePlan mutates the scope project in memory. Parentage and sibling

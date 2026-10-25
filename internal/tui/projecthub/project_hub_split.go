@@ -1,6 +1,6 @@
 package projecthub
 
-import "github.com/sglavoie/tt/internal/tui/listsurface"
+import "github.com/sglavoie/docket/internal/tui/listsurface"
 
 // ProjectHubPreviewSplit is where the Hub divides its list from its preview,
 // as the list's share of the width. It is session-only: the Manage hub owns one

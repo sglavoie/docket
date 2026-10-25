@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 // Version reporting is the acceptance surface for `go install`, which passes no
@@ -100,7 +100,7 @@ func TestPrintVersionRendersResolvedValues(t *testing.T) {
 		printVersion()
 		return nil
 	})
-	if strings.TrimSpace(bare) != "tt version v1.0.0" {
+	if strings.TrimSpace(bare) != "docket version v1.0.0" {
 		t.Errorf("printVersion() = %q, want the bare module version", strings.TrimSpace(bare))
 	}
 
@@ -116,7 +116,7 @@ func TestPrintVersionRendersResolvedValues(t *testing.T) {
 		printVersion()
 		return nil
 	})
-	want := "tt version v1.0.0 (commit: deadbeefcafe, built: 2026-08-28T09:30:00Z)"
+	want := "docket version v1.0.0 (commit: deadbeefcafe, built: 2026-08-28T09:30:00Z)"
 	if strings.TrimSpace(stamped) != want {
 		t.Errorf("printVersion() = %q, want %q", strings.TrimSpace(stamped), want)
 	}

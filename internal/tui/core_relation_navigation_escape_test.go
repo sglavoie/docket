@@ -3,8 +3,8 @@ package tui
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/presentation"
 )
 
 // armScope puts the view inside the origin project through the real picker.

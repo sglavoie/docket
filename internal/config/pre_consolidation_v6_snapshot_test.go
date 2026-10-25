@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 var preConsolidationV6TestTime = time.Date(2026, 8, 1, 18, 19, 20, 0, time.UTC)

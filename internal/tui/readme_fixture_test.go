@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // readmeWidth and readmeHeight are the terminal every README image is drawn at.
@@ -56,11 +56,11 @@ func launchReadmeFixture(t *testing.T) *UITestDriver {
 }
 
 // readmeScreenshotDir is where a README image's source frames are exported:
-// TT_README_SCREENSHOT_DIR when regenerating them, else the test's own
+// DOCKET_README_SCREENSHOT_DIR when regenerating them, else the test's own
 // temporary directory so ordinary runs leave the committed images alone.
 func readmeScreenshotDir(t *testing.T) string {
 	t.Helper()
-	dir := os.Getenv("TT_README_SCREENSHOT_DIR")
+	dir := os.Getenv("DOCKET_README_SCREENSHOT_DIR")
 	if dir == "" {
 		dir = t.TempDir()
 	}

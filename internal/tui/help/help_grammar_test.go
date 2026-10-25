@@ -7,7 +7,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/docket/internal/textgrammar"
 )
 
 // TestHelpGrammarSectionComesFromCanonicalRegistry holds the `?` grammar section

@@ -6,7 +6,7 @@
 # first.
 #
 # Environment:
-#   TT_APP_INSTALL_DIR      destination directory (default /Applications)
+#   DOCKET_APP_INSTALL_DIR      destination directory (default /Applications)
 
 set -eu
 
@@ -30,7 +30,7 @@ if [ ! -x "$app/Contents/Resources/bin/tt" ]; then
 fi
 codesign --verify --strict "$app"
 
-install_dir="${TT_APP_INSTALL_DIR:-/Applications}"
+install_dir="${DOCKET_APP_INSTALL_DIR:-/Applications}"
 dest="$install_dir/tt.app"
 if pgrep -f "^$dest/Contents/MacOS/tt" >/dev/null 2>&1; then
 	echo "$dest is running; quit it (menu bar icon > Quit tt) and rerun" >&2

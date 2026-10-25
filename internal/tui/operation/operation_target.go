@@ -6,7 +6,7 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
 // OperationTargetSource declares which part of the active UI context supplies

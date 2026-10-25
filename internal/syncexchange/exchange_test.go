@@ -3,7 +3,7 @@ package syncexchange
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/synclog"
+	"github.com/sglavoie/docket/internal/synclog"
 )
 
 func TestManifestPathsRoundTripAndRefuseOtherNames(t *testing.T) {

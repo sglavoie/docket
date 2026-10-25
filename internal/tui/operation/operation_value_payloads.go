@@ -3,8 +3,8 @@ package operation
 import (
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/query"
 )
 
 // OperationParentValue is the picker-neutral reparent payload. A nil ParentID

@@ -1,7 +1,7 @@
 package outliner
 
 import (
-	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
 // collapseOrMoveToParent gives h/Left one deterministic tree behavior: collapse

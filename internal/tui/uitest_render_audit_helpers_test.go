@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/tui/textfit"
+	"github.com/sglavoie/docket/internal/tui/textfit"
 )
 
 // This file adds render-time audit plumbing for the `tt tui-test` review

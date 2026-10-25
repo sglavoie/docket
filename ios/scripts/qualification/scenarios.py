@@ -212,10 +212,10 @@ open that attachment there. Leave both attachments in place: don't remove either
 
 def scenario_upgrade(trial):
     s = "upgrade"
-    ref = os.environ.get("TT_QUALIFICATION_UPGRADE_FROM")
-    team = os.environ.get("TT_IOS_DEVELOPMENT_TEAM")
+    ref = os.environ.get("DOCKET_QUALIFICATION_UPGRADE_FROM")
+    team = os.environ.get("DOCKET_IOS_DEVELOPMENT_TEAM")
     if not ref or not team:
-        fail("set TT_QUALIFICATION_UPGRADE_FROM to the commit of the build being upgraded from, and TT_IOS_DEVELOPMENT_TEAM")
+        fail("set DOCKET_QUALIFICATION_UPGRADE_FROM to the commit of the build being upgraded from, and DOCKET_IOS_DEVELOPMENT_TEAM")
     commit = run(["git", "rev-parse", ref + "^{commit}"]).stdout.strip()
     old_tt = os.path.join(trial.dir, "bin", "tt-old")
     if RESUME_INSTALLED_OLD:

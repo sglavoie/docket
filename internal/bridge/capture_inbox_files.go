@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/docket/internal/app"
 )
 
 // stagedCaptureFile is one verified file of a capture.

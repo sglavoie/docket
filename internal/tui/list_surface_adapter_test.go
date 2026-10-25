@@ -3,8 +3,8 @@ package tui
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/listsurface"
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/tui/listsurface"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // testItem implements PickerItem for testing.

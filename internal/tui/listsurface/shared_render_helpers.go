@@ -5,9 +5,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/icons"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/icons"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // JoinGroupParts joins non-empty parts within one indicator group with a space.

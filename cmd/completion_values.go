@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 // Shell completion reads the workspace without LoadCLIWorkspace, which runs

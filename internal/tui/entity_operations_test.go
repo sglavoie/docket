@@ -8,15 +8,15 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/external"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tui/notes"
-	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/presentation"
-	"github.com/sglavoie/tt/internal/tui/route"
-	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/external"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/tui/notes"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/tui/route"
+	"github.com/sglavoie/docket/internal/tui/status"
 )
 
 // entityOperationApp wires the operation registry against a real note-capable
@@ -72,7 +72,7 @@ func onlyNoteFilename(t *testing.T, model *AppModel, location app.NoteLocation) 
 }
 
 func TestNoteOperationsResolveTheNoteAtExecution(t *testing.T) {
-	t.Setenv("TT_EDITOR", "true")
+	t.Setenv("DOCKET_EDITOR", "true")
 	t.Setenv("VISUAL", "")
 	t.Setenv("EDITOR", "")
 	model, project := entityOperationApp(t, "Design log")

@@ -9,8 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/engine"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/engine"
 )
 
 var (
@@ -30,9 +30,9 @@ conflicts the same change left. Every version is kept until a resolution;
 nothing is chosen by timestamp.
 
 ID is a conflict id or any unique prefix of it.`,
-	Example: `  tt sync conflicts
-  tt sync conflicts 3f2a9c
-  tt sync conflicts --json`,
+	Example: `  docket sync conflicts
+  docket sync conflicts 3f2a9c
+  docket sync conflicts --json`,
 	Args: atMostOneArg("conflict ID"),
 	// Deriving the open conflicts replays the whole sync history, too costly
 	// for a Tab press, so completion offers nothing rather than file names.
@@ -45,25 +45,25 @@ var syncResolveCmd = &cobra.Command{
 	Short: "Resolve a sync conflict by keeping a version or writing a replacement",
 	Long: `Resolve one open sync conflict as a new change that syncs to every device.
 
---version N keeps competing version N as 'tt sync conflicts ID' numbers them.
+--version N keeps competing version N as 'docket sync conflicts ID' numbers them.
 When the change that wrote it also left conflicts in other files, their
 versions from that same change are kept too, in one resolution, so a change
 that spanned files is never resolved half way.
 
 --current keeps what the workspace holds now. --file writes replacement text
-for tasks or a note; it is checked the way tt reads that file.
+for tasks or a note; it is checked the way Docket reads that file.
 
 The conflict must still be the one you read: if another device resolved it or
 an edit changed it since, nothing is written and the refusal says so. Re-read
 it and choose again; every version is still kept.
 
-This is not 'tt conflict resolve', which settles a local merge conflict
+This is not 'docket conflict resolve', which settles a local merge conflict
 between this machine's edits and the file on disk with --use local|remote|file.
 A sync conflict instead holds numbered versions from several devices, so it is
 resolved by naming one.`,
-	Example: `  tt sync resolve 3f2a9c --version 2
-  tt sync resolve 3f2a9c --current
-  tt sync resolve 3f2a9c --file merged-tasks.md`,
+	Example: `  docket sync resolve 3f2a9c --version 2
+  docket sync resolve 3f2a9c --current
+  docket sync resolve 3f2a9c --file merged-tasks.md`,
 	Args:              syncResolveArgs,
 	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE:              runSyncResolve,
@@ -76,8 +76,8 @@ var syncDiagnosticsCmd = &cobra.Command{
 exchange (including any transport error), the transactions waiting to
 publish, and each open conflict's files, devices, and digests. It names files
 and devices but holds no task or note content. Nothing is changed.`,
-	Example: `  tt sync diagnostics
-  tt sync diagnostics --file ~/Desktop/tt-sync-diagnostics.json`,
+	Example: `  docket sync diagnostics
+  docket sync diagnostics --file ~/Desktop/tt-sync-diagnostics.json`,
 	Args: noArgs,
 	RunE: runSyncDiagnostics,
 }
@@ -122,7 +122,7 @@ func findSyncConflict(views []engine.ConflictView, id string) (engine.ConflictVi
 	case 1:
 		return found[0], nil
 	case 0:
-		return engine.ConflictView{}, fmt.Errorf("no open sync conflict %s; run 'tt sync conflicts' to list them", id)
+		return engine.ConflictView{}, fmt.Errorf("no open sync conflict %s; run 'docket sync conflicts' to list them", id)
 	}
 	return engine.ConflictView{}, fmt.Errorf("%s names %d open conflicts; give more of the id", id, len(found))
 }
@@ -166,7 +166,7 @@ func runSyncConflicts(_ *cobra.Command, args []string) error {
 		for _, view := range views {
 			fmt.Printf("%s  %s  (%s, %d versions)\n", shortTxn(view.ID), view.Label, view.Path, len(view.Versions))
 		}
-		fmt.Println("\nShow one with 'tt sync conflicts ID'; resolve it with 'tt sync resolve ID'.")
+		fmt.Println("\nShow one with 'docket sync conflicts ID'; resolve it with 'docket sync resolve ID'.")
 		return nil
 	}
 	view, err := findSyncConflict(views, args[0])
@@ -208,7 +208,7 @@ func printSyncConflict(view engine.ConflictView) {
 		}
 		printConflictBody(version.ConflictContent)
 	}
-	fmt.Printf("\nResolve with 'tt sync resolve %s --version N', '--current', or '--file PATH'.\n", shortTxn(view.ID))
+	fmt.Printf("\nResolve with 'docket sync resolve %s --version N', '--current', or '--file PATH'.\n", shortTxn(view.ID))
 }
 
 func conflictDevice(writer engine.ConflictWriter) string {

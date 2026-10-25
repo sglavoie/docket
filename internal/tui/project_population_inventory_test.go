@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/testutil/gotree"
+	"github.com/sglavoie/docket/internal/testutil/gotree"
 )
 
 // projectPopulationInventory classifies every production caller of a runtime

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/sglavoie/tt/internal/synclog"
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/synclog"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // CommitService is the mutation commit boundary. It drives one or more

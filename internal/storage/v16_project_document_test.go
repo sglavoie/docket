@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/storage/format"
+	"github.com/sglavoie/docket/internal/storage/format"
 )
 
 // TestV16ProjectDocumentLiftFromV15AddsNoResumeNote is what makes the schema-18

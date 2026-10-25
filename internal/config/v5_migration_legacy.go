@@ -8,8 +8,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/storage/format"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/storage/format"
 )
 
 func convertLegacyV4TaskFile(path string, location *time.Location) (format.V5TaskConversionResult, error) {

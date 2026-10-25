@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"github.com/sglavoie/tt/internal/storage/format"
+	"github.com/sglavoie/docket/internal/storage/format"
 )
 
 // SchemaVersionV9 renames the durable deferral-date metadata key from "snoozed"

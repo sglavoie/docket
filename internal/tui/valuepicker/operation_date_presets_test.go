@@ -5,9 +5,9 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/sglavoie/tt/internal/tui/listsurface"
-	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/tui/listsurface"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // The clock is a Saturday, so the weekend row names the next one rather than

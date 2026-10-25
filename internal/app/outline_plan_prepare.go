@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // preparedOutlineLine is one validated buffer line paired with the task it acts

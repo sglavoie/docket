@@ -12,13 +12,13 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/external"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/route"
-	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/external"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/route"
+	"github.com/sglavoie/docket/internal/tui/status"
 )
 
 func TestNotesManagerLoadsEveryOwnerWithStableLocatedOrdering(t *testing.T) {
@@ -169,7 +169,7 @@ func TestNotesManagerTotalSnapshotFailureBlocksRows(t *testing.T) {
 }
 
 func TestNotesManagerMalformedEditorUsesSelectedRowsActualOwner(t *testing.T) {
-	t.Setenv("TT_EDITOR", "true")
+	t.Setenv("DOCKET_EDITOR", "true")
 	t.Setenv("VISUAL", "")
 	t.Setenv("EDITOR", "")
 	alpha := &models.Project{ID: "alpha", Name: "Alpha", Path: filepath.Join(t.TempDir(), "alpha")}
@@ -211,7 +211,7 @@ func TestNotesManagerMalformedEditorUsesSelectedRowsActualOwner(t *testing.T) {
 }
 
 func TestNotesManagerCreationRequiresLocationConfirmation(t *testing.T) {
-	t.Setenv("TT_EDITOR", "true")
+	t.Setenv("DOCKET_EDITOR", "true")
 	t.Setenv("VISUAL", "")
 	t.Setenv("EDITOR", "")
 	project := &models.Project{ID: "alpha", Name: "Alpha", Path: t.TempDir()}
@@ -377,7 +377,7 @@ func TestNotesScopePickerEmptyResultsAreSafeAndResize(t *testing.T) {
 }
 
 func TestResolveNoteEditorEnvironmentPrecedenceAndActionableFailure(t *testing.T) {
-	t.Setenv("TT_EDITOR", "true --tt")
+	t.Setenv("DOCKET_EDITOR", "true --tt")
 	t.Setenv("VISUAL", "sh --visual")
 	t.Setenv("EDITOR", "env --editor")
 	editor, err := external.ResolveNoteEditor()
@@ -385,10 +385,10 @@ func TestResolveNoteEditorEnvironmentPrecedenceAndActionableFailure(t *testing.T
 		t.Fatal(err)
 	}
 	if editor != "true --tt" {
-		t.Fatalf("editor = %q, want TT_EDITOR", editor)
+		t.Fatalf("editor = %q, want DOCKET_EDITOR", editor)
 	}
 
-	t.Setenv("TT_EDITOR", "")
+	t.Setenv("DOCKET_EDITOR", "")
 	editor, err = external.ResolveNoteEditor()
 	if err != nil {
 		t.Fatal(err)
@@ -408,7 +408,7 @@ func TestResolveNoteEditorEnvironmentPrecedenceAndActionableFailure(t *testing.T
 
 	t.Setenv("EDITOR", "")
 	_, err = external.ResolveNoteEditor()
-	if err == nil || !strings.Contains(err.Error(), "set TT_EDITOR, VISUAL, or EDITOR") {
+	if err == nil || !strings.Contains(err.Error(), "set DOCKET_EDITOR, VISUAL, or EDITOR") {
 		t.Fatalf("missing-editor error = %v, want actionable environment guidance", err)
 	}
 }

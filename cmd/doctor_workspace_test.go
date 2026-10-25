@@ -11,9 +11,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/testutil"
 )
 
 //nolint:govet // The test-local data directory is intentionally independent of the command flag.
@@ -255,7 +255,7 @@ func TestRunDoctorRefusesAMissingWorkspaceWithoutCreatingOne(t *testing.T) {
 			stdout, _, err := captureDoctorOutput(t, func() error {
 				return runDoctor(newDoctorCommand(t), nil)
 			})
-			if err == nil || !strings.Contains(err.Error(), "no tt workspace at "+dir) {
+			if err == nil || !strings.Contains(err.Error(), "no Docket workspace at "+dir) {
 				t.Fatalf("doctor error = %v, want a refusal naming %s\n%s", err, dir, stdout)
 			}
 			var issues *doctorIssuesError
@@ -299,8 +299,8 @@ func TestDataDirThatIsAFileIsRefusedByName(t *testing.T) {
 	}
 
 	setCommandDataDir(t, "")
-	t.Setenv("TT_DATA_DIR", file)
-	if _, err := LoadCLIWorkspace(); err == nil || err.Error() != "TT_DATA_DIR="+file+" is not a directory" {
-		t.Errorf("TT_DATA_DIR load error = %v, want the TT_DATA_DIR refusal", err)
+	t.Setenv("DOCKET_DATA_DIR", file)
+	if _, err := LoadCLIWorkspace(); err == nil || err.Error() != "DOCKET_DATA_DIR="+file+" is not a directory" {
+		t.Errorf("DOCKET_DATA_DIR load error = %v, want the DOCKET_DATA_DIR refusal", err)
 	}
 }

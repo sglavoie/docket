@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/capturetext"
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/capturetext"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 func TestCaptureProjectTypoSuggestionsDoNotRoute(t *testing.T) {

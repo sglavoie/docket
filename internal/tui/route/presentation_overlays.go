@@ -1,6 +1,6 @@
 package route
 
-import "github.com/sglavoie/tt/internal/tui/presentation"
+import "github.com/sglavoie/docket/internal/tui/presentation"
 
 // OverlayForPresentation maps only transient renderer identities to the typed
 // overlay stack. Primary and secondary destinations are installed through

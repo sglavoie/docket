@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // DependencyTargetState is what a dependency locator resolves to inside one

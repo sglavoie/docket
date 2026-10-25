@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/docket/internal/external"
 )
 
 // draftRecovery is one comment draft held verbatim beside the composer showing

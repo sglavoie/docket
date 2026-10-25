@@ -1,13 +1,14 @@
-# tt - CLI task manager
+# docket - CLI task manager
 
-binary_name := "tt"
+binary_name := "docket"
+alias_name := "dkt"
 install_dir := env("HOME") / ".local/bin"
 
 # Build information
 version := env("VERSION", "dev")
 git_commit := `git rev-parse --short HEAD 2>/dev/null || echo "unknown"`
 build_time := `date -u '+%Y-%m-%dT%H:%M:%SZ'`
-ldflags := "-ldflags \"-X github.com/sglavoie/tt/cmd.Version=" + version + " -X github.com/sglavoie/tt/cmd.GitCommit=" + git_commit + " -X github.com/sglavoie/tt/cmd.BuildTime=" + build_time + "\""
+ldflags := "-ldflags \"-X github.com/sglavoie/docket/cmd.Version=" + version + " -X github.com/sglavoie/docket/cmd.GitCommit=" + git_commit + " -X github.com/sglavoie/docket/cmd.BuildTime=" + build_time + "\""
 
 # Show available recipes
 help:
@@ -25,10 +26,11 @@ install: build
     @mkdir -p {{ install_dir }}
     rm -f {{ install_dir }}/{{ binary_name }}
     cp {{ binary_name }} {{ install_dir }}/{{ binary_name }}
-    @echo "Installed to {{ install_dir }}/{{ binary_name }}"
+    ln -sfn {{ binary_name }} {{ install_dir }}/{{ alias_name }}
+    @echo "Installed to {{ install_dir }}/{{ binary_name }} (linked as {{ alias_name }})"
 
 # Alias for install
-tt: install
+docket: install
 
 # Run tests (with race detector; internal/tui split across processes)
 test:
@@ -63,7 +65,7 @@ fmt:
     set -euo pipefail
     echo "Formatting code..."
     if command -v goimports &>/dev/null; then
-        goimports -w -local github.com/sglavoie/tt .
+        goimports -w -local github.com/sglavoie/docket .
     else
         echo "goimports not found; falling back to go fmt"
         go fmt ./...
@@ -111,7 +113,7 @@ readme-media:
 readme-media-check:
     ./scripts/readme_media.sh --check
 
-# Run the two-machine hazard gate (outside `just ci`; see TT_OLD_BINARY_REF)
+# Run the two-machine hazard gate (outside `just ci`; see DOCKET_OLD_BINARY_REF)
 cross-machine:
     ./scripts/cross_machine_gate.sh
 
@@ -119,13 +121,13 @@ cross-machine:
 mac-ghosttykit:
     ./macos/scripts/build-ghosttykit.sh
 
-# Build macos/build/tt.app (Debug, or Release bundling `just build`'s tt; outside `just ci`)
+# Build macos/build/tt.app (Debug, or Release bundling `just build`'s docket; outside `just ci`)
 mac-app configuration="Debug":
     #!/usr/bin/env bash
     set -euo pipefail
     if [ "{{ configuration }}" = Release ]; then
         just build
-        export TT_BINARY="$PWD/{{ binary_name }}"
+        export DOCKET_BINARY="$PWD/{{ binary_name }}"
     fi
     ./macos/scripts/build-app.sh {{ configuration }}
 
@@ -154,13 +156,13 @@ ios-build:
 ios-install team="" device="":
     #!/usr/bin/env bash
     set -euo pipefail
-    export TT_IOS_DEVELOPMENT_TEAM="${1:-${TT_IOS_DEVELOPMENT_TEAM:-}}"
-    export TT_IOS_DEVICE="${2:-${TT_IOS_DEVICE:-}}"
+    export DOCKET_IOS_DEVELOPMENT_TEAM="${1:-${DOCKET_IOS_DEVELOPMENT_TEAM:-}}"
+    export DOCKET_IOS_DEVICE="${2:-${DOCKET_IOS_DEVICE:-}}"
     exec ./ios/scripts/install-device.sh --launch
 
 # Run Swift suites: unit, bridge, app (hosted simulator tests), sync, or all; summary in ios/.cache/results/<suite> (outside `just ci`)
 ios-test suite="all":
-    ./ios/scripts/test-suites.sh {{ suite }} "${TT_IOS_RESULTS:-ios/.cache/results}/{{ suite }}"
+    ./ios/scripts/test-suites.sh {{ suite }} "${DOCKET_IOS_RESULTS:-ios/.cache/results}/{{ suite }}"
 
 # Unattended simulator qualification. start detaches from SSH; status/resume use the same output directory.
 ios-qualify command="run" output="ios/.cache/qualification":
@@ -172,8 +174,8 @@ ios-ui-test only="" device="default":
     set -euo pipefail
     max_width=""
     if [ "{{ device }}" = small ]; then max_width=375; fi
-    TT_UITEST_ONLY="{{ only }}" TT_IOS_DEVICE="{{ device }}" TT_UITEST_MAX_WIDTH="$max_width" \
-        ./ios/scripts/test-ui.sh "${TT_IOS_RESULTS:-ios/.cache/results}/ui-{{ device }}"
+    DOCKET_UITEST_ONLY="{{ only }}" DOCKET_IOS_DEVICE="{{ device }}" DOCKET_UITEST_MAX_WIDTH="$max_width" \
+        ./ios/scripts/test-ui.sh "${DOCKET_IOS_RESULTS:-ios/.cache/results}/ui-{{ device }}"
 
 # Launch tt on a simulator over a fresh copy of a fixture (representative or empty), light or dark, at a text size (outside `just ci`)
 ios-run fixture="representative" appearance="light" text_size="large" device="default":
@@ -212,12 +214,12 @@ release:
     mkdir -p dist
     for os in darwin linux; do
         for arch in amd64 arm64; do
-            out="dist/tt-${os}-${arch}"
+            out="dist/{{ binary_name }}-${os}-${arch}"
             echo "Building ${out}..."
             GOOS=${os} GOARCH=${arch} go build {{ ldflags }} -o "${out}" .
         done
     done
-    (cd dist && shasum -a 256 tt-* > SHA256SUMS)
+    (cd dist && shasum -a 256 {{ binary_name }}-* > SHA256SUMS)
     echo "Release binaries and SHA256SUMS written to dist/"
 
 # Remove build artifacts

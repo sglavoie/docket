@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sglavoie/tt/internal/engine"
+	"github.com/sglavoie/docket/internal/engine"
 )
 
 type remindersPayload struct {

@@ -5,7 +5,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // SetDueDate sets or clears a task's calendar due date.

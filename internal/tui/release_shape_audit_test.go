@@ -13,11 +13,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/testutil/gotree"
+	"github.com/sglavoie/docket/internal/testutil/gotree"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/tui/chrome"
 )
 
 // This file is the negative half of the release. Every other test in it proves

@@ -4,8 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/sglavoie/tt/internal/synclog"
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/synclog"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // Empty history is an ordinary outcome, distinct from an unreadable ledger.

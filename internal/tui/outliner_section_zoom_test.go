@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/outliner"
+	"github.com/sglavoie/docket/internal/tui/outliner"
 )
 
 func sectionHeaderNames(outlinerView *outliner.OutlinerModel) []string {

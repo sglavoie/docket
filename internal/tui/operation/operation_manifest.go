@@ -3,7 +3,7 @@ package operation
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/tui/presentation"
 )
 
 // OperationManifestEntry describes one ordered production action on an entity

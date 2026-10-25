@@ -485,7 +485,7 @@ artifact transaction. Malformed notes remain available for raw editing and
 deletion but cannot be renamed or moved until repaired. Search and scope are
 session-only. Note tags, task links, pins, bulk actions, and archived
 owners remain outside the product. Editor resolution is
-`TT_EDITOR`, then `VISUAL`, then `EDITOR`.
+`DOCKET_EDITOR`, then `VISUAL`, then `EDITOR`.
 
 The body preview is one more consumer of the shared list-surface layout rather
 than a second responsive grammar. `renderNotesContent` asks

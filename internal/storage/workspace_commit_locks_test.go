@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 func TestWithWorkspaceCommitLocksRecoversEveryJournalBeforeCallback(t *testing.T) {

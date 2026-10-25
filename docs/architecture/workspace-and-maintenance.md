@@ -2,7 +2,7 @@
 
 ## Workspace location and cloud consent
 
-Workspace selection precedence is explicit `--data-dir`, `TT_DATA_DIR`, the
+Workspace selection precedence is explicit `--data-dir`, `DOCKET_DATA_DIR`, the
 machine-local active-workspace pointer, then the local default. A previously
 existing iCloud workspace is preserved for compatibility, but new cloud use is
 chosen through `tt workspace move`.

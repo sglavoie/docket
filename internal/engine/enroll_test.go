@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/syncexchange"
-	"github.com/sglavoie/tt/internal/synclog"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/syncexchange"
+	"github.com/sglavoie/docket/internal/synclog"
 )
 
 // TestSyncEnrollment drives desktop enrollment end to end through the shared

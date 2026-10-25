@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/taskform"
+	"github.com/sglavoie/docket/internal/tui/taskform"
 )
 
 func TestTaskComposerExpandShowsCapturedPin(t *testing.T) {

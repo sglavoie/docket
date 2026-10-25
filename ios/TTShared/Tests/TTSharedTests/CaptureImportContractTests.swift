@@ -6,8 +6,8 @@ import XCTest
 /// The inbox as the two halves meet it: captures this package writes,
 /// imported by the real engine (a mobile/bridgehost process speaking the
 /// bridge protocol the app calls in process), and the widget snapshot that
-/// engine answers, read by this package. TT_BRIDGEHOST names the binary and
-/// TT_CAPTURE_FIXTURE the workspace to copy; the suite fails rather than
+/// engine answers, read by this package. DOCKET_BRIDGEHOST names the binary and
+/// DOCKET_CAPTURE_FIXTURE the workspace to copy; the suite fails rather than
 /// skips without them.
 final class CaptureImportContractTests: XCTestCase {
     private var root: URL!
@@ -17,8 +17,8 @@ final class CaptureImportContractTests: XCTestCase {
 
     override func setUpWithError() throws {
         let environment = ProcessInfo.processInfo.environment
-        guard let fixture = environment["TT_CAPTURE_FIXTURE"], FileManager.default.fileExists(atPath: fixture) else {
-            throw Failure("TT_CAPTURE_FIXTURE must name the representative workspace")
+        guard let fixture = environment["DOCKET_CAPTURE_FIXTURE"], FileManager.default.fileExists(atPath: fixture) else {
+            throw Failure("DOCKET_CAPTURE_FIXTURE must name the representative workspace")
         }
         root = FileManager.default.temporaryDirectory.appendingPathComponent("tt-capture-contract-\(UUID().uuidString)", isDirectory: true)
         workspace = root.appendingPathComponent("workspace", isDirectory: true)
@@ -48,8 +48,8 @@ final class CaptureImportContractTests: XCTestCase {
         private(set) var workspaceID = ""
 
         init(workspace: URL, runtime: URL) throws {
-            guard let path = ProcessInfo.processInfo.environment["TT_BRIDGEHOST"], FileManager.default.isExecutableFile(atPath: path) else {
-                throw Failure("TT_BRIDGEHOST must name a built mobile/bridgehost binary")
+            guard let path = ProcessInfo.processInfo.environment["DOCKET_BRIDGEHOST"], FileManager.default.isExecutableFile(atPath: path) else {
+                throw Failure("DOCKET_BRIDGEHOST must name a built mobile/bridgehost binary")
             }
             process.executableURL = URL(fileURLWithPath: path)
             process.standardInput = input

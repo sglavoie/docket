@@ -1,6 +1,6 @@
 package lens
 
-import "github.com/sglavoie/tt/internal/tui/operation"
+import "github.com/sglavoie/docket/internal/tui/operation"
 
 // The named-lens operation IDs. They live beside the picker rather than
 // beside the descriptors and handlers the shell registers, for the same reason

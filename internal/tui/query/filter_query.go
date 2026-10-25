@@ -6,7 +6,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // The Outliner holds exactly one narrowing predicate: filterQuery, a

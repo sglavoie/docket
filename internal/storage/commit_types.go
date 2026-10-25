@@ -3,8 +3,8 @@ package storage
 import (
 	"os"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // ArtifactChange describes a single full-file artifact written or deleted in the

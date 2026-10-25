@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // NamedLensSummary reads a definition and catalog slugs, so it is exercised here rather than

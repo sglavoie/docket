@@ -15,7 +15,7 @@ ANSI color removal. Help also checks that its footer occupies the final row.
 Reproduce the frame export from the repository root:
 
 ```sh
-TT_TERMINAL_REVIEW_DIR="$PWD/macos/.cache/refinement-review" \
+DOCKET_TERMINAL_REVIEW_DIR="$PWD/macos/.cache/refinement-review" \
   go test ./internal/tui -run '^TestPolishVisualReviewFrames$' -count=1
 ```
 

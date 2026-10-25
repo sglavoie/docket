@@ -6,11 +6,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/engine"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/ttenv"
-	"github.com/sglavoie/tt/internal/tterrors"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/engine"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/ttenv"
+	"github.com/sglavoie/docket/internal/tterrors"
 )
 
 // CLIWorkspace is the facade-free composition root shared by CLI commands. A
@@ -48,7 +48,7 @@ func loadCLIWorkspace() (*CLIWorkspace, error) {
 }
 
 // openDesktopRuntime opens the workspace the desktop launch resolves — an
-// explicit --data-dir or TT_DATA_DIR, the active-workspace pointer, or the
+// explicit --data-dir or DOCKET_DATA_DIR, the active-workspace pointer, or the
 // default — through the shared runtime, as the process machine. The resolution
 // policy is the desktop's and stays here; the runtime receives its answer as
 // explicit configuration.
@@ -87,7 +87,7 @@ func dataDirOverrideSource() string {
 	return ttenv.DataDirEnvVar
 }
 
-// checkDataDirOverride refuses an explicit --data-dir or TT_DATA_DIR that names
+// checkDataDirOverride refuses an explicit --data-dir or DOCKET_DATA_DIR that names
 // something other than a directory, naming the override itself, before any
 // path beneath it is derived and fails with ENOTDIR. A path that does not
 // exist yet is not refused here: creating a workspace there is legitimate.
@@ -124,8 +124,8 @@ func requireExistingWorkspace() error {
 		return err
 	}
 	if !exists {
-		return fmt.Errorf("no tt workspace at %s; this command never creates one: "+
-			"pass --data-dir with an existing workspace, or run 'tt' to create one there", absolutePath(dir))
+		return fmt.Errorf("no Docket workspace at %s; this command never creates one: "+
+			"pass --data-dir with an existing workspace, or run 'docket' to create one there", absolutePath(dir))
 	}
 	return nil
 }

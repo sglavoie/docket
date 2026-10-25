@@ -11,7 +11,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/sglavoie/tt/mobile/ttbridge"
+	"github.com/sglavoie/docket/mobile/ttbridge"
 )
 
 // maxRequestBytes bounds one request line.

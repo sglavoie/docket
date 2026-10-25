@@ -19,6 +19,6 @@ xcrun simctl bootstatus "$simulator" -b >/dev/null
 xcodebuild test -project "$ios_dir/TTMobile.xcodeproj" -scheme TTMobile \
     -only-testing:TTMobileTests \
     -destination "platform=iOS Simulator,id=$simulator" \
-    -derivedDataPath "${TT_IOS_CACHE:-$ios_dir/.cache}/UIDerivedData" \
+    -derivedDataPath "${DOCKET_IOS_CACHE:-$ios_dir/.cache}/UIDerivedData" \
     -resultBundlePath "$output/TTMobileTests.xcresult" \
     CODE_SIGNING_ALLOWED=NO

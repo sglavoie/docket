@@ -1,6 +1,6 @@
 package storage
 
-import "github.com/sglavoie/tt/internal/storage/format"
+import "github.com/sglavoie/docket/internal/storage/format"
 
 // SchemaVersionV11 adds one optional, single-valued context to each task.
 const SchemaVersionV11 = 11

@@ -3,8 +3,8 @@ package taskform
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/testutil"
 )
 
 func TestBuildValidParentsIncludesAllProjectTasks(t *testing.T) {

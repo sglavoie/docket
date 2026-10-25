@@ -11,8 +11,8 @@ import XCTest
 ///
 /// It needs no host path, so it runs on a physical iPhone:
 /// ios/scripts/record-reminder-evidence.sh runs it there and records the
-/// evidence the session-15 verifier validates. `TT_EXPECTED_APP_EXECUTABLES`
-/// (passed as TEST_RUNNER_TT_EXPECTED_APP_EXECUTABLES) names the build the
+/// evidence the session-15 verifier validates. `DOCKET_EXPECTED_APP_EXECUTABLES`
+/// (passed as TEST_RUNNER_DOCKET_EXPECTED_APP_EXECUTABLES) names the build the
 /// script installed; the running app must report the same digests.
 @MainActor
 final class ReminderDeliveryUITests: XCTestCase {
@@ -72,10 +72,10 @@ final class ReminderDeliveryUITests: XCTestCase {
     private func launchSeeded(kind: String, title: String, delay: Int) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment = [
-            "TT_UITEST_SCRATCH": "\(name.filter { $0.isLetter || $0.isNumber })-\(stamp)",
-            "TT_UITEST_SEED_REMINDER": kind,
-            "TT_UITEST_SEED_TITLE": title,
-            "TT_UITEST_SEED_DELAY_SECONDS": "\(delay)",
+            "DOCKET_UITEST_SCRATCH": "\(name.filter { $0.isLetter || $0.isNumber })-\(stamp)",
+            "DOCKET_UITEST_SEED_REMINDER": kind,
+            "DOCKET_UITEST_SEED_TITLE": title,
+            "DOCKET_UITEST_SEED_DELAY_SECONDS": "\(delay)",
         ]
         app.launch()
         allowNotificationsIfAsked()
@@ -88,7 +88,7 @@ final class ReminderDeliveryUITests: XCTestCase {
             XCTFail("the seeded reminder was not scheduled: \(status.exists ? status.label : "no status")")
         }
         XCTAssertTrue(status.label.contains(title), status.label)
-        if let expected = ProcessInfo.processInfo.environment["TT_EXPECTED_APP_EXECUTABLES"], !expected.isEmpty {
+        if let expected = ProcessInfo.processInfo.environment["DOCKET_EXPECTED_APP_EXECUTABLES"], !expected.isEmpty {
             let build = app.staticTexts["reminders.build"]
             scrollTo(build, in: app)
             XCTAssertEqual(build.label, expected, "the running app is not the build that was installed")

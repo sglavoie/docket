@@ -3,9 +3,9 @@ package lensops
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/tui/lens"
-	"github.com/sglavoie/tt/internal/tui/outliner"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/tui/lens"
+	"github.com/sglavoie/docket/internal/tui/outliner"
 )
 
 // TestLensControllerDrainsThePendingLaunchExactlyOnce pins the launch order the

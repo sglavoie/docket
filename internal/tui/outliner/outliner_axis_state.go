@@ -3,8 +3,8 @@ package outliner
 import (
 	"slices"
 
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/query"
 )
 
 // outlinerScopeFrame captures the outliner state that a project-scope push

@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/docket/internal/config"
 )
 
 func checkMigrationSnapshots(dataDir string, schema int, results *doctorResults) {

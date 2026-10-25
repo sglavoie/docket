@@ -7,14 +7,14 @@ import XCTest
 final class SimulatorUpgradeUITests: XCTestCase {
     private var root: URL {
         get throws {
-            let path = try XCTUnwrap(ProcessInfo.processInfo.environment["TT_UITEST_UPGRADE_ROOT"])
+            let path = try XCTUnwrap(ProcessInfo.processInfo.environment["DOCKET_UITEST_UPGRADE_ROOT"])
             return URL(fileURLWithPath: path)
         }
     }
 
     private func launch() throws -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchEnvironment = ["TT_UITEST_ROOT": try root.path, "TT_UITEST_DEVICE_ID": "upgrade-phone"]
+        app.launchEnvironment = ["DOCKET_UITEST_ROOT": try root.path, "DOCKET_UITEST_DEVICE_ID": "upgrade-phone"]
         app.launch()
         XCTAssertTrue(app.tabBars.buttons["Today"].waitForExistence(timeout: 40))
         return app
@@ -28,7 +28,7 @@ final class SimulatorUpgradeUITests: XCTestCase {
     func testSeedUpgrade() throws {
         let root = try root
         XCTAssertFalse(FileManager.default.fileExists(atPath: root.path), "upgrade root must be fresh")
-        let seed = try XCTUnwrap(ProcessInfo.processInfo.environment["TT_UITEST_FIXTURE"])
+        let seed = try XCTUnwrap(ProcessInfo.processInfo.environment["DOCKET_UITEST_FIXTURE"])
         try FileManager.default.createDirectory(at: root.appendingPathComponent("workspaces"), withIntermediateDirectories: true)
         try FileManager.default.copyItem(at: URL(fileURLWithPath: seed), to: root.appendingPathComponent("workspaces/upgrade"))
         try Data("upgrade".utf8).write(to: root.appendingPathComponent("selected-workspace"))

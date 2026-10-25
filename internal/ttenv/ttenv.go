@@ -6,5 +6,5 @@ package ttenv
 const (
 	// DataDirEnvVar selects the workspace data directory when no explicit
 	// --data-dir flag is given.
-	DataDirEnvVar = "TT_DATA_DIR"
+	DataDirEnvVar = "DOCKET_DATA_DIR"
 )

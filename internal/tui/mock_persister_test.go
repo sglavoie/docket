@@ -1,8 +1,8 @@
 package tui
 
 import (
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/coordinator"
 )
 
 // mockPersister implements the Persister interface for testing.

@@ -3,7 +3,7 @@ package bridge
 import (
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // WidgetSnapshotFormat names the document query.widget_snapshot answers and

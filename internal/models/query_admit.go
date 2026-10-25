@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // Admits reports whether one task, read inside one project at one instant,

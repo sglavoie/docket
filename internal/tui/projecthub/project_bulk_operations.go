@@ -1,6 +1,6 @@
 package projecthub
 
-import "github.com/sglavoie/tt/internal/tui/operation"
+import "github.com/sglavoie/docket/internal/tui/operation"
 
 // Bulk project tag operation IDs. They are separate descriptors rather than one
 // polymorphic tag editor because each carries its own label into the sheet, and

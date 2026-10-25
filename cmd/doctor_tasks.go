@@ -6,9 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 func checkMissingTaskFiles(projects []*models.Project, results *doctorResults) {
@@ -150,7 +150,7 @@ func fixIssues(dataDir string, projects []*models.Project) ([]string, error) {
 		}
 		if _, err := commit.CommitProjectRepair(project, *rev); err != nil {
 			if errors.Is(err, storage.ErrStaleArtifact) {
-				errs = append(errs, fmt.Errorf("project %s changed on disk while it was being repaired; re-run 'tt doctor --fix': %w", project.Name, err))
+				errs = append(errs, fmt.Errorf("project %s changed on disk while it was being repaired; re-run 'docket doctor --fix': %w", project.Name, err))
 			} else {
 				errs = append(errs, fmt.Errorf("commit repair for project %s: %w", project.Name, err))
 			}

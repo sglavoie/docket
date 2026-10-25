@@ -11,8 +11,8 @@ import (
 	"github.com/charmbracelet/colorprofile"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/tui/taskref"
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // Optional ANSI captures are review artifacts; the layout and visible controls
@@ -47,7 +47,7 @@ func TestCheckInVisualAcceptance(t *testing.T) {
 					if ansi.Strip(mono.String()) != obs.PlainScreen {
 						t.Fatal("monochrome output changed content")
 					}
-					if root := os.Getenv("TT_CHECK_IN_REVIEW_DIR"); root != "" {
+					if root := os.Getenv("DOCKET_CHECK_IN_REVIEW_DIR"); root != "" {
 						if err := os.MkdirAll(root, 0700); err != nil {
 							t.Fatal(err)
 						}

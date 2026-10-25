@@ -5,7 +5,7 @@
 # build-app.sh and test-app.sh both start here.
 #
 # Environment:
-#   TT_MACOS_CACHE          cache root (default macos/.cache, gitignored)
+#   DOCKET_MACOS_CACHE          cache root (default macos/.cache, gitignored)
 
 set -eu
 

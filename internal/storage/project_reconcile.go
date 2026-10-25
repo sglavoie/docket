@@ -6,7 +6,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // This file is the sync reconciliation of one project document: any number of

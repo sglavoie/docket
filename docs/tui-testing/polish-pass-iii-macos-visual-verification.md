@@ -20,10 +20,10 @@ check, session 13 carries no PASS line.
   the README's "Which tt runs" rule says.
 - Machine: macOS 27.0.1 (26A434), Xcode 27.0 (27A266a).
 - Workspace: a new, empty throwaway at `~/tt-asl-p3-throwaway`, given to tt as
-  `TT_DATA_DIR` through the app's `ttEnvironment` default. tt created it on its
+  `DOCKET_DATA_DIR` through the app's `ttEnvironment` default. tt created it on its
   first start.
 - Defaults: the session changed only `ttEnvironment`. Afterwards it held its
-  original three entries again (`EDITOR`, `TT_EDITOR`, `VISUAL`), and
+  original three entries again (`EDITOR`, `DOCKET_EDITOR`, `VISUAL`), and
   `ttFollowAppearance`, absent before the checks and written by the Settings
   toggle, was deleted again. The exported backup was lost when the Mac
   rebooted, since it was in `/tmp`. The restore therefore used the domain as
@@ -43,7 +43,7 @@ agent quit the Debug app, pointed the tt Login Item at `/Applications/tt.app`,
 updated `~/.local/bin/tt`, and launched the installed app. `ps` then showed
 `/Applications/tt.app/Contents/MacOS/tt` (pid 99627) running
 `~/.local/bin/tt --control …tt-app-99627.sock` (pid 111) with
-`TT_DATA_DIR=/Users/sglavoie/tt-asl-p3-throwaway`. Every check below ran
+`DOCKET_DATA_DIR=/Users/sglavoie/tt-asl-p3-throwaway`. Every check below ran
 against that pair.
 
 ## Session 9: following the macOS appearance

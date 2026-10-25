@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/testutil/gotree"
+	"github.com/sglavoie/docket/internal/testutil/gotree"
 )
 
 // The package-wide audits below must keep meaning the same thing after

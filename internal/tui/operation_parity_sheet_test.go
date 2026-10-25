@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/notes"
-	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/notes"
+	"github.com/sglavoie/docket/internal/tui/operation"
 )
 
 func TestNotesOperationCatalogMatchesDirectActions(t *testing.T) {

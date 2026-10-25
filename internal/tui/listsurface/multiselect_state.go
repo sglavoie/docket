@@ -5,7 +5,7 @@ import (
 	"maps"
 	"sort"
 
-	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
 // MultiSelectState provides reusable multi-selection state for views that

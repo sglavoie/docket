@@ -3,7 +3,7 @@ package listsurface
 import (
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/operation"
 )
 
 // ListSource is the validated input shape shared by List Surface adapters and

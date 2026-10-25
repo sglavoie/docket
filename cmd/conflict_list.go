@@ -7,7 +7,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 var conflictListJSON bool
@@ -16,8 +16,8 @@ var conflictListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List unresolved merge conflicts",
 	Long:  `List every persisted merge conflict with its project, conflict count, and age.`,
-	Example: `  tt conflict list
-  tt conflict list --json`,
+	Example: `  docket conflict list
+  docket conflict list --json`,
 	Args:              noArgs,
 	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE:              runConflictList,
@@ -65,7 +65,7 @@ func runConflictList(_ *cobra.Command, _ []string) error {
 		})
 	}
 	fmt.Println(t.Render())
-	fmt.Printf("\nResolve one with: tt conflict resolve <id> --use local|remote|file\n")
+	fmt.Printf("\nResolve one with: docket conflict resolve <id> --use local|remote|file\n")
 	return nil
 }
 
@@ -92,7 +92,7 @@ func resolveConflictID(store *storage.ConflictStore, ref string) (string, error)
 				return r.ID, nil
 			}
 		}
-		return "", fmt.Errorf("conflict ID prefix must be at least 4 characters, got %q; run 'tt conflict list' to see IDs", ref)
+		return "", fmt.Errorf("conflict ID prefix must be at least 4 characters, got %q; run 'docket conflict list' to see IDs", ref)
 	}
 	var matches []string
 	for _, r := range records {
@@ -107,7 +107,7 @@ func resolveConflictID(store *storage.ConflictStore, ref string) (string, error)
 	case 1:
 		return matches[0], nil
 	case 0:
-		return "", fmt.Errorf("no conflict matches %q; run 'tt conflict list' to see IDs", ref)
+		return "", fmt.Errorf("no conflict matches %q; run 'docket conflict list' to see IDs", ref)
 	default:
 		return "", fmt.Errorf("conflict ID %q is ambiguous; candidates: %s", ref, strings.Join(matches, ", "))
 	}

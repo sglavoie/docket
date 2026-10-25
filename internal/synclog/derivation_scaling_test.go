@@ -126,11 +126,11 @@ func derivationTime(t *testing.T, s *synthHistory) (time.Duration, *materialized
 // does not: the largest history outgrows the cache that the smallest fits in,
 // so contention for memory slows only one side, and a 3-core CI runner draining
 // race shards measured a ratio of 17 where an idle one measures 6. The race
-// suite therefore sets TT_DEFER_TIMING_GUARDS, and `ci.sh checks` runs this
+// suite therefore sets DOCKET_DEFER_TIMING_GUARDS, and `ci.sh checks` runs this
 // test alone.
 func TestSyncDerivationScalesNearLinearly(t *testing.T) {
-	if os.Getenv("TT_DEFER_TIMING_GUARDS") != "" {
-		t.Skip("TT_DEFER_TIMING_GUARDS is set: ci.sh checks runs this guard on a quiet machine")
+	if os.Getenv("DOCKET_DEFER_TIMING_GUARDS") != "" {
+		t.Skip("DOCKET_DEFER_TIMING_GUARDS is set: ci.sh checks runs this guard on a quiet machine")
 	}
 	shapes := []struct {
 		name  string

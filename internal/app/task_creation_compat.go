@@ -1,6 +1,6 @@
 package app
 
-import "github.com/sglavoie/tt/internal/models"
+import "github.com/sglavoie/docket/internal/models"
 
 // newTaskForCreation is the sole live construction seam and always creates a
 // generic task.

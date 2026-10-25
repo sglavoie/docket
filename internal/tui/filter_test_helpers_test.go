@@ -3,9 +3,9 @@ package tui
 import (
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/outliner"
-	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/outliner"
+	"github.com/sglavoie/docket/internal/tui/query"
 )
 
 func passesCommonFilters(task *models.Task, filter *query.CommonFilterState) bool {

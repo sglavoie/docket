@@ -1,6 +1,6 @@
 package theme
 
-import "github.com/sglavoie/tt/internal/models"
+import "github.com/sglavoie/docket/internal/models"
 
 // TaskStateGroupLabel returns the canonical presentation group for a task.
 func TaskStateGroupLabel(t *models.Task) string {

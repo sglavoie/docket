@@ -1,6 +1,6 @@
 package testutil
 
-import "github.com/sglavoie/tt/internal/models"
+import "github.com/sglavoie/docket/internal/models"
 
 // MockRepository implements storage.ProjectRepository for testing.
 type MockRepository struct {

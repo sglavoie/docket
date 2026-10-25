@@ -3,7 +3,7 @@ package models
 import (
 	"time"
 
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // DerivedProperty names one computed question about a task: something the task

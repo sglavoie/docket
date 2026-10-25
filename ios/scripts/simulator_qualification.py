@@ -169,13 +169,13 @@ def run_stage(name, directory, state, root, env):
         if name == "upgrade-before":
             cwd = baseline_source(root)
             state["upgrade_root"] = str(directory / "retained-app-data")
-        env["TEST_RUNNER_TT_UITEST_UPGRADE_ROOT"] = state["upgrade_root"]
-        env["TT_UITEST_TARGET"] = "TTMobileUpgradeUITests"
-        env["TT_UITEST_ONLY"] = "SimulatorUpgradeUITests/" + ("testSeedUpgrade" if name == "upgrade-before" else "testVerifyUpgrade")
-        env["TT_IOS_CACHE"] = str(cwd / "ios/.cache")
+        env["TEST_RUNNER_DOCKET_UITEST_UPGRADE_ROOT"] = state["upgrade_root"]
+        env["DOCKET_UITEST_TARGET"] = "TTMobileUpgradeUITests"
+        env["DOCKET_UITEST_ONLY"] = "SimulatorUpgradeUITests/" + ("testSeedUpgrade" if name == "upgrade-before" else "testVerifyUpgrade")
+        env["DOCKET_IOS_CACHE"] = str(cwd / "ios/.cache")
         command = ["ios/scripts/test-ui.sh", str(directory)]
     elif name == "compatibility":
-        env.update(TT_OLD_BINARY_REF=OLD_SCHEMA, TT_REQUIRE_NO_SKIPS="1")
+        env.update(DOCKET_OLD_BINARY_REF=OLD_SCHEMA, DOCKET_REQUIRE_NO_SKIPS="1")
         command = ["sh", "scripts/cross_machine_gate.sh"]
     else:
         command = ["go", "test", "-count=1", "-json", "./internal/config", "-run", "^TestWorkspaceBackup"]
@@ -194,7 +194,7 @@ def run_stage(name, directory, state, root, env):
                     assert method in tree, f"required UI case missing: {method}"
             artifacts.append(tests)
             if name.startswith("upgrade-"):
-                app = Path(env["TT_IOS_CACHE"]) / "UIDerivedData/Build/Products/Debug-iphonesimulator/tt.app"
+                app = Path(env["DOCKET_IOS_CACHE"]) / "UIDerivedData/Build/Products/Debug-iphonesimulator/tt.app"
                 executables = {p.name: digest(p) for p in (app / "tt", app / "tt.debug.dylib") if p.is_file()}
                 assert "tt" in executables, "upgrade app executable missing"
                 build = directory / "app-build.json"
@@ -239,9 +239,9 @@ def run(root):
         env = dict(os.environ)
         # A caller's focused-test variables must never shrink the gate silently.
         for key in list(env):
-            if key.startswith(("TT_UITEST_", "TEST_RUNNER_TT_UITEST_")):
+            if key.startswith(("DOCKET_UITEST_", "TEST_RUNNER_DOCKET_UITEST_")):
                 env.pop(key)
-        env["TT_IOS_SIMULATOR"] = simulator
+        env["DOCKET_IOS_SIMULATOR"] = simulator
         state.update(status="running", pid=os.getpid(), updated_at=now())
         write_json(state_file, state)
         # Verifying an upgrade consumes its saved draft. Retry both halves.

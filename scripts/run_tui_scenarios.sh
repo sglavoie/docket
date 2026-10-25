@@ -8,7 +8,7 @@ if [ "$#" -gt 1 ]; then
 fi
 
 if [ "$#" -eq 1 ]; then
-	TT_TUI_SCENARIO=$1 go test -count=1 ./internal/tui/... -run '^TestExampleScenariosPass$'
+	DOCKET_TUI_SCENARIO=$1 go test -count=1 ./internal/tui/... -run '^TestExampleScenariosPass$'
 	exit
 fi
 

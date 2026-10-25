@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/testutil/gotree"
+	"github.com/sglavoie/docket/internal/testutil/gotree"
 )
 
 // This is a deliberate copy of internal/tui/source_anchor_test.go, made when

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // normalizeCreationState resolves the canonical service default for every task

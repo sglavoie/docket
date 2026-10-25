@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // In a zone whose daylight-saving change skips midnight, every day-valued

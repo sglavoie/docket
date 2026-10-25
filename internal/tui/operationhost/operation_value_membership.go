@@ -3,8 +3,8 @@ package operationhost
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
 func (c *Controller) TaskRefs(shell Shell, context operation.CommandContext) ([]taskref.TaskProjectRef, error) {

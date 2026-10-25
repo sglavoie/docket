@@ -14,9 +14,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/logging"
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/logging"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 func newDoctorCommand(t *testing.T, args ...string) *cobra.Command {
@@ -82,7 +82,7 @@ func TestRunDoctorWithoutFixExitsTwoForAFixableIssue(t *testing.T) {
 	if !errors.As(err, &issues) || issues.ExitCode() != 2 {
 		t.Fatalf("doctor error = %v, want an exit-2 issues error", err)
 	}
-	if !strings.Contains(stdout, "Run 'tt doctor --fix'") {
+	if !strings.Contains(stdout, "Run 'docket doctor --fix'") {
 		t.Fatalf("doctor did not point at --fix:\n%s", stdout)
 	}
 }

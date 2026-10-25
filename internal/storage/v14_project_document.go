@@ -1,6 +1,6 @@
 package storage
 
-import "github.com/sglavoie/tt/internal/storage/format"
+import "github.com/sglavoie/docket/internal/storage/format"
 
 // SchemaVersionV14 adds the optional ordered list of soft task dependencies.
 const SchemaVersionV14 = 14

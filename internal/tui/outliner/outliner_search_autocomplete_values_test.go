@@ -5,10 +5,10 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/textgrammar"
-	"github.com/sglavoie/tt/internal/tui/grammar"
-	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/textgrammar"
+	"github.com/sglavoie/docket/internal/tui/grammar"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
 // TestSearchAutocompleteCardinalityFollowsTheGrammarDefinition walks every search

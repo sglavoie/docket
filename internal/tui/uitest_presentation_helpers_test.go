@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/colorprofile"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/tui/outliner"
+	"github.com/sglavoie/docket/internal/tui/outliner"
 )
 
 // assertUXScreenFitsItsTerminal measures display cells, so a double-width rune

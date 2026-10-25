@@ -9,8 +9,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // MoveReport summarizes the outcome of a workspace move so the caller can print

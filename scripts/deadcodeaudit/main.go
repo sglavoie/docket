@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sglavoie/tt/internal/deadcodeaudit"
+	"github.com/sglavoie/docket/internal/deadcodeaudit"
 )
 
 func main() {

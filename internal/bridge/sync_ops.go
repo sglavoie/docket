@@ -3,9 +3,9 @@ package bridge
 import (
 	"path/filepath"
 
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/syncexchange"
-	"github.com/sglavoie/tt/internal/synclog"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/syncexchange"
+	"github.com/sglavoie/docket/internal/synclog"
 )
 
 // syncStatusResult is the engine's side of sync status: what is committed

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // TestAcknowledgeReviewSchedulesFromTheDayItHappened is the recurrence rule at

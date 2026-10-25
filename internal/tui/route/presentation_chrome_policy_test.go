@@ -3,7 +3,7 @@ package route
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/tui/presentation"
 )
 
 // allPresentations returns the contiguous renderer inventory. Only the

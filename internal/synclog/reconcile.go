@@ -8,7 +8,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // Reconciliation makes a device's workspace a pure function of the set of

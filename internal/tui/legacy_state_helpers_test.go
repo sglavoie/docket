@@ -1,6 +1,6 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/models"
+import "github.com/sglavoie/docket/internal/models"
 
 // legacyStateForStatusSection collapses a legacy (status, section) pair onto a
 // single canonical WorkflowState, applying the migration precedence used across

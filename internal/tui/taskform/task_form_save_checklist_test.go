@@ -3,7 +3,7 @@ package taskform
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 
 	tea "charm.land/bubbletea/v2"
 )

@@ -1,6 +1,6 @@
 package notesops
 
-import "github.com/sglavoie/tt/internal/tui/notes"
+import "github.com/sglavoie/docket/internal/tui/notes"
 
 // noteIndex is the notes cluster's shell state: the workspace-wide
 // note snapshot the Outliner's search tier ranks, the generation that discards

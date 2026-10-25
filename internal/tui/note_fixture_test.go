@@ -3,8 +3,8 @@ package tui
 import (
 	"os"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 func saveTestNote(dir string, note *models.Note) error {

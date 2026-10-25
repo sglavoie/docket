@@ -4,9 +4,9 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 
-	"github.com/sglavoie/tt/internal/tui/keymap"
-	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/pulse"
+	"github.com/sglavoie/docket/internal/tui/keymap"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/pulse"
 )
 
 // filteredHelpItem pairs a HelpItem with fuzzy match positions for highlighting.

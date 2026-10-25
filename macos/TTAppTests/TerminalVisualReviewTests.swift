@@ -8,8 +8,8 @@ import XCTest
 /// only of fictional fixture frames exported by the Go visual-review tests.
 final class TerminalVisualReviewTests: XCTestCase {
     func testRenderReviewFramesInGhostty() throws {
-        guard let directory = ProcessInfo.processInfo.environment["TT_TERMINAL_REVIEW_DIR"] else {
-            throw XCTSkip("Set TEST_RUNNER_TT_TERMINAL_REVIEW_DIR to the exported ANSI frame directory for pixel review")
+        guard let directory = ProcessInfo.processInfo.environment["DOCKET_TERMINAL_REVIEW_DIR"] else {
+            throw XCTSkip("Set TEST_RUNNER_DOCKET_TERMINAL_REVIEW_DIR to the exported ANSI frame directory for pixel review")
         }
         let root = URL(fileURLWithPath: directory)
         let files = try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)
@@ -19,7 +19,7 @@ final class TerminalVisualReviewTests: XCTestCase {
     }
 
     private func render(_ file: URL) throws {
-        let fontSize = Float(ProcessInfo.processInfo.environment["TT_TERMINAL_REVIEW_FONT_SIZE"] ?? "14") ?? 14
+        let fontSize = Float(ProcessInfo.processInfo.environment["DOCKET_TERMINAL_REVIEW_FONT_SIZE"] ?? "14") ?? 14
         XCTAssertTrue((8...40).contains(fontSize))
         let parts = file.deletingPathExtension().lastPathComponent.split(separator: "-")
         let size = parts[1].split(separator: "x").compactMap { Int($0) }

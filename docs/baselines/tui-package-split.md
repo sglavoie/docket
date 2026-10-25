@@ -27,7 +27,7 @@ own case — the package is one compilation and one test binary, so nothing abou
 it parallelizes today.
 
 `just cross-machine` forks two processes under different `HOME`s and skips its
-third case when no older git tag is available (`TT_OLD_BINARY_REF` selects one).
+third case when no older git tag is available (`DOCKET_OLD_BINARY_REF` selects one).
 Its wall clock is not comparable to a run that builds the older binary.
 
 ## Size

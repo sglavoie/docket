@@ -8,8 +8,8 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/tui/keymap"
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/tui/keymap"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 func TestDimmedGuidancePreservesTextPackingAndClippedStyle(t *testing.T) {

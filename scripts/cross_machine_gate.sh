@@ -13,7 +13,7 @@
 # preview, committing a catalog change under it, writing a resume note — have no
 # CLI spelling and are not to gain one, so the second process is test
 # infrastructure rather than a new command. Each helper role skips unless
-# TT_HELPER_DATA_DIR names a workspace, which is what keeps them inert under an
+# DOCKET_HELPER_DATA_DIR names a workspace, which is what keeps them inert under an
 # ordinary `go test ./...`.
 #
 # It is deliberately outside `just ci`. It builds binaries, forks processes, and
@@ -24,15 +24,15 @@
 # Usage: scripts/cross_machine_gate.sh
 #
 # Environment:
-#   TT_OLD_BINARY_REF  git ref to build the older binary from. Defaults to the
+#   DOCKET_OLD_BINARY_REF  git ref to build the older binary from. Defaults to the
 #                      newest tag reachable from HEAD. The old-binary cases are
 #                      reported as skipped, loudly, when neither is available.
-#   TT_ENROLL_OLD_BINARY_REF
+#   DOCKET_ENROLL_OLD_BINARY_REF
 #                      git ref of a tt that predates sync enrollment, for the
 #                      enrolled-workspace refusal case. Defaults to the parent of
 #                      the commit that introduced the enrolled catalog schema, or
 #                      HEAD while that change is still uncommitted.
-#   TT_REQUIRE_NO_SKIPS  set to 1 for a release gate where every case must run.
+#   DOCKET_REQUIRE_NO_SKIPS  set to 1 for a release gate where every case must run.
 
 set -eu
 
@@ -73,12 +73,12 @@ report_skip() {
 # Unpinned it is an honest skip: the default ref is the newest tag reachable from
 # HEAD, which may well already be newer than the last schema bump, and there is
 # then genuinely nothing to refuse or to migrate. Pinned through
-# TT_OLD_BINARY_REF it is a failure, because naming a ref is a claim that it
+# DOCKET_OLD_BINARY_REF it is a failure, because naming a ref is a claim that it
 # predates the schema under test — and a case that reported green while proving
 # nothing is exactly how a release ships an unexercised migration.
 report_same_schema() {
-	if [ -n "${TT_OLD_BINARY_REF:-}" ]; then
-		report_fail "$1 (TT_OLD_BINARY_REF pins a ref that must predate the current schema)"
+	if [ -n "${DOCKET_OLD_BINARY_REF:-}" ]; then
+		report_fail "$1 (DOCKET_OLD_BINARY_REF pins a ref that must predate the current schema)"
 		return
 	fi
 	report_skip "$1"
@@ -144,7 +144,7 @@ seeded_comment_b="The vendor contract review is booked for the 12th"
 # every helper role reads. The seed is a helper role rather than a fixture
 # because the workspace it fills was minted by a different process.
 seed_workspace() {
-	TT_HELPER_DATA_DIR="$1" \
+	DOCKET_HELPER_DATA_DIR="$1" \
 		"$helper_binary" -test.run '^TestCrossMachineHelperSeedsWorkspace$' >"$2" 2>&1
 }
 
@@ -262,8 +262,8 @@ case_two() {
 # the contract, and the refusal has to leave the workspace byte-identical.
 
 old_binary_ref() {
-	if [ -n "${TT_OLD_BINARY_REF:-}" ]; then
-		echo "$TT_OLD_BINARY_REF"
+	if [ -n "${DOCKET_OLD_BINARY_REF:-}" ]; then
+		echo "$DOCKET_OLD_BINARY_REF"
 		return 0
 	fi
 	git describe --tags --abbrev=0 2>/dev/null || return 1
@@ -310,7 +310,7 @@ ensure_old_binary() {
 report_missing_old_binary() {
 	case "$old_binary_state" in
 	unresolved)
-		report_fail "TT_OLD_BINARY_REF=${TT_OLD_BINARY_REF:-} does not resolve to a git ref"
+		report_fail "DOCKET_OLD_BINARY_REF=${DOCKET_OLD_BINARY_REF:-} does not resolve to a git ref"
 		;;
 	checkout-failed)
 		report_fail "could not check out the older ref (see $work_dir/old-worktree.log)"
@@ -319,7 +319,7 @@ report_missing_old_binary() {
 		report_fail "could not build tt at the older ref (see $work_dir/old-build.log)"
 		;;
 	*)
-		report_skip "no git tag to build an older binary from; set TT_OLD_BINARY_REF to a ref older than the current schema"
+		report_skip "no git tag to build an older binary from; set DOCKET_OLD_BINARY_REF to a ref older than the current schema"
 		;;
 	esac
 }
@@ -399,13 +399,13 @@ case_four() {
 	holder_result="$work_dir/case4-holder.txt"
 	writer_result="$work_dir/case4-writer.txt"
 
-	TT_HELPER_DATA_DIR="$shared" TT_HELPER_READY_FILE="$ready" \
-		TT_HELPER_GO_FILE="$proceed" TT_HELPER_RESULT_FILE="$holder_result" \
+	DOCKET_HELPER_DATA_DIR="$shared" DOCKET_HELPER_READY_FILE="$ready" \
+		DOCKET_HELPER_GO_FILE="$proceed" DOCKET_HELPER_RESULT_FILE="$holder_result" \
 		"$helper_binary" -test.run '^TestCrossMachineHelperPendingRenameExpiresOnCatalogChange$' \
 		>"$work_dir/case4-holder.log" 2>&1 &
 	holder_pid=$!
-	TT_HELPER_DATA_DIR="$shared" TT_HELPER_READY_FILE="$ready" \
-		TT_HELPER_GO_FILE="$proceed" TT_HELPER_RESULT_FILE="$writer_result" \
+	DOCKET_HELPER_DATA_DIR="$shared" DOCKET_HELPER_READY_FILE="$ready" \
+		DOCKET_HELPER_GO_FILE="$proceed" DOCKET_HELPER_RESULT_FILE="$writer_result" \
 		"$helper_binary" -test.run '^TestCrossMachineHelperChangesCatalogDuringPendingRename$' \
 		>"$work_dir/case4-writer.log" 2>&1 &
 	writer_pid=$!
@@ -472,15 +472,15 @@ case_five() {
 	note_b="waiting on legal to answer the vendor"
 	proceed="$work_dir/case5-go"
 
-	TT_HELPER_DATA_DIR="$shared" TT_HELPER_READY_FILE="$work_dir/case5-ready-a" \
-		TT_HELPER_GO_FILE="$proceed" TT_HELPER_RESULT_FILE="$work_dir/case5-a.txt" \
-		TT_HELPER_TASK_TITLE="Draft the migration plan" TT_HELPER_RESUME_NOTE="$note_a" \
+	DOCKET_HELPER_DATA_DIR="$shared" DOCKET_HELPER_READY_FILE="$work_dir/case5-ready-a" \
+		DOCKET_HELPER_GO_FILE="$proceed" DOCKET_HELPER_RESULT_FILE="$work_dir/case5-a.txt" \
+		DOCKET_HELPER_TASK_TITLE="Draft the migration plan" DOCKET_HELPER_RESUME_NOTE="$note_a" \
 		"$helper_binary" -test.run '^TestCrossMachineHelperSetsResumeNote$' \
 		>"$work_dir/case5-a.log" 2>&1 &
 	pid_a=$!
-	TT_HELPER_DATA_DIR="$shared" TT_HELPER_READY_FILE="$work_dir/case5-ready-b" \
-		TT_HELPER_GO_FILE="$proceed" TT_HELPER_RESULT_FILE="$work_dir/case5-b.txt" \
-		TT_HELPER_TASK_TITLE="Review the vendor contract" TT_HELPER_RESUME_NOTE="$note_b" \
+	DOCKET_HELPER_DATA_DIR="$shared" DOCKET_HELPER_READY_FILE="$work_dir/case5-ready-b" \
+		DOCKET_HELPER_GO_FILE="$proceed" DOCKET_HELPER_RESULT_FILE="$work_dir/case5-b.txt" \
+		DOCKET_HELPER_TASK_TITLE="Review the vendor contract" DOCKET_HELPER_RESUME_NOTE="$note_b" \
 		"$helper_binary" -test.run '^TestCrossMachineHelperSetsResumeNote$' \
 		>"$work_dir/case5-b.log" 2>&1 &
 	pid_b=$!
@@ -585,8 +585,8 @@ case_six() {
 	# Populate the schema-19 binary's document before activation, and require
 	# that binary itself to validate it. This proves the Waiting seed crosses
 	# the boundary instead of being added after migration.
-	if [ "${TT_OLD_BINARY_REF:-}" = "08c0cb08fec10154e6d2c9455e32d4c4ffa5f72d" ]; then
-		if ! TT_HELPER_DATA_DIR="$shared" "$helper_binary" -test.run '^TestCrossMachineHelperSeedsLegacyCheckIns$' >"$work_dir/case6-legacy-seed.log" 2>&1 ||
+	if [ "${DOCKET_OLD_BINARY_REF:-}" = "08c0cb08fec10154e6d2c9455e32d4c4ffa5f72d" ]; then
+		if ! DOCKET_HELPER_DATA_DIR="$shared" "$helper_binary" -test.run '^TestCrossMachineHelperSeedsLegacyCheckIns$' >"$work_dir/case6-legacy-seed.log" 2>&1 ||
 			! HOME="$home_old" "$old_binary" doctor --data-dir "$shared" >"$work_dir/case6-legacy-verify.log" 2>&1; then
 			report_fail "schema-19 binary could not validate the legacy check-in seed"
 			return
@@ -629,8 +629,8 @@ case_six() {
 		return
 	fi
 
-	if [ "${TT_OLD_BINARY_REF:-}" = "08c0cb08fec10154e6d2c9455e32d4c4ffa5f72d" ]; then
-		if ! TT_HELPER_DATA_DIR="$shared" "$helper_binary" -test.run '^TestCrossMachineHelperReviewsMigratedCheckIns$' >"$work_dir/case6-check-ins.log" 2>&1; then
+	if [ "${DOCKET_OLD_BINARY_REF:-}" = "08c0cb08fec10154e6d2c9455e32d4c4ffa5f72d" ]; then
+		if ! DOCKET_HELPER_DATA_DIR="$shared" "$helper_binary" -test.run '^TestCrossMachineHelperReviewsMigratedCheckIns$' >"$work_dir/case6-check-ins.log" 2>&1; then
 			report_fail "migrated check-in lifecycle failed (see $work_dir/case6-check-ins.log)"
 			return
 		fi
@@ -645,9 +645,9 @@ case_six() {
 	# migration admitted arrive at one document and a workspace that carried one
 	# but refused the other would still pass a run that only wrote the note.
 	comment="commented on a workspace an older binary minted"
-	if ! TT_HELPER_DATA_DIR="$shared" TT_HELPER_RESULT_FILE="$work_dir/case6-use.txt" \
-		TT_HELPER_TASK_TITLE="Draft the migration plan" TT_HELPER_RESUME_NOTE="$note" \
-		TT_HELPER_TEXT="$comment" \
+	if ! DOCKET_HELPER_DATA_DIR="$shared" DOCKET_HELPER_RESULT_FILE="$work_dir/case6-use.txt" \
+		DOCKET_HELPER_TASK_TITLE="Draft the migration plan" DOCKET_HELPER_RESUME_NOTE="$note" \
+		DOCKET_HELPER_TEXT="$comment" \
 		"$helper_binary" -test.run '^TestCrossMachineHelperUsesMigratedWorkspace$' \
 		>"$work_dir/case6-use.log" 2>&1; then
 		report_fail "the migrated workspace could not carry a resume note and a project comment (see $work_dir/case6-use.log)"
@@ -724,10 +724,10 @@ start_race_helper() {
 		# shellcheck disable=SC2086
 		set -- $extra "$@"
 	fi
-	TT_HELPER_DATA_DIR="$shared" TT_HELPER_READY_FILE="$work_dir/$tag-ready-$side" \
-		TT_HELPER_GO_FILE="$work_dir/$tag-go" TT_HELPER_RESULT_FILE="$work_dir/$tag-$side.txt" \
-		TT_HELPER_TASK_TITLE="$title" TT_HELPER_PROJECT="$helper_project" \
-		env "$@" TT_HELPER_TEXT="$text" TT_HELPER_TARGET_TEXT="$target" \
+	DOCKET_HELPER_DATA_DIR="$shared" DOCKET_HELPER_READY_FILE="$work_dir/$tag-ready-$side" \
+		DOCKET_HELPER_GO_FILE="$work_dir/$tag-go" DOCKET_HELPER_RESULT_FILE="$work_dir/$tag-$side.txt" \
+		DOCKET_HELPER_TASK_TITLE="$title" DOCKET_HELPER_PROJECT="$helper_project" \
+		env "$@" DOCKET_HELPER_TEXT="$text" DOCKET_HELPER_TARGET_TEXT="$target" \
 		"$helper_binary" -test.run "^$role\$" >"$work_dir/$tag-$side.log" 2>&1 &
 }
 
@@ -837,7 +837,7 @@ race_interrupted_mutation() {
 	fi
 
 	start_race_helper b "$writer_role" "$writer_title" "$helper_text_b" "$helper_target_b" \
-		"$helper_extra_b TT_HELPER_READY_FILE= TT_HELPER_GO_FILE=$writer_proceed" "$@"
+		"$helper_extra_b DOCKET_HELPER_READY_FILE= DOCKET_HELPER_GO_FILE=$writer_proceed" "$@"
 	pid_b=$!
 	status_b=0
 	wait "$pid_b" || status_b=$?
@@ -923,7 +923,7 @@ case_seven_comments() {
 
 	outcomes=$(race_two_helpers "$tag" TestCrossMachineHelperAppliesTaskMutation \
 		"Draft the migration plan" "Review the vendor contract" \
-		TT_HELPER_MUTATION=comment) || return
+		DOCKET_HELPER_MUTATION=comment) || return
 
 	document="$shared/projects/delivery/tasks.md"
 	outcome_a=${outcomes%%|*}
@@ -950,7 +950,7 @@ case_seven_reviews() {
 
 	outcomes=$(race_two_helpers "$tag" TestCrossMachineHelperAppliesTaskMutation \
 		"Draft the migration plan" "Review the vendor contract" \
-		TT_HELPER_MUTATION=review) || return
+		DOCKET_HELPER_MUTATION=review) || return
 
 	document="$shared/projects/delivery/tasks.md"
 	outcome_a=${outcomes%%|*}
@@ -986,7 +986,7 @@ case_seven_creations() {
 
 	outcomes=$(race_two_helpers "$tag" TestCrossMachineHelperAppliesTaskMutation \
 		"Draft the migration plan" "Draft the migration plan" \
-		TT_HELPER_MUTATION=create) || return
+		DOCKET_HELPER_MUTATION=create) || return
 
 	document="$shared/projects/delivery/tasks.md"
 	outcome_a=${outcomes%%|*}
@@ -1117,8 +1117,8 @@ require_one_refused_comment() {
 case_eight_additions() {
 	tag=case8-add
 	prepare_race_workspace "$tag" || return
-	helper_extra_a=TT_HELPER_PROJECT_COMMENT=add
-	helper_extra_b=TT_HELPER_PROJECT_COMMENT=add
+	helper_extra_a=DOCKET_HELPER_PROJECT_COMMENT=add
+	helper_extra_b=DOCKET_HELPER_PROJECT_COMMENT=add
 	helper_text_a="Machine A logged the migration review"
 	helper_text_b="Machine B heard back from the vendor"
 
@@ -1141,8 +1141,8 @@ case_eight_additions() {
 case_eight_distinct_edits() {
 	tag=case8-edit
 	prepare_race_workspace "$tag" || return
-	helper_extra_a=TT_HELPER_PROJECT_COMMENT=edit
-	helper_extra_b=TT_HELPER_PROJECT_COMMENT=edit
+	helper_extra_a=DOCKET_HELPER_PROJECT_COMMENT=edit
+	helper_extra_b=DOCKET_HELPER_PROJECT_COMMENT=edit
 	helper_target_a="$seeded_comment_a"
 	helper_target_b="$seeded_comment_b"
 	helper_text_a="Kickoff notes moved to the team wiki"
@@ -1169,8 +1169,8 @@ case_eight_distinct_edits() {
 case_eight_rival_edits() {
 	tag=case8-rival
 	prepare_race_workspace "$tag" || return
-	helper_extra_a=TT_HELPER_PROJECT_COMMENT=edit
-	helper_extra_b=TT_HELPER_PROJECT_COMMENT=edit
+	helper_extra_a=DOCKET_HELPER_PROJECT_COMMENT=edit
+	helper_extra_b=DOCKET_HELPER_PROJECT_COMMENT=edit
 	helper_target_a="$seeded_comment_a"
 	helper_target_b="$seeded_comment_a"
 	helper_text_a="Kickoff notes moved to the team wiki"
@@ -1193,8 +1193,8 @@ case_eight_rival_edits() {
 case_eight_edit_versus_delete() {
 	tag=case8-delete
 	prepare_race_workspace "$tag" || return
-	helper_extra_a=TT_HELPER_PROJECT_COMMENT=edit
-	helper_extra_b=TT_HELPER_PROJECT_COMMENT=remove
+	helper_extra_a=DOCKET_HELPER_PROJECT_COMMENT=edit
+	helper_extra_b=DOCKET_HELPER_PROJECT_COMMENT=remove
 	helper_target_a="$seeded_comment_a"
 	helper_target_b="$seeded_comment_a"
 	helper_text_a="Kickoff notes moved to the team wiki"
@@ -1235,8 +1235,8 @@ case_eight_edit_versus_delete() {
 case_eight_comment_versus_task() {
 	tag=case8-mixed
 	prepare_race_workspace "$tag" || return
-	helper_extra_a=TT_HELPER_PROJECT_COMMENT=add
-	helper_extra_b=TT_HELPER_MUTATION=comment
+	helper_extra_a=DOCKET_HELPER_PROJECT_COMMENT=add
+	helper_extra_b=DOCKET_HELPER_MUTATION=comment
 	helper_text_a="Machine A logged the migration review"
 	helper_text_b="Machine B checked this against the vendor thread"
 
@@ -1313,7 +1313,7 @@ case_nine_rival_steps() {
 
 	outcomes=$(race_two_helpers "$tag" TestCrossMachineHelperStepsDueDate \
 		"Draft the migration plan" "Draft the migration plan" \
-		TT_HELPER_DUE_STEP=forward TT_HELPER_DUE_RETRY=1) || return
+		DOCKET_HELPER_DUE_STEP=forward DOCKET_HELPER_DUE_RETRY=1) || return
 	outcome_a=${outcomes%%|*}
 	outcome_b=${outcomes##*|}
 	case "$outcome_a$outcome_b" in
@@ -1360,8 +1360,8 @@ case_nine_rival_steps() {
 case_nine_batch_versus_write() {
 	tag=case9-batch
 	prepare_race_workspace "$tag" || return
-	helper_extra_a="TT_HELPER_DUE_STEP=forward TT_HELPER_DUE_UNTOUCHED=1"
-	helper_extra_b=TT_HELPER_MUTATION=comment
+	helper_extra_a="DOCKET_HELPER_DUE_STEP=forward DOCKET_HELPER_DUE_UNTOUCHED=1"
+	helper_extra_b=DOCKET_HELPER_MUTATION=comment
 	helper_text_a=""
 	helper_text_b="Machine B checked this against the vendor thread"
 
@@ -1437,7 +1437,7 @@ case_ten_rival_promotions() {
 
 	outcomes=$(race_two_helpers "$tag" TestCrossMachineHelperPromotesChecklistItem \
 		"Draft the migration plan" "Draft the migration plan" \
-		TT_HELPER_CHECKLIST_INDEX=0) || return
+		DOCKET_HELPER_CHECKLIST_INDEX=0) || return
 	outcome_a=${outcomes%%|*}
 	outcome_b=${outcomes##*|}
 	if [ "$outcome_a" = "committed" ] && [ "$outcome_b" = "committed" ]; then
@@ -1462,8 +1462,8 @@ case_ten_rival_promotions() {
 case_ten_promotion_versus_edit() {
 	tag=case10-edit
 	prepare_race_workspace "$tag" || return
-	helper_extra_a=TT_HELPER_CHECKLIST_INDEX=0
-	helper_extra_b="TT_HELPER_CHECKLIST=edit TT_HELPER_CHECKLIST_INDEX=1"
+	helper_extra_a=DOCKET_HELPER_CHECKLIST_INDEX=0
+	helper_extra_b="DOCKET_HELPER_CHECKLIST=edit DOCKET_HELPER_CHECKLIST_INDEX=1"
 	helper_text_a=""
 	helper_text_b="Name the rollback owner before Friday"
 
@@ -1513,8 +1513,8 @@ case_eleven_check_ins() {
 # was not misread rather than merely unread.
 
 enroll_old_binary_ref() {
-	if [ -n "${TT_ENROLL_OLD_BINARY_REF:-}" ]; then
-		echo "$TT_ENROLL_OLD_BINARY_REF"
+	if [ -n "${DOCKET_ENROLL_OLD_BINARY_REF:-}" ]; then
+		echo "$DOCKET_ENROLL_OLD_BINARY_REF"
 		return 0
 	fi
 	introduced=$(git log -1 --format=%H -S'SyncEnrolledConfigVersion = ' -- internal/config/config_core.go 2>/dev/null || true)
@@ -1532,7 +1532,7 @@ ensure_enroll_old_binary() {
 	fi
 	enroll_ref=$(enroll_old_binary_ref) || return 1
 	if ! git rev-parse --verify "$enroll_ref" >/dev/null 2>&1; then
-		report_fail "TT_ENROLL_OLD_BINARY_REF=$enroll_ref does not resolve to a git ref"
+		report_fail "DOCKET_ENROLL_OLD_BINARY_REF=$enroll_ref does not resolve to a git ref"
 		return 1
 	fi
 	enroll_source="$work_dir/enroll-old-source"
@@ -1657,7 +1657,7 @@ if [ "$failures" -gt 0 ]; then
 	exit 1
 fi
 if [ "$skips" -gt 0 ]; then
-	if [ "${TT_REQUIRE_NO_SKIPS:-}" = "1" ]; then
+	if [ "${DOCKET_REQUIRE_NO_SKIPS:-}" = "1" ]; then
 		echo "cross-machine gate failed: $skips required case(s) were skipped" >&2
 		exit 1
 	fi

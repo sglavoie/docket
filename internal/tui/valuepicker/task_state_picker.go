@@ -3,9 +3,9 @@ package valuepicker
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/listsurface"
-	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/listsurface"
+	"github.com/sglavoie/docket/internal/tui/operation"
 )
 
 // TaskStatePickerModel is the advanced eight-state ListSurface picker used by the

@@ -1,4 +1,4 @@
-module github.com/sglavoie/tt
+module github.com/sglavoie/docket
 
 go 1.26.10
 

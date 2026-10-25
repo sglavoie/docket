@@ -1,6 +1,6 @@
 package config
 
-import "github.com/sglavoie/tt/internal/models"
+import "github.com/sglavoie/docket/internal/models"
 
 // DomainStore is the composite of the three narrow domain-store interfaces. It is
 // the single backing capability a RuntimeDependencies is built from. The

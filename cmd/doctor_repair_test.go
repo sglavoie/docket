@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/testutil"
 )
 
 // corruptDoctorFixture rewrites the seeded tasks.md bytes so Beta repeats
@@ -141,7 +141,7 @@ func TestRunDoctorRepairsCorruptTaskBytesFromDisk(t *testing.T) {
 	if strings.Contains(stdout, "Project load failures") ||
 		!strings.Contains(stdout, "Duplicate short IDs: 1") ||
 		!strings.Contains(stdout, "Broken parent refs: 1") ||
-		!strings.Contains(stdout, "Run 'tt doctor --fix'") {
+		!strings.Contains(stdout, "Run 'docket doctor --fix'") {
 		t.Fatalf("doctor did not report the two repairable defects:\n%s", stdout)
 	}
 	if after, _ := os.ReadFile(path); string(after) != string(corrupted) {

@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/docket/internal/config"
 )
 
 var workspaceMoveForce bool
@@ -32,11 +32,11 @@ The source directory is retained as a backup by default; it is never deleted, so
 an interrupted move can simply be re-run (already-copied files are skipped).
 Machine-local runtime state (logs, locks) is not moved.
 
-Close any tt TUI using either the source or destination before relocating. An
+Close any Docket TUI using either the source or destination before relocating. An
 active TUI blocks the move. --force skips only the confirmation prompt; it does
 not bypass TUI process locks, workspace commit locks, or snapshot validation.`,
-	Example: `  tt workspace move ~/Documents/tt
-  tt workspace move /Volumes/Backup/tt --force`,
+	Example: `  docket workspace move ~/Documents/tt
+  docket workspace move /Volumes/Backup/tt --force`,
 	Args: exactlyOneArg("destination directory"),
 	RunE: runWorkspaceMove,
 	ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]cobra.Completion, cobra.ShellCompDirective) {

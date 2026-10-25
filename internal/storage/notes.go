@@ -10,8 +10,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/sglavoie/tt/internal/logging"
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/logging"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 const notesDirName = "notes"

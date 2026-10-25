@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 func TestWriteProjectMarkdownClean_EmptyProject(t *testing.T) {

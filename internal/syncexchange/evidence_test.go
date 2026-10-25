@@ -91,9 +91,9 @@ type exchangeEvidence struct {
 // Outside scripts/verify_mobile_session.sh 8 it has nothing to compare
 // against and skips, which that verifier refuses.
 func TestRecordedICloudExchangeEvidence(t *testing.T) {
-	wantSource := os.Getenv("TT_ICLOUD_SOURCE_FINGERPRINT")
-	wantBridge := os.Getenv("TT_IOS_BRIDGE_FINGERPRINT")
-	wantBridgehost := os.Getenv("TT_BRIDGEHOST_SHA256")
+	wantSource := os.Getenv("DOCKET_ICLOUD_SOURCE_FINGERPRINT")
+	wantBridge := os.Getenv("DOCKET_IOS_BRIDGE_FINGERPRINT")
+	wantBridgehost := os.Getenv("DOCKET_BRIDGEHOST_SHA256")
 	if wantSource == "" || wantBridge == "" || wantBridgehost == "" {
 		t.Skip("set by scripts/verify_mobile_session.sh 8")
 	}

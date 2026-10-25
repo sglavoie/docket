@@ -7,8 +7,8 @@ import (
 
 	"github.com/rivo/uniseg"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 // StateRequest asks to move a task to a target workflow state.

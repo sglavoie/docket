@@ -11,8 +11,8 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/colorprofile"
 
-	"github.com/sglavoie/tt/internal/tui/outliner"
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/tui/outliner"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // This file is the review matrix the UX clarity refinement is judged against:
@@ -30,7 +30,7 @@ import (
 // written to. It is optional: with nothing set the export still runs, into the
 // test's own temporary directory, so the writer is exercised on every CI run and
 // a caller asking for the frames only relocates them.
-const uxClarityReviewDirEnv = "TT_UX_CLARITY_REVIEW_DIR"
+const uxClarityReviewDirEnv = "DOCKET_UX_CLARITY_REVIEW_DIR"
 
 // uxClarityReviewManifest is the index written beside the frames. It is what
 // makes the export reviewable rather than a directory of screens: one row per

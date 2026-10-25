@@ -23,7 +23,7 @@
 # and its executed, failed, and skipped counts. A suite that executes no test
 # or skips one fails, so an empty or skipped run is never reported as passing.
 #
-# Environment: TT_IOS_SIMULATOR and TT_IOS_CACHE as test-engine.sh reads them.
+# Environment: DOCKET_IOS_SIMULATOR and DOCKET_IOS_CACHE as test-engine.sh reads them.
 
 set -eu
 
@@ -82,7 +82,7 @@ bridgehost() {
 
 run_unit() {
 	host=$(bridgehost)
-	TT_BRIDGEHOST="$host" TT_CAPTURE_FIXTURE="$fixture" swift_package unit-shared "$ios_dir/TTShared"
+	DOCKET_BRIDGEHOST="$host" DOCKET_CAPTURE_FIXTURE="$fixture" swift_package unit-shared "$ios_dir/TTShared"
 	swift_package unit-reminders "$ios_dir/TTReminders"
 }
 
@@ -127,7 +127,7 @@ run_sync() {
 		echo "enrolling the fixture failed" >&2
 		exit 1
 	}
-	TT_BRIDGEHOST="$host" TT_ENROLLED_EXCHANGE="$enroll/exchange" swift_package sync "$repo_root/apple/TTSync"
+	DOCKET_BRIDGEHOST="$host" DOCKET_ENROLLED_EXCHANGE="$enroll/exchange" swift_package sync "$repo_root/apple/TTSync"
 }
 
 case "$suite" in

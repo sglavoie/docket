@@ -1,8 +1,8 @@
 package tui
 
 import (
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/presentation"
 )
 
 // applyOverlays composites all popup/overlay layers onto the base content.

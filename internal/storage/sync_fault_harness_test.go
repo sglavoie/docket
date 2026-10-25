@@ -22,10 +22,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/synclog"
-	"github.com/sglavoie/tt/internal/syncmerge"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/synclog"
+	"github.com/sglavoie/docket/internal/syncmerge"
 )
 
 // faultFixtureDir is the representative compatibility workspace every replica
@@ -36,9 +36,9 @@ const (
 	faultAtlasID  = "6f1d3c2a-1b4e-4c8a-9a0e-0d5b7c1e2a01"
 	faultNotePath = "projects/atlas-launch/notes/2026-09-03-090000_0a1b2c3d-release-runbook.md"
 	// faultSeedEnv replays one seed of a seeded suite.
-	faultSeedEnv = "TT_SYNC_FAULT_SEED"
+	faultSeedEnv = "DOCKET_SYNC_FAULT_SEED"
 	// faultTraceEnv names the directory failure traces are written to.
-	faultTraceEnv = "TT_SYNC_FAULT_TRACE_DIR"
+	faultTraceEnv = "DOCKET_SYNC_FAULT_TRACE_DIR"
 )
 
 var faultSlugs = []string{"atlas-launch", "home-renovation"}

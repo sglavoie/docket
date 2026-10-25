@@ -1,6 +1,6 @@
 package capturetext
 
-import "github.com/sglavoie/tt/internal/app"
+import "github.com/sglavoie/docket/internal/app"
 
 // ComposerDeferredDestination follows the deferral route the application layer
 // takes, so the composer header and the request it submits agree about where a

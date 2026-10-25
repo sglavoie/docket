@@ -3,8 +3,8 @@ package outliner
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/operation"
 )
 
 // The menu bar is a third projection of the one operation grammar, beside the

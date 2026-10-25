@@ -61,11 +61,11 @@ if os.environ.get("FAIL_AT") == stage:
         generation.write_text("#!/bin/sh\nexec generate\n")
         generation.chmod(0o755)
         self.trace = self.root / "trace.jsonl"
-        self.env = {k: v for k, v in os.environ.items() if not k.startswith("TT_IOS_")}
+        self.env = {k: v for k, v in os.environ.items() if not k.startswith("DOCKET_IOS_")}
         self.env.update(
             PATH=str(self.bin) + os.pathsep + os.environ["PATH"],
             TRACE=str(self.trace),
-            TT_IOS_DEVELOPMENT_TEAM="EXPLICIT_TEAM",
+            DOCKET_IOS_DEVELOPMENT_TEAM="EXPLICIT_TEAM",
         )
         self.devices("PHONE_A")
 
@@ -99,9 +99,9 @@ if os.environ.get("FAIL_AT") == stage:
         self.assertEqual(len(result.stdout.splitlines()), 1)
 
     def test_reuses_previous_team_and_accepts_absolute_derived_path(self):
-        self.env.pop("TT_IOS_DEVELOPMENT_TEAM")
+        self.env.pop("DOCKET_IOS_DEVELOPMENT_TEAM")
         derived = self.root / "custom derived"
-        self.env["TT_IOS_DEVICE_DERIVED"] = str(derived)
+        self.env["DOCKET_IOS_DEVICE_DERIVED"] = str(derived)
         app = derived / "Build/Products/Debug-iphoneos/tt.app"
         app.mkdir(parents=True)
         result = self.run_install(launch=False)
@@ -111,7 +111,7 @@ if os.environ.get("FAIL_AT") == stage:
         self.assertFalse(any("launch" in c for c in self.calls()))
 
     def test_first_install_explains_required_team(self):
-        self.env.pop("TT_IOS_DEVELOPMENT_TEAM")
+        self.env.pop("DOCKET_IOS_DEVELOPMENT_TEAM")
         result = self.run_install()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("just ios-install TEAMID", result.stderr)
@@ -140,7 +140,7 @@ if os.environ.get("FAIL_AT") == stage:
 
     def test_explicit_phone_and_legacy_device_schema(self):
         self.devices("PHONE_A", "PHONE_B", modern=False)
-        self.env["TT_IOS_DEVICE"] = "PHONE_B"
+        self.env["DOCKET_IOS_DEVICE"] = "PHONE_B"
         result = self.run_install()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue(any("id=PHONE_B" in c for c in self.calls()))

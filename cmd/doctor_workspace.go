@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 func checkWorkspaceHealth(workspace *CLIWorkspace, results *doctorResults) {

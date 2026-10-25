@@ -3,7 +3,7 @@ package chrome
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // RenderFormLabelShared renders a form field label with fixed width alignment.

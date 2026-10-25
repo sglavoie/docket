@@ -3,7 +3,7 @@ package models
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/icons"
+	"github.com/sglavoie/docket/internal/icons"
 )
 
 // WorkflowState is the single canonical lifecycle state of a task.

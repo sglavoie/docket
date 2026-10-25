@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // snapshotOriginal copies every durable file of the original, verified by

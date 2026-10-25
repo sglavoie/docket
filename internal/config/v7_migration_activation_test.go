@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 var preScopeV7TestTime = time.Date(2026, 8, 5, 9, 10, 11, 0, time.UTC)

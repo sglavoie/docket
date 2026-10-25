@@ -111,7 +111,7 @@ On macOS, [tt.app](macos/README.md) runs the same program in its own window and
 adds a menu-bar shortcut, quick capture, and notifications. From a clone, run
 `just mac-install` to build and install it; this requires the full Xcode app.
 
-A new workspace starts locally in `~/.tt/`. Use `--data-dir`, `TT_DATA_DIR`, or
+A new workspace starts locally in `~/.tt/`. Use `--data-dir`, `DOCKET_DATA_DIR`, or
 `tt workspace move` to select a different location. Moving into iCloud Drive or
 another synced directory is an explicit choice; an existing selected iCloud
 workspace is preserved.

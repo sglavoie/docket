@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/engine"
-	"github.com/sglavoie/tt/internal/syncexchange"
+	"github.com/sglavoie/docket/internal/engine"
+	"github.com/sglavoie/docket/internal/syncexchange"
 )
 
 func conflictStaleResolution(t *testing.T) {

@@ -1,6 +1,6 @@
 package grammar
 
-import "github.com/sglavoie/tt/internal/capturetext"
+import "github.com/sglavoie/docket/internal/capturetext"
 
 // The capture-line parser lives in internal/capturetext so the mobile bridge
 // reads a line exactly as the composer does without linking a terminal stack.

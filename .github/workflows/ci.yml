@@ -136,8 +136,8 @@ jobs:
       # shards as well would only slow them.
       - name: Run this shard's race tests
         env:
-          TT_SHARD_INDEX: ${{ matrix.shard }}
-          TT_SHARD_COUNT: ${{ matrix.shards }}
+          DOCKET_SHARD_INDEX: ${{ matrix.shard }}
+          DOCKET_SHARD_COUNT: ${{ matrix.shards }}
         run: ./scripts/test_race.sh ${{ runner.os == 'Linux' && 'coverage.out' || '' }}
 
       - name: Keep this shard's coverage
@@ -189,7 +189,7 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 120
     env:
-      TT_IOS_RESULTS: ${{ github.workspace }}/ios-results
+      DOCKET_IOS_RESULTS: ${{ github.workspace }}/ios-results
     steps:
       - uses: actions/checkout@v7
         with:
@@ -208,7 +208,7 @@ jobs:
         run: python3 -m unittest discover -s ios/scripts -p 'test*qualification*.py'
 
       - name: Unattended simulator qualification
-        run: just ios-qualify run "$TT_IOS_RESULTS/qualification"
+        run: just ios-qualify run "$DOCKET_IOS_RESULTS/qualification"
 
       - name: Accessibility suite on a small screen
         run: just ios-ui-test AccessibilityUITests small
@@ -227,7 +227,7 @@ jobs:
     timeout-minutes: 90
     env:
       GHOSTTYKIT_TARGET: native
-      TT_MACOS_RESULTS: ${{ github.workspace }}/macos-results
+      DOCKET_MACOS_RESULTS: ${{ github.workspace }}/macos-results
     steps:
       - uses: actions/checkout@v7
 
@@ -273,8 +273,8 @@ jobs:
     timeout-minutes: 45
     env:
       # Schema-19 build: the older reader and migration source under test.
-      TT_OLD_BINARY_REF: 08c0cb08fec10154e6d2c9455e32d4c4ffa5f72d
-      TT_REQUIRE_NO_SKIPS: "1"
+      DOCKET_OLD_BINARY_REF: 08c0cb08fec10154e6d2c9455e32d4c4ffa5f72d
+      DOCKET_REQUIRE_NO_SKIPS: "1"
     steps:
       - uses: actions/checkout@v7
         with:

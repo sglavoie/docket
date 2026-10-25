@@ -6,7 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/tui/pulse"
+	"github.com/sglavoie/docket/internal/tui/pulse"
 )
 
 // TestFullscreenTitleChromeFittingStaysWithinWidth verifies that the semantic

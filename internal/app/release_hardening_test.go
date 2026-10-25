@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 func TestReleasePlanningMaintenanceOperations(t *testing.T) {

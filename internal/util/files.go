@@ -21,7 +21,7 @@ const (
 // more than everything else they do; the writes themselves, their order, and
 // their atomic renames are unchanged, so only crash durability is given up.
 // Nothing in production sets it.
-const SkipFsyncEnv = "TT_UNSAFE_SKIP_FSYNC"
+const SkipFsyncEnv = "DOCKET_UNSAFE_SKIP_FSYNC"
 
 func fsyncSkipped() bool {
 	return os.Getenv(SkipFsyncEnv) == "1"

@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // TaskRepeatDraft is the read-only starting point for repeating a task: the

@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/storage/format"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/storage/format"
 )
 
 //nolint:gocyclo // The activation plan validates and assembles one indivisible migration transaction.

@@ -27,7 +27,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 	content := normalizedDocumentation(t, "CLAUDE.md")
 	for _, required := range []string{
 		"This file is the invariant contract the implementation and its tests are held to",
-		"if you want to know how `tt` behaves, read [`docs/guide/`](docs/guide/README.md) instead",
+		"if you want to know how Docket behaves, read [`docs/guide/`](docs/guide/README.md) instead",
 		"Contributor rules only: invariants, forbidden patterns, forwarding addresses",
 		"[`docs/decisions/behavioral-signals-contracts.md`](docs/decisions/behavioral-signals-contracts.md) " +
 			"is the locked behavioral-signal authority",

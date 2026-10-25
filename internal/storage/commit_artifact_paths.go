@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/transaction"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/transaction"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 func lockPathsNotHeldBy(paths, held []string) []string {

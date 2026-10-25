@@ -7,9 +7,9 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/engine"
-	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/engine"
+	"github.com/sglavoie/docket/internal/logging"
 )
 
 // Options are what a host injects beyond the request stream. The mobile

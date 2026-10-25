@@ -3,8 +3,8 @@ package listsurface
 import (
 	"image/color"
 
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/pulse"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/pulse"
 )
 
 // BaseView provides common functionality for TUI views.

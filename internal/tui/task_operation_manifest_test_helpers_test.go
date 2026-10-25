@@ -1,6 +1,6 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/tui/operation"
+import "github.com/sglavoie/docket/internal/tui/operation"
 
 func taskOperationManifestIDs() []operation.OperationID {
 	manifest := taskOperationManifest()

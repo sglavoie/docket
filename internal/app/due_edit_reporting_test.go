@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/docket/internal/app"
 )
 
 // This file covers the typed evidence a committed mutation reports about

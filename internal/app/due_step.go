@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // DueStepDirection is the signed direction of one deadline step. The two values

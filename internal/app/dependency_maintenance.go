@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 // ReferenceDocument pairs one catalog project with everything a soft-reference

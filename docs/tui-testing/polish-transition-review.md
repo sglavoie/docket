@@ -40,14 +40,14 @@ or a projection rebuild has superseded it.
 Export frames from the real application model:
 
 ```sh
-TT_TERMINAL_REVIEW_DIR="$PWD/macos/.cache/transition-review" \
+DOCKET_TERMINAL_REVIEW_DIR="$PWD/macos/.cache/transition-review" \
   go test ./internal/tui -run '^TestPolishTransitionReviewFrames$' -count=1
 ```
 
 Capture native Ghostty pixels using the opt-in macOS test:
 
 ```sh
-TEST_RUNNER_TT_TERMINAL_REVIEW_DIR="$PWD/macos/.cache/transition-review" \
+TEST_RUNNER_DOCKET_TERMINAL_REVIEW_DIR="$PWD/macos/.cache/transition-review" \
   xcodebuild test -project macos/tt.xcodeproj -scheme tt \
   -destination 'platform=macOS,arch=arm64' -derivedDataPath macos/DerivedData \
   -only-testing:TTAppTests/TerminalVisualReviewTests
@@ -60,7 +60,7 @@ pixels without native window chrome and requires no Screen Recording permission.
 The helper deliberately fails if a future Ghostty renderer stops exposing an
 IOSurface; synthetic ANSI rendering is not a substitute.
 
-Set `TEST_RUNNER_TT_TERMINAL_REVIEW_FONT_SIZE=20` alongside the directory to
+Set `TEST_RUNNER_DOCKET_TERMINAL_REVIEW_FONT_SIZE=20` alongside the directory to
 repeat at enlarged text. Default 14-point captures use `.png`; enlarged captures
 use `.font20.png`, preserving both sets.
 

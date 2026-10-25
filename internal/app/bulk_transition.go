@@ -3,7 +3,7 @@ package app
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // BulkTransition moves project-qualified tasks to target in one

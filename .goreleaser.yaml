@@ -19,9 +19,9 @@ builds:
     ldflags:
       - -s -w
       # The tag keeps its v, matching what `go install …@v0.1.0` reports.
-      - -X github.com/sglavoie/tt/cmd.Version={{ .Tag }}
-      - -X github.com/sglavoie/tt/cmd.GitCommit={{ .ShortCommit }}
-      - -X github.com/sglavoie/tt/cmd.BuildTime={{ .Date }}
+      - -X github.com/sglavoie/docket/cmd.Version={{ .Tag }}
+      - -X github.com/sglavoie/docket/cmd.GitCommit={{ .ShortCommit }}
+      - -X github.com/sglavoie/docket/cmd.BuildTime={{ .Date }}
 
 archives:
   - formats: [tar.gz]

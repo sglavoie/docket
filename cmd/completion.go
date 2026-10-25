@@ -14,27 +14,27 @@ var completionCmd = &cobra.Command{
 To load completions:
 
   Bash:
-    source <(tt completion bash)
+    source <(docket completion bash)
 
     # To load completions for each session, add to ~/.bashrc:
-    echo 'source <(tt completion bash)' >> ~/.bashrc
+    echo 'source <(docket completion bash)' >> ~/.bashrc
 
   Zsh:
     # If shell completion is not already enabled, add to ~/.zshrc:
     autoload -Uz compinit && compinit
 
-    source <(tt completion zsh)
+    source <(docket completion zsh)
 
     # To load completions for each session, add to ~/.zshrc:
-    echo 'source <(tt completion zsh)' >> ~/.zshrc
+    echo 'source <(docket completion zsh)' >> ~/.zshrc
 
   Fish:
-    tt completion fish | source
+    docket completion fish | source
 
     # To load completions for each session:
-    tt completion fish > ~/.config/fish/completions/tt.fish`,
-	Example: `  tt completion zsh
-  tt completion fish > ~/.config/fish/completions/tt.fish`,
+    docket completion fish > ~/.config/fish/completions/docket.fish`,
+	Example: `  docket completion zsh
+  docket completion fish > ~/.config/fish/completions/docket.fish`,
 	Args:      cobra.MatchAll(exactlyOneArg("shell (bash, zsh, or fish)"), argsRefusal(cobra.OnlyValidArgs)),
 	ValidArgs: []string{"bash", "zsh", "fish"},
 	RunE:      runCompletion,

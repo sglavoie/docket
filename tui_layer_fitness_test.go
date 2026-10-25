@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/testutil/gotree"
+	"github.com/sglavoie/docket/internal/testutil/gotree"
 )
 
 const (
@@ -25,7 +25,7 @@ const (
 	tuiPackageAssignmentsPath = "scripts/tui_package_assignments.tsv"
 
 	// tuiImportPrefix is the import path every package under the split shares.
-	tuiImportPrefix = "github.com/sglavoie/tt/internal/tui"
+	tuiImportPrefix = "github.com/sglavoie/docket/internal/tui"
 
 	// tuiRootPackage is the row describing internal/tui itself.
 	tuiRootPackage = "tui"

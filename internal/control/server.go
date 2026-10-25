@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/docket/internal/logging"
 )
 
 // maxLineBytes bounds one request line. A capture may span several lines of

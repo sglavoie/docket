@@ -12,11 +12,11 @@
 # Usage: sign.sh APP
 #
 # Environment:
-#   TT_CODESIGN_IDENTITY    codesign identity, e.g.
+#   DOCKET_CODESIGN_IDENTITY    codesign identity, e.g.
 #                           "Developer ID Application: Name (TEAMID)";
 #                           unset picks the first Apple Development
 #                           identity, else ad-hoc; "-" forces ad-hoc
-#   TT_NOTARY_PROFILE       `xcrun notarytool store-credentials` profile name;
+#   DOCKET_NOTARY_PROFILE       `xcrun notarytool store-credentials` profile name;
 #                           requires a Developer ID identity
 
 set -eu
@@ -36,9 +36,9 @@ app=$1
 
 require_tool codesign
 
-notary_profile="${TT_NOTARY_PROFILE:-}"
-if [ -n "${TT_CODESIGN_IDENTITY:-}" ]; then
-	identity=$TT_CODESIGN_IDENTITY
+notary_profile="${DOCKET_NOTARY_PROFILE:-}"
+if [ -n "${DOCKET_CODESIGN_IDENTITY:-}" ]; then
+	identity=$DOCKET_CODESIGN_IDENTITY
 	development=
 else
 	# The SHA-1 rather than the name, which an expired twin may share.
@@ -50,7 +50,7 @@ fi
 
 if [ "$identity" = - ] || [ -n "$development" ]; then
 	if [ -n "$notary_profile" ]; then
-		echo "TT_NOTARY_PROFILE needs a Developer ID TT_CODESIGN_IDENTITY" >&2
+		echo "DOCKET_NOTARY_PROFILE needs a Developer ID DOCKET_CODESIGN_IDENTITY" >&2
 		exit 1
 	fi
 	set -- --force --sign "$identity"

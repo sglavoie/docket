@@ -1,8 +1,8 @@
 package engine
 
 import (
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 // ResolveProjectConflict shares the runtime's transactional committer, history

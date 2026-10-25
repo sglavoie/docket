@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // TestDateOnlyDueDateSurvivesAZoneWithNoMidnight pins the reader against a date

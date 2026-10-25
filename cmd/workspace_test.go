@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/docket/internal/config"
 )
 
 func TestWorkspaceMoveCommand_MovesAndSwitchesPointer(t *testing.T) {
@@ -176,7 +176,7 @@ func TestWorkspaceLocationSaysWhenNoWorkspaceIsThere(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	src := filepath.Join(t.TempDir(), "src")
 	setCommandDataDir(t, src)
-	const note = "(no workspace here yet; run 'tt' to create one)"
+	const note = "(no workspace here yet; run 'docket' to create one)"
 
 	stdout, _, err := captureDoctorOutput(t, func() error { return runWorkspaceLocation(nil, nil) })
 	if err != nil || !strings.Contains(stdout, note) {

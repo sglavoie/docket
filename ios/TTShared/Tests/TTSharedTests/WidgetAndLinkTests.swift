@@ -85,6 +85,6 @@ final class WidgetAndLinkTests: XCTestCase {
     }
 
     func testTheSharedContainerHonorsItsTestOverride() {
-        XCTAssertEqual(SharedContainer.root(environment: ["TT_SHARED_CONTAINER": "/tmp/tt-group"])?.path, "/tmp/tt-group")
+        XCTAssertEqual(SharedContainer.root(environment: ["DOCKET_SHARED_CONTAINER": "/tmp/tt-group"])?.path, "/tmp/tt-group")
     }
 }

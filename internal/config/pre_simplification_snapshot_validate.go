@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 func validatePreSimplificationV5ContainedFile(root, path string, info fs.FileInfo) error {

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tterrors"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tterrors"
 )
 
 // fakeSource is a scriptable stand-in for a project's tasks.md: it tracks how

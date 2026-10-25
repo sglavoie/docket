@@ -3,7 +3,7 @@ package app
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // MarkReviewed acknowledges one task by name: the review flag comes off, the

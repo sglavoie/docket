@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/tui/presentation"
 )
 
 // RouteID is the stable identity of a primary TUI surface. Modes and entity

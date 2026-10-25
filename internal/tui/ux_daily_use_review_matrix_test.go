@@ -10,8 +10,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/tui/outliner"
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/tui/outliner"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // This file is the review matrix the daily-use refinement is judged against. It
@@ -41,7 +41,7 @@ import (
 // the export still runs into the test's own temporary directory, so the writer
 // is exercised on every CI run and a reviewer naming a directory only relocates
 // the output.
-const uxDailyUseReviewDirEnv = "TT_UX_DAILY_USE_REVIEW_DIR"
+const uxDailyUseReviewDirEnv = "DOCKET_UX_DAILY_USE_REVIEW_DIR"
 
 // uxDailyUseReviewManifest is the index written beside the frames.
 const uxDailyUseReviewManifest = "frames.tsv"

@@ -1,6 +1,6 @@
 package storage
 
-import "github.com/sglavoie/tt/internal/models"
+import "github.com/sglavoie/docket/internal/models"
 
 // WriteProjectMarkdown renders the strict live project document from the whole
 // project. It takes the project rather than a name and a task list because

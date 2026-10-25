@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 // resolveChildParent resolves a requested parent for a task that is about to be

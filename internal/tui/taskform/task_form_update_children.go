@@ -3,7 +3,7 @@ package taskform
 import (
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // handleChildrenTabKey handles keys specific to the Children tab.

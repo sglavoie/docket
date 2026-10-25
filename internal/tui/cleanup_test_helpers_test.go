@@ -3,8 +3,8 @@ package tui
 import (
 	"strings"
 
-	"github.com/sglavoie/tt/internal/textgrammar"
-	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/textgrammar"
+	"github.com/sglavoie/docket/internal/tui/operation"
 )
 
 func captureDestinationNamesForTest() []string {

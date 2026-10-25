@@ -13,8 +13,8 @@ var conflictShowCmd = &cobra.Command{
 	Short: "Show the details of a merge conflict",
 	Long: `Show the base, local, and remote revisions and every structured conflict
 for one recorded merge conflict.`,
-	Example: `  tt conflict show 3f2a9c1e
-  tt conflict show 3f2a --json`,
+	Example: `  docket conflict show 3f2a9c1e
+  docket conflict show 3f2a --json`,
 	Args:              exactlyOneArg("conflict ID"),
 	RunE:              runConflictShow,
 	ValidArgsFunction: completeConflictIDs,
@@ -95,10 +95,10 @@ func runConflictShow(_ *cobra.Command, args []string) error {
 		}
 	}
 	if rec.OperationRetryRequired() {
-		fmt.Printf("\nClear with: tt conflict resolve %s --use remote\n", shortConflictID(rec.ID))
+		fmt.Printf("\nClear with: docket conflict resolve %s --use remote\n", shortConflictID(rec.ID))
 		return nil
 	}
-	fmt.Printf("\nResolve with: tt conflict resolve %s --use local|remote|file\n", shortConflictID(rec.ID))
+	fmt.Printf("\nResolve with: docket conflict resolve %s --use local|remote|file\n", shortConflictID(rec.ID))
 	return nil
 }
 

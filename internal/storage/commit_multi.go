@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/sglavoie/tt/internal/logging"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/synclog"
-	"github.com/sglavoie/tt/internal/transaction"
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/logging"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/synclog"
+	"github.com/sglavoie/docket/internal/transaction"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 func (s *CommitService) preflightChangesets(changesets []ChangeSet) ([]*ProjectDocument, []RecordedConflict, error) {

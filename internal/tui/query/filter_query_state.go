@@ -1,7 +1,7 @@
 package query
 
 import (
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // CommonFilterStateFromQuery rebuilds the row cache from the query.

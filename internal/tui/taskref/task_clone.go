@@ -1,6 +1,6 @@
 package taskref
 
-import "github.com/sglavoie/tt/internal/models"
+import "github.com/sglavoie/docket/internal/models"
 
 // CloneTaskDetachingDependencies shallow-copies a task and detaches its
 // dependency list. A bare `*task` keeps the reference slice's backing array,

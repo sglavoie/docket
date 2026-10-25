@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/docket/internal/app"
 )
 
 func TestBackgroundSyncKeepsFrontendSnapshotIndependent(t *testing.T) {

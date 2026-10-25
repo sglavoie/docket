@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/chrome"
 )
 
 // The preset keyboard is only as trustworthy as the instants it commits, and

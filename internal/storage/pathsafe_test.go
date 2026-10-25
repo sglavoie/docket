@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // TestSafeChildNameRejectsTraversal confirms the storage wrapper forwards the

@@ -19,7 +19,7 @@ final class ShellScreen {
 
 /// The app's semantic state for automation: a JSON document an agent or a
 /// script reads instead of a screenshot. It is written only when the launch
-/// names `TT_UITEST_STATE_EXPORT`, rewritten whole and atomically a moment
+/// names `DOCKET_UITEST_STATE_EXPORT`, rewritten whole and atomically a moment
 /// after anything it reports changes, and never read back by the app. Drafts
 /// and the lists are not observable, so they are also checked once a second;
 /// a document that has not changed is not rewritten.

@@ -3,7 +3,7 @@ package app
 import (
 	"sort"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // TaskAddressChange is one committed source-to-destination task address. A move

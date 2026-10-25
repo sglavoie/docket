@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 This file is the invariant contract the implementation and its tests are held
-to. It states rules, not explanations: if you want to know how `tt`
+to. It states rules, not explanations: if you want to know how Docket
 behaves, read [`docs/guide/`](docs/guide/README.md) instead.
 
 Contributor rules only: invariants, forbidden patterns, forwarding addresses.

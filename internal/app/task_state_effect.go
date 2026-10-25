@@ -1,6 +1,6 @@
 package app
 
-import "github.com/sglavoie/tt/internal/models"
+import "github.com/sglavoie/docket/internal/models"
 
 // TaskStateEffect is immutable committed evidence. An empty Before denotes
 // creation; Unscheduled describes the result of this transaction, not a later

@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 func TestBridgeSearchSuggestions(t *testing.T) {

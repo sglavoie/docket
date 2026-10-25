@@ -9,9 +9,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 // setupConflictTest wires a workspace so the conflict subcommands resolve their
@@ -117,7 +117,7 @@ func TestConflictShowUnknownIDNamesTheListCommand(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected an error for an unknown conflict id")
 	}
-	for _, want := range []string{`no conflict matches "ffffffff"`, "run 'tt conflict list' to see IDs"} {
+	for _, want := range []string{`no conflict matches "ffffffff"`, "run 'docket conflict list' to see IDs"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error %q lacks %q", err, want)
 		}
@@ -259,7 +259,7 @@ func TestConflictResolveRefusesFileWithoutUseFile(t *testing.T) {
 		t.Cleanup(func() { conflictResolveUse = ""; conflictResolveFile = "" })
 
 		err := runConflictResolve(conflictResolveCmd, []string{id})
-		if err == nil || !strings.HasPrefix(err.Error(), "--file only applies with --use file\nRun 'tt conflict resolve --help'") {
+		if err == nil || !strings.HasPrefix(err.Error(), "--file only applies with --use file\nRun 'docket conflict resolve --help'") {
 			t.Fatalf("--use %s --file error = %v, want the --file refusal", use, err)
 		}
 	}
@@ -276,7 +276,7 @@ func TestConflictListRefusesAMissingWorkspace(t *testing.T) {
 	setCommandDataDir(t, dir)
 
 	err := runConflictList(conflictListCmd, nil)
-	if err == nil || !strings.Contains(err.Error(), "no tt workspace at "+dir) {
+	if err == nil || !strings.Contains(err.Error(), "no Docket workspace at "+dir) {
 		t.Fatalf("conflict list error = %v, want a refusal naming %s", err, dir)
 	}
 	if _, statErr := os.Stat(dir); !errors.Is(statErr, os.ErrNotExist) {

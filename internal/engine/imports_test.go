@@ -9,8 +9,8 @@ import (
 // frontendImportPrefixes are the packages that make a binary a frontend: the
 // TUI and its terminal stack, and the CLI.
 var frontendImportPrefixes = []string{
-	"github.com/sglavoie/tt/internal/tui",
-	"github.com/sglavoie/tt/cmd",
+	"github.com/sglavoie/docket/internal/tui",
+	"github.com/sglavoie/docket/cmd",
 	"github.com/spf13/cobra",
 	"charm.land/",
 	"github.com/charmbracelet/",

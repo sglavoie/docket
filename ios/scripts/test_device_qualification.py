@@ -38,8 +38,8 @@ class DeviceQualificationTests(unittest.TestCase):
         self.state_path.write_text(json.dumps(self.state))
         (self.root / "current").write_text("trial\n")
         self.env = {k: v for k, v in os.environ.items()
-                    if not k.startswith("TT_QUALIFICATION_")}
-        self.env["TT_QUALIFICATION_ROOT"] = str(self.root)
+                    if not k.startswith("DOCKET_QUALIFICATION_")}
+        self.env["DOCKET_QUALIFICATION_ROOT"] = str(self.root)
 
     def invoke(self, *args):
         return subprocess.run(
@@ -65,8 +65,8 @@ class DeviceQualificationTests(unittest.TestCase):
 
     def test_finish_preserves_evidence_and_honors_keep(self):
         evidence = self.root / "evidence" / "qualification.json"
-        self.env["TT_QUALIFICATION_EVIDENCE"] = str(evidence)
-        self.env["TT_QUALIFICATION_KEEP"] = "1"
+        self.env["DOCKET_QUALIFICATION_EVIDENCE"] = str(evidence)
+        self.env["DOCKET_QUALIFICATION_KEEP"] = "1"
         result = self.invoke("finish")
         self.assertEqual(result.returncode, 0, result.stderr)
         recorded = json.loads(evidence.read_text())
@@ -75,7 +75,7 @@ class DeviceQualificationTests(unittest.TestCase):
         self.assertEqual(json.loads(self.state_path.read_text()), self.state)
         self.assertTrue((self.root / "current").exists())
 
-        del self.env["TT_QUALIFICATION_KEEP"]
+        del self.env["DOCKET_QUALIFICATION_KEEP"]
         result = self.invoke("finish")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertFalse((self.root / "current").exists())

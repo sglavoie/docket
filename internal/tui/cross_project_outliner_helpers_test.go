@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // makeTask creates a minimal task with the given title and section. The section

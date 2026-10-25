@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // External changes are the workspace edits no commit recorded: an editor

@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // populationRuntime builds an in-memory snapshot holding one pinned project,

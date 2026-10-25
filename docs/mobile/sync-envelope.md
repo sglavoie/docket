@@ -583,8 +583,8 @@ and the restarted process recovers it. Every run must leave every device and
 every genesis observer converged. It must also keep every unresolved user
 write in the workspace or an open conflict, ignore a redelivered exchange, and
 keep each commit atomic. A failure prints its seed, a replay command
-(`TT_SYNC_FAULT_SEED`), and its trace, and writes the full trace under
-`TT_SYNC_FAULT_TRACE_DIR` (or the system temporary directory).
+(`DOCKET_SYNC_FAULT_SEED`), and its trace, and writes the full trace under
+`DOCKET_SYNC_FAULT_TRACE_DIR` (or the system temporary directory).
 
 ## Open questions
 

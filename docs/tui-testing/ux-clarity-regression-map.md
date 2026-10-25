@@ -35,7 +35,7 @@ have made the before and after frames incomparable.
 The matrix writes its frames to a caller-selected directory:
 
 ```bash
-TT_UX_CLARITY_REVIEW_DIR=/tmp/ux-clarity-before \
+DOCKET_UX_CLARITY_REVIEW_DIR=/tmp/ux-clarity-before \
   go test ./internal/tui/ -run TestUXClarityReviewMatrix -count=1
 ```
 

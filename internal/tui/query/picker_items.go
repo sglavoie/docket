@@ -3,7 +3,7 @@ package query
 import (
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // FilterText returns the tag name for filtering.

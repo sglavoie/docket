@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/docket/internal/tui/keymap"
 )
 
 // GuidanceHint is one complete key/action entry in contextual guidance.

@@ -38,7 +38,7 @@ import (
 
 // defaultPackage is the package this refactor exists to split; every other
 // package in the repository is small enough to read whole.
-const defaultPackage = "github.com/sglavoie/tt/internal/tui"
+const defaultPackage = "github.com/sglavoie/docket/internal/tui"
 
 // formatVersion prefixes the emitted graph. tuiqualify checks it, so a format
 // change is a refusal rather than a misparse.

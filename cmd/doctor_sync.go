@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // The checks in this file audit the state a synced workspace can arrive in that
@@ -254,7 +254,7 @@ func checkConflictBundles(runtime *config.RuntimeState, results *doctorResults) 
 	results.conflictNotes = append(results.conflictNotes, doctorIssue{
 		project: "Conflicts",
 		detail: fmt.Sprintf(
-			"%s outstanding in %s; resolve with 'tt conflict list'",
+			"%s outstanding in %s; resolve with 'docket conflict list'",
 			Pluralize(len(records), "conflict bundle", "conflict bundles"),
 			store.Dir(),
 		),

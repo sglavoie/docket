@@ -39,10 +39,10 @@ each session contract keeps the 3600-second outer bound.
 ### Exporting the before-frames
 
 `TestUXDailyUseReviewMatrix` asserts its invariants with or without an export
-directory. Set `TT_UX_DAILY_USE_REVIEW_DIR` to write the frames:
+directory. Set `DOCKET_UX_DAILY_USE_REVIEW_DIR` to write the frames:
 
 ```sh
-TT_UX_DAILY_USE_REVIEW_DIR=/tmp/ux-daily-use-before \
+DOCKET_UX_DAILY_USE_REVIEW_DIR=/tmp/ux-daily-use-before \
   go test ./internal/tui/ -run TestUXDailyUseReviewMatrix -count=1
 ```
 
@@ -111,7 +111,7 @@ asserted rather than tabulated, in `TestUXDailyUseReviewMatrix`.
 The same export, re-run against the finished product:
 
 ```sh
-TT_UX_DAILY_USE_REVIEW_DIR=/tmp/ux-daily-use-after \
+DOCKET_UX_DAILY_USE_REVIEW_DIR=/tmp/ux-daily-use-after \
   go test ./internal/tui/ -run TestUXDailyUseReviewMatrix -count=1
 ```
 

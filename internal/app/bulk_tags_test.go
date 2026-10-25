@@ -5,8 +5,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 func TestBulkSetTagsReplacesTagSet(t *testing.T) {

@@ -8,11 +8,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/logging"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/ttenv"
-	"github.com/sglavoie/tt/internal/tui"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/logging"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/ttenv"
+	"github.com/sglavoie/docket/internal/tui"
 )
 
 var noColor bool
@@ -87,24 +87,24 @@ func resolveBuildInfo() (version, commit, buildTime string) {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "tt",
+	Use:   "docket",
 	Short: "An Outliner-first terminal task manager",
-	Long: fmt.Sprintf(`tt is an Outliner-first terminal task manager.
+	Long: fmt.Sprintf(`Docket is an Outliner-first terminal task manager.
 
-Run tt without a command to open the interactive Outliner. The command-line
+Run docket without a command to open the interactive Outliner. The command-line
 surface is intentionally limited to workspace maintenance, diagnostics,
 conflict recovery, project export, and shell completion.
 
 Startup validates schema-%d catalogs and schema-%d task Markdown before loading,
 and migrates any supported older workspace forward through the whole chain of
 immutable snapshot-first boundaries. Migration is one-way, so keep a copy of
-your workspace before a version jump. Run 'tt doctor' for read-only integrity
+your workspace before a version jump. Run 'docket doctor' for read-only integrity
 and migration-snapshot diagnostics.`, config.CurrentConfigVersion, storage.CurrentTaskSchemaVersion),
-	Example: `  tt
-  tt doctor
-  tt conflict list
-  tt workspace location
-  tt project export --all`,
+	Example: `  docket
+  docket doctor
+  docket conflict list
+  docket workspace location
+  docket project export --all`,
 	// No subcommand defines its own PersistentPreRunE: cobra runs only the
 	// nearest one, so a child's would shadow this hook and skip logging.
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
@@ -192,7 +192,7 @@ func initNoColor() {
 }
 
 // GetDataDir returns the explicitly selected workspace data directory: the
-// --data-dir flag, or the TT_DATA_DIR environment variable when the flag is
+// --data-dir flag, or the DOCKET_DATA_DIR environment variable when the flag is
 // unset. It is empty when neither is provided, so callers can fall back to the
 // active-workspace pointer or the legacy default.
 func GetDataDir() string {
@@ -203,7 +203,7 @@ func GetDataDir() string {
 }
 
 // resolveConfigPath derives the config path the manager should use, honoring the
-// documented workspace precedence: an explicit --data-dir/TT_DATA_DIR or the
+// documented workspace precedence: an explicit --data-dir/DOCKET_DATA_DIR or the
 // machine-local active-workspace pointer selects the data dir and its config
 // path; otherwise an empty string lets NewManager resolve the legacy default.
 func resolveConfigPath() string {
@@ -249,7 +249,7 @@ func printVersion() {
 func versionLine() string {
 	version, commit, buildTime := resolveBuildInfo()
 	if commit == "" && buildTime == "" {
-		return fmt.Sprintf("tt version %s", version)
+		return fmt.Sprintf("docket version %s", version)
 	}
-	return fmt.Sprintf("tt version %s (commit: %s, built: %s)", version, commit, buildTime)
+	return fmt.Sprintf("docket version %s (commit: %s, built: %s)", version, commit, buildTime)
 }

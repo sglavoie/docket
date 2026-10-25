@@ -18,8 +18,8 @@ final class SimulatorQualificationUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         let env = ProcessInfo.processInfo.environment
-        let work = try XCTUnwrap(env["TT_UITEST_WORK_DIR"])
-        let seed = try XCTUnwrap(env["TT_UITEST_EXCHANGE"])
+        let work = try XCTUnwrap(env["DOCKET_UITEST_WORK_DIR"])
+        let seed = try XCTUnwrap(env["DOCKET_UITEST_EXCHANGE"])
         root = URL(fileURLWithPath: work).appendingPathComponent("qualification-\(name.filter { $0.isLetter || $0.isNumber })-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         try FileManager.default.copyItem(at: URL(fileURLWithPath: seed), to: exchange)
@@ -58,8 +58,8 @@ final class SimulatorQualificationUITests: XCTestCase {
 
     func launch(_ extra: [String: String] = [:]) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchEnvironment = ["TT_UITEST_ROOT": root.path, "TT_UITEST_DEVICE_ID": "qualification-phone",
-                                 "TT_UITEST_EXCHANGE_DIR": exchange.path, "TT_UITEST_SYNC_CONTROL": "1"]
+        app.launchEnvironment = ["DOCKET_UITEST_ROOT": root.path, "DOCKET_UITEST_DEVICE_ID": "qualification-phone",
+                                 "DOCKET_UITEST_EXCHANGE_DIR": exchange.path, "DOCKET_UITEST_SYNC_CONTROL": "1"]
             .merging(extra) { $1 }
         app.launch()
         if app.buttons["onboarding.join"].waitForExistence(timeout: 3) { app.buttons["onboarding.join"].tap() }
@@ -242,7 +242,7 @@ final class SimulatorQualificationUITests: XCTestCase {
         let source = root.appendingPathComponent("qualification-large.bin")
         let bytes = Data(repeating: 0xA7, count: 64 * 1024 * 1024)
         try bytes.write(to: source)
-        var app = launch(["TT_UITEST_IMPORT_SOURCE": source.path, "TT_UITEST_HOLD_IMPORTS": "1"])
+        var app = launch(["DOCKET_UITEST_IMPORT_SOURCE": source.path, "DOCKET_UITEST_HOLD_IMPORTS": "1"])
         let task = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", ", Ship beta build")).firstMatch
         XCTAssertTrue(task.waitForExistence(timeout: timeout)); task.tap()
         press(app, "attachments.add"); app.buttons["Import from Files"].tap()

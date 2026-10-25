@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // CreateTempFileWithContent creates a temporary file with the given content.
@@ -83,14 +83,14 @@ func ResolveEditor(configEditor string) (string, error) {
 // ResolveNoteEditor resolves the deliberately environment-only editor contract
 // used by the combined Notes tool. Notes do not consult machine settings or
 // silently fall back to an installed editor: the first available executable in
-// TT_EDITOR, VISUAL, then EDITOR order wins.
+// DOCKET_EDITOR, VISUAL, then EDITOR order wins.
 func ResolveNoteEditor() (string, error) {
 	type candidate struct {
 		name  string
 		value string
 	}
 	candidates := []candidate{
-		{name: "TT_EDITOR", value: os.Getenv("TT_EDITOR")},
+		{name: "DOCKET_EDITOR", value: os.Getenv("DOCKET_EDITOR")},
 		{name: "VISUAL", value: os.Getenv("VISUAL")},
 		{name: "EDITOR", value: os.Getenv("EDITOR")},
 	}
@@ -110,11 +110,11 @@ func ResolveNoteEditor() (string, error) {
 	}
 	if len(unavailable) > 0 {
 		return "", fmt.Errorf(
-			"no configured notes editor is executable: checked %s; set TT_EDITOR, VISUAL, or EDITOR to an editor command available in PATH",
+			"no configured notes editor is executable: checked %s; set DOCKET_EDITOR, VISUAL, or EDITOR to an editor command available in PATH",
 			strings.Join(unavailable, ", "),
 		)
 	}
-	return "", fmt.Errorf("no notes editor configured: set TT_EDITOR, VISUAL, or EDITOR to an editor command")
+	return "", fmt.Errorf("no notes editor configured: set DOCKET_EDITOR, VISUAL, or EDITOR to an editor command")
 }
 
 // EditorCommand builds an exec.Cmd for the given editor and file path,

@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/storage/format"
+	"github.com/sglavoie/docket/internal/storage/format"
 )
 
 var legacyV4RotatedArchiveName = regexp.MustCompile(`^completed\.[1-9][0-9]*\.md$`)

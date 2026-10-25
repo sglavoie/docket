@@ -13,9 +13,9 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/sglavoie/tt/internal/testutil/gotree"
+	"github.com/sglavoie/docket/internal/testutil/gotree"
 
-	"github.com/sglavoie/tt/internal/tui"
+	"github.com/sglavoie/docket/internal/tui"
 )
 
 func TestRetiredProductVocabularyOwnership(t *testing.T) {

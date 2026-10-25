@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/testutil/gotree"
+	"github.com/sglavoie/docket/internal/testutil/gotree"
 )
 
 // TestDependencyIsolationPresentationVocabulary is the negative half of the

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // This small fictional workspace complements the release stress fixture. Most
@@ -52,7 +52,7 @@ func buildEverydayFixture(w *uitestWorkspace) error {
 
 func TestEverydayPolishReviewFrames(t *testing.T) {
 	defer theme.ApplyTheme(theme.ThemeConfig{})
-	root := os.Getenv("TT_TERMINAL_REVIEW_DIR")
+	root := os.Getenv("DOCKET_TERMINAL_REVIEW_DIR")
 	if root == "" {
 		root = t.TempDir()
 	}

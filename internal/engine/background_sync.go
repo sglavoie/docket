@@ -3,7 +3,7 @@ package engine
 import (
 	"os"
 
-	"github.com/sglavoie/tt/internal/syncexchange"
+	"github.com/sglavoie/docket/internal/syncexchange"
 )
 
 // BackgroundSyncExchanger captures an independent exchange worker for an

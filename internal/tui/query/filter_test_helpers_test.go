@@ -3,7 +3,7 @@ package query
 import (
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // passesCommonFiltersAt answers the row facets the way the Outliner does: the

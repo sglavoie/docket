@@ -6,12 +6,12 @@
 # parallel in one process: internal/tui's app init calls theme.ApplyTheme, which
 # rewrites package-level styles, and internal/config's tests move $HOME, which
 # is machine identity. Separate processes share neither, so this compiles each
-# test binary once, deals its top-level tests round-robin into TT_SHARD_CHUNKS
+# test binary once, deals its top-level tests round-robin into DOCKET_SHARD_CHUNKS
 # chunks per package (default 24), and runs every chunk of every package from
-# one pool of TT_SHARD_JOBS processes (default: two thirds of the CPUs, at
+# one pool of DOCKET_SHARD_JOBS processes (default: two thirds of the CPUs, at
 # least 2). Many small chunks pulled from one queue keep every worker busy until
 # the end, where a few fixed shards leave the run waiting on whichever drew the
-# slowest tests. More jobs than that lose to kernel contention under -race. TestExampleScenariosPass runs in every chunk, and TT_TUI_SCENARIO_SHARD
+# slowest tests. More jobs than that lose to kernel contention under -race. TestExampleScenariosPass runs in every chunk, and DOCKET_TUI_SCENARIO_SHARD
 # keeps each one to its own slice of the corpus.
 #
 # usage: test_sharded.sh [-coverprofile FILE] PACKAGE...
@@ -19,9 +19,9 @@
 # With -coverprofile, the binaries are built with coverage and the chunks'
 # profiles are merged there.
 #
-# TT_SHARD_INDEX and TT_SHARD_COUNT (default 0 of 1) split the chunks across
-# machines: this run takes every TT_SHARD_COUNT-th chunk of the whole queue,
-# starting at TT_SHARD_INDEX, so CI runners each drain a disjoint slice of it.
+# DOCKET_SHARD_INDEX and DOCKET_SHARD_COUNT (default 0 of 1) split the chunks across
+# machines: this run takes every DOCKET_SHARD_COUNT-th chunk of the whole queue,
+# starting at DOCKET_SHARD_INDEX, so CI runners each drain a disjoint slice of it.
 
 set -eu
 
@@ -30,17 +30,17 @@ set -eu
 # the queue keeps draining and every failure is reported rather than the first.
 if [ "${1:-}" = "--run-chunk" ]; then
 	package=$2 chunk=$3 binary=$4 dir=$5
-	work=$TT_SHARD_WORK
+	work=$DOCKET_SHARD_WORK
 	names=TestExampleScenariosPass
 	if [ -f "$work/tests.$package.$chunk" ]; then
 		names="$names|$(paste -sd'|' "$work/tests.$package.$chunk")"
 	fi
 	set -- -test.count=1 -test.timeout=10m -test.run "^($names)\$"
-	if [ -n "$TT_SHARD_COVER" ]; then
+	if [ -n "$DOCKET_SHARD_COVER" ]; then
 		set -- "$@" -test.coverprofile="$work/cover.$package.$chunk"
 	fi
 	status=0
-	(cd "$dir" && TT_TUI_SCENARIO_SHARD="$chunk/$TT_SHARD_CHUNK_COUNT" "$binary" "$@") \
+	(cd "$dir" && DOCKET_TUI_SCENARIO_SHARD="$chunk/$DOCKET_SHARD_CHUNK_COUNT" "$binary" "$@") \
 		>"$work/log.$package.$chunk" 2>&1 || status=$?
 	echo "$status" >"$work/status.$package.$chunk"
 	exit 0
@@ -74,26 +74,26 @@ positive() {
 			;;
 	esac
 }
-chunks=${TT_SHARD_CHUNKS:-24}
-positive TT_SHARD_CHUNKS "$chunks"
-jobs=${TT_SHARD_JOBS:-}
+chunks=${DOCKET_SHARD_CHUNKS:-24}
+positive DOCKET_SHARD_CHUNKS "$chunks"
+jobs=${DOCKET_SHARD_JOBS:-}
 if [ -z "$jobs" ]; then
 	cpus=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)
 	jobs=$((cpus * 2 / 3))
 	[ "$jobs" -lt 2 ] && jobs=2
 fi
-positive TT_SHARD_JOBS "$jobs"
-shard_count=${TT_SHARD_COUNT:-1}
-positive TT_SHARD_COUNT "$shard_count"
-shard_index=${TT_SHARD_INDEX:-0}
+positive DOCKET_SHARD_JOBS "$jobs"
+shard_count=${DOCKET_SHARD_COUNT:-1}
+positive DOCKET_SHARD_COUNT "$shard_count"
+shard_index=${DOCKET_SHARD_INDEX:-0}
 case $shard_index in
 	'' | *[!0-9]*)
-		echo "TT_SHARD_INDEX must be a non-negative integer, got '$shard_index'" >&2
+		echo "DOCKET_SHARD_INDEX must be a non-negative integer, got '$shard_index'" >&2
 		exit 2
 		;;
 esac
 if [ "$shard_index" -ge "$shard_count" ]; then
-	echo "TT_SHARD_INDEX $shard_index is not below TT_SHARD_COUNT $shard_count" >&2
+	echo "DOCKET_SHARD_INDEX $shard_index is not below DOCKET_SHARD_COUNT $shard_count" >&2
 	exit 2
 fi
 
@@ -145,7 +145,7 @@ for package in "$@"; do
 done
 
 started=$(date +%s)
-export TT_SHARD_WORK="$work" TT_SHARD_COVER="$coverprofile" TT_SHARD_CHUNK_COUNT="$chunks"
+export DOCKET_SHARD_WORK="$work" DOCKET_SHARD_COVER="$coverprofile" DOCKET_SHARD_CHUNK_COUNT="$chunks"
 if [ ! -s "$work/jobs" ]; then
 	echo "shard $shard_index of $shard_count holds no chunks" >&2
 	exit 2

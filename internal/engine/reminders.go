@@ -6,8 +6,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 // ReminderKind names what a reminder is about. Each kind is a moment the

@@ -78,7 +78,7 @@ func TestReadmeDemo(t *testing.T) {
 		if len(obs.LayoutIssues) != 0 || strings.Contains(obs.PlainScreen, "✕") {
 			t.Fatalf("step %d (%s) is not clean:\n%s\n%+v", i, step.caption, obs.PlainScreen, obs.LayoutIssues)
 		}
-		if os.Getenv("TT_README_DEMO_PRINT") != "" {
+		if os.Getenv("DOCKET_README_DEMO_PRINT") != "" {
 			t.Logf("step %d (%s):\n%s", i, step.caption, obs.PlainScreen)
 		}
 		frames = append(frames, readmeDemoFrame{ANSI: obs.ANSIScreen, HoldMS: step.holdMS, Caption: step.caption})

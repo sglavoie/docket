@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // resolveAttachmentOps translates a changeset's attachment side effects into

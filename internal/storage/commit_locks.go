@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/sglavoie/tt/internal/logging"
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/logging"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // WorkspaceCommitLockName is the single workspace-level lock file that serializes

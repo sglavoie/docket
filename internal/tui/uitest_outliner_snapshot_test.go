@@ -1,6 +1,6 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/tui/outliner"
+import "github.com/sglavoie/docket/internal/tui/outliner"
 
 // outlinerSemanticSnapshot keeps test observation in the shell harness. Every
 // value comes from the Outliner's public view state after rendering.

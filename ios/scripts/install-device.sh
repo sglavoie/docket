@@ -5,13 +5,13 @@
 # command is the upgrade. --launch also opens the updated app. The installed
 # app's absolute path is the only stdout output (qualification consumes it).
 #
-#   TT_IOS_DEVELOPMENT_TEAM=TEAMID ios/scripts/install-device.sh
+#   DOCKET_IOS_DEVELOPMENT_TEAM=TEAMID ios/scripts/install-device.sh
 #
 # Environment:
-#   TT_IOS_DEVELOPMENT_TEAM  signing team (default: the previous device build's team)
-#   TT_IOS_DEVICE            iPhone UDID (required when more than one is paired)
-#   TT_IOS_DEVICE_DERIVED    derived data (default ios/.cache/QualificationDerivedData)
-#   TT_IOS_RESULTS           log root (default ios/.cache/results)
+#   DOCKET_IOS_DEVELOPMENT_TEAM  signing team (default: the previous device build's team)
+#   DOCKET_IOS_DEVICE            iPhone UDID (required when more than one is paired)
+#   DOCKET_IOS_DEVICE_DERIVED    derived data (default ios/.cache/QualificationDerivedData)
+#   DOCKET_IOS_RESULTS           log root (default ios/.cache/results)
 
 set -euo pipefail
 
@@ -34,23 +34,23 @@ if [ "${1:-}" = --launch ]; then launch=true; shift; fi
 for tool in xcrun xcodebuild codesign python3; do
 	command -v "$tool" >/dev/null || fail "required tool not found: $tool"
 done
-derived=${TT_IOS_DEVICE_DERIVED:-ios/.cache/QualificationDerivedData}
+derived=${DOCKET_IOS_DEVICE_DERIVED:-ios/.cache/QualificationDerivedData}
 case "$derived" in /*) ;; *) derived="$repo_root/$derived" ;; esac
 app="$derived/Build/Products/Debug-iphoneos/tt.app"
-team=${TT_IOS_DEVELOPMENT_TEAM:-}
+team=${DOCKET_IOS_DEVELOPMENT_TEAM:-}
 if [ -z "$team" ] && [ -d "$app" ]; then
 	team=$(codesign -d --verbose=4 "$app" 2>&1 | awk -F= '/^TeamIdentifier=/ && $2 != "not set" { print $2 }') || true
 fi
-[ -n "$team" ] || fail "no previous signing team; run just ios-install TEAMID once, or set TT_IOS_DEVELOPMENT_TEAM"
+[ -n "$team" ] || fail "no previous signing team; run just ios-install TEAMID once, or set DOCKET_IOS_DEVELOPMENT_TEAM"
 
-results=${TT_IOS_RESULTS:-ios/.cache/results}
+results=${DOCKET_IOS_RESULTS:-ios/.cache/results}
 mkdir -p "$results"
 output=$(mktemp -d "$results/device-install.XXXXXX")
 output=$(cd "$output" && pwd)
 log="$output/install.log"
 devices="$output/devices.json"
 xcrun devicectl list devices --timeout 30 --json-output "$devices" >"$log" 2>&1 || fail "could not list paired devices"
-device=$(python3 -I - "$devices" "${TT_IOS_DEVICE:-}" <<'PY'
+device=$(python3 -I - "$devices" "${DOCKET_IOS_DEVICE:-}" <<'PY'
 import json, sys
 phones = []
 for d in json.load(open(sys.argv[1]))["result"]["devices"]:

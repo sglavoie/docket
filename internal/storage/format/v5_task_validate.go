@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // ValidateV5TaskRecord validates the complete target record without consulting

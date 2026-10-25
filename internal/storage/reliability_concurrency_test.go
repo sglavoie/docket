@@ -10,8 +10,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 // Session 22 reliability gate: prove the commit boundary is safe under true

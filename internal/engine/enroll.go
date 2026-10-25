@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/syncexchange"
-	"github.com/sglavoie/tt/internal/synclog"
-	"github.com/sglavoie/tt/internal/syncmerge"
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/syncexchange"
+	"github.com/sglavoie/docket/internal/synclog"
+	"github.com/sglavoie/docket/internal/syncmerge"
 )
 
 // ErrNotEnrolled refuses a sync operation on a workspace that was never
@@ -151,7 +151,7 @@ func (r *Runtime) SyncExchange(opts SyncExchangeOptions) (*syncexchange.FolderRe
 			return nil, err
 		}
 		if record == nil || record.ExchangeFolder == "" {
-			return nil, fmt.Errorf("this device has no exchange folder configured; run 'tt sync exchange --exchange DIR'")
+			return nil, fmt.Errorf("this device has no exchange folder configured; run 'docket sync exchange --exchange DIR'")
 		}
 		folder = record.ExchangeFolder
 	}

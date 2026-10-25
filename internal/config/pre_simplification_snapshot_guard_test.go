@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 func TestCreatePreSimplificationV5SnapshotIsByteDeterministic(t *testing.T) {

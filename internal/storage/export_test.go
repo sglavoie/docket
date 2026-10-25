@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/docket/internal/transaction"
 )
 
 var (

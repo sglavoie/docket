@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/docket/internal/tui/grammar"
 )
 
 func TestOutlineDumpEmitsThePinSigilAfterTheDestination(t *testing.T) {

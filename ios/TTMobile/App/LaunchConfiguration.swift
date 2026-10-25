@@ -61,10 +61,10 @@ struct LaunchConfiguration: Sendable {
     static let current = LaunchConfiguration(environment: ProcessInfo.processInfo.environment)
 
     init(environment: [String: String]) {
-        if let override = environment["TT_UITEST_ROOT"], !override.isEmpty {
+        if let override = environment["DOCKET_UITEST_ROOT"], !override.isEmpty {
             root = URL(fileURLWithPath: override, isDirectory: true)
             legacyWorkspace = nil
-        } else if let scratch = environment["TT_UITEST_SCRATCH"], !scratch.isEmpty {
+        } else if let scratch = environment["DOCKET_UITEST_SCRATCH"], !scratch.isEmpty {
             // A disposable root inside the app's own container, for UI tests
             // on a physical iPhone, which cannot reach a host directory. The
             // workspaces already on the device are neither read nor written.
@@ -80,30 +80,30 @@ struct LaunchConfiguration: Sendable {
             root = support
             legacyWorkspace = support.appendingPathComponent("workspace", isDirectory: true)
         }
-        openDelay = .milliseconds(Int(environment["TT_UITEST_OPEN_DELAY_MS"] ?? "") ?? 0)
+        openDelay = .milliseconds(Int(environment["DOCKET_UITEST_OPEN_DELAY_MS"] ?? "") ?? 0)
         #if DEBUG && targetEnvironment(simulator)
-        openGate = environment["TT_UITEST_HOLD_OPEN"] == "1" && environment["TT_UITEST_ROOT"]?.isEmpty == false
+        openGate = environment["DOCKET_UITEST_HOLD_OPEN"] == "1" && environment["DOCKET_UITEST_ROOT"]?.isEmpty == false
             ? root.appendingPathComponent("hold-open") : nil
         #else
         openGate = nil
         #endif
-        exchangeOverride = environment["TT_UITEST_EXCHANGE_DIR"].flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0, isDirectory: true) }
-        deviceIDOverride = environment["TT_UITEST_DEVICE_ID"].flatMap { $0.isEmpty ? nil : $0 }
-        importSourceOverride = environment["TT_UITEST_IMPORT_SOURCE"].flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) }
-        holdImportsBeforeCommit = environment["TT_UITEST_HOLD_IMPORTS"] == "1"
-        if let shared = environment["TT_UITEST_SHARED_CONTAINER"], !shared.isEmpty {
+        exchangeOverride = environment["DOCKET_UITEST_EXCHANGE_DIR"].flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0, isDirectory: true) }
+        deviceIDOverride = environment["DOCKET_UITEST_DEVICE_ID"].flatMap { $0.isEmpty ? nil : $0 }
+        importSourceOverride = environment["DOCKET_UITEST_IMPORT_SOURCE"].flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) }
+        holdImportsBeforeCommit = environment["DOCKET_UITEST_HOLD_IMPORTS"] == "1"
+        if let shared = environment["DOCKET_UITEST_SHARED_CONTAINER"], !shared.isEmpty {
             sharedContainer = URL(fileURLWithPath: shared, isDirectory: true)
         } else {
             sharedContainer = SharedContainer.root(environment: [:])
         }
-        holdCaptureImports = environment["TT_UITEST_HOLD_CAPTURES"] == "1"
-        stateExport = environment["TT_UITEST_STATE_EXPORT"].flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) }
-        appearance = environment["TT_UITEST_APPEARANCE"].flatMap(Appearance.init(rawValue:))
-        if let kind = environment["TT_UITEST_SEED_REMINDER"].flatMap(ReminderSeed.Kind.init(rawValue:)) {
+        holdCaptureImports = environment["DOCKET_UITEST_HOLD_CAPTURES"] == "1"
+        stateExport = environment["DOCKET_UITEST_STATE_EXPORT"].flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) }
+        appearance = environment["DOCKET_UITEST_APPEARANCE"].flatMap(Appearance.init(rawValue:))
+        if let kind = environment["DOCKET_UITEST_SEED_REMINDER"].flatMap(ReminderSeed.Kind.init(rawValue:)) {
             reminderSeed = ReminderSeed(
                 kind: kind,
-                title: environment["TT_UITEST_SEED_TITLE"] ?? "Reminder evidence",
-                delay: TimeInterval(environment["TT_UITEST_SEED_DELAY_SECONDS"] ?? "") ?? 20
+                title: environment["DOCKET_UITEST_SEED_TITLE"] ?? "Reminder evidence",
+                delay: TimeInterval(environment["DOCKET_UITEST_SEED_DELAY_SECONDS"] ?? "") ?? 20
             )
         } else {
             reminderSeed = nil
@@ -113,7 +113,7 @@ struct LaunchConfiguration: Sendable {
     /// Whether this launch runs under a UI test.
     var isUITest: Bool {
         let environment = ProcessInfo.processInfo.environment
-        return environment.keys.contains { $0.hasPrefix("TT_UITEST_") }
+        return environment.keys.contains { $0.hasPrefix("DOCKET_UITEST_") }
     }
 
     private var selectionFile: URL { root.appendingPathComponent("selected-workspace") }

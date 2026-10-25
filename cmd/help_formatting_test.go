@@ -49,7 +49,7 @@ func TestExamplesLiveInTheExampleField(t *testing.T) {
 		}
 	})
 	for _, line := range strings.Split(rootCmd.Example, "\n") {
-		if strings.TrimSpace(line) == "tt project export" {
+		if strings.TrimSpace(line) == "docket project export" {
 			t.Errorf("root example %q fails without a slug or --all", line)
 		}
 	}
@@ -79,30 +79,30 @@ func TestPublicCommandTreeIsMaintenanceOnly(t *testing.T) {
 	slices.Sort(paths)
 
 	want := []string{
-		"tt",
-		"tt completion",
-		"tt conflict",
-		"tt conflict list",
-		"tt conflict resolve",
-		"tt conflict show",
-		"tt doctor",
-		"tt help",
-		"tt project",
-		"tt project export",
-		"tt sync",
-		"tt sync conflicts",
-		"tt sync diagnostics",
-		"tt sync doctor",
-		"tt sync enroll",
-		"tt sync exchange",
-		"tt sync join",
-		"tt sync resolve",
-		"tt sync status",
-		"tt workspace",
-		"tt workspace backup",
-		"tt workspace location",
-		"tt workspace move",
-		"tt workspace verify-backup",
+		"docket",
+		"docket completion",
+		"docket conflict",
+		"docket conflict list",
+		"docket conflict resolve",
+		"docket conflict show",
+		"docket doctor",
+		"docket help",
+		"docket project",
+		"docket project export",
+		"docket sync",
+		"docket sync conflicts",
+		"docket sync diagnostics",
+		"docket sync doctor",
+		"docket sync enroll",
+		"docket sync exchange",
+		"docket sync join",
+		"docket sync resolve",
+		"docket sync status",
+		"docket workspace",
+		"docket workspace backup",
+		"docket workspace location",
+		"docket workspace move",
+		"docket workspace verify-backup",
 	}
 	slices.Sort(want)
 	if !slices.Equal(paths, want) {

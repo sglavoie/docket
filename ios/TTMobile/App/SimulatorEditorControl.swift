@@ -5,8 +5,8 @@ import Foundation
 func waitForSimulatorEditorSave() async throws {
     #if DEBUG && targetEnvironment(simulator)
     let environment = ProcessInfo.processInfo.environment
-    guard environment["TT_UITEST_EDITOR_SAVE_GATE"] == "1",
-          let root = environment["TT_UITEST_ROOT"], !root.isEmpty else { return }
+    guard environment["DOCKET_UITEST_EDITOR_SAVE_GATE"] == "1",
+          let root = environment["DOCKET_UITEST_ROOT"], !root.isEmpty else { return }
     let gate = URL(fileURLWithPath: root).appendingPathComponent("editor-save.release")
     for _ in 0..<600 {
         if FileManager.default.fileExists(atPath: gate.path) { return }

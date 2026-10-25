@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/conflict"
-	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/conflict"
+	"github.com/sglavoie/docket/internal/tui/operation"
 )
 
 // The shell half of the conflict browser: reading the store and mounting the

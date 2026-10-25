@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/testutil/nofsync"
+	"github.com/sglavoie/docket/internal/testutil/nofsync"
 )
 
 // TestMain isolates $HOME for every test in the textfit package. This package

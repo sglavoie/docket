@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // NoteCollectionResult is one location's outcome from a workspace-wide note

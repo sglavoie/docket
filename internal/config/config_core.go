@@ -1,6 +1,6 @@
 package config
 
-import "github.com/sglavoie/tt/internal/util"
+import "github.com/sglavoie/docket/internal/util"
 
 const (
 	DirPermissions  = util.DirPermissions

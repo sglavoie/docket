@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // checklistPromotionUndoAction is the ledger action one promotion records, and

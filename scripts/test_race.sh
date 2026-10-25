@@ -6,9 +6,9 @@
 #
 # With COVERPROFILE, both halves collect coverage and it is merged there.
 #
-# TT_SHARD_INDEX and TT_SHARD_COUNT (default 0 of 1) run one CI runner's slice:
+# DOCKET_SHARD_INDEX and DOCKET_SHARD_COUNT (default 0 of 1) run one CI runner's slice:
 # test_sharded.sh takes its slice of the long poles' chunks, and this shard
-# takes every TT_SHARD_COUNT-th of the other packages. Every shard's profile
+# takes every DOCKET_SHARD_COUNT-th of the other packages. Every shard's profile
 # merges into the whole suite's with merge_coverage.sh.
 
 set -eu
@@ -28,8 +28,8 @@ export GORACE
 
 # Every worker here competes for the same cores and memory, which skews the
 # guards that compare timings; ci.sh checks runs those alone instead.
-TT_DEFER_TIMING_GUARDS=1
-export TT_DEFER_TIMING_GUARDS
+DOCKET_DEFER_TIMING_GUARDS=1
+export DOCKET_DEFER_TIMING_GUARDS
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
@@ -45,11 +45,11 @@ sharded_names="tui config storage bridge syncmerge synclog"
 sharded=
 pattern=
 for name in $sharded_names; do
-	sharded="$sharded github.com/sglavoie/tt/internal/$name"
+	sharded="$sharded github.com/sglavoie/docket/internal/$name"
 	pattern="$pattern -e /internal/$name\$"
 done
-shard_index=${TT_SHARD_INDEX:-0}
-shard_count=${TT_SHARD_COUNT:-1}
+shard_index=${DOCKET_SHARD_INDEX:-0}
+shard_count=${DOCKET_SHARD_COUNT:-1}
 # shellcheck disable=SC2086
 packages=$(go list ./... | grep -v $pattern |
 	awk -v i="$shard_index" -v n="$shard_count" '(NR - 1) % n == i')

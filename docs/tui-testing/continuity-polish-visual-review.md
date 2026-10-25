@@ -11,9 +11,9 @@ palettes: 32 frames.
 From the repository root:
 
 ```sh
-TT_TERMINAL_REVIEW_DIR="$PWD/macos/.cache/polish-review" \
+DOCKET_TERMINAL_REVIEW_DIR="$PWD/macos/.cache/polish-review" \
   go test ./internal/tui -run '^TestPolishVisualReviewFrames$' -count=1
-TEST_RUNNER_TT_TERMINAL_REVIEW_DIR="$PWD/macos/.cache/polish-review" \
+TEST_RUNNER_DOCKET_TERMINAL_REVIEW_DIR="$PWD/macos/.cache/polish-review" \
   xcodebuild test -project macos/tt.xcodeproj -scheme tt \
   -destination 'platform=macOS,arch=arm64' -derivedDataPath macos/DerivedData \
   -only-testing:TTAppTests/TerminalVisualReviewTests

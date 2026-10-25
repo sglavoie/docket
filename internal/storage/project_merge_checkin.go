@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // taskCheckInUnit is the check-in trio read off one task as a single value: the

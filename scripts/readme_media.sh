@@ -10,7 +10,7 @@ image=docs/images/demo.svg
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
-TT_README_SCREENSHOT_DIR="$work" go test ./internal/tui -run '^TestReadmeDemo$' -count=1 >/dev/null
+DOCKET_README_SCREENSHOT_DIR="$work" go test ./internal/tui -run '^TestReadmeDemo$' -count=1 >/dev/null
 uv run -q scripts/render_terminal_svg.py --animate "$work/demo.json" "$work/demo.svg"
 
 if [ "${1:-}" = "--check" ]; then

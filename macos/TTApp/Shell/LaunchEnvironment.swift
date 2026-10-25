@@ -7,10 +7,10 @@ import Foundation
 /// TERM/COLORTERM are left to Ghostty.
 struct LaunchEnvironment: Equatable {
     /// The variables taken from the login shell, `PATH` aside. An editor or
-    /// `TT_DATA_DIR` exported from `~/.zshrc` never reaches a Finder-launched
+    /// `DOCKET_DATA_DIR` exported from `~/.zshrc` never reaches a Finder-launched
     /// app, so without these `Ctrl+E` would pick another editor and tt could
     /// open another workspace than the terminal's.
-    static let forwardedNames = ["EDITOR", "VISUAL", "TT_EDITOR", "TT_DATA_DIR"]
+    static let forwardedNames = ["EDITOR", "VISUAL", "DOCKET_EDITOR", "DOCKET_DATA_DIR"]
 
     var home: String
     var path: String
@@ -60,8 +60,8 @@ struct LaunchEnvironment: Equatable {
         return LaunchEnvironment(home: home, path: reported["PATH"] ?? fallbackPath, forwarded: forwarded)
     }
 
-    static let beginMarker = "__TT_ENV_BEGIN__"
-    static let endMarker = "__TT_ENV_END__"
+    static let beginMarker = "__DOCKET_ENV_BEGIN__"
+    static let endMarker = "__DOCKET_ENV_END__"
 
     /// The shell script printing `PATH` and every forwarded variable as
     /// NUL-terminated `NAME=value` records between markers, so anything a

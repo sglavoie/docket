@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/tt/internal/syncexchange"
-	"github.com/sglavoie/tt/internal/synclog"
+	"github.com/sglavoie/docket/internal/syncexchange"
+	"github.com/sglavoie/docket/internal/synclog"
 )
 
 func TestExchangeRefusesReusedAuthorSequences(t *testing.T) {

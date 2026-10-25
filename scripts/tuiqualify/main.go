@@ -50,7 +50,7 @@ const (
 	assignmentRoot = "internal/tui"
 
 	// importRoot is where an extracted sub-package lands.
-	importRoot = "github.com/sglavoie/tt/internal/tui"
+	importRoot = "github.com/sglavoie/docket/internal/tui"
 
 	// graphVersion must match what tuirefs writes.
 	graphVersion = "# tuirefs v1"

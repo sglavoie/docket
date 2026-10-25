@@ -3,7 +3,7 @@ package chrome
 import (
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // ZebraLine applies a subtle background tint to odd-indexed rows when zebra

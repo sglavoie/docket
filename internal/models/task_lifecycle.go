@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // Complete marks the task as done and sets the completion time.

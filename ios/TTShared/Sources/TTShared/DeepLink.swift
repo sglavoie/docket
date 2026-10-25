@@ -64,10 +64,10 @@ public enum SharedContainer {
     public static let appGroup = "group.io.github.sglavoie.tt"
 
     /// The container root, or nil when this process holds no App Group
-    /// entitlement. `TT_SHARED_CONTAINER` replaces it for UI tests, which
+    /// entitlement. `DOCKET_SHARED_CONTAINER` replaces it for UI tests, which
     /// run unsigned builds.
     public static func root(environment: [String: String] = ProcessInfo.processInfo.environment) -> URL? {
-        if let override = environment["TT_SHARED_CONTAINER"], !override.isEmpty {
+        if let override = environment["DOCKET_SHARED_CONTAINER"], !override.isEmpty {
             return URL(fileURLWithPath: override, isDirectory: true)
         }
         return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup)

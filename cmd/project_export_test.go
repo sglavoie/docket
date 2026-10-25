@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/docket/internal/config"
 )
 
 func TestRunProjectExportRefusesMigrationSnapshotDestination(t *testing.T) {
@@ -67,7 +67,7 @@ func TestRunProjectExportRefusesAMissingWorkspaceWithoutCreatingOne(t *testing.T
 				args = []string{"nope"}
 			}
 			err := runProjectExport(nil, args)
-			if err == nil || !strings.Contains(err.Error(), "no tt workspace at "+dir) {
+			if err == nil || !strings.Contains(err.Error(), "no Docket workspace at "+dir) {
 				t.Fatalf("project export error = %v, want a refusal naming %s", err, dir)
 			}
 			if _, statErr := os.Stat(dir); !os.IsNotExist(statErr) {

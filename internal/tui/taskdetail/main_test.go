@@ -4,9 +4,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/testutil/nofsync"
+	"github.com/sglavoie/docket/internal/testutil/nofsync"
 
-	"github.com/sglavoie/tt/internal/testutil/residue"
+	"github.com/sglavoie/docket/internal/testutil/residue"
 )
 
 // TestMain isolates $HOME for every test in the taskdetail package. The comment

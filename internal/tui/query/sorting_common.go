@@ -3,7 +3,7 @@ package query
 import (
 	"cmp"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // SortState bundles a sort field and direction. Embedded by views that support

@@ -182,9 +182,9 @@ final class TTBinaryResolverTests: XCTestCase {
         let env = LaunchEnvironment(
             home: "/Users/me",
             path: "/bin",
-            forwarded: ["EDITOR": "nvim", "TT_DATA_DIR": "/data"]
+            forwarded: ["EDITOR": "nvim", "DOCKET_DATA_DIR": "/data"]
         )
-        XCTAssertEqual(env.commandEnvironment, ["HOME": "/Users/me", "PATH": "/bin", "EDITOR": "nvim", "TT_DATA_DIR": "/data"])
+        XCTAssertEqual(env.commandEnvironment, ["HOME": "/Users/me", "PATH": "/bin", "EDITOR": "nvim", "DOCKET_DATA_DIR": "/data"])
     }
 
     func testReportScriptNamesEveryForwardedVariable() {

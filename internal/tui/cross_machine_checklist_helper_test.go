@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/docket/internal/app"
 )
 
 // TestCrossMachineHelperPromotesChecklistItem converts one seeded checklist item

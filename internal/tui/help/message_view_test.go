@@ -12,8 +12,8 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/external"
-	"github.com/sglavoie/tt/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/external"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 func TestMessageViewWrapsScrollsAndResizesWithoutLosingText(t *testing.T) {

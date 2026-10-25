@@ -3,7 +3,7 @@ package storage
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // TestMergeableTaskFieldsIncludesResumeNote proves the reflective inventory

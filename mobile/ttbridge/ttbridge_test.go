@@ -8,7 +8,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/bridge"
+	"github.com/sglavoie/docket/internal/bridge"
 )
 
 // TestBindingExportsExactlyTheContractSurface keeps the gomobile surface to the

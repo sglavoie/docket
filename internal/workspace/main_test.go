@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/testutil/nofsync"
+	"github.com/sglavoie/docket/internal/testutil/nofsync"
 )
 
 // TestMain skips fsync for this package's tests, which write their workspaces

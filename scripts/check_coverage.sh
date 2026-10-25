@@ -36,7 +36,7 @@ check_threshold() {
 	fi
 }
 
-overall=$(coverage_for_prefix "github.com/sglavoie/tt/")
+overall=$(coverage_for_prefix "github.com/sglavoie/docket/")
 check_threshold "overall" "$overall" "$overall_threshold"
 
 while read -r prefix threshold; do

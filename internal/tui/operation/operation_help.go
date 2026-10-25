@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/chrome"
 )
 
 // Discover returns every applicable operation without interpreting legacy

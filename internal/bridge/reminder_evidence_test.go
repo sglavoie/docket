@@ -65,8 +65,8 @@ type reminderEvidence struct {
 // Outside scripts/verify_mobile_session.sh 15 it has nothing to compare
 // against and skips, which that verifier refuses.
 func TestRecordedReminderDeviceEvidence(t *testing.T) {
-	wantSource := os.Getenv("TT_REMINDER_SOURCE_FINGERPRINT")
-	wantBridge := os.Getenv("TT_IOS_BRIDGE_FINGERPRINT")
+	wantSource := os.Getenv("DOCKET_REMINDER_SOURCE_FINGERPRINT")
+	wantBridge := os.Getenv("DOCKET_IOS_BRIDGE_FINGERPRINT")
 	if wantSource == "" || wantBridge == "" {
 		t.Skip("set by scripts/verify_mobile_session.sh 15")
 	}

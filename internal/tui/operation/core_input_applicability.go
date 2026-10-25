@@ -1,7 +1,7 @@
 package operation
 
 import (
-	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/tui/presentation"
 )
 
 func CoreOutlinerApplicability(ctx CommandContext) bool {

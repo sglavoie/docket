@@ -7,7 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/docket/internal/tui/listsurface"
 )
 
 // selectProjectHubRows selects each named row and reports the resulting count,

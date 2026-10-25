@@ -3,7 +3,7 @@ package app
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/docket/internal/models"
 )
 
 // ResumeNoteResult reports what SetResumeNote did. Changed is false when the
