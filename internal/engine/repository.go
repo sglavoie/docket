@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 
 	"github.com/sglavoie/docket/internal/app"
@@ -39,6 +40,12 @@ type Repository struct {
 	// command goroutines, so activityMu owns it.
 	activityMu     sync.Mutex
 	activityLoader *workspace.Loader
+
+	// documents retains each tasks.md parse keyed by the bytes it came from, so
+	// a Snapshot taken for one mutation re-parses only the projects that
+	// changed since the last one rather than the whole workspace. It is the
+	// process-wide cache the TUI's loaders read too.
+	documents *storage.ProjectDocumentCache
 }
 
 // NewRepository builds the storage-backed application repository for the
@@ -51,7 +58,7 @@ func NewRepository(dataDir string, deps *config.RuntimeDependencies, ledger *sto
 	svc := storage.NewCommitServiceWithLedger(config.TransactionsDir(dataDir), []string{dataDir}, ledger).
 		WithConflictStore(storage.NewConflictStore(config.ConflictsDir(dataDir))).
 		OnMachine(owner)
-	return &Repository{deps: deps, dataDir: dataDir, svc: svc}
+	return &Repository{deps: deps, dataDir: dataDir, svc: svc, documents: storage.SharedProjectDocuments}
 }
 
 // useCommitService reports whether the workspace is backed by the real
@@ -72,32 +79,93 @@ func (r *Repository) Snapshot() (app.Snapshot, error) {
 	if listErr != nil {
 		return nil, listErr
 	}
+	reads := r.readProjects(projects)
 	loaded := make([]*models.Project, 0, len(projects))
 	revisions := make(map[string]string, len(projects))
 	documents := make(map[string]*storage.ProjectDocument, len(projects))
 	var unavailable []string
-	for _, p := range projects {
+	for i, p := range projects {
 		if p == nil {
 			continue
 		}
-		// One read yields both the tasks and the guarded document, so a
-		// concurrent save is either wholly visible or wholly absent rather than
-		// pairing one version's tasks with the next version's revision. The
-		// warning goes to the log: stderr may be the terminal a frontend is drawing on.
-		doc, err := storage.LoadProjectWithDocument(p)
-		if err != nil {
-			logging.Warn("skipping project %s: %v", p.Name, err)
+		// The warning goes to the log: stderr may be the terminal a frontend is
+		// drawing on.
+		read := reads[i]
+		if read.err != nil {
+			logging.Warn("skipping project %s: %v", p.Name, read.err)
 			unavailable = append(unavailable, p.ID)
 			continue
 		}
-		if storage.ProjectTasksFileMissing(p) {
+		if read.missing {
 			unavailable = append(unavailable, p.ID)
 		}
 		loaded = append(loaded, p)
-		revisions[p.ID] = doc.Revision
-		documents[p.ID] = doc
+		revisions[p.ID] = read.document.Revision
+		documents[p.ID] = read.document
 	}
 	return app.NewPartialSnapshot(loaded, revisions, documents, unavailable), nil
+}
+
+// projectRead is one project's share of a Snapshot.
+type projectRead struct {
+	document *storage.ProjectDocument
+	missing  bool
+	err      error
+}
+
+// readProjects loads each project in place, in parallel on the real
+// filesystem: every load reads and writes only its own project, so the order
+// they finish in cannot change the answer, and a cold workspace's parses spread
+// across the cores. A test repository, and a run with the read-window probe
+// installed, load one at a time, since neither promises to be called
+// concurrently.
+//
+// One read yields both the tasks and the guarded document, so a concurrent save
+// is either wholly visible or wholly absent rather than pairing one version's
+// tasks with the next version's revision.
+func (r *Repository) readProjects(projects []*models.Project) []projectRead {
+	reads := make([]projectRead, len(projects))
+	read := func(i int) {
+		p := projects[i]
+		if p == nil {
+			return
+		}
+		document, err := storage.LoadProjectWithCachedDocument(p, r.documents)
+		reads[i] = projectRead{document: document, err: err}
+		if err == nil {
+			reads[i].missing = storage.ProjectTasksFileMissing(p)
+		}
+	}
+	workers := min(runtime.GOMAXPROCS(0), len(projects))
+	if !r.useCommitService() || storage.ProjectReadWindowProbe != nil || workers < 2 {
+		for i := range projects {
+			read(i)
+		}
+		return reads
+	}
+	next := make(chan int)
+	var wg sync.WaitGroup
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := range next {
+				read(i)
+			}
+		}()
+	}
+	for i := range projects {
+		next <- i
+	}
+	close(next)
+	wg.Wait()
+	return reads
+}
+
+// NoteLocationProjects implements app.NoteLocationSource: the catalog's
+// unarchived projects, the population Snapshot loads, without their tasks.
+func (r *Repository) NoteLocationProjects() ([]*models.Project, error) {
+	return r.deps.AvailableProjects(r.dataDir)
 }
 
 // CompletionActivityProjects implements app.CompletionActivitySource: the base
@@ -173,7 +241,7 @@ func (r *Repository) readWorkspaceCensus(activeOnly bool) (app.WorkspaceCensus, 
 			continue
 		}
 		project := cataloged.ToModel(r.dataDir)
-		doc, err := storage.LoadProjectWithDocument(project)
+		doc, err := storage.LoadProjectWithCachedDocument(project, r.documents)
 		if err != nil {
 			return app.WorkspaceCensus{}, fmt.Errorf("reading project %s for census: %w", project.Name, err)
 		}

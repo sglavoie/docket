@@ -29,16 +29,15 @@ func newFakeSource() *fakeSource {
 
 func (f *fakeSource) newLoader() *Loader {
 	return &Loader{
-		loadProject: func(p *models.Project) error {
+		loadProject: func(p *models.Project) (string, error) {
 			if err := f.loadErr[p.ID]; err != nil {
-				return err
+				return "", err
 			}
 			f.parses[p.ID]++
 			// Simulate a parse populating tasks.
 			p.Tasks = []*models.Task{makeTask(p.ID+"-t", 1)}
-			return nil
+			return "rev-" + p.ID, nil
 		},
-		revisionOf: func(p *models.Project) string { return "rev-" + p.ID },
 		statSource: func(p *models.Project) sourceIdentity {
 			id, ok := f.identity[p.ID]
 			if !ok {

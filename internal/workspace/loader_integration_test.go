@@ -47,9 +47,9 @@ func TestLoaderStorageBackedCacheAvoidsReparse(t *testing.T) {
 	// path (not a fake) while still using real stat-based cache invalidation.
 	parsed := map[string]int{}
 	loader := NewLoader()
-	loader.loadProject = func(p *models.Project) error {
+	loader.loadProject = func(p *models.Project) (string, error) {
 		parsed[p.ID]++
-		return storage.LoadProject(p)
+		return loadThroughSharedDocuments(p)
 	}
 
 	first := loader.Build([]*models.Project{p1(), p2()})

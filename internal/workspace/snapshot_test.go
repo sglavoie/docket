@@ -28,8 +28,7 @@ func makeProject(id, slug string, tasks ...*models.Task) *models.Project {
 func buildFromProjects(t *testing.T, projects ...*models.Project) *Snapshot {
 	t.Helper()
 	loader := &Loader{
-		loadProject: func(*models.Project) error { return nil },
-		revisionOf:  func(p *models.Project) string { return "rev-" + p.ID },
+		loadProject: func(p *models.Project) (string, error) { return "rev-" + p.ID, nil },
 		statSource:  func(*models.Project) sourceIdentity { return sourceIdentity{exists: false} },
 		cache:       make(map[string]cacheEntry),
 	}

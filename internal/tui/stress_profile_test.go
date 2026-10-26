@@ -3,6 +3,7 @@ package tui
 import (
 	"os"
 	"path/filepath"
+	"runtime/pprof"
 	"slices"
 	"strconv"
 	"testing"
@@ -25,7 +26,15 @@ func TestStressNavigationLatency(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	start := time.Now()
+	// Each launch phase is timed alone: Open and NewAppModel block the first
+	// frame, while the startup drain and the launch commands are what a real
+	// program runs in the background before the rows settle.
+	phase := time.Now()
+	lap := func(name string) {
+		t.Logf("launch %-16s %s", name+":", time.Since(phase).Round(time.Millisecond))
+		phase = time.Now()
+	}
+	start := phase
 	rt, err := engine.Open(engine.Config{
 		DataDir:         filepath.Join(root, "workspace"),
 		Machine:         engine.ExplicitMachine(filepath.Join(root, "home"), "docket-stress"),
@@ -34,19 +43,44 @@ func TestStressNavigationLatency(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	lap("engine.Open")
 	app, err := NewAppModel(rt)
 	if err != nil {
 		t.Fatal(err)
 	}
+	lap("NewAppModel")
 	d := NewUITestDriver(app, 160, 48)
 	d.SetDrainTimeout(time.Minute)
+	lap("resize")
 	if d.app.lifecycle.startup != nil {
 		d.dispatch(d.app.lifecycle.startup)
 		d.drain()
 	}
+	lap("startup drain")
 	d.bootLaunchCommands()
+	lap("launch commands")
 	d.app.View()
-	t.Logf("launch to first frame: %s, %d rows", time.Since(start).Round(time.Millisecond), len(d.app.Outliner().Rows))
+	lap("first frame")
+	t.Logf("launch total:           %s, %d rows", time.Since(start).Round(time.Millisecond), len(d.app.Outliner().Rows))
+	if presses == 0 {
+		return
+	}
+
+	// DOCKET_STRESS_CPUPROFILE profiles the key presses alone, where a
+	// -cpuprofile run would mix them with everything launch costs.
+	if path := os.Getenv("DOCKET_STRESS_CPUPROFILE"); path != "" {
+		f, err := os.Create(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := pprof.StartCPUProfile(f); err != nil {
+			t.Fatal(err)
+		}
+		defer func() {
+			pprof.StopCPUProfile()
+			_ = f.Close()
+		}()
+	}
 
 	updates := make([]time.Duration, 0, presses)
 	frames := make([]time.Duration, 0, presses)

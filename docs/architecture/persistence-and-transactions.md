@@ -45,6 +45,19 @@ cross-project move all rewrite documents they did not otherwise change.
 snapshot clone, rollback, and conflict reconstruction — so the model's collection
 and the merge base never share one comment object.
 
+Every reader still reads `tasks.md` in full, but it parses a version of the file
+once per process. `storage.SharedProjectDocuments` retains each parse, revision
+included, keyed by the path and a SHA-256 of the exact bytes read, so the
+repository's snapshot, the TUI's `workspace.Loader`s, and the project reloads
+share one parse of an unchanged file and pay a read and a deep copy instead. The
+bytes are the key, never the modification time, so an edit that keeps a file's
+size and timestamp is still seen, and the single-read guarantee
+`LoadProjectWithDocument` gives a mutation is untouched. The retained parse is
+never handed out: rollback installs a document's own tasks on a project and
+rebuilds their tree, so two snapshots sharing one document would share those
+writes. A snapshot loads its projects in parallel on the real filesystem, since
+each load writes only its own project.
+
 Project paths are derived from the selected data directory and canonical
 lowercase ASCII slugs. Absolute paths are not catalog data. Every mutation path
 is checked against approved roots with symlink-aware containment before locks,

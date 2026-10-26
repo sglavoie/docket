@@ -36,11 +36,10 @@ type cacheEntry struct {
 // is not read or parsed again. The cache is not safe for concurrent use; each
 // goroutine (or render pass) should own its Loader.
 type Loader struct {
-	// loadProject parses a project's tasks.md into the project in place.
-	// Overridable for tests; defaults to storage.LoadProject.
-	loadProject func(*models.Project) error
-	// revisionOf computes the canonical content revision of a loaded project.
-	revisionOf func(*models.Project) string
+	// loadProject parses a project's tasks.md into the project in place and
+	// returns the canonical content revision of what it parsed. Overridable for
+	// tests; defaults to loadThroughSharedDocuments.
+	loadProject func(*models.Project) (string, error)
 	// statSource returns the source identity of a project's tasks.md.
 	// Overridable for tests; defaults to stat of storage.TasksFilePath.
 	statSource func(*models.Project) sourceIdentity
@@ -53,13 +52,18 @@ type Loader struct {
 // NewLoader returns a Loader backed by the real storage layer.
 func NewLoader() *Loader {
 	return &Loader{
-		loadProject: storage.LoadProject,
-		revisionOf: func(p *models.Project) string {
-			return storage.ToProjectDocument(p).Revision
-		},
-		statSource: defaultStatSource,
-		cache:      make(map[string]cacheEntry),
+		loadProject: loadThroughSharedDocuments,
+		statSource:  defaultStatSource,
+		cache:       make(map[string]cacheEntry),
 	}
+}
+
+// loadThroughSharedDocuments loads a project through the process-wide document
+// cache, so a file another loader or the repository already parsed in exactly
+// these bytes costs a read and a copy rather than a parse and a render, and the
+// revision comes from that one parse instead of a second rendering.
+func loadThroughSharedDocuments(project *models.Project) (string, error) {
+	return storage.LoadProjectRevisionCached(project)
 }
 
 func defaultStatSource(project *models.Project) sourceIdentity {
@@ -107,7 +111,8 @@ func (l *Loader) load(project *models.Project) (*models.Project, string, Diagnos
 		}
 	}
 
-	if err := l.loadProject(project); err != nil {
+	revision, err := l.loadProject(project)
+	if err != nil {
 		return nil, "", Diagnostic{
 			ProjectID:   project.ID,
 			ProjectName: project.Name,
@@ -117,7 +122,6 @@ func (l *Loader) load(project *models.Project) (*models.Project, string, Diagnos
 	}
 	l.parseCount++
 
-	revision := l.revisionOf(project)
 	if identity.exists && project.ID != "" {
 		l.cache[project.ID] = cacheEntry{identity: identity, revision: revision, project: project}
 	}

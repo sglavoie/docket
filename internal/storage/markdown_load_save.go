@@ -33,6 +33,35 @@ func LoadProject(project *models.Project) error {
 	return loadProjectContent(project, content)
 }
 
+// LoadProjectCached is LoadProject answering the parse from the shared
+// document cache when tasks.md still holds bytes it has already parsed. The
+// file is read either way; a test repository loads through LoadProject.
+func LoadProjectCached(project *models.Project) error {
+	if _, ok := DefaultRepository.(*FileSystemRepository); !ok {
+		return LoadProject(project)
+	}
+	_, err := LoadProjectWithCachedDocument(project, SharedProjectDocuments)
+	return err
+}
+
+// LoadProjectRevisionCached is LoadProjectCached returning the canonical
+// revision of what it loaded, which the cached parse already holds. A test
+// repository has no bytes to key on, so it loads through LoadProject and its
+// revision is rendered from the loaded project, as an uncached reader's is.
+func LoadProjectRevisionCached(project *models.Project) (string, error) {
+	if _, ok := DefaultRepository.(*FileSystemRepository); !ok {
+		if err := LoadProject(project); err != nil {
+			return "", err
+		}
+		return ToProjectDocument(project).Revision, nil
+	}
+	document, err := LoadProjectWithCachedDocument(project, SharedProjectDocuments)
+	if err != nil {
+		return "", err
+	}
+	return document.Revision, nil
+}
+
 // ProjectReadWindowProbe is the optional observation seam a consistency test
 // installs to rewrite tasks.md at the exact instant LoadProjectWithDocument
 // holds its bytes and has derived nothing from them yet. Normal execution
@@ -59,6 +88,14 @@ var ProjectReadWindowProbe func(project *models.Project)
 // ones a mutation edits in place; the document's are the immutable base a merge
 // is measured against, so they may not be the same objects.
 func LoadProjectWithDocument(project *models.Project) (*ProjectDocument, error) {
+	return LoadProjectWithCachedDocument(project, nil)
+}
+
+// LoadProjectWithCachedDocument is LoadProjectWithDocument answering the parse
+// from cache when tasks.md still holds the bytes cache last parsed for it. The
+// file is read either way, so the result describes the bytes on disk now; a nil
+// cache parses every time.
+func LoadProjectWithCachedDocument(project *models.Project, cache *ProjectDocumentCache) (*ProjectDocument, error) {
 	if _, ok := DefaultRepository.(*FileSystemRepository); !ok {
 		// Test doubles keep projects in memory with no tasks.md, so there is no
 		// read window to close: the canonical in-memory document is the only
@@ -69,7 +106,8 @@ func LoadProjectWithDocument(project *models.Project) (*ProjectDocument, error) 
 		return CanonicalProjectDocument(project, nil)
 	}
 
-	content, err := os.ReadFile(tasksFilePath(project.Path))
+	path := tasksFilePath(project.Path)
+	content, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		if loadErr := loadMissingProject(project); loadErr != nil {
 			return nil, loadErr
@@ -84,7 +122,7 @@ func LoadProjectWithDocument(project *models.Project) (*ProjectDocument, error) 
 	if ProjectReadWindowProbe != nil {
 		ProjectReadWindowProbe(project)
 	}
-	document, err := ParseProjectDocument(string(content))
+	document, err := cache.parse(path, content)
 	if err != nil {
 		return nil, loadParseError(project, err)
 	}

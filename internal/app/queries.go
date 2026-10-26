@@ -21,7 +21,7 @@ func (s *Service) Notes(projectID string) ([]*models.Note, error) {
 // NotesAt returns project or global notes for an explicit path-free location.
 // Locations are resolved against one workspace snapshot before the port reads.
 func (s *Service) NotesAt(location NoteLocation) ([]*models.Note, error) {
-	snap, err := s.repo.Snapshot()
+	snap, err := s.noteLocationSnapshot()
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func (s *Service) NotesAt(location NoteLocation) ([]*models.Note, error) {
 // query; location resolution and note-port failures are retained on their
 // corresponding result so callers can still use every successful collection.
 func (s *Service) NotesAtLocations(locations []NoteLocation) ([]NoteCollectionResult, error) {
-	snap, err := s.repo.Snapshot()
+	snap, err := s.noteLocationSnapshot()
 	if err != nil {
 		return nil, err
 	}
@@ -52,4 +52,28 @@ func (s *Service) NotesAtLocations(locations []NoteLocation) ([]NoteCollectionRe
 		results[i].Notes, results[i].Err = s.notes.Notes(location, project)
 	}
 	return results, nil
+}
+
+// NoteLocationSource is an optional repository capability: the cataloged,
+// unarchived projects a note location may name, read without their tasks.
+// Reading notes resolves a project to its directory and nothing more, so a
+// repository that can enumerate the catalog alone spares a note query the
+// parse of every tasks.md a full Snapshot performs.
+type NoteLocationSource interface {
+	NoteLocationProjects() ([]*models.Project, error)
+}
+
+// noteLocationSnapshot is the read model a note query resolves locations
+// against: the task-free catalog when the repository offers one, else a full
+// snapshot. Both admit the same projects, so resolution answers alike.
+func (s *Service) noteLocationSnapshot() (Snapshot, error) {
+	source, ok := s.repo.(NoteLocationSource)
+	if !ok {
+		return s.repo.Snapshot()
+	}
+	projects, err := source.NoteLocationProjects()
+	if err != nil {
+		return nil, err
+	}
+	return NewPartialSnapshot(projects, nil, nil, nil), nil
 }

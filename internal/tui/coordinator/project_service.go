@@ -33,7 +33,8 @@ func NewProjectService() *ProjectService {
 // building a second loader of their own.
 func (s *ProjectService) WorkspaceLoader() *workspace.Loader { return s.workspaceLoader }
 
-// Load reloads a project from disk.
+// Load reloads a project from disk, through the shared document cache so an
+// unchanged tasks.md is read and copied rather than parsed again.
 func (s *ProjectService) Load(project *models.Project) error {
-	return storage.LoadProject(project)
+	return storage.LoadProjectCached(project)
 }
