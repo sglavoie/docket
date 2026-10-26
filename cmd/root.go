@@ -95,11 +95,10 @@ Run docket without a command to open the interactive Outliner. The command-line
 surface is intentionally limited to workspace maintenance, diagnostics,
 conflict recovery, project export, and shell completion.
 
-Startup validates schema-%d catalogs and schema-%d task Markdown before loading,
-and migrates any supported older workspace forward through the whole chain of
-immutable snapshot-first boundaries. Migration is one-way, so keep a copy of
-your workspace before a version jump. Run 'docket doctor' for read-only integrity
-and migration-snapshot diagnostics.`, config.CurrentConfigVersion, storage.CurrentTaskSchemaVersion),
+Docket reads schema-%d catalogs and schema-%d task Markdown, and upgrades an
+older workspace to them when it opens it. Upgrading is one-way, so back up your
+workspace before a version jump. Run 'docket doctor' for a read-only integrity
+and migration check.`, config.CurrentConfigVersion, storage.CurrentTaskSchemaVersion),
 	Example: `  docket
   docket doctor
   docket conflict list
