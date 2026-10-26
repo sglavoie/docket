@@ -410,5 +410,8 @@ func localRuntimeDirForDataDirOn(machineHome, dataDir string) string {
 // TUI startup and workspace relocation coordinate on the exact same lock while
 // ensuring it never lives in a synced data directory.
 func TUIProcessLockPath(dataDir string) string {
-	return filepath.Join(LocalRuntimeDirForDataDir(dataDir), "pid.lock")
+	return filepath.Join(LocalRuntimeDirForDataDir(dataDir), tuiProcessLockName)
 }
+
+// tuiProcessLockName is the file TUIProcessLockPath names.
+const tuiProcessLockName = "pid.lock"

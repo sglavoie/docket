@@ -46,6 +46,9 @@ func AdoptLegacyRoots() error {
 // through the renames. Nothing moves while any of them still holds unfinished
 // or quarantined work: the old roots stay as they are, journals and all.
 //
+// Nothing moves either while a TUI still holds a process lock under ~/.tt: an
+// older tt left running would recreate ~/.tt beside the moved root.
+//
 // Nothing moves when iCloud Drive/Docket already exists beside a tt workspace.
 // A failure part way puts back what had already moved, so the old names stay
 // intact and the next start tries again.
@@ -71,7 +74,16 @@ func adoptLegacyRootsOn(machineHome string) error {
 	if !localPresent && !cloudMove {
 		return nil
 	}
+	// A tt TUI still running keeps writing under ~/.tt and would recreate it
+	// beside the moved root, so its lock is held through the move.
+	return withLegacyTUILocks(oldLocal, newLocal, localPresent, func() error {
+		return adoptLegacyRootsUnlocked(machineHome, oldLocal, newLocal, localPresent, oldCloud, newCloud, cloudMove)
+	})
+}
 
+// adoptLegacyRootsUnlocked recovers the journals the move would carry and
+// performs it, once withLegacyTUILocks excludes every live tt TUI.
+func adoptLegacyRootsUnlocked(machineHome, oldLocal, newLocal string, localPresent bool, oldCloud, newCloud string, cloudMove bool) error {
 	// Journals name absolute paths under the roots about to move, so whatever
 	// they hold finishes under those paths first. Their commit locks stay held
 	// through the renames, so nothing journals a new transaction beneath an old
@@ -101,6 +113,34 @@ func adoptLegacyRootsOn(machineHome string) error {
 		}
 		return renameLegacyRoots(oldLocal, newLocal, localPresent, oldCloud, newCloud, cloudMove)
 	})
+}
+
+// withLegacyTUILocks takes every TUI process lock under the old machine-local
+// root and runs fn while holding them all. A TUI of either name locks there,
+// beside the local workspace or under runtime/ for any other one, so a lock
+// another process holds refuses the move with nothing moved. Only existing
+// lock files are taken; a leftover one no process holds blocks nothing. The
+// locks follow their files into the new root and are released after fn.
+func withLegacyTUILocks(oldLocal, newLocal string, localPresent bool, fn func() error) error {
+	if !localPresent {
+		return fn()
+	}
+	paths, err := filepath.Glob(filepath.Join(oldLocal, runtimeDirName, "*", tuiProcessLockName))
+	if err != nil {
+		return err
+	}
+	paths = append([]string{filepath.Join(oldLocal, tuiProcessLockName)}, paths...)
+	for _, path := range paths {
+		if !pathExists(path) {
+			continue
+		}
+		lock, err := util.AcquirePIDLock(path)
+		if err != nil {
+			return fmt.Errorf("cannot move %s to %s while a TUI still runs from it: %w; quit it, including an older tt.app, and start Docket again; nothing was moved", DisplayPath(oldLocal), DisplayPath(newLocal), err)
+		}
+		defer lock.Release()
+	}
+	return fn()
 }
 
 // renameLegacyRoots performs the renames adoptLegacyRootsOn decided on and

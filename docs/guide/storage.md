@@ -148,8 +148,10 @@ when `~/.tt` held one — and an `iCloud Drive/tt` workspace to
 `iCloud Drive/Docket`, rewriting the pointer when it named either. A pointer
 naming any other workspace is left as it is. If `iCloud Drive/Docket` already
 exists beside a `tt` workspace, or a rename fails, nothing moves and the
-command stops, naming both folders; once `~/.docket` exists it never runs
-again.
+command stops, naming both folders. A `tt` TUI still running, `tt.app`
+included, stops it the same way, since it would recreate `~/.tt` beside the
+moved root: quit it and run the command again. Once `~/.docket` exists it never
+runs again.
 
 Schema 24 moves the workspace's internal directory from `.tt/` to `.docket/`
 and changes nothing else: no task document, catalog field, or conflict bundle

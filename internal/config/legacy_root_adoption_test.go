@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/docket/internal/util"
 )
 
 const adoptionTestWorkspaceID = "11111111-2222-4333-8444-555555555555"
@@ -389,5 +391,52 @@ func TestAdoptLegacyRoots_RefusesUnrecoverableJournal(t *testing.T) {
 				t.Fatal("refused adoption moved the machine-local root")
 			}
 		})
+	}
+}
+
+// A TUI still running from ~/.tt holds its process lock there, beside the
+// local workspace or under runtime/ for another one; moving the root under it
+// would let it recreate ~/.tt, so the move refuses with both roots intact.
+func TestAdoptLegacyRoots_RefusesWhileLegacyTUIRuns(t *testing.T) {
+	for _, rel := range []string{tuiProcessLockName, filepath.Join(runtimeDirName, "523dd5ca751c", tuiProcessLockName)} {
+		t.Run(rel, func(t *testing.T) {
+			t.Parallel()
+			home := t.TempDir()
+			old := populateLegacyLocalRoot(t, home)
+			lockPath := filepath.Join(old, rel)
+			if err := os.MkdirAll(filepath.Dir(lockPath), DirPermissions); err != nil {
+				t.Fatal(err)
+			}
+			lock, err := util.AcquirePIDLock(lockPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer lock.Release()
+
+			err = adoptLegacyRootsOn(home)
+			if err == nil || !strings.Contains(err.Error(), "nothing was moved") {
+				t.Fatalf("adoptLegacyRootsOn under a live TUI lock = %v, want a refusal", err)
+			}
+			assertAbsent(t, filepath.Join(home, localRootName))
+			assertFileBody(t, filepath.Join(old, "projects", "inbox", "tasks.md"), "tasks")
+		})
+	}
+}
+
+// A lock file no process holds is what every exited TUI leaves behind, so it
+// moves with the root and blocks nothing.
+func TestAdoptLegacyRoots_MovesPastReleasedTUILock(t *testing.T) {
+	t.Parallel()
+	home := t.TempDir()
+	old := populateLegacyLocalRoot(t, home)
+	rel := filepath.Join(runtimeDirName, "523dd5ca751c", tuiProcessLockName)
+	writeAdoptionFile(t, old, rel, "pid=65535\n")
+
+	if err := adoptLegacyRootsOn(home); err != nil {
+		t.Fatalf("adopt: %v", err)
+	}
+	assertAbsent(t, old)
+	if !fileExists(filepath.Join(home, localRootName, rel)) {
+		t.Fatalf("the released lock did not move with the root")
 	}
 }

@@ -13,7 +13,7 @@ internal/bridge/capture_inbox_files.go:writeFileAtomically	machine-local	capture
 internal/config/domain_file_store_io.go:DomainFileStore.recoverEnvelopeFromBackup	domain-store	restores a corrupt domain artifact from its .bak sidecar; the repaired artifact is republished as a domain change
 internal/config/domain_file_store_io.go:DomainFileStore.saveObserved	domain-store	checked catalog/planning/lenses/machine save; synced kinds become catalog/planning/lenses effects and machine.json stays local
 internal/config/domain_file_store_io.go:backupDomainArtifact	domain-store	.bak sidecar beside a domain artifact; local-only and excluded from exchange
-internal/config/legacy_root_adoption.go:adoptLegacyRootsOn	workspace-relocation	one-time rename of ~/.tt to ~/.docket and iCloud Drive/tt to iCloud Drive/Docket at startup; puts back a partial move
+internal/config/legacy_root_adoption.go:renameLegacyRoots	workspace-relocation	one-time rename of ~/.tt to ~/.docket and iCloud Drive/tt to iCloud Drive/Docket at startup; puts back a partial move
 internal/config/legacy_root_adoption.go:rewriteAdoptedPointer	machine-local	rewrites the machine-local active-workspace pointer after that rename
 internal/config/local_draft.go:LocalDraft.Replace	machine-local	checked capture recovery copies under the workspace's machine runtime directory; never synced
 internal/config/manager_backup.go:Manager.BackupConfig	domain-store	writes .bak sidecars for every domain file; local-only and excluded from exchange
