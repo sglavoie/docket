@@ -13,8 +13,16 @@ func TestBackgroundSyncKeepsFrontendSnapshotIndependent(t *testing.T) {
 	desk := env.open(t, env.workingCopy, enrollingDevice)
 	peer := env.join(t)
 	manual := env.open(t, env.workingCopy, enrollingDevice)
+	// The incoming task lives outside Unfiled, where the desk saves below land.
+	// Two creations in one project each mint the next ShortID unseen by the
+	// other, a retry-only conflict, so sharing it made the test depend on
+	// whether an exchange applied the peer's task mid-save.
+	incoming, err := peer.CreateProject("incoming")
+	if err != nil {
+		t.Fatal(err)
+	}
 	captured, err := peer.Service().Capture(app.CaptureRequest{
-		ProjectID: peer.State().SystemUnfiledProject().ID, Title: "Incoming Today task",
+		ProjectID: incoming.Project.ID, Title: "Incoming Today task",
 	})
 	if err != nil {
 		t.Fatal(err)
