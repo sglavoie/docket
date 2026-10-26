@@ -372,17 +372,20 @@ func (h *History) readCatalog() (*catalogIdentity, error) {
 	return parseCatalog(data)
 }
 
-// track advances the last indexed digest of every path effects changed.
+// track advances the last indexed digest of every path effects changed. A
+// manifest sealed before schema 24 names .tt/ paths; it tracks them at the
+// .docket/ paths its effects were applied to, as LoadState does.
 func track(state *State, effects []Effect) {
 	for _, effect := range effects {
+		path := CanonicalPath(effect.Path)
 		switch effect.Op {
 		case OpPut:
-			state.Tracked[effect.Path] = *effect.Blob
+			state.Tracked[path] = *effect.Blob
 		case OpDelete:
-			delete(state.Tracked, effect.Path)
+			delete(state.Tracked, path)
 		case OpMove:
-			delete(state.Tracked, effect.Path)
-			state.Tracked[effect.TargetPath] = *effect.Blob
+			delete(state.Tracked, path)
+			state.Tracked[CanonicalPath(effect.TargetPath)] = *effect.Blob
 		}
 	}
 }

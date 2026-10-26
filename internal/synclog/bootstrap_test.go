@@ -231,3 +231,46 @@ func TestBootstrapRejectsParentOrderContradictingAuthorSequence(t *testing.T) {
 		t.Fatalf("impossible author order accepted: %v", err)
 	}
 }
+
+// A manifest sealed before schema 24 names .tt/ paths. Importing it tracks
+// the .docket/ paths its effects were applied to, so a later idle observation
+// finds nothing to record.
+func TestIncomingLegacyPathsTrackTheirCanonicalPaths(t *testing.T) {
+	h := bootstrapTestHistory(t)
+	s := newSynthHistory(t)
+	catalog := s.blob(`{"workspace_id":"ws","data":{"projects":[]}}`)
+	note := s.blob("note")
+	other := s.blob("other note")
+	genesis := s.commit("peer", KindEnroll, nil,
+		Effect{Kind: EffectCatalog, Path: catalogRel, Op: OpPut, Blob: catalog})
+	put := s.commit("peer", KindUser, []string{genesis},
+		Effect{Kind: EffectGlobalNote, Path: ".tt/global-notes/a.md", Op: OpPut, Blob: note},
+		Effect{Kind: EffectGlobalNote, Path: ".tt/global-notes/b.md", Op: OpPut, Blob: other})
+	move := s.commit("peer", KindUser, []string{put},
+		Effect{Kind: EffectGlobalNote, Path: ".tt/global-notes/a.md", Op: OpMove, TargetPath: ".tt/global-notes/c.md", BaseBlob: note, Blob: note})
+	s.commit("peer", KindUser, []string{move},
+		Effect{Kind: EffectGlobalNote, Path: ".tt/global-notes/b.md", Op: OpDelete, BaseBlob: other})
+
+	for i, m := range s.manifests {
+		plan, err := h.PlanIncoming(m, s.blobs, fmt.Sprintf("incoming-%d", i))
+		if err != nil {
+			t.Fatalf("manifest %d: %v", i, err)
+		}
+		applyBootstrapTestPlan(t, &ReconcilePlan{Plan: *plan})
+	}
+	state, err := h.LoadState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{catalogRel: *catalog, ".docket/global-notes/c.md": *note}
+	if !reflect.DeepEqual(state.Tracked, want) {
+		t.Fatalf("tracked %v, want %v", state.Tracked, want)
+	}
+	observed, err := h.observe(state, newOverlay(h), nil, KindExternal, "idle-observe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if observed.Manifest != nil {
+		t.Fatalf("idle observation recorded %+v", observed.Manifest.Effects)
+	}
+}
