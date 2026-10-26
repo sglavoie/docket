@@ -166,7 +166,7 @@ func TestOutlineDependencyParseFormsTheFinalSet(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			scope, projects := outlineDependencyWorkspace(t)
-			buffer := tt.body + "  [[tt:4f2a9c11]]"
+			buffer := tt.body + "  [[docket:4f2a9c11]]"
 			lines, problems := grammar.ParseOutlineBuffer(buffer, scope, projects)
 			if len(problems) > 0 {
 				t.Fatalf("parse: %v", problems)
@@ -213,7 +213,7 @@ func TestOutlineDependencyParseRefusals(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			scope, projects := outlineDependencyWorkspace(t)
-			buffer := tt.body + "  [[tt:4f2a9c11]]"
+			buffer := tt.body + "  [[docket:4f2a9c11]]"
 			lines, problems := grammar.ParseOutlineBuffer(buffer, scope, projects)
 			if len(problems) == 0 {
 				t.Fatalf("parse accepted %q: %+v", tt.body, lines)

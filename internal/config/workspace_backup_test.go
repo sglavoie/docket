@@ -104,3 +104,47 @@ func TestWorkspaceBackupVerificationNamesAMissingBackupPlainly(t *testing.T) {
 		t.Fatalf("error = %q", err)
 	}
 }
+
+func TestWorkspaceBackupCopiesAPreV24WorkspaceWithoutUpgradingIt(t *testing.T) {
+	root := legacyV24Workspace(t)
+	before := v24Tree(t, root)
+	report, err := CreateWorkspaceBackup(root, filepath.Join(t.TempDir(), "backups"))
+	if err != nil {
+		t.Fatalf("backup of a pre-v24 workspace: %v", err)
+	}
+	if _, statErr := os.Stat(InternalDir(root)); !errors.Is(statErr, fs.ErrNotExist) {
+		t.Fatalf("backup created %s in the source: %v", InternalDir(root), statErr)
+	}
+	after := v24Tree(t, root)
+	if _, held := before[".tt/transactions/commit.lock"]; !held {
+		delete(after, ".tt/transactions/commit.lock")
+	}
+	if len(after) != len(before) {
+		t.Fatalf("backup changed the source tree: %d files before, %d after", len(before), len(after))
+	}
+	copied, err := os.ReadFile(filepath.Join(report.Path, ".tt", "global-notes", "2026-10-25-review.md"))
+	if err != nil || string(copied) != "# Review\n" {
+		t.Fatalf("backup did not carry .tt/ as it stands: %q, %v", copied, err)
+	}
+	if _, err = VerifyWorkspaceBackup(report.Path); err != nil {
+		t.Fatalf("verify pre-v24 backup: %v", err)
+	}
+}
+
+func TestWorkspaceBackupRefusesALoneTombstone(t *testing.T) {
+	root := legacyV24Workspace(t)
+	if err := NewManager(ConfigPathForDataDir(root)).RecoverWorkspace(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(InternalDir(root)); err != nil {
+		t.Fatal(err)
+	}
+	_, err := CreateWorkspaceBackup(root, filepath.Join(t.TempDir(), "backups"))
+	var moved *WorkspaceMovedElsewhereError
+	if !errors.As(err, &moved) {
+		t.Fatalf("backup of a lone tombstone = %v, want WorkspaceMovedElsewhereError", err)
+	}
+	if dirExists(InternalDir(root)) {
+		t.Fatal("refusing a lone tombstone created .docket/")
+	}
+}

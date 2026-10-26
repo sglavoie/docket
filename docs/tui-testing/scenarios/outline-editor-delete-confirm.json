@@ -25,7 +25,7 @@
     { "type": "resize", "width": 100, "height": 35 },
     { "type": "key", "label": "declining cancels the whole apply", "key": "esc" },
     { "type": "assert", "assert": "status_contains", "value": "Outline not applied" },
-    { "type": "assert", "label": "the buffer is kept so the edits can be resubmitted", "assert": "status_contains", "value": "/tmp/tt-outline-scenario.md" },
+    { "type": "assert", "label": "the buffer is kept so the edits can be resubmitted", "assert": "status_contains", "value": "/tmp/docket-outline-scenario.md" },
     { "type": "assert", "assert": "not_contains", "value": "Undo available (u)" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" }

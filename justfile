@@ -1,4 +1,4 @@
-# docket - CLI task manager
+# Docket - an Outliner-first terminal task manager
 
 binary_name := "docket"
 alias_name := "dkt"
@@ -17,7 +17,7 @@ help:
 # Build the binary in the current directory
 build:
     @echo "Building {{ binary_name }}..."
-    go build {{ ldflags }} -o {{ binary_name }} .
+    go build -trimpath {{ ldflags }} -o {{ binary_name }} .
     @echo "Built {{ binary_name }}"
 
 # Install the binary to ~/.local/bin
@@ -216,7 +216,7 @@ release:
         for arch in amd64 arm64; do
             out="dist/{{ binary_name }}-${os}-${arch}"
             echo "Building ${out}..."
-            GOOS=${os} GOARCH=${arch} go build {{ ldflags }} -o "${out}" .
+            GOOS=${os} GOARCH=${arch} go build -trimpath {{ ldflags }} -o "${out}" .
         done
     done
     (cd dist && shasum -a 256 {{ binary_name }}-* > SHA256SUMS)

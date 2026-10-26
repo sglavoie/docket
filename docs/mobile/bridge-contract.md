@@ -415,7 +415,7 @@ The engine reads nothing from the environment on iOS. `workspace.open` supplies
 everything:
 
 - `data_dir`: the workspace root in the app container.
-- `runtime_dir`: the machine-local root that replaces `~/.tt/runtime/<workspace-id>/`.
+- `runtime_dir`: the machine-local root that replaces `~/.docket/runtime/<workspace-id>/`.
 - `device_id`: a stable UUID owned by the app and stored in the keychain. It replaces the hostname and `HOME` hash that `transaction.Manifest.Machine` uses on the desktop.
 
 Tests also inject a clock and an id generator through the same configuration

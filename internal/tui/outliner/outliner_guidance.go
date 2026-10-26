@@ -322,7 +322,12 @@ func (m *OutlinerModel) ClassifyEmptyCause() outlinerEmptyCause {
 	// A zoom outranks the filter and focus causes below it: whatever else
 	// narrowed the list, Esc is the press that widens it back, and naming a
 	// filter would send the user to a key that leaves the section empty.
+	// A Focus taken inside the zoom is the narrower of the two and the Esc
+	// cascade leaves it first, so it names the cause the next press widens.
 	if m.Focus.Zoom.Active() {
+		if m.Focus.Active() {
+			return outlinerEmptyFocus
+		}
 		return OutlinerEmptySection
 	}
 	if query.HasActiveCommonFilters(&m.Filter.CommonFilterState) {

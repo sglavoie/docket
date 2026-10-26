@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/storage"
 )
 
@@ -427,5 +428,42 @@ func TestImportAttachmentCommitsNothingWhenRefused(t *testing.T) {
 		if len(task.Attachments) != 0 || len(repo.commits) != 0 {
 			t.Errorf("ImportAttachment(%q) left attachments=%v commits=%d", name, task.Attachments, len(repo.commits))
 		}
+	}
+}
+
+// TestRemoveAttachmentExpectingRefusesShiftedList proves a confirmed removal
+// names the attachment it confirmed: once the list shifted under the question,
+// the same index holds a different attachment and nothing is removed.
+func TestRemoveAttachmentExpectingRefusesShiftedList(t *testing.T) {
+	task := newTask("t1", 1, "Task")
+	if err := task.AddAttachment("first.txt", false, "/orig/first.txt"); err != nil {
+		t.Fatal(err)
+	}
+	if err := task.AddAttachment("second.txt", false, "/orig/second.txt"); err != nil {
+		t.Fatal(err)
+	}
+	repo := newFakeRepo(newProject("p1", "Alpha", task))
+	svc := newTestService(repo)
+
+	asked := task.Attachments[1]
+	// Another writer removes the first attachment while the prompt is open.
+	task.Attachments = task.Attachments[1:]
+
+	if _, err := svc.RemoveAttachmentExpecting(repo.loc(task.ID), 1, asked, true); !errors.Is(err, app.ErrInvalidInput) {
+		t.Fatalf("out-of-range expected removal error = %v, want ErrInvalidInput", err)
+	}
+	other := models.Attachment{Filename: "other.txt", OriginalPath: "/orig/other.txt", AddedAt: asked.AddedAt}
+	if _, err := svc.RemoveAttachmentExpecting(repo.loc(task.ID), 0, other, true); !errors.Is(err, app.ErrInvalidInput) {
+		t.Fatalf("mismatched expected removal error = %v, want ErrInvalidInput", err)
+	}
+	if len(repo.commits) != 0 || len(task.Attachments) != 1 {
+		t.Fatalf("refusals must commit nothing, got %d commits and %+v", len(repo.commits), task.Attachments)
+	}
+
+	if _, err := svc.RemoveAttachmentExpecting(repo.loc(task.ID), 0, asked, true); err != nil {
+		t.Fatalf("matching expected removal: %v", err)
+	}
+	if len(task.Attachments) != 0 {
+		t.Fatalf("matching removal left %+v", task.Attachments)
 	}
 }

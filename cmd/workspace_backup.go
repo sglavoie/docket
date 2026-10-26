@@ -19,10 +19,10 @@ file and writes a hash manifest. The live workspace remains selected. Choose a
 directory outside the workspace, ideally on another drive. Run
 'docket workspace verify-backup' later to read every file again without touching
 the live workspace.`,
-	Example: `  docket workspace backup ~/Backups/tt
-  docket workspace verify-backup ~/Backups/tt/<workspace-id>/<timestamp>`,
+	Example: `  docket workspace backup ~/Backups/docket
+  docket workspace verify-backup ~/Backups/docket/<workspace-id>/<timestamp>`,
 	Args:              exactlyOneArg("backup directory"),
-	ValidArgsFunction: cobra.NoFileCompletions,
+	ValidArgsFunction: completeOneDirectory,
 	RunE: func(_ *cobra.Command, args []string) error {
 		if err := requireExistingWorkspace(); err != nil {
 			return err
@@ -50,9 +50,9 @@ var workspaceVerifyBackupCmd = &cobra.Command{
 reject missing, unexpected, or unsafe files. This does not open or change the
 current workspace. A verified backup records its original workspace path;
 restore only after checking the recovery procedure for an enrolled workspace.`,
-	Example:           `  docket workspace verify-backup ~/Backups/tt/<workspace-id>/<timestamp>`,
+	Example:           `  docket workspace verify-backup ~/Backups/docket/<workspace-id>/<timestamp>`,
 	Args:              exactlyOneArg("snapshot directory"),
-	ValidArgsFunction: cobra.NoFileCompletions,
+	ValidArgsFunction: completeOneDirectory,
 	RunE: func(_ *cobra.Command, args []string) error {
 		report, err := config.VerifyWorkspaceBackup(args[0])
 		if err != nil {

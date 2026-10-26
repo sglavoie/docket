@@ -24,6 +24,7 @@ func TestWorkspaceMoveCommand_MovesAndSwitchesPointer(t *testing.T) {
 	}
 
 	setCommandDataDir(t, src)
+	bootstrapCommandWorkspace(t)
 
 	workspaceMoveForce = true
 	t.Cleanup(func() { workspaceMoveForce = false })
@@ -99,6 +100,7 @@ func prepareUnconfirmedWorkspaceMove(t *testing.T, input string) string {
 		t.Fatalf("mkdir: %v", err)
 	}
 	setCommandDataDir(t, src)
+	bootstrapCommandWorkspace(t)
 	workspaceMoveForce = false
 	previous := confirmInput
 	confirmInput = strings.NewReader(input)
@@ -205,5 +207,39 @@ func TestWorkspaceMoveHelpExplainsTUILocksAndForceSafety(t *testing.T) {
 	flag := workspaceMoveCmd.Flags().Lookup("force")
 	if flag == nil || !strings.Contains(flag.Usage, "never bypass TUI or workspace safety locks") {
 		t.Fatalf("--force usage must preserve lock guarantees: %+v", flag)
+	}
+}
+
+// bootstrapCommandWorkspace creates the workspace at the command data dir, as
+// a first `docket` launch would, for a command that refuses a missing one.
+func bootstrapCommandWorkspace(t *testing.T) {
+	t.Helper()
+	if _, err := config.NewManager(resolveConfigPath()).LoadOrCreateDomains(); err != nil {
+		t.Fatalf("bootstrap workspace: %v", err)
+	}
+}
+
+// TestWorkspaceMoveCommandRefusesAMissingSource keeps a mistyped --data-dir
+// from bootstrapping an empty workspace, moving it, and repointing the active
+// workspace at the copy.
+func TestWorkspaceMoveCommandRefusesAMissingSource(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	src := filepath.Join(t.TempDir(), "typo")
+	dst := filepath.Join(t.TempDir(), "dst")
+	setCommandDataDir(t, src)
+	workspaceMoveForce = true
+	t.Cleanup(func() { workspaceMoveForce = false })
+
+	_, _, err := captureDoctorOutput(t, func() error { return runWorkspaceMove(nil, []string{dst}) })
+	if err == nil || !strings.Contains(err.Error(), "no Docket workspace at "+src) {
+		t.Fatalf("runWorkspaceMove error = %v, want a refusal naming %s", err, src)
+	}
+	for _, dir := range []string{src, dst} {
+		if _, statErr := os.Stat(dir); !os.IsNotExist(statErr) {
+			t.Errorf("refused move created %s: %v", dir, statErr)
+		}
+	}
+	if ptr, ok := config.ReadActiveWorkspacePointer(); ok {
+		t.Errorf("refused move wrote the active pointer %q", ptr)
 	}
 }

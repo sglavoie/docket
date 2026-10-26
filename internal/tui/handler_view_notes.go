@@ -25,6 +25,7 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 	case notes.ProjectNoteMutationErrorMsg:
 		location := notes.NormalizedNoteLocation(msg.Location, msg.ProjectID)
 		if nv := m.getActiveNotesView(); notes.NoteViewMatchesLocation(nv, location) {
+			nv.ReopenRefusedRename(msg.RenameDraft)
 			nv.SetErrorStatus(msg.Err.Error())
 			return true, nil
 		}

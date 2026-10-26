@@ -305,7 +305,7 @@ func recoveryGeometryExportPath(t *testing.T, frame, tempDir string) string {
 	for _, line := range strings.Split(frame, "\n") {
 		joined.WriteString(strings.TrimSpace(line))
 	}
-	pattern := regexp.MustCompile(regexp.QuoteMeta(tempDir) + `/tt-comment-draft-\S*?\.md`)
+	pattern := regexp.MustCompile(regexp.QuoteMeta(tempDir) + `/docket-comment-draft-\S*?\.md`)
 	path := pattern.FindString(joined.String())
 	if path == "" {
 		t.Fatalf("the composed frame does not carry a usable export path under %s:\n%s", tempDir, frame)

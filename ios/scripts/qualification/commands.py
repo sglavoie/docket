@@ -58,7 +58,7 @@ def cmd_start(_args):
     run_id = now().strftime("%Y%m%dT%H%M%SZ")
     directory = os.path.join(root, run_id)
     exchange_root = os.environ.get("DOCKET_QUALIFICATION_EXCHANGE") or os.path.expanduser(
-        "~/Library/Mobile Documents/com~apple~CloudDocs/tt-qualification")
+        "~/Library/Mobile Documents/com~apple~CloudDocs/docket-qualification")
     if "/Library/Mobile Documents/" not in exchange_root:
         fail(f"{exchange_root} is not inside iCloud Drive")
     exchange = os.path.join(exchange_root, run_id)
@@ -147,7 +147,7 @@ def record_enrollment(trial):
 def cmd_enrollment(_args):
     trial = Trial.current()
     say(f"""
-The trial workspace should already be joined on the iPhone, from iCloud Drive/tt-qualification/{trial.run_id}.
+The trial workspace should already be joined on the iPhone, from iCloud Drive/docket-qualification/{trial.run_id}.
 If Docket says the exchange has not delivered the workspace yet, long-press that folder in Files,
 choose Keep Downloaded, and join again.""")
     record_enrollment(trial)

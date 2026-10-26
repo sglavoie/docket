@@ -53,6 +53,7 @@ const (
 	relationEmptyDetail        = "This task names no dependencies and nothing loaded names it."
 	relationNoMatchTitle       = "No matching relationships"
 	relationNoMatchDetail      = "Esc clears the search."
+	relationNoMatchBrowse      = "/ edits the search."
 )
 
 // relationDirection is which half of the relationship a row belongs to. It is
@@ -129,7 +130,7 @@ func (m *OutlinerModel) OpenRelationPicker(task *models.Task, project *models.Pr
 		SubjectTitle: task.Title,
 		Candidates:   m.relationCandidatesFor(task, subject),
 	}
-	empty := relationPickerEmptyState(state.Query)
+	empty := relationPickerEmptyState(state.Query, state.Searching)
 	surface, err := listsurface.NewListSurfaceModel(
 		state.items(),
 		relationPickerCategories(),
@@ -261,10 +262,17 @@ func relationCandidateMatches(candidate relationCandidate, raw string) bool {
 // source list and the surface can no longer tell "this task has no
 // relationships" from "the search found none" — the query is what tells them
 // apart, and the picker is the one holding it. Both slots take the same answer
-// because only one of the two situations can be true at a time.
-func relationPickerEmptyState(raw string) listsurface.ListEmptyState {
+// because only one of the two situations can be true at a time. The no-match
+// detail names the key that reaches the query from the mode the picker is in,
+// as the named lens picker does: Esc clears it while editing, and in browse mode
+// Esc closes the picker, so there it is / that returns to the query.
+func relationPickerEmptyState(raw string, searching bool) listsurface.ListEmptyState {
 	if strings.TrimSpace(raw) != "" {
-		return listsurface.ListEmptyState{Title: relationNoMatchTitle, Detail: relationNoMatchDetail}
+		detail := relationNoMatchBrowse
+		if searching {
+			detail = relationNoMatchDetail
+		}
+		return listsurface.ListEmptyState{Title: relationNoMatchTitle, Detail: detail}
 	}
 	return listsurface.ListEmptyState{Title: relationEmptyTitle, Detail: relationEmptyDetail}
 }
@@ -276,9 +284,26 @@ func (state *relationPickerState) setQuery(raw string) {
 		return
 	}
 	state.Query = raw
-	empty := relationPickerEmptyState(raw)
-	state.Surface.SetEmptyStates(empty, empty)
+	state.refreshEmptyState()
 	_ = state.Surface.SetItems(state.items())
+}
+
+// setSearching enters or leaves query editing and restates the empty copy, whose
+// key depends on which of the two modes the picker is in.
+func (state *relationPickerState) setSearching(searching bool) {
+	if state == nil {
+		return
+	}
+	state.Searching = searching
+	state.refreshEmptyState()
+}
+
+func (state *relationPickerState) refreshEmptyState() {
+	if state == nil || state.Surface == nil {
+		return
+	}
+	empty := relationPickerEmptyState(state.Query, state.Searching)
+	state.Surface.SetEmptyStates(empty, empty)
 }
 
 // handleRelationPickerKey is the picker's gated keymap. It follows the named
@@ -301,9 +326,9 @@ func (m *OutlinerModel) handleRelationPickerKey(msg tea.KeyPressMsg) (tea.Model,
 				state.setQuery("")
 				return m, nil
 			}
-			state.Searching = false
+			state.setSearching(false)
 		case "enter":
-			state.Searching = false
+			state.setSearching(false)
 		case "up":
 			state.Surface.MoveCursor(-1)
 		case "down":
@@ -318,7 +343,7 @@ func (m *OutlinerModel) handleRelationPickerKey(msg tea.KeyPressMsg) (tea.Model,
 	case "esc":
 		m.closeRelationPicker()
 	case "/":
-		state.Searching = true
+		state.setSearching(true)
 	case "up", "k", "ctrl+p":
 		state.Surface.MoveCursor(-1)
 	case "down", "j", "ctrl+n":

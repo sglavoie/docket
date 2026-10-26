@@ -38,7 +38,7 @@ Use --dir with --all to write somewhere other than exports/.`,
   docket project export my-project --file /tmp/my-project.md
   docket project export my-project --file -
   docket project export --all
-  docket project export --all --dir /tmp/tt-export`,
+  docket project export --all --dir /tmp/docket-export`,
 	Args:              atMostOneArg("project slug or ID"),
 	RunE:              runProjectExport,
 	ValidArgsFunction: completeProjectSlugs,
@@ -56,7 +56,7 @@ func runProjectExport(cmd *cobra.Command, args []string) error {
 	if err := validateProjectExportFlags(args); err != nil {
 		return usageRefusal(cmd, err)
 	}
-	if err := requireExistingWorkspace(); err != nil {
+	if err := requireUpgradedWorkspace(); err != nil {
 		return err
 	}
 	if projectExportAll {
@@ -70,7 +70,7 @@ func runProjectExport(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	}
-	related := projectExportRelated(workspace)
+	related := projectExportRelated(cmd, workspace, project)
 
 	if projectExportFile == projectExportStdout {
 		return storage.ExportProjectMarkdownTo(commandOut(cmd), project, related...)
@@ -127,7 +127,7 @@ func runProjectExportAll(cmd *cobra.Command) error {
 		return fmt.Errorf("create export dir: %w", err)
 	}
 
-	related := projectExportRelated(workspace)
+	related := projectExportRelated(cmd, workspace, nil)
 	out := commandOut(cmd)
 	for _, project := range workspace.Runtime.AllProjects() {
 		dest := filepath.Join(dir, filepath.Base(project.Slug)+".md")
@@ -149,13 +149,36 @@ func exportProjectTo(workspace *CLIWorkspace, project *models.Project, dest stri
 	return ExportProjectMarkdown(project, dest, related...)
 }
 
-// projectExportRelated is the label population for outgoing references.
-// Archived projects join it deliberately. An export is a document rather than a
-// live view, so naming a reference that points into archived work is strictly
-// better than emitting its bare locator; nothing here loads an archived project
-// for any other purpose.
-func projectExportRelated(workspace *CLIWorkspace) []*models.Project {
-	return append(workspace.Runtime.AvailableProjects(), workspace.Runtime.ArchivedProjects()...)
+// projectExportRelated is the label population for outgoing references,
+// loaded once for however many projects the command exports. Archived projects
+// join it deliberately. An export is a document rather than a live view, so
+// naming a reference that points into archived work is strictly better than
+// emitting its bare locator; nothing here loads an archived project for any
+// other purpose. A project that cannot be read only costs its labels, so the
+// export goes on, but it says so on stderr rather than degrading silently.
+// exported, when set, is the one project being exported: it is loaded by the
+// export itself, which reports its own failure.
+func projectExportRelated(cmd *cobra.Command, workspace *CLIWorkspace, exported *models.Project) []*models.Project {
+	var candidates []*models.Project
+	for _, project := range append(workspace.Runtime.AvailableProjects(), workspace.Runtime.ArchivedProjects()...) {
+		if exported == nil || project.ID != exported.ID {
+			candidates = append(candidates, project)
+		}
+	}
+	loaded, failures := storage.LoadExportLabelProjects(candidates)
+	for _, failure := range failures {
+		_, _ = fmt.Fprintf(commandErr(cmd), "warning: could not read project %q (%v); references into it are exported as their stored locators\n",
+			failure.Project.Slug, failure.Err)
+	}
+	return loaded
+}
+
+// commandErr is the command's error writer, or stderr when run without one.
+func commandErr(cmd *cobra.Command) io.Writer {
+	if cmd == nil {
+		return os.Stderr
+	}
+	return cmd.ErrOrStderr()
 }
 
 // commandOut is the command's output writer, or stdout when run without one.

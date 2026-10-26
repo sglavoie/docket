@@ -88,7 +88,7 @@ func taskContentInstruction(notice string) string {
 
 func writeTaskContentBuffer(path, content string) (string, error) {
 	if path == "" {
-		return external.CreateTempFileWithContent(content, "tt-edit-", ".md")
+		return external.CreateTempFileWithContent(content, "docket-edit-", ".md")
 	}
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		return "", fmt.Errorf("failed to write to temp file: %w", err)

@@ -70,21 +70,28 @@ func CreateWorkspaceBackup(source, root string) (*WorkspaceBackupReport, error) 
 	if err = ensureNotNested(resolvedSource, resolvedRoot); err != nil {
 		return nil, fmt.Errorf("backup placement: %w; choose a backup directory outside the workspace", err)
 	}
+	legacy, err := backupReadsLegacyLayout(source)
+	if err != nil {
+		return nil, err
+	}
+	// A pre-v24 workspace is copied as it stands, under the lock its own
+	// builds took, so backing up before the upgrade never starts one.
+	transactions := TransactionsDir(source)
+	if legacy {
+		transactions = filepath.Join(LegacyInternalDir(source), "transactions")
+	}
 	var report *WorkspaceBackupReport
-	commits := storage.NewCommitService(TransactionsDir(source), []string{source})
+	commits := storage.NewCommitService(transactions, []string{source})
 	err = storage.WithWorkspaceCommitLocks([]*storage.CommitService{commits}, func() error {
-		catalog, readErr := NewDomainFileStore(source).LoadCatalogReadOnly()
+		workspaceID, readErr := backupWorkspaceID(source, legacy)
 		if readErr != nil {
-			return fmt.Errorf("reading workspace catalog: %w", readErr)
+			return readErr
 		}
-		if catalog.WorkspaceID == "" {
-			return errors.New("workspace catalog has no identity")
-		}
-		entries, inventoryErr := inventoryWorkspace(source)
+		entries, inventoryErr := inventoryWorkspaceExcluding(source, backupExcludes(legacy))
 		if inventoryErr != nil {
 			return inventoryErr
 		}
-		path, snapshotErr := snapshotWorkspace(entries, source, filepath.Join(root, catalog.WorkspaceID), time.Now(), workspaceBackupFormat, workspaceBackupFormatVersion)
+		path, snapshotErr := snapshotWorkspace(entries, source, filepath.Join(root, workspaceID), time.Now(), workspaceBackupFormat, workspaceBackupFormatVersion)
 		if snapshotErr != nil {
 			return snapshotErr
 		}
@@ -92,6 +99,77 @@ func CreateWorkspaceBackup(source, root string) (*WorkspaceBackupReport, error) 
 		return snapshotErr
 	})
 	return report, err
+}
+
+// backupReadsLegacyLayout reports whether source still keeps its internal
+// state in the pre-v24 .tt/, which a backup copies without migrating. A lone
+// tombstone is a workspace whose state has not synced here yet, so there is
+// nothing to back up.
+func backupReadsLegacyLayout(source string) (bool, error) {
+	if dirExists(InternalDir(source)) {
+		return false, nil
+	}
+	state, err := inspectV24Legacy(source)
+	if err != nil {
+		return false, err
+	}
+	switch state {
+	case v24LegacyTombstone:
+		return false, &WorkspaceMovedElsewhereError{DataDir: source}
+	case v24LegacyLive:
+		return true, nil
+	default:
+		return false, nil
+	}
+}
+
+// backupExcludes is what a backup leaves out: what a move does, except that a
+// pre-v24 workspace's .tt/ is its live state rather than a tombstone, so only
+// its commit lock stays behind.
+func backupExcludes(legacy bool) func(rel string) bool {
+	if !legacy {
+		return isWorkspaceMoveExcluded
+	}
+	return func(rel string) bool {
+		clean := filepath.Clean(rel)
+		if clean == legacyInternalDirName {
+			return false
+		}
+		return clean == filepath.Join(legacyInternalDirName, "transactions", "commit.lock") || isWorkspaceMoveExcluded(rel)
+	}
+}
+
+// backupWorkspaceID is the identity a backup is filed under: the current
+// catalog's, or the envelope identity a pre-v24 catalog declares, read without
+// decoding a payload this build no longer loads.
+func backupWorkspaceID(source string, legacy bool) (string, error) {
+	if !legacy {
+		catalog, err := NewDomainFileStore(source).LoadCatalogReadOnly()
+		if err != nil {
+			return "", fmt.Errorf("reading workspace catalog: %w", err)
+		}
+		if catalog.WorkspaceID == "" {
+			return "", errors.New("workspace catalog has no identity")
+		}
+		return catalog.WorkspaceID, nil
+	}
+	path := filepath.Join(LegacyInternalDir(source), "workspace.json")
+	data, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return "", fmt.Errorf("workspace %s predates the split workspace catalog and has no identity to file a backup under; "+
+			"copy the folder by hand, or open it with Docket once so it upgrades", DisplayPath(source))
+	}
+	if err != nil {
+		return "", fmt.Errorf("reading workspace catalog: %w", err)
+	}
+	env, err := decodeEnvelope(data)
+	if err != nil {
+		return "", fmt.Errorf("decode workspace catalog envelope: %w", err)
+	}
+	if err = validateWorkspaceID(env.WorkspaceID); err != nil {
+		return "", fmt.Errorf("workspace catalog identity: %w", err)
+	}
+	return env.WorkspaceID, nil
 }
 
 // missingBackupError names a directory holding no backup manifest in plain

@@ -170,11 +170,11 @@ Revoked access, on the iPhone:
     say(f"""
 Restore access on the iPhone:
   1. Settings > your name > iCloud > Drive, and turn Sync this iPhone back on.
-  2. In Files, long-press iCloud Drive > tt-qualification > {trial.run_id} and choose Keep Downloaded.
+  2. In Files, long-press iCloud Drive > docket-qualification > {trial.run_id} and choose Keep Downloaded.
   3. Open Docket. It should reopen the trial workspace by itself. If it asks you to choose a
      workspace, pick the existing one from the list (not Join from an Exchange Folder…).
   4. Turning sync off removed Docket's permission to the folder, and Retry cannot renew it: tap the
-     sync status button, then Choose Exchange Folder…, pick iCloud Drive > tt-qualification >
+     sync status button, then Choose Exchange Folder…, pick iCloud Drive > docket-qualification >
      {trial.run_id}, tap Open, then Exchange Now.""")
     wait_enter()
     restored = checkpoint(trial, s, "restored", [phone, mac])

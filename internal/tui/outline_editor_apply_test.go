@@ -48,12 +48,12 @@ func TestOutlineEditedCarriesTheDumpRevisionAndKeepsTheBufferWhenItIsStale(t *te
 	model.features = coordinator.NewFeatureCoordinators(conflicted)
 	model.handleOutlineEdited(OutlineEditedMsg{
 		Project: project, Revision: "rev-1", ScopeTaskIDs: scope,
-		Path: "/tmp/tt-outline-stale.md", Buffer: buffer,
+		Path: "/tmp/docket-outline-stale.md", Buffer: buffer,
 	})
 	if !strings.Contains(model.feedback.message, "Workspace changed while the editor was open") {
 		t.Errorf("status = %q, want the stale-workspace refusal", model.feedback.message)
 	}
-	if !strings.Contains(model.feedback.message, "/tmp/tt-outline-stale.md") {
+	if !strings.Contains(model.feedback.message, "/tmp/docket-outline-stale.md") {
 		t.Errorf("status = %q, want the kept buffer named", model.feedback.message)
 	}
 	if model.currentView() == presentation.ViewOutlineErrors {
@@ -106,7 +106,7 @@ func TestOutlineDeleteConfirmDeclineKeepsTheBufferAndChangesNothing(t *testing.T
 	stub := &stubMutator{result: app.TaskResult{Revision: "rev-2"}}
 	model.features = coordinator.NewFeatureCoordinators(stub)
 
-	file, err := os.CreateTemp(t.TempDir(), "tt-outline-*.md")
+	file, err := os.CreateTemp(t.TempDir(), "docket-outline-*.md")
 	if err != nil {
 		t.Fatalf("temp file: %v", err)
 	}

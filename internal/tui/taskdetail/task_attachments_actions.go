@@ -70,23 +70,32 @@ func (m *TaskAttachmentsModel) finishOptimisticAdd() {
 	m.Cursor = len(m.Task.Attachments)
 }
 
-func (m *TaskAttachmentsModel) executeDelete() tea.Cmd {
+func (m *TaskAttachmentsModel) executeDelete(pending *pendingAttachmentRemoval) tea.Cmd {
+	return m.executeRemoval(pending, true)
+}
+
+func (m *TaskAttachmentsModel) executeKeep(pending *pendingAttachmentRemoval) tea.Cmd {
+	return m.executeRemoval(pending, false)
+}
+
+// executeRemoval removes the attachment the prompt asked about, never the one
+// under the cursor now. The panel refuses at once when its own fresh read no
+// longer holds that attachment where the prompt found it, and the application
+// layer checks the same identity again against the snapshot it commits on.
+func (m *TaskAttachmentsModel) executeRemoval(pending *pendingAttachmentRemoval, deleteFile bool) tea.Cmd {
 	m.resolveTask()
-	if m.Cursor < 0 || m.Cursor >= len(m.Task.Attachments) {
+	if pending == nil || pending.index < 0 || pending.index >= len(m.Task.Attachments) {
 		return func() tea.Msg { return status.ErrorMsg{Err: fmt.Errorf("attachment no longer exists")} }
+	}
+	if !app.SameAttachment(m.Task.Attachments[pending.index], pending.attachment) {
+		return func() tea.Msg {
+			return status.ErrorMsg{Err: fmt.Errorf("attachments changed since you asked; nothing was removed")}
+		}
 	}
 	// URL attachments have no bytes on disk; the file-backed ones delete their
 	// copied bytes in the same transaction (matching the old RemoveAttachmentFile).
-	deleteFile := !m.Task.Attachments[m.Cursor].IsURL
-	return m.Coordinator.RemoveAttachment(taskref.For(m.Task, m.project), m.Cursor, deleteFile)
-}
-
-func (m *TaskAttachmentsModel) executeKeep() tea.Cmd {
-	m.resolveTask()
-	if m.Cursor < 0 || m.Cursor >= len(m.Task.Attachments) {
-		return func() tea.Msg { return status.ErrorMsg{Err: fmt.Errorf("attachment no longer exists")} }
-	}
-	return m.Coordinator.RemoveAttachment(taskref.For(m.Task, m.project), m.Cursor, false)
+	deleteFile = deleteFile && !pending.attachment.IsURL
+	return m.Coordinator.RemoveAttachment(taskref.For(m.Task, m.project), pending.index, pending.attachment, deleteFile)
 }
 
 func (m *TaskAttachmentsModel) reorderAttachment(from, to int) tea.Cmd {

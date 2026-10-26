@@ -42,12 +42,14 @@ func (m *TaskAttachmentsModel) updateConfirmMode(msg tea.Msg) (tea.Model, tea.Cm
 	case tea.KeyPressMsg:
 		action := m.Confirm.Action()
 		if confirmed, handled := m.HandleConfirmKey(msg.String()); handled {
+			pending := m.pendingRemoval
+			m.pendingRemoval = nil
 			if confirmed {
 				switch action {
 				case "delete":
-					return m, m.executeDelete()
+					return m, m.executeDelete(pending)
 				case "unlink":
-					return m, m.executeKeep()
+					return m, m.executeKeep(pending)
 				case "discard-add":
 					m.AddMode = false
 					m.TextInput.Reset()
@@ -206,14 +208,22 @@ func (m *TaskAttachmentsModel) OpenSelectedAttachmentInEditor() tea.Cmd {
 
 func (m *TaskAttachmentsModel) ConfirmDeleteSelectedAttachment() {
 	if m.HasSelection() {
+		m.freezePendingRemoval()
 		m.Confirm.Show("delete", fmt.Sprintf("Delete attachment [%d]?", m.Cursor))
 	}
 }
 
 func (m *TaskAttachmentsModel) ConfirmUnlinkSelectedAttachment() {
 	if m.HasSelection() {
+		m.freezePendingRemoval()
 		m.Confirm.Show("unlink", fmt.Sprintf("Unlink attachment [%d]?", m.Cursor))
 	}
+}
+
+// freezePendingRemoval records the attachment under the cursor as the one the
+// prompt about to open is asking about.
+func (m *TaskAttachmentsModel) freezePendingRemoval() {
+	m.pendingRemoval = &pendingAttachmentRemoval{index: m.Cursor, attachment: m.Task.Attachments[m.Cursor]}
 }
 
 func (m *TaskAttachmentsModel) CopySelectedPath() tea.Cmd {

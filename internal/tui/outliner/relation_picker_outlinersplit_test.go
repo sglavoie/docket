@@ -234,6 +234,23 @@ func TestRelationPickerSearchNarrowsWithoutReordering(t *testing.T) {
 	if !ok || empty.State.Title != relationNoMatchTitle {
 		t.Fatalf("empty copy = %+v, want the no-match state", empty)
 	}
+	if empty.State.Detail != relationNoMatchDetail {
+		t.Fatalf("editing no-match detail = %q, want %q", empty.State.Detail, relationNoMatchDetail)
+	}
+
+	// Applying the query leaves browse mode, where Esc closes the picker, so the
+	// copy must stop promising that Esc clears the search and name / instead.
+	outlinerView.HandleKeyMsg(tea.KeyPressMsg{Code: tea.KeyEnter})
+	empty, _ = outlinerView.RelationPicker.Surface.EmptyContext()
+	if outlinerView.RelationPicker.Searching || empty.State.Detail != relationNoMatchBrowse {
+		t.Fatalf("browse no-match detail = %q (searching=%v), want %q",
+			empty.State.Detail, outlinerView.RelationPicker.Searching, relationNoMatchBrowse)
+	}
+	outlinerView.HandleKeyMsg(tea.KeyPressMsg{Code: '/', Text: "/"})
+	empty, _ = outlinerView.RelationPicker.Surface.EmptyContext()
+	if !outlinerView.RelationPicker.Searching || empty.State.Detail != relationNoMatchDetail {
+		t.Fatalf("re-entered search detail = %q, want %q", empty.State.Detail, relationNoMatchDetail)
+	}
 
 	// Esc clears the query, the next leaves search, and only browse mode closes.
 	outlinerView.HandleKeyMsg(tea.KeyPressMsg{Code: tea.KeyEscape})

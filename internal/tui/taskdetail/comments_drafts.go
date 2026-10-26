@@ -220,7 +220,7 @@ func (m *CommentsModel) exportDraft() {
 		m.Err = errors.New("there is no draft text to write")
 		return
 	}
-	path, err := external.CreateTempFileWithContent(text, "tt-comment-draft-", ".md")
+	path, err := external.CreateTempFileWithContent(text, "docket-comment-draft-", ".md")
 	if err != nil {
 		m.Err = fmt.Errorf("failed to write the draft: %w", err)
 		return

@@ -163,8 +163,9 @@ func (m *OutlinerModel) BuildViewContextEntries(width int) []ViewContextEntry {
 //
 // That is why the hidden count is not what the compact form gives up. A count
 // that silently covered rows off screen is the one thing a bulk gesture must not
-// be surprised by, so both spellings carry it whenever it is nonzero and the
-// compact one instead drops the word the number already implies.
+// be surprised by, so both spellings carry it whenever it is nonzero. The two
+// spellings are therefore identical: the entry has nothing it may shorten, so
+// what a narrow row gives up is decided by the row's own fitting alone.
 //
 // `Q` keeps the whole breakdown on the same terms, and on those terms only: with
 // nothing hidden the visible half is the total restated, and a readout row

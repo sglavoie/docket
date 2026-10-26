@@ -2,7 +2,9 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -375,4 +377,93 @@ func artifactPaths(cs storage.ChangeSet) []string {
 		paths = append(paths, art.Path)
 	}
 	return paths
+}
+
+// A single planning toggle's undo is an ordinary ledger restore: it speaks the
+// ledger's words and severity, and says so when there is nothing left.
+func TestPlanningToggleUndoTakesTheLedgerRestore(t *testing.T) {
+	t.Run("undo and redo speak the ledger's words", func(t *testing.T) {
+		m, _, _, _ := newPlanningLedgerApp(t, models.StateWaiting)
+		_ = m.toggleToday(nil)
+		if cmd := m.handleUndoToggle(); cmd == nil {
+			t.Fatal("handleUndoToggle returned nil")
+		}
+		if !strings.HasPrefix(m.feedback.message, "Undid: ") || m.feedback.severity != flashSuccess {
+			t.Fatalf("undo status = %q (severity %v), want the ledger's success wording", m.feedback.message, m.feedback.severity)
+		}
+		if cmd := m.handleRedoToggle(); cmd == nil {
+			t.Fatal("handleRedoToggle returned nil")
+		}
+		if !strings.HasPrefix(m.feedback.message, "Redo: ") || m.feedback.severity != flashSuccess {
+			t.Fatalf("redo status = %q (severity %v), want the ledger's success wording", m.feedback.message, m.feedback.severity)
+		}
+	})
+
+	t.Run("an exhausted ledger says there is nothing to undo", func(t *testing.T) {
+		m, _, _, _ := newPlanningLedgerApp(t, models.StateWaiting)
+		cmd := m.planningLedgerRestore(false)
+		if cmd == nil {
+			t.Fatal("exhausted planning undo said nothing")
+		}
+		msg := cmd()
+		if fmt.Sprint(msg) == "" {
+			t.Fatalf("exhausted planning undo produced %T with no text", msg)
+		}
+	})
+}
+
+// TestPlanningToggleUndoCorrelatesItsOwnTask holds a single planning move to
+// the rule every single-task result follows: undoing it names the task it was
+// aimed at, a Today toggle and a Backlog triage alike.
+func TestPlanningToggleUndoCorrelatesItsOwnTask(t *testing.T) {
+	m, _, task, _ := newPlanningLedgerApp(t, models.StateWaiting)
+	project := m.currentProject
+	_, _, transactionID, err := m.todayLedgerTransition(task.ID, project.ID, true)
+	if err != nil {
+		t.Fatalf("todayLedgerTransition: %v", err)
+	}
+	locator, ok := m.undoFocus.ObserveRestore(transactionID, false)
+	if !ok || locator.TaskID != task.ID || locator.ProjectID != project.ID {
+		t.Fatalf("undo of a Today toggle correlated to %+v (ok=%v), want %s/%s", locator, ok, project.ID, task.ID)
+	}
+
+	_, _, transactionID, err = m.applyTaskPlanningAction(task.ID, project.ID, app.PlanningBacklog)
+	if err != nil {
+		t.Fatalf("Backlog triage: %v", err)
+	}
+	locator, ok = m.undoFocus.ObserveRestore(transactionID, false)
+	if !ok || locator.TaskID != task.ID {
+		t.Fatalf("undo of a Backlog triage correlated to %+v (ok=%v), want %s", locator, ok, task.ID)
+	}
+}
+
+// TestLedgerRestoreSaysWhenTheWorkspaceReloadFails keeps a restore whose
+// runtime reload failed from reading as a clean one: the entry is restored on
+// disk, but the views are still drawn from before it.
+func TestLedgerRestoreSaysWhenTheWorkspaceReloadFails(t *testing.T) {
+	m, _, task, _ := newPlanningLedgerApp(t, models.StateWaiting)
+	if _, _, _, err := m.todayLedgerTransition(task.ID, m.currentProject.ID, true); err != nil {
+		t.Fatalf("todayLedgerTransition: %v", err)
+	}
+	catalog := config.WorkspaceCatalogPath(m.domain.runtime.DataDir())
+	if err := os.MkdirAll(filepath.Dir(catalog), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(catalog, []byte("not a catalog"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.domain.runtime.RefreshAfterCommit(); err == nil {
+		t.Fatal("fixture: a corrupt catalog still reloads")
+	}
+
+	_, outcome, restored := m.restoreLedgerEntry(false, "")
+	if !restored {
+		t.Fatalf("restore refused: %q", outcome)
+	}
+	if !strings.HasPrefix(outcome, "Undid: ") || !strings.Contains(outcome, restoreReloadFailedDetail) {
+		t.Fatalf("outcome = %q, want the undo followed by %q", outcome, restoreReloadFailedDetail)
+	}
+	if m.feedback.severity != flashWarning {
+		t.Fatalf("severity = %v, want a warning for a restore the views do not show", m.feedback.severity)
+	}
 }

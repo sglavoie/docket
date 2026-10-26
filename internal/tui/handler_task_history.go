@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/sglavoie/docket/internal/logging"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/docket/internal/models"
@@ -109,7 +111,10 @@ func (m *AppModel) restoreLedgerEntry(redo bool, transactionID string) (tea.Cmd,
 			restored = append(restored, p)
 		}
 	}
-	m.refreshRuntime()
+	// A failed runtime reload leaves the pre-restore snapshot in memory: the
+	// entry is restored on disk but the views are drawn from before it, so the
+	// outcome says so rather than reading as a clean restore.
+	reloadErr := m.reloadRuntimeAfterRestore()
 	if err := m.repairTaskProjectRefsAfterRestore(restored); err != nil {
 		return status.ErrorCmd("%s", err), err.Error(), false
 	}
@@ -127,11 +132,34 @@ func (m *AppModel) restoreLedgerEntry(redo bool, transactionID string) (tea.Cmd,
 	focusCmd, detail := m.refocusRestoredTask(entry.TransactionID, redo)
 	m.clearToggleHistory()
 	outcome := appendRestoreDetail(fmt.Sprintf("%s: %s", verb, desc), detail)
-	m.setSuccessStatus(outcome)
+	if reloadErr != nil {
+		outcome = appendRestoreDetail(outcome, restoreReloadFailedDetail)
+		m.setWarningStatus(outcome)
+	} else {
+		m.setSuccessStatus(outcome)
+	}
 	m.refreshProjectHubIfActive()
-	cmds := m.refreshTaskViewsAfterSave()
+	cmds := m.refreshTaskViewsAfterRestore(reloadErr == nil)
 	cmds = append(cmds, focusCmd, m.refreshActiveNotesManager(), m.statusReadingTimeout())
 	return tea.Batch(cmds...), outcome, true
+}
+
+// restoreReloadFailedDetail ends a restore whose workspace reload failed.
+const restoreReloadFailedDetail = "workspace reload failed; restart Docket to see every change"
+
+// reloadRuntimeAfterRestore is refreshRuntime for a ledger restore, which has
+// to know why a reload failed rather than only that it did. A shell with no
+// workspace on disk has nothing to reload, which is not a failure.
+func (m *AppModel) reloadRuntimeAfterRestore() error {
+	if m.domain.runtime == nil || m.domain.runtime.DataDir() == "" {
+		return nil
+	}
+	if err := m.domain.runtime.RefreshAfterCommit(); err != nil {
+		logging.Warn("failed to refresh runtime domain snapshot after a restore: %v", err)
+		return err
+	}
+	m.syncProjectCache()
+	return nil
 }
 
 // refocusRestoredTask spends this restore's correlation, if there is one, and

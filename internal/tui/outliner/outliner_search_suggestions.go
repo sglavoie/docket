@@ -300,8 +300,23 @@ func (m *OutlinerModel) acceptSearchSuggestion() {
 
 // searchAutocompleteRowBudget is the pane's total row allowance: the shared
 // limit when the frame has room, else whatever the result floor leaves.
+//
+// An open Peek dock is sized from the frame alone and is decided before the
+// pane, so the pane budgets against what the dock, its footer reservation, and
+// the status strip leave rather than against the whole content height: the two
+// would otherwise each claim the same rows and the view would draw past the
+// frame the shell sized it to.
 func (m *OutlinerModel) searchAutocompleteRowBudget() int {
-	return min(outlinerSearchSuggestionLimit, max(m.ContentHeight()-2-outlinerSearchResultFloorRows, 1))
+	budget := min(outlinerSearchSuggestionLimit, max(m.ContentHeight()-2-outlinerSearchResultFloorRows, 1))
+	if geometry := m.peekDockGeometry(); geometry.Displayed() {
+		left := m.ContentHeight() - m.peekDockFooterReservation() -
+			m.StatusStripHeight(max(m.Width(), 1)) - geometry.TotalRows()
+		if m.QuickEdit.IsActive() {
+			left -= m.quickEditExtraLineCount()
+		}
+		budget = min(budget, max(left-outlinerSearchResultFloorRows, 1))
+	}
+	return budget
 }
 
 // renderSearchAutocompleteDropdown draws the bounded pane. The caller measures

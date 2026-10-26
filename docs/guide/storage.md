@@ -370,7 +370,8 @@ separate directory and open that copy with a compatible build. Migration
 snapshots themselves are never modified.
 
 Because migration is one-way, keep your own copy of the workspace directory
-before a version jump. The published archive is a migration record rather than a
+before a version jump: `docket workspace backup DIR` copies a workspace as it
+stands, a pre-v24 one with its `.tt/` included, without upgrading it. The published archive is a migration record rather than a
 backup you are meant to rely on, and a copy you made yourself is the only thing
 that lets you go back to the build you were running.
 
@@ -380,7 +381,9 @@ transaction that refuses if the file changed since doctor read it, then runs
 every check again, so the verdict describes the workspace after fixing.
 `docket doctor --json` prints one JSON report on stdout and nothing else. Doctor
 exits 0 when every check passes, 2 when it ran and found issues, and 1 when it
-could not run or a repair failed.
+could not run or a repair failed. Doctor, `docket conflict`, and `docket project
+export` never upgrade a workspace: one older than this build is refused, naming
+its schema, until `docket` has opened it once.
 
 ## Running one workspace on more than one machine
 
@@ -492,7 +495,7 @@ folder*, typically one in iCloud Drive. It is opt-in, and a workspace that is
 never enrolled keeps working exactly as before.
 
 ```bash
-docket sync enroll --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/tt-exchange --working-copy ~/tt-synced
+docket sync enroll --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/docket-exchange --working-copy ~/docket-synced
 ```
 
 Enrolling does not convert your workspace. It keeps the current one untouched,

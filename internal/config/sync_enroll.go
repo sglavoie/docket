@@ -134,25 +134,46 @@ func LoadEnrollmentRecord(dataDir string) (*EnrollmentRecord, error) {
 	return &record, nil
 }
 
+// ValidateEnrollmentExchangeFolder checks that folder could serve as this
+// enrolled working copy's exchange folder and returns its absolute path. It
+// writes nothing, so a caller can try the folder before remembering it.
+func ValidateEnrollmentExchangeFolder(dataDir, folder string) (string, error) {
+	_, abs, err := enrollmentExchangeCandidate(dataDir, folder)
+	if err != nil {
+		return "", err
+	}
+	return abs, nil
+}
+
 // SetEnrollmentExchangeFolder points this device's working copy at another
 // exchange folder, for example after the iCloud folder moved.
 func SetEnrollmentExchangeFolder(dataDir, folder string) error {
-	record, err := LoadEnrollmentRecord(dataDir)
+	record, abs, err := enrollmentExchangeCandidate(dataDir, folder)
 	if err != nil {
-		return err
-	}
-	if record == nil {
-		return fmt.Errorf("%s is not an enrolled working copy", dataDir)
-	}
-	abs, err := filepath.Abs(folder)
-	if err != nil {
-		return err
-	}
-	if err := validateExchangePlacement(dataDir, record.Original, abs); err != nil {
 		return err
 	}
 	record.ExchangeFolder = abs
 	return writeEnrollmentRecord(dataDir, record)
+}
+
+// enrollmentExchangeCandidate loads the enrollment record and checks folder's
+// placement against the working copy and the original workspace.
+func enrollmentExchangeCandidate(dataDir, folder string) (*EnrollmentRecord, string, error) {
+	record, err := LoadEnrollmentRecord(dataDir)
+	if err != nil {
+		return nil, "", err
+	}
+	if record == nil {
+		return nil, "", fmt.Errorf("%s is not an enrolled working copy", dataDir)
+	}
+	abs, err := filepath.Abs(folder)
+	if err != nil {
+		return nil, "", err
+	}
+	if err := validateExchangePlacement(dataDir, record.Original, abs); err != nil {
+		return nil, "", err
+	}
+	return record, abs, nil
 }
 
 func writeEnrollmentRecord(dataDir string, record *EnrollmentRecord) error {

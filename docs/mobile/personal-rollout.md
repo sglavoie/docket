@@ -28,7 +28,7 @@ The script builds the app for that iPhone, checks the signature, and installs
 it with `devicectl`. The first time, the iPhone may ask you to trust the
 developer under Settings > General > VPN & Device Management.
 
-On the Mac, build and install `tt` with `just install`.
+On the Mac, build and install `docket` with `just install`.
 
 ## Qualification trial
 
@@ -40,10 +40,10 @@ simulator results never stand in for its evidence.
 
 Run this once per build you plan to rely on, before enrolling your real
 workspace. It uses a disposable copy of the representative fixture, a trial
-directory under `~/.tt-qualification/`, an exchange folder of its own in
-`iCloud Drive/tt-qualification/`, and on the iPhone a joined workspace beside
+directory under `~/.docket-qualification/`, an exchange folder of its own in
+`iCloud Drive/docket-qualification/`, and on the iPhone a joined workspace beside
 any other. Nothing you already have is read or written. On the Mac you edit the
-trial with the `tt-trial` command the script writes into the trial directory.
+trial with the `docket-trial` command the script writes into the trial directory.
 
 ```sh
 export DOCKET_IOS_DEVELOPMENT_TEAM=TEAMID
@@ -76,11 +76,11 @@ week, then run `day`. It asks whether an edit went missing or the devices
 showed a difference you could not explain. A yes fails the trial.
 
 `finish` writes `docs/mobile/evidence/session-18-qualification.json`. The
-evidence is tied to the Swift sources, the bridge, and `tt` it was recorded
+evidence is tied to the Swift sources, the bridge, and the `docket` binary it was recorded
 with, so keep the tree unchanged for the whole trial. Remove the trial
 afterwards: on the iPhone, choose another workspace (the trial's stays
-listed), and on the Mac delete its directory under `~/.tt-qualification/` and
-its folder in `iCloud Drive/tt-qualification/`.
+listed), and on the Mac delete its directory under `~/.docket-qualification/` and
+its folder in `iCloud Drive/docket-qualification/`.
 
 ## Enrollment
 

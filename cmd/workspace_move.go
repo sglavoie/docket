@@ -35,8 +35,8 @@ Machine-local runtime state (logs, locks) is not moved.
 Close any Docket TUI using either the source or destination before relocating. An
 active TUI blocks the move. --force skips only the confirmation prompt; it does
 not bypass TUI process locks, workspace commit locks, or snapshot validation.`,
-	Example: `  docket workspace move ~/Documents/tt
-  docket workspace move /Volumes/Backup/tt --force`,
+	Example: `  docket workspace move ~/Documents/docket
+  docket workspace move /Volumes/Backup/docket --force`,
 	Args: exactlyOneArg("destination directory"),
 	RunE: runWorkspaceMove,
 	ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]cobra.Completion, cobra.ShellCompDirective) {
@@ -66,6 +66,11 @@ func runWorkspaceMove(_ *cobra.Command, args []string) error {
 	// A pair no move could accept is refused before the prompt, so declining
 	// is never the only way to learn the destination was wrong.
 	if err = config.ValidateWorkspaceMovePaths(src, dest); err != nil {
+		return err
+	}
+	// A move copies a workspace that is there; loading a missing source would
+	// create an empty one and repoint the active workspace at its copy.
+	if err = requireExistingWorkspace(); err != nil {
 		return err
 	}
 

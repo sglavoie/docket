@@ -18,7 +18,7 @@ machine-local active-workspace pointer (if one has been set by 'docket workspace
 move'), and where logs, migration backups, project exports, and merge
 conflicts live.`,
 	Example: `  docket workspace location
-  docket --data-dir ~/Documents/tt workspace location`,
+  docket --data-dir ~/Documents/docket workspace location`,
 	Args:              noArgs,
 	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE:              runWorkspaceLocation,

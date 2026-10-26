@@ -220,3 +220,42 @@ func TestRunProjectExportPrintsTheDestinationAsADisplayPath(t *testing.T) {
 		t.Errorf("stdout = %q, want it to contain %q", stdout, want)
 	}
 }
+
+func TestRunProjectExportWarnsAboutAnUnreadableLabelProject(t *testing.T) {
+	workspace := newExportFixtureWorkspace(t)
+	resetProjectExportFlags(t)
+	projectExportFile = "-"
+	old := workspace.Runtime.GetProject("old")
+	if err := os.WriteFile(filepath.Join(old.Path, "tasks.md"), []byte("not a docket project\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout, stderr, err := captureDoctorOutput(t, func() error { return runProjectExport(nil, []string{"alpha"}) })
+	if err != nil {
+		t.Fatalf("export alpha beside an unreadable project: %v", err)
+	}
+	if !strings.Contains(stdout, "Alpha task") {
+		t.Errorf("stdout is not the Alpha export:\n%s", stdout)
+	}
+	if !strings.Contains(stderr, `warning: could not read project "old"`) {
+		t.Errorf("stderr does not name the unreadable label project:\n%s", stderr)
+	}
+}
+
+func TestExportReusesLabelProjectsAlreadyLoaded(t *testing.T) {
+	workspace := newExportFixtureWorkspace(t)
+	loaded, failures := storage.LoadExportLabelProjects([]*models.Project{workspace.Runtime.GetProject("old")})
+	if len(failures) != 0 || len(loaded) != 1 || len(loaded[0].Tasks) != 1 {
+		t.Fatalf("LoadExportLabelProjects = %v, %v", loaded, failures)
+	}
+	task := loaded[0].Tasks[0]
+	var buf bytes.Buffer
+	for range 2 {
+		if err := storage.ExportProjectMarkdownTo(&buf, workspace.Runtime.GetProject("alpha"), loaded...); err != nil {
+			t.Fatalf("ExportProjectMarkdownTo: %v", err)
+		}
+	}
+	if loaded[0].Tasks[0] != task {
+		t.Error("an export read a label project its caller had already loaded")
+	}
+}

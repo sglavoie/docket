@@ -54,7 +54,7 @@ func startNoteEditor(editor string, location app.NoteLocation, note *models.Note
 
 func startNoteEditorWithContent(editor string, location app.NoteLocation, note *models.Note, content string, create bool) tea.Cmd {
 	original := CloneNoteForCommand(note)
-	tmpPath, err := external.CreateTempFileWithContent(content, "tt-note-edit-", ".md")
+	tmpPath, err := external.CreateTempFileWithContent(content, "docket-note-edit-", ".md")
 	if err != nil {
 		return status.ErrorCmd("failed to create temporary note: %w", err)
 	}

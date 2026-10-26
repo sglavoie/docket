@@ -18,7 +18,7 @@ func TestOutlineDumpEmitsThePinSigilAfterTheDestination(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dump: %v", err)
 	}
-	want := "Ship auth rewrite $doing *pin  [[tt:4f2a9c11]]"
+	want := "Ship auth rewrite $doing *pin  [[docket:4f2a9c11]]"
 	if !strings.Contains(buffer, want+"\n") {
 		t.Fatalf("dump missing %q:\n%s", want, buffer)
 	}
@@ -65,7 +65,7 @@ func TestOutlineRoundTripCarriesPinnedOnAndOff(t *testing.T) {
 
 func TestOutlineParseAcceptsAnAddedPinSigil(t *testing.T) {
 	project := outlineTestProject(t)
-	buffer := "Sweep dead flags $inbox *pin  [[tt:71f0b3d5]]"
+	buffer := "Sweep dead flags $inbox *pin  [[docket:71f0b3d5]]"
 
 	lines, problems := grammar.ParseOutlineBuffer(buffer, project, nil)
 	if len(problems) > 0 {
@@ -84,7 +84,7 @@ func TestOutlineParseAcceptsAnAddedPinSigil(t *testing.T) {
 // rather than quietly folded into the title.
 func TestOutlineParseRefusesUnpin(t *testing.T) {
 	project := outlineTestProject(t)
-	buffer := "Sweep dead flags $inbox *unpin  [[tt:71f0b3d5]]"
+	buffer := "Sweep dead flags $inbox *unpin  [[docket:71f0b3d5]]"
 
 	lines, problems := grammar.ParseOutlineBuffer(buffer, project, nil)
 	if len(lines) != 0 {

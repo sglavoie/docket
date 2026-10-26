@@ -77,8 +77,8 @@ func TestResolveBuildInfoUsesVCSStampsFromSourceBuild(t *testing.T) {
 	if version != devVersion {
 		t.Errorf("version = %q, want %q", version, devVersion)
 	}
-	if commit != "deadbeefcafe" || buildTime != "2026-08-28T09:30:00Z" {
-		t.Errorf("commit/buildTime = %q/%q, want the VCS stamps", commit, buildTime)
+	if commit != "deadbee" || buildTime != "2026-08-28T09:30:00Z" {
+		t.Errorf("commit/buildTime = %q/%q, want the VCS stamps, the revision short like the justfile's", commit, buildTime)
 	}
 }
 
@@ -116,7 +116,7 @@ func TestPrintVersionRendersResolvedValues(t *testing.T) {
 		printVersion()
 		return nil
 	})
-	want := "docket version v1.0.0 (commit: deadbeefcafe, built: 2026-08-28T09:30:00Z)"
+	want := "docket version v1.0.0 (commit: deadbee, built: 2026-08-28T09:30:00Z)"
 	if strings.TrimSpace(stamped) != want {
 		t.Errorf("printVersion() = %q, want %q", strings.TrimSpace(stamped), want)
 	}

@@ -68,7 +68,7 @@ def sha256_file(path):
 
 
 def qualification_root():
-    return os.environ.get("DOCKET_QUALIFICATION_ROOT") or os.path.expanduser("~/.tt-qualification")
+    return os.environ.get("DOCKET_QUALIFICATION_ROOT") or os.path.expanduser("~/.docket-qualification")
 
 
 class Trial:

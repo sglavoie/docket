@@ -18,12 +18,12 @@ func TestOutlineMarkerStripLeavesCaptureText(t *testing.T) {
 		rest   string
 		fails  bool
 	}{
-		{name: "trailing marker", body: "Ship auth rewrite !1  [[tt:4f2a9c11]]", marker: "4f2a9c11", rest: "Ship auth rewrite !1"},
+		{name: "trailing marker", body: "Ship auth rewrite !1  [[docket:4f2a9c11]]", marker: "4f2a9c11", rest: "Ship auth rewrite !1"},
 		{name: "no marker", body: "Rate-limit headers $backlog", marker: "", rest: "Rate-limit headers $backlog"},
-		{name: "brackets in title", body: "Fix [WIP] parser  [[tt:4f2a9c11]]", marker: "4f2a9c11", rest: "Fix [WIP] parser"},
+		{name: "brackets in title", body: "Fix [WIP] parser  [[docket:4f2a9c11]]", marker: "4f2a9c11", rest: "Fix [WIP] parser"},
 		{name: "bracketed title without marker", body: "Fix parser", marker: "", rest: "Fix parser"},
 		{name: "suffix without prefix", body: "Fix parser]]", fails: true},
-		{name: "marker holding a space", body: "Fix parser  [[tt:4f2a 9c11]]", fails: true},
+		{name: "marker holding a space", body: "Fix parser  [[docket:4f2a 9c11]]", fails: true},
 	}
 
 	for _, tt := range tests {

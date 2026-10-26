@@ -17,7 +17,7 @@ The portable workspace rooted at `<data>` is:
 ├── .tt/                     # schema-24 tombstone older builds refuse
 └── projects/
     └── <safe-slug>/
-        ├── tasks.md         # strict schema-17 generic Task Markdown
+        ├── tasks.md         # strict schema-20 generic Task Markdown
         ├── notes/           # minimal project notes
         └── .attachments/    # task-addressed file binaries
 ```

@@ -40,7 +40,7 @@
     { "type": "assert", "label": "indentation is the only parentage channel here", "assert": "contains", "value": "Line 12: indentation sets parentage here; remove the >parent sigil" },
     { "type": "assert", "assert": "contains", "value": "Line 14: indentation sets parentage here; remove the <child sigil" },
     { "type": "assert", "label": "the buffer holds no deferral channel either", "assert": "contains", "value": "Line 15: the outline buffer cannot defer; remove the @@defer sigil" },
-    { "type": "assert", "label": "the buffer is kept so the user can fix it", "assert": "contains", "value": "Buffer kept at /tmp/tt-outline-scenario.md" },
+    { "type": "assert", "label": "the buffer is kept so the user can fix it", "assert": "contains", "value": "Buffer kept at /tmp/docket-outline-scenario.md" },
     { "type": "assert", "assert": "contains", "value": "Esc close" },
     { "type": "assert", "assert": "no_layout_issues" },
 

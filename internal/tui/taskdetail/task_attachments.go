@@ -34,7 +34,20 @@ type TaskAttachmentsModel struct {
 	// Outliner only, so the panel keeps its own one-key prefix.
 	pendingTopChord bool
 
+	// pendingRemoval is the attachment a delete or unlink prompt asked about,
+	// frozen when the prompt opens. The answer removes that attachment or
+	// nothing: a reload while the prompt is open may move the cursor or shift
+	// the list, and neither may retarget a confirmed removal.
+	pendingRemoval *pendingAttachmentRemoval
+
 	Dispatch operation.KeyDispatch
+}
+
+// pendingAttachmentRemoval is the position and stored value a removal prompt
+// named.
+type pendingAttachmentRemoval struct {
+	index      int
+	attachment models.Attachment
 }
 
 // SetOperationDispatch hands the panel the shell's key dispatch seam. Without it

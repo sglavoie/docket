@@ -108,17 +108,23 @@ func (r *doctorResults) informationalNotes() int {
 // doctorIssuesError reports that doctor ran to completion and found integrity
 // issues. It exits 2 so a script can tell "the workspace needs attention" apart
 // from "doctor could not run", which exits 1. quiet keeps the message off stderr
-// when --json already carried the count.
+// when --json already carried the count. sync doctor shares it, naming itself
+// through command.
 type doctorIssuesError struct {
-	count int
-	quiet bool
+	command string
+	count   int
+	quiet   bool
 }
 
 func (e *doctorIssuesError) Error() string {
 	if e.quiet {
 		return ""
 	}
-	return "found " + Pluralize(e.count, "issue", "issues")
+	found := "found " + Pluralize(e.count, "issue", "issues")
+	if e.command != "" {
+		return e.command + " " + found
+	}
+	return found
 }
 
 // ExitCode is the process status main reports for this error.
@@ -214,7 +220,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	fix, _ := cmd.Flags().GetBool("fix")
 	asJSON, _ := cmd.Flags().GetBool("json")
 
-	if err := requireExistingWorkspace(); err != nil {
+	if err := requireUpgradedWorkspace(); err != nil {
 		return err
 	}
 	results, state, err := collectDoctorResults()

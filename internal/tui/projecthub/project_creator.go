@@ -3,6 +3,7 @@ package projecthub
 import (
 	"fmt"
 	"strings"
+	"sync/atomic"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -28,6 +29,13 @@ type ProjectCreatorModel struct {
 
 	nameInput textinput.Model
 	width     int
+
+	// submitting is set while a creation command is running and cleared when
+	// it returns, success or refusal alike. Enter is ignored meanwhile, so a
+	// double press cannot race a second creation against the first. The command
+	// clears it itself, because the result is delivered to the shell rather
+	// than to this model.
+	submitting atomic.Bool
 
 	chrome.DiscardConfirmState
 }
@@ -93,6 +101,9 @@ func (m *ProjectCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "enter":
+			if !m.submitting.CompareAndSwap(false, true) {
+				return m, nil
+			}
 			return m, m.createProject()
 		}
 	}
@@ -106,7 +117,9 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 	runtime := m.runtime
 	manager := m.manager
 	service := m.service
+	submitting := &m.submitting
 	return func() tea.Msg {
+		defer submitting.Store(false)
 		if name == "" {
 			return status.ErrorMsg{Err: fmt.Errorf("project name cannot be empty")}
 		}

@@ -225,6 +225,12 @@ func prepareWorkspaceMachineStateForMove(dataDir string) error {
 // are refused so a move never follows a link out of the workspace root or
 // silently drops special files.
 func inventoryWorkspace(root string) ([]workspaceEntry, error) {
+	return inventoryWorkspaceExcluding(root, isWorkspaceMoveExcluded)
+}
+
+// inventoryWorkspaceExcluding is inventoryWorkspace with the caller's own
+// exclusion rule, for a copy that keeps an entry a move would leave behind.
+func inventoryWorkspaceExcluding(root string, excluded func(rel string) bool) ([]workspaceEntry, error) {
 	var entries []workspaceEntry
 	walkErr := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -237,7 +243,7 @@ func inventoryWorkspace(root string) ([]workspaceEntry, error) {
 		if rel == "." {
 			return nil
 		}
-		if isWorkspaceMoveExcluded(rel) {
+		if excluded(rel) {
 			if d.IsDir() {
 				return fs.SkipDir
 			}

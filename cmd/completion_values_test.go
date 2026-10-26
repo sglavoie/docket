@@ -155,3 +155,19 @@ func TestCompleteProjectSlugsOffersNothingBesideAll(t *testing.T) {
 		t.Fatalf("--all still completed slugs: %v", values)
 	}
 }
+
+func TestBackupCommandsCompleteOneDirectory(t *testing.T) {
+	for _, command := range []*cobra.Command{workspaceBackupCmd, workspaceVerifyBackupCmd} {
+		values, directive := command.ValidArgsFunction(command, nil, "")
+		if len(values) != 0 || directive != cobra.ShellCompDirectiveFilterDirs {
+			t.Errorf("%s first argument = %v, %v; want directories", command.CommandPath(), values, directive)
+		}
+		values, directive = command.ValidArgsFunction(command, []string{"dir"}, "")
+		if len(values) != 0 || directive != cobra.ShellCompDirectiveNoFileComp {
+			t.Errorf("%s second argument = %v, %v; want nothing", command.CommandPath(), values, directive)
+		}
+	}
+	if annotation := syncEnrollCmd.Flag("snapshot-dir").Annotations[cobra.BashCompSubdirsInDir]; annotation == nil {
+		t.Error("sync enroll --snapshot-dir does not complete directories")
+	}
+}

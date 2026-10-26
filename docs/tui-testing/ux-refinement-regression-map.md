@@ -416,7 +416,7 @@ declared their text required, while this reads the finished screen.
 - Scenarios:
   `docs/tui-testing/scenarios/inbox-triage-advance-across-project-groups.json`,
   `docs/tui-testing/scenarios/inbox-triage-advance-promotes-children.json`,
-  `docs/tui-testing/scenarios/inbox-triage-undo-does-not-advance.json`,
+  `docs/tui-testing/scenarios/inbox-triage-undo-returns-to-task.json`,
   `docs/tui-testing/scenarios/relocation-recovery-subtree-move.json`,
   `docs/tui-testing/scenarios/review-acknowledge-and-advance.json`,
   `docs/tui-testing/scenarios/recovery-origin-guidance.json`,
@@ -567,7 +567,7 @@ deliberately:
 - `docs/tui-testing/scenarios/form-basics-context-from-capture.json`
 - `docs/tui-testing/scenarios/inbox-triage-advance-across-project-groups.json`
 - `docs/tui-testing/scenarios/inbox-triage-advance-promotes-children.json`
-- `docs/tui-testing/scenarios/inbox-triage-undo-does-not-advance.json`
+- `docs/tui-testing/scenarios/inbox-triage-undo-returns-to-task.json`
 - `docs/tui-testing/scenarios/move-project-search-navigation.json`
 - `docs/tui-testing/scenarios/named-lens-scope-deleted-project.json`
 - `docs/tui-testing/scenarios/outliner-focus-parent.json`

@@ -257,6 +257,10 @@ type TextEditorExternalDoneMsg struct {
 	FieldName string
 	Value     string
 	Canceled  bool
+	// Err is why the editor round trip produced no value. It is set only
+	// alongside Canceled, so a view that drops a canceled result still drops
+	// it, while the shell reports the failure instead of clearing the status.
+	Err error
 }
 
 func (m *TextEditorModel) StatusBarLabel() string { return textEditorHeader(m.fieldName) }

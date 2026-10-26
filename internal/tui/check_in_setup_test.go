@@ -366,3 +366,26 @@ func TestCheckInSetupAdvanceReadFailureDoesNotCountAsSkip(t *testing.T) {
 		t.Fatal(model.feedback.message)
 	}
 }
+
+// The summary is ordinary shell feedback: it takes its own sequence, severity,
+// and reading time instead of inheriting the warning it replaced.
+func TestCheckInSetupSummaryIsAnnouncedAsItsOwnFeedback(t *testing.T) {
+	task := setupTestTask(t, 1, "first")
+	model, _ := setupTestModel(t, []*models.Task{task})
+	model.setWarningStatus("Earlier refusal text")
+	seq := model.feedback.seq
+	model.startCheckInSetup()
+	cmd := model.handleCheckInSetupKey(setupTestKey(t, "esc"))
+	if !strings.HasPrefix(model.feedback.message, "Check-in setup stopped:") {
+		t.Fatalf("summary = %q", model.feedback.message)
+	}
+	if model.feedback.seq == seq {
+		t.Fatal("summary reused the previous message's sequence")
+	}
+	if model.feedback.severity != flashInfo {
+		t.Fatalf("summary severity = %v, want info", model.feedback.severity)
+	}
+	if cmd == nil {
+		t.Fatal("summary scheduled no reading timeout")
+	}
+}

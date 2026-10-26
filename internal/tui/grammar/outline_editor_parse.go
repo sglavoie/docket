@@ -12,7 +12,7 @@ import (
 )
 
 // This file owns the outline buffer's own syntax: the two-space indent ladder
-// and the [[tt:xxxxxxxx]] identity marker. Everything left after those are read
+// and the [[docket:xxxxxxxx]] identity marker. Everything left after those are read
 // off the front and back of a line is handed to the capture parser, so a line in
 // an outline buffer means exactly what the same line means in the composer.
 
@@ -23,7 +23,7 @@ const (
 	OutlineIndentWidth = 2
 	// OutlineMarkerPrefix and OutlineMarkerSuffix bracket the identity marker a
 	// dumped line carries. A line without one creates a task.
-	OutlineMarkerPrefix = "[[tt:"
+	OutlineMarkerPrefix = "[[docket:"
 	OutlineMarkerSuffix = "]]"
 	// outlineMarkerLength is how much of a task ID the dump prints. Eight
 	// characters keep the marker unobtrusive while staying unique within one

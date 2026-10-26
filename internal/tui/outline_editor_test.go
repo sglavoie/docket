@@ -28,10 +28,10 @@ func TestOutlineDumpRendersIndentedParentageAndMarkers(t *testing.T) {
 
 	want := []string{
 		"# Docket outline · project: Sonar · mode: Backlog · 2026-08-10 14:02",
-		"Ship auth rewrite !1 @2026-08-20 #epic ##platform $doing  [[tt:4f2a9c11]]",
-		"  Token refresh path #backend $backlog  [[tt:9b31de07]]",
-		"    Retry budget $backlog  [[tt:c0184aa2]]",
-		"Sweep dead flags $inbox  [[tt:71f0b3d5]]",
+		"Ship auth rewrite !1 @2026-08-20 #epic ##platform $doing  [[docket:4f2a9c11]]",
+		"  Token refresh path #backend $backlog  [[docket:9b31de07]]",
+		"    Retry budget $backlog  [[docket:c0184aa2]]",
+		"Sweep dead flags $inbox  [[docket:71f0b3d5]]",
 	}
 	for _, line := range want {
 		if !strings.Contains(buffer, line+"\n") {
@@ -157,9 +157,9 @@ func TestOutlineParseBuildsPlanLinesForNewAndEditedTasks(t *testing.T) {
 	buffer := strings.Join([]string{
 		"# comment",
 		"",
-		"Ship auth rewrite !1 $doing  [[tt:4f2a9c11]]",
+		"Ship auth rewrite !1 $doing  [[docket:4f2a9c11]]",
 		"  Rate-limit headers $backlog",
-		"Sweep dead flags  [[tt:71f0b3d5]]",
+		"Sweep dead flags  [[docket:71f0b3d5]]",
 	}, "\n")
 
 	lines, problems := grammar.ParseOutlineBuffer(buffer, project, nil)
@@ -204,49 +204,49 @@ func TestOutlineParseRejectsEveryOutlinePhaseError(t *testing.T) {
 	}{
 		{
 			name:    "odd indent",
-			buffer:  "Ship auth rewrite  [[tt:4f2a9c11]]\n   Token refresh path  [[tt:9b31de07]]",
+			buffer:  "Ship auth rewrite  [[docket:4f2a9c11]]\n   Token refresh path  [[docket:9b31de07]]",
 			line:    2,
 			message: "indent of 3 spaces is not a multiple of 2",
 		},
 		{
 			name:    "tab indent",
-			buffer:  "Ship auth rewrite  [[tt:4f2a9c11]]\n\tToken refresh path",
+			buffer:  "Ship auth rewrite  [[docket:4f2a9c11]]\n\tToken refresh path",
 			line:    2,
 			message: "indent with spaces, not tabs",
 		},
 		{
 			name:    "indent jump",
-			buffer:  "Ship auth rewrite  [[tt:4f2a9c11]]\n    Retry budget",
+			buffer:  "Ship auth rewrite  [[docket:4f2a9c11]]\n    Retry budget",
 			line:    2,
 			message: "indent jumps from level 0 to level 2; indent one level at a time",
 		},
 		{
 			name:    "unknown marker",
-			buffer:  "Ship auth rewrite  [[tt:deadbeef]]",
+			buffer:  "Ship auth rewrite  [[docket:deadbeef]]",
 			line:    1,
-			message: "marker [[tt:deadbeef]] does not name a task in this project",
+			message: "marker [[docket:deadbeef]] does not name a task in this project",
 		},
 		{
 			name:    "duplicate marker",
-			buffer:  "Ship auth rewrite  [[tt:4f2a9c11]]\nShip auth rewrite again  [[tt:4f2a9c11]]",
+			buffer:  "Ship auth rewrite  [[docket:4f2a9c11]]\nShip auth rewrite again  [[docket:4f2a9c11]]",
 			line:    2,
-			message: "marker [[tt:4f2a9c11]] already claimed on line 1",
+			message: "marker [[docket:4f2a9c11]] already claimed on line 1",
 		},
 		{
 			name:    "malformed marker",
-			buffer:  "Ship auth rewrite  [[tt:]]",
+			buffer:  "Ship auth rewrite  [[docket:]]",
 			line:    1,
-			message: `marker "[[tt:]]" is malformed`,
+			message: `marker "[[docket:]]" is malformed`,
 		},
 		{
 			name:    "marker suffix without prefix",
 			buffer:  "Ship auth rewrite]]",
 			line:    1,
-			message: "a line ending in ]] must carry a [[tt:…]] marker",
+			message: "a line ending in ]] must carry a [[docket:…]] marker",
 		},
 		{
 			name:    "orphaned by a rejected parent",
-			buffer:  "Ship auth rewrite  [[tt:deadbeef]]\n  Token refresh path  [[tt:9b31de07]]",
+			buffer:  "Ship auth rewrite  [[docket:deadbeef]]\n  Token refresh path  [[docket:9b31de07]]",
 			line:    2,
 			message: "its parent on line 1 was rejected, so it has nowhere to attach",
 		},
@@ -281,42 +281,42 @@ func TestOutlineParseRejectsEveryLinePhaseError(t *testing.T) {
 	}{
 		{
 			name:    "empty title",
-			buffer:  "!1 $doing  [[tt:4f2a9c11]]",
+			buffer:  "!1 $doing  [[docket:4f2a9c11]]",
 			line:    1,
 			message: "task title cannot be empty",
 		},
 		{
 			name:    "parent sigil",
-			buffer:  "Ship auth rewrite >2  [[tt:4f2a9c11]]",
+			buffer:  "Ship auth rewrite >2  [[docket:4f2a9c11]]",
 			line:    1,
 			message: "indentation sets parentage here; remove the >parent sigil",
 		},
 		{
 			name:    "child sigil",
-			buffer:  "Ship auth rewrite <2  [[tt:4f2a9c11]]",
+			buffer:  "Ship auth rewrite <2  [[docket:4f2a9c11]]",
 			line:    1,
 			message: "indentation sets parentage here; remove the <child sigil",
 		},
 		{
 			name:    "project sigil",
-			buffer:  "Ship auth rewrite %other  [[tt:4f2a9c11]]",
+			buffer:  "Ship auth rewrite %other  [[docket:4f2a9c11]]",
 			line:    1,
 			message: "the outline buffer owns the project; remove the %project sigil",
 		},
 		{
 			name:    "defer sigil",
-			buffer:  "Ship auth rewrite @@+2h  [[tt:4f2a9c11]]",
+			buffer:  "Ship auth rewrite @@+2h  [[docket:4f2a9c11]]",
 			line:    1,
 			message: "the outline buffer cannot defer; remove the @@defer sigil",
 		},
 		{
 			name:   "unknown destination",
-			buffer: "Ship auth rewrite $ready  [[tt:4f2a9c11]]",
+			buffer: "Ship auth rewrite $ready  [[docket:4f2a9c11]]",
 			line:   1,
 		},
 		{
 			name:   "retired priority",
-			buffer: "Ship auth rewrite !5  [[tt:4f2a9c11]]",
+			buffer: "Ship auth rewrite !5  [[docket:4f2a9c11]]",
 			line:   1,
 		},
 	}
@@ -347,7 +347,7 @@ func TestOutlineParseRejectsEveryLinePhaseError(t *testing.T) {
 // the whitespace-delimited sigil: a comparison inside a title is not a <child.
 func TestOutlineAcceptsEmbeddedComparisonText(t *testing.T) {
 	project := outlineTestProject(t)
-	lines, problems := grammar.ParseOutlineBuffer("Keep a<b under 5 ms  [[tt:4f2a9c11]]", project, nil)
+	lines, problems := grammar.ParseOutlineBuffer("Keep a<b under 5 ms  [[docket:4f2a9c11]]", project, nil)
 	if len(problems) > 0 {
 		t.Fatalf("buffer was rejected: %v", problems)
 	}
@@ -359,10 +359,10 @@ func TestOutlineAcceptsEmbeddedComparisonText(t *testing.T) {
 func TestOutlineParseCollectsEveryProblemInOnePass(t *testing.T) {
 	project := outlineTestProject(t)
 	buffer := strings.Join([]string{
-		"Ship auth rewrite  [[tt:4f2a9c11]]",
-		"   Token refresh path  [[tt:9b31de07]]",
-		"!1  [[tt:71f0b3d5]]",
-		"Sweep dead flags again  [[tt:71f0b3d5]]",
+		"Ship auth rewrite  [[docket:4f2a9c11]]",
+		"   Token refresh path  [[docket:9b31de07]]",
+		"!1  [[docket:71f0b3d5]]",
+		"Sweep dead flags again  [[docket:71f0b3d5]]",
 	}, "\n")
 
 	lines, problems := grammar.ParseOutlineBuffer(buffer, project, nil)

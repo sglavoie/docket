@@ -624,7 +624,7 @@ reasoning refuses the operation in every mode that is not `OrderPolicyTree` —
 Today, Next, Due, and Recent promote rows across section boundaries — and under
 a visual selection, which names rows rather than a project.
 
-Each dumped task carries a trailing `[[tt:<first 8 hex of task.ID>]]` marker,
+Each dumped task carries a trailing `[[docket:<first 8 hex of task.ID>]]` marker,
 asserted unique at dump time so a collision aborts before the editor opens. The
 outline layer strips that marker before the remainder of the line reaches
 `capturetext.ParseQuickCapture` with `skipProject=true`, which is what keeps one capture

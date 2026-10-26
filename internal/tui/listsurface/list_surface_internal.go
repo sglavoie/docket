@@ -293,8 +293,16 @@ func (model *ListSurfaceModel) ensureCursorVisible() {
 		model.scrollOffset = 0
 		return
 	}
-	if cursorRow < model.scrollOffset {
-		model.scrollOffset = cursorRow
+	// Scrolling up seats the window on the cursor's own section heading when
+	// that heading sits directly above it, so the first item of a section is
+	// never shown orphaned from the name it is filed under. A one-row window
+	// has room for the item alone.
+	top := cursorRow
+	if model.height >= 2 && cursorRow > 0 && rows[cursorRow-1].Kind == ListRowCategory {
+		top = cursorRow - 1
+	}
+	if top < model.scrollOffset {
+		model.scrollOffset = top
 	}
 	if cursorRow >= model.scrollOffset+model.height {
 		model.scrollOffset = cursorRow - model.height + 1

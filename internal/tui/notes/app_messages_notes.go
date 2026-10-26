@@ -40,6 +40,16 @@ type ProjectNoteMutationErrorMsg struct {
 	Location  app.NoteLocation
 	ProjectID string
 	Err       error
+	// RenameDraft is the title a refused rename submitted, so the view can
+	// reopen the rename holding it rather than make the user retype it. It is
+	// nil for every other note mutation.
+	RenameDraft *NoteRenameDraft
+}
+
+// NoteRenameDraft is a submitted rename: the note it named and the title typed.
+type NoteRenameDraft struct {
+	Target NoteRowIdentity
+	Title  string
 }
 
 // ProjectNoteLedgerResultMsg reports a completed workspace-ledger restore for

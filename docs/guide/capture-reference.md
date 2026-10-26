@@ -426,13 +426,13 @@ complete set.
 
 ```text
 # Sonar
-- Ship the release [[tt:4f2a9c11]] $doing !1
-  - Cut the changelog [[tt:9b31de07]] @friday
+- Ship the release [[docket:4f2a9c11]] $doing !1
+  - Cut the changelog [[docket:9b31de07]] @friday
   - Tag the build
 - Draft the migration notes $backlog #docs
 ```
 
-The `[[tt:...]]` markers identify tasks that already exist. Keep one and the
+The `[[docket:...]]` markers identify tasks that already exist. Keep one and the
 task is updated in place, wherever you moved it; write a new line without one
 and a new task is created. Dropping the marker from an existing line does both
 halves at once: the line becomes a new task, and the task the marker named is

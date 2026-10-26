@@ -384,8 +384,8 @@ func TestCurrentProductDocsExcludeRetiredConcepts(t *testing.T) {
 
 // retiredProductNamePattern matches tt as a standalone word: the retired
 // product and command name. Formats and markers that only start with it
-// (tt-sync/v1, <!-- tt-schema: N -->, [[tt:…]]) and the `.tt` directory are
-// on-disk inputs rather than names, so they fall outside the word boundary.
+// (tt-sync/v1, <!-- tt-schema: N -->) and the `.tt` directory are on-disk
+// inputs rather than names, so they fall outside the word boundary.
 var retiredProductNamePattern = regexp.MustCompile(`(^|[^A-Za-z0-9_./\[~-])tt($|[^A-Za-z0-9_:-])`)
 
 // retiredProductNameAllowed lists, per file, the exact spellings that still

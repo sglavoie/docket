@@ -49,6 +49,33 @@ func ExportProjectMarkdownTo(w io.Writer, p *models.Project, related ...*models.
 	return nil
 }
 
+// ExportLabelLoadFailure names a label project LoadExportLabelProjects could
+// not read, so a caller can say which references fall back to their locator.
+type ExportLabelLoadFailure struct {
+	Project *models.Project
+	Err     error
+}
+
+// LoadExportLabelProjects loads the related label population once, ahead of
+// any number of exports, and returns the projects it read alongside the ones it
+// could not. Passing the loaded slice as related keeps each export from reading
+// every project again.
+func LoadExportLabelProjects(related []*models.Project) ([]*models.Project, []ExportLabelLoadFailure) {
+	loaded := make([]*models.Project, 0, len(related))
+	var failures []ExportLabelLoadFailure
+	for _, project := range related {
+		if project == nil {
+			continue
+		}
+		if err := LoadProject(project); err != nil {
+			failures = append(failures, ExportLabelLoadFailure{Project: project, Err: err})
+			continue
+		}
+		loaded = append(loaded, project)
+	}
+	return loaded, failures
+}
+
 // renderProjectExport loads p and the related label population and renders
 // the whole export document, notes included.
 func renderProjectExport(p *models.Project, related []*models.Project) (string, error) {
@@ -61,8 +88,12 @@ func renderProjectExport(p *models.Project, related []*models.Project) (string, 
 		if project == nil || project.ID == p.ID {
 			continue
 		}
-		if err := LoadProject(project); err != nil {
-			continue
+		// A label project a caller already loaded, as LoadExportLabelProjects
+		// does once for a whole --all run, is not read again per export.
+		if !project.IsLoaded() {
+			if err := LoadProject(project); err != nil {
+				continue
+			}
 		}
 		loaded = append(loaded, project)
 	}

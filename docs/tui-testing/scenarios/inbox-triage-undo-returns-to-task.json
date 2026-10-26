@@ -1,5 +1,5 @@
 {
-  "name": "inbox-triage-undo-does-not-advance",
+  "name": "inbox-triage-undo-returns-to-task",
   "fixture": "inbox-triage",
   "size": "100x35",
   "actions": [
@@ -15,8 +15,8 @@
     { "type": "wait" },
     { "type": "assert", "label": "the task is back in the Inbox", "assert": "contains", "value": "[triage-alpha] (2)" },
     { "type": "assert", "label": "the workspace pulse counts the restored intake", "assert": "contains", "value": "inbox 5" },
-    { "type": "assert", "label": "undo armed no relocation, so the cursor is still on the successor", "assert": "contains", "value": "Detail line belonging to the successor intake." },
-    { "type": "assert", "label": "the cursor did not step back onto the restored task", "assert": "not_contains", "value": "Detail line belonging to the departing intake." },
+    { "type": "assert", "label": "undo returns the cursor to the task it restored", "assert": "contains", "value": "Detail line belonging to the departing intake." },
+    { "type": "assert", "label": "the cursor left the successor the triage advanced to", "assert": "not_contains", "value": "Detail line belonging to the successor intake." },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "widest committed size", "width": 160, "height": 55 },
     { "type": "assert", "assert": "no_layout_issues" },

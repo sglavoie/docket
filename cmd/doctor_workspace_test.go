@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -302,5 +303,47 @@ func TestDataDirThatIsAFileIsRefusedByName(t *testing.T) {
 	t.Setenv("DOCKET_DATA_DIR", file)
 	if _, err := LoadCLIWorkspace(); err == nil || err.Error() != "DOCKET_DATA_DIR="+file+" is not a directory" {
 		t.Errorf("DOCKET_DATA_DIR load error = %v, want the DOCKET_DATA_DIR refusal", err)
+	}
+}
+
+// TestRunDoctorRefusesAWorkspaceOwedAnUpgrade keeps doctor read-only for a
+// workspace older than this build: opening it would migrate it one-way, so the
+// refusal comes from the catalog alone and the catalog is left as it was.
+func TestRunDoctorRefusesAWorkspaceOwedAnUpgrade(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	dir := t.TempDir()
+	setCommandDataDir(t, dir)
+	bootstrapCommandWorkspace(t)
+	catalogPath := config.WorkspaceCatalogPath(dir)
+	data, err := os.ReadFile(catalogPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var env map[string]json.RawMessage
+	if err = json.Unmarshal(data, &env); err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]any
+	if err = json.Unmarshal(env["data"], &payload); err != nil {
+		t.Fatal(err)
+	}
+	older := config.CurrentConfigVersion - 1
+	payload["schema_version"] = older
+	if env["data"], err = json.Marshal(payload); err != nil {
+		t.Fatal(err)
+	}
+	if data, err = json.Marshal(env); err != nil {
+		t.Fatal(err)
+	}
+	if err = os.WriteFile(catalogPath, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, err = captureDoctorOutput(t, func() error { return runDoctor(newDoctorCommand(t), nil) })
+	if err == nil || !strings.Contains(err.Error(), fmt.Sprintf("holds schema %d and this command never upgrades it", older)) {
+		t.Fatalf("doctor error = %v, want a refusal naming schema %d", err, older)
+	}
+	if after, _ := os.ReadFile(catalogPath); string(after) != string(data) {
+		t.Fatal("doctor rewrote the catalog of a workspace it refused")
 	}
 }

@@ -141,7 +141,7 @@ project, up to six levels. See [workflow rules](capture-reference.md#workflow-an
 ## Outline editing
 
 Press `O` to edit the current project's tree in `$EDITOR`. Indentation sets
-parentage. Keep each existing task's `[[tt:...]]` marker to edit it in place;
+parentage. Keep each existing task's `[[docket:...]]` marker to edit it in place;
 removing a line deletes that task after confirmation. A new unmarked line creates
 a task. Read the [outline reference](capture-reference.md#outline-editing) before
 using it for bulk changes.

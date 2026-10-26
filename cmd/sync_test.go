@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -109,6 +110,8 @@ func TestSyncCommands(t *testing.T) {
 		if err == nil || !strings.Contains(stdout, "!! exchange") {
 			t.Fatalf("doctor did not report the missing exchange folder: %v\n%s", err, stdout)
 		}
+		requireSyncDoctorIssuesExit(t, err)
+		requireFailedExchangeKeepsFolder(t, fixture)
 		syncExchangeFolder = fixture.exchange + "-moved"
 		stdout, _, err = captureDoctorOutput(t, func() error { return runSyncExchange(nil, nil) })
 		if err != nil {
@@ -188,8 +191,44 @@ func TestSyncCommandsReportDownloadRequestFailure(t *testing.T) {
 	}
 }
 
+// requireSyncDoctorIssuesExit holds sync doctor's issues verdict to doctor's:
+// exit 2, apart from "could not run" (1), and quiet under --json.
+func requireSyncDoctorIssuesExit(t *testing.T, err error) {
+	t.Helper()
+	var coded interface{ ExitCode() int }
+	if !errors.As(err, &coded) || coded.ExitCode() != 2 || err.Error() != "sync doctor found 1 issue" {
+		t.Fatalf("sync doctor issues error = %v, want exit 2 naming one issue", err)
+	}
+	syncJSON = true
+	stdout, _, err := captureDoctorOutput(t, func() error { return runSyncDoctor(nil, nil) })
+	syncJSON = false
+	if !errors.As(err, &coded) || coded.ExitCode() != 2 || err.Error() != "" || !json.Valid([]byte(stdout)) {
+		t.Fatalf("sync doctor --json = %v (%q), want a quiet exit 2 over valid JSON:\n%s", err, err, stdout)
+	}
+}
+
+// requireFailedExchangeKeepsFolder holds that a folder the pass cannot use is
+// never remembered: the record keeps naming the folder configured before.
+func requireFailedExchangeKeepsFolder(t *testing.T, fixture syncCommandFixture) {
+	t.Helper()
+	notAFolder := filepath.Join(t.TempDir(), "not-a-folder")
+	if writeErr := os.WriteFile(notAFolder, []byte("x"), 0o600); writeErr != nil {
+		t.Fatal(writeErr)
+	}
+	syncExchangeFolder = notAFolder
+	if _, _, exchangeErr := captureDoctorOutput(t, func() error { return runSyncExchange(nil, nil) }); exchangeErr == nil ||
+		!strings.Contains(exchangeErr.Error(), "the exchange folder was not changed") {
+		t.Fatalf("exchange --exchange over a file = %v, want a refusal that keeps the folder", exchangeErr)
+	}
+	if kept, loadErr := config.LoadEnrollmentRecord(fixture.workingCopy); loadErr != nil || kept.ExchangeFolder != fixture.exchange {
+		t.Fatalf("a failed exchange --exchange repointed the device: %+v, %v", kept, loadErr)
+	}
+}
+
 // requireNotEnrolledReportsSucceed holds the read-only reports doctor sits
 // beside to the same answer for a workspace that does not sync: the hint, exit 0.
+// Diagnostics is the exception: its only output is a JSON document, so it
+// refuses with the hint as its error and leaves stdout and --file empty.
 func requireNotEnrolledReportsSucceed(t *testing.T) {
 	t.Helper()
 	stdout, _, err := captureDoctorOutput(t, func() error { return runSyncConflicts(nil, nil) })
@@ -198,9 +237,19 @@ func requireNotEnrolledReportsSucceed(t *testing.T) {
 	}
 	syncDiagnosticsOut = ""
 	stdout, _, err = captureDoctorOutput(t, func() error { return runSyncDiagnostics(nil, nil) })
-	if err != nil || !strings.Contains(stdout, notEnrolledHint) {
-		t.Fatalf("diagnostics: %v\n%s", err, stdout)
+	if err == nil || err.Error() != notEnrolledHint || stdout != "" {
+		t.Fatalf("diagnostics: err = %v, stdout = %q; want the hint as the error and no output", err, stdout)
 	}
+	diagnosticsFile := filepath.Join(t.TempDir(), "diagnostics.json")
+	syncDiagnosticsOut = diagnosticsFile
+	t.Cleanup(func() { syncDiagnosticsOut = "" })
+	if _, _, err = captureDoctorOutput(t, func() error { return runSyncDiagnostics(nil, nil) }); err == nil {
+		t.Fatal("diagnostics --file accepted a workspace that is not enrolled")
+	}
+	if _, statErr := os.Stat(diagnosticsFile); !os.IsNotExist(statErr) {
+		t.Fatalf("diagnostics wrote %s for a workspace that is not enrolled: %v", diagnosticsFile, statErr)
+	}
+	syncDiagnosticsOut = ""
 	syncJSON = true
 	t.Cleanup(func() { syncJSON = false })
 	stdout, _, err = captureDoctorOutput(t, func() error { return runSyncConflicts(nil, nil) })

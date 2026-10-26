@@ -43,10 +43,12 @@ func (c AttachmentCoordinator) AttachFile(task taskref.TaskIdentity, sourcePath 
 	})
 }
 
-// RemoveAttachment drops an attachment (and optionally its bytes) as one transaction.
-func (c AttachmentCoordinator) RemoveAttachment(task taskref.TaskIdentity, index int, deleteFile bool) tea.Cmd {
+// RemoveAttachment drops an attachment (and optionally its bytes) as one
+// transaction. expected is the attachment the user confirmed; the application
+// layer refuses when index no longer holds it.
+func (c AttachmentCoordinator) RemoveAttachment(task taskref.TaskIdentity, index int, expected models.Attachment, deleteFile bool) tea.Cmd {
 	return runTask("Remove Attachment", func() (app.TaskResult, error) {
-		res, err := c.attach.RemoveAttachment(task.Locator(), index, deleteFile)
+		res, err := c.attach.RemoveAttachmentExpecting(task.Locator(), index, expected, deleteFile)
 		return res.Task, err
 	})
 }

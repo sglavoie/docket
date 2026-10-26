@@ -25,7 +25,7 @@ func syntheticQualification(t *testing.T) *qualificationEvidence {
 	const run = "20261001T090000Z"
 	start := time.Date(2026, 10, 1, 9, 0, 0, 0, time.UTC)
 	app := map[string]string{"tt": "sha256:current", "tt.debug.dylib": "sha256:currentdylib"}
-	trial := "/Users/me/.tt-qualification/" + run + "/"
+	trial := "/Users/me/.docket-qualification/" + run + "/"
 
 	ev := &qualificationEvidence{Format: "tt-device-qualification-evidence", FormatVersion: 1, RunID: run,
 		StartedAt: start.Format(time.RFC3339), FinishedAt: start.Add(9 * 24 * time.Hour).Format(time.RFC3339)}
@@ -43,7 +43,7 @@ func syntheticQualification(t *testing.T) *qualificationEvidence {
 	ev.Mac.Home, ev.Mac.Original, ev.Mac.DataDirectory = trial+"home", trial+"original", trial+"working"
 	ev.IPhone.UDID, ev.IPhone.Model, ev.IPhone.Reality = "00008110-0001", "iPhone14,2", "physical"
 	ev.Exchange.Provider = "iCloud Drive"
-	ev.Exchange.Folder = "/Users/me/Library/Mobile Documents/com~apple~CloudDocs/tt-qualification/" + run
+	ev.Exchange.Folder = "/Users/me/Library/Mobile Documents/com~apple~CloudDocs/docket-qualification/" + run
 	ev.Workspace.Fixture, ev.Workspace.WorkspaceID = "internal/compat/testdata/workspaces/representative", workspaceID
 	ev.Scenarios = map[string]struct {
 		Checkpoints  []string       `json:"checkpoints"`

@@ -145,7 +145,9 @@ it reads `Esc freeze range`, since freezing is what that press does and clearing
 is the one after. Search typed under a lens reads `Esc restore lens` rather than
 `Esc clear search`, because the lens is what comes back. The empty-state
 sentences use the same words — `Press Esc to unzoom`, `Press Esc to leave
-Focus` — so the footer and the explanation never disagree.
+Focus` — and name the same layer: an empty Focus taken inside a zoomed section
+says `leave Focus`, and an open Peek over an empty view says `close Peek`, so
+the footer and the explanation never disagree.
 
 In capture and its expanded form, the footer says `Esc keep draft`;
 `Ctrl+X` explicitly asks to discard. Other editors retain their existing
@@ -249,7 +251,7 @@ terminal that honors the escape shows it whether or not Docket is in view.
 through the running session. Those actions use the same validation and undo as
 the keyboard. Read-only completion and preview requests remain available during
 editing; mutations are refused while a protected interaction is open.
-See [Docket.app](../../macos/README.md#talking-to-tt) for host behavior and
+See [Docket.app](../../macos/README.md#talking-to-docket) for host behavior and
 [the architecture](../architecture.md) for the control protocol.
 
 ## Resolve a conflict

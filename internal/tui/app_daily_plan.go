@@ -215,6 +215,34 @@ func (m *AppModel) clearToggleRedoHistory() {
 	m.lastToggleRedoKind = toggleUndoNone
 }
 
+// toggleHistory is the in-session planning-toggle bookkeeping, captured whole so
+// a restore that must clear it can hand it back.
+type toggleHistory struct {
+	undoKind, redoKind           toggleUndoKind
+	todayToggleAt, queueToggleAt time.Time
+	todayRedoAt, queueRedoAt     time.Time
+}
+
+func (m *AppModel) toggleHistorySnapshot() toggleHistory {
+	return toggleHistory{
+		undoKind:      m.lastToggleUndoKind,
+		redoKind:      m.lastToggleRedoKind,
+		todayToggleAt: m.lastTodayToggleAt,
+		queueToggleAt: m.lastQueueToggleAt,
+		todayRedoAt:   m.lastTodayRedoAt,
+		queueRedoAt:   m.lastQueueRedoAt,
+	}
+}
+
+func (m *AppModel) restoreToggleHistory(h toggleHistory) {
+	m.lastToggleUndoKind = h.undoKind
+	m.lastToggleRedoKind = h.redoKind
+	m.lastTodayToggleAt = h.todayToggleAt
+	m.lastQueueToggleAt = h.queueToggleAt
+	m.lastTodayRedoAt = h.todayRedoAt
+	m.lastQueueRedoAt = h.queueRedoAt
+}
+
 func (m *AppModel) clearToggleHistory() {
 	m.lastTodayToggleAt = time.Time{}
 	m.lastQueueToggleAt = time.Time{}

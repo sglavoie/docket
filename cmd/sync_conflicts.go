@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/docket/internal/config"
 	"github.com/sglavoie/docket/internal/engine"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 var (
@@ -19,6 +20,10 @@ var (
 	syncResolveFile    string
 	syncDiagnosticsOut string
 )
+
+// syncDiagnosticsStdout is the --file value that prints the document, as it is
+// for project export.
+const syncDiagnosticsStdout = "-"
 
 var syncConflictsCmd = &cobra.Command{
 	Use:   "conflicts [ID]",
@@ -75,9 +80,14 @@ var syncDiagnosticsCmd = &cobra.Command{
 	Long: `Write a JSON document describing this device's sync: its status and last
 exchange (including any transport error), the transactions waiting to
 publish, and each open conflict's files, devices, and digests. It names files
-and devices but holds no task or note content. Nothing is changed.`,
+and devices but holds no task or note content. Nothing is changed.
+
+The document goes to standard output, or to --file (- also means standard
+output). A workspace that is not enrolled has nothing to describe, so the
+command refuses it and writes nothing.`,
 	Example: `  docket sync diagnostics
-  docket sync diagnostics --file ~/Desktop/tt-sync-diagnostics.json`,
+  docket sync diagnostics --file ~/Desktop/docket-sync-diagnostics.json
+  docket sync diagnostics --file -`,
 	Args: noArgs,
 	RunE: runSyncDiagnostics,
 }
@@ -89,7 +99,7 @@ func init() {
 	syncResolveCmd.Flags().IntVar(&syncResolveVersion, "version", 0, "keep competing version N (numbered from 1)")
 	syncResolveCmd.Flags().BoolVar(&syncResolveCurrent, "current", false, "keep what the workspace holds now")
 	syncResolveCmd.Flags().StringVar(&syncResolveFile, "file", "", "write this file's text as the resolution")
-	syncDiagnosticsCmd.Flags().StringVarP(&syncDiagnosticsOut, "file", "o", "", "write to this file instead of standard output")
+	syncDiagnosticsCmd.Flags().StringVarP(&syncDiagnosticsOut, "file", "o", "", "write to this file instead of standard output (- for stdout)")
 	// --output is the flag's earlier name, kept so existing scripts still run;
 	// --file is the spelling project export uses for the same thing.
 	syncDiagnosticsCmd.Flags().StringVar(&syncDiagnosticsOut, "output", "", "write to this file instead of standard output")
@@ -127,10 +137,11 @@ func findSyncConflict(views []engine.ConflictView, id string) (engine.ConflictVi
 	return engine.ConflictView{}, fmt.Errorf("%s names %d open conflicts; give more of the id", id, len(found))
 }
 
-// Read-only sync reports (status, doctor, conflicts, diagnostics) answer a
-// workspace that is not enrolled with notEnrolledHint and exit 0: there is
-// nothing to report, and nothing failed. Actions (exchange, resolve) refuse it
-// through openEnrolledRuntime instead.
+// Read-only sync reports (status, doctor, conflicts) answer a workspace that
+// is not enrolled with notEnrolledHint and exit 0: there is nothing to report,
+// and nothing failed. Actions (exchange, resolve) refuse it through
+// openEnrolledRuntime instead, and so does diagnostics, whose only output is a
+// JSON document a sentence on stdout would corrupt.
 
 func runSyncConflicts(_ *cobra.Command, args []string) error {
 	rt, err := openSyncRuntime()
@@ -328,23 +339,23 @@ func runSyncDiagnostics(_ *cobra.Command, _ []string) error {
 	}
 	if !rt.State().Catalog().Enrolled() {
 		// No document is written: a diagnostics file for a workspace that
-		// does not sync would describe nothing.
-		fmt.Println(notEnrolledHint)
-		return nil
+		// does not sync would describe nothing, and the hint goes to stderr
+		// so a redirected stdout never receives prose in place of JSON.
+		return fmt.Errorf("%s", notEnrolledHint)
 	}
 	report, err := rt.SyncDiagnostics(nil)
 	if err != nil {
 		return err
 	}
-	if syncDiagnosticsOut == "" {
+	if syncDiagnosticsOut == "" || syncDiagnosticsOut == syncDiagnosticsStdout {
 		return printJSON(report)
 	}
 	data, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(syncDiagnosticsOut, append(data, '\n'), 0o600); err != nil {
-		return err
+	if err := util.AtomicWriteFile(syncDiagnosticsOut, append(data, '\n'), 0o600); err != nil {
+		return fmt.Errorf("write sync diagnostics: %w", err)
 	}
 	fmt.Printf("Wrote sync diagnostics to %s\n", config.DisplayPath(syncDiagnosticsOut))
 	return nil

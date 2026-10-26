@@ -194,4 +194,18 @@ func requireContentFreeDiagnostics(t *testing.T, conflictID string) {
 	if bytes.Contains(data, []byte("## Task:")) {
 		t.Fatal("diagnostics carry task Markdown")
 	}
+
+	// --file - prints the same document rather than writing a file named "-",
+	// as project export's --file - does.
+	syncDiagnosticsOut = syncDiagnosticsStdout
+	t.Cleanup(func() { syncDiagnosticsOut = "" })
+	t.Chdir(t.TempDir())
+	printed := runSyncCommand(t, "diagnostics --file -", func() error { return runSyncDiagnostics(nil, nil) })
+	var fromStdout engine.SyncDiagnostics
+	if err := json.Unmarshal([]byte(printed), &fromStdout); err != nil || fromStdout.Format != engine.SyncDiagnosticsFormat {
+		t.Fatalf("diagnostics --file - printed %q (%v)", printed, err)
+	}
+	if _, statErr := os.Stat(syncDiagnosticsStdout); !os.IsNotExist(statErr) {
+		t.Fatalf("diagnostics --file - wrote a file named -: %v", statErr)
+	}
 }

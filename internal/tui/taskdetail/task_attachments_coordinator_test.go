@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/coordinator"
 	"github.com/sglavoie/docket/internal/tui/status"
@@ -32,7 +34,7 @@ func TestTaskAttachmentsDeleteDispatchesCoordinator(t *testing.T) {
 	model := NewTaskAttachmentsModel(task, project, nil, attach)
 	model.Cursor = 1
 
-	cmd := model.executeDelete()
+	cmd := model.executeDelete(pendingRemovalAt(model, 1))
 	if cmd == nil {
 		t.Fatal("expected non-nil command from executeDelete")
 	}
@@ -71,7 +73,7 @@ func TestTaskAttachmentsDeleteOutOfBounds(t *testing.T) {
 	model := NewTaskAttachmentsModel(task, project, nil, attach)
 	model.Cursor = 5 // Out of bounds
 
-	cmd := model.executeDelete()
+	cmd := model.executeDelete(&pendingAttachmentRemoval{index: 5})
 	if cmd == nil {
 		t.Fatal("expected non-nil command from executeDelete")
 	}
@@ -111,7 +113,7 @@ func TestTaskAttachmentsKeepDispatchesCoordinator(t *testing.T) {
 	model := NewTaskAttachmentsModel(task, project, nil, attach)
 	model.Cursor = 0
 
-	cmd := model.executeKeep()
+	cmd := model.executeKeep(pendingRemovalAt(model, 0))
 	if cmd == nil {
 		t.Fatal("expected non-nil command from executeKeep")
 	}
@@ -120,6 +122,68 @@ func TestTaskAttachmentsKeepDispatchesCoordinator(t *testing.T) {
 	}
 	if len(fake.removals) != 1 || fake.removals[0].index != 0 || fake.removals[0].deleteFile {
 		t.Fatalf("expected RemoveAttachment(index=0, deleteFile=false), got %+v", fake.removals)
+	}
+}
+
+// pendingRemovalAt is what a removal prompt opened on index freezes.
+func pendingRemovalAt(m *TaskAttachmentsModel, index int) *pendingAttachmentRemoval {
+	return &pendingAttachmentRemoval{index: index, attachment: m.Task.Attachments[index]}
+}
+
+// TestTaskAttachmentsConfirmedDeleteRefusesShiftedList pins that a delete
+// prompt removes the attachment it asked about or nothing: a reload that drops
+// an earlier attachment while the prompt is open shifts the list under the
+// cursor, and answering yes must not delete the neighbor that moved into place.
+func TestTaskAttachmentsConfirmedDeleteRefusesShiftedList(t *testing.T) {
+	project, err := models.NewProject("project-1", "Attachments Project", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+	added := time.Now()
+	task.Attachments = []models.Attachment{
+		{Filename: "file1.txt", OriginalPath: "/tmp/file1.txt", AddedAt: added},
+		{Filename: "file2.txt", OriginalPath: "/tmp/file2.txt", AddedAt: added},
+		{Filename: "file3.txt", OriginalPath: "/tmp/file3.txt", AddedAt: added},
+	}
+	project.Tasks = []*models.Task{task}
+
+	attach, fake := newFakeAttachmentCoordinator()
+	model := NewTaskAttachmentsModel(task, project, nil, attach)
+	model.Cursor = 1
+	model.ConfirmDeleteSelectedAttachment()
+	if !model.Confirm.IsActive() {
+		t.Fatal("expected the delete prompt to open")
+	}
+
+	// A sync pull removes file1 while the prompt is open; file3 now sits at 1.
+	task.Attachments = task.Attachments[1:]
+
+	_, cmd := model.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
+	if cmd == nil {
+		t.Fatal("expected a refusal command")
+	}
+	if _, ok := cmd().(status.ErrorMsg); !ok {
+		t.Fatal("expected the shifted list to refuse the removal")
+	}
+	if len(fake.removals) != 0 {
+		t.Fatalf("a shifted list must dispatch nothing, got %+v", fake.removals)
+	}
+
+	// Asking again about the attachment now under the cursor removes exactly it,
+	// and names it to the application layer.
+	model.Cursor = 0
+	model.ConfirmDeleteSelectedAttachment()
+	_, cmd = model.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
+	if cmd == nil {
+		t.Fatal("expected a removal command")
+	}
+	cmd()
+	if len(fake.removals) != 1 || fake.removals[0].index != 0 || fake.removals[0].expected.Filename != "file2.txt" {
+		t.Fatalf("expected removal of file2.txt at 0, got %+v", fake.removals)
 	}
 }
 

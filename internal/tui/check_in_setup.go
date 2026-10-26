@@ -170,10 +170,16 @@ func (m *AppModel) finishCheckInSetup() tea.Cmd {
 	if pass.index < len(pass.candidates) {
 		state = "stopped"
 	}
-	m.feedback.message = fmt.Sprintf("Check-in setup %s: %d saved, %d skipped, %d no longer eligible, %d remaining (initial pass: %d)",
+	summary := fmt.Sprintf("Check-in setup %s: %d saved, %d skipped, %d no longer eligible, %d remaining (initial pass: %d)",
 		state, pass.saved, pass.skipped, pass.changed, len(pass.candidates)-pass.index, len(pass.candidates))
+	// The summary is ordinary shell feedback: it goes through the setters so it
+	// takes its own sequence, severity, and reading time rather than inheriting
+	// the previous message's, and its own history entry rather than rewriting
+	// the one before it.
 	if pass.readError != "" {
-		m.feedback.message += ". " + pass.readError
+		m.setWarningStatus(summary + ". " + pass.readError)
+	} else {
+		m.setInfoStatus(summary)
 	}
-	return nil
+	return m.statusReadingTimeout()
 }

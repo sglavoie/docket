@@ -83,7 +83,7 @@ const (
 // harnessOutlineScenarioPath is the buffer path the outline scenarios name. No
 // file is written: the scenarios only assert that a refusal points back at the
 // buffer the user still has.
-const harnessOutlineScenarioPath = "/tmp/tt-outline-scenario.md"
+const harnessOutlineScenarioPath = "/tmp/docket-outline-scenario.md"
 
 type harnessOperationSpec struct {
 	id       operation.OperationID
@@ -367,7 +367,7 @@ func (m *AppModel) harnessRecordConflict() error {
 func harnessOutlineProblems() []grammar.LineError {
 	return []grammar.LineError{
 		{Line: 4, Message: "indent of 3 spaces is not a multiple of 2"},
-		{Line: 6, Message: "marker [[tt:deadbeef]] does not name a task in this project"},
+		{Line: 6, Message: "marker [[docket:deadbeef]] does not name a task in this project"},
 		{Line: 9, Message: "indent jumps from level 0 to level 2; indent one level at a time"},
 		{Line: 11, Message: "task title cannot be empty"},
 		{Line: 12, Message: "indentation sets parentage here; remove the >parent sigil"},

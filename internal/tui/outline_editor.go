@@ -29,7 +29,7 @@ const outlineEditorModeRefusal = "Outline edit needs All, Inbox, or Backlog"
 // writes. The suffix gives editors a Markdown mode, which is close enough to the
 // buffer's shape to get useful highlighting.
 const (
-	outlineBufferPrefix = "tt-outline-"
+	outlineBufferPrefix = "docket-outline-"
 	outlineBufferSuffix = ".md"
 )
 

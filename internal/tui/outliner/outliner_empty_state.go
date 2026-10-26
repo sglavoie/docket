@@ -173,15 +173,15 @@ func (m *OutlinerModel) OutlinerEmptyMessage() string {
 		// The three sentences below name the act the cascade's top step performs,
 		// in the verb the footer entry beside them uses, so the prose and the hint
 		// are one answer read twice.
-		return "No tasks match this lens. Press Esc to leave the lens."
+		return "No tasks match this lens. " + m.emptyEscSentence(escActionLeaveLens)
 	case outlinerEmptyFiltered:
 		return listsurface.EmptyStateFiltered
 	case outlinerEmptyHidden:
 		return OutlinerEmptyHiddenMessage
 	case outlinerEmptyFocus:
-		return "No tasks are visible in this Focus. Press Esc to leave Focus."
+		return "No tasks are visible in this Focus. " + m.emptyEscSentence(escActionLeaveFocus)
 	case OutlinerEmptySection:
-		return "No tasks are left in this section. Press Esc to unzoom."
+		return "No tasks are left in this section. " + m.emptyEscSentence(escActionUnzoom)
 	case outlinerEmptyMode:
 		mode := m.ActiveOutlinerModeEntry()
 		if message, hint := m.emptyModeNextStep(mode.ID); hint != "" {
@@ -226,4 +226,31 @@ func (m *OutlinerModel) emptyModeNextStep(mode chrome.OutlinerModeID) (message, 
 	}
 	key, _, _ = strings.Cut(key, "/")
 	return message, key + " " + act
+}
+
+// emptyEscSentence is the Esc clause of the lens, Focus, and section sentences.
+// It reads the cascade rather than the cause, because a step standing above the
+// cause — an open Peek, a selection, a Focus taken inside a zoom — is what the
+// next press actually unwinds, and the footer beside the sentence already says
+// so through EscHint. expected is the step the cause itself owns.
+func (m *OutlinerModel) emptyEscSentence(expected string) string {
+	action := m.EscAction()
+	if action == "" {
+		action = expected
+	}
+	return "Press Esc to " + escActionClause(action) + "."
+}
+
+// escActionClause spells a cascade act inside a sentence. The footer's terse
+// forms read as imperatives except two: the lens takes its article, and the
+// scope step names a place rather than an act.
+func escActionClause(action string) string {
+	switch action {
+	case escActionLeaveLens:
+		return "leave the lens"
+	case escActionLeaveScope:
+		return "show all projects"
+	default:
+		return action
+	}
 }

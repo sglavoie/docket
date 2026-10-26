@@ -21,7 +21,7 @@ func outlineErrorsFixture(count int) *outliner.OutlineErrorsViewModel {
 			Message: fmt.Sprintf("indent jumps from level 0 to level 2 on problem %d; indent one level at a time", i+1),
 		})
 	}
-	return outliner.NewOutlineErrorsViewModel("Sonar", "/tmp/tt-outline-abc123.md", problems)
+	return outliner.NewOutlineErrorsViewModel("Sonar", "/tmp/docket-outline-abc123.md", problems)
 }
 
 func TestOutlineErrorsViewNamesEveryProblemAndKeepsTheBuffer(t *testing.T) {
@@ -37,7 +37,7 @@ func TestOutlineErrorsViewNamesEveryProblemAndKeepsTheBuffer(t *testing.T) {
 	if !strings.Contains(rendered, "Sonar · 3 problems · nothing was changed") {
 		t.Errorf("subtitle is missing:\n%s", rendered)
 	}
-	if !strings.Contains(rendered, "Buffer kept at /tmp/tt-outline-abc123.md") {
+	if !strings.Contains(rendered, "Buffer kept at /tmp/docket-outline-abc123.md") {
 		t.Errorf("the buffer path is missing:\n%s", rendered)
 	}
 	if !strings.Contains(rendered, "Esc close") {
@@ -82,7 +82,7 @@ func TestOutlineErrorsViewScrollsWithoutLosingChrome(t *testing.T) {
 	if strings.Contains(scrolled, "Line 1: ") {
 		t.Fatalf("scrolling did not move the window:\n%s", scrolled)
 	}
-	if !strings.Contains(scrolled, "Buffer kept at /tmp/tt-outline-abc123.md") {
+	if !strings.Contains(scrolled, "Buffer kept at /tmp/docket-outline-abc123.md") {
 		t.Fatalf("scrolling lost the buffer path:\n%s", scrolled)
 	}
 

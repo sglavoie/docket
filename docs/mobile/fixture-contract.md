@@ -14,15 +14,16 @@ format; they are the compatibility baseline.
 internal/compat/testdata/workspaces/
 ├── <name>.fixture.json   # manifest
 └── <name>/               # a portable workspace root
-    ├── .tt/workspace.json
-    ├── .tt/planning.json
-    ├── .tt/lenses.json
-    ├── .tt/global-notes/*.md
+    ├── .docket/workspace.json
+    ├── .docket/planning.json
+    ├── .docket/lenses.json
+    ├── .docket/global-notes/*.md
+    ├── .tt/{workspace,planning}.json   # the schema-24 tombstone
     └── projects/<slug>/{tasks.md,notes/*.md,.attachments/…}
 ```
 
 A fixture workspace holds portable artifacts only: no `machine.json`,
-`.tt/transactions/`, `.tt/undo/`, `.tt/backups/`, `.tt/conflicts/`, `*.bak`, or
+`.docket/transactions/`, `.docket/undo/`, `.docket/backups/`, `.docket/conflicts/`, `*.bak`, or
 `*.lock`. These are the same exclusions that apply to
 [sync](sync-envelope.md#what-is-never-exchanged).
 

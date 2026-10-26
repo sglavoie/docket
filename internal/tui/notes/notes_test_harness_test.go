@@ -159,6 +159,7 @@ type combinedNotesService struct {
 	snapshotErr error
 	queryCount  int
 	requests    []app.NoteBatchRequest
+	applyErr    error
 }
 
 func (s *combinedNotesService) NotesAtLocations(locations []app.NoteLocation) ([]app.NoteCollectionResult, error) {
@@ -179,6 +180,9 @@ func (s *combinedNotesService) NotesAtLocations(locations []app.NoteLocation) ([
 
 func (s *combinedNotesService) ApplyNoteBatch(request app.NoteBatchRequest) (app.NoteBatchResult, error) {
 	s.requests = append(s.requests, request)
+	if s.applyErr != nil {
+		return app.NoteBatchResult{}, s.applyErr
+	}
 	return app.NoteBatchResult{}, nil
 }
 

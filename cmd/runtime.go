@@ -107,8 +107,8 @@ func checkDataDirOverride() error {
 
 // requireExistingWorkspace refuses to inspect a workspace that is not there.
 // Loading a workspace creates one, which a command reading an existing one must
-// never do, so doctor, the conflict commands, and project export ask this first and name the path
-// they would otherwise have created.
+// never do, so doctor, the conflict commands, project export, and workspace backup
+// and move ask this first and name the path they would otherwise have created.
 // The data directory alone proves nothing — the default ~/.docket also holds the
 // machine-local logs every command opens — so a workspace is its internal
 // .docket directory, the .tt one a pre-v24 workspace still keeps (or the
@@ -129,6 +129,31 @@ func requireExistingWorkspace() error {
 			"pass --data-dir with an existing workspace, or run 'docket' to create one there", absolutePath(dir))
 	}
 	return nil
+}
+
+// requireUpgradedWorkspace is requireExistingWorkspace for a command that
+// inspects rather than opens: loading a workspace older than this build
+// upgrades it, one-way, so a workspace still owed that upgrade is refused from
+// its catalog alone, before anything is recovered or migrated.
+func requireUpgradedWorkspace() error {
+	if err := requireExistingWorkspace(); err != nil {
+		return err
+	}
+	dir := config.WorkspaceRootFromConfigPath(config.NewManager(resolveConfigPath()).GetConfigPath())
+	schema, exists, err := config.WorkspaceCatalogSchema(dir)
+	if err != nil {
+		return err
+	}
+	if exists && schema >= config.CurrentConfigVersion {
+		return nil
+	}
+	held := "an older workspace format"
+	if exists {
+		held = fmt.Sprintf("schema %d", schema)
+	}
+	return fmt.Errorf("workspace %s holds %s and this command never upgrades it; "+
+		"back it up with 'docket workspace backup <directory>', then run 'docket' once to upgrade it to schema %d",
+		absolutePath(dir), held, config.CurrentConfigVersion)
 }
 
 // workspaceExists reports whether the workspace configPath belongs to is there,

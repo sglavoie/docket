@@ -107,14 +107,14 @@ widget shows it with its age. It is current for three hours after
 `generated_at`. After that it is stale: the rows are still shown, with how old
 they are, since another device may have changed them. At `valid_until`, the
 next local midnight, it expires. Today and every overdue mark then describe a
-day that is over, so the widget hides the rows and asks for tt to be opened.
+day that is over, so the widget hides the rows and asks for Docket to be opened.
 The widget's timeline carries an entry at each of those two moments, so it
 turns on time without the app running. The Inbox widget also counts the
 captures still waiting in the inbox.
 
 ## Links
 
-Widgets, shortcuts, and notifications open the app through the `tt` scheme:
+Widgets, shortcuts, and notifications open the app through the `docket` scheme:
 `docket://task/<workspace>/<project_id>/<task_id>`, `docket://view/today`,
 `docket://view/inbox`, and `docket://capture`. A task link carries its workspace. The
 app refuses a link for a workspace other than the open one, rather than

@@ -28,26 +28,24 @@ anything else.
 
 | Artifact | Path | Format | Synced |
 | --- | --- | --- | --- |
-| Workspace catalog | `.tt/workspace.json` | domain envelope 1, catalog payload schema 21 | yes |
-| Planning | `.tt/planning.json` | domain envelope 1 | yes |
-| Named lenses | `.tt/lenses.json` | domain envelope 1 | yes |
-| Project document | `projects/<slug>/tasks.md` | task Markdown schema 19 | yes |
+| Workspace catalog | `.docket/workspace.json` | domain envelope 1, catalog payload schema 24 | yes |
+| Planning | `.docket/planning.json` | domain envelope 1 | yes |
+| Named lenses | `.docket/lenses.json` | domain envelope 1 | yes |
+| Project document | `projects/<slug>/tasks.md` | task Markdown schema 20 | yes |
 | Project notes | `projects/<slug>/notes/*.md` | YAML frontmatter + Markdown | yes |
-| Global notes | `.tt/global-notes/*.md` | YAML frontmatter + Markdown | yes |
+| Global notes | `.docket/global-notes/*.md` | YAML frontmatter + Markdown | yes |
 | Attachment bytes | `projects/<slug>/.attachments/<task-hash>/<file>` | opaque bytes | yes |
-| Machine state | `~/.tt/runtime/<workspace-id>/machine.json` | domain envelope 1 | never |
-| Commit journals | `.tt/transactions/` | journal manifest | never |
-| Undo ledger | `.tt/undo/` | ledger entries and images | never |
-| Conflict bundles | `.tt/conflicts/` | bundle directory | not in v1 (see [Open questions](sync-envelope.md#open-questions)) |
-| Migration snapshots | `.tt/backups/` | archive/audit pairs | never |
+| Machine state | `~/.docket/runtime/<workspace-id>/machine.json` | domain envelope 1 | never |
+| Commit journals | `.docket/transactions/` | journal manifest | never |
+| Undo ledger | `.docket/undo/` | ledger entries and images | never |
+| Conflict bundles | `.docket/conflicts/` | bundle directory | not in v1 (see [Open questions](sync-envelope.md#open-questions)) |
+| Migration snapshots | `.docket/backups/` | archive/audit pairs | never |
 | Domain sidecars and locks | `*.bak`, `*.lock` | — | never |
 
-The catalog payload schema (21) and the task Markdown schema (19) are separate
+The catalog payload schema (24) and the task Markdown schema (20) are separate
 numbers. Neither one is computed from the other. Both come from the code:
 `config.CurrentConfigVersion`, `storage.CurrentTaskSchemaVersion`, and
-`config.CurrentDomainSchemaVersion` for the envelope. Some architecture chapters
-still describe older numbers; for example, the persistence chapter calls
-`tasks.md` schema 17.
+`config.CurrentDomainSchemaVersion` for the envelope.
 
 ### Task fields
 

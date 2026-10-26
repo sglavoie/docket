@@ -75,7 +75,7 @@ func resolveBuildInfo() (version, commit, buildTime string) {
 		switch setting.Key {
 		case "vcs.revision":
 			if commit == "" {
-				commit = setting.Value
+				commit = shortCommit(setting.Value)
 			}
 		case "vcs.time":
 			if buildTime == "" {
@@ -84,6 +84,18 @@ func resolveBuildInfo() (version, commit, buildTime string) {
 		}
 	}
 	return version, commit, buildTime
+}
+
+// shortCommitLength is how much of a revision the version line prints: what
+// `git rev-parse --short` gives the justfile and GoReleaser's ShortCommit, so
+// every install channel reports a commit the same way.
+const shortCommitLength = 7
+
+func shortCommit(revision string) string {
+	if len(revision) > shortCommitLength {
+		return revision[:shortCommitLength]
+	}
+	return revision
 }
 
 var rootCmd = &cobra.Command{
@@ -96,9 +108,9 @@ surface is intentionally limited to workspace maintenance, diagnostics,
 conflict recovery, project export, and shell completion.
 
 Docket reads schema-%d catalogs and schema-%d task Markdown, and upgrades an
-older workspace to them when it opens it. Upgrading is one-way, so back up your
-workspace before a version jump. Run 'docket doctor' for a read-only integrity
-and migration check.`, config.CurrentConfigVersion, storage.CurrentTaskSchemaVersion),
+older workspace to them when it opens it. Upgrading is one-way, so run 'docket
+workspace backup' before a version jump. 'docket doctor' checks integrity and
+never upgrades: it refuses a workspace still owed an upgrade.`, config.CurrentConfigVersion, storage.CurrentTaskSchemaVersion),
 	Example: `  docket
   docket doctor
   docket conflict list

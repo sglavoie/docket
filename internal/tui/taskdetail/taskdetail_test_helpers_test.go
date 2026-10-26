@@ -200,6 +200,7 @@ type fakeAttachmentMutator struct {
 
 type fakeRemoval struct {
 	index      int
+	expected   models.Attachment
 	deleteFile bool
 }
 
@@ -223,8 +224,8 @@ func (f *fakeAttachmentMutator) AttachFile(locator app.TaskLocator, sourcePath s
 	return app.AttachFileResult{Task: app.TaskResult{TaskID: locator.TaskID, ProjectID: locator.ProjectID}}, nil
 }
 
-func (f *fakeAttachmentMutator) RemoveAttachment(locator app.TaskLocator, index int, deleteFile bool) (app.RemoveAttachmentResult, error) {
-	f.removals = append(f.removals, fakeRemoval{index: index, deleteFile: deleteFile})
+func (f *fakeAttachmentMutator) RemoveAttachmentExpecting(locator app.TaskLocator, index int, expected models.Attachment, deleteFile bool) (app.RemoveAttachmentResult, error) {
+	f.removals = append(f.removals, fakeRemoval{index: index, expected: expected, deleteFile: deleteFile})
 	return app.RemoveAttachmentResult{Task: app.TaskResult{TaskID: locator.TaskID, ProjectID: locator.ProjectID}}, nil
 }
 

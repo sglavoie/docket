@@ -33,7 +33,7 @@ folder. A workspace that was never enrolled keeps working as it always has.
 
 Enrolled workspaces use catalog schema ` + fmt.Sprint(config.SyncEnrolledConfigVersion) + ` with a sync block, which a Docket older than
 this one refuses to open rather than write around the history.`,
-	Example: `  docket sync enroll --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/tt-exchange --working-copy ~/tt-synced
+	Example: `  docket sync enroll --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/docket-exchange --working-copy ~/docket-synced
   docket sync status
   docket sync exchange
   docket sync doctor`,
@@ -67,7 +67,7 @@ Enrollment never converts the workspace in place. It:
 
 The original workspace is left untouched. Re-run the same command after an
 interruption to finish; nothing is copied or published twice.`,
-	Example: `  docket sync enroll --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/tt-exchange --working-copy ~/tt-synced`,
+	Example: `  docket sync enroll --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/docket-exchange --working-copy ~/docket-synced`,
 	Args:    noArgs,
 	RunE:    runSyncEnroll,
 }
@@ -78,7 +78,7 @@ var syncJoinCmd = &cobra.Command{
 	Long: `Join a workspace another device enrolled, from the history in its exchange
 folder alone. The new working copy at --working-copy must be outside iCloud
 Drive; it becomes this machine's workspace.`,
-	Example: `  docket sync join --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/tt-exchange --working-copy ~/tt-synced`,
+	Example: `  docket sync join --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/docket-exchange --working-copy ~/docket-synced`,
 	Args:    noArgs,
 	RunE:    runSyncJoin,
 }
@@ -86,6 +86,11 @@ Drive; it becomes this machine's workspace.`,
 var syncStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show what is committed, outstanding, held, and in conflict",
+	Long: `Show this device's sync state: the working copy, device, and exchange
+folder; transactions committed here, waiting to publish, and waiting to apply;
+when an exchange last succeeded and why the last attempt failed; transactions
+held until this device upgrades; and the open sync conflicts. Nothing is
+changed. A workspace that is not enrolled says so.`,
 	Example: `  docket sync status
   docket sync status --json`,
 	Args: noArgs,
@@ -100,9 +105,11 @@ import what other devices published. Content that iCloud has not downloaded
 yet is reported as unavailable and fetched on a later pass; nothing is ever
 deleted because a file is missing.
 
---exchange points this device at a different exchange folder from now on.`,
+--exchange points this device at a different exchange folder from now on.
+The folder is remembered only when a pass through it succeeds; otherwise the
+previous folder stays configured.`,
 	Example: `  docket sync exchange
-  docket sync exchange --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/tt-exchange`,
+  docket sync exchange --exchange ~/Library/Mobile\ Documents/com~apple~CloudDocs/docket-exchange`,
 	Args: noArgs,
 	RunE: runSyncExchange,
 }
@@ -110,6 +117,14 @@ deleted because a file is missing.
 var syncDoctorCmd = &cobra.Command{
 	Use:   "doctor",
 	Short: "Diagnose sync: placement, exchange folder, history, holds, and upgrades",
+	Long: `Check this device's sync setup in the order to read it: enrollment, where
+the working copy lives, whether the exchange folder is reachable and belongs to
+this workspace, the enrollment snapshot, history, and anything held or waiting.
+Each line is a note (ok) or an issue (!!). Nothing is changed. --json prints
+the findings as one JSON array on stdout and nothing else.
+
+Exit status: 0 when no issue is found, 2 when the check ran and found issues,
+and 1 when it could not run.`,
 	Example: `  docket sync doctor
   docket sync doctor --json`,
 	Args: noArgs,
@@ -123,6 +138,7 @@ func init() {
 	syncEnrollCmd.Flags().StringVar(&syncExchangeFolder, "exchange", "", "exchange folder shared by the devices, typically in iCloud Drive (required)")
 	syncEnrollCmd.Flags().StringVar(&syncWorkingCopy, "working-copy", "", "new local directory for the enrolled working copy, outside iCloud (required)")
 	syncEnrollCmd.Flags().StringVar(&syncSnapshotDir, "snapshot-dir", "", "where to keep the snapshot of the original (default ~/.docket/enrollments)")
+	_ = syncEnrollCmd.MarkFlagDirname("snapshot-dir")
 	syncEnrollCmd.Flags().BoolVarP(&syncForce, "force", "f", false, "skip the confirmation prompt only")
 	syncJoinCmd.Flags().StringVar(&syncExchangeFolder, "exchange", "", "the exchange folder the enrolling device published to (required)")
 	syncJoinCmd.Flags().StringVar(&syncWorkingCopy, "working-copy", "", "new local directory for this device's working copy (required)")
@@ -302,12 +318,25 @@ func runSyncExchange(_ *cobra.Command, _ []string) error {
 	if !rt.State().Catalog().Enrolled() {
 		return fmt.Errorf("%s", notEnrolledHint)
 	}
+	// A new --exchange folder is checked and tried first and remembered only
+	// once a pass through it succeeds, so a mistyped or unreachable folder
+	// never replaces the one that works.
+	folder := ""
 	if syncExchangeFolder != "" {
-		if setErr := config.SetEnrollmentExchangeFolder(rt.DataDir(), syncExchangeFolder); setErr != nil {
-			return setErr
+		abs, validateErr := config.ValidateEnrollmentExchangeFolder(rt.DataDir(), syncExchangeFolder)
+		if validateErr != nil {
+			return validateErr
 		}
+		folder = abs
 	}
-	report, err := rt.SyncExchange(engine.SyncExchangeOptions{AppVersion: syncAppVersion()})
+	report, err := rt.SyncExchange(engine.SyncExchangeOptions{Folder: folder, AppVersion: syncAppVersion()})
+	if err == nil && folder != "" {
+		if setErr := config.SetEnrollmentExchangeFolder(rt.DataDir(), folder); setErr != nil {
+			err = fmt.Errorf("the exchange succeeded, but remembering %s failed: %w", config.DisplayPath(folder), setErr)
+		}
+	} else if err != nil && folder != "" {
+		err = fmt.Errorf("%w; the exchange folder was not changed", err)
+	}
 	if syncJSON && report != nil {
 		if printErr := printJSON(report); printErr != nil {
 			return printErr
@@ -379,7 +408,7 @@ func runSyncDoctor(_ *cobra.Command, _ []string) error {
 		}
 	}
 	if issues > 0 {
-		return fmt.Errorf("sync doctor found %s", Pluralize(issues, "issue", "issues"))
+		return &doctorIssuesError{command: "sync doctor", count: issues, quiet: syncJSON}
 	}
 	return nil
 }

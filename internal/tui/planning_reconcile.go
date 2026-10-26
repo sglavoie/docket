@@ -3,7 +3,6 @@ package tui
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -53,6 +52,11 @@ func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.
 		if err != nil {
 			return nil, m.projectByID(projectID), "", err
 		}
+		// A planning move is a single-task result and names its own task, which
+		// it leaves at its address, so undoing a triage returns the cursor to
+		// the task it restored (inbox-triage-undo-returns-to-task).
+		locator := app.TaskLocator{ProjectID: projectID, TaskID: taskID}
+		m.undoFocus.ObserveCommit(res.TransactionID, coordinator.CommittedFocusTarget{Before: locator, After: locator})
 		if stateChanged {
 			m.reloadProjectByID(res.ProjectID)
 			m.reloadCrossProjectOutlinerProject(res.ProjectID)
@@ -141,40 +145,32 @@ func (m *AppModel) rebuildPlanningFromRuntime() {
 
 // planningLedgerRestore drives a durable workspace-ledger undo (redo=false) or
 // redo (redo=true) for a planning move that folded its state change and planning
-// reconciliation into one ledger transaction. It restores the newest ledger entry
-// (so a later mutation is always undone first), reloads the touched projects and
-// the config snapshot, then rebuilds the in-memory planning collections. Because
-// it reads the durable ledger rather than in-memory toggle history, the restore
-// survives a restart.
+// reconciliation into one ledger transaction. The restore itself is the one
+// every ledger undo takes, restoreLedgerEntry, so the wording, the exhausted and
+// retired-entry handling, the due-clock supersession, and the focus correlation
+// cannot drift from it; the planning reconcile is the only step added on top.
+// Because it reads the durable ledger rather than in-memory toggle history, the
+// restore survives a restart.
+//
+// restoreLedgerEntry puts the toggle history down, as any ledger restore must;
+// the toggle's own undo and redo just wrote the history that keeps u and Ctrl+R
+// walking the planning chain, so it is carried across the restore.
 func (m *AppModel) planningLedgerRestore(redo bool) tea.Cmd {
-	ledger := workspaceLedgerFromConfig(m.domain.runtime)
-	scope := storage.GlobalScope()
-	restore := ledger.UndoWithEntry
-	verb := "Undone"
-	if redo {
-		restore = ledger.RedoWithEntry
-		verb = "Redone"
+	history := m.toggleHistorySnapshot()
+	cmd, _, restored := m.restoreLedgerEntry(redo, "")
+	if !restored {
+		return cmd
 	}
-	entry, desc, err := restore(scope)
+	m.restoreToggleHistory(history)
+	changed, err := m.domain.service.ReconcilePlanning()
 	if err != nil {
-		// An exhausted ledger is not an error here.
-		if strings.Contains(err.Error(), "history available") {
-			return nil
-		}
-		return status.ErrorCmd("%s", err)
+		return tea.Batch(cmd, status.ErrorCmd("%s", err))
 	}
-	for _, id := range entry.ProjectIDs {
-		m.reloadProjectByID(id)
+	if changed && m.refreshRuntime() {
+		m.rebuildPlanningFromRuntime()
+		m.refreshLoadedTaskWorkspace()
 	}
-	m.refreshRuntime()
-	if changed, reconcileErr := m.domain.service.ReconcilePlanning(); reconcileErr != nil {
-		return status.ErrorCmd("%s", reconcileErr)
-	} else if changed {
-		m.refreshRuntime()
-	}
-	m.rebuildPlanningFromRuntime()
-	m.setInfoStatus(fmt.Sprintf("%s: %s", verb, desc))
-	return m.queueToggleResultCmd()
+	return cmd
 }
 
 // reconcileNoteLedgerRestore advances every shell cache affected by the exact

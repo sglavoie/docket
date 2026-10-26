@@ -138,7 +138,10 @@ type AttachmentMutator interface {
 	AttachURL(locator app.TaskLocator, url string) (app.TaskResult, error)
 	AttachCodeReference(locator app.TaskLocator, path string, line int) (app.TaskResult, error)
 	AttachFile(locator app.TaskLocator, sourcePath string) (app.AttachFileResult, error)
-	RemoveAttachment(locator app.TaskLocator, index int, deleteFile bool) (app.RemoveAttachmentResult, error)
+	// RemoveAttachmentExpecting removes the attachment at index only while it is
+	// still expected, so a confirmed removal never lands on a neighbor a reload
+	// shifted into that position.
+	RemoveAttachmentExpecting(locator app.TaskLocator, index int, expected models.Attachment, deleteFile bool) (app.RemoveAttachmentResult, error)
 	ReorderAttachment(locator app.TaskLocator, from, to int) (app.TaskResult, error)
 }
 

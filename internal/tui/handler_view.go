@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -271,9 +272,15 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return m.handleTextEditorExternal(msg)
 
 	case chrome.TextEditorExternalDoneMsg:
-		m.clearStatus()
 		// Forward to text editor view to update its textarea
 		cmd := m.viewNav.views.Update(m.currentView(), msg)
+		if msg.Err != nil {
+			// A failed round trip is reported rather than wiped with the
+			// "Opening in editor…" notice: the draft the view still holds is
+			// unchanged, and the user needs to know the edit did not land.
+			return true, tea.Batch(cmd, status.ErrorCmd("%s", msg.Err))
+		}
+		m.clearStatus()
 		return true, cmd
 
 	}
@@ -282,7 +289,7 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 // handleTextEditorExternal opens an external editor for text field editing.
 func (m *AppModel) handleTextEditorExternal(msg chrome.TextEditorExternalMsg) (bool, tea.Cmd) {
-	tmpPath, err := external.CreateTempFileWithContent(msg.CurrentValue, "tt-text-", ".md")
+	tmpPath, err := external.CreateTempFileWithContent(msg.CurrentValue, "docket-text-", ".md")
 	if err != nil {
 		return true, status.ErrorCmd("%s", err)
 	}
@@ -296,18 +303,28 @@ func (m *AppModel) handleTextEditorExternal(msg chrome.TextEditorExternalMsg) (b
 
 	m.setInfoStatus("Opening in editor…")
 	fieldName := msg.FieldName
-	return true, tea.ExecProcess(c, func(err error) tea.Msg {
+	return true, tea.ExecProcess(c, textEditorExternalDone(fieldName, tmpPath))
+}
+
+// textEditorExternalDone turns the editor's exit into the round trip's result.
+// An editor that failed is reported and its buffer removed, as the task-content
+// round trip does. A buffer that cannot be read back is kept on disk and named,
+// since whatever the user wrote there is the only copy of it.
+func textEditorExternalDone(fieldName, tmpPath string) func(error) tea.Msg {
+	return func(err error) tea.Msg {
 		if err != nil {
 			_ = os.Remove(tmpPath)
-			return chrome.TextEditorExternalDoneMsg{FieldName: fieldName, Value: "", Canceled: true}
+			return chrome.TextEditorExternalDoneMsg{FieldName: fieldName, Canceled: true,
+				Err: fmt.Errorf("editor failed: %w", err)}
 		}
 		content, readErr := os.ReadFile(tmpPath)
-		_ = os.Remove(tmpPath)
 		if readErr != nil {
-			return chrome.TextEditorExternalDoneMsg{FieldName: fieldName, Value: "", Canceled: true}
+			return chrome.TextEditorExternalDoneMsg{FieldName: fieldName, Canceled: true,
+				Err: fmt.Errorf("could not read the edited text; it is kept at %s: %w", tmpPath, readErr)}
 		}
+		_ = os.Remove(tmpPath)
 		return chrome.TextEditorExternalDoneMsg{FieldName: fieldName, Value: string(content), Canceled: false}
-	})
+	}
 }
 
 // handleCaptureAndBulkMessages handles the Task Composer.

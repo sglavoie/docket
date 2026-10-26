@@ -268,7 +268,8 @@ func (m *NotesViewModel) handleRenameKey(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 			return m, nil
 		}
 		m.renaming = false
-		return m, NoteMutationCmd(m.NoteService, row.Location, app.NoteBatchRequest{
+		draft := NoteRenameDraft{Target: m.renameTarget, Title: m.renameInput.Value()}
+		return m, withRenameDraft(NoteMutationCmd(m.NoteService, row.Location, app.NoteBatchRequest{
 			Operations: []app.NoteMutationRequest{{
 				Kind:     app.NoteRename,
 				Location: row.Location,
@@ -277,7 +278,7 @@ func (m *NotesViewModel) handleRenameKey(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 			}},
 			UndoAction:  "Rename Note",
 			UndoContext: oldTitle,
-		}, fmt.Sprintf("Renamed: %s → %s", oldTitle, newTitle))
+		}, fmt.Sprintf("Renamed: %s → %s", oldTitle, newTitle)), draft)
 	case "esc":
 		if row != nil && strings.TrimSpace(m.renameInput.Value()) != row.Note.Title {
 			m.confirmDiscard = true
@@ -303,8 +304,12 @@ func (m *NotesViewModel) StartRename() {
 		m.SetErrorStatus("Cannot rename: note has a parse error; press Enter to repair it")
 		return
 	}
+	m.openRename(row, row.Note.Title)
+}
+
+func (m *NotesViewModel) openRename(row *LocatedNoteRow, title string) {
 	ti := textinput.New()
-	ti.SetValue(row.Note.Title)
+	ti.SetValue(title)
 	ti.CharLimit = 100
 	ti.SetWidth(50)
 	ti.Focus()
@@ -312,6 +317,35 @@ func (m *NotesViewModel) StartRename() {
 	m.renameInput = ti
 	m.renameTarget = row.Identity()
 	m.renaming = true
+}
+
+// withRenameDraft attaches a rename's typed title to its refusal, so the
+// refusal can hand the draft back instead of costing it.
+func withRenameDraft(cmd tea.Cmd, draft NoteRenameDraft) tea.Cmd {
+	return func() tea.Msg {
+		msg := cmd()
+		if refusal, ok := msg.(ProjectNoteMutationErrorMsg); ok {
+			refusal.RenameDraft = &draft
+			return refusal
+		}
+		return msg
+	}
+}
+
+// ReopenRefusedRename reopens the rename a refusal answered, holding the title
+// the user typed, so a refused rename keeps its draft. It reopens nothing when
+// the note is gone or the view has since entered another interaction, which a
+// late refusal must not displace.
+func (m *NotesViewModel) ReopenRefusedRename(draft *NoteRenameDraft) bool {
+	if draft == nil || m.HasTextInput() || m.Confirm.IsActive() || m.confirmDiscard {
+		return false
+	}
+	row := m.rowByIdentity(draft.Target)
+	if row == nil {
+		return false
+	}
+	m.openRename(row, draft.Title)
+	return true
 }
 
 // QuitBlockReason names content a desktop quit would abandon.

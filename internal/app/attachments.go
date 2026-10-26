@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/storage"
 )
 
@@ -128,12 +129,43 @@ type RemoveAttachmentResult struct {
 // vice versa). URL and code-reference removals, and removals with deleteFile
 // false, carry no file side effect.
 func (s *Service) RemoveAttachment(locator TaskLocator, index int, deleteFile bool) (RemoveAttachmentResult, error) {
+	return s.removeAttachment(locator, index, nil, deleteFile)
+}
+
+// RemoveAttachmentExpecting is RemoveAttachment for a caller that read the
+// attachment before asking: the attachment at index in the fresh snapshot must
+// still be expected, or nothing is removed. A position is not an identity — a
+// reload between the question and the answer can shift the list — so a
+// confirmed removal names what it confirmed rather than where it was.
+func (s *Service) RemoveAttachmentExpecting(locator TaskLocator, index int, expected models.Attachment, deleteFile bool) (RemoveAttachmentResult, error) {
+	return s.removeAttachment(locator, index, &expected, deleteFile)
+}
+
+// SameAttachment reports whether a and b are the same stored attachment. It
+// compares every stored field, instants by Equal, so a re-read of an untouched
+// attachment always matches and a replaced one never does.
+func SameAttachment(a, b models.Attachment) bool {
+	return a.Filename == b.Filename &&
+		a.IsURL == b.IsURL &&
+		a.IsCodeRef == b.IsCodeRef &&
+		a.LineNumber == b.LineNumber &&
+		a.OriginalPath == b.OriginalPath &&
+		a.AddedAt.Equal(b.AddedAt)
+}
+
+func (s *Service) removeAttachment(locator TaskLocator, index int, expected *models.Attachment, deleteFile bool) (RemoveAttachmentResult, error) {
 	ref, snap, revision, err := s.loadTaskSelection("", locator)
 	if err != nil {
 		return RemoveAttachmentResult{}, err
 	}
 	if index < 0 || index >= len(ref.Task.Attachments) {
+		if expected != nil {
+			return RemoveAttachmentResult{}, invalidInput("attachment", "attachment is no longer on this task; nothing was removed")
+		}
 		return RemoveAttachmentResult{}, invalidInput("attachment", fmt.Sprintf("index %d out of range", index))
+	}
+	if expected != nil && !SameAttachment(ref.Task.Attachments[index], *expected) {
+		return RemoveAttachmentResult{}, invalidInput("attachment", "attachments changed since you asked; nothing was removed")
 	}
 	before := cloneSnapshot(snap)
 	keepMutation := false
