@@ -7,8 +7,8 @@ import "strings"
 // Ignored reports whether the Go tool ignores a directory with this name:
 // dot and underscore directories, plus testdata. A walk skipping these reads
 // what `go build ./...` builds and nothing else, which is what keeps it out of
-// .git, the git-tracked .tt/ test residue, and tool caches such as the Zig
-// cache under macos/.cache. Never add an ordinary directory name here: a
+// .git, the git-tracked .docket/ and .tt/ test residue, and tool caches such as
+// the Zig cache under macos/.cache. Never add an ordinary directory name here: a
 // package could then opt out of every audit by being named, which is the
 // failure those audits exist to prevent.
 //

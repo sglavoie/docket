@@ -90,9 +90,9 @@ verify_session_1() {
 	require_files "${docs[@]}" \
 		internal/compat/testdata/write_paths.tsv \
 		internal/compat/testdata/workspaces/representative.fixture.json \
-		internal/compat/testdata/workspaces/representative/.tt/workspace.json \
-		internal/compat/testdata/workspaces/representative/.tt/planning.json \
-		internal/compat/testdata/workspaces/representative/.tt/lenses.json
+		internal/compat/testdata/workspaces/representative/.docket/workspace.json \
+		internal/compat/testdata/workspaces/representative/.docket/planning.json \
+		internal/compat/testdata/workspaces/representative/.docket/lenses.json
 
 	if grep -q 'UNASSIGNED' internal/compat/testdata/write_paths.tsv; then
 		fail "write-path inventory has unclassified rows"
