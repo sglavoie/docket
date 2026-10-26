@@ -89,7 +89,7 @@ docket
 ```
 
 The cask installs `docket`, its short alias `dkt`, and bash, zsh, and fish
-completions; `brew upgrade --cask docket` takes new releases.
+completions for both; `brew upgrade --cask docket` takes new releases.
 
 With Go instead:
 

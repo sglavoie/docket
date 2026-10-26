@@ -8,7 +8,9 @@ before:
   hooks:
     - go mod tidy -diff
     # Shell completions, shipped in the archives and installed by the cask.
-    - sh -c 'rm -rf completions && mkdir completions && for sh in bash zsh fish; do go run . completion "$sh" > "completions/docket.$sh"; done'
+    # Each script also completes dkt; fish finds completions by command name,
+    # so dkt gets a file of its own that wraps docket's.
+    - sh -c 'rm -rf completions && mkdir completions && for sh in bash zsh fish; do go run . completion "$sh" > "completions/docket.$sh"; done && echo "complete -c dkt -w docket" > completions/dkt.fish'
 
 builds:
   - binary: docket
@@ -61,10 +63,15 @@ homebrew_casks:
     binaries:
       - docket
       - 'docket", target: "dkt'
+    # completions takes one file per shell. zsh and bash register dkt inside
+    # docket's script; fish needs dkt.fish too, which rides the quoted path
+    # as a second stanza, the way dkt rides binaries above.
     completions:
       bash: completions/docket.bash
       zsh: completions/docket.zsh
-      fish: completions/docket.fish
+      fish: |-
+        completions/docket.fish"
+          fish_completion "completions/dkt.fish
     hooks:
       post:
         # The binaries are not notarized: let macOS run them.
