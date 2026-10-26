@@ -5,6 +5,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/chrome"
@@ -100,12 +101,7 @@ func orderedModeTasks(in OutlinerModeInput) []orderedModeTask {
 			}
 			continue
 		}
-		modelOrder := make(map[string]int, len(project.Tasks))
-		for i, task := range project.Tasks {
-			if task != nil {
-				modelOrder[task.ID] = i
-			}
-		}
+		modelOrder := in.documentOrder.of(project)
 		for candidateOrder, task := range candidates {
 			if task == nil {
 				continue
@@ -122,6 +118,47 @@ func orderedModeTasks(in OutlinerModeInput) []orderedModeTask {
 		}
 	}
 	return result
+}
+
+// documentOrders is each project's task positions by identity, indexed once per
+// project for every reader of one mode input. A narrowed project's candidates
+// are its tree flattened, not its document, so finding their positions takes an
+// index; several sections read the ordered tasks on every row build, and each
+// re-indexing every task of the workspace was most of what they cost. The index
+// is keyed by the project object, whose task list nothing edits while a
+// projection is built from it, so every copy of the input may share it.
+type documentOrders struct {
+	mu        sync.Mutex
+	byProject map[*models.Project]map[string]int
+}
+
+// of is the project's index, built on first use. A nil receiver shares nothing
+// and indexes every time.
+func (d *documentOrders) of(project *models.Project) map[string]int {
+	if d == nil {
+		return indexDocumentOrder(project)
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if order, ok := d.byProject[project]; ok {
+		return order
+	}
+	if d.byProject == nil {
+		d.byProject = make(map[*models.Project]map[string]int)
+	}
+	order := indexDocumentOrder(project)
+	d.byProject[project] = order
+	return order
+}
+
+func indexDocumentOrder(project *models.Project) map[string]int {
+	order := make(map[string]int, len(project.Tasks))
+	for i, task := range project.Tasks {
+		if task != nil {
+			order[task.ID] = i
+		}
+	}
+	return order
 }
 
 func compareOrderedModeTasks(left, right orderedModeTask) int {

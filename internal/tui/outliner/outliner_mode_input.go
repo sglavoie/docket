@@ -25,6 +25,7 @@ func (m *OutlinerModel) buildModeCandidateInput(
 	input.IncludeDeferred = recent || m.admitsDeferredPopulation()
 	input.IncludeTerminal = recent || m.AdmitsTerminalPopulation()
 	input.CandidateTasks = make(map[string][]*models.Task, len(projects))
+	input.documentOrder = &documentOrders{}
 	for _, project := range projects {
 		if project != nil {
 			input.CandidateTasks[project.ID] = flattenTaskPointers(m.primaryModeRoots(project))
@@ -290,6 +291,9 @@ type OutlinerModeInput struct {
 	Now             time.Time
 	IncludeDeferred bool
 	IncludeTerminal bool
+	// documentOrder is shared by every copy of one built input; see
+	// documentOrders.
+	documentOrder *documentOrders
 }
 
 func (in OutlinerModeInput) now() time.Time {
