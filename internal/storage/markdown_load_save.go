@@ -156,51 +156,120 @@ func LoadProjectWithCachedDocument(project *models.Project, cache *ProjectDocume
 // a second look at the file that could disagree with it. A test repository has
 // no file to miss.
 func ReadProjectWithCachedDocument(project *models.Project, cache *ProjectDocumentCache) (*ProjectDocument, bool, error) {
+	source, err := ReadProjectSource(project, cache)
+	if err != nil {
+		return nil, false, err
+	}
+	document, err := source.Load(project)
+	if err != nil {
+		return nil, false, err
+	}
+	return document, source.Missing(), nil
+}
+
+// ProjectSource is one read of a project's tasks.md, held so the project can be
+// loaded from exactly those bytes later, or never. A snapshot reads every
+// project to learn its revision, but a mutation reaches one or two of them, and
+// loading — copying every task out of the parse into the project — is the part
+// worth deferring. Whatever loads it later loads the version this read saw, so
+// the single-read guarantee holds however late that is.
+type ProjectSource struct {
+	entry   *cachedProjectDocument
+	missing bool
+	// loaded is a test repository's document, already loaded into the project
+	// when the source was read, since that repository has no bytes to keep.
+	loaded *ProjectDocument
+}
+
+// ReadProjectSource reads a project's tasks.md once and returns it unloaded. A
+// file that does not parse, or whose tasks a load's audit would refuse, fails
+// here rather than at Load, so a reader can leave the project out up front.
+func ReadProjectSource(project *models.Project, cache *ProjectDocumentCache) (*ProjectSource, error) {
 	if _, ok := DefaultRepository.(*FileSystemRepository); !ok {
 		// Test doubles keep projects in memory with no tasks.md, so there is no
 		// read window to close: the canonical in-memory document is the only
 		// answer available and is derived from the same load.
 		if err := LoadProject(project); err != nil {
-			return nil, false, err
+			return nil, err
 		}
 		document, err := CanonicalProjectDocument(project, nil)
-		return document, false, err
+		if err != nil {
+			return nil, err
+		}
+		return &ProjectSource{loaded: document}, nil
 	}
 
 	path := tasksFilePath(project.Path)
 	buffer, err := readPooled(path)
 	if os.IsNotExist(err) {
-		if loadErr := loadMissingProject(project); loadErr != nil {
-			return nil, false, loadErr
-		}
-		doc := &ProjectDocument{ProjectName: project.Name, Tasks: []*models.Task{}, SchemaVersion: CurrentTaskSchemaVersion}
-		doc.Revision = doc.ComputeRevision()
-		return doc, true, nil
+		document := &ProjectDocument{ProjectName: project.Name, Tasks: []*models.Task{}, SchemaVersion: CurrentTaskSchemaVersion}
+		document.Revision = document.ComputeRevision()
+		return &ProjectSource{entry: &cachedProjectDocument{document: document}, missing: true}, nil
 	}
 	if err != nil {
-		return nil, false, fmt.Errorf("failed to read tasks file: %w", err)
+		return nil, fmt.Errorf("failed to read tasks file: %w", err)
 	}
 	defer readBuffers.Put(buffer)
-	content := buffer.Bytes()
 	if ProjectReadWindowProbe != nil {
 		ProjectReadWindowProbe(project)
 	}
-	document, err := cache.parse(path, content)
+	entry, err := cache.retain(path, buffer.Bytes())
 	if err != nil {
-		return nil, false, loadParseError(project, err)
+		return nil, loadParseError(project, err)
 	}
-	// The project takes deep copies rather than the document's own tasks: the
-	// document is the guarded base a commit is measured against, and the
-	// project is what the caller goes on to mutate. Copying is what lets one
-	// parse serve both, where a second parse of the same bytes used to.
-	tasks := make([]*models.Task, 0, len(document.Tasks))
-	for _, task := range document.Tasks {
-		tasks = append(tasks, models.CloneTaskDeep(task))
+	if entry.loadErr != nil {
+		return nil, entry.loadErr
 	}
-	if err := loadProjectModels(project, tasks, models.CloneProjectComments(document.Comments)); err != nil {
-		return nil, false, err
+	return &ProjectSource{entry: entry}, nil
+}
+
+// Missing reports whether the read found no tasks.md.
+func (s *ProjectSource) Missing() bool { return s.missing }
+
+// Revision is the revision of the version read.
+func (s *ProjectSource) Revision() string {
+	if s.loaded != nil {
+		return s.loaded.Revision
 	}
-	return document, false, nil
+	return s.entry.document.Revision
+}
+
+// TaskIDs names the tasks the version read holds, without loading them. The
+// slice is shared and must not be written.
+func (s *ProjectSource) TaskIDs() []string {
+	if s.loaded != nil {
+		ids := make([]string, 0, len(s.loaded.Tasks))
+		for _, task := range s.loaded.Tasks {
+			if task != nil && task.ID != "" {
+				ids = append(ids, task.ID)
+			}
+		}
+		return ids
+	}
+	return s.entry.taskIDs
+}
+
+// Load fills project with the version read and returns a document of it that
+// the caller owns. The project takes deep copies rather than the document's own
+// tasks: the document is the guarded base a commit is measured against, and the
+// project is what the caller goes on to mutate.
+func (s *ProjectSource) Load(project *models.Project) (*ProjectDocument, error) {
+	if s.loaded != nil {
+		return s.loaded, nil
+	}
+	if s.missing {
+		if err := loadMissingProject(project); err != nil {
+			return nil, err
+		}
+		document := *s.entry.document
+		document.Tasks = []*models.Task{}
+		return &document, nil
+	}
+	document := s.entry.document.clone()
+	if err := loadProjectModels(project, cloneTasks(document.Tasks), models.CloneProjectComments(document.Comments)); err != nil {
+		return nil, err
+	}
+	return document, nil
 }
 
 // LoadProjectForRewrite loads the exact tasks.md bytes that a caller is about to

@@ -69,9 +69,11 @@ func (r *Repository) useCommitService() bool {
 	return ok
 }
 
-// Snapshot loads a revision-consistent read model over every loadable project.
-// Projects that fail to load are skipped with a warning rather than failing the
-// whole mutation, and are named unavailable beside the ones with no tasks.md on
+// Snapshot is a revision-consistent read model over every loadable project. It
+// reads every project's tasks.md now, which fixes each revision, and loads a
+// project's tasks only when the snapshot is asked for that project, since a
+// mutation reaches one or two of them. Projects that fail to load are skipped
+// with a warning rather than failing the whole mutation, and are named unavailable beside the ones with no tasks.md on
 // disk, so a caller reconciling other state against this read can tell a task
 // it could not see from a task that is gone.
 func (r *Repository) Snapshot() (app.Snapshot, error) {
@@ -80,9 +82,7 @@ func (r *Repository) Snapshot() (app.Snapshot, error) {
 		return nil, listErr
 	}
 	reads := r.readProjects(projects)
-	loaded := make([]*models.Project, 0, len(projects))
-	revisions := make(map[string]string, len(projects))
-	documents := make(map[string]*storage.ProjectDocument, len(projects))
+	lazy := make([]app.LazyProject, 0, len(projects))
 	var unavailable []string
 	for i, p := range projects {
 		if p == nil {
@@ -96,38 +96,41 @@ func (r *Repository) Snapshot() (app.Snapshot, error) {
 			unavailable = append(unavailable, p.ID)
 			continue
 		}
-		if read.missing {
+		if read.source.Missing() {
 			unavailable = append(unavailable, p.ID)
 		}
-		loaded = append(loaded, p)
-		revisions[p.ID] = read.document.Revision
-		documents[p.ID] = read.document
+		lazy = append(lazy, app.LazyProject{
+			Project:  p,
+			Revision: read.source.Revision(),
+			TaskIDs:  read.source.TaskIDs(),
+			Load:     read.source.Load,
+		})
 	}
-	return app.NewPartialSnapshot(loaded, revisions, documents, unavailable), nil
+	return app.NewLazySnapshot(lazy, unavailable), nil
 }
 
 // maxSnapshotReaders bounds a Snapshot's parallel reads. Past a handful, more
 // readers buy no parse time and only queue on the filesystem's own locks.
 const maxSnapshotReaders = 8
 
-// projectRead is one project's share of a Snapshot. missing comes from the read
-// itself, so it describes the same version of the file the document does.
+// projectRead is one project's share of a Snapshot: the one read of its
+// tasks.md, unloaded. Whether the file was missing comes from that same read, so
+// it describes the same version of the file the document does.
 type projectRead struct {
-	document *storage.ProjectDocument
-	missing  bool
-	err      error
+	source *storage.ProjectSource
+	err    error
 }
 
-// readProjects loads each project in place, in parallel on the real
-// filesystem: every load reads and writes only its own project, so the order
-// they finish in cannot change the answer, and a cold workspace's parses spread
-// across the cores. A test repository, and a run with the read-window probe
-// installed, load one at a time, since neither promises to be called
-// concurrently.
+// readProjects reads each project once, in parallel on the real filesystem:
+// every read touches only its own file, so the order they finish in cannot
+// change the answer, and a cold workspace's parses spread across the cores. A
+// test repository, and a run with the read-window probe installed, read one at
+// a time, since neither promises to be called concurrently.
 //
-// One read yields both the tasks and the guarded document, so a concurrent save
-// is either wholly visible or wholly absent rather than pairing one version's
-// tasks with the next version's revision.
+// A project is loaded later, from the version read here, only if the snapshot
+// is asked for it; one read is what keeps a concurrent save either wholly
+// visible or wholly absent rather than pairing one version's tasks with the
+// next version's revision.
 func (r *Repository) readProjects(projects []*models.Project) []projectRead {
 	reads := make([]projectRead, len(projects))
 	read := func(i int) {
@@ -135,8 +138,8 @@ func (r *Repository) readProjects(projects []*models.Project) []projectRead {
 		if p == nil {
 			return
 		}
-		document, missing, err := storage.ReadProjectWithCachedDocument(p, r.documents)
-		reads[i] = projectRead{document: document, missing: missing, err: err}
+		source, err := storage.ReadProjectSource(p, r.documents)
+		reads[i] = projectRead{source: source, err: err}
 	}
 	workers := min(runtime.GOMAXPROCS(0), maxSnapshotReaders, len(projects))
 	if !r.useCommitService() || storage.ProjectReadWindowProbe != nil || workers < 2 {

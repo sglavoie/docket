@@ -18,57 +18,95 @@ import (
 // documents as immutable merge bases. A project with no document is copied whole
 // now, as cloneSnapshot copies it, because its live tasks are all there is.
 func rollbackSnapshot(source Snapshot) Snapshot {
+	return detachedView(source, true)
+}
+
+// cloneSnapshot returns a detached copy suitable for rollback after an
+// in-memory mutation or a failed commit: each project as it stands in memory.
+// Over a snapshot that loads lazily, a project nothing has loaded yet still is
+// its document, so it is copied from the document if the copy is ever read; a
+// loaded one is copied now, since what it holds may already differ.
+func cloneSnapshot(source Snapshot) Snapshot {
+	return detachedView(source, false)
+}
+
+// detachedView builds the copy both of the above describe, reading the source
+// without loading any project it has not loaded already.
+func detachedView(source Snapshot, fromDocuments bool) Snapshot {
 	view := &rollbackView{
 		source:    source,
 		byID:      make(map[string]*models.Project),
-		pending:   make(map[string]*storage.ProjectDocument),
+		pending:   make(map[string]func() *storage.ProjectDocument),
 		revisions: make(map[string]string),
 		documents: make(map[string]*storage.ProjectDocument),
 	}
-	for _, project := range source.Projects() {
+	lazy, isLazy := source.(lazyProjectSource)
+	projects := source.Projects
+	if isLazy {
+		projects = lazy.projectShells
+	}
+	for _, project := range projects() {
 		if project == nil {
 			continue
 		}
+		id := project.ID
 		shell := detachedProjectFields(project)
-		if document := source.Document(project.ID); document != nil {
-			view.pending[project.ID] = document
-		} else {
+		switch {
+		case isLazy && !lazy.isLoaded(id):
+			// Not loaded, so nothing has edited it: it is its document.
+			view.pending[id] = func() *storage.ProjectDocument { return source.Document(id) }
+		case fromDocuments && source.Document(id) != nil:
+			document := source.Document(id)
+			view.pending[id] = func() *storage.ProjectDocument { return document }
+		default:
 			shell.Comments = models.CloneProjectComments(project.Comments)
 			shell.Tasks = cloneTasks(project.Tasks)
 			shell.BuildTaskTree()
+			if document := source.Document(id); document != nil {
+				view.documents[id] = cloneProjectDocument(document)
+			}
 		}
 		view.order = append(view.order, shell)
-		view.byID[project.ID] = shell
-		view.revisions[project.ID] = source.Revision(project.ID)
+		view.byID[id] = shell
+		view.revisions[id] = source.Revision(id)
 	}
 	return view
 }
 
-// rollbackView is rollbackSnapshot's lazily detached Snapshot. It is read by the
-// one mutation that took it, on that mutation's goroutine.
+// rollbackView is the lazily detached Snapshot detachedView builds. It is read
+// by the one mutation that took it, on that mutation's goroutine.
 type rollbackView struct {
 	source    Snapshot
 	order     []*models.Project
 	byID      map[string]*models.Project
-	pending   map[string]*storage.ProjectDocument
+	pending   map[string]func() *storage.ProjectDocument
 	revisions map[string]string
 	documents map[string]*storage.ProjectDocument
 	indexed   Snapshot
 }
 
-// detach copies one project's tasks out of its document, once.
+// detach copies one project's tasks out of its document, once, deriving the
+// next short ID a load derives, since a project never loaded has none.
 func (v *rollbackView) detach(projectID string) {
-	document, ok := v.pending[projectID]
+	documentOf, ok := v.pending[projectID]
 	if !ok {
 		return
 	}
 	delete(v.pending, projectID)
+	document := documentOf()
+	if document == nil {
+		return
+	}
 	detached := cloneProjectDocument(document)
 	v.documents[projectID] = detached
 	shell := v.byID[projectID]
 	shell.Name = detached.ProjectName
 	shell.Tasks = detached.Tasks
 	shell.Comments = models.CloneProjectComments(detached.Comments)
+	shell.NextShortID = 1
+	for _, task := range shell.Tasks {
+		shell.NextShortID = max(shell.NextShortID, task.ShortID+1)
+	}
 	shell.BuildTaskTree()
 }
 
@@ -141,30 +179,6 @@ func cloneTasks(tasks []*models.Task) []*models.Task {
 	return cloned
 }
 
-// cloneSnapshot returns a detached copy suitable for rollback after an
-// in-memory mutation or a failed commit.
-func cloneSnapshot(source Snapshot) Snapshot {
-	projects := source.Projects()
-	clones := make([]*models.Project, 0, len(projects))
-	revisions := make(map[string]string, len(projects))
-	documents := make(map[string]*storage.ProjectDocument, len(projects))
-	for _, project := range projects {
-		if project == nil {
-			continue
-		}
-		clone := detachedProjectFields(project)
-		clone.Comments = models.CloneProjectComments(project.Comments)
-		clone.Tasks = cloneTasks(project.Tasks)
-		clone.BuildTaskTree()
-		clones = append(clones, clone)
-		revisions[clone.ID] = source.Revision(clone.ID)
-		if document := source.Document(clone.ID); document != nil {
-			documents[clone.ID] = cloneProjectDocument(document)
-		}
-	}
-	return NewPartialSnapshot(clones, revisions, documents, source.UnavailableProjectIDs())
-}
-
 // cloneProjectDocument detaches a repository document for rollback. The copy
 // must share no task with the source, because rollbackSnapshot hands its
 // tasks to a live project that later mutations edit in place. Copying the
@@ -190,7 +204,12 @@ func restoreSnapshotProjects(target, before Snapshot) {
 	if target == nil || before == nil {
 		return
 	}
-	for _, project := range target.Projects() {
+	// A project a lazily loaded target never loaded was never edited.
+	projects := target.Projects
+	if lazy, ok := target.(lazyProjectSource); ok {
+		projects = lazy.loadedProjects
+	}
+	for _, project := range projects() {
 		if project == nil {
 			continue
 		}

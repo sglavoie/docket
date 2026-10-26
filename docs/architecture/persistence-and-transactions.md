@@ -55,9 +55,15 @@ size and timestamp is still seen, and the single-read guarantee
 `LoadProjectWithCachedDocument` gives a mutation is untouched. The retained parse is
 never handed out: rollback installs a document's own tasks on a project and
 rebuilds their tree, so two snapshots sharing one document would share those
-writes. A snapshot loads its projects in parallel on the real filesystem, since
-each load writes only its own project, and takes whether a `tasks.md` is
-missing from that same read rather than a second look at the file. A commit
+writes. A snapshot reads its projects in parallel on the real filesystem, since
+each read touches only its own file, and takes whether a `tasks.md` is missing
+from that same read rather than a second look at the file. It reads every
+project but loads one only when asked for it: `storage.ProjectSource` holds the
+version read, with its revision and task identities, and `app.NewLazySnapshot`
+copies a project's tasks out of it on first use, so a mutation pays for the one
+or two projects it reaches rather than the whole workspace. Whether a version
+loads at all is decided once, when the cache first parses it, so an unloadable
+project is still left out and named unavailable before anything asks for it. A commit
 records the digest of the canonical bytes it wrote, so the parse that follows
 it takes that digest as the revision instead of rendering the document again;
 the canonical format round-trips, which is what makes the two agree.
@@ -67,6 +73,9 @@ captured when the mutation starts, since it may edit the live project before it
 fails, but its tasks are copied from the snapshot's document only when the
 rollback first reads that project. That defers nothing observable, because
 application mutations treat a snapshot's documents as immutable merge bases.
+Taking the copy loads nothing either: a project the snapshot has not loaded has
+not been edited, so its document is what it holds, and a failed mutation puts
+back only the projects it loaded.
 
 Project paths are derived from the selected data directory and canonical
 lowercase ASCII slugs. Absolute paths are not catalog data. Every mutation path

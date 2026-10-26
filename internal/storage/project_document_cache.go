@@ -15,15 +15,16 @@ import (
 // describe a version of the file other than the one just read, and the
 // single-read guarantee LoadProjectWithCachedDocument gives is untouched.
 //
-// The retained document is never handed out. Every hit returns a deep copy,
-// because a document is the merge base a mutation keeps beside the project it
-// edits, and rollback installs a document's own tasks on a project and rebuilds
-// their tree. Two snapshots sharing one document would share those writes.
+// The retained document is never handed out. A ProjectSource holds it and
+// copies it whenever it loads, because a document is the merge base a mutation
+// keeps beside the project it edits, and rollback installs a document's own
+// tasks on a project and rebuilds their tree. Two snapshots sharing one
+// document would share those writes.
 //
 // A nil cache is valid and caches nothing. It is safe for concurrent use.
 type ProjectDocumentCache struct {
 	mu      sync.Mutex
-	entries map[string]cachedProjectDocument
+	entries map[string]*cachedProjectDocument
 	// canonical holds, per path, the digest of the bytes this process last
 	// wrote there as a canonical rendering. Those bytes are their own canonical
 	// content, so their revision is their digest and a parse of them need not
@@ -31,9 +32,36 @@ type ProjectDocumentCache struct {
 	canonical map[string][sha256.Size]byte
 }
 
+// cachedProjectDocument is one retained parse and what is derived from it once
+// per version of the file: the task identities a snapshot indexes without
+// loading the project, and whether loading it succeeds at all, which a load's
+// post-parse audit decides from the document alone.
 type cachedProjectDocument struct {
 	digest   [sha256.Size]byte
 	document *ProjectDocument
+	taskIDs  []string
+	loadErr  error
+}
+
+// newCachedProjectDocument derives an entry's readings from a fresh parse. The
+// load is tried on copies, so the retained document's tasks stay untouched.
+func newCachedProjectDocument(digest [sha256.Size]byte, document *ProjectDocument) *cachedProjectDocument {
+	entry := &cachedProjectDocument{digest: digest, document: document, taskIDs: make([]string, 0, len(document.Tasks))}
+	for _, task := range document.Tasks {
+		if task != nil && task.ID != "" {
+			entry.taskIDs = append(entry.taskIDs, task.ID)
+		}
+	}
+	entry.loadErr = loadProjectModels(&models.Project{}, cloneTasks(document.Tasks), models.CloneProjectComments(document.Comments))
+	return entry
+}
+
+func cloneTasks(tasks []*models.Task) []*models.Task {
+	cloned := make([]*models.Task, 0, len(tasks))
+	for _, task := range tasks {
+		cloned = append(cloned, models.CloneTaskDeep(task))
+	}
+	return cloned
 }
 
 // SharedProjectDocuments is the process-wide cache every workspace reader
@@ -45,27 +73,31 @@ var SharedProjectDocuments = NewProjectDocumentCache()
 // NewProjectDocumentCache returns an empty cache.
 func NewProjectDocumentCache() *ProjectDocumentCache {
 	return &ProjectDocumentCache{
-		entries:   make(map[string]cachedProjectDocument),
+		entries:   make(map[string]*cachedProjectDocument),
 		canonical: make(map[string][sha256.Size]byte),
 	}
 }
 
-// parse is ParseProjectDocument for the content read from path, answered from
-// the cache when path last held exactly these bytes.
-func (c *ProjectDocumentCache) parse(path string, content []byte) (*ProjectDocument, error) {
-	if c == nil {
-		return ParseProjectDocument(string(content))
-	}
+// retain is the cache entry for the content read from path, parsed on a miss.
+// The entry itself is returned, so its document must never reach a caller that
+// could write to it; ProjectSource is the one holder, and it hands out copies.
+// A nil cache parses every time and retains nothing.
+func (c *ProjectDocumentCache) retain(path string, content []byte) (*cachedProjectDocument, error) {
 	digest := sha256.Sum256(content)
+	if c == nil {
+		document, err := ParseProjectDocument(string(content))
+		if err != nil {
+			return nil, err
+		}
+		return newCachedProjectDocument(digest, document), nil
+	}
 	c.mu.Lock()
 	entry, hit := c.entries[path]
-	c.mu.Unlock()
-	if hit && entry.digest == digest {
-		return entry.document.clone(), nil
-	}
-	c.mu.Lock()
 	wrote, known := c.canonical[path]
 	c.mu.Unlock()
+	if hit && entry.digest == digest {
+		return entry, nil
+	}
 	var document *ProjectDocument
 	var err error
 	if known && wrote == digest {
@@ -79,10 +111,11 @@ func (c *ProjectDocumentCache) parse(path string, content []byte) (*ProjectDocum
 	if err != nil {
 		return nil, err
 	}
+	entry = newCachedProjectDocument(digest, document)
 	c.mu.Lock()
-	c.entries[path] = cachedProjectDocument{digest: digest, document: document.clone()}
+	c.entries[path] = entry
 	c.mu.Unlock()
-	return document, nil
+	return entry, nil
 }
 
 // NoteCanonicalWrite records that content, whose revision is revision, was just
