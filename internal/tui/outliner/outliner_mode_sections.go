@@ -62,17 +62,43 @@ type orderedModeTask struct {
 // authoritative project-catalog order while retaining each project's stable
 // document order as an explicit deterministic tie-break. CandidateTasks
 // optionally narrows a focused scope.
+//
+// A project that is not narrowed is walked in document order, so a task's
+// position is its index; only a narrowed project needs the index map that finds
+// each candidate's document position. Several sections read this on every row
+// build, and indexing every task of a large workspace each time was most of
+// what it cost.
 func orderedModeTasks(in OutlinerModeInput) []orderedModeTask {
 	projects := slices.Clone(in.Projects)
 
-	var result []orderedModeTask
+	count := 0
+	for _, project := range projects {
+		if project == nil {
+			continue
+		}
+		if candidates, ok := in.CandidateTasks[project.ID]; ok {
+			count += len(candidates)
+		} else {
+			count += len(project.Tasks)
+		}
+	}
+	result := make([]orderedModeTask, 0, count)
 	for projectOrder, project := range projects {
 		if project == nil {
 			continue
 		}
-		tasks := project.Tasks
-		if candidates, ok := in.CandidateTasks[project.ID]; ok {
-			tasks = candidates
+		candidates, narrowed := in.CandidateTasks[project.ID]
+		if !narrowed {
+			for order, task := range project.Tasks {
+				if task != nil {
+					result = append(result, orderedModeTask{
+						row:          OutlinerModeRow{Task: task, Project: project},
+						projectOrder: projectOrder,
+						taskOrder:    order,
+					})
+				}
+			}
+			continue
 		}
 		modelOrder := make(map[string]int, len(project.Tasks))
 		for i, task := range project.Tasks {
@@ -80,7 +106,7 @@ func orderedModeTasks(in OutlinerModeInput) []orderedModeTask {
 				modelOrder[task.ID] = i
 			}
 		}
-		for candidateOrder, task := range tasks {
+		for candidateOrder, task := range candidates {
 			if task == nil {
 				continue
 			}

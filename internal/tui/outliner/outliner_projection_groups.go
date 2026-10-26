@@ -218,17 +218,21 @@ func (m *OutlinerModel) projectGroupPressure(tasks []*models.Task, projectID str
 
 // todayPlanIdentities reads the durable Today membership directly, so a header
 // counts the same plan every projection resolves from without threading the
-// mode input through the row appenders.
+// mode input through the row appenders. It is read once per row build: every
+// project header asks, and one build may draw hundreds of them.
 func (m *OutlinerModel) todayPlanIdentities() map[taskref.TaskIdentity]bool {
 	if m.Runtime == nil {
 		return nil
 	}
-	plan := m.Runtime.Planning().GetToday()
-	identities := make(map[taskref.TaskIdentity]bool, len(plan))
-	for _, item := range plan {
-		identities[taskref.TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
+	if m.todayPlan != nil {
+		return m.todayPlan
 	}
-	return identities
+	plan := m.Runtime.Planning().GetToday()
+	m.todayPlan = make(map[taskref.TaskIdentity]bool, len(plan))
+	for _, item := range plan {
+		m.todayPlan[taskref.TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
+	}
+	return m.todayPlan
 }
 
 // appendProjectGroupedForests emits every project group of one section, stamping

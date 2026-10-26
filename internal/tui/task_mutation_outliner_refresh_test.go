@@ -23,7 +23,7 @@ import (
 func installDistinctOutlinerSnapshot(t *testing.T, model *AppModel, outlinerView *outliner.OutlinerModel) {
 	t.Helper()
 
-	_, projects, failed := outliner.LoadCrossScopeTasks(model.domain.runtime, outlinerView.ProjectService, outliner.CrossScopeOpts{
+	projects, failed := outliner.LoadCrossScopeTasks(model.domain.runtime, outlinerView.ProjectService, outliner.CrossScopeOpts{
 		ActiveOnly: true,
 	})
 	if len(failed) > 0 {

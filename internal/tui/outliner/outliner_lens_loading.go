@@ -111,7 +111,7 @@ func (m *OutlinerModel) startLensProjectLoad(pending *pendingLensApplication) te
 	focus := m.Scope.FocusRequest()
 	projectFilter := pending.State.ProjectFilterState()
 	return func() tea.Msg {
-		_, loaded, failed := LoadCrossScopeTasks(runtime, service, CrossScopeOpts{
+		loaded, failed := LoadCrossScopeTasks(runtime, service, CrossScopeOpts{
 			ActiveOnly:     true,
 			FocusProjectID: focus,
 			ProjectFilter:  projectFilter,

@@ -149,6 +149,52 @@ func excludeTaskTreePromotingChildren(
 	return result
 }
 
+// pruneOwnedTree removes every task remove names, promoting its surviving
+// descendants into its place, and hands back any subtree that loses nothing as
+// it stands, copying only the path down to a removal. It reports whether
+// anything changed.
+//
+// It may only be given a tree this projection already owns: the output of
+// excludeTaskTreePromotingChildren, which copies every node it keeps. The result
+// shares the nodes it leaves alone with its input, which is harmless between two
+// passes over one projection's private copies and would hand rows the
+// population's own tasks if the input were ever the population's. The passes it
+// serves used to copy every task of the workspace once each, on every rebuild.
+func pruneOwnedTree(tasks []*models.Task, remove func(*models.Task) bool) ([]*models.Task, bool) {
+	var result []*models.Task
+	changed := false
+	for i, task := range tasks {
+		if task == nil {
+			if !changed {
+				result, changed = append(make([]*models.Task, 0, len(tasks)), tasks[:i]...), true
+			}
+			continue
+		}
+		children, childrenChanged := pruneOwnedTree(task.Children, remove)
+		removed := remove(task)
+		if !removed && !childrenChanged {
+			if changed {
+				result = append(result, task)
+			}
+			continue
+		}
+		if !changed {
+			result, changed = append(make([]*models.Task, 0, len(tasks)), tasks[:i]...), true
+		}
+		if removed {
+			result = append(result, children...)
+			continue
+		}
+		clone := taskref.CloneTaskDetachingDependencies(task)
+		clone.Children = children
+		result = append(result, &clone)
+	}
+	if !changed {
+		return tasks, false
+	}
+	return result, true
+}
+
 // sortPrimaryTaskTree orders every sibling run of a tree-order projection by
 // compareSectionTasks. The sort is stable, so stored order still decides a tie
 // and J/K still arranges the run inside one priority band.

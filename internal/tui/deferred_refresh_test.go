@@ -44,7 +44,7 @@ func TestDeferredRefreshAdoptsOnInteractionExit(t *testing.T) {
 			d.dispatch(tea.BlurMsg{})
 			d.drain()
 			project := *m.domain.projects[projectID]
-			if _, err := storage.LoadProjectWithDocument(&project); err != nil {
+			if _, err := storage.LoadProjectWithCachedDocument(&project, nil); err != nil {
 				t.Fatal(err)
 			}
 			for _, task := range project.Tasks {

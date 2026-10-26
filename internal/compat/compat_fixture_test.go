@@ -221,7 +221,7 @@ func openFixture(t *testing.T, name string) *fixtureWorld {
 		notes:     map[string][]*models.Note{},
 	}
 	for _, project := range runtime.AllProjects() {
-		document, loadErr := storage.LoadProjectWithDocument(project)
+		document, loadErr := storage.LoadProjectWithCachedDocument(project, nil)
 		if loadErr != nil {
 			t.Fatalf("load %s: %v", project.Slug, loadErr)
 		}
@@ -461,7 +461,7 @@ func TestCompatExternalMarkdownEditIsObservable(t *testing.T) {
 		t.Fatal(writeErr)
 	}
 	reloaded := &models.Project{ID: project.ID, Slug: project.Slug, Name: project.Name, Path: project.Path}
-	document, err := storage.LoadProjectWithDocument(reloaded)
+	document, err := storage.LoadProjectWithCachedDocument(reloaded, nil)
 	if err != nil {
 		t.Fatalf("valid external edit refused: %v", err)
 	}
@@ -476,7 +476,7 @@ func TestCompatExternalMarkdownEditIsObservable(t *testing.T) {
 	if err := os.WriteFile(path, corrupt, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := storage.LoadProjectWithDocument(&models.Project{ID: project.ID, Slug: project.Slug, Name: project.Name, Path: project.Path}); err == nil {
+	if _, err := storage.LoadProjectWithCachedDocument(&models.Project{ID: project.ID, Slug: project.Slug, Name: project.Name, Path: project.Path}, nil); err == nil {
 		t.Fatal("strict reader accepted an external edit naming an unknown state")
 	}
 }

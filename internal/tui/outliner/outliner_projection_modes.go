@@ -302,7 +302,8 @@ func (m *OutlinerModel) buildPrimaryProjectTrees(
 
 // removeProjectedRowsFromTree removes each project-qualified identity promoted
 // into a synthetic section while preserving every non-promoted descendant in
-// its original relative order.
+// its original relative order. It is a pass over a tree the projection owns, so
+// it shares what it leaves alone; see pruneOwnedTree.
 func removeProjectedRowsFromTree(
 	tasks []*models.Task,
 	projectID string,
@@ -311,19 +312,8 @@ func removeProjectedRowsFromTree(
 	if len(tasks) == 0 || len(projected) == 0 {
 		return tasks
 	}
-	result := make([]*models.Task, 0, len(tasks))
-	for _, task := range tasks {
-		if task == nil {
-			continue
-		}
-		children := removeProjectedRowsFromTree(task.Children, projectID, projected)
-		if projected[taskref.TaskIdentity{ProjectID: projectID, TaskID: task.ID}] {
-			result = append(result, children...)
-			continue
-		}
-		clone := taskref.CloneTaskDetachingDependencies(task)
-		clone.Children = children
-		result = append(result, &clone)
-	}
-	return result
+	pruned, _ := pruneOwnedTree(tasks, func(task *models.Task) bool {
+		return projected[taskref.TaskIdentity{ProjectID: projectID, TaskID: task.ID}]
+	})
+	return pruned
 }

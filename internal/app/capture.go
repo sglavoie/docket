@@ -135,8 +135,7 @@ func (s *Service) Capture(req CaptureRequest) (TaskResult, error) {
 		return TaskResult{}, fmt.Errorf("%w: %s", ErrProjectNotFound, req.ProjectID)
 	}
 	revision := snap.Revision(project.ID)
-	before := cloneSnapshot(snap)
-	useRollbackDocuments(before)
+	before := rollbackSnapshot(snap)
 	committed := false
 	defer func() {
 		if !committed {
@@ -253,8 +252,7 @@ func (s *Service) captureMany(reqs []CaptureRequest, creation ProjectCreation) (
 		return nil, unfiledErr
 	}
 
-	before := cloneSnapshot(snap)
-	useRollbackDocuments(before)
+	before := rollbackSnapshot(snap)
 	committed := false
 	defer func() {
 		if !committed {

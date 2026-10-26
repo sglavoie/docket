@@ -24,8 +24,7 @@ func (s *Service) BulkTransition(locators []TaskLocator, target models.WorkflowS
 	if err != nil {
 		return BulkResult{}, err
 	}
-	before := cloneSnapshot(snap)
-	useRollbackDocuments(before)
+	before := rollbackSnapshot(snap)
 	committed := false
 	defer func() {
 		if !committed {

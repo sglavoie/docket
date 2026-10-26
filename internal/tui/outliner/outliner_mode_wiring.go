@@ -66,6 +66,7 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 	// exits. A later periodic tick can then tell whether calendar-derived review
 	// membership was answered on the day currently on screen.
 	m.timeDrivenDay = time.Now()
+	m.todayPlan = nil
 	// Assigned above the ranked-list return so both branches leave a live wake
 	// clock and child census behind: a presentation the user leaves must not
 	// resume with a stale one.

@@ -185,13 +185,15 @@ func filterTaskTreeKeepingAncestors(tasks []*models.Task, predicate func(*models
 	return result
 }
 
-// filterTaskTreePromotingChildren returns a copy containing only tasks that
-// satisfy predicate. Matching descendants of a rejected task are promoted so
-// facet filtering never hides valid work merely because an ancestor failed.
+// filterTaskTreePromotingChildren keeps only the tasks that satisfy predicate.
+// Matching descendants of a rejected task are promoted so facet filtering never
+// hides valid work merely because an ancestor failed. It is a pass over a tree
+// the projection owns, so it shares what it leaves alone; see pruneOwnedTree.
 func filterTaskTreePromotingChildren(tasks []*models.Task, predicate func(*models.Task) bool) []*models.Task {
-	return excludeTaskTreePromotingChildren(tasks, func(task *models.Task) bool {
+	pruned, _ := pruneOwnedTree(tasks, func(task *models.Task) bool {
 		return !predicate(task)
 	})
+	return pruned
 }
 
 // clampCursor ensures the cursor stays within [0, len(rows)-1] and never

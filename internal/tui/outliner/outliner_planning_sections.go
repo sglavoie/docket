@@ -167,7 +167,8 @@ func (m *OutlinerModel) appendPlanningSection(section planningSectionBuild, lift
 
 // removePlanningRowsFromTree removes every explicit planning identity from a
 // lifecycle forest while promoting non-planned descendants. This keeps All
-// deduplicated without treating descendants as planned.
+// deduplicated without treating descendants as planned. It is a pass over a tree
+// the projection owns, so it shares what it leaves alone; see pruneOwnedTree.
 func removePlanningRowsFromTree(
 	tasks []*models.Task,
 	projectID string,
@@ -176,19 +177,8 @@ func removePlanningRowsFromTree(
 	if len(tasks) == 0 || len(suppressed) == 0 {
 		return tasks
 	}
-	result := make([]*models.Task, 0, len(tasks))
-	for _, task := range tasks {
-		if task == nil {
-			continue
-		}
-		children := removePlanningRowsFromTree(task.Children, projectID, suppressed)
-		if suppressed[taskref.TaskIdentity{ProjectID: projectID, TaskID: task.ID}] {
-			result = append(result, children...)
-			continue
-		}
-		clone := taskref.CloneTaskDetachingDependencies(task)
-		clone.Children = children
-		result = append(result, &clone)
-	}
-	return result
+	pruned, _ := pruneOwnedTree(tasks, func(task *models.Task) bool {
+		return suppressed[taskref.TaskIdentity{ProjectID: projectID, TaskID: task.ID}]
+	})
+	return pruned
 }

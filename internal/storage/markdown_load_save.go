@@ -1,10 +1,12 @@
 package storage
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tterrors"
@@ -63,7 +65,7 @@ func LoadProjectRevisionCached(project *models.Project) (string, error) {
 }
 
 // ProjectReadWindowProbe is the optional observation seam a consistency test
-// installs to rewrite tasks.md at the exact instant LoadProjectWithDocument
+// installs to rewrite tasks.md at the exact instant LoadProjectWithCachedDocument
 // holds its bytes and has derived nothing from them yet. Normal execution
 // leaves it nil and nothing in production ever writes it. It exists because the
 // property this file owes its callers — that the model, the base document, and
@@ -72,9 +74,65 @@ func LoadProjectRevisionCached(project *models.Project) (string, error) {
 // did not move.
 var ProjectReadWindowProbe func(project *models.Project)
 
-// LoadProjectWithDocument loads a project's tasks and returns the exact lossless
-// on-disk document whose revision guards them, both derived from a single read
-// of tasks.md.
+// readBuffers holds the buffers tasks.md reads land in. A snapshot reads every
+// project on every mutation, and those bytes are only hashed, or copied into the
+// string a parse reads, so a buffer is free again once its load returns rather
+// than garbage the size of the whole workspace each time. It is a bounded free
+// list rather than a sync.Pool because a pool is emptied by every collection,
+// and on a large workspace a collection lands between most snapshots.
+var readBuffers = &bufferFreeList{limit: 8}
+
+type bufferFreeList struct {
+	mu    sync.Mutex
+	free  []*bytes.Buffer
+	limit int
+}
+
+func (l *bufferFreeList) Get() *bytes.Buffer {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if n := len(l.free); n > 0 {
+		buffer := l.free[n-1]
+		l.free = l.free[:n-1]
+		return buffer
+	}
+	return new(bytes.Buffer)
+}
+
+func (l *bufferFreeList) Put(buffer *bytes.Buffer) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if len(l.free) < l.limit {
+		l.free = append(l.free, buffer)
+	}
+}
+
+// readPooled reads path into a pooled buffer the caller puts back.
+func readPooled(path string) (*bytes.Buffer, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = file.Close() }()
+	buffer := readBuffers.Get()
+	buffer.Reset()
+	// A pooled buffer may be smaller than this file; sizing it first is one
+	// growth rather than the doubling ReadFrom would do.
+	if info, statErr := file.Stat(); statErr == nil {
+		buffer.Grow(int(info.Size()) + bytes.MinRead)
+	}
+	if _, err := buffer.ReadFrom(file); err != nil {
+		readBuffers.Put(buffer)
+		return nil, err
+	}
+	return buffer, nil
+}
+
+// LoadProjectWithCachedDocument loads a project's tasks and returns the exact
+// lossless on-disk document whose revision guards them, both derived from a
+// single read of tasks.md. The parse is answered from cache when tasks.md still
+// holds the bytes cache last parsed for it; the file is read either way, so the
+// result describes the bytes on disk now, and a nil cache parses every time.
 //
 // Loading the model and then reading the document back through a second file
 // read is what this replaces: another process saving version B between the two
@@ -84,47 +142,52 @@ var ProjectReadWindowProbe func(project *models.Project)
 // so the worst a concurrent write can now do is make the whole answer stale —
 // which the revision guard catches at the commit boundary.
 //
-// The bytes are parsed twice on purpose. The project's task pointers are the
-// ones a mutation edits in place; the document's are the immutable base a merge
-// is measured against, so they may not be the same objects.
-func LoadProjectWithDocument(project *models.Project) (*ProjectDocument, error) {
-	return LoadProjectWithCachedDocument(project, nil)
+// The project's task pointers are the ones a mutation edits in place; the
+// document's are the immutable base a merge is measured against, so the project
+// takes deep copies and the two never share a task.
+func LoadProjectWithCachedDocument(project *models.Project, cache *ProjectDocumentCache) (*ProjectDocument, error) {
+	document, _, err := ReadProjectWithCachedDocument(project, cache)
+	return document, err
 }
 
-// LoadProjectWithCachedDocument is LoadProjectWithDocument answering the parse
-// from cache when tasks.md still holds the bytes cache last parsed for it. The
-// file is read either way, so the result describes the bytes on disk now; a nil
-// cache parses every time.
-func LoadProjectWithCachedDocument(project *models.Project, cache *ProjectDocumentCache) (*ProjectDocument, error) {
+// ReadProjectWithCachedDocument is LoadProjectWithCachedDocument also reporting
+// whether the read found no tasks.md, which loads as an empty project. It is the
+// answer ProjectTasksFileMissing gives, taken from the same read rather than from
+// a second look at the file that could disagree with it. A test repository has
+// no file to miss.
+func ReadProjectWithCachedDocument(project *models.Project, cache *ProjectDocumentCache) (*ProjectDocument, bool, error) {
 	if _, ok := DefaultRepository.(*FileSystemRepository); !ok {
 		// Test doubles keep projects in memory with no tasks.md, so there is no
 		// read window to close: the canonical in-memory document is the only
 		// answer available and is derived from the same load.
 		if err := LoadProject(project); err != nil {
-			return nil, err
+			return nil, false, err
 		}
-		return CanonicalProjectDocument(project, nil)
+		document, err := CanonicalProjectDocument(project, nil)
+		return document, false, err
 	}
 
 	path := tasksFilePath(project.Path)
-	content, err := os.ReadFile(path)
+	buffer, err := readPooled(path)
 	if os.IsNotExist(err) {
 		if loadErr := loadMissingProject(project); loadErr != nil {
-			return nil, loadErr
+			return nil, false, loadErr
 		}
 		doc := &ProjectDocument{ProjectName: project.Name, Tasks: []*models.Task{}, SchemaVersion: CurrentTaskSchemaVersion}
 		doc.Revision = doc.ComputeRevision()
-		return doc, nil
+		return doc, true, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to read tasks file: %w", err)
+		return nil, false, fmt.Errorf("failed to read tasks file: %w", err)
 	}
+	defer readBuffers.Put(buffer)
+	content := buffer.Bytes()
 	if ProjectReadWindowProbe != nil {
 		ProjectReadWindowProbe(project)
 	}
 	document, err := cache.parse(path, content)
 	if err != nil {
-		return nil, loadParseError(project, err)
+		return nil, false, loadParseError(project, err)
 	}
 	// The project takes deep copies rather than the document's own tasks: the
 	// document is the guarded base a commit is measured against, and the
@@ -135,9 +198,9 @@ func LoadProjectWithCachedDocument(project *models.Project, cache *ProjectDocume
 		tasks = append(tasks, models.CloneTaskDeep(task))
 	}
 	if err := loadProjectModels(project, tasks, models.CloneProjectComments(document.Comments)); err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return document, nil
+	return document, false, nil
 }
 
 // LoadProjectForRewrite loads the exact tasks.md bytes that a caller is about to

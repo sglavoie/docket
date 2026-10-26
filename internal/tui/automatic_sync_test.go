@@ -65,7 +65,7 @@ func TestAutomaticSyncExchangesAndDefersViewAdoption(t *testing.T) {
 func assertSyncTaskTitle(t *testing.T, rt *engine.Runtime, title string) {
 	t.Helper()
 	project := rt.State().SystemUnfiledProject()
-	_, err := storage.LoadProjectWithDocument(project)
+	_, err := storage.LoadProjectWithCachedDocument(project, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

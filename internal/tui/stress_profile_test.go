@@ -3,6 +3,7 @@ package tui
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"runtime/pprof"
 	"slices"
 	"strconv"
@@ -80,6 +81,26 @@ func TestStressNavigationLatency(t *testing.T) {
 			pprof.StopCPUProfile()
 			_ = f.Close()
 		}()
+	}
+
+	// DOCKET_STRESS_MEMPROFILE records what the key presses allocate, which is
+	// what the collector spends its time on. The allocation profile counts from
+	// process start, so a PATH.base written before the first press is what
+	// `go tool pprof -diff_base PATH.base` subtracts to leave the presses alone.
+	if path := os.Getenv("DOCKET_STRESS_MEMPROFILE"); path != "" {
+		writeAllocs := func(path string) {
+			runtime.GC()
+			f, err := os.Create(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = f.Close() }()
+			if err := pprof.Lookup("allocs").WriteTo(f, 0); err != nil {
+				t.Fatal(err)
+			}
+		}
+		writeAllocs(path + ".base")
+		defer writeAllocs(path)
 	}
 
 	updates := make([]time.Duration, 0, presses)

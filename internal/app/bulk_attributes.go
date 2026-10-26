@@ -73,8 +73,7 @@ func (s *Service) bulkAttributeOverSnapshot(
 	if err != nil {
 		return BulkResult{}, err
 	}
-	before := cloneSnapshot(snap)
-	useRollbackDocuments(before)
+	before := rollbackSnapshot(snap)
 	committed := false
 	defer func() {
 		if !committed {
@@ -173,8 +172,7 @@ func (s *Service) bulkSetDueDateAndPlanToday(locators []TaskLocator, due time.Ti
 	if err != nil {
 		return BulkResult{}, err
 	}
-	before := cloneSnapshot(snap)
-	useRollbackDocuments(before)
+	before := rollbackSnapshot(snap)
 	committed := false
 	defer func() {
 		if !committed {
@@ -272,8 +270,7 @@ func (s *Service) BulkDefer(locators []TaskLocator, until *time.Time) (BulkResul
 	if err != nil {
 		return BulkResult{}, err
 	}
-	before := cloneSnapshot(snap)
-	useRollbackDocuments(before)
+	before := rollbackSnapshot(snap)
 	committed := false
 	defer func() {
 		if !committed {

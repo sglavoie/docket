@@ -97,7 +97,7 @@ func (m *OutlinerModel) LoadCrossProjectsCmd() tea.Cmd {
 	focus := m.Scope.FocusRequest()
 	projectFilter := m.ProjectFilter.Clone()
 	return func() tea.Msg {
-		_, loaded, failed := LoadCrossScopeTasks(runtime, svc, CrossScopeOpts{
+		loaded, failed := LoadCrossScopeTasks(runtime, svc, CrossScopeOpts{
 			ActiveOnly:     true,
 			FocusProjectID: focus,
 			ProjectFilter:  projectFilter,

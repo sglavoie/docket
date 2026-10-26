@@ -52,11 +52,21 @@ repository's snapshot, the TUI's `workspace.Loader`s, and the project reloads
 share one parse of an unchanged file and pay a read and a deep copy instead. The
 bytes are the key, never the modification time, so an edit that keeps a file's
 size and timestamp is still seen, and the single-read guarantee
-`LoadProjectWithDocument` gives a mutation is untouched. The retained parse is
+`LoadProjectWithCachedDocument` gives a mutation is untouched. The retained parse is
 never handed out: rollback installs a document's own tasks on a project and
 rebuilds their tree, so two snapshots sharing one document would share those
 writes. A snapshot loads its projects in parallel on the real filesystem, since
-each load writes only its own project.
+each load writes only its own project, and takes whether a `tasks.md` is
+missing from that same read rather than a second look at the file. A commit
+records the digest of the canonical bytes it wrote, so the parse that follows
+it takes that digest as the revision instead of rendering the document again;
+the canonical format round-trips, which is what makes the two agree.
+
+A mutation's rollback copy is taken lazily. Each project's own fields are
+captured when the mutation starts, since it may edit the live project before it
+fails, but its tasks are copied from the snapshot's document only when the
+rollback first reads that project. That defers nothing observable, because
+application mutations treat a snapshot's documents as immutable merge bases.
 
 Project paths are derived from the selected data directory and canonical
 lowercase ASCII slugs. Absolute paths are not catalog data. Every mutation path

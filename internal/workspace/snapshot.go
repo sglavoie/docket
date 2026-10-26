@@ -10,6 +10,7 @@ package workspace
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/sglavoie/docket/internal/models"
 )
@@ -60,41 +61,55 @@ type TaskLocation struct {
 // are populated at build time and must not be mutated afterward; consumers that
 // need to mutate a project must load their own copy through the normal save
 // path rather than editing snapshot state.
+//
+// The task indexes are derived on first use rather than at build time. Most
+// snapshots are read for their projects alone — the Outliner's reload and the
+// workspace pulse never look a task up — and indexing every task of a large
+// workspace was most of what building one cost.
 type Snapshot struct {
-	projects      []*models.Project
-	tasks         []*models.Task
-	byID          map[string][]TaskLocation
-	qualifiedRefs map[string]string
-	revisions     map[string]string
-	diagnostics   []Diagnostic
+	projects    []*models.Project
+	revisions   map[string]string
+	diagnostics []Diagnostic
+
+	index sync.Once
+	tasks []*models.Task
+	byID  map[string][]TaskLocation
 }
 
 func newSnapshot() *Snapshot {
-	return &Snapshot{
-		byID:          make(map[string][]TaskLocation),
-		qualifiedRefs: make(map[string]string),
-		revisions:     make(map[string]string),
-	}
+	return &Snapshot{revisions: make(map[string]string)}
 }
 
 // addProject folds one successfully loaded project (and its computed revision)
-// into the snapshot indexes. Every task owner is retained so an unqualified
-// duplicate UUID can be reported as ambiguous instead of selecting whichever
-// project happened to load first.
+// into the snapshot.
 func (s *Snapshot) addProject(project *models.Project, revision string) {
 	s.projects = append(s.projects, project)
 	s.revisions[project.ID] = revision
+}
 
-	for _, task := range project.Tasks {
-		if task == nil {
-			continue
+// buildIndex derives the flat task union and the UUID index. Every task owner is
+// retained so an unqualified duplicate UUID can be reported as ambiguous instead
+// of selecting whichever project happened to load first.
+func (s *Snapshot) buildIndex() {
+	s.index.Do(func() {
+		count := 0
+		for _, project := range s.projects {
+			count += len(project.Tasks)
 		}
-		s.tasks = append(s.tasks, task)
-		if task.ID != "" {
-			s.byID[task.ID] = append(s.byID[task.ID], TaskLocation{Task: task, Project: project})
+		s.tasks = make([]*models.Task, 0, count)
+		s.byID = make(map[string][]TaskLocation, count)
+		for _, project := range s.projects {
+			for _, task := range project.Tasks {
+				if task == nil {
+					continue
+				}
+				s.tasks = append(s.tasks, task)
+				if task.ID != "" {
+					s.byID[task.ID] = append(s.byID[task.ID], TaskLocation{Task: task, Project: project})
+				}
+			}
 		}
-		s.qualifiedRefs[task.ID] = fmt.Sprintf("%s:#%d", project.Slug, task.ShortID)
-	}
+	})
 }
 
 func (s *Snapshot) addDiagnostic(diag Diagnostic) {
@@ -105,7 +120,10 @@ func (s *Snapshot) addDiagnostic(diag Diagnostic) {
 func (s *Snapshot) Projects() []*models.Project { return s.projects }
 
 // Tasks returns the flat union of every task across the loaded projects.
-func (s *Snapshot) Tasks() []*models.Task { return s.tasks }
+func (s *Snapshot) Tasks() []*models.Task {
+	s.buildIndex()
+	return s.tasks
+}
 
 // TaskLookupStatus describes whether an unqualified UUID is missing, uniquely
 // owned, or present in more than one loaded project.
@@ -122,6 +140,7 @@ func (s *Snapshot) LookupTaskID(taskID string) (TaskLocation, TaskLookupStatus) 
 	if taskID == "" {
 		return TaskLocation{}, TaskLookupMissing
 	}
+	s.buildIndex()
 	locations := s.byID[taskID]
 	switch len(locations) {
 	case 0:
@@ -143,10 +162,11 @@ func (s *Snapshot) Revision(projectID string) string {
 // "" when the task is not part of the snapshot. Cross-project surfaces use this
 // so their output always carries an unambiguous, project-qualified reference.
 func (s *Snapshot) QualifiedRef(taskID string) string {
-	if _, status := s.LookupTaskID(taskID); status != TaskLookupUnique {
+	location, status := s.LookupTaskID(taskID)
+	if status != TaskLookupUnique {
 		return ""
 	}
-	return s.qualifiedRefs[taskID]
+	return fmt.Sprintf("%s:#%d", location.Project.Slug, location.Task.ShortID)
 }
 
 // Diagnostics returns the projects that were skipped or failed to parse while

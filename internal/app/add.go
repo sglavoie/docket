@@ -243,8 +243,7 @@ func (s *Service) buildAddTask(req AddTaskRequest) (addTaskBuild, error) {
 	if err != nil {
 		return addTaskBuild{}, err
 	}
-	before := cloneSnapshot(snap)
-	useRollbackDocuments(before)
+	before := rollbackSnapshot(snap)
 	ref, revision, err := s.buildNormalizedAddTask(snap, req, normalized)
 	if err != nil {
 		restoreSnapshotProjects(snap, before)

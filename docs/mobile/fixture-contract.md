@@ -59,7 +59,7 @@ Decoding is strict: an unknown manifest field fails.
 `internal/compat` runs these checks against every manifest:
 
 1. **Live readers.** `config.LoadRuntimeState` reads the domains. Each cataloged
-   project (archived ones included) goes through `storage.LoadProjectWithDocument`,
+   project (archived ones included) goes through `storage.LoadProjectWithCachedDocument`,
    notes go through `storage.ListNotes`/`ListNotesFrom`, and lenses go through
    the strict lens decoder. `workspace.Loader` builds a snapshot, which must
    report no diagnostics.

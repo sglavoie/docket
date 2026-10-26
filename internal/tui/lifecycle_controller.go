@@ -303,7 +303,7 @@ func (m *AppModel) notifyArrivals(now time.Time) tea.Cmd {
 	if since.IsZero() || !now.After(since) {
 		return nil
 	}
-	_, projects, failed := outliner.LoadCrossScopeSelection(m.domain.runtime.TaskWorkspaceProjects(), m.ensurePulseLoader())
+	projects, failed := outliner.LoadCrossScopeSelection(m.domain.runtime.TaskWorkspaceProjects(), m.ensurePulseLoader())
 	for _, failure := range failed {
 		logging.Warn("notifications: %s", failure.Detail)
 	}

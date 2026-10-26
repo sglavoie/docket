@@ -63,15 +63,15 @@ func diagnosticToLoadFailure(diag workspace.Diagnostic) ProjectLoadFailure {
 }
 
 // LoadCrossScopeTasks selects projects per opts, loads them once into an
-// immutable workspace snapshot, and returns the flat task union, the
-// successfully loaded projects, and the details of any projects that failed to
-// load. Individual load failures are non-fatal: the offending project is
-// skipped and surfaced as a diagnostic for the caller to log or display.
+// immutable workspace snapshot, and returns the successfully loaded projects
+// and the details of any projects that failed to load. Individual load failures
+// are non-fatal: the offending project is skipped and surfaced as a diagnostic
+// for the caller to log or display.
 //
 // The view-owned ProjectService retains the snapshot loader across rebuilds.
 // Changed projects are parsed once into the new snapshot while unchanged
 // projects reuse their indexed parse.
-func LoadCrossScopeTasks(runtime *config.RuntimeState, service *coordinator.ProjectService, opts CrossScopeOpts) (tasks []*models.Task, projects []*models.Project, failed []ProjectLoadFailure) {
+func LoadCrossScopeTasks(runtime *config.RuntimeState, service *coordinator.ProjectService, opts CrossScopeOpts) (projects []*models.Project, failed []ProjectLoadFailure) {
 	if service == nil {
 		service = coordinator.NewProjectService()
 	}
@@ -79,12 +79,13 @@ func LoadCrossScopeTasks(runtime *config.RuntimeState, service *coordinator.Proj
 }
 
 // loadCrossScopeSelection loads an already-selected project set into an immutable
-// workspace snapshot and returns the flat task union, the successfully loaded
-// projects, and any load-failure details. It is the source-agnostic core shared
+// workspace snapshot and returns the successfully loaded projects and any
+// load-failure details. No caller reads a task union, so none is built: indexing
+// every task is what a snapshot defers until something looks one up. It is the source-agnostic core shared
 // by the config-facade LoadCrossScopeTasks and the domain-snapshot workspace
 // pulse, so both select projects from their own domain source and load them
 // identically.
-func LoadCrossScopeSelection(selected []*models.Project, loader *workspace.Loader) (tasks []*models.Task, projects []*models.Project, failed []ProjectLoadFailure) {
+func LoadCrossScopeSelection(selected []*models.Project, loader *workspace.Loader) (projects []*models.Project, failed []ProjectLoadFailure) {
 	if loader == nil {
 		loader = workspace.NewLoader()
 	}
@@ -102,7 +103,7 @@ func LoadCrossScopeSelection(selected []*models.Project, loader *workspace.Loade
 	for _, project := range projects {
 		coordinator.CopyCatalogMetadata(project, catalogByID[project.ID])
 	}
-	return snap.Tasks(), projects, failed
+	return projects, failed
 }
 
 // ComputeWorkspacePulse selects and loads the base task workspace, then hands
@@ -123,7 +124,7 @@ func ComputeWorkspacePulse(rs *config.RuntimeState, todayIDs map[taskref.TaskIde
 	if rs == nil {
 		return pulse.WorkspacePulse{}
 	}
-	_, projects, failed := LoadCrossScopeSelection(rs.TaskWorkspaceProjects(), loader)
+	projects, failed := LoadCrossScopeSelection(rs.TaskWorkspaceProjects(), loader)
 	for _, failure := range failed {
 		logging.Warn("workspace pulse: %s", failure.Detail)
 	}

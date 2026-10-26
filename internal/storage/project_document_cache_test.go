@@ -112,13 +112,45 @@ func TestProjectDocumentCacheRereadsChangedBytesOfEqualSizeAndTime(t *testing.T)
 	}
 }
 
-// TestNilProjectDocumentCacheParsesEveryLoad keeps LoadProjectWithDocument's
-// uncached behaviour: a nil cache is valid and retains nothing.
+// TestNilProjectDocumentCacheParsesEveryLoad keeps the uncached behaviour: a
+// nil cache is valid and retains nothing.
 func TestNilProjectDocumentCacheParsesEveryLoad(t *testing.T) {
 	newProject := cacheTestProject(t)
 	first := loadCached(t, nil, newProject())
 	second := loadCached(t, nil, newProject())
 	if first.Revision != second.Revision || first.Tasks[0] == second.Tasks[0] {
 		t.Fatal("a nil cache must parse each load afresh to the same revision")
+	}
+}
+
+// TestNoteCanonicalWriteSkipsTheRenderAndAgreesWithAParse pins the post-commit
+// shortcut: bytes a commit wrote as a canonical rendering parse to the revision
+// an uncached parse computes, so taking their digest instead of rendering them
+// can never disagree with the revision guard. Bytes that are not their claimed
+// revision's rendering record nothing.
+func TestNoteCanonicalWriteSkipsTheRenderAndAgreesWithAParse(t *testing.T) {
+	newProject := cacheTestProject(t)
+	path := tasksFilePath(newProject().Path)
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := ParseProjectDocument(string(content))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cache := NewProjectDocumentCache()
+	cache.NoteCanonicalWrite(path, append(content, '\n'), want.Revision)
+	if len(cache.canonical) != 0 {
+		t.Fatal("bytes that are not the revision's rendering were recorded as canonical")
+	}
+	cache.NoteCanonicalWrite(path, content, want.Revision)
+	if len(cache.canonical) != 1 {
+		t.Fatal("a canonical write was not recorded")
+	}
+	got := loadCached(t, cache, newProject())
+	if got.Revision != want.Revision {
+		t.Fatalf("revision after a noted write = %s, want the parsed %s", got.Revision, want.Revision)
 	}
 }

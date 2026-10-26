@@ -202,10 +202,18 @@ type snapshotView struct {
 // the cataloged projects the read could not see, whose tasks are unknown; nil
 // means it saw every one.
 func NewPartialSnapshot(projects []*models.Project, revisions map[string]string, documents map[string]*storage.ProjectDocument, unavailable []string) Snapshot {
+	// The task indexes are sized up front: a large workspace otherwise pays for
+	// growing them a dozen times on every snapshot a mutation takes.
+	taskCount := 0
+	for _, project := range projects {
+		if project != nil {
+			taskCount += len(project.Tasks)
+		}
+	}
 	view := &snapshotView{
 		byProject: make(map[string]*models.Project, len(projects)),
-		byTask:    make(map[string][]TaskRef),
-		byLocator: make(map[TaskLocator]TaskRef),
+		byTask:    make(map[string][]TaskRef, taskCount),
+		byLocator: make(map[TaskLocator]TaskRef, taskCount),
 		revisions: make(map[string]string, len(revisions)),
 		documents: make(map[string]*storage.ProjectDocument, len(documents)),
 	}

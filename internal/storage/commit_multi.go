@@ -185,6 +185,7 @@ func (s *CommitService) commitMultiLocked(journal *transaction.Journal, changese
 	var ledgerProjectIDs []string
 	var recordAction, recordContext string
 	committedDocs := make([]*ProjectDocument, len(changesets))
+	committedContent := make([][]byte, len(changesets))
 	for i := range changesets {
 		cs := changesets[i]
 		project := cs.Project
@@ -217,10 +218,11 @@ func (s *CommitService) commitMultiLocked(journal *transaction.Journal, changese
 				recordContext = cs.UndoContext
 			}
 		}
+		committedContent[i] = []byte(content)
 		ops = append(ops, transaction.Op{
 			Kind:   transaction.OpWrite,
 			Target: tasksFilePath(project.Path),
-			Data:   []byte(content),
+			Data:   committedContent[i],
 			Mode:   FilePermissions,
 		})
 		artifactOps, artifactDirs, err := expandArtifactChanges(cs.Artifacts)
@@ -274,6 +276,12 @@ func (s *CommitService) commitMultiLocked(journal *transaction.Journal, changese
 		// unreferenced content-addressed blob, but the journal has already made the
 		// project, companion artifacts, retained blobs, and ledger entry durable.
 		s.ledger.gcBlobs(ledgerPlan.file)
+	}
+
+	// The bytes just made durable are each project's canonical rendering, so the
+	// readers that follow every commit parse them without rendering them again.
+	for i, cs := range changesets {
+		SharedProjectDocuments.NoteCanonicalWrite(tasksFilePath(cs.Project.Path), committedContent[i], committedDocs[i].Revision)
 	}
 
 	results := make([]*CommitResult, len(changesets))

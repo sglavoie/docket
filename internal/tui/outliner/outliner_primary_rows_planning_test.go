@@ -189,7 +189,10 @@ func flattenProjectedTasks(tasks []*models.Task) []*models.Task {
 // lets a later element write or in-capacity append reach repository-owned
 // state. Every projection must detach the list.
 func TestTaskProjectionCopiesDetachDependencies(t *testing.T) {
-	suppressed := map[taskref.TaskIdentity]bool{{ProjectID: "proj", TaskID: "absent"}: true}
+	// The pruning passes copy only the path down to a removal and hand an
+	// untouched tree back as it stands (see pruneOwnedTree), so they remove the
+	// child: the parent they copy on the way is the clone that must detach.
+	suppressed := map[taskref.TaskIdentity]bool{{ProjectID: "proj", TaskID: "child"}: true}
 
 	cases := []struct {
 		name    string

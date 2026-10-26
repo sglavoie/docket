@@ -224,8 +224,7 @@ type BulkResult struct {
 // project as ONE transaction. It returns the new revision per project, the
 // committed project order.
 func (s *Service) deleteTasks(snap Snapshot, roots []TaskRef, undoContext string, artifacts []storage.ArtifactChange) ([]string, string, error) {
-	before := cloneSnapshot(snap)
-	useRollbackDocuments(before)
+	before := rollbackSnapshot(snap)
 	committed := false
 	defer func() {
 		if !committed {

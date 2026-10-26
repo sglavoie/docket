@@ -248,8 +248,7 @@ func (s *Service) stepDueDates(locators []TaskLocator, req DueStepRequest) (Task
 	if err != nil {
 		return TaskOperationResult{}, err
 	}
-	before := cloneSnapshot(snap)
-	useRollbackDocuments(before)
+	before := rollbackSnapshot(snap)
 	committed := false
 	defer func() {
 		if !committed {

@@ -119,8 +119,7 @@ func (s *Service) EditTaskLine(req TaskLineEditRequest) (TaskLineEditResult, err
 		return TaskLineEditResult{}, err
 	}
 
-	before := cloneSnapshot(snap)
-	useRollbackDocuments(before)
+	before := rollbackSnapshot(snap)
 	committed := false
 	defer func() {
 		if !committed {

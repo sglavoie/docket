@@ -143,7 +143,7 @@ func (c *Controller) ProjectHubTaskCounts(shell Shell) map[string]projecthub.Pro
 	if len(remainder) == 0 {
 		return counts
 	}
-	_, loaded, _ := outliner.LoadCrossScopeSelection(remainder, loader)
+	loaded, _ := outliner.LoadCrossScopeSelection(remainder, loader)
 	for _, project := range loaded {
 		if project != nil {
 			counts[project.ID] = projecthub.ProjectTaskTallyOf(project)

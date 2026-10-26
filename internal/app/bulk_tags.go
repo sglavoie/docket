@@ -136,8 +136,7 @@ func (s *Service) BulkToggleTag(locators []TaskLocator, tag string) (BulkResult,
 	if err != nil {
 		return BulkResult{}, err
 	}
-	before := cloneSnapshot(snap)
-	useRollbackDocuments(before)
+	before := rollbackSnapshot(snap)
 	committed := false
 	defer func() {
 		if !committed {

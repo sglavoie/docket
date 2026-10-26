@@ -241,8 +241,7 @@ func (s *Service) deferTask(locator TaskLocator, until *time.Time) (TaskResult, 
 	if err != nil {
 		return TaskResult{}, err
 	}
-	before := cloneSnapshot(snap)
-	useRollbackDocuments(before)
+	before := rollbackSnapshot(snap)
 	committed := false
 	defer func() {
 		if !committed {

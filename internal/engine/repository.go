@@ -106,7 +106,12 @@ func (r *Repository) Snapshot() (app.Snapshot, error) {
 	return app.NewPartialSnapshot(loaded, revisions, documents, unavailable), nil
 }
 
-// projectRead is one project's share of a Snapshot.
+// maxSnapshotReaders bounds a Snapshot's parallel reads. Past a handful, more
+// readers buy no parse time and only queue on the filesystem's own locks.
+const maxSnapshotReaders = 8
+
+// projectRead is one project's share of a Snapshot. missing comes from the read
+// itself, so it describes the same version of the file the document does.
 type projectRead struct {
 	document *storage.ProjectDocument
 	missing  bool
@@ -130,13 +135,10 @@ func (r *Repository) readProjects(projects []*models.Project) []projectRead {
 		if p == nil {
 			return
 		}
-		document, err := storage.LoadProjectWithCachedDocument(p, r.documents)
-		reads[i] = projectRead{document: document, err: err}
-		if err == nil {
-			reads[i].missing = storage.ProjectTasksFileMissing(p)
-		}
+		document, missing, err := storage.ReadProjectWithCachedDocument(p, r.documents)
+		reads[i] = projectRead{document: document, missing: missing, err: err}
 	}
-	workers := min(runtime.GOMAXPROCS(0), len(projects))
+	workers := min(runtime.GOMAXPROCS(0), maxSnapshotReaders, len(projects))
 	if !r.useCommitService() || storage.ProjectReadWindowProbe != nil || workers < 2 {
 		for i := range projects {
 			read(i)
@@ -212,7 +214,7 @@ func (r *Repository) CompletionActivityProjects() ([]*models.Project, error) {
 // revision the commit boundary guards it against.
 //
 // Each project's tasks, base document, and guarded revision come from one read
-// through storage.LoadProjectWithDocument rather than from a load followed by an
+// through storage.LoadProjectWithCachedDocument rather than from a load followed by an
 // independent document read. Two reads could straddle another process's save and
 // hand the preview version A's tasks under version B's revision, which commits
 // as an unmerged overwrite of B. One read makes a concurrent save either wholly

@@ -132,9 +132,9 @@ func TestProjectCommentsSurviveLoadPaths(t *testing.T) {
 		t.Fatal(err)
 	}
 	paired.Slug = project.Slug
-	document, err := LoadProjectWithDocument(paired)
+	document, err := LoadProjectWithCachedDocument(paired, nil)
 	if err != nil {
-		t.Fatalf("LoadProjectWithDocument: %v", err)
+		t.Fatalf("LoadProjectWithCachedDocument: %v", err)
 	}
 	assertPreservedComments(t, "the same-read model", paired.Comments)
 	assertPreservedComments(t, "the same-read base document", document.Comments)

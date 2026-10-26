@@ -161,7 +161,10 @@ type OutlinerModel struct {
 	openChildCounts map[taskref.TaskIdentity]int
 	// hiddenLayout is what this projection's folds hide from the row layout,
 	// rebuilt with the rows so a fold opening moves no title.
-	hiddenLayout  hiddenRowLayout
+	hiddenLayout hiddenRowLayout
+	// todayPlan is the Today membership one row build reads, taken once per
+	// build rather than once per project header; buildCanonicalModeRows drops it.
+	todayPlan     map[taskref.TaskIdentity]bool
 	projectLabels projectLabelCache
 
 	// dependencyIndexCache is the row-rebuild pass's reading of the soft

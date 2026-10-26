@@ -97,8 +97,7 @@ func (s *Service) PromoteChecklistItem(req ChecklistPromotionRequest) (Checklist
 		return ChecklistPromotionResult{}, err
 	}
 
-	before := cloneSnapshot(snap)
-	useRollbackDocuments(before)
+	before := rollbackSnapshot(snap)
 	committed := false
 	defer func() {
 		if !committed {
