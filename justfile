@@ -51,6 +51,32 @@ test-pkg PKG:
 search-bench *ARGS:
     ./scripts/check_search_budget.sh {{ ARGS }}
 
+# Throwaway stress workspace, outside your real one (override with DOCKET_STRESS_DIR)
+stress_dir := env("DOCKET_STRESS_DIR", clean(env("TMPDIR", "/tmp") / "docket-stress"))
+
+# Generate a stress workspace, e.g. `just stress-gen -tasks 50000 -projects 200 -force`
+stress-gen *ARGS:
+    go run ./scripts/stressgen -dir {{ quote(stress_dir) }} {{ ARGS }}
+
+# Time a cold open of the stress workspace without regenerating it
+stress-measure:
+    go run ./scripts/stressgen -dir {{ quote(stress_dir) }} -measure
+
+# Time a key on the stress workspace under the CPU profiler, e.g. `just stress-profile ctrl+d 200`
+stress-profile KEY="ctrl+d" PRESSES="200":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    out={{ quote(stress_dir / "profile") }}
+    mkdir -p "$out"
+    DOCKET_STRESS_DIR={{ quote(stress_dir) }} DOCKET_STRESS_KEY={{ quote(KEY) }} DOCKET_STRESS_PRESSES={{ PRESSES }} \
+        go test ./internal/tui -run '^TestStressNavigationLatency$' -count=1 -v -timeout 20m \
+        -cpuprofile "$out/cpu.prof" -o "$out/tui.test" | grep -E 'stress_profile|PASS|FAIL'
+    echo "inspect: go tool pprof -http=: $out/tui.test $out/cpu.prof"
+
+# Launch the TUI on the stress workspace; HOME is redirected so logs and machine state stay there too
+stress-run *ARGS: build
+    HOME={{ quote(stress_dir / "home") }} DOCKET_DATA_DIR={{ quote(stress_dir / "workspace") }} ./{{ binary_name }} {{ ARGS }}
+
 # Run tests with coverage report and enforce the coverage thresholds
 coverage:
     @echo "Running tests with coverage..."

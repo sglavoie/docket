@@ -154,11 +154,12 @@ func (m *OutlinerModel) ToggleMultiSelectMode() {
 func (m *OutlinerModel) VisibleTaskIdentities() []taskref.TaskIdentity {
 	visible := make([]taskref.TaskIdentity, 0, len(m.Rows))
 	seen := make(map[taskref.TaskIdentity]bool, len(m.Rows))
+	resolve := m.rowProjectResolver()
 	for _, row := range m.Rows {
 		if !row.IsTaskRow() || row.Task == nil {
 			continue
 		}
-		identity := m.TaskIdentityForRow(row)
+		identity := taskref.For(row.Task, resolve(row.ProjectID))
 		if !identity.Valid() || seen[identity] {
 			continue
 		}
@@ -168,8 +169,31 @@ func (m *OutlinerModel) VisibleTaskIdentities() []taskref.TaskIdentity {
 	return visible
 }
 
+// SelectionCounts is read by the footer and the command context on every key,
+// so an empty selection answers without walking the projection: every count is
+// a count of selected identities.
 func (m *OutlinerModel) SelectionCounts() listsurface.SelectionCounts {
+	if len(m.SelectedTaskIdentities()) == 0 {
+		return listsurface.SelectionCounts{}
+	}
 	return m.ClassifySelection(m.VisibleTaskIdentities())
+}
+
+// rowProjectResolver is TaskIdentityForRow's project lookup for a pass over
+// every row: one index over the population rather than a scan of it per row.
+// The first project holding an ID wins, as crossResolveProject's scan does.
+func (m *OutlinerModel) rowProjectResolver() func(projectID string) *models.Project {
+	if m.Project != nil {
+		project := m.Project
+		return func(string) *models.Project { return project }
+	}
+	index := make(map[string]*models.Project, len(m.Population.Projects))
+	for _, p := range m.Population.Projects {
+		if _, ok := index[p.ID]; !ok {
+			index[p.ID] = p
+		}
+	}
+	return func(projectID string) *models.Project { return index[projectID] }
 }
 
 // selectAllVisible replaces the selection with all currently visible task rows.
