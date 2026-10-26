@@ -205,6 +205,11 @@ func (m *OutlinerModel) HandleCrossProjectsLoaded(msg CrossProjectsLoadedMsg) te
 	fallbackScrollOffset := m.ViewScrollOffset
 	m.DiscardDisplacedRelocationCapture()
 	m.Population.settleLoad()
+	// A reload a commit started usually answers with the very population the
+	// commit's own rebuild already drew, since that rebuild read the projects the
+	// commit reloaded through the same loader. Only a population the rows were not
+	// built from forces a rebuild; the guard still compares the view either way.
+	republished := m.Population.rebuiltFromSame(msg.Projects)
 	m.setLoadedProjects(msg.Projects)
 	// Both halves of this read's answer are recorded together: the projects it
 	// opened and the projects it could not. The generation check above is what
@@ -216,7 +221,9 @@ func (m *OutlinerModel) HandleCrossProjectsLoaded(msg CrossProjectsLoadedMsg) te
 	m.Population.setSnapshotReady(true)
 	m.recordLoadedPopulation(msg.LoadedProjectFilter)
 	m.pruneSelectionsOutsideLoadedProjects()
-	m.Population.Invalidate()
+	if !republished {
+		m.Population.Invalidate()
+	}
 	m.CrossProjectRebuildRows()
 	m.RestoreCrossOutlinerCursorAfterReload(fallbackCursor, fallbackScrollOffset)
 	switch {

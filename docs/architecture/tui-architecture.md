@@ -448,6 +448,19 @@ also needs `population.invalidate()` stays the call site's decision rather than
 the type's: the memoization guard is the population's, and the rebuild-time
 stack validation deliberately does not claim one.
 
+That guard's fingerprint describes the view and never the tasks, so a publish
+of new task data forces a rebuild. What it may skip is a publish of the data
+already drawn: each real rebuild records `rebuiltFrom`, every project object
+with its own fields and the identity of the task slice it held, and
+`HandleCrossProjectsLoaded` forces only when the population it installs differs
+from that. A committed transaction is built once on those terms. Its handler
+reloads the touched projects through the Outliner's own loader, whose `Reload`
+keeps the copy it read as its cached parse, and rebuilds over them; the shared
+refresh then asks the guard through `RefreshOutlinerPreservingCursor` rather
+than forcing; and the reload that refresh starts is answered from that cache with
+the same slices, so it republishes. Every load parses a new slice, so a slice
+that has not moved is the tasks the rows were built from.
+
 The project focus that ladder reaches last is the model's `scope` field, whose
 `scopeState` holds the focused project, the one base frame `Esc` restores behind
 it, and the parked-project exception. The exception is in that type rather than

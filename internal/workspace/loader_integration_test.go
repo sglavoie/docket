@@ -89,3 +89,36 @@ func TestLoaderStorageBackedCacheAvoidsReparse(t *testing.T) {
 		t.Fatalf("post-edit tasks = %d, want 3", len(third.Tasks()))
 	}
 }
+
+// TestLoaderReloadIsWhatTheNextBuildReturns pins Reload: the project it loads in
+// place is the object the next Build hands back for an unchanged file, without
+// a parse, while a later write to the file is still read.
+func TestLoaderReloadIsWhatTheNextBuildReturns(t *testing.T) {
+	root := t.TempDir()
+	p1 := writeProject(t, root, "p1", "p1", "first task")
+	loader := NewLoader()
+	loader.Build([]*models.Project{p1()})
+
+	writeProject(t, root, "p1", "p1", "first task", "second task")
+	reloaded := p1()
+	if err := loader.Reload(reloaded); err != nil {
+		t.Fatalf("Reload: %v", err)
+	}
+	if len(reloaded.Tasks) != 2 {
+		t.Fatalf("Reload loaded %d tasks, want the 2 on disk", len(reloaded.Tasks))
+	}
+	parses := loader.ParseCount()
+
+	built := loader.Build([]*models.Project{p1()})
+	if loader.ParseCount() != parses {
+		t.Fatal("Build parsed again a file Reload had just read")
+	}
+	if got := built.Projects(); len(got) != 1 || got[0] != reloaded {
+		t.Fatal("Build did not return the object Reload loaded")
+	}
+
+	writeProject(t, root, "p1", "p1", "first task", "second task", "third task")
+	if after := loader.Build([]*models.Project{p1()}); len(after.Tasks()) != 3 {
+		t.Fatalf("Build after a later write saw %d tasks, want 3", len(after.Tasks()))
+	}
+}

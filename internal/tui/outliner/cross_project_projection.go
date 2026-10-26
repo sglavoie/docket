@@ -2,6 +2,7 @@ package outliner
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -40,6 +41,7 @@ func (m *OutlinerModel) CrossProjectRebuildRows() {
 
 	// Update guard state and consume the force flag.
 	m.Population.record(currentFingerprint, currentFocusDepth, taskCount)
+	m.Population.recordRebuiltFrom(m.Population.Projects)
 	// A day-boundary or defer-wake invalidation captures the cursor before the
 	// projection can change lanes. Every real rebuild exit below must consume it;
 	// a memoized return above deliberately leaves it standing with the force flag.
@@ -296,4 +298,68 @@ func (m *OutlinerModel) CrossProjectFocusContext() string {
 		return ""
 	}
 	return taskFocusContext(project, project.GetTaskByID(top.TaskID))
+}
+
+// populationSource is what one loaded project gave a rebuild: the object, its
+// own fields, and the identity of the collections it held. Every load parses a
+// new task slice, so an unchanged slice is the same tasks the rows were built
+// from, and a rename, a retag, or any other catalog change shows in the fields.
+// A difference it reports that the rows would not show costs a rebuild; it
+// never reports the same for a population the rows were not built from.
+type populationSource struct {
+	project  *models.Project
+	fields   models.Project
+	tags     string
+	tasks    *models.Task
+	taskLen  int
+	comments *models.ProjectComment
+}
+
+// same compares the identities directly and the fields by value, so a field
+// added to models.Project later is compared without being named here.
+func (s populationSource) same(other populationSource) bool {
+	return s.project == other.project && s.tasks == other.tasks && s.taskLen == other.taskLen &&
+		s.comments == other.comments && s.tags == other.tags && reflect.DeepEqual(s.fields, other.fields)
+}
+
+func populationSourceOf(project *models.Project) populationSource {
+	source := populationSource{project: project}
+	if project == nil {
+		return source
+	}
+	source.fields = *project
+	source.fields.Tags, source.fields.Tasks, source.fields.Comments = nil, nil, nil
+	source.tags = strings.Join(project.Tags, "\x1f")
+	source.taskLen = len(project.Tasks)
+	if len(project.Tasks) > 0 {
+		source.tasks = project.Tasks[0]
+	}
+	if len(project.Comments) > 0 {
+		source.comments = project.Comments[0]
+	}
+	return source
+}
+
+// recordRebuiltFrom notes the population a real rebuild just read.
+func (p *populationState) recordRebuiltFrom(projects []*models.Project) {
+	p.rebuiltFrom = p.rebuiltFrom[:0]
+	for _, project := range projects {
+		p.rebuiltFrom = append(p.rebuiltFrom, populationSourceOf(project))
+	}
+}
+
+// rebuiltFromSame reports whether projects is exactly the population the last
+// real rebuild read: the same objects, holding the same task slices and the same
+// catalog fields. A publish answering yes changes nothing the rows were built
+// from, so it need not force a rebuild; the guard still compares the view.
+func (p *populationState) rebuiltFromSame(projects []*models.Project) bool {
+	if len(projects) != len(p.rebuiltFrom) {
+		return false
+	}
+	for i, project := range projects {
+		if !populationSourceOf(project).same(p.rebuiltFrom[i]) {
+			return false
+		}
+	}
+	return true
 }

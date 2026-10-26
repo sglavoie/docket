@@ -68,6 +68,12 @@ type populationState struct {
 	taskCount    int
 	ForceRebuild bool
 	revision     uint64
+
+	// rebuiltFrom is the population the last real rebuild read, project by
+	// project. The fingerprint above describes the view and never the tasks, so
+	// a publish that installs new task data has to force a rebuild; this is what
+	// lets a publish of exactly the data already built say so instead.
+	rebuiltFrom []populationSource
 }
 
 // setProjects installs a new loaded population. It is the only write to the

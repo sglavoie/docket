@@ -3,6 +3,7 @@ package workspace
 import (
 	"errors"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/sglavoie/docket/internal/models"
@@ -33,9 +34,12 @@ type cacheEntry struct {
 // Loader builds workspace snapshots while caching parsed projects keyed by
 // their source revision. When a project's tasks.md is unchanged since it was
 // last loaded (same mod time and size), the cached parse is reused and the file
-// is not read or parsed again. The cache is not safe for concurrent use; each
-// goroutine (or render pass) should own its Loader.
+// is not read or parsed again. A Loader is safe for concurrent use: a view's
+// reload builds on a command goroutine while the shell records a commit's
+// reload through Reload on its own.
 type Loader struct {
+	mu sync.Mutex
+
 	// loadProject parses a project's tasks.md into the project in place and
 	// returns the canonical content revision of what it parsed. Overridable for
 	// tests; defaults to loadThroughSharedDocuments.
@@ -82,6 +86,8 @@ func defaultStatSource(project *models.Project) sourceIdentity {
 // than aborting the whole build, so a single corrupt project cannot blank out
 // every other project's tasks.
 func (l *Loader) Build(projects []*models.Project) *Snapshot {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	snap := newSnapshot()
 	for _, project := range projects {
 		if project == nil {
@@ -135,11 +141,42 @@ func classifyLoadError(err error) DiagnosticKind {
 	return DiagnosticSkipped
 }
 
+// Reload loads project in place and records it as the cached parse of its
+// tasks.md, so the next Build hands this very object back rather than parsing
+// the file again into another. A caller that reloads a project after its own
+// commit uses this to keep that Build's answer identical to what it already
+// holds. The identity is taken before the read: a write landing between the two
+// leaves the entry looking older than the file, which the next Build re-reads,
+// and never newer than the bytes it describes.
+func (l *Loader) Reload(project *models.Project) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	identity := l.statSource(project)
+	revision, err := l.loadProject(project)
+	if err != nil {
+		delete(l.cache, project.ID)
+		return err
+	}
+	l.parseCount++
+	if identity.exists && project.ID != "" {
+		l.cache[project.ID] = cacheEntry{identity: identity, revision: revision, project: project}
+	}
+	return nil
+}
+
 // ParseCount reports how many projects this Loader has actually read and parsed
 // (cache misses). Instrumentation for proving unchanged projects are not
 // reparsed across successive Build calls.
-func (l *Loader) ParseCount() int { return l.parseCount }
+func (l *Loader) ParseCount() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.parseCount
+}
 
 // CacheHits reports how many project loads were served from the revision cache
 // without re-reading or re-parsing the source file.
-func (l *Loader) CacheHits() int { return l.cacheHits }
+func (l *Loader) CacheHits() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.cacheHits
+}

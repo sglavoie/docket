@@ -454,6 +454,26 @@ func RebuildOutlinerPreservingCursor(outliner *OutlinerModel) {
 	outliner.ClampCursor()
 }
 
+// RefreshOutlinerPreservingCursor is RebuildOutlinerPreservingCursor for a
+// caller that has changed no task since the last rebuild. The memo guard then
+// decides, so the rows are rebuilt only when a view input it reads — planning,
+// filters, folds, scope, the loaded set — has moved since, and a refresh that
+// would reproduce the rows already built costs nothing. A single-project
+// Outliner keeps no such guard and rebuilds as before.
+func RefreshOutlinerPreservingCursor(outliner *OutlinerModel) {
+	if outliner == nil {
+		return
+	}
+	if outliner.Project != nil {
+		RebuildOutlinerPreservingCursor(outliner)
+		return
+	}
+	anchor := outliner.captureModeCursor()
+	outliner.CrossProjectRebuildRows()
+	outliner.restoreModeCursor(anchor)
+	outliner.ClampCursor()
+}
+
 // cursorTaskIdentity names the task the cursor rests on, reading a checklist row
 
 // cursorProject resolves the project the Outliner cursor sits inside, whatever

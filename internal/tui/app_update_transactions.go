@@ -45,7 +45,7 @@ func (m *AppModel) handleTransactionResult(msg coordinator.TransactionResultMsg)
 		ProjectID: msg.Result.ProjectID,
 		TaskID:    msg.Result.TaskID,
 	})
-	saveCmd := m.handleSaveComplete(status.SaveCompleteMsg{})
+	saveCmd := m.handleCommittedSaveComplete()
 	feedbackCmd := m.setRecoveryFeedback(msg.SuccessMessage(), msg.Result.TransactionID, false)
 	return tea.Batch(saveCmd, feedbackCmd)
 }
@@ -161,7 +161,7 @@ func (m *AppModel) handleBatchTransactionResult(msg coordinator.BatchTransaction
 	if successMessage == "" {
 		successMessage = m.feedback.message
 	}
-	saveCmd := m.handleSaveComplete(status.SaveCompleteMsg{})
+	saveCmd := m.handleCommittedSaveComplete()
 	feedbackCmd := m.setRecoveryFeedbackWithContext(successMessage, msg.TransactionID,
 		recoveryWords{Context: msg.RecoveryContext, Headline: msg.RecoveryHeadline}, false)
 	return tea.Batch(saveCmd, feedbackCmd)
@@ -185,16 +185,49 @@ func (m *AppModel) reloadProjectByID(projectID string) bool {
 	if project == nil {
 		return false
 	}
-	if err := storage.LoadProject(project); err != nil {
+	if err := m.reloadCommittedProject(project); err != nil {
 		logging.Warn("failed to reload project %s after transaction: %v", project.Name, err)
 		return false
 	}
 	return true
 }
 
+// reloadCommittedProject reloads a shell-cached project after a commit through
+// the Outliner's loader and copies the result into the cached object, the way
+// adoptCrossProjectSnapshot adopts a load. The loader keeps the copy it read as
+// its cached parse, so the reload the commit's refresh starts is answered with
+// the very task slice the handler's rebuild renders, and publishing it tells the
+// Outliner nothing has changed. The copy, not the cached object, goes to the
+// loader because the reload reads what it caches on a command goroutine.
+func (m *AppModel) reloadCommittedProject(project *models.Project) error {
+	if m.crossOutliner == nil || m.crossOutliner.ProjectService == nil {
+		return storage.LoadProject(project)
+	}
+	fresh := *project
+	if err := m.crossOutliner.ProjectService.WorkspaceLoader().Reload(&fresh); err != nil {
+		return err
+	}
+	*project = fresh
+	return nil
+}
+
 func (m *AppModel) handleGlobalRefreshMessage(tea.Msg) (bool, tea.Cmd) { return false, nil }
 
 func (m *AppModel) handleSaveComplete(msg status.SaveCompleteMsg) tea.Cmd {
+	return m.completeSave(msg, false)
+}
+
+// handleCommittedSaveComplete is handleSaveComplete for a transaction handler
+// that has already reloaded the projects its commit touched and rebuilt the
+// Outliner over them. The shared refresh then asks the Outliner's memo guard
+// instead of forcing a second rebuild of the same rows, so it rebuilds only when
+// something the guard reads moved after the handler's rebuild — the planning a
+// batch refreshes afterwards, for one.
+func (m *AppModel) handleCommittedSaveComplete() tea.Cmd {
+	return m.completeSave(status.SaveCompleteMsg{}, true)
+}
+
+func (m *AppModel) completeSave(msg status.SaveCompleteMsg, outlinerRebuilt bool) tea.Cmd {
 	m.clearToggleHistory()
 	// An empty success message means the mutation carried no status of its own
 	// (e.g. a ProjectTree/Outliner reorder committed through CommitProjectWorkflow):
@@ -202,7 +235,7 @@ func (m *AppModel) handleSaveComplete(msg status.SaveCompleteMsg) tea.Cmd {
 	if msg.SuccessMessage != "" {
 		m.setSuccessStatus(msg.SuccessMessage)
 	}
-	saveCmds := m.refreshTaskViewsAfterSave()
+	saveCmds := m.refreshTaskViewsOver(true, true, outlinerRebuilt)
 	saveCmds = append(saveCmds, m.statusReadingTimeout())
 	return tea.Batch(saveCmds...)
 }
@@ -227,8 +260,19 @@ func (m *AppModel) refreshTaskViewsAfterRestore(runtimeReloaded bool) []tea.Cmd 
 }
 
 func (m *AppModel) refreshTaskViews(persistProjectTreeState, reloadCrossProject bool) []tea.Cmd {
+	return m.refreshTaskViewsOver(persistProjectTreeState, reloadCrossProject, false)
+}
+
+// refreshTaskViewsOver is refreshTaskViews for a caller that may already have
+// rebuilt the Outliner over the reloaded projects, in which case the memo guard
+// decides whether anything is left to rebuild.
+func (m *AppModel) refreshTaskViewsOver(persistProjectTreeState, reloadCrossProject, outlinerRebuilt bool) []tea.Cmd {
 	m.refreshWorkspacePulseAt(time.Now())
-	m.refreshProjectViewAfterTaskMutation(persistProjectTreeState)
+	if outlinerRebuilt {
+		outliner.RefreshOutlinerPreservingCursor(m.crossOutliner)
+	} else {
+		m.refreshProjectViewAfterTaskMutation(persistProjectTreeState)
+	}
 	var saveCmds []tea.Cmd
 	if reloadCrossProject {
 		if reloadCmd := m.requestCrossProjectOutlinerReload(); reloadCmd != nil {
