@@ -347,3 +347,23 @@ func TestRunDoctorRefusesAWorkspaceOwedAnUpgrade(t *testing.T) {
 		t.Fatal("doctor rewrote the catalog of a workspace it refused")
 	}
 }
+
+// TestRunDoctorOpensAFreshWorkspaceDirectory keeps that refusal to workspaces
+// owed an upgrade: a .docket/ holding no catalog and no legacy source is a
+// fresh workspace, which doctor opens at the current schema.
+func TestRunDoctorOpensAFreshWorkspaceDirectory(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	dir := t.TempDir()
+	setCommandDataDir(t, dir)
+	if err := os.MkdirAll(config.InternalDir(dir), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, _, err := captureDoctorOutput(t, func() error { return runDoctor(newDoctorCommand(t), nil) }); err != nil {
+		t.Fatalf("doctor error = %v, want a fresh workspace opened", err)
+	}
+	schema, exists, err := config.WorkspaceCatalogSchema(dir)
+	if err != nil || !exists || schema != config.CurrentConfigVersion {
+		t.Fatalf("catalog schema = %d, exists %v, err %v; want schema %d", schema, exists, err, config.CurrentConfigVersion)
+	}
+}

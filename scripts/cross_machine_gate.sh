@@ -591,8 +591,7 @@ case_six() {
 
 	shared="$work_dir/case6/workspace"
 	home_old="$work_dir/case6/home-old"
-	home_new="$work_dir/case6/home-new"
-	mkdir -p "$home_old" "$home_new"
+	mkdir -p "$home_old"
 	fresh_workspace_dir "$shared" .tt
 
 	if ! HOME="$home_old" "$old_binary" doctor --data-dir "$shared" >"$work_dir/case6-old.log" 2>&1; then
@@ -628,8 +627,10 @@ case_six() {
 		return
 	fi
 
-	if ! HOME="$home_new" "$current_binary" doctor --data-dir "$shared" >"$work_dir/case6-migrate.log" 2>&1; then
-		report_fail "the current binary could not migrate the older workspace (see $work_dir/case6-migrate.log)"
+	# doctor refuses a workspace owed an upgrade, so the migration is an opening.
+	if ! DOCKET_HELPER_DATA_DIR="$shared" \
+		"$helper_binary" -test.run '^TestCrossMachineHelperOpensWorkspace$' >"$work_dir/case6-migrate.log" 2>&1; then
+		report_fail "the current build could not migrate the older workspace (see $work_dir/case6-migrate.log)"
 		return
 	fi
 	require_tombstone case6 "$shared" || return

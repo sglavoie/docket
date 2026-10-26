@@ -31,6 +31,21 @@ func TestCrossMachineHelperSeedsWorkspace(t *testing.T) {
 	helperRecord(t, "seeded")
 }
 
+// TestCrossMachineHelperOpensWorkspace opens a workspace the way a launch does,
+// migrating one owed an upgrade, and writes nothing else. It is the migration
+// case's upgrade step: doctor refuses such a workspace, so opening is the one
+// route across it.
+func TestCrossMachineHelperOpensWorkspace(t *testing.T) {
+	dataDir := strings.TrimSpace(os.Getenv(helperDataDirEnv))
+	if dataDir == "" {
+		t.Skipf("%s is unset; this test is a cross-machine helper role", helperDataDirEnv)
+	}
+	if _, err := config.NewManager(config.ConfigPathForDataDir(dataDir)).LoadOrCreateDomains(); err != nil {
+		t.Fatalf("LoadOrCreateDomains(%q): %v", dataDir, err)
+	}
+	helperRecord(t, "opened")
+}
+
 // seedCrossMachineWorkspace writes the two projects and the one shared tag every
 // helper role reads, and returns the project holding the two tasks the
 // resume-note race rewrites through a single tasks.md. It is shared with the

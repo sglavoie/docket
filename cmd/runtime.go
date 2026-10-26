@@ -134,18 +134,30 @@ func requireExistingWorkspace() error {
 // requireUpgradedWorkspace is requireExistingWorkspace for a command that
 // inspects rather than opens: loading a workspace older than this build
 // upgrades it, one-way, so a workspace still owed that upgrade is refused from
-// its catalog alone, before anything is recovered or migrated.
+// its catalog alone, before anything is recovered or migrated. A .docket/
+// holding no catalog and no legacy source beside it is a fresh workspace:
+// opening it mints a catalog at the current schema rather than upgrading one.
 func requireUpgradedWorkspace() error {
 	if err := requireExistingWorkspace(); err != nil {
 		return err
 	}
-	dir := config.WorkspaceRootFromConfigPath(config.NewManager(resolveConfigPath()).GetConfigPath())
+	configPath := config.NewManager(resolveConfigPath()).GetConfigPath()
+	dir := config.WorkspaceRootFromConfigPath(configPath)
 	schema, exists, err := config.WorkspaceCatalogSchema(dir)
 	if err != nil {
 		return err
 	}
 	if exists && schema >= config.CurrentConfigVersion {
 		return nil
+	}
+	if !exists {
+		legacy, legacyErr := legacyWorkspaceSourceExists(dir, configPath)
+		if legacyErr != nil {
+			return legacyErr
+		}
+		if !legacy {
+			return nil
+		}
 	}
 	held := "an older workspace format"
 	if exists {
@@ -154,6 +166,21 @@ func requireUpgradedWorkspace() error {
 	return fmt.Errorf("workspace %s holds %s and this command never upgrades it; "+
 		"back it up with 'docket workspace backup <directory>', then run 'docket' once to upgrade it to schema %d",
 		absolutePath(dir), held, config.CurrentConfigVersion)
+}
+
+// legacyWorkspaceSourceExists reports whether dir still keeps something an
+// opening would migrate from: a pre-v24 .tt/ or the legacy aggregate config file.
+func legacyWorkspaceSourceExists(dir, configPath string) (bool, error) {
+	for _, marker := range []string{config.LegacyInternalDir(dir), configPath} {
+		_, err := os.Stat(marker)
+		if err == nil {
+			return true, nil
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return false, fmt.Errorf("failed to inspect workspace at %s: %w", absolutePath(dir), err)
+		}
+	}
+	return false, nil
 }
 
 // workspaceExists reports whether the workspace configPath belongs to is there,
