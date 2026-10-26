@@ -396,9 +396,6 @@ var retiredProductNameAllowed = map[string][]string{
 	// The enrollment staging marker is an in-workspace name the workspace
 	// migration owns.
 	"internal/config/sync_enroll_staging.go": {`"tt enrollment staging\n"`},
-	// Homebrew's own tt formula is an unrelated program, and the published
-	// cask keeps its name until the release that renames it.
-	"README.md": {"Homebrew's own `tt` formula", "brew upgrade --cask tt", "sglavoie/tap/tt", "sglavoie/tt@latest"},
 }
 
 // retiredProductNameMigrationHeading marks a Markdown section that describes

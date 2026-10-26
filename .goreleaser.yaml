@@ -2,14 +2,17 @@
 # Check locally with `goreleaser check` and `goreleaser release --snapshot --clean`.
 version: 2
 
+project_name: docket
+
 before:
   hooks:
     - go mod tidy -diff
     # Shell completions, shipped in the archives and installed by the cask.
-    - sh -c 'rm -rf completions && mkdir completions && for sh in bash zsh fish; do go run . completion "$sh" > "completions/tt.$sh"; done'
+    - sh -c 'rm -rf completions && mkdir completions && for sh in bash zsh fish; do go run . completion "$sh" > "completions/docket.$sh"; done'
 
 builds:
-  - env:
+  - binary: docket
+    env:
       - CGO_ENABLED=0
     # Windows is not supported.
     goos: [linux, darwin]
@@ -43,18 +46,25 @@ changelog:
       - "^chore(\\(.*\\))?:"
 
 homebrew_casks:
-  - repository:
+  - name: docket
+    repository:
       owner: sglavoie
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     directory: Casks
-    homepage: https://github.com/sglavoie/tt
+    homepage: https://github.com/sglavoie/docket
     description: Local-first, keyboard-driven task manager for the terminal
     license: MIT
+    # The second entry also links docket as the short alias dkt. binaries
+    # takes names only and custom_block lands above version, which fails
+    # brew style's stanza order, so the target rides in the quoted name.
+    binaries:
+      - docket
+      - 'docket", target: "dkt'
     completions:
-      bash: completions/tt.bash
-      zsh: completions/tt.zsh
-      fish: completions/tt.fish
+      bash: completions/docket.bash
+      zsh: completions/docket.zsh
+      fish: completions/docket.fish
     hooks:
       post:
         # The binaries are not notarized: let macOS run them.
@@ -62,5 +72,5 @@ homebrew_casks:
         # deprecated postflight, which warns on every install.
         install_steps: |
           on_macos do
-            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/tt"]
+            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/docket"]
           end

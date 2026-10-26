@@ -116,7 +116,7 @@ a host to talk to. It has no task
 mutation or undo/redo command.
 
 Distribution is a tagged release or `go install
-github.com/sglavoie/tt@latest`. Pushing a `v*` tag runs every CI check, then
+github.com/sglavoie/docket@latest`. Pushing a `v*` tag runs every CI check, then
 GoReleaser (`.goreleaser.yaml`) publishes darwin and linux archives for amd64
 and arm64, each carrying the binary and its shell completions, and writes the
 `docket` cask in `sglavoie/homebrew-tap`; that cask is generated, so a lasting fix

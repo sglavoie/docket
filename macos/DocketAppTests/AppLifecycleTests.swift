@@ -115,8 +115,8 @@ final class MainMenuTests: XCTestCase {
         let help = try XCTUnwrap(submenu(MainMenu.make(), "Help"))
         XCTAssertEqual(titles(help), ["Docket Guide", "Report an Issue…"])
         XCTAssertEqual(help.item(withTitle: "Report an Issue…")?.action, MainMenu.reportIssue)
-        XCTAssertEqual(MainMenu.guideURL.absoluteString, "https://github.com/sglavoie/tt/blob/main/docs/guide/README.md")
-        XCTAssertEqual(MainMenu.issuesURL.absoluteString, "https://github.com/sglavoie/tt/issues")
+        XCTAssertEqual(MainMenu.guideURL.absoluteString, "https://github.com/sglavoie/docket/blob/main/docs/guide/README.md")
+        XCTAssertEqual(MainMenu.issuesURL.absoluteString, "https://github.com/sglavoie/docket/issues")
     }
 
     /// Undo, Redo, and Cut are text-field edits: the surface keeps their keys,

@@ -27,7 +27,7 @@ jobs:
         with:
           go-version-file: go.mod
 
-      # Publishes the GitHub release and writes Casks/tt.rb in
+      # Publishes the GitHub release and writes Casks/docket.rb in
       # sglavoie/homebrew-tap (.goreleaser.yaml).
       - uses: goreleaser/goreleaser-action@v6
         with:

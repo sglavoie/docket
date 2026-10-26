@@ -25,7 +25,7 @@ enum MainMenu {
     static let find = #selector(Ghostty.SurfaceView.findTasks(_:))
     static let terminalEditActions: Set<Selector> = [undo, redo, find]
     /// Docket's repository, which the guide and issue links are read from.
-    static let repositoryURL = URL(string: "https://github.com/sglavoie/tt")!
+    static let repositoryURL = URL(string: "https://github.com/sglavoie/docket")!
     /// The user guide, read on GitHub: an installed app carries no docs tree.
     static let guideURL = repositoryURL.appendingPathComponent("blob/main/docs/guide/README.md")
     static let issuesURL = repositoryURL.appendingPathComponent("issues")

@@ -84,23 +84,24 @@ explains how each view groups your work.
 On macOS or Linux, install the release build with Homebrew:
 
 ```bash
-brew install --cask sglavoie/tap/tt
+brew install --cask sglavoie/tap/docket
 docket
 ```
 
-Spell the tap out: Homebrew's own `tt` formula is an unrelated program that
-installs a binary of the same name. The cask also installs bash, zsh, and fish
-completions; `brew upgrade --cask tt` takes new releases.
+The cask installs `docket`, its short alias `dkt`, and bash, zsh, and fish
+completions; `brew upgrade --cask docket` takes new releases.
 
 With Go instead:
 
 ```bash
-go install github.com/sglavoie/tt@latest
+go install github.com/sglavoie/docket@latest
 docket
 ```
 
-That needs Go 1.25.13 or newer and `$(go env GOPATH)/bin` — usually `~/go/bin` —
-on your `PATH`. To build from a clone instead:
+That installs `docket` only; the `dkt` alias comes with the cask or with
+`just install` from a clone. It needs Go 1.26.10 or newer and
+`$(go env GOPATH)/bin` — usually `~/go/bin` — on your `PATH`. To build from a
+clone instead:
 
 ```bash
 go build -o docket .
