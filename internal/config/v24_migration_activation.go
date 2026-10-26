@@ -348,7 +348,9 @@ func settleV24Layout(dataDir string, state v24LegacyState) error {
 
 // v24LegacyCarried reports whether .docket/ still holds every byte the move
 // carries out of a live .tt/, which is what an activation interrupted after its
-// commit point leaves.
+// commit point leaves. That includes backups/, which the inventory leaves out:
+// a backup an older build or a sync added to .tt/ afterwards exists nowhere
+// else, so it keeps .tt/ from being discarded.
 func v24LegacyCarried(dataDir string) (bool, error) {
 	inventory, err := inventoryV24Legacy(dataDir, false)
 	if err != nil {
@@ -367,7 +369,49 @@ func v24LegacyCarried(dataDir string) (bool, error) {
 			return false, nil
 		}
 	}
-	return true, nil
+	return v24LegacyBackupsCarried(dataDir)
+}
+
+// v24LegacyBackupsCarried reports whether every backup under .tt/backups/ the
+// move copies, which is all of them but lock files, sits byte for byte at the
+// same place under .docket/. Anything it cannot read or compare counts as not
+// carried, so the caller keeps .tt/ rather than deleting it.
+func v24LegacyBackupsCarried(dataDir string) (bool, error) {
+	legacy := LegacyInternalDir(dataDir)
+	backups := filepath.Join(legacy, "backups")
+	carried := true
+	err := filepath.WalkDir(backups, func(path string, entry fs.DirEntry, walkErr error) error {
+		if errors.Is(walkErr, fs.ErrNotExist) && path == backups {
+			return nil
+		}
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() || strings.HasSuffix(entry.Name(), ".lock") {
+			return nil
+		}
+		if !entry.Type().IsRegular() {
+			carried = false
+			return fs.SkipAll
+		}
+		rel, err := filepath.Rel(legacy, path)
+		if err != nil {
+			return err
+		}
+		source, err := readPreScopeV7Source(path, filepath.ToSlash(rel), "pre-v24 backup", false)
+		if err != nil {
+			return err
+		}
+		if !v24HoldsBytes(filepath.Join(InternalDir(dataDir), rel), source) {
+			carried = false
+			return fs.SkipAll
+		}
+		return nil
+	})
+	if err != nil {
+		return false, fmt.Errorf("compare %s with %s: %w", backups, PreScopeV7BackupsDir(dataDir), err)
+	}
+	return carried, nil
 }
 
 func removeV24Retired(retired string) error {

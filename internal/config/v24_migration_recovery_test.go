@@ -262,6 +262,41 @@ func TestManagerV24KeepsALiveLegacyDirectoryBesideAnActivatedOne(t *testing.T) {
 	}
 }
 
+// TestManagerV24KeepsALegacyBackupMissingFromTheActivatedOne is a crash just
+// after the commit point, then a backup that reaches .tt/backups/ only: every
+// inventoried file still matches, but .tt/ is kept rather than deleted, and
+// recovery still finishes with the tombstone.
+func TestManagerV24KeepsALegacyBackupMissingFromTheActivatedOne(t *testing.T) {
+	root := legacyV24Workspace(t)
+	manager := NewManager(ConfigPathForDataDir(root))
+	err := manager.activateV24Layout(&v24LayoutTestHooks{stopAt: v24StepActivated})
+	if !errors.Is(err, errSimulatedV24Crash) {
+		t.Fatalf("activation error = %v, want the simulated crash", err)
+	}
+	late := filepath.Join(LegacyInternalDir(root), "backups", "late-archive.tar.gz")
+	if err = os.WriteFile(late, []byte("only copy\n"), FilePermissions); err != nil {
+		t.Fatal(err)
+	}
+	if err = manager.RecoverWorkspace(); err != nil {
+		t.Fatal(err)
+	}
+	kept := ""
+	for rel, data := range v24Tree(t, PreScopeV7BackupsDir(root)) {
+		if strings.HasPrefix(rel, v24KeptDirPrefix) && strings.HasSuffix(rel, "backups/late-archive.tar.gz") {
+			kept = data
+		}
+	}
+	if kept != "only copy\n" {
+		t.Fatal("recovery deleted a legacy backup .docket/ does not hold")
+	}
+	if state, _ := inspectV24Legacy(root); state != v24LegacyTombstone {
+		t.Fatal("the tombstone did not replace the live .tt/")
+	}
+	if dirExists(filepath.Join(root, v24RetiredDirName)) {
+		t.Fatal("recovery left a retired directory")
+	}
+}
+
 // TestManagerV24RefusesALoneTombstone is a workspace another machine moved
 // whose .docket/ has not arrived: nothing is created, and the refusal names it.
 func TestManagerV24RefusesALoneTombstone(t *testing.T) {

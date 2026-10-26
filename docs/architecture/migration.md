@@ -250,13 +250,14 @@ Interrupted activation recovery reads the two directories. A stage of either
 kind is never authoritative and is deleted on sight. No `.docket/` and a live
 `.tt/` is a crash before the commit point: start over, publishing a fresh
 archive. `.docket/` with a live `.tt/` is a crash after it: when `.docket/`
-still holds every byte the move carries, `.tt/` is retired and deleted, and
-otherwise — an older build kept writing it while the move synced — it is kept
-under `.docket/backups/kept-pre-v24-internal-<UTC>/` before the tombstone
-replaces it. `.docket/` with no `.tt/` gets the tombstone and loses any retired
-directory. A tombstone with no `.docket/` is a move another machine made that
-has not arrived: `WorkspaceMovedElsewhereError` refuses it, and
-`WorkspaceCatalogSchema` and `LoadDomains` do the same without writing.
+still holds every byte the move carries, backups included, `.tt/` is retired
+and deleted, and otherwise — an older build kept writing it while the move
+synced — it is kept under `.docket/backups/kept-pre-v24-internal-<UTC>/`
+before the tombstone replaces it. `.docket/` with no `.tt/` gets the tombstone
+and loses any retired directory. A tombstone with no `.docket/` is a move
+another machine made that has not arrived: `WorkspaceMovedElsewhereError`
+refuses it, and `WorkspaceCatalogSchema` and `LoadDomains` do the same without
+writing.
 `internal/synclog` reads a pre-v24 record's `.tt/` paths through
 `CanonicalPath`, so sealed history, tracked state, and index records keep
 resolving, while `Classify` calls the tombstone device-local.
