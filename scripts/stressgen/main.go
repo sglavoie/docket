@@ -32,6 +32,7 @@ import (
 	"github.com/sglavoie/docket/internal/app"
 	"github.com/sglavoie/docket/internal/engine"
 	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/textgrammar"
 )
 
 const (
@@ -91,10 +92,10 @@ func run(opts options) error {
 	if opts.measure {
 		return measure(root)
 	}
-	if err := validate(opts); err != nil {
+	if err = validate(opts); err != nil {
 		return err
 	}
-	if err := prepareDir(root, opts.force); err != nil {
+	if err = prepareDir(root, opts.force); err != nil {
 		return err
 	}
 
@@ -240,12 +241,12 @@ func diskUsage(dir string) (int64, int) {
 	var size int64
 	files := 0
 	_ = filepath.WalkDir(dir, func(_ string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return nil
-		}
-		if info, infoErr := d.Info(); infoErr == nil {
-			size += info.Size()
-			files++
+		// The measurement is best effort: an unreadable entry is skipped, not fatal.
+		if err == nil && !d.IsDir() {
+			if info, infoErr := d.Info(); infoErr == nil {
+				size += info.Size()
+				files++
+			}
 		}
 		return nil
 	})
@@ -457,16 +458,17 @@ func (g *generator) request(projectID string, parentID *string) app.CaptureReque
 		req.Due = &due
 	}
 	switch req.Destination {
-	case "backlog":
+	case textgrammar.DestinationBacklog:
 		if r.Float64() < 0.08 {
 			wake := g.now.Add(time.Duration(1+r.Intn(24*21)) * time.Hour)
 			req.DeferSet, req.Defer = true, &wake
 		}
-	case "waiting", "doing":
+	case textgrammar.DestinationWaiting, textgrammar.DestinationDoing:
 		if r.Float64() < 0.5 {
 			next := g.day(r.Intn(14) - 4)
 			req.CheckIn = models.CheckInSchedule{Next: &next, RepeatDays: []int{0, 0, 3, 7}[r.Intn(4)]}
 		}
+	default:
 	}
 	if !terminalDestination(req.Destination) {
 		req.Pinned = r.Float64() < 0.005

@@ -113,7 +113,7 @@ func TestProjectDocumentCacheRereadsChangedBytesOfEqualSizeAndTime(t *testing.T)
 	}
 }
 
-// TestNilProjectDocumentCacheParsesEveryLoad keeps the uncached behaviour: a
+// TestNilProjectDocumentCacheParsesEveryLoad keeps the uncached behavior: a
 // nil cache is valid and retains nothing.
 func TestNilProjectDocumentCacheParsesEveryLoad(t *testing.T) {
 	newProject := cacheTestProject(t)
