@@ -134,7 +134,7 @@ func TestCommitService_PreservesLosslessBaseAndReturnsReloadRevision(t *testing.
 	project.Tasks[0].CreatedAt = time.Date(2026, 7, 13, 10, 15, 5, 0, time.Local)
 	project.Tasks[0].UpdatedAt = time.Date(2026, 7, 13, 10, 15, 5, 0, time.Local)
 
-	seed := ProjectDocumentFromBase(project, nil)
+	seed := ToProjectDocument(project)
 	if err := os.MkdirAll(project.Path, DirPermissions); err != nil {
 		t.Fatalf("mkdir project: %v", err)
 	}

@@ -26,6 +26,7 @@ type V20ProjectDocument struct {
 // schema 19 would have accepted before the key existed.
 func ValidateV20ProjectDocument(document V20ProjectDocument) error {
 	base := V19ProjectDocument{ProjectName: document.ProjectName, Comments: document.Comments}
+	base.Tasks = make([]format.V18TaskRecord, 0, len(document.Tasks))
 	for _, task := range document.Tasks {
 		if err := format.ValidateV19TaskRecord(task); err != nil {
 			return err
@@ -67,6 +68,14 @@ func WriteV20ProjectDocument(document V20ProjectDocument) (string, error) {
 	if err := ValidateV20ProjectDocument(document); err != nil {
 		return "", err
 	}
+	return writeValidatedV20ProjectDocument(document)
+}
+
+// writeValidatedV20ProjectDocument renders a document the caller has just
+// validated, which is what the live writer holds: building a document from the
+// models validates it, and validating it a second time on the way out doubled
+// the cost of every render for nothing.
+func writeValidatedV20ProjectDocument(document V20ProjectDocument) (string, error) {
 	records := make([]format.V6TaskRecord, 0, len(document.Tasks))
 	for _, task := range document.Tasks {
 		records = append(records, task.V6TaskRecord)

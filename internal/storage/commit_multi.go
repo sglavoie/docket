@@ -13,12 +13,19 @@ import (
 	"github.com/sglavoie/docket/internal/util"
 )
 
-func (s *CommitService) preflightChangesets(changesets []ChangeSet) ([]*ProjectDocument, []RecordedConflict, error) {
+// committedRendering is a document a commit writes and the canonical bytes it
+// writes for it, whose digest is the document's revision.
+type committedRendering struct {
+	document *ProjectDocument
+	content  string
+}
+
+func (s *CommitService) preflightChangesets(changesets []ChangeSet) ([]committedRendering, []RecordedConflict, error) {
 	// mergedDocs[i], when non-nil, is the three-way-merged document that replaces
 	// changeset i's local intent because its expected revision was stale but the
 	// concurrent edits merged cleanly. Phase 3 writes it verbatim instead of
 	// re-rendering the caller's local document.
-	mergedDocs := make([]*ProjectDocument, len(changesets))
+	mergedDocs := make([]committedRendering, len(changesets))
 	// recorded accumulates every project whose stale-revision merge produced true
 	// conflicts. A non-empty set aborts the whole commit after every conflict is
 	// durably recorded, so no project or artifact is written.
@@ -63,7 +70,7 @@ func (s *CommitService) preflightChangesets(changesets []ChangeSet) ([]*ProjectD
 			if mergeErr != nil {
 				return nil, nil, fmt.Errorf("rendering local document for merge of %s: %w", project.Name, mergeErr)
 			}
-			merge, conflictID, mergeErr := MergeOrRecordConflict(s.conflicts, project, cs.Base, local, currentDoc, cs.UndoAction, cs.UndoContext)
+			merge, conflictID, mergeErr := MergeOrRecordConflict(s.conflicts, project, cs.Base, local, currentDoc(), cs.UndoAction, cs.UndoContext)
 			if mergeErr != nil {
 				return nil, nil, fmt.Errorf("merging stale project %s: %w", project.Name, mergeErr)
 			}
@@ -81,14 +88,14 @@ func (s *CommitService) preflightChangesets(changesets []ChangeSet) ([]*ProjectD
 			if renderErr != nil {
 				return nil, nil, fmt.Errorf("rendering merged document for %s: %w", project.Name, renderErr)
 			}
-			canonical, canonErr := ParseProjectDocument(mergedContent)
+			canonical, canonicalContent, canonErr := canonicalizeProjectContent(mergedContent)
 			if canonErr != nil {
 				return nil, nil, fmt.Errorf("canonicalizing merged document for %s: %w", project.Name, canonErr)
 			}
 			// The merge folded in the current on-disk state, so mergedDocs[i] is what
 			// Phase 3 writes; the write is safe under the still-held project lock (no
 			// further revision check is needed, the merge already reconciled current).
-			mergedDocs[i] = canonical
+			mergedDocs[i] = committedRendering{document: canonical, content: canonicalContent}
 		default:
 			// Stale with no merge capability (nil base, corrupt or absent current doc,
 			// or no conflict store): abort as before so the caller reloads and retries.
@@ -191,19 +198,16 @@ func (s *CommitService) commitMultiLocked(journal *transaction.Journal, changese
 		project := cs.Project
 		// A stale changeset that merged cleanly writes the merged document; every
 		// other changeset renders the caller's local intent over its base.
-		committedDoc := mergedDocs[i]
-		if committedDoc == nil {
-			var err error
-			committedDoc, err = CanonicalProjectDocument(project, cs.Base)
+		committed := mergedDocs[i]
+		if committed.document == nil {
+			document, content, err := canonicalProjectRendering(project)
 			if err != nil {
 				return nil, fmt.Errorf("rendering project %s: %w", project.Name, err)
 			}
+			committed = committedRendering{document: document, content: content}
 		}
-		content, err := committedDoc.WriteCurrent()
-		if err != nil {
-			return nil, fmt.Errorf("rendering project %s: %w", project.Name, err)
-		}
-		committedDocs[i] = committedDoc
+		content := committed.content
+		committedDocs[i] = committed.document
 		if s.ledger != nil {
 			arts, captureErr := captureLedgerArtifacts(cs, content)
 			if captureErr != nil {
@@ -278,18 +282,19 @@ func (s *CommitService) commitMultiLocked(journal *transaction.Journal, changese
 		s.ledger.gcBlobs(ledgerPlan.file)
 	}
 
-	// The bytes just made durable are each project's canonical rendering, so the
-	// readers that follow every commit parse them without rendering them again.
-	for i, cs := range changesets {
-		SharedProjectDocuments.NoteCanonicalWrite(tasksFilePath(cs.Project.Path), committedContent[i], committedDocs[i].Revision)
-	}
-
 	results := make([]*CommitResult, len(changesets))
 	for i := range changesets {
 		results[i] = &CommitResult{
 			Revision:      committedDocs[i].Revision,
 			TransactionID: manifest.ID,
 		}
+	}
+	// The bytes just made durable are each project's canonical rendering, parsed
+	// already to learn their revision, so the readers that follow every commit
+	// are handed that parse rather than repeating it. The documents are the
+	// cache's from here on.
+	for i, cs := range changesets {
+		SharedProjectDocuments.NoteCommittedDocument(tasksFilePath(cs.Project.Path), committedContent[i], committedDocs[i])
 	}
 	return results, nil
 }
@@ -336,13 +341,17 @@ func acquireLocksInOrder(paths []string, fn func() error) error {
 	})
 }
 
-// currentDocAndRevision reads and parses the project's current tasks.md,
-// returning the parsed document (the three-way merge's "current" input) and its
-// canonical revision, or (nil, "") when the file is absent or unparseable.
-// A nil document routes a stale commit to a plain
-// RevisionConflictError since it has no mergeable current, matching the legacy
-// save path's tolerance of an unparseable on-disk file.
-func (s *CommitService) currentDocAndRevision(tasksPath string, project *models.Project) (*ProjectDocument, string, error) {
+// currentDocAndRevision reads the project's current tasks.md, returning its
+// canonical revision and a copy of its parse on demand (the three-way merge's
+// "current" input), or (nil, "") when the file is absent or unparseable. A nil
+// document routes a stale commit to a plain RevisionConflictError since it has
+// no mergeable current, matching the legacy save path's tolerance of an
+// unparseable on-disk file.
+//
+// The bytes go through the shared cache, which almost always holds them: the
+// snapshot this commit was planned against read the same file moments ago. Only
+// a merge needs the document, and it gets its own copy.
+func (s *CommitService) currentDocAndRevision(tasksPath string, project *models.Project) (func() *ProjectDocument, string, error) {
 	oldContent, err := os.ReadFile(tasksPath)
 	if os.IsNotExist(err) {
 		return nil, "", nil
@@ -350,10 +359,10 @@ func (s *CommitService) currentDocAndRevision(tasksPath string, project *models.
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to read tasks file: %w", err)
 	}
-	oldDoc, parseErr := ParseProjectDocument(string(oldContent))
+	current, parseErr := SharedProjectDocuments.retain(tasksPath, oldContent)
 	if parseErr != nil {
 		logging.Warn("could not read current document for %s: %v", project.Name, parseErr)
 		return nil, "", nil
 	}
-	return oldDoc, oldDoc.Revision, nil
+	return current.document.clone, current.document.Revision, nil
 }

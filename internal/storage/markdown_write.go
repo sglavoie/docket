@@ -12,7 +12,7 @@ func WriteProjectMarkdown(project *models.Project) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return writeCurrentTaskProjectDocument(document)
+	return writeValidatedCurrentTaskProjectDocument(document)
 }
 
 type taskHierarchyIndex struct {

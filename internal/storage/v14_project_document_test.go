@@ -158,3 +158,17 @@ func TestLiveWriterRefusesAnUnpersistableDependency(t *testing.T) {
 		t.Fatal("WriteCurrent accepted a dependency carrying a reserved character")
 	}
 }
+
+// v15ProjectDocumentFromV16 projects a schema-16 document down to schema 15,
+// which only this fixture still needs now that validation reads the schema-6
+// records directly.
+func v15ProjectDocumentFromV16(document V16ProjectDocument) V15ProjectDocument {
+	projected := V15ProjectDocument{ProjectName: document.ProjectName}
+	if len(document.Tasks) > 0 {
+		projected.Tasks = make([]format.V15TaskRecord, 0, len(document.Tasks))
+	}
+	for _, task := range document.Tasks {
+		projected.Tasks = append(projected.Tasks, task.V15TaskRecord)
+	}
+	return projected
+}

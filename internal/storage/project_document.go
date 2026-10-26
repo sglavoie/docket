@@ -83,13 +83,7 @@ func (d *ProjectDocument) WriteCurrent() (string, error) {
 }
 
 func (d *ProjectDocument) render() (string, error) {
-	document, err := currentTaskProjectDocumentFromModel(&models.Project{
-		Name: d.ProjectName, Tasks: d.Tasks, Comments: d.Comments,
-	})
-	if err != nil {
-		return "", err
-	}
-	return writeCurrentTaskProjectDocument(document)
+	return WriteProjectMarkdown(&models.Project{Name: d.ProjectName, Tasks: d.Tasks, Comments: d.Comments})
 }
 
 // ToProjectDocument projects a live project into a document. The task pointers
@@ -106,21 +100,45 @@ func ToProjectDocument(project *models.Project) *ProjectDocument {
 	return doc
 }
 
-func ProjectDocumentFromBase(project *models.Project, _ *ProjectDocument) *ProjectDocument {
-	return ToProjectDocument(project)
+// CanonicalProjectDocument is the project as the next load of its rendering
+// will see it: rendered, parsed back, and revised.
+func CanonicalProjectDocument(project *models.Project, _ *ProjectDocument) (*ProjectDocument, error) {
+	canonical, _, err := canonicalProjectRendering(project)
+	return canonical, err
 }
 
-func CanonicalProjectDocument(project *models.Project, base *ProjectDocument) (*ProjectDocument, error) {
-	doc := ProjectDocumentFromBase(project, base)
-	content, err := doc.WriteCurrent()
+// canonicalProjectRendering is CanonicalProjectDocument plus the canonical
+// bytes its revision hashes, which are what a commit writes. Rendering the
+// project, parsing that back, and rendering the parse once more is the whole
+// cost: the revision is the digest of that last rendering rather than of a
+// render of its own, and the writer has no reason to render it again.
+func canonicalProjectRendering(project *models.Project) (*ProjectDocument, string, error) {
+	content, err := WriteProjectMarkdown(&models.Project{Name: project.Name, Tasks: project.Tasks, Comments: project.Comments})
 	if err != nil {
-		return nil, fmt.Errorf("rendering canonical project document: %w", err)
+		return nil, "", fmt.Errorf("rendering canonical project document: %w", err)
 	}
-	canonical, err := ParseProjectDocument(content)
+	canonical, rendered, err := canonicalizeProjectContent(content)
 	if err != nil {
-		return nil, fmt.Errorf("canonicalizing project document: %w", err)
+		return nil, "", fmt.Errorf("canonicalizing project document: %w", err)
 	}
-	return canonical, nil
+	return canonical, rendered, nil
+}
+
+// canonicalizeProjectContent parses rendered content and renders the parse,
+// returning the document with the revision of that rendering and the rendering
+// itself.
+func canonicalizeProjectContent(content string) (*ProjectDocument, string, error) {
+	canonical, err := parseProjectDocumentContent(content)
+	if err != nil {
+		return nil, "", err
+	}
+	rendered, err := canonical.render()
+	if err != nil {
+		return nil, "", err
+	}
+	sum := sha256.Sum256([]byte(rendered))
+	canonical.Revision = hex.EncodeToString(sum[:])
+	return canonical, rendered, nil
 }
 
 func LoadProjectDocument(project *models.Project) (*ProjectDocument, error) {

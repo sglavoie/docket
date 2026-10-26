@@ -3,6 +3,7 @@ package storage
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -123,12 +124,11 @@ func TestNilProjectDocumentCacheParsesEveryLoad(t *testing.T) {
 	}
 }
 
-// TestNoteCanonicalWriteSkipsTheRenderAndAgreesWithAParse pins the post-commit
-// shortcut: bytes a commit wrote as a canonical rendering parse to the revision
-// an uncached parse computes, so taking their digest instead of rendering them
-// can never disagree with the revision guard. Bytes that are not their claimed
-// revision's rendering record nothing.
-func TestNoteCanonicalWriteSkipsTheRenderAndAgreesWithAParse(t *testing.T) {
+// TestNoteCommittedDocumentServesTheCommitsParse pins the post-commit handoff:
+// the document a commit canonicalized is exactly what an uncached parse of the
+// bytes it wrote yields, so the next reader is served it rather than parsing.
+// Bytes that are not the document's rendering retain nothing.
+func TestNoteCommittedDocumentServesTheCommitsParse(t *testing.T) {
 	newProject := cacheTestProject(t)
 	path := tasksFilePath(newProject().Path)
 	content, err := os.ReadFile(path)
@@ -139,18 +139,23 @@ func TestNoteCanonicalWriteSkipsTheRenderAndAgreesWithAParse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	committed, rendered, err := canonicalizeProjectContent(string(content))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rendered != string(content) || committed.Revision != want.Revision || !reflect.DeepEqual(committed, want) {
+		t.Fatal("a canonical rendering did not canonicalize to the document an uncached parse reads")
+	}
 
 	cache := NewProjectDocumentCache()
-	cache.NoteCanonicalWrite(path, append(content, '\n'), want.Revision)
-	if len(cache.canonical) != 0 {
-		t.Fatal("bytes that are not the revision's rendering were recorded as canonical")
+	cache.NoteCommittedDocument(path, append(content, '\n'), committed)
+	if len(cache.entries) != 0 {
+		t.Fatal("bytes that are not the document's rendering were retained")
 	}
-	cache.NoteCanonicalWrite(path, content, want.Revision)
-	if len(cache.canonical) != 1 {
-		t.Fatal("a canonical write was not recorded")
-	}
+	cache.NoteCommittedDocument(path, content, committed)
+	committed.Tasks[0].Title = "Served from the commit"
 	got := loadCached(t, cache, newProject())
-	if got.Revision != want.Revision {
-		t.Fatalf("revision after a noted write = %s, want the parsed %s", got.Revision, want.Revision)
+	if got.Tasks[0].Title != "Served from the commit" || got.Revision != want.Revision {
+		t.Fatalf("load after a noted commit = %q at %s, want the commit's parse at %s", got.Tasks[0].Title, got.Revision, want.Revision)
 	}
 }

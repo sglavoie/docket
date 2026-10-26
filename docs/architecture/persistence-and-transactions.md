@@ -63,10 +63,17 @@ version read, with its revision and task identities, and `app.NewLazySnapshot`
 copies a project's tasks out of it on first use, so a mutation pays for the one
 or two projects it reaches rather than the whole workspace. Whether a version
 loads at all is decided once, when the cache first parses it, so an unloadable
-project is still left out and named unavailable before anything asks for it. A commit
-records the digest of the canonical bytes it wrote, so the parse that follows
-it takes that digest as the revision instead of rendering the document again;
-the canonical format round-trips, which is what makes the two agree.
+project is still left out and named unavailable before anything asks for it.
+
+A commit renders each changed project once, parses that rendering, and renders
+the parse: those last bytes are what it writes and their digest is the
+revision, so nothing renders the document again to learn it. The commit reads
+the file's current revision through the same cache, which already holds the
+version the mutation's snapshot read, and copies that document only when a
+stale revision needs it for a merge. Afterwards it hands the cache its own
+parse as the parse of the bytes it wrote, so the readers that follow every
+commit parse nothing; the canonical format round-trips, which is what makes
+that parse the one a reader would have made.
 
 A mutation's rollback copy is taken lazily. Each project's own fields are
 captured when the mutation starts, since it may edit the live project before it

@@ -43,9 +43,10 @@ func scanCurrentTaskProjectDocument(content string) (currentTaskProjectDocument,
 	return scanV20ProjectDocument(content)
 }
 
-// writeCurrentTaskProjectDocument renders canonical live task Markdown.
-func writeCurrentTaskProjectDocument(document currentTaskProjectDocument) (string, error) {
-	return WriteV20ProjectDocument(document)
+// writeValidatedCurrentTaskProjectDocument renders a live document that was
+// validated as it was built, as currentTaskProjectDocumentFromModel's are.
+func writeValidatedCurrentTaskProjectDocument(document currentTaskProjectDocument) (string, error) {
+	return writeValidatedV20ProjectDocument(document)
 }
 
 // validateCurrentTaskProjectDocument validates a live document without

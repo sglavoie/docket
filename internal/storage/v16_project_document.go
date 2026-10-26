@@ -17,8 +17,13 @@ type V16ProjectDocument struct {
 // ValidateV16ProjectDocument validates shared project invariants plus every
 // schema-16 task record.
 func ValidateV16ProjectDocument(document V16ProjectDocument) error {
-	projected := v14ProjectDocumentFromV15(v15ProjectDocumentFromV16(document))
-	return validateTaskProjectDocument(projected.ProjectName, v6RecordsFromV14(projected.Tasks), func(i int) error {
+	// The shared invariants read only the schema-6 record each task embeds, so it
+	// is taken directly rather than through a copy per schema in between.
+	records := make([]format.V6TaskRecord, 0, len(document.Tasks))
+	for _, task := range document.Tasks {
+		records = append(records, task.V6TaskRecord)
+	}
+	return validateTaskProjectDocument(document.ProjectName, records, func(i int) error {
 		return format.ValidateV16TaskRecord(document.Tasks[i])
 	})
 }
@@ -70,15 +75,4 @@ func V16ProjectDocumentFromV15(document V15ProjectDocument) V16ProjectDocument {
 		lifted.Tasks = append(lifted.Tasks, format.V16TaskRecord{V15TaskRecord: task})
 	}
 	return lifted
-}
-
-func v15ProjectDocumentFromV16(document V16ProjectDocument) V15ProjectDocument {
-	projected := V15ProjectDocument{ProjectName: document.ProjectName}
-	if len(document.Tasks) > 0 {
-		projected.Tasks = make([]format.V15TaskRecord, 0, len(document.Tasks))
-	}
-	for _, task := range document.Tasks {
-		projected.Tasks = append(projected.Tasks, task.V15TaskRecord)
-	}
-	return projected
 }

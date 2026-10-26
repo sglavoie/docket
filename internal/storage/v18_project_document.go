@@ -22,6 +22,7 @@ func ValidateV18ProjectDocument(document V18ProjectDocument) error {
 		return err
 	}
 	base := V17ProjectDocument{ProjectName: document.ProjectName, Comments: document.Comments}
+	base.Tasks = make([]format.V16TaskRecord, 0, len(document.Tasks))
 	for _, task := range document.Tasks {
 		if err := format.ValidateV17TaskRecord(task); err != nil {
 			return err

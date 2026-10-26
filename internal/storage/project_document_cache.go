@@ -25,11 +25,6 @@ import (
 type ProjectDocumentCache struct {
 	mu      sync.Mutex
 	entries map[string]*cachedProjectDocument
-	// canonical holds, per path, the digest of the bytes this process last
-	// wrote there as a canonical rendering. Those bytes are their own canonical
-	// content, so their revision is their digest and a parse of them need not
-	// render the document again to learn it.
-	canonical map[string][sha256.Size]byte
 }
 
 // cachedProjectDocument is one retained parse and what is derived from it once
@@ -72,10 +67,7 @@ var SharedProjectDocuments = NewProjectDocumentCache()
 
 // NewProjectDocumentCache returns an empty cache.
 func NewProjectDocumentCache() *ProjectDocumentCache {
-	return &ProjectDocumentCache{
-		entries:   make(map[string]*cachedProjectDocument),
-		canonical: make(map[string][sha256.Size]byte),
-	}
+	return &ProjectDocumentCache{entries: make(map[string]*cachedProjectDocument)}
 }
 
 // retain is the cache entry for the content read from path, parsed on a miss.
@@ -93,21 +85,11 @@ func (c *ProjectDocumentCache) retain(path string, content []byte) (*cachedProje
 	}
 	c.mu.Lock()
 	entry, hit := c.entries[path]
-	wrote, known := c.canonical[path]
 	c.mu.Unlock()
 	if hit && entry.digest == digest {
 		return entry, nil
 	}
-	var document *ProjectDocument
-	var err error
-	if known && wrote == digest {
-		document, err = parseProjectDocumentContent(string(content))
-		if err == nil {
-			document.Revision = hex.EncodeToString(digest[:])
-		}
-	} else {
-		document, err = ParseProjectDocument(string(content))
-	}
+	document, err := ParseProjectDocument(string(content))
 	if err != nil {
 		return nil, err
 	}
@@ -118,21 +100,24 @@ func (c *ProjectDocumentCache) retain(path string, content []byte) (*cachedProje
 	return entry, nil
 }
 
-// NoteCanonicalWrite records that content, whose revision is revision, was just
-// written to path as a canonical rendering. A revision is the digest of a
-// document's canonical rendering, so the next parse of exactly these bytes takes
-// their digest as its revision instead of rendering the document to compute it.
-// Content whose digest is not that revision is not canonical and records nothing.
-func (c *ProjectDocumentCache) NoteCanonicalWrite(path string, content []byte, revision string) {
-	if c == nil {
+// NoteCommittedDocument retains document as the parse of content, which a
+// commit just wrote to path as document's canonical rendering. The commit parsed
+// those bytes' source to learn their revision, and a canonical rendering parses
+// back to the document it renders, so the next reader of exactly these bytes is
+// served that parse instead of making its own. The cache owns document from
+// here on. Content whose digest is not document's revision is not its canonical
+// rendering and retains nothing.
+func (c *ProjectDocumentCache) NoteCommittedDocument(path string, content []byte, document *ProjectDocument) {
+	if c == nil || document == nil {
 		return
 	}
 	digest := sha256.Sum256(content)
-	if hex.EncodeToString(digest[:]) != revision {
+	if hex.EncodeToString(digest[:]) != document.Revision {
 		return
 	}
+	entry := newCachedProjectDocument(digest, document)
 	c.mu.Lock()
-	c.canonical[path] = digest
+	c.entries[path] = entry
 	c.mu.Unlock()
 }
 
