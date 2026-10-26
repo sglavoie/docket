@@ -298,3 +298,96 @@ func TestAdoptLegacyRootsFollowsHomeSwitch(t *testing.T) {
 		t.Fatalf("ReadActiveWorkspacePointer = %q, %v, want %q", got, ok, want)
 	}
 }
+
+// writeAdoptionDeleteJournal journals a prepared deletion of target in the
+// pre-v24 transactions directory of root.
+func writeAdoptionDeleteJournal(t *testing.T, root, id, target string) {
+	t.Helper()
+	manifest, err := json.Marshal(map[string]any{
+		"schema_version": 1,
+		"id":             id,
+		"state":          "prepared",
+		"created_at":     "2026-10-25T00:00:00Z",
+		"ops":            []map[string]string{{"kind": "delete", "target": target}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeAdoptionFile(t, root, filepath.Join(legacyInternalDirName, "transactions", id+".json"), string(manifest))
+}
+
+// legacyAdoptionRoots places a pre-v24 workspace at the old local or iCloud
+// root and returns the old and new root paths.
+func legacyAdoptionRoots(t *testing.T, home string, cloud bool) (string, string) {
+	t.Helper()
+	oldRoot := filepath.Join(home, legacyLocalRootName)
+	newRoot := filepath.Join(home, localRootName)
+	if cloud {
+		drive := adoptionICloudDrive(t, home)
+		oldRoot = filepath.Join(drive, legacyICloudDataDirName)
+		newRoot = filepath.Join(drive, iCloudDataDirName)
+		writeAdoptionPointer(t, filepath.Join(home, legacyLocalRootName), oldRoot)
+	}
+	if err := os.Rename(legacyV24Workspace(t), oldRoot); err != nil {
+		t.Fatal(err)
+	}
+	return oldRoot, newRoot
+}
+
+// A pending transaction names absolute paths under the old root, so adoption
+// finishes it there before the move rather than stranding it out of root.
+func TestAdoptLegacyRoots_RecoversPendingJournalBeforeMoving(t *testing.T) {
+	for _, cloud := range []bool{false, true} {
+		name := "local"
+		if cloud {
+			name = "icloud"
+		}
+		t.Run(name, func(t *testing.T) {
+			home := t.TempDir()
+			oldRoot, newRoot := legacyAdoptionRoots(t, home, cloud)
+			noteRel := filepath.Join(legacyInternalDirName, "global-notes", "pending-deletion.md")
+			writeAdoptionFile(t, oldRoot, noteRel, "pending deletion")
+			writeAdoptionDeleteJournal(t, oldRoot, "00000000-0000-4000-8000-000000000001", filepath.Join(oldRoot, noteRel))
+
+			if err := adoptLegacyRootsOn(home); err != nil {
+				t.Fatalf("adoptLegacyRootsOn: %v", err)
+			}
+			if dirExists(oldRoot) || !dirExists(newRoot) {
+				t.Fatalf("%s was not moved to %s", oldRoot, newRoot)
+			}
+			if err := NewManager(ConfigPathForDataDir(newRoot)).RecoverWorkspace(); err != nil {
+				t.Fatalf("RecoverWorkspace after adoption: %v", err)
+			}
+			if _, err := os.Stat(filepath.Join(InternalDir(newRoot), "global-notes", "pending-deletion.md")); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("pending deletion was not recovered: %v", err)
+			}
+		})
+	}
+}
+
+// A journal recovery cannot finish keeps both roots where they are, so the
+// workspace stays recoverable under the paths its manifests name.
+func TestAdoptLegacyRoots_RefusesUnrecoverableJournal(t *testing.T) {
+	for _, cloud := range []bool{false, true} {
+		name := "local"
+		if cloud {
+			name = "icloud"
+		}
+		t.Run(name, func(t *testing.T) {
+			home := t.TempDir()
+			oldRoot, newRoot := legacyAdoptionRoots(t, home, cloud)
+			// A target outside every approved root is quarantined, never applied.
+			writeAdoptionDeleteJournal(t, oldRoot, "00000000-0000-4000-8000-000000000002", filepath.Join(t.TempDir(), "elsewhere.md"))
+
+			if err := adoptLegacyRootsOn(home); err == nil {
+				t.Fatal("adoptLegacyRootsOn moved a root whose journal is quarantined")
+			}
+			if !dirExists(oldRoot) || dirExists(newRoot) {
+				t.Fatalf("refused adoption moved %s", oldRoot)
+			}
+			if cloud && dirExists(filepath.Join(home, localRootName)) {
+				t.Fatal("refused adoption moved the machine-local root")
+			}
+		})
+	}
+}
