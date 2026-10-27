@@ -43,6 +43,8 @@ func NewAppModel(rt *engine.Runtime, opts ...AppOption) (*AppModel, error) {
 	// machine file turned off.
 	if machine := app.domain.machine(); machine != nil {
 		app.feedback.hideAdvisories = machine.AdvisoriesHidden
+		// The mouse follows the same rule: `--no-mouse` can only turn it off.
+		app.pointer.disabled = machine.MouseDisabled
 	}
 
 	// Apply functional options

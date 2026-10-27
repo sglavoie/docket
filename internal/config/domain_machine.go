@@ -29,6 +29,11 @@ type MachineState struct {
 	// on the same terms as MenuBarVisible: machine-local, omitempty, never seeded,
 	// and the omitted key is the default, which is that advisories are shown.
 	AdvisoriesHidden bool `json:"advisories_hidden,omitempty"`
+	// MouseDisabled records whether the TUI leaves mouse reporting off. It is
+	// chrome on the same terms as AdvisoriesHidden: machine-local, omitempty,
+	// never seeded, and the omitted key is the default, which is that the mouse
+	// is on.
+	MouseDisabled bool `json:"mouse_disabled,omitempty"`
 	// SearchHistory holds submitted slash queries oldest first, per workspace.
 	// Drafts, the active query, and the recall position are never persisted.
 	SearchHistory []string `json:"search_history,omitempty"`

@@ -256,3 +256,34 @@ func mustJSON(t *testing.T, v any) string {
 // internal/app mints with uuid.New().String(); that is why a lens scope is held
 // to the same canonical spelling a lens identity is.
 const lensScopeProjectID = "3c2a1f60-4e5d-4b8a-9c7e-2d1f0a3b4c5d"
+
+func TestMachineStateMouseDisabledJSONRoundTripAndOmission(t *testing.T) {
+	// machine.json decodes with DisallowUnknownFields, so a machine that never
+	// turned the mouse off must write no key at all: older builds then read it.
+	bare, err := json.Marshal(NewMachineState())
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if strings.Contains(string(bare), "mouse_disabled") {
+		t.Fatalf("a mouse left on must omit the key entirely: %s", bare)
+	}
+	m := NewMachineState()
+	m.MouseDisabled = true
+	data, err := json.Marshal(m)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if !strings.Contains(string(data), `"mouse_disabled":true`) {
+		t.Fatalf("a disabled mouse missing from payload: %s", data)
+	}
+	reloaded := NewMachineState()
+	if err := json.Unmarshal(data, reloaded); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if !reloaded.MouseDisabled {
+		t.Fatalf("the mouse setting did not survive the round trip: %s", data)
+	}
+	if err := reloaded.Validate(); err != nil {
+		t.Fatalf("round-tripped machine state should validate: %v", err)
+	}
+}

@@ -1,10 +1,13 @@
 package tui
 
 import (
+	"time"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/docket/internal/tui/operation"
 	"github.com/sglavoie/docket/internal/tui/operationhost"
+	"github.com/sglavoie/docket/internal/tui/route"
 )
 
 // =============================================================================
@@ -121,7 +124,9 @@ func (m *AppModel) interactionIsRetiredBy(msg tea.Msg) bool {
 			((m.taskComposer != nil && m.taskComposer.SubmissionInFlight) ||
 				(m.crossOutliner != nil && m.crossOutliner.QuickEdit.Pending))
 		return !duplicate && !isModifierOnlyKeyPress(typed)
-	case tea.PasteMsg, tea.MouseClickMsg:
+	case tea.PasteMsg, tea.MouseClickMsg, tea.MouseWheelMsg:
+		// A click or a wheel step is the user moving on, the way a key is.
+		// Motion and release count for nothing.
 		return true
 	default:
 		return false
@@ -147,9 +152,165 @@ func (m *AppModel) retireInteraction() {
 // carries no origin.
 func isInteractionInput(msg tea.Msg) bool {
 	switch msg.(type) {
-	case tea.KeyPressMsg, tea.PasteMsg, tea.MouseClickMsg:
+	case tea.KeyPressMsg, tea.PasteMsg, tea.MouseClickMsg, tea.MouseWheelMsg:
 		return true
 	default:
 		return false
 	}
+}
+
+// The pointer seam. Bubble Tea delivers clicks, releases, wheel steps and
+// motion; this file keeps clicks and vertical wheel steps, drops the rest where
+// they arrive, folds what it keeps into one route.PointerEvent, and hands that
+// event to the layer a key press would reach. The pointer only re-expresses
+// keys, so it adds no operation and no vocabulary of its own: whoever answers it
+// does so through the operation the equivalent key reaches.
+//
+// A click or a wheel step is a keystroke for every rule that treats keystrokes
+// as the user's input: it retires the interaction epoch (above),
+// drops the launch focus intent, and abandons a pending chord. The abandonment is
+// silent, because a click names no path a warning could quote.
+
+// pointerDoubleClickInterval is the macOS default: a second press on the same
+// cell with the same button no later than this after the first is a double-click.
+const pointerDoubleClickInterval = 500 * time.Millisecond
+
+// pointerState is the shell's whole memory of the pointer: the session's on/off
+// value and the last click, which is all a double-click test needs. Detection is
+// a timestamp comparison on the app's clock, never a timer.
+type pointerState struct {
+	// disabled turns mouse reporting off for this session. The machine-local
+	// setting and the process-level `--no-mouse` flag feed it; see coreToggleMouse in app_advisories.go.
+	disabled bool
+	// clock is the time double-click detection reads. Nil reads the service's
+	// clock; the harness points it at its virtual clock, so a scenario's `wait`
+	// decides whether two clicks were one double-click.
+	clock func() time.Time
+
+	lastClickAt     time.Time
+	lastClickX      int
+	lastClickY      int
+	lastClickButton route.PointerButton
+}
+
+// pointerNow is the instant double-click detection compares against.
+func (m *AppModel) pointerNow() time.Time {
+	if m.pointer.clock != nil {
+		return m.pointer.clock()
+	}
+	return m.serviceNow()
+}
+
+// pointerEventFromMsg folds one tea mouse message into the pointer event the
+// shell routes, reporting false for every message that counts for nothing:
+// motion, release, a horizontal wheel step, and a press of a button the
+// grammar never reads.
+func (m *AppModel) pointerEventFromMsg(msg tea.Msg) (route.PointerEvent, bool) {
+	switch msg := msg.(type) {
+	case tea.MouseClickMsg:
+		button, ok := pointerButton(msg.Button)
+		if !ok {
+			return route.PointerEvent{}, false
+		}
+		event := route.PointerEvent{X: msg.X, Y: msg.Y, Button: button, Clicks: 1}
+		event.Clicks = m.countPointerClick(event)
+		return event, true
+	case tea.MouseWheelMsg:
+		var delta int
+		switch msg.Button {
+		case tea.MouseWheelUp:
+			delta = -1
+		case tea.MouseWheelDown:
+			delta = 1
+		default:
+			return route.PointerEvent{}, false
+		}
+		// A wheel step between two clicks separates them: the second is no
+		// longer the other half of a double-click on what the first one hit.
+		m.pointer.lastClickAt = time.Time{}
+		return route.PointerEvent{X: msg.X, Y: msg.Y, WheelDelta: delta}, true
+	default:
+		return route.PointerEvent{}, false
+	}
+}
+
+func pointerButton(button tea.MouseButton) (route.PointerButton, bool) {
+	switch button {
+	case tea.MouseLeft:
+		return route.PointerButtonLeft, true
+	case tea.MouseRight:
+		return route.PointerButtonRight, true
+	case tea.MouseMiddle:
+		return route.PointerButtonMiddle, true
+	default:
+		return route.PointerButtonNone, false
+	}
+}
+
+// countPointerClick records a click and reports whether it completes a
+// double-click. A double-click spends the memory, so a third quick press starts
+// over as a single click rather than reading as a second double-click.
+func (m *AppModel) countPointerClick(event route.PointerEvent) int {
+	now := m.pointerNow()
+	last := m.pointer
+	double := !last.lastClickAt.IsZero() &&
+		last.lastClickX == event.X && last.lastClickY == event.Y &&
+		last.lastClickButton == event.Button &&
+		!now.Before(last.lastClickAt) && now.Sub(last.lastClickAt) <= pointerDoubleClickInterval
+	if double {
+		m.pointer.lastClickAt = time.Time{}
+		return 2
+	}
+	m.pointer.lastClickAt = now
+	m.pointer.lastClickX, m.pointer.lastClickY = event.X, event.Y
+	m.pointer.lastClickButton = event.Button
+	return 1
+}
+
+// handlePointerMessage is the seam's entry from handleGlobalInputMessage. Every
+// mouse message is consumed here, whether it becomes an event or not.
+func (m *AppModel) handlePointerMessage(msg tea.Msg) (bool, tea.Cmd) {
+	// Reporting off means the terminal sends nothing, so a message that still
+	// arrives (a host forwarding regardless) is not the user's input either.
+	if m.pointer.disabled {
+		return true, nil
+	}
+	event, ok := m.pointerEventFromMsg(msg)
+	if !ok {
+		return true, nil
+	}
+	m.lifecycle.dropLaunchFocus()
+	return true, m.routePointer(event)
+}
+
+// routePointer hands the event to the layer that owns the next key press, in
+// the order activeGuidance resolves it: a standing confirmation, a shell-mounted
+// modal, a pending chord, then the presentation. An owner that does not answer
+// the pointer swallows the event, so a click never falls through a modal to the
+// host drawn beneath it.
+func (m *AppModel) routePointer(event route.PointerEvent) tea.Cmd {
+	if m.lifecycle.quitting || m.viewNav.tooSmall() {
+		return nil
+	}
+	if m.shellConfirmationArmed() || m.shellModalMounted() {
+		return nil
+	}
+	if len(m.operations.Chord) > 0 {
+		// The chord owned the next key, and the click was that key: the path is
+		// abandoned, silently, and the press reaches nothing else.
+		m.operations.Chord = nil
+		return nil
+	}
+	view := m.activeView()
+	if view == nil {
+		return nil
+	}
+	answerer, ok := view.(route.PointerView)
+	if !ok {
+		return nil
+	}
+	// The active presentation is drawn from the screen's top-left cell, so its
+	// own coordinates are the screen's; a surface drawn elsewhere translates
+	// through route.PointerEvent.Offset.
+	return answerer.HandlePointer(event)
 }

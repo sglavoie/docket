@@ -75,6 +75,7 @@ var machineStateJSONTags = []string{
 	"advisories_hidden",
 	"lenses_adopted",
 	"menu_bar_visible",
+	"mouse_disabled",
 	"named_lenses",
 	"search_history",
 	"theme",

@@ -87,6 +87,10 @@ type AppModel struct {
 	// retains state. See lifecycle_controller.go.
 	lifecycle lifecycleController
 
+	// pointer is the mouse cluster: the session's on/off value and the last
+	// click a double-click is measured against. See the pointer seam in app_command_origin.go.
+	pointer pointerState
+
 	// notes is the notes cluster: the workspace-wide note snapshot the
 	// Outliner's search tier ranks, the generation that discards a superseded
 	// read, the owner-catalog fingerprint that decides whether an availability

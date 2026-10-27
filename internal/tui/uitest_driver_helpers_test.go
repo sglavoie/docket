@@ -58,6 +58,11 @@ type UITestDriver struct {
 	// driver wrapping an AppModel nobody owns the workspace of.
 	moveToFreshMachine func(machine string) error
 
+	// launchOptions are the AppOptions a scenario's launcher flags stand for.
+	// They are applied to the first app and to every relaunch, because a flag
+	// belongs to the process: a restart is the same command line run again.
+	launchOptions []AppOption
+
 	// now is this driver's virtual clock and timers the ticks waiting on it. A
 	// "wait" action advances the clock rather than sleeping; see
 	// uitest_clock_helpers_test.go.
@@ -87,6 +92,7 @@ func NewUITestDriver(app *AppModel, width, height int) *UITestDriver {
 		}
 	}
 	d := &UITestDriver{app: app, now: time.Now()}
+	app.pointer.clock = d.pointerClock
 	d.Resize(width, height)
 	return d
 }
@@ -111,7 +117,11 @@ func (d *UITestDriver) Restart() error {
 			return fmt.Errorf("register TUI test operations: %w", err)
 		}
 	}
+	for _, option := range d.launchOptions {
+		option(app)
+	}
 	d.app = app
+	app.pointer.clock = d.pointerClock
 	d.pendingCmd = nil
 	d.pendingFutures = nil
 	d.Resize(width, height)

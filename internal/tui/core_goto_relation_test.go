@@ -240,7 +240,7 @@ func TestGotoRelationIsProjectedIntoTheMenuBarAndHelp(t *testing.T) {
 		app.GetOperationRegistry(),
 		strategy,
 		ctx,
-		outliner.OutlinerMenuSpecs(chrome.ModeAll, false, true),
+		outliner.OutlinerMenuSpecs(chrome.ModeAll, false, true, true),
 	)
 	if err != nil {
 		t.Fatalf("resolve menus: %v", err)

@@ -170,6 +170,8 @@ func (d *UITestDriver) runAction(a UITestAction) error {
 		return d.runAssert(a)
 	case UITestActionCommand:
 		return d.runCommand(a.Command)
+	case UITestActionClick, UITestActionWheel:
+		return d.runPointer(a)
 	default:
 		return fmt.Errorf("unknown action type %q", a.Type)
 	}
@@ -284,6 +286,12 @@ func (d *UITestDriver) runAssert(a UITestAction) error {
 	case "status_contains":
 		if !strings.Contains(obs.Status, a.Value) {
 			return fmt.Errorf("status %q does not contain %q", obs.Status, a.Value)
+		}
+	case "mouse_mode":
+		// What the terminal is asked to report is a property of the frame, not
+		// of its text, so it is read off the declared view.
+		if got := d.app.View().MouseMode; got != uitestMouseModes[a.Value] {
+			return fmt.Errorf("mouse mode is %v, want %s", got, a.Value)
 		}
 	case "clipboard_contains":
 		// The clipboard is the one thing a copy operation says that the screen

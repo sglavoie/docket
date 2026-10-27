@@ -367,6 +367,11 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		if err == nil {
 			message = commandMessage(m.statusReadingTimeout())
 		}
+	case operation.OperationCoreToggleMouse:
+		err = m.coreToggleMouse()
+		if err == nil {
+			message = commandMessage(m.statusReadingTimeout())
+		}
 	case operation.OperationCoreOpenMenuBar:
 		err = m.coreOpenMenuBar()
 	case operation.OperationCoreLastMessage:

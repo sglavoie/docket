@@ -33,6 +33,14 @@ const (
 	UITestActionSwitchMachine UITestActionType = "switch_machine"
 	// UITestActionAssert checks an observation invariant (implemented later).
 	UITestActionAssert UITestActionType = "assert"
+	// UITestActionClick presses a mouse button on one screen cell, named either
+	// by X/Y or by the first cell of a literal On the rendered screen. Count
+	// presses the same cell that many times without moving the virtual clock,
+	// which is how a scenario spells a double-click.
+	UITestActionClick UITestActionType = "click"
+	// UITestActionWheel sends |Delta| wheel steps on one cell, up when Delta is
+	// negative and down when it is positive.
+	UITestActionWheel UITestActionType = "wheel"
 )
 
 // UITestAction is a single step in a scenario. Only the fields relevant to the
@@ -79,8 +87,24 @@ type UITestAction struct {
 	// "view"). It is ignored by "no_layout_issues".
 	Value string `json:"value,omitempty"`
 	// Count is the exact number of substring occurrences expected by
-	// "count_contains". It is ignored by every other assertion kind.
+	// "count_contains". It is ignored by every other assertion kind. A click
+	// reads it as how many presses land on the cell, one when omitted.
 	Count int `json:"count,omitempty"`
+
+	// X and Y name the screen cell a click or a wheel step lands on, zero-based
+	// from the top-left. They are pointers because the corner is a real cell:
+	// an omitted coordinate must be told apart from a zero one.
+	X *int `json:"x,omitempty"`
+	Y *int `json:"y,omitempty"`
+	// On names the cell instead, as the first cell of a literal on the rendered
+	// screen. Occurrence picks which match, one-based and counted top to bottom,
+	// left to right; it defaults to the first.
+	On         string `json:"on,omitempty"`
+	Occurrence int    `json:"occurrence,omitempty"`
+	// Button is "left" (the default) or "right" for a click.
+	Button string `json:"button,omitempty"`
+	// Delta is the signed number of wheel steps: negative scrolls up.
+	Delta int `json:"delta,omitempty"`
 }
 
 // UITestScenario is an ordered list of actions to drive against the app. The
@@ -89,9 +113,13 @@ type UITestAction struct {
 // with. Callers fall back to their own defaults when these are empty (see
 // RunScenarioFixture / ResolveSize).
 type UITestScenario struct {
-	Name    string         `json:"name,omitempty"`
-	Fixture string         `json:"fixture,omitempty"`
-	Size    string         `json:"size,omitempty"`
+	Name    string `json:"name,omitempty"`
+	Fixture string `json:"fixture,omitempty"`
+	Size    string `json:"size,omitempty"`
+	// Launch names the launcher flags the scenario runs under, such as
+	// "--no-mouse". They hold for every restart, the way relaunching the same
+	// command line does; see uitestLaunchFlags for the ones a scenario may name.
+	Launch  []string       `json:"launch,omitempty"`
 	Actions []UITestAction `json:"actions,omitempty"`
 }
 

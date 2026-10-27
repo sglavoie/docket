@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/docket/internal/config"
 	"github.com/sglavoie/docket/internal/logging"
 	"github.com/sglavoie/docket/internal/storage"
@@ -315,4 +317,63 @@ func conflictEditableText(content *engine.ConflictContent) *string {
 		return nil
 	}
 	return content.Text
+}
+
+// The shell half of the mouse opt-out, on the advisory precedent exactly (see
+// the top of this file). Two inputs decide it: the machine-local flag the View
+// menu's Mouse row writes, and the process-level `--no-mouse` flag, which turns
+// reporting off for one run and writes nothing. The toggle commits, so toggling
+// back on after a flagged launch persists "on" — the state a user can see is the
+// state that was saved.
+//
+// The session value is read by View on every frame, so the toggle takes effect
+// on the next paint: Bubble Tea diffs the view's mouse mode and writes the
+// terminal mode change itself.
+
+// WithDisabledMouse starts the session with mouse reporting off. RunApp
+// translates the `--no-mouse` flag into this option; the machine-local setting
+// is read in NewAppModel, and either one turning it off is enough.
+func WithDisabledMouse() AppOption {
+	return func(m *AppModel) { m.pointer.disabled = true }
+}
+
+// mouseDisabled reports the shell's live setting. It is the accessor injected
+// into every Outliner so the View menu's Mouse row can show it.
+func (m *AppModel) mouseDisabled() bool {
+	return m != nil && m.pointer.disabled
+}
+
+// viewMouseMode is the mouse mode View declares: cell motion, which reports
+// clicks, releases and wheel steps but no bare motion, unless the session turned
+// the mouse off. A headless session has no renderer, so nothing it declares here
+// ever reaches a terminal.
+func (m *AppModel) viewMouseMode() tea.MouseMode {
+	if m.mouseDisabled() {
+		return tea.MouseModeNone
+	}
+	return tea.MouseModeCellMotion
+}
+
+// coreToggleMouse flips the machine-local setting and the session value
+// together. Mouse reporting is chrome that follows the terminal you are sitting
+// at, so its durable home is machine.json rather than the workspace.
+func (m *AppModel) coreToggleMouse() error {
+	if m.domain.runtime == nil || m.domain.runtime.Machine() == nil {
+		return fmt.Errorf("machine chrome state is unavailable")
+	}
+	machine := *m.domain.runtime.Machine()
+	machine.MouseDisabled = !m.pointer.disabled
+	if err := m.domain.runtime.CommitMachine(&machine); err != nil {
+		return fmt.Errorf("save mouse setting: %w", err)
+	}
+	m.pointer.disabled = machine.MouseDisabled
+	// A click remembered from before the switch is not half of a double-click
+	// made after it.
+	m.pointer.lastClickAt = time.Time{}
+	if m.pointer.disabled {
+		m.setInfoStatus("Mouse off")
+	} else {
+		m.setInfoStatus("Mouse on")
+	}
+	return nil
 }

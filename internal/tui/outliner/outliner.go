@@ -142,6 +142,10 @@ type OutlinerModel struct {
 	// advisories.go.
 	advisoriesHiddenAccessor func() bool
 
+	// mouseDisabledAccessor is the shell-injected mouse setting the View menu's
+	// Mouse row ticks from. A nil accessor reads as on; see advisories.go.
+	mouseDisabledAccessor func() bool
+
 	// nextDeferWake is the soonest instant a pending deferral in scope lapses,
 	// and zero means none is pending. It is a refresh clock read by the periodic
 	// tick; what a row shows stays isComputedOpenWork's decision.

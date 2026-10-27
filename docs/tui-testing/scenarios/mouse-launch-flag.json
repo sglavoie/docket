@@ -1,0 +1,24 @@
+{
+  "name": "mouse-launch-flag",
+  "fixture": "rich",
+  "size": "60x20",
+  "launch": ["--no-mouse"],
+  "actions": [
+    { "type": "assert", "label": "--no-mouse leaves the terminal its own clicks and scrolling", "assert": "mouse_mode", "value": "none" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "ctrl+m" },
+    { "type": "key", "key": "l" },
+    { "type": "assert", "label": "the View menu reads the flag's effect, not the machine file", "assert": "not_contains", "value": "✓ Mouse" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "restart", "label": "a relaunch with the same command line" },
+    { "type": "assert", "label": "the flag holds for every launch it is passed to", "assert": "mouse_mode", "value": "none" },
+
+    { "type": "command", "label": "the toggle commits what it shows, so turning it on persists on", "command": "Toggle Mouse" },
+    { "type": "assert", "assert": "contains", "value": "Mouse on" },
+    { "type": "assert", "assert": "mouse_mode", "value": "cell_motion" },
+    { "type": "resize", "width": 100, "height": 30 },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

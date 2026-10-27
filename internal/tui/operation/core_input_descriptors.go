@@ -364,6 +364,10 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		// session's chrome, never on a task or a project. `--no-advisories` is the
 		// other way in, so nothing here spends a root key on it.
 		core(OperationCoreToggleAdvisories, "Toggle Advisories", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "conflict count", "hide warnings"),
+		// The third, on the same terms: chrome, target-free, keyless. `--no-mouse`
+		// is its launcher twin, and a key spent on it would be the one key a user
+		// who turned the mouse off by accident cannot click their way back to.
+		core(OperationCoreToggleMouse, "Toggle Mouse", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "pointer", "trackpad", "scrolling", "clicks"),
 		core(OperationCoreLastMessage, "Recent Messages", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "feedback", "last error", "last message"),
 		core(OperationCoreClearSearchHistory, "Clear Search History", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "forget queries", "recall"),
 		core(OperationCoreSetUpCheckIns, "Set Up Check-Ins", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "schedule active work", "check-in setup"),

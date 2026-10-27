@@ -132,3 +132,19 @@ func (m *OutlinerModel) syncIndicator() string {
 	}
 	return m.syncAdvisory()
 }
+
+// SetMouseDisabled injects the shell's mouse setting, mirroring
+// SetAdvisoriesHidden: a nil accessor is inert and reads as on, which is what a
+// struct-literal test model and the Hub's preview painter get. The Outliner only
+// reads it to tick the View menu's Mouse row; the shell owns reporting itself.
+func (m *OutlinerModel) SetMouseDisabled(accessor func() bool) {
+	m.mouseDisabledAccessor = accessor
+}
+
+// MouseEnabled reports whether the session has mouse reporting on.
+func (m *OutlinerModel) MouseEnabled() bool {
+	if m == nil || m.mouseDisabledAccessor == nil {
+		return true
+	}
+	return !m.mouseDisabledAccessor()
+}

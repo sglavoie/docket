@@ -90,6 +90,11 @@ observable nowhere else.
 Unknown fields, malformed sizes or keys, empty text actions, unsupported
 assertions, and trailing JSON are rejected before execution.
 
+An optional top-level `launch` array names launcher flags the scenario runs
+under: `--no-mouse` and `--no-advisories`. A flag belongs to the process, so it
+holds across every `restart` the way relaunching the same command line does,
+and any other flag is refused before execution.
+
 ### Actions
 
 | Type | Fields | Behavior |
@@ -102,6 +107,14 @@ assertions, and trailing JSON are rejected before execution.
 | `restart` | none | Rebuild the app from durable state alone, the way relaunching Docket does. |
 | `switch_machine` | optional `machine` | Move machine-local state to another machine's home, then restart, the way opening the same synced workspace on a second machine does. Without `machine` the home is always one no machine has used. |
 | `assert` | `assert`, optional `value` | Check a fresh normalized observation. |
+| `click` | `x`/`y`, or `on` with optional `occurrence`; optional `button`, `count` | Press a mouse button on one screen cell, then release it. `x`/`y` are zero-based from the top-left; `on` names the first cell of a literal on the rendered screen, and `occurrence` (one-based, top to bottom, left to right) picks a later match. `button` is `left` (the default) or `right`; `count` (1 to 3) presses the same cell that many times without moving the clock. |
+| `wheel` | `x`/`y` or `on`, signed `delta` | Send `delta` wheel steps on one cell: negative scrolls up, positive down, one message per step. |
+
+A double-click is two presses on one cell within 500 ms of the app's clock,
+which under the harness is the virtual clock, so `count: 2` and two `click`
+actions with no `wait` between them both send one. A `wait` between them
+separates them. The release a terminal reports after each press is sent too, so
+the shell's drop of it is exercised rather than assumed.
 
 An optional `label` describes user intent and is repeated in failure output.
 Prefer public keys for acceptance behavior. A `command` action is appropriate
@@ -220,6 +233,7 @@ The committed size matrix is exactly 60×20, 72×20, 100×35, and 160×55.
 | `status_contains` | substring | The informational/status line contains the value. |
 | `no_layout_issues` | none | Rendering has no overflow, UTF-8, or height audit issue. |
 | `clipboard_contains` | substring | The text the last copy wrote contains the value. |
+| `mouse_mode` | `none` or `cell_motion` | The frame asks the terminal for that mouse reporting. |
 
 Use semantic labels and view names instead of exact full-screen snapshots or
 color escape sequences. Add `no_layout_issues` at every important narrow or

@@ -68,6 +68,7 @@ const (
 	OperationCoreClearSearchHistory OperationID = "tui.core.clear-search-history"
 	OperationCoreSetUpCheckIns      OperationID = "tui.core.set-up-check-ins"
 	OperationCoreToggleAdvisories   OperationID = "tui.core.toggle-advisories"
+	OperationCoreToggleMouse        OperationID = "tui.core.toggle-mouse"
 	OperationCoreUndo               OperationID = "tui.core.undo"
 	OperationCoreRedo               OperationID = "tui.core.redo"
 	OperationCoreBack               OperationID = "tui.core.back"

@@ -78,11 +78,11 @@ func menuSeparator() menuEntrySpec { return menuEntrySpec{} }
 // entry names a registered operation identifier rather than a string literal,
 // which is what lets the parity test hold the whole bar to the catalog.
 //
-// activeMode, menuBarVisible, and advisoriesVisible are the live states the View
+// activeMode, menuBarVisible, advisoriesVisible, and mouseEnabled are the live states the View
 // menu's rows show. They are passed in rather than read from a model so the
 // specification stays pure data: a menu row can describe live state, but it
 // cannot reach back into the Outliner to find it.
-func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisoriesVisible bool) []menuSpec {
+func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisoriesVisible, mouseEnabled bool) []menuSpec {
 	return []menuSpec{
 		{
 			ID:    MenuIDTask,
@@ -122,7 +122,7 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 		{
 			ID:      MenuIDView,
 			Title:   "View",
-			Entries: viewMenuEntries(activeMode, menuBarVisible, advisoriesVisible),
+			Entries: viewMenuEntries(activeMode, menuBarVisible, advisoriesVisible, mouseEnabled),
 		},
 		{
 			ID:    MenuIDGo,
@@ -194,8 +194,8 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 // drawn. A menu that can hide the surface it is opened from is unusual, but the
 // key that shows the bar is the one thing a user who found the bar by accident
 // cannot read off the bar itself, so it belongs here rather than only in `?`.
-func viewMenuEntries(activeMode chrome.OutlinerModeID, menuBarVisible, advisoriesVisible bool) []menuEntrySpec {
-	entries := make([]menuEntrySpec, 0, len(chrome.OutlinerModes)+13)
+func viewMenuEntries(activeMode chrome.OutlinerModeID, menuBarVisible, advisoriesVisible, mouseEnabled bool) []menuEntrySpec {
+	entries := make([]menuEntrySpec, 0, len(chrome.OutlinerModes)+14)
 	for _, mode := range chrome.OutlinerModes {
 		checked := mode.ID == activeMode
 		entries = append(entries, menuEntrySpec{
@@ -239,6 +239,14 @@ func viewMenuEntries(activeMode chrome.OutlinerModeID, menuBarVisible, advisorie
 			OperationID: operation.OperationCoreToggleAdvisories,
 			Label:       "Advisories",
 			Checked:     &advisoriesVisible,
+		},
+		// Mouse is the same kind of row: keyless, target-free chrome, ticked when
+		// the terminal reports clicks and wheel steps. `--no-mouse` is the other
+		// way in.
+		menuEntrySpec{
+			OperationID: operation.OperationCoreToggleMouse,
+			Label:       "Mouse",
+			Checked:     &mouseEnabled,
 		},
 	)
 }

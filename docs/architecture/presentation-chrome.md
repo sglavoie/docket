@@ -396,6 +396,36 @@ operations is not an advisory, nor is the query readout, nor the refusal that
 explains a population where every project failed to load — a silent empty screen
 is worse than a line a flag cannot reach.
 
+Mouse reporting is chrome on exactly those terms. `AppModel.View` declares
+`tea.MouseModeCellMotion` unless `AppModel.pointer.disabled`, which
+`MachineState.MouseDisabled` (read once in `NewAppModel`) and
+`RunOptions.DisableMouse` (`--no-mouse`, turned into `WithDisabledMouse()`)
+feed, and the keyless `OperationCoreToggleMouse` writes both, so toggling on
+after a flagged launch persists "on". The Outliner reads it only to tick the
+View menu's `Mouse` row, through `SetMouseDisabled`. A headless session runs
+`tea.WithoutRenderer()` with no input, so nothing it declares reaches a terminal.
+While `Ctrl+E` hands the terminal to `$EDITOR`, Bubble Tea's renderer resets
+every mouse mode on stop and re-enables the last view's mode on start;
+`TestExecReleasesMouseReportingAndRestoresIt` pins that dependency behavior
+rather than Docket duplicating it.
+
+The pointer seam closes `app_command_origin.go`, beside the rules for what counts as input. `handleGlobalInputMessage` consumes every
+mouse message: motion, release, horizontal wheel steps, and buttons the grammar
+never reads fold to nothing there, and a click or a vertical wheel step becomes
+one `route.PointerEvent` — cell, button, click count, wheel delta. It carries
+no modifiers, since no act reads a modified click.
+The shell detects a double-click itself, as a second press on the same cell with
+the same button within 500 ms of `pointerNow` (the service clock, or the
+harness's virtual one), and a double-click spends that memory so a third press is
+a single click again. A click or a wheel step is a keystroke for every rule that
+treats keystrokes as input: `interactionIsRetiredBy` and `isInteractionInput`
+count both, the launch focus intent is dropped, and a pending chord is abandoned
+silently and swallows the press. `routePointer` then visits `activeGuidance`'s
+order — shell confirmation, shell-mounted modal, pending chord, presentation —
+and only the active presentation is ever handed the event, through
+`route.PointerView`. A layer that does not implement it swallows the event, so a
+click never falls through a modal to the host drawn beneath it.
+
 `ConflictBrowserModel` is that count's browser and resolver, and it is an overlay
 on the lens picker's template rather than a surface: a `ListSurfaceModel` inside
 `RenderOverlayBox`, one `AppModel` field, one arm in `handleActiveKeyOverlay`,

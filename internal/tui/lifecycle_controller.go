@@ -133,6 +133,9 @@ type RunOptions struct {
 	// HideAdvisories suppresses every ambient advisory for this run without
 	// touching the machine-local setting. See advisories_shell.go.
 	HideAdvisories bool
+	// DisableMouse leaves mouse reporting off for this run without touching the
+	// machine-local setting. See WithDisabledMouse in app_advisories.go.
+	DisableMouse bool
 	// Notify sends a desktop notification escape when a check-in arrives, a
 	// timed deadline passes, or a deferral ends. See notifyArrivals below.
 	Notify bool
@@ -161,6 +164,9 @@ const (
 func RunApp(rt *engine.Runtime, runOpts RunOptions, opts ...AppOption) error {
 	if runOpts.HideAdvisories {
 		opts = append(opts, WithHiddenAdvisories())
+	}
+	if runOpts.DisableMouse {
+		opts = append(opts, WithDisabledMouse())
 	}
 	if runOpts.Notify {
 		opts = append(opts, WithNotifications())

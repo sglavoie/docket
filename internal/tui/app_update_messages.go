@@ -67,6 +67,10 @@ func (m *AppModel) handleGlobalInputMessage(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 	case tea.KeyReleaseMsg:
 		return true, nil
+	case tea.MouseClickMsg, tea.MouseWheelMsg, tea.MouseReleaseMsg, tea.MouseMotionMsg:
+		// Motion and release fold to nothing inside the seam, so every mouse
+		// message is consumed here and none reaches a view's own Update.
+		return m.handlePointerMessage(msg)
 	case tea.WindowSizeMsg:
 		m.handleWindowSize(msg)
 		return true, nil

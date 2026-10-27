@@ -33,6 +33,10 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 		// Focus reports are what let a long-lived session notice a workspace
 		// changed elsewhere while it sat in the background.
 		result.ReportFocus = true
+		// Cell motion reports clicks, releases and wheel steps, never bare
+		// motion. Bubble Tea's renderer releases it while ExecProcess hands the
+		// terminal to $EDITOR and re-enables it from this view afterwards.
+		result.MouseMode = m.viewMouseMode()
 		// A view naming its own title keeps it; otherwise the title is the
 		// pulse, which Docket.app reads back for its Dock badge.
 		if !m.lifecycle.quitting && result.WindowTitle == "" {

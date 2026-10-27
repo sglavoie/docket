@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	tea "charm.land/bubbletea/v2"
 )
 
 // This file defines the file-based scenario format agents and CI drive the TUI
@@ -38,6 +40,21 @@ var uitestAssertKinds = map[string]bool{
 	"no_layout_issues":   true,
 	"status_contains":    true,
 	"clipboard_contains": true,
+	"mouse_mode":         true,
+}
+
+// uitestLaunchFlags maps each launcher flag a scenario may name onto the
+// AppOption RunApp turns it into. Only flags that change what a session draws
+// or reports belong here.
+var uitestLaunchFlags = map[string]func() AppOption{
+	"--no-advisories": WithHiddenAdvisories,
+	"--no-mouse":      WithDisabledMouse,
+}
+
+// uitestMouseModes spells the mouse modes the mouse_mode assertion compares.
+var uitestMouseModes = map[string]tea.MouseMode{
+	"none":        tea.MouseModeNone,
+	"cell_motion": tea.MouseModeCellMotion,
 }
 
 // UITestScenarioResult is the structured outcome of running a scenario. It is
@@ -132,6 +149,11 @@ func (sc UITestScenario) Validate() error {
 			return err
 		}
 	}
+	for _, flag := range sc.Launch {
+		if uitestLaunchFlags[flag] == nil {
+			return fmt.Errorf("unknown launch flag %q", flag)
+		}
+	}
 	for i, a := range sc.Actions {
 		if err := a.validate(); err != nil {
 			return fmt.Errorf("action %d (%s): %w", i, a.Type, err)
@@ -173,6 +195,8 @@ func (a UITestAction) validate() error {
 		if strings.TrimSpace(a.Command) == "" {
 			return errors.New("command action has empty command")
 		}
+	case UITestActionClick, UITestActionWheel:
+		return a.validatePointerAction()
 	case UITestActionAssert:
 		if !uitestAssertKinds[a.Assert] {
 			return fmt.Errorf("unknown or missing assertion kind %q", a.Assert)
@@ -187,6 +211,9 @@ func (a UITestAction) validate() error {
 			// one is contained by every screen, so it would pass without ever
 			// naming what it was protecting.
 			return errors.New("not_clipped assertion has empty value")
+		}
+		if _, ok := uitestMouseModes[a.Value]; a.Assert == "mouse_mode" && !ok {
+			return fmt.Errorf("mouse_mode assertion needs none or cell_motion, got %q", a.Value)
 		}
 		if a.Assert == "count_contains" {
 			if a.Value == "" {
@@ -307,5 +334,10 @@ func RunScenarioFixture(sc UITestScenario, opts RunScenarioOptions) (UITestScena
 		return UITestScenarioResult{}, nil, err
 	}
 
+	for _, flag := range sc.Launch {
+		option := uitestLaunchFlags[flag]()
+		driver.launchOptions = append(driver.launchOptions, option)
+		option(driver.App())
+	}
 	return driver.RunScenarioResult(sc, opts), ws, nil
 }

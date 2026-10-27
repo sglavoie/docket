@@ -220,6 +220,24 @@ View → Advisories saves whether these notices are shown on this machine.
 and does not suppress operation errors, the `Q` explanation, or the error when
 every project failed to load.
 
+### Mouse
+
+Docket asks the terminal to report clicks and wheel steps, so the terminal no
+longer turns the wheel into arrow keys. The pointer is a second way to reach
+keys you already have, and it goes to whatever the next key press would reach:
+a confirmation, an open picker or sheet, or the view. Something that does not
+answer the pointer ignores it, so a click never lands on the view behind an open
+dialog. A click or a wheel step also cancels a half-typed chord such as `w`,
+without a warning. Mouse motion and button releases are ignored.
+
+To select text while the mouse is on, hold Shift as you drag; most terminals,
+Docket.app's included, keep Shift+drag for selection.
+
+View → Mouse saves whether the mouse is on for this machine. `docket --no-mouse`
+turns it off for one launch and leaves the terminal its own clicks and
+scrolling. Turning the mouse back on from the menu after a `--no-mouse` launch
+saves "on".
+
 ### While Docket is in the background
 
 Docket names its window after the workspace pulse — `Docket · inbox 2 · today 3 ·

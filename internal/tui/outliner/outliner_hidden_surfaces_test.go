@@ -139,7 +139,7 @@ func TestRelationHopRefusesAHiddenTargetOutsideTheHiddenFacet(t *testing.T) {
 }
 
 func TestFindMenuOffersShowHiddenAfterPinned(t *testing.T) {
-	for _, menu := range OutlinerMenuSpecs("", false, false) {
+	for _, menu := range OutlinerMenuSpecs("", false, false, false) {
 		if menu.ID != MenuIDFind {
 			continue
 		}

@@ -19,7 +19,7 @@ func TestEveryMenuEntryNamesARegisteredOperation(t *testing.T) {
 	registry := parityAuditApp(t).GetOperationRegistry()
 
 	named := 0
-	for _, spec := range outliner.OutlinerMenuSpecs(chrome.ModeAll, false, true) {
+	for _, spec := range outliner.OutlinerMenuSpecs(chrome.ModeAll, false, true, true) {
 		for index, entry := range spec.Entries {
 			if entry.OperationID == "" {
 				if entry.Label != "" || entry.Checked != nil {
@@ -90,7 +90,7 @@ func TestMenuKeyHintsFollowTheStrategy(t *testing.T) {
 		app.GetOperationRegistry(),
 		strategy,
 		menuBarCommandContext(),
-		outliner.OutlinerMenuSpecs(chrome.ModeAll, false, true),
+		outliner.OutlinerMenuSpecs(chrome.ModeAll, false, true, true),
 	)
 	if err != nil {
 		t.Fatalf("resolve menus: %v", err)
@@ -198,7 +198,7 @@ func TestAMenuOnlyOperationIsNeverAnEntityOperation(t *testing.T) {
 	}
 
 	menuOnly := make([]operation.OperationID, 0, 1)
-	for _, spec := range outliner.OutlinerMenuSpecs(chrome.ModeAll, false, true) {
+	for _, spec := range outliner.OutlinerMenuSpecs(chrome.ModeAll, false, true, true) {
 		for _, entry := range spec.Entries {
 			if entry.OperationID == "" || bound[entry.OperationID] {
 				continue

@@ -21,6 +21,10 @@ var noColor bool
 // TUI, and no maintenance subcommand renders a status strip.
 var noAdvisories bool
 
+// noMouse belongs to the root command alone too: only the interactive TUI turns
+// mouse reporting on.
+var noMouse bool
+
 // notify belongs to the root command alone too: only the interactive TUI runs
 // long enough to see work arrive.
 var notify bool
@@ -198,6 +202,7 @@ func init() {
 	_ = rootCmd.MarkPersistentFlagDirname("data-dir")
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "disable color output")
 	rootCmd.Flags().BoolVar(&noAdvisories, "no-advisories", false, "hide ambient advisory rows in the TUI (conflict count, load failures)")
+	rootCmd.Flags().BoolVar(&noMouse, "no-mouse", false, "leave mouse reporting off in the TUI, so the terminal keeps its own clicks and scrolling")
 	rootCmd.Flags().BoolVar(&notify, "notify", false, "send a desktop notification (OSC 777) when a check-in arrives, a timed deadline passes, or a deferral ends")
 	rootCmd.Flags().StringVar(&controlSocket, "control", "", "serve a control socket at this path for a host app such as Docket.app")
 	_ = rootCmd.MarkFlagFilename("control")
@@ -262,6 +267,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	return tui.RunApp(runtime, tui.RunOptions{
 		DisableColor:   noColor,
 		HideAdvisories: noAdvisories,
+		DisableMouse:   noMouse,
 		Notify:         notify,
 		ControlSocket:  controlSocket,
 		Headless:       headless,

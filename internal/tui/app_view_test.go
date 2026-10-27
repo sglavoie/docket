@@ -43,8 +43,10 @@ func TestAppViewPreservesSubviewViewMetadata(t *testing.T) {
 	if !output.ReportFocus {
 		t.Fatal("expected report focus to be preserved from subview")
 	}
-	if output.MouseMode != tea.MouseModeAllMotion {
-		t.Fatalf("expected mouse mode %v, got %v", tea.MouseModeAllMotion, output.MouseMode)
+	// Mouse reporting is the shell's, not a subview's: the pointer seam drops
+	// bare motion, so a view asking for it is overruled rather than obeyed.
+	if output.MouseMode != tea.MouseModeCellMotion {
+		t.Fatalf("expected the shell's mouse mode %v, got %v", tea.MouseModeCellMotion, output.MouseMode)
 	}
 	if output.WindowTitle != "Subview Title" {
 		t.Fatalf("expected window title to be preserved, got %q", output.WindowTitle)

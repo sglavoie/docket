@@ -27,7 +27,7 @@ func (c *Controller) validateMenuBarSpecs() error {
 		c.Registry,
 		strategy,
 		ctx,
-		outliner.OutlinerMenuSpecs(chrome.ModeAll, false, true),
+		outliner.OutlinerMenuSpecs(chrome.ModeAll, false, true, true),
 	)
 	if err != nil {
 		return err

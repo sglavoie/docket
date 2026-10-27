@@ -48,7 +48,7 @@ func resolveOutlinerMenus(t *testing.T, app *AppModel, activeMode chrome.Outline
 		app.GetOperationRegistry(),
 		strategy,
 		menuBarCommandContext(),
-		outliner.OutlinerMenuSpecs(activeMode, false, true),
+		outliner.OutlinerMenuSpecs(activeMode, false, true, true),
 	)
 	if err != nil {
 		t.Fatalf("resolve menus: %v", err)

@@ -176,6 +176,12 @@
 #     alternative was passing both in from six call sites, which is a redesign
 #     Phase 1 does not do. It is safe by construction: `theme` is L0 and
 #     depends on nothing, so this edge can never close a cycle.
+#   - `route/pointer.go` (PointerEvent, PointerView) is route's, added with
+#     mouse support. It sits beside HostedPanelView because it is the same kind
+#     of contract: an interface the shell calls on whichever surface owns the
+#     next key press. It needs no new edge: `route` already imports bubbletea
+#     for tea.KeyMod and tea.Cmd, and every surface that will implement it
+#     already names `route`.
 #   - Check-in integration adds `taskform -> operation` for the typed schedule
 #     request and result shared by inline and operation editors, and
 #     `operationhost -> taskform,coordinator` for editor invocation, retry and

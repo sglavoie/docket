@@ -284,6 +284,7 @@ func (m *AppModel) wireOutlinerOperationExecutor(outlinerView *outliner.Outliner
 	outlinerView.SetOutstandingConflicts(m.feedback.outstandingConflictCount)
 	outlinerView.SetSyncAdvisory(m.feedback.syncAdvisoryLine)
 	outlinerView.SetAdvisoriesHidden(m.feedback.advisoriesHidden)
+	outlinerView.SetMouseDisabled(m.mouseDisabled)
 }
 
 func (m *AppModel) showView(viewType presentation.PresentationID, view route.View) {
