@@ -181,7 +181,7 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case status.PeriodicSaveMsg:
 		m.saveProjectViewState()
 		m.saveOutlinerFilterState()
-		// A consumed wake makes rows visible that ComputeWorkspacePulse excluded
+		// A consumed wake makes rows visible that ComputeWorkspaceReadout excluded
 		// while their deferral was pending, so the same update recounts the pulse
 		// even within one local day.
 		rowsInvalidated := m.wakeDeferredRows(msg.At)

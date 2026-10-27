@@ -153,20 +153,20 @@ enum DocketAgendaMenu {
         item.title.count > maxTitleLength ? String(item.title.prefix(maxTitleLength - 1)) + "…" : item.title
     }
 
-    /// Menu items for `agenda`: a task's item carries its `DocketTaskID` as the
-    /// represented object and runs `taskAction`; the remainder carries its mode's
-    /// raw value and runs `viewAction`, as a count item does.
+    /// Menu items for `agenda`. A task's item opens a submenu: Show in Docket,
+    /// which carries its `DocketTaskID` as the represented object and runs
+    /// `taskAction`, then the acts `DocketTaskAction.offered(for:)` admits, each
+    /// carrying a `DocketTaskActionChoice` and running `actAction`. The remainder
+    /// carries its mode's raw value and runs `viewAction`, as a count item does.
     static func items(for agenda: DocketAgenda?, pulse: DocketPulse?, now: Date = Date(), target: AnyObject,
-                      taskAction: Selector, viewAction: Selector) -> [NSMenuItem] {
+                      taskAction: Selector, actAction: Selector, viewAction: Selector) -> [NSMenuItem] {
         guard let agenda else { return [] }
         return entries(for: agenda, pulse: pulse).map { entry in
             switch entry {
             case .heading(let title):
                 return NSMenuItem.sectionHeader(title: title)
             case .task(let task):
-                let item = NSMenuItem(title: title(task), action: taskAction, keyEquivalent: "")
-                item.target = target
-                item.representedObject = DocketTaskID(project: task.project, task: task.task)
+                let item = NSMenuItem(title: title(task), action: nil, keyEquivalent: "")
                 let detail = task.detail(now: now)
                 if !detail.isEmpty {
                     let styled = NSMutableAttributedString(string: item.title)
@@ -177,6 +177,7 @@ enum DocketAgendaMenu {
                     item.attributedTitle = styled
                 }
                 item.toolTip = detail.isEmpty ? task.title : task.title + " — " + detail
+                item.submenu = submenu(for: task, target: target, taskAction: taskAction, actAction: actAction)
                 return item
             case .more(let count, let view):
                 let item = NSMenuItem(title: "\(count) more…", action: viewAction, keyEquivalent: "")
@@ -185,6 +186,34 @@ enum DocketAgendaMenu {
                 return item
             }
         }
+    }
+
+    /// One agenda task's submenu: Show in Docket, then what may be done to it.
+    static func submenu(for task: DocketAgendaItem, target: AnyObject, taskAction: Selector, actAction: Selector) -> NSMenu {
+        let menu = NSMenu(title: task.title)
+        menu.autoenablesItems = false
+        let show = menu.addItem(withTitle: "Show in Docket", action: taskAction, keyEquivalent: "")
+        show.target = target
+        show.representedObject = task.id
+        menu.addItem(.separator())
+        for action in DocketTaskAction.offered(for: task) {
+            let item = menu.addItem(withTitle: action.title, action: actAction, keyEquivalent: "")
+            item.target = target
+            item.representedObject = DocketTaskActionChoice(action: action, task: task.id)
+            item.image = NSImage(systemSymbolName: action.systemImage, accessibilityDescription: nil)
+        }
+        return menu
+    }
+}
+
+/// What an agenda submenu's act carries: the act and the task it is for.
+final class DocketTaskActionChoice: NSObject {
+    let action: DocketTaskAction
+    let task: DocketTaskID
+
+    init(action: DocketTaskAction, task: DocketTaskID) {
+        self.action = action
+        self.task = task
     }
 }
 
@@ -213,7 +242,7 @@ final class NotificationPresenter: NSObject, UNUserNotificationCenterDelegate {
 
     /// More arrivals than this in one batch are worded as one summary.
     static let maxPerTaskNotifications = 3
-    static let deferMinutes = 60
+    static let deferMinutes = DocketTaskAction.deferMinutes
 
     enum Category {
         static let reviewable = "docket.arrival.reviewable"

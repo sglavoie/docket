@@ -48,12 +48,12 @@ final class ControlWireTests: XCTestCase {
     }
 
     func testAnAgendaEventDecodes() {
-        let line = #"{"event":"agenda","agenda":{"total":3,"items":[{"kind":"overdue","project":"p","task":"t","title":"Call","project_name":"Work","priority":1,"due":"2026-10-26T09:30:00-06:00","due_has_time":true},{"kind":"today","project":"p","task":"u","title":"Write","project_name":"Work"}]}}"#
+        let line = #"{"event":"agenda","agenda":{"total":3,"items":[{"kind":"overdue","project":"p","task":"t","title":"Call","project_name":"Work","priority":1,"due":"2026-10-26T09:30:00-06:00","due_has_time":true,"reviewable":true},{"kind":"today","project":"p","task":"u","title":"Write","project_name":"Work"}]}}"#
         XCTAssertEqual(
             DocketControlLine.decode(Data(line.utf8)),
             .event(.agenda(DocketAgenda(items: [
                 DocketAgendaItem(kind: .overdue, project: "p", task: "t", title: "Call", projectName: "Work",
-                                 priority: 1, due: "2026-10-26T09:30:00-06:00", dueHasTime: true),
+                                 priority: 1, due: "2026-10-26T09:30:00-06:00", dueHasTime: true, reviewable: true),
                 DocketAgendaItem(kind: .today, project: "p", task: "u", title: "Write", projectName: "Work"),
             ], total: 3)))
         )
@@ -109,6 +109,101 @@ final class ControlWireTests: XCTestCase {
                 .detail(now: now, calendar: calendar, locale: locale),
             "Work · Yesterday"
         )
+    }
+
+    /// Each agenda task opens a submenu: Show in Docket, then Done and Defer 1
+    /// Hour, and Acknowledge only where Docket said it would accept it. Each act
+    /// is the request its notification button sends.
+    func testAnAgendaTaskOffersItsActsInASubmenu() throws {
+        let target = NSObject()
+        let show = #selector(AppDelegate.showTaskFromMenu(_:))
+        let act = #selector(AppDelegate.actFromMenu(_:))
+        let view = #selector(AppDelegate.showViewFromMenu(_:))
+        let agenda = DocketAgenda(items: [
+            DocketAgendaItem(kind: .overdue, project: "p", task: "t", title: "Call", projectName: "Work", reviewable: true),
+            DocketAgendaItem(kind: .today, project: "p", task: "u", title: "Write", projectName: "Work"),
+        ], total: 2)
+        let items = DocketAgendaMenu.items(for: agenda, pulse: nil, target: target, taskAction: show, actAction: act, viewAction: view)
+        let tasks = items.filter { $0.submenu != nil }
+        XCTAssertEqual(tasks.map { $0.title.components(separatedBy: "  ")[0] }, ["Call", "Write"])
+
+        func titles(_ menu: NSMenu?) -> [String] { (menu?.items ?? []).map { $0.isSeparatorItem ? "-" : $0.title } }
+        XCTAssertEqual(titles(tasks[0].submenu), ["Show in Docket", "-", "Done", "Defer 1 Hour", "Acknowledge"])
+        XCTAssertEqual(titles(tasks[1].submenu), ["Show in Docket", "-", "Done", "Defer 1 Hour"])
+        let first = try XCTUnwrap(tasks[0].submenu)
+        XCTAssertEqual(first.items[0].action, show)
+        XCTAssertEqual(first.items[0].representedObject as? DocketTaskID, DocketTaskID(project: "p", task: "t"))
+        let acts = first.items.compactMap { $0.representedObject as? DocketTaskActionChoice }
+        XCTAssertEqual(acts.map(\.action), [.done, .deferHour, .acknowledge])
+        XCTAssertTrue(acts.allSatisfy { $0.task == DocketTaskID(project: "p", task: "t") })
+        XCTAssertTrue(first.items.allSatisfy { $0.isSeparatorItem || ($0.target === target && $0.isEnabled) })
+        XCTAssertTrue(first.items.dropFirst(2).allSatisfy { $0.action == act })
+
+        let task = DocketTaskID(project: "p", task: "t")
+        XCTAssertEqual(DocketControlRequest.taskAction(.done, task), .done(task))
+        XCTAssertEqual(DocketControlRequest.taskAction(.acknowledge, task), .acknowledge(task))
+        XCTAssertEqual(DocketControlRequest.taskAction(.deferHour, task), .deferTask(task, minutes: 60))
+    }
+
+    /// The widget's requests wait in a folder the app drains: each is taken
+    /// once, in the order it was made, and one older than its lifetime, or
+    /// unreadable, is removed without being acted on.
+    func testWidgetRequestsAreTakenOnceAndExpire() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = DocketWidgetActionStore(directory: directory)
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let task = DocketTaskID(project: "p", task: "t")
+        let later = DocketWidgetActionRequest(action: .deferHour, task: task, requestedAt: now.addingTimeInterval(-5))
+        let earlier = DocketWidgetActionRequest(action: .done, task: task, requestedAt: now.addingTimeInterval(-10))
+        let stale = DocketWidgetActionRequest(action: .done, task: task, requestedAt: now.addingTimeInterval(-DocketWidgetActionRequest.lifetime - 1))
+        for request in [later, earlier, stale] { try store.add(request) }
+        try Data("not json".utf8).write(to: directory.appendingPathComponent("broken.json"))
+        XCTAssertEqual(store.pending().map(\.id), [stale.id, earlier.id, later.id])
+
+        XCTAssertEqual(store.take(at: now), [earlier, later])
+        XCTAssertEqual(store.take(at: now), [])
+        XCTAssertTrue(try FileManager.default.contentsOfDirectory(atPath: directory.path).isEmpty)
+        XCTAssertTrue(DocketWidgetActionStore(directory: directory).take().isEmpty)
+    }
+
+    /// Until Docket.app takes a widget request, the widget draws the snapshot
+    /// as it will read: Done and Defer take the task off its list and out of
+    /// its count, Done counts it done, and Acknowledge leaves it listed.
+    func testAPendingWidgetRequestIsAppliedToTheSnapshot() {
+        let late = DocketAgendaItem(kind: .overdue, project: "p", task: "late", title: "Late", projectName: "")
+        let now = DocketAgendaItem(kind: .today, project: "p", task: "now", title: "Now", projectName: "")
+        let flagged = DocketAgendaItem(kind: .today, project: "p", task: "flag", title: "Flag", projectName: "", reviewable: true)
+        let snapshot = DocketPulseSnapshot(inbox: 1, today: 2, overdue: 1, done: 0, updatedAt: Date(timeIntervalSince1970: 1_800_000_000),
+                                           agenda: DocketAgenda(items: [late, now, flagged], total: 5))
+        XCTAssertEqual(snapshot.applying([]), snapshot)
+
+        let applied = snapshot.applying([
+            DocketWidgetActionRequest(action: .done, task: late.id),
+            DocketWidgetActionRequest(action: .deferHour, task: now.id),
+            DocketWidgetActionRequest(action: .acknowledge, task: flagged.id),
+            DocketWidgetActionRequest(action: .done, task: DocketTaskID(project: "p", task: "gone")),
+        ])
+        XCTAssertEqual(applied.agenda, DocketAgenda(items: [flagged], total: 3))
+        XCTAssertEqual([applied.inbox, applied.today, applied.overdue, applied.done], [1, 1, 0, 1])
+        XCTAssertEqual(applied.updatedAt, snapshot.updatedAt)
+    }
+
+    /// A shortcut's task names its stored IDs, so a saved shortcut still names
+    /// it after it leaves the agenda; a slash in either ID cannot split it.
+    func testAShortcutTaskIdentifierRoundTrips() {
+        for task in [DocketTaskID(project: "p", task: "t"), DocketTaskID(project: "a/b", task: "c%d")] {
+            XCTAssertEqual(DocketTaskEntity.taskID(from: DocketTaskEntity.identifier(for: task)), task)
+        }
+        XCTAssertNil(DocketTaskEntity.taskID(from: "no-slash"))
+        XCTAssertNil(DocketTaskEntity.taskID(from: "/t"))
+        let entity = DocketTaskEntity(DocketAgendaItem(kind: .overdue, project: "p", task: "t", title: "Call", projectName: "Work", priority: 2))
+        XCTAssertEqual(entity.taskID, DocketTaskID(project: "p", task: "t"))
+        XCTAssertEqual(entity.title, "Call")
+        XCTAssertTrue(entity.isOverdue)
+        XCTAssertEqual(entity.priority, 2)
+        XCTAssertEqual(DocketShortcutTaskAction.deferFor(minutes: 30).request(DocketTaskID(project: "p", task: "t")),
+                       .deferTask(DocketTaskID(project: "p", task: "t"), minutes: 30))
     }
 
     func testACaptureReplyCarriesItsTransactionAndUndoNamesIt() throws {

@@ -43,15 +43,17 @@ struct DocketAgendaItem: Codable, Equatable {
     let due: String?
     /// Whether `due` names an instant rather than a whole day.
     let dueHasTime: Bool
+    /// Whether Docket would accept acknowledging it now, as `R` would.
+    let reviewable: Bool
 
     enum CodingKeys: String, CodingKey {
-        case kind, project, task, title, priority, due
+        case kind, project, task, title, priority, due, reviewable
         case projectName = "project_name"
         case dueHasTime = "due_has_time"
     }
 
     init(kind: Kind, project: String, task: String, title: String, projectName: String,
-         priority: Int? = nil, due: String? = nil, dueHasTime: Bool = false) {
+         priority: Int? = nil, due: String? = nil, dueHasTime: Bool = false, reviewable: Bool = false) {
         self.kind = kind
         self.project = project
         self.task = task
@@ -60,6 +62,7 @@ struct DocketAgendaItem: Codable, Equatable {
         self.priority = priority
         self.due = due
         self.dueHasTime = dueHasTime
+        self.reviewable = reviewable
     }
 
     init(from decoder: Decoder) throws {
@@ -72,7 +75,10 @@ struct DocketAgendaItem: Codable, Equatable {
         priority = try c.decodeIfPresent(Int.self, forKey: .priority)
         due = try c.decodeIfPresent(String.self, forKey: .due)
         dueHasTime = try c.decodeIfPresent(Bool.self, forKey: .dueHasTime) ?? false
+        reviewable = try c.decodeIfPresent(Bool.self, forKey: .reviewable) ?? false
     }
+
+    var id: DocketTaskID { DocketTaskID(project: project, task: task) }
 
     /// Where choosing it goes: Docket, with the cursor on this task.
     var link: DocketLink { .task(project: project, task: task) }

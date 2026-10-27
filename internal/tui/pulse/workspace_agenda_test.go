@@ -22,7 +22,7 @@ func TestWorkspaceAgendaListsWhatThePulseCounts(t *testing.T) {
 	lateRecent := &models.Task{ID: "late-recent", ShortID: 2, Title: "Late recent", WorkflowState: models.StateDoing, DueDate: &recent}
 	lateOlder := &models.Task{ID: "late-older", ShortID: 3, Title: "Late older", WorkflowState: models.StateBacklog, DueDate: &older, Priority: models.PriorityLow}
 	planLow := &models.Task{ID: "plan-low", ShortID: 4, Title: "Plan low", WorkflowState: models.StateBacklog, Priority: models.PriorityLow}
-	planHigh := &models.Task{ID: "plan-high", ShortID: 5, Title: "Plan high", WorkflowState: models.StateBacklog, Priority: models.PriorityHigh, DueDate: &later}
+	planHigh := &models.Task{ID: "plan-high", ShortID: 5, Title: "Plan high", WorkflowState: models.StateBacklog, Priority: models.PriorityHigh, DueDate: &later, Review: true}
 	planUnset := &models.Task{ID: "plan-unset", ShortID: 6, Title: "Plan unset", WorkflowState: models.StateDoing}
 	deferred := &models.Task{ID: "deferred", ShortID: 7, Title: "Deferred", WorkflowState: models.StateBacklog, DeferredUntil: &wake}
 	unplanned := &models.Task{ID: "unplanned", ShortID: 8, Title: "Unplanned", WorkflowState: models.StateBacklog}
@@ -53,6 +53,12 @@ func TestWorkspaceAgendaListsWhatThePulseCounts(t *testing.T) {
 	}
 	if first := agenda.Items[0]; first.ProjectName != "Work" || first.Title != "Late older" || first.Due == nil {
 		t.Fatalf("first item = %+v", first)
+	}
+
+	for _, item := range agenda.Items {
+		if item.Reviewable != (item.TaskID == "plan-high") {
+			t.Fatalf("%s reviewable = %v; only the flagged task is one R would accept", item.TaskID, item.Reviewable)
+		}
 	}
 
 	counted := ComputeWorkspacePulse([]*models.Project{project}, today, now)

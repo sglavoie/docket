@@ -106,8 +106,11 @@ func LoadCrossScopeSelection(selected []*models.Project, loader *workspace.Loade
 	return projects, failed
 }
 
-// ComputeWorkspacePulse selects and loads the base task workspace, then hands
-// the loaded projects to the counting half in internal/tui/pulse.
+// ComputeWorkspaceReadout selects and loads the base task workspace, then hands
+// the loaded projects to the counting half in internal/tui/pulse: the pulse
+// and, when withAgenda asks, the agenda naming its Today and Overdue tasks,
+// counted over one load so the list a host shows never disagrees with the
+// count beside it.
 //
 // The split is what keeps that package at L0: the snapshot loader below is
 // shell-and-outliner infrastructure, so pulse counts what it is given rather
@@ -120,14 +123,6 @@ func LoadCrossScopeSelection(selected []*models.Project, loader *workspace.Loade
 // time; a retained one re-reads only the files that changed. It is not safe for
 // concurrent use, so it must be owned by the one goroutine that recounts the
 // pulse. A nil loader reads everything fresh.
-func ComputeWorkspacePulse(rs *config.RuntimeState, todayIDs map[taskref.TaskIdentity]bool, now time.Time, loader *workspace.Loader) pulse.WorkspacePulse {
-	counted, _ := ComputeWorkspaceReadout(rs, todayIDs, now, loader, false)
-	return counted
-}
-
-// ComputeWorkspaceReadout is ComputeWorkspacePulse and, when withAgenda asks,
-// the agenda naming its Today and Overdue tasks, counted over one load so the
-// list a host shows never disagrees with the count beside it.
 func ComputeWorkspaceReadout(rs *config.RuntimeState, todayIDs map[taskref.TaskIdentity]bool, now time.Time, loader *workspace.Loader, withAgenda bool) (pulse.WorkspacePulse, pulse.WorkspaceAgenda) {
 	if rs == nil {
 		return pulse.WorkspacePulse{}, pulse.WorkspaceAgenda{}

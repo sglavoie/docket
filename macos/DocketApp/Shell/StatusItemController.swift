@@ -22,6 +22,8 @@ protocol StatusItemDelegate: AnyObject {
     func showView(_ view: DocketView)
     /// Shows Docket with the cursor on an agenda task.
     func showTask(_ task: DocketTaskID)
+    /// Does `action` to an agenda task without showing Docket.
+    func perform(_ action: DocketTaskAction, on task: DocketTaskID)
     func relaunchTerminal()
     func showQuickCapture(_ sender: Any?)
     func showPreferences(_ sender: Any?)
@@ -154,7 +156,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         } ?? []
         agendaItems = DocketAgendaMenu.items(
             for: delegate?.agenda, pulse: delegate?.pulse, target: self,
-            taskAction: #selector(showTask(_:)), viewAction: #selector(showView(_:))
+            taskAction: #selector(showTask(_:)), actAction: #selector(act(_:)), viewAction: #selector(showView(_:))
         )
         for (index, item) in (pulseItems + agendaItems).enumerated() { menu.insertItem(item, at: index) }
         pulseSeparator.isHidden = pulseItems.isEmpty && agendaItems.isEmpty
@@ -191,6 +193,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func showTask(_ sender: NSMenuItem) {
         guard let task = sender.representedObject as? DocketTaskID else { return }
         delegate?.showTask(task)
+    }
+    @objc private func act(_ sender: NSMenuItem) {
+        guard let choice = sender.representedObject as? DocketTaskActionChoice else { return }
+        delegate?.perform(choice.action, on: choice.task)
     }
     @objc private func relaunch(_ sender: Any?) { delegate?.relaunchTerminal() }
     @objc private func capture(_ sender: Any?) { delegate?.showQuickCapture(sender) }

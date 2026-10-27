@@ -195,6 +195,8 @@ type AgendaItem struct {
 	Priority    int    `json:"priority,omitempty"`
 	Due         string `json:"due,omitempty"`
 	DueHasTime  bool   `json:"due_has_time,omitempty"`
+	// Reviewable is as an Arrival's is.
+	Reviewable bool `json:"reviewable,omitempty"`
 }
 
 // Event is one line Docket writes unprompted. Title and Body word an arrivals

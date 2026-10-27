@@ -584,6 +584,7 @@ private final class FakeStatusDelegate: StatusItemDelegate {
     func toggleTerminal() { calls.append("toggle") }
     func showView(_ view: DocketView) { calls.append("view:\(view.rawValue)") }
     func showTask(_ task: DocketTaskID) { calls.append("task:\(task.project)/\(task.task)") }
+    func perform(_ action: DocketTaskAction, on task: DocketTaskID) { calls.append("\(action.rawValue):\(task.project)/\(task.task)") }
     func relaunchTerminal() { calls.append("relaunch") }
     func showQuickCapture(_ sender: Any?) { calls.append("capture") }
     func showPreferences(_ sender: Any?) { calls.append("preferences") }
@@ -694,11 +695,15 @@ final class StatusItemTests: XCTestCase {
         XCTAssertFalse(controller.menu.items[6].isHidden)
         XCTAssertEqual(controller.menu.items[3].attributedTitle?.string.hasPrefix("Send report  Work · "), true)
         XCTAssertEqual(controller.menu.items[5].attributedTitle?.string, "Call  Home")
+        // Each task's submenu shows it, then acts on it without showing Docket.
         for item in [controller.menu.items[3], controller.menu.items[5]] {
             XCTAssertTrue(item.isEnabled)
-            _ = (item.target as? NSObject)?.perform(item.action, with: item)
+            let submenu = try XCTUnwrap(item.submenu)
+            for choice in [submenu.items[0], submenu.item(withTitle: "Done")!] {
+                _ = (choice.target as? NSObject)?.perform(choice.action, with: choice)
+            }
         }
-        XCTAssertEqual(delegate.calls, ["task:p/late", "task:p/now"])
+        XCTAssertEqual(delegate.calls, ["task:p/late", "done:p/late", "task:p/now", "done:p/now"])
 
         // A refresh replaces the agenda rather than adding to it.
         delegate.agenda = DocketAgenda(items: [], total: 0)

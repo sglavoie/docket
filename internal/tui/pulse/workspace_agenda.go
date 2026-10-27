@@ -36,6 +36,9 @@ type AgendaItem struct {
 	Priority    int
 	Due         *time.Time
 	DueHasTime  bool
+	// Reviewable is whether acknowledging it is allowed now, as an
+	// Arrival's is, so a host offers that action only where R would accept it.
+	Reviewable bool
 }
 
 // WorkspaceAgenda is the tasks behind the pulse's Today and Overdue counts:
@@ -89,6 +92,7 @@ func ComputeWorkspaceAgenda(projects []*models.Project, todayIDs map[taskref.Tas
 					Priority:    task.Priority,
 					Due:         task.DueDate,
 					DueHasTime:  task.DueHasTime(),
+					Reviewable:  models.TaskAllowsExplicitReview(task, now),
 				},
 				shortID: task.ShortID,
 			})
@@ -141,6 +145,6 @@ func (a WorkspaceAgenda) Equal(b WorkspaceAgenda) bool {
 	return a.Total == b.Total && slices.EqualFunc(a.Items, b.Items, func(x, y AgendaItem) bool {
 		return x.Kind == y.Kind && x.ProjectID == y.ProjectID && x.TaskID == y.TaskID &&
 			x.Title == y.Title && x.ProjectName == y.ProjectName && x.Priority == y.Priority &&
-			x.DueHasTime == y.DueHasTime && compareAgendaDue(x.Due, y.Due) == 0
+			x.DueHasTime == y.DueHasTime && x.Reviewable == y.Reviewable && compareAgendaDue(x.Due, y.Due) == 0
 	})
 }

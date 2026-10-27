@@ -57,8 +57,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     var controlWaitTimeout: TimeInterval = 15
     /// Shortcuts waiting on the first pulse a new connection hears.
     private var pulseWaiters: [(DocketPulse?) -> Void] = []
+    private var agendaWaiters: [(DocketAgenda?) -> Void] = []
     /// Where the widget reads the pulse; nil without an App Group container.
     var pulseSnapshots = DocketPulseSnapshotStore(container: DocketSharedContainer.root())
+    var widgetActions = DocketWidgetActionStore(container: DocketSharedContainer.root())
     private var dayChangeObserver: NSObjectProtocol?
     /// When a capture link last opened the panel, so the activation that link
     /// caused leaves the terminal where it was.
@@ -292,7 +294,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
         let tasks = DocketAgendaMenu.items(
             for: agenda, pulse: pulse, target: target,
-            taskAction: #selector(AppDelegate.showTaskFromMenu(_:)), viewAction: #selector(AppDelegate.showViewFromMenu(_:))
+            taskAction: #selector(AppDelegate.showTaskFromMenu(_:)), actAction: #selector(AppDelegate.actFromMenu(_:)),
+            viewAction: #selector(AppDelegate.showViewFromMenu(_:))
         )
         for item in tasks { menu.addItem(item) }
         if !counts.isEmpty || !tasks.isEmpty {
@@ -322,6 +325,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     @objc func showTaskFromMenu(_ sender: NSMenuItem) {
         guard let task = sender.representedObject as? DocketTaskID else { return }
         showTask(task)
+    }
+
+    @objc func actFromMenu(_ sender: NSMenuItem) {
+        guard let choice = sender.representedObject as? DocketTaskActionChoice else { return }
+        perform(choice.action, on: choice.task)
     }
 
     @objc func showPreferences(_ sender: Any?) {
@@ -491,6 +499,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         client.onConnectionChange = { [weak self, weak client] connected in
             if connected {
                 self?.sendTheme(clearWhenUnselected: true)
+                self?.drainWidgetActions()
                 // Ask the process itself: replacing its executable on disk
                 // must not rewrite what Settings calls the running version.
                 client?.send(DocketControlRequest(op: .version)) { [weak self, weak client] reply in
@@ -513,15 +522,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
 
         notifications.onReveal = { [weak self] task in self?.reveal(task) }
-        notifications.onAcknowledge = { [weak self] task in
-            self?.act(.acknowledge(task), failure: "Docket could not acknowledge it")
-        }
-        notifications.onDone = { [weak self] task in
-            self?.act(.done(task), failure: "Docket could not mark it Done")
-        }
-        notifications.onDefer = { [weak self] task in
-            self?.act(.deferTask(task, minutes: NotificationPresenter.deferMinutes), failure: "Docket could not defer it")
-        }
+        notifications.onAcknowledge = { [weak self] task in self?.perform(.acknowledge, on: task) }
+        notifications.onDone = { [weak self] task in self?.perform(.done, on: task) }
+        notifications.onDefer = { [weak self] task in self?.perform(.deferHour, on: task) }
         quickCapture.submit = { [weak self] submission, written, done in self?.capture(submission, written: written, done: done) }
         quickCapture.captureContext = { [weak self] done in
             guard let self, let control = self.control, let terminal = self.terminal else {
@@ -555,6 +558,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             lastAgenda = agenda
             statusItem?.refreshPulse()
             scheduleWidgetRecord()
+            let waiting = agendaWaiters
+            agendaWaiters = []
+            for body in waiting { body(agenda) }
         case .arrivals(let arrivals, let title, let body):
             notifications.post(arrivals: arrivals, title: title, body: body)
         }
@@ -585,13 +591,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         navigate(.reveal(task), destination: "that task")
     }
 
-    /// A notification action: Docket acts without coming forward, and says so
-    /// only when it refused.
-    private func act(_ request: DocketControlRequest, failure: String) {
-        control?.send(request) { [weak self] reply in
-            guard !reply.ok else { return }
-            self?.notifications.postNotice(title: failure, body: reply.message ?? "")
+    /// A notification action or an agenda menu act: Docket acts without coming
+    /// forward, and says so only when it refused.
+    func perform(_ action: DocketTaskAction, on task: DocketTaskID) {
+        perform(action, on: task) { [weak self] ok, message in
+            guard !ok else { return }
+            self?.notifications.postNotice(title: action.failure, body: message)
         }
+    }
+
+    /// Does `action` to `task` in the running Docket, as its key there would,
+    /// and calls back with whether Docket did and what it said. It never starts
+    /// Docket: the agenda it acts on is one a running Docket reported, and one
+    /// still starting is waited for.
+    func perform(_ action: DocketTaskAction, on task: DocketTaskID, reply: @escaping (Bool, String) -> Void) {
+        guard let control else {
+            reply(false, "Docket is not running")
+            return
+        }
+        control.send(.taskAction(action, task)) { answer in reply(answer.ok, answer.message ?? "") }
     }
 
     private func capture(_ submission: QuickCaptureSubmission, written: @escaping () -> Void, done: @escaping (Bool, String, String?, DocketTextSelection?) -> Void) {
@@ -810,6 +828,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
     }
 
+    /// The agenda a live connection has reported. Docket sends it right after
+    /// the pulse, so it is waited for briefly past the pulse; a Docket that
+    /// still sends none is too old to.
+    func shortcutAgenda(_ done: @escaping (DocketAgenda?, String?) -> Void) {
+        shortcutPulse { [weak self] pulse, reason in
+            guard let self else { return }
+            guard pulse != nil else { done(nil, reason); return }
+            if let agenda = self.lastAgenda {
+                done(agenda, nil)
+                return
+            }
+            self.agendaWaiters.append { agenda in
+                done(agenda, agenda == nil ? "This Docket does not report its tasks. Update it, then choose Relaunch Docket." : nil)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+                guard let self, !self.agendaWaiters.isEmpty else { return }
+                let waiting = self.agendaWaiters
+                self.agendaWaiters = []
+                for body in waiting { body(self.lastAgenda) }
+            }
+        }
+    }
+
+    /// A shortcut's act on one task. Like a count, it never starts a Docket
+    /// that has exited.
+    func shortcutPerform(_ action: DocketShortcutTaskAction, on task: DocketTaskID, done: @escaping (Bool, String) -> Void) {
+        whenControlSettled { [weak self] control in
+            guard let self else { return }
+            guard let control, self.terminal?.surfaceView != nil else {
+                done(false, self.captureUnavailableReason ?? "Docket is not running. Open it, then try again.")
+                return
+            }
+            control.send(action.request(task)) { reply in done(reply.ok, reply.message ?? "") }
+        }
+    }
+
     func shortcutShow(_ view: DocketView?) {
         guard let view else {
             guard let terminal else { showLaunchErrorAgain(); return }
@@ -817,6 +871,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             return
         }
         whenControlSettled { [weak self] _ in self?.showView(view) }
+    }
+
+    // MARK: Widget actions
+
+    /// Listens for the widget's Darwin notification. The observer is the app
+    /// delegate, which lives as long as the process, so it is never removed.
+    private func observeWidgetActions() {
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(), Unmanaged.passUnretained(self).toOpaque(),
+            { _, observer, _, _, _ in
+                guard let observer else { return }
+                let delegate = Unmanaged<AppDelegate>.fromOpaque(observer).takeUnretainedValue()
+                DispatchQueue.main.async { delegate.drainWidgetActions() }
+            },
+            DocketWidgetActionStore.notification as CFString, nil, .deliverImmediately
+        )
+        drainWidgetActions()
+    }
+
+    /// Carries out what the widget's buttons asked for, each as the agenda
+    /// menu's act would, and redraws the widget once Docket answers, so a task
+    /// Docket refused is listed again. Without a control connection the requests
+    /// wait, and expire if none comes in time.
+    func drainWidgetActions(now: Date = Date()) {
+        guard control != nil, let store = widgetActions else { return }
+        for request in store.take(at: now) {
+            perform(request.action, on: request.task) { [weak self] ok, message in
+                if !ok { self?.notifications.postNotice(title: request.action.failure, body: message) }
+                WidgetCenter.shared.reloadTimelines(ofKind: DocketPulseSnapshot.widgetKind)
+            }
+        }
     }
 
     /// Records the pulse and agenda for the widget once this main-queue turn is
@@ -866,6 +951,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     /// The pieces that work even when Docket itself could not start.
     private func setUpShell() {
         configureCaptureStore()
+        observeWidgetActions()
         let model = preferencesModel
         model.onActivationPolicyChange = { [weak self] in self?.applyActivationPolicy($0) }
         model.onHotKeyChange = { [weak self] in self?.registerHotKey($0) }

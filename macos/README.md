@@ -176,8 +176,10 @@ all of them when all three are. Choosing one shows Docket in that mode, as its m
 jump would: Inbox, Today, or Due for Overdue. Under the counts, an Overdue and a
 Today heading list the tasks behind them, overdue first by oldest deadline, then
 Today by priority, each with its project and deadline beside the title (`Send
-report  Work · Yesterday`). Choosing one shows Docket with the cursor on it, as a
-notification does. The menu holds eight; the rest are one `N more…` item showing
+report  Work · Yesterday`). Each opens a submenu: Show in Docket puts the cursor
+on it, as a notification does, and Done, Defer 1 Hour, and Acknowledge (offered
+only where `R` would accept it) act on it without bringing Docket forward, as
+that notification's buttons do; a refusal arrives as a notification. The menu holds eight; the rest are one `N more…` item showing
 Due while overdue work is among them, else Today. A task overdue and planned for
 today is listed once, as overdue. A Docket that is busy, because
 something is open in it, or too old to know the request is still shown, in the
@@ -350,8 +352,9 @@ replaces an unsaved draft: the panel opens on the draft you had and says so.
 macOS lists the service once Docket.app has run from `/Applications`; System
 Settings › Keyboard › Keyboard Shortcuts › Services turns it off or gives it a key.
 
-**Shortcuts**, Spotlight, and Siri get three actions, each also offered as an
-App Shortcut ("Capture a task in Docket"):
+**Shortcuts**, Spotlight, and Siri get these actions; Capture Task, Show
+Docket, Count Docket Tasks, and Get Docket Agenda are also offered as App
+Shortcuts ("Capture a task in Docket"):
 
 - **Capture Task** commits its text through the composer's grammar without
   opening anything, each line its own task in one undo entry, and returns what
@@ -361,6 +364,18 @@ App Shortcut ("Capture a task in Docket"):
 - **Show Docket** brings Docket forward, in Inbox, Today, or Overdue when chosen.
 - **Count Docket Tasks** returns the Inbox, Today, Overdue, or Done Today count
   from the live pulse. It never starts Docket, and fails when it is not running.
+- **Get Docket Agenda** returns the tasks the status menu lists — Overdue,
+  Today, or both, at most 20 — as Docket Task values carrying the title,
+  project, deadline, priority, and whether it is overdue.
+- **Mark Docket Task Done**, **Defer Docket Task** (by a number of minutes,
+  60 unless set), and **Acknowledge Docket Task** act on one Docket Task as `wd`,
+  a deferral, and `R` would, each its own undo entry, and return what Docket
+  said; a refusal is the action's error. A task can be picked from the agenda
+  or passed from Get Docket Agenda, and a saved shortcut keeps naming it by its
+  stored IDs after it leaves the agenda.
+
+The task actions, like Count Docket Tasks and Get Docket Agenda, never start
+Docket and fail when it is not running.
 
 ### Widget
 
@@ -375,7 +390,15 @@ filtered to `$canceled $done ?completed` — and have a Capture button, all
 through the links above. The large one adds the agenda the status menu lists:
 up to six overdue and Today tasks, each with its project, deadline, and
 priority, opening Docket on that task, and a `N more in Docket` line for the
-rest. Docket sends that list beside the pulse, so a Docket too old to send it
+rest. Each row has buttons for Done, Defer 1 Hour, and, where `R` would
+accept it, Acknowledge. The sandboxed widget cannot reach Docket's control
+socket, so a button writes its request to `widget-actions/` in the App Group
+container and posts a Darwin notification; Docket.app takes the request, sends
+it to Docket as the status menu's act would, and reports a refusal as a
+notification. The widget leaves a Done or deferred task out, and its count,
+at once. A request Docket.app has not taken within a minute, because it or
+Docket was not running, is dropped rather than run later, and the task is
+listed again. Docket sends that list beside the pulse, so a Docket too old to send it
 leaves the large widget saying to update it.
 
 ### Notifications and the Dock badge

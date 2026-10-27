@@ -343,6 +343,7 @@ func (m *AppModel) publishControlAgenda() {
 			Title:       item.Title,
 			ProjectName: item.ProjectName,
 			DueHasTime:  item.DueHasTime,
+			Reviewable:  item.Reviewable,
 		}
 		if item.Priority >= models.PriorityHigh && item.Priority <= models.PriorityLow {
 			wire.Priority = item.Priority

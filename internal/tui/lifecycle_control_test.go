@@ -353,7 +353,7 @@ func TestControlPublishesEachChangedAgendaOnce(t *testing.T) {
 
 	due := time.Date(2026, 10, 26, 9, 30, 0, 0, time.UTC)
 	app.workspaceAgenda = pulse.WorkspaceAgenda{Total: 3, Items: []pulse.AgendaItem{
-		{Kind: pulse.AgendaOverdue, ProjectID: "p", TaskID: "t", Title: "Call", ProjectName: "Work", Priority: models.PriorityHigh, Due: &due, DueHasTime: true},
+		{Kind: pulse.AgendaOverdue, ProjectID: "p", TaskID: "t", Title: "Call", ProjectName: "Work", Priority: models.PriorityHigh, Due: &due, DueHasTime: true, Reviewable: true},
 		{Kind: pulse.AgendaToday, ProjectID: "p", TaskID: "u", Title: "Write", ProjectName: "Work"},
 	}}
 	app.publishControlAgenda()
@@ -366,10 +366,10 @@ func TestControlPublishesEachChangedAgendaOnce(t *testing.T) {
 		t.Fatalf("event = %+v", event)
 	}
 	if got := event.Agenda.Items[0]; got.Kind != control.AgendaOverdue || got.Project != "p" || got.Task != "t" ||
-		got.Priority != models.PriorityHigh || got.Due != "2026-10-26T09:30:00Z" || !got.DueHasTime || got.ProjectName != "Work" {
+		got.Priority != models.PriorityHigh || got.Due != "2026-10-26T09:30:00Z" || !got.DueHasTime || got.ProjectName != "Work" || !got.Reviewable {
 		t.Fatalf("overdue item = %+v", got)
 	}
-	if got := event.Agenda.Items[1]; got.Kind != control.AgendaToday || got.Due != "" || got.Priority != 0 {
+	if got := event.Agenda.Items[1]; got.Kind != control.AgendaToday || got.Due != "" || got.Priority != 0 || got.Reviewable {
 		t.Fatalf("today item = %+v", got)
 	}
 

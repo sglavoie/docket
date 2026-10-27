@@ -69,6 +69,15 @@ struct DocketControlRequest: Encodable, Equatable {
         Self(op: .deferTask, project: task.project, task: task.task, minutes: minutes)
     }
 
+    /// The request `action` makes on `task`.
+    static func taskAction(_ action: DocketTaskAction, _ task: DocketTaskID) -> Self {
+        switch action {
+        case .done: return .done(task)
+        case .deferHour: return .deferTask(task, minutes: DocketTaskAction.deferMinutes)
+        case .acknowledge: return .acknowledge(task)
+        }
+    }
+
     static func capture(_ text: String) -> Self {
         Self(op: .capture, text: text)
     }
@@ -171,11 +180,6 @@ final class DocketQuitHandshake {
 }
 
 /// A task as Docket names it on the wire: stored project and task IDs.
-struct DocketTaskID: Equatable, Hashable {
-    let project: String
-    let task: String
-}
-
 struct DocketTextSelection: Decodable, Equatable {
     let start: Int
     let length: Int
