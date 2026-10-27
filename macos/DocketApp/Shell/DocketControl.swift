@@ -296,6 +296,49 @@ struct DocketArrival: Decodable, Equatable {
     }
 }
 
+/// An arrival Docket expects later: what `arrivals` will report at `at` unless
+/// the task changes first. A schedule names them earliest first and replaces
+/// the one before it whole.
+struct DocketScheduledArrival: Decodable, Equatable {
+    let arrival: DocketArrival
+    let at: Date
+
+    init(_ arrival: DocketArrival, at: Date) {
+        self.arrival = arrival
+        self.at = at
+    }
+
+    enum CodingKeys: String, CodingKey { case at }
+
+    init(from decoder: Decoder) throws {
+        arrival = try DocketArrival(from: decoder)
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let stamp = try c.decode(String.self, forKey: .at)
+        guard let at = ISO8601DateFormatter().date(from: stamp) else {
+            throw DecodingError.dataCorruptedError(forKey: .at, in: c, debugDescription: "not RFC 3339: \(stamp)")
+        }
+        self.at = at
+    }
+}
+
+private struct DocketSchedule: Decodable {
+    let items: [DocketScheduledArrival]
+
+    enum CodingKeys: String, CodingKey { case items }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        // One unreadable entry costs that reminder, not the whole schedule.
+        let lossy = try c.decodeIfPresent([Lossy].self, forKey: .items) ?? []
+        items = lossy.compactMap(\.value)
+    }
+
+    private struct Lossy: Decodable {
+        let value: DocketScheduledArrival?
+        init(from decoder: Decoder) throws { value = try? DocketScheduledArrival(from: decoder) }
+    }
+}
+
 struct DocketEditing: Decodable, Equatable {
     let undo: String
     let redo: String
@@ -309,6 +352,8 @@ enum DocketControlEvent: Equatable {
     case agenda(DocketAgenda)
     /// `title` and `body` word the whole batch as one notification.
     case arrivals([DocketArrival], title: String, body: String)
+    /// The arrivals still to come, earliest first.
+    case schedule([DocketScheduledArrival])
 }
 
 /// One line Docket wrote: a reply or an event. Anything else is skipped, so a
@@ -330,6 +375,7 @@ enum DocketControlLine: Equatable {
         let pulse: DocketPulse?
         let arrivals: [DocketArrival]?
         let agenda: DocketAgenda?
+        let schedule: DocketSchedule?
         let title: String?
         let body: String?
     }
@@ -349,6 +395,8 @@ enum DocketControlLine: Equatable {
             return raw.agenda.map { .event(.agenda($0)) }
         case "arrivals":
             return .event(.arrivals(raw.arrivals ?? [], title: raw.title ?? "Docket", body: raw.body ?? ""))
+        case "schedule":
+            return raw.schedule.map { .event(.schedule($0.items)) }
         default:
             return nil
         }
@@ -412,6 +460,18 @@ final class DocketControlClient {
             generation += 1
             connecting = true
             attempt(generation: generation, deadline: Date().addingTimeInterval(connectWindow))
+        }
+    }
+
+    /// Drops the connection and holds every request sent from now on until
+    /// the next `connect()`, without looking for a Docket meanwhile: the one
+    /// still listening is on its way out, and a request must reach the one
+    /// that replaces it.
+    func hold() {
+        queue.async { [self] in
+            closeLocked(reason: "Docket restarted")
+            generation += 1
+            connecting = true
         }
     }
 

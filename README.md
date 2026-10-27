@@ -208,7 +208,7 @@ descriptors that dispatch the keys, for whichever surface you are on.
 ## Maintenance CLI
 
 ```text
-docket [--no-advisories] [--notify] [--control PATH]
+docket [--no-advisories] [--notify] [--control PATH [--headless]]
 docket doctor [--fix] [--json]
 docket conflict list [--json]
 docket conflict show <id> [--json]

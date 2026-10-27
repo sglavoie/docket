@@ -45,8 +45,11 @@ type controlState struct {
 	published *pulse.WorkspacePulse
 	// publishedAgenda is the last agenda sent, for the same reason.
 	publishedAgenda *pulse.WorkspaceAgenda
-	editing         *control.Editing
-	textHistory     map[any]*desktopTextHistory
+	// publishedUpcoming is the last schedule sent; nil until one has been.
+	publishedUpcoming []pulse.UpcomingArrival
+	upcomingPublished bool
+	editing           *control.Editing
+	textHistory       map[any]*desktopTextHistory
 }
 
 // WithControlPublisher connects the session to a control socket's events.
@@ -359,6 +362,29 @@ func (m *AppModel) publishControlAgenda() {
 	m.control.publisher.Publish(control.Event{Event: control.EventAgenda, Agenda: agenda})
 }
 
+// publishControlSchedule sends the arrivals still to come when they changed
+// since the last schedule sent. It runs after the agenda, and an empty
+// schedule is sent too, since it says every earlier booking is void.
+func (m *AppModel) publishControlSchedule() {
+	if !m.control.enabled() {
+		return
+	}
+	current := m.workspaceUpcoming
+	if m.control.upcomingPublished && pulse.EqualUpcoming(m.control.publishedUpcoming, current) {
+		return
+	}
+	m.control.publishedUpcoming = current
+	m.control.upcomingPublished = true
+	schedule := &control.Schedule{Items: make([]control.ScheduledArrival, 0, len(current))}
+	for _, upcoming := range current {
+		schedule.Items = append(schedule.Items, control.ScheduledArrival{
+			Arrival: controlArrival(upcoming.Arrival),
+			At:      upcoming.At.Format(time.RFC3339),
+		})
+	}
+	m.control.publisher.Publish(control.Event{Event: control.EventSchedule, Schedule: schedule})
+}
+
 // publishControlArrivals sends one tick's arrivals with each task's identity,
 // so the host can offer to act on it.
 func (m *AppModel) publishControlArrivals(arrivals []pulse.Arrival) {
@@ -368,15 +394,19 @@ func (m *AppModel) publishControlArrivals(arrivals []pulse.Arrival) {
 	title, body := pulse.ArrivalNotification(arrivals)
 	event := control.Event{Event: control.EventArrivals, Title: title, Body: body}
 	for _, arrival := range arrivals {
-		event.Arrivals = append(event.Arrivals, control.Arrival{
-			Kind:       controlArrivalKind(arrival.Kind),
-			Project:    arrival.ProjectID,
-			Task:       arrival.TaskID,
-			Title:      arrival.Title,
-			Reviewable: arrival.Reviewable,
-		})
+		event.Arrivals = append(event.Arrivals, controlArrival(arrival))
 	}
 	m.control.publisher.Publish(event)
+}
+
+func controlArrival(arrival pulse.Arrival) control.Arrival {
+	return control.Arrival{
+		Kind:       controlArrivalKind(arrival.Kind),
+		Project:    arrival.ProjectID,
+		Task:       arrival.TaskID,
+		Title:      arrival.Title,
+		Reviewable: arrival.Reviewable,
+	}
 }
 
 func controlArrivalKind(kind pulse.ArrivalKind) string {

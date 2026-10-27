@@ -29,6 +29,11 @@ var notify bool
 // TUI that answers a host on it.
 var controlSocket string
 
+// headless belongs to the root command with --control: it runs that same
+// session with no terminal, for a host that keeps Docket answering while its
+// window is closed.
+var headless bool
+
 var (
 	openLogging  = logging.Init
 	closeLogging = logging.Close
@@ -196,6 +201,7 @@ func init() {
 	rootCmd.Flags().BoolVar(&notify, "notify", false, "send a desktop notification (OSC 777) when a check-in arrives, a timed deadline passes, or a deferral ends")
 	rootCmd.Flags().StringVar(&controlSocket, "control", "", "serve a control socket at this path for a host app such as Docket.app")
 	_ = rootCmd.MarkFlagFilename("control")
+	rootCmd.Flags().BoolVar(&headless, "headless", false, "run with no terminal, answering only the --control socket")
 	rootCmd.Flags().Bool("version", false, "print the version and exit")
 }
 
@@ -242,6 +248,10 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	if headless && controlSocket == "" {
+		return usageRefusal(cmd, fmt.Errorf("--headless needs --control: a session with no terminal is reached only through its socket"))
+	}
+
 	runtime, err := openDesktopRuntime()
 	if err != nil {
 		return err
@@ -254,6 +264,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		HideAdvisories: noAdvisories,
 		Notify:         notify,
 		ControlSocket:  controlSocket,
+		Headless:       headless,
 		VersionLine:    versionLine(),
 	})
 }

@@ -10,6 +10,7 @@ struct DocketSessionBinary: Equatable {
     var path: String { resolution.url.path }
     var notifySupported: Bool { supported.contains(DocketNotificationsPreference.flag) }
     var controlSupported: Bool { supported.contains(DocketControlLaunch.flag) }
+    var headlessSupported: Bool { supported.contains(DocketBackgroundPreference.flag) }
 }
 
 /// Also distinguishes development builds whose version strings are identical.
@@ -41,7 +42,9 @@ final class DocketSessionBinaryStore {
         DocketBinaryResolver.live(searchPath: $0).resolve()
     }
     var supportedFlags: (_ binary: String) -> Set<String> = {
-        DocketVersion.supported(flags: [DocketNotificationsPreference.flag, DocketControlLaunch.flag], binary: $0)
+        DocketVersion.supported(
+            flags: [DocketNotificationsPreference.flag, DocketControlLaunch.flag, DocketBackgroundPreference.flag], binary: $0
+        )
     }
     var readVersion: (String) -> DocketVersion? = { DocketVersion.read(binary: $0) }
 

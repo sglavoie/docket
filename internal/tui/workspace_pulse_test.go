@@ -278,6 +278,6 @@ func TestWorkspacePulseRefreshClearsCrossDayActivityOnFailureAndRetries(t *testi
 
 // computeWorkspacePulse is the pulse half of outliner.ComputeWorkspaceReadout.
 func computeWorkspacePulse(rs *config.RuntimeState, todayIDs map[taskref.TaskIdentity]bool, now time.Time) pulse.WorkspacePulse {
-	counted, _ := outliner.ComputeWorkspaceReadout(rs, todayIDs, now, nil, false)
+	counted, _, _ := outliner.ComputeWorkspaceReadout(rs, todayIDs, now, nil, false)
 	return counted
 }

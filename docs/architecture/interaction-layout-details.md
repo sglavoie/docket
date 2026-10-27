@@ -200,8 +200,11 @@ and the strip is left free for the feedback your next bulk gesture writes there.
 `docket --control PATH` serves a Unix socket at `PATH`, readable by your user
 alone, for a host app such as Docket.app. Over it the session reports the pulse
 whenever it changes, the agenda — the overdue and Today tasks behind those
-counts, overdue first — whenever that changes, and each tick's arrivals, with
-the identity of every task it names, and it takes seven requests: show a task, acknowledge one as `R` does, mark
+counts, overdue first — whenever that changes, the schedule — the arrivals still
+to come within the next eight days, each with the instant it will happen, so a
+host can book them with the system ahead of time — whenever that changes, and
+each tick's arrivals, with the identity of every task it names, and it takes
+seven requests: show a task, acknowledge one as `R` does, mark
 one Done as `wd` does, defer one by some minutes, capture a line as the `a`
 composer would read it, refusals included, ask what that composer would suggest for a draft up to its caret,
 and preview the project, plan, status, and deadline of a full capture draft.
@@ -211,7 +214,11 @@ something is refused, never queued, while you are inside a picker, an editor, a
 selection, or another view — completions and previews change nothing, so they
 are answered even then — and a session that lost focus first adopts any change made on disk since,
 so what it commits is never against a stale read. Docket.app starts Docket this way, and
-falls back to `--notify` for a Docket too old to have the flag.
+falls back to `--notify` for a Docket too old to have the flag. `--headless`
+runs that same session with no input, no renderer, and a fixed 120×40 size,
+blurred from the start so every request adopts what changed on disk first;
+it is how Docket.app keeps answering after `q`, and it quits when its parent
+process changes, since an orphan would hold the lock the next session needs.
 
 The strip is also where `Q` expands the narrowing readout: one numbered row per
 narrowing the view is under, then an `Also in view` block for the axes nothing

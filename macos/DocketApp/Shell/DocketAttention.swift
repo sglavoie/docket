@@ -222,11 +222,14 @@ final class DocketTaskActionChoice: NSObject {
 /// never prompted. A notification arriving while Docket is already in front is not
 /// presented, since Docket's own rows say the same thing.
 ///
-/// Two sources feed it. A Docket with a control socket reports arrivals with each
-/// task's identity, so a notification naming one task offers Acknowledge (when
-/// Docket would accept it), Done, and Defer 1 Hour, and clicking it shows that task. An
-/// older Docket run with `--notify` sends one OSC 777 escape per batch, which can
-/// only bring Docket forward.
+/// Three sources feed it. A Docket with a control socket reports its schedule,
+/// the arrivals still to come, and each is booked with the system for its
+/// instant, so it appears then whether or not any Docket is running; and it
+/// reports arrivals as they happen, with each task's identity, which are shown
+/// unless a booking already showed them. A notification naming one task offers
+/// Acknowledge (when Docket would accept it), Done, and Defer 1 Hour, and
+/// clicking it shows that task. An older Docket run with `--notify` sends one
+/// OSC 777 escape per batch, which can only bring Docket forward.
 final class NotificationPresenter: NSObject, UNUserNotificationCenterDelegate {
     /// Whether to show one at all; read per notification.
     var isEnabled: () -> Bool = { true }
@@ -269,6 +272,24 @@ final class NotificationPresenter: NSObject, UNUserNotificationCenterDelegate {
         return center
     }()
     private var authorizationRequested = false
+    private var authorizationWaiters: [(Bool) -> Void] = []
+
+    /// The schedule Docket last reported, as bookings.
+    private(set) var reminders = DocketReminderBook()
+    /// Bookings a newer schedule left out because their instant came, kept
+    /// while they can still cover a live arrival.
+    private var firedBookings: [DocketReminderBook.Booking] = []
+    /// Whether the pending bookings are being brought in step, and whether
+    /// another pass is owed once it finishes; passes never overlap, so one
+    /// cannot withdraw what a later one just booked.
+    private var bookingInFlight = false
+    private var bookingOwed = false
+
+    /// Sets the center's delegate before anything else can, so a notification
+    /// action that launched the app reaches it.
+    func activate() {
+        _ = center
+    }
 
     static func categories() -> Set<UNNotificationCategory> {
         let acknowledge = UNNotificationAction(identifier: Action.acknowledge, title: "Acknowledge", options: [])
@@ -287,12 +308,30 @@ final class NotificationPresenter: NSObject, UNUserNotificationCenterDelegate {
         guard arrivals.count <= maxPerTaskNotifications else {
             return [content(title: title, body: body)]
         }
-        return arrivals.map { arrival in
-            let content = content(title: arrival.notificationTitle, body: arrival.title)
-            content.categoryIdentifier = arrival.reviewable ? Category.reviewable : Category.task
-            content.userInfo = [UserInfo.project: arrival.project, UserInfo.task: arrival.task]
-            return content
+        return arrivals.map(content(for:))
+    }
+
+    /// One arrival's notification, naming its task.
+    static func content(for arrival: DocketArrival) -> UNMutableNotificationContent {
+        let content = content(title: arrival.notificationTitle, body: arrival.title)
+        content.categoryIdentifier = arrival.reviewable ? Category.reviewable : Category.task
+        content.userInfo = [UserInfo.project: arrival.project, UserInfo.task: arrival.task]
+        return content
+    }
+
+    /// The summary Docket gives a batch, for a batch the bookings thinned: the
+    /// arrivals counted by reason, in Docket's wording and order.
+    static func summary(for arrivals: [DocketArrival]) -> (title: String, body: String) {
+        let reasons: [(DocketArrival.Kind, String, String)] = [
+            (.checkIn, "check-in", "check-ins"),
+            (.deadline, "deadline passed", "deadlines passed"),
+            (.wake, "deferral ended", "deferrals ended"),
+        ]
+        let parts = reasons.compactMap { kind, one, many -> String? in
+            let count = arrivals.filter { $0.kind == kind }.count
+            return count == 0 ? nil : "\(count) \(count == 1 ? one : many)"
         }
+        return ("Docket", parts.joined(separator: " · "))
     }
 
     private static func content(title: String, body: String) -> UNMutableNotificationContent {
@@ -316,9 +355,114 @@ final class NotificationPresenter: NSObject, UNUserNotificationCenterDelegate {
         post([Self.content(title: title, body: body)])
     }
 
-    /// An arrivals event from the control socket.
-    func post(arrivals: [DocketArrival], title: String, body: String) {
-        post(Self.contents(for: arrivals, title: title, body: body))
+    /// An arrivals event from the control socket, less what a booking
+    /// already showed.
+    func post(arrivals: [DocketArrival], title: String, body: String, now: Date = Date()) {
+        post(Self.contents(for: arrivals, title: title, body: body, covered: reminders.bookings + firedBookings, now: now))
+    }
+
+    /// The notifications an arrivals event becomes once the arrivals a booking
+    /// in `covered` already showed are left out; a thinned batch is summarized
+    /// afresh, since Docket's own summary counts what was left out too.
+    static func contents(
+        for arrivals: [DocketArrival], title: String, body: String,
+        covered: [DocketReminderBook.Booking], now: Date
+    ) -> [UNNotificationContent] {
+        let shown = arrivals.filter { !DocketReminderBook.covers($0, bookings: covered, now: now) }
+        guard shown.count != arrivals.count else {
+            return contents(for: arrivals, title: title, body: body)
+        }
+        let summary = summary(for: shown)
+        return contents(for: shown, title: summary.title, body: summary.body)
+    }
+
+    /// A schedule event from the control socket: books what is to come,
+    /// withdraws what no longer is, and keeps the bookings whose instant came
+    /// able to cover the live arrival Docket reports for them.
+    func book(_ schedule: [DocketScheduledArrival], now: Date = Date()) {
+        let next = DocketReminderBook(schedule: schedule, now: now)
+        let earliest = now.addingTimeInterval(-DocketReminderBook.coverAfter)
+        let latest = now.addingTimeInterval(DocketReminderBook.coverBefore)
+        let wanted = next.identifiers
+        firedBookings = (firedBookings + reminders.bookings).filter {
+            $0.at >= earliest && $0.at <= latest && !wanted.contains($0.identifier)
+        }
+        reminders = next
+        refreshBookings()
+    }
+
+    /// Brings the pending bookings in step with the schedule, or withdraws them
+    /// all while notifications are off. Withdrawing needs no permission, so
+    /// bookings an earlier run left go even before anything is asked; permission
+    /// is asked for the first time there is something to add.
+    func refreshBookings() {
+        guard !bookingInFlight else {
+            bookingOwed = true
+            return
+        }
+        bookingInFlight = true
+        let book = isEnabled() ? reminders : DocketReminderBook()
+        let center = self.center
+        center.getPendingNotificationRequests { [weak self] pending in
+            let changes = book.changes(pending: Set(pending.map(\.identifier)))
+            if !changes.remove.isEmpty {
+                center.removePendingNotificationRequests(withIdentifiers: changes.remove)
+            }
+            DispatchQueue.main.async {
+                guard let self else { return }
+                guard !changes.add.isEmpty else {
+                    self.finishBooking()
+                    return
+                }
+                self.authorize { granted in
+                    if granted {
+                        for booking in changes.add { Self.add(booking, to: center) }
+                    }
+                    self.finishBooking()
+                }
+            }
+        }
+    }
+
+    private func finishBooking() {
+        bookingInFlight = false
+        if bookingOwed {
+            bookingOwed = false
+            refreshBookings()
+        }
+    }
+
+    private static func add(_ booking: DocketReminderBook.Booking, to center: UNUserNotificationCenter) {
+        let components = Calendar.current.dateComponents(
+            [.calendar, .timeZone, .year, .month, .day, .hour, .minute, .second], from: booking.at
+        )
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+        let request = UNNotificationRequest(identifier: booking.identifier, content: content(for: booking.arrival), trigger: trigger)
+        center.add(request) { error in
+            if let error { NSLog("Docket: reminder: %@", error.localizedDescription) }
+        }
+    }
+
+    /// Asks for permission once, answering the callers waiting on that request
+    /// with its outcome. Later callers go ahead and leave delivery to the
+    /// system, so permission granted afterwards in System Settings applies.
+    private func authorize(_ then: @escaping (Bool) -> Void) {
+        if authorizationRequested, authorizationWaiters.isEmpty {
+            then(true)
+            return
+        }
+        authorizationWaiters.append(then)
+        guard !authorizationRequested else { return }
+        authorizationRequested = true
+        center.requestAuthorization(options: [.alert, .sound]) { granted, error in
+            if let error { NSLog("Docket: notification authorization: %@", error.localizedDescription) }
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                let waiting = self.authorizationWaiters
+                self.authorizationWaiters = []
+                for body in waiting { body(granted) }
+            }
+        }
     }
 
     /// A one-off message, such as an action Docket refused.
@@ -337,13 +481,7 @@ final class NotificationPresenter: NSObject, UNUserNotificationCenterDelegate {
                 }
             }
         }
-        if authorizationRequested {
-            deliver()
-            return
-        }
-        authorizationRequested = true
-        center.requestAuthorization(options: [.alert, .sound]) { granted, error in
-            if let error { NSLog("Docket: notification authorization: %@", error.localizedDescription) }
+        authorize { granted in
             if granted { deliver() }
         }
     }

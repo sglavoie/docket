@@ -108,8 +108,8 @@ func TestServerTimesOutASilentTUI(t *testing.T) {
 }
 
 // TestServerPublishesEventsAndReplaysThePulse: a connection hears events
-// published while it is open, and a late one hears the latest pulse and then
-// the latest agenda first.
+// published while it is open, and a late one hears the latest pulse, then the
+// latest agenda, then the latest schedule first.
 func TestServerPublishesEventsAndReplaysThePulse(t *testing.T) {
 	server, err := Listen(socketPath(t), echoDispatch)
 	if err != nil {
@@ -132,12 +132,27 @@ func TestServerPublishesEventsAndReplaysThePulse(t *testing.T) {
 		t.Fatalf("event = %v", got)
 	}
 
+	server.Publish(Event{Event: EventSchedule, Schedule: &Schedule{Items: []ScheduledArrival{
+		{Arrival: Arrival{Kind: ArrivalWake, Task: "t"}, At: "2040-03-05T09:00:00Z"},
+	}}})
+	if got := early.next(t); got["event"] != "schedule" {
+		t.Fatalf("event = %v", got)
+	}
+
 	late := dial(t, server.Path())
 	if got := late.next(t); got["event"] != "pulse" {
 		t.Fatalf("a new connection heard %v first, want the pulse", got)
 	}
 	if got := late.next(t); got["event"] != "agenda" || got["agenda"].(map[string]any)["total"] != float64(1) {
 		t.Fatalf("a new connection heard %v second, want the agenda", got)
+	}
+	got := late.next(t)
+	items, _ := got["schedule"].(map[string]any)["items"].([]any)
+	if got["event"] != "schedule" || len(items) != 1 {
+		t.Fatalf("a new connection heard %v third, want the schedule", got)
+	}
+	if item := items[0].(map[string]any); item["kind"] != "wake" || item["task"] != "t" || item["at"] != "2040-03-05T09:00:00Z" {
+		t.Fatalf("scheduled arrival = %v: the arrival's fields must sit beside its instant", item)
 	}
 }
 

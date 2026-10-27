@@ -12,7 +12,8 @@
 // The protocol is newline-delimited JSON in both directions. A host writes
 // Request lines; Docket writes one Reply per request, carrying the request's id,
 // and Event lines whenever it has something to report. Every connection hears
-// every event, and a new connection hears the latest pulse and agenda at once.
+// every event, and a new connection hears the latest pulse, agenda, and schedule
+// at once.
 //
 // OpQuit is how a host ends the session it hosts: Docket quits as its quit key
 // would, or refuses while content is unsaved or a save is pending. A host treats the connection
@@ -88,6 +89,10 @@ const (
 	// EventAgenda names the tasks behind the pulse's Today and Overdue counts
 	// whenever they change, so a host can list them beside the counts.
 	EventAgenda = "agenda"
+	// EventSchedule names the arrivals still to come, earliest first, whenever
+	// they change, so a host can book each one with the system ahead of time
+	// and the reminder appears on time even when no Docket is running then.
+	EventSchedule = "schedule"
 )
 
 // The kinds an AgendaItem names.
@@ -199,6 +204,21 @@ type AgendaItem struct {
 	Reviewable bool `json:"reviewable,omitempty"`
 }
 
+// Schedule is the arrivals EventArrivals will report later, earliest first and
+// at most a bounded number of them, as the workspace stands now. A newer
+// schedule replaces the previous one whole: an arrival it no longer names will
+// not happen.
+type Schedule struct {
+	Items []ScheduledArrival `json:"items"`
+}
+
+// ScheduledArrival is one Arrival that has not happened yet. At is the RFC
+// 3339 instant it will; Reviewable is read at that instant.
+type ScheduledArrival struct {
+	Arrival
+	At string `json:"at"`
+}
+
 // Event is one line Docket writes unprompted. Title and Body word an arrivals
 // event as one notification, the way --notify would.
 type Event struct {
@@ -207,6 +227,7 @@ type Event struct {
 	Pulse    *Pulse    `json:"pulse,omitempty"`
 	Arrivals []Arrival `json:"arrivals,omitempty"`
 	Agenda   *Agenda   `json:"agenda,omitempty"`
+	Schedule *Schedule `json:"schedule,omitempty"`
 	Title    string    `json:"title,omitempty"`
 	Body     string    `json:"body,omitempty"`
 }

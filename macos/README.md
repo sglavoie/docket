@@ -207,11 +207,33 @@ notification says so when notifications are on, and the banner is waiting the
 next time the window is shown. About Docket names the running Docket's version above the
 Ghostty build.
 
+### Docket in the background
+
+After a clean exit that hides the window, Docket.app starts the same Docket again
+with no window: `docket --headless`, on the window's own control socket. It keeps
+the menu-bar and Dock counts, the agenda, the widget, sync, notifications, and
+the Shortcuts actions current until you show Docket, which ends it and starts a
+fresh one in the window, since only one Docket may hold a workspace at a time.
+A request that arrives while one is handing over to the other waits for the
+window's. Quitting Docket.app ends it; one whose host disappeared without
+ending it, after a crash, quits by itself within seconds. Settings › General
+turns it off (`docketBackgroundSession`), shown while Docket hides on exit:
+
+```bash
+defaults write io.github.sglavoie.docket docketBackgroundSession -bool false
+```
+
+With it off, or with a Docket too old to list `--headless`, nothing runs between
+`q` and the next show. A background Docket that ends on its own, as one refused
+because a Docket started in another terminal holds the workspace, is not
+restarted until something asks Docket for an answer.
+
 ### Talking to Docket
 
 Docket.app starts Docket with `--control`, naming a socket in the app's temporary
 directory, and keeps one connection to it for the session. Over it Docket reports
-its pulse, the tasks behind its Today and Overdue counts, and the work that arrives, and takes the requests below, each
+its pulse, the tasks behind its Today and Overdue counts, the work that arrives
+and the work still to come, and takes the requests below, each
 answered exactly as the key in Docket would be: the same commit, the same undo
 entry, and a refusal while you are mid-way through something in Docket rather than
 a change made under you. Docket.app passes the flag only to a Docket whose `--help`
@@ -285,7 +307,8 @@ VoiceOver names the field Quick capture and the list
 Suggestions, and announces each status line. The panel always opens centred
 on the screen under the pointer and cannot be dragged. The
 menu-bar and Dock menus also carry Quick Capture. If Docket had
-exited, the capture starts it again first; a completion never does.
+exited, the capture starts it again first, in the background when it can and
+otherwise in the window; a completion never does.
 
 `Cmd+Z` in the empty field takes back the last capture through Docket's own undo,
 the one `u` would make, and the line under the field says what Docket answered.
@@ -358,12 +381,14 @@ Shortcuts ("Capture a task in Docket"):
 
 - **Capture Task** commits its text through the composer's grammar without
   opening anything, each line its own task in one undo entry, and returns what
-  Docket said; a refusal is the action's error. It starts Docket if it had exited.
+  Docket said; a refusal is the action's error. It starts Docket if it had
+  exited, in the background when it can.
   Unlike quick capture it keeps no recovery copy, so a run that fails is simply
   reported, and running a shortcut twice captures twice.
 - **Show Docket** brings Docket forward, in Inbox, Today, or Overdue when chosen.
 - **Count Docket Tasks** returns the Inbox, Today, Overdue, or Done Today count
-  from the live pulse. It never starts Docket, and fails when it is not running.
+  from the live pulse. A Docket that had exited starts again in the background
+  to answer it.
 - **Get Docket Agenda** returns the tasks the status menu lists — Overdue,
   Today, or both, at most 20 — as Docket Task values carrying the title,
   project, deadline, priority, and whether it is overdue.
@@ -374,8 +399,10 @@ Shortcuts ("Capture a task in Docket"):
   or passed from Get Docket Agenda, and a saved shortcut keeps naming it by its
   stored IDs after it leaves the agenda.
 
-The task actions, like Count Docket Tasks and Get Docket Agenda, never start
-Docket and fail when it is not running.
+The task actions, like Count Docket Tasks and Get Docket Agenda, start a Docket
+that had exited in the background, never in the window, and fail only when
+none can run that way: with the background turned off in Settings, or a Docket
+too old for it.
 
 ### Widget
 
@@ -396,20 +423,30 @@ socket, so a button writes its request to `widget-actions/` in the App Group
 container and posts a Darwin notification; Docket.app takes the request, sends
 it to Docket as the status menu's act would, and reports a refusal as a
 notification. The widget leaves a Done or deferred task out, and its count,
-at once. A request Docket.app has not taken within a minute, because it or
-Docket was not running, is dropped rather than run later, and the task is
-listed again. Docket sends that list beside the pulse, so a Docket too old to send it
+at once. With Docket in the background, a request is taken as soon as it is
+made. One Docket.app has not taken within a minute, because Docket.app was not
+running, is dropped rather than run later, and the task is listed again. Docket sends that list beside the pulse, so a Docket too old to send it
 leaves the large widget saying to update it.
 
 ### Notifications and the Dock badge
 
 A check-in whose day comes, a timed deadline that passes, or a deferral that
-ends while Docket runs becomes a Notification Center alert. Up to three at once are
+ends becomes a Notification Center alert. Docket reports what is due over the
+next eight days, and Docket.app books each one with macOS for its moment, so the
+alert appears on time even if Docket.app has quit since, or the Mac was asleep;
+a newer report withdraws what no longer applies, and the arrival Docket then
+reports live is not shown a second time. What a booking says is what Docket
+reported last: a task finished elsewhere after Docket.app quit may still be
+announced, and its buttons then say Docket refused. Work that arrives with no
+booking, as a check-in set for today, is reported live. Up to three at once are
 one alert per task: clicking it shows Docket with the cursor on that task, and its
 buttons act without leaving the app you are in — Acknowledge, offered only where
-`R` would accept it, Done, which commits it as `wd` would, and Defer 1 Hour. More arrive as one summary that brings Docket
-forward. macOS asks for permission on the first one, and none is shown while Docket
-is already in front. Settings turns them off (`docketNotifications`), at once. If
+`R` would accept it, Done, which commits it as `wd` would, and Defer 1 Hour; a
+button pressed while no Docket runs starts one in the background to answer it.
+More arrive as one summary that brings Docket forward. macOS asks for
+permission the first time there is one to book or show, and none is shown while
+Docket is already in front. Settings turns them off (`docketNotifications`) at
+once, withdrawing every booking. If
 macOS has notifications for Docket.app turned off, Settings says so under the
 toggle and offers Open Notification Settings.
 
@@ -428,8 +465,9 @@ at launch, on focus, and every five seconds while its session runs, including
 with the window hidden. Incoming changes refresh the Outliner after an active
 edit, picker, selection, or child view is closed. An unavailable exchange is
 retried automatically; the status strip reports failures and pending changes.
-Cloud delivery may take longer. Quit stops automatic sync; closing the window
-keeps it running. See `docs/guide/storage.md` for enrollment and sync status.
+Cloud delivery may take longer. Quitting Docket.app stops automatic sync; closing
+the window keeps it running, and so does `q` while Docket keeps running in the
+background. See `docs/guide/storage.md` for enrollment and sync status.
 
 ### Terminal config
 

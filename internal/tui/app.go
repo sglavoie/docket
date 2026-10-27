@@ -133,6 +133,9 @@ type AppModel struct {
 	// workspaceAgenda names the pulse's Today and Overdue tasks for a control
 	// socket host, and is computed only while one is connected.
 	workspaceAgenda pulse.WorkspaceAgenda
+	// workspaceUpcoming is the arrivals still to come, for the same host to
+	// book with the system ahead of time; computed under the same condition.
+	workspaceUpcoming []pulse.UpcomingArrival
 	// pulseLoader is the pulse's own retained snapshot loader. It is read only
 	// from Update, never from a command goroutine, which is what lets it outlive
 	// one recount without sharing the Outliner's loader across goroutines.

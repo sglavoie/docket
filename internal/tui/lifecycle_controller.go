@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -139,7 +140,20 @@ type RunOptions struct {
 	// of the session, so a host such as Docket.app can ask it to act and hear its
 	// pulse and arrivals. See the control-socket section below.
 	ControlSocket string
+	// Headless runs the session with no terminal: no input, no renderer, and a
+	// fixed size, answering only ControlSocket. Docket.app runs one while its
+	// window is closed, so the pulse, the schedule, sync, and the requests a
+	// widget or a shortcut makes keep being answered by this same Update. It
+	// takes the same process lock, so it never runs beside a windowed session.
+	Headless bool
 }
+
+// headlessSize is the terminal a headless session pretends to have, so every
+// view lays out as it would in an ordinary window.
+const (
+	headlessWidth  = 120
+	headlessHeight = 40
+)
 
 // RunApp starts the TUI application over an opened runtime. engine.Open has
 // already recovered and loaded the workspace, so the shell takes the process
@@ -176,7 +190,16 @@ func RunApp(rt *engine.Runtime, runOpts RunOptions, opts ...AppOption) error {
 	}
 	model.control.versionLine = runOpts.VersionLine
 
-	p := tea.NewProgram(model, tea.WithEnvironment(tuiEnvironment(os.Environ(), runOpts.DisableColor)))
+	if runOpts.Headless && runOpts.ControlSocket == "" {
+		return fmt.Errorf("a headless session needs a control socket")
+	}
+	programOpts := []tea.ProgramOption{tea.WithEnvironment(tuiEnvironment(os.Environ(), runOpts.DisableColor))}
+	if runOpts.Headless {
+		programOpts = append(programOpts,
+			tea.WithInput(nil), tea.WithOutput(io.Discard), tea.WithoutRenderer(),
+			tea.WithWindowSize(headlessWidth, headlessHeight))
+	}
+	p := tea.NewProgram(model, programOpts...)
 
 	if runOpts.ControlSocket != "" {
 		server, listenErr := control.Listen(runOpts.ControlSocket, controlDispatch(p.Send))
@@ -185,6 +208,15 @@ func RunApp(rt *engine.Runtime, runOpts RunOptions, opts ...AppOption) error {
 		}
 		defer func() { _ = server.Close() }()
 		WithControlPublisher(server)(model)
+	}
+	if runOpts.Headless {
+		// Nobody is looking at a headless session, so it starts blurred: every
+		// request it answers first adopts what changed on disk since, as a
+		// windowed session's would while its window is hidden.
+		go p.Send(tea.BlurMsg{})
+		stop := make(chan struct{})
+		defer close(stop)
+		go quitWhenOrphaned(p, os.Getppid(), headlessHostPoll, stop)
 	}
 
 	// Recover from panics to restore terminal state before crashing.
@@ -200,6 +232,31 @@ func RunApp(rt *engine.Runtime, runOpts RunOptions, opts ...AppOption) error {
 
 	_, err = p.Run()
 	return err
+}
+
+// headlessHostPoll is how often a headless session checks that the host that
+// started it is still there.
+const headlessHostPoll = 2 * time.Second
+
+// quitWhenOrphaned ends a headless session whose host went away without ending
+// it, as a crashed Docket.app would: nothing could reach it any more, and it
+// would hold the process lock the next host's Docket needs. Reparenting is how
+// the host's death shows, since the session's parent changes when it exits.
+func quitWhenOrphaned(p *tea.Program, host int, every time.Duration, stop <-chan struct{}) {
+	ticker := time.NewTicker(every)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+			if os.Getppid() != host {
+				logging.Warn("headless: host %d is gone; quitting", host)
+				p.Quit()
+				return
+			}
+		}
+	}
 }
 
 // tuiEnvironment ignores an inherited NO_COLOR for the interactive TUI while

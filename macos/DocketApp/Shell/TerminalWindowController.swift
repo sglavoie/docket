@@ -78,6 +78,12 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
     var onWillStartSession: ((_ ready: @escaping () -> Void) -> Void)?
     /// Called after a session is gone.
     var onSessionEnd: (() -> Void)?
+    /// Called after Docket exited cleanly and the window let it go, leaving
+    /// nothing running until the next show: the moment a background Docket can
+    /// take over.
+    var onIdle: (() -> Void)?
+    /// Whether a Docket runs in the window, or is being started for it.
+    var hasSession: Bool { surfaceView != nil || pendingStart != nil }
     /// The start waiting on `onWillStartSession`, if one is; ending the
     /// session or asking for another voids it.
     private var pendingStart: Int?
@@ -379,6 +385,7 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
             let wasVisible = window.isVisible
             endSession()
             if wasVisible { hide() }
+            onIdle?()
         case .quitApp:
             NSApp.terminate(nil)
         case .showFailure(let summary):

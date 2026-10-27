@@ -299,7 +299,7 @@ func (m *AppModel) refreshTaskViewsOver(persistProjectTreeState, reloadCrossProj
 
 func (m *AppModel) refreshWorkspacePulseAt(now time.Time) {
 	cachedActivityIsCurrent := m.completionActivity.IsCurrentLocalDay(now)
-	m.workspacePulse, m.workspaceAgenda = outliner.ComputeWorkspaceReadout(m.domain.runtime, m.todayIDs, now, m.ensurePulseLoader(), m.control.enabled())
+	m.workspacePulse, m.workspaceAgenda, m.workspaceUpcoming = outliner.ComputeWorkspaceReadout(m.domain.runtime, m.todayIDs, now, m.ensurePulseLoader(), m.control.enabled())
 	activity, err := m.features.Activity.CompletionActivity()
 	if err != nil {
 		logging.Warn("refresh completion activity: %v", err)

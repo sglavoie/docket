@@ -380,6 +380,53 @@ func TestControlPublishesEachChangedAgendaOnce(t *testing.T) {
 	}
 }
 
+// TestControlPublishesEachChangedScheduleOnce: the arrivals still to come are
+// sent when they change, each instant as RFC 3339, and an emptied schedule is
+// sent too, since it voids every booking a host made from the last one.
+func TestControlPublishesEachChangedScheduleOnce(t *testing.T) {
+	app := typedTestApp(t)
+	publisher := &recordingPublisher{}
+	WithControlPublisher(publisher)(app)
+
+	at := time.Date(2026, 10, 28, 9, 0, 0, 0, time.UTC)
+	app.workspaceUpcoming = []pulse.UpcomingArrival{
+		{Arrival: pulse.Arrival{Kind: pulse.ArrivalCheckIn, ProjectID: "p", TaskID: "t", Title: "Call", Reviewable: true}, At: at},
+	}
+	app.publishControlSchedule()
+	app.publishControlSchedule()
+	if len(publisher.events) != 1 {
+		t.Fatalf("published %d schedules, want 1", len(publisher.events))
+	}
+	event := publisher.events[0]
+	if event.Event != control.EventSchedule || event.Schedule == nil || len(event.Schedule.Items) != 1 {
+		t.Fatalf("event = %+v", event)
+	}
+	if got := event.Schedule.Items[0]; got.Kind != control.ArrivalCheckIn || got.Project != "p" || got.Task != "t" ||
+		got.Title != "Call" || !got.Reviewable || got.At != "2026-10-28T09:00:00Z" {
+		t.Fatalf("scheduled arrival = %+v", got)
+	}
+
+	app.workspaceUpcoming = nil
+	app.publishControlSchedule()
+	if len(publisher.events) != 2 || publisher.events[1].Schedule == nil || publisher.events[1].Schedule.Items == nil {
+		t.Fatalf("an emptied schedule was not sent as an empty list: %+v", publisher.events)
+	}
+}
+
+// TestControlSendsAnEmptyFirstSchedule: a session with nothing to come still
+// says so once, so a host drops what an earlier session booked.
+func TestControlSendsAnEmptyFirstSchedule(t *testing.T) {
+	app := typedTestApp(t)
+	publisher := &recordingPublisher{}
+	WithControlPublisher(publisher)(app)
+	app.workspaceUpcoming = nil
+	app.publishControlSchedule()
+	app.publishControlSchedule()
+	if len(publisher.events) != 1 || publisher.events[0].Event != control.EventSchedule {
+		t.Fatalf("events = %+v, want one empty schedule", publisher.events)
+	}
+}
+
 // TestControlArrivalsCarryIdentityWithoutNotify: a session on a control socket
 // reports arrivals as events and sends no OSC 777 unless --notify asked for it.
 func TestControlArrivalsCarryIdentityWithoutNotify(t *testing.T) {

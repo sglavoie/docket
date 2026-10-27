@@ -250,7 +250,12 @@ terminal that honors the escape shows it whether or not Docket is in view.
 `docket --control PATH` lets a host such as Docket.app request capture and task actions
 through the running session. Those actions use the same validation and undo as
 the keyboard. Read-only completion and preview requests remain available during
-editing; mutations are refused while a protected interaction is open.
+editing; mutations are refused while a protected interaction is open. With
+`--headless` too, the same session runs with no terminal at all, answering
+only that socket: Docket.app runs one after you quit with `q`, so its counts,
+widget, sync, notifications, and Shortcuts keep working while no window is
+open. It takes the same per-workspace lock as any session, so it never runs
+beside one, and it quits by itself if the host that started it goes away.
 See [Docket.app](../../macos/README.md#talking-to-docket) for host behavior and
 [the architecture](../architecture.md) for the control protocol.
 

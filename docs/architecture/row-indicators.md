@@ -457,6 +457,14 @@ the true `Total`, computed only while a publisher is connected, and the server
 replays the last one to a new connection after the pulse. Arrivals come
 from the same tick `--notify` reads, each with `TaskAllowsExplicitReview` at
 that instant so a host offers Acknowledge only where it would be accepted.
+The schedule is `pulse.UpcomingArrivals` over that same load, published after
+the agenda and replayed after it: every instant a task's attention could change
+— its check-in day starting, its timed deadline, its deferral ending — is put
+to `arrivalBetween`, the one predicate `Arrivals` answers, over the window that
+instant opens, so a booked reminder can never name an arrival the tick would
+not report or give it another reason. It looks `pulse.UpcomingHorizon` ahead,
+is bounded at `pulse.UpcomingLimit`, under the 64 pending notifications macOS
+keeps per app, and an emptied one is sent too, since it voids every booking.
 
 Success, informational, and view-owned text is quiet: it reaches the footer and
 the divider does not move for it. `footerFlashSeverity.animates()` is that

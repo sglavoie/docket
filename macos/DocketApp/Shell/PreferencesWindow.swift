@@ -77,11 +77,22 @@ final class PreferencesModel: ObservableObject {
         }
     }
 
-    /// Docket reports arrivals; turning it off also silences the running one.
+    /// Docket reports arrivals; turning it off also silences the running one
+    /// and withdraws the reminders booked ahead.
     @Published var notificationsEnabled: Bool {
         didSet {
             guard notificationsEnabled != oldValue else { return }
             DocketNotificationsPreference.save(notificationsEnabled, to: defaults)
+            onNotificationsChange?(notificationsEnabled)
+        }
+    }
+
+    /// Docket keeps running with no window after it exits cleanly.
+    @Published var backgroundSession: Bool {
+        didSet {
+            guard backgroundSession != oldValue else { return }
+            DocketBackgroundPreference.save(backgroundSession, to: defaults)
+            onBackgroundSessionChange?(backgroundSession)
         }
     }
 
@@ -243,6 +254,8 @@ final class PreferencesModel: ObservableObject {
     var onDefaultFontSizeChange: ((Float?) -> Void)?
     var onTerminalThemeChange: (() -> Void)?
     var onDockBadgeChange: ((Bool) -> Void)?
+    var onNotificationsChange: ((Bool) -> Void)?
+    var onBackgroundSessionChange: ((Bool) -> Void)?
     var onFollowAppearanceChange: ((Bool) -> Void)?
     /// True while the recorder listens, so the live shortcuts can step aside
     /// and be recorded like any other key.
@@ -262,6 +275,7 @@ final class PreferencesModel: ObservableObject {
         terminalTheme = DocketTerminalThemePreference.load(from: defaults)
         availableThemes = TerminalTheme.available()
         notificationsEnabled = DocketNotificationsPreference.load(from: defaults)
+        backgroundSession = DocketBackgroundPreference.load(from: defaults)
         dockBadge = DocketDockBadgePreference.load(from: defaults)
         followAppearance = DocketFollowAppearancePreference.load(from: defaults)
         binaryOverride = defaults.string(forKey: DocketBinaryResolver.overrideDefaultsKey) ?? ""
@@ -509,6 +523,12 @@ struct PreferencesView: View {
                     ForEach(DocketExitBehavior.allCases, id: \.self) { Text($0.label).tag($0) }
                 }
                 note("A crash or a non-zero exit always keeps Docket's last output on screen with a Relaunch button.")
+                if model.exitBehavior == .relaunchOnShow {
+                    Toggle("Keep Docket running in the background", isOn: $model.backgroundSession)
+                    note("After q, Docket keeps going with no window, so the menu-bar and Dock counts, the widget, "
+                        + "sync, notifications, and Shortcuts stay current. Showing Docket replaces it with a fresh "
+                        + "one in the window; quitting Docket.app ends it.")
+                }
             }
 
             Section {
@@ -529,7 +549,8 @@ struct PreferencesView: View {
                     }
                 }
                 note("A check-in whose day comes, a timed deadline that passes, or a deferral that ends, "
-                    + "while Docket is not in front. Click one to show its task; Acknowledge, Done, and Defer 1 Hour "
+                    + "while Docket is not in front. Each is booked with macOS ahead of time, so it appears on time "
+                    + "even if Docket.app has quit since. Click one to show its task; Acknowledge, Done, and Defer 1 Hour "
                     + "act on it from the notification.")
                 Toggle(model.activationPolicy.showsDockIcon
                        ? "Show overdue count on the Dock icon"

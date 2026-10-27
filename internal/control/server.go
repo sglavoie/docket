@@ -37,13 +37,14 @@ type Server struct {
 	dispatch     Dispatch
 	replyTimeout time.Duration
 
-	mu          sync.Mutex
-	conns       map[*conn]struct{}
-	lastPulse   []byte
-	lastAgenda  []byte
-	lastEditing []byte
-	closed      bool
-	wg          sync.WaitGroup
+	mu           sync.Mutex
+	conns        map[*conn]struct{}
+	lastPulse    []byte
+	lastAgenda   []byte
+	lastSchedule []byte
+	lastEditing  []byte
+	closed       bool
+	wg           sync.WaitGroup
 }
 
 type conn struct {
@@ -124,8 +125,8 @@ func (s *Server) Close() error {
 }
 
 // Publish sends an event to every connection without blocking: a connection
-// whose queue is full misses it. A pulse and an agenda are also remembered for
-// the next connection.
+// whose queue is full misses it. A pulse, an agenda, and a schedule are also
+// remembered for the next connection.
 func (s *Server) Publish(event Event) {
 	line, err := json.Marshal(event)
 	if err != nil {
@@ -146,6 +147,9 @@ func (s *Server) Publish(event Event) {
 	}
 	if event.Event == EventAgenda {
 		s.lastAgenda = line
+	}
+	if event.Event == EventSchedule {
+		s.lastSchedule = line
 	}
 	for c := range s.conns {
 		select {
@@ -179,6 +183,9 @@ func (s *Server) accept() {
 		}
 		if s.lastAgenda != nil {
 			c.out <- s.lastAgenda
+		}
+		if s.lastSchedule != nil {
+			c.out <- s.lastSchedule
 		}
 		s.mu.Unlock()
 		s.wg.Add(2)

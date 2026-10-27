@@ -17,6 +17,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     private(set) var hotKeys: HotKeyCenter?
     private(set) var captureHotKeys: HotKeyCenter?
     let notifications = NotificationPresenter()
+    /// The Docket that runs with no window after the window's exits cleanly.
+    let background = DocketBackgroundSession()
     let quickCapture = QuickCapturePanel()
     /// The running Docket's control socket; nil when the Docket is too old to serve one.
     private(set) var control: DocketControlClient?
@@ -158,10 +160,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             self?.terminal?.desktopEditing = nil
                 self?.quitHandshake?.docketEnded()
             self?.control?.disconnect()
-            self?.lastPulse = nil
-            self?.lastAgenda = nil
-            self?.showTitle("")
+            self?.forgetSessionReadout()
         }
+        controller.onIdle = { [weak self] in self?.startBackgroundSession() }
         controller.onTitleChange = { [weak self] title in self?.showTitle(title) }
         controller.onHiddenFailure = { [weak self] summary in self?.announceHiddenFailure(summary) }
         model.onDockBadgeChange = { [weak self] _ in self?.refreshBadge() }
@@ -264,9 +265,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        // Docket gets SIGHUP from the freed surface, like a closed terminal.
+        // Docket gets SIGHUP from the freed surface, like a closed terminal; a
+        // background one that outlived the quit handshake gets SIGTERM.
         control?.disconnect()
         terminal?.teardown()
+        background.terminate()
         // Docket removes its socket on a clean exit; a hangup may not give it one.
         if let path = control?.path {
             try? FileManager.default.removeItem(atPath: path)
@@ -392,6 +395,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     /// launch that never found one has nothing to show but the error, whose
     /// Try Again runs this again for the same start.
     private func prepareSession(then ready: @escaping () -> Void) {
+        // The window's Docket takes over from a background one. The two share
+        // the socket and only one may hold the workspace lock, so the
+        // background one ends first, and a request sent meanwhile waits for
+        // the window's rather than reaching the one on its way out.
+        guard !background.isRunning else {
+            control?.hold()
+            background.stop { [weak self] in self?.prepareSession(then: ready) }
+            return
+        }
         // A request sent while the answer is on its way waits for the new Docket.
         control?.connect()
         let searchPath = preferencesModel.effectiveEnvironment?.path ?? ""
@@ -462,6 +474,75 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         tearDownControl()
     }
 
+    // MARK: Background session
+
+    /// Starts a Docket with no window when none runs and one may: Settings keeps
+    /// one in the background, and the Docket the window last ran serves a
+    /// socket and can run headless. Returns whether one is running now.
+    @discardableResult
+    private func startBackgroundSession() -> Bool {
+        guard !Self.isRunningTests, preferencesModel.backgroundSession,
+              let terminal, !terminal.hasSession,
+              let binary = sessionBinaries.current, binary.controlSupported, binary.headlessSupported,
+              let control else { return false }
+        let environment = preferencesModel.effectiveEnvironment?.commandEnvironment
+            ?? ProcessInfo.processInfo.environment
+        let started = background.start(
+            executable: binary.path,
+            arguments: DocketBackgroundPreference.arguments(controlPath: control.path),
+            environment: environment
+        )
+        guard started else { return false }
+        preferencesModel.sessionEnvironment = environment
+        control.connect()
+        return true
+    }
+
+    /// Makes sure some Docket will answer a request: the window's, whether
+    /// running or starting, a background one, or one started now with no window.
+    /// With `showing`, a Docket that cannot run in the background starts in the
+    /// window instead. Returns whether one will answer.
+    private func ensureDocket(showing: Bool) -> Bool {
+        guard let terminal else { return false }
+        if terminal.hasSession || background.isRunning || startBackgroundSession() { return true }
+        guard showing else { return false }
+        terminal.show()
+        return true
+    }
+
+    /// The background Docket ended on its own: a crash, or the workspace lock
+    /// held by a Docket started elsewhere. Nothing restarts it until something
+    /// asks Docket for an answer.
+    private func backgroundSessionEnded(status: Int32, error: String) {
+        guard terminal?.hasSession != true else { return }
+        control?.disconnect()
+        preferencesModel.sessionEnvironment = nil
+        forgetSessionReadout()
+    }
+
+    private func applyBackgroundSession(_ enabled: Bool) {
+        if enabled {
+            startBackgroundSession()
+        } else if background.isRunning {
+            background.stop { [weak self] in
+                guard self?.terminal?.hasSession != true else { return }
+                self?.control?.disconnect()
+                self?.preferencesModel.sessionEnvironment = nil
+                self?.forgetSessionReadout()
+            }
+        }
+    }
+
+    /// No Docket is left to report, so what the last one said goes: the counts,
+    /// the agenda, and the title. The reminders it booked stay, since they
+    /// are what still says when work arrives.
+    private func forgetSessionReadout() {
+        lastPulse = nil
+        lastAgenda = nil
+        showTitle("")
+        statusItem?.refreshPulse()
+    }
+
     // MARK: Control socket
 
     /// The Docket that runs next serves no socket: the client goes, and with it
@@ -527,10 +608,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         notifications.onDefer = { [weak self] task in self?.perform(.deferHour, on: task) }
         quickCapture.submit = { [weak self] submission, written, done in self?.capture(submission, written: written, done: done) }
         quickCapture.captureContext = { [weak self] done in
-            guard let self, let control = self.control, let terminal = self.terminal else {
+            // A Docket that exited cleanly starts again, in the background when
+            // it can; the request waits for it.
+            guard let self, let control = self.control, self.ensureDocket(showing: true) else {
                 done(nil, "Docket is not available"); return
             }
-            if terminal.surfaceView == nil { terminal.show() }
             control.send(DocketControlRequest(op: .captureContext)) { reply in
                 done(reply.ok ? reply.workspace : nil,
                      reply.ok ? nil : "Update Docket, then choose Relaunch Docket to use safe quick capture. " + (reply.message ?? ""))
@@ -563,6 +645,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             for body in waiting { body(agenda) }
         case .arrivals(let arrivals, let title, let body):
             notifications.post(arrivals: arrivals, title: title, body: body)
+        case .schedule(let schedule):
+            notifications.book(schedule)
         }
     }
 
@@ -601,25 +685,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     }
 
     /// Does `action` to `task` in the running Docket, as its key there would,
-    /// and calls back with whether Docket did and what it said. It never starts
-    /// Docket: the agenda it acts on is one a running Docket reported, and one
-    /// still starting is waited for.
+    /// and calls back with whether Docket did and what it said. With no Docket
+    /// running, as when a booked reminder's button launched the app, one starts
+    /// in the background to answer, and one still starting is waited for.
     func perform(_ action: DocketTaskAction, on task: DocketTaskID, reply: @escaping (Bool, String) -> Void) {
-        guard let control else {
-            reply(false, "Docket is not running")
-            return
+        whenControlSettled { [weak self] control in
+            guard let self else { return }
+            guard let control, self.ensureDocket(showing: false) else {
+                reply(false, self.captureUnavailableReason ?? "Docket is not running")
+                return
+            }
+            control.send(.taskAction(action, task)) { answer in reply(answer.ok, answer.message ?? "") }
         }
-        control.send(.taskAction(action, task)) { answer in reply(answer.ok, answer.message ?? "") }
     }
 
     private func capture(_ submission: QuickCaptureSubmission, written: @escaping () -> Void, done: @escaping (Bool, String, String?, DocketTextSelection?) -> Void) {
-        guard let control, let terminal else {
+        guard let control, ensureDocket(showing: true) else {
             done(false, "This Docket has no control socket. Update it (just install) to capture from here.", nil, nil)
             return
-        }
-        // A Docket that exited cleanly starts again; the request waits for it.
-        if terminal.surfaceView == nil {
-            terminal.show()
         }
         // The reply clock starts once Docket has the request, not while it starts.
         control.send(.captureOnce(submission), onWritten: written) { reply in
@@ -782,12 +865,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
         whenControlSettled { [weak self] control in
             guard let self else { return }
-            guard let control, let terminal = self.terminal else {
+            // A Docket that exited cleanly starts again, in the background when
+            // it can; the request waits for it.
+            guard let control, self.ensureDocket(showing: true) else {
                 done(false, self.captureUnavailableReason ?? "Docket is not running.")
                 return
             }
-            // A Docket that exited cleanly starts again; the request waits for it.
-            if terminal.surfaceView == nil { terminal.show() }
             control.send(DocketControlRequest(op: .captureContext)) { reply in
                 guard reply.ok, let workspace = reply.workspace, !workspace.isEmpty else {
                     done(false, "Update Docket, then choose Relaunch Docket to capture from Shortcuts. " + (reply.message ?? ""))
@@ -804,11 +887,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     }
 
     /// The pulse a live connection has reported, waiting briefly for the one a new
-    /// connection hears at once. It never starts a Docket that has exited.
+    /// connection hears at once. A Docket that has exited starts again in the
+    /// background to report it, but never in the window.
     func shortcutPulse(_ done: @escaping (DocketPulse?, String?) -> Void) {
         whenControlSettled { [weak self] control in
             guard let self else { return }
-            guard control != nil, self.terminal?.surfaceView != nil else {
+            guard control != nil, self.ensureDocket(showing: false) else {
                 done(nil, self.captureUnavailableReason ?? "Docket is not running. Open it, then try again.")
                 return
             }
@@ -851,12 +935,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
     }
 
-    /// A shortcut's act on one task. Like a count, it never starts a Docket
-    /// that has exited.
+    /// A shortcut's act on one task. Like a count, it starts a Docket that has
+    /// exited in the background only.
     func shortcutPerform(_ action: DocketShortcutTaskAction, on task: DocketTaskID, done: @escaping (Bool, String) -> Void) {
         whenControlSettled { [weak self] control in
             guard let self else { return }
-            guard let control, self.terminal?.surfaceView != nil else {
+            guard let control, self.ensureDocket(showing: false) else {
                 done(false, self.captureUnavailableReason ?? "Docket is not running. Open it, then try again.")
                 return
             }
@@ -975,6 +1059,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
 
         notifications.isEnabled = { [weak model] in model?.notificationsEnabled ?? false }
+        notifications.activate()
+        model.onNotificationsChange = { [weak self] _ in self?.notifications.refreshBookings() }
+        model.onBackgroundSessionChange = { [weak self] in self?.applyBackgroundSession($0) }
+        background.onUnexpectedExit = { [weak self] status, error in
+            self?.backgroundSessionEnded(status: status, error: error)
+        }
         notifications.isTerminalFrontmost = { [weak self] in self?.isTerminalFrontmost ?? false }
         notifications.onActivate = { [weak self] in self?.terminal?.show() }
         quickCapture.unavailableReason = { [weak self] in self?.captureStoreError ?? self?.captureUnavailableReason }
