@@ -34,6 +34,9 @@ func TestTUISetDueDateTodayMovesTaskToTodayAtomically(t *testing.T) {
 	raw := cmd()
 	msg, ok := raw.(coordinator.BatchTransactionResultMsg)
 	if !ok {
+		if errMsg, isErr := raw.(coordinator.TransactionErrorMsg); isErr {
+			t.Fatalf("due-date result = TransactionErrorMsg %v, want BatchTransactionResultMsg", errMsg.Err)
+		}
 		t.Fatalf("due-date result = %T, want BatchTransactionResultMsg", raw)
 	}
 
