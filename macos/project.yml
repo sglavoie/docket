@@ -13,6 +13,9 @@ settings:
     CODE_SIGN_STYLE: Manual
     CODE_SIGN_IDENTITY: "-"
     DEVELOPMENT_TEAM: ""
+    # Shared by the app and its widget extension, whose versions must match.
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
 targets:
   Docket:
     type: application
@@ -21,6 +24,9 @@ targets:
       - path: DocketApp
         excludes:
           - Resources/docket-launch
+          - Resources/Docket.entitlements
+      # Link routes and the pulse snapshot, compiled into the widget too.
+      - path: Shared
       # The launcher Docket runs under, copied executable into Resources.
       - path: DocketApp/Resources/docket-launch
         buildPhase: resources
@@ -40,9 +46,9 @@ targets:
         PRODUCT_NAME: Docket
         PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.docket
         INFOPLIST_FILE: DocketApp/Resources/Info.plist
+        # The App Group the widget reads the pulse from; sign.sh signs with it too.
+        CODE_SIGN_ENTITLEMENTS: DocketApp/Resources/Docket.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
         # libghostty.a is built by Zig and carries C++ objects but no autolink
         # entries, so its runtime dependencies are spelled here.
         OTHER_LDFLAGS: ["-lc++"]
@@ -59,9 +65,31 @@ targets:
       - sdk: IOSurface.framework
       - sdk: QuartzCore.framework
       - sdk: UniformTypeIdentifiers.framework
+      - sdk: WidgetKit.framework
+      # Embedded in Contents/PlugIns.
+      - target: DocketWidgets
     scheme:
       testTargets:
         - DocketAppTests
+  DocketWidgets:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: DocketWidgets
+        excludes:
+          - DocketWidgets.entitlements
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_NAME: DocketWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.docket.widgets
+        INFOPLIST_FILE: DocketWidgets/Info.plist
+        # Sandboxed, as WidgetKit requires, with the app's App Group.
+        CODE_SIGN_ENTITLEMENTS: DocketWidgets/DocketWidgets.entitlements
+        SKIP_INSTALL: YES
+    dependencies:
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
   DocketAppTests:
     type: bundle.unit-test
     platform: macOS

@@ -1,6 +1,8 @@
 #!/usr/bin/env sh
 #
-# Sign Docket.app inside out: the bundled docket, then the app. By default with this
+# Sign Docket.app inside out: the bundled docket, the widget extension, then the
+# app, each extension and the app with its entitlements file, which carries the
+# App Group the widget reads the pulse from. By default with this
 # Mac's first Apple Development identity, else ad-hoc; either runs on this Mac
 # only. A certificate gives the app a designated requirement that survives a
 # rebuild, so privacy grants (Documents, notifications) are asked for once
@@ -38,6 +40,9 @@ app=$1
 
 require_tool codesign
 
+script_dir=$(CDPATH="" cd -- "$(dirname -- "$0")" && pwd)
+macos_dir=$(dirname -- "$script_dir")
+
 notary_profile="${DOCKET_NOTARY_PROFILE:-}"
 if [ -n "${DOCKET_CODESIGN_IDENTITY:-}" ]; then
 	identity=$DOCKET_CODESIGN_IDENTITY
@@ -64,7 +69,12 @@ bundled="$app/Contents/Resources/bin/docket"
 if [ -f "$bundled" ]; then
 	codesign "$@" --identifier io.github.sglavoie.docket.cli "$bundled"
 fi
-codesign "$@" "$app"
+for extension in "$app"/Contents/PlugIns/*.appex; do
+	[ -d "$extension" ] || continue
+	name=$(basename "$extension" .appex)
+	codesign "$@" --entitlements "$macos_dir/$name/$name.entitlements" "$extension"
+done
+codesign "$@" --entitlements "$macos_dir/DocketApp/Resources/Docket.entitlements" "$app"
 codesign --verify --strict --verbose=1 "$app"
 
 if [ "$identity" = - ]; then

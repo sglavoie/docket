@@ -1,0 +1,169 @@
+import SwiftUI
+import WidgetKit
+
+/// Docket's pulse on the desktop and in Notification Center, drawn from the
+/// snapshot Docket.app keeps in the App Group container. The widget never reads
+/// the workspace: it shows what Docket.app last heard, says how old that is, and
+/// stops presenting the counts once the day they describe is over. Each count
+/// opens Docket in its mode, through the app's `docket://` links.
+@main
+struct DocketWidgetBundle: WidgetBundle {
+    var body: some Widget {
+        PulseWidget()
+    }
+}
+
+struct PulseWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: DocketPulseSnapshot.widgetKind, provider: PulseProvider()) { entry in
+            PulseWidgetView(entry: entry)
+                .containerBackground(.fill.tertiary, for: .widget)
+        }
+        .configurationDisplayName("Docket")
+        .description("Inbox, Today, overdue, and done today, as Docket.app last heard them.")
+        .supportedFamilies([.systemSmall, .systemMedium])
+    }
+}
+
+struct PulseEntry: TimelineEntry {
+    let date: Date
+    let snapshot: DocketPulseSnapshot?
+
+    /// The counts, while they still describe the entry's day.
+    var current: DocketPulseSnapshot? {
+        guard let snapshot, snapshot.isCurrent(at: date) else { return nil }
+        return snapshot
+    }
+}
+
+struct PulseProvider: TimelineProvider {
+    private static let sample = DocketPulseSnapshot(inbox: 3, today: 5, overdue: 1, done: 2, updatedAt: Date())
+
+    private func read() -> DocketPulseSnapshot? {
+        DocketPulseSnapshotStore(container: DocketSharedContainer.root())?.read()
+    }
+
+    func placeholder(in context: Context) -> PulseEntry {
+        PulseEntry(date: Date(), snapshot: Self.sample)
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (PulseEntry) -> Void) {
+        let now = Date()
+        completion(PulseEntry(date: now, snapshot: context.isPreview ? read() ?? Self.sample : read()))
+    }
+
+    /// Now, and the next local midnight, when the counts go stale. Docket.app asks
+    /// for a new timeline whenever the pulse changes.
+    func getTimeline(in context: Context, completion: @escaping (Timeline<PulseEntry>) -> Void) {
+        let now = Date()
+        let snapshot = read()
+        let midnight = Calendar.current.nextDate(
+            after: now, matching: DateComponents(hour: 0, minute: 0, second: 0), matchingPolicy: .nextTime
+        ) ?? now.addingTimeInterval(3600)
+        completion(Timeline(
+            entries: [PulseEntry(date: now, snapshot: snapshot), PulseEntry(date: midnight, snapshot: snapshot)],
+            policy: .after(midnight)
+        ))
+    }
+}
+
+struct PulseWidgetView: View {
+    let entry: PulseEntry
+    @Environment(\.widgetFamily) private var family
+
+    var body: some View {
+        if let snapshot = entry.current {
+            counts(snapshot)
+        } else {
+            stale
+        }
+    }
+
+    private struct Count: Identifiable {
+        let label: String
+        let value: Int
+        let link: DocketLink
+        let alert: Bool
+        var id: String { label }
+    }
+
+    private func items(_ snapshot: DocketPulseSnapshot) -> [Count] {
+        [
+            Count(label: "Inbox", value: snapshot.inbox, link: .view(.inbox), alert: false),
+            Count(label: "Today", value: snapshot.today, link: .view(.today), alert: false),
+            Count(label: "Overdue", value: snapshot.overdue, link: .view(.due), alert: snapshot.overdue > 0),
+            Count(label: "Done", value: snapshot.done, link: .show, alert: false),
+        ]
+    }
+
+    @ViewBuilder
+    private func counts(_ snapshot: DocketPulseSnapshot) -> some View {
+        switch family {
+        case .systemSmall:
+            VStack(alignment: .leading, spacing: 8) {
+                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
+                    GridRow { tile(items(snapshot)[0]); tile(items(snapshot)[1]) }
+                    GridRow { tile(items(snapshot)[2]); tile(items(snapshot)[3]) }
+                }
+                Spacer(minLength: 0)
+                updated(snapshot)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .widgetURL(snapshot.primaryLink.url)
+        default:
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 0) {
+                    ForEach(items(snapshot)) { item in
+                        Link(destination: item.link.url) { tile(item) }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                Spacer(minLength: 0)
+                HStack {
+                    updated(snapshot)
+                    Spacer()
+                    Link(destination: DocketLink.capture(nil).url) {
+                        Label("Capture", systemImage: "plus.circle.fill")
+                            .font(.caption.weight(.semibold))
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .widgetURL(DocketLink.show.url)
+        }
+    }
+
+    private func tile(_ item: Count) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("\(item.value)")
+                .font(.system(.title, design: .rounded).weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(item.alert ? AnyShapeStyle(.red) : AnyShapeStyle(.primary))
+            Text(item.label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func updated(_ snapshot: DocketPulseSnapshot) -> some View {
+        (Text("Updated ") + Text(snapshot.updatedAt, style: .relative) + Text(" ago"))
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
+            .lineLimit(1)
+    }
+
+    /// No counts, or yesterday's: say so rather than draw numbers that no longer hold.
+    private var stale: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Image(systemName: "checklist")
+                .font(.title2)
+                .foregroundStyle(.secondary)
+            Text(entry.snapshot == nil ? "Open Docket to see your counts." : "Open Docket to refresh today’s counts.")
+                .font(.callout)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .widgetURL(DocketLink.show.url)
+    }
+}

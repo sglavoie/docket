@@ -85,6 +85,7 @@ DOCKET_BINARY="$work/docket" DOCKET_APP_VERSION="$version" "$script_dir/build-ap
 app="$macos_dir/build/Docket.app"
 require_universal "$app/Contents/MacOS/Docket"
 require_universal "$app/Contents/Resources/bin/docket"
+require_universal "$app/Contents/PlugIns/DocketWidgets.appex/Contents/MacOS/DocketWidgets"
 codesign --verify --strict --deep "$app"
 shipped=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")
 if [ "$shipped" != "$version" ]; then

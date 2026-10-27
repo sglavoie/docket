@@ -159,6 +159,32 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         requestPreview()
     }
 
+    static let draftKeptMessage = "Kept your unsaved draft. Capture or clear it, then send the new text again."
+
+    /// Opens the panel holding `draft`, the caret at `caret` in UTF-16 units (the
+    /// end when nil), for the user to finish and send: text from a link or the
+    /// Services menu is never captured unseen. An unsaved draft that differs, or a
+    /// capture still in flight, is never replaced: the panel opens on it, says so,
+    /// and this returns false.
+    @discardableResult
+    func present(draft: String, caret: Int? = nil) -> Bool {
+        let current = field.stringValue
+        if sending || (!current.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && current != draft) {
+            show()
+            setStatus(Self.draftKeptMessage, error: true)
+            return false
+        }
+        if current != draft {
+            clearCompletion()
+            field.stringValue = draft
+            saveDraft()
+        }
+        let length = (draft as NSString).length
+        savedSelection = (draft, NSRange(location: min(max(caret ?? length, 0), length), length: 0))
+        show()
+        return true
+    }
+
     func close() {
         dismissalGeneration += 1
         // Putting the panel away stops waiting on Docket; the draft stays.

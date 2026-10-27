@@ -116,11 +116,6 @@ struct DocketControlRequest: Encodable, Equatable {
     }
 }
 
-/// The modes a status menu count opens, spelled as Docket's `view` op takes them.
-enum DocketView: String, Equatable {
-    case inbox, today, due
-}
-
 /// Quitting Docket.app asks Docket to quit first, so it saves its view and filter
 /// state instead of taking a hangup. It finishes once: `.quit` when Docket has
 /// ended, when Docket cannot be asked (an older Docket answers "unknown operation"),
@@ -253,6 +248,13 @@ struct DocketPulse: Decodable, Equatable {
     let today: Int
     let overdue: Int
     let done: Int
+}
+
+extension DocketPulseSnapshot {
+    init(_ pulse: DocketPulse, at date: Date, calendar: Calendar = .current) {
+        self.init(inbox: pulse.inbox, today: pulse.today, overdue: pulse.overdue, done: pulse.done,
+                  updatedAt: date, calendar: calendar)
+    }
 }
 
 struct DocketArrival: Decodable, Equatable {

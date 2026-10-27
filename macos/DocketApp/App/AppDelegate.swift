@@ -1,7 +1,8 @@
 import AppKit
 import GhosttyKit
+import WidgetKit
 
-final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, StatusItemDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, StatusItemDelegate, DocketShortcutHost {
     /// The launch-error window, when Docket could not start.
     private(set) var launchErrorWindow: NSWindow?
     /// The terminal whose first session found no Docket, kept for Try Again; nil
@@ -38,6 +39,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     private var appearanceObserver: NSKeyValueObservation?
     /// Asks whether to quit over what Docket has open; true quits anyway.
     var confirmQuitAnyway: (String) -> Bool = AppDelegate.runBusyQuitAlert
+    /// The Services menu's Capture to Docket.
+    let serviceProvider = DocketServiceProvider()
+    /// Links that arrived before launch finished, opened once it has.
+    private var pendingLinks: [URL] = []
+    private var finishedLaunching = false
+    /// Work waiting to learn whether this session serves a control socket.
+    private var controlWaiters: [(DocketControlClient?) -> Void] = []
+    private var controlSettled = false
+    /// How long a link or a shortcut waits for Docket to start before asking anyway.
+    var controlWaitTimeout: TimeInterval = 15
+    /// Shortcuts waiting on the first pulse a new connection hears.
+    private var pulseWaiters: [(DocketPulse?) -> Void] = []
+    /// Where the widget reads the pulse; nil without an App Group container.
+    var pulseSnapshots = DocketPulseSnapshotStore(container: DocketSharedContainer.root())
+    private var dayChangeObserver: NSObjectProtocol?
+    /// When a capture link last opened the panel, so the activation that link
+    /// caused leaves the terminal where it was.
+    private var captureLinkOpenedAt: Date?
 
     /// A hosted test bundle launches this app too; it must not spawn Docket.
     private static var isRunningTests: Bool {
@@ -49,9 +68,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         // menu bar alone; the status item follows the same setting later.
         NSApp.setActivationPolicy(preferencesModel.activationPolicy.appKitPolicy)
         NSApp.mainMenu = MainMenu.make()
+        DocketShortcuts.host = self
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Every return below has decided what there is to show, so a link that
+        // launched the app opens over it.
+        defer { finishLaunchingLinks() }
         // Ghostty's global state must be initialized once per process before any
         // app or surface exists.
         if ghostty_init(UInt(CommandLine.argc), CommandLine.unsafeArgv) != GHOSTTY_SUCCESS {
@@ -175,6 +198,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     /// terminal, or the launch error when there is none.
     func applicationDidBecomeActive(_ notification: Notification) {
         guard !(preferences?.isVisible ?? false) else { return }
+        // A capture link activates the app too; the panel is what it asked for.
+        if quickCapture.isVisible, let opened = captureLinkOpenedAt, Date().timeIntervalSince(opened) < 2 {
+            captureLinkOpenedAt = nil
+            return
+        }
         guard let terminal else {
             if !(launchErrorWindow?.isVisible ?? true) {
                 showLaunchErrorAgain()
@@ -391,6 +419,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         if preferences?.isVisible ?? false {
             preferencesModel.refreshBinaryStatus()
         }
+        defer { settleControl() }
         if binary.controlSupported {
             captureUnavailableReason = nil
             if control == nil {
@@ -500,6 +529,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         case .pulse(let pulse):
             lastPulse = pulse
             refreshBadge()
+            recordPulseForWidget(pulse)
+            let waiting = pulseWaiters
+            pulseWaiters = []
+            for body in waiting { body(pulse) }
         case .arrivals(let arrivals, let title, let body):
             notifications.post(arrivals: arrivals, title: title, body: body)
         }
@@ -599,6 +632,180 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         ])
     }
 
+    // MARK: Links, Services, Shortcuts, and the widget
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls { open(url) }
+    }
+
+    /// Answers a `docket://` link. One arriving while launch is still deciding what
+    /// there is to show waits for it.
+    func open(_ url: URL) {
+        guard finishedLaunching else {
+            pendingLinks.append(url)
+            return
+        }
+        guard let link = DocketLink(url: url) else {
+            NSLog("Docket: cannot open %@", url.absoluteString)
+            guard let terminal else { showLaunchErrorAgain(); return }
+            terminal.show()
+            terminal.showNotice("Docket can’t open \(url.absoluteString).")
+            return
+        }
+        switch link {
+        case .show:
+            guard let terminal else { showLaunchErrorAgain(); return }
+            terminal.show()
+        case .capture(let text):
+            captureLinkOpenedAt = Date()
+            presentCapture(text.map { DocketCaptureDraft(text: DocketCaptureDraft.normalized($0)) })
+        case .view(let view):
+            whenControlSettled { [weak self] _ in self?.showView(view) }
+        case .task(let project, let task):
+            whenControlSettled { [weak self] _ in self?.reveal(DocketTaskID(project: project, task: task)) }
+        }
+    }
+
+    private func finishLaunchingLinks() {
+        finishedLaunching = true
+        let waiting = pendingLinks
+        pendingLinks = []
+        for url in waiting { open(url) }
+    }
+
+    /// Quick capture holding `draft`, or as it was when there is none. Never sends:
+    /// the user reads the preview and presses Enter.
+    ///
+    /// It waits for the session to settle and then one more main-queue turn. A
+    /// link or a Service that launched the app arrives while Docket is still
+    /// starting: opened then, the panel would say Docket is not running, and the
+    /// terminal coming forward once the session begins would take the keyboard and
+    /// put the panel away. Settling happens just before that, so the turn after it
+    /// opens the panel over the terminal instead.
+    func presentCapture(_ draft: DocketCaptureDraft?) {
+        whenControlSettled { [weak self] _ in
+            DispatchQueue.main.async { self?.showCapture(draft) }
+        }
+    }
+
+    private func showCapture(_ draft: DocketCaptureDraft?) {
+        guard let draft, !draft.text.trimmingCharacters(in: .whitespaces).isEmpty else {
+            quickCapture.show()
+            return
+        }
+        quickCapture.present(draft: draft.text, caret: draft.caret)
+    }
+
+    /// Runs `body` once this session has said whether it serves a control socket:
+    /// at once when it has, else when the session adopts its binary or finds none,
+    /// or after `controlWaitTimeout`, with whatever control there is by then.
+    func whenControlSettled(_ body: @escaping (DocketControlClient?) -> Void) {
+        if controlSettled {
+            body(control)
+            return
+        }
+        controlWaiters.append(body)
+        guard controlWaiters.count == 1 else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + controlWaitTimeout) { [weak self] in self?.settleControl() }
+    }
+
+    private func settleControl() {
+        controlSettled = true
+        let waiting = controlWaiters
+        controlWaiters = []
+        for body in waiting { body(control) }
+    }
+
+    func shortcutCapture(_ text: String, done: @escaping (Bool, String) -> Void) {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            done(false, "There is nothing to capture.")
+            return
+        }
+        whenControlSettled { [weak self] control in
+            guard let self else { return }
+            guard let control, let terminal = self.terminal else {
+                done(false, self.captureUnavailableReason ?? "Docket is not running.")
+                return
+            }
+            // A Docket that exited cleanly starts again; the request waits for it.
+            if terminal.surfaceView == nil { terminal.show() }
+            control.send(DocketControlRequest(op: .captureContext)) { reply in
+                guard reply.ok, let workspace = reply.workspace, !workspace.isEmpty else {
+                    done(false, "Update Docket, then choose Relaunch Docket to capture from Shortcuts. " + (reply.message ?? ""))
+                    return
+                }
+                // A fresh ID per run: a shortcut run twice means two captures.
+                let submission = QuickCaptureSubmission(id: UUID().uuidString.lowercased(), text: text, workspace: workspace)
+                control.send(.captureOnce(submission)) { reply in
+                    let fallback = reply.ok ? "Captured" : "Docket refused the capture"
+                    done(reply.ok, reply.message.flatMap { $0.isEmpty ? nil : $0 } ?? fallback)
+                }
+            }
+        }
+    }
+
+    /// The pulse a live connection has reported, waiting briefly for the one a new
+    /// connection hears at once. It never starts a Docket that has exited.
+    func shortcutPulse(_ done: @escaping (DocketPulse?, String?) -> Void) {
+        whenControlSettled { [weak self] control in
+            guard let self else { return }
+            guard control != nil, self.terminal?.surfaceView != nil else {
+                done(nil, self.captureUnavailableReason ?? "Docket is not running. Open it, then try again.")
+                return
+            }
+            if let pulse = self.lastPulse {
+                done(pulse, nil)
+                return
+            }
+            self.pulseWaiters.append { pulse in
+                done(pulse, pulse == nil ? "Docket did not report its counts. Open it, then try again." : nil)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+                guard let self, !self.pulseWaiters.isEmpty else { return }
+                let waiting = self.pulseWaiters
+                self.pulseWaiters = []
+                for body in waiting { body(self.lastPulse) }
+            }
+        }
+    }
+
+    func shortcutShow(_ view: DocketView?) {
+        guard let view else {
+            guard let terminal else { showLaunchErrorAgain(); return }
+            terminal.show()
+            return
+        }
+        whenControlSettled { [weak self] _ in self?.showView(view) }
+    }
+
+    /// Writes the pulse where the widget reads it and asks for a redraw.
+    private func recordPulseForWidget(_ pulse: DocketPulse, at date: Date = Date()) {
+        guard !Self.isRunningTests, let store = pulseSnapshots else { return }
+        let snapshot = DocketPulseSnapshot(pulse, at: date)
+        do {
+            try store.write(snapshot)
+            WidgetCenter.shared.reloadTimelines(ofKind: DocketPulseSnapshot.widgetKind)
+        } catch {
+            NSLog("Docket: widget: could not save the pulse: %@", error.localizedDescription)
+        }
+    }
+
+    /// Docket reports the pulse only when it changes, so counts that happen to be
+    /// the same after midnight would leave the widget calling them yesterday's.
+    /// Past Docket's own minute tick, the last pulse is stamped with the new day,
+    /// unless a newer one has arrived since.
+    private func observeDayChange() {
+        dayChangeObserver = NotificationCenter.default.addObserver(
+            forName: .NSCalendarDayChanged, object: nil, queue: .main
+        ) { [weak self] _ in
+            let seen = self?.lastPulse
+            DispatchQueue.main.asyncAfter(deadline: .now() + 65) { [weak self] in
+                guard let self, let pulse = self.lastPulse, pulse == seen else { return }
+                self.recordPulseForWidget(pulse)
+            }
+        }
+    }
+
     // MARK: Shell: status item, global shortcut, preferences
 
     /// The pieces that work even when Docket itself could not start.
@@ -634,6 +841,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         appearanceObserver = NSApp.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
             DispatchQueue.main.async { self?.sendTheme() }
         }
+
+        serviceProvider.present = { [weak self] draft in self?.presentCapture(draft) }
+        NSApp.servicesProvider = serviceProvider
+        NSUpdateDynamicServices()
+        observeDayChange()
 
         syncStatusItem(to: model.activationPolicy)
         let hotKeys = HotKeyCenter()
@@ -861,6 +1073,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         window.makeKeyAndOrderFront(nil)
         launchErrorWindow = window
         NSApp.activate(ignoringOtherApps: true)
+        settleControl()
     }
 
     /// With no terminal, the launch error is what there is to show.

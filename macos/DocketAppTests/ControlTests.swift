@@ -998,7 +998,7 @@ final class QuickCapturePanelCompletionTests: XCTestCase {
     }
 }
 
-private extension NSView {
+extension NSView {
     func descendants<T: NSView>(of type: T.Type) -> [T] {
         subviews.flatMap { ($0 as? T).map { [$0] } ?? [] + $0.descendants(of: type) }
     }

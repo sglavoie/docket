@@ -122,8 +122,15 @@ just mac-app Release
 With a Developer ID, both binaries are signed with the hardened runtime and a
 secure timestamp, which notarization requires. With `DOCKET_NOTARY_PROFILE` too,
 the app is zipped, submitted with `notarytool --wait`, and the ticket stapled.
-No entitlements are needed: the app only spawns `docket`, and Ghostty's own
-entitlements exist for the arbitrary shells Ghostty.app hosts.
+The only entitlement is the App Group the widget reads the pulse from,
+`MH33GYKDAW.io.github.sglavoie.docket`, which `sign.sh` signs into both the app
+(`DocketApp/Resources/Docket.entitlements`) and the sandboxed widget extension
+(`DocketWidgets/DocketWidgets.entitlements`), the extension first. The group is
+prefixed with the team ID, so a Developer ID or Apple Development signature from
+that team owns it without a provisioning profile; an ad-hoc build runs, but
+macOS may not load its widget or may refuse it the container. Nothing else is
+needed: the app only spawns `docket`, and Ghostty's own entitlements exist for
+the arbitrary shells Ghostty.app hosts.
 
 ## Using the app
 
@@ -303,6 +310,57 @@ defaults write io.github.sglavoie.docket docketCaptureHotKey 'ctrl+opt+n'
 defaults write io.github.sglavoie.docket docketCaptureHotKey ''    # off
 ```
 
+### Links, Services, and Shortcuts
+
+Other apps reach Docket.app three ways, all answered by the running app and none
+by a second copy of Docket.
+
+`docket://` links show something or fill quick capture, and nothing more, so a web
+page opening one can never commit, complete, or delete work unseen:
+
+| Link | Does |
+| --- | --- |
+| `docket://` or `docket://show` | Shows Docket. |
+| `docket://capture?text=…` | Opens quick capture holding the text; without `text`, opens it as it was. |
+| `docket://view/inbox`, `/today`, `/due` (or `/overdue`) | Shows Docket in that mode, as a status-menu count does. |
+| `docket://task/PROJECT-ID/TASK-ID` | Shows that task, by the stored IDs in `tasks.md`. |
+
+Encode spaces as `%20`: a `+` stays a `+`, as the grammar reads it. A link that
+arrives while Docket is still starting waits for it, and one Docket refuses (a
+mode change while something is open, say) is said in Docket's window.
+
+**Capture to Docket**, in any app's Services menu (and the right-click menu),
+opens quick capture holding the selected text, collapsed to one line, for you to
+read the preview and press Enter. A selection that is only a web address becomes
+` &https://…` with the caret before it, so the title is what you type first and
+the address is attached. `docket://capture` does the same with its text. Neither
+replaces an unsaved draft: the panel opens on the draft you had and says so.
+macOS lists the service once Docket.app has run from `/Applications`; System
+Settings › Keyboard › Keyboard Shortcuts › Services turns it off or gives it a key.
+
+**Shortcuts**, Spotlight, and Siri get three actions, each also offered as an
+App Shortcut ("Capture a task in Docket"):
+
+- **Capture Task** commits its text through the composer's grammar without
+  opening anything, each line its own task in one undo entry, and returns what
+  Docket said; a refusal is the action's error. It starts Docket if it had exited.
+  Unlike quick capture it keeps no recovery copy, so a run that fails is simply
+  reported, and running a shortcut twice captures twice.
+- **Show Docket** brings Docket forward, in Inbox, Today, or Overdue when chosen.
+- **Count Docket Tasks** returns the Inbox, Today, Overdue, or Done Today count
+  from the live pulse. It never starts Docket, and fails when it is not running.
+
+### Widget
+
+The Docket widget (desktop and Notification Center, small or medium) shows the
+pulse's Inbox, Today, Overdue, and Done counts. Docket.app writes each pulse to
+`pulse.json` in the App Group container and asks for a redraw, so the widget
+never reads the workspace: it shows what the app last heard and how long ago.
+At local midnight the counts describe a day that is over, and it says to open
+Docket instead. The small widget opens Due while anything is overdue and Today
+otherwise; the medium one opens each count's mode and has a Capture button, both
+through the links above.
+
 ### Notifications and the Dock badge
 
 A check-in whose day comes, a timed deadline that passes, or a deferral that
@@ -420,7 +478,9 @@ scripts/                    build-ghosttykit, generate-project, build-app,
 DocketApp/App/                  AppDelegate, menus, lifecycle
 DocketApp/Ghostty/              runtime glue, config, surface view (ported, trimmed)
 DocketApp/Shell/                window, status item, hotkey, preferences, Docket resolution
-DocketApp/Resources/            Info.plist, docket-launch, Assets.xcassets
+DocketApp/Resources/            Info.plist, entitlements, docket-launch, Assets.xcassets
+DocketWidgets/                  the WidgetKit extension, its Info.plist and entitlements
+Shared/                         link routes and the pulse snapshot, in the app and the widget
 DocketAppTests/                 XCTest
 NOTICE-ghostty              upstream MIT notices for the ported sources and themes
 ```
