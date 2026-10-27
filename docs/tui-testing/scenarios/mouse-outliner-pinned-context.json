@@ -1,0 +1,20 @@
+{
+  "name": "mouse-outliner-pinned-context",
+  "fixture": "busy",
+  "size": "60x20",
+  "actions": [
+    { "type": "click", "label": "open Backlog by its glyph so the list outgrows the window", "on": "▸  Backlog" },
+    { "type": "click", "on": "Untriaged inbox item 1" },
+    { "type": "key", "key": "b" },
+    { "type": "key", "key": "G" },
+    { "type": "assert", "assert": "contains", "value": "Inbox › [inbox-backlog]" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "click", "label": "the pinned context row stands for its header, so a click seats the cursor there", "on": "Inbox › [inbox-backlog]" },
+    { "type": "assert", "assert": "contains", "value": "No detail to show for this row." },
+    { "type": "assert", "assert": "not_contains", "value": "Inbox › [inbox-backlog]" },
+    { "type": "assert", "assert": "contains", "value": "▾  Inbox  (5)" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "width": 100, "height": 30 },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

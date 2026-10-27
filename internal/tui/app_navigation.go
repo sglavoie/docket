@@ -269,8 +269,9 @@ func (m *AppModel) wireSecondaryCoordinators(view route.View) {
 // wireOutlinerOperationExecutor injects the shell seams an Outliner cannot build
 // for itself: the operation registry it projects keys and help from, the
 // machine-local write that remembers which lens is live, the workspace conflict
-// count its status strip reports, and whether that strip carries ambient
-// advisories at all.
+// count its status strip reports, whether that strip carries ambient
+// advisories at all, and the root key path a double-click or right-click presses
+// its key through.
 func (m *AppModel) wireOutlinerOperationExecutor(outlinerView *outliner.OutlinerModel) {
 	if outlinerView == nil {
 		return
@@ -285,6 +286,7 @@ func (m *AppModel) wireOutlinerOperationExecutor(outlinerView *outliner.Outliner
 	outlinerView.SetSyncAdvisory(m.feedback.syncAdvisoryLine)
 	outlinerView.SetAdvisoriesHidden(m.feedback.advisoriesHidden)
 	outlinerView.SetMouseDisabled(m.mouseDisabled)
+	outlinerView.SetPointerKeyDispatch(m.dispatchPointerKey)
 }
 
 func (m *AppModel) showView(viewType presentation.PresentationID, view route.View) {

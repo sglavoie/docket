@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/route"
 	"github.com/sglavoie/docket/internal/tui/textfit"
 	"github.com/sglavoie/docket/internal/tui/theme"
 )
@@ -15,6 +16,9 @@ import (
 // View implements tea.Model. It renders the full outliner tree with connector
 // prefixes computed on each render pass from the project's task hierarchy.
 func (m *OutlinerModel) View() tea.View {
+	// Each render path records what it drew for the pointer; a path that draws
+	// no list leaves nothing behind for a click to hit.
+	m.pointerFrame = outlinerPointerFrame{}
 	if m.Project == nil {
 		// Spinner/loading states handled by crossProjectView.
 		if m.Population.SpinnerVisible || m.Population.Loading {
@@ -144,6 +148,164 @@ func (m *OutlinerModel) CursorScreenRow() (int, bool) {
 	return row, true
 }
 
+// The pointer's hit map is CursorScreenRow read backwards: it answers "which row
+// did the last render draw on this screen row" from the window that render
+// recorded, and never computes one. The rows a click can reach are the window's
+// own and the pinned context row above them, which stands for the header it
+// names; the title, the context row, the status strip, the Peek dock, the
+// scrollbar column and the padding under a short projection answer nothing. An
+// empty projection draws no window, so its render records the one row it may
+// draw — the focused project header — in pointerFrame instead, and a frame that
+// drew neither (the loading state) records nothing a click could hit.
+
+// outlinerPointerFrame is what the last render drew, for the hit map alone.
+type outlinerPointerFrame struct {
+	// rows reports that LastViewport describes this frame's list block.
+	rows bool
+	// emptyHeader reports that the empty state drew the focused project header,
+	// on screen row emptyHeaderRow.
+	emptyHeader    bool
+	emptyHeaderRow int
+}
+
+// SetPointerKeyDispatch injects the shell's root key path, the one route a
+// double-click and a right-click take to the operation their key reaches. A nil
+// dispatch is inert, so a model without a shell still seats the cursor.
+func (m *OutlinerModel) SetPointerKeyDispatch(dispatch func(key string) tea.Cmd) {
+	m.pointerKey = dispatch
+}
+
+// outlinerPointerHit is one resolved click: the row it seats the cursor on, and
+// whether it landed on that row's fold glyph.
+type outlinerPointerHit struct {
+	row  int
+	fold bool
+}
+
+// pointerHitAt resolves a cell of this view to the row the last render drew
+// there, reporting false for every cell that names no row.
+func (m *OutlinerModel) pointerHitAt(x, y int) (outlinerPointerHit, bool) {
+	frame := m.pointerFrame
+	if frame.emptyHeader {
+		if y != frame.emptyHeaderRow || x < 0 || x >= m.Width() {
+			return outlinerPointerHit{}, false
+		}
+		if _, ok := m.focusedProjectHeaderRow(); !ok {
+			return outlinerPointerHit{}, false
+		}
+		return outlinerPointerHit{row: 0}, true
+	}
+	viewport := m.LastViewport
+	if !frame.rows || viewport.VisibleRows <= 0 || x < 0 || x >= viewport.rowWidth ||
+		viewport.endIdx > len(m.Rows) {
+		return outlinerPointerHit{}, false
+	}
+	offset := y - viewport.topRow
+	if viewport.pinned {
+		// The context row is not a row and draws no fold of its own to toggle: it
+		// stands in for its header, so a click on it is a click on that header's
+		// name.
+		if offset == 0 {
+			if viewport.pinnedHeader < 0 || viewport.pinnedHeader >= len(m.Rows) {
+				return outlinerPointerHit{}, false
+			}
+			return outlinerPointerHit{row: viewport.pinnedHeader}, true
+		}
+		offset--
+	}
+	index := viewport.startIdx + offset
+	if offset < 0 || index >= viewport.endIdx || !m.Rows[index].IsNavigable() {
+		return outlinerPointerHit{}, false
+	}
+	return outlinerPointerHit{row: index, fold: m.pointerHitsFold(m.Rows[index], x, viewport.rowWidth)}, true
+}
+
+// pointerHitsFold reports whether column x of a drawn row is that row's fold
+// glyph or the blank beside it: the two columns renderSectionHeader,
+// RenderOutlinerProjectHeaderRow and renderTaskFoldIndicator spend on it. A row
+// that draws no glyph — the focused project header, a checklist item, a note, a
+// task with nothing to fold — has no fold column to hit, so a click there is a
+// plain click.
+func (m *OutlinerModel) pointerHitsFold(row OutlinerRow, x, rowWidth int) bool {
+	var start int
+	switch {
+	case !row.IsCollapsibleHeader() && !row.IsTaskRow():
+		return false
+	case row.IsSectionHeader:
+		start = 0
+	case row.IsProjectHeader:
+		start = 1
+	case !rowDrawsFold(row):
+		return false
+	case row.LeadsMergedGroup:
+		start = 1
+	default:
+		start = 1 + lipgloss.Width(m.outlinerTreePrefix(row, rowWidth))
+	}
+	return x >= start && x < start+2
+}
+
+// pointerFoldKey is the key a click on the row's fold glyph re-expresses: h
+// where the glyph shows the fold open, l where it shows it closed. It reads the
+// state the glyph was drawn from, so the click does what the arrow says, and h
+// is never chosen where it would walk to a parent instead of folding.
+func (m *OutlinerModel) pointerFoldKey(row OutlinerRow) string {
+	var expanded bool
+	switch {
+	case row.IsHeaderRow():
+		expanded = !m.IsSectionRowCollapsed(row)
+	case row.HasVisibleChildren:
+		expanded = m.IsExpanded(m.rowIdentity(row))
+	default:
+		expanded = m.IsChecklistExpanded(m.rowIdentity(row))
+	}
+	if expanded {
+		return "h"
+	}
+	return "l"
+}
+
+// HandlePointer answers a click on the Outliner. A click is j/k motion onto the
+// row under it, with every consequence that motion has: an active range
+// stretches from its anchor to the new cursor, a frozen selection stays as it
+// was, a pending relocation capture is voided, and no jump frame is pushed. A
+// click on a fold glyph then toggles that fold with h or l, a double-click then
+// presses Enter, and a right-click then presses Space, each through the shell's
+// key path so the operation, its refusals and its undo are the key's own. A
+// double-click is always preceded by its single click, so the cursor has
+// already landed when Enter runs; on a fold glyph every press is a toggle, since
+// the arrow is what was aimed at. Wheel steps are not this session's to answer.
+func (m *OutlinerModel) HandlePointer(event route.PointerEvent) tea.Cmd {
+	if m == nil || event.IsWheel() || m.SimplifiedInlineControlOwnsInput() {
+		return nil
+	}
+	if event.Button != route.PointerButtonLeft && event.Button != route.PointerButtonRight {
+		return nil
+	}
+	hit, ok := m.pointerHitAt(event.X, event.Y)
+	if !ok {
+		return nil
+	}
+	previous := m.Cursor
+	m.Cursor = hit.row
+	m.UpdateRangeSelection()
+	m.AdoptNavigatedCursor(previous)
+
+	key := ""
+	switch {
+	case event.Button == route.PointerButtonRight:
+		key = "space"
+	case hit.fold:
+		key = m.pointerFoldKey(m.Rows[hit.row])
+	case event.IsDoubleClick():
+		key = "enter"
+	}
+	if key == "" || m.pointerKey == nil {
+		return nil
+	}
+	return m.pointerKey(key)
+}
+
 // outlinerHostFrameHeight is the frame a modal composites into: the rows this
 // view draws before the shell pins its strip and its footer underneath. A popup
 // measured against the terminal instead would put its bottom halo behind the
@@ -198,6 +360,7 @@ func (m *OutlinerModel) renderOutlinerHostContent(width int) string {
 
 	viewport := m.ComputeOutlinerViewport(width, extraFooter)
 	m.LastViewport.topRow = strings.Count(b.String(), "\n")
+	m.pointerFrame = outlinerPointerFrame{rows: true}
 	b.WriteString(m.renderOutlinerRows(viewport))
 	m.writePeekDock(&b, viewport)
 

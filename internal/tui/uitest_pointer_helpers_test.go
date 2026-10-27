@@ -127,6 +127,10 @@ func (d *UITestDriver) runPointer(a UITestAction) error {
 		return err
 	}
 	for range max(a.Count, 1) {
+		// A terminal user can only click what was drawn, and a surface answers
+		// from the geometry its last render recorded, so every press lands on a
+		// fresh frame the way Bubble Tea's render-after-update would leave one.
+		_ = d.Render()
 		d.dispatch(tea.MouseClickMsg{X: x, Y: y, Button: button})
 		d.drain()
 		d.dispatch(tea.MouseReleaseMsg{X: x, Y: y, Button: button})

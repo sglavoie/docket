@@ -1,0 +1,29 @@
+{
+  "name": "mouse-outliner-selection",
+  "fixture": "checklist",
+  "size": "60x20",
+  "actions": [
+    { "type": "click", "x": 0, "y": 1 },
+    { "type": "click", "on": "Draft the launch runbook" },
+    { "type": "key", "key": "V" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 1 selected" },
+    { "type": "click", "label": "under an active range a click is j/k motion, so the range stretches to it", "on": "Confirm the staging soak" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 3 selected" },
+    { "type": "click", "label": "and shrinks back when the click lands nearer the anchor", "on": "Coordinate the rollout window" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 2 selected" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "key": "esc" },
+    { "type": "click", "label": "a frozen selection is not reshaped: the cursor moves, the members stay", "on": "Retire the legacy runbook" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 2 selected" },
+    { "type": "click", "label": "a right-click is Space, which under a selection is the bulk menu", "on": "Retire the legacy runbook", "button": "right" },
+    { "type": "assert", "assert": "contains", "value": "Bulk Actions · 2 selected" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "resize", "width": 100, "height": 30 },
+    { "type": "click", "on": "Draft the launch runbook" },
+    { "type": "assert", "assert": "contains", "value": "Multi-select: 2 selected" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

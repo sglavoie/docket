@@ -146,6 +146,14 @@ type OutlinerModel struct {
 	// Mouse row ticks from. A nil accessor reads as on; see advisories.go.
 	mouseDisabledAccessor func() bool
 
+	// pointerKey is the shell's root key path, injected so a double-click and a
+	// right-click reach the operation Enter and Space would, refusals included.
+	// Nil is inert, which is what a struct-literal test model gets; see
+	// outliner_render.go.
+	pointerKey func(key string) tea.Cmd
+	// pointerFrame is what the last render drew, for the pointer's hit map.
+	pointerFrame outlinerPointerFrame
+
 	// nextDeferWake is the soonest instant a pending deferral in scope lapses,
 	// and zero means none is pending. It is a refresh clock read by the periodic
 	// tick; what a row shows stays isComputedOpenWork's decision.

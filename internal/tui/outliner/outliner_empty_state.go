@@ -49,6 +49,7 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int) string {
 	// row.
 	var body strings.Builder
 	if header, ok := m.focusedProjectHeaderRow(); ok {
+		m.pointerFrame = outlinerPointerFrame{emptyHeader: true, emptyHeaderRow: strings.Count(b.String(), "\n")}
 		body.WriteString(m.RenderOutlinerProjectHeaderRow(header, m.Cursor == 0, width, 0))
 		body.WriteString("\n")
 	}

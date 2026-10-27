@@ -24,6 +24,19 @@ import (
 // so the normal view Update path can process search, quick edit, and confirmation
 // keystrokes.
 func (m *AppModel) handleSimplifiedInputKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
+	return m.dispatchSimplifiedKey(msg.String())
+}
+
+// dispatchPointerKey is the Outliner's pointer seam into the root grammar: a
+// double-click presses Enter and a right-click presses Space through exactly the
+// path a typed key takes, so the operation they reach, and every refusal it
+// gives, is the key's own. See OutlinerModel.HandlePointer.
+func (m *AppModel) dispatchPointerKey(key string) tea.Cmd {
+	_, cmd := m.dispatchSimplifiedKey(key)
+	return cmd
+}
+
+func (m *AppModel) dispatchSimplifiedKey(key string) (bool, tea.Cmd) {
 	if !m.operations.Wired() {
 		return false, nil
 	}
@@ -44,7 +57,7 @@ func (m *AppModel) handleSimplifiedInputKey(msg tea.KeyPressMsg) (bool, tea.Cmd)
 
 	ctx := m.operationCommandContext()
 	ctx.View = view
-	sequence := append(slices.Clone(m.operations.Chord), msg.String())
+	sequence := append(slices.Clone(m.operations.Chord), key)
 	return m.dispatchOperationKey(operation.InputStrategySimplified, sequence, ctx)
 }
 

@@ -1,0 +1,48 @@
+{
+  "name": "mouse-outliner-click",
+  "fixture": "checklist",
+  "size": "60x20",
+  "actions": [
+    { "type": "click", "label": "the Backlog header's fold glyph is l on that header", "x": 0, "y": 1 },
+    { "type": "assert", "assert": "contains", "value": "Retire the legacy runbook" },
+    { "type": "assert", "assert": "contains", "value": "▾  Backlog" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "click", "label": "a task's fold glyph sits after its tree and opens its checklist", "x": 5, "y": 3 },
+    { "type": "assert", "assert": "contains", "value": "Name the on-call owner" },
+    { "type": "click", "label": "the open glyph is h, which closes it again", "x": 5, "y": 3 },
+    { "type": "assert", "assert": "not_contains", "value": "Name the on-call owner" },
+
+    { "type": "click", "label": "a click on a task row seats the cursor there, so Peek names it", "on": "Retire the legacy runbook" },
+    { "type": "key", "key": "b" },
+    { "type": "assert", "assert": "count_contains", "value": "Retire the legacy runbook", "count": 2 },
+    { "type": "click", "label": "another click moves the cursor, and the dock follows", "on": "Coordinate the rollout window" },
+    { "type": "assert", "assert": "count_contains", "value": "Coordinate the rollout window", "count": 2 },
+    { "type": "assert", "assert": "count_contains", "value": "Retire the legacy runbook", "count": 1 },
+    { "type": "click", "label": "the dock is not a row, so a click there moves nothing", "on": "Project:" },
+    { "type": "assert", "assert": "count_contains", "value": "Coordinate the rollout window", "count": 2 },
+    { "type": "click", "label": "neither is the title row", "x": 10, "y": 0 },
+    { "type": "assert", "assert": "count_contains", "value": "Coordinate the rollout window", "count": 2 },
+    { "type": "key", "key": "b" },
+
+    { "type": "click", "label": "a right-click on a section header is Space there, refusal and all", "on": "Backlog", "button": "right" },
+    { "type": "assert", "assert": "status_contains", "value": "select a task to open actions" },
+    { "type": "click", "label": "a right-click on a task is that task's Space menu", "on": "Retire the legacy runbook", "button": "right" },
+    { "type": "assert", "assert": "contains", "value": "Task Actions: Retire the legacy runbook" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "click", "label": "a double-click on a leaf is Enter, which says why it cannot focus", "on": "Retire the legacy runbook", "count": 2 },
+    { "type": "assert", "assert": "status_contains", "value": "No children to focus" },
+    { "type": "click", "label": "a double-click on a parent is Enter, which focuses it", "on": "Coordinate the rollout window", "count": 2 },
+    { "type": "assert", "assert": "contains", "value": "Focus: [Checklist Delivery] › Coordinate the rollout window" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "resize", "width": 100, "height": 30 },
+    { "type": "click", "label": "after a resize the hit map reads the new frame", "on": "Draft the launch runbook" },
+    { "type": "key", "key": "b" },
+    { "type": "assert", "assert": "count_contains", "value": "Draft the launch runbook", "count": 2 },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

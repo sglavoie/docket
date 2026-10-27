@@ -230,6 +230,25 @@ answer the pointer ignores it, so a click never lands on the view behind an open
 dialog. A click or a wheel step also cancels a half-typed chord such as `w`,
 without a warning. Mouse motion and button releases are ignored.
 
+In the Outliner, clicking a row moves the cursor to it, as pressing `j` or `k`
+until you got there would. Clicking the pinned line at the top of a scrolled
+list moves the cursor to the lane or project header it stands for. The title,
+the context line, the status line, the Peek dock, the scrollbar and the blank
+space under a short list ignore clicks. Clicking a fold arrow (`▸` or `▾`) opens
+or closes that fold, the way `l` or `h` on that row would, and does nothing
+where those keys would do nothing, such as a zoomed lane. Double-clicking a row
+is `Enter` on it and right-clicking is `Space`, so a row that refuses the key
+refuses the click with the same message. A quick second click on a fold arrow
+toggles it again rather than counting as a double-click.
+
+Under a visual selection a click is still only cursor motion. During a `V`
+range the range stretches or shrinks to the clicked row, exactly as `j`/`k`
+would leave it; once the range is frozen, or for a `v` selection, the cursor
+moves and the selection stays as it was. A right-click then opens the bulk
+menu, as `Space` does. A click pushes nothing onto `Ctrl+O`'s history.
+While you type in the search input, edit a row inline, or have a menu, picker,
+or the `Q` readout open, clicks on the list are ignored.
+
 To select text while the mouse is on, hold Shift as you drag; most terminals,
 Docket.app's included, keep Shift+drag for selection.
 

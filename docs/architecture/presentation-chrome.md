@@ -426,6 +426,28 @@ and only the active presentation is ever handed the event, through
 `route.PointerView`. A layer that does not implement it swallows the event, so a
 click never falls through a modal to the host drawn beneath it.
 
+The Outliner is the first `PointerView`. `OutlinerModel.HandlePointer` lives in
+`outliner_render.go` beside `CursorScreenRow`, because its hit map is that
+function read backwards: `pointerHitAt` maps a screen row through
+`LastViewport`'s `topRow`, `pinned`/`pinnedHeader` and `startIdx`/`endIdx`, and
+never computes a window. Because a frame can be drawn without a window — the
+empty state, the loading state — each render also records `pointerFrame`:
+`View` clears it, the populated path marks `LastViewport` as this frame's, and
+the empty state records the screen row of the focused project header, the one
+row it can draw. A cell outside those rows, or in the scrollbar column at
+`rowWidth`, hits nothing. A click seats the cursor with j/k's own consequences —
+`UpdateRangeSelection`, then `AdoptNavigatedCursor` — and pushes no jump frame.
+Every act after that is a key: `pointerFoldKey` picks `h` or `l` from the state
+the fold glyph was drawn from (`pointerHitsFold` uses the glyph columns that
+`renderSectionHeader`, `RenderOutlinerProjectHeaderRow` and
+`renderTaskFoldIndicator` spend). A double-click off a glyph is `enter` and a
+right-click is `space`. The key goes through `pointerKey`, which
+`wireOutlinerOperationExecutor` binds to `AppModel.dispatchPointerKey`. That is
+`handleSimplifiedInputKey`'s own body, so the operation, the
+`entityScopedKeyRejection` refusal and the undo entry are the key's. While
+`SimplifiedInlineControlOwnsInput` holds (search input, inline edit,
+confirmation, `Q`, relation picker, open menu), the Outliner swallows the event.
+
 `ConflictBrowserModel` is that count's browser and resolver, and it is an overlay
 on the lens picker's template rather than a surface: a `ListSurfaceModel` inside
 `RenderOverlayBox`, one `AppModel` field, one arm in `handleActiveKeyOverlay`,
