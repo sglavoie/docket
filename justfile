@@ -233,20 +233,9 @@ dead:
     @echo "Finding dead code..."
     ./scripts/dead_code.sh
 
-# Build release binaries for darwin/linux × amd64/arm64
-release:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    mkdir -p dist
-    for os in darwin linux; do
-        for arch in amd64 arm64; do
-            out="dist/{{ binary_name }}-${os}-${arch}"
-            echo "Building ${out}..."
-            GOOS=${os} GOARCH=${arch} go build -trimpath {{ ldflags }} -o "${out}" .
-        done
-    done
-    (cd dist && shasum -a 256 {{ binary_name }}-* > SHA256SUMS)
-    echo "Release binaries and SHA256SUMS written to dist/"
+# Tag and push the next patch, minor, or major version, which publishes the release (--yes, --no-watch)
+release bump *flags:
+    ./scripts/release.sh {{ bump }} {{ flags }}
 
 # Remove build artifacts
 clean:
