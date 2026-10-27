@@ -21,6 +21,12 @@ while the pin and the patches are unchanged.
 
 ## Build and install
 
+A release installs it with Homebrew: `brew install --cask sglavoie/tap/docket`
+puts the notarized, universal Docket.app in `/Applications` and links the
+`docket` it bundles as `docket` and `dkt`. The release workflow's `macos-app`
+job builds that app with `macos/scripts/package-release.sh` and writes the cask
+with `scripts/homebrew_cask.sh`. The rest of this section builds it from a clone.
+
 ```bash
 just mac-install        # Release build, bundled docket, ad-hoc signed, into /Applications
 ```
@@ -51,11 +57,12 @@ gitignored: edit the spec, not the project.
 The first executable of: the Settings override (`docketBinaryPath`), the
 bundled `Contents/Resources/bin/docket`, `~/.local/bin/docket`, then `PATH`. A Release
 build always bundles one, so an installed app runs the `docket` it was built with,
-with one exception: a `~/.local/bin/docket` whose `--version` reports a later
-`built:` time than the bundled copy's runs instead, since the older binary
-refuses a workspace the newer one has migrated. A Debug build bundles none and
+however recent a `just install` build is; point the override at
+`~/.local/bin/docket` to run a dev build instead. A Debug build bundles none and
 falls through to `just install`'s copy. Settings › Advanced names the binary
-running, its version, and an older copy of the pair when there is one. A
+running, its version, and whether `~/.local/bin/docket` is older or newer than the
+bundled copy, since the older of the two refuses a workspace the newer one has
+migrated. A
 binary choice takes effect when Docket next starts, and Settings offers Relaunch Docket
 while the running one is another binary than the next would be.
 

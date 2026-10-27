@@ -18,6 +18,8 @@
 #                           identity, else ad-hoc; "-" forces ad-hoc
 #   DOCKET_NOTARY_PROFILE       `xcrun notarytool store-credentials` profile name;
 #                           requires a Developer ID identity
+#   DOCKET_NOTARY_KEYCHAIN      keychain holding that profile (default: the
+#                           keychain search list)
 
 set -eu
 
@@ -80,8 +82,21 @@ require_tool ditto
 archive=$(mktemp -d)/docket.zip
 trap 'rm -rf "$(dirname -- "$archive")"' EXIT HUP INT TERM
 ditto -c -k --keepParent "$app" "$archive"
+set -- --keychain-profile "$notary_profile"
+if [ -n "${DOCKET_NOTARY_KEYCHAIN:-}" ]; then
+	set -- "$@" --keychain "$DOCKET_NOTARY_KEYCHAIN"
+fi
 echo "Submitting $app for notarization..."
-xcrun notarytool submit "$archive" --keychain-profile "$notary_profile" --wait
+result=$(xcrun notarytool submit "$archive" "$@" --wait --output-format json)
+status=$(printf '%s' "$result" | plutil -extract status raw -o - -)
+if [ "$status" != Accepted ]; then
+	echo "notarization ended $status" >&2
+	submission=$(printf '%s' "$result" | plutil -extract id raw -o - - 2>/dev/null || true)
+	if [ -n "$submission" ]; then
+		xcrun notarytool log "$submission" "$@" >&2 || true
+	fi
+	exit 1
+fi
 xcrun stapler staple "$app"
 xcrun stapler validate "$app"
 echo "Notarized and stapled $app"

@@ -10,6 +10,8 @@
 #                           for Release (`just mac-app Release` builds it with
 #                           the `just build` ldflags), optional for Debug, which
 #                           otherwise resolves ~/.local/bin/docket then PATH
+#   DOCKET_APP_VERSION          CFBundleShortVersionString, e.g. 0.2.0 (default:
+#                           project.yml's MARKETING_VERSION)
 #   DOCKET_MACOS_CACHE          cache root (default macos/.cache, gitignored)
 #   DOCKET_CODESIGN_IDENTITY    see sign.sh (default Apple Development, else ad-hoc)
 
@@ -49,6 +51,13 @@ require_tool ditto
 
 # --- Build -----------------------------------------------------------------------
 
+# A version rides as a trailing build-setting override, which outranks the spec.
+if [ -n "${DOCKET_APP_VERSION:-}" ]; then
+	set -- "MARKETING_VERSION=$DOCKET_APP_VERSION"
+else
+	set --
+fi
+
 derived_data="$macos_dir/DerivedData"
 xcodebuild build \
 	-project "$macos_dir/Docket.xcodeproj" \
@@ -56,7 +65,8 @@ xcodebuild build \
 	-configuration "$configuration" \
 	-destination "platform=macOS,arch=$(uname -m)" \
 	-derivedDataPath "$derived_data" \
-	-quiet
+	-quiet \
+	"$@"
 
 product="$derived_data/Build/Products/$configuration/Docket.app"
 if [ ! -f "$product/Contents/Info.plist" ]; then

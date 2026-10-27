@@ -89,7 +89,10 @@ docket
 ```
 
 The cask installs `docket`, its short alias `dkt`, and bash, zsh, and fish
-completions for both; `brew upgrade --cask docket` takes new releases.
+completions for both; `brew upgrade --cask docket` takes new releases. On macOS
+(14 or later) it also installs the notarized [Docket.app](macos/README.md) into
+`/Applications`, and `docket` and `dkt` are the binary that app bundles, so the
+app and the command line always run the same version.
 
 With Go instead:
 
@@ -109,8 +112,9 @@ go build -o docket .
 ```
 
 On macOS, [Docket.app](macos/README.md) runs the same program in its own window and
-adds a menu-bar shortcut, quick capture, and notifications. From a clone, run
-`just mac-install` to build and install it; this requires the full Xcode app.
+adds a menu-bar shortcut, quick capture, and notifications. The cask installs
+it; from a clone, `just mac-install` builds and installs it instead, which
+requires the full Xcode app.
 
 A new workspace starts locally in `~/.docket/`. Use `--data-dir`, `DOCKET_DATA_DIR`, or
 `docket workspace move` to select a different location. Moving into iCloud Drive or

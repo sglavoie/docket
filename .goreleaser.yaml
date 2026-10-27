@@ -7,7 +7,8 @@ project_name: docket
 before:
   hooks:
     - go mod tidy -diff
-    # Shell completions, shipped in the archives and installed by the cask.
+    # Shell completions, shipped in the archives and installed by the cask
+    # (from the Linux tarball, or beside Docket.app in the macOS zip).
     # Each script also completes dkt; fish finds completions by command name,
     # so dkt gets a file of its own that wraps docket's.
     - sh -c 'rm -rf completions && mkdir completions && for sh in bash zsh fish; do go run . completion "$sh" > "completions/docket.$sh"; done && echo "complete -c dkt -w docket" > completions/dkt.fish'
@@ -47,37 +48,6 @@ changelog:
       - "^test(\\(.*\\))?:"
       - "^chore(\\(.*\\))?:"
 
-homebrew_casks:
-  - name: docket
-    repository:
-      owner: sglavoie
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    directory: Casks
-    homepage: https://github.com/sglavoie/docket
-    description: Local-first, keyboard-driven task manager for the terminal
-    license: MIT
-    # The second entry also links docket as the short alias dkt. binaries
-    # takes names only and custom_block lands above version, which fails
-    # brew style's stanza order, so the target rides in the quoted name.
-    binaries:
-      - docket
-      - 'docket", target: "dkt'
-    # completions takes one file per shell. zsh and bash register dkt inside
-    # docket's script; fish needs dkt.fish too, which rides the quoted path
-    # as a second stanza, the way dkt rides binaries above.
-    completions:
-      bash: completions/docket.bash
-      zsh: completions/docket.zsh
-      fish: |-
-        completions/docket.fish"
-          fish_completion "completions/dkt.fish
-    hooks:
-      post:
-        # The binaries are not notarized: let macOS run them.
-        # install_steps writes Homebrew's postflight_steps; install wrote the
-        # deprecated postflight, which warns on every install.
-        install_steps: |
-          on_macos do
-            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/docket"]
-          end
+# No homebrew_casks: the cask installs the notarized Docket.app, which only a
+# macOS runner can build, so release.yml's macos-app job writes it to
+# sglavoie/homebrew-tap (scripts/homebrew_cask.sh) once the app is attached.

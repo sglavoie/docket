@@ -27,13 +27,137 @@ jobs:
         with:
           go-version-file: go.mod
 
-      # Publishes the GitHub release and writes Casks/docket.rb in
-      # sglavoie/homebrew-tap (.goreleaser.yaml).
+      # Publishes the GitHub release with the CLI archives (.goreleaser.yaml).
       - uses: goreleaser/goreleaser-action@v6
         with:
           version: "~> v2"
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Builds the notarized Docket.app around the darwin builds GoReleaser just
+  # published, attaches it to the release, and only then writes Casks/docket.rb,
+  # so the tap never names an asset that is not there. A failure here leaves the
+  # cask on the previous version.
+  macos-app:
+    needs: release
+    runs-on: macos-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Identify Apple toolchain
+        id: toolchain
+        shell: bash
+        run: |
+          fingerprint=$( { xcodebuild -version; xcrun --sdk macosx --show-sdk-version; } | shasum -a 256 | cut -d ' ' -f 1)
+          echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
+
+      # Keyed apart from CI's: CI vendors a native GhosttyKit, a release a
+      # universal one, and each restored into the other is rebuilt.
+      - name: Cache pinned desktop dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
+            macos/Vendor
+            macos/.cache/zig
+            macos/.cache/xcodegen-*
+          key: desktop-universal-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.fingerprint }}-${{ hashFiles('macos/GHOSTTY_VERSION', 'macos/XCODEGEN_VERSION', 'macos/patches/ghostty/**', 'macos/scripts/build-ghosttykit.sh', 'macos/scripts/resolve-xcodegen.sh') }}
+
+      - name: Download the darwin builds
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=${TAG#v}
+          gh release download "$TAG" --dir dist \
+            --pattern checksums.txt \
+            --pattern "docket_${version}_darwin_arm64.tar.gz" \
+            --pattern "docket_${version}_darwin_amd64.tar.gz"
+          (cd dist && shasum -a 256 --check --ignore-missing checksums.txt)
+          for arch in arm64 amd64; do
+            mkdir -p "dist/$arch"
+            tar -xzf "dist/docket_${version}_darwin_$arch.tar.gz" -C "dist/$arch"
+          done
+
+      # A throwaway keychain holds the Developer ID identity and the notary
+      # profile for this job alone, and is deleted however the job ends.
+      - name: Import signing and notarization credentials
+        shell: bash
+        env:
+          # base64 of the Developer ID Application certificate and key (.p12).
+          MACOS_DEVELOPER_ID_P12: ${{ secrets.MACOS_DEVELOPER_ID_P12 }}
+          MACOS_DEVELOPER_ID_P12_PASSWORD: ${{ secrets.MACOS_DEVELOPER_ID_P12_PASSWORD }}
+          # An App Store Connect API key: base64 of the .p8, its ID, and the issuer.
+          MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          keychain="$RUNNER_TEMP/release.keychain-db"
+          password=$(uuidgen)
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          echo "RELEASE_KEYCHAIN=$keychain" >> "$GITHUB_ENV"
+
+          printf '%s' "$MACOS_DEVELOPER_ID_P12" | base64 --decode > "$RUNNER_TEMP/developer-id.p12"
+          security import "$RUNNER_TEMP/developer-id.p12" -k "$keychain" \
+            -P "$MACOS_DEVELOPER_ID_P12_PASSWORD" -T /usr/bin/codesign
+          rm -f "$RUNNER_TEMP/developer-id.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$password" "$keychain" >/dev/null
+          existing=$(security list-keychains -d user | tr -d '"')
+          # shellcheck disable=SC2086
+          security list-keychains -d user -s "$keychain" $existing
+
+          identity=$(security find-identity -v -p codesigning "$keychain" |
+            sed -n 's/^ *[0-9][0-9]*) \([0-9A-F]\{40\}\) "Developer ID Application: .*/\1/p' | head -n 1)
+          if [ -z "$identity" ]; then
+            echo "MACOS_DEVELOPER_ID_P12 holds no Developer ID Application identity" >&2
+            exit 1
+          fi
+          echo "DOCKET_CODESIGN_IDENTITY=$identity" >> "$GITHUB_ENV"
+
+          printf '%s' "$MACOS_NOTARY_KEY" | base64 --decode > "$RUNNER_TEMP/notary.p8"
+          xcrun notarytool store-credentials docket-release --keychain "$keychain" \
+            --key "$RUNNER_TEMP/notary.p8" --key-id "$MACOS_NOTARY_KEY_ID" --issuer "$MACOS_NOTARY_ISSUER_ID"
+          rm -f "$RUNNER_TEMP/notary.p8"
+          echo "DOCKET_NOTARY_PROFILE=docket-release" >> "$GITHUB_ENV"
+          echo "DOCKET_NOTARY_KEYCHAIN=$keychain" >> "$GITHUB_ENV"
+
+      - name: Build, notarize, and package Docket.app
+        run: |
+          version=${TAG#v}
+          ./macos/scripts/package-release.sh "$version" dist/arm64/docket dist/amd64/docket \
+            dist/arm64/completions "dist/Docket_${version}_macos_universal.zip"
+
+      - name: Attach Docket.app to the release
+        run: gh release upload "$TAG" "dist/Docket_${TAG#v}_macos_universal.zip" --clobber
+
+      - name: Write the Homebrew cask
+        shell: bash
+        env:
           # A fine-grained token with contents: write on sglavoie/homebrew-tap.
-          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          version=${TAG#v}
+          zip_sha=$(shasum -a 256 "dist/Docket_${version}_macos_universal.zip" | cut -d ' ' -f 1)
+          ./scripts/homebrew_cask.sh "$version" "$zip_sha" dist/checksums.txt > dist/docket.rb
+          cat dist/docket.rb
+          current=$(gh api repos/sglavoie/homebrew-tap/contents/Casks/docket.rb --jq .sha)
+          gh api --method PUT repos/sglavoie/homebrew-tap/contents/Casks/docket.rb \
+            -f message="docket $version" \
+            -f content="$(base64 < dist/docket.rb | tr -d '\n')" \
+            -f sha="$current" > /dev/null
+
+      - name: Delete the signing keychain
+        if: always()
+        run: |
+          if [ -n "${RELEASE_KEYCHAIN:-}" ]; then
+            security delete-keychain "$RELEASE_KEYCHAIN" || true
+          fi
