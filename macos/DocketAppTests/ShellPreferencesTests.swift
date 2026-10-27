@@ -577,11 +577,13 @@ private final class FakeStatusDelegate: StatusItemDelegate {
     var isLaunchAtLoginEnabled = false
     var pulseSummary: String?
     var pulse: DocketPulse?
+    var agenda: DocketAgenda?
     var toggleHotKey: HotKeyCombo?
     var captureHotKey: HotKeyCombo?
     var calls: [String] = []
     func toggleTerminal() { calls.append("toggle") }
     func showView(_ view: DocketView) { calls.append("view:\(view.rawValue)") }
+    func showTask(_ task: DocketTaskID) { calls.append("task:\(task.project)/\(task.task)") }
     func relaunchTerminal() { calls.append("relaunch") }
     func showQuickCapture(_ sender: Any?) { calls.append("capture") }
     func showPreferences(_ sender: Any?) { calls.append("preferences") }
@@ -667,6 +669,42 @@ final class StatusItemTests: XCTestCase {
         XCTAssertNil(controller.statusItem.button?.accessibilityValue())
         XCTAssertTrue(controller.menu.items[0].isSeparatorItem)
         XCTAssertTrue(controller.menu.items[0].isHidden)
+    }
+
+    /// The agenda follows the counts: a heading per kind, each task showing
+    /// Docket on it with its project and deadline beside the title, and the
+    /// remainder showing the mode that lists it.
+    func testMenuListsTheAgendaUnderTheCounts() throws {
+        let delegate = FakeStatusDelegate()
+        let controller = StatusItemController(delegate: delegate)
+        delegate.pulse = DocketPulse(inbox: 0, today: 1, overdue: 1, done: 0)
+        delegate.agenda = DocketAgenda(items: [
+            DocketAgendaItem(kind: .overdue, project: "p", task: "late", title: "Send report", projectName: "Work", due: "2026-10-20T00:00:00Z"),
+            DocketAgendaItem(kind: .today, project: "p", task: "now", title: "Call", projectName: "Home"),
+        ], total: 2)
+        controller.refreshMenu()
+
+        // A task's title is its attributed one, the detail riding after two spaces.
+        XCTAssertEqual(
+            controller.menu.items.prefix(6).map { $0.title.components(separatedBy: "  ")[0] },
+            ["Today 1", "Overdue 1", "Overdue", "Send report", "Today", "Call"]
+        )
+        XCTAssertTrue(controller.menu.items[2].isSectionHeader)
+        XCTAssertTrue(controller.menu.items[6].isSeparatorItem)
+        XCTAssertFalse(controller.menu.items[6].isHidden)
+        XCTAssertEqual(controller.menu.items[3].attributedTitle?.string.hasPrefix("Send report  Work · "), true)
+        XCTAssertEqual(controller.menu.items[5].attributedTitle?.string, "Call  Home")
+        for item in [controller.menu.items[3], controller.menu.items[5]] {
+            XCTAssertTrue(item.isEnabled)
+            _ = (item.target as? NSObject)?.perform(item.action, with: item)
+        }
+        XCTAssertEqual(delegate.calls, ["task:p/late", "task:p/now"])
+
+        // A refresh replaces the agenda rather than adding to it.
+        delegate.agenda = DocketAgenda(items: [], total: 0)
+        controller.refreshMenu()
+        XCTAssertEqual(controller.menu.items.prefix(3).map(\.title), ["Today 1", "Overdue 1", ""])
+        XCTAssertTrue(controller.agendaItems.isEmpty)
     }
 
     /// The icon is named Docket, carries the pulse as its value, and says what

@@ -112,6 +112,82 @@ enum DocketPulseSummary {
     }
 }
 
+/// The status and Dock menus' agenda: the tasks behind the Overdue and Today
+/// counts, each showing Docket with the cursor on it, under a heading per kind,
+/// then one item for whatever did not fit, showing the mode that lists it.
+enum DocketAgendaMenu {
+    /// A menu has room for this many tasks; Docket sends more than that.
+    static let maxTasks = 8
+    /// A longer title is cut here, so one task cannot widen the whole menu.
+    static let maxTitleLength = 60
+
+    enum Entry: Equatable {
+        case heading(String)
+        case task(DocketAgendaItem)
+        case more(Int, DocketView)
+    }
+
+    /// What the menu lists for `agenda`, given the pulse its counts came with.
+    static func entries(for agenda: DocketAgenda, pulse: DocketPulse?) -> [Entry] {
+        let shown = Array(agenda.items.prefix(maxTasks))
+        var entries: [Entry] = []
+        for (kind, heading) in [(DocketAgendaItem.Kind.overdue, "Overdue"), (.today, "Today")] {
+            let tasks = shown.filter { $0.kind == kind }
+            guard !tasks.isEmpty else { continue }
+            entries.append(.heading(heading))
+            entries += tasks.map(Entry.task)
+        }
+        let remainder = agenda.total - shown.count
+        if remainder > 0 {
+            // Overdue tasks lead the agenda, so the ones left out are overdue
+            // only while the shown ones fall short of the overdue count.
+            let overdueShown = shown.filter { $0.kind == .overdue }.count
+            let overdueTotal = pulse?.overdue ?? agenda.items.filter { $0.kind == .overdue }.count
+            entries.append(.more(remainder, overdueShown < overdueTotal ? .due : .today))
+        }
+        return entries
+    }
+
+    /// The task's title, cut to `maxTitleLength`.
+    static func title(_ item: DocketAgendaItem) -> String {
+        item.title.count > maxTitleLength ? String(item.title.prefix(maxTitleLength - 1)) + "…" : item.title
+    }
+
+    /// Menu items for `agenda`: a task's item carries its `DocketTaskID` as the
+    /// represented object and runs `taskAction`; the remainder carries its mode's
+    /// raw value and runs `viewAction`, as a count item does.
+    static func items(for agenda: DocketAgenda?, pulse: DocketPulse?, now: Date = Date(), target: AnyObject,
+                      taskAction: Selector, viewAction: Selector) -> [NSMenuItem] {
+        guard let agenda else { return [] }
+        return entries(for: agenda, pulse: pulse).map { entry in
+            switch entry {
+            case .heading(let title):
+                return NSMenuItem.sectionHeader(title: title)
+            case .task(let task):
+                let item = NSMenuItem(title: title(task), action: taskAction, keyEquivalent: "")
+                item.target = target
+                item.representedObject = DocketTaskID(project: task.project, task: task.task)
+                let detail = task.detail(now: now)
+                if !detail.isEmpty {
+                    let styled = NSMutableAttributedString(string: item.title)
+                    styled.append(NSAttributedString(string: "  " + detail, attributes: [
+                        .foregroundColor: task.kind == .overdue ? NSColor.systemRed : NSColor.secondaryLabelColor,
+                        .font: NSFont.menuFont(ofSize: NSFont.smallSystemFontSize),
+                    ]))
+                    item.attributedTitle = styled
+                }
+                item.toolTip = detail.isEmpty ? task.title : task.title + " — " + detail
+                return item
+            case .more(let count, let view):
+                let item = NSMenuItem(title: "\(count) more…", action: viewAction, keyEquivalent: "")
+                item.target = target
+                item.representedObject = view.rawValue
+                return item
+            }
+        }
+    }
+}
+
 /// Shows Docket's notifications through the Notification Center. Authorization is
 /// asked for on the first one, not at launch, so a user who never gets one is
 /// never prompted. A notification arriving while Docket is already in front is not

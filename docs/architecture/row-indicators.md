@@ -449,7 +449,12 @@ which advances a blurred session's fingerprint, so a focus does not read Docket'
 own commit as another machine's. A capture travels as `TasksCapturedMsg`, never
 `TaskCreatedMsg`, whose pop would close a view the user never opened. Events
 carry stored project and task IDs, never a slug or ShortID: the pulse is
-published from `Update`'s one deferred closure when it changed, and arrivals
+published from `Update`'s one deferred closure when it changed, and the agenda
+right after it on the same terms. `pulse.ComputeWorkspaceAgenda` walks the one
+population the pulse counts, with its exclusions, so the list a host draws never
+disagrees with the count beside it; it is bounded at `pulse.AgendaLimit` with
+the true `Total`, computed only while a publisher is connected, and the server
+replays the last one to a new connection after the pulse. Arrivals come
 from the same tick `--notify` reads, each with `TaskAllowsExplicitReview` at
 that instant so a host offers Acknowledge only where it would be accepted.
 

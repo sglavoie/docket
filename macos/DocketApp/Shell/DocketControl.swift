@@ -251,9 +251,9 @@ struct DocketPulse: Decodable, Equatable {
 }
 
 extension DocketPulseSnapshot {
-    init(_ pulse: DocketPulse, at date: Date, calendar: Calendar = .current) {
+    init(_ pulse: DocketPulse, agenda: DocketAgenda? = nil, at date: Date, calendar: Calendar = .current) {
         self.init(inbox: pulse.inbox, today: pulse.today, overdue: pulse.overdue, done: pulse.done,
-                  updatedAt: date, calendar: calendar)
+                  updatedAt: date, agenda: agenda, calendar: calendar)
     }
 }
 
@@ -301,6 +301,8 @@ struct DocketEditing: Decodable, Equatable {
 enum DocketControlEvent: Equatable {
     case editing(DocketEditing)
     case pulse(DocketPulse)
+    /// The tasks behind the pulse's Today and Overdue counts.
+    case agenda(DocketAgenda)
     /// `title` and `body` word the whole batch as one notification.
     case arrivals([DocketArrival], title: String, body: String)
 }
@@ -323,6 +325,7 @@ enum DocketControlLine: Equatable {
         let editing: DocketEditing?
         let pulse: DocketPulse?
         let arrivals: [DocketArrival]?
+        let agenda: DocketAgenda?
         let title: String?
         let body: String?
     }
@@ -338,6 +341,8 @@ enum DocketControlLine: Equatable {
             return raw.editing.map { .event(.editing($0)) }
         case "pulse":
             return raw.pulse.map { .event(.pulse($0)) }
+        case "agenda":
+            return raw.agenda.map { .event(.agenda($0)) }
         case "arrivals":
             return .event(.arrivals(raw.arrivals ?? [], title: raw.title ?? "Docket", body: raw.body ?? ""))
         default:

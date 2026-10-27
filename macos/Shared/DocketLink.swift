@@ -3,9 +3,10 @@ import Foundation
 // Compiled into Docket.app and its widget extension, so a link the widget draws
 // and the route the app answers are spelled in one place.
 
-/// The modes a status menu count opens, spelled as Docket's `view` op takes them.
+/// The views a pulse count opens, spelled as Docket's `view` op takes them.
+/// Done is the done count's: All, filtered to finished work.
 enum DocketView: String, Equatable {
-    case inbox, today, due
+    case inbox, today, due, done
 }
 
 /// A `docket://` link: what another app, a script, or the widget may ask Docket.app
@@ -15,7 +16,8 @@ enum DocketView: String, Equatable {
 /// - `docket://` or `docket://show`: shows Docket.
 /// - `docket://capture?text=…`: opens quick capture holding the text as its draft;
 ///   with no text, opens it as it was.
-/// - `docket://view/inbox`, `/today`, `/due` (or `/overdue`): shows Docket in that mode.
+/// - `docket://view/inbox`, `/today`, `/due` (or `/overdue`): shows Docket in that mode;
+///   `/done`: shows All filtered to finished work.
 /// - `docket://task/PROJECT-ID/TASK-ID`: shows that task, by its stored IDs.
 enum DocketLink: Equatable {
     case show
@@ -24,6 +26,13 @@ enum DocketLink: Equatable {
     case task(project: String, task: String)
 
     static let scheme = "docket"
+
+    /// Whether answering it brings Docket's window forward; capture opens its
+    /// panel over whatever app is in front instead.
+    var showsDocket: Bool {
+        if case .capture = self { return false }
+        return true
+    }
 
     init?(url: URL) {
         guard url.scheme?.lowercased() == Self.scheme,

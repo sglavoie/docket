@@ -37,7 +37,9 @@ as `just install`'s), builds the app, copies `docket` to
 `Docket.app/Contents/Resources/bin/docket`, signs, and then copies
 `macos/build/Docket.app` to `/Applications`. It refuses while Docket.app is running,
 since replacing the bundle would end its session: quit it from the menu-bar
-icon first. `DOCKET_APP_INSTALL_DIR` installs elsewhere.
+icon first. It also ends a running widget extension, which would otherwise keep
+drawing the old widget; macOS starts the new one when the widget next draws.
+`DOCKET_APP_INSTALL_DIR` installs elsewhere.
 
 The other recipes:
 
@@ -166,12 +168,18 @@ opens its menu: Show/Hide, Quick Capture…, Relaunch Docket, Settings… (`Cmd+
 Launch at Login, About Docket, Docket Guide, Quit (`Cmd+Q`). Show/Hide and Quick
 Capture… show their global shortcuts while those are registered, as Quick
 Capture… does in the app menu; a shortcut that is off, or that another app
-holds, is not shown. The Dock icon's menu has the same pulse items, then
+holds, is not shown. The Dock icon's menu has the same pulse and agenda items, then
 Show/Hide, Quick Capture…, and Relaunch Docket.
 Once Docket has reported its pulse, the menu leads with one item per count still
 owed — `Inbox 2`, `Today 3`, `Overdue 1` — leaving out any count at zero and
 all of them when all three are. Choosing one shows Docket in that mode, as its mode
-jump would: Inbox, Today, or Due for Overdue. A Docket that is busy, because
+jump would: Inbox, Today, or Due for Overdue. Under the counts, an Overdue and a
+Today heading list the tasks behind them, overdue first by oldest deadline, then
+Today by priority, each with its project and deadline beside the title (`Send
+report  Work · Yesterday`). Choosing one shows Docket with the cursor on it, as a
+notification does. The menu holds eight; the rest are one `N more…` item showing
+Due while overdue work is among them, else Today. A task overdue and planned for
+today is listed once, as overdue. A Docket that is busy, because
 something is open in it, or too old to know the request is still shown, in the
 mode it was in. The icon's tooltip is Docket's window title, the pulse as one line
 (`docket · inbox 2 · today 3 · overdue 1`). VoiceOver names the icon Docket, reads that
@@ -201,7 +209,7 @@ Ghostty build.
 
 Docket.app starts Docket with `--control`, naming a socket in the app's temporary
 directory, and keeps one connection to it for the session. Over it Docket reports
-its pulse and the work that arrives, and takes the requests below, each
+its pulse, the tasks behind its Today and Overdue counts, and the work that arrives, and takes the requests below, each
 answered exactly as the key in Docket would be: the same commit, the same undo
 entry, and a refusal while you are mid-way through something in Docket rather than
 a change made under you. Docket.app passes the flag only to a Docket whose `--help`
@@ -323,9 +331,13 @@ page opening one can never commit, complete, or delete work unseen:
 | `docket://` or `docket://show` | Shows Docket. |
 | `docket://capture?text=…` | Opens quick capture holding the text; without `text`, opens it as it was. |
 | `docket://view/inbox`, `/today`, `/due` (or `/overdue`) | Shows Docket in that mode, as a status-menu count does. |
+| `docket://view/done` | Shows All with the filters `$canceled $done ?completed`, replacing any others. |
 | `docket://task/PROJECT-ID/TASK-ID` | Shows that task, by the stored IDs in `tasks.md`. |
 
 Encode spaces as `%20`: a `+` stays a `+`, as the grammar reads it. A link that
+shows Docket brings the app forward the way a Dock click does, so one clicked on
+a widget over the revealed desktop puts the windows back rather than changing
+Docket behind them. A link that
 arrives while Docket is still starting waits for it, and one Docket refuses (a
 mode change while something is open, say) is said in Docket's window.
 
@@ -352,14 +364,19 @@ App Shortcut ("Capture a task in Docket"):
 
 ### Widget
 
-The Docket widget (desktop and Notification Center, small or medium) shows the
+The Docket widget (desktop and Notification Center, small, medium, or large) shows the
 pulse's Inbox, Today, Overdue, and Done counts. Docket.app writes each pulse to
 `pulse.json` in the App Group container and asks for a redraw, so the widget
 never reads the workspace: it shows what the app last heard and how long ago.
 At local midnight the counts describe a day that is over, and it says to open
 Docket instead. The small widget opens Due while anything is overdue and Today
-otherwise; the medium one opens each count's mode and has a Capture button, both
-through the links above.
+otherwise; the medium and large ones open each count's mode — for Done, All
+filtered to `$canceled $done ?completed` — and have a Capture button, all
+through the links above. The large one adds the agenda the status menu lists:
+up to six overdue and Today tasks, each with its project, deadline, and
+priority, opening Docket on that task, and a `N more in Docket` line for the
+rest. Docket sends that list beside the pulse, so a Docket too old to send it
+leaves the large widget saying to update it.
 
 ### Notifications and the Dock badge
 

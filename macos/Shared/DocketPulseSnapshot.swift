@@ -4,7 +4,8 @@ import Foundation
 /// widget can draw it while Docket.app is not running. It is a cache: `updatedAt`
 /// is when it was true, and `day` the local day it describes, after which Today,
 /// overdue, and done describe a day that is over and the widget stops presenting
-/// them as current.
+/// them as current. `agenda` names the Today and Overdue tasks when the Docket
+/// that reported the pulse also reported them, and is nil otherwise.
 struct DocketPulseSnapshot: Codable, Equatable {
     let inbox: Int
     let today: Int
@@ -12,16 +13,18 @@ struct DocketPulseSnapshot: Codable, Equatable {
     let done: Int
     let updatedAt: Date
     let day: String
+    let agenda: DocketAgenda?
 
     /// The widget's kind, which Docket.app names to reload its timeline.
     static let widgetKind = "docket.pulse"
 
-    init(inbox: Int, today: Int, overdue: Int, done: Int, updatedAt: Date, calendar: Calendar = .current) {
+    init(inbox: Int, today: Int, overdue: Int, done: Int, updatedAt: Date, agenda: DocketAgenda? = nil, calendar: Calendar = .current) {
         self.inbox = inbox
         self.today = today
         self.overdue = overdue
         self.done = done
         self.updatedAt = updatedAt
+        self.agenda = agenda
         day = Self.day(of: updatedAt, calendar: calendar)
     }
 

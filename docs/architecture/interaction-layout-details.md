@@ -199,8 +199,9 @@ and the strip is left free for the feedback your next bulk gesture writes there.
 
 `docket --control PATH` serves a Unix socket at `PATH`, readable by your user
 alone, for a host app such as Docket.app. Over it the session reports the pulse
-whenever it changes and each tick's arrivals with the identity of every task,
-and it takes seven requests: show a task, acknowledge one as `R` does, mark
+whenever it changes, the agenda — the overdue and Today tasks behind those
+counts, overdue first — whenever that changes, and each tick's arrivals, with
+the identity of every task it names, and it takes seven requests: show a task, acknowledge one as `R` does, mark
 one Done as `wd` does, defer one by some minutes, capture a line as the `a`
 composer would read it, refusals included, ask what that composer would suggest for a draft up to its caret,
 and preview the project, plan, status, and deadline of a full capture draft.

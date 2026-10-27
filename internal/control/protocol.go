@@ -12,7 +12,7 @@
 // The protocol is newline-delimited JSON in both directions. A host writes
 // Request lines; Docket writes one Reply per request, carrying the request's id,
 // and Event lines whenever it has something to report. Every connection hears
-// every event, and a new connection hears the latest pulse at once.
+// every event, and a new connection hears the latest pulse and agenda at once.
 //
 // OpQuit is how a host ends the session it hosts: Docket quits as its quit key
 // would, or refuses while content is unsaved or a save is pending. A host treats the connection
@@ -64,8 +64,10 @@ const (
 	// changes presentation only, even while an editor is open.
 	OpThemePalette = "theme_palette"
 	// OpView switches the Outliner to the mode Text names, "inbox", "today", or
-	// "due", exactly as the mode jump does, and is refused where that key is:
-	// while the user is mid-interaction or a search projection is open.
+	// "due", exactly as the mode jump does, or, for "done", to All with its
+	// filters replaced by "$canceled $done ?completed". It is refused where the
+	// mode jump is: while the user is mid-interaction or a search projection is
+	// open.
 	OpView = "view"
 	// OpUndo undoes the transaction Text names, as u would, only while it is
 	// still the newest undo entry, so a host never takes back something newer
@@ -83,6 +85,15 @@ const (
 	// EventArrivals carries the tasks that crossed into needing attention since
 	// the last periodic tick.
 	EventArrivals = "arrivals"
+	// EventAgenda names the tasks behind the pulse's Today and Overdue counts
+	// whenever they change, so a host can list them beside the counts.
+	EventAgenda = "agenda"
+)
+
+// The kinds an AgendaItem names.
+const (
+	AgendaOverdue = "overdue"
+	AgendaToday   = "today"
 )
 
 // The reasons an Arrival names.
@@ -164,6 +175,28 @@ type Arrival struct {
 	Reviewable bool `json:"reviewable,omitempty"`
 }
 
+// Agenda is the tasks the pulse counts as Today or Overdue: overdue first,
+// oldest deadline leading, then Today by priority. Items holds at most a
+// bounded number of them; Total is how many there are.
+type Agenda struct {
+	Items []AgendaItem `json:"items"`
+	Total int          `json:"total"`
+}
+
+// AgendaItem is one agenda task. Project and Task are its stored IDs, as an
+// Arrival's are. Due is RFC 3339 and absent without a deadline; DueHasTime says
+// it names an instant rather than a whole day. Priority is 1–3, or absent.
+type AgendaItem struct {
+	Kind        string `json:"kind"`
+	Project     string `json:"project"`
+	Task        string `json:"task"`
+	Title       string `json:"title"`
+	ProjectName string `json:"project_name"`
+	Priority    int    `json:"priority,omitempty"`
+	Due         string `json:"due,omitempty"`
+	DueHasTime  bool   `json:"due_has_time,omitempty"`
+}
+
 // Event is one line Docket writes unprompted. Title and Body word an arrivals
 // event as one notification, the way --notify would.
 type Event struct {
@@ -171,6 +204,7 @@ type Event struct {
 	Editing  *Editing  `json:"editing,omitempty"`
 	Pulse    *Pulse    `json:"pulse,omitempty"`
 	Arrivals []Arrival `json:"arrivals,omitempty"`
+	Agenda   *Agenda   `json:"agenda,omitempty"`
 	Title    string    `json:"title,omitempty"`
 	Body     string    `json:"body,omitempty"`
 }

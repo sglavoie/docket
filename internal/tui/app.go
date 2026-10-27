@@ -130,6 +130,9 @@ type AppModel struct {
 	// title row. It is recomputed after committed count-changing mutations so
 	// paint paths can read it without an extra full-tree walk.
 	workspacePulse pulse.WorkspacePulse
+	// workspaceAgenda names the pulse's Today and Overdue tasks for a control
+	// socket host, and is computed only while one is connected.
+	workspaceAgenda pulse.WorkspaceAgenda
 	// pulseLoader is the pulse's own retained snapshot loader. It is read only
 	// from Update, never from a command goroutine, which is what lets it outlive
 	// one recount without sharing the Outliner's loader across goroutines.

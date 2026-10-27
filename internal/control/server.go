@@ -40,6 +40,7 @@ type Server struct {
 	mu          sync.Mutex
 	conns       map[*conn]struct{}
 	lastPulse   []byte
+	lastAgenda  []byte
 	lastEditing []byte
 	closed      bool
 	wg          sync.WaitGroup
@@ -123,8 +124,8 @@ func (s *Server) Close() error {
 }
 
 // Publish sends an event to every connection without blocking: a connection
-// whose queue is full misses it. A pulse is also remembered for the next
-// connection.
+// whose queue is full misses it. A pulse and an agenda are also remembered for
+// the next connection.
 func (s *Server) Publish(event Event) {
 	line, err := json.Marshal(event)
 	if err != nil {
@@ -142,6 +143,9 @@ func (s *Server) Publish(event Event) {
 	}
 	if event.Event == EventPulse {
 		s.lastPulse = line
+	}
+	if event.Event == EventAgenda {
+		s.lastAgenda = line
 	}
 	for c := range s.conns {
 		select {
@@ -172,6 +176,9 @@ func (s *Server) accept() {
 		}
 		if s.lastPulse != nil {
 			c.out <- s.lastPulse
+		}
+		if s.lastAgenda != nil {
+			c.out <- s.lastAgenda
 		}
 		s.mu.Unlock()
 		s.wg.Add(2)

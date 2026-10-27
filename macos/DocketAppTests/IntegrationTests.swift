@@ -21,12 +21,23 @@ final class DocketLinkTests: XCTestCase {
         XCTAssertEqual(link("docket://view/Today"), .view(.today))
         XCTAssertEqual(link("docket://view/due"), .view(.due))
         XCTAssertEqual(link("docket://view/overdue"), .view(.due))
+        XCTAssertEqual(link("docket://view/done"), .view(.done))
         XCTAssertEqual(link("docket://task/p-1/t%2F2"), .task(project: "p-1", task: "t/2"))
+    }
+
+    /// Every route but capture brings Docket's window forward, so only those
+    /// ask LaunchServices to activate the app; capture opens over the app in front.
+    func testOnlyCaptureLeavesDocketWhereItIs() {
+        XCTAssertTrue(DocketLink.show.showsDocket)
+        XCTAssertTrue(DocketLink.view(.done).showsDocket)
+        XCTAssertTrue(DocketLink.task(project: "p", task: "t").showsDocket)
+        XCTAssertFalse(DocketLink.capture("x").showsDocket)
+        XCTAssertFalse(DocketLink.capture(nil).showsDocket)
     }
 
     func testRefusals() {
         for string in [
-            "https://show", "docket://delete", "docket://show/extra", "docket://view", "docket://view/done",
+            "https://show", "docket://delete", "docket://show/extra", "docket://view", "docket://view/recent",
             "docket://view/today/more", "docket://task/only-project", "docket://task/a/b/c", "docket://capture/x",
         ] {
             XCTAssertNil(link(string), string)
@@ -36,7 +47,7 @@ final class DocketLinkTests: XCTestCase {
     func testEveryRouteRoundTrips() {
         let links: [DocketLink] = [
             .show, .capture(nil), .capture("Buy milk #home & eggs?"), .view(.inbox), .view(.today), .view(.due),
-            .task(project: "proj id", task: "a/b"),
+            .view(.done), .task(project: "proj id", task: "a/b"),
         ]
         for value in links {
             XCTAssertEqual(DocketLink(url: value.url), value, value.url.absoluteString)
@@ -149,6 +160,16 @@ final class PulseSnapshotTests: XCTestCase {
         )
         try store.write(snapshot)
         XCTAssertEqual(store.read(), snapshot)
+        let agenda = DocketAgenda(items: [DocketAgendaItem(kind: .today, project: "p", task: "t", title: "Call", projectName: "Work")], total: 4)
+        let listed = DocketPulseSnapshot(
+            DocketPulse(inbox: 1, today: 2, overdue: 3, done: 4), agenda: agenda, at: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+        try store.write(listed)
+        XCTAssertEqual(store.read()?.agenda, agenda)
+        // A snapshot an older Docket.app wrote has no agenda and still reads.
+        try Data(#"{"inbox":1,"today":2,"overdue":3,"done":4,"updatedAt":"2027-01-15T08:00:00Z","day":"2027-01-15"}"#.utf8).write(to: store.url)
+        XCTAssertEqual(store.read()?.today, 2)
+        XCTAssertNil(store.read()?.agenda)
         try Data("not json".utf8).write(to: store.url)
         XCTAssertNil(store.read(), "an unreadable snapshot reads as none")
         XCTAssertNil(DocketPulseSnapshotStore(container: nil))

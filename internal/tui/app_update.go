@@ -75,8 +75,10 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			outCmd = tea.Batch(outCmd, expiry)
 		}
 		// And the one place every refresh this update made has landed, so a
-		// host on the control socket hears each changed pulse exactly once.
+		// host on the control socket hears each changed pulse and agenda
+		// exactly once.
 		m.publishControlPulse()
+		m.publishControlAgenda()
 		m.observeDesktopText(textBefore, msg)
 		m.publishDesktopEditing()
 	}()

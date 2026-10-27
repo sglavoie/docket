@@ -121,14 +121,26 @@ func LoadCrossScopeSelection(selected []*models.Project, loader *workspace.Loade
 // concurrent use, so it must be owned by the one goroutine that recounts the
 // pulse. A nil loader reads everything fresh.
 func ComputeWorkspacePulse(rs *config.RuntimeState, todayIDs map[taskref.TaskIdentity]bool, now time.Time, loader *workspace.Loader) pulse.WorkspacePulse {
+	counted, _ := ComputeWorkspaceReadout(rs, todayIDs, now, loader, false)
+	return counted
+}
+
+// ComputeWorkspaceReadout is ComputeWorkspacePulse and, when withAgenda asks,
+// the agenda naming its Today and Overdue tasks, counted over one load so the
+// list a host shows never disagrees with the count beside it.
+func ComputeWorkspaceReadout(rs *config.RuntimeState, todayIDs map[taskref.TaskIdentity]bool, now time.Time, loader *workspace.Loader, withAgenda bool) (pulse.WorkspacePulse, pulse.WorkspaceAgenda) {
 	if rs == nil {
-		return pulse.WorkspacePulse{}
+		return pulse.WorkspacePulse{}, pulse.WorkspaceAgenda{}
 	}
 	projects, failed := LoadCrossScopeSelection(rs.TaskWorkspaceProjects(), loader)
 	for _, failure := range failed {
 		logging.Warn("workspace pulse: %s", failure.Detail)
 	}
-	return pulse.ComputeWorkspacePulse(projects, todayIDs, now)
+	var agenda pulse.WorkspaceAgenda
+	if withAgenda {
+		agenda = pulse.ComputeWorkspaceAgenda(projects, todayIDs, now)
+	}
+	return pulse.ComputeWorkspacePulse(projects, todayIDs, now), agenda
 }
 
 // selectCrossScopeProjects is the one place task projections choose a project

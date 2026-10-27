@@ -47,6 +47,70 @@ final class ControlWireTests: XCTestCase {
         )
     }
 
+    func testAnAgendaEventDecodes() {
+        let line = #"{"event":"agenda","agenda":{"total":3,"items":[{"kind":"overdue","project":"p","task":"t","title":"Call","project_name":"Work","priority":1,"due":"2026-10-26T09:30:00-06:00","due_has_time":true},{"kind":"today","project":"p","task":"u","title":"Write","project_name":"Work"}]}}"#
+        XCTAssertEqual(
+            DocketControlLine.decode(Data(line.utf8)),
+            .event(.agenda(DocketAgenda(items: [
+                DocketAgendaItem(kind: .overdue, project: "p", task: "t", title: "Call", projectName: "Work",
+                                 priority: 1, due: "2026-10-26T09:30:00-06:00", dueHasTime: true),
+                DocketAgendaItem(kind: .today, project: "p", task: "u", title: "Write", projectName: "Work"),
+            ], total: 3)))
+        )
+        XCTAssertEqual(
+            DocketControlLine.decode(Data(#"{"event":"agenda","agenda":{"items":[],"total":0}}"#.utf8)),
+            .event(.agenda(DocketAgenda(items: [], total: 0)))
+        )
+    }
+
+    /// The menu lists the first few tasks under a heading per kind and counts
+    /// the rest; the rest open Due while overdue work is among them.
+    func testTheAgendaMenuGroupsByKindAndCountsWhatDidNotFit() {
+        let overdue = (0..<3).map { DocketAgendaItem(kind: .overdue, project: "p", task: "o\($0)", title: "Late \($0)", projectName: "") }
+        let today = (0..<9).map { DocketAgendaItem(kind: .today, project: "p", task: "t\($0)", title: "Now \($0)", projectName: "") }
+        let entries = DocketAgendaMenu.entries(for: DocketAgenda(items: overdue + today, total: 12), pulse: DocketPulse(inbox: 0, today: 9, overdue: 3, done: 0))
+        XCTAssertEqual(entries.first, .heading("Overdue"))
+        XCTAssertEqual(entries[4], .heading("Today"))
+        XCTAssertEqual(entries.filter { if case .task = $0 { return true } else { return false } }.count, DocketAgendaMenu.maxTasks)
+        XCTAssertEqual(entries.last, .more(12 - DocketAgendaMenu.maxTasks, .today))
+
+        let mostlyLate = (0..<10).map { DocketAgendaItem(kind: .overdue, project: "p", task: "o\($0)", title: "Late", projectName: "") }
+        let late = DocketAgendaMenu.entries(for: DocketAgenda(items: mostlyLate, total: 10), pulse: DocketPulse(inbox: 0, today: 0, overdue: 10, done: 0))
+        XCTAssertEqual(late.last, .more(2, .due))
+        XCTAssertFalse(late.contains(.heading("Today")))
+
+        XCTAssertTrue(DocketAgendaMenu.entries(for: DocketAgenda(items: [], total: 0), pulse: nil).isEmpty)
+        let long = DocketAgendaItem(kind: .today, project: "p", task: "t", title: String(repeating: "x", count: 80), projectName: "")
+        XCTAssertEqual(DocketAgendaMenu.title(long).count, DocketAgendaMenu.maxTitleLength)
+        XCTAssertTrue(DocketAgendaMenu.title(long).hasSuffix("…"))
+    }
+
+    /// A deadline reads relative to now: a time for today's timed one, else
+    /// a day word, a weekday within the week, or a date.
+    func testAnAgendaDeadlineReadsRelativeToNow() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/Edmonton")!
+        let locale = Locale(identifier: "en_US")
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 27, hour: 12)))
+        func label(_ due: String, timed: Bool = false) -> String? {
+            DocketAgendaItem(kind: .today, project: "p", task: "t", title: "x", projectName: "", due: due, dueHasTime: timed)
+                .dueLabel(now: now, calendar: calendar, locale: locale)
+        }
+        XCTAssertEqual(label("2026-10-27T15:30:00-06:00", timed: true), "3:30\u{202F}PM")
+        XCTAssertEqual(label("2026-10-27T00:00:00-06:00"), "Today")
+        XCTAssertEqual(label("2026-10-26T00:00:00-06:00"), "Yesterday")
+        XCTAssertEqual(label("2026-10-28T00:00:00-06:00"), "Tomorrow")
+        XCTAssertEqual(label("2026-10-30T00:00:00-06:00"), "Friday")
+        XCTAssertEqual(label("2026-10-20T00:00:00-06:00"), "Oct 20")
+        XCTAssertEqual(label("2025-12-20T00:00:00-07:00"), "Dec 20, 2025")
+        XCTAssertNil(label("not a date"))
+        XCTAssertEqual(
+            DocketAgendaItem(kind: .overdue, project: "p", task: "t", title: "x", projectName: "Work", due: "2026-10-26T00:00:00-06:00")
+                .detail(now: now, calendar: calendar, locale: locale),
+            "Work · Yesterday"
+        )
+    }
+
     func testACaptureReplyCarriesItsTransactionAndUndoNamesIt() throws {
         let line = #"{"reply":8,"ok":true,"message":"Captured: Buy milk","transaction":"tx-42"}"#
         XCTAssertEqual(DocketControlLine.decode(Data(line.utf8)),

@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/docket/internal/control"
+	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/storage"
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/coordinator"
@@ -41,9 +42,11 @@ type controlState struct {
 	versionLine string
 	publisher   controlPublisher
 	// published is the last pulse sent, so an unchanged pulse is never resent.
-	published   *pulse.WorkspacePulse
-	editing     *control.Editing
-	textHistory map[any]*desktopTextHistory
+	published *pulse.WorkspacePulse
+	// publishedAgenda is the last agenda sent, for the same reason.
+	publishedAgenda *pulse.WorkspaceAgenda
+	editing         *control.Editing
+	textHistory     map[any]*desktopTextHistory
 }
 
 // WithControlPublisher connects the session to a control socket's events.
@@ -170,9 +173,9 @@ func (m *AppModel) executeControlRequest(request control.Request, reply chan<- c
 	}
 	if request.Op == control.OpView {
 		// A mode change reads the workspace it already holds and commits
-		// nothing, so it owes no reload of its own.
-		m.controlView(request.Text, reply)
-		return nil
+		// nothing, so it owes no reload of its own; the done view's filters
+		// admit finished work, whose population it reloads itself.
+		return m.controlView(request.Text, reply)
 	}
 	if request.Op == control.OpUndo {
 		// The restore reloads every project the entry touched, so it owes no
@@ -213,32 +216,48 @@ func (m *AppModel) executeControlRequest(request control.Request, reply chan<- c
 	return tea.Batch(reload, cmd)
 }
 
-// controlViewModes are the modes a host may name: the three the pulse counts.
+// controlViewModes are the modes a host may name: the three the pulse counts,
+// and done, the finished work, which is All under controlDoneFilters.
 var controlViewModes = map[string]chrome.OutlinerModeID{
 	"inbox": chrome.ModeInbox,
 	"today": chrome.ModeToday,
 	"due":   chrome.ModeDue,
+	"done":  chrome.ModeAll,
 }
+
+// controlDoneFilters are the facets the done view applies over All: both
+// terminal states, and the completed population that admits them at all.
+const controlDoneFilters = "$canceled $done ?completed"
 
 // controlView switches the Outliner to the named mode through the mode jump's
 // own SelectOutlinerMode. The busy guard already refused the ranked list, where
-// that key refuses too.
-func (m *AppModel) controlView(name string, reply chan<- control.Reply) {
+// that key refuses too. The done view then replaces the filters with
+// controlDoneFilters, as setting those facets by hand would, and reloads the
+// population that admits finished work.
+func (m *AppModel) controlView(name string, reply chan<- control.Reply) tea.Cmd {
 	id, known := controlViewModes[name]
 	if !known {
-		answer(reply, false, fmt.Sprintf("unknown view %q: want inbox, today, or due", name))
-		return
+		answer(reply, false, fmt.Sprintf("unknown view %q: want inbox, today, due, or done", name))
+		return nil
 	}
 	out, ok := m.outlinerPrimary()
 	if !ok || out == nil {
 		answer(reply, false, "the Outliner is not open")
-		return
+		return nil
 	}
 	// The user asked for this mode; a launch still settling may not move it.
 	m.lifecycle.dropLaunchFocus()
 	_, _ = out.SelectOutlinerMode(id)
 	mode, _ := chrome.OutlinerModeByID(id)
-	answer(reply, true, "Shown: "+mode.Label)
+	if name != "done" {
+		answer(reply, true, "Shown: "+mode.Label)
+		return nil
+	}
+	facets, _ := models.PartitionQueryString(controlDoneFilters)
+	out.SetFilterQuery(facets)
+	out.Population.RequestReloadFromTop()
+	answer(reply, true, "Shown: "+mode.Label+" · "+controlDoneFilters)
+	return out.ReloadCrossProjects()
 }
 
 // replyWhenCommitted answers the socket once a coordinator command's commit
@@ -301,6 +320,42 @@ func (m *AppModel) publishControlPulse() {
 		Event: control.EventPulse,
 		Pulse: &control.Pulse{Inbox: current.Inbox, Today: current.Today, Overdue: current.Overdue, Done: current.Done},
 	})
+}
+
+// publishControlAgenda sends the agenda when it changed since the last one
+// sent. It runs beside publishControlPulse, after the pulse, so a host hears a
+// count before the list that explains it.
+func (m *AppModel) publishControlAgenda() {
+	if !m.control.enabled() {
+		return
+	}
+	current := m.workspaceAgenda
+	if m.control.publishedAgenda != nil && m.control.publishedAgenda.Equal(current) {
+		return
+	}
+	m.control.publishedAgenda = &current
+	agenda := &control.Agenda{Items: make([]control.AgendaItem, 0, len(current.Items)), Total: current.Total}
+	for _, item := range current.Items {
+		wire := control.AgendaItem{
+			Kind:        control.AgendaToday,
+			Project:     item.ProjectID,
+			Task:        item.TaskID,
+			Title:       item.Title,
+			ProjectName: item.ProjectName,
+			DueHasTime:  item.DueHasTime,
+		}
+		if item.Priority >= models.PriorityHigh && item.Priority <= models.PriorityLow {
+			wire.Priority = item.Priority
+		}
+		if item.Kind == pulse.AgendaOverdue {
+			wire.Kind = control.AgendaOverdue
+		}
+		if item.Due != nil {
+			wire.Due = item.Due.Format(time.RFC3339)
+		}
+		agenda.Items = append(agenda.Items, wire)
+	}
+	m.control.publisher.Publish(control.Event{Event: control.EventAgenda, Agenda: agenda})
 }
 
 // publishControlArrivals sends one tick's arrivals with each task's identity,

@@ -11,12 +11,17 @@ protocol StatusItemDelegate: AnyObject {
     /// The pulse itself, whose counts the menu offers; nil while Docket has
     /// reported none.
     var pulse: DocketPulse? { get }
+    /// The tasks behind the Overdue and Today counts; nil while Docket has
+    /// reported none.
+    var agenda: DocketAgenda? { get }
     /// The live global shortcuts, shown beside the items they run.
     var toggleHotKey: HotKeyCombo? { get }
     var captureHotKey: HotKeyCombo? { get }
     func toggleTerminal()
     /// Shows Docket in the mode a pulse count names.
     func showView(_ view: DocketView)
+    /// Shows Docket with the cursor on an agenda task.
+    func showTask(_ task: DocketTaskID)
     func relaunchTerminal()
     func showQuickCapture(_ sender: Any?)
     func showPreferences(_ sender: Any?)
@@ -32,8 +37,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     let menu = NSMenu()
     private weak var delegate: StatusItemDelegate?
 
-    /// One per non-zero pulse count, leading the menu; rebuilt per refresh.
+    /// One per non-zero pulse count, leading the menu, then the agenda's
+    /// headings and tasks; rebuilt per refresh.
     private(set) var pulseItems: [NSMenuItem] = []
+    private(set) var agendaItems: [NSMenuItem] = []
     private let pulseSeparator = NSMenuItem.separator()
     private let toggleItem = NSMenuItem(title: "Show Docket", action: #selector(toggle(_:)), keyEquivalent: "")
     private let captureItem = NSMenuItem(title: "Quick Capture…", action: #selector(capture(_:)), keyEquivalent: "")
@@ -135,18 +142,22 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     /// Each non-zero count leads the menu as an item showing Docket in its mode,
-    /// and the pulse line is the button's accessibility value, so VoiceOver
-    /// reads the counts the menu shows.
+    /// then the agenda names the tasks behind them, and the pulse line is the
+    /// button's accessibility value, so VoiceOver reads the counts the menu shows.
     func refreshPulse() {
-        for item in pulseItems { menu.removeItem(item) }
+        for item in pulseItems + agendaItems { menu.removeItem(item) }
         pulseItems = (delegate?.pulse).map(DocketPulseSummary.items(for:))?.map { entry in
             let item = NSMenuItem(title: entry.title, action: #selector(showView(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = entry.view.rawValue
             return item
         } ?? []
-        for (index, item) in pulseItems.enumerated() { menu.insertItem(item, at: index) }
-        pulseSeparator.isHidden = pulseItems.isEmpty
+        agendaItems = DocketAgendaMenu.items(
+            for: delegate?.agenda, pulse: delegate?.pulse, target: self,
+            taskAction: #selector(showTask(_:)), viewAction: #selector(showView(_:))
+        )
+        for (index, item) in (pulseItems + agendaItems).enumerated() { menu.insertItem(item, at: index) }
+        pulseSeparator.isHidden = pulseItems.isEmpty && agendaItems.isEmpty
         let line = delegate?.pulseSummary ?? ""
         statusItem.button?.setAccessibilityValue(line.isEmpty ? nil : line)
     }
@@ -176,6 +187,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func showView(_ sender: NSMenuItem) {
         guard let view = (sender.representedObject as? String).flatMap(DocketView.init(rawValue:)) else { return }
         delegate?.showView(view)
+    }
+    @objc private func showTask(_ sender: NSMenuItem) {
+        guard let task = sender.representedObject as? DocketTaskID else { return }
+        delegate?.showTask(task)
     }
     @objc private func relaunch(_ sender: Any?) { delegate?.relaunchTerminal() }
     @objc private func capture(_ sender: Any?) { delegate?.showQuickCapture(sender) }

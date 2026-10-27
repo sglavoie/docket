@@ -5,7 +5,8 @@ import WidgetKit
 /// snapshot Docket.app keeps in the App Group container. The widget never reads
 /// the workspace: it shows what Docket.app last heard, says how old that is, and
 /// stops presenting the counts once the day they describe is over. Each count
-/// opens Docket in its mode, through the app's `docket://` links.
+/// opens Docket in its mode, through the app's `docket://` links. The large size
+/// also lists the agenda, the overdue and Today tasks, each opening its task.
 @main
 struct DocketWidgetBundle: WidgetBundle {
     var body: some Widget {
@@ -20,8 +21,8 @@ struct PulseWidget: Widget {
                 .containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("Docket")
-        .description("Inbox, Today, overdue, and done today, as Docket.app last heard them.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .description("Inbox, Today, overdue, and done today, as Docket.app last heard them. The large size lists the tasks.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
 
@@ -37,7 +38,15 @@ struct PulseEntry: TimelineEntry {
 }
 
 struct PulseProvider: TimelineProvider {
-    private static let sample = DocketPulseSnapshot(inbox: 3, today: 5, overdue: 1, done: 2, updatedAt: Date())
+    private static let sample = DocketPulseSnapshot(
+        inbox: 3, today: 3, overdue: 1, done: 2, updatedAt: Date(),
+        agenda: DocketAgenda(items: [
+            DocketAgendaItem(kind: .overdue, project: "sample", task: "sample", title: "Send the quarterly report", projectName: "Work",
+                             due: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-86_400))),
+            DocketAgendaItem(kind: .today, project: "sample", task: "sample", title: "Call the dentist", projectName: "Home", priority: 1),
+            DocketAgendaItem(kind: .today, project: "sample", task: "sample", title: "Review the pull request", projectName: "Work"),
+        ], total: 3)
+    )
 
     private func read() -> DocketPulseSnapshot? {
         DocketPulseSnapshotStore(container: DocketSharedContainer.root())?.read()
@@ -92,7 +101,7 @@ struct PulseWidgetView: View {
             Count(label: "Inbox", value: snapshot.inbox, link: .view(.inbox), alert: false),
             Count(label: "Today", value: snapshot.today, link: .view(.today), alert: false),
             Count(label: "Overdue", value: snapshot.overdue, link: .view(.due), alert: snapshot.overdue > 0),
-            Count(label: "Done", value: snapshot.done, link: .show, alert: false),
+            Count(label: "Done", value: snapshot.done, link: .view(.done), alert: false),
         ]
     }
 
@@ -110,27 +119,111 @@ struct PulseWidgetView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .widgetURL(snapshot.primaryLink.url)
+        case .systemLarge:
+            VStack(alignment: .leading, spacing: 10) {
+                countsRow(snapshot)
+                Divider()
+                agenda(snapshot)
+                Spacer(minLength: 0)
+                footer(snapshot)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .widgetURL(DocketLink.show.url)
         default:
             VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top, spacing: 0) {
-                    ForEach(items(snapshot)) { item in
-                        Link(destination: item.link.url) { tile(item) }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
+                countsRow(snapshot)
                 Spacer(minLength: 0)
-                HStack {
-                    updated(snapshot)
-                    Spacer()
-                    Link(destination: DocketLink.capture(nil).url) {
-                        Label("Capture", systemImage: "plus.circle.fill")
-                            .font(.caption.weight(.semibold))
-                    }
-                }
+                footer(snapshot)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .widgetURL(DocketLink.show.url)
         }
+    }
+
+    private func countsRow(_ snapshot: DocketPulseSnapshot) -> some View {
+        HStack(alignment: .top, spacing: 0) {
+            ForEach(items(snapshot)) { item in
+                Link(destination: item.link.url) { tile(item) }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private func footer(_ snapshot: DocketPulseSnapshot) -> some View {
+        HStack {
+            updated(snapshot)
+            Spacer()
+            Link(destination: DocketLink.capture(nil).url) {
+                Label("Capture", systemImage: "plus.circle.fill")
+                    .font(.caption.weight(.semibold))
+            }
+        }
+    }
+
+    /// The large widget has room for this many agenda rows.
+    static let maxAgendaRows = 6
+
+    /// The overdue and Today tasks, each opening its task; what does not fit
+    /// is counted and opens the mode that lists it. A Docket too old to report
+    /// an agenda leaves the room to say so, and an empty one says nothing is owed.
+    @ViewBuilder
+    private func agenda(_ snapshot: DocketPulseSnapshot) -> some View {
+        if let agenda = snapshot.agenda {
+            if agenda.items.isEmpty {
+                Label("Nothing overdue or planned for today.", systemImage: "checkmark.circle")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                let shown = Array(agenda.items.prefix(Self.maxAgendaRows))
+                VStack(alignment: .leading, spacing: 7) {
+                    ForEach(Array(shown.enumerated()), id: \.offset) { _, item in
+                        Link(destination: item.link.url) { agendaRow(item) }
+                    }
+                    let remainder = agenda.total - shown.count
+                    if remainder > 0 {
+                        Link(destination: snapshot.primaryLink.url) {
+                            Text("\(remainder) more in Docket")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        } else {
+            Text("Update Docket to list today’s tasks here.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func agendaRow(_ item: DocketAgendaItem) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: item.kind == .overdue ? "exclamationmark.circle.fill" : "circle")
+                .font(.caption)
+                .foregroundStyle(item.kind == .overdue ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+                .accessibilityLabel(item.kind == .overdue ? "Overdue" : "Today")
+            VStack(alignment: .leading, spacing: 1) {
+                Text(item.title)
+                    .font(.callout)
+                    .lineLimit(1)
+                let detail = item.detail(now: entry.date)
+                if !detail.isEmpty {
+                    Text(detail)
+                        .font(.caption2)
+                        .foregroundStyle(item.kind == .overdue ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 0)
+            if let priority = item.priority {
+                Text("!\(priority)")
+                    .font(.caption2.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Priority \(priority)")
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private func tile(_ item: Count) -> some View {

@@ -25,6 +25,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     private var captureUnavailableReason: String? = "Docket is not running."
     /// The last pulse Docket reported over it; nil while none has arrived.
     private var lastPulse: DocketPulse?
+    /// The tasks behind that pulse's Today and Overdue counts; nil while none
+    /// has arrived, as with a Docket too old to report them.
+    private var lastAgenda: DocketAgenda?
+    /// Whether the widget's snapshot is waiting to be written this turn, so a
+    /// pulse and the agenda that follows it cost the widget one reload.
+    private var widgetRecordPending = false
     /// Which Docket the next session runs and what it accepts, asked again
     /// before each one.
     private let sessionBinaries = DocketSessionBinaryStore()
@@ -151,6 +157,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
                 self?.quitHandshake?.docketEnded()
             self?.control?.disconnect()
             self?.lastPulse = nil
+            self?.lastAgenda = nil
             self?.showTitle("")
         }
         controller.onTitleChange = { [weak self] title in self?.showTitle(title) }
@@ -268,13 +275,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     /// with no menu-bar icon beside it.
     func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
         Self.dockMenu(
-            pulse: lastPulse, terminalFrontmost: isTerminalFrontmost, canRelaunch: canRelaunchTerminal, target: self
+            pulse: lastPulse, agenda: lastAgenda, terminalFrontmost: isTerminalFrontmost, canRelaunch: canRelaunchTerminal, target: self
         )
     }
 
-    /// The pulse counts still owed, each showing Docket in its mode, then
-    /// Show/Hide, Quick Capture…, and Relaunch Docket.
-    static func dockMenu(pulse: DocketPulse?, terminalFrontmost: Bool, canRelaunch: Bool, target: AnyObject) -> NSMenu {
+    /// The pulse counts still owed, each showing Docket in its mode, the agenda
+    /// tasks behind them, then Show/Hide, Quick Capture…, and Relaunch Docket.
+    static func dockMenu(pulse: DocketPulse?, agenda: DocketAgenda? = nil, terminalFrontmost: Bool, canRelaunch: Bool, target: AnyObject) -> NSMenu {
         let menu = NSMenu()
         menu.autoenablesItems = false
         let counts = pulse.map(DocketPulseSummary.items(for:)) ?? []
@@ -283,7 +290,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             item.target = target
             item.representedObject = entry.view.rawValue
         }
-        if !counts.isEmpty {
+        let tasks = DocketAgendaMenu.items(
+            for: agenda, pulse: pulse, target: target,
+            taskAction: #selector(AppDelegate.showTaskFromMenu(_:)), viewAction: #selector(AppDelegate.showViewFromMenu(_:))
+        )
+        for item in tasks { menu.addItem(item) }
+        if !counts.isEmpty || !tasks.isEmpty {
             menu.addItem(.separator())
         }
         let toggle = menu.addItem(
@@ -305,6 +317,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     @objc func showViewFromMenu(_ sender: NSMenuItem) {
         guard let view = (sender.representedObject as? String).flatMap(DocketView.init(rawValue:)) else { return }
         showView(view)
+    }
+
+    @objc func showTaskFromMenu(_ sender: NSMenuItem) {
+        guard let task = sender.representedObject as? DocketTaskID else { return }
+        showTask(task)
     }
 
     @objc func showPreferences(_ sender: Any?) {
@@ -448,6 +465,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         self.control = nil
         terminal?.desktopEditing = nil
         lastPulse = nil
+        lastAgenda = nil
         refreshBadge()
     }
 
@@ -529,10 +547,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         case .pulse(let pulse):
             lastPulse = pulse
             refreshBadge()
-            recordPulseForWidget(pulse)
+            scheduleWidgetRecord()
             let waiting = pulseWaiters
             pulseWaiters = []
             for body in waiting { body(pulse) }
+        case .agenda(let agenda):
+            lastAgenda = agenda
+            statusItem?.refreshPulse()
+            scheduleWidgetRecord()
         case .arrivals(let arrivals, let title, let body):
             notifications.post(arrivals: arrivals, title: title, body: body)
         }
@@ -652,6 +674,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             terminal.showNotice("Docket can’t open \(url.absoluteString).")
             return
         }
+        if link.showsDocket {
+            activateThroughLaunchServices()
+        }
         switch link {
         case .show:
             guard let terminal else { showLaunchErrorAgain(); return }
@@ -663,6 +688,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             whenControlSettled { [weak self] _ in self?.showView(view) }
         case .task(let project, let task):
             whenControlSettled { [weak self] _ in self?.reveal(DocketTaskID(project: project, task: task)) }
+        }
+    }
+
+    /// Asks LaunchServices to bring Docket.app forward, as a Dock click would.
+    /// A widget opens its link without activating the app, and Docket.app
+    /// activating itself is not enough when the desktop is revealed: the windows
+    /// stay swept aside and Docket changes behind them. An activation
+    /// LaunchServices performs ends that state; its reopen lands in
+    /// `applicationShouldHandleReopen`, which shows the window the link is about
+    /// to show anyway.
+    private func activateThroughLaunchServices() {
+        guard !Self.isRunningTests else { return }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration) { _, error in
+            if let error { NSLog("Docket: link: could not activate: %@", error.localizedDescription) }
         }
     }
 
@@ -778,10 +819,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         whenControlSettled { [weak self] _ in self?.showView(view) }
     }
 
-    /// Writes the pulse where the widget reads it and asks for a redraw.
+    /// Records the pulse and agenda for the widget once this main-queue turn is
+    /// over: Docket writes the agenda right after the pulse it explains, so both
+    /// usually arrive in one read and reach the widget as one snapshot.
+    private func scheduleWidgetRecord() {
+        guard !widgetRecordPending else { return }
+        widgetRecordPending = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.widgetRecordPending = false
+            if let pulse = self.lastPulse { self.recordPulseForWidget(pulse) }
+        }
+    }
+
+    /// Writes the pulse, and the agenda heard with it, where the widget reads
+    /// them and asks for a redraw.
     private func recordPulseForWidget(_ pulse: DocketPulse, at date: Date = Date()) {
         guard !Self.isRunningTests, let store = pulseSnapshots else { return }
-        let snapshot = DocketPulseSnapshot(pulse, at: date)
+        let snapshot = DocketPulseSnapshot(pulse, agenda: lastAgenda, at: date)
         do {
             try store.write(snapshot)
             WidgetCenter.shared.reloadTimelines(ofKind: DocketPulseSnapshot.widgetKind)
@@ -1005,6 +1060,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
 
     var pulse: DocketPulse? { lastPulse }
 
+    var agenda: DocketAgenda? { lastAgenda }
+
     var toggleHotKey: HotKeyCombo? { hotKeys?.registeredCombo }
 
     var captureHotKey: HotKeyCombo? { captureHotKeys?.registeredCombo }
@@ -1033,6 +1090,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
         terminal.show()
         navigate(.view(view), destination: view == .due ? "Overdue" : view.rawValue.capitalized)
+    }
+
+    func showTask(_ task: DocketTaskID) {
+        guard let terminal else {
+            showLaunchErrorAgain()
+            return
+        }
+        terminal.show()
+        navigate(.reveal(task), destination: "that task")
     }
 
     private func navigate(_ request: DocketControlRequest, destination: String) {

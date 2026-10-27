@@ -108,7 +108,8 @@ func TestServerTimesOutASilentTUI(t *testing.T) {
 }
 
 // TestServerPublishesEventsAndReplaysThePulse: a connection hears events
-// published while it is open, and a late one hears the latest pulse first.
+// published while it is open, and a late one hears the latest pulse and then
+// the latest agenda first.
 func TestServerPublishesEventsAndReplaysThePulse(t *testing.T) {
 	server, err := Listen(socketPath(t), echoDispatch)
 	if err != nil {
@@ -126,9 +127,17 @@ func TestServerPublishesEventsAndReplaysThePulse(t *testing.T) {
 		t.Fatalf("event = %v", got)
 	}
 
+	server.Publish(Event{Event: EventAgenda, Agenda: &Agenda{Total: 1, Items: []AgendaItem{{Kind: AgendaOverdue, Task: "t"}}}})
+	if got := early.next(t); got["event"] != "agenda" {
+		t.Fatalf("event = %v", got)
+	}
+
 	late := dial(t, server.Path())
 	if got := late.next(t); got["event"] != "pulse" {
 		t.Fatalf("a new connection heard %v first, want the pulse", got)
+	}
+	if got := late.next(t); got["event"] != "agenda" || got["agenda"].(map[string]any)["total"] != float64(1) {
+		t.Fatalf("a new connection heard %v second, want the agenda", got)
 	}
 }
 

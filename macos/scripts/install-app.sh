@@ -70,4 +70,8 @@ lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchSe
 if [ -x "$lsregister" ]; then
 	"$lsregister" -f "$dest"
 fi
+# A widget extension already running keeps drawing with the code it started
+# with, so the desktop would show the old widget until the next login. Ending it
+# is harmless: macOS starts the installed one the next time the widget draws.
+pkill -f "^$dest/Contents/PlugIns/DocketWidgets.appex/" 2>/dev/null || true
 echo "Installed $dest"

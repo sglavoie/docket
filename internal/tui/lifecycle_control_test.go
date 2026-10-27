@@ -344,6 +344,42 @@ func TestControlPublishesEachChangedPulseOnce(t *testing.T) {
 	}
 }
 
+// TestControlPublishesEachChangedAgendaOnce: the agenda is sent when it
+// changes, with each task's stored identity and its deadline as RFC 3339.
+func TestControlPublishesEachChangedAgendaOnce(t *testing.T) {
+	app := typedTestApp(t)
+	publisher := &recordingPublisher{}
+	WithControlPublisher(publisher)(app)
+
+	due := time.Date(2026, 10, 26, 9, 30, 0, 0, time.UTC)
+	app.workspaceAgenda = pulse.WorkspaceAgenda{Total: 3, Items: []pulse.AgendaItem{
+		{Kind: pulse.AgendaOverdue, ProjectID: "p", TaskID: "t", Title: "Call", ProjectName: "Work", Priority: models.PriorityHigh, Due: &due, DueHasTime: true},
+		{Kind: pulse.AgendaToday, ProjectID: "p", TaskID: "u", Title: "Write", ProjectName: "Work"},
+	}}
+	app.publishControlAgenda()
+	app.publishControlAgenda()
+	if len(publisher.events) != 1 {
+		t.Fatalf("published %d agendas, want 1", len(publisher.events))
+	}
+	event := publisher.events[0]
+	if event.Event != control.EventAgenda || event.Agenda == nil || event.Agenda.Total != 3 || len(event.Agenda.Items) != 2 {
+		t.Fatalf("event = %+v", event)
+	}
+	if got := event.Agenda.Items[0]; got.Kind != control.AgendaOverdue || got.Project != "p" || got.Task != "t" ||
+		got.Priority != models.PriorityHigh || got.Due != "2026-10-26T09:30:00Z" || !got.DueHasTime || got.ProjectName != "Work" {
+		t.Fatalf("overdue item = %+v", got)
+	}
+	if got := event.Agenda.Items[1]; got.Kind != control.AgendaToday || got.Due != "" || got.Priority != 0 {
+		t.Fatalf("today item = %+v", got)
+	}
+
+	app.workspaceAgenda = pulse.WorkspaceAgenda{}
+	app.publishControlAgenda()
+	if len(publisher.events) != 2 || publisher.events[1].Agenda == nil || publisher.events[1].Agenda.Items == nil {
+		t.Fatalf("an emptied agenda was not sent as an empty list: %+v", publisher.events)
+	}
+}
+
 // TestControlArrivalsCarryIdentityWithoutNotify: a session on a control socket
 // reports arrivals as events and sends no OSC 777 unless --notify asked for it.
 func TestControlArrivalsCarryIdentityWithoutNotify(t *testing.T) {
@@ -482,6 +518,35 @@ func TestControlThemePaletteRepaintsAndRestoresSavedTheme(t *testing.T) {
 	}
 	if theme.ThemeBgColor != savedBackground {
 		t.Fatalf("clear palette background = %q, want %q", theme.ThemeBgColor, savedBackground)
+	}
+}
+
+// TestControlDoneViewFiltersAllToFinishedWork: the done view is All with the
+// terminal-state facets and the completed population, replacing whatever
+// filters stood, and it reloads so the finished work is read in.
+func TestControlDoneViewFiltersAllToFinishedWork(t *testing.T) {
+	env := controlEnv(t, reviewSettledTask(t, 1, "kept"))
+	env.outliner.SelectOutlinerMode(chrome.ModeInbox)
+	stale, _ := models.PartitionQueryString("!1")
+	env.outliner.SetFilterQuery(stale)
+
+	replies := make(chan control.Reply, 1)
+	handled, cmd := env.model.handleControlMessage(controlRequestMsg{request: control.Request{Op: control.OpView, Text: "done"}, reply: replies})
+	if !handled || cmd == nil {
+		t.Fatalf("done view handled = %v, reload = %v", handled, cmd != nil)
+	}
+	if reply := <-replies; !reply.OK || reply.Message != "Shown: All · $canceled $done ?completed" {
+		t.Fatalf("reply = %+v", reply)
+	}
+	if env.outliner.PrimaryMode != chrome.ModeAll {
+		t.Fatalf("mode = %q, want All", env.outliner.PrimaryMode)
+	}
+	want, _ := models.PartitionQueryString("$canceled $done ?completed")
+	if got := env.outliner.FilterQuery; got.String() != want.Canonical().String() {
+		t.Fatalf("filters = %q, want %q", got.String(), want.Canonical().String())
+	}
+	if !env.outliner.AdmitsTerminalPopulation() {
+		t.Fatal("the done view does not admit finished work")
 	}
 }
 
