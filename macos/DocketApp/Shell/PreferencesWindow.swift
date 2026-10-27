@@ -301,8 +301,8 @@ final class PreferencesModel: ObservableObject {
         }
     }
 
-    /// Reads the running binary's version and, when it is one of the bundled
-    /// and `~/.local/bin` pair, how the other one compares.
+    /// Reads the running binary's version and, when it is the bundled copy, how
+    /// `~/.local/bin/docket` compares.
     func refreshBinaryStatus() {
         refreshBinaryRelaunch()
         guard let running = runningBinary else {
@@ -315,22 +315,19 @@ final class PreferencesModel: ObservableObject {
         runningBinaryNote = "Running \(Self.abbreviated(path)): \(version?.line ?? "version unknown")"
 
         binarySkewNote = nil
-        let other: String?
-        switch running.source {
-        case .bundled: other = localBinaryPath
-        case .newerLocalBin: other = bundledBinaryPath
-        default: other = nil
-        }
-        guard let other, DocketBinaryResolver.isExecutableRegularFile(other),
-              let otherVersion = readVersion(other), otherVersion.line != version?.line else {
+        guard running.source == .bundled else { return }
+        let other = localBinaryPath
+        guard DocketBinaryResolver.isExecutableRegularFile(other),
+              let otherVersion = readVersion(other), otherVersion.line != version?.line,
+              let built = otherVersion.built, let runningBuilt = version?.built else {
             return
         }
-        if running.source == .newerLocalBin {
-            binarySkewNote = "Chosen over the older bundled copy (\(otherVersion.line)). "
-                + "Reinstall Docket.app to update it."
-        } else if let built = otherVersion.built, let runningBuilt = version?.built, built < runningBuilt {
+        if built < runningBuilt {
             binarySkewNote = "\(Self.abbreviated(other)) is older (\(otherVersion.line)) "
                 + "and refuses a workspace this one migrates: `just install` updates it."
+        } else if built > runningBuilt {
+            binarySkewNote = "\(Self.abbreviated(other)) is newer (\(otherVersion.line)); "
+                + "this copy refuses a workspace it migrates: update Docket.app to match."
         }
     }
 

@@ -200,7 +200,7 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
         reopened.window.setFrameAutosaveName("")
     }
 
-    func testBinaryStatusNamesTheRunningVersionAndAnOlderCopy() throws {
+    func testBinaryStatusComparesTheBundledCopyWithLocalBin() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("tt-skew-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: dir) }
         let bundled = dir.appendingPathComponent("bundled/docket")
@@ -227,10 +227,15 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
         XCTAssertEqual(model.runningBinaryNote, "Running \(bundled.path): \(new)")
         XCTAssertTrue(model.binarySkewNote?.contains("is older (\(old))") ?? false)
 
-        model.runningBinary = .init(url: local, source: .newerLocalBin)
+        model.runningVersion = DocketVersion.parse(old)
         model.readVersion = { [bundled.path: old, local.path: new][$0].flatMap(DocketVersion.parse) }
         model.refreshBinaryStatus()
-        XCTAssertTrue(model.binarySkewNote?.hasPrefix("Chosen over the older bundled copy") ?? false)
+        XCTAssertTrue(model.binarySkewNote?.contains("is newer (\(new))") ?? false)
+
+        model.runningBinary = .init(url: local, source: .localBin)
+        model.runningVersion = DocketVersion.parse(new)
+        model.refreshBinaryStatus()
+        XCTAssertNil(model.binarySkewNote, "only the bundled copy is compared")
 
         model.runningBinary = .init(url: bundled, source: .bundled)
         model.readVersion = { _ in DocketVersion.parse(new) }

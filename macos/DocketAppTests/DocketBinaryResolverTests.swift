@@ -32,13 +32,12 @@ final class DocketBinaryResolverTests: XCTestCase {
         return url
     }
 
-    private func resolver(override: String? = nil, built: [URL: Date] = [:]) -> DocketBinaryResolver {
+    private func resolver(override: String? = nil) -> DocketBinaryResolver {
         DocketBinaryResolver(
             overridePath: override,
             bundleResourcesURL: resources,
             homeDirectory: home,
-            searchPath: "\(pathA.path)::\(pathB.path)",
-            buildTime: { path in built[URL(fileURLWithPath: path)] }
+            searchPath: "\(pathA.path)::\(pathB.path)"
         )
     }
 
@@ -81,29 +80,6 @@ final class DocketBinaryResolverTests: XCTestCase {
         try makeBinary(localBin)
         try makeBinary(pathA.appendingPathComponent("docket"))
         XCTAssertEqual(try resolver().resolve().get(), .init(url: bundled, source: .bundled))
-    }
-
-    func testNewerLocalBinBeatsOlderBundled() throws {
-        try makeBinary(bundled)
-        try makeBinary(localBin)
-        let old = Date(timeIntervalSince1970: 1_000)
-        let new = Date(timeIntervalSince1970: 2_000)
-
-        XCTAssertEqual(try resolver(built: [bundled: old, localBin: new]).resolve().get(),
-                       .init(url: localBin, source: .newerLocalBin))
-        XCTAssertEqual(try resolver(built: [bundled: new, localBin: old]).resolve().get().source, .bundled)
-        XCTAssertEqual(try resolver(built: [bundled: old, localBin: old]).resolve().get().source, .bundled)
-        // An unknown build time on either side keeps the bundled copy.
-        XCTAssertEqual(try resolver(built: [localBin: new]).resolve().get().source, .bundled)
-        XCTAssertEqual(try resolver(built: [bundled: old]).resolve().get().source, .bundled)
-    }
-
-    func testOverrideBeatsNewerLocalBin() throws {
-        let custom = try makeBinary(root.appendingPathComponent("custom/docket"))
-        try makeBinary(bundled)
-        try makeBinary(localBin)
-        let r = resolver(override: custom.path, built: [bundled: .distantPast, localBin: .distantFuture])
-        XCTAssertEqual(try r.resolve().get().source, .userDefaultsOverride)
     }
 
     func testVersionParsing() {

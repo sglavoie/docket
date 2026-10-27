@@ -2,9 +2,9 @@ import Foundation
 
 /// Finds the `docket` binary the surface runs, first match wins: the
 /// `UserDefaults` override, the copy bundled in `Contents/Resources/bin`,
-/// `~/.local/bin/docket` (where `just install` puts it), then `PATH`. A
-/// `~/.local/bin/docket` built after the bundled copy runs instead of it, since the
-/// older one would refuse a workspace the newer one has already migrated.
+/// `~/.local/bin/docket` (where `just install` puts it), then `PATH`. An installed
+/// app always runs the copy it ships with, however recent a `just install` build
+/// is; only a Debug build, which bundles none, falls through to the others.
 struct DocketBinaryResolver {
     /// The `UserDefaults` key holding an explicit binary path.
     static let overrideDefaultsKey = "docketBinaryPath"
@@ -13,8 +13,6 @@ struct DocketBinaryResolver {
         case userDefaultsOverride
         case bundled
         case localBin
-        /// `~/.local/bin/docket`, chosen over an older bundled copy.
-        case newerLocalBin
         case path
     }
 
@@ -56,9 +54,6 @@ struct DocketBinaryResolver {
     /// A colon-separated search path, normally the login shell's `PATH`.
     var searchPath: String
     var isExecutableFile: (String) -> Bool = DocketBinaryResolver.isExecutableRegularFile
-    /// When a binary was built; nil when unknown, which never displaces the
-    /// bundled copy.
-    var buildTime: (String) -> Date? = { _ in nil }
 
     /// The resolver for this process: its bundle and the standard defaults.
     static func live(searchPath: String, defaults: UserDefaults = .standard) -> DocketBinaryResolver {
@@ -66,8 +61,7 @@ struct DocketBinaryResolver {
             overridePath: defaults.string(forKey: overrideDefaultsKey),
             bundleResourcesURL: Bundle.main.resourceURL,
             homeDirectory: FileManager.default.homeDirectoryForCurrentUser,
-            searchPath: searchPath,
-            buildTime: { DocketVersion.read(binary: $0)?.built }
+            searchPath: searchPath
         )
     }
 
@@ -93,25 +87,10 @@ struct DocketBinaryResolver {
         for (path, source) in candidates where !tried.contains(path) {
             tried.append(path)
             if isExecutableFile(path) {
-                if source == .bundled, let newer = newerLocalBin(than: path) {
-                    return .success(Resolution(url: URL(fileURLWithPath: newer), source: .newerLocalBin))
-                }
                 return .success(Resolution(url: URL(fileURLWithPath: path), source: source))
             }
         }
         return .failure(NotFound(invalidOverride: nil, tried: tried))
-    }
-
-    /// `~/.local/bin/docket`, when it is executable and built after `bundled`.
-    private func newerLocalBin(than bundled: String) -> String? {
-        let local = localBinPath
-        guard isExecutableFile(local),
-              let localBuilt = buildTime(local),
-              let bundledBuilt = buildTime(bundled),
-              localBuilt > bundledBuilt else {
-            return nil
-        }
-        return local
     }
 
     var localBinPath: String {
