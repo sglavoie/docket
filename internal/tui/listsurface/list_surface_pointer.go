@@ -101,6 +101,20 @@ func (model *ListSurfaceModel) AnswerPointer(event route.PointerEvent, menu bool
 	return ListPointerKey(event, seated, menu)
 }
 
+// PointerItemAt reports the item the last render drew at pane cell (x, y),
+// without seating the cursor there: for an owner whose single click is itself
+// the act, as a menu entry's is.
+func (model *ListSurfaceModel) PointerItemAt(x, y int) (ListItemID, bool) {
+	if model == nil {
+		return "", false
+	}
+	index, ok := model.pointerFrame.IndexAt(x, y)
+	if !ok || index >= len(model.matches) {
+		return "", false
+	}
+	return model.matches[index].item.ID, true
+}
+
 // ListSurfacePreviewLeft is the first column of the preview pane
 // JoinListSurfacePanes draws beside a list pane listWidth columns wide.
 func ListSurfacePreviewLeft(listWidth int) int {

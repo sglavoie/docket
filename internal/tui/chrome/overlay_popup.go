@@ -176,13 +176,21 @@ func flankOverlayPopup(popup string, popupWidth, left, right int) string {
 // startRow are the host's own and are never covered, so the popup is fitted to
 // what is left below the anchor rather than to the whole frame; a popup taller
 // than that budget loses interior rows the same way a bottom-anchored one does.
-func OverlayPopupDimmedAt(base, popup string, baseWidth, baseHeight, startRow, startCol int) string {
+// It reports where the popup landed, after the row and column clamps the
+// compositing applies.
+func OverlayPopupDimmedAt(base, popup string, baseWidth, baseHeight, startRow, startCol int) (string, OverlayPlacement) {
 	if popup == "" {
-		return base
+		return base, OverlayPlacement{}
 	}
 	startRow = min(max(startRow, 0), max(baseHeight-1, 0))
 	fitted := FitOverlayPopupHeight(popup, max(baseHeight-startRow, 1))
-	return overlayPopupAt(DimContent(base), fitted, baseWidth, baseHeight, startRow, startCol)
+	popupWidth := PopupWidth(fitted)
+	placement := OverlayPlacement{
+		Row: startRow, Col: min(max(startCol, 0), max(baseWidth-popupWidth, 0)),
+		Rows: min(lipgloss.Height(fitted), max(baseHeight-startRow, 0)), Cols: popupWidth,
+		Whole: fitted == popup,
+	}
+	return overlayPopupAt(DimContent(base), fitted, baseWidth, baseHeight, startRow, startCol), placement
 }
 
 func overlayPopupAt(base, popup string, baseWidth, baseHeight, startRow, startCol int) string {

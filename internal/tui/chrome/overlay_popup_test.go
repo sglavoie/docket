@@ -234,7 +234,7 @@ func TestOverlayPopupDimmedAtAnchorsWithoutCoveringTheRowsAbove(t *testing.T) {
 	popup := RenderOverlayBox("one\ntwo", frameWidth, "", "",
 		lipgloss.NewStyle().Foreground(theme.ColorPrimary))
 
-	rendered := OverlayPopupDimmedAt(base, popup, baseWidth, baseHeight, startRow, startCol)
+	rendered, _ := OverlayPopupDimmedAt(base, popup, baseWidth, baseHeight, startRow, startCol)
 	lines := strings.Split(rendered, "\n")
 	if got := len(lines); got != baseHeight {
 		t.Fatalf("composed height = %d, want %d", got, baseHeight)
@@ -289,7 +289,11 @@ func TestOverlayPopupDimmedAtFitsWhatTheAnchorLeaves(t *testing.T) {
 		t.Fatal("test popup must exceed what the anchor leaves")
 	}
 
-	plain := strings.Split(ansi.Strip(OverlayPopupDimmedAt(base, popup, baseWidth, baseHeight, startRow, 0)), "\n")
+	composed, placement := OverlayPopupDimmedAt(base, popup, baseWidth, baseHeight, startRow, 0)
+	if placement.Row != startRow || placement.Col != 0 || placement.Whole || placement.Rows != baseHeight-startRow {
+		t.Fatalf("a fitted popup reported %+v, want row %d, col 0, %d rows, not whole", placement, startRow, baseHeight-startRow)
+	}
+	plain := strings.Split(ansi.Strip(composed), "\n")
 	if got := len(plain); got != baseHeight {
 		t.Fatalf("composed height = %d, want %d", got, baseHeight)
 	}
@@ -309,7 +313,8 @@ func TestOverlayPopupDimmedAtFitsWhatTheAnchorLeaves(t *testing.T) {
 		t.Fatalf("fitting dropped the title:\n%s", strings.Join(plain, "\n"))
 	}
 
-	clamped := strings.Split(ansi.Strip(OverlayPopupDimmedAt(base, popup, baseWidth, baseHeight, baseHeight+4, 0)), "\n")
+	composedClamped, _ := OverlayPopupDimmedAt(base, popup, baseWidth, baseHeight, baseHeight+4, 0)
+	clamped := strings.Split(ansi.Strip(composedClamped), "\n")
 	if got := len(clamped); got != baseHeight {
 		t.Fatalf("an anchor past the frame composed %d rows, want %d", got, baseHeight)
 	}

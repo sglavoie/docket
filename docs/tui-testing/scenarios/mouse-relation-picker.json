@@ -1,0 +1,46 @@
+{
+  "name": "mouse-relation-picker",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "command", "label": "open Backlog, which launch folds", "command": "Clear All Folds" },
+    { "type": "key", "label": "capture a task with one cross-project reference", "key": "a" },
+    { "type": "text", "text": "Wire the importer %client-alpha ~client-beta:1" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "key", "key": "home" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "open the relationship picker", "key": "g" },
+    { "type": "key", "key": "~" },
+    { "type": "assert", "assert": "contains", "value": "Relationships · Wire the importer" },
+
+    { "type": "click", "label": "the host beneath the picker takes no click", "on": "Active Projects", "count": 2 },
+    { "type": "assert", "assert": "contains", "value": "Relationships · Wire the importer" },
+    { "type": "click", "label": "nor a right-click", "on": "Renew passport", "button": "right" },
+    { "type": "assert", "assert": "contains", "value": "Relationships · Wire the importer" },
+    { "type": "assert", "assert": "not_contains", "value": "Task Actions" },
+    { "type": "click", "label": "a section header inside the picker seats nothing", "on": "DEPENDENCIES", "count": 2 },
+    { "type": "assert", "assert": "contains", "value": "Relationships · Wire the importer" },
+    { "type": "wheel", "label": "the wheel steps the picker's own cursor", "on": "Beta rollout checklist", "delta": 1 },
+    { "type": "assert", "assert": "contains", "value": "Relationships · Wire the importer" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "click", "label": "a double-click is Enter on the row: the hop to the referenced task", "on": "Client Beta #1 Beta rollout checklist", "count": 2 },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "not_contains", "value": "Relationships ·" },
+    { "type": "assert", "assert": "contains", "value": "Beta rollout checklist" },
+    { "type": "assert", "label": "the project the hop left is out of scope", "assert": "not_contains", "value": "Renew passport" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "key", "key": "g" },
+    { "type": "key", "key": "~" },
+    { "type": "assert", "assert": "contains", "value": "Wire the importer" },
+    { "type": "click", "label": "after a resize the picker reads its new frame", "on": "Client Alpha #2", "count": 2 },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Relationships" },
+    { "type": "assert", "assert": "contains", "value": "Went to Client Alpha #2 Wire the importer" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

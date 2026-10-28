@@ -53,8 +53,10 @@ func (m *OutlinerModel) renderRelationPicker(width int) string {
 		listHeight = min(listHeight, max(budget-8-lipgloss.Height(guidance)-len(header), 1))
 	}
 	content := listsurface.RenderCompactListSurface(state.Surface, contentWidth, listHeight)
+	m.modalFrame.pickerListTop = chrome.OverlayBoxContentTop
 	if len(header) > 0 {
 		content = strings.Join(header, "\n") + "\n\n" + content
+		m.modalFrame.pickerListTop += len(header) + 1
 	}
 
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(

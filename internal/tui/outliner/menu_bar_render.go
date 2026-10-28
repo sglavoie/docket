@@ -116,7 +116,9 @@ func renderMenuBarRow(menus []ResolvedMenu, width int, openIdx int) string {
 // renderOutlinerMenuBar is the one line the Outliner writes above its title when
 // the bar is shown.
 func (m *OutlinerModel) renderOutlinerMenuBar(width int) string {
-	return renderMenuBarRow(m.resolvedMenuBar(), width, m.openMenuBarIndex())
+	menus := m.resolvedMenuBar()
+	m.modalFrame.menuLabels = menuBarLayout(menus, width)
+	return renderMenuBarRow(menus, width, m.openMenuBarIndex())
 }
 
 // The dropdown is a popup composited over the view that opened it, anchored to
@@ -191,6 +193,7 @@ func (m *OutlinerModel) renderOutlinerMenuDropdown(width, maxBoxRows int) (strin
 	}
 	surface.SetCursorToID(menuBarDropdownItemID(cursor))
 	content := listsurface.RenderCompactListSurface(surface, innerWidth-4, listHeight)
+	m.modalFrame.dropdownSurface = surface
 	if reason != "" {
 		content += "\n" + strings.Repeat("─", innerWidth-4) + "\n" + theme.MutedStyle.Render(reason)
 	}
@@ -327,5 +330,18 @@ func padMenuBarDropdownLabel(label, key string, textWidth int) string {
 // is the only identity a menu entry has: two rows can name the same operation
 // with different wording, and a separator names none.
 func menuBarDropdownItemID(index int) listsurface.ListItemID {
-	return listsurface.ListItemID("menu-entry-" + strconv.Itoa(index))
+	return listsurface.ListItemID(menuBarDropdownItemPrefix + strconv.Itoa(index))
+}
+
+const menuBarDropdownItemPrefix = "menu-entry-"
+
+// menuBarDropdownItemIndex reads menuBarDropdownItemID back, for a click that
+// names the row the render drew.
+func menuBarDropdownItemIndex(id listsurface.ListItemID) (int, bool) {
+	raw, ok := strings.CutPrefix(string(id), menuBarDropdownItemPrefix)
+	if !ok {
+		return 0, false
+	}
+	index, err := strconv.Atoi(raw)
+	return index, err == nil && index >= 0
 }

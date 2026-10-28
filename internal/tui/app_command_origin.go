@@ -319,7 +319,15 @@ func (m *AppModel) routePointer(event route.PointerEvent) tea.Cmd {
 	// The active presentation is drawn from the screen's top-left cell, so its
 	// own coordinates are the screen's; a surface drawn elsewhere translates
 	// through route.PointerEvent.Offset.
-	return answerer.HandlePointer(event)
+	out, _ := m.outlinerPrimary()
+	menuOpen := out != nil && out.MenuBar.Open
+	cmd := answerer.HandlePointer(event)
+	if menuOpen && !out.MenuBar.Open {
+		// The click that put a menu away did nothing more, so it is no half of a
+		// double-click either: a quick second press is a click of its own.
+		m.pointer.lastClickAt = time.Time{}
+	}
+	return cmd
 }
 
 // routeOverlayPointer hands the event to the shell popup that owns keys, in

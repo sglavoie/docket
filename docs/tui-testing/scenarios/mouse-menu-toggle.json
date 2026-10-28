@@ -14,10 +14,10 @@
     { "type": "key", "label": "Ctrl+M opens the bar's first menu", "key": "ctrl+m" },
     { "type": "key", "label": "l walks along to View, where chrome lives", "key": "l" },
     { "type": "assert", "label": "checked means on, the way Advisories' box reads", "assert": "contains", "value": "✓ Mouse" },
-    { "type": "click", "label": "a click while the menu is open is swallowed too", "x": 90, "y": 30 },
-    { "type": "assert", "assert": "contains", "value": "✓ Mouse" },
     { "type": "assert", "assert": "no_layout_issues" },
-    { "type": "key", "label": "put the menu away before running the row", "key": "esc" },
+    { "type": "click", "label": "a click outside the open menu puts it away and does nothing more", "x": 90, "y": 30 },
+    { "type": "assert", "assert": "not_contains", "value": "✓ Mouse" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
     { "type": "command", "label": "run the keyless row the menu just listed", "command": "Toggle Mouse" },
     { "type": "assert", "assert": "contains", "value": "Mouse off" },

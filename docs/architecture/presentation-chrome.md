@@ -455,6 +455,25 @@ right-click is `space`. The key goes through `pointerKey`, which
 `SimplifiedInlineControlOwnsInput` holds (search input, inline edit,
 confirmation, `Q`, relation picker, open menu), the Outliner swallows the event.
 
+The two view-local modals answer first, in `outliner_modal_pointer.go`, through
+`handleModalPointer` ahead of both the wheel and that guard, in
+`handleKeyMsg`'s order: the relation picker, then an open menu. Each reads
+`modalFrame`, which `View` clears beside `pointerFrame` and the render fills as
+it composites: `renderOutlinerMenuBar` records the drawn `menuBarLayout`, and
+`composeOutlinerModal` records the `chrome.OverlayPlacement` that
+`OverlayPopupDimmedPlaced` (the picker) or `OverlayPopupDimmedAt` (the
+dropdown, under the open label's column) reports, beside the dropdown's list
+surface and the row the picker's list starts on. The picker takes the list
+answer: an event outside its placement is swallowed, and inside it `AnswerPointer`
+seats and `route.PressKey` presses the key, with Enter dropped while its search
+field is being edited. An open menu reads a label hit first (another label opens
+that menu, its own closes it), then its placement: a left click on an enabled
+entry, named by `ListSurfaceModel.PointerItemAt` without seating, selects it and
+runs `handleMenuBarKey`'s Enter arm, a click on a disabled entry, a heading or
+the frame does nothing, and a click outside closes the menu. `routePointer`
+forgets that dismissing click, so a quick second press is a single click. With no
+modal open, a left click on a recorded bar label is `OpenMenuBar` plus that index.
+
 A wheel step is `handlePointerWheel`'s, in `outliner_viewport.go` beside the
 window it moves, which reads three regions off the same
 frame record: `pointerFrame.dockTop`/`dockRows`, which both render paths note

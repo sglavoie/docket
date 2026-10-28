@@ -19,6 +19,7 @@ func (m *OutlinerModel) View() tea.View {
 	// Each render path records what it drew for the pointer; a path that draws
 	// no list leaves nothing behind for a click to hit.
 	m.pointerFrame = outlinerPointerFrame{}
+	m.modalFrame = outlinerModalFrame{}
 	if m.Project == nil {
 		// Spinner/loading states handled by crossProjectView.
 		if m.Population.SpinnerVisible || m.Population.Loading {
@@ -118,11 +119,16 @@ func (m *OutlinerModel) composeOutlinerModal(host string, width int) string {
 		// The picker is centered and bottom-anchored, the way every shell-level
 		// picker already sits, and it is fitted to what the host's header rows leave
 		// so the title it stands over is never covered.
-		picker = chrome.FitOverlayPopupHeight(picker, m.outlinerModalBudget(width))
-		return chrome.OverlayPopupDimmed(host, picker, width, frameHeight)
+		fitted := chrome.FitOverlayPopupHeight(picker, m.outlinerModalBudget(width))
+		composed, placement := chrome.OverlayPopupDimmedPlaced(host, fitted, width, frameHeight)
+		placement.Whole = placement.Whole && fitted == picker
+		m.modalFrame.picker = placement
+		return composed
 	}
 	if menu, startCol := m.renderOutlinerMenuDropdown(width, m.outlinerModalBudget(width)); menu != "" {
-		return chrome.OverlayPopupDimmedAt(host, menu, width, frameHeight, m.outlinerHostHeaderRows(), startCol)
+		composed, placement := chrome.OverlayPopupDimmedAt(host, menu, width, frameHeight, m.outlinerHostHeaderRows(), startCol)
+		m.modalFrame.dropdown = placement
+		return composed
 	}
 	return host
 }
@@ -296,6 +302,9 @@ func (m *OutlinerModel) pointerFoldKey(row OutlinerRow) string {
 func (m *OutlinerModel) HandlePointer(event route.PointerEvent) tea.Cmd {
 	if m == nil {
 		return nil
+	}
+	if cmd, owned := m.handleModalPointer(event); owned {
+		return cmd
 	}
 	if event.IsWheel() {
 		m.handlePointerWheel(event)

@@ -153,6 +153,9 @@ type OutlinerModel struct {
 	pointerKey func(key string) tea.Cmd
 	// pointerFrame is what the last render drew, for the pointer's hit map.
 	pointerFrame outlinerPointerFrame
+	// modalFrame is where the last render drew the menu bar and the view-local
+	// modal over it, for the modal's own pointer answer.
+	modalFrame outlinerModalFrame
 
 	// nextDeferWake is the soonest instant a pending deferral in scope lapses,
 	// and zero means none is pending. It is a refresh clock read by the periodic

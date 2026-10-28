@@ -69,9 +69,12 @@ func FitOverlayTitle(title, subject, suffix string, width int) string {
 // the halo, the border, and the title row above it, and the halo, the border,
 // and the padding cell beside it. A popup reading a click against its own
 // content subtracts them rather than re-deriving the frame.
+// OverlayBoxUntitledContentTop is OverlayBoxContentTop for a box drawn without
+// a title, whose content starts directly under the border.
 const (
-	OverlayBoxContentTop  = 3
-	OverlayBoxContentLeft = 3
+	OverlayBoxContentTop         = 3
+	OverlayBoxContentLeft        = 3
+	OverlayBoxUntitledContentTop = 2
 )
 
 func RenderOverlayBox(content string, width int, title, footer string, borderStyle lipgloss.Style) string {

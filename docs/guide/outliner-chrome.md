@@ -249,6 +249,17 @@ menu, as `Space` does. A click pushes nothing onto `Ctrl+O`'s history.
 While you type in the search input, edit a row inline, or have a menu, picker,
 or the `Q` readout open, clicks on the list are ignored.
 
+With the menu bar showing, clicking a label opens that menu, and clicking the
+open menu's label closes it, as `F10` does. Clicking an entry runs it, as `Enter`
+on it would. Clicking a greyed-out entry, a group heading, or the menu's border
+does nothing, and the wheel over an open menu moves its highlight. Clicking
+anywhere else closes the menu and does nothing more, so a quick second click
+there is a click of its own rather than a double-click. A menu opened with
+`F10` or `Ctrl+M` borrows the bar's row and answers clicks the same way. The
+relationship picker (`g~`) answers like the lists below: clicking a row moves
+to it, double-clicking is `Enter` on it, and the wheel moves its cursor, while
+clicks beside it do nothing.
+
 The wheel scrolls what it is over, one row per step. Over the list it moves the
 window, as `zt`/`zb` would, and the cursor stays on its row; only when that row
 would scroll out of sight does the cursor move, to the nearest row still in
@@ -274,7 +285,7 @@ Section headers, the search field, and a note's preview ignore clicks. While you
 type in a search field, a click only moves the cursor, since `Enter` and `Space`
 belong to the field. The typed-date and new-tag inputs, the comment composer,
 and the expanded comment reader ignore the pointer. Clicking outside an open
-picker or menu does nothing.
+picker or `Space` menu does nothing.
 
 To select text while the mouse is on, hold Shift as you drag; most terminals,
 Docket.app's included, keep Shift+drag for selection.
