@@ -295,7 +295,7 @@ func TestCapturedMailLinkRoundTripsByteIdentical(t *testing.T) {
 		t.Fatalf("read tasks.md: %v", err)
 	}
 	reloaded := &models.Project{ID: project.ID, Slug: project.Slug, Name: project.Name, Path: project.Path}
-	if err := storage.LoadProject(reloaded); err != nil {
+	if err = storage.LoadProject(reloaded); err != nil {
 		t.Fatalf("LoadProject: %v", err)
 	}
 	var found *models.Task
