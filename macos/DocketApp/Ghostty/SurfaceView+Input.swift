@@ -14,28 +14,45 @@ extension Ghostty.SurfaceView {
         switch event.type {
         case .keyUp: localEventKeyUp(event)
         case .leftMouseDown: localEventLeftMouseDown(event)
+        case .rightMouseDown: localEventRightMouseDown(event)
         default: event
         }
     }
 
-    private func localEventLeftMouseDown(_ event: NSEvent) -> NSEvent? {
-        guard let window, event.window != nil, window == event.window else { return event }
-        let location = convert(event.locationInWindow, from: nil)
-        guard hitTest(location) == self else { return event }
+    /// Whether a click lands on this surface rather than elsewhere in its
+    /// window or in another window.
+    private func receivesClick(_ event: NSEvent) -> Bool {
+        guard let window, event.window != nil, window == event.window else { return false }
+        return hitTest(convert(event.locationInWindow, from: nil)) == self
+    }
 
-        suppressNextLeftMouseUp = false
+    private func localEventLeftMouseDown(_ event: NSEvent) -> NSEvent? {
+        guard let window, receivesClick(event) else { return event }
+        suppressLeftClick = false
+
+        // A click that activates the window only activates it. AppKit must
+        // still see it to make the window key, so the surface withholds both
+        // halves instead.
+        if !isActiveWindow(window) {
+            window.makeFirstResponder(self)
+            suppressLeftClick = true
+            return event
+        }
+
         guard window.firstResponder !== self else { return event }
 
         // Already key: the click only moves focus back to the terminal, so it
         // is consumed rather than reported.
-        if NSApp.isActive && window.isKeyWindow {
-            window.makeFirstResponder(self)
-            suppressNextLeftMouseUp = true
-            return nil
-        }
-
-        // Otherwise AppKit must still see it to make the window key.
         window.makeFirstResponder(self)
+        suppressLeftClick = true
+        return nil
+    }
+
+    /// The activating right-click is withheld the same way, so it opens no
+    /// menu on a window the user was only bringing forward.
+    private func localEventRightMouseDown(_ event: NSEvent) -> NSEvent? {
+        guard let window, receivesClick(event) else { return event }
+        suppressRightClick = !isActiveWindow(window)
         return event
     }
 
@@ -299,13 +316,13 @@ extension Ghostty.SurfaceView {
     }
 
     override func mouseDown(with event: NSEvent) {
-        guard let surface else { return }
+        guard !suppressLeftClick, let surface else { return }
         ghostty_surface_mouse_button(surface, GHOSTTY_MOUSE_PRESS, GHOSTTY_MOUSE_LEFT, Ghostty.ghosttyMods(event.modifierFlags))
     }
 
     override func mouseUp(with event: NSEvent) {
-        if suppressNextLeftMouseUp {
-            suppressNextLeftMouseUp = false
+        if suppressLeftClick {
+            suppressLeftClick = false
             return
         }
         guard let surface else { return }
@@ -326,12 +343,17 @@ extension Ghostty.SurfaceView {
     }
 
     override func rightMouseDown(with event: NSEvent) {
+        if suppressRightClick { return }
         guard let surface,
               ghostty_surface_mouse_button(surface, GHOSTTY_MOUSE_PRESS, GHOSTTY_MOUSE_RIGHT, Ghostty.ghosttyMods(event.modifierFlags))
         else { return super.rightMouseDown(with: event) }
     }
 
     override func rightMouseUp(with event: NSEvent) {
+        if suppressRightClick {
+            suppressRightClick = false
+            return
+        }
         guard let surface,
               ghostty_surface_mouse_button(surface, GHOSTTY_MOUSE_RELEASE, GHOSTTY_MOUSE_RIGHT, Ghostty.ghosttyMods(event.modifierFlags))
         else { return super.rightMouseUp(with: event) }

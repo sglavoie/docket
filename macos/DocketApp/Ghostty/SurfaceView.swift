@@ -45,9 +45,17 @@ extension Ghostty {
         /// unhandled; see `performKeyEquivalent`.
         var lastPerformKeyEvent: TimeInterval?
 
-        /// Set when a click only focused the surface, so its release is not
-        /// reported without a press.
-        var suppressNextLeftMouseUp = false
+        /// Set when a click only focused or activated the window: neither
+        /// its press nor its release is reported.
+        var suppressLeftClick = false
+
+        /// Set when a right-click only activated the window.
+        var suppressRightClick = false
+
+        /// Whether a click arrives at a window that is already key in the
+        /// active app; anything else is the click that activates it. Tests
+        /// replace it, since a test host is rarely the active app.
+        var isActiveWindow: (NSWindow) -> Bool = { NSApp.isActive && $0.isKeyWindow }
 
         /// The pointer the terminal last asked for.
         var pointerCursor: NSCursor = .iBeam
@@ -89,10 +97,11 @@ extension Ghostty {
             config.font_size = 0
             config.context = GHOSTTY_SURFACE_CONTEXT_WINDOW
             // Command key-ups skip the responder chain, and a click that
-            // only focuses the window must not reach the terminal; upstream
-            // watches both locally rather than taking acceptsFirstMouse.
+            // only focuses or activates the window must not reach the
+            // terminal; upstream watches both locally rather than taking
+            // acceptsFirstMouse.
             eventMonitor = NSEvent.addLocalMonitorForEvents(
-                matching: [.keyUp, .leftMouseDown]
+                matching: [.keyUp, .leftMouseDown, .rightMouseDown]
             ) { [weak self] event in
                 guard let self else { return event }
                 return self.localEventHandler(event)

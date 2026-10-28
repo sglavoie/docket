@@ -1,7 +1,7 @@
 # Outliner grammar
 
-Every key the Outliner answers, the pickers those keys open, the `Space` action
-sheets, and the two edit surfaces. What the modes themselves list is in
+Every key the Outliner answers, the pointer that re-expresses them, the pickers
+those keys open, the `Space` action sheets, and the two edit surfaces. What the modes themselves list is in
 [`outliner-modes.md`](outliner-modes.md).
 
 | Area | Keys |
@@ -309,6 +309,97 @@ project boundaries, so that grouping is what keeps a filtered list unambiguous.
 Dependents are never listed: they are computed from what other tasks store, and
 no key edits them.
 
+
+## Pointer
+
+
+Docket asks the terminal to report clicks and wheel steps, so the terminal no
+longer turns the wheel into arrow keys. The pointer is a second way to reach
+keys you already have, and it goes to whatever the next key press would reach:
+a confirmation, an open picker or sheet, or the view. Something that does not
+answer the pointer ignores it, so a click never lands on the view behind an open
+dialog. A click or a wheel step also cancels a half-typed chord such as `w`,
+without a warning. Mouse motion and button releases are ignored.
+
+### Outliner clicks
+
+In the Outliner, clicking a row moves the cursor to it, as pressing `j` or `k`
+until you got there would. Clicking the pinned line at the top of a scrolled
+list moves the cursor to the lane or project header it stands for. The title,
+the context line, the status line, the Peek dock, the scrollbar and the blank
+space under a short list ignore clicks. Clicking a fold arrow (`▸` or `▾`) opens
+or closes that fold, the way `l` or `h` on that row would, and does nothing
+where those keys would do nothing, such as a zoomed lane. Double-clicking a row
+is `Enter` on it and right-clicking is `Space`, so a row that refuses the key
+refuses the click with the same message. A quick second click on a fold arrow
+toggles it again rather than counting as a double-click.
+
+Under a visual selection a click is still only cursor motion. During a `V`
+range the range stretches or shrinks to the clicked row, exactly as `j`/`k`
+would leave it; once the range is frozen, or for a `v` selection, the cursor
+moves and the selection stays as it was. A right-click then opens the bulk
+menu, as `Space` does. A click pushes nothing onto `Ctrl+O`'s history.
+While you type in the search input, edit a row inline, or have a menu, picker,
+or the `Q` readout open, clicks on the list are ignored.
+
+### Menus and the relationship picker
+
+With the menu bar showing, clicking a label opens that menu, and clicking the
+open menu's label closes it, as `F10` does. Clicking an entry runs it, as `Enter`
+on it would. Clicking a greyed-out entry, a group heading, or the menu's border
+does nothing, and the wheel over an open menu moves its highlight. Clicking
+anywhere else closes the menu and does nothing more, so a quick second click
+there is a click of its own rather than a double-click. A menu opened with
+`F10` or `Ctrl+M` borrows the bar's row and answers clicks the same way. The
+relationship picker (`g~`) answers like the lists below: clicking a row moves
+to it, double-clicking is `Enter` on it, and the wheel moves its cursor, while
+clicks beside it do nothing.
+
+### The wheel
+
+The wheel scrolls what it is over, one row per step. Over the list it moves the
+window, as `zt`/`zb` would, and the cursor stays on its row; only when that row
+would scroll out of sight does the cursor move, to the nearest row still in
+view. It stops at the top and the bottom of the list. Under a visual selection
+the list stops scrolling where the cursor would have to move, so the wheel never
+changes a selection. Search results and a zoomed project scroll the same way.
+Over the Peek dock the wheel scrolls the detail a row at a time and stops at its
+ends rather than moving the list. With the `Q` readout open, the wheel scrolls
+the readout when it is over it and does nothing anywhere else. Over the title,
+the context line, the status line, or the footer it does nothing.
+
+### Other lists and pickers
+
+Lists everywhere else answer the same way: Select Project, Notes, Comments,
+Attachments, the `gc` conflict browser, every `Space` menu, and the pickers
+(dates, tags and context, dependencies, and the rest). Clicking an entry moves
+the cursor to it, double-clicking is `Enter` on it, and right-clicking is that
+list's `Space` where it has one: a menu in Select Project, Notes, Comments and
+Attachments, and a toggle in a picker that checks several values. These lists are
+short, so the wheel moves the cursor a row per step rather than scrolling. Over
+the preview pane in Select Project or Notes the wheel pages the preview, as
+`Ctrl+F` and `Ctrl+B` do, and a click there does nothing. In the date picker,
+clicking a row in another section moves to that section, as `Tab` would.
+Section headers, the search field, and a note's preview ignore clicks. While you
+type in a search field, a click only moves the cursor, since `Enter` and `Space`
+belong to the field. The typed-date and new-tag inputs, the comment composer,
+and the expanded comment reader ignore the pointer. Clicking outside an open
+picker or `Space` menu does nothing.
+
+### Selecting text and turning it off
+
+To select text while the mouse is on, hold Shift as you drag; most terminals,
+Docket.app's included, keep Shift+drag for selection.
+
+View → Mouse saves whether the mouse is on for this machine. `docket --no-mouse`
+turns it off for one launch and leaves the terminal its own clicks and
+scrolling. Turning the mouse back on from the menu after a `--no-mouse` launch
+saves "on".
+
+In Docket.app, the click that brings an inactive window forward only brings it
+forward: Docket never sees it, so it moves no cursor and opens no menu. Click
+again once the window is in front. See
+[`macos/README.md`](../../macos/README.md#pointer).
 
 ## Task actions
 

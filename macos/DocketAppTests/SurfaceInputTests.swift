@@ -138,10 +138,13 @@ final class SurfaceInputTests: XCTestCase {
 
     /// Starts a surface whose program enables kitty disambiguation, puts its
     /// tty in raw mode, and prints every byte it reads as `xx.`.
-    private func startByteDump() throws {
+    private func startByteDump(reportingClicks: Bool = false) throws {
+        // 1000 and 1006 report presses and releases as SGR, as Docket asks.
+        let mouse = reportingClicks ? "printf '\\033[?1000h\\033[?1006h'" : ":"
         let script = """
         #!/bin/sh
         printf '\\033[>1u'
+        \(mouse)
         stty raw -echo
         # login(1) prints a banner without ~/.hushlogin; READY: starts row 0.
         printf '\\033[H\\033[2J'
@@ -315,6 +318,66 @@ final class SurfaceInputTests: XCTestCase {
     }
 
     // MARK: Mouse
+
+    /// Ticks the app long enough for anything the surface wrote to show.
+    private func settle() {
+        for _ in 0..<10 {
+            ghostty.appTick()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.02))
+        }
+    }
+
+    /// One whole click as AppKit delivers it: the local monitor first, then
+    /// the view, unless the monitor consumed the press.
+    private func click(right: Bool = false) throws {
+        let (down, up): (NSEvent.EventType, NSEvent.EventType) = right
+            ? (.rightMouseDown, .rightMouseUp) : (.leftMouseDown, .leftMouseUp)
+        view.mouseMoved(with: try mouse(.mouseMoved, x: 20, fromTop: 20))
+        let press = try mouse(down, x: 20, fromTop: 20)
+        if view.localEventHandler(press) != nil {
+            if right { view.rightMouseDown(with: press) } else { view.mouseDown(with: press) }
+        }
+        let release = try mouse(up, x: 20, fromTop: 20)
+        if right { view.rightMouseUp(with: release) } else { view.mouseUp(with: release) }
+    }
+
+    func testTheClickThatActivatesTheWindowIsNotReported() throws {
+        try startByteDump(reportingClicks: true)
+        let before = dumped()
+
+        view.isActiveWindow = { _ in false }
+        try click()
+        try click(right: true)
+        settle()
+        XCTAssertEqual(dumped(), before, "an activating click must only activate")
+
+        // Once active, the same clicks reach the program: SGR press and
+        // release of the left button, then of the right.
+        view.isActiveWindow = { _ in true }
+        try click()
+        try waitForScreen { _ in String(dumped().dropFirst(before.count)).contains("6d.") }
+        let left = String(dumped().dropFirst(before.count))
+        XCTAssertTrue(left.hasPrefix("1b.5b.3c.30.3b."), left)
+        XCTAssertTrue(left.hasSuffix("6d."), left)
+
+        let afterLeft = dumped()
+        try click(right: true)
+        try waitForScreen { _ in String(dumped().dropFirst(afterLeft.count)).contains("6d.") }
+        XCTAssertTrue(String(dumped().dropFirst(afterLeft.count)).hasPrefix("1b.5b.3c.32.3b."))
+    }
+
+    func testRefocusingClickIsNotReported() throws {
+        try startByteDump(reportingClicks: true)
+        view.isActiveWindow = { _ in true }
+        // The window holds focus itself in an active window: the click only
+        // moves it back to the terminal.
+        XCTAssertTrue(window.makeFirstResponder(nil))
+        let before = dumped()
+        try click()
+        settle()
+        XCTAssertEqual(dumped(), before)
+        XCTAssertTrue(window.firstResponder === view)
+    }
 
     private func mouse(_ type: NSEvent.EventType, x: CGFloat, fromTop y: CGFloat) throws -> NSEvent {
         try XCTUnwrap(NSEvent.mouseEvent(

@@ -8,7 +8,7 @@ door. Mechanism lives in [`../architecture.md`](../architecture.md).
 | [`outliner.md`](outliner.md) | The index to the four Outliner files below |
 | [`outliner-modes.md`](outliner-modes.md) | The seven modes, their order, project grouping, Recent, and the jumps between modes |
 | [`outliner-chrome.md`](outliner-chrome.md) | The title row, menu bar, guidance, status strip and advisories, conflict browser, cursor mark, and tag colors |
-| [`outliner-keys.md`](outliner-keys.md) | The key table, the pickers those keys open, the `Space` action sheets, and the edit surfaces |
+| [`outliner-keys.md`](outliner-keys.md) | The key table, the pointer, the pickers those keys open, the `Space` action sheets, and the edit surfaces |
 | [`outliner-rows.md`](outliner-rows.md) | Row indicators and their drop order, checklists, Peek, and multi-select |
 | [`capture.md`](capture.md) | Everyday capture, editing, routing, and recovery |
 | [`capture-reference.md`](capture-reference.md) | Complete sigils, date rules, relationship exceptions, and outline editing |

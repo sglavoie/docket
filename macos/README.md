@@ -483,6 +483,29 @@ Ghostty found wrong in the file. The app always overrides `command`,
 `wait-after-command`, and `confirm-close-surface`, since it owns the process
 Docket runs in.
 
+### Pointer
+
+Docket answers clicks and the wheel itself; what each one does is in the
+guide's [Pointer section](../docs/guide/outliner-keys.md#pointer). The app
+adds three things:
+
+- **Shift+drag selects text.** While Docket has the mouse, a plain drag is a
+  click to Docket, so hold Shift to select and copy as in any terminal. This is
+  Ghostty's default (`mouse-shift-capture = false`), and the app leaves it
+  alone.
+- **Clicking an inactive window only brings it forward.** That click and its
+  release never reach Docket, so it moves no cursor and opens no menu; the
+  same holds for a right-click. Click again once the window is in front.
+- **Scrolling speed is Ghostty's.** A trackpad sends one wheel step per row of
+  finger travel, momentum included, and a mouse wheel notch sends three. To
+  change either, set `mouse-scroll-multiplier` in the terminal config, e.g.
+  `mouse-scroll-multiplier = precision:0.5,discrete:2`; the app sets none.
+
+To turn the pointer off, use View → Mouse in Docket's own `M` menu bar; it is
+saved for this machine, so Docket.app keeps it across launches. With it off, a
+plain drag selects and the wheel moves the cursor, as Ghostty's alternate
+scroll turns it into arrow keys.
+
 ### Drag and drop
 
 Dropping files on the window types their paths, shell-escaped and
