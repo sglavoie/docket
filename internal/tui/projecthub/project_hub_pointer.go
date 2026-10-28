@@ -17,9 +17,23 @@ import (
 //
 // While the query is being typed, Space is a character of it, so a right-click
 // only seats. The action sheet the Hub draws in place of its list owns every
-// key, and so swallows the pointer.
+// key, and so owns the pointer too: an event inside the cells the last frame
+// drew it on reaches the sheet's own answer, translated into those cells, and
+// one outside it lands on nothing, never on the list beneath. A click also
+// needs the sheet drawn whole, as a shell popup's does; a wheel step reads no
+// row.
 func (m *ProjectHubModel) HandlePointer(event route.PointerEvent) tea.Cmd {
-	if m == nil || m.surface == nil || m.actions != nil || m.pointerTop < 0 {
+	if m == nil || m.surface == nil {
+		return nil
+	}
+	if m.actions != nil {
+		placement := m.actionsPlacement
+		if !placement.Contains(event.X, event.Y) || (!placement.Whole && !event.IsWheel()) {
+			return nil
+		}
+		return m.actions.HandlePointer(event.Offset(placement.Col, placement.Row))
+	}
+	if m.pointerTop < 0 {
 		return nil
 	}
 	// A pointer event is a keystroke, so it abandons a half-typed gg.

@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/docket/internal/config"
 	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/listsurface"
 	"github.com/sglavoie/docket/internal/tui/operation"
 	"github.com/sglavoie/docket/internal/tui/pulse"
@@ -179,6 +180,9 @@ type ProjectHubModel struct {
 	// pointerTop is the screen row the last frame drew the list's first row on,
 	// or -1 when it drew the action sheet instead. See HandlePointer.
 	pointerTop int
+	// actionsPlacement is where the last frame drew the action sheet, the zero
+	// value when it drew the list instead. See HandlePointer.
+	actionsPlacement chrome.OverlayPlacement
 	// pendingTopChord holds the first g of gg. The shell's chord state serves the
 	// Outliner only, so the Hub keeps its own one-key prefix.
 	pendingTopChord bool

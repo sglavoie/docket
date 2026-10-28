@@ -34,14 +34,22 @@ func (m *ProjectHubModel) View() tea.View {
 	contentHeight := chrome.FullscreenContentHeightForBlocks(height, header, footer)
 	var content string
 	m.pointerTop = -1
+	m.actionsPlacement = chrome.OverlayPlacement{}
 	if m.actions != nil {
 		content = m.actions.Render(width)
+		// The sheet stands where the list would, at the content area's first
+		// column, below the header and any notice. A sheet the content height
+		// cuts is not whole, so a click there would name the wrong row.
+		room := contentHeight - noticeRows(m.notice)
+		m.actionsPlacement = chrome.OverlayPlacement{
+			Row:   lipgloss.Height(header) + noticeRows(m.notice),
+			Rows:  min(lipgloss.Height(content), room),
+			Cols:  lipgloss.Width(content),
+			Whole: lipgloss.Height(content) <= room,
+		}
 	} else {
 		content = listsurface.NewListSurfaceRenderer(m.projectHubRenderConfig(contentHeight)).Render(m.surface)
-		m.pointerTop = lipgloss.Height(header)
-		if m.notice != "" {
-			m.pointerTop++
-		}
+		m.pointerTop = lipgloss.Height(header) + noticeRows(m.notice)
 	}
 	if notice := m.notice; notice != "" {
 		content = lipgloss.JoinVertical(
@@ -56,6 +64,14 @@ func (m *ProjectHubModel) View() tea.View {
 		chrome.FitBlockHeight(content, contentHeight),
 		footer,
 	))
+}
+
+// noticeRows is the row the Hub's notice spends above its content.
+func noticeRows(notice string) int {
+	if notice == "" {
+		return 0
+	}
+	return 1
 }
 
 // projectHubRenderConfig is the one description of the Hub's list surface, so

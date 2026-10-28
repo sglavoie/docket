@@ -1,0 +1,42 @@
+{
+  "name": "mouse-project-hub-action-sheet",
+  "fixture": "release",
+  "size": "100x30",
+  "actions": [
+    { "type": "key", "label": "open Select Project", "key": "P" },
+    { "type": "click", "label": "a right-click is Space, the project's action sheet, drawn by the Hub itself", "x": 4, "y": 2, "button": "right" },
+    { "type": "assert", "assert": "contains", "value": "Actions: Release Ω Project" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "click", "label": "a double-click on the header is outside the sheet and lands on nothing", "x": 0, "y": 0, "count": 2 },
+    { "type": "assert", "assert": "contains", "value": "Actions: Release Ω Project" },
+    { "type": "click", "label": "nor does one beside the sheet reach the list beneath it", "x": 90, "y": 3, "count": 2 },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "assert", "assert": "contains", "value": "Actions: Release Ω Project" },
+    { "type": "wheel", "label": "a wheel step outside the sheet moves no list cursor", "x": 90, "y": 12, "delta": 1 },
+    { "type": "wheel", "label": "a wheel step over the sheet steps its own cursor", "x": 10, "y": 5, "delta": 1 },
+    { "type": "assert", "assert": "contains", "value": "› Archive Project" },
+    { "type": "click", "label": "a single click on an action seats and runs nothing", "on": "Archive Project" },
+    { "type": "assert", "assert": "not_contains", "value": "y confirm" },
+    { "type": "click", "label": "a double-click is Enter, which asks the same confirmation", "on": "Archive Project", "count": 2 },
+    { "type": "assert", "assert": "contains", "value": "y confirm" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "y confirm" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "assert", "assert": "contains", "value": "› Release Ω Project" },
+
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "click", "label": "at the narrow floor the sheet records where it was drawn again", "x": 4, "y": 2, "button": "right" },
+    { "type": "assert", "assert": "contains", "value": "Actions: Release Ω Project" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "click", "x": 55, "y": 3, "count": 2 },
+    { "type": "wheel", "x": 55, "y": 12, "delta": 1 },
+    { "type": "assert", "assert": "contains", "value": "Actions: Release Ω Project" },
+    { "type": "click", "on": "Archive Project", "count": 2 },
+    { "type": "assert", "assert": "contains", "value": "y confirm" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "assert", "assert": "contains", "value": "› Release Ω Project" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}
