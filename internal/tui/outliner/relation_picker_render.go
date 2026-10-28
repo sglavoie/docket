@@ -3,11 +3,13 @@ package outliner
 import (
 	"strings"
 
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/keymap"
 	"github.com/sglavoie/docket/internal/tui/listsurface"
+	"github.com/sglavoie/docket/internal/tui/route"
 	"github.com/sglavoie/docket/internal/tui/textfit"
 	"github.com/sglavoie/docket/internal/tui/theme"
 )
@@ -107,4 +109,25 @@ func (m *OutlinerModel) relationPickerGuidance() chrome.GuidanceSpec {
 	}}
 	spec, _ := listsurface.ListSurfaceGuidanceSpec(state.Surface.GuidanceState(searching), km, nil)
 	return spec
+}
+
+// relationPickerPointer is the list surfaces' shared answer inside the picker:
+// a click seats the cursor, a double-click is Enter on the row, and the wheel
+// steps the cursor. The picker has no Space, and while its search field is
+// being edited Enter is the field's own, so a click there only seats. An event
+// outside the popup does nothing, and so does a click on a popup fitting cut.
+func (m *OutlinerModel) relationPickerPointer(event route.PointerEvent) tea.Cmd {
+	state := &m.RelationPicker
+	placement := m.modalFrame.picker
+	if state.Surface == nil || !placement.Contains(event.X, event.Y) || (!placement.Whole && !event.IsWheel()) {
+		return nil
+	}
+	key := state.Surface.AnswerPointer(
+		event.Offset(placement.Col+chrome.OverlayBoxContentLeft, placement.Row+m.modalFrame.pickerListTop),
+		false,
+	)
+	if state.Searching && key == "enter" {
+		return nil
+	}
+	return route.PressKey(key)
 }

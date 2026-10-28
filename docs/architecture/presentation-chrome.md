@@ -455,9 +455,10 @@ right-click is `space`. The key goes through `pointerKey`, which
 `SimplifiedInlineControlOwnsInput` holds (search input, inline edit,
 confirmation, `Q`, relation picker, open menu), the Outliner swallows the event.
 
-The two view-local modals answer first, in `outliner_modal_pointer.go`, through
-`handleModalPointer` ahead of both the wheel and that guard, in
-`handleKeyMsg`'s order: the relation picker, then an open menu. Each reads
+The two view-local modals answer first, through `handleModalPointer` in
+`menu_bar_render.go` (the picker's half, `relationPickerPointer`, sits beside
+its render), ahead of both the wheel and that guard, in `handleKeyMsg`'s order:
+the relation picker, then an open menu. Each reads
 `modalFrame`, which `View` clears beside `pointerFrame` and the render fills as
 it composites: `renderOutlinerMenuBar` records the drawn `menuBarLayout`, and
 `composeOutlinerModal` records the `chrome.OverlayPlacement` that
