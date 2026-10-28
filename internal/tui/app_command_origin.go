@@ -1,12 +1,14 @@
 package tui
 
 import (
+	"reflect"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/docket/internal/tui/operation"
 	"github.com/sglavoie/docket/internal/tui/operationhost"
+	"github.com/sglavoie/docket/internal/tui/presentation"
 	"github.com/sglavoie/docket/internal/tui/route"
 )
 
@@ -97,6 +99,15 @@ func originTaggedMessage(msg tea.Msg) bool {
 // tagged result is unwrapped and reports the interaction it came from, so the
 // caller can tell an authorized continuation from a late one.
 func (m *AppModel) beginCommandOriginUpdate(msg tea.Msg) (tea.Msg, uint64, bool) {
+	if delivery, ok := msg.(pointerKeyMsg); ok {
+		// A key a click stood for is delivered only to the owner the click
+		// handed it to, and only while nothing has happened since; past either
+		// it is nobody's key, and in particular never a replacement owner's.
+		if !m.pointerKeyStillOwned(delivery) {
+			return nil, m.interactionEpoch(), false
+		}
+		msg = delivery.press
+	}
 	if m.interactionIsRetiredBy(msg) {
 		m.retireInteraction()
 	}
@@ -327,7 +338,7 @@ func (m *AppModel) routePointer(event route.PointerEvent) tea.Cmd {
 		// double-click either: a quick second press is a click of its own.
 		m.pointer.lastClickAt = time.Time{}
 	}
-	return cmd
+	return m.stampPointerKeys(cmd)
 }
 
 // routeOverlayPointer hands the event to the shell popup that owns keys, in
@@ -346,7 +357,7 @@ func (m *AppModel) routeOverlayPointer(event route.PointerEvent) tea.Cmd {
 	if !drawn || !placement.Contains(event.X, event.Y) || (!placement.Whole && !event.IsWheel()) {
 		return nil
 	}
-	return answerer.HandlePointer(event.Offset(placement.Col, placement.Row))
+	return m.stampPointerKeys(answerer.HandlePointer(event.Offset(placement.Col, placement.Row)))
 }
 
 // overlayPointerOwner is the popup the next key press would reach. The text
@@ -370,4 +381,116 @@ func (m *AppModel) overlayPointerOwner() widthRenderer {
 		return m.conflictBrowser
 	}
 	return nil
+}
+
+// pointerKeyMsg is a key a pointer event stood for, still carrying the click
+// that produced it. route.PressKey hands a surface's answer back as a command,
+// and Bubble Tea runs commands concurrently, so another click, a key, or a
+// closed popup can land before that key does. The stamp is what the shell
+// checks at delivery: the interaction the click began and the layer that held
+// keys when the surface answered it. Only a stamp that still matches becomes
+// the key press, on the ordinary key path; any other is dropped whole.
+type pointerKeyMsg struct {
+	press tea.KeyPressMsg
+	epoch uint64
+	owner pointerKeyOwner
+}
+
+// pointerKeyOwner names the layer that owned the next key press: which rung of
+// routePointer's order, the presentation, and the identity of the model
+// holding keys there, so a popup closed and another opened in its place is a
+// different owner even on the same rung.
+type pointerKeyOwner struct {
+	layer pointerKeyLayer
+	view  presentation.PresentationID
+	ref   uintptr
+}
+
+type pointerKeyLayer uint8
+
+const (
+	pointerKeyLayerNone pointerKeyLayer = iota
+	pointerKeyLayerConfirmation
+	pointerKeyLayerModal
+	pointerKeyLayerChord
+	pointerKeyLayerPresentation
+)
+
+// currentPointerKeyOwner resolves the owner in routePointer's order.
+func (m *AppModel) currentPointerKeyOwner() pointerKeyOwner {
+	owner := pointerKeyOwner{view: m.currentView()}
+	switch {
+	case m.lifecycle.quitting || m.viewNav.tooSmall():
+		owner.layer = pointerKeyLayerNone
+	case m.shellConfirmationArmed():
+		owner.layer = pointerKeyLayerConfirmation
+	case m.shellModalMounted():
+		owner.layer = pointerKeyLayerModal
+		if m.checkInSetup != nil {
+			owner.ref = modelIdentity(m.checkInSetup)
+		} else {
+			owner.ref = modelIdentity(m.overlayPointerOwner())
+		}
+	case len(m.operations.Chord) > 0:
+		owner.layer = pointerKeyLayerChord
+	default:
+		owner.layer = pointerKeyLayerPresentation
+		owner.ref = modelIdentity(m.activeView())
+	}
+	return owner
+}
+
+// modelIdentity is the address of a pointer-backed model, or zero for nil or a
+// value that has none, which then compares by layer and presentation alone.
+func modelIdentity(model any) uintptr {
+	if model == nil {
+		return 0
+	}
+	value := reflect.ValueOf(model)
+	switch value.Kind() {
+	case reflect.Pointer, reflect.Map, reflect.Slice, reflect.Func, reflect.Chan, reflect.UnsafePointer:
+		if value.IsNil() {
+			return 0
+		}
+		return value.Pointer()
+	default:
+		return 0
+	}
+}
+
+// stampPointerKeys binds every key a surface's pointer answer produces to the
+// click that produced it and the owner it was answered by. It is taken after
+// the surface answered, so the owner is the one the click left holding keys:
+// a click that seated a cursor names that surface, and nothing else.
+func (m *AppModel) stampPointerKeys(cmd tea.Cmd) tea.Cmd {
+	if cmd == nil {
+		return nil
+	}
+	return stampPointerKeyCmd(cmd, m.interactionEpoch(), m.currentPointerKeyOwner())
+}
+
+func stampPointerKeyCmd(cmd tea.Cmd, epoch uint64, owner pointerKeyOwner) tea.Cmd {
+	if cmd == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		switch msg := cmd().(type) {
+		case tea.KeyPressMsg:
+			return pointerKeyMsg{press: msg, epoch: epoch, owner: owner}
+		case tea.BatchMsg:
+			cmds := make([]tea.Cmd, len(msg))
+			for i, child := range msg {
+				cmds[i] = stampPointerKeyCmd(child, epoch, owner)
+			}
+			return tea.BatchMsg(cmds)
+		default:
+			return msg
+		}
+	}
+}
+
+// pointerKeyStillOwned reports whether nothing has moved on since the click: no
+// input retired its interaction and the same layer still holds keys.
+func (m *AppModel) pointerKeyStillOwned(delivery pointerKeyMsg) bool {
+	return m.ownsInteraction(delivery.epoch) && m.currentPointerKeyOwner() == delivery.owner
 }

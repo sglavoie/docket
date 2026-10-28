@@ -75,6 +75,10 @@ type PointerView interface {
 // key path to whichever layer owns keys, and every operation it reaches, every
 // refusal, and every undo entry is that key's own. An empty key presses nothing.
 //
+// The command runs concurrently, so the shell stamps the key it yields with the
+// click's interaction and the layer that answered it, and delivers it only if
+// neither has changed: a key a stale click stood for reaches no one.
+//
 // Only the keys a pointer re-expresses are spelled: Enter, Space, the two
 // arrows the wheel steps by, and the two preview paging keys.
 func PressKey(key string) tea.Cmd {

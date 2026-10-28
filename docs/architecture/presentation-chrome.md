@@ -505,7 +505,10 @@ seated is `enter`, and a right-click that seated is `space` where the surface
 names Space as its menu. The surface does only the seat, writing the cursor its
 j/k writes. The key is then sent by `route.PressKey` as an ordinary
 `tea.KeyPressMsg`, which reaches whichever layer owns keys by the shell's normal
-key path. A popup's `HandlePointer` subtracts `chrome.OverlayBoxContentTop`/`Left`
+key path. That command runs concurrently, so the shell stamps the key with the
+click's interaction epoch and the layer that answered it (`pointerKeyMsg`) and
+delivers it only while both still hold: a key, click, or closed popup landing
+first makes it nobody's key, never a replacement owner's. A popup's `HandlePointer` subtracts `chrome.OverlayBoxContentTop`/`Left`
 and the rows its render drew above the list (context line, search field,
 notice), and a sub-state drawing no list records nothing (typed entry, rename,
 the inspected conflict, a composer, the expanded reader). Over a preview pane the
