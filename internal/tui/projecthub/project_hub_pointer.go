@@ -1,6 +1,8 @@
 package projecthub
 
 import (
+	"fmt"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/docket/internal/tui/route"
@@ -57,4 +59,21 @@ func (m *ProjectHubModel) HandlePointer(event route.PointerEvent) tea.Cmd {
 	return route.PressKey(key)
 }
 
-var _ route.PointerView = (*ProjectHubModel)(nil)
+// PointerTarget is what a key the pointer pressed would act on: the action the
+// sheet's cursor names while one stands, qualified by that sheet so a sheet
+// reopened for another project is another target, and otherwise the project
+// the list's cursor names.
+func (m *ProjectHubModel) PointerTarget() string {
+	if m == nil {
+		return ""
+	}
+	if m.actions != nil {
+		return fmt.Sprintf("sheet %p %s", m.actions, m.actions.PointerTarget())
+	}
+	return m.surface.PointerTarget()
+}
+
+var (
+	_ route.PointerView       = (*ProjectHubModel)(nil)
+	_ route.PointerTargetView = (*ProjectHubModel)(nil)
+)

@@ -111,6 +111,16 @@ func (m *OutlinerModel) relationPickerGuidance() chrome.GuidanceSpec {
 	return spec
 }
 
+// PointerTarget is the relationship the picker's cursor names while it stands,
+// the one Outliner answer the shell delivers as a pressed key; every other
+// pointer key reaches the root grammar synchronously and names nothing here.
+func (m *OutlinerModel) PointerTarget() string {
+	if m == nil || !m.RelationPickerOpen() {
+		return ""
+	}
+	return "relation " + m.RelationPicker.Surface.PointerTarget()
+}
+
 // relationPickerPointer is the list surfaces' shared answer inside the picker:
 // a click seats the cursor, a double-click is Enter on the row, and the wheel
 // steps the cursor. The picker has no Space, and while its search field is

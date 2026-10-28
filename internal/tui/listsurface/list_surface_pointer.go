@@ -101,6 +101,15 @@ func (model *ListSurfaceModel) AnswerPointer(event route.PointerEvent, menu bool
 	return ListPointerKey(event, seated, menu)
 }
 
+// PointerTarget is the item the cursor names, which is what a key the pointer
+// pressed acts on, or empty when nothing matches.
+func (model *ListSurfaceModel) PointerTarget() string {
+	if model == nil || model.cursor < 0 || model.cursor >= len(model.matches) {
+		return ""
+	}
+	return string(model.matches[model.cursor].item.ID)
+}
+
 // PointerItemAt reports the item the last render drew at pane cell (x, y),
 // without seating the cursor there: for an owner whose single click is itself
 // the act, as a menu entry's is.

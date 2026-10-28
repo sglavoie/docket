@@ -233,6 +233,16 @@ func (m *ManageHubModel) HandlePointer(event route.PointerEvent) tea.Cmd {
 	return nil
 }
 
+// PointerTarget is the mounted module's, qualified by that module so a
+// replacement is another target.
+func (m *ManageHubModel) PointerTarget() string {
+	named, ok := m.active.(route.PointerTargetView)
+	if !ok {
+		return ""
+	}
+	return fmt.Sprintf("%p %s", m.active, named.PointerTarget())
+}
+
 func (m *ManageHubModel) SetSize(width, height int) {
 	m.BaseView.SetSize(width, height)
 	if m.active != nil {

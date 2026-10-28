@@ -1,6 +1,8 @@
 package notes
 
 import (
+	"fmt"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/docket/internal/tui/listsurface"
@@ -58,4 +60,15 @@ func (m *NotesViewModel) HandlePointer(event route.PointerEvent) tea.Cmd {
 	return route.PressKey(key)
 }
 
-var _ route.PointerView = (*NotesViewModel)(nil)
+// PointerTarget is the note the cursor names, by location and filename.
+func (m *NotesViewModel) PointerTarget() string {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.VisibleRows) {
+		return ""
+	}
+	return fmt.Sprintf("%+v", m.VisibleRows[m.Cursor].Identity())
+}
+
+var (
+	_ route.PointerView       = (*NotesViewModel)(nil)
+	_ route.PointerTargetView = (*NotesViewModel)(nil)
+)

@@ -387,9 +387,13 @@ func (m *AppModel) overlayPointerOwner() widthRenderer {
 // that produced it. route.PressKey hands a surface's answer back as a command,
 // and Bubble Tea runs commands concurrently, so another click, a key, or a
 // closed popup can land before that key does. The stamp is what the shell
-// checks at delivery: the interaction the click began and the layer that held
-// keys when the surface answered it. Only a stamp that still matches becomes
-// the key press, on the ordinary key path; any other is dropped whole.
+// checks at delivery: the interaction the click began, the layer that held
+// keys when the surface answered it, and the entity that layer's cursor named
+// then. Only a stamp that still matches becomes the key press, on the ordinary
+// key path; any other is dropped whole. The target is what a non-input result
+// can change without retiring the interaction or replacing the owner: a refresh
+// that removes the clicked row seats the cursor on another, and the key must
+// not follow it there.
 type pointerKeyMsg struct {
 	press tea.KeyPressMsg
 	epoch uint64
@@ -399,11 +403,13 @@ type pointerKeyMsg struct {
 // pointerKeyOwner names the layer that owned the next key press: which rung of
 // routePointer's order, the presentation, and the identity of the model
 // holding keys there, so a popup closed and another opened in its place is a
-// different owner even on the same rung.
+// different owner even on the same rung. target is the holder's
+// route.PointerTarget, empty for a holder that names none.
 type pointerKeyOwner struct {
-	layer pointerKeyLayer
-	view  presentation.PresentationID
-	ref   uintptr
+	layer  pointerKeyLayer
+	view   presentation.PresentationID
+	ref    uintptr
+	target string
 }
 
 type pointerKeyLayer uint8
@@ -429,15 +435,31 @@ func (m *AppModel) currentPointerKeyOwner() pointerKeyOwner {
 		if m.checkInSetup != nil {
 			owner.ref = modelIdentity(m.checkInSetup)
 		} else {
-			owner.ref = modelIdentity(m.overlayPointerOwner())
+			holder := m.overlayPointerOwner()
+			owner.ref = modelIdentity(holder)
+			owner.target = pointerTargetOf(holder)
 		}
 	case len(m.operations.Chord) > 0:
 		owner.layer = pointerKeyLayerChord
 	default:
 		owner.layer = pointerKeyLayerPresentation
-		owner.ref = modelIdentity(m.activeView())
+		holder := m.activeView()
+		owner.ref = modelIdentity(holder)
+		owner.target = pointerTargetOf(holder)
 	}
 	return owner
+}
+
+// pointerTargetOf is the entity the holder's cursor names, or empty for a
+// holder that names none.
+func pointerTargetOf(holder any) string {
+	if holder == nil || modelIdentity(holder) == 0 {
+		return ""
+	}
+	if named, ok := holder.(route.PointerTargetView); ok {
+		return named.PointerTarget()
+	}
+	return ""
 }
 
 // modelIdentity is the address of a pointer-backed model, or zero for nil or a
@@ -490,7 +512,8 @@ func stampPointerKeyCmd(cmd tea.Cmd, epoch uint64, owner pointerKeyOwner) tea.Cm
 }
 
 // pointerKeyStillOwned reports whether nothing has moved on since the click: no
-// input retired its interaction and the same layer still holds keys.
+// input retired its interaction, the same layer still holds keys, and its
+// cursor still names the entity the click did.
 func (m *AppModel) pointerKeyStillOwned(delivery pointerKeyMsg) bool {
 	return m.ownsInteraction(delivery.epoch) && m.currentPointerKeyOwner() == delivery.owner
 }

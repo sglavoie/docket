@@ -1,6 +1,9 @@
 package taskdetail
 
 import (
+	"fmt"
+	"time"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/docket/internal/tui/listsurface"
@@ -47,7 +50,31 @@ func answerEntryPointer(frame listsurface.ListPointerFrame, cursor *int, total i
 	return listsurface.ListPointerKey(event, seated, true)
 }
 
+// PointerTarget is the comment the cursor names: its identity where the owner
+// keeps one, else its position and creation instant.
+func (m *CommentsModel) PointerTarget() string {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.entries) {
+		return ""
+	}
+	entry := m.entries[m.Cursor]
+	if entry.ID != "" {
+		return entry.ID
+	}
+	return fmt.Sprintf("%d %s", m.Cursor, entry.CreatedAt.Format(time.RFC3339Nano))
+}
+
+// PointerTarget is the attachment the cursor names.
+func (m *TaskAttachmentsModel) PointerTarget() string {
+	if m == nil || m.Task == nil || m.Cursor < 0 || m.Cursor >= len(m.Task.Attachments) {
+		return ""
+	}
+	attachment := m.Task.Attachments[m.Cursor]
+	return fmt.Sprintf("%d %s %s", m.Cursor, attachment.Filename, attachment.AddedAt.Format(time.RFC3339Nano))
+}
+
 var (
-	_ route.PointerView = (*CommentsModel)(nil)
-	_ route.PointerView = (*TaskAttachmentsModel)(nil)
+	_ route.PointerView       = (*CommentsModel)(nil)
+	_ route.PointerView       = (*TaskAttachmentsModel)(nil)
+	_ route.PointerTargetView = (*CommentsModel)(nil)
+	_ route.PointerTargetView = (*TaskAttachmentsModel)(nil)
 )

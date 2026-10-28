@@ -69,6 +69,16 @@ type PointerView interface {
 	HandlePointer(event PointerEvent) tea.Cmd
 }
 
+// PointerTargetView is implemented by a surface whose pressed keys act on what
+// its cursor names. PointerTarget is that entity's identity, empty when the
+// cursor names nothing. The shell reads it when it stamps the keys a pointer
+// answer produced and again when one is delivered: a refresh that removed or
+// replaced the clicked entity, and seated the cursor elsewhere, changes it, and
+// the key is dropped rather than pressed on whatever the cursor holds now.
+type PointerTargetView interface {
+	PointerTarget() string
+}
+
 // PressKey is the act a pointer event stands for once its surface has done the
 // part no key can: seating the cursor on the row the click named. The key is
 // delivered as the message a keyboard sends, so it takes the shell's ordinary
@@ -76,8 +86,9 @@ type PointerView interface {
 // refusal, and every undo entry is that key's own. An empty key presses nothing.
 //
 // The command runs concurrently, so the shell stamps the key it yields with the
-// click's interaction and the layer that answered it, and delivers it only if
-// neither has changed: a key a stale click stood for reaches no one.
+// click's interaction, the layer that answered it, and that layer's
+// PointerTarget, and delivers it only if none has changed: a key a stale click
+// stood for reaches no one.
 //
 // Only the keys a pointer re-expresses are spelled: Enter, Space, the two
 // arrows the wheel steps by, and the two preview paging keys.

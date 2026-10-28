@@ -161,6 +161,18 @@ func (model *ConflictBrowserModel) guidanceSpec() chrome.GuidanceSpec {
 	return spec
 }
 
+// PointerTarget is the conflict the browser's cursor names, qualified by
+// whether it is being inspected, since the two answer different keys.
+func (model *ConflictBrowserModel) PointerTarget() string {
+	if model == nil {
+		return ""
+	}
+	if model.inspecting() {
+		return "inspect " + model.surface.PointerTarget()
+	}
+	return model.surface.PointerTarget()
+}
+
 // HandlePointer answers the pointer for an event the shell has already moved
 // into this popup's own cells. Browsing, it is the list surface's answer: a
 // click seats the cursor on a conflict, a double-click is Enter, which inspects

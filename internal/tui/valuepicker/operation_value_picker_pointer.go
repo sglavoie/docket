@@ -40,4 +40,15 @@ func (model *OperationValuePickerModel) pointerMenu() bool {
 	return model.multi || model.provider == operation.ValueProviderFilterProjectTags
 }
 
-var _ route.PointerView = (*OperationValuePickerModel)(nil)
+// PointerTarget is the row the picker's cursor names.
+func (model *OperationValuePickerModel) PointerTarget() string {
+	if model == nil {
+		return ""
+	}
+	return model.surface.PointerTarget()
+}
+
+var (
+	_ route.PointerView       = (*OperationValuePickerModel)(nil)
+	_ route.PointerTargetView = (*OperationValuePickerModel)(nil)
+)

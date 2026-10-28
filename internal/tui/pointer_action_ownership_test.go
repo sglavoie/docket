@@ -182,3 +182,71 @@ func TestPointerWheelCannotReachReplacementOwner(t *testing.T) {
 		t.Fatalf("a stale wheel step navigated the Hub list that replaced the sheet:\n%s", screen)
 	}
 }
+
+// retainKey dispatches one key press and resolves the command it returned into
+// the messages it would deliver, without delivering any of them.
+func retainKey(t *testing.T, driver *UITestDriver, key string) []tea.Msg {
+	t.Helper()
+	msg, err := parseUITestKey(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	driver.dispatch(msg)
+	cmd := driver.pendingCmd
+	driver.pendingCmd = nil
+	return resolvePointerCmd(cmd)
+}
+
+// pinnedPointerHubDriver opens Select Pinned Project with Client Alpha and
+// Client Beta pinned, the cursor on Client Alpha. Both have action sheets, so a
+// right-click that reached the wrong one would be seen.
+func pinnedPointerHubDriver(t *testing.T) *UITestDriver {
+	t.Helper()
+	driver, workspace, err := NewFixtureDriver(FixtureMultiProject, 100, 30)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = workspace.Cleanup() })
+	for _, key := range []string{"P", "*", "j", "*", "esc", "ctrl+p"} {
+		pointerSendKey(t, driver, key)
+	}
+	screen := driver.Render()
+	if !strings.Contains(screen, "› * Client Alpha") || !strings.Contains(screen, "* Client Beta") {
+		t.Fatalf("Select Pinned Project did not open on both pinned projects, Client Alpha first:\n%s", screen)
+	}
+	return driver
+}
+
+func TestPointerActionCannotRetargetAfterRefresh(t *testing.T) {
+	// Control: with nothing in between, the right-click opens the sheet of the
+	// pinned project it named.
+	control := pinnedPointerHubDriver(t)
+	deliverRetained(control, retainPointer(t, control, tea.MouseClickMsg{X: 4, Y: pointerHubFirstRow, Button: tea.MouseRight}))
+	if screen := control.Render(); !strings.Contains(screen, "Actions: Client Alpha") {
+		t.Fatalf("an uninterrupted right-click did not open the clicked pinned project's sheet:\n%s", screen)
+	}
+
+	// Hold the unpin * asked for on Client Alpha, and the right-click on it
+	// after, then let the unpin land first: the same Hub refreshes and seats
+	// Client Beta, with no input in between to retire the click.
+	driver := pinnedPointerHubDriver(t)
+	unpin := retainKey(t, driver, "*")
+	if len(unpin) == 0 {
+		t.Fatal("* produced no request to retain")
+	}
+	retained := retainPointer(t, driver, tea.MouseClickMsg{X: 4, Y: pointerHubFirstRow, Button: tea.MouseRight})
+	deliverRetained(driver, unpin)
+	screen := driver.Render()
+	if strings.Contains(screen, "* Client Alpha") || !strings.Contains(screen, "› * Client Beta") {
+		t.Fatalf("the unpin did not refresh the pinned Hub onto Client Beta:\n%s", screen)
+	}
+
+	deliverRetained(driver, retained)
+	screen = driver.Render()
+	if strings.Contains(screen, "Actions:") {
+		t.Fatalf("a right-click on the unpinned project opened a menu for the row seated after it:\n%s", screen)
+	}
+	if !strings.Contains(screen, "› * Client Beta") {
+		t.Fatalf("the stale right-click moved the cursor:\n%s", screen)
+	}
+}

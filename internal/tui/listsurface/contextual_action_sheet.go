@@ -424,6 +424,14 @@ func (model *ContextActionSheetModel) GuidanceSpec() (chrome.GuidanceSpec, bool)
 	return ListSurfaceGuidanceSpec(model.Surface.GuidanceState(searching), km, nil)
 }
 
+// PointerTarget is the action the sheet's cursor names.
+func (model *ContextActionSheetModel) PointerTarget() string {
+	if model == nil {
+		return ""
+	}
+	return model.Surface.PointerTarget()
+}
+
 // HandlePointer gives the sheet the list surface's pointer answer, for an event
 // the shell has already moved into this popup's own cells: a click seats the
 // cursor on an action, a double-click is Enter, which runs it with every guard
