@@ -150,6 +150,9 @@ func (m *AppModel) executeControlRequest(request control.Request, reply chan<- c
 	case control.OpPreview:
 		m.controlPreview(request.Text, reply)
 		return nil
+	case control.OpSearch:
+		m.controlSearch(request.Text, request.Limit, reply)
+		return nil
 	case control.OpAppearance:
 		// Ahead of the busy guard too: a theme changes what is drawn and
 		// nothing an open picker or editor holds.

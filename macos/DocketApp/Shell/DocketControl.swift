@@ -34,7 +34,7 @@ enum DocketControlLaunch {
 
 struct DocketControlRequest: Encodable, Equatable {
     enum Op: String, Encodable {
-        case reveal, acknowledge, done, capture, complete, preview, quit, appearance, view, undo, edit, version
+        case reveal, acknowledge, done, capture, complete, preview, quit, appearance, view, undo, edit, version, search
         case themePalette = "theme_palette"
         case deferTask = "defer"
         case captureOnce = "capture_once"
@@ -49,6 +49,7 @@ struct DocketControlRequest: Encodable, Equatable {
     var minutes: Int?
     var capture_id: String?
     var workspace: String?
+    var limit: Int?
 
     static func edit(_ action: String) -> Self { Self(op: .edit, text: action) }
 
@@ -93,6 +94,12 @@ struct DocketControlRequest: Encodable, Equatable {
 
     static func preview(_ text: String) -> Self {
         Self(op: .preview, text: text)
+    }
+
+    /// Ranks the workspace against `text`, read as Docket's `/` search reads it,
+    /// whatever view Docket is showing. Docket answers it even while busy.
+    static func search(_ text: String, limit: Int? = nil) -> Self {
+        Self(op: .search, text: text, limit: limit)
     }
 
     /// Ends Docket the way its quit key does, unless something is open in it.
@@ -197,10 +204,12 @@ struct DocketControlReply: Decodable, Equatable {
     let selection: DocketTextSelection?
     var workspace: String? = nil
     var version: String? = nil
+    /// A `search` reply's ranked tasks.
+    var search: DocketSearchResults? = nil
 
     init(
         reply: Int, ok: Bool, message: String?, completion: DocketCompletion? = nil, preview: String? = nil,
-        transaction: String? = nil, selection: DocketTextSelection? = nil
+        transaction: String? = nil, selection: DocketTextSelection? = nil, search: DocketSearchResults? = nil
     ) {
         self.reply = reply
         self.ok = ok
@@ -209,6 +218,7 @@ struct DocketControlReply: Decodable, Equatable {
         self.preview = preview
         self.transaction = transaction
         self.selection = selection
+        self.search = search
     }
 
     /// What the app says when it could not ask: no Docket, or a dropped connection.
@@ -244,6 +254,100 @@ struct DocketCompletion: Decodable, Equatable {
         token = try c.decode(String.self, forKey: .token)
         items = try c.decodeIfPresent([Item].self, forKey: .items) ?? []
         exact = try c.decodeIfPresent(Bool.self, forKey: .exact) ?? false
+    }
+}
+
+/// Docket's ranked answer to a `search`, best first. `items` holds at most the
+/// limit asked for; `total` counts every match. `relaxed` says the query matched
+/// only once its case was ignored.
+struct DocketSearchResults: Decodable, Equatable {
+    let items: [DocketSearchItem]
+    let total: Int
+    let relaxed: Bool
+
+    init(items: [DocketSearchItem], total: Int, relaxed: Bool = false) {
+        self.items = items
+        self.total = total
+        self.relaxed = relaxed
+    }
+
+    enum CodingKeys: String, CodingKey { case items, total, relaxed }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        items = try c.decodeIfPresent([DocketSearchItem].self, forKey: .items) ?? []
+        total = try c.decodeIfPresent(Int.self, forKey: .total) ?? items.count
+        relaxed = try c.decodeIfPresent(Bool.self, forKey: .relaxed) ?? false
+    }
+}
+
+/// One task a search found. `ref` is the reference a person types in Docket
+/// (`work#12`); `parents` its ancestor chain, absent at the root; `match` the
+/// field that ranked it, absent for a title hit.
+struct DocketSearchItem: Decodable, Equatable {
+    let project: String
+    let task: String
+    let ref: String
+    let title: String
+    let projectName: String
+    let state: String
+    let parents: String?
+    let match: String?
+    let priority: Int?
+    /// RFC 3339, as Docket sent it; nil without a deadline.
+    let due: String?
+    let dueHasTime: Bool
+    let overdue: Bool
+    let reviewable: Bool
+
+    var id: DocketTaskID { DocketTaskID(project: project, task: task) }
+
+    var dueDate: Date? { due.flatMap { ISO8601DateFormatter().date(from: $0) } }
+
+    /// Whether the task is finished, so Done and Defer have nothing to do.
+    var isTerminal: Bool { state == "done" || state == "canceled" }
+
+    init(
+        project: String, task: String, ref: String, title: String, projectName: String, state: String,
+        parents: String? = nil, match: String? = nil, priority: Int? = nil, due: String? = nil,
+        dueHasTime: Bool = false, overdue: Bool = false, reviewable: Bool = false
+    ) {
+        self.project = project
+        self.task = task
+        self.ref = ref
+        self.title = title
+        self.projectName = projectName
+        self.state = state
+        self.parents = parents
+        self.match = match
+        self.priority = priority
+        self.due = due
+        self.dueHasTime = dueHasTime
+        self.overdue = overdue
+        self.reviewable = reviewable
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case project, task, ref, title, state, parents, match, priority, due, overdue, reviewable
+        case projectName = "project_name"
+        case dueHasTime = "due_has_time"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        project = try c.decode(String.self, forKey: .project)
+        task = try c.decode(String.self, forKey: .task)
+        ref = try c.decodeIfPresent(String.self, forKey: .ref) ?? ""
+        title = try c.decode(String.self, forKey: .title)
+        projectName = try c.decodeIfPresent(String.self, forKey: .projectName) ?? ""
+        state = try c.decodeIfPresent(String.self, forKey: .state) ?? ""
+        parents = try c.decodeIfPresent(String.self, forKey: .parents)
+        match = try c.decodeIfPresent(String.self, forKey: .match)
+        priority = try c.decodeIfPresent(Int.self, forKey: .priority)
+        due = try c.decodeIfPresent(String.self, forKey: .due)
+        dueHasTime = try c.decodeIfPresent(Bool.self, forKey: .dueHasTime) ?? false
+        overdue = try c.decodeIfPresent(Bool.self, forKey: .overdue) ?? false
+        reviewable = try c.decodeIfPresent(Bool.self, forKey: .reviewable) ?? false
     }
 }
 
@@ -370,6 +474,7 @@ enum DocketControlLine: Equatable {
         let preview: String?
         let transaction: String?
         let selection: DocketTextSelection?
+        let search: DocketSearchResults?
         let event: String?
         let editing: DocketEditing?
         let pulse: DocketPulse?
@@ -384,7 +489,7 @@ enum DocketControlLine: Equatable {
         guard let raw = try? JSONDecoder().decode(Raw.self, from: data) else { return nil }
         if let id = raw.reply {
             return .reply(DocketControlReply(reply: id, ok: raw.ok ?? false, message: raw.message, completion: raw.completion, preview: raw.preview,
-                transaction: raw.transaction, selection: raw.selection))
+                transaction: raw.transaction, selection: raw.selection, search: raw.search))
         }
         switch raw.event {
         case "editing":

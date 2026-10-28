@@ -441,7 +441,12 @@ inside `Update` by `handleControlMessage`, ahead of the overlays, behind
 `ParseCaptureText` for capture (the composer's own `ParseCompactLines` over a
 throwaway model), `CaptureCompletions` for complete (its `RefreshAutocomplete`
 over the same throwaway, answered ahead of that guard since it commits nothing,
-naming the token by its text so a host never counts Go's bytes), `MarkReviewed` and the Defer section's `TaskOperationSetDefer`
+naming the token by its text so a host never counts Go's bytes),
+`OutlinerModel.SearchWorkspace` for search (the ranked list's gate and scorer
+over `TaskWorkspaceProjects`, compiled with no facet query and read with no
+scope, Focus, or lens, so only `$today`/`$next` membership comes from the
+model; answered ahead of that guard too, bounded at `control.SearchMaxLimit`
+with the true total), `MarkReviewed` and the Defer section's `TaskOperationSetDefer`
 under a locator relocation capture, and `NavigateToTaskInProject` then
 `coreGotoTaskProject` for reveal. A commit's message returns wrapped in
 `controlCommittedMsg`, which `handleGlobalSaveMessage` handles unchanged and

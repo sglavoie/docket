@@ -536,6 +536,41 @@ final class HotKeyConflictTests: XCTestCase {
         XCTAssertEqual(toggle.registeredCombo, first)
     }
 
+    /// Quick find refuses a combo either other shortcut holds, naming the one
+    /// that holds it, and each of them refuses the one quick find holds.
+    func testQuickFindRefusesAndIsRefusedByBothOthers() throws {
+        let toggle = HotKeyCenter()
+        let capture = HotKeyCenter()
+        let find = HotKeyCenter()
+        let first = try combo("ctrl+opt+shift+cmd+f17")
+        let second = try combo("ctrl+opt+shift+cmd+f16")
+        let third = try combo("ctrl+opt+shift+cmd+f15")
+        XCTAssertNil(AppDelegate.register(first, on: toggle, beside: [(capture, AppDelegate.captureHotKeyUse), (find, AppDelegate.findHotKeyUse)], menu: nil))
+        XCTAssertNil(AppDelegate.register(second, on: capture, beside: [(toggle, AppDelegate.toggleHotKeyUse), (find, AppDelegate.findHotKeyUse)], menu: nil))
+        func registerFind(_ combo: HotKeyCombo?) -> String? {
+            AppDelegate.register(combo, on: find, beside: [(toggle, AppDelegate.toggleHotKeyUse), (capture, AppDelegate.captureHotKeyUse)], menu: nil)
+        }
+
+        XCTAssertEqual(registerFind(first), "⌃⌥⇧⌘F17 already shows and hides Docket. Choose another shortcut.")
+        XCTAssertEqual(registerFind(second), "⌃⌥⇧⌘F16 already opens quick capture. Choose another shortcut.")
+        XCTAssertNil(find.registeredCombo)
+        XCTAssertNil(registerFind(third))
+        XCTAssertEqual(find.registeredCombo, third)
+        XCTAssertEqual(
+            AppDelegate.register(third, on: capture, beside: [(toggle, AppDelegate.toggleHotKeyUse), (find, AppDelegate.findHotKeyUse)], menu: nil),
+            "⌃⌥⇧⌘F15 already opens quick find. Choose another shortcut."
+        )
+        for center in [toggle, capture, find] { center.unregister() }
+    }
+
+    func testQuickFindDefaultsAfterDocketsOwnSlash() {
+        XCTAssertEqual(DocketFindHotKeyPreference.default.displayString, "⌃⌥⌘/")
+        let defaults = UserDefaults(suiteName: "QuickFindDefaults-\(UUID().uuidString)")!
+        XCTAssertEqual(DocketFindHotKeyPreference.load(from: defaults), DocketFindHotKeyPreference.default)
+        DocketFindHotKeyPreference.save(nil, to: defaults)
+        XCTAssertNil(DocketFindHotKeyPreference.load(from: defaults))
+    }
+
     func testTheMenusCommandShortcutsAreRefused() throws {
         let menu = MainMenu.make(captureHotKey: try combo("shift+cmd+k"))
         XCTAssertEqual(ReservedHotKeys.problem(for: try combo("cmd+q"), menu: menu),
@@ -580,6 +615,7 @@ private final class FakeStatusDelegate: StatusItemDelegate {
     var agenda: DocketAgenda?
     var toggleHotKey: HotKeyCombo?
     var captureHotKey: HotKeyCombo?
+    var findHotKey: HotKeyCombo?
     var calls: [String] = []
     func toggleTerminal() { calls.append("toggle") }
     func showView(_ view: DocketView) { calls.append("view:\(view.rawValue)") }
@@ -587,6 +623,7 @@ private final class FakeStatusDelegate: StatusItemDelegate {
     func perform(_ action: DocketTaskAction, on task: DocketTaskID) { calls.append("\(action.rawValue):\(task.project)/\(task.task)") }
     func relaunchTerminal() { calls.append("relaunch") }
     func showQuickCapture(_ sender: Any?) { calls.append("capture") }
+    func showQuickFind(_ sender: Any?) { calls.append("find") }
     func showPreferences(_ sender: Any?) { calls.append("preferences") }
     func showAbout(_ sender: Any?) { calls.append("about") }
     func showGuide(_ sender: Any?) { calls.append("guide") }
@@ -602,7 +639,7 @@ final class StatusItemTests: XCTestCase {
         controller.refreshMenu()
         let titles = controller.menu.items.filter { !$0.isSeparatorItem && !$0.isHidden }.map(\.title)
         XCTAssertEqual(titles, [
-            "Show Docket", "Quick Capture…", "Relaunch Docket", "Settings…", "Launch at Login", "About Docket", "Docket Guide", "Quit Docket",
+            "Show Docket", "Quick Capture…", "Find Task…", "Relaunch Docket", "Settings…", "Launch at Login", "About Docket", "Docket Guide", "Quit Docket",
         ])
         XCTAssertEqual(controller.menu.items.last?.action, #selector(NSApplication.terminate(_:)))
         XCTAssertEqual(controller.menu.items.last?.keyEquivalent, "q")
@@ -619,11 +656,11 @@ final class StatusItemTests: XCTestCase {
         XCTAssertFalse(controller.menu.item(withTitle: "Relaunch Docket")?.isEnabled ?? true)
         XCTAssertEqual(controller.menu.item(withTitle: "Launch at Login")?.state, .on)
 
-        for title in ["Hide Docket", "Quick Capture…", "Relaunch Docket", "Settings…", "Launch at Login", "About Docket", "Docket Guide"] {
+        for title in ["Hide Docket", "Quick Capture…", "Find Task…", "Relaunch Docket", "Settings…", "Launch at Login", "About Docket", "Docket Guide"] {
             let item = try XCTUnwrap(controller.menu.item(withTitle: title))
             _ = (item.target as? NSObject)?.perform(item.action, with: item)
         }
-        XCTAssertEqual(delegate.calls, ["toggle", "capture", "relaunch", "preferences", "login", "about", "guide"])
+        XCTAssertEqual(delegate.calls, ["toggle", "capture", "find", "relaunch", "preferences", "login", "about", "guide"])
     }
 
     /// Each count still owed leads the menu as an enabled item showing Docket in
@@ -735,11 +772,15 @@ final class StatusItemTests: XCTestCase {
         controller.refreshMenu()
         let toggle = try XCTUnwrap(controller.menu.item(withTitle: "Show Docket"))
         let capture = try XCTUnwrap(controller.menu.item(withTitle: "Quick Capture…"))
-        XCTAssertEqual([toggle.keyEquivalent, capture.keyEquivalent], ["", ""])
+        let find = try XCTUnwrap(controller.menu.item(withTitle: "Find Task…"))
+        XCTAssertEqual([toggle.keyEquivalent, capture.keyEquivalent, find.keyEquivalent], ["", "", ""])
 
         delegate.toggleHotKey = DocketHotKeyPreference.default
         delegate.captureHotKey = HotKeyCombo(string: "opt+space")
+        delegate.findHotKey = DocketFindHotKeyPreference.default
         controller.refreshMenu()
+        XCTAssertEqual(find.keyEquivalent, "/")
+        XCTAssertEqual(find.keyEquivalentModifierMask, [.control, .option, .command])
         XCTAssertEqual(toggle.keyEquivalent, "t")
         XCTAssertEqual(toggle.keyEquivalentModifierMask, [.control, .option, .command])
         XCTAssertEqual(capture.keyEquivalent, " ")
@@ -779,19 +820,19 @@ final class StatusItemTests: XCTestCase {
     }
 
     /// The Dock menu carries the status menu's commands: the counts owed,
-    /// Show/Hide, Quick Capture…, and Relaunch Docket.
+    /// Show/Hide, Quick Capture…, Find Task…, and Relaunch Docket.
     func testTheDockMenuOffersThePulseAndTheShellActions() throws {
         let target = NSObject()
         func titles(_ menu: NSMenu) -> [String] { menu.items.map { $0.isSeparatorItem ? "-" : $0.title } }
 
         let empty = AppDelegate.dockMenu(pulse: nil, terminalFrontmost: false, canRelaunch: true, target: target)
-        XCTAssertEqual(titles(empty), ["Show Docket", "Quick Capture…", "Relaunch Docket"])
+        XCTAssertEqual(titles(empty), ["Show Docket", "Quick Capture…", "Find Task…", "Relaunch Docket"])
 
         let menu = AppDelegate.dockMenu(
             pulse: DocketPulse(inbox: 2, today: 0, overdue: 1, done: 5), terminalFrontmost: true, canRelaunch: false,
             target: target
         )
-        XCTAssertEqual(titles(menu), ["Inbox 2", "Overdue 1", "-", "Hide Docket", "Quick Capture…", "Relaunch Docket"])
+        XCTAssertEqual(titles(menu), ["Inbox 2", "Overdue 1", "-", "Hide Docket", "Quick Capture…", "Find Task…", "Relaunch Docket"])
         XCTAssertEqual(menu.items.prefix(2).compactMap { $0.representedObject as? String }, ["inbox", "due"])
         XCTAssertTrue(menu.items.allSatisfy { $0.isSeparatorItem || $0.target === target })
         XCTAssertFalse(menu.item(withTitle: "Relaunch Docket")?.isEnabled ?? true)

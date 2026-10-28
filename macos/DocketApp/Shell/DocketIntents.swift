@@ -15,6 +15,12 @@ protocol DocketShortcutHost: AnyObject {
     /// Does `action` to `task`, as the agenda menu's act does, and calls back
     /// with whether Docket did and what it said. It never starts Docket.
     func shortcutPerform(_ action: DocketShortcutTaskAction, on task: DocketTaskID, done: @escaping (Bool, String) -> Void)
+    /// Ranks every task against `text` as Docket's `/` does, at most `limit` of
+    /// them, or says why it could not. Like a count, it starts Docket in the
+    /// background only.
+    func shortcutSearch(_ text: String, limit: Int, done: @escaping (DocketSearchResults?, String?) -> Void)
+    /// Shows Docket with the cursor on `task`.
+    func shortcutShowTask(_ task: DocketTaskID)
 }
 
 /// What a shortcut may do to one task: the agenda menu's acts, with the
@@ -65,6 +71,16 @@ enum DocketShortcuts {
         }
         guard let agenda else { throw DocketShortcutError(reason ?? "Docket did not report its tasks.") }
         return agenda
+    }
+
+    @MainActor
+    static func search(_ text: String, limit: Int) async throws -> DocketSearchResults {
+        guard let host else { throw DocketShortcutError(unavailable) }
+        let (results, reason) = await withCheckedContinuation { continuation in
+            host.shortcutSearch(text, limit: limit) { continuation.resume(returning: ($0, $1)) }
+        }
+        guard let results else { throw DocketShortcutError(reason ?? "Docket did not answer the search.") }
+        return results
     }
 
     @MainActor
@@ -204,9 +220,10 @@ struct CountTasksIntent: AppIntent {
     }
 }
 
-/// One task on Docket's agenda, overdue or planned for today. Its identifier
-/// carries the stored project and task IDs, so a shortcut that saved one still
-/// names the same task once it has left the agenda.
+/// One Docket task: from the agenda, overdue or planned for today, or from a
+/// search over every task. Its identifier carries the stored project and task
+/// IDs, so a shortcut that saved one still names the same task once it has
+/// left the agenda.
 struct DocketTaskEntity: AppEntity {
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Docket Task"
     static let defaultQuery = DocketTaskQuery()
@@ -242,6 +259,17 @@ struct DocketTaskEntity: AppEntity {
         priority = item.priority
     }
 
+    init(_ item: DocketSearchItem, now: Date = Date()) {
+        id = Self.identifier(for: item.id)
+        let due = DocketAgendaItem.dueLabel(item.dueDate, hasTime: item.dueHasTime, now: now)
+        detail = [item.projectName.isEmpty ? nil : item.projectName, due].compactMap { $0 }.joined(separator: " · ")
+        title = item.title
+        project = item.projectName
+        isOverdue = item.overdue
+        self.due = item.dueDate
+        priority = item.priority
+    }
+
     var displayRepresentation: DisplayRepresentation {
         guard let detail, !detail.isEmpty else { return DisplayRepresentation(title: "\(title)") }
         return DisplayRepresentation(title: "\(title)", subtitle: "\(detail)")
@@ -266,9 +294,12 @@ struct DocketTaskEntity: AppEntity {
     var taskID: DocketTaskID? { Self.taskID(from: id) }
 }
 
-/// Resolves tasks from the live agenda; offering them is all Docket.app can do,
-/// since the agenda is the only list of tasks it hears.
-struct DocketTaskQuery: EntityQuery {
+/// Resolves tasks from the live agenda, which is also what a picker suggests,
+/// and finds any other task by asking Docket to search, so a shortcut can name
+/// work that is neither overdue nor planned for today.
+struct DocketTaskQuery: EntityStringQuery {
+    /// How many tasks one typed search offers.
+    static let searchLimit = 30
     @MainActor
     func entities(for identifiers: [String]) async throws -> [DocketTaskEntity] {
         let agenda = try await DocketShortcuts.agenda()
@@ -279,6 +310,13 @@ struct DocketTaskQuery: EntityQuery {
     @MainActor
     func suggestedEntities() async throws -> [DocketTaskEntity] {
         try await DocketShortcuts.agenda().items.map { DocketTaskEntity($0) }
+    }
+
+    @MainActor
+    func entities(matching string: String) async throws -> [DocketTaskEntity] {
+        guard !string.trimmingCharacters(in: .whitespaces).isEmpty else { return try await suggestedEntities() }
+        let now = Date()
+        return try await DocketShortcuts.search(string, limit: Self.searchLimit).items.map { DocketTaskEntity($0, now: now) }
     }
 }
 
@@ -318,6 +356,53 @@ struct GetAgendaIntent: AppIntent {
     func perform() async throws -> some IntentResult & ReturnsValue<[DocketTaskEntity]> {
         let now = Date()
         return .result(value: try await DocketShortcuts.agenda().items.filter(include.includes).map { DocketTaskEntity($0, now: now) })
+    }
+}
+
+struct FindTasksIntent: AppIntent {
+    static let title: LocalizedStringResource = "Find Docket Tasks"
+    static let description = IntentDescription(
+        "Searches every task as Docket's / search does, best match first, whatever Docket is showing: words match titles, descriptions, checklists, and comments, and #tag, %project, $doing, @today, or ?blocked narrow the answer. Finished and deferred work answers only a query that asks for it."
+    )
+    static let openAppWhenRun = false
+
+    @Parameter(title: "Search")
+    var query: String
+
+    @Parameter(title: "Limit", default: 20, inclusiveRange: (1, 200))
+    var limit: Int
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Find \(\.$query) in Docket") {
+            \.$limit
+        }
+    }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ReturnsValue<[DocketTaskEntity]> {
+        let now = Date()
+        return .result(value: try await DocketShortcuts.search(query, limit: limit).items.map { DocketTaskEntity($0, now: now) })
+    }
+}
+
+struct ShowTaskIntent: AppIntent {
+    static let title: LocalizedStringResource = "Show Docket Task"
+    static let description = IntentDescription("Brings Docket forward with the cursor on a task, as a notification does.")
+    static let openAppWhenRun = true
+
+    @Parameter(title: "Task")
+    var task: DocketTaskEntity
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Show \(\.$task) in Docket")
+    }
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        guard let host = DocketShortcuts.host else { throw DocketShortcutError(DocketShortcuts.unavailable) }
+        guard let id = task.taskID else { throw DocketShortcutError("That task is not one Docket.app can name.") }
+        host.shortcutShowTask(id)
+        return .result()
     }
 }
 
@@ -408,6 +493,12 @@ struct DocketAppShortcuts: AppShortcutsProvider {
             phrases: ["Get my \(.applicationName) agenda", "What is due in \(.applicationName)"],
             shortTitle: "Get Agenda",
             systemImageName: "list.bullet"
+        )
+        AppShortcut(
+            intent: FindTasksIntent(),
+            phrases: ["Find tasks in \(.applicationName)", "Search \(.applicationName)"],
+            shortTitle: "Find Tasks",
+            systemImageName: "magnifyingglass"
         )
     }
 }

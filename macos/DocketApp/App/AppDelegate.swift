@@ -16,10 +16,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     private(set) var statusItem: StatusItemController?
     private(set) var hotKeys: HotKeyCenter?
     private(set) var captureHotKeys: HotKeyCenter?
+    private(set) var findHotKeys: HotKeyCenter?
     let notifications = NotificationPresenter()
     /// The Docket that runs with no window after the window's exits cleanly.
     let background = DocketBackgroundSession()
     let quickCapture = QuickCapturePanel()
+    let quickFind = QuickFindPanel()
     /// The running Docket's control socket; nil when the Docket is too old to serve one.
     private(set) var control: DocketControlClient?
     /// Why quick capture cannot reach Docket, said in its panel; nil once a Docket with
@@ -285,7 +287,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     }
 
     /// The pulse counts still owed, each showing Docket in its mode, the agenda
-    /// tasks behind them, then Show/Hide, Quick Capture…, and Relaunch Docket.
+    /// tasks behind them, then Show/Hide, Quick Capture…, Find Task…, and
+    /// Relaunch Docket.
     static func dockMenu(pulse: DocketPulse?, agenda: DocketAgenda? = nil, terminalFrontmost: Bool, canRelaunch: Bool, target: AnyObject) -> NSMenu {
         let menu = NSMenu()
         menu.autoenablesItems = false
@@ -310,6 +313,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         toggle.target = target
         let capture = menu.addItem(withTitle: "Quick Capture…", action: #selector(AppDelegate.showQuickCapture(_:)), keyEquivalent: "")
         capture.target = target
+        let find = menu.addItem(withTitle: "Find Task…", action: #selector(AppDelegate.showQuickFind(_:)), keyEquivalent: "")
+        find.target = target
         let relaunch = menu.addItem(withTitle: "Relaunch Docket", action: #selector(AppDelegate.relaunchFromMenu(_:)), keyEquivalent: "")
         relaunch.target = target
         relaunch.isEnabled = canRelaunch
@@ -355,6 +360,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
 
     @objc func showQuickCapture(_ sender: Any?) {
         toggleQuickCapture()
+    }
+
+    @objc func showQuickFind(_ sender: Any?) {
+        quickFind.toggle()
     }
 
     /// Docket's title is its pulse: the status item's tooltip carries it whole, its
@@ -739,6 +748,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         control.send(.preview(text)) { reply in done(reply.ok ? reply.preview : nil) }
     }
 
+    /// Quick find's question: the running Docket's ranked answer, worded as rows.
+    private func findTasks(_ text: String, done: @escaping (QuickFindPanel.Answer) -> Void) {
+        shortcutSearch(text, limit: QuickFindPanel.limit) { results, reason in
+            guard let results else {
+                done(.refused(reason ?? Self.searchRefusal(nil)))
+                return
+            }
+            let now = Date()
+            done(.results(results.items.map { QuickFindPanel.Row($0, now: now) }, total: results.total, relaxed: results.relaxed))
+        }
+    }
+
+    /// What an empty find field lists: the agenda the status menu lists.
+    private func agendaFindRows() -> [QuickFindPanel.Row] {
+        let now = Date()
+        return (lastAgenda?.items ?? []).map { QuickFindPanel.Row($0, now: now) }
+    }
+
+    /// What a refused search says: Docket's own reason, or, from a Docket that
+    /// predates the request, how to get one that knows it.
+    static func searchRefusal(_ message: String?) -> String {
+        guard let message, !message.isEmpty else { return "Docket did not answer the search." }
+        if message.hasPrefix("unknown operation") {
+            return "This Docket cannot search. Update it (just install), then choose Relaunch Docket."
+        }
+        return message
+    }
+
     /// Always opens: when Docket cannot take a capture, the panel says why.
     private func toggleQuickCapture() {
         quickCapture.toggle()
@@ -948,6 +985,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
     }
 
+    /// Ranks every task against `text` as Docket's `/` does. Like a count, it
+    /// starts a Docket that has exited in the background, never in the window.
+    func shortcutSearch(_ text: String, limit: Int, done: @escaping (DocketSearchResults?, String?) -> Void) {
+        whenControlSettled { [weak self] control in
+            guard let self else { return }
+            guard let control, self.ensureDocket(showing: false) else {
+                done(nil, self.captureUnavailableReason ?? "Docket is not running. Open it, then try again.")
+                return
+            }
+            control.send(.search(text, limit: limit)) { reply in
+                guard reply.ok, let search = reply.search else {
+                    done(nil, Self.searchRefusal(reply.message))
+                    return
+                }
+                done(search, nil)
+            }
+        }
+    }
+
+    func shortcutShowTask(_ task: DocketTaskID) {
+        whenControlSettled { [weak self] _ in self?.showTask(task) }
+    }
+
     func shortcutShow(_ view: DocketView?) {
         guard let view else {
             guard let terminal else { showLaunchErrorAgain(); return }
@@ -1044,6 +1104,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             if recording {
                 self.hotKeys?.unregister()
                 self.captureHotKeys?.unregister()
+                self.findHotKeys?.unregister()
                 self.refreshMenuShortcuts()
             } else {
                 self.registerHotKeys()
@@ -1068,6 +1129,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         notifications.isTerminalFrontmost = { [weak self] in self?.isTerminalFrontmost ?? false }
         notifications.onActivate = { [weak self] in self?.terminal?.show() }
         quickCapture.unavailableReason = { [weak self] in self?.captureStoreError ?? self?.captureUnavailableReason }
+        quickFind.search = { [weak self] text, done in self?.findTasks(text, done: done) }
+        quickFind.agendaRows = { [weak self] in self?.agendaFindRows() ?? [] }
+        quickFind.reveal = { [weak self] task in self?.showTask(task) }
+        quickFind.act = { [weak self] action, task, done in self?.perform(action, on: task, reply: done) }
         model.onFollowAppearanceChange = { [weak self] _ in self?.sendTheme(clearWhenUnselected: true) }
         appearanceObserver = NSApp.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
             DispatchQueue.main.async { self?.sendTheme() }
@@ -1087,42 +1152,68 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         captureHotKeys.onPress = { [weak self] in self?.toggleQuickCapture() }
         self.captureHotKeys = captureHotKeys
         model.onCaptureHotKeyChange = { [weak self] in self?.registerCaptureHotKey($0) }
+
+        let findHotKeys = HotKeyCenter()
+        findHotKeys.onPress = { [weak self] in self?.quickFind.toggle() }
+        self.findHotKeys = findHotKeys
+        model.onFindHotKeyChange = { [weak self] in self?.registerFindHotKey($0) }
         registerHotKeys()
     }
 
     static let toggleHotKeyUse = "shows and hides Docket"
     static let captureHotKeyUse = "opens quick capture"
+    static let findHotKeyUse = "opens quick find"
 
-    /// Both shortcuts, the show/hide one first, so at launch it keeps a combo
-    /// the two share.
+    /// Every shortcut, the show/hide one first and quick find last, so at
+    /// launch an earlier one keeps a combo they share.
     private func registerHotKeys() {
         applyHotKey(preferencesModel.hotKey)
         applyCaptureHotKey(preferencesModel.captureHotKey)
+        applyFindHotKey(preferencesModel.findHotKey)
     }
 
-    /// A changed shortcut registers first and then the other one again, so a
+    /// A changed shortcut registers first and then the others again, so a
     /// warning the old combo caused clears.
     private func registerHotKey(_ combo: HotKeyCombo?) {
         applyHotKey(combo)
         applyCaptureHotKey(preferencesModel.captureHotKey)
+        applyFindHotKey(preferencesModel.findHotKey)
     }
 
     private func registerCaptureHotKey(_ combo: HotKeyCombo?) {
         applyCaptureHotKey(combo)
         applyHotKey(preferencesModel.hotKey)
+        applyFindHotKey(preferencesModel.findHotKey)
+    }
+
+    private func registerFindHotKey(_ combo: HotKeyCombo?) {
+        applyFindHotKey(combo)
+        applyHotKey(preferencesModel.hotKey)
+        applyCaptureHotKey(preferencesModel.captureHotKey)
     }
 
     private func applyHotKey(_ combo: HotKeyCombo?) {
         guard let hotKeys else { return }
         preferencesModel.hotKeyProblem = Self.register(
-            combo, on: hotKeys, beside: captureHotKeys, otherUse: Self.captureHotKeyUse, menu: NSApp.mainMenu
+            combo, on: hotKeys,
+            beside: [(captureHotKeys, Self.captureHotKeyUse), (findHotKeys, Self.findHotKeyUse)], menu: NSApp.mainMenu
         )
     }
 
     private func applyCaptureHotKey(_ combo: HotKeyCombo?) {
         guard let captureHotKeys else { return }
         preferencesModel.captureHotKeyProblem = Self.register(
-            combo, on: captureHotKeys, beside: hotKeys, otherUse: Self.toggleHotKeyUse, menu: NSApp.mainMenu
+            combo, on: captureHotKeys,
+            beside: [(hotKeys, Self.toggleHotKeyUse), (findHotKeys, Self.findHotKeyUse)], menu: NSApp.mainMenu
+        )
+        refreshMenuShortcuts()
+    }
+
+    private func applyFindHotKey(_ combo: HotKeyCombo?) {
+        guard let findHotKeys else { return }
+        preferencesModel.findHotKeyProblem = Self.register(
+            combo, on: findHotKeys,
+            beside: [(hotKeys, Self.toggleHotKeyUse), (captureHotKeys, Self.captureHotKeyUse)], menu: NSApp.mainMenu
         )
         refreshMenuShortcuts()
     }
@@ -1130,18 +1221,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     /// The status menu reads its shortcuts as it opens; the main menu is told.
     private func refreshMenuShortcuts() {
         MainMenu.showCaptureHotKey(captureHotKey, in: NSApp.mainMenu)
+        MainMenu.showFindHotKey(findHotKey, in: NSApp.mainMenu)
     }
 
-    /// Registers `combo` on `center` and returns what Settings should say
-    /// about it. A combo `other` holds live, which `otherUse` describes, or
-    /// one Docket's `menu` or every app needs, is refused and left unregistered.
+    /// `register(_:on:beside:menu:)` beside one other shortcut.
     static func register(
         _ combo: HotKeyCombo?, on center: HotKeyCenter,
         beside other: HotKeyCenter?, otherUse: String, menu: NSMenu?
     ) -> String? {
+        register(combo, on: center, beside: [(other, otherUse)], menu: menu)
+    }
+
+    /// Registers `combo` on `center` and returns what Settings should say
+    /// about it. A combo another of Docket's shortcuts holds live, whose use
+    /// names it, or one Docket's `menu` or every app needs, is refused and left
+    /// unregistered.
+    static func register(
+        _ combo: HotKeyCombo?, on center: HotKeyCenter,
+        beside others: [(center: HotKeyCenter?, use: String)], menu: NSMenu?
+    ) -> String? {
         var problem: String?
-        if let combo, combo == other?.registeredCombo {
-            problem = "\(combo.displayString) already \(otherUse). Choose another shortcut."
+        if let combo, let holder = others.first(where: { $0.center?.registeredCombo == combo }) {
+            problem = "\(combo.displayString) already \(holder.use). Choose another shortcut."
         } else if let combo, let reserved = ReservedHotKeys.problem(for: combo, menu: menu) {
             problem = reserved
         }
@@ -1241,6 +1342,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     var toggleHotKey: HotKeyCombo? { hotKeys?.registeredCombo }
 
     var captureHotKey: HotKeyCombo? { captureHotKeys?.registeredCombo }
+
+    var findHotKey: HotKeyCombo? { findHotKeys?.registeredCombo }
 
     /// The global shortcut and a left click on the status item: show and
     /// focus Docket, or hide it when it is already in front.

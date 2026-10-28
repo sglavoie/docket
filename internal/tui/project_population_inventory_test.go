@@ -43,7 +43,7 @@ var projectPopulationInventory = map[string]string{
 	"internal/tui/core_input_handlers.go:availableProjects":                        "quick capture destinations",
 	"internal/tui/outliner/cross_project_projection.go:AvailableProjects":          "scope chrome counts the parked projects the task projection is hiding",
 	"internal/tui/outliner/cross_project_scope.go:AvailableProjects":               "unscoped selection and explicit project filters may admit parked projects",
-	"internal/tui/outliner/cross_project_scope.go:TaskWorkspaceProjects":           "scoped Outliner selection and workspace pulse counting are both task projections",
+	"internal/tui/outliner/cross_project_scope.go:TaskWorkspaceProjects":           "scoped Outliner selection, workspace pulse counting, and a host's workspace search are all task projections",
 	"internal/engine/repository.go:AvailableProjects":                              "mutation snapshots must resolve every non-archived project",
 	"internal/bridge/ops.go:TaskWorkspaceProjects":                                 "query.projects reports the base task workspace as its active population",
 	"internal/bridge/ops.go:AvailableProjects":                                     "query.projects reports the parked projects the task workspace excludes, apart from it",

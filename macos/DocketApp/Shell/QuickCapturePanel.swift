@@ -799,7 +799,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     }
 }
 
-private final class EmphasizedRowView: NSTableRowView {
+final class EmphasizedRowView: NSTableRowView {
     override var isEmphasized: Bool {
         get { true }
         set {}

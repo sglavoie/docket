@@ -92,7 +92,15 @@ struct DocketAgendaItem: Codable, Equatable {
     /// timed deadline, else Yesterday, Today, Tomorrow, a weekday within the
     /// week, or a date, with the time when there is one. Nil without a deadline.
     func dueLabel(now: Date = Date(), calendar: Calendar = .current, locale: Locale = .current) -> String? {
-        guard let date = dueDate else { return nil }
+        Self.dueLabel(dueDate, hasTime: dueHasTime, now: now, calendar: calendar, locale: locale)
+    }
+
+    /// `dueLabel(now:)` for any deadline Docket names, so a search result words
+    /// one as the agenda does.
+    static func dueLabel(
+        _ date: Date?, hasTime dueHasTime: Bool, now: Date = Date(), calendar: Calendar = .current, locale: Locale = .current
+    ) -> String? {
+        guard let date else { return nil }
         let time = Date.FormatStyle(date: .omitted, time: .shortened, locale: locale, calendar: calendar, timeZone: calendar.timeZone)
         let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: date)).day ?? 0
         if days == 0, dueHasTime {

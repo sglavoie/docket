@@ -76,6 +76,19 @@ const (
 	OpUndo = "undo"
 	// OpEdit acts on the focused draft or the existing workspace undo/search operation.
 	OpEdit = "edit"
+	// OpSearch ranks the base task workspace against Text, read as the
+	// Outliner's slash search reads it: the same sigil gate, field tiers, and
+	// scorer, but none of the view's scope, Focus, facets, or lens. It reads
+	// and never writes, so Docket answers it even while the user is
+	// mid-interaction. Limit bounds the items, SearchDefaultLimit when absent,
+	// and never above SearchMaxLimit.
+	OpSearch = "search"
+)
+
+// The bounds on how many items an OpSearch reply carries.
+const (
+	SearchDefaultLimit = 30
+	SearchMaxLimit     = 200
 )
 
 // The events Docket reports.
@@ -120,6 +133,7 @@ type Request struct {
 	Task      string `json:"task,omitempty"`
 	Text      string `json:"text,omitempty"`
 	Minutes   int    `json:"minutes,omitempty"`
+	Limit     int    `json:"limit,omitempty"`
 }
 
 // Reply answers the Request whose ID it carries. Message is what Docket said: the
@@ -127,7 +141,7 @@ type Request struct {
 // alone, and is absent when the caret stands on no sigil the grammar completes.
 // Preview answers OpPreview with the full draft's human-readable route and date.
 // Transaction answers a successful OpCapture with the committed transaction's
-// ID, the one OpUndo names.
+// ID, the one OpUndo names. Search answers OpSearch alone.
 type Reply struct {
 	Version     string         `json:"version,omitempty"`
 	Workspace   string         `json:"workspace,omitempty"`
@@ -138,6 +152,39 @@ type Reply struct {
 	Preview     string         `json:"preview,omitempty"`
 	Transaction string         `json:"transaction,omitempty"`
 	Selection   *TextSelection `json:"selection,omitempty"`
+	Search      *SearchResults `json:"search,omitempty"`
+}
+
+// SearchResults is a ranked answer to OpSearch, best first. Items holds at
+// most the limit asked for; Total is how many tasks matched. Relaxed says the
+// query matched only once its case was ignored, as the ranked list says.
+type SearchResults struct {
+	Items   []SearchItem `json:"items"`
+	Total   int          `json:"total"`
+	Relaxed bool         `json:"relaxed,omitempty"`
+}
+
+// SearchItem is one task a search found. Project and Task are its stored IDs,
+// as an AgendaItem's are, and Ref is the project-local reference a person
+// types, such as "work-12". State is its lifecycle state; Parents is its
+// ancestor chain, outermost first, joined as the Outliner's breadcrumb joins
+// it, and absent at the root. Match names the field that ranked it, absent for
+// a title hit. Due, DueHasTime, Priority, and Reviewable read as an
+// AgendaItem's do; Overdue says its deadline has passed.
+type SearchItem struct {
+	Project     string `json:"project"`
+	Task        string `json:"task"`
+	Ref         string `json:"ref"`
+	Title       string `json:"title"`
+	ProjectName string `json:"project_name"`
+	State       string `json:"state"`
+	Parents     string `json:"parents,omitempty"`
+	Match       string `json:"match,omitempty"`
+	Priority    int    `json:"priority,omitempty"`
+	Due         string `json:"due,omitempty"`
+	DueHasTime  bool   `json:"due_has_time,omitempty"`
+	Overdue     bool   `json:"overdue,omitempty"`
+	Reviewable  bool   `json:"reviewable,omitempty"`
 }
 
 // Completion is what the composer would offer for the token ending at the

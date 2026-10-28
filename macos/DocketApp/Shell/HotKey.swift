@@ -180,6 +180,22 @@ enum DocketCaptureHotKeyPreference {
     }
 }
 
+/// Quick find's shortcut, after Docket's own `/`.
+enum DocketFindHotKeyPreference {
+    static let defaultsKey = "docketFindHotKey"
+    static let `default` = HotKeyCombo(string: "ctrl+opt+cmd+slash")!
+
+    static func load(from defaults: UserDefaults = .standard) -> HotKeyCombo? {
+        guard let stored = defaults.string(forKey: defaultsKey) else { return Self.default }
+        if stored.isEmpty { return nil }
+        return HotKeyCombo(string: stored) ?? Self.default
+    }
+
+    static func save(_ combo: HotKeyCombo?, to defaults: UserDefaults = .standard) {
+        defaults.set(combo?.string ?? "", forKey: defaultsKey)
+    }
+}
+
 enum DocketHotKeyPreference {
     static let defaultsKey = "docketHotKey"
     static let `default` = HotKeyCombo(string: "ctrl+opt+cmd+t")!

@@ -2,9 +2,11 @@ package outliner
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/fuzzy"
 	"github.com/sglavoie/docket/internal/logging"
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/coordinator"
@@ -197,4 +199,70 @@ func appendFocusedProject(runtime *config.RuntimeState, selected []*models.Proje
 		return selected
 	}
 	return append(selected, focused)
+}
+
+// WorkspaceSearchMatch is one task a workspace search found, in rank order.
+// Match names the field that ranked it, spelled as the row's cue spells it,
+// and is empty for a title hit, whose highlighted title is the explanation.
+type WorkspaceSearchMatch struct {
+	Task       *models.Task
+	Project    *models.Project
+	Breadcrumb string
+	Match      string
+}
+
+// WorkspaceSearch is a ranked answer to one query over the whole base task
+// workspace. Matches holds at most the limit asked for; Total is how many
+// there are. Guidance is the gate's refusal when a recognized value cannot be
+// honored, and then nothing matches.
+type WorkspaceSearch struct {
+	Matches  []WorkspaceSearchMatch
+	Total    int
+	Relaxed  bool
+	Guidance string
+}
+
+// SearchWorkspace answers a slash-search query for a host outside the
+// Outliner's own projection. It reads the same gate, tiers, and scorer the
+// ranked list reads, including the case-relaxed retry, but none of the view's
+// state: not its scope, Focus, facets, sort, or lens, so the answer is the same
+// whatever the user happens to be looking at. The population is the base task
+// workspace the pulse reads, so parked and archived work stays out, and hidden
+// work answers only a positive clause, as it does in the Outliner. The model
+// contributes Today and Next membership alone, which `$today` and `$next` read.
+func (m *OutlinerModel) SearchWorkspace(text string, limit int, loader *workspace.Loader) WorkspaceSearch {
+	if m == nil || m.Runtime == nil || strings.TrimSpace(text) == "" {
+		return WorkspaceSearch{}
+	}
+	projects, failed := LoadCrossScopeSelection(m.Runtime.TaskWorkspaceProjects(), loader)
+	for _, failure := range failed {
+		logging.Warn("workspace search: %s", failure.Detail)
+	}
+	projects = m.ProjectsInCatalogOrder(projects)
+
+	remainder, predicates := query.CompileSearchQuery(text, projects, outlinerPlanningMembership{outliner: m}, models.Query{})
+	if predicates.Invalid() {
+		return WorkspaceSearch{Guidance: predicates.GuidanceText()}
+	}
+	matcher := fuzzy.SmartCase(remainder)
+	matches := searchProjectionMatchesWithin(projects, remainder, nil, matcher, predicates)
+	result := WorkspaceSearch{}
+	if len(matches) == 0 && matcher.CaseSensitive() {
+		matches = searchProjectionMatchesWithin(projects, remainder, nil, fuzzy.NewMatcher(false), predicates)
+		result.Relaxed = len(matches) > 0
+	}
+	result.Total = len(matches)
+	if limit > 0 && len(matches) > limit {
+		matches = matches[:limit]
+	}
+	result.Matches = make([]WorkspaceSearchMatch, 0, len(matches))
+	for _, match := range matches {
+		result.Matches = append(result.Matches, WorkspaceSearchMatch{
+			Task:       match.task,
+			Project:    match.project,
+			Breadcrumb: taskAncestorBreadcrumb(match.task),
+			Match:      matchSourceLabels[match.source],
+		})
+	}
+	return result
 }

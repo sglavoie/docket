@@ -143,10 +143,10 @@ already in front; with no terminal (a launch error) it fronts the error window.
 Change or clear it in Settings › Shortcuts (`Cmd+,`): click the recorder and
 press the combination. A combination needs Ctrl, Opt, or Cmd unless the key is
 a function key, and Settings warns when another app or macOS itself already
-owns it. Settings refuses, and leaves unregistered, a combination the other Docket
+owns it. Settings refuses, and leaves unregistered, a combination another Docket
 shortcut already holds, a Command-only one a Docket menu item uses, and the
 standard `Cmd+Q`, `Cmd+W`, `Cmd+C`, `Cmd+V`, `Cmd+X`, `Cmd+Z`, `Cmd+A`,
-`Cmd+Tab`, `Cmd+Space`, and `Cmd+,`; changing either shortcut checks the other
+`Cmd+Tab`, `Cmd+Space`, and `Cmd+,`; changing one shortcut checks the others
 again, so a warning the old combination caused clears. Restore Default appears
 beside a shortcut that is not its default, or is off.
 
@@ -164,12 +164,12 @@ or Raycast rule that focused Ghostty for Docket can go.
 ### Menu-bar icon and window
 
 Clicking the menu-bar icon shows or hides Docket; right-click or Control-click
-opens its menu: Show/Hide, Quick Capture…, Relaunch Docket, Settings… (`Cmd+,`),
-Launch at Login, About Docket, Docket Guide, Quit (`Cmd+Q`). Show/Hide and Quick
-Capture… show their global shortcuts while those are registered, as Quick
-Capture… does in the app menu; a shortcut that is off, or that another app
-holds, is not shown. The Dock icon's menu has the same pulse and agenda items, then
-Show/Hide, Quick Capture…, and Relaunch Docket.
+opens its menu: Show/Hide, Quick Capture…, Find Task…, Relaunch Docket, Settings… (`Cmd+,`),
+Launch at Login, About Docket, Docket Guide, Quit (`Cmd+Q`). Show/Hide, Quick
+Capture…, and Find Task… show their global shortcuts while those are registered,
+as Quick Capture… and Find Task… do in the app menu; a shortcut that is off, or
+that another app holds, is not shown. The Dock icon's menu has the same pulse and agenda items, then
+Show/Hide, Quick Capture…, Find Task…, and Relaunch Docket.
 Once Docket has reported its pulse, the menu leads with one item per count still
 owed — `Inbox 2`, `Today 3`, `Overdue 1` — leaving out any count at zero and
 all of them when all three are. Choosing one shows Docket in that mode, as its mode
@@ -343,6 +343,42 @@ defaults write io.github.sglavoie.docket docketCaptureHotKey 'ctrl+opt+n'
 defaults write io.github.sglavoie.docket docketCaptureHotKey ''    # off
 ```
 
+### Quick find
+
+`Ctrl+Opt+Cmd+/` by default (after Docket's own `/`) opens a find field over
+whatever app is in front, without bringing Docket forward. Type a query in
+Docket's `/` grammar — words match titles, then descriptions, checklists,
+comments, tags, and the rest in the ranked list's order, and `#tag`, `%project`,
+`$doing`, `@today`, `!1`, or `?blocked` narrow the answer — and the running Docket
+ranks every task in the workspace against it, best match first, whatever view
+it is showing: its scope, filters, Focus, and lens do not narrow the answer, and
+nothing in Docket moves. As in Docket, finished and deferred work answers only
+a query that asks for it (`?completed`, `$done`, `@@`), parked and archived
+projects stay out, and hidden work answers only `+hidden:only`. Each row names
+the task, then its reference (`work#12`), project, ancestors, deadline, its
+state unless Backlog, and the field that matched when it was not the title. A
+query Docket cannot honor, such as `$ready`, says why in red and keeps the list.
+With the field empty, the list is the Overdue and Today agenda the status menu
+shows.
+
+↑/↓ choose a task. Enter, or a double-click, shows it in Docket with the cursor
+on it, as a notification does. `Cmd+D` marks it Done, `Cmd+L` defers it an
+hour, and `Cmd+R` acknowledges it, as the agenda's submenu does, without
+bringing Docket forward; the line under the list says what Docket answered, and
+the list is asked for again, so a task that left the answer leaves it. Esc, or
+clicking elsewhere, puts the panel away; the query stays, selected, so the next
+open can repeat it or be typed over. A Docket that had exited starts again in
+the background to answer, never in the window, and one too old to search says
+how to update it.
+
+The shortcut is set in Settings beside the other two, and stored as
+`docketFindHotKey`, spelled like `docketHotKey`:
+
+```bash
+defaults write io.github.sglavoie.docket docketFindHotKey 'ctrl+opt+f'
+defaults write io.github.sglavoie.docket docketFindHotKey ''    # off
+```
+
 ### Links, Services, and Shortcuts
 
 Other apps reach Docket.app three ways, all answered by the running app and none
@@ -392,14 +428,20 @@ Shortcuts ("Capture a task in Docket"):
 - **Get Docket Agenda** returns the tasks the status menu lists — Overdue,
   Today, or both, at most 20 — as Docket Task values carrying the title,
   project, deadline, priority, and whether it is overdue.
+- **Find Docket Tasks** returns the tasks a query finds, as quick find lists
+  them — best match first, 20 unless set, at most 200 — as the same Docket Task
+  values. It is also an App Shortcut ("Find tasks in Docket").
+- **Show Docket Task** brings Docket forward with the cursor on one Docket Task.
 - **Mark Docket Task Done**, **Defer Docket Task** (by a number of minutes,
   60 unless set), and **Acknowledge Docket Task** act on one Docket Task as `wd`,
   a deferral, and `R` would, each its own undo entry, and return what Docket
-  said; a refusal is the action's error. A task can be picked from the agenda
-  or passed from Get Docket Agenda, and a saved shortcut keeps naming it by its
-  stored IDs after it leaves the agenda.
+  said; a refusal is the action's error. A task can be picked from the agenda,
+  found by typing in the picker, which searches every task as quick find does,
+  or passed from Get Docket Agenda or Find Docket Tasks, and a saved shortcut
+  keeps naming it by its stored IDs after it leaves the agenda.
 
-The task actions, like Count Docket Tasks and Get Docket Agenda, start a Docket
+The task actions, like Count Docket Tasks, Get Docket Agenda, and Find Docket
+Tasks, start a Docket
 that had exited in the background, never in the window, and fail only when
 none can run that way: with the background turned off in Settings, or a Docket
 too old for it.

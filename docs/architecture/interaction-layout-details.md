@@ -204,15 +204,19 @@ counts, overdue first — whenever that changes, the schedule — the arrivals s
 to come within the next eight days, each with the instant it will happen, so a
 host can book them with the system ahead of time — whenever that changes, and
 each tick's arrivals, with the identity of every task it names, and it takes
-seven requests: show a task, acknowledge one as `R` does, mark
+eight requests: show a task, acknowledge one as `R` does, mark
 one Done as `wd` does, defer one by some minutes, capture a line as the `a`
 composer would read it, refusals included, ask what that composer would suggest for a draft up to its caret,
-and preview the project, plan, status, and deadline of a full capture draft.
+preview the project, plan, status, and deadline of a full capture draft, and
+search every task as `/` reads a query — the same sigils, field tiers, and
+case-relaxed retry — over the whole base workspace rather than the view you are
+reading, best match first, naming each task's reference, project, state, and the
+field that matched.
 Each is answered as though you had pressed the key in Docket: through the same
 commit and the same undo entry, so `u` takes it back. A request that changes
 something is refused, never queued, while you are inside a picker, an editor, a
-selection, or another view — completions and previews change nothing, so they
-are answered even then — and a session that lost focus first adopts any change made on disk since,
+selection, or another view — completions, previews, and searches change
+nothing, so they are answered even then — and a session that lost focus first adopts any change made on disk since,
 so what it commits is never against a stale read. Docket.app starts Docket this way, and
 falls back to `--notify` for a Docket too old to have the flag. `--headless`
 runs that same session with no input, no renderer, and a fixed 120×40 size,

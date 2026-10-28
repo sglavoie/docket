@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/sglavoie/docket/internal/storage"
 	"github.com/sglavoie/docket/internal/tui/listsurface"
 	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/outliner"
 	"github.com/sglavoie/docket/internal/tui/status"
 	"github.com/sglavoie/docket/internal/tui/taskref"
 	"github.com/sglavoie/docket/internal/util"
@@ -135,4 +137,57 @@ func (m *AppModel) controlDone(task *models.Task, project *models.Project, reply
 	cmd := withOutlinerRelocationCapture(m.secondaryFeatures.TaskItem.ExecuteOperation(request, "Change Status",
 		fmt.Sprintf("Change Status · Changed %s to %s", util.Count(1, "task"), models.StateDone)), capture)
 	return replyWhenCommitted(cmd, reply, "Done: "+task.Title)
+}
+
+// controlSearch answers OpSearch from the workspace the session already
+// holds. It reads the Outliner's planning membership and nothing it shows, so
+// it never moves the cursor, the scope, or the query the user is reading, and
+// an open picker or editor has nothing to lose: it answers ahead of the busy
+// guard, as a completion does.
+func (m *AppModel) controlSearch(text string, limit int, reply chan<- control.Reply) {
+	if m.crossOutliner == nil {
+		answer(reply, false, "the Outliner is not open")
+		return
+	}
+	switch {
+	case limit <= 0:
+		limit = control.SearchDefaultLimit
+	case limit > control.SearchMaxLimit:
+		limit = control.SearchMaxLimit
+	}
+	found := m.crossOutliner.SearchWorkspace(text, limit, m.ensurePulseLoader())
+	if found.Guidance != "" {
+		answer(reply, false, found.Guidance)
+		return
+	}
+	now := time.Now()
+	results := &control.SearchResults{Items: make([]control.SearchItem, 0, len(found.Matches)), Total: found.Total, Relaxed: found.Relaxed}
+	for _, match := range found.Matches {
+		results.Items = append(results.Items, controlSearchItem(match, now))
+	}
+	reply <- control.Reply{OK: true, Search: results}
+}
+
+func controlSearchItem(match outliner.WorkspaceSearchMatch, now time.Time) control.SearchItem {
+	task, project := match.Task, match.Project
+	item := control.SearchItem{
+		Project:     project.ID,
+		Task:        task.ID,
+		Ref:         project.Slug + "#" + strconv.Itoa(task.ShortID),
+		Title:       task.Title,
+		ProjectName: project.Name,
+		State:       string(task.State()),
+		Parents:     match.Breadcrumb,
+		Match:       match.Match,
+		DueHasTime:  task.DueHasTime(),
+		Overdue:     task.IsOverdueAt(now),
+		Reviewable:  models.TaskAllowsExplicitReview(task, now),
+	}
+	if task.Priority >= models.PriorityHigh && task.Priority <= models.PriorityLow {
+		item.Priority = task.Priority
+	}
+	if task.DueDate != nil {
+		item.Due = task.DueDate.Format(time.RFC3339)
+	}
+	return item
 }

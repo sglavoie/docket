@@ -15,6 +15,7 @@ enum MainMenu {
     static let showGuide = #selector(AppDelegate.showGuide(_:))
     static let relaunch = #selector(AppDelegate.relaunchFromMenu(_:))
     static let quickCapture = #selector(AppDelegate.showQuickCapture(_:))
+    static let quickFind = #selector(AppDelegate.showQuickFind(_:))
     static let reportIssue = #selector(AppDelegate.reportIssue(_:))
     static let undo = Selector(("undo:"))
     static let redo = Selector(("redo:"))
@@ -30,8 +31,9 @@ enum MainMenu {
     static let guideURL = repositoryURL.appendingPathComponent("blob/main/docs/guide/README.md")
     static let issuesURL = repositoryURL.appendingPathComponent("issues")
 
-    /// `captureHotKey` is the live quick-capture shortcut, shown on its item.
-    static func make(captureHotKey: HotKeyCombo? = nil) -> NSMenu {
+    /// `captureHotKey` and `findHotKey` are the live quick-capture and
+    /// quick-find shortcuts, each shown on its item.
+    static func make(captureHotKey: HotKeyCombo? = nil, findHotKey: HotKeyCombo? = nil) -> NSMenu {
         let main = NSMenu()
 
         let appItem = NSMenuItem()
@@ -42,6 +44,8 @@ enum MainMenu {
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Quick Capture…", action: quickCapture, keyEquivalent: "")
             .setShortcut(captureHotKey)
+        appMenu.addItem(withTitle: "Find Task…", action: quickFind, keyEquivalent: "")
+            .setShortcut(findHotKey)
         appMenu.addItem(withTitle: "Relaunch Docket", action: relaunch, keyEquivalent: "")
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Hide Docket", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
@@ -117,6 +121,12 @@ enum MainMenu {
     static func showCaptureHotKey(_ combo: HotKeyCombo?, in menu: NSMenu?) {
         guard let appMenu = menu?.items.first?.submenu else { return }
         appMenu.items.first { $0.action == quickCapture }?.setShortcut(combo)
+    }
+
+    /// Brings Find Task's shortcut in `menu` in line with the live one.
+    static func showFindHotKey(_ combo: HotKeyCombo?, in menu: NSMenu?) {
+        guard let appMenu = menu?.items.first?.submenu else { return }
+        appMenu.items.first { $0.action == quickFind }?.setShortcut(combo)
     }
 
     /// Whether `item` is one of the edits the terminal keeps for itself.
