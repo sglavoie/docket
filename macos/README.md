@@ -403,13 +403,19 @@ page opening one can never commit, complete, or delete work unseen:
 | Link | Does |
 | --- | --- |
 | `docket://` or `docket://show` | Shows Docket. |
-| `docket://capture?text=…` | Opens quick capture holding the text; without `text`, opens it as it was. |
+| `docket://capture?text=…&attach=…` | Opens quick capture holding the text, each `attach` after it as an `&` attachment; without either, opens it as it was. |
 | `docket://find?text=…` | Opens quick find holding the query; without `text`, opens it as it was. |
 | `docket://view/inbox`, `/today`, `/due` (or `/overdue`) | Shows Docket in that mode, as a status-menu count does. |
 | `docket://view/done` | Shows All with the filters `$canceled $done ?completed`, replacing any others. |
 | `docket://task/PROJECT-ID/TASK-ID` | Shows that task, by the stored IDs in `tasks.md`. |
 
-Encode spaces as `%20`: a `+` stays a `+`, as the grammar reads it. A link that
+Encode spaces as `%20`: a `+` stays a `+`, as the grammar reads it. `attach`
+repeats, up to 10, and takes an http(s) address, a Mail `message://` link, or an
+absolute file path, which the app quotes the way the grammar reads it, so
+`docket://capture?text=Spec&attach=/tmp/a%20b.pdf` opens on
+`Spec &"/tmp/a b.pdf"` with `Spec` selected, for typing over. Without `text` the caret goes to
+the start, where the title goes. A folder, a relative path, another scheme, or
+an attachment past the tenth is left out, and the panel says which. A link that
 shows Docket brings the app forward the way a Dock click does, so one clicked on
 a widget over the revealed desktop puts the windows back rather than changing
 Docket behind them. A link that
@@ -420,8 +426,13 @@ mode change while something is open, say) is said in Docket's window.
 opens quick capture holding the selected text, collapsed to one line, for you to
 read the preview and press Enter. A selection that is only a web address becomes
 ` &https://…` with the caret before it, so the title is what you type first and
-the address is attached. `docket://capture` does the same with its text. Neither
-replaces an unsaved draft: the panel opens on the draft you had and says so.
+the address is attached. `docket://capture` does the same with its text.
+Neither replaces an unsaved draft. Text alone opens the panel on the draft you
+had and says so. Anything carrying an attachment — an `attach` link, or a
+selection that is a web address — keeps the draft's text and adds its `&` tokens
+at the end, saying `Added to your unsent draft`; its own text is used only when
+the draft is empty. That holds for a draft whose capture outlasted the five-second wait too:
+adding to it changes it, so the next Enter sends it as a new capture.
 macOS lists the service once Docket.app has run from `/Applications`; System
 Settings › Keyboard › Keyboard Shortcuts › Services turns it off or gives it a key.
 

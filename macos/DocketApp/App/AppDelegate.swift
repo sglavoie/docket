@@ -854,9 +854,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         case .show:
             guard let terminal else { showLaunchErrorAgain(); return }
             terminal.show()
-        case .capture(let text):
+        case .capture(let text, let attach):
             captureLinkOpenedAt = Date()
-            presentCapture(text.map { DocketCaptureDraft(text: DocketCaptureDraft.normalized($0)) })
+            presentCapture(text == nil && attach.isEmpty ? nil : DocketCaptureDraft.build(text: text, attachments: attach))
         case .find(let text):
             captureLinkOpenedAt = Date()
             presentFind(text.map(DocketCaptureDraft.normalized))
@@ -917,11 +917,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     }
 
     private func showCapture(_ draft: DocketCaptureDraft?) {
-        guard let draft, !draft.text.trimmingCharacters(in: .whitespaces).isEmpty else {
+        guard let draft else {
             quickCapture.show()
             return
         }
-        quickCapture.present(draft: draft.text, caret: draft.caret)
+        quickCapture.present(draft)
     }
 
     /// Runs `body` once this session has said whether it serves a control socket:

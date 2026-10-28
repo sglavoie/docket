@@ -44,9 +44,19 @@ final class DocketLinkTests: XCTestCase {
         }
     }
 
+    func testCaptureCarriesRepeatableAttachments() {
+        XCTAssertEqual(link("docket://capture?text=Spec&attach=/tmp/a%20b.pdf"), .capture("Spec", attach: ["/tmp/a b.pdf"]))
+        XCTAssertEqual(link("docket://capture?attach=https://example.com/a%3Fb%3D1&attach=&attach=/tmp/c"),
+                       .capture(nil, attach: ["https://example.com/a?b=1", "/tmp/c"]), "an empty attach is no value")
+        XCTAssertEqual(link("docket://capture?attach=message://%253Cabc@example.com%253E"),
+                       .capture(nil, attach: ["message://%3Cabc@example.com%3E"]))
+    }
+
     func testEveryRouteRoundTrips() {
         let links: [DocketLink] = [
-            .show, .capture(nil), .capture("Buy milk #home & eggs?"), .view(.inbox), .view(.today), .view(.due),
+            .show, .capture(nil), .capture("Buy milk #home & eggs?"),
+            .capture("Spec + notes", attach: ["/tmp/a b.pdf", "https://example.com/?q=1&r=2", "message://%3Cid@x%3E"]),
+            .capture(nil, attach: ["/tmp/a"]), .view(.inbox), .view(.today), .view(.due),
             .view(.done), .task(project: "proj id", task: "a/b"),
         ]
         for value in links {
@@ -70,13 +80,72 @@ final class CaptureDraftTests: XCTestCase {
 
     func testAWebAddressAloneBecomesALinkTheTitleGoesBefore() {
         let draft = DocketCaptureDraft.from(text: " https://example.com/a?b=1 ", url: nil)
-        XCTAssertEqual(draft, DocketCaptureDraft(text: " &https://example.com/a?b=1", caret: 0))
+        XCTAssertEqual(draft, DocketCaptureDraft(text: " &https://example.com/a?b=1", caret: 0,
+                                                 attachmentTokens: " &https://example.com/a?b=1"))
         XCTAssertEqual(DocketCaptureDraft.from(text: nil, url: URL(string: "http://example.com")),
-                       DocketCaptureDraft(text: " &http://example.com", caret: 0))
+                       DocketCaptureDraft(text: " &http://example.com", caret: 0, attachmentTokens: " &http://example.com"))
         XCTAssertEqual(DocketCaptureDraft.from(text: "Read https://example.com later", url: nil),
                        DocketCaptureDraft(text: "Read https://example.com later"), "a link inside prose stays prose")
         XCTAssertEqual(DocketCaptureDraft.from(text: "mailto:sam@example.com", url: nil),
                        DocketCaptureDraft(text: "mailto:sam@example.com"))
+    }
+
+    private func build(_ text: String?, _ attachments: [String], folders: Set<String> = []) -> DocketCaptureDraft {
+        DocketCaptureDraft.build(text: text, attachments: attachments, isDirectory: { folders.contains($0) })
+    }
+
+    func testAURLAloneLeavesTheCaretForTheTitle() {
+        XCTAssertEqual(build(nil, ["https://example.com/spec"]),
+                       DocketCaptureDraft(text: " &https://example.com/spec", caret: 0,
+                                          attachmentTokens: " &https://example.com/spec"))
+    }
+
+    func testATitleIsKeptFirstAndSelected() {
+        let draft = build("  Spec\nreview ", ["https://example.com/spec"])
+        XCTAssertEqual(draft.text, "Spec review &https://example.com/spec")
+        XCTAssertEqual(draft.caret, 0)
+        XCTAssertEqual(draft.selectionLength, ("Spec review" as NSString).length)
+        XCTAssertEqual(draft.attachmentTokens, " &https://example.com/spec")
+        XCTAssertEqual(draft.dropped, [])
+    }
+
+    /// Docket reads `&` values through `util.NormalizePastedPathInput`, which
+    /// takes a double-quoted value with `\"` and `\\` escaped.
+    func testFilesAreQuotedTheWayTheGrammarReadsThem() {
+        let draft = build(nil, ["/tmp/a.pdf", "/tmp/Q3 plan.pdf"])
+        XCTAssertEqual(draft.text, #" &/tmp/a.pdf &"/tmp/Q3 plan.pdf""#)
+        XCTAssertEqual(draft.caret, 0)
+        XCTAssertEqual(DocketCaptureDraft.quotedPath(#"/tmp/it's "x"\y"#), #""/tmp/it's \"x\"\\y""#)
+        XCTAssertEqual(build("Spec", ["/tmp/a b.pdf"]).text, #"Spec &"/tmp/a b.pdf""#)
+    }
+
+    func testAFolderIsDroppedByName() {
+        let draft = build("Read", ["/tmp/Reports", "/tmp/r.pdf"], folders: ["/tmp/Reports"])
+        XCTAssertEqual(draft.text, "Read &/tmp/r.pdf")
+        XCTAssertEqual(draft.dropped, ["Left out folder Reports: Docket attaches files"])
+        let folder = FileManager.default.temporaryDirectory.path
+        XCTAssertEqual(DocketCaptureDraft.build(text: nil, attachments: [folder]).dropped.count, 1,
+                       "the default answers from the file system")
+    }
+
+    func testAMailLinkIsAttachedAsGiven() {
+        let mail = "message://%3Cabc@example.com%3E"
+        XCTAssertEqual(build("Reply", [mail]).text, "Reply &" + mail)
+        XCTAssertEqual(build(nil, ["message:"]).dropped, ["Left out message:: not a Mail message link"])
+        XCTAssertEqual(build(nil, ["mailto:sam@example.com", "notes/a.md"]).dropped.count, 2,
+                       "other schemes and relative paths are dropped")
+    }
+
+    func testAttachmentsPastTheLimitAreDroppedAndReported() {
+        let files = (1...11).map { "/tmp/f\($0)" }
+        let draft = build("Batch", files)
+        XCTAssertEqual(draft.attachmentTokens, (1...10).map { " &/tmp/f\($0)" }.joined())
+        XCTAssertEqual(draft.dropped, ["Left out 1 past the 10-attachment limit"])
+    }
+
+    func testEmptyInputIsAnEmptyDraft() {
+        XCTAssertEqual(build(nil, []), DocketCaptureDraft(text: ""))
+        XCTAssertEqual(build(" \n ", ["", "  "]), DocketCaptureDraft(text: ""))
     }
 
     func testTheServiceHandsTheSelectionToCapture() {
@@ -140,6 +209,50 @@ final class QuickCapturePresentTests: XCTestCase {
         field.stringValue = "   "
         XCTAssertTrue(panel.present(draft: "Second"), "a blank field holds nothing to keep")
         XCTAssertEqual(field.stringValue, "Second")
+    }
+
+    func testALinkWithTextSelectsItSoTypingReplacesIt() throws {
+        let panel = QuickCapturePanel()
+        defer { panel.close() }
+        let draft = DocketCaptureDraft.build(text: "Spec", attachments: ["/tmp/a b.pdf"])
+        XCTAssertTrue(panel.present(draft))
+        let field = try field(panel)
+        XCTAssertEqual(field.stringValue, #"Spec &"/tmp/a b.pdf""#)
+        XCTAssertEqual((field.currentEditor() as? NSTextView)?.selectedRange(), NSRange(location: 0, length: 4))
+    }
+
+    func testAttachmentsJoinAnUnsavedDraftAtItsEnd() throws {
+        let panel = QuickCapturePanel()
+        var saved: [QuickCaptureRecovery] = []
+        panel.persistRecovery = { saved.append($0) }
+        defer { panel.close() }
+        let field = try field(panel)
+        XCTAssertTrue(panel.present(draft: "Call Sam"))
+        XCTAssertTrue(panel.present(DocketCaptureDraft.build(text: "Spec", attachments: ["https://example.com/spec", "/tmp/a b.pdf"])))
+        XCTAssertEqual(field.stringValue, #"Call Sam &https://example.com/spec &"/tmp/a b.pdf""#,
+                       "the draft's text is kept and the link's text is not used")
+        XCTAssertEqual(saved.last?.draft, field.stringValue)
+        XCTAssertTrue(panel.panel.contentView!.descendants(of: NSTextField.self)
+            .contains { $0.stringValue == QuickCapturePanel.draftAppendedMessage })
+    }
+
+    func testATextOnlyLinkLeavesAnUnsavedDraftUnchanged() throws {
+        let panel = QuickCapturePanel()
+        defer { panel.close() }
+        let field = try field(panel)
+        XCTAssertTrue(panel.present(draft: "Call Sam"))
+        XCTAssertFalse(panel.present(DocketCaptureDraft.build(text: "Spec", attachments: [])))
+        XCTAssertEqual(field.stringValue, "Call Sam")
+        XCTAssertTrue(panel.panel.contentView!.descendants(of: NSTextField.self)
+            .contains { $0.stringValue == QuickCapturePanel.draftKeptMessage })
+    }
+
+    func testWhatADraftDroppedIsSaid() throws {
+        let panel = QuickCapturePanel()
+        defer { panel.close() }
+        XCTAssertTrue(panel.present(DocketCaptureDraft.build(text: nil, attachments: ["notes/a.md"])))
+        XCTAssertTrue(panel.panel.contentView!.descendants(of: NSTextField.self)
+            .contains { $0.stringValue.hasPrefix("Left out notes/a.md") })
     }
 }
 

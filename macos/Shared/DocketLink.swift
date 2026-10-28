@@ -14,8 +14,9 @@ enum DocketView: String, Equatable {
 /// page opening a link can never commit, complete, or delete work unseen.
 ///
 /// - `docket://` or `docket://show`: shows Docket.
-/// - `docket://capture?text=…`: opens quick capture holding the text as its draft;
-///   with no text, opens it as it was.
+/// - `docket://capture?text=…&attach=…`: opens quick capture holding the text as
+///   its draft, each `attach` (repeatable: a web or Mail link, or an absolute file
+///   path) as an `&` token after it; with neither, opens it as it was.
 /// - `docket://find?text=…`: opens quick find holding the text as its query;
 ///   with no text, opens it as it was.
 /// - `docket://view/inbox`, `/today`, `/due` (or `/overdue`): shows Docket in that mode;
@@ -23,7 +24,9 @@ enum DocketView: String, Equatable {
 /// - `docket://task/PROJECT-ID/TASK-ID`: shows that task, by its stored IDs.
 enum DocketLink: Equatable {
     case show
-    case capture(String?)
+    /// The text, and the `attach` values in the order given, unchecked: the draft
+    /// builder decides which it keeps, and says why it dropped the rest.
+    case capture(String?, attach: [String] = [])
     case find(String?)
     case view(DocketView)
     case task(project: String, task: String)
@@ -52,7 +55,9 @@ enum DocketLink: Equatable {
         case "capture":
             guard path.isEmpty else { return nil }
             let text = components.queryItems?.first { $0.name == "text" }?.value
-            self = .capture(text.flatMap { $0.isEmpty ? nil : $0 })
+            let attach = (components.queryItems ?? []).filter { $0.name == "attach" }
+                .compactMap(\.value).filter { !$0.isEmpty }
+            self = .capture(text.flatMap { $0.isEmpty ? nil : $0 }, attach: attach)
         case "find":
             guard path.isEmpty else { return nil }
             let text = components.queryItems?.first { $0.name == "text" }?.value
@@ -79,9 +84,11 @@ enum DocketLink: Equatable {
         switch self {
         case .show:
             components.host = "show"
-        case .capture(let text):
+        case .capture(let text, let attach):
             components.host = "capture"
-            if let text { components.queryItems = [URLQueryItem(name: "text", value: text)] }
+            let items = (text.map { [URLQueryItem(name: "text", value: $0)] } ?? [])
+                + attach.map { URLQueryItem(name: "attach", value: $0) }
+            if !items.isEmpty { components.queryItems = items }
         case .find(let text):
             components.host = "find"
             if let text { components.queryItems = [URLQueryItem(name: "text", value: text)] }

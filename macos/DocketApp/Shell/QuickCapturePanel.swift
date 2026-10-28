@@ -160,14 +160,49 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     }
 
     static let draftKeptMessage = "Kept your unsaved draft. Capture or clear it, then send the new text again."
+    static let draftAppendedMessage = "Added to your unsent draft"
+
+    /// Opens the panel holding `draft` (see `present(draft:caret:selectionLength:)`),
+    /// saying what it dropped. Attachments are never lost to an unsent draft: when
+    /// one differs, its text is kept and the `&` tokens go at its end, which also
+    /// edits a draft still pending submission, so it is sent under a new identity.
+    /// Text alone, or anything arriving while a capture is in flight, keeps the
+    /// draft unchanged, as `present(draft:caret:selectionLength:)` does.
+    @discardableResult
+    func present(_ draft: DocketCaptureDraft) -> Bool {
+        let current = field.stringValue
+        let unsent = !current.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && current != draft.text
+        let presented: Bool
+        var notices = draft.dropped
+        if draft.text.trimmingCharacters(in: .whitespaces).isEmpty {
+            show()
+            presented = true
+        } else if draft.hasAttachments, unsent, !sending {
+            let merged = current + draft.attachmentTokens
+            clearCompletion()
+            field.stringValue = merged
+            saveDraft()
+            savedSelection = (merged, NSRange(location: (merged as NSString).length, length: 0))
+            show()
+            notices.insert(Self.draftAppendedMessage, at: 0)
+            presented = true
+        } else {
+            presented = present(draft: draft.text, caret: draft.caret, selectionLength: draft.selectionLength)
+        }
+        if presented, !notices.isEmpty, unavailableReason() == nil, recoveryError == nil {
+            setStatus(notices.joined(separator: ". "), error: !draft.dropped.isEmpty)
+        }
+        return presented
+    }
 
     /// Opens the panel holding `draft`, the caret at `caret` in UTF-16 units (the
-    /// end when nil), for the user to finish and send: text from a link or the
+    /// end when nil) with `selectionLength` units after it selected, for the user to
+    /// finish and send: text from a link or the
     /// Services menu is never captured unseen. An unsaved draft that differs, or a
     /// capture still in flight, is never replaced: the panel opens on it, says so,
     /// and this returns false.
     @discardableResult
-    func present(draft: String, caret: Int? = nil) -> Bool {
+    func present(draft: String, caret: Int? = nil, selectionLength: Int = 0) -> Bool {
         let current = field.stringValue
         if sending || (!current.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && current != draft) {
             show()
@@ -180,7 +215,8 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
             saveDraft()
         }
         let length = (draft as NSString).length
-        savedSelection = (draft, NSRange(location: min(max(caret ?? length, 0), length), length: 0))
+        let location = min(max(caret ?? length, 0), length)
+        savedSelection = (draft, NSRange(location: location, length: min(max(selectionLength, 0), length - location)))
         show()
         return true
     }
