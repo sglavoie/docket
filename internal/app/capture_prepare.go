@@ -91,7 +91,7 @@ func (s *Service) prepareCapturedTask(snap Snapshot, project *models.Project, re
 		return preparedCapture{}, err
 	}
 
-	attachments, err := resolveCapturedAttachments(req.Attachments)
+	attachments, err := ResolveCapturedAttachments(req.Attachments)
 	if err != nil {
 		return preparedCapture{}, err
 	}

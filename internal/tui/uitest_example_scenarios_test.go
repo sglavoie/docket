@@ -39,6 +39,7 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"check-in-flags-and-stale.json",
 		"capture-grammar.json",
 		"capture-attachment.json",
+		"capture-mail-link.json",
 		"capture-comment.json",
 		"capture-due-time.json",
 		"capture-child-adoption.json",

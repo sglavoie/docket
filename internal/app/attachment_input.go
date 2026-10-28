@@ -15,7 +15,8 @@ import (
 type AttachmentInputKind int
 
 const (
-	// AttachmentInputURL is an absolute http(s) URL, stored as metadata only.
+	// AttachmentInputURL is an absolute http(s) URL or a Mail message: link,
+	// stored as metadata only.
 	AttachmentInputURL AttachmentInputKind = iota
 	// AttachmentInputCodeReference is a file:line reference, stored as metadata only.
 	AttachmentInputCodeReference
@@ -54,7 +55,7 @@ func ResolveAttachmentInput(raw string) (ResolvedAttachmentInput, error) {
 		return ResolvedAttachmentInput{}, fmt.Errorf("path/URL cannot be empty")
 	}
 
-	if strings.HasPrefix(input, "http://") || strings.HasPrefix(input, "https://") {
+	if strings.HasPrefix(input, "http://") || strings.HasPrefix(input, "https://") || IsMessageURL(input) {
 		// A prefix is not a URL: the canonical AttachURL validation is what decides
 		// here too, so a malformed value is refused before any surface mutates a
 		// task rather than persisted for the panel to reject on read.
@@ -86,20 +87,29 @@ func ResolveAttachmentInput(raw string) (ResolvedAttachmentInput, error) {
 	if err != nil {
 		return ResolvedAttachmentInput{}, fmt.Errorf("failed to resolve path: %w", err)
 	}
-	if _, statErr := os.Stat(absPath); os.IsNotExist(statErr) {
+	// Stat reads metadata alone, so classifying a path never opens the file:
+	// a capture preview runs this and must not trigger a download or a
+	// privacy prompt. Only the copy at commit reads the bytes.
+	info, statErr := os.Stat(absPath)
+	if os.IsNotExist(statErr) {
 		return ResolvedAttachmentInput{}, fmt.Errorf("file not found: %s", absPath)
+	}
+	if statErr == nil && !info.Mode().IsRegular() {
+		return ResolvedAttachmentInput{}, fmt.Errorf("not a file: %s", absPath)
 	}
 
 	return ResolvedAttachmentInput{Kind: AttachmentInputFile, SourcePath: absPath}, nil
 }
 
-// resolveCapturedAttachments classifies every &link value on one capture line
+// ResolveCapturedAttachments classifies every &link value on one capture line
 // before the line mutates anything. It is the whole-batch sibling of
 // ResolveAttachmentInput and adds the two guards a single paste does not need:
 // the destination filename must be a safe child name, and two files on one line
 // must not resolve to the same one. Both refuse by name, because the alternative
 // is a copy that silently overwrites the first file with the second.
-func resolveCapturedAttachments(values []string) ([]ResolvedAttachmentInput, error) {
+// It reads metadata alone, so a capture preview runs it too and refuses what
+// the commit would before Enter is pressed.
+func ResolveCapturedAttachments(values []string) ([]ResolvedAttachmentInput, error) {
 	if len(values) == 0 {
 		return nil, nil
 	}

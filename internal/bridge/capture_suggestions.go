@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"unicode"
@@ -172,11 +173,15 @@ func (c *captureCandidates) addTask(def textgrammar.Definition, project *models.
 	}
 }
 
+// attachmentLinkSchemes are the link schemes & completes to: the web pair and
+// Mail's message link, the one other scheme an attachment admits.
+var attachmentLinkSchemes = []string{"https://", "http://", "message://"}
+
 // addTemplates offers the values no task stores: a link scheme to start from
 // and the comment's closing delimiter.
 func (c *captureCandidates) addTemplates(def textgrammar.Definition) {
 	if def.Field == textgrammar.FieldAttachment {
-		for _, scheme := range []string{"https://", "http://"} {
+		for _, scheme := range attachmentLinkSchemes {
 			if strings.HasPrefix(scheme, c.partial) {
 				c.add(scheme, "&"+scheme+" — add a link")
 			}
@@ -199,7 +204,7 @@ func (c *captureCandidates) suggestion(text string, start, end int, def textgram
 	if replaceEnd < len(text) && text[replaceEnd] == ' ' {
 		replaceEnd++
 	}
-	if def.Field == textgrammar.FieldAttachment && (candidate.value == "https://" || candidate.value == "http://") {
+	if def.Field == textgrammar.FieldAttachment && slices.Contains(attachmentLinkSchemes, candidate.value) {
 		insert = token
 		replaceEnd = end
 	}

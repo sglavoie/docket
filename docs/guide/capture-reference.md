@@ -99,7 +99,8 @@ validated before one atomic transaction is committed.
   stored references already checked: checking one adds it and unchecking one
   removes it, exactly as `~task` and `-~task` do in text.
 - `&link` attaches something to the new task and may be repeated. It takes an
-  `http://` or `https://` URL, a `path:line` code reference such as
+  `http://` or `https://` URL, a Mail `message://` link (one naming no message
+  after `message://` is refused by name), a `path:line` code reference such as
   `&internal/app/add.go:19`, or a local file path, which is copied into the
   task's attachments in the very same transaction that creates the task, so one
   undo takes back the task and its bytes together. A path holding spaces is
@@ -111,6 +112,11 @@ validated before one atomic transaction is committed.
   prose, and so is a quoted phrase naming nothing attachable, as in `Ask &"why"
   before the demo`. Two files on one line whose names would collide in the
   attachments directory are refused by name rather than silently overwritten.
+  The capture preview names every attachment, a file by the path its bytes are
+  copied from, and refuses a missing file or a folder by name before Enter; it
+  reads only the file's metadata. A file macOS will not let Docket read is
+  refused at Enter as `Docket can't read <path>: allow Docket in Privacy &
+  Security › Files and Folders`, and the draft is kept.
   The sigil is capture-only: the outline buffer and search both reject it and say
   where attachments do belong. Expanding the line into the full form instead
   carries the value onto that form's Extras tab, which is where the expanded

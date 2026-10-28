@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 func TestCaptureRecordsURLAndCodeReferenceAttachments(t *testing.T) {
@@ -232,5 +234,142 @@ func TestCaptureRefusesTwoAttachmentsResolvingToOneFilename(t *testing.T) {
 	}
 	if len(project.Tasks) != 0 {
 		t.Errorf("project holds %d tasks, want the capture to have aborted", len(project.Tasks))
+	}
+}
+
+const mailLink = "message://%3Cabc@example.com%3E"
+
+// Mail's message: link is a URL attachment, though url.Parse refuses it: the
+// scheme and a non-empty remainder decide it, and it is stored as given.
+func TestResolveAttachmentInputClassifiesAMailLinkAsAURL(t *testing.T) {
+	for _, value := range []string{mailLink, "MESSAGE://%3Cabc@example.com%3E"} {
+		resolved, err := app.ResolveAttachmentInput(value)
+		if err != nil {
+			t.Fatalf("ResolveAttachmentInput(%q): %v", value, err)
+		}
+		if resolved.Kind != app.AttachmentInputURL || resolved.URL != value {
+			t.Errorf("ResolveAttachmentInput(%q) = %+v, want a URL stored as given", value, resolved)
+		}
+	}
+}
+
+// A message: link naming no message is refused as a link, by name, never read
+// as a missing file.
+func TestCaptureRefusesAMailLinkNamingNoMessage(t *testing.T) {
+	for _, value := range []string{"message:", "message://", "message:%3Cabc%3E"} {
+		t.Run(value, func(t *testing.T) {
+			project := newProject("p1", "Alpha")
+			svc := newTestService(newFakeRepo(project))
+			_, err := svc.Capture(app.CaptureRequest{ProjectID: project.ID, Title: "Reply", Attachments: []string{value}})
+			if err == nil {
+				t.Fatal("Capture succeeded, want a refusal")
+			}
+			if !strings.Contains(err.Error(), value+":") || !strings.Contains(err.Error(), "message: link") {
+				t.Errorf("error = %v, want it to name %q and the message: link", err, value)
+			}
+			if strings.Contains(err.Error(), "file not found") {
+				t.Errorf("error = %v, want a link refusal, not a missing file", err)
+			}
+			if len(project.Tasks) != 0 {
+				t.Errorf("project holds %d tasks, want the capture to have aborted", len(project.Tasks))
+			}
+		})
+	}
+}
+
+// A captured Mail link survives the canonical writer: stored, reloaded, and
+// written again byte for byte.
+func TestCapturedMailLinkRoundTripsByteIdentical(t *testing.T) {
+	dataDir := t.TempDir()
+	commitSvc := storage.NewCommitService(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir})
+	project := realTestProject(t, dataDir, "alpha", "seed task")
+	repo := newStorageRepo(commitSvc, project)
+	repo.seed(t)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
+
+	if _, err := svc.Capture(app.CaptureRequest{ProjectID: project.ID, Title: "Reply to Ana", Attachments: []string{mailLink}}); err != nil {
+		t.Fatalf("Capture: %v", err)
+	}
+	stored, err := os.ReadFile(storage.TasksFilePath(project.Path))
+	if err != nil {
+		t.Fatalf("read tasks.md: %v", err)
+	}
+	reloaded := &models.Project{ID: project.ID, Slug: project.Slug, Name: project.Name, Path: project.Path}
+	if err := storage.LoadProject(reloaded); err != nil {
+		t.Fatalf("LoadProject: %v", err)
+	}
+	var found *models.Task
+	for _, task := range reloaded.Tasks {
+		if task.Title == "Reply to Ana" {
+			found = task
+		}
+	}
+	if found == nil || len(found.Attachments) != 1 {
+		t.Fatalf("reloaded task = %+v, want one attachment", found)
+	}
+	if got := found.Attachments[0]; !got.IsURL || got.Filename != mailLink || got.OriginalPath != mailLink {
+		t.Errorf("reloaded attachment = %+v, want the Mail link as a URL", got)
+	}
+	rewritten, err := storage.WriteProjectMarkdown(reloaded)
+	if err != nil {
+		t.Fatalf("WriteProjectMarkdown: %v", err)
+	}
+	if rewritten != string(stored) {
+		t.Errorf("round trip changed tasks.md:\n--- stored\n%s\n--- rewritten\n%s", stored, rewritten)
+	}
+}
+
+// A folder is not a file: it is refused by name before anything is staged.
+func TestCaptureRefusesAnAttachmentNamingAFolder(t *testing.T) {
+	dir := t.TempDir()
+	project := newProject("p1", "Alpha")
+	svc := newTestService(newFakeRepo(project))
+	_, err := svc.Capture(app.CaptureRequest{ProjectID: project.ID, Title: "Read", Attachments: []string{dir}})
+	if err == nil || !strings.Contains(err.Error(), "not a file: "+dir) {
+		t.Fatalf("Capture error = %v, want a refusal naming the folder", err)
+	}
+	if len(project.Tasks) != 0 {
+		t.Errorf("project holds %d tasks, want the capture to have aborted", len(project.Tasks))
+	}
+}
+
+// A copy refused for permission names the file and the macOS setting that
+// grants it, and the commit stages nothing.
+func TestCaptureRefusesAnUnreadableFileWithThePrivacyWording(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root reads a 0o000 file")
+	}
+	source := filepath.Join(t.TempDir(), "locked.pdf")
+	if err := os.WriteFile(source, []byte("secret"), 0o000); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	dataDir := t.TempDir()
+	commitSvc := storage.NewCommitService(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir})
+	project := realTestProject(t, dataDir, "alpha", "seed task")
+	repo := newStorageRepo(commitSvc, project)
+	repo.seed(t)
+	before, err := os.ReadFile(storage.TasksFilePath(project.Path))
+	if err != nil {
+		t.Fatalf("read tasks.md: %v", err)
+	}
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
+
+	_, err = svc.Capture(app.CaptureRequest{ProjectID: project.ID, Title: "Read the locked file", Attachments: []string{source}})
+	want := "Docket can't read " + source + ": allow Docket in Privacy & Security › Files and Folders"
+	if err == nil || !strings.Contains(err.Error(), want) {
+		t.Fatalf("Capture error = %v, want %q", err, want)
+	}
+	if strings.Contains(err.Error(), "permission denied") {
+		t.Errorf("error = %v, want the raw errno kept out of the wording", err)
+	}
+	after, err := os.ReadFile(storage.TasksFilePath(project.Path))
+	if err != nil {
+		t.Fatalf("read tasks.md: %v", err)
+	}
+	if string(after) != string(before) {
+		t.Error("tasks.md changed, want nothing committed")
+	}
+	if entries, _ := os.ReadDir(filepath.Join(project.Path, ".attachments")); len(entries) != 0 {
+		t.Errorf("attachments directory holds %d entries, want nothing staged", len(entries))
 	}
 }

@@ -45,7 +45,7 @@ func normalizeCommentText(text string) (string, error) {
 
 // resolveCapturedComments normalizes every ;comment; text on one creation
 // request before the request mutates anything, so a rejected comment aborts with
-// nothing written. It is the comment sibling of resolveCapturedAttachments and
+// nothing written. It is the comment sibling of ResolveCapturedAttachments and
 // runs the same normalizeCommentText an interactively added comment goes
 // through, which is what keeps the two entry points from disagreeing.
 func resolveCapturedComments(values []string) ([]string, error) {

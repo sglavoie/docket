@@ -60,6 +60,7 @@ func TestBridgeCaptureSuggestionsPreserveDraftAndScope(t *testing.T) {
 		{"cross project", "Buy ~Ship|", "~atlas-launch:1", "Buy ~atlas-launch:1 "},
 		{"comment close", "Buy ;ask about #auth|", ";ask about #auth;", "Buy ;ask about #auth; "},
 		{"attachment", "Buy &htt|", "&https://", "Buy &https://"},
+		{"mail link", "Buy &mes|", "&message://", "Buy &message://"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			prefix, suffix, _ := strings.Cut(tc.marked, "|")

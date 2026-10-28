@@ -1,6 +1,7 @@
 package taskform
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -94,7 +95,11 @@ func CapturePreviewText(preset TaskComposerPreset, runtime *config.RuntimeState,
 			parts = append(parts, field.label+": "+value)
 		}
 	}
-	var notices []string
+	attachments, attachmentErrors := capturePreviewAttachments(reqs)
+	if len(attachmentErrors) > 0 {
+		return "", attachmentErrors
+	}
+	notices := attachments
 	for _, req := range reqs {
 		project := composer.projectByID(req.ProjectID)
 		input := grammar.QuickCaptureInput{Project: project,
@@ -107,6 +112,49 @@ func CapturePreviewText(preset TaskComposerPreset, runtime *config.RuntimeState,
 		}
 	}
 	return strings.Join(append([]string{strings.Join(parts, " · ")}, notices...), "\n"), nil
+}
+
+// capturePreviewAttachments names each line's attachments as the commit would
+// store them — a link as given, a file by the absolute path its bytes are
+// copied from — since that line is what is read before a file leaves its
+// folder. It runs the commit's own resolver, which only stats a file, so a
+// missing file or a folder is refused here by name rather than at Enter, and
+// nothing is opened, downloaded, or asked permission for.
+func capturePreviewAttachments(reqs []app.CaptureRequest) ([]string, []grammar.LineError) {
+	var lines []string
+	var errs []grammar.LineError
+	for _, req := range reqs {
+		resolved, err := app.ResolveCapturedAttachments(req.Attachments)
+		if err != nil {
+			message := err.Error()
+			var invalid *app.InvalidInputError
+			if errors.As(err, &invalid) {
+				message = invalid.Reason
+			}
+			errs = append(errs, grammar.LineError{Line: max(req.SourceLine, 1), Message: message})
+			continue
+		}
+		if len(resolved) == 0 {
+			continue
+		}
+		names := make([]string, 0, len(resolved))
+		for _, input := range resolved {
+			switch input.Kind {
+			case app.AttachmentInputURL:
+				names = append(names, input.URL)
+			case app.AttachmentInputCodeReference:
+				names = append(names, fmt.Sprintf("%s:%d", input.CodePath, input.CodeLine))
+			default:
+				names = append(names, input.SourcePath)
+			}
+		}
+		line := "Attachments: " + strings.Join(names, " · ")
+		if len(reqs) > 1 {
+			line = fmt.Sprintf("Line %d: %s", req.SourceLine, line)
+		}
+		lines = append(lines, line)
+	}
+	return lines, errs
 }
 
 // CaptureCompletion is one suggestion CaptureCompletions offers: Label is the

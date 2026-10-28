@@ -2,6 +2,8 @@ package taskform
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -199,5 +201,37 @@ func TestCaptureInspectionIncludesCommentsAttachmentsAndCopiesSelectedReference(
 	m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	if m.Input.Value() != "Fix login" || m.Input.Column() != 3 || m.SubmissionInFlight {
 		t.Fatal("inspection copy changed draft")
+	}
+}
+
+// The host preview is what is read before a copied file leaves its folder, so
+// it names every attachment, a file by the path its bytes come from, and
+// refuses a missing file or a folder by name instead of leaving it to Enter.
+func TestHostCapturePreviewNamesAttachmentsAndRefusesBadFiles(t *testing.T) {
+	home := &models.Project{ID: "home", Name: "Home", Slug: "home"}
+	preset := TaskComposerPreset{Project: home, AllProjects: []*models.Project{home}, AllowProjectSwitch: true}
+	dir := t.TempDir()
+	file := filepath.Join(dir, "report.pdf")
+	if err := os.WriteFile(file, []byte("x"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	text, errs := CapturePreviewText(preset, nil, "Read &"+file+" &message://%3Cabc@example.com%3E")
+	if len(errs) != 0 {
+		t.Fatalf("preview errors: %+v", errs)
+	}
+	if !strings.Contains(text, "Attachments: "+file+" · message://%3Cabc@example.com%3E") {
+		t.Fatalf("preview = %q, want an attachments line naming the file path and the link", text)
+	}
+
+	missing := filepath.Join(dir, "absent.pdf")
+	for _, tc := range []struct{ value, want string }{
+		{missing, "file not found: " + missing},
+		{dir, "not a file: " + dir},
+	} {
+		text, errs := CapturePreviewText(preset, nil, "Read &"+tc.value)
+		if text != "" || len(errs) != 1 || !strings.Contains(errs[0].Message, tc.want) {
+			t.Errorf("preview of %s = %q, %+v; want a refusal naming %q", tc.value, text, errs, tc.want)
+		}
 	}
 }

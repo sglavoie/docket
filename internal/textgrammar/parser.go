@@ -247,6 +247,12 @@ func validAttachmentTokenValue(value string) bool {
 	if strings.HasPrefix(value, "http://") || strings.HasPrefix(value, "https://") {
 		return true
 	}
+	// A Mail link is consumed by its scheme alone, so "&message:" with nothing
+	// after it reaches the application layer and is refused by name rather than
+	// left in the title as prose.
+	if HasMessageScheme(value) {
+		return true
+	}
 	if strings.Contains(value, "/") {
 		return true
 	}
@@ -257,6 +263,13 @@ func validAttachmentTokenValue(value string) bool {
 		return strings.Contains(value[:index], ".")
 	}
 	return false
+}
+
+// HasMessageScheme reports whether value starts with Mail's "message:" scheme,
+// in any case. It is the lexical half of the one non-web URL scheme an
+// attachment admits; whether the link is complete is the application layer's.
+func HasMessageScheme(value string) bool {
+	return len(value) >= len("message:") && strings.EqualFold(value[:len("message:")], "message:")
 }
 
 // searchValueViable decides whether a free-form token shape is a search

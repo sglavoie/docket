@@ -52,6 +52,30 @@ func TestAttachmentSigilRecognizesEveryAttachableShape(t *testing.T) {
 	}
 }
 
+// TestAttachmentSigilConsumesAMailLink pins Mail's message: scheme, the one
+// non-web URL an attachment admits. A real link percent-encodes the angle
+// brackets around its message ID and carries an @, and the whole of it is the
+// value. A bare "&message:" is consumed too, so the application layer refuses
+// it by name instead of leaving it in the title, while R&D stays prose.
+func TestAttachmentSigilConsumesAMailLink(t *testing.T) {
+	parsed := Parse("Reply to Ana &message://%3Cabc@example.com%3E", SurfaceCapture)
+	values := parsed.TokensFor(FieldAttachment)
+	if len(values) != 1 || values[0].Value != "message://%3Cabc@example.com%3E" {
+		t.Fatalf("attachment tokens = %+v, want the whole Mail link", values)
+	}
+	if parsed.Text != "Reply to Ana" {
+		t.Fatalf("Text = %q, want Reply to Ana", parsed.Text)
+	}
+	for _, input := range []string{"Reply &message:", "Reply &Message:"} {
+		if got := Parse(input, SurfaceCapture).TokensFor(FieldAttachment); len(got) != 1 {
+			t.Errorf("%q attachment tokens = %+v, want the bare scheme consumed", input, got)
+		}
+	}
+	if got := Parse("R&D pipeline", SurfaceCapture).TokensFor(FieldAttachment); len(got) != 0 {
+		t.Errorf("R&D produced attachment tokens %+v", got)
+	}
+}
+
 // TestAttachmentSigilSpansAPathWithSpaces pins the shapes a real path arrives
 // in. A file manager copies "~/Library/Application Support/…" quoted or with
 // backslash-escaped spaces, and a bare \S+ run stopped at the first space, which

@@ -1,7 +1,9 @@
 package storage
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -73,6 +75,9 @@ func resolveAttachmentCopy(op AttachmentOp) (transaction.Op, error) {
 		return transaction.Op{}, fmt.Errorf("failed to stat attachment destination: %w", statErr)
 	}
 	data, err := os.ReadFile(op.SourcePath)
+	if errors.Is(err, fs.ErrPermission) {
+		return transaction.Op{}, &AttachmentSourceUnreadableError{Path: op.SourcePath, Err: err}
+	}
 	if err != nil {
 		return transaction.Op{}, fmt.Errorf("failed to read attachment source: %w", err)
 	}
@@ -177,3 +182,18 @@ func resolveSingleAttachmentDelete(project *models.Project, op AttachmentOp) ([]
 	}
 	return []transaction.Op{{Kind: transaction.OpDelete, Target: path}}, nil
 }
+
+// AttachmentSourceUnreadableError is a copy refused for permission: on macOS
+// that is almost always a privacy refusal (EPERM, "operation not permitted")
+// rather than file modes, and the raw error names neither the file nor the fix.
+// It aborts the commit before anything is staged, so the caller keeps its draft.
+type AttachmentSourceUnreadableError struct {
+	Path string
+	Err  error
+}
+
+func (e *AttachmentSourceUnreadableError) Error() string {
+	return fmt.Sprintf("Docket can't read %s: allow Docket in Privacy & Security › Files and Folders", e.Path)
+}
+
+func (e *AttachmentSourceUnreadableError) Unwrap() error { return e.Err }

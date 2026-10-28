@@ -370,6 +370,13 @@ func (b *Bridge) captureEnvelopeRequests(envelope captureEnvelope) ([]app.Captur
 		}}
 	}
 	for _, raw := range envelope.URLs {
+		// A Mail link is not something url.Parse reads (its percent-encoded
+		// message ID sits where the host goes), so the capture's own attachment
+		// validation decides it instead.
+		if app.IsMessageURL(raw) {
+			reqs[0].Attachments = append(reqs[0].Attachments, strings.TrimSpace(raw))
+			continue
+		}
 		link, err := url.Parse(strings.TrimSpace(raw))
 		if err != nil || link.Scheme == "" || strings.EqualFold(link.Scheme, "file") || (link.Host == "" && link.Opaque == "") {
 			return nil, newError(CodeValidation, "%q is not a link a task can keep", raw).with("field", "urls")

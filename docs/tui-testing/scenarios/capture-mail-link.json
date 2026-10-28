@@ -1,0 +1,38 @@
+{
+  "name": "capture-mail-link",
+  "fixture": "fresh",
+  "size": "100x30",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "capture into Unfiled", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "text", "label": "a Mail link, percent-encoded message ID and all", "text": "Reply to Ana &message://%3Cabc@example.com%3E " },
+    { "type": "assert", "label": "the preview names the link rather than reading it as a file", "assert": "contains", "value": "&message://%3Cabc@example.com%3E" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "commit the capture", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "the link left the title", "assert": "status_contains", "value": "Add Task: #1 Reply to Ana" },
+    { "type": "assert", "assert": "not_contains", "value": "%3Cabc" },
+    { "type": "assert", "assert": "contains", "value": "📎" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "key": "home" },
+    { "type": "key", "label": "past the Inbox section header", "key": "j" },
+    { "type": "key", "label": "past the project header onto the new row", "key": "j" },
+    { "type": "key", "label": "open the Attachments panel with its sigil key", "key": "&" },
+    { "type": "assert", "assert": "view", "value": "TaskAttachments" },
+    { "type": "assert", "label": "the Mail link is a stored URL attachment", "assert": "contains", "value": "1 attachment" },
+    { "type": "assert", "assert": "contains", "value": "message://%3Cabc@example.com%3E" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "leave the panel", "key": "esc" },
+
+    { "type": "key", "label": "capture a link naming no message", "key": "a" },
+    { "type": "text", "text": "Reply &message:" },
+    { "type": "key", "label": "submit it", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "label": "refused by name, the draft kept", "assert": "view", "value": "TaskComposer" },
+    { "type": "assert", "assert": "contains", "value": "message: link" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

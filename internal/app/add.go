@@ -230,7 +230,7 @@ func (s *Service) buildAddTask(req AddTaskRequest) (addTaskBuild, error) {
 
 	// Attachments and comments are resolved before the snapshot is taken, because
 	// a rejected value must abort with nothing mutated and nothing staged.
-	attachments, err := resolveCapturedAttachments(req.Attachments)
+	attachments, err := ResolveCapturedAttachments(req.Attachments)
 	if err != nil {
 		return addTaskBuild{}, err
 	}

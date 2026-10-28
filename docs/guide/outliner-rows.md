@@ -136,6 +136,11 @@ A paperclip (`📎`) after the title means the task has one or more attachments,
 including files, URLs, and code references. It stays visible on narrow rows.
 Press `&` to open the attachments panel; Peek shows the count and details.
 
+A URL attachment is an `http://` or `https://` address or a Mail link,
+`message://%3C<message-id>%3E`, which is what a Mail message is attached as.
+Both are stored as the address alone and opened by the system, so a `message:`
+link opens the message in Mail.
+
 A document glyph (`▤`) after the title means the task has a description.
 It precedes the paperclip when both are present and stays visible on narrow
 rows. Empty or whitespace-only descriptions show no glyph. Open Peek with `b`

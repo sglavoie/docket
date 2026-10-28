@@ -190,7 +190,7 @@ func captureImportsEveryKind(t *testing.T, h *captureHarness) {
 	shared.CreatedAt = shortcut.CreatedAt.Add(time.Minute)
 	shared.Title = "Read: release checklist"
 	shared.Note = "Shared from Safari"
-	shared.URLs = []string{"https://example.com/release?ref=share"}
+	shared.URLs = []string{"https://example.com/release?ref=share", "message://%3Cabc@example.com%3E"}
 	scan := binaryContent(5, 40_000)
 	h.save(shared, sharedFile{"scan.pdf", scan})
 
@@ -219,10 +219,11 @@ func captureImportsEveryKind(t *testing.T, h *captureHarness) {
 	if read.Task.Title != "Read: release checklist" || read.Task.Description != "Shared from Safari" {
 		t.Fatalf("the shared capture is %+v", read.Task)
 	}
-	if len(read.Attachments) != 2 || read.Attachments[0].URL != "https://example.com/release?ref=share" || read.Attachments[1].Name != "scan.pdf" {
-		t.Fatalf("the shared link and file are %+v", read.Attachments)
+	if len(read.Attachments) != 3 || read.Attachments[0].URL != "https://example.com/release?ref=share" ||
+		read.Attachments[1].URL != "message://%3Cabc@example.com%3E" || read.Attachments[2].Name != "scan.pdf" {
+		t.Fatalf("the shared links and file are %+v", read.Attachments)
 	}
-	if !bytes.Equal(h.attachmentBytes(&read.Attachments[1]), scan) {
+	if !bytes.Equal(h.attachmentBytes(&read.Attachments[2]), scan) {
 		t.Fatal("the shared file's bytes did not reach the workspace whole")
 	}
 	if strings.Contains(h.unfiledMarkdown(), h.inbox) {

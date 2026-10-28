@@ -24,8 +24,31 @@ func (s *Service) AttachURL(locator TaskLocator, url string) (TaskResult, error)
 	})
 }
 
+// messageURLPrefix is Mail's message link, the one URL scheme besides http(s)
+// an attachment admits. A real link reads message://%3C<message-id>%3E, and
+// url.Parse refuses it outright: the percent-encoded angle brackets land in what
+// it reads as the host, where an escape is invalid. So the scheme and a
+// non-empty remainder decide it instead, and the link is stored exactly as
+// given, to be opened by the system the way an http(s) link is.
+const messageURLPrefix = "message://"
+
+// IsMessageURL reports whether raw names Mail's message scheme, complete or not.
+// A value that does is a URL attachment candidate, never a file path, so an
+// incomplete one is refused as a link rather than as a missing file.
+func IsMessageURL(raw string) bool {
+	raw = strings.TrimSpace(raw)
+	return len(raw) >= len("message:") && strings.EqualFold(raw[:len("message:")], "message:")
+}
+
 func validateAttachmentURL(raw string) (string, error) {
 	raw = strings.TrimSpace(raw)
+	if IsMessageURL(raw) {
+		if len(raw) <= len(messageURLPrefix) || !strings.EqualFold(raw[:len(messageURLPrefix)], messageURLPrefix) ||
+			strings.ContainsAny(raw, " \t\n") {
+			return "", invalidInput("attachment", "a message: link must name a message after message://")
+		}
+		return raw, nil
+	}
 	parsed, err := url.Parse(raw)
 	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
 		return "", invalidInput("attachment", "URL must be an absolute http or https URL")
