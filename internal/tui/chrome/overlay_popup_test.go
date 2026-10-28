@@ -427,11 +427,16 @@ func TestOverlayPopupDimmedAnchoredKeepsTheAnchorRowAndTitle(t *testing.T) {
 	base := strings.Join([]string{"title", "row 1", "row 2", "row 3", "row 4", "row 5", "row 6", "row 7"}, "\n")
 	popup := strings.Join([]string{"+--+", "|ab|", "+--+"}, "\n")
 
-	out := strings.Split(ansi.Strip(OverlayPopupDimmedAnchored(base, popup, 20, 8, 6, 1)), "\n")
+	out := strings.Split(ansi.Strip(composedAnchored(base, popup, 20, 8, 6, 1)), "\n")
 	if !strings.Contains(out[0], "title") || !strings.Contains(out[6], "row 6") {
 		t.Fatalf("anchored popup covered the title or its row:\n%s", strings.Join(out, "\n"))
 	}
 	if !strings.Contains(out[3], "+--+") || !strings.Contains(out[5], "+--+") {
 		t.Fatalf("popup with no room below did not rise to end above its row:\n%s", strings.Join(out, "\n"))
 	}
+}
+
+func composedAnchored(base, popup string, baseWidth, baseHeight, anchorRow, topRow int) string {
+	composed, _ := OverlayPopupDimmedAnchoredPlaced(base, popup, baseWidth, baseHeight, anchorRow, topRow)
+	return composed
 }

@@ -82,6 +82,10 @@ type NotesViewModel struct {
 	ScrollOffset int
 	cursorFlash  bool
 
+	// pointer is where the last frame drew the note rows and the preview pane,
+	// which is the only frame a click may be read against. See HandlePointer.
+	pointer notesPointerFrame
+
 	// preview is the wide-layout body pane's line cache and scroll position. It
 	// is keyed on the note, its revision, and the pane width, so cursor moves,
 	// reloads, and resizes reopen it at the top by construction.

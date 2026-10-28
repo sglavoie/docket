@@ -33,10 +33,15 @@ func (m *ProjectHubModel) View() tea.View {
 	}
 	contentHeight := chrome.FullscreenContentHeightForBlocks(height, header, footer)
 	var content string
+	m.pointerTop = -1
 	if m.actions != nil {
 		content = m.actions.Render(width)
 	} else {
 		content = listsurface.NewListSurfaceRenderer(m.projectHubRenderConfig(contentHeight)).Render(m.surface)
+		m.pointerTop = lipgloss.Height(header)
+		if m.notice != "" {
+			m.pointerTop++
+		}
 	}
 	if notice := m.notice; notice != "" {
 		content = lipgloss.JoinVertical(

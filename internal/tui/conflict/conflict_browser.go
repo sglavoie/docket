@@ -78,6 +78,9 @@ type ConflictBrowserModel struct {
 	busy         bool
 	discard      bool
 	editor       *mergeEditor
+	// listTop is the popup row the last render drew the list's first row on, or
+	// -1 when it drew the detail pane instead. See HandlePointer.
+	listTop int
 }
 
 // NewConflictBrowserModel builds the browser over one listing. The loader is

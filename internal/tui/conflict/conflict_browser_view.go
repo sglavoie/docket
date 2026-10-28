@@ -3,11 +3,13 @@ package conflict
 import (
 	"strings"
 
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/keymap"
 	"github.com/sglavoie/docket/internal/tui/listsurface"
+	"github.com/sglavoie/docket/internal/tui/route"
 	"github.com/sglavoie/docket/internal/tui/textfit"
 	"github.com/sglavoie/docket/internal/tui/theme"
 )
@@ -59,7 +61,12 @@ func (model *ConflictBrowserModel) RenderWithin(width, height int) string {
 	}
 
 	content := model.renderList(contentWidth, bodyHeight)
+	model.listTop = chrome.OverlayBoxContentTop
+	if len(header) > 0 {
+		model.listTop += len(header) + 1
+	}
 	if model.inspecting() {
+		model.listTop = -1
 		content = model.renderDetail(contentWidth, bodyHeight)
 		if model.editorActive() && model.confirmation == nil {
 			editorHeight := 24
@@ -152,4 +159,27 @@ func (model *ConflictBrowserModel) guidanceSpec() chrome.GuidanceSpec {
 	}}
 	spec, _ := listsurface.ListSurfaceGuidanceSpec(model.surface.GuidanceState(false), km, nil)
 	return spec
+}
+
+// HandlePointer answers the pointer for an event the shell has already moved
+// into this popup's own cells. Browsing, it is the list surface's answer: a
+// click seats the cursor on a conflict, a double-click is Enter, which inspects
+// it, and the wheel steps the cursor; the browser has no Space. Inspecting, the
+// wheel steps the detail pane as the arrows do and a click lands on nothing,
+// and the merge editor, a confirmation, a discard question, and a resolution in
+// flight swallow the pointer whole, since each owns its keys outright.
+func (model *ConflictBrowserModel) HandlePointer(event route.PointerEvent) tea.Cmd {
+	if model == nil || model.surface == nil {
+		return nil
+	}
+	if model.inspecting() {
+		if model.busy || model.confirmation != nil || model.discard || model.editorActive() || !event.IsWheel() {
+			return nil
+		}
+		return route.PressKey(listsurface.ListPointerKey(event, false, false))
+	}
+	if model.listTop < 0 {
+		return nil
+	}
+	return route.PressKey(model.surface.AnswerPointer(event.Offset(chrome.OverlayBoxContentLeft, model.listTop), false))
 }

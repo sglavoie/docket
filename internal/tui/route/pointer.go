@@ -68,3 +68,32 @@ func (e PointerEvent) Offset(left, top int) PointerEvent {
 type PointerView interface {
 	HandlePointer(event PointerEvent) tea.Cmd
 }
+
+// PressKey is the act a pointer event stands for once its surface has done the
+// part no key can: seating the cursor on the row the click named. The key is
+// delivered as the message a keyboard sends, so it takes the shell's ordinary
+// key path to whichever layer owns keys, and every operation it reaches, every
+// refusal, and every undo entry is that key's own. An empty key presses nothing.
+//
+// Only the keys a pointer re-expresses are spelled: Enter, Space, the two
+// arrows the wheel steps by, and the two preview paging keys.
+func PressKey(key string) tea.Cmd {
+	var press tea.KeyPressMsg
+	switch key {
+	case "enter":
+		press = tea.KeyPressMsg{Code: tea.KeyEnter}
+	case "space":
+		press = tea.KeyPressMsg{Code: tea.KeySpace, Text: " "}
+	case "up":
+		press = tea.KeyPressMsg{Code: tea.KeyUp}
+	case "down":
+		press = tea.KeyPressMsg{Code: tea.KeyDown}
+	case "ctrl+f":
+		press = tea.KeyPressMsg{Code: 'f', Mod: tea.ModCtrl}
+	case "ctrl+b":
+		press = tea.KeyPressMsg{Code: 'b', Mod: tea.ModCtrl}
+	default:
+		return nil
+	}
+	return func() tea.Msg { return press }
+}

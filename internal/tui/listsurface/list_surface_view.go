@@ -208,6 +208,7 @@ func renderCompactListSurface(
 		return theme.MutedStyle.Render("List unavailable.")
 	}
 	showContinuations := sizeListSurfaceViewport(model, config.Width, config.Height)
+	model.previewLeft = 0
 	content := renderListSurfacePane(model, config.Width, showContinuations)
 	if !config.HideHelp {
 		content = appendListSurfaceHelp(content, listSurfaceHelp(model, config.HelpText), config.Width)
@@ -223,6 +224,7 @@ func renderWideListSurface(
 	listWidth, previewWidth := ListSurfacePreviewGeometry(config)
 
 	showContinuations := sizeListSurfaceViewport(model, listWidth, config.Height)
+	model.previewLeft = ListSurfacePreviewLeft(listWidth)
 	listPane := renderListSurfacePane(model, listWidth, showContinuations)
 	previewPane := RenderListSurfacePreview(preview, previewWidth, config.Height, config.PreviewBody)
 	content := JoinListSurfacePanes(listPane, previewPane, listWidth, previewWidth)
@@ -264,6 +266,7 @@ func sizeListSurfaceViewport(model *ListSurfaceModel, width, height int) bool {
 
 func renderListSurfacePane(model *ListSurfaceModel, width int, showContinuations bool) string {
 	if empty, ok := model.EmptyContext(); ok {
+		model.pointerFrame.Reset(width)
 		return renderListSurfaceEmpty(empty, width)
 	}
 
@@ -273,6 +276,7 @@ func renderListSurfacePane(model *ListSurfaceModel, width int, showContinuations
 	if showContinuations && viewport.CanScrollUp {
 		lines = append(lines, RenderListContinuation("↑", viewport.Offset, width))
 	}
+	model.recordPointerFrame(rows, len(lines), width)
 	for _, row := range rows {
 		lines = append(lines, RenderListSurfaceRow(row, model.Config().SelectionMode, width))
 	}

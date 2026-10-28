@@ -1,0 +1,35 @@
+{
+  "name": "mouse-conflict-browser",
+  "fixture": "rich",
+  "size": "100x22",
+  "actions": [
+    { "type": "command", "label": "a project changed under a mutation and a bundle was recorded", "command": "record merge conflict" },
+    { "type": "key", "label": "go to conflicts", "key": "g" },
+    { "type": "key", "key": "c" },
+    { "type": "assert", "assert": "contains", "value": "Merge Conflicts" },
+
+    { "type": "click", "label": "the browser's intro line is not a conflict", "on": "Enter to inspect", "count": 2 },
+    { "type": "assert", "assert": "contains", "value": "Enter to inspect" },
+    { "type": "click", "label": "the host beneath the browser takes no click either", "on": "Active Projects", "count": 2 },
+    { "type": "assert", "assert": "contains", "value": "Merge Conflicts" },
+    { "type": "assert", "assert": "contains", "value": "Enter to inspect" },
+
+    { "type": "click", "label": "a double-click on a conflict is Enter, which inspects it", "on": "Rich Project", "count": 2 },
+    { "type": "assert", "assert": "contains", "value": "Conflict " },
+    { "type": "assert", "assert": "contains", "value": "j/k scroll" },
+    { "type": "click", "label": "a click on the detail lands on nothing", "on": "Project:", "count": 2 },
+    { "type": "assert", "assert": "contains", "value": "Conflict " },
+    { "type": "wheel", "label": "the wheel steps the detail pane as the arrows do", "on": "Project:", "delta": 1 },
+    { "type": "assert", "assert": "not_contains", "value": "Conflict " },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "wheel", "on": "Action:", "delta": -1 },
+    { "type": "assert", "assert": "contains", "value": "Conflict " },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "Enter to inspect" },
+
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "click", "label": "after a resize the browser reads its new frame", "on": "Rich Project", "count": 2 },
+    { "type": "assert", "assert": "contains", "value": "Project:" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

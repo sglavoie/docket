@@ -421,10 +421,17 @@ a single click again. A click or a wheel step is a keystroke for every rule that
 treats keystrokes as input: `interactionIsRetiredBy` and `isInteractionInput`
 count both, the launch focus intent is dropped, and a pending chord is abandoned
 silently and swallows the press. `routePointer` then visits `activeGuidance`'s
-order — shell confirmation, shell-mounted modal, pending chord, presentation —
-and only the active presentation is ever handed the event, through
-`route.PointerView`. A layer that does not implement it swallows the event, so a
-click never falls through a modal to the host drawn beneath it.
+order — shell confirmation, shell-mounted modal, pending chord, presentation.
+A confirmation swallows the event. A shell modal is the popup
+`overlayPointerOwner` names in `handleActiveKeyOverlay`'s order, handed the event
+through `route.PointerView` after `Offset` by the `chrome.OverlayPlacement` that
+`applyOverlays` recorded as it composited that popup (`OverlayPopupDimmedPlaced`,
+`OverlayPopupDimmedAnchoredPlaced`). A cell outside the popup is swallowed, and
+so is a click on a popup fitting cut rows from, since its rows no longer line up;
+a wheel step reads no row and passes. The active presentation is drawn from the
+screen's top-left cell and takes the event untranslated. A layer that does not
+implement `PointerView` swallows the event, so a click never falls through a
+modal to the host drawn beneath it.
 
 The Outliner is the first `PointerView`. `OutlinerModel.HandlePointer` lives in
 `outliner_render.go` beside `CursorScreenRow`, because its hit map is that
@@ -465,6 +472,27 @@ window where it stands. A cursor that window leaves out is pulled to the nearest
 navigable row inside it, refused under any selection, and the window is then
 settled for the cursor it will be drawn with, so the next render keeps the write.
 A step that settles on the current offset is at an end and changes nothing.
+
+Every other list answers the pointer through `listsurface/list_surface_pointer.go`.
+Lists are short and window themselves, so the wheel moves the cursor and never the
+window. `ListPointerFrame` is what a list drew, as a list of entry index and rows
+spanned, recorded at render. `renderListSurfacePane` records it for every
+`ListSurfaceModel`, below any `↑` continuation and skipping category headers,
+and also notes where a wide layout put its preview (`PointerOverPreview`). Notes,
+Comments and Attachments draw their own rows and record their own frames.
+`ListPointerKey` is the one answer: the wheel is `down`/`up`, a double-click that
+seated is `enter`, and a right-click that seated is `space` where the surface
+names Space as its menu. The surface does only the seat, writing the cursor its
+j/k writes. The key is then sent by `route.PressKey` as an ordinary
+`tea.KeyPressMsg`, which reaches whichever layer owns keys by the shell's normal
+key path. A popup's `HandlePointer` subtracts `chrome.OverlayBoxContentTop`/`Left`
+and the rows its render drew above the list (context line, search field,
+notice), and a sub-state drawing no list records nothing (typed entry, rename,
+the inspected conflict, a composer, the expanded reader). Over a preview pane the
+wheel presses `ctrl+f`/`ctrl+b`, in Select Project and Notes, and a click there
+lands on nothing. A surface whose text field is being edited lets a click seat
+the cursor but presses neither Enter nor Space, since both are that field's keys.
+`ManageHubModel` forwards to its mounted module.
 
 `ConflictBrowserModel` is that count's browser and resolver, and it is an overlay
 on the lens picker's template rather than a surface: a `ListSurfaceModel` inside
@@ -728,7 +756,7 @@ the mounted `ActionSheet`, the Outliner is the presentation, and
 `CursorScreenRow` names a row. That row is read off `LastViewport`, which
 `renderOutlinerHostContent` stamps with the screen row its window starts on, so
 the window `ComputeOutlinerViewport` computed is read rather than recomputed.
-`chrome.OverlayPopupDimmedAnchored` places the box under that row, above it when
+`chrome.OverlayPopupDimmedAnchoredPlaced` places the box under that row, above it when
 it does not fit below, and otherwise clamps it whole into the frame below
 `HostHeaderRows`, covering the row rather than losing entries; it is centered
 and flanked like the bottom-anchored path, so only its height differs. Every

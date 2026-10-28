@@ -14,6 +14,12 @@ type ListSurfaceModel struct {
 	width        int
 	height       int
 	scrollOffset int
+	// pointerFrame is the pane the last render drew, which is the only frame a
+	// click may be read against. See list_surface_pointer.go.
+	pointerFrame ListPointerFrame
+	// previewLeft is the first column the last render drew a preview pane in,
+	// or zero when it drew the list alone.
+	previewLeft int
 }
 
 // NewListSurfaceModel validates and copies all source data.

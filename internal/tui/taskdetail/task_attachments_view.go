@@ -29,6 +29,7 @@ func (m *TaskAttachmentsModel) View() tea.View { //nolint:gocyclo
 		m.Width(),
 		m.AccentColor()))
 	b.WriteString("\n\n")
+	m.pointerEntries.Reset(m.Width())
 
 	if m.AddMode {
 		return m.renderAddMode(&b)
@@ -75,7 +76,9 @@ func (m *TaskAttachmentsModel) renderAttachmentsList(b *strings.Builder, availab
 	scrollOffset := chrome.CalcScrollOffset(m.Cursor, maxVisible)
 
 	for i := scrollOffset; i < len(m.Task.Attachments) && i < scrollOffset+maxVisible; i++ {
-		b.WriteString(m.renderAttachmentEntry(i, m.Task.Attachments[i]))
+		entry := m.renderAttachmentEntry(i, m.Task.Attachments[i])
+		m.pointerEntries.Record(i, strings.Count(b.String(), "\n"), strings.Count(entry, "\n"))
+		b.WriteString(entry)
 	}
 
 	if len(m.Task.Attachments) > maxVisible {

@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/keymap"
 	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/route"
 	"github.com/sglavoie/docket/internal/tui/status"
 	"github.com/sglavoie/docket/internal/tui/textfit"
 	"github.com/sglavoie/docket/internal/tui/theme"
@@ -84,6 +85,9 @@ type ContextActionSheetModel struct {
 	Config    ContextActionSheetConfig
 	Notice    string
 	Searching bool
+	// pointerListTop is the popup row the last render drew the list's first row
+	// on. See HandlePointer.
+	pointerListTop int
 }
 
 // NewContextActionSheetModel freezes ctx and projects operationIDs, in the
@@ -352,8 +356,10 @@ func (model *ContextActionSheetModel) Render(width int) string {
 		}
 	}
 	content := RenderCompactListSurface(model.Surface, innerWidth-4, listHeight)
+	model.pointerListTop = chrome.OverlayBoxContentTop
 	if header != "" {
 		content = header + "\n\n" + content
+		model.pointerListTop += lipgloss.Height(header) + 1
 	}
 
 	titleText := model.Config.Title
@@ -416,4 +422,21 @@ func (model *ContextActionSheetModel) GuidanceSpec() (chrome.GuidanceSpec, bool)
 			keymap.WithFooter(2, escapeLabel, true), keymap.WithFooterKey("Esc")),
 	}}
 	return ListSurfaceGuidanceSpec(model.Surface.GuidanceState(searching), km, nil)
+}
+
+// HandlePointer gives the sheet the list surface's pointer answer, for an event
+// the shell has already moved into this popup's own cells: a click seats the
+// cursor on an action, a double-click is Enter, which runs it with every guard
+// and confirmation Enter has, and the wheel steps the cursor. A sheet has no
+// Space, and while its search is being typed Enter is that field's, so a click
+// then only seats.
+func (model *ContextActionSheetModel) HandlePointer(event route.PointerEvent) tea.Cmd {
+	if model == nil || model.Surface == nil {
+		return nil
+	}
+	key := model.Surface.AnswerPointer(event.Offset(chrome.OverlayBoxContentLeft, model.pointerListTop), false)
+	if model.Searching && key == "enter" {
+		return nil
+	}
+	return route.PressKey(key)
 }

@@ -91,6 +91,10 @@ type CommentsModel struct {
 	// Editor config
 	editor string
 
+	// pointerEntries is which comment each row of the last list frame drew. See
+	// HandlePointer.
+	pointerEntries listsurface.ListPointerFrame
+
 	// pendingTopChord holds the first g of gg. The shell's chord state serves the
 	// Outliner only, so the panel keeps its own one-key prefix.
 	pendingTopChord bool

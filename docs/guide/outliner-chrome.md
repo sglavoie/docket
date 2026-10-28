@@ -260,6 +260,22 @@ ends rather than moving the list. With the `Q` readout open, the wheel scrolls
 the readout when it is over it and does nothing anywhere else. Over the title,
 the context line, the status line, or the footer it does nothing.
 
+Lists everywhere else answer the same way: Select Project, Notes, Comments,
+Attachments, the `gc` conflict browser, every `Space` menu, and the pickers
+(dates, tags and context, dependencies, and the rest). Clicking an entry moves
+the cursor to it, double-clicking is `Enter` on it, and right-clicking is that
+list's `Space` where it has one: a menu in Select Project, Notes, Comments and
+Attachments, and a toggle in a picker that checks several values. These lists are
+short, so the wheel moves the cursor a row per step rather than scrolling. Over
+the preview pane in Select Project or Notes the wheel pages the preview, as
+`Ctrl+F` and `Ctrl+B` do, and a click there does nothing. In the date picker,
+clicking a row in another section moves to that section, as `Tab` would.
+Section headers, the search field, and a note's preview ignore clicks. While you
+type in a search field, a click only moves the cursor, since `Enter` and `Space`
+belong to the field. The typed-date and new-tag inputs, the comment composer,
+and the expanded comment reader ignore the pointer. Clicking outside an open
+picker or menu does nothing.
+
 To select text while the mouse is on, hold Shift as you drag; most terminals,
 Docket.app's included, keep Shift+drag for selection.
 

@@ -249,11 +249,16 @@ func TestPresentationChromeTransientPopupPreservesHostPulse(t *testing.T) {
 	hostTitle := chrome.RenderFullscreenTitleWithPulse("Notes", "All Notes", pulse.WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4}, width)
 	host := hostTitle + strings.Repeat("\n", height-1)
 	tallPopup := strings.Repeat("transient action\n", height*2) + "last action"
-	rendered := ansi.Strip(overlayPopupBelowPersistentTitle(host, tallPopup, width, height))
+	rendered := ansi.Strip(composedBelowPersistentTitle(host, tallPopup, width, height))
 	if !strings.Contains(rendered, "workspace: inbox 3 · today 2 · overdue 1 · done 4") {
 		t.Fatalf("transient popup obscured the host pulse:\n%s", rendered)
 	}
 	if strings.Count(rendered, "workspace:") != 1 {
 		t.Fatalf("transient popup duplicated the host pulse:\n%s", rendered)
 	}
+}
+
+func composedBelowPersistentTitle(base, popup string, width, height int) string {
+	composed, _ := overlayPopupPlacedBelowPersistentTitle(base, popup, width, height)
+	return composed
 }

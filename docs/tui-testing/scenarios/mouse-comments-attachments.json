@@ -1,0 +1,48 @@
+{
+  "name": "mouse-comments-attachments",
+  "fixture": "fresh",
+  "size": "100x30",
+  "actions": [
+    { "type": "key", "label": "capture a task carrying two comments and two links", "key": "a" },
+    { "type": "text", "text": "Plan launch ;first remark; ;second remark; &https://example.com/alpha &https://example.com/beta " },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+
+    { "type": "key", "label": "open the comment panel", "key": ";" },
+    { "type": "assert", "assert": "contains", "value": "2 comments" },
+    { "type": "click", "label": "a double-click on a comment's text seats the cursor there and is Enter, which expands it", "on": "second remark", "count": 2 },
+    { "type": "assert", "assert": "contains", "value": "Comment [1]" },
+    { "type": "click", "label": "the expanded reader owns its keys, so a click there does nothing", "on": "second remark", "count": 2 },
+    { "type": "assert", "assert": "contains", "value": "Comment [1]" },
+    { "type": "key", "key": "esc" },
+    { "type": "wheel", "label": "the wheel steps the cursor a row at a time", "on": "first remark", "delta": -1 },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Comment [0]" },
+    { "type": "key", "key": "esc" },
+    { "type": "click", "label": "a right-click is Space on the comment it lands on", "on": "second remark", "button": "right" },
+    { "type": "assert", "assert": "contains", "value": "Comment Actions" },
+    { "type": "assert", "assert": "contains", "value": "Delete" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+    { "type": "click", "label": "the summary line above the list is not an entry", "on": "2 comments", "count": 2 },
+    { "type": "assert", "assert": "not_contains", "value": "Comment [" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "open the attachment panel", "key": "&" },
+    { "type": "assert", "assert": "contains", "value": "2 attachments" },
+    { "type": "click", "label": "a click anywhere on an attachment's rows seats the cursor there", "on": "example.com/beta" },
+    { "type": "key", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Attachment Actions: https://example.com/beta" },
+    { "type": "key", "key": "esc" },
+    { "type": "wheel", "on": "example.com/beta", "delta": -1 },
+    { "type": "click", "label": "and a right-click is Space there", "on": "example.com/alpha", "button": "right" },
+    { "type": "assert", "assert": "contains", "value": "Attachment Actions: https://example.com/alpha" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "click", "label": "after a resize the panel reads its new frame", "on": "example.com/beta", "button": "right" },
+    { "type": "assert", "assert": "contains", "value": "Attachment Actions" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

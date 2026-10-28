@@ -176,6 +176,9 @@ type ProjectHubModel struct {
 	focusedProjectID string
 	notice           string
 	taskFilter       projectHubTaskFilter
+	// pointerTop is the screen row the last frame drew the list's first row on,
+	// or -1 when it drew the action sheet instead. See HandlePointer.
+	pointerTop int
 	// pendingTopChord holds the first g of gg. The shell's chord state serves the
 	// Outliner only, so the Hub keeps its own one-key prefix.
 	pendingTopChord bool

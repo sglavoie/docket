@@ -29,11 +29,37 @@ const overlayFlankMinColumns = 8
 // a side margin narrower than overlayFlankMinColumns is painted with that same
 // halo on the popup's rows instead of cutting the host through.
 func OverlayPopupDimmed(base, popup string, baseWidth, baseHeight int) string {
+	composed, _ := OverlayPopupDimmedPlaced(base, popup, baseWidth, baseHeight)
+	return composed
+}
+
+// OverlayPlacement is where a composited popup's own top-left cell landed on
+// the frame, which is what a pointer event is translated by before the popup
+// reads it. Whole is false when fitting removed interior rows, since a row of
+// the drawn popup is then no longer the same row of the popup that rendered it.
+type OverlayPlacement struct {
+	Row, Col   int
+	Rows, Cols int
+	Whole      bool
+}
+
+// Contains reports whether screen cell (x, y) is one the popup drew.
+func (placement OverlayPlacement) Contains(x, y int) bool {
+	return x >= placement.Col && x < placement.Col+placement.Cols &&
+		y >= placement.Row && y < placement.Row+placement.Rows
+}
+
+// OverlayPopupDimmedPlaced is OverlayPopupDimmed reporting where the popup
+// landed. The placement is computed by the compositing itself, never by a
+// second copy of its arithmetic.
+func OverlayPopupDimmedPlaced(base, popup string, baseWidth, baseHeight int) (string, OverlayPlacement) {
 	if popup == "" {
-		return base
+		return base, OverlayPlacement{}
 	}
 	fitted := FitOverlayPopupHeight(popup, baseHeight)
-	return overlayPopupDimmedRow(base, fitted, baseWidth, baseHeight, bottomPopupTopRow(baseHeight, lipgloss.Height(fitted)))
+	composed, placement := overlayPopupDimmedRow(base, fitted, baseWidth, baseHeight, bottomPopupTopRow(baseHeight, lipgloss.Height(fitted)))
+	placement.Whole = lipgloss.Height(fitted) == lipgloss.Height(popup)
+	return composed, placement
 }
 
 // OverlayPopupDimmedKeepingRow is OverlayPopupDimmed for a frame holding one row
@@ -54,13 +80,17 @@ func OverlayPopupDimmedKeepingRow(base, popup string, baseWidth, baseHeight, top
 	height := lipgloss.Height(popup)
 	switch {
 	case height <= below:
-		return overlayPopupDimmedRow(base, popup, baseWidth, baseHeight, baseHeight-height)
+		composed, _ := overlayPopupDimmedRow(base, popup, baseWidth, baseHeight, baseHeight-height)
+		return composed
 	case height <= above:
-		return overlayPopupDimmedRow(base, popup, baseWidth, baseHeight, keepRow-height)
+		composed, _ := overlayPopupDimmedRow(base, popup, baseWidth, baseHeight, keepRow-height)
+		return composed
 	case below >= above:
-		return overlayPopupDimmedRow(base, FitOverlayPopupHeight(popup, below), baseWidth, baseHeight, keepRow+1)
+		composed, _ := overlayPopupDimmedRow(base, FitOverlayPopupHeight(popup, below), baseWidth, baseHeight, keepRow+1)
+		return composed
 	default:
-		return overlayPopupDimmedRow(base, FitOverlayPopupHeight(popup, above), baseWidth, baseHeight, topRow)
+		composed, _ := overlayPopupDimmedRow(base, FitOverlayPopupHeight(popup, above), baseWidth, baseHeight, topRow)
+		return composed
 	}
 }
 
@@ -81,23 +111,27 @@ func AnchoredPopupStartRow(anchorRow, popupHeight, topRow, frameHeight int) int 
 	}
 }
 
-// OverlayPopupDimmedAnchored is OverlayPopupDimmedAt for a popup that belongs to
-// one host row: AnchoredPopupStartRow chooses the row, the popup is fitted to
-// the frame below topRow, and it is centered and flanked the way a
-// bottom-anchored popup is, so only its height position differs.
-func OverlayPopupDimmedAnchored(base, popup string, baseWidth, baseHeight, anchorRow, topRow int) string {
+// OverlayPopupDimmedAnchoredPlaced is OverlayPopupDimmedAt for a popup that
+// belongs to one host row: AnchoredPopupStartRow chooses the row, the popup is
+// fitted to the frame below topRow, and it is centered and flanked the way a
+// bottom-anchored popup is, so only its height position differs. It reports
+// where the popup landed.
+func OverlayPopupDimmedAnchoredPlaced(base, popup string, baseWidth, baseHeight, anchorRow, topRow int) (string, OverlayPlacement) {
 	if popup == "" {
-		return base
+		return base, OverlayPlacement{}
 	}
 	topRow = min(max(topRow, 0), max(baseHeight-1, 0))
 	fitted := FitOverlayPopupHeight(popup, max(baseHeight-topRow, 1))
 	startRow := AnchoredPopupStartRow(anchorRow, lipgloss.Height(fitted), topRow, baseHeight)
-	return overlayPopupDimmedRow(base, fitted, baseWidth, baseHeight, startRow)
+	composed, placement := overlayPopupDimmedRow(base, fitted, baseWidth, baseHeight, startRow)
+	placement.Whole = fitted == popup
+	return composed, placement
 }
 
 // overlayPopupDimmedRow centers an already fitted popup at startRow over the
 // dimmed base, flanking it where a side margin is too narrow to show the host.
-func overlayPopupDimmedRow(base, fitted string, baseWidth, baseHeight, startRow int) string {
+// The placement names the popup's own first cell, inside any flank.
+func overlayPopupDimmedRow(base, fitted string, baseWidth, baseHeight, startRow int) (string, OverlayPlacement) {
 	popupWidth := PopupWidth(fitted)
 	startCol := max((baseWidth-popupWidth)/2, 0)
 	left, right := startCol, max(baseWidth-startCol-popupWidth, 0)
@@ -111,7 +145,14 @@ func overlayPopupDimmedRow(base, fitted string, baseWidth, baseHeight, startRow 
 		fitted = flankOverlayPopup(fitted, popupWidth, left, right)
 		startCol -= left
 	}
-	return overlayPopupAt(DimContent(base), fitted, baseWidth, baseHeight, startRow, startCol)
+	// overlayPopupAt clamps the column the same way before it draws.
+	drawnCol := min(max(startCol, 0), max(baseWidth-PopupWidth(fitted), 0))
+	placement := OverlayPlacement{
+		Row: startRow, Col: drawnCol + left,
+		Rows: min(lipgloss.Height(fitted), max(baseHeight-startRow, 0)), Cols: popupWidth,
+		Whole: true,
+	}
+	return overlayPopupAt(DimContent(base), fitted, baseWidth, baseHeight, startRow, startCol), placement
 }
 
 // flankOverlayPopup widens every popup row by left and right halo cells, the

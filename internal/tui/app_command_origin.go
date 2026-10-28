@@ -191,6 +191,10 @@ type pointerState struct {
 	lastClickX      int
 	lastClickY      int
 	lastClickButton route.PointerButton
+
+	// overlays is where the last frame composited each shell popup, which is
+	// the translation a click needs before the popup owning keys reads it.
+	overlays []placedOverlay
 }
 
 // pointerNow is the instant double-click detection compares against.
@@ -292,8 +296,11 @@ func (m *AppModel) routePointer(event route.PointerEvent) tea.Cmd {
 	if m.lifecycle.quitting || m.viewNav.tooSmall() {
 		return nil
 	}
-	if m.shellConfirmationArmed() || m.shellModalMounted() {
+	if m.shellConfirmationArmed() {
 		return nil
+	}
+	if m.shellModalMounted() {
+		return m.routeOverlayPointer(event)
 	}
 	if len(m.operations.Chord) > 0 {
 		// The chord owned the next key, and the click was that key: the path is
@@ -313,4 +320,46 @@ func (m *AppModel) routePointer(event route.PointerEvent) tea.Cmd {
 	// own coordinates are the screen's; a surface drawn elsewhere translates
 	// through route.PointerEvent.Offset.
 	return answerer.HandlePointer(event)
+}
+
+// routeOverlayPointer hands the event to the shell popup that owns keys, in
+// handleActiveKeyOverlay's order, translated into that popup's own cells. An
+// event outside the popup and a popup that does not answer the pointer swallow
+// it: the host beneath never receives a click while a popup stands over it. A
+// click also needs the popup drawn whole, since a row fitting removed would
+// otherwise name the row below it; a wheel step reads no row.
+func (m *AppModel) routeOverlayPointer(event route.PointerEvent) tea.Cmd {
+	owner := m.overlayPointerOwner()
+	answerer, ok := owner.(route.PointerView)
+	if !ok {
+		return nil
+	}
+	placement, drawn := m.overlayPlacement(owner)
+	if !drawn || !placement.Contains(event.X, event.Y) || (!placement.Whole && !event.IsWheel()) {
+		return nil
+	}
+	return answerer.HandlePointer(event.Offset(placement.Col, placement.Row))
+}
+
+// overlayPointerOwner is the popup the next key press would reach. The text
+// editors and the check-in setup are named so they win and swallow, which is
+// what a text input does with the pointer.
+func (m *AppModel) overlayPointerOwner() widthRenderer {
+	switch {
+	case m.checkInSetup != nil:
+		return nil
+	case m.operations.CheckInEditor != nil:
+		return m.operations.CheckInEditor
+	case m.operations.TextPrompt != nil:
+		return m.operations.TextPrompt
+	case m.operations.ValuePicker != nil:
+		return m.operations.ValuePicker
+	case m.operations.ActionSheet != nil:
+		return m.operations.ActionSheet
+	case m.lenses.Mounted():
+		return m.lenses.Picker()
+	case m.conflictBrowser != nil:
+		return m.conflictBrowser
+	}
+	return nil
 }

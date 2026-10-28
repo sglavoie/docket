@@ -64,6 +64,16 @@ func FitOverlayTitle(title, subject, suffix string, width int) string {
 // border, title and help text inside the frame, and a subtle one-cell halo on
 // all four sides. Width is the framed box width; the halo adds two columns and
 // two rows. Title and footer must already be styled.
+// OverlayBoxContentTop and OverlayBoxContentLeft are the popup cell
+// RenderOverlayBox draws its content's first character on when it has a title:
+// the halo, the border, and the title row above it, and the halo, the border,
+// and the padding cell beside it. A popup reading a click against its own
+// content subtracts them rather than re-deriving the frame.
+const (
+	OverlayBoxContentTop  = 3
+	OverlayBoxContentLeft = 3
+)
+
 func RenderOverlayBox(content string, width int, title, footer string, borderStyle lipgloss.Style) string {
 	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).

@@ -55,6 +55,9 @@ type OperationValuePickerModel struct {
 	// rename is the nested rename/merge workflow the two filter vocabularies
 	// offer. Its zero value is the browse grammar. See vocabulary_rename.go.
 	rename vocabularyRenameState
+	// pointerListTop is the popup row the last browse render drew the list's
+	// first row on, or -1 when that render drew no list. See HandlePointer.
+	pointerListTop int
 }
 
 func NewOperationValuePickerModel(
@@ -95,6 +98,7 @@ func NewOperationValuePickerModel(
 	model := &OperationValuePickerModel{
 		initialSelection: append([]listsurface.ListItemID(nil), selected...),
 		surface:          surface,
+		pointerListTop:   -1,
 		request:          request,
 		provider:         provider,
 		title:            title,

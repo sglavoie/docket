@@ -182,6 +182,12 @@
 #     next key press. It needs no new edge: `route` already imports bubbletea
 #     for tea.KeyMod and tea.Cmd, and every surface that will implement it
 #     already names `route`.
+#   - `valuepicker -> route` and `conflict -> route` were added with list
+#     pointer support. Both are shell popups rather than routed views, and the
+#     one thing either reads from `route` is that contract: `PointerEvent` and
+#     `PointerView` for the event the shell translates into the popup, and
+#     `PressKey` for the Enter, Space, or arrow it then presses. `route` is L4
+#     and reaches no L7 package, so neither edge can close a cycle.
 #   - Check-in integration adds `taskform -> operation` for the typed schedule
 #     request and result shared by inline and operation editors, and
 #     `operationhost -> taskform,coordinator` for editor invocation, retry and
@@ -207,7 +213,7 @@ notes	L7	presentation,theme,textfit,status,keymap,chrome,operation,route,listsur
 taskdetail	L7	presentation,theme,textfit,taskref,status,keymap,chrome,coordinator,operation,route,listsurface,help
 taskform	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,listsurface,operation
 lens	L7	presentation,theme,textfit,status,keymap,chrome,query,operation,route,listsurface
-conflict	L7	theme,textfit,status,keymap,chrome,listsurface
+conflict	L7	theme,textfit,status,keymap,chrome,listsurface,route
 projecthub	L7	presentation,theme,textfit,status,pulse,keymap,chrome,coordinator,operation,route,listsurface,help,notes
 outliner	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,notes,taskform,taskdetail,lens,projecthub
 entityops	L7	presentation,theme,taskref,status,keymap,chrome,coordinator,operation,route,listsurface,help,taskdetail,outliner
@@ -216,5 +222,5 @@ filterops	L7	theme,taskref,status,keymap,chrome,query,operation,listsurface,outl
 notesops	L7	presentation,operation,route,listsurface,notes,projecthub,outliner
 projectops	L7	presentation,theme,textfit,status,chrome,operation,route,listsurface,notes,projecthub,outliner,taskdetail,valuepicker,filterops
 operationhost	L7	presentation,theme,textfit,status,chrome,operation,route,listsurface,notes,projecthub,outliner,valuepicker,taskref,taskform,coordinator
-valuepicker	L7	theme,textfit,taskref,status,keymap,chrome,grammar,query,operation,listsurface,outliner,projecthub
+valuepicker	L7	theme,textfit,taskref,status,keymap,chrome,grammar,query,operation,listsurface,outliner,projecthub,route
 tui	L8	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,notes,taskdetail,taskform,lens,conflict,projecthub,outliner,valuepicker,filterops,lensops,entityops,projectops,notesops,operationhost

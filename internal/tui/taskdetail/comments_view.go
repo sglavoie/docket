@@ -19,6 +19,7 @@ func (m *CommentsModel) View() tea.View {
 
 	var b strings.Builder
 	b.WriteString(m.panelTitle())
+	m.pointerEntries.Reset(m.Width())
 
 	if m.ExpandedView && m.HasSelection() {
 		return m.renderExpandedView(&b)
@@ -222,7 +223,9 @@ func (m *CommentsModel) renderCommentsList(b *strings.Builder, availableRows int
 	maxLen := max(m.Width()-12, 1)
 
 	for i := scrollOffset; i < len(m.entries) && i < scrollOffset+maxVisible; i++ {
-		b.WriteString(m.renderCommentEntry(i, m.entries[i], maxLen))
+		entry := m.renderCommentEntry(i, m.entries[i], maxLen)
+		m.pointerEntries.Record(i, strings.Count(b.String(), "\n"), strings.Count(entry, "\n"))
+		b.WriteString(entry)
 	}
 
 	if len(m.entries) > maxVisible {

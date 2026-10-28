@@ -224,6 +224,15 @@ func (m *ManageHubModel) View() tea.View {
 	return tea.NewView("")
 }
 
+// HandlePointer hands the event to the mounted module, drawn where the hub is,
+// so it needs no translation. A module that does not answer swallows it.
+func (m *ManageHubModel) HandlePointer(event route.PointerEvent) tea.Cmd {
+	if answerer, ok := m.active.(route.PointerView); ok {
+		return answerer.HandlePointer(event)
+	}
+	return nil
+}
+
 func (m *ManageHubModel) SetSize(width, height int) {
 	m.BaseView.SetSize(width, height)
 	if m.active != nil {

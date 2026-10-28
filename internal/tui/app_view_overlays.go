@@ -14,6 +14,9 @@ import (
 //   - Pickers/selection overlays (dimmedOverlayRenderers): dim
 //   - Confirm dialogs: dim (destructive action requires focus)
 func (m *AppModel) applyOverlays(content string, h, panelDivider int) string {
+	// Where each popup lands is recorded as it is composited, so a click is read
+	// against the frame on screen. A popup this pass does not place has none.
+	m.pointer.overlays = m.pointer.overlays[:0]
 	// Overlay dimmed picker/note popups (all share the same nil-check + render pattern)
 	for _, renderer := range m.dimmedOverlayRenderers() {
 		if anchored, ok := m.overlayAnchoredToOutlinerRow(renderer, content, h); ok {
@@ -21,7 +24,9 @@ func (m *AppModel) applyOverlays(content string, h, panelDivider int) string {
 			continue
 		}
 		if popup := renderOverlayWithin(renderer, m.viewNav.width, h); popup != "" {
-			content = overlayPopupBelowPersistentTitle(content, popup, m.viewNav.width, h)
+			var placement chrome.OverlayPlacement
+			content, placement = overlayPopupPlacedBelowPersistentTitle(content, popup, m.viewNav.width, h)
+			m.pointer.overlays = append(m.pointer.overlays, placedOverlay{renderer: renderer, placement: placement})
 		}
 	}
 
@@ -58,15 +63,36 @@ func (m *AppModel) overlayAnchoredToOutlinerRow(renderer widthRenderer, content 
 	if popup == "" {
 		return content, true
 	}
-	return chrome.OverlayPopupDimmedAnchored(content, popup, m.viewNav.width, h, row, top), true
+	composed, placement := chrome.OverlayPopupDimmedAnchoredPlaced(content, popup, m.viewNav.width, h, row, top)
+	m.pointer.overlays = append(m.pointer.overlays, placedOverlay{renderer: renderer, placement: placement})
+	return composed, true
 }
 
-// overlayPopupBelowPersistentTitle reserves the host's first row before
+// overlayPopupPlacedBelowPersistentTitle reserves the host's first row before
 // fitting a transient popup. Full-screen hosts keep their workspace pulse
-// visible while the popup owns only its local interaction chrome.
-func overlayPopupBelowPersistentTitle(base, popup string, width, height int) string {
-	popup = chrome.FitOverlayPopupHeight(popup, max(height-1, 1))
-	return chrome.OverlayPopupDimmed(base, popup, width, height)
+// visible while the popup owns only its local interaction chrome. It reports
+// where the popup landed, and whether either fitting kept every row of it.
+func overlayPopupPlacedBelowPersistentTitle(base, popup string, width, height int) (string, chrome.OverlayPlacement) {
+	fitted := chrome.FitOverlayPopupHeight(popup, max(height-1, 1))
+	composed, placement := chrome.OverlayPopupDimmedPlaced(base, fitted, width, height)
+	placement.Whole = placement.Whole && fitted == popup
+	return composed, placement
+}
+
+// placedOverlay is one popup as the last frame composited it.
+type placedOverlay struct {
+	renderer  widthRenderer
+	placement chrome.OverlayPlacement
+}
+
+// overlayPlacement reports where the last frame drew renderer, if it did.
+func (m *AppModel) overlayPlacement(renderer widthRenderer) (chrome.OverlayPlacement, bool) {
+	for _, placed := range m.pointer.overlays {
+		if placed.renderer == renderer {
+			return placed.placement, true
+		}
+	}
+	return chrome.OverlayPlacement{}, false
 }
 
 // widthRenderer is satisfied by all overlay pickers/popups that render given a

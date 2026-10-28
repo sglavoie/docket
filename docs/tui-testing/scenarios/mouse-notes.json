@@ -1,0 +1,45 @@
+{
+  "name": "mouse-notes",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open All Notes wide enough for two panes", "key": "ctrl+n" },
+    { "type": "assert", "assert": "contains", "value": "Track the authentication" },
+
+    { "type": "click", "label": "a click on a note seats the cursor there, and the preview follows", "on": "Workspace launch brief" },
+    { "type": "assert", "assert": "contains", "value": "Shared launch context for every active" },
+    { "type": "wheel", "label": "the wheel over the list steps the cursor", "x": 10, "y": 6, "delta": -1 },
+    { "type": "assert", "assert": "contains", "value": "Track the authentication" },
+
+    { "type": "wheel", "label": "over the preview it pages the note, as Ctrl+F does", "x": 80, "y": 15, "delta": 1 },
+    { "type": "assert", "assert": "not_contains", "value": "Track the authentication" },
+    { "type": "assert", "assert": "contains", "value": "↑" },
+    { "type": "click", "label": "the preview body swallows a click", "x": 80, "y": 15, "count": 2 },
+    { "type": "assert", "assert": "view", "value": "GlobalNotes" },
+    { "type": "assert", "assert": "not_contains", "value": "Track the authentication" },
+    { "type": "wheel", "label": "and pages back, as Ctrl+B does", "x": 80, "y": 15, "delta": -1 },
+    { "type": "assert", "assert": "contains", "value": "Track the authentication" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "click", "label": "the header above the list is not a note", "on": "2 notes across", "button": "right" },
+    { "type": "assert", "assert": "not_contains", "value": "Note Actions" },
+    { "type": "click", "label": "a right-click is Space on the note it lands on", "on": "Workspace launch brief", "button": "right" },
+    { "type": "assert", "assert": "contains", "value": "Note Actions: Workspace launch brief" },
+    { "type": "assert", "assert": "contains", "value": "› Delete Note" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "click", "label": "a click outside the menu reaches nothing beneath it", "on": "Rich Project delivery plan" },
+    { "type": "assert", "assert": "contains", "value": "Note Actions: Workspace launch brief" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "while the search is being typed a click only seats the cursor", "key": "/" },
+    { "type": "click", "on": "Rich Project delivery plan", "count": 2 },
+    { "type": "assert", "assert": "contains", "value": "Track the authentication" },
+    { "type": "assert", "assert": "view", "value": "GlobalNotes" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "click", "label": "after a resize the list reads its new frame", "on": "Workspace launch brief", "button": "right" },
+    { "type": "assert", "assert": "contains", "value": "Note Actions: Workspace launch brief" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

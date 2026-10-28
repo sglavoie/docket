@@ -20,7 +20,7 @@ func NewProjectHubModel(runtime *config.RuntimeState, modes ...route.ProjectHubM
 	if len(modes) > 0 {
 		mode = modes[0]
 	}
-	m := &ProjectHubModel{runtime: runtime, mode: mode}
+	m := &ProjectHubModel{runtime: runtime, mode: mode, pointerTop: -1}
 	m.InitSearchInput("Search projects", 64, 32)
 	m.rebuildProjectSurface("")
 	return m

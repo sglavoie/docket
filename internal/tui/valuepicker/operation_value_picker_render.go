@@ -141,6 +141,9 @@ func (model *OperationValuePickerModel) RenderWithin(width, height int) string {
 		return ""
 	}
 	innerWidth := operationValuePickerInnerWidth(width)
+	// Only the browse frame below draws the list, so every other frame leaves
+	// the pointer nothing to land on.
+	model.pointerListTop = -1
 	if model.provider.TagEntry() && model.tagAdder.AddTagMode {
 		noun := model.tagAdderNoun()
 		content := theme.MutedStyle.Render(fmt.Sprintf(
@@ -241,11 +244,14 @@ func (model *OperationValuePickerModel) RenderWithin(width, height int) string {
 		search = model.searchInput.View(query, model.searching, innerWidth-4)
 	}
 	content := listsurface.RenderCompactListSurface(model.surface, innerWidth-4, listHeight)
+	model.pointerListTop = chrome.OverlayBoxContentTop
 	if search != "" {
 		content = search + "\n\n" + content
+		model.pointerListTop += lipgloss.Height(search) + 1
 	}
 	if len(contextLines) > 0 {
 		content = theme.MutedStyle.Render(strings.Join(contextLines, "\n")) + "\n" + content
+		model.pointerListTop += len(contextLines)
 	}
 	if explainerBlock != "" {
 		content += "\n\n" + explainerBlock

@@ -1,0 +1,32 @@
+{
+  "name": "mouse-action-sheet",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "click", "label": "a right-click on a task opens its Space menu under the row", "on": "Build login form", "button": "right" },
+    { "type": "assert", "assert": "contains", "value": "Task Actions: Build login form" },
+    { "type": "assert", "assert": "contains", "value": "› Set Check-In" },
+    { "type": "wheel", "label": "the wheel steps the menu's cursor, across its section header", "on": "Set Check-In", "delta": 1 },
+    { "type": "assert", "assert": "contains", "value": "› Delete" },
+    { "type": "click", "label": "a click seats it back on an action without running it", "on": "Set Check-In" },
+    { "type": "assert", "assert": "contains", "value": "› Set Check-In" },
+    { "type": "assert", "assert": "contains", "value": "Task Actions: Build login form" },
+    { "type": "click", "label": "the host row the menu hangs off takes no click while it is open", "on": "Someday", "count": 2 },
+    { "type": "assert", "assert": "contains", "value": "Task Actions: Build login form" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "click", "label": "a double-click is Enter, which runs the action with the key's own guards", "on": "Delete", "count": 2 },
+    { "type": "assert", "label": "a destructive action still asks first", "assert": "contains", "value": "Delete task #3?" },
+    { "type": "click", "label": "and a click never answers that question", "on": "Someday", "count": 2 },
+    { "type": "assert", "assert": "contains", "value": "Delete task #3?" },
+    { "type": "assert", "assert": "contains", "value": "▸  Someday" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Delete task #3?" },
+    { "type": "assert", "assert": "contains", "value": "Build login form" },
+
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "click", "on": "Build login form", "button": "right" },
+    { "type": "wheel", "label": "after a resize the menu reads its new frame", "on": "Set Check-In", "delta": 1 },
+    { "type": "assert", "assert": "contains", "value": "› Delete" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

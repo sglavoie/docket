@@ -1,0 +1,47 @@
+{
+  "name": "mouse-project-hub",
+  "fixture": "release",
+  "size": "100x30",
+  "actions": [
+    { "type": "key", "label": "open Select Project", "key": "P" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+
+    { "type": "click", "label": "a click on a project seats the cursor there", "x": 4, "y": 3 },
+    { "type": "assert", "assert": "contains", "value": "› Unfiled" },
+    { "type": "wheel", "label": "the wheel over the list steps the cursor a row", "x": 4, "y": 12, "delta": -1 },
+    { "type": "assert", "assert": "contains", "value": "› Release Ω Project" },
+    { "type": "click", "label": "the header and the section label are not projects", "on": "ACTIVE PROJECTS", "count": 2 },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+
+    { "type": "wheel", "label": "over the preview the wheel pages the project's tasks, as Ctrl+F does", "x": 70, "y": 12, "delta": 1 },
+    { "type": "assert", "assert": "contains", "value": "↑ 20 more" },
+    { "type": "assert", "assert": "contains", "value": "› Release Ω Project" },
+    { "type": "click", "label": "a click on the preview lands on nothing", "x": 70, "y": 12, "count": 2 },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "wheel", "label": "and back, as Ctrl+B does", "x": 70, "y": 12, "delta": -1 },
+    { "type": "assert", "assert": "not_contains", "value": "↑ 20 more" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "click", "label": "a right-click is Space, the project's action sheet", "x": 4, "y": 2, "button": "right" },
+    { "type": "assert", "assert": "contains", "value": "Actions: Release Ω Project" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "while the query is being typed, Space is a character of it", "key": "/" },
+    { "type": "click", "on": "Unfiled  0 tasks", "button": "right" },
+    { "type": "assert", "assert": "not_contains", "value": "No administration actions" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "click", "label": "a double-click is Enter, which opens the project", "on": "Unfiled  0 tasks", "count": 2 },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "Unfiled" },
+
+    { "type": "key", "key": "P" },
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "click", "label": "after a resize the list reads its new frame, and Space refuses there as the key does", "on": "Unfiled", "button": "right" },
+    { "type": "assert", "assert": "contains", "value": "No administration actions are available for this project" },
+    { "type": "click", "label": "the notice moved the list a row down, and the hit map moved with it", "on": "Release Ω Project" },
+    { "type": "assert", "assert": "contains", "value": "› Release Ω Project" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

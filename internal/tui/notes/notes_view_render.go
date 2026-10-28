@@ -19,6 +19,7 @@ import (
 )
 
 func (m *NotesViewModel) View() tea.View {
+	m.pointer = notesPointerFrame{}
 	if m.LocationPicker != nil {
 		return m.LocationPicker.View()
 	}
@@ -58,6 +59,7 @@ func (m *NotesViewModel) View() tea.View {
 	headerBlock := strings.Join(header, "\n")
 	footerBlock := strings.Join(footer, "\n")
 	contentHeight := chrome.FullscreenContentHeightForBlocks(height, headerBlock, footerBlock)
+	m.pointer.top = lipgloss.Height(headerBlock)
 	content := chrome.FitBlockHeight(m.renderNotesContent(width, contentHeight), contentHeight)
 	return tea.NewView(lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -80,6 +82,7 @@ func (m *NotesViewModel) renderNotesContent(width, height int) string {
 		return m.renderListPane(width, height)
 	}
 	listPane := strings.TrimRight(m.renderListPane(listWidth, height), "\n")
+	m.pointer.previewLeft = listsurface.ListSurfacePreviewLeft(listWidth)
 	previewPane := listsurface.RenderListSurfacePreview(
 		notesPreviewHeader(row),
 		previewWidth,
@@ -95,6 +98,7 @@ func (m *NotesViewModel) renderNotesContent(width, height int) string {
 // below — the owner scope, the body-match indicator, and the title — must be
 // charged against the pane rather than the terminal.
 func (m *NotesViewModel) renderListPane(width, listHeight int) string {
+	m.pointer.rows.Reset(width)
 	if m.snapshotError != nil {
 		return chrome.RenderEmptyState("Notes are unavailable.", "Resolve the workspace error and reopen Notes.") + "\n"
 	}
@@ -130,6 +134,7 @@ func (m *NotesViewModel) renderListPane(width, listHeight int) string {
 	scopeWidth := min(24, max(width/3, 6))
 	for i := start; i < end; i++ {
 		row := m.VisibleRows[i]
+		m.pointer.rows.Record(i, i-start, 1)
 		owner := chrome.TruncateAndPad(row.OwnerLabel, scopeWidth)
 		match := m.SearchMatches[row.Identity()]
 		bodyIndicator := ""
