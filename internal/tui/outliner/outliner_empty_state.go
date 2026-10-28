@@ -79,6 +79,7 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int) string {
 		for drawn := lipgloss.Height(body.String()); drawn < listRows; drawn++ {
 			b.WriteString("\n")
 		}
+		m.pointerFrame.recordDock(strings.Count(b.String(), "\n")+1, len(dock))
 		for _, line := range dock {
 			b.WriteString("\n")
 			b.WriteString(line)

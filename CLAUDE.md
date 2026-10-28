@@ -412,8 +412,8 @@ Recent; entry clears only Stale: `Stale filter cleared: Recent only includes
 the last 30 days`.
 
 `ComputeOutlinerViewport` is the single window authority and the only place a
-render moves `ViewScrollOffset`; the `zt`/`zz`/`zb` chord is the one key press
-that may write it. Never recompute the window in a key handler.
+render moves `ViewScrollOffset`; the `zt`/`zz`/`zb` chord and a wheel step alone
+write it. Never recompute the window in a key handler.
 
 `pinnedContextWindow` reserves one row for scrolled lane or project context.
 `VisibleRows` includes it; `startIdx`/`endIdx` exclude it. Every reader uses that

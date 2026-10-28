@@ -1,0 +1,33 @@
+{
+  "name": "mouse-outliner-wheel",
+  "fixture": "busy",
+  "size": "60x20",
+  "actions": [
+    { "type": "click", "label": "seat the cursor on the first inbox item", "on": "Untriaged inbox item 1" },
+    { "type": "key", "label": "open the dock, so the list at the minimum height outgrows its window", "key": "b" },
+    { "type": "assert", "assert": "contains", "value": "▾  Inbox  (5)" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "wheel", "label": "a step down moves the window, and the lane's header scrolls off", "on": "Untriaged inbox item 4", "delta": 1 },
+    { "type": "assert", "assert": "not_contains", "value": "▾  Inbox  (5)" },
+    { "type": "assert", "label": "the pinned row names the lane the window opens inside", "assert": "contains", "value": "Inbox › [inbox-backlog]" },
+    { "type": "assert", "label": "the cursor stayed on its row, so the dock still reads it", "assert": "contains", "value": "  Untriaged inbox item 1" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "wheel", "label": "steps past the cursor's row pull it to the nearest row still drawn", "on": "Untriaged inbox item 4", "delta": 2 },
+    { "type": "assert", "assert": "not_contains", "value": "Untriaged inbox item 1" },
+    { "type": "assert", "assert": "contains", "value": "  Untriaged inbox item 2" },
+    { "type": "wheel", "label": "a step past the end changes nothing", "on": "Untriaged inbox item 4", "delta": 1 },
+    { "type": "assert", "assert": "contains", "value": "  Untriaged inbox item 2" },
+    { "type": "assert", "assert": "contains", "value": "Inbox › [inbox-backlog]" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "wheel", "label": "steps back up stop at the top of the list", "on": "Waiting", "delta": -20 },
+    { "type": "assert", "assert": "contains", "value": "▾  Inbox  (5)" },
+    { "type": "assert", "assert": "not_contains", "value": "Inbox › [inbox-backlog]" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "width": 100, "height": 30 },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

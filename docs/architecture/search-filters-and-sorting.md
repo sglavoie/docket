@@ -227,8 +227,9 @@ single window authority and the one place a render moves `ViewScrollOffset`: a
 key handler that recomputed the window would re-derive it from a different
 footer state and scroll. `zz` reads `windowMiddleIndex` for its notion of
 "middle". The
-chord is the one key press outside `ComputeOutlinerViewport` that writes
-`ViewScrollOffset`, and that is safe because the offset it writes still contains
+chord and a wheel step (described in `presentation-chrome.md`) are the only
+writers of `ViewScrollOffset` outside `ComputeOutlinerViewport`; the wheel
+settles its offset for the cursor it leaves, and the chord's is safe because the offset it writes still contains
 the cursor: `adjustPersistentScrollOffset` clamps into range and then moves the
 offset only when the cursor falls outside the window, so the next render leaves
 the write standing. The handler clamps to `len(rows)-height` rather than

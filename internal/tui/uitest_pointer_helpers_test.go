@@ -117,6 +117,8 @@ func (d *UITestDriver) runPointer(a UITestAction) error {
 			button, steps = tea.MouseWheelUp, -steps
 		}
 		for range steps {
+			// A step, like a press, lands on the frame drawn after the last one.
+			_ = d.Render()
 			d.dispatch(tea.MouseWheelMsg{X: x, Y: y, Button: button})
 			d.drain()
 		}

@@ -249,6 +249,17 @@ menu, as `Space` does. A click pushes nothing onto `Ctrl+O`'s history.
 While you type in the search input, edit a row inline, or have a menu, picker,
 or the `Q` readout open, clicks on the list are ignored.
 
+The wheel scrolls what it is over, one row per step. Over the list it moves the
+window, as `zt`/`zb` would, and the cursor stays on its row; only when that row
+would scroll out of sight does the cursor move, to the nearest row still in
+view. It stops at the top and the bottom of the list. Under a visual selection
+the list stops scrolling where the cursor would have to move, so the wheel never
+changes a selection. Search results and a zoomed project scroll the same way.
+Over the Peek dock the wheel scrolls the detail a row at a time and stops at its
+ends rather than moving the list. With the `Q` readout open, the wheel scrolls
+the readout when it is over it and does nothing anywhere else. Over the title,
+the context line, the status line, or the footer it does nothing.
+
 To select text while the mouse is on, hold Shift as you drag; most terminals,
 Docket.app's included, keep Shift+drag for selection.
 

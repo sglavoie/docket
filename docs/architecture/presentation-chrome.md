@@ -448,6 +448,24 @@ right-click is `space`. The key goes through `pointerKey`, which
 `SimplifiedInlineControlOwnsInput` holds (search input, inline edit,
 confirmation, `Q`, relation picker, open menu), the Outliner swallows the event.
 
+A wheel step is `handlePointerWheel`'s, in `outliner_viewport.go` beside the
+window it moves, which reads three regions off the same
+frame record: `pointerFrame.dockTop`/`dockRows`, which both render paths note
+as they write the dock, and `readoutTop`/`readoutRows`, which `View` measures
+from the pure `QueryReadoutBody` at the foot of the strip the shell pins under
+it. An open readout owns the wheel as it owns every key: a step over it goes to
+`scrollQueryReadout`, and a step anywhere else is swallowed. Otherwise a step over
+the dock goes to `scrollPeek`, the dock's one writer, which clamps at both ends
+and never passes the step on. A step over the list block moves the window one
+row through `wheelScrollDestination`, the second writer of `ViewScrollOffset`
+beside the `z` chord. It asks `pinnedContextWindowFor` — `pinnedContextWindowAt`
+with the cursor as a parameter — for the window at `ViewScrollOffset + delta`
+anchored on that window's own first row, since the real cursor would hold the
+window where it stands. A cursor that window leaves out is pulled to the nearest
+navigable row inside it, refused under any selection, and the window is then
+settled for the cursor it will be drawn with, so the next render keeps the write.
+A step that settles on the current offset is at an end and changes nothing.
+
 `ConflictBrowserModel` is that count's browser and resolver, and it is an overlay
 on the lens picker's template rather than a surface: a `ListSurfaceModel` inside
 `RenderOverlayBox`, one `AppModel` field, one arm in `handleActiveKeyOverlay`,

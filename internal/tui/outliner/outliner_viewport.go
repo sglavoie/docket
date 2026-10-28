@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/route"
 )
 
 // ComputeOutlinerRowLayout is the one measurement of a projection's shared row
@@ -221,14 +222,21 @@ func (m *OutlinerModel) pinnedContextWindow(visibleRows int) outlinerViewport {
 // first screen row is pinned is a property of the destination, not of the frame
 // the key was pressed on.
 func (m *OutlinerModel) pinnedContextWindowAt(offset, visibleRows int) (outlinerViewport, int) {
+	return m.pinnedContextWindowFor(m.Cursor, offset, visibleRows)
+}
+
+// pinnedContextWindowFor is that decision for a cursor that may not be the
+// current one. The wheel asks it, because the window it moves to may leave the
+// cursor behind, and the window that cursor would keep is not the destination.
+func (m *OutlinerModel) pinnedContextWindowFor(cursor, offset, visibleRows int) (outlinerViewport, int) {
 	full := offset
-	startIdx, endIdx := chrome.PersistentIndexWindow(m.Cursor, len(m.Rows), visibleRows, &full)
+	startIdx, endIdx := chrome.PersistentIndexWindow(cursor, len(m.Rows), visibleRows, &full)
 	if _, scrolledPast := m.contextHeaderAbove(startIdx); !scrolledPast || visibleRows < 2 {
 		return outlinerViewport{startIdx: startIdx, endIdx: endIdx}, full
 	}
 	fullWindow := outlinerViewport{startIdx: startIdx, endIdx: endIdx}
 	reduced := offset
-	startIdx, endIdx = chrome.PersistentIndexWindow(m.Cursor, len(m.Rows), visibleRows-1, &reduced)
+	startIdx, endIdx = chrome.PersistentIndexWindow(cursor, len(m.Rows), visibleRows-1, &reduced)
 	header, scrolledPast := m.contextHeaderAbove(startIdx)
 	if !scrolledPast && startIdx+visibleRows > len(m.Rows) {
 		return fullWindow, full
@@ -298,4 +306,84 @@ func (m *OutlinerModel) VisibleRowWindow() (int, int) {
 	start = min(max(start, 0), len(m.Rows))
 	end = min(max(end, start), len(m.Rows))
 	return start, end
+}
+
+// handlePointerWheel scrolls the block under the pointer by one row: the open Q
+// readout through its own scroll path, the Peek dock through scrollPeek, and
+// the list through its window. The readout owns input while it is open, as it
+// owns every key, so a step anywhere else then does nothing; so does a step over
+// the title, the context row, the strip, or under any other inline control.
+func (m *OutlinerModel) handlePointerWheel(event route.PointerEvent) {
+	frame := m.pointerFrame
+	if m.QueryReadout.Expanded {
+		if frame.readoutRows > 0 && event.Y >= frame.readoutTop && event.Y < frame.readoutTop+frame.readoutRows {
+			m.scrollQueryReadout(event.WheelDelta)
+		}
+		return
+	}
+	if m.SimplifiedInlineControlOwnsInput() || event.X < 0 || event.X >= m.Width() {
+		return
+	}
+	if frame.dockRows > 0 && event.Y >= frame.dockTop && event.Y < frame.dockTop+frame.dockRows {
+		m.scrollPeek(event.WheelDelta)
+		return
+	}
+	viewport := m.LastViewport
+	if !frame.rows || event.Y < viewport.topRow || event.Y >= viewport.topRow+viewport.VisibleRows {
+		return
+	}
+	offset, cursor, ok := m.wheelScrollDestination(event.WheelDelta)
+	if !ok {
+		return
+	}
+	previous := m.Cursor
+	m.Cursor = cursor
+	m.ViewScrollOffset = offset
+	m.AdoptNavigatedCursor(previous)
+}
+
+// wheelScrollDestination is where one wheel step leaves the window and the
+// cursor, without writing either. The destination window is asked of the window
+// authority with a cursor on its own first row, since the real cursor would hold
+// the window where it is; a cursor that window leaves out is pulled to the
+// nearest row still inside it, and the window is then settled for that cursor,
+// which is the one the next render keeps. A step at either end, a step that
+// would have to move the cursor under a selection, and a window with no row the
+// cursor may stand on all refuse.
+func (m *OutlinerModel) wheelScrollDestination(delta int) (offset, cursor int, ok bool) {
+	visibleRows := m.LastViewport.VisibleRows
+	if visibleRows <= 0 || len(m.Rows) == 0 || delta == 0 {
+		return 0, 0, false
+	}
+	current := m.ViewScrollOffset
+	target := min(max(current+delta, 0), len(m.Rows)-1)
+	window, _ := m.pinnedContextWindowFor(target, target, visibleRows)
+	cursor = m.Cursor
+	if cursor < window.startIdx || cursor >= window.endIdx {
+		if m.MultiSelectMode {
+			return 0, 0, false
+		}
+		if cursor, ok = m.nearestNavigableRow(cursor, window.startIdx, window.endIdx); !ok {
+			return 0, 0, false
+		}
+	}
+	window, offset = m.pinnedContextWindowFor(cursor, target, visibleRows)
+	if offset == current || cursor < window.startIdx || cursor >= window.endIdx {
+		return 0, 0, false
+	}
+	return offset, cursor, true
+}
+
+// nearestNavigableRow is the navigable row of [start, end) closest to from.
+func (m *OutlinerModel) nearestNavigableRow(from, start, end int) (int, bool) {
+	best, found := 0, false
+	for index := start; index < end && index < len(m.Rows); index++ {
+		if !m.Rows[index].IsNavigable() {
+			continue
+		}
+		if !found || max(index-from, from-index) < max(best-from, from-best) {
+			best, found = index, true
+		}
+	}
+	return best, found
 }

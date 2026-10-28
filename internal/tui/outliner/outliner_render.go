@@ -25,7 +25,7 @@ func (m *OutlinerModel) View() tea.View {
 			return tea.NewView(m.crossProjectView())
 		}
 		m.CrossProjectRebuildRows()
-		return tea.NewView(m.renderFullWidth())
+		return m.recordReadoutFrame(tea.NewView(m.renderFullWidth()))
 	}
 
 	// Mutations explicitly rebuild; cursor motion and repaint-only events reuse
@@ -35,7 +35,19 @@ func (m *OutlinerModel) View() tea.View {
 		m.RebuildRows()
 	}
 
-	return tea.NewView(m.renderFullWidth())
+	return m.recordReadoutFrame(tea.NewView(m.renderFullWidth()))
+}
+
+// recordReadoutFrame notes where the shell will draw the open Q readout: the
+// last rows of the strip, which stands directly on the footer. The strip body
+// is pure, so the readout measured here is the one the shell draws this frame.
+func (m *OutlinerModel) recordReadoutFrame(view tea.View) tea.View {
+	if readout := m.QueryReadoutBody(m.Width()); readout != "" {
+		rows := lipgloss.Height(readout)
+		m.pointerFrame.readoutTop = m.Height() - m.ShellFrame.ExcessRows() - rows
+		m.pointerFrame.readoutRows = rows
+	}
+	return view
 }
 
 func (m *OutlinerModel) singleProjectRowsFingerprint() string {
@@ -166,6 +178,12 @@ type outlinerPointerFrame struct {
 	// on screen row emptyHeaderRow.
 	emptyHeader    bool
 	emptyHeaderRow int
+	// dockTop and dockRows are the screen rows the Peek dock was drawn on, its
+	// divider included; dockRows is zero when no dock was drawn.
+	dockTop, dockRows int
+	// readoutTop and readoutRows are where the open Q readout sits at the
+	// bottom of the strip the shell pins under this view.
+	readoutTop, readoutRows int
 }
 
 // SetPointerKeyDispatch injects the shell's root key path, the one route a
@@ -274,9 +292,16 @@ func (m *OutlinerModel) pointerFoldKey(row OutlinerRow) string {
 // key path so the operation, its refusals and its undo are the key's own. A
 // double-click is always preceded by its single click, so the cursor has
 // already landed when Enter runs; on a fold glyph every press is a toggle, since
-// the arrow is what was aimed at. Wheel steps are not this session's to answer.
+// the arrow is what was aimed at. A wheel step scrolls what it is over.
 func (m *OutlinerModel) HandlePointer(event route.PointerEvent) tea.Cmd {
-	if m == nil || event.IsWheel() || m.SimplifiedInlineControlOwnsInput() {
+	if m == nil {
+		return nil
+	}
+	if event.IsWheel() {
+		m.handlePointerWheel(event)
+		return nil
+	}
+	if m.SimplifiedInlineControlOwnsInput() {
 		return nil
 	}
 	if event.Button != route.PointerButtonLeft && event.Button != route.PointerButtonRight {
@@ -304,6 +329,12 @@ func (m *OutlinerModel) HandlePointer(event route.PointerEvent) tea.Cmd {
 		return nil
 	}
 	return m.pointerKey(key)
+}
+
+// recordDock notes the dock's screen rows: its first line, divider included, and
+// how many it drew.
+func (f *outlinerPointerFrame) recordDock(top, rows int) {
+	f.dockTop, f.dockRows = top, rows
 }
 
 // outlinerHostFrameHeight is the frame a modal composites into: the rows this
@@ -380,6 +411,7 @@ func (m *OutlinerModel) writePeekDock(b *strings.Builder, viewport outlinerViewp
 	for drawn := viewport.drawnRows(); drawn < viewport.VisibleRows; drawn++ {
 		b.WriteString("\n")
 	}
+	m.pointerFrame.recordDock(strings.Count(b.String(), "\n")+1, len(dock))
 	for _, line := range dock {
 		b.WriteString("\n")
 		b.WriteString(line)
