@@ -13,7 +13,7 @@ settings:
     CODE_SIGN_STYLE: Manual
     CODE_SIGN_IDENTITY: "-"
     DEVELOPMENT_TEAM: ""
-    # Shared by the app and its widget extension, whose versions must match.
+    # Shared by the app and its extensions, whose versions must match.
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
 targets:
@@ -25,7 +25,8 @@ targets:
         excludes:
           - Resources/docket-launch
           - Resources/Docket.entitlements
-      # Link routes and the pulse snapshot, compiled into the widget too.
+      # Link routes, the pulse snapshot, and the share hand-off, compiled into
+      # the extensions too.
       - path: Shared
       # The launcher Docket runs under, copied executable into Resources.
       - path: DocketApp/Resources/docket-launch
@@ -68,6 +69,7 @@ targets:
       - sdk: WidgetKit.framework
       # Embedded in Contents/PlugIns.
       - target: DocketWidgets
+      - target: DocketShare
     scheme:
       testTargets:
         - DocketAppTests
@@ -90,6 +92,22 @@ targets:
     dependencies:
       - sdk: WidgetKit.framework
       - sdk: SwiftUI.framework
+  DocketShare:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: DocketShare
+        excludes:
+          - DocketShare.entitlements
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_NAME: DocketShare
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.docket.share
+        INFOPLIST_FILE: DocketShare/Info.plist
+        # Sandboxed, and nothing else: it hands off through a docket:// link.
+        CODE_SIGN_ENTITLEMENTS: DocketShare/DocketShare.entitlements
+        SKIP_INSTALL: YES
   DocketAppTests:
     type: bundle.unit-test
     platform: macOS

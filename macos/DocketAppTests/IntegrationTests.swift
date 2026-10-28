@@ -177,9 +177,127 @@ final class CaptureDraftTests: XCTestCase {
     }
 }
 
+/// What a Share menu hands over, standing in for `NSItemProvider`.
+private struct FakeShareProvider: DocketShareItemProvider {
+    let types: [String]
+    let value: Any?
+
+    func hasItemConformingToTypeIdentifier(_ typeIdentifier: String) -> Bool {
+        types.contains(typeIdentifier)
+    }
+
+    func loadDocketItem(_ typeIdentifier: String, completion: @escaping (Any?) -> Void) {
+        let value = value
+        DispatchQueue.global().async { completion(value) }
+    }
+}
+
+final class ShareItemsTests: XCTestCase {
+    private func link(_ inputs: [DocketShareInput]) -> DocketLink? {
+        let done = expectation(description: "loaded")
+        var made: DocketLink?
+        DocketShare.load(inputs) { link in
+            XCTAssertTrue(Thread.isMainThread)
+            made = link
+            done.fulfill()
+        }
+        wait(for: [done], timeout: 5)
+        return made
+    }
+
+    private func draft(_ link: DocketLink?, folders: Set<String> = []) -> DocketCaptureDraft? {
+        guard case .capture(let text, let attach)? = link else { return nil }
+        return DocketCaptureDraft.build(text: text, attachments: attach, isDirectory: { folders.contains($0) })
+    }
+
+    func testASafariPageIsItsTitleSelectedWithTheURLAttached() throws {
+        let page = FakeShareProvider(types: [DocketShare.urlType, DocketShare.plainTextType],
+                                     value: URL(string: "https://example.com/spec?a=1&b=2")!)
+        let made = link([DocketShareInput(contentText: " Spec\nreview ", providers: [page])])
+        XCTAssertEqual(made, .capture("Spec review", attach: ["https://example.com/spec?a=1&b=2"]))
+        let url = try XCTUnwrap(made?.url)
+        XCTAssertEqual(DocketLink(url: url), made, "the link round-trips through docket://")
+        let draft = try XCTUnwrap(draft(made))
+        XCTAssertEqual(draft.text, "Spec review &https://example.com/spec?a=1&b=2")
+        XCTAssertEqual(draft.selectionLength, ("Spec review" as NSString).length)
+    }
+
+    func testFinderFilesAreAttachedByPathAndAFolderIsLeftToTheApp() throws {
+        let file = FakeShareProvider(types: [DocketShare.fileURLType, DocketShare.urlType],
+                                     value: URL(fileURLWithPath: "/tmp/Q3 plan.pdf"))
+        let data = FakeShareProvider(types: [DocketShare.fileURLType],
+                                     value: URL(fileURLWithPath: "/tmp/b.png").dataRepresentation)
+        let folder = FakeShareProvider(types: [DocketShare.fileURLType], value: URL(fileURLWithPath: "/tmp/Reports"))
+        let made = link([DocketShareInput(contentText: nil, providers: [file, data, folder])])
+        XCTAssertEqual(made, .capture(nil, attach: ["/tmp/Q3 plan.pdf", "/tmp/b.png", "/tmp/Reports"]))
+        let draft = try XCTUnwrap(draft(made, folders: ["/tmp/Reports"]))
+        XCTAssertEqual(draft.text, #" &"/tmp/Q3 plan.pdf" &/tmp/b.png"#)
+        XCTAssertEqual(draft.caret, 0)
+        XCTAssertEqual(draft.dropped, ["Left out folder Reports: Docket attaches files"])
+    }
+
+    func testSharedTextIsTheTextWhenNoTitleCame() throws {
+        let text = FakeShareProvider(types: [DocketShare.plainTextType], value: "Call Sam\nabout #work")
+        let attributed = FakeShareProvider(types: [DocketShare.plainTextType],
+                                           value: NSAttributedString(string: "ignored second"))
+        XCTAssertEqual(link([DocketShareInput(contentText: "  ", providers: [text, attributed])]),
+                       .capture("Call Sam about #work", attach: []))
+        XCTAssertEqual(draft(.capture("Call Sam about #work", attach: []))?.text, "Call Sam about #work")
+    }
+
+    func testNothingReadableMakesNoLink() {
+        let image = FakeShareProvider(types: ["public.png"], value: Data([1, 2]))
+        let failed = FakeShareProvider(types: [DocketShare.urlType], value: nil)
+        XCTAssertNil(link([DocketShareInput(contentText: nil, providers: [image, failed])]))
+        XCTAssertNil(link([]))
+    }
+
+    func testEveryItemsAttachmentsAreKeptInOrder() {
+        let first = FakeShareProvider(types: [DocketShare.urlType], value: URL(string: "https://a.example")!)
+        let second = FakeShareProvider(types: [DocketShare.urlType], value: URL(string: "message://%3Cid@x%3E")!)
+        XCTAssertEqual(link([DocketShareInput(contentText: nil, providers: [first]),
+                             DocketShareInput(contentText: "Title", providers: [second])]),
+                       .capture("Title", attach: ["https://a.example", "message://%3Cid@x%3E"]))
+    }
+
+    func testTheShareExtensionIsEmbeddedForURLsFilesAndText() throws {
+        let plugIns = try XCTUnwrap(Bundle.main.builtInPlugInsURL)
+        let share = try XCTUnwrap(Bundle(url: plugIns.appendingPathComponent("DocketShare.appex")))
+        XCTAssertEqual(share.bundleIdentifier, "io.github.sglavoie.docket.share")
+        XCTAssertEqual(share.infoDictionary?["CFBundleVersion"] as? String,
+                       Bundle.main.infoDictionary?["CFBundleVersion"] as? String)
+        let ext = try XCTUnwrap(share.infoDictionary?["NSExtension"] as? [String: Any])
+        XCTAssertEqual(ext["NSExtensionPointIdentifier"] as? String, "com.apple.share-services")
+        let attributes = try XCTUnwrap(ext["NSExtensionAttributes"] as? [String: Any])
+        let rule = try XCTUnwrap(attributes["NSExtensionActivationRule"] as? [String: Any])
+        XCTAssertEqual(rule["NSExtensionActivationSupportsWebURLWithMaxCount"] as? Int, 10)
+        XCTAssertEqual(rule["NSExtensionActivationSupportsFileWithMaxCount"] as? Int, 10)
+        XCTAssertEqual(rule["NSExtensionActivationSupportsText"] as? Bool, true)
+    }
+}
+
 final class QuickCapturePresentTests: XCTestCase {
     private func field(_ panel: QuickCapturePanel) throws -> NSTextField {
         try XCTUnwrap(panel.panel.contentView?.descendants(of: NSTextField.self).first { $0.isEditable })
+    }
+
+    /// A share sheet opens the link, then closes and gives its app the keyboard
+    /// back; a panel a link opened stays for that, and only for a moment.
+    func testAPanelALinkOpenedOutlastsTheSharingAppTakingTheKeyboardBack() {
+        let panel = QuickCapturePanel()
+        defer { panel.close() }
+        var clock = Date()
+        panel.now = { clock }
+        XCTAssertTrue(panel.present(draft: "Spec &https://example.com"))
+        panel.keepKeyAfterLink()
+        panel.windowDidResignKey(Notification(name: NSWindow.didResignKeyNotification))
+        XCTAssertTrue(panel.isVisible, "the sharing app taking the keyboard back does not put it away")
+        clock += QuickCapturePanel.linkKeyGrace + 0.1
+        panel.windowDidResignKey(Notification(name: NSWindow.didResignKeyNotification))
+        XCTAssertFalse(panel.isVisible, "clicking away later still does")
+        panel.show()
+        panel.windowDidResignKey(Notification(name: NSWindow.didResignKeyNotification))
+        XCTAssertFalse(panel.isVisible, "putting it away ends the grace")
     }
 
     func testAnEmptyPanelTakesTheDraftWithItsCaret() throws {

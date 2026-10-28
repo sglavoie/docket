@@ -86,6 +86,7 @@ app="$macos_dir/build/Docket.app"
 require_universal "$app/Contents/MacOS/Docket"
 require_universal "$app/Contents/Resources/bin/docket"
 require_universal "$app/Contents/PlugIns/DocketWidgets.appex/Contents/MacOS/DocketWidgets"
+require_universal "$app/Contents/PlugIns/DocketShare.appex/Contents/MacOS/DocketShare"
 codesign --verify --strict --deep "$app"
 shipped=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")
 if [ "$shipped" != "$version" ]; then

@@ -471,6 +471,24 @@ that had exited in the background, never in the window, and fail only when
 none can run that way: with the background turned off in Settings, or a Docket
 too old for it.
 
+### Share menu
+
+**Share › Docket**, in Safari, Finder, Preview, Notes, and any other app with a
+Share menu, opens quick capture holding what you shared, for you to read the
+preview and press Enter. A web page is attached with its title as the text,
+selected for typing over; files (up to 10, an image or a movie among them) are
+attached by path, and a folder is left out by name; shared text is the text.
+The extension shows nothing of its own: it turns the items into one
+`docket://capture` link, so the panel follows that link's rules, adding to an
+unsent draft rather than replacing it, and saying what it left out. With
+Docket.app quit, the share starts it and then opens the panel.
+
+macOS lists the extension once Docket.app has run from `/Applications`; System
+Settings › General › Login Items & Extensions › Sharing (Extensions › Sharing
+on older systems) turns it off. The file is copied when you press Enter, by
+Docket.app rather than the sandboxed extension, so the first time it copies
+one from Downloads or Documents macOS may ask Docket for access there.
+
 ### Spotlight
 
 Spotlight finds Docket's tasks: the open work Docket's `/` finds with no sigils,
@@ -694,7 +712,8 @@ DocketApp/Ghostty/              runtime glue, config, surface view (ported, trim
 DocketApp/Shell/                window, status item, hotkey, preferences, Docket resolution
 DocketApp/Resources/            Info.plist, entitlements, docket-launch, Assets.xcassets
 DocketWidgets/                  the WidgetKit extension, its Info.plist and entitlements
-Shared/                         link routes and the pulse snapshot, in the app and the widget
+DocketShare/                    the Share extension, its Info.plist and entitlements
+Shared/                         link routes, the pulse snapshot, and the share hand-off, in the app and its extensions
 DocketAppTests/                 XCTest
 NOTICE-ghostty              upstream MIT notices for the ported sources and themes
 ```

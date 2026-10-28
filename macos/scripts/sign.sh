@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 #
-# Sign Docket.app inside out: the bundled docket, the widget extension, then the
-# app, each extension and the app with its entitlements file, which carries the
-# App Group the widget reads the pulse from. By default with this
+# Sign Docket.app inside out: the bundled docket, the widget and share
+# extensions, then the app, each extension and the app with its entitlements
+# file, which carries the App Group the widget reads the pulse from. By default with this
 # Mac's first Apple Development identity, else ad-hoc; either runs on this Mac
 # only. A certificate gives the app a designated requirement that survives a
 # rebuild, so privacy grants (Documents, notifications) are asked for once

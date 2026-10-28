@@ -856,7 +856,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             terminal.show()
         case .capture(let text, let attach):
             captureLinkOpenedAt = Date()
-            presentCapture(text == nil && attach.isEmpty ? nil : DocketCaptureDraft.build(text: text, attachments: attach))
+            presentCapture(text == nil && attach.isEmpty ? nil : DocketCaptureDraft.build(text: text, attachments: attach),
+                           fromLink: true)
         case .find(let text):
             captureLinkOpenedAt = Date()
             presentFind(text.map(DocketCaptureDraft.normalized))
@@ -899,9 +900,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     /// terminal coming forward once the session begins would take the keyboard and
     /// put the panel away. Settling happens just before that, so the turn after it
     /// opens the panel over the terminal instead.
-    func presentCapture(_ draft: DocketCaptureDraft?) {
+    ///
+    /// One a link opened keeps the keyboard briefly (`keepKeyAfterLink`), since
+    /// the share sheet that opened it closes and hands the keyboard back to its app.
+    func presentCapture(_ draft: DocketCaptureDraft?, fromLink: Bool = false) {
         whenControlSettled { [weak self] _ in
-            DispatchQueue.main.async { self?.showCapture(draft) }
+            DispatchQueue.main.async {
+                self?.showCapture(draft)
+                if fromLink { self?.quickCapture.keepKeyAfterLink() }
+            }
         }
     }
 

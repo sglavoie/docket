@@ -116,6 +116,13 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     private var savedSelection: (text: String, range: NSRange)?
     /// The last successful capture's transaction, until it is undone.
     private(set) var lastCaptureTransaction: String?
+    /// Until when the panel takes the keyboard back instead of going away; see
+    /// `keepKeyAfterLink`.
+    private var keepKeyUntil: Date?
+    var now: () -> Date = Date.init
+
+    /// How long a panel a link opened outlasts the sending app taking the keyboard back.
+    static let linkKeyGrace: TimeInterval = 1
 
     deinit {
         stopObservingSelection()
@@ -221,7 +228,16 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         return true
     }
 
+    /// A panel a link opened keeps the keyboard for `linkKeyGrace`. A share sheet
+    /// opens the link and then closes, and the app it was over makes its own
+    /// window key again, which would otherwise put the panel away before it was
+    /// ever read.
+    func keepKeyAfterLink() {
+        keepKeyUntil = now().addingTimeInterval(Self.linkKeyGrace)
+    }
+
     func close() {
+        keepKeyUntil = nil
         dismissalGeneration += 1
         // Putting the panel away stops waiting on Docket; the draft stays.
         if sending {
@@ -824,6 +840,13 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     /// window that took the keyboard, as Docket starting for a capture does, and
     /// otherwise stops waiting and goes.
     func windowDidResignKey(_ notification: Notification) {
+        if let until = keepKeyUntil, now() < until, !sending {
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.panel.isVisible, !self.panel.isKeyWindow else { return }
+                self.panel.makeKeyAndOrderFront(nil)
+            }
+            return
+        }
         guard sending else {
             close()
             return
