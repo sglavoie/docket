@@ -50,6 +50,19 @@ type controlState struct {
 	upcomingPublished bool
 	editing           *control.Editing
 	textHistory       map[any]*desktopTextHistory
+	// focus is the projects a host's system Focus keeps, nil when none, and
+	// focused the readout over them that the host is told in place of the
+	// workspace's.
+	focus   map[string]bool
+	focused *hostReadout
+}
+
+// hostReadout is what a focused host hears in place of the workspace pulse,
+// agenda, and schedule.
+type hostReadout struct {
+	pulse    pulse.WorkspacePulse
+	agenda   pulse.WorkspaceAgenda
+	upcoming []pulse.UpcomingArrival
 }
 
 // WithControlPublisher connects the session to a control socket's events.
@@ -152,6 +165,15 @@ func (m *AppModel) executeControlRequest(request control.Request, reply chan<- c
 		return nil
 	case control.OpSearch:
 		m.controlSearch(request.Text, request.Limit, reply)
+		return nil
+	case control.OpIndex:
+		m.controlIndex(request.Text, reply)
+		return nil
+	case control.OpProjects:
+		m.controlProjects(reply)
+		return nil
+	case control.OpFocus:
+		m.controlFocus(request.Projects, reply)
 		return nil
 	case control.OpAppearance:
 		// Ahead of the busy guard too: a theme changes what is drawn and
@@ -318,6 +340,9 @@ func (m *AppModel) publishControlPulse() {
 		return
 	}
 	current := m.workspacePulse
+	if m.control.focused != nil {
+		current = m.control.focused.pulse
+	}
 	if m.control.published != nil && *m.control.published == current {
 		return
 	}
@@ -336,6 +361,9 @@ func (m *AppModel) publishControlAgenda() {
 		return
 	}
 	current := m.workspaceAgenda
+	if m.control.focused != nil {
+		current = m.control.focused.agenda
+	}
 	if m.control.publishedAgenda != nil && m.control.publishedAgenda.Equal(current) {
 		return
 	}
@@ -373,6 +401,9 @@ func (m *AppModel) publishControlSchedule() {
 		return
 	}
 	current := m.workspaceUpcoming
+	if m.control.focused != nil {
+		current = m.control.focused.upcoming
+	}
 	if m.control.upcomingPublished && pulse.EqualUpcoming(m.control.publishedUpcoming, current) {
 		return
 	}
@@ -386,41 +417,6 @@ func (m *AppModel) publishControlSchedule() {
 		})
 	}
 	m.control.publisher.Publish(control.Event{Event: control.EventSchedule, Schedule: schedule})
-}
-
-// publishControlArrivals sends one tick's arrivals with each task's identity,
-// so the host can offer to act on it.
-func (m *AppModel) publishControlArrivals(arrivals []pulse.Arrival) {
-	if !m.control.enabled() || len(arrivals) == 0 {
-		return
-	}
-	title, body := pulse.ArrivalNotification(arrivals)
-	event := control.Event{Event: control.EventArrivals, Title: title, Body: body}
-	for _, arrival := range arrivals {
-		event.Arrivals = append(event.Arrivals, controlArrival(arrival))
-	}
-	m.control.publisher.Publish(event)
-}
-
-func controlArrival(arrival pulse.Arrival) control.Arrival {
-	return control.Arrival{
-		Kind:       controlArrivalKind(arrival.Kind),
-		Project:    arrival.ProjectID,
-		Task:       arrival.TaskID,
-		Title:      arrival.Title,
-		Reviewable: arrival.Reviewable,
-	}
-}
-
-func controlArrivalKind(kind pulse.ArrivalKind) string {
-	switch kind {
-	case pulse.ArrivalCheckIn:
-		return control.ArrivalCheckIn
-	case pulse.ArrivalDeadline:
-		return control.ArrivalDeadline
-	default:
-		return control.ArrivalWake
-	}
 }
 
 // controlAppearance switches the session between the dark and light themes.

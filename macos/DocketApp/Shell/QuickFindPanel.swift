@@ -120,6 +120,14 @@ final class QuickFindPanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         refresh(selecting: selectedTask)
     }
 
+    /// Opens holding `query` in place of the last one, as a `docket://find` link
+    /// asks; the query is only read, so replacing it loses nothing.
+    func present(query: String) {
+        field.stringValue = query
+        show()
+        field.currentEditor()?.selectedRange = NSRange(location: (query as NSString).length, length: 0)
+    }
+
     func close() {
         generation += 1
         actOutcome = nil

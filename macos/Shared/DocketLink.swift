@@ -16,22 +16,27 @@ enum DocketView: String, Equatable {
 /// - `docket://` or `docket://show`: shows Docket.
 /// - `docket://capture?text=…`: opens quick capture holding the text as its draft;
 ///   with no text, opens it as it was.
+/// - `docket://find?text=…`: opens quick find holding the text as its query;
+///   with no text, opens it as it was.
 /// - `docket://view/inbox`, `/today`, `/due` (or `/overdue`): shows Docket in that mode;
 ///   `/done`: shows All filtered to finished work.
 /// - `docket://task/PROJECT-ID/TASK-ID`: shows that task, by its stored IDs.
 enum DocketLink: Equatable {
     case show
     case capture(String?)
+    case find(String?)
     case view(DocketView)
     case task(project: String, task: String)
 
     static let scheme = "docket"
 
-    /// Whether answering it brings Docket's window forward; capture opens its
-    /// panel over whatever app is in front instead.
+    /// Whether answering it brings Docket's window forward; capture and find
+    /// open their panels over whatever app is in front instead.
     var showsDocket: Bool {
-        if case .capture = self { return false }
-        return true
+        switch self {
+        case .capture, .find: return false
+        default: return true
+        }
     }
 
     init?(url: URL) {
@@ -48,6 +53,10 @@ enum DocketLink: Equatable {
             guard path.isEmpty else { return nil }
             let text = components.queryItems?.first { $0.name == "text" }?.value
             self = .capture(text.flatMap { $0.isEmpty ? nil : $0 })
+        case "find":
+            guard path.isEmpty else { return nil }
+            let text = components.queryItems?.first { $0.name == "text" }?.value
+            self = .find(text.flatMap { $0.isEmpty ? nil : $0 })
         case "view":
             guard path.count == 1 else { return nil }
             switch path[0].lowercased() {
@@ -72,6 +81,9 @@ enum DocketLink: Equatable {
             components.host = "show"
         case .capture(let text):
             components.host = "capture"
+            if let text { components.queryItems = [URLQueryItem(name: "text", value: text)] }
+        case .find(let text):
+            components.host = "find"
             if let text { components.queryItems = [URLQueryItem(name: "text", value: text)] }
         case .view(let view):
             components.host = "view"

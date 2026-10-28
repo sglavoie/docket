@@ -49,6 +49,45 @@ func useOnlyInTests() { _ = DeadType{}; _ = deadConstant; _ = Build().Written }
 	}
 }
 
+// A struct compared with == reads every field, nested ones included, even when
+// no field is ever selected by name; a field of a type never compared stays
+// unused.
+func TestRunCountsWholeValueComparisonAsReadingEveryField(t *testing.T) {
+	root := writeFixtureModule(t, map[string]string{
+		"sample/sample.go": `package sample
+
+type inner struct{ depth int }
+
+type owner struct {
+	layer int
+	nested inner
+}
+
+type unrelated struct{ never int }
+
+func Same(left, right owner) bool { return left == right }
+
+func Build() (owner, unrelated) {
+	return owner{layer: 1, nested: inner{depth: 2}}, unrelated{never: 3}
+}
+`,
+	})
+
+	findings, err := Run(root, "./...")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := findingSymbols(findings)
+	for _, read := range []string{"owner.layer", "owner.nested", "inner.depth"} {
+		if slices.Contains(got, read) {
+			t.Errorf("findings %v contain %q, which == reads", got, read)
+		}
+	}
+	if !slices.Contains(got, "unrelated.never") {
+		t.Errorf("findings %v missing unrelated.never, which nothing reads", got)
+	}
+}
+
 func TestRunHonorsReflectionDirectiveAndIgnoresAnonymousFields(t *testing.T) {
 	root := writeFixtureModule(t, map[string]string{
 		"sample/sample.go": `package sample

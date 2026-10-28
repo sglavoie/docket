@@ -38,6 +38,7 @@ var projectPopulationInventory = map[string]string{
 	"internal/tui/app_projects.go:AvailableProjects":                               "availableProjects wrapper over the parked-inclusive population",
 	"internal/tui/shell_ports.go:availableProjects":                                "the exported port spelling the clusters below the shell read the parked-inclusive population through",
 	"internal/tui/shell_ports.go:taskWorkspaceProjects":                            "the exported port spelling the clusters below the shell read the base task workspace through",
+	"internal/tui/lifecycle_control_tasks.go:TaskWorkspaceProjects":                "a host may focus on the base task workspace's projects, the population every count it hears is read from",
 	"internal/tui/app_projects.go:TaskWorkspaceProjects":                           "taskWorkspaceProjects wrapper over the base task workspace",
 	"internal/tui/app_task_composer.go:availableProjects":                          "composer project completion and %project resolution",
 	"internal/tui/core_input_handlers.go:availableProjects":                        "quick capture destinations",

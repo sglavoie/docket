@@ -21,6 +21,11 @@ protocol DocketShortcutHost: AnyObject {
     func shortcutSearch(_ text: String, limit: Int, done: @escaping (DocketSearchResults?, String?) -> Void)
     /// Shows Docket with the cursor on `task`.
     func shortcutShowTask(_ task: DocketTaskID)
+    /// The projects a Focus may keep, or why there are none. Like a count, it
+    /// starts Docket in the background only.
+    func shortcutProjects(_ done: @escaping ([DocketProject]?, String?) -> Void)
+    /// The saved Focus changed: tell the running Docket.
+    func focusChanged()
 }
 
 /// What a shortcut may do to one task: the agenda menu's acts, with the
@@ -81,6 +86,16 @@ enum DocketShortcuts {
         }
         guard let results else { throw DocketShortcutError(reason ?? "Docket did not answer the search.") }
         return results
+    }
+
+    @MainActor
+    static func projects() async throws -> [DocketProject] {
+        guard let host else { throw DocketShortcutError(unavailable) }
+        let (projects, reason) = await withCheckedContinuation { continuation in
+            host.shortcutProjects { continuation.resume(returning: ($0, $1)) }
+        }
+        guard let projects else { throw DocketShortcutError(reason ?? "Docket did not list its projects.") }
+        return projects
     }
 
     @MainActor

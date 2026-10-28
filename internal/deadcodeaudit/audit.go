@@ -294,6 +294,36 @@ func collectReads(pkg *packages.Package, reads map[types.Object]bool, readKeys m
 			readKeys[objectReadKey(object)] = true
 		}
 	}
+	for _, file := range pkg.Syntax {
+		ast.Inspect(file, func(node ast.Node) bool {
+			if binary, ok := node.(*ast.BinaryExpr); ok && (binary.Op == token.EQL || binary.Op == token.NEQ) {
+				markComparedFields(pkg.TypesInfo.TypeOf(binary.X), reads, readKeys, map[types.Type]bool{})
+			}
+			return true
+		})
+	}
+}
+
+// markComparedFields records every field an == or != between two values of t
+// reads: Go compares structs field by field, so a field only ever consulted
+// through a whole-value comparison is still read. Nested structs and arrays
+// are compared the same way.
+func markComparedFields(t types.Type, reads map[types.Object]bool, readKeys map[string]bool, seen map[types.Type]bool) {
+	if t == nil || seen[t] {
+		return
+	}
+	seen[t] = true
+	switch underlying := t.Underlying().(type) {
+	case *types.Struct:
+		for index := range underlying.NumFields() {
+			field := underlying.Field(index)
+			reads[field] = true
+			readKeys[objectReadKey(field)] = true
+			markComparedFields(field.Type(), reads, readKeys, seen)
+		}
+	case *types.Array:
+		markComparedFields(underlying.Elem(), reads, readKeys, seen)
+	}
 }
 
 func isTestSupportPackage(pkg *packages.Package) bool {

@@ -15,7 +15,7 @@
     { "type": "click", "label": "nor is the host beneath the picker", "on": "Triage support inbox", "count": 2 },
     { "type": "assert", "assert": "contains", "value": "Set Due, Defer, or Check-In: Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
-    { "type": "click", "label": "a double-click is Enter on the row, which chooses it", "on": "Tomorrow  Wed", "count": 2 },
+    { "type": "click", "label": "a double-click is Enter on the row, which chooses it", "on": "Tomorrow  ", "count": 2 },
     { "type": "wait" },
     { "type": "assert", "assert": "not_contains", "value": "Set Due, Defer, or Check-In" },
     { "type": "assert", "assert": "contains", "value": "Build login form  ‹   ⊡ Tomorrow" },

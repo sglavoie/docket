@@ -187,3 +187,56 @@ final class QuickFindPanelTests: XCTestCase {
         XCTAssertEqual(QuickFindPanel.summary(shown: 3, total: 3, relaxed: true), "3 tasks, ignoring case · " + QuickFindPanel.hint)
     }
 }
+
+final class FindLinkAndControlTests: XCTestCase {
+    func testAFindLinkRoundTripsAndLeavesTheWindowAlone() throws {
+        let link = try XCTUnwrap(DocketLink(url: try XCTUnwrap(URL(string: "docket://find?text=invoice%20%23bug"))))
+        XCTAssertEqual(link, .find("invoice #bug"))
+        XCTAssertFalse(link.showsDocket)
+        XCTAssertEqual(DocketLink(url: link.url), link)
+        XCTAssertEqual(DocketLink(url: try XCTUnwrap(URL(string: "docket://find"))), .find(nil))
+        XCTAssertNil(DocketLink(url: try XCTUnwrap(URL(string: "docket://find/extra"))))
+    }
+
+    func testThePanelOpensHoldingALinksQuery() {
+        let panel = QuickFindPanel()
+        var asked: [String] = []
+        panel.scheduleSearch = { _, action in action() }
+        panel.search = { line, _ in asked.append(line) }
+        panel.announce = { _ in }
+        panel.present(query: "#bug")
+        defer { panel.close() }
+        XCTAssertEqual(asked, ["#bug"])
+        XCTAssertTrue(panel.isVisible)
+    }
+
+    /// The agenda control names what is owed and opens the mode the small
+    /// widget's tap opens; a snapshot from another day shows no counts.
+    func testTheAgendaControlNamesWhatIsOwed() {
+        XCTAssertEqual(AgendaControlValue(overdue: 2, today: 3).title, "2 overdue · 3 today")
+        XCTAssertEqual(AgendaControlValue(overdue: 2, today: 3).link, .view(.due))
+        XCTAssertEqual(AgendaControlValue(overdue: 0, today: 3).title, "3 today")
+        XCTAssertEqual(AgendaControlValue(overdue: 0, today: 3).link, .view(.today))
+        XCTAssertEqual(AgendaControlValue(overdue: 0, today: 0).title, "Nothing due")
+
+        let yesterday = Date().addingTimeInterval(-86_400 * 2)
+        let stale = DocketPulseSnapshot(inbox: 1, today: 4, overdue: 1, done: 0, updatedAt: yesterday)
+        let value = AgendaControlValue(snapshot: stale)
+        XCTAssertEqual(value.title, "Docket")
+        XCTAssertEqual(value.link, .show)
+        XCTAssertEqual(AgendaControlValue(snapshot: nil).link, .show)
+        let fresh = DocketPulseSnapshot(inbox: 1, today: 4, overdue: 1, done: 0, updatedAt: Date())
+        XCTAssertEqual(AgendaControlValue(snapshot: fresh), AgendaControlValue(overdue: 1, today: 4))
+    }
+
+    @available(macOS 15.0, *)
+    func testTheLinkIntentOpensOnlyLinksDocketAnswers() async throws {
+        var intent = OpenDocketLinkIntent(.find(nil))
+        XCTAssertEqual(intent.url, DocketLink.find(nil).url)
+        intent.url = try XCTUnwrap(URL(string: "https://example.com"))
+        do {
+            _ = try await intent.perform()
+            XCTFail("a foreign link was opened")
+        } catch is DocketLinkIntentError {}
+    }
+}

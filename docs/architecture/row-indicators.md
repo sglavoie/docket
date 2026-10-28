@@ -446,7 +446,12 @@ naming the token by its text so a host never counts Go's bytes),
 over `TaskWorkspaceProjects`, compiled with no facet query and read with no
 scope, Focus, or lens, so only `$today`/`$next` membership comes from the
 model; answered ahead of that guard too, bounded at `control.SearchMaxLimit`
-with the true total), `MarkReviewed` and the Defer section's `TaskOperationSetDefer`
+with the true total), `IndexWorkspace` for index (that same search with an
+empty query, so the index never offers what `/` would not, its revision a hash
+of the items themselves), `ComputeFocusedReadout` for a host Focus (the readout
+over the named projects, with Done counted from their own completions, held on
+`controlState.focused` and read by the publishers in place of the workspace's,
+while arrivals outside it are dropped at publish), `MarkReviewed` and the Defer section's `TaskOperationSetDefer`
 under a locator relocation capture, and `NavigateToTaskInProject` then
 `coreGotoTaskProject` for reveal. A commit's message returns wrapped in
 `controlCommittedMsg`, which `handleGlobalSaveMessage` handles unchanged and

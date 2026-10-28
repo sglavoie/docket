@@ -15,6 +15,11 @@ import WidgetKit
 struct DocketWidgetBundle: WidgetBundle {
     var body: some Widget {
         PulseWidget()
+        if #available(macOS 26.0, *) {
+            QuickCaptureControl()
+            QuickFindControl()
+            AgendaControl()
+        }
     }
 }
 

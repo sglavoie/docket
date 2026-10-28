@@ -34,7 +34,7 @@ enum DocketControlLaunch {
 
 struct DocketControlRequest: Encodable, Equatable {
     enum Op: String, Encodable {
-        case reveal, acknowledge, done, capture, complete, preview, quit, appearance, view, undo, edit, version, search
+        case reveal, acknowledge, done, capture, complete, preview, quit, appearance, view, undo, edit, version, search, index, projects, focus
         case themePalette = "theme_palette"
         case deferTask = "defer"
         case captureOnce = "capture_once"
@@ -50,6 +50,7 @@ struct DocketControlRequest: Encodable, Equatable {
     var capture_id: String?
     var workspace: String?
     var limit: Int?
+    var projects: [String]?
 
     static func edit(_ action: String) -> Self { Self(op: .edit, text: action) }
 
@@ -100,6 +101,21 @@ struct DocketControlRequest: Encodable, Equatable {
     /// whatever view Docket is showing. Docket answers it even while busy.
     static func search(_ text: String, limit: Int? = nil) -> Self {
         Self(op: .search, text: text, limit: limit)
+    }
+
+    /// Lists every task Spotlight should know, unless `revision` still
+    /// describes them, when Docket answers that nothing changed.
+    static func index(revision: String?) -> Self {
+        Self(op: .index, text: revision)
+    }
+
+    /// Lists the projects a Focus may keep.
+    static let projectList = Self(op: .projects)
+
+    /// Narrows the counts, agenda, reminders, and arrivals Docket reports to the
+    /// projects named; none clears the narrowing.
+    static func focus(_ projectIDs: [String]) -> Self {
+        Self(op: .focus, projects: projectIDs)
     }
 
     /// Ends Docket the way its quit key does, unless something is open in it.
@@ -206,10 +222,15 @@ struct DocketControlReply: Decodable, Equatable {
     var version: String? = nil
     /// A `search` reply's ranked tasks.
     var search: DocketSearchResults? = nil
+    /// An `index` reply's tasks, or word that they are unchanged.
+    var index: DocketIndexResults? = nil
+    /// A `projects` reply's list.
+    var projects: DocketProjectList? = nil
 
     init(
         reply: Int, ok: Bool, message: String?, completion: DocketCompletion? = nil, preview: String? = nil,
-        transaction: String? = nil, selection: DocketTextSelection? = nil, search: DocketSearchResults? = nil
+        transaction: String? = nil, selection: DocketTextSelection? = nil, search: DocketSearchResults? = nil,
+        index: DocketIndexResults? = nil, projects: DocketProjectList? = nil
     ) {
         self.reply = reply
         self.ok = ok
@@ -219,6 +240,8 @@ struct DocketControlReply: Decodable, Equatable {
         self.transaction = transaction
         self.selection = selection
         self.search = search
+        self.index = index
+        self.projects = projects
     }
 
     /// What the app says when it could not ask: no Docket, or a dropped connection.
@@ -351,6 +374,80 @@ struct DocketSearchItem: Decodable, Equatable {
     }
 }
 
+/// Docket's answer to `index`. `revision` names the content; with `unchanged`
+/// set, the index the app holds is still right and `items` is empty.
+struct DocketIndexResults: Decodable, Equatable {
+    let revision: String
+    let unchanged: Bool
+    let items: [DocketIndexItem]
+    let total: Int
+
+    init(revision: String, unchanged: Bool = false, items: [DocketIndexItem] = [], total: Int? = nil) {
+        self.revision = revision
+        self.unchanged = unchanged
+        self.items = items
+        self.total = total ?? items.count
+    }
+
+    enum CodingKeys: String, CodingKey { case revision, unchanged, items, total }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        revision = try c.decode(String.self, forKey: .revision)
+        unchanged = try c.decodeIfPresent(Bool.self, forKey: .unchanged) ?? false
+        items = try c.decodeIfPresent([DocketIndexItem].self, forKey: .items) ?? []
+        total = try c.decodeIfPresent(Int.self, forKey: .total) ?? items.count
+    }
+}
+
+/// One task to index: what a search names, plus what Spotlight matches on
+/// beyond the title.
+struct DocketIndexItem: Decodable, Equatable {
+    let task: DocketSearchItem
+    let description: String
+    let tags: [String]
+    let context: String
+
+    init(_ task: DocketSearchItem, description: String = "", tags: [String] = [], context: String = "") {
+        self.task = task
+        self.description = description
+        self.tags = tags
+        self.context = context
+    }
+
+    enum CodingKeys: String, CodingKey { case description, tags, context }
+
+    init(from decoder: Decoder) throws {
+        task = try DocketSearchItem(from: decoder)
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        description = try c.decodeIfPresent(String.self, forKey: .description) ?? ""
+        tags = try c.decodeIfPresent([String].self, forKey: .tags) ?? []
+        context = try c.decodeIfPresent(String.self, forKey: .context) ?? ""
+    }
+}
+
+/// Docket's answer to `projects`.
+struct DocketProjectList: Decodable, Equatable {
+    let items: [DocketProject]
+
+    init(items: [DocketProject]) {
+        self.items = items
+    }
+
+    enum CodingKeys: String, CodingKey { case items }
+
+    init(from decoder: Decoder) throws {
+        items = try decoder.container(keyedBy: CodingKeys.self).decodeIfPresent([DocketProject].self, forKey: .items) ?? []
+    }
+}
+
+/// One project, by its stored ID, with the name a person reads.
+struct DocketProject: Codable, Equatable, Hashable {
+    let id: String
+    let name: String
+    let slug: String
+}
+
 struct DocketPulse: Decodable, Equatable {
     let inbox: Int
     let today: Int
@@ -475,6 +572,8 @@ enum DocketControlLine: Equatable {
         let transaction: String?
         let selection: DocketTextSelection?
         let search: DocketSearchResults?
+        let index: DocketIndexResults?
+        let projects: DocketProjectList?
         let event: String?
         let editing: DocketEditing?
         let pulse: DocketPulse?
@@ -489,7 +588,7 @@ enum DocketControlLine: Equatable {
         guard let raw = try? JSONDecoder().decode(Raw.self, from: data) else { return nil }
         if let id = raw.reply {
             return .reply(DocketControlReply(reply: id, ok: raw.ok ?? false, message: raw.message, completion: raw.completion, preview: raw.preview,
-                transaction: raw.transaction, selection: raw.selection, search: raw.search))
+                transaction: raw.transaction, selection: raw.selection, search: raw.search, index: raw.index, projects: raw.projects))
         }
         switch raw.event {
         case "editing":

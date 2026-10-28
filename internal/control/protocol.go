@@ -83,7 +83,32 @@ const (
 	// mid-interaction. Limit bounds the items, SearchDefaultLimit when absent,
 	// and never above SearchMaxLimit.
 	OpSearch = "search"
+	// OpIndex lists every task an OpSearch could find with no clause opening a
+	// population — open, undeferred, unhidden work in the base workspace — for
+	// a host to index with the system's own search. Text is the Revision of the
+	// index the host already holds; while it still describes the workspace the
+	// reply says Unchanged and carries no items. Like OpSearch it reads and
+	// never writes, and is answered even while the user is mid-interaction.
+	OpIndex = "index"
+	// OpProjects lists the base workspace's projects, the ones a host may
+	// focus on. It reads and never writes.
+	OpProjects = "projects"
+	// OpFocus narrows what the host is told unprompted — the
+	// pulse, agenda, schedule, and arrivals — to the projects Projects names,
+	// as a system Focus asks; an empty Projects clears it. The session itself,
+	// OpSearch, and OpIndex stay whole: a Focus quiets what Docket brings to
+	// attention, never what a person asks for. IDs no longer in the workspace
+	// are dropped, and a Focus none of whose projects remain is refused and
+	// leaves nothing narrowed. It is presentation alone, answered even while
+	// the user is mid-interaction.
+	OpFocus = "focus"
 )
+
+// IndexMaxItems bounds an OpIndex reply.
+const IndexMaxItems = 5000
+
+// IndexDescriptionRunes bounds each indexed description.
+const IndexDescriptionRunes = 1000
 
 // The bounds on how many items an OpSearch reply carries.
 const (
@@ -134,6 +159,8 @@ type Request struct {
 	Text      string `json:"text,omitempty"`
 	Minutes   int    `json:"minutes,omitempty"`
 	Limit     int    `json:"limit,omitempty"`
+	// Projects are the stored project IDs an OpFocus keeps.
+	Projects []string `json:"projects,omitempty"`
 }
 
 // Reply answers the Request whose ID it carries. Message is what Docket said: the
@@ -153,6 +180,41 @@ type Reply struct {
 	Transaction string         `json:"transaction,omitempty"`
 	Selection   *TextSelection `json:"selection,omitempty"`
 	Search      *SearchResults `json:"search,omitempty"`
+	Index       *IndexResults  `json:"index,omitempty"`
+	Projects    *ProjectList   `json:"projects,omitempty"`
+}
+
+// ProjectList answers OpProjects.
+type ProjectList struct {
+	Items []Project `json:"items"`
+}
+
+// Project is one project OpProjects lists: its stored ID, the name a person
+// reads, and the slug `%project` spells.
+type Project struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Slug string `json:"slug"`
+}
+
+// IndexResults answers OpIndex. Revision names this content, so a host passes
+// it back and hears Unchanged until something indexed changes; Items holds at
+// most IndexMaxItems tasks and Total counts them all.
+type IndexResults struct {
+	Revision  string      `json:"revision"`
+	Unchanged bool        `json:"unchanged,omitempty"`
+	Items     []IndexItem `json:"items,omitempty"`
+	Total     int         `json:"total,omitempty"`
+}
+
+// IndexItem is a SearchItem plus what a system search matches on beyond the
+// title: the description, at most IndexDescriptionRunes of it, the tags, and
+// the context.
+type IndexItem struct {
+	SearchItem
+	Description string   `json:"description,omitempty"`
+	Tags        []string `json:"tags,omitempty"`
+	Context     string   `json:"context,omitempty"`
 }
 
 // SearchResults is a ranked answer to OpSearch, best first. Items holds at

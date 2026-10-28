@@ -250,8 +250,10 @@ terminal that honors the escape shows it whether or not Docket is in view.
 `docket --control PATH` lets a host such as Docket.app request capture and task actions
 through the running session. Those actions use the same validation and undo as
 the keyboard. A host may also search every task with the `/` grammar, whatever
-the view is showing, which is how Docket.app's quick find works. Read-only
-completion, preview, and search requests remain available during editing;
+the view is showing, which is how Docket.app's quick find works; list that same
+open work for Spotlight; and narrow the counts and reminders it reports to some
+projects while a macOS Focus is on, which leaves this window untouched. Read-only
+completion, preview, search, and index requests remain available during editing;
 mutations are refused while a protected interaction is open. With
 `--headless` too, the same session runs with no terminal at all, answering
 only that socket: Docket.app runs one after you quit with `q`, so its counts,

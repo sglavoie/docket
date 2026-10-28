@@ -22,6 +22,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     let background = DocketBackgroundSession()
     let quickCapture = QuickCapturePanel()
     let quickFind = QuickFindPanel()
+    /// Keeps Spotlight holding the workspace's open tasks.
+    let spotlight = DocketSpotlightIndexer()
     /// The running Docket's control socket; nil when the Docket is too old to serve one.
     private(set) var control: DocketControlClient?
     /// Why quick capture cannot reach Docket, said in its panel; nil once a Docket with
@@ -210,8 +212,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     /// terminal, or the launch error when there is none.
     func applicationDidBecomeActive(_ notification: Notification) {
         guard !(preferences?.isVisible ?? false) else { return }
-        // A capture link activates the app too; the panel is what it asked for.
-        if quickCapture.isVisible, let opened = captureLinkOpenedAt, Date().timeIntervalSince(opened) < 2 {
+        // A capture or find link activates the app too; the panel is what it asked for.
+        if quickCapture.isVisible || quickFind.isVisible, let opened = captureLinkOpenedAt, Date().timeIntervalSince(opened) < 2 {
             captureLinkOpenedAt = nil
             return
         }
@@ -587,7 +589,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         let client = DocketControlClient(path: path)
         client.onEvent = { [weak self] event in self?.handle(event) }
         client.onConnectionChange = { [weak self, weak client] connected in
+            self?.spotlight.connectionChanged(connected)
             if connected {
+                self?.sendFocus()
                 self?.sendTheme(clearWhenUnselected: true)
                 self?.drainWidgetActions()
                 // Ask the process itself: replacing its executable on disk
@@ -639,6 +643,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         case .editing(let editing):
             terminal?.desktopEditing = editing
         case .pulse(let pulse):
+            spotlight.refreshSoon()
             lastPulse = pulse
             refreshBadge()
             scheduleWidgetRecord()
@@ -646,6 +651,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             pulseWaiters = []
             for body in waiting { body(pulse) }
         case .agenda(let agenda):
+            spotlight.refreshSoon()
             lastAgenda = agenda
             statusItem?.refreshPulse()
             scheduleWidgetRecord()
@@ -794,6 +800,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
 
     // MARK: Links, Services, Shortcuts, and the widget
 
+    /// A Spotlight result was chosen: show its task, once Docket can be asked.
+    func application(
+        _ application: NSApplication, continue userActivity: NSUserActivity,
+        restorationHandler: @escaping ([NSUserActivityRestoring]) -> Void
+    ) -> Bool {
+        guard let task = DocketSpotlightIndexer.task(continuing: userActivity) else { return false }
+        whenControlSettled { [weak self] _ in self?.showTask(task) }
+        return true
+    }
+
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls { open(url) }
     }
@@ -822,6 +838,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         case .capture(let text):
             captureLinkOpenedAt = Date()
             presentCapture(text.map { DocketCaptureDraft(text: DocketCaptureDraft.normalized($0)) })
+        case .find(let text):
+            captureLinkOpenedAt = Date()
+            presentFind(text.map(DocketCaptureDraft.normalized))
         case .view(let view):
             whenControlSettled { [weak self] _ in self?.showView(view) }
         case .task(let project, let task):
@@ -864,6 +883,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     func presentCapture(_ draft: DocketCaptureDraft?) {
         whenControlSettled { [weak self] _ in
             DispatchQueue.main.async { self?.showCapture(draft) }
+        }
+    }
+
+    /// Quick find holding `query`, or as it was when there is none; waits for the
+    /// session to settle as `presentCapture` does, for the same reason.
+    func presentFind(_ query: String?) {
+        whenControlSettled { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if let query { self.quickFind.present(query: query) } else { self.quickFind.show() }
+            }
         }
     }
 
@@ -1004,6 +1034,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
     }
 
+    func shortcutProjects(_ done: @escaping ([DocketProject]?, String?) -> Void) {
+        whenControlSettled { [weak self] control in
+            guard let self else { return }
+            guard let control, self.ensureDocket(showing: false) else {
+                done(nil, self.captureUnavailableReason ?? "Docket is not running. Open it, then try again.")
+                return
+            }
+            control.send(.projectList) { reply in
+                guard reply.ok, let projects = reply.projects else {
+                    let message = reply.message ?? ""
+                    done(nil, message.hasPrefix("unknown operation")
+                        ? "This Docket cannot list its projects. Update it (just install), then choose Relaunch Docket."
+                        : (message.isEmpty ? "Docket did not list its projects." : message))
+                    return
+                }
+                done(projects.items, nil)
+            }
+        }
+    }
+
+    func focusChanged() {
+        sendFocus()
+        statusItem?.refreshPulse()
+    }
+
+    /// Tells a connected Docket which projects the saved Focus keeps, or that
+    /// none narrows anything. A Docket not running hears it when it connects.
+    private func sendFocus() {
+        guard let control, control.isConnected else { return }
+        let focus = DocketFocusPreference.load()
+        control.send(.focus(focus?.projectIDs ?? [])) { reply in
+            if !reply.ok { NSLog("Docket: focus: %@", reply.message ?? "refused") }
+        }
+    }
+
     func shortcutShowTask(_ task: DocketTaskID) {
         whenControlSettled { [weak self] _ in self?.showTask(task) }
     }
@@ -1069,6 +1134,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         do {
             try store.write(snapshot)
             WidgetCenter.shared.reloadTimelines(ofKind: DocketPulseSnapshot.widgetKind)
+            if #available(macOS 26.0, *) {
+                ControlCenter.shared.reloadControls(ofKind: DocketPulseSnapshot.agendaControlKind)
+            }
         } catch {
             NSLog("Docket: widget: could not save the pulse: %@", error.localizedDescription)
         }
@@ -1129,6 +1197,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         notifications.isTerminalFrontmost = { [weak self] in self?.isTerminalFrontmost ?? false }
         notifications.onActivate = { [weak self] in self?.terminal?.show() }
         quickCapture.unavailableReason = { [weak self] in self?.captureStoreError ?? self?.captureUnavailableReason }
+        spotlight.isEnabled = { [weak model] in !Self.isRunningTests && (model?.spotlight ?? false) }
+        spotlight.request = { [weak self] revision, done in
+            // Spotlight is kept for a Docket that is running; it never starts one.
+            guard let control = self?.control, control.isConnected else { done(nil); return }
+            control.send(.index(revision: revision)) { reply in done(reply.ok ? reply.index : nil) }
+        }
+        model.onSpotlightChange = { [weak self] enabled in
+            if enabled { self?.spotlight.refresh() } else { self?.spotlight.clear() }
+        }
         quickFind.search = { [weak self] text, done in self?.findTasks(text, done: done) }
         quickFind.agendaRows = { [weak self] in self?.agendaFindRows() ?? [] }
         quickFind.reveal = { [weak self] task in self?.showTask(task) }
@@ -1333,7 +1410,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
 
     var isLaunchAtLoginEnabled: Bool { LoginItem.isEnabled }
 
-    var pulseSummary: String? { lastPulse.flatMap(DocketPulseSummary.line(for:)) }
+    /// The pulse line, naming the Focus that narrows it while one does.
+    var pulseSummary: String? {
+        guard let line = lastPulse.flatMap(DocketPulseSummary.line(for:)) else { return nil }
+        guard let focus = DocketFocusPreference.load() else { return line }
+        return line + " · focus: " + focus.summary
+    }
 
     var pulse: DocketPulse? { lastPulse }
 

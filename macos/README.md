@@ -391,6 +391,7 @@ page opening one can never commit, complete, or delete work unseen:
 | --- | --- |
 | `docket://` or `docket://show` | Shows Docket. |
 | `docket://capture?text=…` | Opens quick capture holding the text; without `text`, opens it as it was. |
+| `docket://find?text=…` | Opens quick find holding the query; without `text`, opens it as it was. |
 | `docket://view/inbox`, `/today`, `/due` (or `/overdue`) | Shows Docket in that mode, as a status-menu count does. |
 | `docket://view/done` | Shows All with the filters `$canceled $done ?completed`, replacing any others. |
 | `docket://task/PROJECT-ID/TASK-ID` | Shows that task, by the stored IDs in `tasks.md`. |
@@ -445,6 +446,52 @@ Tasks, start a Docket
 that had exited in the background, never in the window, and fail only when
 none can run that way: with the background turned off in Settings, or a Docket
 too old for it.
+
+### Spotlight
+
+Spotlight finds Docket's tasks: the open work Docket's `/` finds with no sigils,
+so not finished, deferred, or hidden tasks, nor tasks in parked or archived
+projects. A result shows the title over the line quick find shows — reference,
+project, ancestors, deadline, state — and the description, and matches the
+title, description, reference, project, tags, and context. Choosing one shows
+Docket with the cursor on it.
+
+Docket.app asks the running Docket for the list when a session connects, a few
+seconds after the counts or agenda change, and every five minutes, which catches
+an edit no count reflects. Docket names its content with a revision, so asking
+again costs nothing until something indexed changes, and only the tasks that
+changed reach Spotlight. Spotlight keeps what it was given while no Docket runs;
+Docket.app never starts one to index. Settings › General › Show tasks in
+Spotlight turns it off and removes them (`docketSpotlight`):
+
+```bash
+defaults write io.github.sglavoie.docket docketSpotlight -bool false
+```
+
+### Controls
+
+On macOS 26 and later, Docket has three controls for Control Center and the menu
+bar (Edit Controls, then search for Docket): **Quick Capture** and **Find Task**
+open their panels over the app in front, and **Docket Agenda** names what is owed
+(`2 overdue · 3 today`, `Nothing due`) and opens Due while anything is overdue,
+else Today. Like the widget, the agenda control reads what Docket.app last heard,
+redrawn with each pulse, and says only "Docket" once those counts describe a day
+that is over. Each control opens a `docket://` link, so it can show something or
+open a panel and nothing more.
+
+### Focus filter
+
+A macOS Focus can quiet Docket to some projects: in System Settings › Focus,
+choose a Focus, then Add Filter › Docket and pick the projects. While that Focus
+is on, the running Docket reports only those projects' counts, agenda, reminders,
+and arrivals, so the menu-bar and Dock menus, the badge, the widget, the agenda
+control, and notifications leave the rest out; the menu-bar icon's tooltip ends
+`focus: Work, Home`. Docket's window, quick find, and Spotlight still reach every
+task: a Focus quiets what Docket brings to attention, never what you ask for.
+The Done count is the chosen projects' work finished today. When the Focus ends,
+everything comes back. The Focus is saved with the app (`docketFocus`), so a
+Docket that starts later hears it when it connects; a project deleted since is
+dropped, and a Focus whose projects are all gone narrows nothing.
 
 ### Widget
 

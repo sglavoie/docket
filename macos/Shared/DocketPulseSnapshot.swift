@@ -17,6 +17,8 @@ struct DocketPulseSnapshot: Codable, Equatable {
 
     /// The widget's kind, which Docket.app names to reload its timeline.
     static let widgetKind = "docket.pulse"
+    /// The agenda control's kind, reloaded beside the widget.
+    static let agendaControlKind = "docket.control.agenda"
 
     init(inbox: Int, today: Int, overdue: Int, done: Int, updatedAt: Date, agenda: DocketAgenda? = nil, calendar: Calendar = .current) {
         self.inbox = inbox
@@ -79,5 +81,45 @@ struct DocketPulseSnapshotStore {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         try encoder.encode(snapshot).write(to: url, options: [.atomic])
+    }
+}
+
+/// What the agenda control says and where it goes, read from the snapshot.
+struct AgendaControlValue: Equatable {
+    let overdue: Int
+    let today: Int
+    /// False when there is no snapshot for today, so the counts are not shown.
+    let known: Bool
+
+    /// Due while anything is overdue, else Today, as the small widget's tap; with
+    /// no counts for today, Docket itself.
+    var link: DocketLink {
+        guard known else { return .show }
+        return overdue > 0 ? .view(.due) : .view(.today)
+    }
+
+    var title: String {
+        guard known else { return "Docket" }
+        switch (overdue, today) {
+        case (0, 0): return "Nothing due"
+        case (0, let today): return "\(today) today"
+        case (let overdue, 0): return "\(overdue) overdue"
+        case (let overdue, let today): return "\(overdue) overdue · \(today) today"
+        }
+    }
+
+    init(overdue: Int, today: Int, known: Bool = true) {
+        self.overdue = overdue
+        self.today = today
+        self.known = known
+    }
+
+    /// The counts `snapshot` holds while they describe `now`'s day.
+    init(snapshot: DocketPulseSnapshot?, now: Date = Date(), calendar: Calendar = .current) {
+        guard let snapshot, snapshot.isCurrent(at: now, calendar: calendar) else {
+            self.init(overdue: 0, today: 0, known: false)
+            return
+        }
+        self.init(overdue: snapshot.overdue, today: snapshot.today)
     }
 }

@@ -114,6 +114,15 @@ final class PreferencesModel: ObservableObject {
         }
     }
 
+    /// Spotlight finds the workspace's tasks.
+    @Published var spotlight: Bool {
+        didSet {
+            guard spotlight != oldValue else { return }
+            DocketSpotlightPreference.save(spotlight, to: defaults)
+            onSpotlightChange?(spotlight)
+        }
+    }
+
     /// The Dock icon carries Docket's overdue count.
     @Published var dockBadge: Bool {
         didSet {
@@ -265,6 +274,7 @@ final class PreferencesModel: ObservableObject {
     var onDefaultFontSizeChange: ((Float?) -> Void)?
     var onTerminalThemeChange: (() -> Void)?
     var onDockBadgeChange: ((Bool) -> Void)?
+    var onSpotlightChange: ((Bool) -> Void)?
     var onNotificationsChange: ((Bool) -> Void)?
     var onBackgroundSessionChange: ((Bool) -> Void)?
     var onFollowAppearanceChange: ((Bool) -> Void)?
@@ -289,6 +299,7 @@ final class PreferencesModel: ObservableObject {
         notificationsEnabled = DocketNotificationsPreference.load(from: defaults)
         backgroundSession = DocketBackgroundPreference.load(from: defaults)
         dockBadge = DocketDockBadgePreference.load(from: defaults)
+        spotlight = DocketSpotlightPreference.load(from: defaults)
         followAppearance = DocketFollowAppearancePreference.load(from: defaults)
         binaryOverride = defaults.string(forKey: DocketBinaryResolver.overrideDefaultsKey) ?? ""
         environmentOverrides = DocketEnvironmentOverrides.load(from: defaults)
@@ -571,6 +582,10 @@ struct PreferencesView: View {
                        ? "Show overdue count on the Dock icon"
                        : "Show overdue count beside the menu-bar icon",
                        isOn: $model.dockBadge)
+                Toggle("Show tasks in Spotlight", isOn: $model.spotlight)
+                note("Spotlight finds open work as Docket's / does with no filters: not finished, deferred, "
+                    + "or hidden tasks, nor parked or archived projects. Choosing one shows it in Docket. "
+                    + "Turning this off removes them from Spotlight.")
             }
         }
     }

@@ -142,6 +142,47 @@ func ComputeWorkspaceReadout(rs *config.RuntimeState, todayIDs map[taskref.TaskI
 	return pulse.ComputeWorkspacePulse(projects, todayIDs, now), agenda, upcoming
 }
 
+// ComputeFocusedReadout is ComputeWorkspaceReadout over the base workspace's
+// projects whose IDs focus names, for a host whose system Focus narrows what it
+// is told. Done counts the focused projects' work finished on now's local day,
+// since the workspace's completion activity cannot be split by project.
+func ComputeFocusedReadout(rs *config.RuntimeState, focus map[string]bool, todayIDs map[taskref.TaskIdentity]bool, now time.Time, loader *workspace.Loader) (pulse.WorkspacePulse, pulse.WorkspaceAgenda, []pulse.UpcomingArrival) {
+	if rs == nil {
+		return pulse.WorkspacePulse{}, pulse.WorkspaceAgenda{}, nil
+	}
+	projects, failed := LoadCrossScopeSelection(FocusedProjects(rs.TaskWorkspaceProjects(), focus), loader)
+	for _, failure := range failed {
+		logging.Warn("focused pulse: %s", failure.Detail)
+	}
+	readout := pulse.ComputeWorkspacePulse(projects, todayIDs, now)
+	readout.Done = 0
+	year, month, day := now.Date()
+	for _, project := range projects {
+		for _, task := range project.Tasks {
+			if task == nil || task.WorkflowState != models.StateDone || task.CompletedAt == nil {
+				continue
+			}
+			if y, m, d := task.CompletedAt.In(now.Location()).Date(); y == year && m == month && d == day {
+				readout.Done++
+			}
+		}
+	}
+	agenda := pulse.ComputeWorkspaceAgenda(projects, todayIDs, now)
+	upcoming := pulse.UpcomingArrivals(projects, now, pulse.UpcomingHorizon, pulse.UpcomingLimit)
+	return readout, agenda, upcoming
+}
+
+// FocusedProjects keeps the projects whose IDs focus names, in their order.
+func FocusedProjects(projects []*models.Project, focus map[string]bool) []*models.Project {
+	kept := make([]*models.Project, 0, len(focus))
+	for _, project := range projects {
+		if project != nil && focus[project.ID] {
+			kept = append(kept, project)
+		}
+	}
+	return kept
+}
+
 // selectCrossScopeProjects is the one place task projections choose a project
 // population. The active-only selection is the base task workspace: a parked
 // project is absent from the loaded snapshot, so no mode, filter, pinned
@@ -231,7 +272,22 @@ type WorkspaceSearch struct {
 // work answers only a positive clause, as it does in the Outliner. The model
 // contributes Today and Next membership alone, which `$today` and `$next` read.
 func (m *OutlinerModel) SearchWorkspace(text string, limit int, loader *workspace.Loader) WorkspaceSearch {
-	if m == nil || m.Runtime == nil || strings.TrimSpace(text) == "" {
+	if strings.TrimSpace(text) == "" {
+		return WorkspaceSearch{}
+	}
+	return m.searchWorkspace(text, limit, loader)
+}
+
+// IndexWorkspace lists what SearchWorkspace could ever find with no clause
+// opening a population: every open, undeferred, unhidden task of the base
+// workspace, in catalog and task order. It is what a host indexes for the
+// system's own search, so that index never offers a task `/` would not.
+func (m *OutlinerModel) IndexWorkspace(limit int, loader *workspace.Loader) WorkspaceSearch {
+	return m.searchWorkspace("", limit, loader)
+}
+
+func (m *OutlinerModel) searchWorkspace(text string, limit int, loader *workspace.Loader) WorkspaceSearch {
+	if m == nil || m.Runtime == nil {
 		return WorkspaceSearch{}
 	}
 	projects, failed := LoadCrossScopeSelection(m.Runtime.TaskWorkspaceProjects(), loader)
