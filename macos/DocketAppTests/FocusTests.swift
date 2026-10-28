@@ -31,7 +31,7 @@ final class FocusTests: XCTestCase {
     }
 
     func testTheFilterNamesItsProjects() {
-        var filter = DocketFocusFilter()
+        let filter = DocketFocusFilter()
         filter.projects = nil
         XCTAssertEqual(String(localized: filter.displayRepresentation.title), "All projects")
         filter.projects = [DocketProjectEntity(work), DocketProjectEntity(home)]

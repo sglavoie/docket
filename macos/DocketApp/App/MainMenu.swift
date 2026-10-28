@@ -16,9 +16,10 @@ enum MainMenu {
     static let relaunch = #selector(AppDelegate.relaunchFromMenu(_:))
     static let quickCapture = #selector(AppDelegate.showQuickCapture(_:))
     static let quickFind = #selector(AppDelegate.showQuickFind(_:))
+    static let agenda = #selector(AppDelegate.showAgenda(_:))
     static let reportIssue = #selector(AppDelegate.reportIssue(_:))
-    static let undo = Selector(("undo:"))
-    static let redo = Selector(("redo:"))
+    static let undo = #selector(Ghostty.SurfaceView.undo(_:))
+    static let redo = #selector(Ghostty.SurfaceView.redo(_:))
     static let cut = #selector(NSText.cut(_:))
     /// Edits only a text field answers. The terminal surface never runs these
     /// items. Undo, Redo, and Find instead route to Docket over the control socket.
@@ -31,9 +32,9 @@ enum MainMenu {
     static let guideURL = repositoryURL.appendingPathComponent("blob/main/docs/guide/README.md")
     static let issuesURL = repositoryURL.appendingPathComponent("issues")
 
-    /// `captureHotKey` and `findHotKey` are the live quick-capture and
-    /// quick-find shortcuts, each shown on its item.
-    static func make(captureHotKey: HotKeyCombo? = nil, findHotKey: HotKeyCombo? = nil) -> NSMenu {
+    /// `captureHotKey`, `findHotKey`, and `agendaHotKey` are the live
+    /// quick-capture, quick-find, and agenda shortcuts, each shown on its item.
+    static func make(captureHotKey: HotKeyCombo? = nil, findHotKey: HotKeyCombo? = nil, agendaHotKey: HotKeyCombo? = nil) -> NSMenu {
         let main = NSMenu()
 
         let appItem = NSMenuItem()
@@ -46,6 +47,8 @@ enum MainMenu {
             .setShortcut(captureHotKey)
         appMenu.addItem(withTitle: "Find Task…", action: quickFind, keyEquivalent: "")
             .setShortcut(findHotKey)
+        appMenu.addItem(withTitle: "Show Agenda", action: agenda, keyEquivalent: "")
+            .setShortcut(agendaHotKey)
         appMenu.addItem(withTitle: "Relaunch Docket", action: relaunch, keyEquivalent: "")
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Hide Docket", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
@@ -127,6 +130,12 @@ enum MainMenu {
     static func showFindHotKey(_ combo: HotKeyCombo?, in menu: NSMenu?) {
         guard let appMenu = menu?.items.first?.submenu else { return }
         appMenu.items.first { $0.action == quickFind }?.setShortcut(combo)
+    }
+
+    /// Brings Show Agenda's shortcut in `menu` in line with the live one.
+    static func showAgendaHotKey(_ combo: HotKeyCombo?, in menu: NSMenu?) {
+        guard let appMenu = menu?.items.first?.submenu else { return }
+        appMenu.items.first { $0.action == agenda }?.setShortcut(combo)
     }
 
     /// Whether `item` is one of the edits the terminal keeps for itself.

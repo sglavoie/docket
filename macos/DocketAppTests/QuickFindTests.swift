@@ -231,7 +231,7 @@ final class FindLinkAndControlTests: XCTestCase {
 
     @available(macOS 15.0, *)
     func testTheLinkIntentOpensOnlyLinksDocketAnswers() async throws {
-        var intent = OpenDocketLinkIntent(.find(nil))
+        let intent = OpenDocketLinkIntent(.find(nil))
         XCTAssertEqual(intent.url, DocketLink.find(nil).url)
         intent.url = try XCTUnwrap(URL(string: "https://example.com"))
         do {

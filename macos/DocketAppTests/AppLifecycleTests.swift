@@ -127,7 +127,7 @@ final class MainMenuTests: XCTestCase {
         let redo = try XCTUnwrap(edit.item(withTitle: "Redo"))
         let cut = try XCTUnwrap(edit.item(withTitle: "Cut"))
         XCTAssertNil(undo.target)
-        XCTAssertEqual([undo.action, redo.action, cut.action], [Selector(("undo:")), Selector(("redo:")), #selector(NSText.cut(_:))])
+        XCTAssertEqual([undo.action, redo.action, cut.action], [#selector(Ghostty.SurfaceView.undo(_:)), #selector(Ghostty.SurfaceView.redo(_:)), #selector(NSText.cut(_:))])
         let main = MainMenu.make()
         XCTAssertFalse(MainMenu.isTextOnlyEdit(MainMenu.item(in: main, key: "z", modifiers: .command)))
         XCTAssertFalse(MainMenu.isTextOnlyEdit(MainMenu.item(in: main, key: "z", modifiers: [.shift, .command])))

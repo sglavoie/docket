@@ -103,7 +103,7 @@ final class CaptureDraftTests: XCTestCase {
         let services = try XCTUnwrap(Bundle.main.infoDictionary?["NSServices"] as? [[String: Any]])
         let service = try XCTUnwrap(services.first)
         XCTAssertEqual(service["NSMessage"] as? String, "captureSelection")
-        XCTAssertTrue(DocketServiceProvider().responds(to: Selector(("captureSelection:userData:error:"))))
+        XCTAssertTrue(DocketServiceProvider().responds(to: #selector(DocketServiceProvider.captureSelection(_:userData:error:))))
         XCTAssertNotNil(service["NSRequiredContext"], "without it macOS leaves the service off until enabled")
     }
 }

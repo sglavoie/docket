@@ -86,6 +86,15 @@ final class PreferencesModel: ObservableObject {
         }
     }
 
+    /// The agenda's shortcut; nil is turned off.
+    @Published var agendaHotKey: HotKeyCombo? {
+        didSet {
+            guard agendaHotKey != oldValue else { return }
+            DocketAgendaHotKeyPreference.save(agendaHotKey, to: defaults)
+            onAgendaHotKeyChange?(agendaHotKey)
+        }
+    }
+
     /// Docket reports arrivals; turning it off also silences the running one
     /// and withdraws the reminders booked ahead.
     @Published var notificationsEnabled: Bool {
@@ -193,6 +202,7 @@ final class PreferencesModel: ObservableObject {
     @Published var hotKeyProblem: String?
     @Published var captureHotKeyProblem: String?
     @Published var findHotKeyProblem: String?
+    @Published var agendaHotKeyProblem: String?
 
     @Published var binaryOverride: String {
         didSet {
@@ -271,6 +281,7 @@ final class PreferencesModel: ObservableObject {
     var onHotKeyChange: ((HotKeyCombo?) -> Void)?
     var onCaptureHotKeyChange: ((HotKeyCombo?) -> Void)?
     var onFindHotKeyChange: ((HotKeyCombo?) -> Void)?
+    var onAgendaHotKeyChange: ((HotKeyCombo?) -> Void)?
     var onDefaultFontSizeChange: ((Float?) -> Void)?
     var onTerminalThemeChange: (() -> Void)?
     var onDockBadgeChange: ((Bool) -> Void)?
@@ -293,6 +304,7 @@ final class PreferencesModel: ObservableObject {
         hotKey = DocketHotKeyPreference.load(from: defaults)
         captureHotKey = DocketCaptureHotKeyPreference.load(from: defaults)
         findHotKey = DocketFindHotKeyPreference.load(from: defaults)
+        agendaHotKey = DocketAgendaHotKeyPreference.load(from: defaults)
         defaultFontSize = DocketDefaultFontSize.load(from: defaults)
         terminalTheme = DocketTerminalThemePreference.load(from: defaults)
         availableThemes = TerminalTheme.available()
@@ -441,6 +453,7 @@ final class PreferencesWindowController: NSObject, NSWindowDelegate {
     let recorder = HotKeyRecorder()
     let captureRecorder = HotKeyRecorder()
     let findRecorder = HotKeyRecorder()
+    let agendaRecorder = HotKeyRecorder()
     private let frameAutosaveName: String?
     private(set) lazy var window: NSWindow = makeWindow()
 
@@ -459,7 +472,9 @@ final class PreferencesWindowController: NSObject, NSWindowDelegate {
 
     private func makeWindow() -> NSWindow {
         let host = NSHostingController(
-            rootView: PreferencesView(model: model, recorder: recorder, captureRecorder: captureRecorder, findRecorder: findRecorder)
+            rootView: PreferencesView(
+                model: model, recorder: recorder, captureRecorder: captureRecorder, findRecorder: findRecorder, agendaRecorder: agendaRecorder
+            )
         )
         // Each tab is its own height; the window follows the one chosen.
         host.sizingOptions = .preferredContentSize
@@ -484,6 +499,7 @@ final class PreferencesWindowController: NSObject, NSWindowDelegate {
         recorder.stop()
         captureRecorder.stop()
         findRecorder.stop()
+        agendaRecorder.stop()
     }
 }
 
@@ -508,6 +524,7 @@ struct PreferencesView: View {
     @ObservedObject var recorder: HotKeyRecorder
     @ObservedObject var captureRecorder: HotKeyRecorder
     @ObservedObject var findRecorder: HotKeyRecorder
+    @ObservedObject var agendaRecorder: HotKeyRecorder
 
     var body: some View {
         TabView {
@@ -595,7 +612,7 @@ struct PreferencesView: View {
             Section {
                 LabeledContent("Show and hide Docket") {
                     HotKeyRecorderView(combo: $model.hotKey, defaultCombo: DocketHotKeyPreference.default,
-                                       model: model, recorder: recorder, others: [captureRecorder, findRecorder])
+                                       model: model, recorder: recorder, others: [captureRecorder, findRecorder, agendaRecorder])
                 }
                 if let problem = model.hotKeyProblem {
                     note(problem, warning: true)
@@ -604,7 +621,7 @@ struct PreferencesView: View {
                     + "A Karabiner rule can send this same shortcut.")
                 LabeledContent("Quick capture") {
                     HotKeyRecorderView(combo: $model.captureHotKey, defaultCombo: DocketCaptureHotKeyPreference.default,
-                                       model: model, recorder: captureRecorder, others: [recorder, findRecorder])
+                                       model: model, recorder: captureRecorder, others: [recorder, findRecorder, agendaRecorder])
                 }
                 if let problem = model.captureHotKeyProblem {
                     note(problem, warning: true)
@@ -613,13 +630,21 @@ struct PreferencesView: View {
                     + "which reads it as its composer would: #tag, @date, %project, $state, !1.")
                 LabeledContent("Find a task") {
                     HotKeyRecorderView(combo: $model.findHotKey, defaultCombo: DocketFindHotKeyPreference.default,
-                                       model: model, recorder: findRecorder, others: [recorder, captureRecorder])
+                                       model: model, recorder: findRecorder, others: [recorder, captureRecorder, agendaRecorder])
                 }
                 if let problem = model.findHotKeyProblem {
                     note(problem, warning: true)
                 }
                 note("Opens a find field over any app that searches every task as Docket's / does. "
                     + "Enter shows the task in Docket; ⌘D, ⌘L, and ⌘R mark it Done, defer it an hour, or acknowledge it.")
+                LabeledContent("Show the agenda") {
+                    HotKeyRecorderView(combo: $model.agendaHotKey, defaultCombo: DocketAgendaHotKeyPreference.default,
+                                       model: model, recorder: agendaRecorder, others: [recorder, captureRecorder, findRecorder])
+                }
+                if let problem = model.agendaHotKeyProblem {
+                    note(problem, warning: true)
+                }
+                note("Shows Docket in Due while anything is overdue, else in Today, as the agenda control does.")
             }
         }
     }

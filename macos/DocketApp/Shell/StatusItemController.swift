@@ -18,6 +18,7 @@ protocol StatusItemDelegate: AnyObject {
     var toggleHotKey: HotKeyCombo? { get }
     var captureHotKey: HotKeyCombo? { get }
     var findHotKey: HotKeyCombo? { get }
+    var agendaHotKey: HotKeyCombo? { get }
     func toggleTerminal()
     /// Shows Docket in the mode a pulse count names.
     func showView(_ view: DocketView)
@@ -28,6 +29,8 @@ protocol StatusItemDelegate: AnyObject {
     func relaunchTerminal()
     func showQuickCapture(_ sender: Any?)
     func showQuickFind(_ sender: Any?)
+    /// Shows Docket in Due while anything is overdue, else Today.
+    func showAgenda(_ sender: Any?)
     func showPreferences(_ sender: Any?)
     func showAbout(_ sender: Any?)
     func showGuide(_ sender: Any?)
@@ -49,6 +52,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let toggleItem = NSMenuItem(title: "Show Docket", action: #selector(toggle(_:)), keyEquivalent: "")
     private let captureItem = NSMenuItem(title: "Quick Capture…", action: #selector(capture(_:)), keyEquivalent: "")
     private let findItem = NSMenuItem(title: "Find Task…", action: #selector(find(_:)), keyEquivalent: "")
+    private let agendaItem = NSMenuItem(title: "Show Agenda", action: #selector(agenda(_:)), keyEquivalent: "")
     private let relaunchItem = NSMenuItem(title: "Relaunch Docket", action: #selector(relaunch(_:)), keyEquivalent: "")
     // ⌘, and ⌘Q are shown as in the app menu, and answer while this menu is open.
     private let preferencesItem = NSMenuItem(title: "Settings…", action: #selector(preferences(_:)), keyEquivalent: ",")
@@ -62,7 +66,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         statusItem = statusBar.statusItem(withLength: NSStatusItem.squareLength)
         super.init()
 
-        for item in [toggleItem, captureItem, findItem, relaunchItem, preferencesItem, loginItem, aboutItem, guideItem] {
+        for item in [toggleItem, captureItem, findItem, agendaItem, relaunchItem, preferencesItem, loginItem, aboutItem, guideItem] {
             item.target = self
         }
         pulseSeparator.isHidden = true
@@ -70,6 +74,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(toggleItem)
         menu.addItem(captureItem)
         menu.addItem(findItem)
+        menu.addItem(agendaItem)
         menu.addItem(relaunchItem)
         menu.addItem(.separator())
         menu.addItem(preferencesItem)
@@ -144,6 +149,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         toggleItem.setShortcut(delegate?.toggleHotKey)
         captureItem.setShortcut(delegate?.captureHotKey)
         findItem.setShortcut(delegate?.findHotKey)
+        agendaItem.setShortcut(delegate?.agendaHotKey)
         relaunchItem.isEnabled = delegate?.canRelaunchTerminal ?? false
         loginItem.state = (delegate?.isLaunchAtLoginEnabled ?? false) ? .on : .off
     }
@@ -206,6 +212,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func relaunch(_ sender: Any?) { delegate?.relaunchTerminal() }
     @objc private func capture(_ sender: Any?) { delegate?.showQuickCapture(sender) }
     @objc private func find(_ sender: Any?) { delegate?.showQuickFind(sender) }
+    @objc private func agenda(_ sender: Any?) { delegate?.showAgenda(sender) }
     @objc private func preferences(_ sender: Any?) { delegate?.showPreferences(sender) }
     @objc private func launchAtLogin(_ sender: Any?) { delegate?.toggleLaunchAtLogin() }
     @objc private func about(_ sender: Any?) { delegate?.showAbout(sender) }

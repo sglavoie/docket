@@ -454,7 +454,7 @@ final class NotificationPresenter: NSObject, UNUserNotificationCenterDelegate {
         authorizationWaiters.append(then)
         guard !authorizationRequested else { return }
         authorizationRequested = true
-        center.requestAuthorization(options: [.alert, .sound]) { granted, error in
+        center.requestAuthorization(options: [.alert, .sound]) { [weak self] granted, error in
             if let error { NSLog("Docket: notification authorization: %@", error.localizedDescription) }
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }

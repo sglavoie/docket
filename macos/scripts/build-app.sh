@@ -12,6 +12,8 @@
 #                           otherwise resolves ~/.local/bin/docket then PATH
 #   DOCKET_APP_VERSION          CFBundleShortVersionString, e.g. 0.2.0 (default:
 #                           project.yml's MARKETING_VERSION)
+#   DOCKET_APP_BUILD            CFBundleVersion, one integer (default: the build's
+#                           Unix time, so every build reads as new)
 #   DOCKET_MACOS_CACHE          cache root (default macos/.cache, gitignored)
 #   DOCKET_CODESIGN_IDENTITY    see sign.sh (default Apple Development, else ad-hoc)
 
@@ -57,6 +59,19 @@ if [ -n "${DOCKET_APP_VERSION:-}" ]; then
 else
 	set --
 fi
+
+# Every build gets its own CFBundleVersion, shared by the app and its widget
+# extension. chronod, which serves widgets and controls, re-reads an extension's
+# widget and control list only when its version changes, so a constant one left
+# an installed app showing whatever the first install declared.
+build_number="${DOCKET_APP_BUILD:-$(date -u +%s)}"
+case "$build_number" in
+'' | *[!0-9]*)
+	echo "DOCKET_APP_BUILD must be one integer, not $build_number" >&2
+	exit 1
+	;;
+esac
+set -- "$@" "CURRENT_PROJECT_VERSION=$build_number"
 
 derived_data="$macos_dir/DerivedData"
 xcodebuild build \

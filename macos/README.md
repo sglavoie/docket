@@ -164,12 +164,12 @@ or Raycast rule that focused Ghostty for Docket can go.
 ### Menu-bar icon and window
 
 Clicking the menu-bar icon shows or hides Docket; right-click or Control-click
-opens its menu: Show/Hide, Quick Capture…, Find Task…, Relaunch Docket, Settings… (`Cmd+,`),
+opens its menu: Show/Hide, Quick Capture…, Find Task…, Show Agenda, Relaunch Docket, Settings… (`Cmd+,`),
 Launch at Login, About Docket, Docket Guide, Quit (`Cmd+Q`). Show/Hide, Quick
-Capture…, and Find Task… show their global shortcuts while those are registered,
-as Quick Capture… and Find Task… do in the app menu; a shortcut that is off, or
+Capture…, Find Task…, and Show Agenda show their global shortcuts while those are
+registered, as the last three do in the app menu; a shortcut that is off, or
 that another app holds, is not shown. The Dock icon's menu has the same pulse and agenda items, then
-Show/Hide, Quick Capture…, Find Task…, and Relaunch Docket.
+Show/Hide, Quick Capture…, Find Task…, Show Agenda, and Relaunch Docket.
 Once Docket has reported its pulse, the menu leads with one item per count still
 owed — `Inbox 2`, `Today 3`, `Overdue 1` — leaving out any count at zero and
 all of them when all three are. Choosing one shows Docket in that mode, as its mode
@@ -371,12 +371,25 @@ open can repeat it or be typed over. A Docket that had exited starts again in
 the background to answer, never in the window, and one too old to search says
 how to update it.
 
-The shortcut is set in Settings beside the other two, and stored as
+The shortcut is set in Settings beside the others, and stored as
 `docketFindHotKey`, spelled like `docketHotKey`:
 
 ```bash
 defaults write io.github.sglavoie.docket docketFindHotKey 'ctrl+opt+f'
 defaults write io.github.sglavoie.docket docketFindHotKey ''    # off
+```
+
+### Agenda shortcut
+
+`Ctrl+Opt+Cmd+D` by default (for what is due) shows Docket in Due while anything
+is overdue, and in Today otherwise, as the agenda control does; before Docket has
+reported its pulse, it shows Docket as it was. Show Agenda in the app and status
+menus does the same. The shortcut is set in Settings beside the other three, and
+stored as `docketAgendaHotKey`, spelled like `docketHotKey`:
+
+```bash
+defaults write io.github.sglavoie.docket docketAgendaHotKey 'ctrl+opt+a'
+defaults write io.github.sglavoie.docket docketAgendaHotKey ''    # off
 ```
 
 ### Links, Services, and Shortcuts

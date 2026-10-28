@@ -1,5 +1,5 @@
 import AppIntents
-import Foundation
+import AppKit
 
 // Compiled into Docket.app and its widget extension: what a control in Control
 // Center or the menu bar runs. Like every widget tap it goes through a
@@ -22,11 +22,20 @@ struct OpenDocketLinkIntent: AppIntent {
         url = link.url
     }
 
-    func perform() async throws -> some IntentResult & OpensIntent {
+    /// Opens the link itself rather than returning an `OpenURLIntent`: a control
+    /// runs this in the widget extension, and macOS drops an intent a control's
+    /// action returns, so the tap would succeed and open nothing. The link opens
+    /// without activating Docket.app, which brings itself forward only for the
+    /// links that show its window, leaving quick capture and quick find over the
+    /// app in front.
+    func perform() async throws -> some IntentResult {
         guard DocketLink(url: url) != nil else {
             throw DocketLinkIntentError(url: url)
         }
-        return .result(opensIntent: OpenURLIntent(url))
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = false
+        _ = try await NSWorkspace.shared.open(url, configuration: configuration)
+        return .result()
     }
 }
 

@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     private(set) var hotKeys: HotKeyCenter?
     private(set) var captureHotKeys: HotKeyCenter?
     private(set) var findHotKeys: HotKeyCenter?
+    private(set) var agendaHotKeys: HotKeyCenter?
     let notifications = NotificationPresenter()
     /// The Docket that runs with no window after the window's exits cleanly.
     let background = DocketBackgroundSession()
@@ -289,8 +290,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     }
 
     /// The pulse counts still owed, each showing Docket in its mode, the agenda
-    /// tasks behind them, then Show/Hide, Quick Capture…, Find Task…, and
-    /// Relaunch Docket.
+    /// tasks behind them, then Show/Hide, Quick Capture…, Find Task…, Show
+    /// Agenda, and Relaunch Docket.
     static func dockMenu(pulse: DocketPulse?, agenda: DocketAgenda? = nil, terminalFrontmost: Bool, canRelaunch: Bool, target: AnyObject) -> NSMenu {
         let menu = NSMenu()
         menu.autoenablesItems = false
@@ -317,6 +318,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         capture.target = target
         let find = menu.addItem(withTitle: "Find Task…", action: #selector(AppDelegate.showQuickFind(_:)), keyEquivalent: "")
         find.target = target
+        let agenda = menu.addItem(withTitle: "Show Agenda", action: #selector(AppDelegate.showAgenda(_:)), keyEquivalent: "")
+        agenda.target = target
         let relaunch = menu.addItem(withTitle: "Relaunch Docket", action: #selector(AppDelegate.relaunchFromMenu(_:)), keyEquivalent: "")
         relaunch.target = target
         relaunch.isEnabled = canRelaunch
@@ -366,6 +369,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
 
     @objc func showQuickFind(_ sender: Any?) {
         quickFind.toggle()
+    }
+
+    @objc func showAgenda(_ sender: Any?) {
+        showAgenda()
+    }
+
+    /// The agenda shortcut and menu items: Docket in Due while anything is
+    /// overdue, else Today, through the link the agenda control opens; Docket
+    /// itself before any pulse has said which.
+    func showAgenda() {
+        open(Self.agendaLink(for: lastPulse).url)
+    }
+
+    static func agendaLink(for pulse: DocketPulse?) -> DocketLink {
+        guard let pulse else { return .show }
+        return AgendaControlValue(overdue: pulse.overdue, today: pulse.today).link
     }
 
     /// Docket's title is its pulse: the status item's tooltip carries it whole, its
@@ -1173,6 +1192,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
                 self.hotKeys?.unregister()
                 self.captureHotKeys?.unregister()
                 self.findHotKeys?.unregister()
+                self.agendaHotKeys?.unregister()
                 self.refreshMenuShortcuts()
             } else {
                 self.registerHotKeys()
@@ -1234,19 +1254,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         findHotKeys.onPress = { [weak self] in self?.quickFind.toggle() }
         self.findHotKeys = findHotKeys
         model.onFindHotKeyChange = { [weak self] in self?.registerFindHotKey($0) }
+
+        let agendaHotKeys = HotKeyCenter()
+        agendaHotKeys.onPress = { [weak self] in self?.showAgenda() }
+        self.agendaHotKeys = agendaHotKeys
+        model.onAgendaHotKeyChange = { [weak self] in self?.registerAgendaHotKey($0) }
         registerHotKeys()
     }
 
     static let toggleHotKeyUse = "shows and hides Docket"
     static let captureHotKeyUse = "opens quick capture"
     static let findHotKeyUse = "opens quick find"
+    static let agendaHotKeyUse = "shows the agenda"
 
-    /// Every shortcut, the show/hide one first and quick find last, so at
+    /// Every shortcut, the show/hide one first and the agenda last, so at
     /// launch an earlier one keeps a combo they share.
     private func registerHotKeys() {
         applyHotKey(preferencesModel.hotKey)
         applyCaptureHotKey(preferencesModel.captureHotKey)
         applyFindHotKey(preferencesModel.findHotKey)
+        applyAgendaHotKey(preferencesModel.agendaHotKey)
     }
 
     /// A changed shortcut registers first and then the others again, so a
@@ -1255,42 +1282,62 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         applyHotKey(combo)
         applyCaptureHotKey(preferencesModel.captureHotKey)
         applyFindHotKey(preferencesModel.findHotKey)
+        applyAgendaHotKey(preferencesModel.agendaHotKey)
     }
 
     private func registerCaptureHotKey(_ combo: HotKeyCombo?) {
         applyCaptureHotKey(combo)
         applyHotKey(preferencesModel.hotKey)
         applyFindHotKey(preferencesModel.findHotKey)
+        applyAgendaHotKey(preferencesModel.agendaHotKey)
     }
 
     private func registerFindHotKey(_ combo: HotKeyCombo?) {
         applyFindHotKey(combo)
         applyHotKey(preferencesModel.hotKey)
         applyCaptureHotKey(preferencesModel.captureHotKey)
+        applyAgendaHotKey(preferencesModel.agendaHotKey)
+    }
+
+    private func registerAgendaHotKey(_ combo: HotKeyCombo?) {
+        applyAgendaHotKey(combo)
+        applyHotKey(preferencesModel.hotKey)
+        applyCaptureHotKey(preferencesModel.captureHotKey)
+        applyFindHotKey(preferencesModel.findHotKey)
+    }
+
+    /// Every shortcut but `center`'s, each with what it does, for a combo they
+    /// hold to be refused by name.
+    private func hotKeys(besides center: HotKeyCenter) -> [(center: HotKeyCenter?, use: String)] {
+        [
+            (hotKeys, Self.toggleHotKeyUse), (captureHotKeys, Self.captureHotKeyUse),
+            (findHotKeys, Self.findHotKeyUse), (agendaHotKeys, Self.agendaHotKeyUse),
+        ].filter { $0.0 !== center }
     }
 
     private func applyHotKey(_ combo: HotKeyCombo?) {
         guard let hotKeys else { return }
-        preferencesModel.hotKeyProblem = Self.register(
-            combo, on: hotKeys,
-            beside: [(captureHotKeys, Self.captureHotKeyUse), (findHotKeys, Self.findHotKeyUse)], menu: NSApp.mainMenu
-        )
+        preferencesModel.hotKeyProblem = Self.register(combo, on: hotKeys, beside: self.hotKeys(besides: hotKeys), menu: NSApp.mainMenu)
     }
 
     private func applyCaptureHotKey(_ combo: HotKeyCombo?) {
         guard let captureHotKeys else { return }
         preferencesModel.captureHotKeyProblem = Self.register(
-            combo, on: captureHotKeys,
-            beside: [(hotKeys, Self.toggleHotKeyUse), (findHotKeys, Self.findHotKeyUse)], menu: NSApp.mainMenu
+            combo, on: captureHotKeys, beside: hotKeys(besides: captureHotKeys), menu: NSApp.mainMenu
         )
         refreshMenuShortcuts()
     }
 
     private func applyFindHotKey(_ combo: HotKeyCombo?) {
         guard let findHotKeys else { return }
-        preferencesModel.findHotKeyProblem = Self.register(
-            combo, on: findHotKeys,
-            beside: [(hotKeys, Self.toggleHotKeyUse), (captureHotKeys, Self.captureHotKeyUse)], menu: NSApp.mainMenu
+        preferencesModel.findHotKeyProblem = Self.register(combo, on: findHotKeys, beside: hotKeys(besides: findHotKeys), menu: NSApp.mainMenu)
+        refreshMenuShortcuts()
+    }
+
+    private func applyAgendaHotKey(_ combo: HotKeyCombo?) {
+        guard let agendaHotKeys else { return }
+        preferencesModel.agendaHotKeyProblem = Self.register(
+            combo, on: agendaHotKeys, beside: hotKeys(besides: agendaHotKeys), menu: NSApp.mainMenu
         )
         refreshMenuShortcuts()
     }
@@ -1299,6 +1346,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     private func refreshMenuShortcuts() {
         MainMenu.showCaptureHotKey(captureHotKey, in: NSApp.mainMenu)
         MainMenu.showFindHotKey(findHotKey, in: NSApp.mainMenu)
+        MainMenu.showAgendaHotKey(agendaHotKey, in: NSApp.mainMenu)
     }
 
     /// `register(_:on:beside:menu:)` beside one other shortcut.
@@ -1426,6 +1474,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     var captureHotKey: HotKeyCombo? { captureHotKeys?.registeredCombo }
 
     var findHotKey: HotKeyCombo? { findHotKeys?.registeredCombo }
+
+    var agendaHotKey: HotKeyCombo? { agendaHotKeys?.registeredCombo }
 
     /// The global shortcut and a left click on the status item: show and
     /// focus Docket, or hide it when it is already in front.

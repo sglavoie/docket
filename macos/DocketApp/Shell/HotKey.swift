@@ -196,6 +196,23 @@ enum DocketFindHotKeyPreference {
     }
 }
 
+/// The agenda's shortcut, `D` for what is due: shows Docket in Due while
+/// anything is overdue, else Today, as the agenda control does.
+enum DocketAgendaHotKeyPreference {
+    static let defaultsKey = "docketAgendaHotKey"
+    static let `default` = HotKeyCombo(string: "ctrl+opt+cmd+d")!
+
+    static func load(from defaults: UserDefaults = .standard) -> HotKeyCombo? {
+        guard let stored = defaults.string(forKey: defaultsKey) else { return Self.default }
+        if stored.isEmpty { return nil }
+        return HotKeyCombo(string: stored) ?? Self.default
+    }
+
+    static func save(_ combo: HotKeyCombo?, to defaults: UserDefaults = .standard) {
+        defaults.set(combo?.string ?? "", forKey: defaultsKey)
+    }
+}
+
 enum DocketHotKeyPreference {
     static let defaultsKey = "docketHotKey"
     static let `default` = HotKeyCombo(string: "ctrl+opt+cmd+t")!
