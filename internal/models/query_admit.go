@@ -269,7 +269,7 @@ func queryDueMatches(task *Task, clause QueryClause, now time.Time) bool {
 	if strings.HasPrefix(clause.Value, "+") {
 		return queryDueWindowMatches(task, clause.Value, now)
 	}
-	return queryDayMatches(*task.DueDate, clause.Value, now)
+	return queryDayMatches(*task.DueDate, clause.Value)
 }
 
 // queryDueWindowMatches reads a relative due value the way the typed `/`
@@ -291,17 +291,20 @@ func queryDeferDayMatches(task *Task, value string, now time.Time) bool {
 	if task.DeferredUntil == nil {
 		return false
 	}
-	return queryDayMatches(*task.DeferredUntil, value, now)
+	// A deferral is an instant; its wake day belongs to the reader's zone.
+	return queryDayMatches(task.DeferredUntil.In(now.Location()), value)
 }
 
-// queryDayMatches compares a stored instant to a calendar day in the caller's
-// location, which is the same reading a date-only due date is stored under.
-func queryDayMatches(stored time.Time, value string, now time.Time) bool {
-	wanted, err := time.ParseInLocation(QueryDateLayout, value, now.Location())
+// queryDayMatches compares calendar components without moving either date into
+// another zone. Parse the requested date in UTC so a skipped local midnight
+// cannot normalize it onto the previous day. Due dates retain their stored
+// calendar day; callers holding instants convert to the reader's zone first.
+func queryDayMatches(stored time.Time, value string) bool {
+	wanted, err := time.Parse(QueryDateLayout, value)
 	if err != nil {
 		return false
 	}
-	return util.StartOfDay(stored.In(now.Location())).Equal(util.StartOfDay(wanted))
+	return util.DaysBetween(stored, wanted) == 0
 }
 
 // queryCompletedMatches keeps the live cleanup facet's shape: a task with no
