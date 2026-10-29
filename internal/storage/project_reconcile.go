@@ -139,6 +139,13 @@ func (r *projectReconciler) mergeTasks() {
 			}
 			r.merged[id] = r.mergeVersions(b, changed)
 		}
+		// Reordering changes UpdatedAt without changing any mergeable task field.
+		// Keep those touches even when their side was excluded from changed.
+		task := r.merged[id]
+		task.UpdatedAt = b.UpdatedAt
+		if newest := latestUpdate(present); newest.After(task.UpdatedAt) {
+			task.UpdatedAt = newest
+		}
 	}
 }
 

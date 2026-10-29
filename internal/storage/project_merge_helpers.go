@@ -51,12 +51,18 @@ func orderTasks(byID map[string]*models.Task, order []string) []*models.Task {
 	return tasks
 }
 
-// tasksEqual reports whether two tasks are equal across all persisted fields,
-// ignoring the computed (json:"-") fields.
+// tasksEqual compares persisted task fields except UpdatedAt and uses the same
+// check-in unit equality as the merge. Computed (json:"-") fields are ignored.
 func tasksEqual(a, b *models.Task) bool {
+	if !checkInUnitOf(a).equals(checkInUnitOf(b)) {
+		return false
+	}
 	av := reflect.ValueOf(a).Elem()
 	bv := reflect.ValueOf(b).Elem()
 	for _, f := range mergeableTaskFields {
+		if f.checkInUnit {
+			continue
+		}
 		if !reflect.DeepEqual(av.Field(f.index).Interface(), bv.Field(f.index).Interface()) {
 			return false
 		}
