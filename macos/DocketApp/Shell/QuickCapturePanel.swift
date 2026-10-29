@@ -168,6 +168,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
 
     static let draftKeptMessage = "Kept your unsaved draft. Capture or clear it, then send the new text again."
     static let draftAppendedMessage = "Added to your unsent draft"
+    static let draftAlreadyHoldsMessage = "Already in your unsent draft"
 
     /// Opens the panel holding `draft` (see `present(draft:caret:selectionLength:)`),
     /// saying what it dropped. Attachments are never lost to an unsent draft: when
@@ -183,6 +184,11 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         var notices = draft.dropped
         if draft.text.trimmingCharacters(in: .whitespaces).isEmpty {
             show()
+            presented = true
+        } else if draft.hasAttachments, unsent, !sending, Self.holds(current, draft.attachmentTokens) {
+            // Sharing the same thing twice adds nothing.
+            show()
+            notices.insert(Self.draftAlreadyHoldsMessage, at: 0)
             presented = true
         } else if draft.hasAttachments, unsent, !sending {
             let merged = current + draft.attachmentTokens
@@ -200,6 +206,12 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
             setStatus(notices.joined(separator: ". "), error: !draft.dropped.isEmpty)
         }
         return presented
+    }
+
+    /// Whether `draft` already ends in, or holds followed by a space, the `&`
+    /// tokens `suffix` spells, so a repeated share would only duplicate them.
+    static func holds(_ draft: String, _ suffix: String) -> Bool {
+        draft.hasSuffix(suffix) || draft.contains(suffix + " ")
     }
 
     /// Opens the panel holding `draft`, the caret at `caret` in UTF-16 units (the

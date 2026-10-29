@@ -18,6 +18,21 @@ final class ControlWireTests: XCTestCase {
         XCTAssertEqual(object["text"] as? String, "undo")
     }
 
+    /// Quick capture keys its retry-safe submission on the workspace a
+    /// `capture_context` reply names; dropping it refused every capture.
+    func testCaptureContextAndVersionRepliesKeepTheirValues() throws {
+        let context = #"{"workspace":"51684ea2-0243-4f2d-9fb1-73809d7888da","reply":9,"ok":true}"#
+        guard case .reply(let reply)? = DocketControlLine.decode(Data(context.utf8)) else {
+            return XCTFail("not a reply")
+        }
+        XCTAssertEqual(reply.workspace, "51684ea2-0243-4f2d-9fb1-73809d7888da")
+        let version = #"{"version":"docket version v0.2.1","reply":10,"ok":true}"#
+        guard case .reply(let versionReply)? = DocketControlLine.decode(Data(version.utf8)) else {
+            return XCTFail("not a reply")
+        }
+        XCTAssertEqual(versionReply.version, "docket version v0.2.1")
+    }
+
     func testCapturePreviewWireFormat() throws {
         let summary = "Project: Web · Plan: Today · Status: Backlog"
         let line = #"{"reply":7,"ok":true,"preview":"Project: Web · Plan: Today · Status: Backlog"}"#

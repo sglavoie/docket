@@ -354,6 +354,20 @@ final class QuickCapturePresentTests: XCTestCase {
             .contains { $0.stringValue == QuickCapturePanel.draftAppendedMessage })
     }
 
+    func testTheSameAttachmentsAgainLeaveAnUnsavedDraftUnchanged() throws {
+        let panel = QuickCapturePanel()
+        defer { panel.close() }
+        let field = try field(panel)
+        XCTAssertTrue(panel.present(draft: "Docket repo &https://example.com/docket"))
+        XCTAssertTrue(panel.present(DocketCaptureDraft.build(text: nil, attachments: ["https://example.com/docket"])))
+        XCTAssertEqual(field.stringValue, "Docket repo &https://example.com/docket")
+        XCTAssertTrue(panel.panel.contentView!.descendants(of: NSTextField.self)
+            .contains { $0.stringValue == QuickCapturePanel.draftAlreadyHoldsMessage })
+        XCTAssertTrue(panel.present(DocketCaptureDraft.build(text: nil, attachments: ["https://example.com/docket/issues"])))
+        XCTAssertEqual(field.stringValue, "Docket repo &https://example.com/docket &https://example.com/docket/issues",
+                       "a longer link the draft only begins is still added")
+    }
+
     func testATextOnlyLinkLeavesAnUnsavedDraftUnchanged() throws {
         let panel = QuickCapturePanel()
         defer { panel.close() }

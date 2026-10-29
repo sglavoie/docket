@@ -431,7 +431,8 @@ Neither replaces an unsaved draft. Text alone opens the panel on the draft you
 had and says so. Anything carrying an attachment — an `attach` link, or a
 selection that is a web address — keeps the draft's text and adds its `&` tokens
 at the end, saying `Added to your unsent draft`; its own text is used only when
-the draft is empty. That holds for a draft whose capture outlasted the five-second wait too:
+the draft is empty. Sharing what the draft already ends with adds nothing and
+says `Already in your unsent draft`. That holds for a draft whose capture outlasted the five-second wait too:
 adding to it changes it, so the next Enter sends it as a new capture.
 macOS lists the service once Docket.app has run from `/Applications`; System
 Settings › Keyboard › Keyboard Shortcuts › Services turns it off or gives it a key.
@@ -475,8 +476,9 @@ too old for it.
 
 **Share › Docket**, in Safari, Finder, Preview, Notes, and any other app with a
 Share menu, opens quick capture holding what you shared, for you to read the
-preview and press Enter. A web page is attached with its title as the text,
-selected for typing over; files (up to 10, an image or a movie among them) are
+preview and press Enter. A web page is attached, with the caret before it for
+the title: Safari shares the address alone, and an app that also shares a title
+has it as the text, selected for typing over. Files (up to 10, an image or a movie among them) are
 attached by path, and a folder is left out by name; shared text is the text.
 The extension shows nothing of its own: it turns the items into one
 `docket://capture` link, so the panel follows that link's rules, adding to an

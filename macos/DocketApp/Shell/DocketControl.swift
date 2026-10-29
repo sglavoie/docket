@@ -571,6 +571,8 @@ enum DocketControlLine: Equatable {
         let preview: String?
         let transaction: String?
         let selection: DocketTextSelection?
+        let workspace: String?
+        let version: String?
         let search: DocketSearchResults?
         let index: DocketIndexResults?
         let projects: DocketProjectList?
@@ -587,8 +589,11 @@ enum DocketControlLine: Equatable {
     static func decode(_ data: Data) -> DocketControlLine? {
         guard let raw = try? JSONDecoder().decode(Raw.self, from: data) else { return nil }
         if let id = raw.reply {
-            return .reply(DocketControlReply(reply: id, ok: raw.ok ?? false, message: raw.message, completion: raw.completion, preview: raw.preview,
-                transaction: raw.transaction, selection: raw.selection, search: raw.search, index: raw.index, projects: raw.projects))
+            var reply = DocketControlReply(reply: id, ok: raw.ok ?? false, message: raw.message, completion: raw.completion, preview: raw.preview,
+                transaction: raw.transaction, selection: raw.selection, search: raw.search, index: raw.index, projects: raw.projects)
+            reply.workspace = raw.workspace
+            reply.version = raw.version
+            return .reply(reply)
         }
         switch raw.event {
         case "editing":
