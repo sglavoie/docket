@@ -516,6 +516,10 @@ The extension shows nothing of its own: it turns the items into one
 unsent draft rather than replacing it, and saying what it left out. With
 Docket.app quit, the share starts it and then opens the panel.
 
+Sharing from Preview's toolbar opens the panel behind Preview's window: it has
+the keyboard, so you can type, and clicking it brings it forward. The capture
+shortcut over Preview is not affected.
+
 macOS lists the extension once Docket.app has run from `/Applications`; System
 Settings › General › Login Items & Extensions › Sharing (Extensions › Sharing
 on older systems) turns it off. The file is copied when you press Enter, by
