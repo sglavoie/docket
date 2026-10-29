@@ -141,7 +141,8 @@ func (r *projectReconciler) renumberShortIDs() {
 
 // mergeOrder merges each sibling group's order across all sides: one side's
 // reorder, or several compatible ones, is adopted; incompatible reorders keep
-// the base order. Additions follow in side order.
+// the base order. Additions retain their following sibling as an anchor, with
+// concurrent runs at the same position following side order.
 func (r *projectReconciler) mergeOrder() []string {
 	all := append([][]*models.Task{r.base.Tasks}, sideTasks(r.sides)...)
 	backbone := survivingTaskOrder(r.merged, all...)

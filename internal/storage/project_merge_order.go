@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"container/list"
 	"fmt"
 
 	"github.com/sglavoie/docket/internal/models"
@@ -85,19 +86,35 @@ func mergeSiblingOrder(group string, baseIDs, localIDs, currentIDs []string) ([]
 	}
 }
 
+// completeSiblingOrder keeps the first sequence's authoritative relative order
+// and places missing runs before their next known sibling. This preserves an
+// insertion's position without letting an unchanged side undo a merged reorder.
+// Runs without a following sibling append in side order. The linked list keeps
+// insertion linear in the total input size, including large sibling groups.
 func completeSiblingOrder(sequences ...[]string) []string {
-	var ordered []string
-	placed := make(map[string]bool)
+	ordered := list.New()
+	placed := make(map[string]*list.Element)
 	for _, sequence := range sequences {
-		for _, id := range sequence {
-			if placed[id] {
+		var next *list.Element
+		for i := len(sequence) - 1; i >= 0; i-- {
+			id := sequence[i]
+			if existing := placed[id]; existing != nil {
+				next = existing
 				continue
 			}
-			ordered = append(ordered, id)
-			placed[id] = true
+			if next == nil {
+				next = ordered.PushBack(id)
+			} else {
+				next = ordered.InsertBefore(id, next)
+			}
+			placed[id] = next
 		}
 	}
-	return ordered
+	ids := make([]string, 0, ordered.Len())
+	for item := ordered.Front(); item != nil; item = item.Next() {
+		ids = append(ids, item.Value.(string))
+	}
+	return ids
 }
 
 func survivingTaskOrder(survivors map[string]*models.Task, taskSets ...[]*models.Task) []string {
