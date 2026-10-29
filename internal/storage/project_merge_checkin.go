@@ -25,14 +25,12 @@ func checkInUnitOf(task *models.Task) taskCheckInUnit {
 	}
 }
 
-// equals compares two units by what they mean rather than by their in-memory
-// shape. Two pointers holding the same instant in different locations are the
-// same schedule, so they are compared with Equal; reflect.DeepEqual, which the
-// per-field path uses, would call that a divergent edit and conflict two machines
-// that agreed.
+// equals compares the scheduled calendar date and cadence through the model's
+// schedule equality, and the review history by instant. Neither the device's
+// zone for a date nor an instant's in-memory location is an edit.
 func (u taskCheckInUnit) equals(other taskCheckInUnit) bool {
-	return u.repeatDays == other.repeatDays &&
-		sameOptionalInstant(u.next, other.next) &&
+	return (models.CheckInSchedule{Next: u.next, RepeatDays: u.repeatDays}).Equal(
+		models.CheckInSchedule{Next: other.next, RepeatDays: other.repeatDays}) &&
 		sameOptionalInstant(u.lastReviewedAt, other.lastReviewedAt)
 }
 

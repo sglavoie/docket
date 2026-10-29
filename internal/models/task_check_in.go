@@ -50,6 +50,20 @@ func (s CheckInSchedule) Clone() CheckInSchedule {
 	return CheckInSchedule{Next: CloneInstant(s.Next), RepeatDays: s.RepeatDays}
 }
 
+// Equal compares the cadence and calendar date, independent of the zone used
+// to represent that date. A check-in stores a day rather than an instant.
+func (s CheckInSchedule) Equal(other CheckInSchedule) bool {
+	if s.RepeatDays != other.RepeatDays {
+		return false
+	}
+	if s.Next == nil || other.Next == nil {
+		return s.Next == nil && other.Next == nil
+	}
+	year, month, day := s.Next.Date()
+	otherYear, otherMonth, otherDay := other.Next.Date()
+	return year == otherYear && month == otherMonth && day == otherDay
+}
+
 // CloneInstant returns a detached copy of an optional instant. Every accessor
 // here returns one rather than the stored pointer: two tasks that shared a
 // *time.Time would let an edit through one rewrite the other's schedule.
@@ -198,13 +212,7 @@ func (t *Task) ClearCheckIn(now time.Time) bool {
 // sameCheckIn compares a schedule with the stored one by value, so re-declaring
 // the schedule a task already holds is not an edit and does not move UpdatedAt.
 func (t *Task) sameCheckIn(schedule CheckInSchedule) bool {
-	if t.CheckInRepeatDays != schedule.RepeatDays {
-		return false
-	}
-	if t.NextCheckIn == nil || schedule.Next == nil {
-		return t.NextCheckIn == nil && schedule.Next == nil
-	}
-	return t.NextCheckIn.Equal(*schedule.Next)
+	return (CheckInSchedule{Next: t.NextCheckIn, RepeatDays: t.CheckInRepeatDays}).Equal(schedule)
 }
 
 // CheckInIsDueAt reports whether this task's own check-in has arrived and is

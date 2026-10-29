@@ -1171,7 +1171,7 @@ The check-in is the one group `mergeTaskFields` does not merge field by field:
 all three stay in `mergeableTaskFields` so `tasksEqual` sees a complete set, are
 flagged `checkInUnit`, and `mergeCheckInUnit` adopts or refuses them together,
 since acknowledging and rescheduling both move the date and differ only in the
-review instant. It compares by instant, never `reflect.DeepEqual`; a divergence
+review instant. Dates compare by day, history by instant; a divergence
 is one `check_in` field conflict naming the whole schedule on every side.
 
 Project comments merge by comment id, never position: independent additions and

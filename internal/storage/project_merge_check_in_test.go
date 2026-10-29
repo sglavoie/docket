@@ -15,7 +15,7 @@ import (
 // independently they compose schedules neither machine wrote.
 
 // checkInMergeYear and checkInMergeTaskID are fixed because nothing in this file
-// turns on either: the merge reads a date as an instant and a task by identity,
+// turns on either: the merge reads a calendar date and a task by identity,
 // so varying the year or the id would only restate what the fixtures already say.
 const (
 	checkInMergeYear   = 2026
