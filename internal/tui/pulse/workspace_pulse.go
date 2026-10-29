@@ -95,17 +95,7 @@ func ComputeWorkspacePulse(projects []*models.Project, todayIDs map[taskref.Task
 }
 
 func TaskIsOverdueAt(task *models.Task, now time.Time) bool {
-	if task == nil || task.DueDate == nil || task.State().IsTerminal() {
-		return false
-	}
-	if task.DueHasTime() {
-		return task.DueDate.Before(now)
-	}
-	nowYear, nowMonth, nowDay := now.Date()
-	dueYear, dueMonth, dueDay := task.DueDate.Date()
-	today := time.Date(nowYear, nowMonth, nowDay, 0, 0, 0, 0, time.UTC)
-	due := time.Date(dueYear, dueMonth, dueDay, 0, 0, 0, 0, time.UTC)
-	return due.Before(today)
+	return task != nil && task.IsOverdueAt(now)
 }
 
 // formatWorkspacePulseComponents is the title-fitting seam for the fixed

@@ -222,6 +222,13 @@ func ParseDueDate(input string) (time.Time, bool, error) {
 		return day, false, nil
 	}
 	due := time.Date(day.Year(), day.Month(), day.Day(), hour, minute, 0, 0, day.Location())
+	// time.Date silently normalizes a clock skipped by a zone transition,
+	// potentially even onto the previous date. Refuse that substitution while
+	// the requested date and clock are still available to name in the error.
+	if !isCalendarDate(due, day.Year(), day.Month(), day.Day()) || due.Hour() != hour || due.Minute() != minute {
+		return time.Time{}, false, fmt.Errorf("due time %s %02d:%02d does not exist in %s",
+			day.Format(DateFormat), hour, minute, day.Location())
+	}
 	return due, true, nil
 }
 

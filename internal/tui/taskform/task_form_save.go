@@ -91,7 +91,7 @@ func (m *TaskFormModel) normalizeDraftContext() error {
 
 // parseDraftDueDate parses draft.dueInput and stores the result in draft.dueDate.
 // Empty / "none" / "clear" clears the due date. Returns an error for
-// unparseable input. Supports optional time-of-day suffixes (e.g. "tomorrow 5pm").
+// unparseable input. Supports optional HH:MM suffixes (e.g. "tomorrow 17:00").
 func (m *TaskFormModel) parseDraftDueDate() error {
 	value := strings.TrimSpace(m.draft.dueInput)
 	// An unchanged field already carries a resolved instant. Do not round it or
@@ -103,16 +103,9 @@ func (m *TaskFormModel) parseDraftDueDate() error {
 		m.draft.dueDate = nil
 		return nil
 	}
-	datePart, hour, minute, hasTime, err := util.ExtractDueClockSuffix(value)
+	date, _, err := util.ParseDueDate(value)
 	if err != nil {
 		return err
-	}
-	date, err := util.ParseRelativeDateWithConfig(datePart, "sun")
-	if err != nil {
-		return err
-	}
-	if hasTime {
-		date = time.Date(date.Year(), date.Month(), date.Day(), hour, minute, 0, 0, date.Location())
 	}
 	m.draft.dueDate = &date
 	return nil
