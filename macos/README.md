@@ -343,6 +343,37 @@ defaults write io.github.sglavoie.docket docketCaptureHotKey 'ctrl+opt+n'
 defaults write io.github.sglavoie.docket docketCaptureHotKey ''    # off
 ```
 
+### Context from the app in front
+
+`Cmd+K` in quick capture attaches what the app you were in is showing. The panel
+notes which app was in front when it opened, and when that app is one of these
+four, the line under the field offers `⌘K attach` and what it would take:
+
+| App | `Cmd+K` attaches | Text, when the draft is empty |
+| --- | --- | --- |
+| Safari | the current tab's address | the tab's title |
+| Google Chrome | the active tab's address | the tab's title |
+| Mail | each selected message, as a `message://` link | each message's subject |
+| Finder | each selected file (folders are left out by name) | none |
+
+The `&` tokens go in at the caret, after any selection. Text goes in only when
+the draft is empty, and is selected, so typing replaces it. Several Mail
+messages selected over an empty draft make one task each: one line per message,
+its subject then its link, and the field grows to show every line. Enter captures
+them all at once, as one change `Cmd+Z` takes back. With text already in the
+draft, the messages' links go on that one task instead. Over any other app,
+`Cmd+K` does nothing. Nothing is sent: you still read the preview and press
+Enter.
+
+Nothing is read from another app until you press `Cmd+K`, and only that app is
+asked. While it answers, the line says `Asking Safari…` and you can keep typing;
+an app that does not answer within two seconds is named, and an answer that
+arrives after you put the panel away or sent the draft is dropped. The first
+`Cmd+K` over each app shows macOS's prompt asking whether Docket may control it,
+once per app. If you decline, the line says Docket isn't allowed and offers
+Open Privacy Settings; you can allow or revoke it later in System Settings ›
+Privacy & Security › Automation, under Docket.
+
 ### Quick find
 
 `Ctrl+Opt+Cmd+/` by default (after Docket's own `/`) opens a find field over

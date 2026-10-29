@@ -37,6 +37,8 @@
 	<string>public.app-category.productivity</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Docket reads the current tab, message, or selection only when you press ⌘K in quick capture.</string>
 	<key>NSDocumentsFolderUsageDescription</key>
 	<string>Docket.app reads your login shell's settings, which may live in Documents, and Docket opens files you attach from there.</string>
 	<key>NSDesktopFolderUsageDescription</key>

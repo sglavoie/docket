@@ -16,6 +16,10 @@ import AppKit
 /// Cmd+Z in an empty field takes back the last capture, through Docket's own undo,
 /// while it is still the newest change in Docket; in a field holding text it undoes
 /// the typing.
+///
+/// Cmd+K attaches what the app that was in front shows — the Safari or Chrome tab,
+/// the selected Mail messages, the Finder selection — asking it off the main thread
+/// only when pressed, so typing never waits on it.
 final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     NSTableViewDataSource, NSTableViewDelegate {
     /// Sends one line to Docket, calls `written` once Docket has the request, which
@@ -73,6 +77,32 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     static let suggestionsAccessibilityLabel = "Suggestions"
 
     static let hint = "Enter capture · Ctrl+N capture another · Tab complete · Esc keep draft"
+
+    /// The hint, offering `⌘K` only when the app in front is one it reads.
+    static func hint(for app: DocketFrontApp?) -> String {
+        guard let app else { return hint }
+        return "Enter capture · ⌘K attach \(app.item) · Ctrl+N capture another · Tab complete · Esc keep draft"
+    }
+
+    var currentHint: String { Self.hint(for: frontApp) }
+
+    /// The app in front when the panel opened, when `Cmd+K` can read it.
+    private(set) var frontApp: DocketFrontApp?
+    /// The frontmost app's bundle identifier, read before the panel shows; the
+    /// panel never activates Docket.app, so that is the app the user was in.
+    var frontmostBundleID: () -> String? = { nil }
+    /// Asks `app` what it shows, off the main thread, and answers on the main
+    /// thread; nil leaves `Cmd+K` unanswered.
+    var readFrontApp: ((DocketFrontApp, @escaping (Result<DocketFrontAppAnswer, DocketFrontAppRefusal>) -> Void) -> Void)?
+    /// Opens Privacy & Security › Automation.
+    var openPrivacySettings: () -> Void = {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+    /// Bumped by each `Cmd+K`, closing, and sending, so a late answer finds it gone.
+    private var contextGeneration = 0
+    private(set) var contextPending = false
     /// The sigil examples, read only while the field is empty.
     static let placeholder = "Capture a task  #tag  @date  %project  $today  !1"
 
@@ -90,6 +120,9 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     }
     private let status = NSTextField(labelWithString: QuickCapturePanel.hint)
     private let routeLabel = NSTextField(wrappingLabelWithString: "")
+    private lazy var privacyButton = NSButton(
+        title: "Open Privacy Settings", target: self, action: #selector(openPrivacy(_:))
+    )
     private let suggestionTable = NSTableView()
     private let suggestionScroll = NSScrollView()
     private var suggestionHeight: NSLayoutConstraint?
@@ -142,13 +175,18 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         dismissalGeneration += 1
         let selection = savedSelection
         stopObservingSelection()
+        if !panel.isVisible {
+            frontApp = DocketFrontApp(bundleIdentifier: frontmostBundleID())
+            field.setAccessibilityHelp(currentHint)
+        }
         if let reason = unavailableReason() {
             setStatus(reason, error: true)
         } else if let recoveryError {
             setStatus(recoveryError, error: true)
-        } else {
-            setStatus(Self.hint, error: false)
+        } else if !contextPending {
+            setStatus(currentHint, error: false)
         }
+        setFieldMultiline(field.stringValue.contains("\n"))
         position()
         panel.makeKeyAndOrderFront(nil)
         panel.makeFirstResponder(field)
@@ -251,6 +289,8 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     func close() {
         keepKeyUntil = nil
         dismissalGeneration += 1
+        contextGeneration += 1
+        contextPending = false
         // Putting the panel away stops waiting on Docket; the draft stays.
         if sending {
             abandonRequest()
@@ -315,6 +355,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
             self.capture(keepOpen: true)
         }
         panel.onUndo = { [weak self] in self?.undoKey() ?? false }
+        panel.onAttachContext = { [weak self] in self?.attachFromFrontApp() ?? false }
 
         let background = NSVisualEffectView()
         background.material = .hudWindow
@@ -329,11 +370,12 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         field.usesSingleLineMode = true
         field.cell?.wraps = false
         field.cell?.isScrollable = true
+        field.preferredMaxLayoutWidth = 600
         field.delegate = self
         field.target = self
         field.action = #selector(enter(_:))
         field.setAccessibilityLabel(Self.accessibilityLabel)
-        field.setAccessibilityHelp(Self.hint)
+        field.setAccessibilityHelp(currentHint)
 
         status.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         status.textColor = .secondaryLabelColor
@@ -374,6 +416,10 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 8
+        privacyButton.bezelStyle = .push
+        privacyButton.controlSize = .small
+        privacyButton.isHidden = true
+        stack.addArrangedSubview(privacyButton)
         stack.edgeInsets = NSEdgeInsets(top: 18, left: 20, bottom: 14, right: 20)
         stack.translatesAutoresizingMaskIntoConstraints = false
         background.addSubview(stack)
@@ -404,13 +450,14 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         ))
     }
 
-    private func setStatus(_ text: String, error: Bool) {
+    private func setStatus(_ text: String, error: Bool, offersPrivacySettings: Bool = false) {
         status.stringValue = text
         status.textColor = error ? .systemRed : .secondaryLabelColor
         status.toolTip = error ? text : nil
+        privacyButton.isHidden = !offersPrivacySettings
         fitToContent()
         // The hint is the field's help, read with it; anything else is news.
-        if text != Self.hint {
+        if text != currentHint {
             announce(text)
         }
     }
@@ -453,6 +500,9 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         guard !sending, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, let submit else { return }
         guard let captureContext else { setStatus("Capture connection is unavailable", error: true); return }
         clearPreview()
+        // An answer from the app in front would land in a draft already sent.
+        contextGeneration += 1
+        contextPending = false
         sending = true
         field.isEditable = false
         requestGeneration += 1
@@ -521,6 +571,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
                 self.lastCaptureTransaction = transaction
                 self.savedSelection = nil
                 self.field.stringValue = ""
+                self.setFieldMultiline(false)
                 self.setStatus(message.isEmpty ? "Captured" : message, error: false)
                 if keepOpen {
                     self.dismissalGeneration += 1
@@ -562,6 +613,152 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         if isVisible, !sending {
             setStatus(message.isEmpty ? "Captured" : message, error: false)
         }
+    }
+
+    // MARK: Context from the app in front
+
+    /// Cmd+K: asks the app that was in front what it shows. Typing stays live while
+    /// it answers; an answer arriving after the panel was put away, the draft was
+    /// sent, or Cmd+K was pressed again is dropped. Unhandled when no app is
+    /// readable, so the key does what it would anywhere else.
+    @discardableResult
+    func attachFromFrontApp() -> Bool {
+        guard let app = frontApp, let readFrontApp else { return false }
+        guard !sending else { return true }
+        contextGeneration += 1
+        let generation = contextGeneration
+        contextPending = true
+        setStatus("Asking \(app.name)…", error: false)
+        readFrontApp(app) { [weak self] result in
+            guard let self, generation == self.contextGeneration, self.isVisible, !self.sending else { return }
+            self.contextPending = false
+            switch result {
+            case .failure(let refusal):
+                self.setStatus(refusal.status(for: app), error: true,
+                               offersPrivacySettings: refusal.offersPrivacySettings)
+            case .success(let answer):
+                self.insertFrontAppAnswer(answer, from: app)
+            }
+        }
+        return true
+    }
+
+    /// The answer's `&` tokens at the caret, after any selection, spaced from their
+    /// neighbors. Its text is used only when the draft is empty, and is then
+    /// selected so typing replaces it. Several items that each carry their own
+    /// text, as Mail messages do, fill an empty draft one task per line instead.
+    private func insertFrontAppAnswer(_ answer: DocketFrontAppAnswer, from app: DocketFrontApp) {
+        if field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           let tasks = Self.taskLines(answer), tasks.lines.count > 1 {
+            insertTaskLines(tasks.lines, dropped: tasks.dropped, from: app)
+            return
+        }
+        let built = DocketCaptureDraft.build(text: nil, attachments: answer.attachments)
+        let dropped = answer.dropped + built.dropped
+        guard built.hasAttachments, let editor = field.currentEditor() as? NSTextView else {
+            setStatus(dropped.isEmpty ? DocketFrontAppRefusal.nothingSelected.status(for: app) : dropped.joined(separator: ". "),
+                      error: true)
+            return
+        }
+        clearCompletion()
+        let current = editor.string as NSString
+        let tokens = built.attachmentTokens
+        if field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let text = answer.text.map(DocketCaptureDraft.normalized) ?? ""
+            editor.insertText(text + tokens, replacementRange: NSRange(location: 0, length: current.length))
+            editor.setSelectedRange(text.isEmpty
+                ? NSRange(location: 0, length: 0)
+                : NSRange(location: 0, length: (text as NSString).length))
+        } else {
+            let selection = editor.selectedRange()
+            let at = min(selection.location + selection.length, current.length)
+            var insert = tokens
+            if at > 0, let previous = current.substring(with: NSRange(location: at - 1, length: 1)).first,
+               previous.isWhitespace {
+                insert.removeFirst()
+            }
+            if at < current.length, let next = current.substring(with: NSRange(location: at, length: 1)).first,
+               !next.isWhitespace {
+                insert += " "
+            }
+            editor.insertText(insert, replacementRange: NSRange(location: at, length: 0))
+        }
+        rememberSelection()
+        saveDraft()
+        requestPreview()
+        let count = min(answer.attachments.filter {
+            if case .success = DocketCaptureDraft.attachmentToken($0) { return true } else { return false }
+        }.count, DocketCaptureDraft.attachmentLimit)
+        let notices = [Self.attachedMessage(count: count, from: app)] + dropped
+        setStatus(notices.joined(separator: ". "), error: !dropped.isEmpty)
+    }
+
+    /// One draft line per item, its text then its `&` token, when every item
+    /// carries text of its own; nil otherwise. `attachmentLimit` caps the lines.
+    static func taskLines(_ answer: DocketFrontAppAnswer) -> (lines: [String], dropped: [String])? {
+        guard answer.attachments.count > 1, answer.itemTexts.count == answer.attachments.count else { return nil }
+        var lines: [String] = []
+        var dropped = answer.dropped
+        var overLimit = 0
+        for (value, text) in zip(answer.attachments, answer.itemTexts) {
+            let line = DocketCaptureDraft.build(text: text, attachments: [value])
+            dropped += line.dropped
+            guard line.hasAttachments else { continue }
+            if lines.count == DocketCaptureDraft.attachmentLimit {
+                overLimit += 1
+                continue
+            }
+            lines.append(line.text)
+        }
+        if overLimit > 0 {
+            dropped.append("Left out \(overLimit) past the \(DocketCaptureDraft.attachmentLimit)-attachment limit")
+        }
+        return (lines, dropped)
+    }
+
+    private func insertTaskLines(_ lines: [String], dropped: [String], from app: DocketFrontApp) {
+        clearCompletion()
+        setFieldMultiline(true)
+        guard let editor = field.currentEditor() as? NSTextView else { return }
+        let text = lines.joined(separator: "\n")
+        editor.insertText(text, replacementRange: NSRange(location: 0, length: (editor.string as NSString).length))
+        editor.setSelectedRange(NSRange(location: (text as NSString).length, length: 0))
+        rememberSelection()
+        saveDraft()
+        requestPreview()
+        fitToContent()
+        let notices = ["Added \(lines.count) tasks from \(app.name), one per line"] + dropped
+        setStatus(notices.joined(separator: ". "), error: !dropped.isEmpty)
+    }
+
+    /// A draft of several lines is several tasks: the field wraps and grows to show
+    /// them all, and Enter still captures every line at once. Editing restarts so
+    /// the field editor takes the new layout, keeping the selection.
+    private func setFieldMultiline(_ multiline: Bool) {
+        guard field.usesSingleLineMode == multiline else { return }
+        let editor = field.currentEditor() as? NSTextView
+        let selection = editor?.selectedRange()
+        if editor != nil { panel.makeFirstResponder(nil) }
+        field.usesSingleLineMode = !multiline
+        field.cell?.wraps = multiline
+        field.cell?.isScrollable = !multiline
+        if editor != nil {
+            panel.makeFirstResponder(field)
+            if let selection, let editor = field.currentEditor() as? NSTextView,
+               NSMaxRange(selection) <= (editor.string as NSString).length {
+                editor.setSelectedRange(selection)
+            }
+            observeSelection()
+        }
+        fitToContent()
+    }
+
+    static func attachedMessage(count: Int, from app: DocketFrontApp) -> String {
+        count == 1 ? "Attached the \(app.item)" : "Attached \(count) items from \(app.name)"
+    }
+
+    @objc private func openPrivacy(_ sender: Any?) {
+        openPrivacySettings()
     }
 
     /// Cmd+Z: the last capture when the field is empty and one is remembered,
@@ -657,7 +854,7 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
     private func saveDraft() {
         do {
             try persistRecovery(QuickCaptureRecovery(draft: field.stringValue, pendingSubmission: pendingSubmission))
-            if recoveryError != nil { setStatus(Self.hint, error: false) }
+            if recoveryError != nil { setStatus(currentHint, error: false) }
             recoveryError = nil
         } catch {
             recoveryError = "Couldn’t save a recovery copy. Your draft is still open. Keep this window open and edit to retry: \(error.localizedDescription)"
@@ -809,7 +1006,15 @@ final class QuickCapturePanel: NSObject, NSTextFieldDelegate, NSWindowDelegate,
         let lineHeight = ceil(status.font!.ascender - status.font!.descender + status.font!.leading)
         let feedbackExtra = max(0, wrappedHeight(status, width: width) - lineHeight)
         let previewHeight = routeLabel.isHidden ? 0 : max(pendingPreviewHeight, wrappedHeight(routeLabel, width: width)) + 8
-        let height = Self.baseHeight + feedbackExtra + previewHeight + (rows == 0 ? 0 : listHeight + 8)
+        let fieldExtra: CGFloat
+        if field.usesSingleLineMode {
+            fieldExtra = 0
+        } else {
+            let font = field.font!
+            fieldExtra = max(0, wrappedHeight(field, width: width - 4) - ceil(font.ascender - font.descender + font.leading))
+        }
+        let buttonHeight = privacyButton.isHidden ? 0 : ceil(privacyButton.fittingSize.height) + 8
+        let height = Self.baseHeight + fieldExtra + feedbackExtra + previewHeight + buttonHeight + (rows == 0 ? 0 : listHeight + 8)
         guard frame.height != height else { return }
         frame.origin.y += frame.height - height
         frame.size.height = height
@@ -884,6 +1089,8 @@ private final class KeyablePanel: NSPanel {
     var onCaptureAnother: (() -> Void)?
     /// Cmd+Z, answering whether it was handled.
     var onUndo: (() -> Bool)?
+    /// Cmd+K, answering whether it was handled.
+    var onAttachContext: (() -> Bool)?
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         let modifiers = event.modifierFlags.intersection([.control, .option, .command, .shift])
@@ -893,6 +1100,10 @@ private final class KeyablePanel: NSPanel {
         }
         if event.type == .keyDown, modifiers == .command, event.charactersIgnoringModifiers == "z",
            onUndo?() == true {
+            return true
+        }
+        if event.type == .keyDown, modifiers == .command, event.charactersIgnoringModifiers == "k",
+           onAttachContext?() == true {
             return true
         }
         return super.performKeyEquivalent(with: event)

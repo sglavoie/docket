@@ -73,6 +73,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     /// caused leaves the terminal where it was.
     private var captureLinkOpenedAt: Date?
 
+    /// Apple Events to the app in front, one at a time and never on the main thread.
+    private static let frontAppQueue = DispatchQueue(label: "io.github.sglavoie.docket.front-app", qos: .userInitiated)
+
     /// A hosted test bundle launches this app too; it must not spawn Docket.
     private static var isRunningTests: Bool {
         ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
@@ -655,6 +658,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
         quickCapture.complete = { [weak self] text, done in self?.complete(text, done: done) }
         quickCapture.preview = { [weak self] text, done in self?.previewCapture(text, done: done) }
+        // The panel never activates Docket.app, so the app in front when it opens
+        // is the one the user was in. Nothing reads it until Cmd+K.
+        quickCapture.frontmostBundleID = { NSWorkspace.shared.frontmostApplication?.bundleIdentifier }
+        quickCapture.readFrontApp = { app, done in
+            Self.frontAppQueue.async {
+                let result = app.source.read()
+                DispatchQueue.main.async { done(result) }
+            }
+        }
     }
 
     private func handle(_ event: DocketControlEvent) {
