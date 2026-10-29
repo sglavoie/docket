@@ -277,12 +277,12 @@ func mergeTaskFields(base, local, current *models.Task) (*models.Task, []MergeCo
 		lField := lv.Field(f.index).Interface()
 		cField := cv.Field(f.index).Interface()
 
-		localChanged := !reflect.DeepEqual(lField, bField)
-		currentChanged := !reflect.DeepEqual(cField, bField)
+		localChanged := !f.equal(lField, bField)
+		currentChanged := !f.equal(cField, bField)
 
 		switch {
 		case localChanged && currentChanged:
-			if reflect.DeepEqual(lField, cField) {
+			if f.equal(lField, cField) {
 				mv.Field(f.index).Set(lv.Field(f.index)) // coalesce identical concurrent edits
 				continue
 			}

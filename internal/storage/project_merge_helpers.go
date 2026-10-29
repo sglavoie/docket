@@ -63,11 +63,40 @@ func tasksEqual(a, b *models.Task) bool {
 		if f.checkInUnit {
 			continue
 		}
-		if !reflect.DeepEqual(av.Field(f.index).Interface(), bv.Field(f.index).Interface()) {
+		if !f.equal(av.Field(f.index).Interface(), bv.Field(f.index).Interface()) {
 			return false
 		}
 	}
 	return true
+}
+
+// equal compares timestamp fields by instant, ignoring their Go location and
+// monotonic clock. Deadlines hold a calendar day and optional local HH:MM, so
+// converting them to instants would change what the user stored.
+// Both merge paths and delete/edit detection must agree on this comparison.
+func (f taskFieldDescriptor) equal(left, right any) bool {
+	if f.jsonName == "due_date" {
+		return deadlineMergeValue(left.(*time.Time)) == deadlineMergeValue(right.(*time.Time))
+	}
+	switch value := left.(type) {
+	case time.Time:
+		return value.Equal(right.(time.Time))
+	case *time.Time:
+		return sameOptionalInstant(value, right.(*time.Time))
+	default:
+		return reflect.DeepEqual(left, right)
+	}
+}
+
+func deadlineMergeValue(due *time.Time) string {
+	if due == nil {
+		return "<none>"
+	}
+	value := due.Format("2006-01-02")
+	if (&models.Task{DueDate: due}).DueHasTime() {
+		value += " " + due.Format("15:04")
+	}
+	return value
 }
 
 // cloneTask returns a shallow copy of a task's persisted fields. Slice and map
@@ -117,10 +146,17 @@ func fieldEditConflict(title, field string, base, local, current any) MergeConfl
 		Kind:      kind,
 		TaskTitle: title,
 		Field:     field,
-		Base:      conflictValue(base),
-		Local:     conflictValue(local),
-		Current:   conflictValue(current),
+		Base:      taskFieldConflictValue(field, base),
+		Local:     taskFieldConflictValue(field, local),
+		Current:   taskFieldConflictValue(field, current),
 	}
+}
+
+func taskFieldConflictValue(field string, value any) string {
+	if due, ok := value.(*time.Time); field == "due_date" && ok {
+		return deadlineMergeValue(due)
+	}
+	return conflictValue(value)
 }
 
 // conflictValue spells a field value for a conflict record by what it holds,

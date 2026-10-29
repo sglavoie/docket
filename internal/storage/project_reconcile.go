@@ -198,12 +198,12 @@ func (r *projectReconciler) mergeVersions(base *models.Task, versions []*models.
 		var adopted []reflect.Value
 		for _, version := range distinct {
 			field := reflect.ValueOf(version).Elem().Field(f.index)
-			if reflect.DeepEqual(field.Interface(), baseField) {
+			if f.equal(field.Interface(), baseField) {
 				continue
 			}
 			repeat := false
 			for _, prior := range adopted {
-				if reflect.DeepEqual(prior.Interface(), field.Interface()) {
+				if f.equal(prior.Interface(), field.Interface()) {
 					repeat = true
 					break
 				}
@@ -279,21 +279,17 @@ func (r *projectReconciler) mergeVersions(base *models.Task, versions []*models.
 // device rather than naming one process's addresses.
 func versionConflict(versions []*models.Task, field string, base any, values []reflect.Value) MergeConflict {
 	conflict := fieldEditConflict(versions[0].Title, field, nil, nil, nil)
-	conflict.Base = reconcileValue(base)
-	conflict.Local = reconcileValue(values[0].Interface())
-	conflict.Current = reconcileValue(values[1].Interface())
+	conflict.Base = taskFieldConflictValue(field, base)
+	conflict.Local = taskFieldConflictValue(field, values[0].Interface())
+	conflict.Current = taskFieldConflictValue(field, values[1].Interface())
 	if len(values) > 2 {
 		rest := make([]string, 0, len(values)-2)
 		for _, value := range values[2:] {
-			rest = append(rest, reconcileValue(value.Interface()))
+			rest = append(rest, taskFieldConflictValue(field, value.Interface()))
 		}
 		conflict.Detail = fmt.Sprintf("further versions: %v", rest)
 	}
 	return conflict
-}
-
-func reconcileValue(value any) string {
-	return conflictValue(value)
 }
 
 // latestUpdate is the newest touch time among versions. UpdatedAt is not
