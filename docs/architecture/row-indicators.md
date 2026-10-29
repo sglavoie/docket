@@ -472,7 +472,13 @@ the agenda and replayed after it: every instant a task's attention could change
 — its check-in day starting, its timed deadline, its deferral ending — is put
 to `arrivalBetween`, the one predicate `Arrivals` answers, over the window that
 instant opens, so a booked reminder can never name an arrival the tick would
-not report or give it another reason. It looks `pulse.UpcomingHorizon` ahead,
+not report or give it another reason. Check-in candidates use the first instant
+of their local calendar date, including when a clock change skips midnight;
+a date missing entirely from the device's zone has no candidate.
+Coincident candidates on one task are booked once, compared by instant.
+Every probe reads that instant in the reader's zone, so a UTC-stored wake
+cannot announce a check-in whose local day has not arrived.
+It looks `pulse.UpcomingHorizon` ahead,
 is bounded at `pulse.UpcomingLimit`, under the 64 pending notifications macOS
 keeps per app, and an emptied one is sent too, since it voids every booking.
 

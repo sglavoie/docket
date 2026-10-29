@@ -139,6 +139,78 @@ func TestArrivalNotificationWording(t *testing.T) {
 	}
 }
 
+func TestUpcomingCheckInOnADayWithoutMidnight(t *testing.T) {
+	loc, err := time.LoadLocation("America/Havana")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Havana jumps from 23:59:59 on March 7 to 01:00 on March 8.
+	now := time.Date(2026, time.March, 7, 12, 0, 0, 0, loc)
+	day := time.Date(2026, time.March, 8, 0, 0, 0, 0, time.UTC)
+	start := time.Date(2026, time.March, 8, 1, 0, 0, 0, loc)
+	task := arrivalTask("check-in", models.StateWaiting)
+	task.NextCheckIn = &day
+	projects := []*models.Project{{ID: "p", Tasks: []*models.Task{task}}}
+	got := UpcomingArrivals(projects, now, UpcomingHorizon, UpcomingLimit)
+	want := []UpcomingArrival{{
+		Arrival: Arrival{Kind: ArrivalCheckIn, ProjectID: "p", TaskID: task.ID, Title: task.Title, Reviewable: true},
+		At:      start,
+	}}
+	if !EqualUpcoming(got, want) {
+		t.Fatalf("upcoming = %+v, want %+v", got, want)
+	}
+	arrivals := Arrivals(projects, start.Add(-time.Second), start.Add(time.Second))
+	if len(arrivals) != 1 || arrivals[0] != want[0].Arrival {
+		t.Fatalf("tick over the booked instant = %+v, want %+v", arrivals, want[0].Arrival)
+	}
+}
+
+func TestUpcomingArrivalIsBookedOnceWhenCheckInAndWakeCoincide(t *testing.T) {
+	now := time.Date(2026, time.October, 8, 12, 0, 0, 0, time.UTC)
+	day := time.Date(2026, time.October, 9, 0, 0, 0, 0, time.UTC)
+	// The same instant can have different stored zone representations.
+	wake := day.In(time.FixedZone("offset", 2*60*60))
+	task := arrivalTask("check-in", models.StateBacklog)
+	task.NextCheckIn, task.DeferredUntil = &day, &wake
+	projects := []*models.Project{{ID: "p", Tasks: []*models.Task{task}}}
+	got := UpcomingArrivals(projects, now, UpcomingHorizon, UpcomingLimit)
+	want := []UpcomingArrival{{
+		Arrival: Arrival{Kind: ArrivalCheckIn, ProjectID: "p", TaskID: task.ID, Title: task.Title, Reviewable: true},
+		At:      day,
+	}}
+	if !EqualUpcoming(got, want) {
+		t.Fatalf("upcoming = %+v, want one booking: %+v", got, want)
+	}
+}
+
+func TestUpcomingWakeUsesTheReadersCheckInDay(t *testing.T) {
+	loc, err := time.LoadLocation("America/Toronto")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, time.October, 8, 12, 0, 0, 0, loc)
+	day := time.Date(2026, time.October, 9, 0, 0, 0, 0, time.UTC)
+	wake := time.Date(2026, time.October, 9, 1, 0, 0, 0, time.UTC) // Oct 8, 21:00 in Toronto
+	task := arrivalTask("check-in", models.StateBacklog)
+	task.NextCheckIn, task.DeferredUntil = &day, &wake
+	projects := []*models.Project{{ID: "p", Tasks: []*models.Task{task}}}
+	got := UpcomingArrivals(projects, now, UpcomingHorizon, UpcomingLimit)
+	want := []UpcomingArrival{
+		{Arrival: Arrival{Kind: ArrivalWake, ProjectID: "p", TaskID: task.ID, Title: task.Title, Reviewable: true}, At: wake},
+		{Arrival: Arrival{Kind: ArrivalCheckIn, ProjectID: "p", TaskID: task.ID, Title: task.Title, Reviewable: true}, At: time.Date(2026, time.October, 9, 0, 0, 0, 0, loc)},
+	}
+	if !EqualUpcoming(got, want) {
+		t.Fatalf("upcoming = %+v, want %+v", got, want)
+	}
+	for _, booking := range got {
+		at := booking.At.In(loc)
+		arrivals := Arrivals(projects, at.Add(-time.Second), at.Add(time.Second))
+		if len(arrivals) != 1 || arrivals[0] != booking.Arrival {
+			t.Fatalf("tick at %s = %+v, want booked %+v", at, arrivals, booking.Arrival)
+		}
+	}
+}
+
 // TestDesktopNotificationEscapesItsDelimiters keeps a task title from ending
 // the sequence early or splitting the title field.
 func TestDesktopNotificationEscapesItsDelimiters(t *testing.T) {

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // ArrivalKind is why a task asks for attention now and did not before.
@@ -123,6 +124,9 @@ func UpcomingArrivals(projects []*models.Project, now time.Time, horizon time.Du
 				continue
 			}
 			for _, at := range arrivalCandidates(task, now) {
+				// Attention reads calendar days in the reader's zone, even when
+				// the stored candidate is an instant carrying another offset.
+				at = at.In(now.Location())
 				if !at.After(now) || at.After(end) {
 					continue
 				}
@@ -150,8 +154,9 @@ func UpcomingArrivals(projects []*models.Project, now time.Time, horizon time.Du
 func arrivalCandidates(task *models.Task, now time.Time) []time.Time {
 	var candidates []time.Time
 	if next := task.NextCheckIn; next != nil {
-		day := time.Date(next.Year(), next.Month(), next.Day(), 0, 0, 0, 0, now.Location())
-		candidates = append(candidates, day)
+		if day, err := util.StartOfCalendarDate(next.Year(), next.Month(), next.Day(), now.Location()); err == nil {
+			candidates = append(candidates, day)
+		}
 	}
 	if task.DueHasTime() {
 		candidates = append(candidates, *task.DueDate)
@@ -159,7 +164,10 @@ func arrivalCandidates(task *models.Task, now time.Time) []time.Time {
 	if task.DeferredUntil != nil {
 		candidates = append(candidates, *task.DeferredUntil)
 	}
-	return candidates
+	// Several fields can name the same arrival. Book that instant once even
+	// when its stored values use different zone representations.
+	slices.SortFunc(candidates, time.Time.Compare)
+	return slices.CompactFunc(candidates, time.Time.Equal)
 }
 
 // EqualUpcoming reports whether two schedules name the same arrivals at the

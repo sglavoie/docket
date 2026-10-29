@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // ReminderKind names what a reminder is about. Each kind is a moment the
@@ -202,17 +203,18 @@ func checkInMoment(task *models.Task, opts ReminderOptions) (time.Time, bool) {
 	return time.Date(year, month, day, opts.CheckInHour, opts.CheckInMinute, 0, 0, opts.Location), true
 }
 
-// deferralMoment is when a pending deferral is announced. A deferral is an
+// deferralMoment is when a deferral is announced. A deferral is an
 // instant and lapses at the same moment in every zone. A deferral to a day
-// (the date forms land on local midnight) is announced that morning at the
-// reminder time of day rather than at midnight; the task is back in view from
-// midnight either way.
+// (the date forms land on the start of the local date) is announced that
+// morning at the reminder time of day. The task is back in view from the day
+// start, but replanning must retain its reminder until the announcement itself
+// passes; PlanReminders filters that instant against the plan's window.
 func deferralMoment(task *models.Task, opts ReminderOptions) (time.Time, bool) {
-	if task.DeferredUntil == nil || !task.DeferredUntil.After(opts.Now) {
+	if task.DeferredUntil == nil {
 		return time.Time{}, false
 	}
 	local := task.DeferredUntil.In(opts.Location)
-	if hour, minute, second := local.Clock(); hour == 0 && minute == 0 && second == 0 && local.Nanosecond() == 0 {
+	if util.IsStartOfCalendarDate(local) {
 		year, month, day := local.Date()
 		return time.Date(year, month, day, opts.CheckInHour, opts.CheckInMinute, 0, 0, opts.Location), true
 	}

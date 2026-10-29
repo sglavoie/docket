@@ -227,8 +227,10 @@ attention: a check-in on its day at `check_in_time`, exactly when
 `Task.CheckInIsDueAt` turns true at that instant, so a check-in already owed,
 a deferred one, and finished work raise nothing new; a deadline only when it
 carries a time of day and no deferral covers it; a deferral when it lapses,
-and a deferral landing on local midnight (a day) at `check_in_time` that
-morning. The review flag has no moment and is never a reminder. The request
+and a deferral landing at the start of a local calendar day at `check_in_time`
+that morning, including when a clock change skips midnight. Replanning after
+the wake retains that reminder until its announcement time passes. The review
+flag has no moment and is never a reminder. The request
 names its zone and the plan adopts it: check-in days and timed deadlines are
 wall-clock values placed in that zone, so a device that changes zone replans
 them at the same local time, while a deferral is an instant and keeps it.
