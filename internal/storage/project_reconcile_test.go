@@ -133,11 +133,16 @@ func randomReconcileEdit(rng *rand.Rand, doc *ProjectDocument, tag string, iter 
 		for _, other := range doc.Tasks {
 			taskMap[other.ID] = other
 		}
-		if target != task && !models.WouldCreateCycle(taskMap, task.ID, target.ID) {
+		if target != task && (!target.IsTerminalState() || task.IsTerminalState()) && !models.WouldCreateCycle(taskMap, task.ID, target.ID) {
 			id := target.ID
 			task.ParentID = &id
 		}
 	case 5:
+		for _, other := range doc.Tasks {
+			if other.ParentID != nil && *other.ParentID == task.ID && !other.IsTerminalState() {
+				return
+			}
+		}
 		completed := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
 		task.WorkflowState = models.StateDone
 		task.CompletedAt = &completed

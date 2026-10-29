@@ -154,11 +154,26 @@ func auditMergedDocument(doc *ProjectDocument) []MergeConflict {
 		shortIDs[task.ShortID] = task
 	}
 
+	byID := indexTasks(doc.Tasks)
 	for _, task := range doc.Tasks {
+		terminal := task.IsTerminalState()
+		// A concurrent completion and child creation/reparenting can each be
+		// valid in isolation but leave unfinished work under a terminal parent.
+		// Judge the stored edges, not computed Children links from an input tree,
+		// and record a conflict rather than silently undoing either edit.
+		if !terminal && task.ParentID != nil {
+			if parent := byID[*task.ParentID]; parent != nil && parent.IsTerminalState() {
+				conflicts = append(conflicts, MergeConflict{
+					Kind:      MergeConflictInvariant,
+					TaskTitle: task.Title,
+					Field:     "parent_id",
+					Detail:    fmt.Sprintf("non-terminal task has %s parent %q", parent.State(), parent.Title),
+				})
+			}
+		}
 		// State invariant: a completion timestamp exists exactly for terminal
 		// states. A field-wise clean merge can still combine a terminal state from
 		// one side with a nil (or lingering) timestamp from the other.
-		terminal := task.IsTerminalState()
 		if terminal && task.CompletedAt == nil {
 			conflicts = append(conflicts, MergeConflict{
 				Kind:      MergeConflictInvariant,

@@ -172,13 +172,14 @@ func ParseRelativeDateWithConfig(input, weekEndDay string) (time.Time, error) {
 func ParseRelativeDateWithConfigAt(input, weekEndDay string, now time.Time) (time.Time, error) {
 	input = normalizeDateInput(input)
 
-	if date, ok := parseExactDate(input); ok {
-		return date, nil
-	}
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-	civil, err := parseRelativeDateFromDay(input, weekEndDay, today)
-	if err != nil {
-		return time.Time{}, err
+	civil, exact := parseExactDateIn(input, time.UTC)
+	if !exact {
+		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+		var err error
+		civil, err = parseRelativeDateFromDay(input, weekEndDay, today)
+		if err != nil {
+			return time.Time{}, err
+		}
 	}
 	return StartOfCalendarDate(civil.Year(), civil.Month(), civil.Day(), now.Location())
 }

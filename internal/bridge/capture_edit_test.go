@@ -243,4 +243,14 @@ func TestBridgeAdoptsTheDeviceTimeZone(t *testing.T) {
 	if got := captured.Task.DueDate.In(time.Local).Format("2006-01-02"); got != "2026-10-07" {
 		t.Fatalf("due day in the device zone = %s", got)
 	}
+	// Tomorrow is the 8th on the device, though the injected clock still
+	// carries UTC's 6th. Written and relative deferrals must name one instant.
+	wake := time.Date(2026, time.October, 8, 0, 0, 0, 0, time.Local)
+	for _, input := range []string{"tomorrow", "2026-10-08", "10/08/2026", "08.10.2026"} {
+		var deferred captureResult
+		h.ok(h.call("command.capture", map[string]any{"title": "Island follow-up", "defer": input}), &deferred)
+		if got := deferred.Task.DeferredUntil; got == nil || !got.Equal(wake) {
+			t.Errorf("defer %q = %v, want %v", input, got, wake)
+		}
+	}
 }

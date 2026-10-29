@@ -488,7 +488,9 @@ func (b *Bridge) commandPlan(request Request) (any, error) {
 
 func (b *Bridge) now() time.Time {
 	if b.options.Clock != nil {
-		return b.options.Clock.Now()
+		// A supplied clock names an instant; calendar input still belongs to
+		// the device zone adopted by workspace.open or query.reminders.
+		return b.options.Clock.Now().In(time.Local)
 	}
 	return time.Now()
 }

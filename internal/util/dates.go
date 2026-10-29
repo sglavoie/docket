@@ -254,27 +254,9 @@ func normalizeDateInput(input string) string {
 	return strings.Join(strings.Fields(strings.ToLower(strings.TrimSpace(input))), " ")
 }
 
-// parseExactDate reads a written date as the start of that date in the local
-// zone. The spelling is parsed in UTC and rebuilt through StartOfCalendarDate,
-// because parsing in a zone whose midnight a DST change skipped answers with
-// 23:00 on the previous day. A date the local zone does not have at all is not
-// a match, so the caller reports it as unrecognized rather than storing a
-// neighbor.
-func parseExactDate(input string) (time.Time, bool) {
-	civil, ok := parseExactDateIn(input, time.UTC)
-	if !ok {
-		return time.Time{}, false
-	}
-	start, err := StartOfCalendarDate(civil.Year(), civil.Month(), civil.Day(), time.Local)
-	if err != nil {
-		return time.Time{}, false
-	}
-	return start, true
-}
-
-// parseExactDateIn is parseExactDate with the location named, so a caller that
-// wants the civil date a spelling denotes rather than an instant in the local
-// zone can read the components out of a UTC parse. The layout list is shared
+// parseExactDateIn reads a written date in the supplied location. Callers use
+// UTC to read its civil components, then resolve the start of that date in the
+// intended location through StartOfCalendarDate. The layout list is shared
 // deliberately: two readers of the same spellings that disagreed about which
 // ones they accept would be two date grammars.
 func parseExactDateIn(input string, loc *time.Location) (time.Time, bool) {
