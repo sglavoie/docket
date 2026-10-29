@@ -373,3 +373,58 @@ func TestCaptureRefusesAnUnreadableFileWithThePrivacyWording(t *testing.T) {
 		t.Errorf("attachments directory holds %d entries, want nothing staged", len(entries))
 	}
 }
+
+// A shared file whose own name ends in a colon and digits is a file, not a
+// path:line reference: its bytes are copied and survive a reload, while an
+// ordinary path:line beside it stays a code reference.
+func TestSharedFileWithColonNumericSuffixCopiesBytes(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "report:42")
+	if err := os.WriteFile(source, []byte("shared bytes"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	dataDir := t.TempDir()
+	commitSvc := storage.NewCommitService(filepath.Join(dataDir, ".docket", "transactions"), []string{dataDir})
+	project := realTestProject(t, dataDir, "alpha", "seed task")
+	repo := newStorageRepo(commitSvc, project)
+	repo.seed(t)
+	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
+
+	if _, err := svc.Capture(app.CaptureRequest{
+		ProjectID:   project.ID,
+		Title:       "Read the report",
+		Attachments: []string{source, "internal/app/add.go:19"},
+	}); err != nil {
+		t.Fatalf("Capture: %v", err)
+	}
+	reloaded := &models.Project{ID: project.ID, Slug: project.Slug, Name: project.Name, Path: project.Path}
+	if err := storage.LoadProject(reloaded); err != nil {
+		t.Fatalf("LoadProject: %v", err)
+	}
+	var found *models.Task
+	for _, task := range reloaded.Tasks {
+		if task.Title == "Read the report" {
+			found = task
+		}
+	}
+	if found == nil || len(found.Attachments) != 2 {
+		t.Fatalf("reloaded task = %+v, want two attachments", found)
+	}
+	file := found.Attachments[0]
+	if file.IsURL || file.IsCodeRef || file.Filename != "report:42" || file.OriginalPath != source {
+		t.Fatalf("first attachment = %+v, want the shared file report:42", file)
+	}
+	stored, err := storage.ResolveAttachmentPath(reloaded, found, file.Filename)
+	if err != nil {
+		t.Fatalf("ResolveAttachmentPath: %v", err)
+	}
+	bytes, err := os.ReadFile(stored)
+	if err != nil {
+		t.Fatalf("read copied attachment: %v", err)
+	}
+	if string(bytes) != "shared bytes" {
+		t.Errorf("copied bytes = %q, want the shared file's", bytes)
+	}
+	if ref := found.Attachments[1]; !ref.IsCodeRef || ref.LineNumber != 19 {
+		t.Errorf("second attachment = %+v, want a code reference", ref)
+	}
+}

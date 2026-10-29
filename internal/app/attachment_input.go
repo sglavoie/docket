@@ -66,6 +66,13 @@ func ResolveAttachmentInput(raw string) (ResolvedAttachmentInput, error) {
 		return ResolvedAttachmentInput{Kind: AttachmentInputURL, URL: validated}, nil
 	}
 
+	// A file whose own name ends in :digits is a file, not path:line: the whole
+	// input is tried as an existing regular file before the suffix is read as a
+	// line, or a shared file would be stored as a reference and lose its bytes.
+	if absPath, ok := existingRegularFile(input); ok {
+		return ResolvedAttachmentInput{Kind: AttachmentInputFile, SourcePath: absPath}, nil
+	}
+
 	if codePath, lineNum, isCodeRef := storage.ParseCodeReference(input); isCodeRef {
 		return ResolvedAttachmentInput{
 			Kind:          AttachmentInputCodeReference,
@@ -99,6 +106,28 @@ func ResolveAttachmentInput(raw string) (ResolvedAttachmentInput, error) {
 	}
 
 	return ResolvedAttachmentInput{Kind: AttachmentInputFile, SourcePath: absPath}, nil
+}
+
+// existingRegularFile reports whether input, with ~/ expanded, names a regular
+// file that exists. Like the rest of classification it reads metadata alone.
+func existingRegularFile(input string) (string, bool) {
+	path := input
+	if strings.HasPrefix(path, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", false
+		}
+		path = filepath.Join(home, path[2:])
+	}
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", false
+	}
+	info, err := os.Stat(absPath)
+	if err != nil || !info.Mode().IsRegular() {
+		return "", false
+	}
+	return absPath, true
 }
 
 // ResolveCapturedAttachments classifies every &link value on one capture line
