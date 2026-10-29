@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -83,6 +84,19 @@ func (f taskFieldDescriptor) equal(left, right any) bool {
 		return value.Equal(right.(time.Time))
 	case *time.Time:
 		return sameOptionalInstant(value, right.(*time.Time))
+	case []*models.Comment:
+		return slices.EqualFunc(value, right.([]*models.Comment), func(a, b *models.Comment) bool {
+			if a == nil || b == nil {
+				return a == nil && b == nil
+			}
+			return a.Text == b.Text && a.CreatedAt.Equal(b.CreatedAt)
+		})
+	case []models.Attachment:
+		return slices.EqualFunc(value, right.([]models.Attachment), func(a, b models.Attachment) bool {
+			sameInstant := a.AddedAt.Equal(b.AddedAt)
+			a.AddedAt, b.AddedAt = time.Time{}, time.Time{}
+			return sameInstant && a == b
+		})
 	default:
 		return reflect.DeepEqual(left, right)
 	}

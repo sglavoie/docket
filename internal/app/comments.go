@@ -78,17 +78,18 @@ func (s *Service) addComment(task *models.Task, text string) {
 	task.UpdatedAt = now
 }
 
-// EditComment replaces the text of the comment at the given index, preserving
-// its original timestamp. Empty replacement text and out-of-range indices are
-// rejected before any mutation.
-func (s *Service) EditComment(locator TaskLocator, index int, text string) (CommentResult, error) {
+// EditComment edits only when index still holds the comment the
+// caller read. Text and creation time are checked in the mutation's snapshot,
+// so a shifted row or a concurrent edit cannot redirect the replacement. The
+// original creation timestamp is preserved.
+func (s *Service) EditComment(locator TaskLocator, index int, expected models.Comment, text string) (CommentResult, error) {
 	trimmed := strings.TrimSpace(text)
 	if trimmed == "" {
 		return CommentResult{}, invalidInput("comment", "text is required")
 	}
 	var out CommentResult
 	res, err := s.mutateRichRecordSelection(locator, "Edit Comment", func(ref TaskRef) error {
-		if err := validCommentIndex(index, len(ref.Task.Comments)); err != nil {
+		if err := validateCommentTarget(ref.Task, index, expected); err != nil {
 			return err
 		}
 		ref.Task.Comments[index].Text = text
@@ -102,10 +103,14 @@ func (s *Service) EditComment(locator TaskLocator, index int, text string) (Comm
 	return out, nil
 }
 
-// RemoveComment removes the comment at the given index.
-func (s *Service) RemoveComment(locator TaskLocator, index int) (CommentResult, error) {
+// RemoveComment removes only the comment the caller confirmed, judged
+// against the same snapshot the transaction commits.
+func (s *Service) RemoveComment(locator TaskLocator, index int, expected models.Comment) (CommentResult, error) {
 	var out CommentResult
 	res, err := s.mutateRichRecordSelection(locator, "Remove Comment", func(ref TaskRef) error {
+		if err := validateCommentTarget(ref.Task, index, expected); err != nil {
+			return err
+		}
 		return s.removeComment(ref.Task, index)
 	})
 	if err != nil {
@@ -126,9 +131,19 @@ func (s *Service) removeComment(task *models.Task, index int) error {
 	return nil
 }
 
-// validCommentIndex rejects an out-of-range comment index against the current
-// comment count, so a stale adapter-side index cannot silently target the wrong
-// comment after a concurrent change.
+func validateCommentTarget(task *models.Task, index int, expected models.Comment) error {
+	if err := validCommentIndex(index, len(task.Comments)); err != nil {
+		return err
+	}
+	comment := task.Comments[index]
+	if comment == nil || comment.Text != expected.Text || !comment.CreatedAt.Equal(expected.CreatedAt) {
+		return invalidInput("comment", "comment changed since it was read; reopen it and try again")
+	}
+	return nil
+}
+
+// validCommentIndex checks bounds; validateCommentTarget also checks the stored
+// value the caller read.
 func validCommentIndex(index, count int) error {
 	if index < 0 || index >= count {
 		return invalidInput("comment", fmt.Sprintf("comment index %d out of range (task has %d)", index, count))

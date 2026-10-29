@@ -155,6 +155,17 @@ func auditMergedDocument(doc *ProjectDocument) []MergeConflict {
 	byID := indexTasks(doc.Tasks)
 	for _, task := range doc.Tasks {
 		terminal := task.IsTerminalState()
+		// Deferring claims Backlog and every state transition clears the wake
+		// instant. Concurrent edits can otherwise compose deferred Doing or
+		// terminal work even though neither writer produced that combination.
+		if task.DeferredUntil != nil && task.State() != models.StateBacklog {
+			conflicts = append(conflicts, MergeConflict{
+				Kind:      MergeConflictInvariant,
+				TaskTitle: task.Title,
+				Field:     "deferred_until",
+				Detail:    fmt.Sprintf("state %q retains a deferral; deferred tasks must be in Backlog", task.State()),
+			})
+		}
 		// A concurrent completion and child creation/reparenting can each be
 		// valid in isolation but leave unfinished work under a terminal parent.
 		// Judge the stored edges, not computed Children links from an input tree,

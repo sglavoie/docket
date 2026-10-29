@@ -22,10 +22,9 @@ type CommentEntry struct {
 	CreatedAt time.Time
 }
 
-// CommentRef names the comment one mutation addresses. It carries all three of
-// the things the panel knows about a row, because owners disagree about which of
-// them is authoritative: an owner with identities addresses by ID and treats
-// Index as a hint, while a positional owner has only Index.
+// CommentRef names the comment one mutation addresses. An owner with identities
+// addresses by ID and treats Index as a hint; a positional owner checks the
+// stored text and creation instant beside Index.
 //
 // Original is the text the panel last read there, and it is a precondition
 // rather than a convenience. The list can be re-sorted, reloaded, or changed by
@@ -36,6 +35,8 @@ type CommentRef struct {
 	Index    int
 	ID       string
 	Original string
+	// CreatedAt distinguishes positional comments carrying identical text.
+	CreatedAt time.Time
 }
 
 // CommentOwnerTitle is the panel header, split the way chrome's task-scoped

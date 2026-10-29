@@ -81,16 +81,15 @@ func (o *taskCommentOwner) Add(text string) tea.Cmd {
 	return o.coordinator.AddComment(o.identity(), text)
 }
 
-// Edit and Remove read the reference's index alone. The application layer's task
-// comment mutations are indexed and bounds-checked, and a task comment has no
-// identity to address instead, so this adapter deliberately keeps the positional
-// contract rather than pretending to a precondition it cannot enforce.
+// Edit and Remove carry the frozen stored value beside the position. Task
+// comments have no IDs, so the service refuses when that row changed instead of
+// guessing which comment a stale position now names.
 func (o *taskCommentOwner) Edit(ref CommentRef, text string) tea.Cmd {
-	return o.coordinator.EditComment(o.identity(), ref.Index, text)
+	return o.coordinator.EditComment(o.identity(), ref.Index, models.Comment{Text: ref.Original, CreatedAt: ref.CreatedAt}, text)
 }
 
 func (o *taskCommentOwner) Remove(ref CommentRef) tea.Cmd {
-	return o.coordinator.RemoveComment(o.identity(), ref.Index)
+	return o.coordinator.RemoveComment(o.identity(), ref.Index, models.Comment{Text: ref.Original, CreatedAt: ref.CreatedAt})
 }
 
 // Reload re-resolves the task pointer inside its project, which a committed

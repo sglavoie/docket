@@ -78,17 +78,17 @@ func (c SubviewCoordinator) AddComment(task taskref.TaskIdentity, text string) t
 }
 
 // EditComment replaces a comment's text, preserving its timestamp.
-func (c SubviewCoordinator) EditComment(task taskref.TaskIdentity, index int, text string) tea.Cmd {
+func (c SubviewCoordinator) EditComment(task taskref.TaskIdentity, index int, expected models.Comment, text string) tea.Cmd {
 	return runTask("Edit Comment", func() (app.TaskResult, error) {
-		res, err := c.sub.EditComment(task.Locator(), index, text)
+		res, err := c.sub.EditComment(task.Locator(), index, expected, text)
 		return res.Task, err
 	})
 }
 
 // RemoveComment removes the comment at index.
-func (c SubviewCoordinator) RemoveComment(task taskref.TaskIdentity, index int) tea.Cmd {
+func (c SubviewCoordinator) RemoveComment(task taskref.TaskIdentity, index int, expected models.Comment) tea.Cmd {
 	return runTask("Remove Comment", func() (app.TaskResult, error) {
-		res, err := c.sub.RemoveComment(task.Locator(), index)
+		res, err := c.sub.RemoveComment(task.Locator(), index, expected)
 		return res.Task, err
 	})
 }

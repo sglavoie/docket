@@ -85,9 +85,8 @@ func projectCommentOverlayOwner() commentOverlayOwner {
 }
 
 // taskCommentOverlayOwner is the positional one. A task comment carries no
-// identity, so the only precondition the application layer can enforce is the
-// index, and removing the comment above the frozen one is what puts it out of
-// range.
+// identity, so its stored value is checked beside the index. Removing the
+// comment above the frozen one puts this fixture's target out of range.
 func taskCommentOverlayOwner() commentOverlayOwner {
 	return commentOverlayOwner{
 		name: "task",
@@ -108,7 +107,7 @@ func taskCommentOverlayOwner() commentOverlayOwner {
 			}
 			task := projectedTaskTitled(t, driver.App().crossOutliner, checklistFixturePlainTitle)
 			locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
-			if _, err := externalProjectCommentWriter(t, workspace).RemoveComment(locator, 0); err != nil {
+			if _, err := externalProjectCommentWriter(t, workspace).RemoveComment(locator, 0, *task.Comments[0]); err != nil {
 				t.Fatalf("the external writer could not remove the neighbor: %v", err)
 			}
 		},

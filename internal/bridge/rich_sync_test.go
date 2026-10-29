@@ -180,7 +180,8 @@ func syncConflictingCommentEdits(t *testing.T) {
 	p.phone.ok(p.phone.call("command.comment", map[string]any{
 		"task": ship, "action": "edit", "index": 0, "original": "Branch cut from main.", "text": "Branch cut from main at 4f2c (phone).",
 	}), nil)
-	if _, err := p.desktop.service().EditComment(ship.app(), 0, "Branch cut from release/1.0 (desktop)."); err != nil {
+	desktopComment := p.desktop.detail(atlasProject, shipBetaTask).Comments[0]
+	if _, err := p.desktop.service().EditComment(ship.app(), 0, models.Comment{Text: desktopComment.Text, CreatedAt: desktopComment.CreatedAt}, "Branch cut from release/1.0 (desktop)."); err != nil {
 		t.Fatal(err)
 	}
 	var project projectDetail

@@ -283,6 +283,18 @@ agreement checks, and project-local ShortID uniqueness, and anything it finds
 becomes an ordinary `MergeConflictInvariant` entry in the same retry-only
 bundle a competing edit would produce.
 
+The audit also rejects a retained deferral outside Backlog. Deferring claims
+Backlog, and a lifecycle transition clears the wake instant; concurrent start
+or completion and deferral must not compose deferred Doing or Done work. Sync
+reconciliation reports this conflict and keeps the primary task version while
+preserving unrelated task edits.
+
+Task timestamp comparisons use instant equality, including creation instants
+inside comment and attachment collections. A change in time-zone representation
+alone must not turn an unchanged record into an edit or make identical concurrent
+edits conflict. Collection order and every other stored value still participate
+in equality.
+
 The check-in is the one field group that is not merged field by field. `check_in`,
 `check_in_repeat`, and `reviewed` answer one question together, so
 `mergeCheckInUnit` adopts or refuses all three at once and the reflective loop

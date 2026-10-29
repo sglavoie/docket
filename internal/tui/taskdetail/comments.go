@@ -202,7 +202,7 @@ func (m *CommentsModel) commentRefAt(index int) (CommentRef, bool) {
 		return CommentRef{}, false
 	}
 	entry := m.entries[index]
-	return CommentRef{Index: index, ID: entry.ID, Original: entry.Text}, true
+	return CommentRef{Index: index, ID: entry.ID, Original: entry.Text, CreatedAt: entry.CreatedAt}, true
 }
 
 // indexOfRef resolves a stored reference against the list as it stands now,

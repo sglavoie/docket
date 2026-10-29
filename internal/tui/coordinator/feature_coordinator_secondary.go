@@ -146,13 +146,13 @@ type AttachmentMutator interface {
 }
 
 // SubviewMutator is the narrow port the task subview panels (comments and
-// checklist) depend on. Every method commits one ChangeSet and
-// re-validates the item index against a fresh snapshot, so a stale panel index
-// surfaces as an error instead of silently targeting the wrong item.
+// checklist) depend on. Every method commits one ChangeSet and checks bounds
+// against a fresh snapshot. Comment edits and removals also check the stored
+// value the panel read, so a shifted index cannot redirect a mutation.
 type SubviewMutator interface {
 	AddComment(locator app.TaskLocator, text string) (app.CommentResult, error)
-	EditComment(locator app.TaskLocator, index int, text string) (app.CommentResult, error)
-	RemoveComment(locator app.TaskLocator, index int) (app.CommentResult, error)
+	EditComment(locator app.TaskLocator, index int, expected models.Comment, text string) (app.CommentResult, error)
+	RemoveComment(locator app.TaskLocator, index int, expected models.Comment) (app.CommentResult, error)
 	AddChecklistItem(locator app.TaskLocator, text string) (app.ChecklistResult, error)
 	EditChecklistItem(locator app.TaskLocator, index int, text string) (app.ChecklistResult, error)
 	RemoveChecklistItem(locator app.TaskLocator, index int) (app.ChecklistResult, error)

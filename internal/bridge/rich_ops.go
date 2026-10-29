@@ -99,6 +99,7 @@ func (b *Bridge) taskComment(payload commentPayload) (any, error) {
 		return nil, err
 	}
 	target := payload.Task.app()
+	var expected models.Comment
 	if payload.Action != "add" {
 		if payload.Index == nil {
 			return nil, newError(CodeInvalidRequest, "%s needs index", payload.Action)
@@ -112,6 +113,7 @@ func (b *Bridge) taskComment(payload commentPayload) (any, error) {
 		if index < 0 || index >= len(comments) || comments[index].Text != *payload.Original {
 			return nil, changedSinceRead("comment", index)
 		}
+		expected = models.Comment{Text: *payload.Original, CreatedAt: comments[index].CreatedAt}
 	}
 	mutation, err := b.commitTask(func(service *app.Service) (app.TaskResult, error) {
 		var result app.CommentResult
@@ -120,9 +122,9 @@ func (b *Bridge) taskComment(payload commentPayload) (any, error) {
 		case "add":
 			result, err = service.AddComment(target, payload.Text)
 		case "edit":
-			result, err = service.EditComment(target, *payload.Index, payload.Text)
+			result, err = service.EditComment(target, *payload.Index, expected, payload.Text)
 		default:
-			result, err = service.RemoveComment(target, *payload.Index)
+			result, err = service.RemoveComment(target, *payload.Index, expected)
 		}
 		return result.Task, err
 	})

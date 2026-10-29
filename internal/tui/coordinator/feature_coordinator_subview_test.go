@@ -38,11 +38,11 @@ func (s *promotionStub) AddComment(app.TaskLocator, string) (app.CommentResult, 
 	panic("unexpected AddComment")
 }
 
-func (s *promotionStub) EditComment(app.TaskLocator, int, string) (app.CommentResult, error) {
+func (s *promotionStub) EditComment(app.TaskLocator, int, models.Comment, string) (app.CommentResult, error) {
 	panic("unexpected EditComment")
 }
 
-func (s *promotionStub) RemoveComment(app.TaskLocator, int) (app.CommentResult, error) {
+func (s *promotionStub) RemoveComment(app.TaskLocator, int, models.Comment) (app.CommentResult, error) {
 	panic("unexpected RemoveComment")
 }
 

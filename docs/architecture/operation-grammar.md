@@ -98,6 +98,12 @@ project is absent from the Outliner manifest for a different reason than Open
 project: an Outliner project header is drawn from `TaskWorkspaceProjects()`,
 which is non-archived by definition, so applicability could never admit the row.
 
+Task-comment edits and removals freeze the stored text and creation instant
+beside the index. The application service checks both against the snapshot it
+commits, so a shifted row, changed text, or replaced comment refuses the mutation
+and the panel keeps the draft. The bridge carries the same expected value from
+its comment read into the service call.
+
 What `;` opens on a project header is the Comments panel itself, bound to a
 second `CommentOwner` rather than to a second panel. The adapter is the whole
 seam: the presentation, the grammar, the confirmations, and the three commits
