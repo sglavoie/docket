@@ -86,6 +86,13 @@ func (s *Service) ReorderPinnedTasks(taskA, taskB TaskLocator) (PinnedReorderRes
 	if !refA.Task.Pinned || !refB.Task.Pinned {
 		return PinnedReorderResult{}, invalidInput("pin", "both tasks must be pinned to reorder")
 	}
+	before := cloneSnapshot(snap)
+	committed := false
+	defer func() {
+		if !committed {
+			restoreSnapshotProjects(snap, before)
+		}
+	}()
 
 	var aTime, bTime time.Time
 	if refA.Task.PinnedAt != nil {
@@ -110,6 +117,7 @@ func (s *Service) ReorderPinnedTasks(taskA, taskB TaskLocator) (PinnedReorderRes
 	if err != nil {
 		return PinnedReorderResult{}, err
 	}
+	committed = true
 	projectIDs := make([]string, 0, len(commits))
 	for _, commit := range commits {
 		projectIDs = append(projectIDs, commit.project.ID)
@@ -138,18 +146,20 @@ func (s *Service) ReorderPinnedTasksOrder(moved TaskLocator, order []TaskLocator
 		return PinnedReorderResult{}, err
 	}
 	refs := make([]TaskRef, 0, len(order))
-	seen := make(map[string]bool, len(order))
+	seen := make(map[TaskLocator]bool, len(order))
+	subjectLocator := TaskLocator{ProjectID: subject.Project.ID, TaskID: subject.Task.ID}
 	inOrder := false
 	for _, locator := range order {
 		ref, resolveErr := resolveTaskSelection(snap, "", locator)
 		if resolveErr != nil {
 			return PinnedReorderResult{}, resolveErr
 		}
-		if seen[ref.Task.ID] {
+		qualified := TaskLocator{ProjectID: ref.Project.ID, TaskID: ref.Task.ID}
+		if seen[qualified] {
 			return PinnedReorderResult{}, invalidInput("pin", "a task may appear only once in the reorder order")
 		}
-		seen[ref.Task.ID] = true
-		inOrder = inOrder || ref.Task.ID == subject.Task.ID
+		seen[qualified] = true
+		inOrder = inOrder || qualified == subjectLocator
 		refs = append(refs, ref)
 	}
 	if !inOrder {
@@ -173,16 +183,23 @@ func (s *Service) ReorderPinnedTasksOrder(moved TaskLocator, order []TaskLocator
 			times[i] = times[i+1].Add(time.Second)
 		}
 	}
+	before := cloneSnapshot(snap)
+	committed := false
+	defer func() {
+		if !committed {
+			restoreSnapshotProjects(snap, before)
+		}
+	}()
 
 	commits := []projectCommit{{project: subject.Project, expectedRevision: subjectRevision, base: subject.Base}}
-	committed := map[string]bool{subject.Project.ID: true}
+	committedProjects := map[string]bool{subject.Project.ID: true}
 	for i, ref := range refs {
 		assigned := times[i]
 		ref.Task.PinnedAt = &assigned
-		if committed[ref.Project.ID] {
+		if committedProjects[ref.Project.ID] {
 			continue
 		}
-		committed[ref.Project.ID] = true
+		committedProjects[ref.Project.ID] = true
 		commits = append(commits, projectCommit{
 			project:          ref.Project,
 			expectedRevision: snap.Revision(ref.Project.ID),
@@ -193,6 +210,7 @@ func (s *Service) ReorderPinnedTasksOrder(moved TaskLocator, order []TaskLocator
 	if err != nil {
 		return PinnedReorderResult{}, err
 	}
+	committed = true
 	projectIDs := make([]string, 0, len(commits))
 	for _, commit := range commits {
 		projectIDs = append(projectIDs, commit.project.ID)

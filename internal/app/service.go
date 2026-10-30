@@ -141,16 +141,29 @@ func (s *Service) loadTaskSelection(taskID string, locator TaskLocator) (TaskRef
 // resolves the task, applies mutate (which enforces domain rules and may return
 // a typed error), runs the post-mutation hooks, and commits one ChangeSet
 // carrying the captured expected revision plus the undo description. A mutate
-// error aborts before any commit, so a rejected mutation never persists.
+// error aborts before any commit. Validation and commit failures restore the
+// pre-mutation graph so shared live projects never retain an unsaved change.
 func (s *Service) mutateTask(locator TaskLocator, undoAction, undoContext string, mutate func(TaskRef) error) (TaskResult, error) {
-	ref, _, revision, err := s.loadTaskSelection("", locator)
+	ref, snap, revision, err := s.loadTaskSelection("", locator)
 	if err != nil {
 		return TaskResult{}, err
 	}
-	if err := mutate(ref); err != nil {
+	before := cloneSnapshot(snap)
+	committed := false
+	defer func() {
+		if !committed {
+			restoreSnapshotProjects(snap, before)
+		}
+	}()
+	if mutateErr := mutate(ref); mutateErr != nil {
+		return TaskResult{}, mutateErr
+	}
+	result, err := s.commitProject(ref, revision, undoAction, undoContext)
+	if err != nil {
 		return TaskResult{}, err
 	}
-	return s.commitProject(ref, revision, undoAction, undoContext)
+	committed = true
+	return result, nil
 }
 
 // commitProject runs the post-mutation hooks on the resolved project and commits

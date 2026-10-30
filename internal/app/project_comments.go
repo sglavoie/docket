@@ -142,6 +142,7 @@ func (s *Service) commitProjectComments(
 		return ProjectCommentResult{}, invalidInput("comment", err.Error())
 	}
 	project := resolved.project
+	before := project.Comments
 	project.Comments = merged
 
 	// The barrier is spent here rather than inside commitProjects, which serves
@@ -157,6 +158,7 @@ func (s *Service) commitProjectComments(
 		tasksUntouched:   true,
 	}}, undoAction, project.Name)
 	if err != nil {
+		project.Comments = before
 		return ProjectCommentResult{}, err
 	}
 	return ProjectCommentResult{
