@@ -1,14 +1,13 @@
 #!/usr/bin/env sh
 #
 # Cut a release: tag the next version of the commit main is at and push the tag,
-# which starts .github/workflows/release.yml (CI, then GoReleaser's CLI archives,
+# which starts .github/workflows/release.yml (GoReleaser's CLI archives,
 # then the notarized Docket.app and the Homebrew cask). It then follows that run
 # and confirms the tap's cask moved to the new version.
 #
 # Refuses unless this is a clean main identical to origin/main, the commit is
-# new since the last release, and CI passed on it: the release workflow reruns
-# CI anyway, but a tag pushed over a red commit publishes nothing and has to be
-# deleted by hand.
+# new since the last release, and CI passed on it. The release workflow reuses
+# that result instead of running the tests again.
 #
 # Usage: release.sh patch|minor|major [--yes] [--no-watch]
 #

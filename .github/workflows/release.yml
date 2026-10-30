@@ -8,12 +8,8 @@ permissions:
   contents: read
 
 jobs:
-  # Every check CI makes passes before anything is built.
-  check:
-    uses: ./.github/workflows/ci.yml
-
+  # scripts/release.sh verifies CI passed on the commit before pushing the tag.
   release:
-    needs: check
     runs-on: ubuntu-latest
     permissions:
       contents: write
