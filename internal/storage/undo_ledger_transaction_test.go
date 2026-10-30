@@ -268,7 +268,7 @@ func prepareLedgerRestoreCrashFixture(t *testing.T) ledgerRestoreCrashFixture {
 		t.Fatal("restore crash fixture has no undo entry")
 	}
 	journal := transaction.NewJournal(transactionsDir, []string{root}, "")
-	manifest, err := ledger.prepareRestoreTransaction(journal, lf, entry, idx, false)
+	manifest, err := ledger.prepareRestoreTransaction(journal, lf, entry, idx, false, nil)
 	if err != nil {
 		t.Fatalf("prepare restore transaction: %v", err)
 	}

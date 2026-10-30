@@ -214,10 +214,13 @@ The undo ledger (`.tt/undo/`) is device-local and never exchanged. Each entry is
 stamped with the device that committed it, and a device restores only its own
 entries, so a workspace copied with its ledger cannot replay another device's
 history; entries recorded before sync carry no device and stay restorable. A
-restore is checked against the current bytes of every file it touches and is
-refused whole when any of them no longer holds the image the entry left —
-another device's applied change, a reconciliation, or an unrecorded edit — so
-undo never restores an old image over someone else's work. A successful undo or
+restore preflights every affected file. Existing-task edits and standalone
+root-task creation/deletion can retain unrelated task changes; Today/Next
+membership changes can retain unrelated plans when alone or coupled solely to
+existing-task edits. Changed targets, conflicting order, and other artifact
+drift refuse the restore whole. Restoring a membership also requires its task
+to exist and be nonterminal in the proposed result. Undo therefore preserves
+other devices' work. A successful undo or
 redo is published as a new `kind: undo` or `redo` transaction whose parents are
 the device's heads.
 

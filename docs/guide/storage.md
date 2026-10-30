@@ -53,9 +53,22 @@ remains, and refuses if A's identity or project-local number is now in use.
 Redo removes A only if it is still unchanged, has no children, and belongs to
 neither Today nor Next. These checks survive restarting Docket.
 
+Today and Next membership changes also preserve unrelated synced plans. Plan A
+for Today on your Mac, plan B for Next on your iPhone, and sync: Undo removes A
+from Today and keeps B in Next. Redo restores A and still keeps B's latest plan.
+This also works for removing memberships and moving tasks between Today and
+Next. Other tasks keep their current order; a restored membership goes before
+the next surviving task from its original plan, or at the end.
+
+A later planning change to A refuses the restore, including moving A across a
+surviving original neighbour. Restoring a membership also refuses if its task
+was deleted, moved to another project, or completed in the meantime. Planning
+and any accompanying task edits restore together or leave both untouched.
+
 Creation or deletion with attachments, subtasks, multiple tasks, or other
 coupled changes (including planning or incoming-reference cleanup), and
-ordering, project metadata, notes, and attachments keep their exact-file checks.
+ordering operations, project metadata, notes, and attachments keep their
+exact-file checks.
 If a change outside the ledger prevents a restore, the entry is dropped from
 history without overwriting that work. The message names
 the entry and the file; press the key again to reach the entry before it.

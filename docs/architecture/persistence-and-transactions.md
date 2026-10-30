@@ -273,6 +273,28 @@ runs when the project still matches the exact image, since a planning-only
 change can leave task bytes untouched. Unrelated planning is never rewritten;
 an unreadable planning file refuses without recovering a backup during preflight.
 
+For a planning-only entry or one coupled solely to existing-task edits,
+`config.RebasePlanningRestore` applies membership deltas by project-qualified
+identity to the current planning domain. It compares each changed task's full
+Today/Next membership and its position relative to surviving original members;
+unrelated additions, removals, moves, and ordering remain current. Restored
+members are inserted before their next surviving desired member, or at the end.
+The retained images must leave the relative order of unchanged members alone:
+an ordering operation still requires its exact image. All three envelopes must
+have the current schema, the same valid workspace identity, known fields, and
+valid mutually-exclusive memberships. An unchanged guard image preserves the
+current planning domain too.
+
+The engine installs this pure configuration callback for the one planning path.
+It also supplies a membership-addition guard, even for exact-image restores:
+storage locks the catalog and target project documents, then the guard checks
+that those projects still resolve to the locked paths and that added members
+exist and are nonterminal in the proposed project images (or current documents
+when no rewrite is proposed). It reads without backup recovery. Preflight
+validates every artifact and the guard before staging task bytes, planning,
+ledger movement, and outgoing sync history in the same manifest. Neither
+storage nor the ledger format takes ownership of the planning encoding.
+
 File creation/deletion, coupled or multi-task creation or deletion, ordering,
 project metadata edits, notes, and attachments retain exact-image preconditions.
 

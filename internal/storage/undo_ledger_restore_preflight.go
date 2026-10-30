@@ -24,10 +24,16 @@ func (l *WorkspaceLedger) prepareRestoreTransaction(
 	entry LedgerEntry,
 	idx int,
 	redo bool,
+	validate func([]transaction.Op) error,
 ) (*transaction.Manifest, error) {
 	ops, err := l.preflightRestoreOps(lf, entry, redo)
 	if err != nil {
 		return nil, err
+	}
+	if validate != nil {
+		if validationErr := validate(ops); validationErr != nil {
+			return nil, validationErr
+		}
 	}
 	if redo {
 		lf.RedoEntries = removeEntryAt(lf.RedoEntries, idx)
@@ -165,8 +171,8 @@ func (l *WorkspaceLedger) preflightRestoreOps(lf *ledgerFile, entry LedgerEntry,
 		// A pending local entry still owns its place in the history. Rebase
 		// only drift that came from outside the ledger, under the same locks
 		// as the exact-image restore.
-		rebaseTasks := l.isProjectTaskImage(image) && !driftExplainedByLedger(lf, entry, image.Path, redo)
-		op, planned, planErr := preflightRestoreImage(image, redo, blobs, directoryDeletes, fileDeletes, rebaseTasks, len(entry.Artifacts) == 1)
+		rebase := l.artifactRestore(entry, image, lf, redo)
+		op, planned, planErr := preflightRestoreImage(image, redo, blobs, directoryDeletes, fileDeletes, rebase)
 		if planErr != nil {
 			return nil, planErr
 		}
@@ -246,8 +252,7 @@ func preflightRestoreImage(
 	blobs map[string][]byte,
 	directoryDeletes map[string]bool,
 	fileDeletes map[string]bool,
-	rebaseTasks bool,
-	allowMembershipChange bool,
+	rebase func(expected, desired, current []byte) ([]byte, bool),
 ) (transaction.Op, bool, error) {
 	path := filepath.Clean(image.Path)
 	expectedExists, expectedHash := image.AfterExists, image.AfterHash
@@ -284,8 +289,8 @@ func preflightRestoreImage(
 		actualHash = RawArtifactRevision(current)
 	}
 	if currentExists != expectedExists || (currentExists && (actualKind != "file" || actualHash != expectedHash)) {
-		if rebaseTasks && currentExists && actualKind == "file" && expectedExists && desiredExists {
-			if data, ok := rebaseTaskRestore(blobs[expectedHash], blobs[desiredHash], current, allowMembershipChange); ok {
+		if rebase != nil && currentExists && actualKind == "file" && expectedExists && desiredExists {
+			if data, ok := rebase(blobs[expectedHash], blobs[desiredHash], current); ok {
 				return transaction.Op{Kind: transaction.OpWrite, Target: path, Data: data, Mode: FilePermissions}, true, nil
 			}
 		}

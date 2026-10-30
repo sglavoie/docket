@@ -224,6 +224,11 @@ type WorkspaceLedger struct {
 	// planned task without making storage interpret that domain's file format.
 	removalGuardPath string
 	removalGuard     func(projectIDs []string, taskID string) error
+	// Planning owns its encoding in config. The engine installs a pure restore
+	// callback for that one artifact; storage invokes it under the artifact lock.
+	planningRestorePath string
+	planningRestore     func(expected, desired, current []byte) ([]byte, bool)
+	planningGuard       func(expected, desired []byte) ([]string, func([]transaction.Op) error, error)
 }
 
 // WorkspaceLedgerValidation summarizes a successful read-only validation.

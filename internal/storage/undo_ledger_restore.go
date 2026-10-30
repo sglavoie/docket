@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 )
 
@@ -119,15 +120,33 @@ func (l *WorkspaceLedger) restore(scope LedgerScope, redo bool, expectTransactio
 		if l.guardsTaskRemoval(entry) {
 			artifacts = append(artifacts, ArtifactChange{Path: l.removalGuardPath})
 		}
+		guardPaths, validate, guardErr := l.preparePlanningRestoreGuard(entry, redo)
+		if guardErr != nil {
+			return l.retireDriftedEntry(journal, lf, entry, idx, redo, guardErr)
+		}
+		for _, path := range guardPaths {
+			artifacts = append(artifacts, ArtifactChange{Path: path})
+		}
 		lockPaths, lockErr := artifactLockPaths(artifacts, l.roots)
 		if lockErr != nil {
 			return lockErr
+		}
+		// These are read-only dependencies, never directories this restore may
+		// create. Refuse a vanished project before opening its in-project lock.
+		for _, path := range guardPaths {
+			if _, statErr := os.Stat(filepath.Dir(path)); os.IsNotExist(statErr) {
+				return l.retireDriftedEntry(journal, lf, entry, idx, redo, &ArtifactConflictError{
+					Path: path, Expected: "planning target directory present", Actual: "directory missing",
+				})
+			} else if statErr != nil {
+				return fmt.Errorf("reading planning restore guard directory: %w", statErr)
+			}
 		}
 		if err := createArtifactLockDirectories(lockPaths); err != nil {
 			return err
 		}
 		return withOrderedFileLocks(lockPaths, func() error {
-			manifest, prepareErr := l.prepareRestoreTransaction(journal, lf, entry, idx, redo)
+			manifest, prepareErr := l.prepareRestoreTransaction(journal, lf, entry, idx, redo, validate)
 			if prepareErr != nil {
 				return l.retireDriftedEntry(journal, lf, entry, idx, redo, prepareErr)
 			}

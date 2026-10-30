@@ -224,7 +224,7 @@ func TestTaskDeletionRestoreCrashRecoveryConverges(t *testing.T) {
 					t.Fatal("no deletion entry")
 				}
 				journal := transaction.NewJournal(ledger.transactionsDir, ledger.roots, "")
-				manifest, err := ledger.prepareRestoreTransaction(journal, lf, entry, idx, redo)
+				manifest, err := ledger.prepareRestoreTransaction(journal, lf, entry, idx, redo, nil)
 				if err != nil {
 					t.Fatal(err)
 				}

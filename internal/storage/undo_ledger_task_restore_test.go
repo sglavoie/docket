@@ -345,7 +345,7 @@ func TestTaskRestoreCrashRecoveryConverges(t *testing.T) {
 				t.Fatal("no undo entry")
 			}
 			journal := transaction.NewJournal(ledger.transactionsDir, ledger.roots, "")
-			manifest, err := ledger.prepareRestoreTransaction(journal, lf, entry, idx, false)
+			manifest, err := ledger.prepareRestoreTransaction(journal, lf, entry, idx, false, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
