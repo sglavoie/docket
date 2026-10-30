@@ -33,10 +33,18 @@ recovery toast advertises and then consumes the key in silence.
 Undo and Redo for edits to existing tasks preserve changes synced to other tasks
 in the same project, including changes made outside Docket. For example, rename
 task A on your Mac, edit task B on your iPhone, and sync: undoing the rename
-restores A and keeps B's edit. Redo keeps B's edit too. A later change to A itself
-still refuses the restore, even if it changed a different field. A restore also
-refuses if the combined result would break a task invariant, such as completing
-a parent that now has an open child.
+restores A and keeps B's edit. Redo keeps B's edit too.
+
+Edits limited to title, priority, context, and resume note also preserve changes
+to other fields on the same task. Rename A on your Mac, change A's priority on
+your iPhone, and sync: Undo restores the original title and keeps the new
+priority. Redo keeps the priority too, including any newer incoming change
+between Undo and Redo. A later change to a field the original action changed
+refuses the whole restore. These checks survive restarting Docket.
+
+Edits involving other fields, including status and scheduling, still refuse
+when that task changed. A restore also refuses if the combined result would
+break a task invariant, such as completing a parent that now has an open child.
 
 Creating one standalone root task in an existing project also supports this:
 capture A, sync an edit to B, then undo or redo A without losing B's edit.

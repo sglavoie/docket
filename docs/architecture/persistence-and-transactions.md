@@ -244,12 +244,22 @@ recorded change must be replayed before later ones.
 A restore preflights every image before staging a byte. For an existing-task edit
 in `projects/<slug>/tasks.md`, external drift can be rebased by task identity:
 the retained before/after documents must have the same task membership, order,
-project name, and project comments. Their changed tasks must still match the
-expected persisted values in the current document, including `UpdatedAt`.
+project name, and project comments. Their changed tasks normally must still
+match the expected persisted values in the current document, including `UpdatedAt`.
 `rebaseTaskRestore` replaces those tasks with their desired versions and retains
 the current other tasks, order, and project metadata. It uses the merge audit and
-canonical writer to validate the combined project. A later edit to a touched
-task refuses whole, even on another field.
+canonical writer to validate the combined project.
+
+An edit whose entire task delta is title, priority, context, and/or resume note
+(plus `UpdatedAt`) instead checks only the fields it changed. Each must still
+hold its expected value: an independently applied desired value refuses too.
+The restore copies those fields onto the current task and keeps every other
+current value, including lifecycle, schedules, collections, and the later of
+the current and desired touch times. Timestamp-only entries and edits involving
+any other field retain whole-task checks. Multiple changed fields and bulk
+targets restore together or refuse together. Both directions recheck the original
+images after every incoming change and restart; no additional ledger data is
+needed.
 
 A single-artifact entry that added exactly one root task without attachments
 also rebases by identity. Its original images must leave every existing task,

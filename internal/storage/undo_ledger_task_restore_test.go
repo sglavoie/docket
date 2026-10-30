@@ -88,8 +88,6 @@ func TestTaskRestoreRefusesOverlappingChanges(t *testing.T) {
 			change func(*ProjectDocument)
 		}{
 			{"same_field", func(doc *ProjectDocument) { doc.Tasks[0].Title = "Incoming A" }},
-			{"different_field_same_task", func(doc *ProjectDocument) { doc.Tasks[0].Description = "Incoming description" }},
-			{"touch_time_only", func(doc *ProjectDocument) { doc.Tasks[0].UpdatedAt = doc.Tasks[0].UpdatedAt.Add(time.Hour) }},
 			{"missing_task", func(doc *ProjectDocument) { doc.Tasks = doc.Tasks[1:] }},
 		} {
 			t.Run(tc.name+map[bool]string{false: "_undo", true: "_redo"}[redo], func(t *testing.T) {
@@ -178,6 +176,8 @@ func TestTaskRestorePreflightsEveryArtifactBeforeWriting(t *testing.T) {
 		{Path: note, BeforeExists: true, Before: []byte("Before"), AfterExists: true, After: []byte("After")},
 	})
 	current := after.clone()
+	current.Tasks[0].Priority = 1
+	current.Tasks[0].UpdatedAt = current.Tasks[0].UpdatedAt.Add(time.Hour)
 	current.Tasks[1].Title = "Incoming B"
 	content := mustWriteCurrentDocument(t, current)
 	writeFile(t, path, content)
@@ -230,6 +230,8 @@ func TestTaskRestoreDoesNotRebaseNotesOrAttachments(t *testing.T) {
 			before, after := taskRestoreDocuments()
 			recordTaskRestore(t, ledger, path, before, after)
 			current := after.clone()
+			current.Tasks[0].Priority = 1
+			current.Tasks[0].UpdatedAt = current.Tasks[0].UpdatedAt.Add(time.Hour)
 			current.Tasks[1].Title = "Incoming B"
 			content := mustWriteCurrentDocument(t, current)
 			writeFile(t, path, content)
@@ -310,7 +312,7 @@ func TestTaskRestoreBulkEditRefusesChangedMember(t *testing.T) {
 	after.Tasks[1].Title = "Edited B"
 	recordTaskRestore(t, ledger, path, before, after)
 	current := after.clone()
-	current.Tasks[1].Description = "Incoming description on a bulk target"
+	current.Tasks[1].Title = "Incoming title on a bulk target"
 	content := mustWriteCurrentDocument(t, current)
 	writeFile(t, path, content)
 	if _, err := ledger.Undo(GlobalScope()); !errors.Is(err, ErrStaleArtifact) {
@@ -329,6 +331,8 @@ func TestTaskRestoreCrashRecoveryConverges(t *testing.T) {
 			before, after := taskRestoreDocuments()
 			recordTaskRestore(t, ledger, path, before, after)
 			current := after.clone()
+			current.Tasks[0].Priority = 1
+			current.Tasks[0].UpdatedAt = current.Tasks[0].UpdatedAt.Add(time.Hour)
 			current.Tasks[1].Title = "Incoming B"
 			writeFile(t, path, mustWriteCurrentDocument(t, current))
 			lf, err := ledger.load()
@@ -357,13 +361,13 @@ func TestTaskRestoreCrashRecoveryConverges(t *testing.T) {
 			if _, err := service.RecoverWorkspace(); err != nil {
 				t.Fatal(err)
 			}
-			current.Tasks[0] = before.Tasks[0]
+			current.Tasks[0].Title = before.Tasks[0].Title
 			assertLedgerRestoreContent(t, path, mustWriteCurrentDocument(t, current))
 			assertLedgerRestoreStacks(t, ledger, 0, 1)
 			if _, err := ledger.Redo(GlobalScope()); err != nil {
 				t.Fatal(err)
 			}
-			current.Tasks[0] = after.Tasks[0]
+			current.Tasks[0].Title = after.Tasks[0].Title
 			assertLedgerRestoreContent(t, path, mustWriteCurrentDocument(t, current))
 			assertJournalClean(t, root)
 		})

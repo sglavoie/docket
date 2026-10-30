@@ -11,14 +11,14 @@ import (
 )
 
 // TestSyncUndo holds undo and redo to the sync contract: each is a new
-// outgoing change every device applies, each is refused whole when another
-// device's work has changed a touched task, and the history behind them
-// belongs to the device that made it.
+// outgoing change every device applies, overlapping field changes refuse
+// whole, independent scalar edits preserve peer work, and the history behind
+// them belongs to the device that made it.
 func TestSyncUndo(t *testing.T) {
 	t.Run("undo_and_redo_publish_new_transactions", testUndoAndRedoPublishNewTransactions)
 	t.Run("remote_edit_refuses_stale_undo", testUndoRemoteEditRefusesStaleUndo)
 	t.Run("remote_edit_refuses_stale_redo", testUndoRemoteEditRefusesStaleRedo)
-	t.Run("unrecorded_change_refuses_undo", testUndoUnrecordedChangeRefusesUndo)
+	t.Run("unrecorded_change_survives_undo_redo", testUndoUnrecordedChangeSurvivesUndoRedo)
 	t.Run("undo_history_is_device_local", testUndoHistoryIsDeviceLocal)
 }
 
@@ -103,7 +103,7 @@ func testUndoRemoteEditRefusesStaleUndo(t *testing.T) {
 	if len(a.outgoing()) != pending {
 		t.Fatal("a refused undo published a transaction")
 	}
-	// The remote edit changed the same task and recorded no ledger entry, so
+	// The remote edit changed the same title and recorded no ledger entry, so
 	// this entry cannot restore it: it is retired rather than left selected,
 	// where it would wall off every older entry.
 	var retired *storage.RetiredEntryError
@@ -144,18 +144,30 @@ func testUndoRemoteEditRefusesStaleRedo(t *testing.T) {
 	settleClean(t, c)
 }
 
-func testUndoUnrecordedChangeRefusesUndo(t *testing.T) {
+func testUndoUnrecordedChangeSurvivesUndoRedo(t *testing.T) {
 	c := newCluster(t, "a")
 	a := c.r("a")
+	original := a.task(atlasSlug, shipBeta)
 	a.commitUndoable(a.retitleArtifact(atlasSlug, shipBeta, "Ship beta build v2"))
 	edited := bytes.Replace(a.read(atlasDoc), []byte("Cut the release branch."), []byte("Cut it."), 1)
 	a.write(atlasDoc, edited)
-	var conflict *storage.ArtifactConflictError
-	if _, err := a.ledger.Undo(storage.GlobalScope()); !errors.As(err, &conflict) {
-		t.Fatalf("undo over an external edit: %v, want an artifact conflict", err)
+	if _, err := a.ledger.Undo(storage.GlobalScope()); err != nil {
+		t.Fatalf("undo over an independent external edit: %v", err)
 	}
-	if !bytes.Equal(a.read(atlasDoc), edited) {
-		t.Fatal("undo overwrote an external edit")
+	want := bytes.Replace(edited, []byte("Ship beta build v2"), []byte(original.Title), 1)
+	if !bytes.Equal(a.read(atlasDoc), want) {
+		t.Fatal("undo did not restore only the title while retaining the external description")
+	}
+	// A second direct edit while the entry waits on the redo stack must be
+	// read again, rather than replaying the bytes observed during Undo.
+	want = bytes.Replace(want, []byte("Cut it."), []byte("Cut it after review."), 1)
+	a.write(atlasDoc, want)
+	if _, err := a.ledger.Redo(storage.GlobalScope()); err != nil {
+		t.Fatalf("redo over a newer independent external edit: %v", err)
+	}
+	want = bytes.Replace(want, []byte(original.Title), []byte("Ship beta build v2"), 1)
+	if !bytes.Equal(a.read(atlasDoc), want) {
+		t.Fatal("redo overwrote an external description edit")
 	}
 }
 
