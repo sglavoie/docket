@@ -218,19 +218,26 @@ func TestTabReachesDisabledDeferRowsThatActivationStillRefuses(t *testing.T) {
 
 // A single matching section keeps its exact cursor and query, quietly.
 func TestTabStaysInTheOnlyMatchingSection(t *testing.T) {
+	// This query stays unique regardless of the date aliases. "in one week"
+	// also fuzzy-matches Defer's "For one week" when its date is "Fri Nov 6".
+	const query = "check-in"
 	picker := newDatePickerForTest(t, "")
-	picker.Surface().SetQuery("in one week")
-	before := currentDateRowID(t, picker)
-
-	_, result := pressKey(picker, "tab")
-	if result != nil {
-		t.Fatalf("tab with only one matching section = %#v, want no message", result)
+	picker.Surface().SetQuery(query)
+	matches := picker.Surface().Matches()
+	if len(matches) != 1 || matches[0].Item.ID != dateCheckInEditorItemID {
+		t.Fatalf("query %q matched %v, want only %q", query, matches, dateCheckInEditorItemID)
 	}
-	if got := currentDateRowID(t, picker); got != before {
-		t.Fatalf("refused tab moved the cursor to %q, want it left on %q", got, before)
-	}
-	if got := picker.Surface().Query().Raw; got != "in one week" {
-		t.Fatalf("refused tab wrote query %q, want it preserved", got)
+	for _, key := range []string{"tab", "shift+tab"} {
+		dismissed, result := pressKey(picker, key)
+		if dismissed || result != nil {
+			t.Fatalf("%s with only one matching section = dismissed %v, message %#v", key, dismissed, result)
+		}
+		if got := currentDateRowID(t, picker); got != dateCheckInEditorItemID {
+			t.Fatalf("%s moved the cursor to %q, want it left on %q", key, got, dateCheckInEditorItemID)
+		}
+		if got := picker.Surface().Query().Raw; got != query {
+			t.Fatalf("%s wrote query %q, want %q preserved", key, got, query)
+		}
 	}
 }
 
