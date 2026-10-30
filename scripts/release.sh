@@ -6,8 +6,8 @@
 # and confirms the tap's cask moved to the new version.
 #
 # Refuses unless this is a clean main identical to origin/main, the commit is
-# new since the last release, and CI passed on it. The release workflow reuses
-# that result instead of running the tests again.
+# new since the last release, and CI passed on it. The tag push skips the local
+# pre-push checks, and the release workflow reuses CI instead of retesting.
 #
 # Usage: release.sh patch|minor|major [--yes] [--no-watch]
 #
@@ -127,7 +127,8 @@ fi
 # --- Tag, push, follow ------------------------------------------------------------
 
 git tag -a "$next" -m "$next"
-if ! git push --quiet origin "$next"; then
+# CI already checked this exact commit; do not rerun the pre-push test suite.
+if ! git push --no-verify --quiet origin "$next"; then
 	git tag -d "$next" >/dev/null
 	fail "pushing $next failed; the local tag was removed"
 fi
