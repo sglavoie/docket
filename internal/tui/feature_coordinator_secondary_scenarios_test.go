@@ -7,6 +7,8 @@ import (
 
 	"github.com/sglavoie/docket/internal/app"
 	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/coordinator"
+	"github.com/sglavoie/docket/internal/tui/taskdetail"
 	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
@@ -291,7 +293,8 @@ func TestAttachmentReorderScenario(t *testing.T) {
 
 	runResult(t, features.Attachment.AttachURL(taskref.For(task, env.project), "https://example.com/a"))
 	runResult(t, features.Attachment.AttachURL(taskref.For(task, env.project), "https://example.com/b"))
-	runResult(t, features.Attachment.Reorder(taskref.For(task, env.project), 0, 1))
+	panel := taskdetail.NewTaskAttachmentsModel(task, env.project, nil, features.Attachment)
+	runResult(t, panel.MoveSelectedAttachmentDown())
 
 	if got := env.reload(t).GetTaskByID(task.ID); got == nil || got.Attachments[0].Filename != "https://example.com/b" {
 		t.Fatalf("reloaded attachments = %v, want b first", got)
@@ -300,5 +303,55 @@ func TestAttachmentReorderScenario(t *testing.T) {
 	env.undo(t)
 	if got := env.reload(t).GetTaskByID(task.ID); got == nil || got.Attachments[0].Filename != "https://example.com/a" {
 		t.Fatalf("undo did not restore the order: %v", got)
+	}
+}
+
+func TestAttachmentReorderRepeatedBeforeReloadRefusesStaleGesture(t *testing.T) {
+	task := seedTask(t, 1, "Reorder here", models.StateBacklog)
+	env, features := newSecondaryEnv(t, "attach-reorder-repeat", task)
+	for _, name := range []string{"a", "b", "c"} {
+		runResult(t, features.Attachment.AttachURL(taskref.For(task, env.project), "https://example.com/"+name))
+	}
+	panel := taskdetail.NewTaskAttachmentsModel(task, env.project, nil, features.Attachment)
+	first := panel.MoveSelectedAttachmentDown()
+	second := panel.MoveSelectedAttachmentDown()
+	runResult(t, first)
+	if _, ok := second().(coordinator.TransactionErrorMsg); !ok {
+		t.Fatal("second gesture against the old list was not refused")
+	}
+	stored := env.reload(t).GetTaskByID(task.ID)
+	if stored.Attachments[0].Filename != "https://example.com/b" || stored.Attachments[1].Filename != "https://example.com/a" {
+		t.Fatalf("repeated gesture moved another item: %+v", stored.Attachments)
+	}
+	// The refusal records no undo entry; the next undo restores the one swap.
+	env.undo(t)
+	if stored := env.reload(t).GetTaskByID(task.ID); stored.Attachments[0].Filename != "https://example.com/a" {
+		t.Fatal("undo did not restore the single committed reorder")
+	}
+}
+
+func TestAttachmentReorderShellFollowsCommittedItem(t *testing.T) {
+	task := seedTask(t, 1, "Reorder here", models.StateBacklog)
+	for _, name := range []string{"a", "b"} {
+		if err := task.AddAttachment("https://example.com/"+name, true, "https://example.com/"+name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	env := newAppBulkPickerEnv(t, []*models.Task{task})
+	model := env.appModel()
+	if handled, _ := model.handleViewSupportMessages(taskdetail.ShowTaskAttachmentsMsg{Task: task, Project: env.projects[0]}); !handled {
+		t.Fatal("attachments panel did not open")
+	}
+	panel := model.entities.ActiveAttachmentsPanel(model)
+	if panel == nil {
+		t.Fatal("attachments panel is not mounted")
+	}
+	result, ok := panel.MoveSelectedAttachmentDown()().(coordinator.TransactionResultMsg)
+	if !ok {
+		t.Fatal("reorder did not commit")
+	}
+	model.handleTransactionResult(result)
+	if panel.Cursor != 1 || panel.Task.Attachments[1].Filename != "https://example.com/a" {
+		t.Fatal("shell did not reload the committed list and follow the moved item")
 	}
 }

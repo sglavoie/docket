@@ -46,6 +46,11 @@ func (m *AppModel) handleTransactionResult(msg coordinator.TransactionResultMsg)
 		TaskID:    msg.Result.TaskID,
 	})
 	saveCmd := m.handleCommittedSaveComplete()
+	if panel := m.entities.ActiveAttachmentsPanel(m); panel != nil {
+		panel.FollowAttachmentReorder(taskref.TaskIdentity{
+			ProjectID: msg.Result.ProjectID, TaskID: msg.Result.TaskID,
+		}, msg.AttachmentReorder)
+	}
 	feedbackCmd := m.setRecoveryFeedback(msg.SuccessMessage(), msg.Result.TransactionID, false)
 	return tea.Batch(saveCmd, feedbackCmd)
 }

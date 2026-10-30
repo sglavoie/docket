@@ -153,3 +153,11 @@ converted into ordinary editable comments during schema migration.
 Checklist items store text and completion and may be reordered. Attachments are
 files, HTTP(S) URLs, or code references and participate in the same transaction
 and undo ledger as task Markdown.
+
+Attachment reordering checks the complete ordered list the panel read against
+the mutation's fresh snapshot. The coordinator freezes that list when the key is
+pressed, including every stored field and each attachment's creation instant.
+A changed list refuses the move before any mutation or commit. The panel leaves
+shared task data and its cursor alone until the transaction succeeds; after the
+committed reload, it follows the moved attachment only if the same owner and
+source cursor still apply.

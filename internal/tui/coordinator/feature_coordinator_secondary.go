@@ -142,7 +142,8 @@ type AttachmentMutator interface {
 	// still expected, so a confirmed removal never lands on a neighbor a reload
 	// shifted into that position.
 	RemoveAttachmentExpecting(locator app.TaskLocator, index int, expected models.Attachment, deleteFile bool) (app.RemoveAttachmentResult, error)
-	ReorderAttachment(locator app.TaskLocator, from, to int) (app.TaskResult, error)
+	// ReorderAttachment checks the complete ordered list the caller read.
+	ReorderAttachment(locator app.TaskLocator, from, to int, expected []models.Attachment) (app.TaskResult, error)
 }
 
 // SubviewMutator is the narrow port the task subview panels (comments and

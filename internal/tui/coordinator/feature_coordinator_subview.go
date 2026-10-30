@@ -1,6 +1,8 @@
 package coordinator
 
 import (
+	"slices"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/docket/internal/app"
@@ -53,11 +55,20 @@ func (c AttachmentCoordinator) RemoveAttachment(task taskref.TaskIdentity, index
 	})
 }
 
-// Reorder swaps two attachments' positions as one transaction.
-func (c AttachmentCoordinator) Reorder(task taskref.TaskIdentity, from, to int) tea.Cmd {
-	return runTask("Reorder Attachments", func() (app.TaskResult, error) {
-		return c.attach.ReorderAttachment(task.Locator(), from, to)
-	})
+// Reorder freezes the list before the asynchronous transaction can read it.
+func (c AttachmentCoordinator) Reorder(task taskref.TaskIdentity, from, to int, expected []models.Attachment) tea.Cmd {
+	expected = slices.Clone(expected)
+	return func() tea.Msg {
+		result, err := c.attach.ReorderAttachment(task.Locator(), from, to, expected)
+		if err != nil {
+			return TransactionErrorMsg{Err: err}
+		}
+		msg := TransactionResultMsg{Action: "Reorder Attachments", Result: result}
+		if from >= 0 && from < len(expected) {
+			msg.AttachmentReorder = &AttachmentReorder{From: from, To: to, Attachment: expected[from]}
+		}
+		return msg
+	}
 }
 
 // SubviewCoordinator backs the task subview panels (comments and checklist).

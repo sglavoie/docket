@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/sglavoie/docket/internal/models"
@@ -223,8 +224,13 @@ func (s *Service) removeAttachment(locator TaskLocator, index int, expected *mod
 // ReorderAttachment swaps the attachments at from and to, matching the
 // attachment panel's single-step move semantics. Reordering touches metadata
 // only — no bytes move — so the mutation commits exactly one project write.
-func (s *Service) ReorderAttachment(locator TaskLocator, from, to int) (TaskResult, error) {
+// The complete ordered list must still match the caller's read; stale indexes
+// must never redirect a reorder to different attachments.
+func (s *Service) ReorderAttachment(locator TaskLocator, from, to int, expected []models.Attachment) (TaskResult, error) {
 	return s.mutateAttachmentSelection(locator, "Reorder Attachments", "", func(ref TaskRef) error {
+		if !slices.EqualFunc(ref.Task.Attachments, expected, SameAttachment) {
+			return invalidInput("attachment", "attachments changed since they were read; nothing was reordered")
+		}
 		count := len(ref.Task.Attachments)
 		if from < 0 || from >= count || to < 0 || to >= count {
 			return invalidInput("attachment", fmt.Sprintf("reorder %d -> %d out of range (task has %d)", from, to, count))

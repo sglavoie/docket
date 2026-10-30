@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/docket/internal/external"
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/tui/coordinator"
 	"github.com/sglavoie/docket/internal/tui/status"
 	"github.com/sglavoie/docket/internal/tui/taskref"
 )
@@ -99,13 +100,20 @@ func (m *TaskAttachmentsModel) executeRemoval(pending *pendingAttachmentRemoval,
 }
 
 func (m *TaskAttachmentsModel) reorderAttachment(from, to int) tea.Cmd {
-	// Swap locally for immediate render; the coordinator commit re-applies the
-	// swap against a fresh snapshot and RefreshAfterReload re-resolves the view.
-	m.resolveTask()
-	m.Task.Attachments[from], m.Task.Attachments[to] = m.Task.Attachments[to], m.Task.Attachments[from]
-	m.Cursor = to
+	// The panel's list is the read set. Neither its order nor its cursor changes
+	// until success, so a refusal and repeated keys cannot retarget the gesture.
+	return m.Coordinator.Reorder(taskref.For(m.Task, m.project), from, to, m.Task.Attachments)
+}
 
-	return m.Coordinator.Reorder(taskref.For(m.Task, m.project), from, to)
+// FollowAttachmentReorder follows a committed move while the cursor still names
+// its source in this panel. Navigation and a different owner leave it alone.
+func (m *TaskAttachmentsModel) FollowAttachmentReorder(owner taskref.TaskIdentity, move *coordinator.AttachmentReorder) {
+	if move == nil || taskref.For(m.Task, m.project) != owner || m.Cursor != move.From {
+		return
+	}
+	if move.To >= 0 && move.To < len(m.Task.Attachments) && app.SameAttachment(m.Task.Attachments[move.To], move.Attachment) {
+		m.Cursor = move.To
+	}
 }
 
 func (m *TaskAttachmentsModel) openAttachmentDefault() tea.Cmd {

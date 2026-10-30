@@ -205,8 +205,9 @@ type fakeRemoval struct {
 }
 
 type fakeReorder struct {
-	from int
-	to   int
+	from     int
+	to       int
+	expected []models.Attachment
 }
 
 func (f *fakeAttachmentMutator) AttachURL(locator app.TaskLocator, url string) (app.TaskResult, error) {
@@ -229,8 +230,8 @@ func (f *fakeAttachmentMutator) RemoveAttachmentExpecting(locator app.TaskLocato
 	return app.RemoveAttachmentResult{Task: app.TaskResult{TaskID: locator.TaskID, ProjectID: locator.ProjectID}}, nil
 }
 
-func (f *fakeAttachmentMutator) ReorderAttachment(locator app.TaskLocator, from, to int) (app.TaskResult, error) {
-	f.reorders = append(f.reorders, fakeReorder{from: from, to: to})
+func (f *fakeAttachmentMutator) ReorderAttachment(locator app.TaskLocator, from, to int, expected []models.Attachment) (app.TaskResult, error) {
+	f.reorders = append(f.reorders, fakeReorder{from: from, to: to, expected: expected})
 	return app.TaskResult{TaskID: locator.TaskID, ProjectID: locator.ProjectID}, nil
 }
 

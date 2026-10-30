@@ -104,7 +104,7 @@ func TestReorderAttachmentSwaps(t *testing.T) {
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	svc := newTestService(repo)
 
-	if _, err := svc.ReorderAttachment(app.TaskLocator{ProjectID: "p1", TaskID: "t1"}, 0, 1); err != nil {
+	if _, err := svc.ReorderAttachment(app.TaskLocator{ProjectID: "p1", TaskID: "t1"}, 0, 1, task.Attachments); err != nil {
 		t.Fatalf("ReorderAttachment: %v", err)
 	}
 	if task.Attachments[0].Filename != "b.txt" || task.Attachments[1].Filename != "a.txt" {
@@ -114,7 +114,7 @@ func TestReorderAttachmentSwaps(t *testing.T) {
 		t.Fatalf("lastCommit = %+v ok=%v, want Reorder Attachments", cs, ok)
 	}
 
-	if _, err := svc.ReorderAttachment(app.TaskLocator{ProjectID: "p1", TaskID: "t1"}, 0, 5); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err := svc.ReorderAttachment(app.TaskLocator{ProjectID: "p1", TaskID: "t1"}, 0, 5, task.Attachments); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("out-of-range reorder err = %v, want ErrInvalidInput", err)
 	}
 }

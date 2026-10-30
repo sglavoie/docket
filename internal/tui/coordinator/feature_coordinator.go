@@ -91,6 +91,12 @@ type TransactionRelocation interface {
 	StampTransaction(id string) TransactionRelocation
 }
 
+// AttachmentReorder names the item and positions a committed reorder affected.
+type AttachmentReorder struct {
+	From, To   int
+	Attachment models.Attachment
+}
+
 // TransactionResultMsg is emitted when a coordinator mutation commits. It
 // carries the presentation-neutral outcome (the committed revision, the affected
 // task's qualified reference and final workflow state) so a primary view renders
@@ -98,6 +104,8 @@ type TransactionRelocation interface {
 // save completion through this message is what removes the load/mutate/save
 // duplication from the migrated views.
 type TransactionResultMsg struct {
+	// AttachmentReorder follows the moved item only after its committed reload.
+	AttachmentReorder *AttachmentReorder
 	// Feature names the coordinator that produced the mutation (capture, inbox,
 	// project-tree, outliner, task-form).
 	// Action is the human-facing label for the mutation (e.g. "Capture",

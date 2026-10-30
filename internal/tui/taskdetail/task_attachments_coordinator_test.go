@@ -3,6 +3,7 @@ package taskdetail
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -12,7 +13,102 @@ import (
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/coordinator"
 	"github.com/sglavoie/docket/internal/tui/status"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 )
+
+func TestTaskAttachmentsReorderWaitsForCommit(t *testing.T) {
+	project, err := models.NewProject("project-1", "Attachments Project", t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Attachments = []models.Attachment{
+		{Filename: "a.txt", AddedAt: time.Now()},
+		{Filename: "b.txt", AddedAt: time.Now()},
+	}
+	project.Tasks = []*models.Task{task}
+	before := slices.Clone(task.Attachments)
+	attach, _ := newFakeAttachmentCoordinator()
+	model := NewTaskAttachmentsModel(task, project, nil, attach)
+
+	cmd := model.MoveSelectedAttachmentDown()
+	if cmd == nil {
+		t.Fatal("reorder returned no command")
+	}
+	if !slices.Equal(task.Attachments, before) || model.Cursor != 0 {
+		t.Fatal("reorder changed shared task data or cursor before its transaction ran")
+	}
+	result, ok := cmd().(coordinator.TransactionResultMsg)
+	if !ok {
+		t.Fatal("reorder did not dispatch its transaction")
+	}
+	if !slices.Equal(task.Attachments, before) {
+		t.Fatal("panel changed task data without a committed reload")
+	}
+	// A successful reload supplies the new order; only then follow the item.
+	task.Attachments[0], task.Attachments[1] = task.Attachments[1], task.Attachments[0]
+	if !model.RefreshAfterReload() {
+		t.Fatal("reload lost the task")
+	}
+	model.FollowAttachmentReorder(taskref.For(task, project), result.AttachmentReorder)
+	if model.Cursor != 1 {
+		t.Fatal("committed reorder did not follow the moved attachment")
+	}
+}
+
+func TestTaskAttachmentsReorderFreezesTheReadList(t *testing.T) {
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task.Attachments = []models.Attachment{
+		{Filename: "a.txt", AddedAt: time.Now()},
+		{Filename: "b.txt", AddedAt: time.Now()},
+	}
+	project := &models.Project{ID: "project-1", Tasks: []*models.Task{task}}
+	before := slices.Clone(task.Attachments)
+	attach, fake := newFakeAttachmentCoordinator()
+	model := NewTaskAttachmentsModel(task, project, nil, attach)
+	cmd := model.MoveSelectedAttachmentDown()
+	// Edit the same backing array while the command is waiting to run.
+	task.Attachments[0].Filename = "replacement.txt"
+	result, ok := cmd().(coordinator.TransactionResultMsg)
+	if !ok || len(fake.reorders) != 1 {
+		t.Fatal("reorder did not dispatch")
+	}
+	if !slices.Equal(fake.reorders[0].expected, before) || result.AttachmentReorder.Attachment != before[0] {
+		t.Fatal("asynchronous reorder reread the live attachment list")
+	}
+}
+
+func TestTaskAttachmentsReorderKeepsNavigationAndOtherOwners(t *testing.T) {
+	for _, scenario := range []string{"navigation", "other owner", "item replaced"} {
+		t.Run(scenario, func(t *testing.T) {
+			a := models.Attachment{Filename: "a.txt", AddedAt: time.Now()}
+			b := models.Attachment{Filename: "b.txt", AddedAt: time.Now()}
+			task := &models.Task{ID: "task-1", Attachments: []models.Attachment{b, a, {Filename: "c.txt"}}}
+			project := &models.Project{ID: "project-1", Tasks: []*models.Task{task}}
+			model := NewTaskAttachmentsModel(task, project, nil, coordinator.AttachmentCoordinator{})
+			owner := taskref.For(task, project)
+			switch scenario {
+			case "navigation":
+				model.Cursor = 2
+			case "other owner":
+				owner.TaskID = "another-task"
+			case "item replaced":
+				task.Attachments[1].Filename = "replacement.txt"
+			}
+			cursor := model.Cursor
+			model.FollowAttachmentReorder(owner, &coordinator.AttachmentReorder{From: 0, To: 1, Attachment: a})
+			if model.Cursor != cursor {
+				t.Fatal("committed reorder redirected an unrelated cursor")
+			}
+		})
+	}
+}
 
 func TestTaskAttachmentsDeleteDispatchesCoordinator(t *testing.T) {
 	project, err := models.NewProject("project-1", "Attachments Project", t.TempDir())
