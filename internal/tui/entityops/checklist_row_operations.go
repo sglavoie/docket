@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -61,7 +60,7 @@ func checklistDemoteChildApplicable(ctx operation.CommandContext) bool {
 // ChecklistRowOperationDescriptors is the authoritative catalog of checklist
 // row operations plus the reverse child-task conversion. Checklist operations
 // target the owner task because that is the durable identity an item hangs off;
-// the item itself is named by the index the command context froze.
+// the item itself is named by the index and ordered list the context froze.
 //
 // Every descriptor is Task category so that a key shared with a task operation
 // keeps one category across its bindings, which is what lets a non-task cursor
@@ -123,7 +122,7 @@ func ChecklistRowOperationDescriptors() []operation.OperationDescriptor {
 	}
 }
 
-// ChecklistItemRejectedMsg carries a refused append back to the shell so the
+// ChecklistItemRejectedMsg carries a refused append or edit back to the shell so the
 // prompt can reopen on the item the user already typed. It exists because the
 // failure can only be known after the value overlay closed — the commit resolves
 // the owner again and may find an unwritable project or a newer revision — and
@@ -137,13 +136,10 @@ type ChecklistItemRejectedMsg struct {
 	Err     error
 }
 
-// withChecklistAppendOutcome decorates both ends of one append. Success names
-// the owner task so the shell opens its checklist and seats the cursor on the
-// item that was just written; a refusal is rewritten into the retry message
-// above. Neither half touches the fold here, which is what keeps a refused write
-// from expanding an outline merely because an item was attempted: the reveal
-// rides the success message alone.
-func withChecklistAppendOutcome(
+// withChecklistItemOutcome retains a refused append or edit as a retry draft.
+// An append alone reveals the new item after success; an edit keeps its cursor.
+// A refusal never expands a checklist.
+func withChecklistItemOutcome(
 	cmd tea.Cmd,
 	identity taskref.TaskIdentity,
 	request operation.OperationExecutionRequest,
@@ -156,7 +152,9 @@ func withChecklistAppendOutcome(
 		msg := cmd()
 		switch typed := msg.(type) {
 		case coordinator.TransactionResultMsg:
-			typed.RevealChecklistFor = identity
+			if request.ID == operation.OperationChecklistAddItem {
+				typed.RevealChecklistFor = identity
+			}
 			return typed
 		case coordinator.TransactionErrorMsg:
 			return ChecklistItemRejectedMsg{
@@ -231,59 +229,56 @@ func (c *Controller) executeChecklistRowOperation(
 		return operation.OperationHandlerResult{Err: errors.New(operation.ChecklistRowRejectionMessage)}
 	}
 	identity := operation.CurrentTaskIdentity(invocation.Context)
-	task, _ := shell.TaskAndProjectForIdentity(identity)
-	if task == nil {
-		return operation.OperationHandlerResult{Err: errors.New("task is no longer available")}
-	}
 	index := entity.ChecklistIndex
-	if index < 0 || index >= len(task.Checklist) {
+	checklist := entity.Checklist
+	if index < 0 || index >= len(checklist) {
 		return operation.OperationHandlerResult{Err: errors.New("checklist item is no longer available")}
 	}
 
 	coordinator := shell.SubviewCoordinator()
 	switch invocation.Descriptor.ID {
 	case operation.OperationChecklistToggleItem:
-		return checklistCommandResult(coordinator.ToggleChecklistItem(identity, index))
+		return checklistCommandResult(coordinator.ToggleChecklistItem(identity, index, checklist))
 	case operation.OperationChecklistEditItem:
 		text, err := checklistItemText(invocation)
 		if err != nil {
 			return operation.OperationHandlerResult{Err: err}
 		}
-		return checklistCommandResult(coordinator.EditChecklistItem(identity, index, text))
+		return checklistCommandResult(withChecklistItemOutcome(
+			coordinator.EditChecklistItem(identity, index, text, checklist), identity,
+			operation.OperationExecutionRequest{ID: invocation.Descriptor.ID, Context: invocation.Context}, text,
+		))
 	case operation.OperationChecklistDeleteItem:
-		return checklistCommandResult(coordinator.RemoveChecklistItem(identity, index))
+		return checklistCommandResult(coordinator.RemoveChecklistItem(identity, index, checklist))
 	case operation.OperationChecklistPromoteItem:
-		// The whole ordered checklist is the item's identity at the application
-		// layer, so it is copied here, at the keypress, rather than re-read at
-		// commit time. A copy rather than the slice itself: the owner task stays
-		// loaded and a reload underneath would otherwise rewrite the frozen list
-		// the commit is checked against.
-		return checklistCommandResult(coordinator.PromoteChecklistItem(identity, index, slices.Clone(task.Checklist)))
+		// The context froze the whole list at the keypress, just as it did
+		// for the other indexed checklist mutations.
+		return checklistCommandResult(coordinator.PromoteChecklistItem(identity, index, checklist))
 	case operation.OperationChecklistMoveDown:
-		if index == len(task.Checklist)-1 {
+		if index == len(checklist)-1 {
 			return operation.OperationHandlerResult{Err: errors.New("this item is already last")}
 		}
 		c.followReorderedChecklistItem(shell, 1)
-		return checklistCommandResult(coordinator.ReorderChecklistItem(identity, index, index+1))
+		return checklistCommandResult(coordinator.ReorderChecklistItem(identity, index, index+1, checklist))
 	case operation.OperationChecklistMoveUp:
 		if index == 0 {
 			return operation.OperationHandlerResult{Err: errors.New("this item is already first")}
 		}
 		c.followReorderedChecklistItem(shell, -1)
-		return checklistCommandResult(coordinator.ReorderChecklistItem(identity, index, index-1))
+		return checklistCommandResult(coordinator.ReorderChecklistItem(identity, index, index-1, checklist))
 	case operation.OperationChecklistMoveBottom:
-		last := len(task.Checklist) - 1
+		last := len(checklist) - 1
 		if index == last {
 			return operation.OperationHandlerResult{Err: errors.New("this item is already last")}
 		}
 		c.followReorderedChecklistItem(shell, last-index)
-		return checklistCommandResult(coordinator.MoveChecklistItem(identity, index, last))
+		return checklistCommandResult(coordinator.MoveChecklistItem(identity, index, last, checklist))
 	case operation.OperationChecklistMoveTop:
 		if index == 0 {
 			return operation.OperationHandlerResult{Err: errors.New("this item is already first")}
 		}
 		c.followReorderedChecklistItem(shell, -index)
-		return checklistCommandResult(coordinator.MoveChecklistItem(identity, index, 0))
+		return checklistCommandResult(coordinator.MoveChecklistItem(identity, index, 0, checklist))
 	case operation.OperationChecklistActions:
 		if err := c.openChecklistActionSheet(shell, invocation.Context); err != nil {
 			return operation.OperationHandlerResult{Err: err}
@@ -316,7 +311,7 @@ func (c *Controller) executeChecklistAddItem(
 	// The retry request is rebuilt from the invocation rather than carried
 	// through the mutation: ID and context are all the prompt factory reads, and
 	// the value it would carry is exactly the one being retried.
-	return checklistCommandResult(withChecklistAppendOutcome(
+	return checklistCommandResult(withChecklistItemOutcome(
 		shell.SubviewCoordinator().AddChecklistItem(identity, text),
 		identity,
 		operation.OperationExecutionRequest{
@@ -381,7 +376,7 @@ func (c *Controller) openChecklistActionSheet(shell Shell, context operation.Com
 			Host:         listsurface.ContextActionHostOutliner,
 			Completion:   listsurface.ContextActionCompleteCloseSheet,
 			Title:        "Checklist Item",
-			Subtitle:     c.ChecklistItemTextForContext(shell, context),
+			Subtitle:     c.ChecklistItemTextForContext(context),
 			ItemIDPrefix: "checklist-action:",
 			SecondaryFor: operation.ActionSecondaryText,
 			Targets:      1,
@@ -402,14 +397,11 @@ func (c *Controller) openChecklistActionSheet(shell Shell, context operation.Com
 	return nil
 }
 
-func (c *Controller) ChecklistItemTextForContext(shell Shell, context operation.CommandContext) string {
-	task, _ := shell.TaskAndProjectForIdentity(operation.CurrentTaskIdentity(context))
-	if task == nil {
-		return ""
-	}
+func (c *Controller) ChecklistItemTextForContext(context operation.CommandContext) string {
 	index := context.Entity.ChecklistIndex
-	if index < 0 || index >= len(task.Checklist) {
+	checklist := context.Entity.Checklist
+	if index < 0 || index >= len(checklist) {
 		return ""
 	}
-	return strings.TrimSpace(task.Checklist[index].Text)
+	return strings.TrimSpace(checklist[index].Text)
 }

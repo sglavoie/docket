@@ -111,7 +111,7 @@ func TestCrossMachineHelperEditsChecklist(t *testing.T) {
 	case helperChecklistEdit:
 		text := helperEnv(t, helperTextEnv)
 		defer helperHoldAtCommit(t, "Edit Checklist Item", locator.ProjectID, locator.TaskID)()
-		if _, err := env.service.EditChecklistItem(locator, from, text); err != nil {
+		if _, err := env.service.EditChecklistItem(locator, from, text, helperStoredTask(t, env, locator).Checklist); err != nil {
 			helperRequireChecklistOrderSurvived(t, env, locator, before)
 			helperRecordRefusal(t, "EditChecklistItem", err)
 			return
@@ -126,7 +126,7 @@ func TestCrossMachineHelperEditsChecklist(t *testing.T) {
 		}
 		moved := before[from]
 		defer helperHoldAtCommit(t, "Move Checklist Item", locator.ProjectID, locator.TaskID)()
-		if _, err := env.service.MoveChecklistItem(locator, from, to); err != nil {
+		if _, err := env.service.MoveChecklistItem(locator, from, to, helperStoredTask(t, env, locator).Checklist); err != nil {
 			helperRequireChecklistOrderSurvived(t, env, locator, before)
 			helperRecordRefusal(t, "MoveChecklistItem", err)
 			return

@@ -50,23 +50,23 @@ func (s *promotionStub) AddChecklistItem(app.TaskLocator, string) (app.Checklist
 	panic("unexpected AddChecklistItem")
 }
 
-func (s *promotionStub) EditChecklistItem(app.TaskLocator, int, string) (app.ChecklistResult, error) {
+func (s *promotionStub) EditChecklistItem(app.TaskLocator, int, string, []models.ChecklistItem) (app.ChecklistResult, error) {
 	panic("unexpected EditChecklistItem")
 }
 
-func (s *promotionStub) RemoveChecklistItem(app.TaskLocator, int) (app.ChecklistResult, error) {
+func (s *promotionStub) RemoveChecklistItem(app.TaskLocator, int, []models.ChecklistItem) (app.ChecklistResult, error) {
 	panic("unexpected RemoveChecklistItem")
 }
 
-func (s *promotionStub) ToggleChecklistItem(app.TaskLocator, int) (app.ChecklistResult, error) {
+func (s *promotionStub) ToggleChecklistItem(app.TaskLocator, int, []models.ChecklistItem) (app.ChecklistResult, error) {
 	panic("unexpected ToggleChecklistItem")
 }
 
-func (s *promotionStub) ReorderChecklistItem(app.TaskLocator, int, int) (app.ChecklistResult, error) {
+func (s *promotionStub) ReorderChecklistItem(app.TaskLocator, int, int, []models.ChecklistItem) (app.ChecklistResult, error) {
 	panic("unexpected ReorderChecklistItem")
 }
 
-func (s *promotionStub) MoveChecklistItem(app.TaskLocator, int, int) (app.ChecklistResult, error) {
+func (s *promotionStub) MoveChecklistItem(app.TaskLocator, int, int, []models.ChecklistItem) (app.ChecklistResult, error) {
 	panic("unexpected MoveChecklistItem")
 }
 

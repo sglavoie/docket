@@ -62,52 +62,30 @@ func (b *Bridge) commandChecklist(request Request) (any, error) {
 	switch payload.Action {
 	case "edit":
 		act = func(service *app.Service) (app.ChecklistResult, error) {
-			return service.EditChecklistItem(target, index, payload.Text)
+			return service.EditChecklistItem(target, index, payload.Text, frozen)
 		}
 	case "toggle":
 		act = func(service *app.Service) (app.ChecklistResult, error) {
-			return service.ToggleChecklistItem(target, index)
+			return service.ToggleChecklistItem(target, index, frozen)
 		}
 	case "remove":
 		act = func(service *app.Service) (app.ChecklistResult, error) {
-			return service.RemoveChecklistItem(target, index)
+			return service.RemoveChecklistItem(target, index, frozen)
 		}
 	case "move":
 		if payload.To == nil {
 			return nil, newError(CodeInvalidRequest, "checklist move needs to")
 		}
 		act = func(service *app.Service) (app.ChecklistResult, error) {
-			return service.MoveChecklistItem(target, index, *payload.To)
+			return service.MoveChecklistItem(target, index, *payload.To, frozen)
 		}
 	default:
 		return nil, newError(CodeInvalidRequest, "action %q is not one of add, edit, toggle, remove, move, promote", payload.Action)
-	}
-	current, err := b.readTask(target)
-	if err != nil {
-		return nil, err
-	}
-	if !sameChecklist(current.Task.Checklist, frozen) {
-		return nil, &app.InvalidInputError{
-			Field:  "checklist",
-			Reason: fmt.Sprintf("the checklist of #%d changed since it was read; nothing was changed", current.Task.ShortID),
-		}
 	}
 	return b.commitChecklist(func(service *app.Service) (app.TaskResult, *app.TaskResult, error) {
 		result, err := act(service)
 		return result.Task, nil, err
 	})
-}
-
-func sameChecklist(current []checkItem, frozen []models.ChecklistItem) bool {
-	if len(current) != len(frozen) {
-		return false
-	}
-	for i, item := range current {
-		if item.Text != frozen[i].Text || item.Done != frozen[i].Done {
-			return false
-		}
-	}
-	return true
 }
 
 func (b *Bridge) commitChecklist(mutate func(*app.Service) (app.TaskResult, *app.TaskResult, error)) (checklistResult, error) {

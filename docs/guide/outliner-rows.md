@@ -73,6 +73,12 @@ on a checklist row or child task row:
 Delete Item is the eleventh and answers no key. It is reachable only from the
 `Space` menu and confirms before it removes anything.
 
+Editing, deleting, ticking, moving, and promoting an item all check that its
+checklist still matches the one you acted on. If a sync or another action changed
+that list meanwhile, the action is refused so it cannot affect a neighboring
+item. A refused edit keeps your text in the prompt with the reason it could not
+save; reopen the item before applying that text to a changed checklist.
+
 Add Checklist Item also answers from the owner task's own row,
 because a task with no checklist yet has no item row to press a key on. `c`
 therefore adds the first item and every item after it, from the task or from any

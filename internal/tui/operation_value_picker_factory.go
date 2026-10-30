@@ -305,7 +305,7 @@ func (m *AppModel) newOperationTextPrompt(
 		// request's own operation decides which, not the cursor.
 		current := ""
 		if request.ID == operation.OperationChecklistEditItem {
-			current = m.entities.ChecklistItemTextForContext(m, request.Context)
+			current = m.entities.ChecklistItemTextForContext(request.Context)
 		}
 		return operationhost.NewOperationTextPromptModel(
 			request, label, current, current, "checklist item", operationhost.NameTextPromptOptions(),

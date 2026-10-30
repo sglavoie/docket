@@ -271,7 +271,7 @@ func TestSubviewChecklistScenario(t *testing.T) {
 	env, features := newSecondaryEnv(t, "subview-checklist", task)
 
 	runResult(t, features.Subview.AddChecklistItem(taskref.For(task, env.project), "write the test"))
-	runResult(t, features.Subview.ToggleChecklistItem(taskref.For(task, env.project), 0))
+	runResult(t, features.Subview.ToggleChecklistItem(taskref.For(task, env.project), 0, task.Checklist))
 
 	if got := env.reload(t).GetTaskByID(task.ID); got == nil || len(got.Checklist) != 1 || !got.Checklist[0].Done {
 		t.Fatalf("reloaded checklist = %v, want one done item", got)

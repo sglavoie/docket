@@ -184,7 +184,7 @@ func (m *AppModel) reopenCommentPrompt(msg CommentRejectedMsg) tea.Cmd {
 }
 
 // reopenChecklistItemPrompt puts the refused item back in the buffer it was
-// typed in, on the owner the append was frozen onto. It is the third of the
+// typed in, on the owner the append or edit was frozen onto. It is the third of the
 // same shape as the resume note and the comment, and it degrades the same way:
 // an owner that no longer resolves means the task itself is gone rather than
 // the item being wrong, so there is nothing to retry into and the refusal

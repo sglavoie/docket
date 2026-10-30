@@ -1,6 +1,8 @@
 package outliner
 
 import (
+	"slices"
+
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/operation"
 	"github.com/sglavoie/docket/internal/tui/presentation"
@@ -96,6 +98,9 @@ func ChecklistOperationEntity(cursor ChecklistCursor) operation.EntityContext {
 	entity := TaskOperationEntity(cursor.Task, cursor.Project)
 	entity.HasChecklistCursor = true
 	entity.ChecklistIndex = cursor.Index
+	if cursor.Task != nil {
+		entity.Checklist = slices.Clone(cursor.Task.Checklist)
+	}
 	return entity
 }
 

@@ -169,14 +169,14 @@ func TestMoveChecklistItemSplicesRatherThanSwaps(t *testing.T) {
 	svc := newTestService(newFakeRepo(project))
 	locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
 
-	if _, err := svc.MoveChecklistItem(locator, 0, 3); err != nil {
+	if _, err := svc.MoveChecklistItem(locator, 0, 3, task.Checklist); err != nil {
 		t.Fatalf("MoveChecklistItem: %v", err)
 	}
 	if got, want := checklistTexts(task), []string{"two", "three", "four", "one"}; !equalStrings(got, want) {
 		t.Fatalf("checklist = %v, want %v", got, want)
 	}
 
-	if _, err := svc.MoveChecklistItem(locator, 3, 0); err != nil {
+	if _, err := svc.MoveChecklistItem(locator, 3, 0, task.Checklist); err != nil {
 		t.Fatalf("MoveChecklistItem back to top: %v", err)
 	}
 	if got, want := checklistTexts(task), []string{"one", "two", "three", "four"}; !equalStrings(got, want) {
@@ -190,7 +190,7 @@ func TestMoveChecklistItemRejectsOutOfRangeIndex(t *testing.T) {
 	project := newProject("proj-a", "Alpha", task)
 	svc := newTestService(newFakeRepo(project))
 
-	_, err := svc.MoveChecklistItem(app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}, 0, 5)
+	_, err := svc.MoveChecklistItem(app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}, 0, 5, task.Checklist)
 	if !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}

@@ -668,7 +668,7 @@ nearby task. Both cases resolve the owner identity rather than an item index,
 so one descriptor and one binding cover the first item and every item after it.
 
 Revealing the new item is a property of the commit rather than of the key press.
-`withChecklistAppendOutcome` decorates the coordinator command the way
+`withChecklistItemOutcome` decorates the coordinator command the way
 `withOutlinerRelocationCapture` does, naming the owner on
 `TransactionResultMsg.RevealChecklistFor`. `AppModel.handleTransactionResult`
 reads that field after the workspace refresh and the relocation settle, so
@@ -677,6 +677,14 @@ committed item through `MoveCursorToChecklistItem`, the checklist counterpart of
 `MoveCursorToIdentity` that a row's owner-task pointer would otherwise leave one
 row short. A refused write never reaches it, so a failed append changes neither
 the fold map nor the cursor.
+
+Indexed checklist mutations freeze the complete ordered list alongside the
+index in `EntityContext`. The application compares it inside the mutation's own
+snapshot before editing, deleting, ticking, swapping, or moving an item. The
+mobile bridge passes its client's frozen list through that same check rather
+than validating in a separate read. A refused edit reopens its prompt with the
+typed text and original frozen target, while only a successful append requests
+the new-item reveal.
 
 Make Subtask is the one member of the family that destroys the row it acts on,
 and that is what shapes both of its ends. At the keypress the handler freezes the

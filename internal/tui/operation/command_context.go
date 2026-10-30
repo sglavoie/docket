@@ -1,8 +1,10 @@
 package operation
 
 import (
+	"slices"
 	"strings"
 
+	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/presentation"
 	"github.com/sglavoie/docket/internal/tui/taskref"
 )
@@ -140,7 +142,8 @@ type SelectionContext struct {
 func (s SelectionContext) Count() int { return len(s.Tasks) }
 
 // EntityContext describes the entity a command would act on. It carries
-// identity and the archive guard only: an applicability rule that needs live
+// identity, the archive guard, and a frozen checklist for index-based gestures.
+// An applicability rule that needs live
 // task fields reads them from the resolved targets, so a frozen context can
 // never disagree with the workspace snapshot the handler mutates.
 type EntityContext struct {
@@ -158,6 +161,8 @@ type EntityContext struct {
 	// ChecklistIndex is the item's position inside the owner's checklist. It is
 	// meaningful only while HasChecklistCursor holds.
 	ChecklistIndex int
+	// Checklist is the ordered list frozen with the cursor index.
+	Checklist []models.ChecklistItem
 	// HasSectionHeaderCursor reports that the cursor rests on a grouping section
 	// header, which names neither a task nor a project. Nothing else
 	// distinguishes it from an empty entity in a single-project scope.
@@ -224,9 +229,13 @@ type CommandContext struct {
 // copies rather than with any one sheet, because every sheet that freezes a
 // context needs the same copy.
 func CloneCommandContext(context CommandContext) CommandContext {
+	context.Entity.Checklist = slices.Clone(context.Entity.Checklist)
 	context.Capabilities = cloneCapabilitySet(context.Capabilities)
 	context.Selection.Tasks = append([]taskref.TaskIdentity(nil), context.Selection.Tasks...)
 	context.Selection.Entities = append([]EntityContext(nil), context.Selection.Entities...)
+	for i := range context.Selection.Entities {
+		context.Selection.Entities[i].Checklist = slices.Clone(context.Selection.Entities[i].Checklist)
+	}
 	context.Selection.EntityIdentities = append(
 		[]EntityIdentity(nil),
 		context.Selection.EntityIdentities...,

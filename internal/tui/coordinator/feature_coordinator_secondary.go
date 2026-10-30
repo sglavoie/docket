@@ -147,21 +147,20 @@ type AttachmentMutator interface {
 
 // SubviewMutator is the narrow port the task subview panels (comments and
 // checklist) depend on. Every method commits one ChangeSet and checks bounds
-// against a fresh snapshot. Comment edits and removals also check the stored
-// value the panel read, so a shifted index cannot redirect a mutation.
+// against a fresh snapshot. Indexed mutations also check the stored comment or
+// ordered checklist the caller read, so a shifted index cannot redirect them.
 type SubviewMutator interface {
 	AddComment(locator app.TaskLocator, text string) (app.CommentResult, error)
 	EditComment(locator app.TaskLocator, index int, expected models.Comment, text string) (app.CommentResult, error)
 	RemoveComment(locator app.TaskLocator, index int, expected models.Comment) (app.CommentResult, error)
 	AddChecklistItem(locator app.TaskLocator, text string) (app.ChecklistResult, error)
-	EditChecklistItem(locator app.TaskLocator, index int, text string) (app.ChecklistResult, error)
-	RemoveChecklistItem(locator app.TaskLocator, index int) (app.ChecklistResult, error)
-	ToggleChecklistItem(locator app.TaskLocator, index int) (app.ChecklistResult, error)
-	ReorderChecklistItem(locator app.TaskLocator, from, to int) (app.ChecklistResult, error)
-	MoveChecklistItem(locator app.TaskLocator, from, to int) (app.ChecklistResult, error)
+	EditChecklistItem(locator app.TaskLocator, index int, text string, expected []models.ChecklistItem) (app.ChecklistResult, error)
+	RemoveChecklistItem(locator app.TaskLocator, index int, expected []models.ChecklistItem) (app.ChecklistResult, error)
+	ToggleChecklistItem(locator app.TaskLocator, index int, expected []models.ChecklistItem) (app.ChecklistResult, error)
+	ReorderChecklistItem(locator app.TaskLocator, from, to int, expected []models.ChecklistItem) (app.ChecklistResult, error)
+	MoveChecklistItem(locator app.TaskLocator, from, to int, expected []models.ChecklistItem) (app.ChecklistResult, error)
 	// PromoteChecklistItem converts one checklist item into a child task of its
-	// owner in one transaction. It is the one checklist method that does not take
-	// a bare index: a checklist item stores no identity, so the request carries
+	// owner in one transaction. Like the other indexed mutations, its request carries
 	// the complete ordered checklist the panel read and the promotion is refused
 	// whole unless the owner still holds exactly that list.
 	PromoteChecklistItem(req app.ChecklistPromotionRequest) (app.ChecklistPromotionResult, error)

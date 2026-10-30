@@ -90,11 +90,20 @@ func parityChecklist(t *testing.T) {
 	notes := at(atlasProject, releaseNotes)
 	p.step(func(s *app.Service) error { _, err := s.AddChecklistItem(notes, "Proofread"); return err },
 		"command.checklist", map[string]any{"task": wire(notes), "action": "add", "text": "Proofread"})
-	p.step(func(s *app.Service) error { _, err := s.ToggleChecklistItem(notes, 1); return err },
+	p.step(func(s *app.Service) error {
+		_, err := s.ToggleChecklistItem(notes, 1, p.desktop.lookup(notes).Task.Checklist)
+		return err
+	},
 		"command.checklist", map[string]any{"task": wire(notes), "action": "toggle", "index": 1, "checklist": p.checklist(notes)})
-	p.step(func(s *app.Service) error { _, err := s.EditChecklistItem(notes, 2, "Proofread twice"); return err },
+	p.step(func(s *app.Service) error {
+		_, err := s.EditChecklistItem(notes, 2, "Proofread twice", p.desktop.lookup(notes).Task.Checklist)
+		return err
+	},
 		"command.checklist", map[string]any{"task": wire(notes), "action": "edit", "index": 2, "text": "Proofread twice", "checklist": p.checklist(notes)})
-	p.step(func(s *app.Service) error { _, err := s.MoveChecklistItem(notes, 2, 0); return err },
+	p.step(func(s *app.Service) error {
+		_, err := s.MoveChecklistItem(notes, 2, 0, p.desktop.lookup(notes).Task.Checklist)
+		return err
+	},
 		"command.checklist", map[string]any{"task": wire(notes), "action": "move", "index": 2, "to": 0, "checklist": p.checklist(notes)})
 	frozen := slices.Clone(p.desktop.lookup(notes).Task.Checklist)
 	seen := p.checklist(notes)
@@ -102,7 +111,10 @@ func parityChecklist(t *testing.T) {
 		_, err := s.PromoteChecklistItem(app.ChecklistPromotionRequest{Owner: notes, Index: 0, Checklist: frozen})
 		return err
 	}, "command.checklist", map[string]any{"task": wire(notes), "action": "promote", "index": 0, "checklist": seen})
-	p.step(func(s *app.Service) error { _, err := s.RemoveChecklistItem(notes, 1); return err },
+	p.step(func(s *app.Service) error {
+		_, err := s.RemoveChecklistItem(notes, 1, p.desktop.lookup(notes).Task.Checklist)
+		return err
+	},
 		"command.checklist", map[string]any{"task": wire(notes), "action": "remove", "index": 1, "checklist": p.checklist(notes)})
 }
 

@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/docket/internal/models"
+
 	"github.com/sglavoie/docket/internal/app"
 	"github.com/sglavoie/docket/internal/syncexchange"
 	"github.com/sglavoie/docket/internal/synclog"
@@ -246,7 +248,11 @@ func syncConcurrentChecklistEdits(t *testing.T) {
 	// phone adds one. Neither may be lost.
 	seen = p.phone.checklist(notes)
 	p.phone.ok(p.phone.call("command.checklist", map[string]any{"task": notes, "action": "add", "text": "Ship the notes"}), nil)
-	if _, err := p.desktop.service().EditChecklistItem(notes.app(), 0, "Gather the full changelog"); err != nil {
+	frozenDesktop := make([]models.ChecklistItem, 0)
+	for _, item := range p.desktop.checklist(notes) {
+		frozenDesktop = append(frozenDesktop, models.ChecklistItem{Text: item.Text, Done: item.Done})
+	}
+	if _, err := p.desktop.service().EditChecklistItem(notes.app(), 0, "Gather the full changelog", frozenDesktop); err != nil {
 		t.Fatal(err)
 	}
 	conflicts := p.settle()

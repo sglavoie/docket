@@ -10,8 +10,8 @@ import (
 
 // This file holds the checklist use cases backing the task subview panel. They
 // mirror the comment use cases (comments.go): every mutation
-// resolves the task fresh, validates the index against the current item count so
-// a stale adapter-side index cannot silently target the wrong item, and commits
+// resolves the task fresh and checks the complete checklist the caller read,
+// so a shifted index cannot silently target another item, then commits
 // exactly one ChangeSet.
 
 // ChecklistResult is the presentation-neutral outcome of a checklist mutation.
@@ -42,13 +42,16 @@ func (s *Service) AddChecklistItem(locator TaskLocator, text string) (ChecklistR
 
 // EditChecklistItem replaces the text of the item at the given index,
 // preserving its done state.
-func (s *Service) EditChecklistItem(locator TaskLocator, index int, text string) (ChecklistResult, error) {
+func (s *Service) EditChecklistItem(locator TaskLocator, index int, text string, expected []models.ChecklistItem) (ChecklistResult, error) {
 	trimmed := strings.TrimSpace(text)
 	if trimmed == "" {
 		return ChecklistResult{}, invalidInput("checklist", "text is required")
 	}
 	var out ChecklistResult
 	res, err := s.mutateRichRecordSelection(locator, "Edit Checklist Item", func(ref TaskRef) error {
+		if err := validateChecklistSnapshot(ref.Task, expected); err != nil {
+			return err
+		}
 		if err := validChecklistIndex(index, len(ref.Task.Checklist)); err != nil {
 			return err
 		}
@@ -64,9 +67,12 @@ func (s *Service) EditChecklistItem(locator TaskLocator, index int, text string)
 }
 
 // RemoveChecklistItem removes the item at the given index.
-func (s *Service) RemoveChecklistItem(locator TaskLocator, index int) (ChecklistResult, error) {
+func (s *Service) RemoveChecklistItem(locator TaskLocator, index int, expected []models.ChecklistItem) (ChecklistResult, error) {
 	var out ChecklistResult
 	res, err := s.mutateRichRecordSelection(locator, "Remove Checklist Item", func(ref TaskRef) error {
+		if err := validateChecklistSnapshot(ref.Task, expected); err != nil {
+			return err
+		}
 		if err := validChecklistIndex(index, len(ref.Task.Checklist)); err != nil {
 			return err
 		}
@@ -83,9 +89,12 @@ func (s *Service) RemoveChecklistItem(locator TaskLocator, index int) (Checklist
 
 // ToggleChecklistItem flips the done state of the item at the given index and
 // reports the post-toggle state.
-func (s *Service) ToggleChecklistItem(locator TaskLocator, index int) (ChecklistResult, error) {
+func (s *Service) ToggleChecklistItem(locator TaskLocator, index int, expected []models.ChecklistItem) (ChecklistResult, error) {
 	var out ChecklistResult
 	res, err := s.mutateRichRecordSelection(locator, "Toggle Checklist Item", func(ref TaskRef) error {
+		if err := validateChecklistSnapshot(ref.Task, expected); err != nil {
+			return err
+		}
 		if err := validChecklistIndex(index, len(ref.Task.Checklist)); err != nil {
 			return err
 		}
@@ -102,9 +111,12 @@ func (s *Service) ToggleChecklistItem(locator TaskLocator, index int) (Checklist
 
 // ReorderChecklistItem swaps the items at from and to, matching the panel's
 // single-step move semantics.
-func (s *Service) ReorderChecklistItem(locator TaskLocator, from, to int) (ChecklistResult, error) {
+func (s *Service) ReorderChecklistItem(locator TaskLocator, from, to int, expected []models.ChecklistItem) (ChecklistResult, error) {
 	var out ChecklistResult
 	res, err := s.mutateRichRecordSelection(locator, "Reorder Checklist", func(ref TaskRef) error {
+		if err := validateChecklistSnapshot(ref.Task, expected); err != nil {
+			return err
+		}
 		if err := validChecklistIndex(from, len(ref.Task.Checklist)); err != nil {
 			return err
 		}
@@ -126,9 +138,12 @@ func (s *Service) ReorderChecklistItem(locator TaskLocator, from, to int) (Check
 // reinserts it at to, which is what repeated adjacent swaps produce on a
 // contiguous slice. ReorderChecklistItem swaps and so cannot express an edge
 // move across more than one position.
-func (s *Service) MoveChecklistItem(locator TaskLocator, from, to int) (ChecklistResult, error) {
+func (s *Service) MoveChecklistItem(locator TaskLocator, from, to int, expected []models.ChecklistItem) (ChecklistResult, error) {
 	var out ChecklistResult
 	res, err := s.mutateRichRecordSelection(locator, "Move Checklist Item", func(ref TaskRef) error {
+		if err := validateChecklistSnapshot(ref.Task, expected); err != nil {
+			return err
+		}
 		if err := validChecklistIndex(from, len(ref.Task.Checklist)); err != nil {
 			return err
 		}
@@ -153,6 +168,16 @@ func (s *Service) MoveChecklistItem(locator TaskLocator, from, to int) (Checklis
 func validChecklistIndex(index, count int) error {
 	if index < 0 || index >= count {
 		return invalidInput("checklist", fmt.Sprintf("checklist index %d out of range (task has %d)", index, count))
+	}
+	return nil
+}
+
+// validateChecklistSnapshot uses the entire ordered list as an item's identity:
+// duplicate text and completion flags make a position or text alone ambiguous.
+// The check runs inside the same snapshot that supplies the commit revision.
+func validateChecklistSnapshot(task *models.Task, expected []models.ChecklistItem) error {
+	if !slices.Equal(task.Checklist, expected) {
+		return invalidInput("checklist", fmt.Sprintf("the checklist of #%d changed since it was read; nothing was changed", task.ShortID))
 	}
 	return nil
 }

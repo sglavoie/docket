@@ -2,6 +2,7 @@ package tui
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -203,7 +204,7 @@ func TestExplicitCheckInRejectionReopensOnlyItsOwnInteraction(t *testing.T) {
 			if !dismissed || !ok {
 				t.Fatalf("restored draft did not resubmit: dismissed=%v msg=%T", dismissed, selected)
 			}
-			if resubmitted.Request.ID != request.ID || resubmitted.Request.Context.Entity != request.Context.Entity {
+			if resubmitted.Request.ID != request.ID || !reflect.DeepEqual(resubmitted.Request.Context.Entity, request.Context.Entity) {
 				t.Fatalf("resubmission lost the frozen targets: %+v", resubmitted.Request.Context.Entity)
 			}
 		})

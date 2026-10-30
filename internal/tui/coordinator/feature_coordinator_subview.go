@@ -102,42 +102,42 @@ func (c SubviewCoordinator) AddChecklistItem(task taskref.TaskIdentity, text str
 }
 
 // EditChecklistItem replaces a checklist item's text, preserving done state.
-func (c SubviewCoordinator) EditChecklistItem(task taskref.TaskIdentity, index int, text string) tea.Cmd {
+func (c SubviewCoordinator) EditChecklistItem(task taskref.TaskIdentity, index int, text string, expected []models.ChecklistItem) tea.Cmd {
 	return runTask("Edit Checklist Item", func() (app.TaskResult, error) {
-		res, err := c.sub.EditChecklistItem(task.Locator(), index, text)
+		res, err := c.sub.EditChecklistItem(task.Locator(), index, text, expected)
 		return res.Task, err
 	})
 }
 
 // RemoveChecklistItem removes the checklist item at index.
-func (c SubviewCoordinator) RemoveChecklistItem(task taskref.TaskIdentity, index int) tea.Cmd {
+func (c SubviewCoordinator) RemoveChecklistItem(task taskref.TaskIdentity, index int, expected []models.ChecklistItem) tea.Cmd {
 	return runTask("Remove Checklist Item", func() (app.TaskResult, error) {
-		res, err := c.sub.RemoveChecklistItem(task.Locator(), index)
+		res, err := c.sub.RemoveChecklistItem(task.Locator(), index, expected)
 		return res.Task, err
 	})
 }
 
 // ToggleChecklistItem flips a checklist item's done state.
-func (c SubviewCoordinator) ToggleChecklistItem(task taskref.TaskIdentity, index int) tea.Cmd {
+func (c SubviewCoordinator) ToggleChecklistItem(task taskref.TaskIdentity, index int, expected []models.ChecklistItem) tea.Cmd {
 	return runTask("Toggle Checklist Item", func() (app.TaskResult, error) {
-		res, err := c.sub.ToggleChecklistItem(task.Locator(), index)
+		res, err := c.sub.ToggleChecklistItem(task.Locator(), index, expected)
 		return res.Task, err
 	})
 }
 
 // ReorderChecklistItem swaps the checklist items at from and to.
-func (c SubviewCoordinator) ReorderChecklistItem(task taskref.TaskIdentity, from, to int) tea.Cmd {
+func (c SubviewCoordinator) ReorderChecklistItem(task taskref.TaskIdentity, from, to int, expected []models.ChecklistItem) tea.Cmd {
 	return runTask("Reorder Checklist", func() (app.TaskResult, error) {
-		res, err := c.sub.ReorderChecklistItem(task.Locator(), from, to)
+		res, err := c.sub.ReorderChecklistItem(task.Locator(), from, to, expected)
 		return res.Task, err
 	})
 }
 
 // MoveChecklistItem splices the checklist item at from out and reinserts it at
 // to, so an edge move is one transaction rather than one per adjacent swap.
-func (c SubviewCoordinator) MoveChecklistItem(task taskref.TaskIdentity, from, to int) tea.Cmd {
+func (c SubviewCoordinator) MoveChecklistItem(task taskref.TaskIdentity, from, to int, expected []models.ChecklistItem) tea.Cmd {
 	return runTask("Move Checklist Item", func() (app.TaskResult, error) {
-		res, err := c.sub.MoveChecklistItem(task.Locator(), from, to)
+		res, err := c.sub.MoveChecklistItem(task.Locator(), from, to, expected)
 		return res.Task, err
 	})
 }
