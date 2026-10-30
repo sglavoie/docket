@@ -12,7 +12,7 @@ import (
 
 // TestSyncUndo holds undo and redo to the sync contract: each is a new
 // outgoing change every device applies, each is refused whole when another
-// device's work has moved what it would restore, and the history behind them
+// device's work has changed a touched task, and the history behind them
 // belongs to the device that made it.
 func TestSyncUndo(t *testing.T) {
 	t.Run("undo_and_redo_publish_new_transactions", testUndoAndRedoPublishNewTransactions)
@@ -23,13 +23,27 @@ func TestSyncUndo(t *testing.T) {
 }
 
 func testUndoAndRedoPublishNewTransactions(t *testing.T) {
+	for _, peer := range []struct {
+		name, slug, id, title string
+	}{
+		{"different_project", homeSlug, homeTask1, "Retile the kitchen"},
+		{"same_project", atlasSlug, localize, "Localize for 12 regions"},
+	} {
+		t.Run(peer.name, func(t *testing.T) {
+			testUndoAndRedoPreservePeerTask(t, peer.slug, peer.id, peer.title)
+		})
+	}
+}
+
+func testUndoAndRedoPreservePeerTask(t *testing.T, peerSlug, peerID, peerTitle string) {
+	t.Helper()
 	c := newCluster(t, "a", "b")
 	a, b := c.r("a"), c.r("b")
 	original := a.task(atlasSlug, shipBeta)
 	a.commitUndoable(a.retitleArtifact(atlasSlug, shipBeta, "Ship beta build v2"))
 	edited := a.task(atlasSlug, shipBeta)
 	b.pull(a)
-	b.commit(b.retitleArtifact(homeSlug, homeTask1, "Retile the kitchen"))
+	b.commit(b.retitleArtifact(peerSlug, peerID, peerTitle))
 	a.pull(b)
 
 	if _, err := a.ledger.Undo(storage.GlobalScope()); err != nil {
@@ -46,7 +60,7 @@ func testUndoAndRedoPublishNewTransactions(t *testing.T) {
 	replicas := settleClean(t, c)
 	requireTaskEverywhere(t, replicas, atlasSlug, shipBeta, original)
 	for _, r := range replicas {
-		if r.task(homeSlug, homeTask1).Title != "Retile the kitchen" {
+		if r.task(peerSlug, peerID).Title != peerTitle {
 			t.Fatalf("%s lost b's change across a's undo", r.device)
 		}
 	}
@@ -59,6 +73,11 @@ func testUndoAndRedoPublishNewTransactions(t *testing.T) {
 	}
 	replicas = settleClean(t, c)
 	requireTaskEverywhere(t, replicas, atlasSlug, shipBeta, edited)
+	for _, r := range replicas {
+		if r.task(peerSlug, peerID).Title != peerTitle {
+			t.Fatalf("%s lost b's change across a's redo", r.device)
+		}
+	}
 	all, _ := c.everything()
 	requireOnlySyncedEffects(t, all)
 }
@@ -68,7 +87,7 @@ func testUndoRemoteEditRefusesStaleUndo(t *testing.T) {
 	a, b := c.r("a"), c.r("b")
 	a.commitUndoable(a.retitleArtifact(atlasSlug, shipBeta, "Ship beta build v2"))
 	b.pull(a)
-	b.commit(b.retitleArtifact(atlasSlug, localize, "Localize for 12 regions"))
+	b.commit(b.retitleArtifact(atlasSlug, shipBeta, "Ship beta build, phone title"))
 	a.pull(b)
 
 	current := a.read(atlasDoc)
@@ -84,8 +103,8 @@ func testUndoRemoteEditRefusesStaleUndo(t *testing.T) {
 	if len(a.outgoing()) != pending {
 		t.Fatal("a refused undo published a transaction")
 	}
-	// The remote edit recorded no ledger entry, so nothing can bring the file
-	// back to the image this one left: it is retired rather than left selected,
+	// The remote edit changed the same task and recorded no ledger entry, so
+	// this entry cannot restore it: it is retired rather than left selected,
 	// where it would wall off every older entry.
 	var retired *storage.RetiredEntryError
 	if !errors.As(err, &retired) {
@@ -96,7 +115,7 @@ func testUndoRemoteEditRefusesStaleUndo(t *testing.T) {
 	}
 	replicas := settleClean(t, c)
 	for _, r := range replicas {
-		if r.task(atlasSlug, localize).Title != "Localize for 12 regions" || r.task(atlasSlug, shipBeta).Title != "Ship beta build v2" {
+		if r.task(atlasSlug, shipBeta).Title != "Ship beta build, phone title" {
 			t.Fatalf("%s lost an edit", r.device)
 		}
 	}

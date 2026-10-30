@@ -25,7 +25,7 @@ func (l *WorkspaceLedger) prepareRestoreTransaction(
 	idx int,
 	redo bool,
 ) (*transaction.Manifest, error) {
-	ops, err := l.preflightRestoreOps(entry, redo)
+	ops, err := l.preflightRestoreOps(lf, entry, redo)
 	if err != nil {
 		return nil, err
 	}
@@ -148,8 +148,8 @@ func driftExplainedByLedger(lf *ledgerFile, entry LedgerEntry, path string, redo
 // directory state before returning phased operations. File writes/deletes are
 // emitted first. Directories that should be absent are removed deepest-first;
 // directories that should exist are recreated by descendant file writes. Any
-// drift aborts the grouped restore before Journal.Prepare stages bytes.
-func (l *WorkspaceLedger) preflightRestoreOps(entry LedgerEntry, redo bool) ([]transaction.Op, error) {
+// overlapping drift aborts the grouped restore before Journal.Prepare stages bytes.
+func (l *WorkspaceLedger) preflightRestoreOps(lf *ledgerFile, entry LedgerEntry, redo bool) ([]transaction.Op, error) {
 	blobs, err := l.validateRestoreImages(entry)
 	if err != nil {
 		return nil, err
@@ -159,7 +159,11 @@ func (l *WorkspaceLedger) preflightRestoreOps(entry LedgerEntry, redo bool) ([]t
 	directoryDeletes := make(map[string]bool)
 	fileDeletes := make(map[string]bool)
 	for _, image := range entry.Artifacts {
-		op, planned, planErr := preflightRestoreImage(image, redo, blobs, directoryDeletes, fileDeletes)
+		// A pending local entry still owns its place in the history. Rebase
+		// only drift that came from outside the ledger, under the same locks
+		// as the exact-image restore.
+		rebaseTasks := l.isProjectTaskImage(image) && !driftExplainedByLedger(lf, entry, image.Path, redo)
+		op, planned, planErr := preflightRestoreImage(image, redo, blobs, directoryDeletes, fileDeletes, rebaseTasks)
 		if planErr != nil {
 			return nil, planErr
 		}
@@ -239,6 +243,7 @@ func preflightRestoreImage(
 	blobs map[string][]byte,
 	directoryDeletes map[string]bool,
 	fileDeletes map[string]bool,
+	rebaseTasks bool,
 ) (transaction.Op, bool, error) {
 	path := filepath.Clean(image.Path)
 	expectedExists, expectedHash := image.AfterExists, image.AfterHash
@@ -275,6 +280,11 @@ func preflightRestoreImage(
 		actualHash = RawArtifactRevision(current)
 	}
 	if currentExists != expectedExists || (currentExists && (actualKind != "file" || actualHash != expectedHash)) {
+		if rebaseTasks && currentExists && actualKind == "file" && expectedExists && desiredExists {
+			if data, ok := rebaseTaskRestore(blobs[expectedHash], blobs[desiredHash], current); ok {
+				return transaction.Op{Kind: transaction.OpWrite, Target: path, Data: data, Mode: FilePermissions}, true, nil
+			}
+		}
 		if actualKind != "file" {
 			actualHash = actualKind
 		}

@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/docket/internal/storage"
 )
 
 func TestReceiptUndoRestoresPlanningAndReplaysWithoutUndoingAnotherAction(t *testing.T) {
@@ -82,5 +84,58 @@ func TestReceiptUndoSyncsAndCannotOverwriteIncomingWork(t *testing.T) {
 	p.phone.rejects(p.phone.call("command.undo", map[string]any{"transaction_id": changed.Committed.TransactionID}), CodeStaleRevision)
 	if got := p.phone.detail(atlasProject, releaseNotesTask).Task.Title; got != "An incoming edit" {
 		t.Fatalf("undo overwrote incoming work: %q", got)
+	}
+}
+
+// Exercise the receipt used by the phone and the same ledger the desktop's
+// Undo/Redo keys use, then exchange their real sync manifests in both directions.
+func TestUndoRedoPreservesOtherTasksAcrossDevices(t *testing.T) {
+	for _, device := range []string{"desktop", "phone"} {
+		t.Run(device, func(t *testing.T) {
+			p := newPair(t)
+			origin, peer := p.desktop, p.phone
+			if device == "phone" {
+				origin, peer = peer, origin
+			}
+			target := task(atlasProject, releaseNotesTask)
+			other := task(atlasProject, screenshotsTask)
+			original := origin.detail(atlasProject, releaseNotesTask).Task.Title
+			var edited mutationResult
+			origin.ok(origin.call("command.edit", map[string]any{"task": target, "title": "Edited on " + device}), &edited)
+			if conflicts := p.settle(); len(conflicts) != 0 {
+				t.Fatalf("edit conflicts: %+v", conflicts)
+			}
+			peer.ok(peer.call("command.edit", map[string]any{"task": other, "title": "Incoming unrelated edit"}), nil)
+			if conflicts := p.settle(); len(conflicts) != 0 {
+				t.Fatalf("incoming edit conflicts: %+v", conflicts)
+			}
+			origin.ok(origin.call("command.undo", map[string]any{"transaction_id": edited.Committed.TransactionID}), nil)
+			if conflicts := p.settle(); len(conflicts) != 0 {
+				t.Fatalf("undo conflicts: %+v", conflicts)
+			}
+			requireTitle(t, p, target, original)
+			requireTitle(t, p, other, "Incoming unrelated edit")
+
+			// Another incoming edit while Undo is on the redo stack must also
+			// survive, rather than replaying the bytes observed during Undo.
+			peer.ok(peer.call("command.edit", map[string]any{"task": other, "title": "Later incoming edit"}), nil)
+			if conflicts := p.settle(); len(conflicts) != 0 {
+				t.Fatalf("later edit conflicts: %+v", conflicts)
+			}
+			if _, err := origin.bridge.workspace.runtime.Ledger().Redo(storage.GlobalScope()); err != nil {
+				t.Fatal(err)
+			}
+			if conflicts := p.settle(); len(conflicts) != 0 {
+				t.Fatalf("redo conflicts: %+v", conflicts)
+			}
+			requireTitle(t, p, target, "Edited on "+device)
+			requireTitle(t, p, other, "Later incoming edit")
+			origin.ok(origin.call("command.undo", map[string]any{"transaction_id": edited.Committed.TransactionID}), nil)
+			if conflicts := p.settle(); len(conflicts) != 0 {
+				t.Fatalf("repeated undo conflicts: %+v", conflicts)
+			}
+			requireTitle(t, p, target, original)
+			requireTitle(t, p, other, "Later incoming edit")
+		})
 	}
 }

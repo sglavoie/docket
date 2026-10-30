@@ -135,6 +135,56 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 	})
 }
 
+func TestTUIUndoRedoPreservesUnrelatedTaskEdit(t *testing.T) {
+	dataDir := t.TempDir()
+	task := seedTask(t, 1, "Original A", models.StateBacklog)
+	other := seedTask(t, 2, "Original B", models.StateBacklog)
+	project := newLedgerUndoProject(t, dataDir, "undo-other-task", task)
+	project.Tasks = append(project.Tasks, other)
+	project.NextShortID = 3
+	project.BuildTaskTree()
+	mutator := newLedgerUndoApp(t, dataDir, project, task.ID, true)
+	title := "Edited A"
+	if _, err := mutator.domain.service.Edit(app.EditRequest{
+		Locator: app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}, Title: &title,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// A change arriving from outside this ledger rewrites the shared document.
+	incoming := restartLedgerProject(project)
+	if err := storage.LoadProject(incoming); err != nil {
+		t.Fatal(err)
+	}
+	incoming.GetTaskByID(other.ID).Title = "Incoming B"
+	content, err := storage.WriteProjectMarkdown(incoming)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(storage.TasksFilePath(project.Path), []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	restarted := newLedgerUndoApp(t, dataDir, restartLedgerProject(project), task.ID, false)
+	for _, step := range []struct {
+		redo bool
+		want string
+	}{{false, "Original A"}, {true, "Edited A"}} {
+		if step.redo {
+			restarted = sendAppKey(restarted, syntheticCtrlKey('r'))
+		} else {
+			restarted = sendAppKey(restarted, syntheticKey('u'))
+		}
+		if err := storage.LoadProject(incoming); err != nil {
+			t.Fatal(err)
+		}
+		if got := incoming.GetTaskByID(task.ID).Title; got != step.want {
+			t.Fatalf("A after restore = %q, want %q", got, step.want)
+		}
+		if got := incoming.GetTaskByID(other.ID).Title; got != "Incoming B" {
+			t.Fatalf("B after restore = %q, want Incoming B", got)
+		}
+	}
+}
+
 // newLedgerUndoProject builds a single-project workspace pointer whose task tree
 // is ready for the ledger-backed service to commit.
 func newLedgerUndoProject(t *testing.T, dataDir, slug string, task *models.Task) *models.Project {

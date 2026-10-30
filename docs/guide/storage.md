@@ -30,10 +30,17 @@ answer both keys against that one ledger, and each refreshes what it is showing
 rather than leaving a reversed row on screen. No surface offers the `u undo` a
 recovery toast advertises and then consumes the key in silence.
 
-An undo or redo is refused when a file it would restore was changed by something
-the ledger did not record — a change synced from another device, or an edit made
-outside Docket. Nothing is written, and that entry is dropped from history, since
-the file can no longer return to the state the entry expects. The message names
+Undo and Redo for edits to existing tasks preserve changes synced to other tasks
+in the same project, including changes made outside Docket. For example, rename
+task A on your Mac, edit task B on your iPhone, and sync: undoing the rename
+restores A and keeps B's edit. Redo keeps B's edit too. A later change to A itself
+still refuses the restore, even if it changed a different field. A restore also
+refuses if the combined result would break a task invariant, such as completing
+a parent that now has an open child.
+
+Task creation, deletion, ordering, project metadata, notes, and attachments keep
+their exact-file checks. If a change outside the ledger prevents a restore, the
+entry is dropped from history without overwriting that work. The message names
 the entry and the file; press the key again to reach the entry before it.
 
 Workspace commits validate paths and revisions, stage a durable manifest, and

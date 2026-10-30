@@ -232,25 +232,41 @@ heartbeat stamped further ahead than the grace reads as stale too — which is w
 once rather than treating that as a supported mode.
 
 The ledger retains at most 50 transactions across undo and redo. `u` and
-`Ctrl+R` restore complete artifact images, including project moves, planning,
+`Ctrl+R` restore retained changes, including project moves, planning,
 notes, and attachment topology. Every successful forward mutation clears redo.
 Failed operations record nothing. Undo is convenience history in the same
 workspace, not an independent backup.
 
 An entry keeps its `Seq` on both stacks. Undo takes the highest on the undo
-stack, so redo takes the lowest on the redo stack: the last entry undone, and the
-only one whose before-image the file currently holds.
+stack, so redo takes the lowest on the redo stack: the last entry undone, whose
+recorded change must be replayed before later ones.
 
-A restore preflights every image and refuses on drift before staging a byte. What
-happens to the refused entry depends on whether the ledger can explain the drift.
-A scoped restore can select an entry older than one outside its scope that wrote
-the same file; that entry is blocked behind the newer one, and the refusal leaves
-it in place. Drift no pending entry accounts for came from outside the ledger — a
-sync import and an external edit record no entry — so the file can never return
-to the image the entry expects. `retireDriftedEntry` drops that entry in a
-ledger-only journal transaction and returns `RetiredEntryError`, which unwraps to
-the `ArtifactConflictError` naming the file. Left selected, it would have been
-chosen by every later restore and walled off all older history behind it.
+A restore preflights every image before staging a byte. For an existing-task edit
+in `projects/<slug>/tasks.md`, external drift can be rebased by task identity:
+the retained before/after documents must have the same task membership, order,
+project name, and project comments. Their changed tasks must still match the
+expected persisted values in the current document, including `UpdatedAt`.
+`rebaseTaskRestore` replaces those tasks with their desired versions and retains
+the current other tasks, order, and project metadata. It uses the merge audit and
+canonical writer to validate the combined project. A later edit to a touched
+task refuses whole, even on another field. File creation/deletion, ordering,
+project metadata edits, notes, and attachments retain exact-image preconditions.
+
+The original retained images remain the entry's intent on both stacks; each
+Undo or Redo compares them against the current document again. No rebased blobs
+or new ledger fields are needed, and the result uses the existing atomic restore
+manifest, including its sync history. Incoming work between Undo and Redo is
+therefore preserved too.
+
+What happens to a refused entry depends on whether the ledger can explain the
+drift. A scoped restore can select an entry older than one outside its scope that
+wrote the same file; that entry is blocked behind the newer one, semantic
+rebasing is disabled, and the refusal leaves it in place. Unrestorable drift no
+pending entry accounts for came from outside the ledger — a sync import and an
+external edit record no entry. `retireDriftedEntry` drops that entry in a
+ledger-only journal transaction and returns `RetiredEntryError`, which unwraps
+to the `ArtifactConflictError` naming the file. Left selected, it would have
+been chosen by every later restore and walled off all older history behind it.
 
 Deleting a project is the widest single transaction the product commits, and it
 is built from the same primitive as every other. A delete op is `os.Remove`: one

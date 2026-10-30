@@ -602,9 +602,10 @@ keep each commit atomic. A failure prints its seed, a replay command
   [External changes](#external-changes)), which runs at launch and before every
   incoming manifest. A frontend that wants them published sooner must observe
   after saving; continuous observation belongs to the transport's polling.
-- Undo refuses whenever another device changed a file the entry touches, even
-  a different task in the same `tasks.md`. A three-way rebase of the inverse
-  change would let more undos through.
+- Undo and Redo of existing-task edits preserve peer changes to other tasks in
+  the same `tasks.md`, while refusing any change to a touched task. Creation,
+  deletion, ordering, project metadata edits, notes, and attachments still
+  require exact file images; extending semantic restores to them is deferred.
 - Reconciliation reads the whole history on every incoming manifest. Caching
   the resolved workspace, or compacting history, is deferred with history
   retention.
