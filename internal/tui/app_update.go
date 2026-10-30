@@ -485,7 +485,7 @@ func (m *AppModel) localToggleIsNewest(localAt time.Time, redo bool) bool {
 	if localAt.IsZero() {
 		return true
 	}
-	entry, ok, err := ledgerNewestEntry(workspaceLedgerFromConfig(m.domain.runtime), storage.GlobalScope(), redo)
+	entry, ok, err := ledgerNewestEntry(m.workspaceHistoryLedger(), storage.GlobalScope(), redo)
 	if err != nil || !ok {
 		return true
 	}

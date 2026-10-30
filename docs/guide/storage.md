@@ -38,7 +38,15 @@ still refuses the restore, even if it changed a different field. A restore also
 refuses if the combined result would break a task invariant, such as completing
 a parent that now has an open child.
 
-Task creation, deletion, ordering, project metadata, notes, and attachments keep
+Creating one standalone root task in an existing project also supports this:
+capture A, sync an edit to B, then undo or redo A without losing B's edit.
+Undo refuses if A changed, gained children, or was added to Today or Next.
+Redo restores A's original identity and values, placing it before the next
+surviving original root task, or at the end if none remains. It refuses if A's
+identity or project-local task number is now in use.
+
+Creation with attachments, subtasks, multiple tasks, or other coupled changes,
+and task deletion, ordering, project metadata, notes, and attachments keep
 their exact-file checks. If a change outside the ledger prevents a restore, the
 entry is dropped from history without overwriting that work. The message names
 the entry and the file; press the key again to reach the entry before it.

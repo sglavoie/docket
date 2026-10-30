@@ -249,8 +249,23 @@ expected persisted values in the current document, including `UpdatedAt`.
 `rebaseTaskRestore` replaces those tasks with their desired versions and retains
 the current other tasks, order, and project metadata. It uses the merge audit and
 canonical writer to validate the combined project. A later edit to a touched
-task refuses whole, even on another field. File creation/deletion, ordering,
-project metadata edits, notes, and attachments retain exact-image preconditions.
+task refuses whole, even on another field.
+
+A single-artifact entry that added exactly one root task without attachments
+also rebases by identity. Its original images must leave every existing task,
+their order, and project metadata unchanged. Undo removes only the unchanged
+created task and refuses if it has acquired children. Redo requires the identity
+to be absent and inserts the original task before the next surviving original
+root task, or at the end. The combined-document audit refuses a reused ShortID.
+The engine installs a creation guard over the planning artifact: restore holds
+its normal file lock alongside the project lock, and the configuration store's
+read-only loader checks Today and Next before removing a task. This check also
+runs when the project still matches the exact image, since a planning-only
+change can leave task bytes untouched. Unrelated planning is never rewritten;
+an unreadable planning file refuses without recovering a backup during preflight.
+
+File creation/deletion, coupled or multi-task creation, ordering, project
+metadata edits, notes, and attachments retain exact-image preconditions.
 
 The original retained images remain the entry's intent on both stacks; each
 Undo or Redo compares them against the current document again. No rebased blobs

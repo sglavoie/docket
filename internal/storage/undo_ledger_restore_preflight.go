@@ -154,6 +154,9 @@ func (l *WorkspaceLedger) preflightRestoreOps(lf *ledgerFile, entry LedgerEntry,
 	if err != nil {
 		return nil, err
 	}
+	if err := l.checkTaskCreationRestore(entry, blobs, redo); err != nil {
+		return nil, err
+	}
 
 	fileOps := make([]transaction.Op, 0, len(entry.Artifacts))
 	directoryDeletes := make(map[string]bool)
@@ -163,7 +166,7 @@ func (l *WorkspaceLedger) preflightRestoreOps(lf *ledgerFile, entry LedgerEntry,
 		// only drift that came from outside the ledger, under the same locks
 		// as the exact-image restore.
 		rebaseTasks := l.isProjectTaskImage(image) && !driftExplainedByLedger(lf, entry, image.Path, redo)
-		op, planned, planErr := preflightRestoreImage(image, redo, blobs, directoryDeletes, fileDeletes, rebaseTasks)
+		op, planned, planErr := preflightRestoreImage(image, redo, blobs, directoryDeletes, fileDeletes, rebaseTasks, len(entry.Artifacts) == 1)
 		if planErr != nil {
 			return nil, planErr
 		}
@@ -244,6 +247,7 @@ func preflightRestoreImage(
 	directoryDeletes map[string]bool,
 	fileDeletes map[string]bool,
 	rebaseTasks bool,
+	allowCreation bool,
 ) (transaction.Op, bool, error) {
 	path := filepath.Clean(image.Path)
 	expectedExists, expectedHash := image.AfterExists, image.AfterHash
@@ -281,7 +285,7 @@ func preflightRestoreImage(
 	}
 	if currentExists != expectedExists || (currentExists && (actualKind != "file" || actualHash != expectedHash)) {
 		if rebaseTasks && currentExists && actualKind == "file" && expectedExists && desiredExists {
-			if data, ok := rebaseTaskRestore(blobs[expectedHash], blobs[desiredHash], current); ok {
+			if data, ok := rebaseTaskRestore(blobs[expectedHash], blobs[desiredHash], current, redo, allowCreation); ok {
 				return transaction.Op{Kind: transaction.OpWrite, Target: path, Data: data, Mode: FilePermissions}, true, nil
 			}
 		}

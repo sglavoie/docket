@@ -351,11 +351,6 @@ func TestTUIStateMachine_OutlinerSelectionSurvivesVisibilityRebuilds(t *testing.
 	})
 }
 
-func sendAppKey(app *AppModel, key tea.KeyPressMsg) *AppModel {
-	model, _ := app.Update(key)
-	return model.(*AppModel)
-}
-
 func newFocusToggleTestApp(t *testing.T) (*AppModel, *models.Task) {
 	t.Helper()
 	return newFocusToggleTestAppState(t)

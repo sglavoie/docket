@@ -25,7 +25,7 @@ func (l *WorkspaceLedger) isProjectTaskImage(image ArtifactImage) bool {
 	return false
 }
 
-// rebaseTaskRestore applies an edit's inverse (or its redo) to the current
+// rebaseTaskRestore applies an edit or standalone creation's inverse (or redo) to the current
 // project by task identity. Every touched task must still hold the complete
 // expected persisted value, including its touch time. Other tasks and project
 // metadata come from current. This deliberately has no field-level merge: a
@@ -34,7 +34,7 @@ func (l *WorkspaceLedger) isProjectTaskImage(image ArtifactImage) bool {
 // The entry's original images remain its intent on both stacks. Comparing them
 // again on every restore preserves unrelated work through repeated undo/redo,
 // later external edits, and restarts without changing the ledger format.
-func rebaseTaskRestore(expectedBytes, desiredBytes, currentBytes []byte) ([]byte, bool) {
+func rebaseTaskRestore(expectedBytes, desiredBytes, currentBytes []byte, redo, allowCreation bool) ([]byte, bool) {
 	expected, err := parseProjectDocumentContent(string(expectedBytes))
 	if err != nil {
 		return nil, false
@@ -43,17 +43,31 @@ func rebaseTaskRestore(expectedBytes, desiredBytes, currentBytes []byte) ([]byte
 	if err != nil {
 		return nil, false
 	}
-	// Creation, deletion, ordering, and project metadata operations still
-	// require their exact images. The semantic path covers existing-task edits.
 	if expected.ProjectName != desired.ProjectName ||
-		!slices.EqualFunc(expected.Comments, desired.Comments, models.ProjectCommentEqual) ||
-		!slices.EqualFunc(expected.Tasks, desired.Tasks, func(a, b *models.Task) bool { return a.ID == b.ID }) {
+		!slices.EqualFunc(expected.Comments, desired.Comments, models.ProjectCommentEqual) {
 		return nil, false
 	}
 	current, err := parseProjectDocumentContent(string(currentBytes))
 	if err != nil {
 		return nil, false
 	}
+	if slices.EqualFunc(expected.Tasks, desired.Tasks, func(a, b *models.Task) bool { return a.ID == b.ID }) {
+		if !rebaseEditedTasks(expected, desired, current) {
+			return nil, false
+		}
+	} else if !allowCreation || !rebaseCreatedTask(expected, desired, current, redo) {
+		return nil, false
+	}
+	// Independent changes can still compose an invalid hierarchy or reuse a
+	// created task's project-local ShortID while it is on the redo stack.
+	if len(auditMergedDocument(current)) != 0 {
+		return nil, false
+	}
+	rendered, err := current.WriteCurrent()
+	return []byte(rendered), err == nil
+}
+
+func rebaseEditedTasks(expected, desired, current *ProjectDocument) bool {
 	currentByID := indexTasks(current.Tasks)
 	replacements := make(map[string]*models.Task)
 	for i, task := range expected.Tasks {
@@ -63,25 +77,19 @@ func rebaseTaskRestore(expectedBytes, desiredBytes, currentBytes []byte) ([]byte
 		}
 		live := currentByID[task.ID]
 		if live == nil || !restoreTasksEqual(task, live) {
-			return nil, false
+			return false
 		}
 		replacements[task.ID] = replacement
 	}
 	if len(replacements) == 0 {
-		return nil, false
+		return false
 	}
 	for i, task := range current.Tasks {
 		if replacement := replacements[task.ID]; replacement != nil {
 			current.Tasks[i] = replacement
 		}
 	}
-	// Independent task edits can still compose an invalid hierarchy, such as
-	// undoing a parent's reopening after a peer added an open child.
-	if len(auditMergedDocument(current)) != 0 {
-		return nil, false
-	}
-	rendered, err := current.WriteCurrent()
-	return []byte(rendered), err == nil
+	return true
 }
 
 func restoreTasksEqual(a, b *models.Task) bool {

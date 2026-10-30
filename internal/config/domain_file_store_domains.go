@@ -94,6 +94,16 @@ func (s *DomainFileStore) LoadPlanning() (*PlanningState, error) {
 	return p, err
 }
 
+// LoadPlanningReadOnly validates the primary planning file without recovering a
+// backup or writing. Restore preflight uses it while holding the artifact lock.
+func (s *DomainFileStore) LoadPlanningReadOnly() (*PlanningState, error) {
+	out := NewPlanningState()
+	if _, err := s.loadArtifact(domainPlanning, out, false); err != nil {
+		return nil, err
+	}
+	return out, out.Validate()
+}
+
 // LoadPlanningChecked loads planning state and its revision.
 func (s *DomainFileStore) LoadPlanningChecked() (*PlanningState, string, error) {
 	out := NewPlanningState()

@@ -144,6 +144,7 @@ func Attach(state *config.RuntimeState, manager *config.Manager, clock app.Clock
 		owner = manager.TransactionOwner()
 	}
 	ledger := storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), []string{dataDir})
+	guardCreationRestore(ledger, dataDir)
 	// Today/Next exclusivity folds into every workflow-state transition this
 	// service commits, whichever frontend raised it.
 	repo := NewRepository(dataDir, deps, ledger, owner)

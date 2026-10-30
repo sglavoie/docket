@@ -220,6 +220,10 @@ type WorkspaceLedger struct {
 	// ownWrites, when non-nil, records what each undo and redo wrote. The
 	// commit service that attaches the registry propagates it here.
 	ownWrites *OwnWrites
+	// A frontend with separately stored planning can refuse removal of a newly
+	// planned task without making storage interpret that domain's file format.
+	creationGuardPath string
+	creationGuard     func(projectIDs []string, taskID string) error
 }
 
 // WorkspaceLedgerValidation summarizes a successful read-only validation.

@@ -218,7 +218,7 @@ func (m *AppModel) setRecoveryFeedbackWithContext(
 		m.setSuccessStatus(successMessage)
 		return m.statusReadingTimeout()
 	}
-	entry, ok, err := workspaceLedgerFromConfig(m.domain.runtime).SelectNewestUndo(storage.GlobalScope())
+	entry, ok, err := m.workspaceHistoryLedger().SelectNewestUndo(storage.GlobalScope())
 	if err != nil || !ok || entry.TransactionID != transactionID {
 		m.setSuccessStatus(successMessage)
 		return m.statusReadingTimeout()

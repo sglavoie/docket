@@ -14,10 +14,20 @@ import (
 	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
+// workspaceHistoryLedger keeps previews and restores on the engine's handle,
+// including its device identity, sync history, and creation guard. Isolated
+// tests without an engine retain the durable, unbound ledger fallback.
+func (m *AppModel) workspaceHistoryLedger() *storage.WorkspaceLedger {
+	if ledger := m.domain.historyLedger(); ledger != nil {
+		return ledger
+	}
+	return workspaceLedgerFromConfig(m.domain.runtime)
+}
+
 // workspaceLedgerRestoreIsNewest reports whether the durable workspace ledger
 // holds a reversible transaction for the applicable action.
 func (m *AppModel) workspaceLedgerRestoreIsNewest(redo bool) bool {
-	ledger := workspaceLedgerFromConfig(m.domain.runtime)
+	ledger := m.workspaceHistoryLedger()
 	_, ok, err := ledgerNewestEntry(ledger, storage.GlobalScope(), redo)
 	return err == nil && ok
 }
@@ -35,7 +45,7 @@ func ledgerNewestEntry(ledger *storage.WorkspaceLedger, scope storage.LedgerScop
 // Missing or unreadable entries offer no menu action; the direct keys still
 // report the ledger's own refusal when invoked.
 func (m *AppModel) workspaceHistoryPreview() (undo, redo string) {
-	ledger := workspaceLedgerFromConfig(m.domain.runtime)
+	ledger := m.workspaceHistoryLedger()
 	if entry, ok, err := ledgerNewestEntry(ledger, storage.GlobalScope(), false); err == nil && ok {
 		undo = entry.Description()
 	}
@@ -72,7 +82,7 @@ func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
 // first.
 func (m *AppModel) restoreLedgerEntry(redo bool, transactionID string) (tea.Cmd, string, bool) {
 	m.retireInteraction()
-	ledger := workspaceLedgerFromConfig(m.domain.runtime)
+	ledger := m.workspaceHistoryLedger()
 	restore := ledger.UndoWithEntry
 	verb, label := "Undid", "undo"
 	switch {

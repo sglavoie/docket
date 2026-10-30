@@ -116,6 +116,9 @@ func (l *WorkspaceLedger) restore(scope LedgerScope, redo bool, expectTransactio
 		for _, dir := range directoryLockPaths {
 			artifacts = append(artifacts, ArtifactChange{Path: dir})
 		}
+		if !redo && l.guardsTaskCreation(entry) {
+			artifacts = append(artifacts, ArtifactChange{Path: l.creationGuardPath})
+		}
 		lockPaths, lockErr := artifactLockPaths(artifacts, l.roots)
 		if lockErr != nil {
 			return lockErr

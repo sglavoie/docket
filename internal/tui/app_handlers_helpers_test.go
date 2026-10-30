@@ -4,12 +4,19 @@ import (
 	"os"
 	"path/filepath"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/docket/internal/config"
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/testutil"
 	"github.com/sglavoie/docket/internal/tui/presentation"
 	"github.com/sglavoie/docket/internal/tui/route"
 )
+
+func sendAppKey(app *AppModel, key tea.KeyPressMsg) *AppModel {
+	model, _ := app.Update(key)
+	return model.(*AppModel)
+}
 
 // newTestAppModel creates an AppModel for testing with a temp config file.
 func newTestAppModel() *AppModel {

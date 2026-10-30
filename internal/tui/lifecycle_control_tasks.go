@@ -43,7 +43,7 @@ func (m *AppModel) controlUndo(transactionID string, reply chan<- control.Reply)
 		answer(reply, false, "an undo needs a transaction ID")
 		return nil
 	}
-	entry, ok, err := workspaceLedgerFromConfig(m.domain.runtime).SelectNewestUndo(storage.GlobalScope())
+	entry, ok, err := m.workspaceHistoryLedger().SelectNewestUndo(storage.GlobalScope())
 	if err != nil {
 		answer(reply, false, status.FormatUndoRedoRestoreError("undo", err).Error())
 		return nil
