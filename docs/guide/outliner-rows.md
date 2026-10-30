@@ -9,7 +9,7 @@ The keys are in [`outliner-keys.md`](outliner-keys.md).
 | Goal | Keys | Example |
 | --- | --- | --- |
 | Read a task’s full details | `b` | Read its resume note or unclipped title |
-| Give details more room | `B` | Expand Peek, then press again to return to compact |
+| Read all details | `B` | Open fullscreen details; `Esc` or `B` returns to the list |
 | Scroll details | `Ctrl+D` / `Ctrl+U`, `Ctrl+F` / `Ctrl+B` | Move half a page or a full page |
 | Open children or checklist | `l` / `→` | Open children first, then checklist items |
 | Select work together | `v`, `V`, `Ctrl+A` | Select several tasks, then `wn` to plan them for Next |
@@ -328,12 +328,18 @@ entry once more, focusing the cursor task's parent.
 Project labels keep their distinguishing suffix when shortened names would
 otherwise collide. Peek always names the full project slug.
 
-### Open, expand, and scroll Peek
+### Open Peek and fullscreen details
 
-`B` switches an open Peek between compact and expanded sizes. Expanded Peek
-uses roughly two thirds of the outline's height while preserving list rows.
-The choice lasts for the session, including after closing and reopening Peek;
-cursor movement never changes it.
+`B` opens a fullscreen, read-only view of the task under the cursor, directly
+from the list or from Peek. It shows the task metadata together with the full
+checklist, comments, attachment locations, task ID, and exact history timestamps.
+Long content wraps and scrolls. `j`/`k` or arrows scroll a line, `PgUp`/`PgDn`
+and `Ctrl+B`/`Ctrl+F` page, `Ctrl+U`/`Ctrl+D` scroll half a page, and `Home`/`End`
+reach the ends. `?` shows the reader's help.
+
+`Esc`, `B`, or `b` returns to the same task and list position. If Peek was open,
+it returns at its previous reading position. Other task shortcuts are inactive
+while reading. Project headers and checklist items also support fullscreen details.
 
 `b` toggles a session-only Peek in a pane docked below the list, whether the
 cursor is on a task or on a project header. Compact Peek uses about a quarter
@@ -347,8 +353,7 @@ Task Peek ordinarily leads with the full title, status, and resume note.
 When compact Peek cannot show two lines of the resume note on its first page,
 it moves the note ahead of status, or ahead of a title that would fill the
 page. Nothing is shortened or removed: scrolling retains the full document,
-and expanded Peek restores title-first order while preserving the reading
-passage. For example,
+and fullscreen details starts with the title. For example,
 `Plan: Today · Status: Backlog · Priority: 1 high` distinguishes the planning
 collection from the lifecycle state. Doing and Waiting include time in that
 state. The project slug and parent chain follow, then the schedule, description,

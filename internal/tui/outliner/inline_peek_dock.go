@@ -162,6 +162,9 @@ func (m *OutlinerModel) peekDockGeometry() peekDockGeometry {
 	if m == nil || !m.PeekMode {
 		return peekDockGeometry{}
 	}
+	if m.PeekFullscreen {
+		return peekDockGeometry{bodyRows: max(m.outlinerHostFrameHeight(m.peekDockWidth())-peekDockDividerRows-inlinePeekPositionRows, 1)}
+	}
 	total := min(m.peekDockPreferredRows(), m.peekDockAvailableRows())
 	if total < peekDockMinRows {
 		return peekDockGeometry{}
@@ -181,9 +184,6 @@ func (m *OutlinerModel) peekDockGeometry() peekDockGeometry {
 func (m *OutlinerModel) peekDockPreferredRows() int {
 	if m == nil || !m.PeekMode {
 		return 0
-	}
-	if m.PeekExpanded {
-		return max(m.Height()*2/3, peekDockPreferredMinRows)
 	}
 	return min(max(max(m.Height(), 0)/peekDockFrameDivisor, peekDockPreferredMinRows), peekDockPreferredMaxRows)
 }
@@ -240,7 +240,11 @@ func (m *OutlinerModel) PeekDockLines() []string {
 	}
 	width := m.peekDockWidth()
 	lines := make([]string, 0, geometry.TotalRows())
-	lines = append(lines, chrome.RenderHorizontalDivider(width, chrome.WithDividerColor(theme.ColorBorder)))
+	if m.PeekFullscreen {
+		lines = append(lines, chrome.RenderLabeledDivider(m.fullscreenPeekTitle(), width))
+	} else {
+		lines = append(lines, chrome.RenderHorizontalDivider(width, chrome.WithDividerColor(theme.ColorBorder)))
+	}
 	return append(lines, m.peekDockWindow(width, geometry)...)
 }
 

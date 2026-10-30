@@ -214,24 +214,28 @@ func wheelRoundTrip(t *testing.T, driver *UITestDriver, y int) {
 }
 
 func TestWheelScrollsRankedResultsAndSingleProjectFormsAlike(t *testing.T) {
-	driver := wheelBusyDriver(t)
-	// The expanded dock leaves the list fewer rows than either form holds.
-	for _, key := range []string{"B", "/", "i", "t", "e", "m", "enter", "g", "g"} {
-		pointerKey(t, driver, key)
+	// Use a population that overflows even the compact dock's list window.
+	for _, ranked := range []bool{true, false} {
+		driver := outlinerPointerDriver(t, FixtureRelease)
+		pointerKey(t, driver, "b")
+		if ranked {
+			pointerKey(t, driver, "/")
+			if err := driver.runAction(UITestAction{Type: UITestActionText, Text: "acceptance"}); err != nil {
+				t.Fatal(err)
+			}
+			pointerKey(t, driver, "enter")
+			pointerKey(t, driver, "home")
+			if !pointerOutliner(t, driver).ShowsRankedList() {
+				t.Fatal("search did not open the ranked list")
+			}
+		} else {
+			pointerKey(t, driver, "g")
+			pointerKey(t, driver, "p")
+			pointerKey(t, driver, "home")
+			if !pointerOutliner(t, driver).IsProjectScoped() {
+				t.Fatal("gp did not scope the project")
+			}
+		}
+		wheelRoundTrip(t, driver, pointerRowY(t, driver, "Release acceptance"))
 	}
-	if !pointerOutliner(t, driver).ShowsRankedList() {
-		t.Fatal("the search did not open the ranked list")
-	}
-	wheelRoundTrip(t, driver, pointerRowY(t, driver, "Untriaged inbox item 2"))
-
-	driver = wheelBusyDriver(t)
-	pointerKey(t, driver, "B")
-	pointerClickAt(t, driver, 20, pointerRowY(t, driver, "[inbox-backlog]"), "", 1)
-	pointerKey(t, driver, "enter")
-	pointerKey(t, driver, "g")
-	pointerKey(t, driver, "g")
-	if !hasLiteral(driver, "inbox-backlog") || hasLiteral(driver, "Waiting") {
-		t.Fatalf("Enter on the project header did not zoom into it:\n%s", driver.Render())
-	}
-	wheelRoundTrip(t, driver, pointerRowY(t, driver, "Untriaged inbox item 2"))
 }

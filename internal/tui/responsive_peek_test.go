@@ -38,7 +38,7 @@ func TestOutlinerUsesFullWidthAndPeekFollowsCursorAtEveryWidth(t *testing.T) {
 		}
 
 		outlinerView.TogglePeek()
-		outlinerView.PeekExpanded = true
+		outlinerView.PeekFullscreen = true
 		firstView := ansi.Strip(outlinerView.View().Content)
 		if !strings.Contains(firstView, "Description: First description") ||
 			!strings.Contains(firstView, "Tags: #backend #security") {

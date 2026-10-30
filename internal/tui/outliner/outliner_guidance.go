@@ -38,6 +38,8 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		return chrome.GuidanceSpec{}, false
 	}
 	switch {
+	case m.PeekFullscreen:
+		return chrome.GuidanceSpecFromKeyMap(m.fullscreenPeekKeyMap(), 2)
 	case m.RelationPickerOpen():
 		// First because the picker is drawn over the whole frame: every profile below
 		// describes keys the rows it hid would have answered.
@@ -93,10 +95,7 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		// the columns a second copy of the same sentence used to spend go to the
 		// scrolling offers below it.
 		hints := chrome.RequiredGuidanceHints(peekKey + "/" + m.EscHint())
-		sizeAction := "expand Peek"
-		if m.PeekExpanded {
-			sizeAction = "compact Peek"
-		}
+		sizeAction := "fullscreen"
 		hints = append(hints, chrome.NewGuidanceHint(m.peekOperationKey(operation.OperationCorePeekSize, "B")+" "+sizeAction, 1, true))
 		// The four scrolling keys are offered only in the direction the document
 		// can actually move: a detail that fits its budget advertises no movement

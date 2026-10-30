@@ -315,6 +315,12 @@ func (m *OutlinerModel) VisibleRowWindow() (int, int) {
 // the title, the context row, the strip, or under any other inline control.
 func (m *OutlinerModel) handlePointerWheel(event route.PointerEvent) {
 	frame := m.pointerFrame
+	if m.PeekFullscreen {
+		if event.X >= 0 && event.X < m.Width() && event.Y >= 0 && event.Y < frame.dockRows {
+			m.scrollPeek(event.WheelDelta)
+		}
+		return
+	}
 	if m.QueryReadout.Expanded {
 		if frame.readoutRows > 0 && event.Y >= frame.readoutTop && event.Y < frame.readoutTop+frame.readoutRows {
 			m.scrollQueryReadout(event.WheelDelta)

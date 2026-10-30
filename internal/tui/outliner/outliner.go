@@ -193,8 +193,9 @@ type OutlinerModel struct {
 
 	// Peek mode follows the cursor and shows additive task detail inline.
 	PeekMode bool
-	// PeekExpanded is a session preference, independent of cursor and open state.
-	PeekExpanded bool
+	// PeekFullscreen replaces the list with the complete read-only document.
+	PeekFullscreen   bool
+	fullscreenReturn fullscreenPeekReturn
 
 	// peek is the one page of that detail Peek is showing. It is session-only
 	// and self-invalidating: inline_peek_paging.go owns the cluster, and the key

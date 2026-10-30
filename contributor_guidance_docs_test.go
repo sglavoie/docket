@@ -75,7 +75,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`peekOffsetForRow` is pure and `scrollPeek` the only writer, so no render moves\nthe window",
 		"`TruncateToVisualWidth` has no counterpart: its dropped tail is not\n  recoverable",
 		"Nothing sits outside that window and the document has no header",
-		"Checklist and comments stay counts; their items are rows and their panel",
+		"Compact checklist and comments stay counts; fullscreen reads their bodies",
 		"A task row promotes three indicators and no more \u2014 the deadline, an owed\n  review, the reference census \u2014 and `indicatorDropLadder` is that list in\n  reverse",
 		"The trailing `~S/N` counts stored locators in `N` regardless of target",
 		"amber blocked, green settled, muted unreadable",

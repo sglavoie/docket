@@ -17,8 +17,8 @@
     { "type": "key", "key": "enter" },
     { "type": "key", "label": "the search keeps the ancestry, so the deepest row is the result", "key": "end" },
     { "type": "key", "label": "open Peek beside the row context", "key": "b" },
-    { "type": "key", "key": "B", "label": "expand Peek to read the supporting metadata" },
-    { "type": "assert", "assert": "contains", "value": "[platform]" },
+    { "type": "key", "key": "B", "label": "open fullscreen details to read the supporting metadata" },
+    { "type": "assert", "assert": "contains", "value": "Context: platform" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

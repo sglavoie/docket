@@ -370,6 +370,20 @@ the cursor, the document, or a draft, which is why typing into capture, an
 autocomplete, and a refused sigil all leave the host exactly where the open put
 it.
 
+`B` (`OperationCorePeekSize`, labeled Fullscreen Details) opens the reader
+without requiring an open dock. `PeekFullscreen` switches the host render to
+`PeekDockLines` alone: a labeled divider, the shared document window, and its
+position line fill `outlinerHostFrameHeight`. No list viewport is computed or
+moved. The fullscreen reader borrows the compact dock's open state and reading
+anchor and restores both on `Esc`, `B`, or `b`.
+
+The reader owns a gated keymap for line, half-page, full-page, and end scrolling,
+plus its own help. Its guidance and help project that keymap, and unlisted keys
+are consumed. The pointer wheel scrolls the document. The task document's
+`Detailed` option expands checklist and comment counts into their full bodies,
+adds attachment locations and timestamps, and appends identity and exact history
+instants. Project and checklist documents use the same frame and scrolling.
+
 The window is therefore a bound on what is visible, not on what Peek holds.
 `inlinePeekDocument` is that split: `Body` is every detail row the task has,
 wrapped to the dock's own width and complete, and the geometry it was stamped

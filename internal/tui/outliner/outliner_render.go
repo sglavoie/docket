@@ -367,6 +367,11 @@ func (m *OutlinerModel) outlinerModalBudget(width int) int {
 // suggestion pane, the rows, and the Peek dock, or the empty state when the
 // projection holds nothing.
 func (m *OutlinerModel) renderOutlinerHostContent(width int) string {
+	if m.PeekFullscreen {
+		lines := m.PeekDockLines()
+		m.pointerFrame.recordDock(0, len(lines))
+		return strings.Join(lines, "\n")
+	}
 	if !m.HasContentRows() {
 		return m.renderOutlinerEmptyState(width)
 	}

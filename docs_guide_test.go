@@ -117,7 +117,7 @@ func TestGuideDocumentsPeekAndBulkSemantics(t *testing.T) {
 		"`Alt+↑` widens in the other direction",
 		"`b` toggles a session-only Peek in a pane docked below the list, whether the\n" +
 			"cursor is on a task or on a project header",
-		"`B` switches an open Peek between compact and expanded sizes",
+		"`B` opens a fullscreen, read-only view of the task under the cursor, directly",
 		"Peek always names the full project slug",
 		"normally six to eight rows",
 		"Compact Peek uses about a quarter of the outline's height",

@@ -132,7 +132,7 @@ func (m *OutlinerModel) SimplifiedInlineControlOwnsInput() bool {
 	if m == nil {
 		return false
 	}
-	if m.IsSearchMode() ||
+	if m.PeekFullscreen || m.IsSearchMode() ||
 		m.QuickEdit.IsActive() ||
 		m.Confirm.IsActive() ||
 		m.QueryReadout.Expanded ||

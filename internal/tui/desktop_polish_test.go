@@ -80,7 +80,7 @@ func TestDesktopDraftUndoRedoAndQuit(t *testing.T) {
 	}
 }
 
-func TestDesktopSearchAndExplicitPeekSize(t *testing.T) {
+func TestDesktopSearchAndFullscreenDetails(t *testing.T) {
 	d := polishDriver(t)
 	if reply := desktopRequest(t, d, control.OpEdit, "search"); !reply.OK {
 		t.Fatal(reply.Message)
@@ -106,18 +106,36 @@ func TestDesktopSearchAndExplicitPeekSize(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if !m.crossOutliner.PeekMode || !m.crossOutliner.PeekExpanded {
-		t.Fatal("b then B did not expand Peek")
+	if !m.crossOutliner.PeekMode || !m.crossOutliner.PeekFullscreen {
+		t.Fatal("b then B did not open fullscreen details")
 	}
-	for _, key := range []string{"j", "k", "b", "b"} {
+	cursor := m.crossOutliner.Cursor
+	for _, key := range []string{"j", "k", "pgdown", "home", "end", "e", "w", "v", "/"} {
 		_ = d.runAction(UITestAction{Type: UITestActionKey, Key: key})
 	}
-	if !m.crossOutliner.PeekExpanded {
-		t.Fatal("cursor/toggle forgot expanded Peek")
+	if !m.crossOutliner.PeekFullscreen || m.crossOutliner.Cursor != cursor {
+		t.Fatal("fullscreen keys moved the task cursor or closed the reader")
 	}
 	_ = d.runAction(UITestAction{Type: UITestActionKey, Key: "B"})
-	if m.crossOutliner.PeekExpanded {
-		t.Fatal("B did not compact Peek")
+	if m.crossOutliner.PeekFullscreen || !m.crossOutliner.PeekMode {
+		t.Fatal("B did not restore compact Peek")
+	}
+	_ = d.runAction(UITestAction{Type: UITestActionKey, Key: "b"})
+	_ = d.runAction(UITestAction{Type: UITestActionKey, Key: "B"})
+	if !m.crossOutliner.PeekFullscreen {
+		t.Fatal("B did not open details directly")
+	}
+	_ = d.runAction(UITestAction{Type: UITestActionKey, Key: "?"})
+	if m.helpView == nil {
+		t.Fatal("fullscreen help did not open")
+	}
+	_ = d.runAction(UITestAction{Type: UITestActionKey, Key: "esc"})
+	if !m.crossOutliner.PeekFullscreen {
+		t.Fatal("closing help closed details")
+	}
+	_ = d.runAction(UITestAction{Type: UITestActionKey, Key: "esc"})
+	if m.crossOutliner.PeekFullscreen || m.crossOutliner.PeekMode {
+		t.Fatal("Esc did not restore the closed dock")
 	}
 }
 

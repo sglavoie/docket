@@ -1,6 +1,7 @@
 package outliner
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -70,40 +71,40 @@ func TestProjectAbbreviationsDistinguishSharedPrefixes(t *testing.T) {
 	}
 }
 
-func TestExpandedPeekIsStableAndRemembersItsSize(t *testing.T) {
+func TestFullscreenPeekUsesTheFrameAndRestoresTheDock(t *testing.T) {
 	for _, size := range [][2]int{{60, 20}, {80, 24}, {120, 40}} {
 		m := dockFixtureOutliner(t, size[0], size[1])
-		m.PeekMode = true
-		compact := m.PeekDockRows()
-		m.PeekExpanded = true
-		expanded := m.PeekDockRows()
-		if expanded <= compact {
-			t.Fatalf("%v expanded %d <= compact %d", size, expanded, compact)
-		}
-		for i := range m.Rows {
-			m.Cursor = i
-			m.View()
-			if m.PeekDockRows() != expanded {
-				t.Fatal("cursor moved the dock")
+		cursors, _ := peekableRowIndexes(t, m)
+		m.Cursor = cursors[len(cursors)-1]
+		m.TogglePeek()
+		m.HalfPagePeek(1)
+		m.View()
+		compact, cursor, offset, reading := m.PeekDockRows(), m.Cursor, m.ViewScrollOffset, m.peek
+		m.ToggleFullscreenPeek()
+		for _, frame := range [][2]int{size, {60, 20}, size} {
+			m.SetSize(frame[0], frame[1])
+			view := m.View().Content
+			if !m.PeekFullscreen || m.PeekDockRows() <= compact || lipgloss.Height(view) != m.outlinerHostFrameHeight(frame[0]) {
+				t.Fatalf("%v fullscreen did not fill its frame: %d rows", frame, lipgloss.Height(view))
 			}
-			if m.LastViewport.VisibleRows < 1 {
-				t.Fatal("dock consumed the whole list")
-			}
-			for _, line := range m.PeekDockLines() {
-				if lipgloss.Width(line) > size[0] {
+			for _, line := range strings.Split(view, "\n") {
+				if lipgloss.Width(line) > frame[0] {
 					t.Fatalf("overflow: %q", ansi.Strip(line))
 				}
 			}
 		}
-		m.TogglePeek()
-		m.PeekMode = true
-		if m.PeekDockRows() != expanded {
-			t.Fatal("closing lost the size preference")
+		m.ToggleFullscreenPeek()
+		if m.PeekFullscreen || !m.PeekMode || m.Cursor != cursor || !reflect.DeepEqual(m.peek, reading) {
+			t.Fatal("fullscreen did not restore the compact reader")
 		}
-		m.SetSize(60, 20)
-		m.SetSize(size[0], size[1])
-		if m.PeekDockRows() != expanded {
-			t.Fatal("resize lost expanded size")
+		// Resize deliberately resets the outline viewport; opening and closing the
+		// reader itself must preserve it when the terminal stays the same size.
+		m.ViewScrollOffset = offset
+		m.ToggleFullscreenPeek()
+		m.View()
+		m.ToggleFullscreenPeek()
+		if m.ViewScrollOffset != offset {
+			t.Fatal("fullscreen moved the outline window")
 		}
 	}
 }

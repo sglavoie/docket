@@ -280,7 +280,7 @@ One key is one act on every entity surface, pane layout keys aside:
 | `@` `-`/`+` | due/defer/check-in · step deadline earlier/later |
 | `&` `;` `C` `~` | attachments · comments · add comment · dependencies |
 | `u`/`Ctrl+R` `gg`/`G` `Esc` `?` | undo/redo · ends · unwind · help |
-| `b` `B` `Ctrl+D`/`Ctrl+U` `Ctrl+F`/`Ctrl+B` | Peek · expand/compact · scroll it · page it |
+| `b` `B` `Ctrl+D`/`Ctrl+U` `Ctrl+F`/`Ctrl+B` | Peek · fullscreen details · scroll it · page it |
 | `Space` | menu: destructive and rare operations only |
 
 Transient input overlays are exempt: composer, project editor/creator, text
@@ -681,10 +681,9 @@ Row and Peek budget:
   constant. That total is
   `min(peekDockPreferredRows, peekDockAvailableRows)` — preferred is
   `clamp(floor(H/4), peekDockPreferredMinRows, peekDockPreferredMaxRows)` over the
-  Outliner's own height in compact mode; `PeekExpanded` uses `max(2*H/3,
-  peekDockPreferredMinRows)`. `B` changes that session preference through
-  `OperationCorePeekSize`, even on a placeholder row, and toggling the dock
-  preserves it. Available is what `ContentHeight` leaves after the
+  Outliner's own height. `OperationCorePeekSize` opens `PeekFullscreen` directly
+  or from the dock. Its gated keymap owns scrolling and help; closing restores
+  the prior dock and anchor. Fullscreen never computes the list viewport. Available is what `ContentHeight` leaves after the
   measured footer, the status strip, and `peekDockListFloorRows` — and a total
   under `peekDockMinRows` draws no dock at all rather than a clipped one. Both
   halves read the frame and never the cursor, the document, or a draft, so a
@@ -725,7 +724,7 @@ Row and Peek budget:
   stored values including schedule key it, so ticks
   never reset the window. Every labeled line is `Label: value` joined by ` · `;
   `Pinned` and `Review` are bare flags, and a list's count follows its colon.
-  Checklist and comments stay counts; their items are rows and their panel.
+  Compact checklist and comments stay counts; fullscreen reads their bodies.
   A search `Match:` excerpt may quote checklist/comments: use the projection's
   source, remainder and case mode, mark elision, key on query and excerpt.
   A reference target is named nowhere

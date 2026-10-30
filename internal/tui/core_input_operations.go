@@ -290,7 +290,7 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		}
 	case operation.OperationCorePeekSize:
 		if out, ok := m.outlinerPrimary(); ok {
-			out.PeekExpanded = !out.PeekExpanded
+			out.ToggleFullscreenPeek()
 		}
 	case operation.OperationCorePeek:
 		if out, ok := m.outlinerPrimary(); ok {

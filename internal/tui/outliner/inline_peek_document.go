@@ -125,8 +125,10 @@ type inlinePeekOptions struct {
 	// is the frame's answer and never the document's: a long body and a short one
 	// are drawn in the same window.
 	Window peekDockGeometry
+	// Detailed includes full checklist/comment bodies and stored metadata.
+	Detailed bool
 	// Compact prioritizes a readable resume passage in a crowded first page.
-	// The document remains complete; expansion restores the ordinary order.
+	// The document remains complete; fullscreen restores the ordinary order.
 	Compact     bool
 	Breadcrumb  string
 	ProjectSlug string
@@ -238,9 +240,27 @@ func inlinePeekBodySections(opts inlinePeekOptions, width int) []inlinePeekSecti
 	// The three supporting counts sit under the task's own text, in the order a
 	// reader reaches for them: the steps inside this task, the files beside it,
 	// then the conversation about it.
-	add("checklist:"+inlinePeekChecklistKey(task), inlinePeekChecklistLines(task, opts.Indent, width))
-	add("attachments:"+inlinePeekAttachmentsKey(task), inlinePeekAttachmentsLines(task, opts.Indent, width))
-	add("comments:"+strconv.Itoa(len(task.Comments)), inlinePeekCommentsLines(task, opts.Indent, width))
+	checklist := inlinePeekChecklistLines(task, opts.Indent, width)
+	if opts.Detailed {
+		checklist = fullscreenChecklistLines(task, opts.Indent, width)
+	}
+	checklistKey := inlinePeekChecklistKey(task)
+	if opts.Detailed {
+		checklistKey += fmt.Sprint(task.Checklist)
+	}
+	add("checklist:"+checklistKey, checklist)
+	attachments := inlinePeekAttachmentsLines(task, opts.Indent, width)
+	attachmentKey := inlinePeekAttachmentsKey(task)
+	if opts.Detailed {
+		attachments = fullscreenAttachmentLines(task, opts.Indent, width)
+		attachmentKey += fmt.Sprint(task.Attachments)
+	}
+	add("attachments:"+attachmentKey, attachments)
+	comments := inlinePeekSection{"comments:" + strconv.Itoa(len(task.Comments)), inlinePeekCommentsLines(task, opts.Indent, width)}
+	if opts.Detailed {
+		comments = fullscreenCommentSection(task, opts.Indent, width)
+	}
+	add(comments.key, comments.lines)
 
 	// The two reference lists sit above tags because Peek is the only surface
 	// that names a reference at all: the row carries `~S/N`, and there is no
@@ -267,5 +287,9 @@ func inlinePeekBodySections(opts inlinePeekOptions, width int) []inlinePeekSecti
 	// section that answers that question rather than between the schedule and
 	// the task's own text.
 	add("history:"+inlinePeekHistoryKey(task), inlinePeekHistoryLines(task, now, opts.Indent, width))
+	if opts.Detailed {
+		metadata := fullscreenMetadataSection(task, opts.Indent, width)
+		add(metadata.key, metadata.lines)
+	}
 	return sections
 }

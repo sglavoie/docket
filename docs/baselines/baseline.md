@@ -45,7 +45,7 @@ naming other packages in that selector matches nothing.
 
 | Metric                   | Value | Reproduce |
 | ------------------------ | ----- | --------- |
-| Committed TUI scenarios  | 339   | `find docs/tui-testing/scenarios -name '*.json' \| wc -l` |
+| Committed TUI scenarios  | 340   | `find docs/tui-testing/scenarios -name '*.json' \| wc -l` |
 
 Scenario fixtures live in `docs/tui-testing/scenarios/*.json` and are replayed by
 the committed TUI scenario tests.

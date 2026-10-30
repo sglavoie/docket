@@ -19,14 +19,14 @@
     {"type": "wait"},
     {"type": "key", "label": "open Peek; its one paging hint per direction joins the footer", "key": "b"},
     {"type": "assert", "assert": "contains", "value": "0 above · 6 below", "label": "the position row accounts for the compact window and its current offset"},
-    {"type": "assert", "label": "the half page is the one paging offer, so one row holds every entry", "assert": "contains", "value": "b/Esc close Peek · B expand Peek · Ctrl+D more · Space actions · e edit · ? help"},
+    {"type": "assert", "label": "the half page is the one paging offer, so one row holds every entry", "assert": "contains", "value": "b/Esc close Peek · B fullscreen · Ctrl+D more · Space actions · e edit · ? help"},
     {"type": "assert", "label": "the full page still answers but is not restated beside it", "assert": "not_contains", "value": "Ctrl+F page down"},
     {"type": "assert", "assert": "no_layout_issues"},
     {"type": "resize", "label": "a wider frame keeps the same row", "width": 100, "height": 25},
     {"type": "assert", "assert": "contains", "value": "Space actions · e edit · ? help"},
     {"type": "assert", "assert": "no_layout_issues"},
     {"type": "resize", "label": "and a narrower one never leaves an entry alone on a row", "width": 60, "height": 25},
-    {"type": "assert", "assert": "contains", "value": "b/Esc close Peek · B expand Peek · Ctrl+D more"},
+    {"type": "assert", "assert": "contains", "value": "b/Esc close Peek · B fullscreen · Ctrl+D more"},
     {"type": "assert", "assert": "no_layout_issues"}
   ]
 }

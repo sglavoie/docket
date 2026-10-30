@@ -20,6 +20,9 @@ func (m *OutlinerModel) HandleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// A deliberate navigation or edit supersedes a transient message's window.
 	m.feedbackBudget = feedbackBudgetAnchor{}
 	key := msg.String()
+	if m.PeekFullscreen {
+		return m, m.handleFullscreenPeekKey(key)
+	}
 
 	// The relationship picker is read before everything else: it is a modal
 	// overlay drawn over the whole frame, so every key below it would act on rows
@@ -136,6 +139,7 @@ func (m *OutlinerModel) handleConfirmDialog(key string) (tea.Model, tea.Cmd) {
 // Focus stack → cross-project Focus stack → section zoom → project scope.
 func (m *OutlinerModel) EscSteps() []listsurface.EscStep {
 	return []listsurface.EscStep{
+		{Active: func() bool { return m != nil && m.PeekFullscreen }, Action: "return to list", Clear: m.closeFullscreenPeek},
 		// This step reads the intent rather than the drawn dock, because it is the
 		// intent it puts down: a frame with no room for a three-row dock still holds
 		// PeekMode, and a cascade gated on what is painted would leave that flag with
