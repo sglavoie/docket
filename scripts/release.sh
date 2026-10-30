@@ -63,9 +63,14 @@ head=$(git rev-parse HEAD)
 [ "$head" = "$(git rev-parse origin/main)" ] ||
 	fail "main is not origin/main: push or pull first, since the tag must name a commit CI has seen"
 
-# Only plain vX.Y.Z tags count: a prerelease never sets the base of the next bump.
-last=$(git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)
-[ -n "$last" ] || fail "no vX.Y.Z tag to bump from"
+# Only origin's plain vX.Y.Z tags count. An interrupted push may leave a local
+# tag behind; it must not advance the next version. Prereleases do not either.
+remote_tags=$(git ls-remote --tags --refs --sort=-v:refname origin 'v*')
+last=$(printf '%s\n' "$remote_tags" | awk '
+	{ sub(/^refs\/tags\//, "", $2) }
+	$2 ~ /^v[0-9]+\.[0-9]+\.[0-9]+$/ { print $2; exit }
+')
+[ -n "$last" ] || fail "no vX.Y.Z tag on origin to bump from"
 [ "$(git rev-list --count "$last..HEAD")" -gt 0 ] || fail "nothing to release: HEAD is $last"
 
 ci=$(gh run list --workflow CI --commit "$head" --limit 1 --json status,conclusion,url \
@@ -95,9 +100,11 @@ major) next="v$((major + 1)).0.0" ;;
 minor) next="v$major.$((minor + 1)).0" ;;
 patch) next="v$major.$minor.$((patch + 1))" ;;
 esac
-if git rev-parse --quiet --verify "refs/tags/$next" >/dev/null ||
-	[ -n "$(git ls-remote --tags origin "refs/tags/$next")" ]; then
-	fail "$next already exists"
+if [ -n "$(git ls-remote --tags origin "refs/tags/$next")" ]; then
+	fail "$next already exists on origin"
+fi
+if git rev-parse --quiet --verify "refs/tags/$next" >/dev/null; then
+	fail "$next exists only locally, possibly from an interrupted release; inspect it with: git show $next; remove it with: git tag -d $next"
 fi
 
 echo "Release $next ($bump after $last) at $(git rev-parse --short HEAD):"
