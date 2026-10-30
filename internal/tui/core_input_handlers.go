@@ -473,19 +473,25 @@ func (m *AppModel) coreOpenMenuBar() error {
 // than inside HelpItemsForInputStrategy so that stays a pure registry
 // projection and the grammar section stays Outliner-scoped.
 func (m *AppModel) coreInputHelpItems() []operation.HelpItem {
+	return m.coreHelpItemsForContext(m.operationCommandContext(), false)
+}
+
+func (m *AppModel) coreHelpItemsForContext(ctx operation.CommandContext, includeUnavailable bool) []operation.HelpItem {
 	if m.operations.Registry == nil {
 		return nil
 	}
-	items := m.operations.Registry.HelpItemsForInputStrategy(
-		operation.InputStrategySimplified,
-		m.operationCommandContext(),
-	)
+	project := m.operations.Registry.HelpItemsForInputStrategy
+	if includeUnavailable {
+		project = m.operations.Registry.SearchHelpItemsForInputStrategy
+	}
+	items := project(operation.InputStrategySimplified, ctx)
 	// This workspace action is menu-only; its name and search vocabulary still
 	// come from the descriptor authority, with its actual menu route as the hint.
-	if descriptor, ok := m.operations.Registry.Descriptor(operation.OperationCoreSetUpCheckIns); ok && descriptor.Applicable(m.operationCommandContext()) {
+	if descriptor, ok := m.operations.Registry.Descriptor(operation.OperationCoreSetUpCheckIns); ok && descriptor.Applicable(ctx) {
 		items = append(items, operation.HelpItem{
 			Key: m.menuOpenHint() + " → Task", Description: descriptor.Label,
 			Category: operation.OperationCategoryLabel(descriptor.Category), Aliases: descriptor.Aliases,
+			Action: &operation.HelpAction{ID: descriptor.ID},
 		})
 	}
 	return append(items, help.GrammarHelpItems()...)

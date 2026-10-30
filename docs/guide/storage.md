@@ -45,10 +45,19 @@ Redo restores A's original identity and values, placing it before the next
 surviving original root task, or at the end if none remains. It refuses if A's
 identity or project-local task number is now in use.
 
-Creation with attachments, subtasks, multiple tasks, or other coupled changes,
-and task deletion, ordering, project metadata, notes, and attachments keep
-their exact-file checks. If a change outside the ledger prevents a restore, the
-entry is dropped from history without overwriting that work. The message names
+Deleting one standalone root task without attachments or planning membership
+also preserves unrelated changes. Delete A on your Mac, edit B on your iPhone,
+and sync: Undo restores A's original identity and values while keeping B's edit.
+It places A before the next surviving original root task, or at the end if none
+remains, and refuses if A's identity or project-local number is now in use.
+Redo removes A only if it is still unchanged, has no children, and belongs to
+neither Today nor Next. These checks survive restarting Docket.
+
+Creation or deletion with attachments, subtasks, multiple tasks, or other
+coupled changes (including planning or incoming-reference cleanup), and
+ordering, project metadata, notes, and attachments keep their exact-file checks.
+If a change outside the ledger prevents a restore, the entry is dropped from
+history without overwriting that work. The message names
 the entry and the file; press the key again to reach the entry before it.
 
 Workspace commits validate paths and revisions, stage a durable manifest, and

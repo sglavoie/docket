@@ -116,6 +116,7 @@ func (m *HelpViewModel) SetSize(width, height int) {
 	}
 
 	m.viewport.SetContent(m.renderContent())
+	m.keepActionVisible()
 }
 
 func (m *HelpViewModel) Init() tea.Cmd {
@@ -146,6 +147,9 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.GotoTop()
 			return m, nil
 		}
+		if handled, cmd := m.updateActionSearch(msg); handled {
+			return m, cmd
+		}
 		if m.searchMode {
 			return m.updateSearchMode(msg)
 		}
@@ -153,7 +157,6 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.tabSearchMode {
 			return m.updateTabSearchMode(msg)
 		}
-
 		if msg.String() != "g" {
 			m.pendingG = false
 		}

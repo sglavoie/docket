@@ -154,7 +154,7 @@ func (l *WorkspaceLedger) preflightRestoreOps(lf *ledgerFile, entry LedgerEntry,
 	if err != nil {
 		return nil, err
 	}
-	if err := l.checkTaskCreationRestore(entry, blobs, redo); err != nil {
+	if err := l.checkTaskRemovalRestore(entry, blobs, redo); err != nil {
 		return nil, err
 	}
 
@@ -247,7 +247,7 @@ func preflightRestoreImage(
 	directoryDeletes map[string]bool,
 	fileDeletes map[string]bool,
 	rebaseTasks bool,
-	allowCreation bool,
+	allowMembershipChange bool,
 ) (transaction.Op, bool, error) {
 	path := filepath.Clean(image.Path)
 	expectedExists, expectedHash := image.AfterExists, image.AfterHash
@@ -285,7 +285,7 @@ func preflightRestoreImage(
 	}
 	if currentExists != expectedExists || (currentExists && (actualKind != "file" || actualHash != expectedHash)) {
 		if rebaseTasks && currentExists && actualKind == "file" && expectedExists && desiredExists {
-			if data, ok := rebaseTaskRestore(blobs[expectedHash], blobs[desiredHash], current, redo, allowCreation); ok {
+			if data, ok := rebaseTaskRestore(blobs[expectedHash], blobs[desiredHash], current, allowMembershipChange); ok {
 				return transaction.Op{Kind: transaction.OpWrite, Target: path, Data: data, Mode: FilePermissions}, true, nil
 			}
 		}

@@ -230,7 +230,7 @@ func TestTaskCreationRestoreRefusesRedoIdentityCollisions(t *testing.T) {
 }
 
 func TestTaskCreationRestoreKeepsExactChecksForCoupledChanges(t *testing.T) {
-	for _, name := range []string{"child", "attachment", "batch", "edit", "project_metadata", "note", "deletion"} {
+	for _, name := range []string{"child", "attachment", "batch", "edit", "project_metadata", "note", "deletion_with_edit"} {
 		t.Run(name, func(t *testing.T) {
 			ledger, root := newTestLedger(t)
 			path := filepath.Join(root, "projects", "alpha", "tasks.md")
@@ -246,8 +246,9 @@ func TestTaskCreationRestoreKeepsExactChecksForCoupledChanges(t *testing.T) {
 				after.Tasks[0].Title = "Also edited"
 			case "project_metadata":
 				after.ProjectName = "Also renamed"
-			case "deletion":
+			case "deletion_with_edit":
 				before, after = after, before
+				after.Tasks[0].Title = "Also edited"
 			}
 			artifacts := []LedgerArtifact{{Path: path, BeforeExists: true, Before: []byte(mustWriteCurrentDocument(t, before)), AfterExists: true, After: []byte(mustWriteCurrentDocument(t, after))}}
 			if name == "note" {

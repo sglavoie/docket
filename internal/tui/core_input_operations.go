@@ -395,10 +395,7 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 			message = commandMessage(out.TakeParkedFocusReload())
 		}
 	case operation.OperationCoreHelp:
-		message = help.ShowHelpMsg{
-			ViewName: "Outliner",
-			Items:    m.coreInputHelpItems(),
-		}
+		message = m.outlinerHelpMessage(invocation.Context)
 	case operation.OperationCoreQuit:
 		message = status.QuitMsg{}
 	case operation.OperationCoreNextWorkMode:

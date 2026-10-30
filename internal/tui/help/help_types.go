@@ -62,4 +62,9 @@ type HelpViewModel struct {
 	tabSearchMode        bool     // True when tab search input is active
 	tabSearchInput       textinput.Model
 	pendingG             bool // A lone g armed the gg chord
+	actionContext        *operation.CommandContext
+	actionItems          []operation.HelpItem
+	actionCursor         int
+	restoreActionKey     string
+	restoreCategory      string
 }

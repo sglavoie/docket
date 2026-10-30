@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"os"
+	"slices"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -11,6 +12,7 @@ import (
 	"github.com/sglavoie/docket/internal/external"
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/help"
+	"github.com/sglavoie/docket/internal/tui/operation"
 	"github.com/sglavoie/docket/internal/tui/outliner"
 	"github.com/sglavoie/docket/internal/tui/presentation"
 	"github.com/sglavoie/docket/internal/tui/projecthub"
@@ -66,8 +68,14 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 	case help.ShowHelpMsg:
 		width, height := m.viewNav.viewSize()
 		m.helpView = m.helpSession.Open(msg.Items, msg.ViewName, width, height)
+		if msg.ActionContext != nil && m.currentView() == presentation.ViewCrossProjectOutliner {
+			m.helpView.EnableActions(*msg.ActionContext, msg.SearchItems)
+		}
 		m.showView(presentation.ViewHelp, m.helpView)
 		return true, nil
+
+	case help.RunActionMsg:
+		return true, m.runHelpAction(msg)
 
 	case status.StatusClearMsg:
 		// A failed save belongs to the retained draft. Timers (including older
@@ -336,4 +344,110 @@ func (m *AppModel) handleCaptureAndBulkMessages(msg tea.Msg) (bool, tea.Cmd) {
 	}
 
 	return false, nil
+}
+
+func (m *AppModel) outlinerHelpMessage(ctx operation.CommandContext) help.ShowHelpMsg {
+	ctx = operation.CloneCommandContext(ctx)
+	items := m.coreHelpItemsForContext(ctx, true)
+	strategy, _ := m.operations.Registry.InputStrategy(operation.InputStrategySimplified)
+	// Sheets already declare the rare entity actions. Project their menu-only
+	// entries here too, with the real menu key as the route to learn.
+	for _, entry := range append(taskOperationManifest(), outlinerProjectOperationManifest()...) {
+		if entry.DirectOnly {
+			continue
+		}
+		if descriptor, ok := m.operations.Registry.Descriptor(entry.ID); ok {
+			menu := operation.OperationCoreActions
+			if descriptor.TargetSource == operation.OperationTargetCurrentProject {
+				menu = operation.OperationProjectActions
+			}
+			items = append(items, operation.HelpItem{
+				Key: operation.DisplayKeysForOperation(strategy, menu), Description: descriptor.Label, Aliases: descriptor.Aliases,
+				Category: operation.OperationCategoryLabel(descriptor.Category),
+				Action:   &operation.HelpAction{ID: descriptor.ID}, DisabledReason: operation.AvailabilityReason(descriptor, ctx),
+			})
+		}
+	}
+	for i := range items {
+		if items[i].Action == nil {
+			continue
+		}
+		descriptor, ok := m.operations.Registry.Descriptor(items[i].Action.ID)
+		if ok {
+			items[i].Target = m.helpActionTarget(descriptor.TargetSource, ctx)
+		}
+	}
+	return help.ShowHelpMsg{
+		ViewName: "Outliner", Items: m.coreHelpItemsForContext(ctx, false),
+		ActionContext: &ctx, SearchItems: items,
+	}
+}
+
+func (m *AppModel) helpActionTarget(source operation.OperationTargetSource, ctx operation.CommandContext) string {
+	switch source {
+	case operation.OperationTargetSelectedTasks, operation.OperationTargetSelectedEntities:
+		if ctx.Selection.Visual || ctx.Selection.Count() > 0 {
+			label := fmt.Sprintf("%d selected tasks", ctx.Selection.Count())
+			if ctx.Selection.Count() == 1 {
+				label = "1 selected task"
+			}
+			if ctx.Selection.HiddenCount > 0 {
+				label += fmt.Sprintf(" (%d hidden)", ctx.Selection.HiddenCount)
+			}
+			return label
+		}
+		fallthrough
+	case operation.OperationTargetCurrentTask, operation.OperationTargetCurrentEntity:
+		if ctx.Entity.HasChecklistCursor {
+			index := ctx.Entity.ChecklistIndex
+			if index >= 0 && index < len(ctx.Entity.Checklist) {
+				return "Checklist item: " + ctx.Entity.Checklist[index].Text
+			}
+		}
+		if task, project := m.TaskAndProjectForIdentity(operation.CurrentTaskIdentity(ctx)); task != nil && project != nil {
+			return fmt.Sprintf("[%s:%d] %s", project.Slug, task.ShortID, task.Title)
+		}
+		if !ctx.Entity.HasProjectHeaderCursor {
+			return "No task selected"
+		}
+		fallthrough
+	case operation.OperationTargetCurrentProject:
+		if project := m.ProjectByID(ctx.Entity.ProjectID); project != nil {
+			return "Project: " + project.Name
+		}
+		return "No project selected"
+	case operation.OperationTargetScopedProjects:
+		return fmt.Sprintf("Current scope (%d projects)", len(ctx.ScopeProjectIDs))
+	default:
+		return "Current view / workspace"
+	}
+}
+
+func (m *AppModel) runHelpAction(msg help.RunActionMsg) tea.Cmd {
+	// A delayed Enter from an earlier help instance cannot close a newer
+	// presentation or run against its cursor.
+	if m.currentView() != presentation.ViewHelp || msg.Source != m.helpView {
+		return nil
+	}
+	descriptor, ok := m.operations.Registry.Descriptor(msg.Request.ID)
+	if !ok || m.crossOutliner == nil {
+		return nil
+	}
+	live := m.crossOutliner.OperationCommandContext()
+	if reason := operation.AvailabilityReason(descriptor, live); reason != "" {
+		m.helpView.RefuseAction(descriptor.ID, reason)
+		return nil
+	}
+	resolver := operation.OperationTargetResolver{}
+	before, beforeErr := resolver.Resolve(descriptor, msg.Request.Context)
+	now, nowErr := resolver.Resolve(descriptor, live)
+	if beforeErr != nil || nowErr != nil || !slices.Equal(before.Targets, now.Targets) {
+		m.helpView.RefuseAction(descriptor.ID, "The task or selection changed. Close help and choose it again.")
+		return nil
+	}
+	resume := m.popView()
+	if m.currentView() != msg.Request.Context.View {
+		return resume
+	}
+	return tea.Batch(resume, operation.ResultCmd(m.operations.Executor.Execute(msg.Request)))
 }

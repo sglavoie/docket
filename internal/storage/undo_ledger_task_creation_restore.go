@@ -6,50 +6,55 @@ import (
 	"github.com/sglavoie/docket/internal/models"
 )
 
-// rebaseCreatedTask handles only an entry that originally added one root task,
-// leaving every existing task and its order unchanged. The caller restricts
-// this to a single project artifact, so coupled changes retain exact checks.
-func rebaseCreatedTask(expected, desired, current *ProjectDocument, redo bool) bool {
-	before, after := desired, expected
-	if redo {
-		before, after = expected, desired
+// rebaseStandaloneTask restores an entry that added or deleted one root task,
+// leaving every other task and its order unchanged. The caller restricts this
+// to a single project artifact, so coupled changes retain exact checks.
+func rebaseStandaloneTask(expected, desired, current *ProjectDocument) bool {
+	added, index := standaloneAddedTask(expected, desired)
+	if added != nil {
+		return insertRestoredTask(desired, current, added, index)
 	}
-	created, createdIndex := standaloneCreatedTask(before, after)
-	if created == nil {
+	removed, _ := standaloneAddedTask(desired, expected)
+	if removed == nil {
 		return false
 	}
-	index := slices.IndexFunc(current.Tasks, func(task *models.Task) bool { return task.ID == created.ID })
-	if !redo {
-		if index < 0 || !restoreTasksEqual(current.Tasks[index], created) {
+	return removeRestoredTask(current, removed)
+}
+
+func removeRestoredTask(current *ProjectDocument, removed *models.Task) bool {
+	index := slices.IndexFunc(current.Tasks, func(task *models.Task) bool { return task.ID == removed.ID })
+	if index < 0 || !restoreTasksEqual(current.Tasks[index], removed) {
+		return false
+	}
+	for _, task := range current.Tasks {
+		if task.ParentID != nil && *task.ParentID == removed.ID {
 			return false
 		}
-		for _, task := range current.Tasks {
-			if task.ParentID != nil && *task.ParentID == created.ID {
-				return false
-			}
-		}
-		current.Tasks = slices.Delete(current.Tasks, index, index+1)
-		return true
 	}
-	if index >= 0 {
+	current.Tasks = slices.Delete(current.Tasks, index, index+1)
+	return true
+}
+
+func insertRestoredTask(original, current *ProjectDocument, added *models.Task, addedIndex int) bool {
+	currentByID := indexTasks(current.Tasks)
+	if currentByID[added.ID] != nil {
 		return false
 	}
 	// Insert before the next surviving original root. This retains current
 	// sibling order and keeps new descendants with their parent. With no such
 	// anchor, append at the end, including when every original task is gone.
 	insertAt := len(current.Tasks)
-	currentByID := indexTasks(current.Tasks)
-	for _, task := range after.Tasks[createdIndex+1:] {
+	for _, task := range original.Tasks[addedIndex+1:] {
 		if live := currentByID[task.ID]; live != nil && live.ParentID == nil {
 			insertAt = slices.IndexFunc(current.Tasks, func(candidate *models.Task) bool { return candidate.ID == live.ID })
 			break
 		}
 	}
-	current.Tasks = slices.Insert(current.Tasks, insertAt, created)
+	current.Tasks = slices.Insert(current.Tasks, insertAt, added)
 	return true
 }
 
-func standaloneCreatedTask(before, after *ProjectDocument) (*models.Task, int) {
+func standaloneAddedTask(before, after *ProjectDocument) (*models.Task, int) {
 	if before.ProjectName != after.ProjectName || !slices.EqualFunc(before.Comments, after.Comments, models.ProjectCommentEqual) {
 		return nil, 0
 	}
@@ -77,9 +82,9 @@ func standaloneCreatedTask(before, after *ProjectDocument) (*models.Task, int) {
 	return created, createdIndex
 }
 
-// Unreadable retained documents are outside the standalone creation policy;
+// Unreadable retained documents are outside the standalone task policy;
 // their ordinary exact-image preflight remains authoritative.
-func standaloneCreatedTaskInImages(beforeBytes, afterBytes []byte) *models.Task {
+func standaloneAddedTaskInImages(beforeBytes, afterBytes []byte) *models.Task {
 	before, err := parseProjectDocumentContent(string(beforeBytes))
 	if err != nil {
 		return nil
@@ -88,6 +93,6 @@ func standaloneCreatedTaskInImages(beforeBytes, afterBytes []byte) *models.Task 
 	if err != nil {
 		return nil
 	}
-	created, _ := standaloneCreatedTask(before, after)
+	created, _ := standaloneAddedTask(before, after)
 	return created
 }

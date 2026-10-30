@@ -10,12 +10,22 @@ import (
 // CloseHelpMsg is sent when the help view should close.
 type CloseHelpMsg struct{ route.PopViewMsg }
 
-// ShowHelpMsg is sent to show help for a specific view. It carries no source
-// view: CloseHelpMsg is a PopViewMsg, so the view stack is what returns the user
-// where they were, and the help viewer never needs to name its opener.
+// ShowHelpMsg shows a surface's reference. The view stack owns returning to its
+// opener; Outliner action search additionally freezes the invocation context.
 type ShowHelpMsg struct {
 	ViewName string
 	Items    []operation.HelpItem
+	// Only the Outliner supplies runnable search results. Other surfaces retain
+	// their reference viewer, including transient modal controls.
+	ActionContext *operation.CommandContext
+	SearchItems   []operation.HelpItem
+}
+
+// RunActionMsg asks the shell to close this help instance and execute the
+// selected registry action against the context frozen when help opened.
+type RunActionMsg struct {
+	Source  *HelpViewModel
+	Request operation.OperationExecutionRequest
 }
 
 // HelpCmd raises the help viewer for one named surface. It sits beside the

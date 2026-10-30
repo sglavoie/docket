@@ -6,7 +6,8 @@ import (
 
 func TestHelpSessionReopensFilteredReferenceThroughPublicKeys(t *testing.T) {
 	driver, _ := menuBarDriver(t)
-	pressMenuBarKey(t, driver, "?", "/", "w", "o", "r", "k", "f", "l", "o", "w", "enter")
+	// Esc finishes typing; Enter now runs the selected action.
+	pressMenuBarKey(t, driver, "?", "/", "w", "o", "r", "k", "f", "l", "o", "w", "esc")
 	before := driver.Observe(ObserveOptions{}).PlainScreen
 	if !driver.App().helpView.HasActiveSearch() {
 		t.Fatal("Help search did not activate")

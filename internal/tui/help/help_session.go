@@ -5,6 +5,7 @@ import "github.com/sglavoie/docket/internal/tui/operation"
 type browseState struct {
 	query, category string
 	offset          int
+	actionKey       string
 }
 
 // Session remembers Help browsing separately for each named surface. It keeps
@@ -23,6 +24,9 @@ func (s *Session) Open(items []operation.HelpItem, name string, width, height in
 	}
 	if previous := s.current; previous != nil {
 		state := browseState{query: previous.searchQuery, offset: previous.viewport.YOffset()}
+		if item, ok := previous.selectedActionItem(); ok {
+			state.actionKey = helpItemKey(item.HelpItem)
+		}
 		if previous.activeTab > 0 && previous.activeTab <= len(previous.categories) {
 			state.category = previous.categories[previous.activeTab-1]
 		}
@@ -33,6 +37,8 @@ func (s *Session) Open(items []operation.HelpItem, name string, width, height in
 	m := NewHelpViewModel(items, name)
 	m.searchQuery = state.query
 	m.searchInput.SetValue(state.query)
+	m.restoreActionKey = state.actionKey
+	m.restoreCategory = state.category
 	for i, category := range m.categories {
 		if category == state.category {
 			m.activeTab = i + 1

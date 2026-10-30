@@ -53,15 +53,23 @@ func (m *HelpViewModel) matchTab(query string) {
 }
 
 func (m *HelpViewModel) filterItems() {
+	defer m.prepareActionResults()
 	m.searchCaseRelaxed = false
 	m.otherCategoryMatches = 0
 	m.tabMatchCounts = nil
+	items := m.items
+	if m.actionSearch() {
+		items = m.actionItems
+	}
+	if m.actionContext != nil {
+		m.actionCategories(items)
+	}
 	buckets := make(map[string][]operation.HelpItem)
-	for _, item := range m.items {
+	for _, item := range items {
 		category := helpSectionForItem(item)
 		buckets[category] = append(buckets[category], item)
 	}
-	source := m.items
+	source := items
 	if m.activeTab > 0 && m.activeTab <= len(m.categories) {
 		source = buckets[m.categories[m.activeTab-1]]
 	}
@@ -73,7 +81,7 @@ func (m *HelpViewModel) filterItems() {
 		return
 	}
 
-	all, allRelaxed := matchHelpItems(m.items, m.searchQuery)
+	all, allRelaxed := matchHelpItems(items, m.searchQuery)
 	m.filteredItems, m.searchCaseRelaxed = all, allRelaxed
 	m.tabMatchCounts = []int{len(all)}
 	for i, category := range m.categories {

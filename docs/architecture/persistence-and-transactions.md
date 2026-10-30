@@ -257,15 +257,24 @@ their order, and project metadata unchanged. Undo removes only the unchanged
 created task and refuses if it has acquired children. Redo requires the identity
 to be absent and inserts the original task before the next surviving original
 root task, or at the end. The combined-document audit refuses a reused ShortID.
-The engine installs a creation guard over the planning artifact: restore holds
-its normal file lock alongside the project lock, and the configuration store's
-read-only loader checks Today and Next before removing a task. This check also
+A single-artifact entry that deleted exactly one such root task uses the same
+membership restore in reverse: Undo inserts its original identity and values
+before the next surviving original root, and Redo removes it only while it is
+unchanged and childless. Reused identities and ShortIDs refuse insertion.
+Planning cleanup, incoming-reference cleanup, subtree deletion, and attachment
+changes disqualify a deletion from this path because they change other tasks
+or artifacts.
+
+The engine installs a task-removal guard over the planning artifact: restore
+holds its normal file lock alongside the project lock, and the configuration
+store's read-only loader checks Today and Next before removing a task, both
+when undoing creation and when redoing deletion. This check also
 runs when the project still matches the exact image, since a planning-only
 change can leave task bytes untouched. Unrelated planning is never rewritten;
 an unreadable planning file refuses without recovering a backup during preflight.
 
-File creation/deletion, coupled or multi-task creation, ordering, project
-metadata edits, notes, and attachments retain exact-image preconditions.
+File creation/deletion, coupled or multi-task creation or deletion, ordering,
+project metadata edits, notes, and attachments retain exact-image preconditions.
 
 The original retained images remain the entry's intent on both stacks; each
 Undo or Redo compares them against the current document again. No rebased blobs

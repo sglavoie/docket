@@ -10,7 +10,7 @@
     { "type": "assert", "assert": "view", "value": "Help" },
     { "type": "key", "label": "filter the reference down to it", "key": "/" },
     { "type": "text", "text": "lens" },
-    { "type": "key", "key": "enter" },
+    { "type": "key", "label": "finish typing without invoking a result", "key": "esc" },
     { "type": "assert", "assert": "contains", "value": "Named Lenses" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "drop the filter", "key": "esc" },

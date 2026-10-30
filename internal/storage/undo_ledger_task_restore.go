@@ -25,7 +25,7 @@ func (l *WorkspaceLedger) isProjectTaskImage(image ArtifactImage) bool {
 	return false
 }
 
-// rebaseTaskRestore applies an edit or standalone creation's inverse (or redo) to the current
+// rebaseTaskRestore applies an edit or standalone task addition/removal to the current
 // project by task identity. Every touched task must still hold the complete
 // expected persisted value, including its touch time. Other tasks and project
 // metadata come from current. This deliberately has no field-level merge: a
@@ -34,7 +34,7 @@ func (l *WorkspaceLedger) isProjectTaskImage(image ArtifactImage) bool {
 // The entry's original images remain its intent on both stacks. Comparing them
 // again on every restore preserves unrelated work through repeated undo/redo,
 // later external edits, and restarts without changing the ledger format.
-func rebaseTaskRestore(expectedBytes, desiredBytes, currentBytes []byte, redo, allowCreation bool) ([]byte, bool) {
+func rebaseTaskRestore(expectedBytes, desiredBytes, currentBytes []byte, allowMembershipChange bool) ([]byte, bool) {
 	expected, err := parseProjectDocumentContent(string(expectedBytes))
 	if err != nil {
 		return nil, false
@@ -55,7 +55,7 @@ func rebaseTaskRestore(expectedBytes, desiredBytes, currentBytes []byte, redo, a
 		if !rebaseEditedTasks(expected, desired, current) {
 			return nil, false
 		}
-	} else if !allowCreation || !rebaseCreatedTask(expected, desired, current, redo) {
+	} else if !allowMembershipChange || !rebaseStandaloneTask(expected, desired, current) {
 		return nil, false
 	}
 	// Independent changes can still compose an invalid hierarchy or reuse a

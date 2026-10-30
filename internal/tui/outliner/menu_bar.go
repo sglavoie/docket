@@ -308,7 +308,7 @@ func ResolveMenuEntries(
 				if !entry.KeepUnavailable {
 					continue
 				}
-				reason = menuUnavailableReason(entry.OperationID, ctx)
+				reason = operation.AvailabilityReason(descriptor, ctx)
 			}
 			if entry.Group != "" && entry.Group != group {
 				entries = append(entries, ResolvedMenuEntry{Label: entry.Group})
@@ -355,25 +355,4 @@ func collapseMenuSeparators(entries []ResolvedMenuEntry) []ResolvedMenuEntry {
 		collapsed = collapsed[:len(collapsed)-1]
 	}
 	return collapsed
-}
-
-// Reasons explain presentation availability; execution still belongs to the
-// registry. Disabled entries remain focusable so keyboard users can read why.
-func menuUnavailableReason(id operation.OperationID, ctx operation.CommandContext) string {
-	if ctx.Entity.Archived {
-		return "This project is archived. Open an active project to make changes."
-	}
-	if id == operation.OperationCoreEdit && ctx.Selection.Visual {
-		return "Leave multi-select, then choose one task to edit."
-	}
-	if ctx.Entity.HasChecklistCursor {
-		return "Choose the task row to use this action."
-	}
-	if ctx.Selection.Visual && ctx.Selection.Count() == 0 {
-		return "Select at least one task."
-	}
-	if ctx.Entity.TaskID == "" && ctx.Selection.Count() == 0 {
-		return "Choose a task to use this action."
-	}
-	return "This action is unavailable for the current selection."
 }

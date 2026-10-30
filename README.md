@@ -38,6 +38,9 @@ Run `docket` after [installing it](#install-and-start). No project setup is need
 
 Press `?` whenever you want the keys for the surface you are on. Press `F10`
 to browse menus; Task groups everyday actions under Plan, Status, and Details.
+In Outliner help, press `/`, search an action such as `defer`, and press `Enter`
+to run the selected result. Up/down choose another result; its shortcut and
+target remain visible.
 
 ### Capture more in one line
 

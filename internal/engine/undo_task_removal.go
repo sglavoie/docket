@@ -7,12 +7,12 @@ import (
 	"github.com/sglavoie/docket/internal/storage"
 )
 
-func guardCreationRestore(ledger *storage.WorkspaceLedger, dataDir string) {
+func guardTaskRemovalRestore(ledger *storage.WorkspaceLedger, dataDir string) {
 	if dataDir == "" {
 		return
 	}
 	path := config.PlanningStatePath(dataDir)
-	ledger.WithTaskCreationRestoreGuard(path, func(projectIDs []string, taskID string) error {
+	ledger.WithTaskRemovalRestoreGuard(path, func(projectIDs []string, taskID string) error {
 		planning, err := config.NewDomainFileStore(dataDir).LoadPlanningReadOnly()
 		if err != nil {
 			return err

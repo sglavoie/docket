@@ -11,4 +11,16 @@ type HelpItem struct {
 	Description string // e.g., "Move cursor"
 	Category    string // e.g., "Navigation", "Actions"
 	Aliases     []string
+	// Action is absent for reference prose and controls outside the registry.
+	Action         *HelpAction
+	DisabledReason string
+	Target         string
+}
+
+// HelpAction keeps the binding's identity and preset, never a rendered key to
+// replay. A compressed family without one preset opens its ordinary picker.
+type HelpAction struct {
+	ID       OperationID
+	Value    any
+	HasValue bool
 }

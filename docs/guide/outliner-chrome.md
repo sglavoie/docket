@@ -10,6 +10,7 @@ tag wears.
 | Goal | Keys | Example |
 | --- | --- | --- |
 | Find a shortcut | `?`, then `/` | Search `defer` to find scheduling controls |
+| Find and run an action | `?`, `/`, type, `Enter` | Search `tags` to open the selected task's tag picker |
 | Explain a narrow view | `Q` | Remove one restriction with its numbered key |
 | Open the menus | `F10` | Task → Set Up Check-Ins |
 | Keep the menu bar visible | `M` | Press again to hide it |
@@ -38,14 +39,36 @@ of room. Search
 highlighting follows matches across wrapped description lines. When a search
 matches an alias, that alias stays beside the description and wraps as needed
 so the reason for the match remains readable.
-An exact key, description, or alias match appears first under `Exact matches`;
-the other results retain their category order. Clearing the search restores the
-ordinary grouped reference, and category tabs still constrain both kinds of match.
+An exact key, description, or alias match appears first; the other results
+retain their category order. Clearing the search restores the ordinary grouped
+reference, and category tabs still constrain both kinds of match.
 
-Help remembers its query, category, and scroll position separately for each
+In Outliner help, search results form a selectable list. Use up/down to choose
+an entry and `Enter` to run it, including while typing. Its shortcut stays beside
+the action. Exact matches lead, followed by literal words in action names,
+then aliases and other fuzzy matches; ties keep category order.
+The target line names the task, project, or selection; a bulk
+selection includes its hidden count. An unavailable action explains what it
+needs and keeps help open when you press `Enter`. Grammar entries are reference
+text and stay in help too.
+Search also includes the existing task and project menu actions, such as
+**Set Check-In**, **Delete**, and **Archive Project**. Their menu route appears
+beside the name; destructive actions retain their confirmation.
+
+For example, select a task, press `?`, then `/`, type `defer`, and press
+`Enter` to open its existing scheduling picker. Choosing a value uses the same
+save and undo as the shortcut. Press `Esc` to finish typing without running
+anything; then `?` closes help, `/` edits the query again, and `j`/`k` also choose
+results. Another `Esc` clears the filter. If the target changes while help is
+open, the action asks you to close help and choose it again.
+
+Help on other surfaces remains a reference: `Enter` applies its search filter,
+and exact results are grouped under `Exact matches`.
+
+Help remembers its query, category, scroll position, and selected search result separately for each
 surface until you quit Docket. Press `?` to close a filtered reference and reopen
 it later in the same place; `Backspace` clears the query and returns to All.
-Available actions refresh on every opening. If a category has disappeared,
+Actions, targets, and availability refresh on every opening. If a category has disappeared,
 Help returns to All, and shorter results or a resized window clamp the scroll.
 
 ## Read the title and current restrictions

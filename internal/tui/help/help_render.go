@@ -276,6 +276,10 @@ func renderHelpItemGroup(items []filteredHelpItem, contentWidth, keyWidth int) s
 }
 
 func (m *HelpViewModel) renderContent() string {
+	if m.actionSearch() {
+		content, _ := m.actionSearchDocument()
+		return content
+	}
 	return m.renderBySectionContent()
 }
 
@@ -333,11 +337,17 @@ func (m *HelpViewModel) renderHelpHeader(tabBar string) string {
 		b.WriteString(caseNote)
 		b.WriteString("\n\n")
 	}
+	if m.actionSearch() {
+		b.WriteString(m.renderActionContext())
+	}
 
 	return b.String()
 }
 
 func (m *HelpViewModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
+	if m.actionSearch() && !m.tabSearchMode {
+		return m.actionGuidance(), true
+	}
 	if m.searchMode {
 		hints := chrome.RequiredGuidanceHints("Enter apply filter", "Esc cancel edit")
 		if m.otherCategoryMatches > 0 {

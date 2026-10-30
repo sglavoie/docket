@@ -228,6 +228,34 @@ When a selected category has no results and other categories do, Help offers
 mode, and scrolls to the top. It is available while browsing or typing a filter,
 but not while finding a tab. Counts alone never change the selected category.
 
+Outliner help search also invokes actions. `HelpItem.Action` carries the
+registry operation identity and the binding's preset, so selecting **Complete
+Task** keeps Done rather than opening a state picker or replaying its displayed
+key. Compressed preset families such as priority open their existing value
+picker. `SearchHelpItemsForInputStrategy` uses the same projection as reference
+help, adding unavailable entries with reasons from applicability, target
+resolution, and archived-task policy. Grammar entries carry no action.
+The existing task and Outliner-project manifests supply their menu-only entries
+to search as well, carrying `Space` as the route hint and the same descriptor,
+availability, value providers, and destructive confirmation policy.
+
+The unfiltered reference keeps its grouped layout. Nonempty Outliner searches
+use one selectable column: exact matches first, then literal terms in labels,
+literal terms in aliases/categories, and fuzzy-only hits. Ties retain the existing
+category and task-group order. One document measurement supplies result row starts, paging,
+and cursor visibility, including wrapped entries and resizing. The selected
+result's target and refusal are measured into the header, and its gated keymap
+supplies handled keys and guidance. Other surfaces keep reference-only help.
+
+`outlinerHelpMessage` freezes a cloned command context and target labels before
+the help presentation covers the Outliner. `RunActionMsg` identifies that help
+instance; the shell ignores stale deliveries, checks live availability and that
+resolved targets still match, then pops help and invokes `OperationExecutor`.
+A changed target leaves help open with an explanation. Existing value steps,
+confirmations, transactions, and undo remain the executor's. Help session recall
+stores only the result key beside its query/category/scroll; each reopening
+receives fresh actions, targets, and availability.
+
 A value provider is exactly one of `operation.TextEntry()` (a separate overlay),
 `operation.TagEntry()` (inline add mode), `operation.DateEntry()` (inline add mode), or a plain list
 such as `ValueProviderParent`.

@@ -57,6 +57,16 @@ func (registry *OperationRegistry) HelpItemsForInputStrategy(
 	id InputStrategyID,
 	ctx CommandContext,
 ) []HelpItem {
+	return registry.helpItemsForInputStrategy(id, ctx, false)
+}
+
+// SearchHelpItemsForInputStrategy also explains unavailable actions, so an
+// action search can teach how to make one available instead of hiding it.
+func (registry *OperationRegistry) SearchHelpItemsForInputStrategy(id InputStrategyID, ctx CommandContext) []HelpItem {
+	return registry.helpItemsForInputStrategy(id, ctx, true)
+}
+
+func (registry *OperationRegistry) helpItemsForInputStrategy(id InputStrategyID, ctx CommandContext, includeUnavailable bool) []HelpItem {
 	strategy, ok := registry.storedInputStrategy(id)
 	if !ok {
 		return nil
@@ -68,23 +78,29 @@ func (registry *OperationRegistry) HelpItemsForInputStrategy(
 			continue
 		}
 		descriptor, exists := registry.Descriptor(binding.OperationID)
-		if !exists || !descriptor.Applicable(ctx) {
+		if !exists || (!includeUnavailable && !descriptor.Applicable(ctx)) {
 			seen[binding.OperationID] = true
 			continue
 		}
+		reason := AvailabilityReason(descriptor, ctx)
 		if presets := presetChordHelpItems(strategy, binding.OperationID, descriptor); len(presets) > 0 {
+			for i := range presets {
+				presets[i].DisabledReason = reason
+			}
 			seen[binding.OperationID] = true
 			items = append(items, presets...)
 			continue
 		}
 		seen[binding.OperationID] = true
 		items = append(items, HelpItem{
-			Key:         DisplayKeysForOperation(strategy, binding.OperationID),
-			Description: descriptor.Label,
-			Category:    bindingHelpCategory(binding, descriptor),
-			Group:       binding.HelpGroup,
-			Order:       binding.HelpOrder,
-			Aliases:     descriptor.Aliases,
+			Key:            DisplayKeysForOperation(strategy, binding.OperationID),
+			Description:    descriptor.Label,
+			Category:       bindingHelpCategory(binding, descriptor),
+			Group:          binding.HelpGroup,
+			Order:          binding.HelpOrder,
+			Aliases:        descriptor.Aliases,
+			Action:         &HelpAction{ID: descriptor.ID},
+			DisabledReason: reason,
 		})
 	}
 	return items
@@ -118,6 +134,7 @@ func presetChordHelpItems(strategy InputStrategy, operationID OperationID, descr
 			Group:       binding.HelpGroup,
 			Order:       binding.HelpOrder,
 			Aliases:     aliases,
+			Action:      &HelpAction{ID: operationID, Value: binding.PresetValue, HasValue: binding.HasPresetValue},
 		})
 	}
 	return items
