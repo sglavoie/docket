@@ -25,11 +25,12 @@ func (l *WorkspaceLedger) isProjectTaskImage(image ArtifactImage) bool {
 	return false
 }
 
-// rebaseTaskRestore applies an edit or standalone task addition/removal to the current
-// project by task identity. Every touched task must still hold the complete
-// expected persisted value, including its touch time. Other tasks and project
-// metadata come from current. This deliberately has no field-level merge: a
-// later edit to the same task always refuses, even on a different field.
+// rebaseTaskRestore applies task edits, project-comment changes, or a standalone
+// task addition/removal to the current project by identity. Every touched task
+// or comment must still hold its complete expected persisted value, including
+// the task's touch time. Untouched tasks, comments, and the project name come
+// from current. This deliberately has no field-level merge: a later edit to
+// the same task always refuses, even on a different field.
 //
 // The entry's original images remain its intent on both stacks. Comparing them
 // again on every restore preserves unrelated work through repeated undo/redo,
@@ -43,19 +44,27 @@ func rebaseTaskRestore(expectedBytes, desiredBytes, currentBytes []byte, allowMe
 	if err != nil {
 		return nil, false
 	}
-	if expected.ProjectName != desired.ProjectName ||
-		!slices.EqualFunc(expected.Comments, desired.Comments, models.ProjectCommentEqual) {
+	if expected.ProjectName != desired.ProjectName {
 		return nil, false
 	}
 	current, err := parseProjectDocumentContent(string(currentBytes))
 	if err != nil {
 		return nil, false
 	}
+	commentsChanged := !slices.EqualFunc(expected.Comments, desired.Comments, models.ProjectCommentEqual)
 	if slices.EqualFunc(expected.Tasks, desired.Tasks, func(a, b *models.Task) bool { return a.ID == b.ID }) {
-		if !rebaseEditedTasks(expected, desired, current) {
+		tasksChanged := !slices.EqualFunc(expected.Tasks, desired.Tasks, restoreTasksEqual)
+		if tasksChanged && !rebaseEditedTasks(expected, desired, current) {
 			return nil, false
 		}
-	} else if !allowMembershipChange || !rebaseStandaloneTask(expected, desired, current) {
+		if commentsChanged {
+			if !rebaseProjectCommentsRestore(expected, desired, current) {
+				return nil, false
+			}
+		} else if !tasksChanged {
+			return nil, false
+		}
+	} else if commentsChanged || !allowMembershipChange || !rebaseStandaloneTask(expected, desired, current) {
 		return nil, false
 	}
 	// Independent changes can still compose an invalid hierarchy or reuse a

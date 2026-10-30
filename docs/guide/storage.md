@@ -65,9 +65,17 @@ surviving original neighbour. Restoring a membership also refuses if its task
 was deleted, moved to another project, or completed in the meantime. Planning
 and any accompanying task edits restore together or leave both untouched.
 
+Project-comment additions, edits, and deletions preserve unrelated synced tasks
+and comments too. Add a project comment on your Mac, complete a task on your
+iPhone, and sync: Undo removes your comment and keeps the completed task. Redo
+brings the same comment back, with its original identity and creation time.
+A later change to that comment refuses the restore; restoring a removed comment
+also refuses if its identity is now in use. These checks survive restarting
+Docket and apply alongside any existing-task edits in the same transaction.
+
 Creation or deletion with attachments, subtasks, multiple tasks, or other
 coupled changes (including planning or incoming-reference cleanup), and
-ordering operations, project metadata, notes, and attachments keep their
+ordering operations, other project metadata, notes, and attachments keep their
 exact-file checks.
 If a change outside the ledger prevents a restore, the entry is dropped from
 history without overwriting that work. The message names

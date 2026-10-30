@@ -610,8 +610,12 @@ keep each commit atomic. A failure prints its seed, a replay command
   A changed target refuses; removing a task (creation Undo or deletion Redo)
   also refuses new children or Today/Next membership. Restoring a task (creation
   Redo or deletion Undo) refuses identity or ShortID collisions and inserts it
-  before the next surviving original root, or at the end. Coupled or multi-task
-  creation or deletion, ordering, project metadata edits, notes, and attachments
+  before the next surviving original root, or at the end. Project-comment
+  additions, edits, and deletions, alone or alongside existing-task edits,
+  preserve unrelated tasks and comments by id. Changed comments refuse a restore;
+  restoring a removed comment requires its id to be absent. Creation instants
+  are immutable, and restored collections use canonical order. Coupled or multi-task
+  creation or deletion, ordering, other project metadata edits, notes, and attachments
   still require exact file images; extending semantic restores to them is deferred.
 - Reconciliation reads the whole history on every incoming manifest. Caching
   the resolved workspace, or compacting history, is deferred with history

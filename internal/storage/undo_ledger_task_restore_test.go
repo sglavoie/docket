@@ -199,11 +199,6 @@ func TestTaskRestoreKeepsExactChecksForOtherOperations(t *testing.T) {
 		{"delete_task", func(doc *ProjectDocument) { doc.Tasks = doc.Tasks[:1] }},
 		{"reorder", func(doc *ProjectDocument) { doc.Tasks[0], doc.Tasks[1] = doc.Tasks[1], doc.Tasks[0] }},
 		{"project_name", func(doc *ProjectDocument) { doc.ProjectName = "Renamed Alpha" }},
-		{"project_comment", func(doc *ProjectDocument) {
-			doc.Comments = []*models.ProjectComment{{
-				ID: "00000000-0000-4000-8000-000000000001", Text: "Local comment", CreatedAt: doc.Tasks[0].CreatedAt,
-			}}
-		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ledger, root := newTestLedger(t)

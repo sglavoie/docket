@@ -295,8 +295,17 @@ validates every artifact and the guard before staging task bytes, planning,
 ledger movement, and outgoing sync history in the same manifest. Neither
 storage nor the ledger format takes ownership of the planning encoding.
 
+Project-comment additions, edits, and deletions also restore by identity, alone
+or alongside existing-task edits. Each changed comment must retain its complete
+expected value, including its creation instant; an insertion requires its id to
+be absent. The restore preserves untouched tasks, the current project name, and untouched
+comments, and sorts the resulting comments canonically. Editing a creation
+instant refuses. Comment changes coupled to task creation/deletion or ordering
+retain exact-image preconditions.
+
 File creation/deletion, coupled or multi-task creation or deletion, ordering,
-project metadata edits, notes, and attachments retain exact-image preconditions.
+other project metadata edits, notes, and attachments retain exact-image
+preconditions.
 
 The original retained images remain the entry's intent on both stacks; each
 Undo or Redo compares them against the current document again. No rebased blobs
