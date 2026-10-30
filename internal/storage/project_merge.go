@@ -262,7 +262,8 @@ func mergeTasks(base, local, current *ProjectDocument) (map[string]*models.Task,
 // differently become conflicts. A change to parent_id is classified as a
 // hierarchy conflict rather than a plain field conflict.
 func mergeTaskFields(base, local, current *models.Task) (*models.Task, []MergeConflict) {
-	merged := cloneTask(base)
+	copyOfBase := *base
+	merged := &copyOfBase
 	mv := reflect.ValueOf(merged).Elem()
 	bv := reflect.ValueOf(base).Elem()
 	lv := reflect.ValueOf(local).Elem()
@@ -294,12 +295,6 @@ func mergeTaskFields(base, local, current *models.Task) (*models.Task, []MergeCo
 		}
 	}
 
-	// Adopting a field copies its slice header, so the dependency list the merge
-	// just took from one side still points at that side's backing array. Detach
-	// it for the same reason cloneTask does: the merged document becomes live
-	// state, and a later dependency edit must not reach back into an input.
-	merged.Dependencies = models.CloneTaskReferences(merged.Dependencies)
-
 	if unitConflict := mergeCheckInUnit(merged, base, local, current); unitConflict != nil {
 		conflicts = append(conflicts, *unitConflict)
 	}
@@ -316,5 +311,7 @@ func mergeTaskFields(base, local, current *models.Task) (*models.Task, []MergeCo
 		merged.UpdatedAt = current.UpdatedAt
 	}
 
-	return merged, conflicts
+	// Reflection adopts pointers and slice headers. Detach after every field has
+	// been selected so the result shares no mutable task data with any input.
+	return cloneTask(merged), conflicts
 }

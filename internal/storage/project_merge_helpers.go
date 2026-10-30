@@ -74,7 +74,9 @@ func tasksEqual(a, b *models.Task) bool {
 // equal compares timestamp fields by instant, ignoring their Go location and
 // monotonic clock. Deadlines hold a calendar day and optional local HH:MM, so
 // converting them to instants would change what the user stored.
-// Both merge paths and delete/edit detection must agree on this comparison.
+// Empty collections compare alike whether allocated or nil: neither carries a
+// stored value. Both merge paths and delete/edit detection must agree on this
+// comparison.
 func (f taskFieldDescriptor) equal(left, right any) bool {
 	if f.jsonName == "due_date" {
 		return deadlineMergeValue(left.(*time.Time)) == deadlineMergeValue(right.(*time.Time))
@@ -84,6 +86,12 @@ func (f taskFieldDescriptor) equal(left, right any) bool {
 		return value.Equal(right.(time.Time))
 	case *time.Time:
 		return sameOptionalInstant(value, right.(*time.Time))
+	case []string:
+		return slices.Equal(value, right.([]string))
+	case []models.ChecklistItem:
+		return slices.Equal(value, right.([]models.ChecklistItem))
+	case []models.TaskReference:
+		return models.TaskReferencesEqual(value, right.([]models.TaskReference))
 	case []*models.Comment:
 		return slices.EqualFunc(value, right.([]*models.Comment), func(a, b *models.Comment) bool {
 			if a == nil || b == nil {
@@ -113,19 +121,11 @@ func deadlineMergeValue(due *time.Time) string {
 	return value
 }
 
-// cloneTask returns a shallow copy of a task's persisted fields. Slice and map
-// fields share backing storage with the source; the merged document is a
-// read-only result (session 20 does not write), so this aliasing is safe and
-// avoids an expensive deep copy of every task.
-//
-// Dependencies is the one exception. The merge adopts a whole field from one
-// side and the resolved document later flows into a live project, so an aliased
-// locator slice would let a subsequent dependency edit reach back into the base
-// or current document the merge read from.
+// cloneTask detaches persisted fields from the inputs a later merge may still
+// read. The result can become a live project: editing a checklist or removing a
+// comment there must not rewrite the common base or another version.
 func cloneTask(src *models.Task) *models.Task {
-	copied := *src
-	copied.Dependencies = models.CloneTaskReferences(src.Dependencies)
-	return &copied
+	return models.CloneTaskDeep(src)
 }
 
 func mergedTitle(local, current *models.Task) string {

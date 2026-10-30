@@ -293,7 +293,14 @@ Task timestamp comparisons use instant equality, including creation instants
 inside comment and attachment collections. A change in time-zone representation
 alone must not turn an unchanged record into an edit or make identical concurrent
 edits conflict. Collection order and every other stored value still participate
-in equality.
+in equality, while nil and allocated empty collections compare alike. An empty
+collection changing representation must not manufacture a delete/edit conflict
+or keep a deleted task during sync reconciliation.
+
+Merged tasks own detached copies of every stored pointer and collection. A later
+checklist edit or comment removal in the live project cannot change any input
+document used as a merge base. Sync reconciliation also detaches a single version
+or the primary document returned as a fallback.
 
 The check-in is the one field group that is not merged field by field. `check_in`,
 `check_in_repeat`, and `reviewed` answer one question together, so

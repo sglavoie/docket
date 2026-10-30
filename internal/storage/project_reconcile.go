@@ -46,7 +46,7 @@ func ReconcileProjectDocuments(base *ProjectDocument, sides []*ProjectDocument) 
 		}
 	}
 	if len(sides) == 1 {
-		return sides[0], nil, nil
+		return sides[0].clone(), nil, nil
 	}
 	if base == nil {
 		base = &ProjectDocument{SchemaVersion: CurrentTaskSchemaVersion}
@@ -78,10 +78,10 @@ func ReconcileProjectDocuments(base *ProjectDocument, sides []*ProjectDocument) 
 		// Every rule above keeps the document valid; this is the backstop for a
 		// rule that missed a case. The primary side is a document some device
 		// wrote, so it is valid by construction.
-		return sides[0], append(r.conflicts, audit...), nil
+		return sides[0].clone(), append(r.conflicts, audit...), nil
 	}
 	if failure := renderFailure(merged); failure != "" {
-		return sides[0], append(r.conflicts, MergeConflict{Kind: MergeConflictInvariant, Field: "render", Detail: failure}), nil
+		return sides[0].clone(), append(r.conflicts, MergeConflict{Kind: MergeConflictInvariant, Field: "render", Detail: failure}), nil
 	}
 	merged.Revision = merged.ComputeRevision()
 	return merged, r.conflicts, nil
@@ -186,7 +186,8 @@ func (r *projectReconciler) mergeVersions(base *models.Task, versions []*models.
 		return task
 	}
 
-	merged := cloneTask(base)
+	copyOfBase := *base
+	merged := &copyOfBase
 	mv := reflect.ValueOf(merged).Elem()
 	bv := reflect.ValueOf(base).Elem()
 	var conflicts []MergeConflict
@@ -220,8 +221,6 @@ func (r *projectReconciler) mergeVersions(base *models.Task, versions []*models.
 			conflicts = append(conflicts, versionConflict(distinct, f.jsonName, baseField, adopted))
 		}
 	}
-	merged.Dependencies = models.CloneTaskReferences(merged.Dependencies)
-
 	baseUnit := checkInUnitOf(base)
 	var units []taskCheckInUnit
 	for _, version := range distinct {
@@ -271,7 +270,7 @@ func (r *projectReconciler) mergeVersions(base *models.Task, versions []*models.
 		task.UpdatedAt = latestUpdate(versions)
 		return task
 	}
-	return merged
+	return cloneTask(merged)
 }
 
 // versionConflict reports competing versions of one field. Values are
