@@ -208,6 +208,9 @@ query	L2	theme,pulse,taskref,chrome,grammar
 operation	L3	presentation,chrome,taskref,status,grammar,query
 route	L4	presentation,chrome,operation,theme
 listsurface	L5	route,operation,chrome,textfit,theme,keymap,presentation,taskref,query,status,pulse
+# History reads app summaries and publishes recovery requests through operation;
+# its rendering uses only chrome, pulse, textfit and theme. The shell hosts it.
+history	L7	chrome,operation,presentation,pulse,textfit,theme
 help	L6	listsurface,operation,chrome,keymap,route,theme,textfit,pulse
 notes	L7	presentation,theme,textfit,status,keymap,chrome,operation,route,listsurface,help
 taskdetail	L7	presentation,theme,textfit,taskref,status,keymap,chrome,coordinator,operation,route,listsurface,help
@@ -223,4 +226,4 @@ notesops	L7	presentation,operation,route,listsurface,notes,projecthub,outliner
 projectops	L7	presentation,theme,textfit,status,chrome,operation,route,listsurface,notes,projecthub,outliner,taskdetail,valuepicker,filterops
 operationhost	L7	presentation,theme,textfit,status,chrome,operation,route,listsurface,notes,projecthub,outliner,valuepicker,taskref,taskform,coordinator
 valuepicker	L7	theme,textfit,taskref,status,keymap,chrome,grammar,query,operation,listsurface,outliner,projecthub,route
-tui	L8	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,notes,taskdetail,taskform,lens,conflict,projecthub,outliner,valuepicker,filterops,lensops,entityops,projectops,notesops,operationhost
+tui	L8	history,presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,notes,taskdetail,taskform,lens,conflict,projecthub,outliner,valuepicker,filterops,lensops,entityops,projectops,notesops,operationhost

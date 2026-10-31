@@ -307,15 +307,15 @@ func TestEnterRunsTheHighlightedEntryAndClosesTheMenu(t *testing.T) {
 	driver, outlinerView := menuBarDriver(t)
 	pressMenuBarKey(t, driver, "ctrl+m")
 	menus := openMenuBarMenusForTest(t, outlinerView)
-	if len(menus) < 2 || menus[1].ID != outliner.MenuIDView {
-		t.Fatalf("the second menu is not %s: %+v", outliner.MenuIDView, menus)
+	if len(menus) < 3 || menus[2].ID != outliner.MenuIDView {
+		t.Fatalf("the third menu is not %s: %+v", outliner.MenuIDView, menus)
 	}
 	if outlinerView.PrimaryMode != chrome.ModeAll {
 		t.Fatalf("the fixture launched in %s, want the All the View menu checks", outlinerView.PrimaryMode)
 	}
 
-	pressMenuBarKey(t, driver, "l", "j")
-	entry := menus[1].Entries[outlinerView.MenuBar.ItemIndex]
+	pressMenuBarKey(t, driver, "l", "l", "j")
+	entry := menus[2].Entries[outlinerView.MenuBar.ItemIndex]
 	if got := operation.GotoModeOperations[entry.OperationID]; got != chrome.ModeToday {
 		t.Fatalf("the highlighted entry is %s, want the Today mode row", entry.OperationID)
 	}

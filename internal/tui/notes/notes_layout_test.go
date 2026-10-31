@@ -182,6 +182,14 @@ func TestNotesHelpDocumentsTheWorkspaceManager(t *testing.T) {
 		{Key: "u", Description: "Undo workspace change", Category: "Actions"},
 		{Key: "ctrl+r", Description: "Redo workspace change", Category: "Actions"},
 	}
+	// Registry entries carry their stable action identities even when this
+	// surface's help is a reference rather than an executable action search.
+	for i, id := range []operation.OperationID{
+		OperationNoteOpen, OperationNotesCreate, OperationNoteRename, OperationNoteMove,
+		OperationNotesSearch, OperationNotesScope, OperationNoteCopyTitle, OperationNoteCopyPath, OperationNotesActions,
+	} {
+		want[i].Action = &operation.HelpAction{ID: id}
+	}
 	if got := view.GetHelpItems(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("Notes help = %#v, want %#v", got, want)
 	}

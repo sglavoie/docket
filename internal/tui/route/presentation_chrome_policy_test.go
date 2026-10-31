@@ -10,8 +10,8 @@ import (
 // exhaustiveness tests below walk it: production code always holds a
 // PresentationID it was handed rather than one it enumerated.
 func allPresentations() []presentation.PresentationID {
-	presentations := make([]presentation.PresentationID, 0, int(presentation.ViewLastMessage))
-	for id := presentation.ViewProjectCreator; id <= presentation.ViewLastMessage; id++ {
+	presentations := make([]presentation.PresentationID, 0, int(presentation.ViewChangeHistory))
+	for id := presentation.ViewProjectCreator; id <= presentation.ViewChangeHistory; id++ {
 		presentations = append(presentations, id)
 	}
 	return presentations
@@ -129,6 +129,7 @@ func TestPresentationGuidanceReachabilityNamesShellAndSurfaceOwners(t *testing.T
 	// ContextualGuidanceProvider and draws no footer of its own, so the frame
 	// carries one divider and one set of hints.
 	wantShell := map[presentation.PresentationID]bool{
+		presentation.ViewChangeHistory:        true,
 		presentation.ViewCrossProjectOutliner: true,
 		presentation.ViewTaskComposer:         true,
 		presentation.ViewProjectCreator:       true,

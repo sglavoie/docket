@@ -33,7 +33,7 @@ too: they need Xcode and Zig.
 Bubble Tea is the product; Cobra holds only the launcher and maintenance
 commands.
 
-Layer ownership is strict: `internal/models` pure invariants, `internal/app` use
+Layer ownership: `internal/models` pure invariants, `internal/app` use
 cases and mutation policy, `internal/storage` task Markdown, transactions,
 conflicts and undo, `internal/config` the catalog/planning domains
 and migration, `internal/textgrammar` the capture/edit sigils. `internal/tui` is
@@ -47,7 +47,7 @@ L3 operation
 L4 route
 L5 listsurface
 L6 help
-L7 notes taskdetail taskform lens conflict projecthub outliner
+L7 notes taskdetail taskform lens conflict history projecthub outliner
 L8 tui — the shell: AppModel, RunApp, the registrars, the uitest harness
 ```
 

@@ -15,6 +15,7 @@ tag wears.
 | Open the menus | `F10` | Task → Set Up Check-Ins |
 | Keep the menu bar visible | `M` | Press again to hide it |
 | Reread feedback | Help → Recent Messages | Recover the full text of an expired message |
+| Inspect and reverse changes | Edit → Change History | Read before/after details, then undo or redo one change |
 
 Help puts capture, search, Peek, and editing together under Everyday, followed
 by Plan, the Doing/Done Status actions, and Recovery. These actions through

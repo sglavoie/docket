@@ -59,3 +59,9 @@ func simplifiedOperationContext() operation.CommandContext {
 	ctx.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	return ctx
 }
+
+// coreInputHelpItems supplies the default context for help assertions and the
+// deterministic harness. Production help supplies its invocation context.
+func (m *AppModel) coreInputHelpItems() []operation.HelpItem {
+	return m.coreHelpItemsForContext(m.operationCommandContext(), false)
+}

@@ -30,6 +30,38 @@ answer both keys against that one ledger, and each refreshes what it is showing
 rather than leaving a reversed row on screen. No surface offers the `u undo` a
 recovery toast advertises and then consumes the key in silence.
 
+### Browse changes before undoing
+
+Press `F10`, move right to **Edit**, and choose **Change History**. You can also
+find and run Change History from Outliner help search. The list shows retained
+transactions with their original time, action, affected projects, and whether
+they are applied or undone. **Next undo** and **Next redo** identify what the
+recovery keys will do, independently of the row you are inspecting.
+
+Use `j`/`k` or arrows to browse and `Enter` to read the full transaction. Details
+show the original **before → after** values for task fields, planning membership,
+project metadata, comments, and note text. File and attachment changes show
+creation, removal, or content replacement. Long values wrap and scroll; use
+`PgUp`/`PgDn` to page and `Home`/`End` to reach the ends. `?` explains the controls.
+
+`u` reverses **Next undo** and `Ctrl+R` reapplies **Next redo**, one transaction
+per press. Selecting an older entry only inspects it. The browser stays open,
+keeps that transaction selected, and refreshes after each outcome. `r` refreshes
+history manually. `Esc` returns from details or help, then closes the browser.
+Browsing alone changes no task, selection, scope, or ledger entry.
+
+Details describe the recorded transaction; undo reverses that direction. The
+restore still checks current data, so a change edited elsewhere may be refused.
+If history changes after a keypress, Docket refuses that request and refreshes
+the preview rather than restoring a different transaction. Unreadable retained
+images show a detail error and do not remove the entry just by inspecting it.
+
+The browser uses the same device ownership and 50-transaction retention as the
+undo keys. It survives restarting Docket; it is not an audit log of every synced
+change, and a new forward mutation still clears redo.
+
+### Restore around incoming edits
+
 Undo and Redo for edits to existing tasks preserve changes synced to other tasks
 in the same project, including changes made outside Docket. For example, rename
 task A on your Mac, edit task B on your iPhone, and sync: undoing the rename

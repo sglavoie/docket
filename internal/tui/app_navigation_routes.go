@@ -83,6 +83,8 @@ func (m *AppModel) presentationForRoute(target route.Route) (presentation.Presen
 			return 0, false
 		}
 		switch params.Kind {
+		case route.ReferenceChangeHistory:
+			return presentation.ViewChangeHistory, true
 		case route.ReferenceLastMessage:
 			return presentation.ViewLastMessage, true
 		case route.ReferenceHelp:

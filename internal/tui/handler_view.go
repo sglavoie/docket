@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/docket/internal/external"
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/help"
+	"github.com/sglavoie/docket/internal/tui/history"
 	"github.com/sglavoie/docket/internal/tui/operation"
 	"github.com/sglavoie/docket/internal/tui/outliner"
 	"github.com/sglavoie/docket/internal/tui/presentation"
@@ -74,6 +75,13 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		m.showView(presentation.ViewHelp, m.helpView)
 		return true, nil
 
+	case history.RestoreRequest:
+		return true, m.runChangeHistoryRestore(msg)
+	case history.RefreshRequest:
+		if m.activeView() == msg.Source {
+			m.refreshChangeHistory(msg.Source)
+		}
+		return true, nil
 	case help.RunActionMsg:
 		return true, m.runHelpAction(msg)
 

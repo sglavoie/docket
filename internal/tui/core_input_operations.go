@@ -374,6 +374,8 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		}
 	case operation.OperationCoreOpenMenuBar:
 		err = m.coreOpenMenuBar()
+	case operation.OperationCoreChangeHistory:
+		m.openChangeHistory()
 	case operation.OperationCoreLastMessage:
 		m.showView(presentation.ViewLastMessage, help.NewMessageView(m.feedback.feedbackSnapshot()...))
 	case operation.OperationCoreClearSearchHistory:
@@ -384,9 +386,17 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 	case operation.OperationCoreSetUpCheckIns:
 		message = commandMessage(m.startCheckInSetup())
 	case operation.OperationCoreUndo:
-		message = commandMessage(m.coreUndo())
+		if intent, ok := invocation.Value.(changeHistoryRestoreIntent); ok {
+			message = commandMessage(m.restoreFromChangeHistory(intent, false))
+		} else {
+			message = commandMessage(m.coreUndo())
+		}
 	case operation.OperationCoreRedo:
-		message = commandMessage(m.coreRedo())
+		if intent, ok := invocation.Value.(changeHistoryRestoreIntent); ok {
+			message = commandMessage(m.restoreFromChangeHistory(intent, true))
+		} else {
+			message = commandMessage(m.coreRedo())
+		}
 	case operation.OperationCoreBack:
 		if out, ok := m.outlinerPrimary(); ok {
 			listsurface.RunEscCascade(out.EscSteps())

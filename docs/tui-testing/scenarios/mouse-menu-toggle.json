@@ -12,7 +12,8 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "Ctrl+M opens the bar's first menu", "key": "ctrl+m" },
-    { "type": "key", "label": "l walks along to View, where chrome lives", "key": "l" },
+    { "type": "key", "label": "walk past Edit", "key": "l" },
+    { "type": "key", "label": "then View, where chrome lives", "key": "l" },
     { "type": "assert", "label": "checked means on, the way Advisories' box reads", "assert": "contains", "value": "✓ Mouse" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "click", "label": "a click outside the open menu puts it away and does nothing more", "x": 90, "y": 30 },

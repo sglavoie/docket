@@ -3,13 +3,19 @@ package tui
 import (
 	"errors"
 	"fmt"
-
-	"github.com/sglavoie/docket/internal/logging"
+	"slices"
+	"sort"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/logging"
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/tui/history"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/presentation"
 	"github.com/sglavoie/docket/internal/tui/status"
 	"github.com/sglavoie/docket/internal/tui/taskref"
 )
@@ -88,6 +94,11 @@ func (m *AppModel) restoreLedgerEntry(redo bool, transactionID string) (tea.Cmd,
 	switch {
 	case redo:
 		restore = ledger.RedoWithEntry
+		if transactionID != "" {
+			restore = func(scope storage.LedgerScope) (storage.LedgerEntry, string, error) {
+				return ledger.RedoTransactionWithEntry(scope, transactionID)
+			}
+		}
 		verb, label = "Redo", "redo"
 	case transactionID != "":
 		restore = func(scope storage.LedgerScope) (storage.LedgerEntry, string, error) {
@@ -279,4 +290,139 @@ func (m *AppModel) rewireTaskProjectRefsAfterRestore(projects []*models.Project)
 			m.today[i].Project = ref.Project
 		}
 	}
+}
+
+type changeHistoryRestoreIntent struct {
+	source        *history.Model
+	transactionID string
+}
+
+func (m *AppModel) historyProjects() []*models.Project {
+	if m.domain.runtime == nil {
+		return nil
+	}
+	projects := m.domain.runtime.AllProjects()
+	if m.crossOutliner != nil {
+		for _, loaded := range m.crossOutliner.Population.Projects {
+			for i, project := range projects {
+				if project.ID == loaded.ID {
+					projects[i] = loaded
+					break
+				}
+			}
+		}
+	}
+	return projects
+}
+
+func (m *AppModel) openChangeHistory() {
+	context := m.crossOutliner.OperationCommandContext()
+	view := history.New(m.operations.Registry, context, func(id string) ([]app.HistoryChange, error) {
+		images, err := m.workspaceHistoryLedger().HistoryArtifacts(id)
+		if err != nil {
+			return nil, err
+		}
+		return app.ChangeHistoryDetails(images, m.historyProjects()), nil
+	})
+	m.refreshChangeHistory(view)
+	m.showView(presentation.ViewChangeHistory, view)
+}
+
+func (m *AppModel) refreshChangeHistory(view *history.Model) {
+	snapshot, err := m.workspaceHistoryLedger().History(storage.GlobalScope())
+	if err != nil {
+		view.Replace(nil, "", "", err)
+		return
+	}
+	undo, redo := "", ""
+	if len(snapshot.Undo) > 0 {
+		undo = snapshot.Undo[0].TransactionID
+	}
+	if len(snapshot.Redo) > 0 {
+		redo = snapshot.Redo[0].TransactionID
+	}
+	projectNames := map[string]string{}
+	for _, p := range m.historyProjects() {
+		projectNames[p.ID] = p.Slug
+	}
+	var entries []history.Entry
+	for _, stack := range []struct {
+		entries []storage.LedgerEntry
+		undone  bool
+	}{{snapshot.Undo, false}, {snapshot.Redo, true}} {
+		for _, entry := range stack.entries {
+			projects := historyProjectLabels(entry, projectNames)
+			entries = append(entries, history.Entry{ID: entry.TransactionID, Description: entry.Description(), Projects: projects, At: entry.Timestamp, Undone: stack.undone})
+		}
+	}
+	// The timeline stays newest first as entries move between the stacks; redo
+	// order comes from the ledger, never from the selected timeline row.
+	sequences := map[string]int{}
+	for _, entry := range append(snapshot.Undo, snapshot.Redo...) {
+		sequences[entry.TransactionID] = entry.Seq
+	}
+	sort.Slice(entries, func(i, j int) bool { return sequences[entries[i].ID] > sequences[entries[j].ID] })
+	view.Replace(entries, undo, redo, nil)
+}
+
+func historyProjectLabels(entry storage.LedgerEntry, projectNames map[string]string) string {
+	var names []string
+	missing := false
+	for _, id := range entry.ProjectIDs {
+		if name := projectNames[id]; name != "" {
+			names = append(names, name)
+		} else {
+			missing = true
+		}
+	}
+	if missing {
+		for _, artifact := range entry.Artifacts {
+			parts := strings.Split(artifact.Path, "/projects/")
+			if len(parts) == 2 {
+				slug := strings.SplitN(parts[1], "/", 2)[0]
+				if !slices.Contains(names, slug) {
+					names = append(names, slug)
+				}
+			}
+		}
+	}
+	if len(names) == 0 {
+		if len(entry.ProjectIDs) != 0 {
+			return strings.Join(entry.ProjectIDs, ", ")
+		}
+		return "Workspace"
+	}
+	return strings.Join(names, ", ")
+}
+
+func (m *AppModel) runChangeHistoryRestore(msg history.RestoreRequest) tea.Cmd {
+	if m.currentView() != presentation.ViewChangeHistory || m.activeView() != msg.Source {
+		return nil
+	}
+	if msg.Operation != operation.OperationCoreUndo && msg.Operation != operation.OperationCoreRedo {
+		return nil
+	}
+	return operation.ResultCmd(m.operations.Executor.Execute(operation.OperationExecutionRequest{
+		ID: msg.Operation, Context: m.crossOutliner.OperationCommandContext(),
+		Value: changeHistoryRestoreIntent{msg.Source, msg.TransactionID}, HasValue: true,
+	}))
+}
+
+func (m *AppModel) restoreFromChangeHistory(intent changeHistoryRestoreIntent, redo bool) tea.Cmd {
+	if m.currentView() != presentation.ViewChangeHistory || m.activeView() != intent.source {
+		return nil
+	}
+	m.clearStatus()
+	cmd, outcome, _ := m.restoreLedgerEntry(redo, intent.transactionID)
+	if outcome == controlUndoSuperseded {
+		action := "undo"
+		if redo {
+			action = "redo"
+		}
+		outcome = "History changed; review Next " + action + " and try again."
+		m.setWarningStatus(outcome)
+		cmd = m.statusReadingTimeout()
+	}
+	m.refreshChangeHistory(intent.source)
+	return cmd
 }

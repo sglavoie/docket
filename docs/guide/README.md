@@ -64,7 +64,8 @@ peel them all. Search with `?completed` to include finished work or `?deferred`
 to include deferred tasks; read any `Also matches` hint for the population still
 hidden. See [filters and search](search-and-lenses.md#filters-and-search).
 
-**Recover a mistaken change.** Press `u` to undo or `Ctrl+R` to redo. If the
+**Recover a mistaken change.** Open `Edit → Change History` from `F10` to inspect
+recent changes and their before/after details. Press `u` to undo or `Ctrl+R` to redo. If the
 restored task is visible, the cursor follows it; otherwise the feedback names
 where it went. For a visible single-task restoration, `Ctrl+O` returns to your
 previous position. Open `Help → Recent Messages` to reread feedback that has

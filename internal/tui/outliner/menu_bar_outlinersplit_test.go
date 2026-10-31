@@ -113,7 +113,13 @@ func TestMenuGroupsContainOnlyApplicableActionsAndSkipHeadings(t *testing.T) {
 
 func TestMenuKeepsUnavailableEverydayActionWithReason(t *testing.T) {
 	registry := operation.NewOperationRegistry()
-	registerMenuTestOperation(t, registry, operation.OperationCoreEdit, "Edit", false)
+	for _, descriptor := range operation.CoreInputOperationDescriptors() {
+		if descriptor.ID == operation.OperationCoreEdit {
+			if err := registry.Register(descriptor); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
 	ctx := menuBarCommandContext()
 	ctx.Selection.Visual = true
 	menus, err := ResolveMenuEntries(registry, operation.InputStrategy{}, ctx, []menuSpec{{ID: "task", Entries: []menuEntrySpec{{OperationID: operation.OperationCoreEdit, KeepUnavailable: true}}}})

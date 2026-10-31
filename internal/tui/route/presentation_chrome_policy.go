@@ -114,7 +114,8 @@ func ChromePolicyForPresentation(view presentation.PresentationID) (Presentation
 			kind:     presentationChromeFullscreen,
 			guidance: presentationGuidanceSurface,
 		}
-	case presentation.ViewCrossProjectOutliner,
+	case presentation.ViewChangeHistory,
+		presentation.ViewCrossProjectOutliner,
 		presentation.ViewTaskComposer,
 		presentation.ViewProjectCreator,
 		presentation.ViewProjectEditor,

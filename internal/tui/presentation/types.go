@@ -27,4 +27,5 @@ const (
 	ViewProjectHub
 	ViewOutlineErrors
 	ViewLastMessage
+	ViewChangeHistory
 )

@@ -467,15 +467,8 @@ func (m *AppModel) coreOpenMenuBar() error {
 	return nil
 }
 
-// coreInputHelpItems documents the Outliner from the two grammars a user meets
-// there: the registry's keys and the shared sigil language they type into
-// capture, inline edit, and search. The grammar rows are appended here rather
-// than inside HelpItemsForInputStrategy so that stays a pure registry
-// projection and the grammar section stays Outliner-scoped.
-func (m *AppModel) coreInputHelpItems() []operation.HelpItem {
-	return m.coreHelpItemsForContext(m.operationCommandContext(), false)
-}
-
+// coreHelpItemsForContext joins registry keys and the shared sigil grammar for
+// the Outliner reference and executable help search.
 func (m *AppModel) coreHelpItemsForContext(ctx operation.CommandContext, includeUnavailable bool) []operation.HelpItem {
 	if m.operations.Registry == nil {
 		return nil
@@ -485,14 +478,22 @@ func (m *AppModel) coreHelpItemsForContext(ctx operation.CommandContext, include
 		project = m.operations.Registry.SearchHelpItemsForInputStrategy
 	}
 	items := project(operation.InputStrategySimplified, ctx)
-	// This workspace action is menu-only; its name and search vocabulary still
-	// come from the descriptor authority, with its actual menu route as the hint.
-	if descriptor, ok := m.operations.Registry.Descriptor(operation.OperationCoreSetUpCheckIns); ok && descriptor.Applicable(ctx) {
-		items = append(items, operation.HelpItem{
-			Key: m.menuOpenHint() + " → Task", Description: descriptor.Label,
-			Category: operation.OperationCategoryLabel(descriptor.Category), Aliases: descriptor.Aliases,
-			Action: &operation.HelpAction{ID: descriptor.ID},
-		})
+	// Menu-only workspace actions use the descriptor's vocabulary and their
+	// existing menu route in both the reference and executable help search.
+	for _, entry := range []struct {
+		id   operation.OperationID
+		menu string
+	}{
+		{operation.OperationCoreSetUpCheckIns, "Task"},
+		{operation.OperationCoreChangeHistory, "Edit"},
+	} {
+		if descriptor, ok := m.operations.Registry.Descriptor(entry.id); ok && descriptor.Applicable(ctx) {
+			items = append(items, operation.HelpItem{
+				Key: m.menuOpenHint() + " → " + entry.menu, Description: descriptor.Label,
+				Category: operation.OperationCategoryLabel(descriptor.Category), Aliases: descriptor.Aliases,
+				Action: &operation.HelpAction{ID: descriptor.ID},
+			})
+		}
 	}
 	return append(items, help.GrammarHelpItems()...)
 }

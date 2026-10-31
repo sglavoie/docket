@@ -9,7 +9,8 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "Ctrl+M opens the bar's first menu", "key": "ctrl+m" },
-    { "type": "key", "label": "l walks along to View, where chrome lives", "key": "l" },
+    { "type": "key", "label": "walk past Edit", "key": "l" },
+    { "type": "key", "label": "then View, where chrome lives", "key": "l" },
     { "type": "assert", "label": "the toggle is bound to no key, so this row is its only in-app route", "assert": "contains", "value": "Advisories" },
     { "type": "assert", "label": "checked means shown, the way Menu Bar's box reads", "assert": "contains", "value": "✓ Advisories" },
     { "type": "assert", "assert": "no_layout_issues" },
@@ -21,6 +22,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "key": "ctrl+m" },
+    { "type": "key", "key": "l" },
     { "type": "key", "key": "l" },
     { "type": "assert", "label": "the box follows the live state", "assert": "not_contains", "value": "✓ Advisories" },
     { "type": "assert", "assert": "contains", "value": "Advisories" },

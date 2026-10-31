@@ -94,7 +94,7 @@ every one of those values is there in full, wrapped rather than cut, in a
 readout you can scroll.
 
 `M` puts a menu bar above that title row: a single band reading
-`Task  View  Go  Find  Help`, one label per menu. `M` again takes it away. The
+`Task  Edit  View  Go  Find  Help`, one label per menu. `M` again takes it away. The
 bar costs exactly one row of the task list while it is shown, which is the whole
 reason it is off by default and the whole reason it is a key rather than a
 permanent fixture. A terminal too narrow for every label drops whole menus from

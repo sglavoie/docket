@@ -7,6 +7,8 @@ import "github.com/sglavoie/docket/internal/tui/presentation"
 // their typed route activation methods, never inferred from a renderer ID.
 func OverlayForPresentation(view presentation.PresentationID) (Overlay, bool, error) {
 	switch view {
+	case presentation.ViewChangeHistory:
+		return referenceOverlayFor(ReferenceChangeHistory)
 	case presentation.ViewLastMessage:
 		return referenceOverlayFor(ReferenceLastMessage)
 	case presentation.ViewHelp:
@@ -28,9 +30,9 @@ func OverlayForPresentation(view presentation.PresentationID) (Overlay, bool, er
 	return overlay, true, nil
 }
 
-// referenceOverlayFor builds the read-only overlay class: content the user
-// reads and dismisses, whose identity lives on a typed Reference route rather
-// than on the renderer ID.
+// referenceOverlayFor builds a reader whose identity lives on a typed
+// Reference route rather than on the renderer ID. Explicit recovery actions
+// from a reader still run through the shell operation executor.
 func referenceOverlayFor(kind ReferenceKind) (Overlay, bool, error) {
 	route, err := NewRoute(Reference, ReferenceParams{Kind: kind})
 	if err != nil {

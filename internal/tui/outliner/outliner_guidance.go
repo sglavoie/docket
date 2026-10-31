@@ -26,7 +26,7 @@ const (
 )
 
 // The Outliner has no GetHelpItems of its own: `?` is a core input operation, so
-// AppModel.coreInputHelpItems is the one projection that answers it. A second
+// AppModel.coreHelpItemsForContext is the one projection that answers it. A second
 // copy here would be unreachable and would drift.
 
 // ContextualGuidance selects one Outliner-specific profile before falling back

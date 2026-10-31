@@ -212,7 +212,7 @@ adds the **Grammar** section from
 `textgrammar.GuideDefinitions` over the union of the capture, edit, and search
 surfaces, making the sigil language discoverable outside the composer's own `?`.
 It is the second `GuideDefinitions` consumer and teaches in the same order as the
-first. `AppModel.coreInputHelpItems` appends it, because `?` is a core input
+first. `AppModel.coreHelpItemsForContext` appends it, because `?` is a core input
 operation and that function is the Outliner's one help projection.
 
 The help tab bar renders through `chrome.RenderWrappingTabBar` with

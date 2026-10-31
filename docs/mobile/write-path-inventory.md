@@ -195,6 +195,7 @@ exported commit, undo, redo, migrate, adopt, recover, and restore method on
 | `WorkspaceLedger.UndoTransactionWithEntry` | commit-journal | As `UndoWithEntry`, refusing with `ErrUndoSuperseded` when the named transaction is no longer the newest entry. |
 | `WorkspaceLedger.Redo` | commit-journal | A new forward `kind: redo` manifest. |
 | `WorkspaceLedger.RedoWithEntry` | commit-journal | As `Redo`. |
+| `WorkspaceLedger.RedoTransactionWithEntry` | commit-journal | As `RedoWithEntry`, refusing with `ErrUndoSuperseded` if the advertised transaction is no longer next to redo. |
 | `WorkspaceLedger.UndoCount` | — | Read-only. |
 | `WorkspaceLedger.RedoCount` | — | Read-only. |
 | `DomainCoordinator.CommitCatalog` | domain-store | Outbound `catalog` effect. |

@@ -743,7 +743,7 @@
     {
       "type": "assert",
       "assert": "contains",
-      "value": "Task  View  Go  Find  Help"
+      "value": "Task  Edit  View  Go  Find  Help"
     },
     {
       "type": "assert",
@@ -811,7 +811,7 @@
     {
       "type": "assert",
       "assert": "not_contains",
-      "value": "Task  View  Go  Find  Help"
+      "value": "Task  Edit  View  Go  Find  Help"
     },
     {
       "type": "assert",

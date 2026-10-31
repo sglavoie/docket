@@ -24,6 +24,7 @@ import (
 // A new or moved predicate must be classified here deliberately, so narrowing an
 // availability check to the base task workspace can never happen by accident.
 var archivePredicateAudit = map[string]string{
+	"internal/app/change_history.go:historyCatalogChanges":                         "lifecycle: renders original before/after archive flags from retained images without deciding project admission",
 	"internal/tui/operation/operation_availability.go:unavailableReason":           "lifecycle: explains why a registered menu or help action is unavailable without changing project admission",
 	"internal/app/activity.go:completionActivityFromSnapshot":                      "availability: completion activity mirrors the base task workspace population",
 	"internal/app/check_in_setup.go:checkInSetupEligible":                          "availability: guided setup admits only the base task workspace, excluding archived and parked owners before checking task eligibility",

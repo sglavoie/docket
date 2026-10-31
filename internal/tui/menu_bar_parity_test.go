@@ -162,7 +162,7 @@ func TestEveryMenuIsUniquelyIdentifiedAndInhabited(t *testing.T) {
 			}
 		}
 	}
-	for _, id := range []string{outliner.MenuIDTask, outliner.MenuIDView, outliner.MenuIDGo, outliner.MenuIDFind, outliner.MenuIDHelp} {
+	for _, id := range []string{outliner.MenuIDTask, outliner.MenuIDEdit, outliner.MenuIDView, outliner.MenuIDGo, outliner.MenuIDFind, outliner.MenuIDHelp} {
 		if !seen[id] {
 			t.Errorf("menu %s is missing from the bar", id)
 		}
@@ -261,7 +261,7 @@ func TestTheKeylessFoldClearIsReachableOnlyFromTheMenu(t *testing.T) {
 	}
 	outlinerView.Folds.CollapsedSections["_xp:pinned"] = true
 
-	pressMenuBarKey(t, driver, "ctrl+m", "l")
+	pressMenuBarKey(t, driver, "ctrl+m", "l", "l")
 	view := menuWithID(t, openMenuBarMenusForTest(t, outlinerView), outliner.MenuIDView)
 	if !menuHasLabel(view, "Clear All Folds") {
 		t.Fatalf("the View menu does not offer the keyless entry: %+v", view.Entries)

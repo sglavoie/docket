@@ -60,10 +60,11 @@ type ResolvedMenu struct {
 	Entries []ResolvedMenuEntry
 }
 
-// The five menu identities. The bar's order is the order outlinerMenuSpecs
+// The six menu identities. The bar's order is the order outlinerMenuSpecs
 // returns them in; these names are what a test or a later renderer addresses a
 // menu by, so neither has to match on a title.
 const (
+	MenuIDEdit = "edit"
 	MenuIDTask = "task"
 	MenuIDView = "view"
 	MenuIDGo   = "go"
@@ -117,6 +118,14 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 				{OperationID: operation.OperationTaskCopyTitle},
 				{OperationID: operation.OperationTaskCopyDetails},
 				{OperationID: operation.OperationTaskCopyTitleDescription},
+			},
+		},
+		{
+			ID: MenuIDEdit, Title: "Edit",
+			Entries: []menuEntrySpec{
+				{OperationID: operation.OperationCoreUndo, KeepUnavailable: true},
+				{OperationID: operation.OperationCoreRedo, KeepUnavailable: true},
+				{OperationID: operation.OperationCoreChangeHistory},
 			},
 		},
 		{
