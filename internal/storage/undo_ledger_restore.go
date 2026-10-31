@@ -120,6 +120,9 @@ func (l *WorkspaceLedger) restore(scope LedgerScope, redo bool, expectTransactio
 		if l.guardsTaskRemoval(entry) {
 			artifacts = append(artifacts, ArtifactChange{Path: l.removalGuardPath})
 		}
+		if l.guardsTerminalTaskRestore(entry) {
+			artifacts = append(artifacts, ArtifactChange{Path: l.terminalGuardPath})
+		}
 		guardPaths, validate, guardErr := l.preparePlanningRestoreGuard(entry, redo)
 		if guardErr != nil {
 			return l.retireDriftedEntry(journal, lf, entry, idx, redo, guardErr)

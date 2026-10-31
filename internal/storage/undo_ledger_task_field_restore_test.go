@@ -140,7 +140,6 @@ func TestTaskFieldRestoreKeepsWholeTaskChecksForOtherEdits(t *testing.T) {
 	}{
 		{"description", func(task *models.Task) { task.Description = "Local description" }},
 		{"tags", func(task *models.Task) { task.Tags = []string{"local"} }},
-		{"lifecycle", func(task *models.Task) { task.WorkflowState = models.StateDoing }},
 		{"deadline", func(task *models.Task) { due := task.CreatedAt.AddDate(0, 0, 1); task.DueDate = &due }},
 		{"check_in", func(task *models.Task) { day := task.CreatedAt.Truncate(24 * time.Hour); task.NextCheckIn = &day }},
 		{"touch_time_only", func(task *models.Task) {}},

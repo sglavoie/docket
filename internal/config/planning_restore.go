@@ -76,6 +76,16 @@ func PlanningRestoreAdditions(expectedBytes, desiredBytes []byte) (*PlanningStat
 	return desired, workspaceID, nil
 }
 
+// PlanningRestoreState decodes proposed planning bytes for read-only restore
+// validation, with the same strict envelope and membership checks as rebasing.
+func PlanningRestoreState(data []byte) (*PlanningState, error) {
+	planning, _, ok := decodePlanningRestore(data)
+	if !ok {
+		return nil, fmt.Errorf("config: invalid proposed planning restore image")
+	}
+	return planning, nil
+}
+
 // Decode strictly so a restore never silently drops unknown or future fields.
 func decodePlanningRestore(data []byte) (*PlanningState, string, bool) {
 	var env domainEnvelope

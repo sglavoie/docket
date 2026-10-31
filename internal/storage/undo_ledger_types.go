@@ -224,6 +224,10 @@ type WorkspaceLedger struct {
 	// planned task without making storage interpret that domain's file format.
 	removalGuardPath string
 	removalGuard     func(projectIDs []string, taskID string) error
+	// Terminal lifecycle restores check proposed planning before staging, even
+	// when the original action wrote no planning artifact.
+	terminalGuardPath string
+	terminalGuard     func(projectIDs, taskIDs []string, planning []byte) error
 	// Planning owns its encoding in config. The engine installs a pure restore
 	// callback for that one artifact; storage invokes it under the artifact lock.
 	planningRestorePath string

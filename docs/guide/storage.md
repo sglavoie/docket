@@ -42,9 +42,23 @@ priority. Redo keeps the priority too, including any newer incoming change
 between Undo and Redo. A later change to a field the original action changed
 refuses the whole restore. These checks survive restarting Docket.
 
-Edits involving other fields, including status and scheduling, still refuse
-when that task changed. A restore also refuses if the combined result would
-break a task invariant, such as completing a parent that now has an open child.
+Status changes also preserve unrelated edits to the same task. Complete A on
+your Mac, rename A on your iPhone, and sync: Undo reopens A with the newer name
+and restores any check-in and Today/Next membership the completion removed.
+Redo completes A again while keeping newer incoming edits. This works after a
+restart and also applies to starting, waiting, pausing, canceling, and reopening.
+
+The status, its clock, completion time, and deferral data are checked together.
+When the action changed a check-in, its date, repeat, and review history are
+checked together too. A later change to one of those groups or to a restored
+planning membership refuses the whole restore. A restore also refuses if the
+combined result would break a task invariant, such as completing a parent that
+now has an open child or leaving a completed task in Today or Next. Root tasks
+stay partitioned into active and finished work, retaining the current order
+inside each group when an incoming edit requires combining the versions.
+
+Standalone scheduling edits and edits involving other fields still require
+the changed task to be unchanged.
 
 Creating one standalone root task in an existing project also supports this:
 capture A, sync an edit to B, then undo or redo A without losing B's edit.

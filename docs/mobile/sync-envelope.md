@@ -217,9 +217,14 @@ history; entries recorded before sync carry no device and stay restorable. A
 restore preflights every affected file. Existing-task edits and standalone
 root-task creation/deletion can retain unrelated task changes; Today/Next
 membership changes can retain unrelated plans when alone or coupled solely to
-existing-task edits. Changed targets, conflicting order, and other artifact
-drift refuse the restore whole. Restoring a membership also requires its task
-to exist and be nonterminal in the proposed result. Undo therefore preserves
+existing-task edits. Scalar and status changes also retain unrelated fields on
+the same task. Lifecycle fields and affected check-in fields are checked as
+groups; overlapping changes, conflicting order, and other artifact drift refuse
+the restore whole. Status-driven stable partitioning of finished roots is
+supported while explicit reordering still requires exact images. Restoring a
+membership also requires its task to exist and be nonterminal in the proposed
+result; restoring a terminal state refuses a retained Today/Next membership,
+including when the original action changed no planning. Undo therefore preserves
 other devices' work. A successful undo or
 redo is published as a new `kind: undo` or `redo` transaction whose parents are
 the device's heads.
@@ -607,7 +612,9 @@ keep each commit atomic. A failure prints its seed, a replay command
   after saving; continuous observation belongs to the transport's polling.
 - Undo and Redo of existing-task edits and standalone single-root task creation
   or deletion preserve peer changes to other tasks in the same `tasks.md`.
-  A changed target refuses; removing a task (creation Undo or deletion Redo)
+  Scalar and status edits also preserve unrelated fields on the same task;
+  changed fields or coupled lifecycle and affected check-in groups refuse.
+  Other edits still check the whole changed task. Removing a task (creation Undo or deletion Redo)
   also refuses new children or Today/Next membership. Restoring a task (creation
   Redo or deletion Undo) refuses identity or ShortID collisions and inserts it
   before the next surviving original root, or at the end. Project-comment

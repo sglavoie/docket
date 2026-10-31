@@ -243,8 +243,9 @@ recorded change must be replayed before later ones.
 
 A restore preflights every image before staging a byte. For an existing-task edit
 in `projects/<slug>/tasks.md`, external drift can be rebased by task identity:
-the retained before/after documents must have the same task membership, order,
-project name, and project comments. Their changed tasks normally must still
+the retained before/after documents must have the same task membership and
+project name. Their task order must match, except for a status change's stable
+partition of finished roots after active ones. Their changed tasks normally must still
 match the expected persisted values in the current document, including `UpdatedAt`.
 `rebaseTaskRestore` replaces those tasks with their desired versions and retains
 the current other tasks, order, and project metadata. It uses the merge audit and
@@ -255,11 +256,25 @@ An edit whose entire task delta is title, priority, context, and/or resume note
 hold its expected value: an independently applied desired value refuses too.
 The restore copies those fields onto the current task and keeps every other
 current value, including lifecycle, schedules, collections, and the later of
-the current and desired touch times. Timestamp-only entries and edits involving
-any other field retain whole-task checks. Multiple changed fields and bulk
+the current and desired touch times. Status changes also admit their lifecycle
+group: state, state clock, completion time, deferral instant, and deferral count.
+Every member must still match the expected image, including unchanged members.
+When the lifecycle action changed a check-in, all three check-in fields form
+one checked unit, including `LastReviewedAt`. An unchanged check-in stays current
+and the combined-document audit still rejects a terminal task with a schedule.
+These groups may accompany the four scalar edits. Timestamp-only entries,
+standalone scheduling changes, and edits involving any other field retain
+whole-task checks. Multiple changed fields and bulk
 targets restore together or refuse together. Both directions recheck the original
 images after every incoming change and restart; no additional ledger data is
 needed.
+
+`taskRestoreOrderCompatible` admits an order difference only when a terminal
+boundary changed and applying `ReorderRootTasksByCompletion` in the forward
+direction reproduces the other image exactly, with unchanged parentage. Tasks
+are matched by identity, and a rebased restore reapplies that stable partition
+to current order instead of replaying an old full-project sequence. Explicit
+ordering changes retain exact-image checks.
 
 A single-artifact entry that added exactly one root task without attachments
 also rebases by identity. Its original images must leave every existing task,
@@ -304,6 +319,14 @@ when no rewrite is proposed). It reads without backup recovery. Preflight
 validates every artifact and the guard before staging task bytes, planning,
 ledger movement, and outgoing sync history in the same manifest. Neither
 storage nor the ledger format takes ownership of the planning encoding.
+
+The engine also installs a terminal-task guard. Storage locks planning beside
+project images, identifies tasks whose restored lifecycle becomes terminal, and
+the guard checks the proposed planning bytes (or current read-only planning when
+the entry writes none). A new Today/Next membership refuses the whole restore,
+even on the exact-image path and when the original status action touched no
+planning. No backup recovery or partial task, planning, or history write occurs
+during this validation.
 
 Project-comment additions, edits, and deletions also restore by identity, alone
 or alongside existing-task edits. Each changed comment must retain its complete

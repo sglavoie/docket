@@ -2,6 +2,7 @@ package engine
 
 import (
 	"path/filepath"
+	"slices"
 
 	"github.com/sglavoie/docket/internal/app"
 	"github.com/sglavoie/docket/internal/config"
@@ -13,6 +14,30 @@ func guardPlanningRestore(ledger *storage.WorkspaceLedger, dataDir string) {
 	ledger.WithPlanningRestore(config.PlanningStatePath(dataDir), config.RebasePlanningRestore)
 	ledger.WithPlanningRestoreGuard(func(expected, desired []byte) ([]string, func([]transaction.Op) error, error) {
 		return preparePlanningRestoreGuard(dataDir, expected, desired)
+	})
+	if dataDir == "" {
+		return
+	}
+	path := config.PlanningStatePath(dataDir)
+	ledger.WithTerminalTaskRestoreGuard(path, func(projectIDs, taskIDs []string, proposed []byte) error {
+		var planning *config.PlanningState
+		var err error
+		if proposed != nil {
+			planning, err = config.PlanningRestoreState(proposed)
+		} else {
+			planning, err = config.NewDomainFileStore(dataDir).LoadPlanningReadOnly()
+		}
+		if err != nil {
+			return err
+		}
+		for _, refs := range [][]config.ProjectTaskLocator{planning.Today, planning.Next} {
+			for _, ref := range refs {
+				if slices.Contains(projectIDs, ref.ProjectID) && slices.Contains(taskIDs, ref.TaskID) {
+					return &storage.ArtifactConflictError{Path: path, Expected: "terminal task absent from Today and Next", Actual: "task has a planning membership"}
+				}
+			}
+		}
+		return nil
 	})
 }
 

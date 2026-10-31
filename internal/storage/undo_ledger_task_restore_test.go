@@ -157,6 +157,7 @@ func TestTaskRestoreRefusesInvalidCombinedHierarchy(t *testing.T) {
 	current := after.clone()
 	parent := current.Tasks[0].ID
 	current.Tasks[1].ParentID = &parent
+	current.Tasks[0].Title = "Incoming A"
 	content := mustWriteCurrentDocument(t, current)
 	writeFile(t, path, content)
 	if _, err := ledger.Undo(GlobalScope()); !errors.Is(err, ErrStaleArtifact) {

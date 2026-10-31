@@ -191,7 +191,11 @@ func (l *WorkspaceLedger) preflightRestoreOps(lf *ledgerFile, entry LedgerEntry,
 		}
 	}
 
-	return appendDirectoryDeleteOps(fileOps, directoryDeletes), nil
+	ops := appendDirectoryDeleteOps(fileOps, directoryDeletes)
+	if err := l.checkTerminalTaskRestore(entry, blobs, redo, ops); err != nil {
+		return nil, err
+	}
+	return ops, nil
 }
 
 func (l *WorkspaceLedger) validateRestoreImages(entry LedgerEntry) (map[string][]byte, error) {

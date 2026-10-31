@@ -81,7 +81,7 @@ func TestReceiptUndoSyncsAndCannotOverwriteIncomingWork(t *testing.T) {
 	p.settle()
 	p.desktop.ok(p.desktop.call("command.edit", map[string]any{"task": target, "title": "An incoming edit"}), nil)
 	p.settle()
-	p.phone.rejects(p.phone.call("command.undo", map[string]any{"transaction_id": changed.Committed.TransactionID}), CodeStaleRevision)
+	p.phone.ok(p.phone.call("command.undo", map[string]any{"transaction_id": changed.Committed.TransactionID}), nil)
 	if got := p.phone.detail(atlasProject, releaseNotesTask).Task.Title; got != "An incoming edit" {
 		t.Fatalf("undo overwrote incoming work: %q", got)
 	}
