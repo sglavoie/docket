@@ -75,6 +75,17 @@ func ApplyThemedTextInput(ti *textinput.Model) {
 	ti.SetStyles(ThemedTextInputStyles)
 }
 
+// RefreshThemedTextInput repaints a long-lived input after a theme change.
+// The generated input styles vary only by text and muted ink. Reapplying an
+// unchanged style would reset the virtual cursor's blink phase on every frame.
+func RefreshThemedTextInput(ti *textinput.Model) {
+	styles := ti.Styles()
+	if styles.Focused.Text.GetForeground() != ThemedTextInputStyles.Focused.Text.GetForeground() ||
+		styles.Focused.Prompt.GetForeground() != ThemedTextInputStyles.Focused.Prompt.GetForeground() {
+		ApplyThemedTextInput(ti)
+	}
+}
+
 // ApplyThemedTextarea sets the current themed styles on a textarea.Model.
 func ApplyThemedTextarea(ta *textarea.Model) {
 	ta.SetStyles(ThemedTextareaStyles)

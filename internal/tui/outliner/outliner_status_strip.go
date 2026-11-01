@@ -119,6 +119,7 @@ func (m *OutlinerModel) searchIndicator(width int, counted bool) string {
 	if m.IsSearchMode() && m.Search.historyPicker != nil {
 		picker := m.Search.historyPicker
 		picker.input.SetWidth(max(width-10, 1))
+		theme.RefreshThemedTextInput(&picker.input)
 		return theme.MutedStyle.Render("History: ") + picker.input.View()
 	}
 	var indicator string

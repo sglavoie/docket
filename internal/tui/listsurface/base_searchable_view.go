@@ -149,6 +149,7 @@ func (v *BaseSearchableView) SetSearchInputCursor(position int) {
 
 // SearchInputView returns the rendered search input for display.
 func (v *BaseSearchableView) SearchInputView() string {
+	theme.RefreshThemedTextInput(&v.searchInput)
 	return v.searchInput.View()
 }
 
