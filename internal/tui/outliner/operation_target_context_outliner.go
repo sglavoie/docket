@@ -42,6 +42,7 @@ func (m *OutlinerModel) OperationCommandContext() operation.CommandContext {
 	ctx.Entity.HasFocusedProjectHeaderCursor = m.CursorNamesFocusedProjectHeader()
 	_, ctx.Entity.HasNoteCursor = m.CursorNoteIdentity()
 	ctx.Peek = m.PeekCommandContext()
+	ctx.Search = m.SearchRecoveryContext()
 	ctx.Selection.Tasks = m.SelectedTaskIdentities()
 	ctx.Selection.Visual = m.IsMultiSelectActive()
 	counts := m.SelectionCounts()

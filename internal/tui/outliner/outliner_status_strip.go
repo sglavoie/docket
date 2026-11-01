@@ -56,6 +56,9 @@ func (m *OutlinerModel) statusStripSignals(width int) []string {
 	}
 	if m.HasContentRows() {
 		if hint := m.withheldSearchHint(); hint != "" {
+			if recovery := m.searchRecoveryHint(); recovery != "" {
+				hint += ". " + recovery
+			}
 			lines = append(lines, theme.MutedStyle.Width(width).Render("Also matches: "+hint+"."))
 		}
 	}

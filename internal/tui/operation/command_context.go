@@ -200,6 +200,17 @@ type PeekContext struct {
 	CanPageUp   bool
 }
 
+// SearchContext freezes the query and the withheld populations offered by
+// search recovery. Pending results never advertise counts from an older query.
+type SearchContext struct {
+	Query     string
+	Filters   string
+	Ranked    bool
+	Pending   bool
+	Completed int
+	Deferred  int
+}
+
 // CommandContext is the complete input to capability-based command
 // availability. Existing commands continue to use Views and Available; new or
 // migrated commands may additionally declare RequiredCapabilities and
@@ -212,7 +223,8 @@ type CommandContext struct {
 	// Peek is the inline preview's own state, which no other field can stand in
 	// for: the pane is additive chrome over the cursor row rather than an entity,
 	// and its paging keys must be offered only where a body can actually move.
-	Peek PeekContext
+	Peek   PeekContext
+	Search SearchContext
 	// CurrentEntity is the typed identity of the focused row. Surfaces whose
 	// rows are not tasks or projects set it directly; task and project surfaces
 	// may leave it empty and let resolution derive it from Entity.

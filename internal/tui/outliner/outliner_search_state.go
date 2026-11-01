@@ -292,8 +292,6 @@ type searchWithheldMatches struct {
 	deferred  int
 }
 
-func (w searchWithheldMatches) any() bool { return w.completed > 0 || w.deferred > 0 }
-
 // setCaseRelaxed records the case reading alone, for the pass that lifts the
 // gate out first and only learns whether it had to relax after scoring under it.
 func (s *searchState) setCaseRelaxed(relaxed bool) { s.caseRelaxed = relaxed }

@@ -19,6 +19,11 @@ those keys open, the `Space` action sheets, and the two edit surfaces. What the 
 | Selection | `v` toggles the cursor task; `V` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
 | Global | `Ctrl+P` Select Pinned Project, `P` Select Project, `Q` the narrowing readout, `\` Named Lenses, `Ctrl+N` Notes, `T` theme, `M` menu bar, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `q`/`Ctrl+C` quit (`q` on the Outliner itself; inside a text input or picker it is just a letter) |
 
+`Ctrl+G` opens **Search Recovery** while typing or browsing a ranked task search.
+Choose matching finished or deferred work when offered, or **Explain Current
+View** to inspect restrictions. The population actions also appear in Find and
+searchable help. See [search recovery](search-and-lenses.md#filters-and-search).
+
 `@` opens one scheduling picker holding three sections. Its DUE section lists
 Clear, Today, Tomorrow, This weekend, Start of next week, In one week, and In 30 days;
 its DEFER section lists Clear defer, In 1 hour, In 4 hours, In 8 hours,

@@ -320,6 +320,13 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		if out, ok := m.outlinerPrimary(); ok {
 			message = commandMessage(out.ActivateSearch())
 		}
+	case operation.OperationCoreSearchRecovery:
+		err = m.operations.OpenSearchRecovery(m, invocation.Context)
+	case operation.OperationCoreSearchFinished, operation.OperationCoreSearchDeferred:
+		if out, ok := m.outlinerPrimary(); ok {
+			cmd, recoveryErr := out.ApplySearchRecovery(invocation.Descriptor.ID, invocation.Context)
+			message, err = commandMessage(cmd), recoveryErr
+		}
 	case operation.OperationCoreSelectProject:
 		message = projecthub.ShowProjectHubMsg{}
 	case operation.OperationCoreSelectPinned:

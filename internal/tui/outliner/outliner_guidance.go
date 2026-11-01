@@ -69,6 +69,9 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		return m.searchAutocompleteGuidance(), true
 	case m.IsSearchMode():
 		hints := chrome.RequiredGuidanceHints("Enter apply search", m.SearchExitHint())
+		if recovery := m.searchRecoveryHint(); recovery != "" {
+			hints = append(hints, chrome.NewGuidanceHint(recovery, 1, false))
+		}
 		if m.hasSearchHistory() {
 			// Only once something has been submitted: an empty ring would advertise
 			// a walk that does nothing on its first press.
@@ -115,10 +118,13 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 			DropOrphan: true,
 		}, true
 	case m.HasSearchProjection():
+		hints := chrome.RequiredGuidanceHints(m.EscHint())
+		if recovery := m.searchRecoveryHint(); recovery != "" {
+			hints = append(hints, chrome.NewGuidanceHint(recovery, 1, false))
+		}
 		return chrome.GuidanceSpec{
-			Hints: append(chrome.RequiredGuidanceHints(m.EscHint()),
-				chrome.OptionalGuidanceHints(10, "/ edit search", "a capture", "P projects", "? help")...),
-			Rows: 1,
+			Hints: append(hints, chrome.OptionalGuidanceHints(10, "/ edit search", "a capture", "P projects", "? help")...),
+			Rows:  1,
 		}, true
 	case m.HasActiveLens():
 		// One press leaves the whole saved projection, so it is the required hint
@@ -282,6 +288,9 @@ func (m *OutlinerModel) emptyGuidance() chrome.GuidanceSpec {
 		required = "a capture"
 	}
 	optional := []string{"P projects", "? help"}
+	if recovery := m.searchRecoveryHint(); recovery != "" {
+		optional = append([]string{recovery}, optional...)
+	}
 	if strings.HasPrefix(required, "P ") {
 		optional = []string{"? help"}
 	}

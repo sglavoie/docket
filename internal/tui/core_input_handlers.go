@@ -467,8 +467,7 @@ func (m *AppModel) coreOpenMenuBar() error {
 	return nil
 }
 
-// coreHelpItemsForContext joins registry keys and the shared sigil grammar for
-// the Outliner reference and executable help search.
+// coreHelpItemsForContext joins registry keys, menu actions, and sigil grammar.
 func (m *AppModel) coreHelpItemsForContext(ctx operation.CommandContext, includeUnavailable bool) []operation.HelpItem {
 	if m.operations.Registry == nil {
 		return nil
@@ -478,20 +477,21 @@ func (m *AppModel) coreHelpItemsForContext(ctx operation.CommandContext, include
 		project = m.operations.Registry.SearchHelpItemsForInputStrategy
 	}
 	items := project(operation.InputStrategySimplified, ctx)
-	// Menu-only workspace actions use the descriptor's vocabulary and their
-	// existing menu route in both the reference and executable help search.
 	for _, entry := range []struct {
 		id   operation.OperationID
 		menu string
 	}{
 		{operation.OperationCoreSetUpCheckIns, "Task"},
 		{operation.OperationCoreChangeHistory, "Edit"},
+		{operation.OperationCoreSearchFinished, "Find"},
+		{operation.OperationCoreSearchDeferred, "Find"},
 	} {
-		if descriptor, ok := m.operations.Registry.Descriptor(entry.id); ok && descriptor.Applicable(ctx) {
+		if descriptor, ok := m.operations.Registry.Descriptor(entry.id); ok && (includeUnavailable || descriptor.Applicable(ctx)) {
 			items = append(items, operation.HelpItem{
 				Key: m.menuOpenHint() + " → " + entry.menu, Description: descriptor.Label,
 				Category: operation.OperationCategoryLabel(descriptor.Category), Aliases: descriptor.Aliases,
-				Action: &operation.HelpAction{ID: descriptor.ID},
+				Action:         &operation.HelpAction{ID: descriptor.ID},
+				DisabledReason: operation.AvailabilityReason(descriptor, ctx),
 			})
 		}
 	}

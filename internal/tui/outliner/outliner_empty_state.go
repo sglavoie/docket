@@ -118,17 +118,33 @@ func (m *OutlinerModel) HasContentRows() bool {
 // ignores the mode, so adding that sigil is exactly what shows them; a narrowed
 // mode would still hide them for its own reasons, so it is never promised there.
 func (m *OutlinerModel) withheldSearchHint() string {
-	if !m.ShowsRankedList() || !m.Search.withheld.any() {
+	ctx := m.SearchRecoveryContext()
+	if !ctx.Ranked || ctx.Completed+ctx.Deferred == 0 {
 		return ""
 	}
 	var parts []string
-	if n := m.Search.withheld.completed; n > 0 {
+	if n := ctx.Completed; n > 0 {
 		parts = append(parts, fmt.Sprintf("%s (add ?completed)", util.Count(n, "finished task")))
 	}
-	if n := m.Search.withheld.deferred; n > 0 {
+	if n := ctx.Deferred; n > 0 {
 		parts = append(parts, fmt.Sprintf("%s (add ?deferred)", util.Count(n, "deferred task")))
 	}
 	return strings.Join(parts, " and ")
+}
+
+func (m *OutlinerModel) searchRecoveryHint() string {
+	key := m.searchRecoveryKey()
+	if key == "" {
+		return ""
+	}
+	return key + " search recovery"
+}
+
+func (m *OutlinerModel) searchRecoveryKey() string {
+	if m.OperationRegistry == nil || !m.ShowsRankedList() || strings.TrimSpace(m.SearchQuery()) == "" {
+		return ""
+	}
+	return m.OperationRegistry.InputShortcutForOperation(operation.InputStrategySimplified, operation.OperationCoreSearchRecovery)
 }
 
 // OutlinerEmptyHiddenMessage is what fH answers when it finds nothing: the view
@@ -150,7 +166,11 @@ func (m *OutlinerModel) OutlinerEmptyMessage() string {
 			if m.Search.withheld.completed+m.Search.withheld.deferred > 1 {
 				verb = "do"
 			}
-			return fmt.Sprintf("No open tasks match search %q, but %s %s. Press %s.", m.SearchQuery(), hint, verb, m.searchExitClause())
+			recovery := ""
+			if key := m.searchRecoveryKey(); key != "" {
+				recovery = key + " for search recovery, or "
+			}
+			return fmt.Sprintf("No open tasks match search %q, but %s %s. Press %s%s.", m.SearchQuery(), hint, verb, recovery, m.searchExitClause())
 		}
 		if hint := m.Search.eliminationHint; hint != "" {
 			return fmt.Sprintf("No tasks match search %q. %s Press %s.", m.SearchQuery(), hint, m.searchExitClause())

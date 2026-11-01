@@ -269,8 +269,9 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"ctrl+b": operation.OperationCorePeekPageUp,
 		// The half page is shared with the list below; the full page is not,
 		// because the list has no full page of its own to disambiguate against.
-		"/": operation.OperationCoreScopeSearch,
-		"v": operation.OperationCoreMultiSelect, "V": operation.OperationCoreRangeSelect,
+		"/":      operation.OperationCoreScopeSearch,
+		"ctrl+g": operation.OperationCoreSearchRecovery,
+		"v":      operation.OperationCoreMultiSelect, "V": operation.OperationCoreRangeSelect,
 		"ctrl+a": operation.OperationCoreSelectAll,
 		"P":      operation.OperationCoreSelectProject,
 		"\\":     operation.OperationCoreNamedLenses,

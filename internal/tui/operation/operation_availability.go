@@ -17,6 +17,9 @@ func AvailabilityReason(descriptor OperationDescriptor, ctx CommandContext) stri
 }
 
 func unavailableReason(descriptor OperationDescriptor, ctx CommandContext) string {
+	if descriptor.ID == OperationCoreSearchRecovery || descriptor.ID == OperationCoreSearchFinished || descriptor.ID == OperationCoreSearchDeferred {
+		return searchRecoveryUnavailableReason(descriptor.ID, ctx)
+	}
 	if descriptor.TargetSource == OperationTargetGlobal || descriptor.TargetSource == OperationTargetScopedProjects {
 		return "This action is unavailable in the current view."
 	}

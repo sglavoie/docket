@@ -129,10 +129,19 @@ func (m *OutlinerModel) ApplyOpenOptions(opts OutlinerOpenOptions) {
 // whether an inline control already owns the keystroke before resolving it
 // against the OperationRegistry.
 func (m *OutlinerModel) SimplifiedInlineControlOwnsInput() bool {
+	return m != nil && (m.IsSearchMode() || m.nonSearchInlineControlOwnsInput())
+}
+
+// SearchInputOwnsInput excludes modal sub-states nested above the search.
+func (m *OutlinerModel) SearchInputOwnsInput() bool {
+	return m != nil && m.IsSearchMode() && m.Search.historyPicker == nil && !m.nonSearchInlineControlOwnsInput()
+}
+
+func (m *OutlinerModel) nonSearchInlineControlOwnsInput() bool {
 	if m == nil {
 		return false
 	}
-	if m.PeekFullscreen || m.IsSearchMode() ||
+	if m.PeekFullscreen ||
 		m.QuickEdit.IsActive() ||
 		m.Confirm.IsActive() ||
 		m.QueryReadout.Expanded ||

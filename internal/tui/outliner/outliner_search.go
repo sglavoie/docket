@@ -2,6 +2,7 @@ package outliner
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/sglavoie/docket/internal/fuzzy"
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/operation"
 	"github.com/sglavoie/docket/internal/tui/query"
 	"github.com/sglavoie/docket/internal/tui/taskref"
 	"github.com/sglavoie/docket/internal/util"
@@ -432,4 +434,54 @@ func (m *OutlinerModel) searchEliminationHint(projects []*models.Project, candid
 		return fmt.Sprintf("%s %s %q; %s removes %s.", count, verb, remainder, best.Spelling, object)
 	}
 	return fmt.Sprintf("%s %s without %s.", count, verb, best.Spelling)
+}
+
+// SearchRecoveryContext projects settled search evidence for every invocation
+// surface. No scoring runs during rendering or while constructing a context.
+func (m *OutlinerModel) SearchRecoveryContext() operation.SearchContext {
+	if m == nil || !m.HasSearchProjection() || strings.TrimSpace(m.SearchQuery()) == "" {
+		return operation.SearchContext{}
+	}
+	ctx := operation.SearchContext{
+		Query: m.SearchQuery(), Filters: m.FilterQuery.Fingerprint(), Ranked: m.ShowsRankedList(),
+		Pending: m.Search.flight != nil && m.Search.flight.result == nil,
+	}
+	if ctx.Ranked && !ctx.Pending {
+		ctx.Completed, ctx.Deferred = m.Search.withheld.completed, m.Search.withheld.deferred
+	}
+	return ctx
+}
+
+// ApplySearchRecovery edits the held query inside its original return frame.
+// The same setter recompiles the ordinary sigil grammar, including all facets
+// and Focus boundaries; no separate population toggle is introduced.
+func (m *OutlinerModel) ApplySearchRecovery(id operation.OperationID, expected operation.CommandContext) (tea.Cmd, error) {
+	current := m.OperationCommandContext()
+	if current.Search != expected.Search || !slices.Equal(current.ScopeProjectIDs, expected.ScopeProjectIDs) {
+		return nil, fmt.Errorf("search changed; close recovery and open it again")
+	}
+	var token string
+	switch id {
+	case operation.OperationCoreSearchFinished:
+		if current.Search.Pending || current.Search.Completed == 0 {
+			return nil, fmt.Errorf("no matching finished tasks are available yet")
+		}
+		token = "?completed"
+	case operation.OperationCoreSearchDeferred:
+		if current.Search.Pending || current.Search.Deferred == 0 {
+			return nil, fmt.Errorf("no matching deferred tasks are available yet")
+		}
+		token = "?deferred"
+	default:
+		return nil, fmt.Errorf("unknown search recovery action")
+	}
+	query := strings.TrimRight(current.Search.Query, " \t\r\n") + " " + token
+	if !m.SearchInputFits(query) {
+		return nil, fmt.Errorf("shorten the query to add %s", token)
+	}
+	m.Search.Autocomplete.clear()
+	m.SetSearchInputValue(query)
+	m.ConfirmSearch()
+	m.SetSearchQuery(query)
+	return m.takeSearchCommand(), nil
 }

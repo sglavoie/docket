@@ -159,6 +159,10 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 			Title: "Find",
 			Entries: []menuEntrySpec{
 				{OperationID: operation.OperationCoreScopeSearch, Label: "Search"},
+				{OperationID: operation.OperationCoreSearchRecovery},
+				{OperationID: operation.OperationCoreSearchFinished},
+				{OperationID: operation.OperationCoreSearchDeferred},
+				{OperationID: operation.OperationCoreQueryReadout},
 				{OperationID: operation.OperationFilterPriority},
 				{OperationID: operation.OperationFilterStates},
 				{OperationID: operation.OperationFilterTags},

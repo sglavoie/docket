@@ -29,6 +29,25 @@ func (registry *OperationRegistry) storedInputStrategy(id InputStrategyID) (Inpu
 	return strategy, ok
 }
 
+// InputKeyDuringSearch reads only binding metadata from the existing trie.
+// Ordinary typing avoids building a task/selection context for every rune.
+func (registry *OperationRegistry) InputKeyDuringSearch(id InputStrategyID, key string) bool {
+	strategy, ok := registry.storedInputStrategy(id)
+	if !ok {
+		return false
+	}
+	node := registry.inputChords[id].child(NormalizeOperationKey(key))
+	if !node.terminal() {
+		return false
+	}
+	for _, index := range node.bindings {
+		if strategy.Bindings[index].DuringSearch {
+			return true
+		}
+	}
+	return false
+}
+
 // InputBindingForSequence resolves one key path through the selected strategy
 // and active operation context. A direct key is a length-1 path, so this is the
 // only resolution seam: it reports whether the path ends a binding, waits for

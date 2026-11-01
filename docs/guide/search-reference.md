@@ -71,6 +71,17 @@ this is a quiet `Also matches` line above the footer; with no results it is
 part of the empty-state explanation. The counts respect the current scope,
 facets, and query, and disappear when nothing matching is withheld.
 
+`Ctrl+G` opens Search Recovery from a live or submitted ranked query. Its
+population actions use those same settled counts and the ordinary query
+compiler: Show Finished Matches appends `?completed`; Show Deferred Matches
+appends `?deferred`. Each selects the named population rather than combining
+it with the open results. Query terms, project scope, Focus, and active filters
+are retained. The picker, Find menu, and searchable help invoke the same
+registered operations. A pending background search offers no stale population
+counts or actions, and a changed query, filters, or scope refuses a previously
+opened recovery action. Canceling the picker leaves search untouched; applying
+a population leaves the original search return frame intact.
+
 | Keys | Effect |
 | --- | --- |
 | `f!0`, `f!1`–`f!3` | Clear priority filtering or keep High, Medium-or-higher, or Low-or-higher assigned priorities; Unset never matches |

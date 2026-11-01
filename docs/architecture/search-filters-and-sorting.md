@@ -43,6 +43,20 @@ slash restates neither axis — the held query is edited in place, a deliberate
 `or` survives it, and Esc still spends the first open's snapshot over the data as
 it then stands. Either presentation dies with the query that gave it rows.
 
+Search recovery projects the existing withheld-match census into three core
+operations: open recovery, show finished matches, and show deferred matches.
+`SearchRecoveryContext` supplies query, canonical filter fingerprint, ranked and
+pending state, and settled counts to both the surface and shell command contexts.
+The shared contextual action sheet offers the applicable population operations
+and the existing Explain Current View operation. Find and executable help use
+those same descriptors and executor bindings. A population action appends its
+ordinary sigil, confirms the input, and recompiles through `SetSearchQuery`
+without opening a new return frame. It rejects a changed search context or scope;
+pending searches expose zero withheld counts. Recovery writes no workspace data.
+The strategy's `DuringSearch` flag admits `Ctrl+G` through the root dispatcher
+while search text owns input, after every nested modal's claim; the input has
+no second key router. Picker cancellation changes neither text nor caret.
+
 Terminal and deferred admission has one rule in both presentations: the query
 says so. `AdmitsTerminalPopulation` and `admitsDeferredPopulation` read the
 canonical query and the compiled gate together, and nothing else opens either

@@ -18,6 +18,7 @@ returns to the view you searched from.
 | Include parked or archived projects | `F` outside ranked search |
 | See hidden tasks | `fH` outside ranked search |
 | Explain missing work | `Q` |
+| Recover matching finished or deferred work | `Ctrl+G` during a task search |
 | Save this view | `\` → Save Current View |
 | Change order | `o` |
 
@@ -35,6 +36,23 @@ By default search includes open tasks and excludes deferred work. The context
 row names that population when space permits; `Q` keeps the full explanation.
 Add `?completed` or `?deferred` to admit those tasks. An `Also matches` message
 names matching tasks that are still hidden.
+
+Press `Ctrl+G` while typing or after submitting a search to open **Search
+Recovery**. **Show Finished Matches** and **Show Deferred Matches** appear
+when matching tasks in those populations are withheld. Each row shows its
+match count and the token it applies. Choosing one keeps your search words and
+adds `?completed` or `?deferred`, switching to that population within the same
+scope, Focus, and filters. These actions also appear in **Find** and in `?`
+action search after submitting the task query.
+
+**Explain Current View** opens the existing restriction readout, even when no
+withheld matches are known. Canceling recovery keeps the typed query and input
+position. Choosing a population applies the query; `Esc` then returns to the
+view where you began searching. While results are still being prepared,
+recovery offers explanation alone; reopen it after results arrive for current
+population actions. Recovery changes no task and records no undo entry.
+If adding the token would exceed the search input's limit, recovery asks you to
+shorten the query and keeps all existing text.
 
 ### Hidden tasks
 

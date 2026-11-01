@@ -151,6 +151,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationCorePeekPageDown, Keys: []string{"ctrl+f"}, DisplayKey: "Ctrl+F"},
 			{OperationID: OperationCorePeekPageUp, Keys: []string{"ctrl+b"}, DisplayKey: "Ctrl+B"},
 			{HelpGroup: "Everyday", HelpOrder: 11, HelpCategory: "Tasks", OperationID: OperationCoreScopeSearch, Keys: []string{"/"}, DisplayKey: "/", FooterRank: 4, FooterLabel: "search"},
+			{OperationID: OperationCoreSearchRecovery, Keys: []string{"ctrl+g"}, DisplayKey: "Ctrl+G", DuringSearch: true},
 			{HelpGroup: "Selection", HelpOrder: 600, OperationID: OperationCoreMultiSelect, Keys: []string{"v"}, DisplayKey: "v", FooterRank: 12, FooterLabel: "select"},
 			{HelpGroup: "Selection", HelpOrder: 601, OperationID: OperationCoreRangeSelect, Keys: []string{"V"}, DisplayKey: "V"},
 			{HelpGroup: "Selection", HelpOrder: 602, OperationID: OperationCoreSelectAll, Keys: []string{"ctrl+a"}, DisplayKey: "Ctrl+A"},

@@ -61,6 +61,9 @@ type OperationKeyBinding struct {
 	PresetValue    any
 	HasPresetValue bool
 	SharedKey      bool
+	// DuringSearch admits this root binding while the Outliner's search input
+	// owns text. Other inline controls and modal overlays still own every key.
+	DuringSearch bool
 }
 
 // OperationChordGroup labels one non-terminal chord prefix. Every prefix in a

@@ -32,6 +32,9 @@ func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {
 		// A checklist row operation only exists under a checklist cursor, so its
 		// keys are audited from the row the user is on when they press them.
 		bindingCtx := ctx
+		if binding.OperationID == operation.OperationCoreSearchRecovery {
+			bindingCtx.Search = operation.SearchContext{Query: "needle", Ranked: true}
+		}
 		if operation.ChecklistRowGrammar[binding.OperationID] {
 			bindingCtx.Entity.HasChecklistCursor = true
 		}

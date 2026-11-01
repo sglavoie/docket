@@ -149,7 +149,7 @@ Accepted key names include printable public keys plus:
 tab shift+tab enter space esc
 up down left right home end pgup pgdown
 ctrl+e ctrl+r ctrl+u ctrl+d ctrl+o ctrl+i ctrl+l ctrl+n ctrl+p ctrl+y ctrl+c
-ctrl+f ctrl+b
+ctrl+f ctrl+b ctrl+g
 leftshift rightshift leftctrl rightctrl leftalt rightalt
 leftsuper rightsuper leftmeta rightmeta lefthyper righthyper
 capslock numlock scrolllock
@@ -186,6 +186,7 @@ y Y Ctrl+Y                       clipboard
 v V Ctrl+A Space                 selection and actions
 Enter Shift+Enter b              Focus, widen focus, and Peek
 Ctrl+F/Ctrl+B                    page the open Peek
+Ctrl+G                           recover withheld search matches
 c x                              add and tick checklist items
 M F10/Ctrl+M                     pin the menu bar, open it for one act
 P Q \ Ctrl+N T / ? u Ctrl+R Esc q Ctrl+C  global
@@ -329,6 +330,7 @@ The committed suite exercises the product contracts directly:
 | The same `b` over a project: both header forms, the empty project's `No comments yet. Press C to add one.`, a comment refreshing the open pane, undo taking it back, the window paged with `Ctrl+F`/`Ctrl+B` and `Ctrl+D`/`Ctrl+U`, and the pane handed between a project and a task owner | `outliner-project-peek-group-header.json`, `outliner-project-peek-focused-header.json` |
 | One run over a project's whole comment life: `C` and `;` answering for an empty project's focused header, the panel editing and deleting through the identity the row carries, `u`/`Ctrl+R` reaching the ledger from inside it, the Peek window paged by both pairs, the same `;` handing a task its own comments, and a relaunch reading the collection back | `project-comments-panel-integration.json` |
 | Search projection and exact restoration | `visible-search-minimum-layout.json`, `search-restoration.json` |
+| Search recovery from live and submitted queries, withheld counts and population actions, cancellation, explanation, partial results, and Escape restoration at 60×20 | `search-recovery-actions.json`, `internal/tui/search_recovery_test.go`, `internal/tui/outliner/outliner_search_recovery_test.go` |
 | The machine-local query history recalled with `↑`/`↓` inside the `/` input, its draft restored on the way back, history surviving relaunch, and an explicit clear | `outliner-search-history-recall.json` |
 | Named lenses: the `\` picker, its two action rows at the narrowest width, the three starters, the `1`-`9` quick-apply ordinals and their precedence under a typed digit, save/rename/replace/duplicate/delete, temporary-search suspension and its restore, exact Escape restoration, retained scope, and the literal backslash inside text input | `named-lens-picker-open.json`, `named-lens-apply-starters.json`, `named-lens-ordinal-apply.json`, `named-lens-save-and-manage.json`, `named-lens-duplicate.json`, `named-lens-search-suspension.json`, `named-lens-escape-restoration.json`, `named-lens-scope-retention.json`, `named-lens-from-search-results.json`, `named-lens-empty-state.json`, `named-lens-literal-backslash.json` |
 | The active lens surviving a relaunch: its saved axes reapplied over the clean launch view, a scoped lens reopening in its project, the first Esc landing where a lens-free launch would have, and a pointer that no longer resolves failing closed in silence | `named-lens-escape-restoration.json`, `named-lens-scoped-restart.json`, `named-lens-restart-dangling.json` |

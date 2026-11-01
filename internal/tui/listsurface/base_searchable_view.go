@@ -1,6 +1,8 @@
 package listsurface
 
 import (
+	"unicode/utf8"
+
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
@@ -94,6 +96,12 @@ func (v *BaseSearchableView) SearchInputValue() string {
 // restoring a captured search state (e.g. an outliner scope pop).
 func (v *BaseSearchableView) SetSearchInputValue(value string) {
 	v.searchInput.SetValue(value)
+}
+
+// SearchInputFits lets programmatic edits validate before textinput would
+// silently shorten a value to its rune limit.
+func (v *BaseSearchableView) SearchInputFits(value string) bool {
+	return v.searchInput.CharLimit <= 0 || utf8.RuneCountInString(value) <= v.searchInput.CharLimit
 }
 
 // SearchInputSnapshot is the whole of what a restoration point owes the search

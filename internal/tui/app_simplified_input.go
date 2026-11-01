@@ -52,7 +52,9 @@ func (m *AppModel) dispatchSimplifiedKey(key string) (bool, tea.Cmd) {
 	}
 	if out.SimplifiedInlineControlOwnsInput() {
 		m.operations.Chord = nil
-		return false, nil
+		if !out.SearchInputOwnsInput() || !m.operations.Registry.InputKeyDuringSearch(operation.InputStrategySimplified, key) {
+			return false, nil
+		}
 	}
 
 	ctx := m.operationCommandContext()

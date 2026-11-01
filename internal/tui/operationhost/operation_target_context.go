@@ -60,6 +60,7 @@ func (c *Controller) CommandContext(shell Shell) operation.CommandContext {
 	// other surface can hold one.
 	if out := shell.ActiveOutliner(); out != nil {
 		ctx.Peek = out.PeekCommandContext()
+		ctx.Search = out.SearchRecoveryContext()
 		ctx.Entity.HasFocusedProjectHeaderCursor = out.CursorNamesFocusedProjectHeader()
 	}
 
