@@ -70,6 +70,8 @@ var operations = map[string]op{
 	"query.search_suggestions":  {run: (*Bridge).querySearchSuggestions},
 	"query.task":                {run: (*Bridge).queryTask},
 	"query.lenses":              {run: (*Bridge).queryLenses},
+	"query.history":             {run: (*Bridge).queryHistory},
+	"query.history_detail":      {run: (*Bridge).queryHistoryDetail},
 	"query.capture_preview":     {run: (*Bridge).queryCapturePreview},
 	"query.capture_suggestions": {run: (*Bridge).queryCaptureSuggestions},
 	"query.project":             {run: (*Bridge).queryProject},
@@ -79,6 +81,7 @@ var operations = map[string]op{
 	"command.transition":        {mutates: true, run: (*Bridge).commandTransition},
 	"command.plan":              {mutates: true, run: (*Bridge).commandPlan},
 	"command.undo":              {mutates: true, run: (*Bridge).commandUndo},
+	"command.redo":              {mutates: true, run: (*Bridge).commandRedo},
 	"command.checklist":         {mutates: true, run: (*Bridge).commandChecklist},
 	"command.check_in":          {mutates: true, run: (*Bridge).commandCheckIn},
 	"command.reorder":           {mutates: true, run: (*Bridge).commandReorder},
@@ -105,9 +108,7 @@ var operations = map[string]op{
 // reservedOperations are part of bridge version 1 but not yet served. They
 // answer unknown_op with details.reserved, so a client can tell an op this
 // build lacks from one the protocol never had.
-var reservedOperations = map[string]bool{
-	"command.redo": true,
-}
+var reservedOperations = map[string]bool{}
 
 // Call answers one JSON request with one JSON response. It never panics and
 // never returns an empty string.

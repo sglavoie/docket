@@ -317,9 +317,17 @@ final class RichContentUITests: XCTestCase {
         // Viewing opens the file in place; sharing offers the system sheet.
         press(app, "attachment.field-notes.txt")
         require(app.otherElements["QLPreviewControllerView"].firstMatch, "the preview")
-        let close = app.buttons["QLOverlayDoneButtonAccessibilityIdentifier"].firstMatch
+        let close = app.buttons["attachment.preview.close"].firstMatch
         require(close, "the preview's close button")
         close.tap()
+        let previewScreenshot = XCTAttachment(screenshot: app.screenshot())
+        previewScreenshot.name = "Quick Look after Close"
+        previewScreenshot.lifetime = .keepAlways
+        add(previewScreenshot)
+        let previewHierarchy = XCTAttachment(string: app.debugDescription)
+        previewHierarchy.name = "Quick Look dismissal hierarchy"
+        previewHierarchy.lifetime = .keepAlways
+        add(previewHierarchy)
         eventually("the preview was dismissed") {
             !app.otherElements["QLPreviewControllerView"].firstMatch.exists
         }

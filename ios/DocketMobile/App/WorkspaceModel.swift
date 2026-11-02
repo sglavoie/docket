@@ -419,6 +419,25 @@ final class WorkspaceModel {
         if actionReceipt?.id == id { actionReceipt = nil }
     }
 
+    /// The history screen freezes its advertised target before awaiting the engine.
+    /// The ledger rechecks it under its restore lock; selection grants no authority.
+    func restoreHistory(transactionID: String, redo: Bool) async -> String? {
+        guard !undoing else { return "Recovery is already in progress." }
+        let receipt = actionReceipt
+        undoing = true
+        defer { undoing = false }
+        return await attempt(clearingReceipt: false) {
+            if redo {
+                _ = try await self.engine.redo(transactionID: transactionID)
+                self.undoneReceipt = nil
+            } else {
+                _ = try await self.engine.undo(transactionID: transactionID)
+                self.undoneReceipt = receipt?.transactionID == transactionID ? receipt : nil
+            }
+            if self.actionReceipt?.id == receipt?.id { self.actionReceipt = nil }
+        }
+    }
+
     @discardableResult
     private func recordReceipt(_ message: String, _ committed: CommittedEffect, moves: [AddressMove] = []) -> TaskActionReceipt {
         let receipt = TaskActionReceipt(message: committed.transactionID.isEmpty ? "No changes were needed." : message,

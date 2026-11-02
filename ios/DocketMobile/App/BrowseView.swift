@@ -23,6 +23,12 @@ struct BrowseView: View {
                 ScreenStateView(state: .error(title: "Browse could not load", message: failure))
             } else if let projects {
                 List {
+                    Section {
+                        NavigationLink(value: Route.history) {
+                            Label("Change History", systemImage: "clock.arrow.circlepath")
+                        }
+                        .accessibilityIdentifier("browse.history")
+                    }
                     Section("Views") {
                         ForEach(Self.modes, id: \.0) { mode, title, symbol in
                             NavigationLink(value: Route.list(.mode(mode, title: title))) {

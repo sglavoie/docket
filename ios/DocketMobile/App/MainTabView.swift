@@ -4,6 +4,7 @@ import DocketShared
 
 /// Where a navigation stack can go: a task list or one task.
 enum Route: Hashable {
+    case history
     case list(ListSource)
     case task(TaskLocator)
     /// Every reachable note, or one collection's.
@@ -204,6 +205,8 @@ struct MainTabView: View {
     @ViewBuilder
     private func destination(_ route: Route) -> some View {
         switch route {
+        case .history:
+            ChangeHistoryView(workspace: workspace)
         case .list(let source):
             TaskListView(workspace: workspace, source: source)
         case .task(let locator):

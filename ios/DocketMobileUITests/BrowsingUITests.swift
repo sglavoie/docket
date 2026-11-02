@@ -68,8 +68,12 @@ final class BrowsingUITests: XCTestCase {
             tasks.removeSubrange(start.lowerBound..<end.lowerBound)
         case .newerSchema:
             let catalog = target.appendingPathComponent(".docket/workspace.json")
-            let text = try replacing("\"schema_version\": 23", with: "\"schema_version\": 99", in: String(contentsOf: catalog, encoding: .utf8))
-            try text.write(to: catalog, atomically: true, encoding: .utf8)
+            var envelope = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: catalog)) as? [String: Any])
+            var payload = try XCTUnwrap(envelope["data"] as? [String: Any])
+            payload["schema_version"] = 99
+            envelope["data"] = payload
+            try JSONSerialization.data(withJSONObject: envelope, options: [.prettyPrinted, .sortedKeys])
+                .write(to: catalog, options: .atomic)
         }
         try tasks.write(to: atlas, atomically: true, encoding: .utf8)
         return target
@@ -263,7 +267,16 @@ final class BrowsingUITests: XCTestCase {
         let ancestor = app.buttons["detail.ancestor"].firstMatch
         require(ancestor, "the ancestor link")
         XCTAssertTrue(ancestor.label.contains("Ship beta build"))
-        XCTAssertEqual(app.buttons.matching(identifier: "detail.child").count, 2)
+        // List may not instantiate both children until they enter the viewport.
+        // Require each expected relationship to be reachable, rather than
+        // counting whichever rows happen to be materialized before scrolling.
+        for title in ["Proofread release notes", "Collect screenshots"] {
+            let subtask = app.buttons.matching(identifier: "detail.child")
+                .matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
+            for _ in 0..<4 where !subtask.exists || !subtask.isHittable { app.swipeUp() }
+            require(subtask, "the \(title) subtask link")
+            XCTAssertTrue(subtask.isHittable, "the \(title) subtask is unreachable")
+        }
         back(app)
         back(app)
         back(app)

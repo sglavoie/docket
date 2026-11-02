@@ -141,18 +141,30 @@ def baseline_source(root):
         else:
             tar.extractall(destination)
     archive.unlink()
-    # Add only the current upgrade TEST harness and its target. All app/engine
-    # sources remain exactly those of BASELINE, including the old UI behavior.
-    shutil.copytree(REPO / "ios/DocketMobileUpgradeUITests", destination / "ios/DocketMobileUpgradeUITests")
+    # Add only the current upgrade TEST harness and its target. The pinned
+    # revision predates the TT → Docket rename: translate the wrapper's names,
+    # leaving every archived app/engine source byte-for-byte unchanged.
     spec = destination / "ios/project.yml"
     text = spec.read_text()
-    assert "        - DocketMobileUITests\n" in text
-    text = text.replace("        - DocketMobileUITests\n", "        - DocketMobileUITests\n        - DocketMobileUpgradeUITests\n", 1)
+    legacy = "name: TTMobile\n" in text
+
+    def wrapper_names(value):
+        if legacy:
+            return value.replace("Docket", "TT").replace("DOCKET", "TT").replace("docket", "tt")
+        return value
+
+    harness = destination / "ios" / wrapper_names("DocketMobileUpgradeUITests")
+    shutil.copytree(REPO / "ios/DocketMobileUpgradeUITests", harness)
+    for source in harness.glob("*.swift"):
+        source.write_text(wrapper_names(source.read_text()))
+    anchor = wrapper_names("        - DocketMobileUITests\n")
+    assert anchor in text
+    text = text.replace(anchor, anchor + wrapper_names("        - DocketMobileUpgradeUITests\n"), 1)
     current = (REPO / "ios/project.yml").read_text()
-    text += "\n  DocketMobileUpgradeUITests:\n" + current.split("  DocketMobileUpgradeUITests:\n", 1)[1]
+    text += wrapper_names("\n  DocketMobileUpgradeUITests:\n" + current.split("  DocketMobileUpgradeUITests:\n", 1)[1])
     spec.write_text(text)
     # The script only selects the test bundle and exports XCTest artifacts.
-    shutil.copy2(REPO / "ios/scripts/test-ui.sh", destination / "ios/scripts/test-ui.sh")
+    (destination / "ios/scripts/test-ui.sh").write_text(wrapper_names((REPO / "ios/scripts/test-ui.sh").read_text()))
     (destination / ".qualification-ready").write_text(BASELINE + "\n")
     return destination
 
@@ -161,6 +173,7 @@ def run_stage(name, directory, state, root, env):
     cwd = REPO
     artifacts = []
     log = directory / "stage.log"
+    app_name = "Docket"
     if name == "swift":
         command = ["ios/scripts/test-suites.sh", "all", str(directory)]
     elif name == "ui":
@@ -173,13 +186,32 @@ def run_stage(name, directory, state, root, env):
         env["DOCKET_UITEST_TARGET"] = "DocketMobileUpgradeUITests"
         env["DOCKET_UITEST_ONLY"] = "SimulatorUpgradeUITests/" + ("testSeedUpgrade" if name == "upgrade-before" else "testVerifyUpgrade")
         env["DOCKET_IOS_CACHE"] = str(cwd / "ios/.cache")
+        if name == "upgrade-before" and (cwd / "ios/TTMobile").is_dir():
+            app_name = "tt"
+            env = {key.replace("DOCKET_", "TT_"): value.replace("DocketMobileUpgradeUITests", "TTMobileUpgradeUITests")
+                   for key, value in env.items()}
+        if name == "upgrade-after":
+            # Mobile deliberately refuses schema upgrades. Exercise the same
+            # canonical desktop opening used by the cross-machine gate before
+            # installing the current app, preserving the real app's saved data
+            # and machine-local drafts throughout the upgrade.
+            migration = directory / "desktop-migration.log"
+            workspace = (Path(state["upgrade_root"]) / "workspaces/upgrade").resolve()
+            assert root.resolve() in workspace.parents, "desktop migration must target disposable qualification data"
+            migration_env = dict(env, DOCKET_HELPER_DATA_DIR=str(workspace))
+            invoke(["go", "test", "-count=1", "-json", "./internal/tui", "-run", "^TestCrossMachineHelperOpensWorkspace$"],
+                   REPO, migration_env, migration)
+            events = [json.loads(line) for line in migration.read_text().splitlines() if line.startswith('{"Time"')]
+            assert any(e.get("Action") == "pass" and e.get("Test") == "TestCrossMachineHelperOpensWorkspace" for e in events), "desktop migration did not execute"
+            assert not any(e.get("Action") in ("fail", "skip") for e in events), "desktop migration failed/skipped"
+            artifacts.append(migration)
         command = ["ios/scripts/test-ui.sh", str(directory)]
     elif name == "compatibility":
         env.update(DOCKET_OLD_BINARY_REF=OLD_SCHEMA, DOCKET_REQUIRE_NO_SKIPS="1")
         command = ["sh", "scripts/cross_machine_gate.sh"]
     else:
         command = ["go", "test", "-count=1", "-json", "./internal/config", "-run", "^TestWorkspaceBackup"]
-    invoke(command, cwd, env, log)
+    invoke(command, cwd, env, log, timeout=7200 if name == "ui" else 5400)
     if name in ("swift", "ui", "upgrade-before", "upgrade-after"):
         summary = directory / "summary.json"
         checked_summary(summary, "swift" if name == "swift" else "xctest")
@@ -194,16 +226,16 @@ def run_stage(name, directory, state, root, env):
                     assert method in tree, f"required UI case missing: {method}"
             artifacts.append(tests)
             if name.startswith("upgrade-"):
-                app = Path(env["DOCKET_IOS_CACHE"]) / "UIDerivedData/Build/Products/Debug-iphonesimulator/Docket.app"
-                executables = {p.name: digest(p) for p in (app / "Docket", app / "Docket.debug.dylib") if p.is_file()}
-                assert "Docket" in executables, "upgrade app executable missing"
+                app = cwd / "ios/.cache/UIDerivedData/Build/Products/Debug-iphonesimulator" / (app_name + ".app")
+                executables = {p.name: digest(p) for p in (app / app_name, app / (app_name + ".debug.dylib")) if p.is_file()}
+                assert app_name in executables, "upgrade app executable missing"
                 build = directory / "app-build.json"
                 write_json(build, {"source_commit": BASELINE if name == "upgrade-before" else output("git", "rev-parse", "HEAD"),
                                    "executables": executables})
                 artifacts.append(build)
                 if name == "upgrade-after":
                     before = root / state["stages"]["upgrade-before"]["directory"] / "app-build.json"
-                    assert json.loads(before.read_text())["executables"] != executables, "upgrade must install a different build"
+                    assert set(json.loads(before.read_text())["executables"].values()) != set(executables.values()), "upgrade must install a different build"
     elif name == "compatibility":
         text = log.read_text()
         assert "cross-machine gate passed." in text and "SKIP:" not in text and "FAIL:" not in text

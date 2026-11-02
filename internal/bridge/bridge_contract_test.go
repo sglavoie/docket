@@ -46,12 +46,6 @@ func TestBridgeRefusesMalformedAndMisaddressedRequests(t *testing.T) {
 			t.Fatalf("an op outside the contract is not reserved: %+v", refusal)
 		}
 	})
-	t.Run("reserved_op", func(t *testing.T) {
-		refusal := h.refused(h.call("command.redo", nil), CodeUnknownOp)
-		if refusal.Details["reserved"] != true {
-			t.Fatalf("a contract op this build lacks says so: %+v", refusal)
-		}
-	})
 	t.Run("not_open", func(t *testing.T) {
 		h.rejects(h.call("workspace.status", nil, func(e map[string]any) { e["workspace"] = "anything" }), CodeNotOpen)
 	})

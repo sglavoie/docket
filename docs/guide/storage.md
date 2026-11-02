@@ -60,6 +60,11 @@ The browser uses the same device ownership and 50-transaction retention as the
 undo keys. It survives restarting Docket; it is not an audit log of every synced
 change, and a new forward mutation still clears redo.
 
+On iPhone, open **Browse → Change History** for the same retained-change list,
+before/after details, and transaction-bound **Undo next change** and **Redo next
+change** controls. Each device shows its own history; restores exchange as new
+changes under the same checked recovery rules.
+
 ### Restore around incoming edits
 
 Undo and Redo for edits to existing tasks preserve changes synced to other tasks

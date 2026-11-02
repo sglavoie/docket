@@ -66,7 +66,13 @@ Only the upgrade test target and its harness are added to that archived
 revision. Its app and engine sources remain unchanged. Both executable hashes
 are recorded, and the upgrade fails if the installed builds are identical.
 The current app opens the same selected workspace and draft files produced by
-the previous app; the test never manufactures those expected writes.
+the previous app. Before that opening, the runner uses the canonical desktop
+workspace-opening helper to migrate the disposable workspace: the iPhone app
+itself continues to refuse schema upgrades. The migration log is retained, and
+the test never manufactures the expected task or draft writes. The pinned app
+predates the TT → Docket rename, so only the added test harness and runner have
+their names adapted to its targets and environment keys; its production sources
+stay unchanged.
 
 ## Controlled failures and results
 
@@ -83,6 +89,8 @@ stage status and artifact hashes. UI stages retain `.xcresult` bundles,
 workspaces and diagnostics remain under each stage's output for investigation.
 Missing, empty, skipped or partially passed test runs fail the gate. Sources
 changing during a run invalidate it.
+The full UI suite has a two-hour stage bound; the other stages have a
+90-minute bound.
 
 These are **simulator results with controlled delivery**. They do not certify
 Apple's iCloud service, physical-device signing, notification delivery on real

@@ -266,6 +266,22 @@ Backlog offer **Manual order** in Sort. Clear searches and filters and leave
 selection mode before dragging; field-sorted lists, Due, Recent, and saved lenses
 keep their query order. Reordering is saved on the iPhone and synced normally.
 
+**Browse → Change History** lists up to 50 retained transactions made on this
+device, newest first, with their time, action, affected projects, and Applied or
+Undone state. History survives restarting Docket. Tap a change to read its
+original before → after values, including task fields, plans, comments, project
+metadata, and note text. Long values wrap and can be selected and copied.
+
+**Undo next change** and **Redo next change** name the transaction they will
+restore, one whole transaction at a time. Opening an older entry only inspects
+it. The same controls appear in details, which remain open after recovery.
+Recovery checks current data, preserves unrelated peer edits under the engine's
+restore rules, and explains refusals when affected data or the next transaction
+has changed. Pull to refresh rereads history and details; failed reads offer
+Retry and clear stale recovery controls. History is local to this device, not a
+list of every synced change. Successful undo and redo exchange normally; making
+a new forward change clears redo.
+
 Swipe left on a task for **Done**, **Start** (or **Pause** while doing), and
 **Edit**; completed and canceled tasks offer **Reopen** and **Edit**. Swipe
 right for **Today** and **Next**, or remove it from the plan it already has.

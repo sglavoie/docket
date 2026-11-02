@@ -113,6 +113,7 @@ struct TaskEditSheet: View {
                 }
             }
         }
+        .defaultFocus($fieldFocus, initialFocus)
     }
 
     private var fieldsBinding: Binding<TaskFields> {

@@ -177,8 +177,18 @@ final class OrganizingUITests: XCTestCase {
             if button.waitForExistence(timeout: 2), button.isHittable { break }
             app.swipeDown()
         }
+        if !button.exists {
+            for attachment in [XCTAttachment(screenshot: app.screenshot()), XCTAttachment(string: app.debugDescription)] {
+                attachment.name = "Missing \(identifier)"
+                attachment.lifetime = .keepAlways
+                add(attachment)
+            }
+        }
         require(button, identifier)
         XCTAssertTrue(button.isHittable, "\(identifier) is not reachable after scrolling")
+        let enabled = expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: button)
+        XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: timeout), .completed,
+                       "\(identifier) is still disabled")
         button.tap()
     }
 

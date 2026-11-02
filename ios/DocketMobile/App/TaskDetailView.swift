@@ -1,5 +1,4 @@
 import PhotosUI
-import QuickLook
 import SwiftUI
 import DocketEngine
 
@@ -8,14 +7,19 @@ import DocketEngine
 /// task is a link; one the workspace cannot resolve keeps its stored identity
 /// and says it is unavailable.
 struct TaskDetailView: View {
+    private struct EditRequest: Identifiable {
+        let id = UUID()
+        let task: TaskSnapshot
+        let focus: TaskField?
+    }
+
     let workspace: WorkspaceModel
     let locator: TaskLocator
     /// Where the task lives now; a move to another project changes it.
     @State private var current: TaskLocator?
     @State private var detail: TaskDetail?
     @State private var state: ScreenState? = .loading("Loading task…")
-    @State private var editing = false
-    @State private var editFocus: TaskField?
+    @State private var editRequest: EditRequest?
     @State private var choosingPlan = false
     @State private var choosingStatus = false
     /// The last plan or status refusal, explained from what the engine judged.
@@ -28,7 +32,7 @@ struct TaskDetailView: View {
     @State private var addingLink = false
     @State private var linkText = ""
     @State private var sharing: AttachmentShareRequest?
-    @State private var previewURL: URL?
+    @State private var previewRequest: AttachmentPreviewRequest?
     @State private var pendingImports: [AttachmentImporter.Pending] = []
     @State private var refreshFailure: String?
     @State private var lastLoaded: DetailIdentity?
@@ -76,20 +80,17 @@ struct TaskDetailView: View {
         .navigationTitle(detail?.task.title ?? "Task")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if detail != nil {
+            if let detail {
                 ToolbarItem(placement: .primaryAction) {
                     Button("Edit") {
-                        editFocus = nil
-                        editing = true
+                        editRequest = EditRequest(task: detail.task, focus: nil)
                     }
                         .accessibilityIdentifier("detail.edit")
                 }
             }
         }
-        .sheet(isPresented: $editing) {
-            if let task = detail?.task {
-                TaskEditSheet(workspace: workspace, task: task, initialFocus: editFocus)
-            }
+        .sheet(item: $editRequest) { request in
+            TaskEditSheet(workspace: workspace, task: request.task, initialFocus: request.focus)
         }
         .sheet(item: $commentRequest) { request in
             CommentEditorSheet(workspace: workspace, request: request)
@@ -134,7 +135,9 @@ struct TaskDetailView: View {
             AttachmentShareSheet(url: request.url)
                 .presentationDetents([.medium, .large])
         }
-        .quickLookPreview($previewURL)
+        .sheet(item: $previewRequest) { request in
+            AttachmentPreviewSheet(url: request.url) { previewRequest = nil }
+        }
         .task(id: LoadKey(generation: workspace.generation, identity: identity, retry: retry)) { await load() }
         .onChange(of: workspace.undoneReceipt?.id) {
             if let move = workspace.undoneReceipt?.moves.first(where: { $0.to == (current ?? locator) }) {
@@ -239,8 +242,7 @@ struct TaskDetailView: View {
                         .accessibilityIdentifier("detail.description")
                 }
                 Button(task.description?.isEmpty == false ? "Edit Description" : "Add Description") {
-                    editFocus = .description
-                    editing = true
+                    editRequest = EditRequest(task: task, focus: .description)
                 }
                 .accessibilityIdentifier("detail.description.edit")
             }
@@ -281,7 +283,7 @@ struct TaskDetailView: View {
             AttachmentsSection(
                 detail: detail, sync: workspace.sync, pending: pendingImports,
                 add: { attachmentActions.isPresented = true },
-                preview: { previewURL = $0 },
+                preview: { previewRequest = AttachmentPreviewRequest(url: $0) },
                 share: { sharing = AttachmentShareRequest(url: $0) },
                 remove: { attachment in act { await workspace.attachment(task.locator, .remove(attachment)) } }
             )

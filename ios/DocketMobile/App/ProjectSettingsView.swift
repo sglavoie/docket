@@ -76,6 +76,7 @@ struct ProjectSettingsView: View {
             }
             .navigationDestination(for: Route.self) { route in
                 switch route {
+                case .history: ChangeHistoryView(workspace: workspace)
                 case .notes(let location): NotesListView(workspace: workspace, location: location)
                 case .note(let location, let filename): NoteEditorView(workspace: workspace, location: location, filename: filename)
                 case .list(let source): TaskListView(workspace: workspace, source: source)

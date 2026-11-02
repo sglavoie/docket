@@ -217,6 +217,79 @@ final class CaptureEditingUITests: XCTestCase {
 
     // MARK: Tests
 
+    @MainActor func testEmptyChangeHistoryExplainsDeviceScopeAndDisablesRecovery() throws {
+        let app = launch()
+        tab(app, "Browse")
+        app.buttons["browse.history"].tap()
+        require(app.staticTexts["No retained changes"], "empty history")
+        XCTAssertFalse(app.buttons["history.undo"].isEnabled)
+        XCTAssertFalse(app.buttons["history.redo"].isEnabled)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Empty Change History"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+    }
+
+    @MainActor func testChangeHistoryInspectsAndRecoversAnEditAfterRestart() throws {
+        var app = launch()
+        row(app, "Ship beta build").swipeLeft()
+        app.buttons["task.swipe.edit"].tap()
+        require(app.buttons["edit.save"], "the task editor")
+        clear(app, "form.resume")
+        type(app, "form.resume", "Accidental history test note")
+        app.buttons["edit.save"].tap()
+        requireAbsent(app.buttons["edit.save"], "the saved editor")
+        eventually("the accidental edit was committed") {
+            try markdown("atlas-launch").contains("Accidental history test note")
+        }
+        app.terminate()
+        app = launch()
+        tab(app, "Browse")
+        app.buttons["browse.history"].tap()
+        let undo = app.buttons["history.undo"]
+        let redo = app.buttons["history.redo"]
+        require(undo, "the persistent undo target")
+        let undoReady = expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: undo)
+        XCTAssertEqual(XCTWaiter.wait(for: [undoReady], timeout: timeout), .completed)
+        XCTAssertFalse(redo.isEnabled)
+        let entry = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "history.entry.")).firstMatch
+        require(entry, "the retained transaction")
+        let historyScreenshot = XCTAttachment(screenshot: app.screenshot())
+        historyScreenshot.name = "Change History after restart"
+        historyScreenshot.lifetime = .keepAlways
+        add(historyScreenshot)
+        entry.tap()
+        require(app.navigationBars["Change Details"], "transaction details")
+        let after = app.descendants(matching: .any)["history.change.0.after"].firstMatch
+        for _ in 0..<5 where !after.exists || !after.isHittable { app.swipeUp() }
+        require(after, "the original after value")
+        XCTAssertTrue(after.label.contains("Accidental history test note"), after.label)
+        for _ in 0..<5 where !undo.isHittable { app.swipeDown() }
+        undo.tap()
+        eventually("undo restored the original resume note") {
+            try !markdown("atlas-launch").contains("Accidental history test note")
+        }
+        let undone = app.staticTexts["history.detail.state"]
+        require(undone, "the refreshed transaction state")
+        let stateReady = expectation(for: NSPredicate(format: "label == 'Undone'"), evaluatedWith: undone)
+        XCTAssertEqual(XCTWaiter.wait(for: [stateReady], timeout: timeout), .completed)
+        XCTAssertTrue(redo.waitForExistence(timeout: timeout))
+        let redoReady = expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: redo)
+        XCTAssertEqual(XCTWaiter.wait(for: [redoReady], timeout: timeout), .completed)
+        redo.tap()
+        eventually("redo reapplied the original edit") {
+            try markdown("atlas-launch").contains("Accidental history test note")
+        }
+        // Inspection keeps showing the original direction after either restore.
+        for _ in 0..<5 where !after.exists || !after.isHittable { app.swipeUp() }
+        require(after, "the retained before/after details")
+        XCTAssertTrue(after.label.contains("Accidental history test note"), after.label)
+        let detailsScreenshot = XCTAttachment(screenshot: app.screenshot())
+        detailsScreenshot.name = "Change History details after redo"
+        detailsScreenshot.lifetime = .keepAlways
+        add(detailsScreenshot)
+    }
+
     private func insertSigil(_ app: XCUIApplication, _ symbol: String) {
         let bar = app.scrollViews["capture.sigils"]
         require(bar, "the keyboard sigil shortcuts")
