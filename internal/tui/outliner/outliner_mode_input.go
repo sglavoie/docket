@@ -310,8 +310,8 @@ func (in OutlinerModeInput) recencyKey(task *models.Task, project *models.Projec
 	return task.UpdatedAt
 }
 
-// BuildTodayModeRows combines the durable Today plan with tasks due on the
-// current calendar day. Planned tasks retain their order; due-only tasks follow
+// BuildTodayModeRows combines the durable Today plan with tasks due today or
+// overdue. Planned tasks retain their order; due-only tasks follow
 // in catalog/document order, before the row appender applies sorting and hierarchy.
 func BuildTodayModeRows(in OutlinerModeInput) []OutlinerModeRow {
 	projects := modeProjectIndex(in.Projects)
@@ -352,7 +352,7 @@ func BuildTodayModeRows(in OutlinerModeInput) []OutlinerModeRow {
 	}
 	for _, candidate := range orderedModeTasks(in) {
 		task, project := candidate.row.Task, candidate.row.Project
-		if task.IsDueTodayAt(now) {
+		if task.IsDueTodayAt(now) || task.IsOverdueAt(now) {
 			appendTask(project.GetTaskByID(task.ID), project)
 		}
 	}

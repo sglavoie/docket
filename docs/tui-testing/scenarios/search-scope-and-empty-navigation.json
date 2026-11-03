@@ -25,7 +25,7 @@
     },
     {
       "type": "assert",
-      "value": "Nothing planned or due today. Press gn to choose from Next.",
+      "value": "Nothing planned or due by today. Press gn to choose from Next.",
       "assert": "contains"
     },
     {
@@ -169,7 +169,7 @@
     },
     {
       "type": "assert",
-      "value": "Nothing planned or due today.",
+      "value": "Nothing planned or due by today.",
       "assert": "contains"
     },
     {

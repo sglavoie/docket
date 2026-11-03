@@ -19,7 +19,7 @@ type planningSectionBuild struct {
 	group      models.WorkflowStateGroup
 }
 
-// buildTodaySection combines the Today plan and tasks due today. Descendants
+// buildTodaySection combines the Today plan and tasks due today or overdue. Descendants
 // qualify independently; the row appender restores hierarchy within the section.
 func (m *OutlinerModel) buildTodaySection(
 	input OutlinerModeInput,

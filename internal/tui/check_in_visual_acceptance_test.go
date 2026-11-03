@@ -61,20 +61,20 @@ func TestCheckInVisualAcceptance(t *testing.T) {
 					}
 				}
 				// What one row can promise depends on the width it is given, and the
-				// project label a merged singleton group leads its row with is part of
-				// that arithmetic. At 110 the whole title, the countdown, and the
+				// project group header leaves the task's row for its own content.
+				// At 110 the whole title, the countdown, and the
 				// deadline all arrive. At 62 and 60 the explicit overdue label leaves
 				// too little title room for both indicators, so the ladder sheds the
 				// countdown ahead of the deadline. The deadline survives all three,
 				// including its overdue label, which is the ladder's own
 				// promise. The pulse rides along at every width, naming the one
 				// overdue task and the active task due today.
-				rowsRequired := []string{"Migrated vendor wait", "review +", "Apr 1 '20 15:30 overdue", "workspace: today 1 · overdue 1"}
+				rowsRequired := []string{"Migrated vendor wait", "review +", "Apr 1 '20 15:30 overdue", "workspace: today 2 · overdue 1"}
 				switch size[0] {
 				case 62:
-					rowsRequired = []string{"Migrated vendor", "▤", "Apr 1 '20 15:30 overdue", "workspace: today 1 · overdue 1"}
+					rowsRequired = []string{"Migrated vendor", "▤", "Apr 1 '20 15:30 overdue", "workspace: today 2 · overdue 1"}
 				case 60:
-					rowsRequired = []string{"[check-i…] ⊘ Migrated vend", "▤", "Apr 1 '20 15:30 overdue", "workspace: today 1 · overdue 1"}
+					rowsRequired = []string{"├── ⊘ Migrated vendor wait", "▤", "Apr 1 '20 15:30 overdue", "workspace: today 2 · overdue 1"}
 				}
 				capture("rows", rowsRequired...)
 				out := driver.App().crossOutliner

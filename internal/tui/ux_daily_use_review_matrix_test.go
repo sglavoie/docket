@@ -303,12 +303,13 @@ func stageUXDailyUseDenseScrolled(t *testing.T, driver *UITestDriver, _ *outline
 	uxClarityPress(t, driver, uxClarityKeys("G")...)
 }
 
-// stageUXDailyUseHiddenSelection takes a three-task range selection and then
+// stageUXDailyUseHiddenSelection takes a range selection and then
 // folds the sections it lives in, so every member is off screen. That is the
 // state the selection summary exists for: with the members visible the counts
 // restate what the checkboxes already say.
 func stageUXDailyUseHiddenSelection(t *testing.T, driver *UITestDriver, view *outliner.OutlinerModel) {
 	t.Helper()
+	view.ClearAllFolds()
 	seatCursorOnTaskTitled(t, view, uxAcceptanceOverdueTitle)
 	uxClarityPress(t, driver, uxClarityKeys("v", "V", "j", "j")...)
 	uxClarityPress(t, driver, uxClarityKeys("s")...)

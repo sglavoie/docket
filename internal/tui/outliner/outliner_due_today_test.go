@@ -16,14 +16,17 @@ func TestTodayIncludesDueTasksWithoutChangingPlanning(t *testing.T) {
 	planned := primaryRowsTask("planned", models.StateBacklog)
 	due := primaryRowsTask("due", models.StateBacklog)
 	due.DueDate = &now
+	overdue := primaryRowsTask("overdue", models.StateBacklog)
+	yesterday := now.AddDate(0, 0, -1)
+	overdue.DueDate = &yesterday
 	next := primaryRowsTask("next-due", models.StateWaiting)
-	next.DueDate = &now
+	next.DueDate = &yesterday
 	next.Review = true
 	child := primaryRowsTask("undated-child", models.StateBacklog)
 	child.ParentID = &due.ID
 	hidden := primaryRowsTask("hidden-due", models.StateBacklog)
-	hidden.DueDate, hidden.Hidden = &now, true
-	project := primaryRowsProject("alpha", planned, due, next, child, hidden)
+	hidden.DueDate, hidden.Hidden = &yesterday, true
+	project := primaryRowsProject("alpha", planned, due, overdue, next, child, hidden)
 	otherDue := primaryRowsTask(due.ID, models.StateDoing)
 	otherDue.DueDate = &now
 	other := primaryRowsProject("beta", otherDue)
@@ -37,6 +40,7 @@ func TestTodayIncludesDueTasksWithoutChangingPlanning(t *testing.T) {
 		out.SelectOutlinerMode(mode)
 		for _, identity := range []taskref.TaskIdentity{
 			taskref.For(planned, project), taskref.For(due, project),
+			taskref.For(overdue, project),
 			taskref.For(next, project), taskref.For(otherDue, other),
 		} {
 			if countTaskRowsForIdentity(out, identity) != 1 {
@@ -86,12 +90,15 @@ func TestTodayDueMembershipUsesCalendarDayAndVisibility(t *testing.T) {
 		{"waiting", models.StateWaiting, &sameDayUTC, false, 1},
 		{"paused", models.StatePaused, &sameDayUTC, false, 1},
 		{"someday", models.StateSomeday, &sameDayUTC, false, 1},
-		{"yesterday", models.StateBacklog, &yesterday, false, 0},
+		{"yesterday", models.StateBacklog, &yesterday, false, 1},
 		{"tomorrow", models.StateBacklog, &tomorrow, false, 0},
 		{"undated", models.StateBacklog, nil, false, 0},
 		{"done", models.StateDone, &sameDayUTC, false, 0},
 		{"canceled", models.StateCanceled, &sameDayUTC, false, 0},
 		{"deferred", models.StateBacklog, &sameDayUTC, true, 0},
+		{"overdue done", models.StateDone, &yesterday, false, 0},
+		{"overdue canceled", models.StateCanceled, &yesterday, false, 0},
+		{"overdue deferred", models.StateBacklog, &yesterday, true, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			task := primaryRowsTask("task", tc.state)
@@ -141,7 +148,7 @@ func TestTodayDueMembershipChangesAtMidnight(t *testing.T) {
 	}{
 		{midnight.Add(-time.Second), 0},
 		{midnight, 1},
-		{midnight.AddDate(0, 0, 1), 0},
+		{midnight.AddDate(0, 0, 1), 1},
 	} {
 		input.Now = tc.at
 		if rows := BuildTodayModeRows(input); len(rows) != tc.want {

@@ -8,7 +8,7 @@
     { "type": "assert", "assert": "contains", "value": "▾  Inbox  (5)" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "wheel", "label": "a step down moves the window, and the lane's header scrolls off", "on": "Untriaged inbox item 4", "delta": 1 },
+    { "type": "wheel", "label": "scroll past the Today rows until the Inbox header leaves the window", "on": "Untriaged inbox item 4", "delta": 3 },
     { "type": "assert", "assert": "not_contains", "value": "▾  Inbox  (5)" },
     { "type": "assert", "label": "the pinned row names the lane the window opens inside", "assert": "contains", "value": "Inbox › [inbox-backlog]" },
     { "type": "assert", "label": "the cursor stayed on its row, so the dock still reads it", "assert": "contains", "value": "  Untriaged inbox item 1" },

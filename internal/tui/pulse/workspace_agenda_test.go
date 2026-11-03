@@ -63,7 +63,7 @@ func TestWorkspaceAgendaListsWhatThePulseCounts(t *testing.T) {
 	}
 
 	counted := ComputeWorkspacePulse([]*models.Project{project}, today, now)
-	if counted.Overdue != 2 || counted.Today != 5 {
+	if counted.Overdue != 2 || counted.Today != 6 {
 		t.Fatalf("pulse = %+v; the agenda's fixture drifted from what the pulse counts", counted)
 	}
 

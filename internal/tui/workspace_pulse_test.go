@@ -86,8 +86,8 @@ func TestWorkspacePulseCountsEligibleFlatTasksAtInjectedTime(t *testing.T) {
 	if pulse.Inbox != 2 {
 		t.Errorf("Inbox = %d, want parent and nested child exactly once", pulse.Inbox)
 	}
-	if pulse.Today != 2 {
-		t.Errorf("Today = %d, want the eligible planned task and the task due today", pulse.Today)
+	if pulse.Today != 3 {
+		t.Errorf("Today = %d, want the eligible planned, due-today, and overdue tasks", pulse.Today)
 	}
 	if pulse.Overdue != 1 {
 		t.Errorf("Overdue = %d, want only the actionable overdue task", pulse.Overdue)

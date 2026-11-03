@@ -10,7 +10,7 @@ exemptions: every reachable presentation has shell, surface, or overlay guidance
 ownership.
 
 Today's count includes both explicit Today planning members and open tasks due
-on the current calendar day, deduplicated by project-qualified identity. It
+on the current calendar day or overdue, deduplicated by project-qualified identity. It
 keeps the Today pace readout and workspace agenda in step with Today's task
 projection without writing planning membership.
 

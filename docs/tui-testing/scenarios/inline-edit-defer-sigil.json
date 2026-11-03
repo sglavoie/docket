@@ -41,14 +41,15 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "step onto the Today membership, which holds no deferral", "key": "home" },
-    { "type": "key", "label": "its lone task carries its own project label, so there is no group header to step past", "key": "j" },
+    { "type": "key", "label": "past the Today project header", "key": "j" },
+    { "type": "key", "label": "onto the explicitly planned intake task", "key": "j" },
     { "type": "key", "label": "edit the row in place", "key": "e" },
     { "type": "text", "label": "an hour offset defers from the edit line", "text": " @@+2h " },
     { "type": "key", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Edit Task Line: #6 Alpha overdue intake" },
     { "type": "assert", "label": "a same-day deferral hides the row at once", "assert": "not_contains", "value": "🞑 Alpha overdue intake" },
-    { "type": "assert", "label": "deferring takes the task out of Today with it", "assert": "not_contains", "value": "Today  (" },
+    { "type": "assert", "label": "the other two overdue tasks remain in Today", "assert": "contains", "value": "Today  (2)" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

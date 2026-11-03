@@ -8,6 +8,8 @@
     { "type": "assert", "assert": "contains", "value": "Overdue: submit quarterly report" },
     { "type": "assert", "assert": "contains", "value": "Waiting on vendor response" },
     { "type": "key", "label": "launch opens on the first task, so climb to the section header this zoom is about", "key": "home" },
+    { "type": "key", "label": "past Today's singleton task", "key": "n" },
+    { "type": "key", "label": "onto the Inbox section header", "key": "n" },
     { "type": "assert", "label": "that header offers the zoom", "assert": "contains", "value": "Enter zoom" },
 
     { "type": "key", "label": "zoom into the Inbox state group", "key": "enter" },

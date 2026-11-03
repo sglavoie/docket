@@ -317,6 +317,7 @@ func uxDailyUseIntegratedEditsTagsOverAHiddenSelection(
 	size [2]int,
 ) {
 	t.Helper()
+	view.ClearAllFolds()
 	seatCursorOnTaskTitled(t, view, uxAcceptanceOverdueTitle)
 	uxClarityPress(t, driver, uxClarityKeys("v", "V", "j", "j", "s")...)
 	counts := view.SelectionCounts()

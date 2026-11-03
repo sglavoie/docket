@@ -160,7 +160,7 @@
       "type": "assert",
       "label": "the active task's due date keeps it in Today after check-in setup",
       "assert": "contains",
-      "value": "Today  (1)"
+      "value": "Today  (2)"
     },
     {
       "type": "key",

@@ -4,7 +4,7 @@
   "size": "99x35",
   "actions": [
     { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
-    { "type": "assert", "label": "the full-screen title carries the workspace pulse", "assert": "contains", "value": "workspace: inbox 5 · overdue 1" },
+    { "type": "assert", "label": "the full-screen title carries the workspace pulse", "assert": "contains", "value": "workspace: inbox 5 · today 1 · overdue 1" },
     { "type": "assert", "label": "a component with nothing to count says nothing", "assert": "not_contains", "value": "today 0" },
     { "type": "key", "label": "open the go-to chord", "key": "g" },
     { "type": "key", "label": "jump straight to Inbox", "key": "i" },
