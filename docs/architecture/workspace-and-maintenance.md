@@ -116,11 +116,13 @@ arrive, or has a session for a host to talk to or run without a terminal. It has
 mutation or undo/redo command.
 
 Distribution is a tagged release or `go install
-github.com/sglavoie/docket@latest`. Pushing a `v*` tag runs every CI check, then
-GoReleaser (`.goreleaser.yaml`) publishes darwin and linux archives for amd64
-and arm64, each carrying the binary and its shell completions, and writes the
-`docket` cask in `sglavoie/homebrew-tap`; that cask is generated, so a lasting fix
-belongs in `.goreleaser.yaml`. For `go install`, the module's own `go`
+github.com/sglavoie/docket@latest`. `just release` normally requires successful
+CI on the commit being tagged; `--force` skips that check when CI cannot pass.
+Pushing a `v*` tag starts the release workflow. GoReleaser (`.goreleaser.yaml`)
+publishes darwin and linux archives for amd64 and arm64, each carrying the
+binary and its shell completions. The workflow then builds the macOS app and writes
+the generated `docket` cask in `sglavoie/homebrew-tap`; cask changes belong in
+`scripts/homebrew_cask.sh`. For `go install`, the module's own `go`
 directive is the only platform gate the toolchain enforces. Docket is developed and used daily
 on macOS; the full suite also runs on Linux in CI on every push, so Linux is
 exercised but not daily-driven; Windows is not supported. Because no ldflags

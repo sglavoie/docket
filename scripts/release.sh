@@ -6,24 +6,27 @@
 # and confirms the tap's cask moved to the new version.
 #
 # Refuses unless this is a clean main identical to origin/main, the commit is
-# new since the last release, and CI passed on it. The tag push skips the local
-# pre-push checks, and the release workflow reuses CI instead of retesting.
+# new since the last release, and CI passed on it (unless --force is given).
+# The tag push skips the local pre-push checks, and the release workflow does
+# not rerun CI.
 #
-# Usage: release.sh patch|minor|major [--yes] [--no-watch]
+# Usage: release.sh patch|minor|major [--yes] [--no-watch] [--force]
 #
 #   --yes        tag without asking
 #   --no-watch   push the tag and return without following the release
+#   --force      allow release without successful CI on this commit
 
 set -eu
 
 usage() {
-	echo "usage: release.sh patch|minor|major [--yes] [--no-watch]" >&2
+	echo "usage: release.sh patch|minor|major [--yes] [--no-watch] [--force]" >&2
 	exit 2
 }
 
 bump=
 assume_yes=
 watch=1
+force=
 for arg in "$@"; do
 	case "$arg" in
 	patch | minor | major)
@@ -32,6 +35,7 @@ for arg in "$@"; do
 		;;
 	--yes) assume_yes=1 ;;
 	--no-watch) watch= ;;
+	--force) force=1 ;;
 	*) usage ;;
 	esac
 done
@@ -73,20 +77,24 @@ last=$(printf '%s\n' "$remote_tags" | awk '
 [ -n "$last" ] || fail "no vX.Y.Z tag on origin to bump from"
 [ "$(git rev-list --count "$last..HEAD")" -gt 0 ] || fail "nothing to release: HEAD is $last"
 
-ci=$(gh run list --workflow CI --commit "$head" --limit 1 --json status,conclusion,url \
-	--jq '.[0] | "\(.status) \(.conclusion) \(.url)"')
-case "$ci" in
-"completed success "*) ;;
-"")
-	fail "CI has not run on $(git rev-parse --short HEAD)"
-	;;
-"completed "*)
-	fail "CI did not pass on $(git rev-parse --short HEAD): ${ci##* }"
-	;;
-*)
-	fail "CI is still running on $(git rev-parse --short HEAD); wait with: gh run watch ${ci##*/}"
-	;;
-esac
+if [ -n "$force" ]; then
+	echo "WARNING: --force skips the CI success check for $(git rev-parse --short HEAD)." >&2
+else
+	ci=$(gh run list --workflow CI --commit "$head" --limit 1 --json status,conclusion,url \
+		--jq '.[0] | "\(.status) \(.conclusion) \(.url)"')
+	case "$ci" in
+	"completed success "*) ;;
+	"")
+		fail "CI has not run on $(git rev-parse --short HEAD)"
+		;;
+	"completed "*)
+		fail "CI did not pass on $(git rev-parse --short HEAD): ${ci##* }"
+		;;
+	*)
+		fail "CI is still running on $(git rev-parse --short HEAD); wait with: gh run watch ${ci##*/}"
+		;;
+	esac
+fi
 
 # --- The next version -------------------------------------------------------------
 
@@ -127,7 +135,8 @@ fi
 # --- Tag, push, follow ------------------------------------------------------------
 
 git tag -a "$next" -m "$next"
-# CI already checked this exact commit; do not rerun the pre-push test suite.
+# The release script checks CI by default; --force explicitly waives that gate.
+# Do not rerun the pre-push test suite here.
 if ! git push --no-verify --quiet origin "$next"; then
 	git tag -d "$next" >/dev/null
 	fail "pushing $next failed; the local tag was removed"

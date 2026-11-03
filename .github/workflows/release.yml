@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  # scripts/release.sh verifies CI passed on the commit before pushing the tag.
+  # scripts/release.sh verifies CI before pushing the tag unless --force is used.
   release:
     runs-on: ubuntu-latest
     permissions:

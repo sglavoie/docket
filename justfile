@@ -233,7 +233,7 @@ dead:
     @echo "Finding dead code..."
     ./scripts/dead_code.sh
 
-# Tag and push the next patch, minor, or major version, which publishes the release (--yes, --no-watch)
+# Tag and push the next patch, minor, or major version (--yes, --no-watch, --force)
 release bump *flags:
     ./scripts/release.sh {{ bump }} {{ flags }}
 
