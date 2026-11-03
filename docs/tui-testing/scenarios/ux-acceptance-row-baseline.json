@@ -10,13 +10,14 @@
     { "type": "assert", "label": "launch is Active Projects, All", "assert": "contains", "value": "Active Projects · All" },
 
     { "type": "assert", "label": "every lifecycle lane the fixture populates is grouped", "assert": "contains", "value": "▾  Pinned  (1)" },
+    { "type": "assert", "label": "the due-today task is promoted from Backlog into Today", "assert": "contains", "value": "▾  Today  (1)" },
     { "type": "assert", "assert": "contains", "value": "▾  Doing  (2)" },
     { "type": "assert", "label": "Review is promoted as an All-mode lane, not a state", "assert": "contains", "value": "▾  Review  (1)" },
     { "type": "assert", "assert": "contains", "value": "▾  Inbox  (3)" },
-    { "type": "assert", "assert": "contains", "value": "▾  Backlog  (6)" },
+    { "type": "assert", "assert": "contains", "value": "▾  Backlog  (5)" },
     { "type": "assert", "assert": "contains", "value": "▾  Waiting  (2)" },
 
-    { "type": "assert", "label": "each lane opens its own expanded project header for the same project", "assert": "count_contains", "value": "[ux-platform", "count": 6 },
+    { "type": "assert", "label": "each lane opens its own expanded project header for the same project", "assert": "count_contains", "value": "[ux-platform", "count": 7 },
     { "type": "assert", "assert": "count_contains", "value": "[ux-client-r", "count": 2 },
     { "type": "assert", "assert": "count_contains", "value": "[ux-support-", "count": 2 },
     { "type": "assert", "label": "a project header carries the lane's overdue pressure", "assert": "contains", "value": "! overdue 1" },

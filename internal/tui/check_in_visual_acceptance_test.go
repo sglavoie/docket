@@ -68,13 +68,13 @@ func TestCheckInVisualAcceptance(t *testing.T) {
 				// countdown ahead of the deadline. The deadline survives all three,
 				// including its overdue label, which is the ladder's own
 				// promise. The pulse rides along at every width, naming the one
-				// component this fixture has anything to count.
-				rowsRequired := []string{"Migrated vendor wait", "review +", "Apr 1 '20 15:30 overdue", "workspace: overdue 1"}
+				// overdue task and the active task due today.
+				rowsRequired := []string{"Migrated vendor wait", "review +", "Apr 1 '20 15:30 overdue", "workspace: today 1 · overdue 1"}
 				switch size[0] {
 				case 62:
-					rowsRequired = []string{"Migrated vendor", "▤", "Apr 1 '20 15:30 overdue", "workspace: overdue 1"}
+					rowsRequired = []string{"Migrated vendor", "▤", "Apr 1 '20 15:30 overdue", "workspace: today 1 · overdue 1"}
 				case 60:
-					rowsRequired = []string{"[check-i…] ⊘ Migrated vend", "▤", "Apr 1 '20 15:30 overdue", "workspace: overdue 1"}
+					rowsRequired = []string{"[check-i…] ⊘ Migrated vend", "▤", "Apr 1 '20 15:30 overdue", "workspace: today 1 · overdue 1"}
 				}
 				capture("rows", rowsRequired...)
 				out := driver.App().crossOutliner

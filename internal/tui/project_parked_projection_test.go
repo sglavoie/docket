@@ -225,8 +225,8 @@ func TestParkedProjectLeavesOperationScopeAndWorkspacePulse(t *testing.T) {
 	if pulse.Inbox != 1 {
 		t.Fatalf("workspace pulse inbox = %d, want only the base workspace inbox task", pulse.Inbox)
 	}
-	if pulse.Today != 0 {
-		t.Fatalf("workspace pulse Today = %d, want a parked Today reference to count nothing", pulse.Today)
+	if pulse.Today != 1 {
+		t.Fatalf("workspace pulse Today = %d, want only the active task due today, excluding the parked Today reference and deadline", pulse.Today)
 	}
 }
 

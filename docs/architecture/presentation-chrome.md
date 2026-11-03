@@ -9,6 +9,11 @@ pulse-free and preserve the host's title row. There are no presentation
 exemptions: every reachable presentation has shell, surface, or overlay guidance
 ownership.
 
+Today's count includes both explicit Today planning members and open tasks due
+on the current calendar day, deduplicated by project-qualified identity. It
+keeps the Today pace readout and workspace agenda in step with Today's task
+projection without writing planning membership.
+
 `RenderOperationalTitle` is the one-line title fitter. Identity on the left
 contains surface, scope, and mode exactly once, and the workspace pulse is the
 right region. Today is normally mandatory. When width is constrained, the fitter

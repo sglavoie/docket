@@ -310,13 +310,31 @@ func (in OutlinerModeInput) recencyKey(task *models.Task, project *models.Projec
 	return task.UpdatedAt
 }
 
-// BuildTodayModeRows realizes the explicit ordered Today projection. Every row
-// is a durable member; section-local hierarchy is added by the row appender.
+// BuildTodayModeRows combines the durable Today plan with tasks due on the
+// current calendar day. Planned tasks retain their order; due-only tasks follow
+// in catalog/document order, before the row appender applies sorting and hierarchy.
 func BuildTodayModeRows(in OutlinerModeInput) []OutlinerModeRow {
 	projects := modeProjectIndex(in.Projects)
 	now := in.now()
 	rows := make([]OutlinerModeRow, 0, len(in.TodayOrder))
 	seen := make(map[taskref.TaskIdentity]bool, len(in.TodayOrder))
+	appendTask := func(task *models.Task, project *models.Project) {
+		identity := taskref.For(task, project)
+		if task == nil || seen[identity] {
+			return
+		}
+		seen[identity] = true
+		if !planningTodayEligible(task) || (task.IsDeferredAt(now) && !in.IncludeDeferred) {
+			return
+		}
+		if in.TaskExclude != nil && in.TaskExclude(task, project) {
+			return
+		}
+		if in.TaskFilter != nil && !in.TaskFilter(task, project) {
+			return
+		}
+		rows = append(rows, planningModeRow(task, project))
+	}
 	for _, item := range in.TodayOrder {
 		if item.Task == nil || item.Project == nil {
 			continue
@@ -327,20 +345,16 @@ func BuildTodayModeRows(in OutlinerModeInput) []OutlinerModeRow {
 		}
 		task := project.GetTaskByID(item.Task.ID)
 		identity := taskref.TaskIdentity{ProjectID: project.ID, TaskID: item.Task.ID}
-		if task == nil || seen[identity] || !modeCandidateContains(in, identity) {
+		if !modeCandidateContains(in, identity) {
 			continue
 		}
-		seen[identity] = true
-		if !planningTodayEligible(task) || (task.IsDeferredAt(now) && !in.IncludeDeferred) {
-			continue
+		appendTask(task, project)
+	}
+	for _, candidate := range orderedModeTasks(in) {
+		task, project := candidate.row.Task, candidate.row.Project
+		if task.IsDueTodayAt(now) {
+			appendTask(project.GetTaskByID(task.ID), project)
 		}
-		if in.TaskExclude != nil && in.TaskExclude(task, project) {
-			continue
-		}
-		if in.TaskFilter != nil && !in.TaskFilter(task, project) {
-			continue
-		}
-		rows = append(rows, planningModeRow(task, project))
 	}
 	return rows
 }

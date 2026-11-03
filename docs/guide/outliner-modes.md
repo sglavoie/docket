@@ -53,6 +53,17 @@ explicit cleanup routes. Due is date ordered. Done and Canceled work stay hidden
 unless a filter explicitly asks for them; deferred work does too unless its
 manual review flag raises it.
 
+Today includes tasks explicitly planned for today and open tasks whose deadline
+falls today, including deadlines with a clock time. A task that is both planned
+and due appears once. The Today section in All uses the same rule; a due task
+already in Next appears under Today there. This changes only what is displayed:
+its saved Today/Next plan and lifecycle state stay as they were. Due-only tasks
+follow planned tasks when the active sort ties, in catalog and document order.
+Hidden and deferred work keeps the usual visibility rules, and an unplanned task
+leaves Today when its deadline moves to another day or that day ends.
+The workspace pulse's `today` count and Today's `open` pace count include both
+planned and due-today tasks, counted once each across the active workspace.
+
 Every mode groups its tasks by project when you are looking at more than one
 project. Each group opens with a foldable `[slug] (count)` header, and its
 tasks sit one level beneath it without repeating the project's name; `h` folds
@@ -90,8 +101,8 @@ inside it. Both counts are bold, at the same weight as a due-today or overdue
 date on a row, and they keep two hues because they answer two questions:
 `overdue` counts deadlines that have passed, `today` counts the tasks you
 planned for today, and a task can be either without being the other. A Today
-group omits its own `today` count because every row there is
-already planned for today. When the header is too narrow for the whole suffix
+group omits its own `today` count because it already shows today's work,
+including tasks due today. When the header is too narrow for the whole suffix
 the counts degrade rather than clip: `today` drops first, then `overdue`, so a
 count you can read is always the real number.
 

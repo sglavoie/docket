@@ -158,8 +158,9 @@
     },
     {
       "type": "assert",
-      "assert": "not_contains",
-      "value": "Today  ("
+      "label": "the active task's due date keeps it in Today after check-in setup",
+      "assert": "contains",
+      "value": "Today  (1)"
     },
     {
       "type": "key",

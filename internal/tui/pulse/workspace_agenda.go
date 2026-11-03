@@ -77,7 +77,7 @@ func ComputeWorkspaceAgenda(projects []*models.Project, todayIDs map[taskref.Tas
 			switch {
 			case TaskIsOverdueAt(task, now):
 				kind = AgendaOverdue
-			case todayIDs[identity] && app.PlanningTodayEligible(task.State()):
+			case (todayIDs[identity] || task.IsDueTodayAt(now)) && app.PlanningTodayEligible(task.State()):
 			default:
 				continue
 			}

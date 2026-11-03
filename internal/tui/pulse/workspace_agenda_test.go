@@ -26,8 +26,9 @@ func TestWorkspaceAgendaListsWhatThePulseCounts(t *testing.T) {
 	planUnset := &models.Task{ID: "plan-unset", ShortID: 6, Title: "Plan unset", WorkflowState: models.StateDoing}
 	deferred := &models.Task{ID: "deferred", ShortID: 7, Title: "Deferred", WorkflowState: models.StateBacklog, DeferredUntil: &wake}
 	unplanned := &models.Task{ID: "unplanned", ShortID: 8, Title: "Unplanned", WorkflowState: models.StateBacklog}
+	dueOnly := &models.Task{ID: "due-only", ShortID: 9, Title: "Due today without a plan", WorkflowState: models.StateWaiting, DueDate: &later, Priority: models.PriorityMedium}
 	project := &models.Project{ID: "p", Slug: "p", Name: "Work", Tasks: []*models.Task{
-		done, lateRecent, lateOlder, planLow, planHigh, planUnset, deferred, unplanned,
+		done, lateRecent, lateOlder, planLow, planHigh, planUnset, deferred, unplanned, dueOnly,
 	}}
 	project.BuildTaskTree()
 	today := map[taskref.TaskIdentity]bool{}
@@ -44,7 +45,7 @@ func TestWorkspaceAgendaListsWhatThePulseCounts(t *testing.T) {
 		}
 		got = append(got, kind+":"+item.TaskID)
 	}
-	want := []string{"overdue:late-older", "overdue:late-recent", "today:plan-high", "today:plan-low", "today:plan-unset"}
+	want := []string{"overdue:late-older", "overdue:late-recent", "today:plan-high", "today:due-only", "today:plan-low", "today:plan-unset"}
 	if fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("agenda = %v, want %v", got, want)
 	}
@@ -62,7 +63,7 @@ func TestWorkspaceAgendaListsWhatThePulseCounts(t *testing.T) {
 	}
 
 	counted := ComputeWorkspacePulse([]*models.Project{project}, today, now)
-	if counted.Overdue != 2 || counted.Today != 4 {
+	if counted.Overdue != 2 || counted.Today != 5 {
 		t.Fatalf("pulse = %+v; the agenda's fixture drifted from what the pulse counts", counted)
 	}
 

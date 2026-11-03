@@ -1,0 +1,20 @@
+{
+  "name": "today-includes-due-tasks",
+  "fixture": "ux-acceptance",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open Today for a task stored with a due date and no Today plan", "key": "2" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Today" },
+    { "type": "assert", "label": "Today's pace counts the task even without a saved plan", "assert": "contains", "value": "1 open · median" },
+    { "type": "assert", "assert": "count_contains", "value": "Confirm the release sign-off owed today", "count": 1 },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "Due also retains its dated task", "key": "6" },
+    { "type": "assert", "assert": "contains", "value": "Confirm the release sign-off owed today" },
+    { "type": "restart", "label": "re-read the original due date from disk" },
+    { "type": "key", "key": "2" },
+    { "type": "assert", "assert": "count_contains", "value": "Confirm the release sign-off owed today", "count": 1 },
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "Confirm the release" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

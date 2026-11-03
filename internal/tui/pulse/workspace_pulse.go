@@ -60,8 +60,8 @@ type WorkspacePulseAware interface {
 // loader's partial failure behavior, since a project that failed to load is
 // simply absent from projects and contributes nothing.
 //
-// Today membership is project-qualified and counted at most once per planning
-// identity. Stale references, ineligible tasks, and references to excluded
+// Today includes the explicit plan and tasks due today, counted at most once per
+// project-qualified identity. Stale references, ineligible tasks, and references to excluded
 // projects do not contribute because only loaded eligible tasks are considered.
 // Effectively hidden work never contributes, whatever the view's facets say: a
 // hidden task is never owed attention.
@@ -79,7 +79,8 @@ func ComputeWorkspacePulse(projects []*models.Project, todayIDs map[taskref.Task
 			}
 
 			identity := taskref.For(task, project)
-			if identity.Valid() && todayIDs[identity] && !countedToday[identity] && app.PlanningTodayEligible(task.State()) {
+			if identity.Valid() && (todayIDs[identity] || task.IsDueTodayAt(now)) &&
+				!countedToday[identity] && app.PlanningTodayEligible(task.State()) {
 				pulse.Today++
 				countedToday[identity] = true
 			}

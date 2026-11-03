@@ -274,6 +274,7 @@ The committed suite exercises the product contracts directly:
 | Searching for unprioritized work with `!0`, and its negation keeping only prioritized work | `search-priority-unset.json` |
 | The flat ranked list naming each row's project, in its heading color and padded so titles share one column, at the minimum width too, and a single-project scope carrying no label | `outliner-search-ranked-project-label.json` |
 | Six modes and navigation aliases | `mode-catalog.json`, `navigate-outliner.json`, `outliner-navigation-aliases.json` |
+| Today including an unplanned task due today after a restart, with matching pace and narrow layout | `today-includes-due-tasks.json` |
 | Header-to-header jumps, wrapping, and the headerless refusal | `outliner-header-jump.json` |
 | Priority, workflow, deferred, and clear filters | `filter-chord-priority.json`, `filter-chord-states.json`, `filter-chord-clear.json` |
 | One `@` picker over due and defer, hour-granular deferral presets, `+Nh` typed entry, and the terminal-task defer refusal | `defer-hour-presets.json`, `defer-picker-direct.json`, `defer-custom-entry-bulk.json`, `date-custom-entry.json`, `defer-wake-marker.json`, `date-picker-terminal-task.json`, `due-picker-direct.json` |

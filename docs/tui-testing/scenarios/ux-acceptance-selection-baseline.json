@@ -31,9 +31,9 @@
     { "type": "key", "label": "Ctrl+A takes every visible task in the projection", "key": "ctrl+a" },
     { "type": "assert", "assert": "contains", "value": "Multi-select: 15 selected" },
     { "type": "assert", "assert": "count_contains", "value": "Multi-select:", "count": 1 },
-    { "type": "assert", "label": "every task row on screen wears the mark in its cursor column: eight over the two connector shapes, and seven single-task rows led by their project labels", "assert": "count_contains", "value": "✓├──", "count": 5 },
+    { "type": "assert", "label": "every task row on screen wears the mark in its cursor column: seven over the two connector shapes, and eight single-task rows led by their project labels", "assert": "count_contains", "value": "✓├──", "count": 4 },
     { "type": "assert", "assert": "count_contains", "value": "✓└──", "count": 3 },
-    { "type": "assert", "assert": "count_contains", "value": "✓  [", "count": 7 },
+    { "type": "assert", "assert": "count_contains", "value": "✓  [", "count": 8 },
     { "type": "assert", "label": "and the mark costs no column, so no checkbox is drawn", "assert": "not_contains", "value": "[x]" },
     { "type": "assert", "assert": "no_layout_issues" },
 

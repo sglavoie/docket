@@ -19,9 +19,8 @@ type planningSectionBuild struct {
 	group      models.WorkflowStateGroup
 }
 
-// buildTodaySection realizes explicit Today membership in durable order.
-// Descendants appear only when they have their own Today membership; the row
-// appender restores hierarchy among relatives that share the section.
+// buildTodaySection combines the Today plan and tasks due today. Descendants
+// qualify independently; the row appender restores hierarchy within the section.
 func (m *OutlinerModel) buildTodaySection(
 	input OutlinerModeInput,
 	pinned map[taskref.TaskIdentity]bool,
@@ -44,12 +43,12 @@ func (m *OutlinerModel) buildTodaySection(
 		}
 	}
 
-	previousExclude := input.TaskExclude
-	input.TaskExclude = func(task *models.Task, project *models.Project) bool {
-		return pinned[taskref.For(task, project)] ||
-			(previousExclude != nil && previousExclude(task, project))
-	}
 	for _, modeRow := range BuildTodayModeRows(input) {
+		identity := taskref.For(modeRow.Task, modeRow.Project)
+		result.suppressed[identity] = true
+		if pinned[identity] {
+			continue
+		}
 		row := m.outlinerRowFromModeRow(modeRow)
 		row.IsTodaySection = true
 		result.rows = append(result.rows, row)
@@ -165,9 +164,9 @@ func (m *OutlinerModel) appendPlanningSection(section planningSectionBuild, lift
 	m.appendPlanningRows(section.rows, section.group, collapseKey)
 }
 
-// removePlanningRowsFromTree removes every explicit planning identity from a
-// lifecycle forest while promoting non-planned descendants. This keeps All
-// deduplicated without treating descendants as planned. It is a pass over a tree
+// removePlanningRowsFromTree removes identities claimed by Today or Next from a
+// lifecycle forest while promoting other descendants. This keeps All
+// deduplicated without claiming descendants implicitly. It is a pass over a tree
 // the projection owns, so it shares what it leaves alone; see pruneOwnedTree.
 func removePlanningRowsFromTree(
 	tasks []*models.Task,
