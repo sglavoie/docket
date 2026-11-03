@@ -38,6 +38,7 @@ func (m *OutlinerModel) OperationCommandContext() operation.CommandContext {
 	// section header in a single-project Outliner still needs that project's
 	// Archived guard, which only the fallback fills.
 	ctx.Entity.HasSectionHeaderCursor = m.CursorNamesSectionHeader()
+	ctx.Entity.HasFoldedSectionHeaderCursor = m.CursorNamesFoldedSectionHeader()
 	ctx.Entity.HasProjectHeaderCursor = header != nil
 	ctx.Entity.HasFocusedProjectHeaderCursor = m.CursorNamesFocusedProjectHeader()
 	_, ctx.Entity.HasNoteCursor = m.CursorNoteIdentity()

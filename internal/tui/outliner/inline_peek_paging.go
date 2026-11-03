@@ -3,6 +3,7 @@ package outliner
 import (
 	"slices"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/charmbracelet/x/ansi"
@@ -15,7 +16,7 @@ import (
 )
 
 // inlinePeekOwnerKind names what kind of thing a remembered offset belongs to.
-// Peek draws two documents — a task's and a project header's — and each kind's
+// Peek draws task, project, section, and checklist documents, and each kind's
 // own identity is what tells one document of that kind from another. The kind
 // travels beside the identity so the two populations cannot collide: a task
 // owner and a project owner are never the same owner however their identity
@@ -27,6 +28,7 @@ const (
 	inlinePeekOwnerTask
 	inlinePeekOwnerProject
 	inlinePeekOwnerChecklist
+	inlinePeekOwnerSection
 )
 
 // inlinePeekOwner is the typed identity half of the key, and the extension point
@@ -38,9 +40,10 @@ type inlinePeekOwner struct {
 	task taskref.TaskIdentity
 	// project is the catalog identity rather than the row's collapse key, which
 	// is what makes the several headers one project can hold at once — All emits
-	// a group per state section — one owner: a page turn under one of them is the
-	// same page under the others, because they are the same project's detail.
+	// a group per state section — one owner. A folded header's attention line may
+	// differ; its document fingerprint then relocates the reading anchor.
 	project string
+	section string
 	// Checklist items have no durable ID. Index and text prevent an unrelated
 	// item at a reused position from inheriting this item's reading position.
 	checklistIndex int
@@ -62,6 +65,13 @@ func projectPeekOwner(projectID string) inlinePeekOwner {
 	return inlinePeekOwner{kind: inlinePeekOwnerProject, project: projectID}
 }
 
+func sectionPeekOwner(key string) inlinePeekOwner {
+	if key == "" {
+		return inlinePeekOwner{}
+	}
+	return inlinePeekOwner{kind: inlinePeekOwnerSection, section: key}
+}
+
 // sameAs answers whether two owners are the same document's. An owner naming no
 // kind matches nothing, itself included: that is the unwritten slot, and a
 // terminal that has not been sized yet would otherwise hand it a key of zeroes
@@ -70,7 +80,7 @@ func (owner inlinePeekOwner) sameAs(other inlinePeekOwner) bool {
 	if owner.kind == inlinePeekOwnerNone || other.kind == inlinePeekOwnerNone {
 		return false
 	}
-	return owner.kind == other.kind && owner.task == other.task && owner.project == other.project &&
+	return owner.kind == other.kind && owner.task == other.task && owner.project == other.project && owner.section == other.section &&
 		owner.checklistIndex == other.checklistIndex && owner.checklistText == other.checklistText
 }
 
@@ -78,7 +88,8 @@ func (owner inlinePeekOwner) sameAs(other inlinePeekOwner) bool {
 // Peek — the render, the measurement, the offset key, and the four scrolling
 // keys — asks here, so none of them can admit a row another one refuses.
 func rowSupportsPeek(row OutlinerRow) bool {
-	return row.IsTaskRow() || row.IsProjectHeader || checklistPeekItemValid(row)
+	return row.IsTaskRow() || row.IsProjectHeader || checklistPeekItemValid(row) ||
+		(row.IsSectionHeader && len(row.attentionTasks) > 0)
 }
 
 // inlinePeekOffsetKey is what a remembered offset is remembered for. Peek's
@@ -120,8 +131,7 @@ type peekOffsetState struct {
 // Every reader — the renderer, the viewport measurement, and the two paging
 // keys — comes through here, so none of them can be looking at a different
 // document than the others. The row's kind picks the builder, and the project
-// header takes the branch first: it is not a task row, and a task row is never a
-// header.
+// header branches take precedence: neither kind is a task row.
 func (m *OutlinerModel) inlinePeekDocumentForRow(
 	row OutlinerRow,
 	indent string,
@@ -134,15 +144,19 @@ func (m *OutlinerModel) inlinePeekDocumentForRow(
 	if row.IsChecklistItem {
 		return inlinePeekChecklistDocumentFor(row, indent, rowWidth, geometry)
 	}
+	if row.IsSectionHeader {
+		return inlinePeekSectionDocumentFor(row, m.headerAttentionLabel(row, time.Now()), indent, rowWidth, geometry)
+	}
 	if row.IsProjectHeader {
 		// The row's own project identity, not the view's: a cross-project group
 		// header names a project the scoped model may not be, and resolving through
 		// the scope would draw the wrong project's comments under it.
 		return inlinePeekProjectDocumentFor(inlinePeekProjectOptions{
-			Project: m.projectByGroupID(row.ProjectID),
-			Indent:  indent,
-			Width:   rowWidth,
-			Window:  geometry,
+			Project:   m.projectByGroupID(row.ProjectID),
+			Indent:    indent,
+			Width:     rowWidth,
+			Window:    geometry,
+			Attention: m.headerAttentionLabel(row, time.Now()),
 		})
 	}
 	if !row.IsTaskRow() {
@@ -207,6 +221,9 @@ func (m *OutlinerModel) inlinePeekOffsetKey(row OutlinerRow, doc inlinePeekDocum
 // peekOwnerForRow types the row the offset belongs to, on the same split
 // inlinePeekDocumentForRow builds it on.
 func (m *OutlinerModel) peekOwnerForRow(row OutlinerRow) inlinePeekOwner {
+	if row.IsSectionHeader {
+		return sectionPeekOwner(row.EffectiveCollapseKey())
+	}
 	if row.IsProjectHeader {
 		return projectPeekOwner(row.ProjectID)
 	}
@@ -235,8 +252,8 @@ func (m *OutlinerModel) peekOffsetForRow(row OutlinerRow, doc inlinePeekDocument
 // peekCursorDocument is the document the dock draws and the scrolling keys act
 // on, or false when there is none: no dock on the frame, a cursor off the rows,
 // or a row that owns no document. An open Peek alone is not enough — it survives
-// the cursor moving onto a section header or a note row, where the dock draws its
-// placeholder and there is nothing to page.
+// the cursor moving onto a note row, where the dock draws its placeholder and
+// there is nothing to page.
 //
 // The frame's geometry is stamped onto the document here, which is the one place
 // content and window meet: every reader below takes the window off the document

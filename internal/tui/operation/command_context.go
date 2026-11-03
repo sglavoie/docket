@@ -167,6 +167,9 @@ type EntityContext struct {
 	// header, which names neither a task nor a project. Nothing else
 	// distinguishes it from an empty entity in a single-project scope.
 	HasSectionHeaderCursor bool
+	// HasFoldedSectionHeaderCursor narrows the section header to one that hides
+	// admitted tasks and can explain its attention band in Peek.
+	HasFoldedSectionHeaderCursor bool
 	// HasProjectHeaderCursor reports that the cursor rests on a project group
 	// header. ProjectID alone cannot say so: a single-project scope fills it from
 	// the scope on every row, section headers included, so an operation that acts

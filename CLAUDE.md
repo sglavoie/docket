@@ -730,14 +730,15 @@ Row and Peek budget:
   A reference target is named nowhere
   else, and an unresolvable one degrades to its stored locator, never dropped.
   `project export` shares that fallback and writes no dependents.
-- Both project header forms Peek through `inlinePeekProjectDocumentFor` over the
-  row's own `ProjectID`, never the view's: name leading the body, then a
-  `Tasks:` line counting every stored task by section, blind to mode, query,
-  and folds (`0 · no sections` empty, `Not loaded` unread), then description,
-  tags, and every stored comment newest first, with `No comments yet. Press C to add one.` for none,
-  so a header always has a document and an unresolved one has none.
-  `projectPeekOwner` is that project identity, so All's several headers for one
-  project share one window. Task Peek keeps its comment count.
+- Project headers Peek by row `ProjectID`: name, folded `Attention:` from the
+  band's admitted tasks, `Tasks:` from all stored tasks regardless of view
+  (`0 · no sections` empty, `Not loaded` unread), description, tags, and
+  comments newest first or `No comments yet. Press C to add one.` An unresolved
+  project has no document. `projectPeekOwner` shares one window across its
+  headers; task Peek retains its comment count.
+- Folded section headers Peek name, count, and strongest admitted attention
+  (`None` if quiet). The collapse key owns the reading position; expanded
+  section headers keep the placeholder.
 - Checklist Peek owns item text, completion, position, and task title. Its
   qualified task/index/text identity isolates scrolling; task mutations refuse.
 - Peek remembers one session-only owner/query/section/content anchor. Unchanged

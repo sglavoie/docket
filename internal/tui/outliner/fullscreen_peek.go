@@ -51,6 +51,9 @@ func (m *OutlinerModel) fullscreenPeekTitle() string {
 		if row.IsProjectHeader {
 			return "Project Details"
 		}
+		if row.IsSectionHeader {
+			return "Section Details"
+		}
 		if row.IsChecklistItem {
 			return "Checklist Item Details"
 		}

@@ -174,6 +174,16 @@ func (m *OutlinerModel) CursorNamesSectionHeader() bool {
 	return m.Rows[m.Cursor].IsSectionHeader
 }
 
+// CursorNamesFoldedSectionHeader is the section-header subset with a hidden
+// population to explain in Peek. Expanded headers keep their ordinary footer.
+func (m *OutlinerModel) CursorNamesFoldedSectionHeader() bool {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.Rows) {
+		return false
+	}
+	row := m.Rows[m.Cursor]
+	return row.IsSectionHeader && len(row.attentionTasks) > 0
+}
+
 // cursorNoteIdentity names the note the cursor rests on, and is the second read
 // of the cursor's row kind both command contexts share. A note row carries no
 // project or task, so this identity is the only thing an operation acting on it

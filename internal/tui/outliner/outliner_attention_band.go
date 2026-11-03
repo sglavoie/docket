@@ -61,6 +61,33 @@ func (a rowAttention) color() color.Color {
 	}
 }
 
+// label spells the same winning signal the band colors. Peek uses it when a
+// folded header hides the task badges that would otherwise explain the color.
+func (a rowAttention) label() string {
+	switch a.hero {
+	case chrome.HeroOverdue:
+		return "Overdue deadline"
+	case chrome.HeroReview:
+		if a.lateReview {
+			return "Late check-in"
+		}
+		return "Review needed"
+	case chrome.HeroDueToday:
+		return "Deadline today"
+	case chrome.HeroP1:
+		return "Priority 1"
+	default:
+		return ""
+	}
+}
+
+func (m *OutlinerModel) headerAttentionLabel(row OutlinerRow, now time.Time) string {
+	if !row.IsCollapsibleHeader() || !m.IsSectionRowCollapsed(row) {
+		return ""
+	}
+	return strongestAttention(row.attentionTasks, now).label()
+}
+
 func (a rowAttention) render() string {
 	if accent := a.color(); accent != nil {
 		return lipgloss.NewStyle().Foreground(accent).Render(attentionBand)

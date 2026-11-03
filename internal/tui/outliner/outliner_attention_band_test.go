@@ -253,6 +253,7 @@ func TestFoldedAttentionRespectsFiltersAndOtherGroups(t *testing.T) {
 	alpha := primaryRowsProject("alpha", priority, urgent, hidden)
 	beta := primaryRowsProject("beta", primaryRowsTask("other", models.StateBacklog))
 	m, _ := primaryRowsOutliner(alpha, beta)
+	m.SetSize(80, 24)
 	m.SelectOutlinerMode(chrome.ModeBacklog)
 	key := projectGroupCollapseKey(m, alpha.ID)
 	betaKey := projectGroupCollapseKey(m, beta.ID)
@@ -266,8 +267,13 @@ func TestFoldedAttentionRespectsFiltersAndOtherGroups(t *testing.T) {
 		m.RebuildRows()
 		found := false
 		for _, row := range m.Rows {
-			if row.IsProjectHeader && row.ProjectID == beta.ID && m.renderHeaderAttention(row, cursorPaint{}) != " " {
-				t.Fatal("a quiet project inherited another project's band")
+			if row.IsProjectHeader && row.ProjectID == beta.ID {
+				if m.renderHeaderAttention(row, cursorPaint{}) != " " {
+					t.Fatal("a quiet project inherited another project's band")
+				}
+				if text := ansi.Strip(strings.Join(m.PeekDocumentBodyForRow(row), "\n")); strings.Contains(text, "Attention:") {
+					t.Fatalf("a quiet project inherited another project's Peek summary: %s", text)
+				}
 			}
 			if !row.IsProjectHeader || row.ProjectID != alpha.ID {
 				continue
@@ -279,6 +285,13 @@ func TestFoldedAttentionRespectsFiltersAndOtherGroups(t *testing.T) {
 			}
 			if got := strongestAttention(row.attentionTasks, time.Now()).hero; got != want {
 				t.Fatalf("filtered=%v summary=%v, want %v", filtered, got, want)
+			}
+			label := "Overdue deadline"
+			if filtered {
+				label = "Priority 1"
+			}
+			if text := ansi.Strip(strings.Join(m.PeekDocumentBodyForRow(row), "\n")); !strings.Contains(text, "Attention: "+label) {
+				t.Fatalf("filtered=%v Peek did not explain the band as %q: %s", filtered, label, text)
 			}
 		}
 		if !found {
@@ -296,11 +309,12 @@ func TestFoldedReviewSummaryPrefersLateCheckIns(t *testing.T) {
 	flag.Review = true
 	for _, tasks := range [][]*models.Task{{today, late, flag}, {flag, late, today}} {
 		m, _ := primaryRowsOutliner(primaryRowsProject("alpha", tasks...))
+		m.SetSize(80, 24)
 		m.SelectOutlinerMode(chrome.ModeAll)
 		m.Folds.setSection(reviewSectionCollapseKey, true)
 		m.RebuildRows()
 		found := false
-		for _, row := range m.Rows {
+		for index, row := range m.Rows {
 			if !row.IsSectionHeader || row.EffectiveCollapseKey() != reviewSectionCollapseKey {
 				continue
 			}
@@ -309,9 +323,36 @@ func TestFoldedReviewSummaryPrefersLateCheckIns(t *testing.T) {
 			if got := m.renderHeaderAttention(row, cursorPaint{}); got != want {
 				t.Fatalf("review summary = %q, want late check-in warning %q", got, want)
 			}
+			if !rowSupportsPeek(row) {
+				t.Fatal("a folded section with an attention band cannot open Peek")
+			}
+			if text := ansi.Strip(strings.Join(m.PeekDocumentBodyForRow(row), "\n")); !strings.Contains(text, "Attention: Late check-in") {
+				t.Fatalf("section Peek did not explain its band: %s", text)
+			}
+			m.Cursor = index
+			if !m.OperationCommandContext().Entity.HasFoldedSectionHeaderCursor {
+				t.Fatal("the folded section was not offered as a Peek target")
+			}
+			m.TogglePeek()
+			if !m.PeekMode || m.fullscreenPeekTitle() != "Section Details" {
+				t.Fatal("the folded section did not open a section Peek")
+			}
+			m.TogglePeek()
 		}
 		if !found {
 			t.Fatal("folded Review header is missing")
+		}
+		m.Folds.setSection(reviewSectionCollapseKey, false)
+		m.RebuildRows()
+		for index, row := range m.Rows {
+			if !row.IsSectionHeader || row.EffectiveCollapseKey() != reviewSectionCollapseKey {
+				continue
+			}
+			m.Cursor = index
+			if rowSupportsPeek(row) || m.OperationCommandContext().Entity.HasFoldedSectionHeaderCursor {
+				t.Fatal("an expanded section offered Peek without a hidden band")
+			}
+			break
 		}
 	}
 }

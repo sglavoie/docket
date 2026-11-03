@@ -59,6 +59,7 @@ func (c *Controller) CommandContext(shell Shell) operation.CommandContext {
 	// focused-project header is an Outliner row kind for the same reason: no
 	// other surface can hold one.
 	if out := shell.ActiveOutliner(); out != nil {
+		ctx.Entity.HasFoldedSectionHeaderCursor = out.CursorNamesFoldedSectionHeader()
 		ctx.Peek = out.PeekCommandContext()
 		ctx.Search = out.SearchRecoveryContext()
 		ctx.Entity.HasFocusedProjectHeaderCursor = out.CursorNamesFocusedProjectHeader()

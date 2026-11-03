@@ -28,8 +28,17 @@
     { "type": "key", "label": "focus the folded project without covering its attention color", "key": "j" },
     { "type": "assert", "assert": "contains", "value": "▌▸" },
     { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "Peek explains the folded band's strongest signal", "key": "b" },
+    { "type": "assert", "assert": "contains", "value": "Attention: Priority 1" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "b" },
     { "type": "key", "label": "expand the group again", "key": "p" },
     { "type": "assert", "assert": "contains", "value": "◉ Band task" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "return to the section header", "key": "home" },
+    { "type": "key", "label": "fold the section and summarize its hidden task", "key": "s" },
+    { "type": "key", "label": "section Peek names the same attention signal", "key": "b" },
+    { "type": "assert", "assert": "contains", "value": "Attention: Priority 1" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

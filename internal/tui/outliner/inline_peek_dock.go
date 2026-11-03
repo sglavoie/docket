@@ -50,7 +50,7 @@ const (
 	// tree node, so a deeply nested task and a root one read at the same margin.
 	peekDockIndent = "  "
 	// peekDockPlaceholderText is what the dock says for a row that owns no detail
-	// document — a section header or a note. The dock stays open
+	// document — for example, a note row. The dock stays open
 	// and stays this tall there, so crossing such a row moves nothing on screen.
 	peekDockPlaceholderText = "No detail to show for this row."
 	// peekDockPlaceholderFingerprint identifies that stand-in content. It is a

@@ -33,8 +33,8 @@ func CoreInputOperationRequiresTask(id OperationID) bool {
 
 // CoreInputOperationRequiresPeekTarget names the delegated core operations that
 // need a row with a detail document behind it. They are the task requirement's
-// sibling rather than a member of it: Peek reads several entity kinds, so a project
-// header answers these five and refuses every other task key on the same row.
+// sibling rather than a member of it: Peek reads several entity kinds, so
+// project and folded section headers answer them while refusing task keys.
 func CoreInputOperationRequiresPeekTarget(id OperationID) bool {
 	switch id { //nolint:exhaustive // Only Peek and its four scrolling keys are listed.
 	case OperationCorePeek,
@@ -52,7 +52,7 @@ func CoreInputOperationRequiresPeekTarget(id OperationID) bool {
 // can draw. It is the one predicate behind the descriptor's applicability and
 // the delegated handler's refusal, so a key that is offered is a key that acts.
 func CommandContextNamesPeekTarget(ctx CommandContext) bool {
-	return CurrentTaskIdentity(ctx).Valid() || ctx.Entity.HasProjectHeaderCursor
+	return CurrentTaskIdentity(ctx).Valid() || ctx.Entity.HasProjectHeaderCursor || ctx.Entity.HasFoldedSectionHeaderCursor
 }
 
 // CommandContextSatisfiesPeekRequirement is what those five keys actually need,

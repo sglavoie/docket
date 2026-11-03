@@ -29,6 +29,9 @@ type inlinePeekProjectOptions struct {
 	Project *models.Project
 	Indent  string
 	Width   int
+	// Attention explains the band on this folded project header. A project's
+	// stored task summary below is independent of the current view and filters.
+	Attention string
 	// Window is the frame's dock geometry, carried for the same reason the task
 	// half carries it: a project header's document is drawn in the identical
 	// window a task's is, so the two cannot disagree about height.
@@ -38,15 +41,16 @@ type inlinePeekProjectOptions struct {
 // inlinePeekProjectDocumentFor assembles the detail behind a project header. The
 // header row spends its width on the slug badge, the group size, and the
 // pressure chips, so everything below is what the row has no room to say: the
-// project's own name, task summary, description, tags, and every stored comment
-// newest first. All five are body, so a long name pages like a long comment.
+// project's own name, optional folded attention, task summary, description,
+// tags, and every stored comment newest first. All are body, so a long name
+// pages like a long comment.
 func inlinePeekProjectDocumentFor(opts inlinePeekProjectOptions) inlinePeekDocument {
 	if opts.Project == nil || opts.Width <= 0 {
 		return inlinePeekDocument{}
 	}
 
 	available := max(opts.Width-lipgloss.Width(opts.Indent), 1)
-	sections := inlinePeekProjectBodySections(opts.Project, opts.Indent, available)
+	sections := inlinePeekProjectBodySections(opts.Project, opts.Attention, opts.Indent, available)
 	body := make([]string, 0, len(sections))
 	keys := make([]string, 0, len(sections))
 	for _, section := range sections {
@@ -67,8 +71,8 @@ func inlinePeekProjectDocumentFor(opts inlinePeekProjectOptions) inlinePeekDocum
 // inlinePeekProjectBodySections is the project body's content order. The comment
 // section is appended unconditionally rather than through add, because a project
 // with no comments still owes the reader the sentence saying so.
-func inlinePeekProjectBodySections(project *models.Project, indent string, width int) []inlinePeekSection {
-	sections := make([]inlinePeekSection, 0, 6)
+func inlinePeekProjectBodySections(project *models.Project, attention, indent string, width int) []inlinePeekSection {
+	sections := make([]inlinePeekSection, 0, 7)
 	add := func(key string, lines []string) {
 		if len(lines) == 0 {
 			return
@@ -77,6 +81,9 @@ func inlinePeekProjectBodySections(project *models.Project, indent string, width
 	}
 
 	add("name:"+project.Name, inlinePeekProjectNameLines(project, indent, width))
+	if attention != "" {
+		add("attention:"+attention, inlinePeekEntryLines("Attention: ", []string{attention}, indent, width))
+	}
 	tasks := inlinePeekProjectTaskSection(project, indent, width)
 	add(tasks.key, tasks.lines)
 	add("description:"+project.Description, inlinePeekDescriptionLines(project.Description, indent, width))

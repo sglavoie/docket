@@ -275,6 +275,9 @@ quiet. Fold arrows occupy the next cell. The cursor fills the left half of the
 first cell (`▌`), matching any attention color on the right, even during flashes.
 A selected task's `✓` still replaces that cell and appears reversed under the cursor.
 Titles stay in the same columns, and the cursor glyph remains visible without color.
+Press `b` on a folded header to read its strongest attention signal in words.
+The summary follows the current view and filters, unlike a project's stored
+task counts in Peek.
 
 A task shown under a section it did not root — a child promoted into Doing,
 Today, Pinned, or a tag facet — ends its title with a bare `‹`, which says only
@@ -357,11 +360,14 @@ it returns at its previous reading position. Other task shortcuts are inactive
 while reading. Project headers and checklist items also support fullscreen details.
 
 `b` toggles a session-only Peek in a pane docked below the list, whether the
-cursor is on a task or on a project header. Compact Peek uses about a quarter
+cursor is on a task or on a project header. A folded section header supports it
+too. Compact Peek uses about a quarter
 of the outline's height, normally six to eight rows. Moving between short and
 long tasks keeps the list in place. Capture can temporarily shrink the dock;
 closing capture restores it. A checklist item shows its full text, completion
-state, and owning task. A section heading displays `No detail to show for this row.`;
+state, and owning task. A folded section heading shows its name, count, and
+`Attention:`; an expanded section heading or note row displays
+`No detail to show for this row.`;
 `b` closes Peek from any row.
 
 Task Peek ordinarily leads with the full title, status, and resume note.
