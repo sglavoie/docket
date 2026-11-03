@@ -185,31 +185,19 @@ func TestCursorRowMarksItsBarAndTrail(t *testing.T) {
 	}
 }
 
-// cursorMarks counts the inverse-video sequences on a line, which is how many
-// cursor bars it drew. The attribute is what makes the bar the one mark that
-// survives a profile carrying no color, so counting it is also the one count that
-// does not depend on which theme derived which hue.
+// cursorMarks counts the left half-block or the inverse selection checkmark.
+// Both survive a terminal profile carrying no color.
 func cursorMarks(line string) int {
-	return strings.Count(line, "\x1b[7")
+	return strings.Count(ansi.Strip(line), "▌") + strings.Count(line, "\x1b[7")
 }
 
-// TestCursorBarIsOneColumn holds the mark's whole shape. Only the row's leftmost
-// column is inverted, and it is the same column on every row type — a blank
-// margin everywhere but the section header, whose fold arrow it reverses.
-// Painting a second column is what made the mark compete with the row it points
-// at.
+// TestCursorBarIsOneColumn holds the mark to the left half of the first cell
+// on every row type, leaving the right half available for an attention band.
 func TestCursorBarIsOneColumn(t *testing.T) {
 	task := &models.Task{ID: "t1", ShortID: 1, Title: "Ship", WorkflowState: models.StateBacklog}
 	outlinerView, project := cursorHighlightOutliner(t, task)
-	column0 := map[string]string{
-		"task":           theme.RenderCursorPrefix(),
-		"checklist":      theme.RenderCursorPrefix(),
-		"section header": theme.IconExpanded,
-		"project header": " ",
-	}
-
 	for name, line := range cursorRowsByType(outlinerView, project, task) {
-		bar := theme.CursorBarStyle.Render(column0[name])
+		bar := lipgloss.NewStyle().Foreground(theme.ColorCursorBarBg).Render("▌")
 		if got := lipgloss.Width(bar); got != 1 {
 			t.Fatalf("%s cursor bar covers %d columns, want 1", name, got)
 		}
@@ -217,7 +205,7 @@ func TestCursorBarIsOneColumn(t *testing.T) {
 			t.Fatalf("%s cursor row does not open with its bar:\n%q", name, line)
 		}
 		if got := cursorMarks(line); got != 1 {
-			t.Fatalf("%s cursor row inverted %d columns, want 1:\n%q", name, got, line)
+			t.Fatalf("%s cursor row drew %d markers, want 1:\n%q", name, got, line)
 		}
 	}
 }
@@ -234,11 +222,11 @@ func TestCursorBarSurvivesARowWithoutColor(t *testing.T) {
 	marked := uxClarityMonochrome(t, outlinerView.RenderOutlinerTaskRow(row, true, 80, 0, nil))
 	ordinary := uxClarityMonochrome(t, outlinerView.RenderOutlinerTaskRow(row, false, 80, 0, nil))
 
-	if got := strings.Count(marked, "\x1b[7m"); got != 1 {
-		t.Fatalf("the marked row kept %d inverted columns without color, want 1:\n%q", got, marked)
+	if got := strings.Count(ansi.Strip(marked), "▌"); got != 1 {
+		t.Fatalf("the marked row kept %d half-blocks without color, want 1:\n%q", got, marked)
 	}
-	if strings.Contains(ordinary, "\x1b[7m") {
-		t.Fatalf("an ordinary row is inverted too, so the mark says nothing:\n%q", ordinary)
+	if strings.Contains(ansi.Strip(ordinary), "▌") {
+		t.Fatalf("an ordinary row draws the cursor too:\n%q", ordinary)
 	}
 	if plainRowText(marked) != plainRowText(ordinary) {
 		t.Fatalf("the mark changed what the row says:\nmarked   %q\nordinary %q",
@@ -313,7 +301,11 @@ func TestSelectionMarkReadsWithoutColor(t *testing.T) {
 			t.Fatalf("cursor=%v: a selected row says so in color alone:\n%q", cursor, member)
 		}
 		other := ansi.Strip(outlinerView.RenderOutlinerTaskRow(otherRow, cursor, 80, 0, nil))
-		if !strings.HasPrefix(other, " ") || strings.Contains(other, "✓") {
+		prefix := " "
+		if cursor {
+			prefix = "▌"
+		}
+		if !strings.HasPrefix(other, prefix) || strings.Contains(other, "✓") {
 			t.Fatalf("cursor=%v: an unselected row draws something in the mark's column:\n%q", cursor, other)
 		}
 	}
@@ -333,7 +325,7 @@ func TestCursorFlashWidensTheMark(t *testing.T) {
 
 	line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 0, nil)
 
-	if !strings.HasPrefix(line, theme.CursorFlashBarStyle.Render(theme.RenderCursorPrefix())) {
+	if !strings.HasPrefix(line, lipgloss.NewStyle().Foreground(theme.ColorFlashBg).Render("▌")) {
 		t.Fatalf("flashing cursor row does not open with its bar:\n%q", line)
 	}
 	if got := cursorMarks(line); got != 1 {

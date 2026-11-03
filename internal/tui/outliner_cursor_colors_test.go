@@ -178,9 +178,14 @@ func TestCursorRowKeepsEverySemanticColorOnItsBand(t *testing.T) {
 
 // plainRowText is what a row says, with the trailing columns left out: a marked
 // row pads its width and an unmarked one stops at its content, and that
-// difference is the fill rather than anything the row spells.
+// difference is the fill rather than anything the row spells. Normalize the
+// attention band to its blank cursor cell; the badges and title stay identical.
 func plainRowText(line string) string {
-	return strings.TrimRight(ansi.Strip(line), " ")
+	plain := ansi.Strip(line)
+	if strings.HasPrefix(plain, "▐") || strings.HasPrefix(plain, "▌") {
+		plain = " " + string([]rune(plain)[1:])
+	}
+	return strings.TrimRight(plain, " ")
 }
 
 // assertCursorRowKeepsItsForegrounds holds a marked row to every foreground the
@@ -189,6 +194,11 @@ func plainRowText(line string) string {
 // stop covering one the moment the row's ladder dropped it.
 func assertCursorRowKeepsItsForegrounds(t *testing.T, marked, ordinary string) {
 	t.Helper()
+	// The gutter band deliberately yields to the cursor. Compare every
+	// foreground after that cell, including all badges and tree connectors.
+	if strings.HasPrefix(ansi.Strip(ordinary), "▐") {
+		ordinary = ordinary[strings.Index(ordinary, "▐")+len("▐"):]
+	}
 	for _, foreground := range uxDailyUseForegrounds(t, ordinary) {
 		if !strings.Contains(marked, foreground) {
 			t.Fatalf("the band swallowed the %s the row paints unmarked:\nmarked   %q\nordinary %q",

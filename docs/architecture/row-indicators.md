@@ -172,6 +172,24 @@ leaves an ordinary Waiting row readable without making it look urgent. Waiting
 earns a hero only on the terms any other task does — its own deadline, review, or
 priority.
 
+The first gutter cell projects that same ladder through
+`outliner_attention_band.go`: `▐` uses the theme error accent for overdue,
+warning for a late check-in, due-today foreground for other review requests and
+today's deadline, and the priority-1 accent for highest priority. With no
+qualifying signal, the cell stays blank. Under the cursor, `▌` paints the left
+half and uses the attention accent for both foreground and background when
+present, including during flashes. Without attention, the cursor keeps its
+ordinary or flash accent. Selection
+checkmarks still supersede the band. This never changes the title budget or
+replaces the textual badges.
+
+Folded section and project headers retain their admitted task pointers in the
+row's presentation-only `attentionTasks`. Each emitter captures these before
+folding its already-filtered forest or planning rows, so neither another group
+nor excluded work contributes. Rendering reads the signals at the current time,
+uses the badge ladder to choose the strongest, and breaks review ties in favor
+of late check-ins. Expanded headers retain no summary payload and show no band.
+
 `theme.TaskTitleStyleFor` is the single title-style authority and answers
 lifecycle alone: muted or disabled, canceled, cursor-selected, otherwise ordinary
 text. No signal in the ladder reaches a title. `theme.SemanticTaskTitleStyle`

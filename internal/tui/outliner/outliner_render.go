@@ -255,9 +255,7 @@ func (m *OutlinerModel) pointerHitsFold(row OutlinerRow, x, rowWidth int) bool {
 	switch {
 	case !row.IsCollapsibleHeader() && !row.IsTaskRow():
 		return false
-	case row.IsSectionHeader:
-		start = 0
-	case row.IsProjectHeader:
+	case row.IsSectionHeader || row.IsProjectHeader:
 		start = 1
 	case !rowDrawsFold(row):
 		return false

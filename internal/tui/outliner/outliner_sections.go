@@ -241,6 +241,7 @@ func (m *OutlinerModel) appendReviewSection(section reviewSectionBuild) {
 		PromotedTag:     reviewLaneKey,
 	})
 	if m.sectionCollapsed(reviewSectionCollapseKey) {
+		m.Rows[len(m.Rows)-1].attentionTasks = projectGroupAttentionTasks(section.groups)
 		m.hideProjectRowGroups(section.groups)
 		return
 	}

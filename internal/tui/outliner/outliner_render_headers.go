@@ -50,16 +50,14 @@ func (p cursorPaint) overTaskRow() cursorPaint {
 	return p
 }
 
-// bar renders the row's leftmost column, the whole of the resting mark. It is
-// inverse video rather than a background merged into the glyph's own style
-// because one column has to carry the mark alone, so it takes the loudest
-// treatment available and gives up the muted gray it would otherwise wear. Every
-// column it can cover is structural margin: a blank, or a fold arrow that stays
-// legible reversed.
+// bar renders the first cell. An ordinary cursor is a left half-block;
+// a selection checkmark retains inverse video so membership stays readable.
 func (p cursorPaint) bar(style lipgloss.Style, text string) string {
 	switch {
 	case !p.marked:
 		return style.Render(text)
+	case text == " ":
+		return p.halfBlock(nil)
 	case p.flash:
 		return theme.CursorFlashBarStyle.Render(text)
 	default:
@@ -147,6 +145,7 @@ type sectionHeaderOpts struct {
 	Width       int            // if > 0, trailing ─ fill is added
 	Prefix      string         // inserted between indicator and name (e.g. "◷ ")
 	Cursor      cursorPaint    // how this header wears the cursor; zero on an ordinary row
+	Attention   string         // one-column summary for a folded header; empty is a blank
 }
 
 // renderSectionHeader renders a standardized collapsible section header:
@@ -154,9 +153,9 @@ type sectionHeaderOpts struct {
 //	▾ [prefix]Name (count) ─────
 //
 // It returns the leading fold gutter and the rest separately, so a caller
-// marking the cursor row can paint the gutter without repainting the name. This
-// is the one header whose first column is a glyph rather than a blank, so the
-// cursor bar reverses the fold arrow instead of a space.
+// marking the cursor row can paint the gutter without repainting the name.
+// The first column carries attention or the cursor; the second keeps the fold
+// arrow aligned with project headers without spending another title column.
 // AccentColor is applied to the name; indicator and count use MutedStyle.
 // When Width > 0 a trailing horizontal rule fills the remaining line width.
 // Callers are responsible for applying selection/zebra highlights on the
@@ -166,7 +165,11 @@ func renderSectionHeader(opts sectionHeaderOpts) (gutter, content string) {
 	if opts.Collapsed {
 		indicator = theme.IconCollapsed
 	}
-	gutter = opts.Cursor.bar(theme.MutedStyle, indicator) + gutterSpace(opts.Cursor.gutterBg())
+	attention := opts.Attention
+	if attention == "" {
+		attention = opts.Cursor.bar(lipgloss.NewStyle(), " ")
+	}
+	gutter = attention + gutterPiece(opts.Cursor.gutterBg(), theme.MutedStyle, indicator)
 	namePart := opts.AccentColor.Bold(true).Render(opts.Prefix + opts.Name)
 	content = namePart + " " + theme.MutedStyle.Render(fmt.Sprintf("(%d)", opts.Count))
 	if opts.Lifted > 0 {
@@ -247,6 +250,7 @@ func (m *OutlinerModel) RenderOutlinerSectionHeaderRow(row OutlinerRow, selected
 		AccentColor: theme.StructuralSectionStyle(sectionStyle),
 		Prefix:      prefix,
 		Cursor:      paint,
+		Attention:   m.renderHeaderAttention(row, paint),
 	})
 
 	if row.ProjectID != "" {
@@ -304,7 +308,7 @@ func (m *OutlinerModel) RenderOutlinerProjectHeaderRow(row OutlinerRow, selected
 	}
 	paint := m.cursorPaintFor(selected)
 	bg := paint.gutterBg()
-	gutter := paint.bar(lipgloss.NewStyle(), " ") +
+	gutter := m.renderHeaderAttention(row, paint) +
 		gutterPiece(bg, theme.MutedStyle, indicator) +
 		gutterSpace(bg)
 	content := m.projectHeaderPinMarker(project) + badge

@@ -363,7 +363,9 @@ func TestInlineRowEditorLaysTheCaretOverTheReclaimedTitleColumns(t *testing.T) {
 			// Same cells before the buffer as before the title: the editor
 			// borrows the row's own gutter, badges, and tree prefix rather than
 			// measuring a second one, so the buffer opens on the title's column.
-			if got, want := ansi.Truncate(input, titleColumn, ""), ansi.Truncate(committed, titleColumn, ""); got != want {
+			got := strings.TrimPrefix(ansi.Truncate(input, titleColumn, ""), " ")
+			want := strings.TrimPrefix(ansi.Truncate(committed, titleColumn, ""), "▌")
+			if got != want {
 				t.Fatalf("editor prefix differs from the row's:\n%q\n%q", got, want)
 			}
 			if strings.TrimSpace(ansi.Truncate(input, titleColumn, "")) == strings.TrimSpace(input) {

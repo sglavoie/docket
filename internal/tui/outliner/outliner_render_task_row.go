@@ -172,7 +172,7 @@ func (m *OutlinerModel) buildTaskRowSegmentsFor(row OutlinerRow, rowWidth int, c
 	prefixStr, foldIndicator := renderTaskPrefix(prefix, foldIndicator, bg, m.treeConnectorStyle(row))
 
 	segments := taskRowSegments{
-		cursorPrefix:      m.renderTaskCursorColumn(row, paint),
+		cursorPrefix:      m.renderTaskCursorColumn(row, paint, now),
 		prefixStr:         prefixStr,
 		foldIndicator:     foldIndicator,
 		statusIcon:        statusIcon,
@@ -339,13 +339,13 @@ func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *
 const selectionMark = "✓"
 
 // renderTaskCursorColumn draws the row's leading column: the selection mark on
-// a member of the visual selection, a blank on every other row, and the cursor's
-// bar over whichever it is.
-func (m *OutlinerModel) renderTaskCursorColumn(row OutlinerRow, paint cursorPaint) string {
+// a member of the visual selection, otherwise an attention band or a blank.
+// Attention fills the right half and the cursor the left half of the same cell.
+func (m *OutlinerModel) renderTaskCursorColumn(row OutlinerRow, paint cursorPaint, now time.Time) string {
 	if m.MultiSelectMode && m.isRowSelected(row) {
 		return paint.bar(theme.SelectionCheckStyle, selectionMark)
 	}
-	return paint.bar(lipgloss.NewStyle(), theme.RenderCursorPrefix())
+	return attentionForTask(row.Task, now).renderColumn(paint)
 }
 
 // outlinerTreePrefix is the tree a task or checklist row draws before its fold

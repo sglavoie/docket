@@ -79,7 +79,11 @@ func (m *OutlinerModel) RenderOutlinerQuickEditRow(row OutlinerRow, rowWidth int
 	if previewTask := m.quickEditDisplayTask(); previewTask != nil {
 		previewRow.Task = previewTask
 	}
-	inputPrefix := m.buildTaskRowSegments(previewRow, rowWidth, colLayout, cursorPaint{}).titlePrefix()
+	segments := m.buildTaskRowSegments(previewRow, rowWidth, colLayout, cursorPaint{})
+	// The input caret owns attention while editing. Keep the same cell budget
+	// as the committed cursor row, whose cursor mark also supersedes the band.
+	segments.cursorPrefix = theme.RenderCursorPrefix()
+	inputPrefix := segments.titlePrefix()
 	indentWidth := lipgloss.Width(inputPrefix)
 	// textinput.View() renders Width()+1 cells: the horizontal scroll window plus
 	// the cursor cell after it, so the window must leave that column free. The

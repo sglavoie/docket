@@ -131,7 +131,7 @@ func TestSearchCueKeepsCursorPaintAndNeutralTitle(t *testing.T) {
 				if got := lipgloss.Width(line); got != 80 {
 					t.Fatalf("cursor row rendered %d columns, want exactly 80", got)
 				}
-				if !strings.HasPrefix(line, theme.CursorBarStyle.Render(theme.RenderCursorPrefix())) {
+				if !strings.HasPrefix(line, lipgloss.NewStyle().Foreground(theme.ColorCursorBarBg).Render("▌")) {
 					t.Fatalf("cue row dropped its cursor bar:\n%q", line)
 				}
 				if !strings.Contains(line, backgroundParams(t, theme.ColorCursorRowBg)) {

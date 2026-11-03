@@ -44,8 +44,8 @@ func TestOutlinerChromeUsesCompactLeftMargins(t *testing.T) {
 		SectionName:     "Ready",
 		SectionCount:    1,
 	}, false, 120, 0))
-	if strings.HasPrefix(section, " ") {
-		t.Fatalf("section header retained a left gutter: %q", section)
+	if !strings.HasPrefix(section, " "+theme.IconExpanded+" ") {
+		t.Fatalf("section header should reserve one attention cell before its fold indicator: %q", section)
 	}
 
 	project := ansi.Strip(m.RenderOutlinerProjectHeaderRow(outliner.OutlinerRow{
@@ -121,7 +121,11 @@ func assertPlanningMarkerColumnRemoved(t *testing.T, line string, row outliner.O
 	t.Helper()
 
 	plain := ansi.Strip(line)
-	wantPrefix := theme.RenderCursorPrefix() + row.Prefix + ansi.Strip(theme.GetTaskStateBadge(task))
+	margin := theme.RenderCursorPrefix()
+	if task.Priority == 1 {
+		margin = "▐"
+	}
+	wantPrefix := margin + row.Prefix + ansi.Strip(theme.GetTaskStateBadge(task))
 	if !strings.HasPrefix(plain, wantPrefix) {
 		t.Fatalf("planned task row should place its state badge directly after the tree prefix; got:\n%s", plain)
 	}

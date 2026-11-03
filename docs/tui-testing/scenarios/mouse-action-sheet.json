@@ -18,7 +18,7 @@
     { "type": "assert", "label": "a destructive action still asks first", "assert": "contains", "value": "Delete task #3?" },
     { "type": "click", "label": "and a click never answers that question", "on": "Someday", "count": 2 },
     { "type": "assert", "assert": "contains", "value": "Delete task #3?" },
-    { "type": "assert", "assert": "contains", "value": "▸  Someday" },
+    { "type": "assert", "assert": "contains", "value": "▸ Someday" },
     { "type": "key", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "Delete task #3?" },
     { "type": "assert", "assert": "contains", "value": "Build login form" },

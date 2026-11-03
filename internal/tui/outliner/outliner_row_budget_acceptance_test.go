@@ -218,7 +218,7 @@ func TestSelectedNestedRowKeepsTheSameEssentials(t *testing.T) {
 	}
 	outliner.MultiSelectMode = false
 	unselected := ansi.Strip(outliner.RenderOutlinerTaskRow(row, true, width, 0, nil))
-	if want := selectionMark + strings.TrimPrefix(unselected, " "); plain != want {
+	if want := selectionMark + strings.TrimPrefix(unselected, "▌"); plain != want {
 		t.Fatalf("selecting the row moved what it draws:\nunselected %q\nselected   %q", unselected, plain)
 	}
 	for _, want := range []string{

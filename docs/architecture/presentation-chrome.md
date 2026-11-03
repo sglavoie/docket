@@ -827,13 +827,15 @@ nothing and no title moves on `v`; a checklist row's gutter stops before its `[ 
 project header's gutter is its fold indicator and the spaces around it.
 
 `cursorPaint` decides once per row how it wears the cursor, and every renderer
-asks it three questions. `bar` renders the row's first column, and on the cursor
-row it discards that column's own style for `CursorBarStyle` — inverse video, the
-loudest treatment one column can carry alone. Every column it can cover is
-structural: a blank margin, a selected task's mark, or a section header's fold
-arrow, each of which stays legible reversed. Inverse video is an attribute rather than a color, which is the point:
-`colorprofile.ASCII` drops every hue the row asked for and forwards SGR 7, so the
-bar is the one part of the mark a terminal without color still draws. `gutterBg`
+asks it three questions. `bar` renders a blank cursor cell as `▌`, a left
+half-block in `ColorCursorBarBg` or `ColorFlashBg`. Task attention and folded
+summaries use `rowAttention.renderColumn` to paint the same glyph with the
+attention accent as both foreground and background, so the cursor half matches
+the band, including during flashes. Without attention, the cursor uses its
+ordinary or flash accent. The glyph survives `colorprofile.ASCII` even when both colors are
+dropped. A selected task keeps its `✓` instead, reversed with `CursorBarStyle`
+or `CursorFlashBarStyle`, so membership remains legible. Section and project
+fold arrows occupy the next cell, leaving header widths unchanged. `gutterBg`
 is what the columns after the bar carry: `rowBg` where the row has one, and
 `ColorFlashBg` during a flash, which floods the gutter and reads as more of the
 same mark rather than a different one. `gutterPiece`/`gutterSpace` merge that

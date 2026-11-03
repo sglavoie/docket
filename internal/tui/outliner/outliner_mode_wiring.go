@@ -309,6 +309,7 @@ func (m *OutlinerModel) appendFilteredModeSections(
 			CollapseKey:      section.CollapseKey,
 		})
 		if m.sectionCollapsed(section.CollapseKey) {
+			m.Rows[len(m.Rows)-1].attentionTasks = projectGroupAttentionTasks(groups)
 			m.hideProjectRowGroups(groups)
 			continue
 		}

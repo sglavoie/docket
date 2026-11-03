@@ -95,6 +95,8 @@ func (m *OutlinerModel) appendStateGroupForests(
 	})
 	if m.sectionCollapsed(collapseKey) {
 		for _, item := range forests {
+			header := &m.Rows[len(m.Rows)-1]
+			header.attentionTasks = append(header.attentionTasks, item.forest.tasks()...)
 			m.hideSectionForestTasks(item.forest, item.forest.roots)
 		}
 		return

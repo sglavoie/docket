@@ -261,6 +261,21 @@ to fill the lower rungs did not move down it, they left the row for Peek.
 
 Fold arrows and task titles stay aligned as you navigate or open a subtree.
 
+The leftmost cell carries a half-width color band (`▐`) when a task needs
+attention. One signal wins: an overdue deadline (red), then review needed
+(amber for a late check-in, teal otherwise), then a deadline today (teal), then
+highest priority (its priority accent). Ordinary tasks leave the cell blank.
+The deadline and review badges still explain the signal in words, including
+without color.
+
+A folded section or project shows its strongest contained signal in that same
+cell, using only tasks admitted by the current view and filters. A late check-in
+wins over other review requests within a folded group. Expanded headers stay
+quiet. Fold arrows occupy the next cell. The cursor fills the left half of the
+first cell (`▌`), matching any attention color on the right, even during flashes.
+A selected task's `✓` still replaces that cell and appears reversed under the cursor.
+Titles stay in the same columns, and the cursor glyph remains visible without color.
+
 A task shown under a section it did not root — a child promoted into Doing,
 Today, Pinned, or a tag facet — ends its title with a bare `‹`, which says only
 that the row has a parent the outline above it does not show. Nested rows carry
@@ -435,7 +450,7 @@ the cursor row. `Ctrl+A` replaces the selection with all visible task rows. The
 selection survives at zero members until `Esc` leaves the mode.
 
 A selected task wears a `✓` in its leftmost column, the one the cursor bar
-already uses, and every other row leaves that column blank. The mark takes no
+and attention band already use. The mark takes no
 column of its own, so no title moves when a selection starts or ends. It is a
 glyph rather than a color: under the cursor it is drawn reversed, and a terminal
 without color still shows it.

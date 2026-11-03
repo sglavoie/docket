@@ -162,11 +162,11 @@ func TestUXDailyUseCursorRowWearsOneBandUnderItsContent(t *testing.T) {
 	}
 
 	mono := uxClarityMonochrome(t, focused)
-	if !strings.Contains(mono, "\x1b[7m") {
+	if !strings.HasPrefix(ansi.Strip(mono), "▌") {
 		t.Fatalf("the cursor row keeps no mark on a terminal without color:\n%q", mono)
 	}
-	if other := uxClarityMonochrome(t, unfocused); strings.Contains(other, "\x1b[7m") {
-		t.Fatalf("a row the cursor left is inverted too, so the mark says nothing:\n%q", other)
+	if other := uxClarityMonochrome(t, unfocused); strings.HasPrefix(ansi.Strip(other), "▌") {
+		t.Fatalf("a row the cursor left still draws the cursor:\n%q", other)
 	}
 }
 

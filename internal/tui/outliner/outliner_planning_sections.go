@@ -158,6 +158,10 @@ func (m *OutlinerModel) appendPlanningSection(section planningSectionBuild, lift
 		CollapseKey:        collapseKey,
 	})
 	if m.sectionCollapsed(collapseKey) {
+		for _, row := range section.rows {
+			header := &m.Rows[len(m.Rows)-1]
+			header.attentionTasks = append(header.attentionTasks, row.Task)
+		}
 		m.hideProjectRowGroups(m.planningRowGroups(section.rows))
 		return
 	}

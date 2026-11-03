@@ -173,6 +173,9 @@ func (m *OutlinerModel) appendProjectGroupHeader(
 	header.SectionCount = len(tasks)
 	header.CollapseKey = group.ProjectKey
 	header.OverdueCount, header.TodayCount = m.projectGroupPressure(tasks, group.ProjectID)
+	if m.sectionCollapsed(group.ProjectKey) {
+		header.attentionTasks = tasks
+	}
 	// A Today group is today-planned by construction, so the count there could
 	// only restate the group's own size.
 	if header.IsTodaySection {

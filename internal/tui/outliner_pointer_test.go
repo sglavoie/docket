@@ -60,7 +60,7 @@ func pointerKey(t *testing.T, driver *UITestDriver, key string) {
 func pointerChecklistDriver(t *testing.T) *UITestDriver {
 	t.Helper()
 	driver := outlinerPointerDriver(t, FixtureChecklist)
-	pointerClickAt(t, driver, 0, pointerRowY(t, driver, "Backlog"), "", 1)
+	pointerClickAt(t, driver, 1, pointerRowY(t, driver, "Backlog"), "", 1)
 	pointerClickAt(t, driver, 20, pointerRowY(t, driver, checklistFixtureFoldTitle), "", 1)
 	pointerKey(t, driver, "l")
 	return driver
@@ -146,7 +146,7 @@ func TestClickOnChromeAndPaddingDoesNothing(t *testing.T) {
 func TestClickOnThePinnedContextRowSeatsItsHeader(t *testing.T) {
 	driver := outlinerPointerDriver(t, FixtureBusy)
 	out := pointerOutliner(t, driver)
-	pointerClickAt(t, driver, 0, pointerRowY(t, driver, "Backlog"), "", 1)
+	pointerClickAt(t, driver, 1, pointerRowY(t, driver, "Backlog"), "", 1)
 	pointerClickAt(t, driver, 20, pointerRowY(t, driver, "Untriaged inbox item 1"), "", 1)
 	pointerKey(t, driver, "b")
 	pointerKey(t, driver, "G")
@@ -183,13 +183,13 @@ func TestDoubleClickAndRightClickAnswerAsEnterAndSpace(t *testing.T) {
 	}{
 		{"right-click on a section header refuses as Space does", FixtureChecklist, func(*UITestDriver) {}, "Backlog", "right", "space", 1},
 		{"right-click on a task opens its actions", FixtureChecklist, func(d *UITestDriver) {
-			pointerClickAt(t, d, 0, pointerRowY(t, d, "Backlog"), "", 1)
+			pointerClickAt(t, d, 1, pointerRowY(t, d, "Backlog"), "", 1)
 		}, checklistFixturePlainTitle, "right", "space", 1},
 		{"double-click on a leaf task refuses as Enter does", FixtureChecklist, func(d *UITestDriver) {
-			pointerClickAt(t, d, 0, pointerRowY(t, d, "Backlog"), "", 1)
+			pointerClickAt(t, d, 1, pointerRowY(t, d, "Backlog"), "", 1)
 		}, checklistFixturePlainTitle, "", "enter", 2},
 		{"double-click on a parent focuses it", FixtureChecklist, func(d *UITestDriver) {
-			pointerClickAt(t, d, 0, pointerRowY(t, d, "Backlog"), "", 1)
+			pointerClickAt(t, d, 1, pointerRowY(t, d, "Backlog"), "", 1)
 		}, checklistFixtureParentTitle, "", "enter", 2},
 		{"right-click on a note row refuses as Space does", FixtureRich, func(d *UITestDriver) {
 			for _, key := range []string{"/", "b", "r", "i", "e", "f", "enter"} {
@@ -221,6 +221,10 @@ func TestClickOnAFoldGlyphTogglesThatFoldAsHAndLWould(t *testing.T) {
 	out := pointerOutliner(t, driver)
 	backlog := pointerRowY(t, driver, "Backlog")
 	pointerClickAt(t, driver, 0, backlog, "", 1)
+	if hasLiteral(driver, checklistFixturePlainTitle) {
+		t.Fatal("a click on the attention column toggled the section fold")
+	}
+	pointerClickAt(t, driver, pointerGlyphX(t, driver, backlog), backlog, "", 1)
 	if !hasLiteral(driver, checklistFixturePlainTitle) {
 		t.Fatal("a click on a collapsed section's glyph did not expand it")
 	}
@@ -270,9 +274,9 @@ func TestFoldGlyphClickRefusesWhereTheKeysDo(t *testing.T) {
 	if !out.Focus.Zoom.Active() {
 		t.Fatal("Enter on the section header was meant to zoom it")
 	}
-	backlog := pointerRowY(t, driver, "▾  Backlog")
+	backlog := pointerRowY(t, driver, "▾ Backlog")
 	before := driver.Render()
-	pointerClickAt(t, driver, 0, backlog, "", 1)
+	pointerClickAt(t, driver, pointerGlyphX(t, driver, backlog), backlog, "", 1)
 	if after := driver.Render(); after != before {
 		t.Fatalf("a click on a zoomed section's glyph changed the screen, as h would not:\n%s", after)
 	}
@@ -281,7 +285,7 @@ func TestFoldGlyphClickRefusesWhereTheKeysDo(t *testing.T) {
 func TestClickUnderAVisualSelectionIsMotionOnly(t *testing.T) {
 	driver := outlinerPointerDriver(t, FixtureChecklist)
 	out := pointerOutliner(t, driver)
-	pointerClickAt(t, driver, 0, pointerRowY(t, driver, "Backlog"), "", 1)
+	pointerClickAt(t, driver, 1, pointerRowY(t, driver, "Backlog"), "", 1)
 	pointerClickAt(t, driver, 20, pointerRowY(t, driver, checklistFixtureFoldTitle), "", 1)
 
 	// An active range stretches from its anchor to the clicked row, exactly as
@@ -311,7 +315,7 @@ func TestClickUnderAVisualSelectionIsMotionOnly(t *testing.T) {
 func TestClickPushesNoJumpFrame(t *testing.T) {
 	driver := outlinerPointerDriver(t, FixtureChecklist)
 	out := pointerOutliner(t, driver)
-	pointerClickAt(t, driver, 0, pointerRowY(t, driver, "Backlog"), "", 1)
+	pointerClickAt(t, driver, 1, pointerRowY(t, driver, "Backlog"), "", 1)
 	before := len(out.RelocationHistory.Back)
 	pointerClickAt(t, driver, 20, pointerRowY(t, driver, checklistFixturePlainTitle), "", 1)
 	pointerClickAt(t, driver, 20, pointerRowY(t, driver, checklistFixtureFoldTitle), "", 1)

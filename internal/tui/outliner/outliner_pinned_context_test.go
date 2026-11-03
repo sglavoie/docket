@@ -82,7 +82,7 @@ func TestPinnedContextIsDrawnOnlyWhenTheLaneHeaderIsAboveTheWindow(t *testing.T)
 	if !header.IsSectionHeader || viewport.pinnedHeader >= viewport.startIdx {
 		t.Fatalf("the pinned row stands in for row %d (%+v) with the window at %d", viewport.pinnedHeader, header, viewport.startIdx)
 	}
-	want := fmt.Sprintf("▾  Doing › [beta]  (%d) ─", header.SectionCount)
+	want := fmt.Sprintf(" ▾ Doing › [beta]  (%d) ─", header.SectionCount)
 	if !strings.HasPrefix(lines[0], want) {
 		t.Fatalf("the pinned row = %q, want it to open %q", lines[0], want)
 	}

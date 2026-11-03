@@ -58,6 +58,7 @@ func (g OutlinerRowGroup) CollapseKeys() []string {
 
 // outlinerRow represents a single flattened row for rendering.
 type OutlinerRow struct {
+	attentionTasks         []*models.Task // Admitted members summarized by a folded header; presentation only
 	Task                   *models.Task
 	Group                  OutlinerRowGroup // Structural group this row belongs to; zero when nothing can fold it
 	Prefix                 string

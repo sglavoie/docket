@@ -71,6 +71,7 @@ func (m *OutlinerModel) appendPinnedSection(section pinnedSectionBuild) {
 		CollapseKey:     pinnedSectionCollapseKey,
 	})
 	if m.sectionCollapsed(pinnedSectionCollapseKey) {
+		m.Rows[len(m.Rows)-1].attentionTasks = projectGroupAttentionTasks(section.groups)
 		m.hideProjectRowGroups(section.groups)
 		return
 	}
