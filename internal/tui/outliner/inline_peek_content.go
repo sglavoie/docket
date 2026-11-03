@@ -10,6 +10,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/docket/internal/fuzzy"
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/listsurface"
 	"github.com/sglavoie/docket/internal/tui/textfit"
@@ -357,4 +358,22 @@ func highlightedExcerptWindow(runes []rune, positions []int, start, end int) str
 		text = append(text, runes[i])
 	}
 	return textfit.HighlightText(string(text), highlights, theme.MutedStyle)
+}
+
+// peekSearchExcerpt reads the source attributed by the live projection and its
+// actual case mode. A predicate-only query and a title hit need no explanation.
+func (m *OutlinerModel) peekSearchExcerpt(row OutlinerRow) string {
+	if !m.HasSearchProjection() || row.Task == nil || m.searchTextQuery() == "" {
+		return ""
+	}
+	label := matchSourceLabels[row.MatchSource]
+	if label == "" {
+		return ""
+	}
+	text := searchMatchText(row.Task, m.projectByGroupID(row.ProjectID), row.MatchSource)
+	_, positions := fuzzy.NewMatcher(m.searchCaseSensitive()).ScoreTermsWithPositions(text, m.searchTextQuery())
+	if len(positions) == 0 {
+		return ""
+	}
+	return label + " · " + searchMatchExcerpt(text, positions)
 }

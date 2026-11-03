@@ -3,6 +3,7 @@ package tui
 import (
 	"os"
 	"testing"
+	"time"
 
 	"github.com/sglavoie/docket/internal/models"
 )
@@ -30,7 +31,13 @@ func launchReadmeFixture(t *testing.T) *UITestDriver {
 		task.ResumeNote = "Start with the narrow-screen navigation."
 		task.Tags = []string{"design", "feature"}
 		task.Context = "desk"
-		newFixtureTask(p, "Collect feedback from the first readers").ApplyWorkflowState(models.StateInbox)
+		feedback := newFixtureTask(p, "Collect feedback from the first readers")
+		feedback.ApplyWorkflowState(models.StateInbox)
+		// The demo plans this task for Today. Keep its creation a full second
+		// before that edit so Peek consistently shows its Updated field.
+		feedback.CreatedAt = feedback.CreatedAt.Add(-2 * time.Second)
+		feedback.UpdatedAt = feedback.CreatedAt
+		feedback.StateChangedAt = feedback.CreatedAt
 		review := newFixtureTask(p, "Review the accessibility checklist")
 		review.ApplyWorkflowState(models.StateBacklog)
 		review.Review = true
