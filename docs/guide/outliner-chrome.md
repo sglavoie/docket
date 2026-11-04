@@ -222,6 +222,11 @@ moment and lights the `‹` or `›` it traveled through. A workspace count in t
 title that just changed, such as `done` after you finish a task, lights for a
 moment and settles back: green when Done rises, amber when Overdue rises, and
 the accent color otherwise. Tests and the harness run without this motion.
+
+In a terminal that reports focus, the cursor rests while the window is in the
+background: its mark turns muted and the row loses its band, so a glance says
+the keyboard is elsewhere. A count that changes while you are away, after a sync
+or a reload, lights when you return rather than settling where nobody saw it.
 A save failure with a retained draft stays visible until that field is edited
 or the draft is saved or discarded. Moving the cursor, waiting, or opening Help
 does not dismiss it. The selection count stays in the second header row.

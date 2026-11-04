@@ -85,7 +85,7 @@
     { "type": "key", "label": "Today leads every lane", "key": "home" },
     { "type": "key", "label": "onto the lane's one task, whose single-task group draws no header", "key": "j" },
     { "type": "key", "label": "the planned task reports both halves in Peek", "key": "b" },
-    { "type": "assert", "label": "Today is where the work was planned, Backlog the state it still holds", "assert": "contains", "value": "Plan: Today · Status: Backlog" },
+    { "type": "assert", "label": "Today is where the work was planned, Backlog the state it still holds", "assert": "contains", "value": "Plan: Today · Status: ▣ Backlog" },
     { "type": "key", "label": "close the dock again", "key": "b" },
 
     { "type": "key", "key": "w" },

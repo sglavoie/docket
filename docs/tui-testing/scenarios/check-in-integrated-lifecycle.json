@@ -198,7 +198,7 @@
     {
       "type": "assert",
       "assert": "contains",
-      "value": "Status: Doing"
+      "value": "Status: ◐ Doing"
     },
     {
       "type": "key",

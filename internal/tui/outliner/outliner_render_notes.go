@@ -40,10 +40,42 @@ func (m *OutlinerModel) noteRowSlug(row notes.LocatedNoteRow, rowWidth int) (str
 	if row.Location.Scope == app.NoteScopeGlobal {
 		return noteGlobalLabel, nil, true
 	}
-	projectRow := OutlinerRow{ProjectID: row.Location.ProjectID}
-	slug := m.rankedProjectSlug(projectRow, rowWidth)
-	_, project := m.projectSlugForRow(projectRow)
-	return slug, project, false
+	project := m.noteOwnerProject(row.Location.ProjectID)
+	if project == nil {
+		projectRow := OutlinerRow{ProjectID: row.Location.ProjectID}
+		return m.rankedProjectSlug(projectRow, rowWidth), nil, false
+	}
+	slug := project.Slug
+	if slug == "" {
+		slug = project.Name
+	}
+	return m.abbreviatedProjectSlug(slug, rankedProjectLabelMaxSlug(rowWidth)), project, false
+}
+
+// noteOwnerProject resolves a project note's owner. The note tier searches
+// every non-archived project, parked ones included, while the task population
+// holds only the workspace's active projects, so an owner the population does
+// not hold is looked up among the available projects before the row falls back
+// to its stored identity.
+func (m *OutlinerModel) noteOwnerProject(projectID string) *models.Project {
+	if projectID == "" {
+		return nil
+	}
+	if project := m.crossResolveProject(projectID); project != nil {
+		return project
+	}
+	if m.Project != nil && m.Project.ID == projectID {
+		return m.Project
+	}
+	if m.Runtime == nil {
+		return nil
+	}
+	for _, project := range m.Runtime.AvailableProjects() {
+		if project != nil && project.ID == projectID {
+			return project
+		}
+	}
+	return nil
 }
 
 // noteProjectLabel leads a note's title with the label a ranked task row leads

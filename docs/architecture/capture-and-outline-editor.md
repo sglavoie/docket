@@ -697,6 +697,19 @@ Preview updates also compare other valid draft lines by parsed title and resolve
 project identity. The first matching line number is cached for both preview
 renderings; layout never reparses the batch for duplicate notices.
 
+The draft colors its own tokens. `RenderHighlightedInput` parses each logical
+line on the capture surface, spans each token from `Token.Start` to `Token.End`,
+and recolors those cells in the textarea's own view: a tag or context in its chip
+color, a priority in its badge color, a resolved project in its project color.
+The token a strict `ParseQuickCapture` refuses is underlined in the error color,
+found by the `CaptureTokenError` column, so the underline and the message name
+one token. Cells are matched to draft offsets by walking a fresh full-height
+textarea at the same width, so wrapping is the textarea's own and the scrolled
+window maps through `ScrollYOffset`. Only foregrounds change. Text, widths, row
+count, and the caret's cell stay as the textarea drew them, so nothing measured
+moves, and an unmatched draft falls back to the plain view. The inline suggestion
+is written over that view.
+
 Recent Messages holds a bounded 20-event session history in the feedback controller.
 The existing post-update observation point records it; amendments of a status
 generation replace that entry, and expiry and ambient advisories record nothing.

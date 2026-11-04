@@ -402,7 +402,10 @@ func (a rowAttention) renderColumn(paint cursorPaint) string {
 // color, the left-half glyph still identifies the cursor on its own.
 func (p cursorPaint) halfBlock(attention color.Color) string {
 	accent := theme.ColorCursorBarBg
-	if p.flash {
+	switch {
+	case p.resting:
+		accent = theme.ColorMuted
+	case p.flash:
 		accent = theme.ColorFlashBg
 	}
 	style := lipgloss.NewStyle().Foreground(accent)

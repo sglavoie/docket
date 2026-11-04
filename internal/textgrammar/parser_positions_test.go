@@ -27,3 +27,28 @@ func TestTokenPositionsReferToOriginalInput(t *testing.T) {
 		t.Fatalf("token positions changed parsing: %+v", parsed)
 	}
 }
+
+func TestTokenEndCoversTheWholeSpelling(t *testing.T) {
+	input := "Ship it ;two words; #ux @next week !2 %web"
+	want := map[Field]string{
+		FieldComment:  ";two words;",
+		FieldTag:      "#ux",
+		FieldDue:      "@next week",
+		FieldPriority: "!2",
+		FieldProject:  "%web",
+	}
+	parsed := Parse(input, SurfaceCapture)
+	for _, token := range parsed.Tokens {
+		spelled, ok := want[token.Field]
+		if !ok {
+			continue
+		}
+		if got := input[token.Start:token.End]; got != spelled {
+			t.Errorf("%s token spans %q, want %q", token.Field, got, spelled)
+		}
+		delete(want, token.Field)
+	}
+	if len(want) != 0 {
+		t.Fatalf("tokens not found: %v", want)
+	}
+}

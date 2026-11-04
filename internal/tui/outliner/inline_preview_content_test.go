@@ -29,30 +29,30 @@ func TestInlinePeekStatusLineNamesWhatTheRowAbbreviates(t *testing.T) {
 		planning string
 		want     string
 	}{
-		{"bare task", &models.Task{}, "", "Status: Backlog"},
+		{"bare task", &models.Task{}, "", "Status: ▣ Backlog"},
 		{
 			"doing carries its age",
 			&models.Task{WorkflowState: models.StateDoing, StateChangedAt: now.Add(-50 * time.Hour)},
 			"",
-			"Status: Doing 2d",
+			"Status: ◐ Doing 2d",
 		},
 		{
 			"waiting carries its age",
 			&models.Task{WorkflowState: models.StateWaiting, StateChangedAt: now.Add(-90 * time.Minute)},
 			"",
-			"Status: Waiting 1h",
+			"Status: ⊘ Waiting 1h",
 		},
 		{
 			"a quiet state has no age to give",
 			&models.Task{WorkflowState: models.StateSomeday, StateChangedAt: now.Add(-90 * time.Hour)},
 			"",
-			"Status: Someday",
+			"Status: ¿ Someday",
 		},
 		{
 			"an unset priority names none",
 			&models.Task{WorkflowState: models.StateInbox},
 			"",
-			"Status: Inbox",
+			"Status: ◌ Inbox",
 		},
 		{
 			// The pair the session is about: planning for Today leaves the task in
@@ -61,13 +61,13 @@ func TestInlinePeekStatusLineNamesWhatTheRowAbbreviates(t *testing.T) {
 			"a task planned for today reports both halves",
 			&models.Task{WorkflowState: models.StateBacklog},
 			"Today",
-			"Plan: Today · Status: Backlog",
+			"Plan: Today · Status: ▣ Backlog",
 		},
 		{
 			"every axis at once",
 			&models.Task{WorkflowState: models.StatePaused, Priority: 1, Pinned: true, Review: true},
 			"Next",
-			"Plan: Next · Status: Paused · Priority: 1 high · Pinned · Review",
+			"Plan: Next · Status: ‖ Paused · Priority: ◉ 1 high · Pinned · Review",
 		},
 	}
 	for _, tc := range cases {
@@ -202,7 +202,7 @@ func TestInlinePeekNamesThePromotedAncestorChain(t *testing.T) {
 		t.Fatalf("root task Peek gained a parent line: %q", withoutParent)
 	}
 	// The chain follows the title and status, before the remaining metadata.
-	if withParent != "Child\nStatus: Backlog\nParent: Launch platform › User authentication" {
+	if withParent != "Child\nStatus: ▣ Backlog\nParent: Launch platform › User authentication" {
 		t.Fatalf("identity block = %q", withParent)
 	}
 }
@@ -281,7 +281,7 @@ func TestInlinePeekWrapsTagsRatherThanElidingThem(t *testing.T) {
 func TestInlinePeekRecoversTheFullContext(t *testing.T) {
 	task := &models.Task{Context: "platform-core", Tags: []string{"bug"}}
 	body := ansi.Strip(strings.Join(inlinePeekDocumentFor(inlinePeekOptions{Task: task, Width: 80, Window: testPeekWindow()}).Body, "\n"))
-	if body != "Status: Backlog\nContext: platform-core\nTags: #bug" {
+	if body != "Status: ▣ Backlog\nContext: platform-core\nTags: #bug" {
 		t.Fatalf("Peek body = %q", body)
 	}
 }

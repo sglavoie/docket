@@ -15,8 +15,10 @@ type Token struct {
 	Field Field
 	Value string
 	Form  string
-	// Start is the byte offset of the sigil in the original input.
+	// Start is the byte offset of the sigil in the original input, and End the
+	// offset just past the token's last byte, closing delimiter included.
 	Start int
+	End   int
 }
 
 // Result contains recognized tokens and the normalized free-text remainder.
@@ -111,6 +113,7 @@ func extractTokens(input string, offsets []int, pattern tokenPattern, surface Su
 			Value: value,
 			Form:  pattern.spec.Trigger,
 			Start: offsets[match[2]-len(pattern.spec.Trigger)],
+			End:   offsets[match[1]-1] + 1,
 		})
 		last = match[1]
 	}

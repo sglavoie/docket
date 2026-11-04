@@ -52,7 +52,7 @@ func (q *QuickCaptureInput) InlineSuggestionRemainder() string {
 // — truncated rather than wrapped, since a suggestion is a hint and never moves
 // a row.
 func (q *QuickCaptureInput) RenderInputWithInlineSuggestion() string {
-	view := q.Input.View()
+	view := q.RenderHighlightedInput()
 	remainder := q.InlineSuggestionRemainder()
 	if remainder == "" || !q.Input.Focused() {
 		return view

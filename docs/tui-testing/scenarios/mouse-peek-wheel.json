@@ -8,7 +8,7 @@
     { "type": "key", "label": "open the dock over a detail longer than its window", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "0 above · 2 below" },
 
-    { "type": "wheel", "label": "a step over the dock scrolls the detail one row", "on": "Status: Backlog", "delta": 1 },
+    { "type": "wheel", "label": "a step over the dock scrolls the detail one row", "on": "Status: ▣ Backlog", "delta": 1 },
     { "type": "assert", "assert": "contains", "value": "1 above · 1 below" },
     { "type": "assert", "assert": "no_layout_issues" },
 

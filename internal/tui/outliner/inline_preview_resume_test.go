@@ -37,7 +37,7 @@ func TestCompactPeekKeepsAResumePassageAheadOfMetadata(t *testing.T) {
 			t.Fatalf("compact Peek lost the restart instruction: %s", page)
 		}
 		whole := strings.Join(strings.Fields(ansi.Strip(strings.Join(doc.Body, " "))), " ")
-		if !strings.Contains(whole, strings.TrimSpace(task.Title)) || !strings.Contains(whole, "Status: Backlog") {
+		if !strings.Contains(whole, strings.TrimSpace(task.Title)) || !strings.Contains(whole, "Status: ▣ Backlog") {
 			t.Fatalf("compact Peek dropped detail: %s", whole)
 		}
 		opts.Compact = false
@@ -114,7 +114,7 @@ func TestInlinePeekResumeNoteIsReadableWhole(t *testing.T) {
 		if strings.Contains(plain, "…") {
 			t.Fatalf("width %d elided the note instead of wrapping it:\n%s", width, plain)
 		}
-		if got := strings.Join(strings.Fields(plain), " "); got != "Selected Status: Backlog Resume: "+note {
+		if got := strings.Join(strings.Fields(plain), " "); got != "Selected Status: ▣ Backlog Resume: "+note {
 			t.Fatalf("width %d did not carry the whole note:\n%s", width, got)
 		}
 		if page := doc.Lines(0); len(page) != testPeekWindowRows+inlinePeekPositionRows {

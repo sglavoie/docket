@@ -415,6 +415,28 @@ const (
 type pulseMotion struct {
 	change pulse.PulseChange
 	seq    int
+	// away is the pulse as it stood when the terminal lost focus, held while it
+	// stays unfocused: a count that moves meanwhile — a sync, a reload, the
+	// periodic tick — is lit when the user comes back to see it, measured from
+	// here, rather than settling unseen in a background window. returning is
+	// the focus report that spends it.
+	away      *pulse.WorkspacePulse
+	returning bool
+}
+
+// notePulseFocus records the terminal's focus reports for the pulse: a blur
+// holds the counts as they stand, and the focus after it marks the update that
+// lights whatever moved since.
+func (m *AppModel) notePulseFocus(focused bool) {
+	if !focused {
+		if m.pulseMotion.away == nil {
+			away := m.workspacePulse
+			m.pulseMotion.away = &away
+		}
+		m.pulseMotion.returning = false
+		return
+	}
+	m.pulseMotion.returning = m.pulseMotion.away != nil
 }
 
 // pulseMotionTickMsg advances the change Seq names one phase.
@@ -427,6 +449,13 @@ type pulseMotionTickMsg struct{ Seq int }
 // the launch, whose first pulse is a reading rather than a change: launchArmed
 // is whether the launch focus was still owed when the Update began.
 func (m *AppModel) markPulseChange(before pulse.WorkspacePulse, launchArmed bool) tea.Cmd {
+	if away := m.pulseMotion.away; away != nil {
+		if !m.pulseMotion.returning {
+			return nil
+		}
+		before = *away
+		m.pulseMotion.away, m.pulseMotion.returning = nil, false
+	}
 	if !m.lifecycle.motion || launchArmed || m.lifecycle.launchFocusArmed() {
 		return nil
 	}

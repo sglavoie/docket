@@ -30,6 +30,20 @@ func (f *inlinePeekFields) add(label, value string) {
 	f.parts = append(f.parts, theme.HelpStyle.Render(label+": ")+theme.HelpKeyStyle.Render(value))
 }
 
+// addGlyph is a field whose value the row abbreviates to a glyph: the glyph
+// leads the word in the row's own color, so reading Peek is how the row's
+// symbols are learned and no legend is needed.
+func (f *inlinePeekFields) addGlyph(label, glyph, value string) {
+	if value == "" {
+		return
+	}
+	if glyph == "" {
+		f.add(label, value)
+		return
+	}
+	f.parts = append(f.parts, theme.HelpStyle.Render(label+": ")+glyph+" "+theme.HelpKeyStyle.Render(value))
+}
+
 // flag is a field that is its own value. Pinned and Review are booleans a task
 // either wears or does not, so a label beside one would say the word twice.
 func (f *inlinePeekFields) flag(word string) {
@@ -61,7 +75,7 @@ func inlinePeekStatusLine(task *models.Task, planning string, now time.Time) str
 	}
 	var fields inlinePeekFields
 	fields.add(chrome.PlanFieldLabel, planning)
-	fields.add(chrome.StatusFieldLabel, inlinePeekStatusValue(task, now))
+	fields.addGlyph(chrome.StatusFieldLabel, theme.GetTaskStateBadge(task), inlinePeekStatusValue(task, now))
 	// Keep the reason to act in the first summary, before optional metadata.
 	// Dates and repeat details remain complete in the schedule section.
 	if task.IsOverdueAt(now) {
@@ -73,7 +87,7 @@ func inlinePeekStatusLine(task *models.Task, planning string, now time.Time) str
 	// The same gate theme.PriorityIcon takes, so a task the row draws no priority
 	// badge for names no priority here either.
 	if models.ValidatePriority(task.Priority, false) == nil {
-		fields.add("Priority", strconv.Itoa(task.Priority)+" "+strings.ToLower(models.PriorityName(task.Priority)))
+		fields.addGlyph("Priority", chrome.RenderPriorityBadge(task.Priority), strconv.Itoa(task.Priority)+" "+strings.ToLower(models.PriorityName(task.Priority)))
 	}
 	if task.Pinned {
 		fields.flag("Pinned")

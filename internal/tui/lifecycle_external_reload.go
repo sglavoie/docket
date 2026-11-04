@@ -54,8 +54,10 @@ func (m *AppModel) handleFocusMessage(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg.(type) {
 	case tea.BlurMsg:
 		m.externalReload.blurFingerprint = m.workspaceFingerprint()
+		m.noteTerminalFocus(false)
 		return true, nil
 	case tea.FocusMsg:
+		m.noteTerminalFocus(true)
 		before := m.externalReload.blurFingerprint
 		m.externalReload.blurFingerprint = ""
 		if before != "" && before != m.workspaceFingerprint() {
@@ -65,6 +67,16 @@ func (m *AppModel) handleFocusMessage(msg tea.Msg) (bool, tea.Cmd) {
 	default:
 		return false, nil
 	}
+}
+
+// noteTerminalFocus hands a focus report to the two things that show it: the
+// Outliner's cursor rests dimmed while the window is in the background, and
+// the pulse holds the counts it would light until the user is back to see them.
+func (m *AppModel) noteTerminalFocus(focused bool) {
+	if m.crossOutliner != nil {
+		m.crossOutliner.SetTerminalFocused(focused)
+	}
+	m.notePulseFocus(focused)
 }
 
 // adoptBlurredWorkspaceChange is the focus check for a session acting while

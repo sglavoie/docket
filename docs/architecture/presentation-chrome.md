@@ -979,6 +979,14 @@ and each changes paint alone: no width, no row, no window input.
   view through `WorkspacePulse.Lit`, so `m.workspacePulse`, the window title,
   the progress indicator, and every comparison read bare values. A launch draws
   nothing, since the launch focus is still owed while its first pulse lands.
+- **Terminal focus.** `handleFocusMessage` hands each focus report to
+  `noteTerminalFocus`. The Outliner's `SetTerminalFocused` turns the cursor's
+  `cursorPaint` to resting: a muted mark, no band, no flash. It changes paint
+  alone, never a row, window, or width. A blur also holds the pulse in
+  `pulseMotion.away`, and `markPulseChange` lights nothing while it is held. The
+  focus after it measures the change from that held pulse, so a sync, reload, or
+  periodic tick that moved a count while the window was in the background lights
+  on return.
 - **Undo countdown.** `setUndoableStatus` starts a 24-step countdown beside the
   undo deadline. `renderFooterDivider` draws its remaining share as an accented
   run on the idle divider and yields to the flash whenever one runs.

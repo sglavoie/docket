@@ -80,6 +80,12 @@ values, literal tokens, files with spaces, and relationship rules.
 
 ### Complete a token or look up syntax
 
+The draft colors each token as you type, in the color it takes once captured:
+`#tag` in its tag color, `!1` in its priority color, `%project` in the project's
+color, and dates, pins, review, and references in their own colors. When capture
+refuses a token, such as an unknown `%project` or a second `@date`, that token is
+underlined in red where it sits, beside the message that explains it.
+
 Type a sigil to see suggestions. With the caret at the end of the draft, the
 rest of the selected suggestion appears dimmed after it, as a shell suggests the
 rest of a command: `%web` shows `site` when Website is selected, and `Tab` inserts

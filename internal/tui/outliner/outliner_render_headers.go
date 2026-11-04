@@ -27,10 +27,20 @@ type cursorPaint struct {
 	// for one — the band is a task-row affordance, so a header, a checklist item
 	// and a note row keep the mark they already had.
 	rowBg color.Color
+	// resting is a marked row in a window the terminal reports unfocused: the
+	// mark stays, muted, and the band is withheld, so the cursor still says
+	// where the keyboard will land without claiming it is there now.
+	resting bool
 }
 
 func (m *OutlinerModel) cursorPaintFor(selected bool) cursorPaint {
-	return cursorPaint{marked: selected, flash: selected && m.CursorFlash}
+	return cursorPaint{marked: selected, flash: selected && m.CursorFlash && !m.unfocused, resting: selected && m.unfocused}
+}
+
+// SetTerminalFocused records the terminal's focus report. It changes paint
+// alone: no row, window, cursor, or width reads it.
+func (m *OutlinerModel) SetTerminalFocused(focused bool) {
+	m.unfocused = !focused
 }
 
 // overTaskRow is the opt-in: a marked task row carries a background for its whole
@@ -40,7 +50,7 @@ func (m *OutlinerModel) cursorPaintFor(selected bool) cursorPaint {
 // one mark instead of introducing a second.
 func (p cursorPaint) overTaskRow() cursorPaint {
 	switch {
-	case !p.marked:
+	case !p.marked || p.resting:
 		return p
 	case p.flash:
 		p.rowBg = theme.ColorFlashDimBg
@@ -58,6 +68,8 @@ func (p cursorPaint) bar(style lipgloss.Style, text string) string {
 		return style.Render(text)
 	case text == " ":
 		return p.halfBlock(nil)
+	case p.resting:
+		return theme.MutedStyle.Reverse(true).Render(text)
 	case p.flash:
 		return theme.CursorFlashBarStyle.Render(text)
 	default:
@@ -82,6 +94,9 @@ func (p cursorPaint) gutterBg() color.Color {
 // with no band keeps the dim fill, which reads as the cursor's reach rather than
 // competing with the bar for the eye.
 func (p cursorPaint) trail() lipgloss.Style {
+	if p.resting {
+		return lipgloss.NewStyle()
+	}
 	if p.rowBg != nil {
 		return lipgloss.NewStyle().Background(p.rowBg)
 	}

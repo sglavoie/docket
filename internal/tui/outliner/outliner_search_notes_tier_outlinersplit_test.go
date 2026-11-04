@@ -341,3 +341,25 @@ func TestNoteTierAndNotesManagerShareOneScorer(t *testing.T) {
 		}
 	}
 }
+
+// TestParkedProjectNoteRowNamesItsSlug covers a note whose project the task
+// population does not hold: a parked project's notes are searchable, so the
+// row names that project by slug rather than by its stored identity.
+func TestParkedProjectNoteRowNamesItsSlug(t *testing.T) {
+	active := primaryRowsProject("alpha", primaryRowsTask("plain", models.StateBacklog))
+	parked := primaryRowsProject("06fd8d58-a8ae-4ed3-9bcc-24a7102bed75")
+	parked.Slug = "pipelines"
+	parked.Tags = []string{models.ParkedProjectTag}
+	outliner := scopeTestOutliner(active, parked)
+	outliner.Population.Projects = []*models.Project{active}
+	outliner.Population.Invalidate()
+	outliner.SetNoteSearchIndex(func() []notes.LocatedNoteRow {
+		return []notes.LocatedNoteRow{noteIndexRow(app.ProjectNoteLocation(parked.ID), "pipelines", "Needle plan", "plan.md")}
+	})
+	searchRankedList(outliner, "needle")
+
+	plain := ansi.Strip(outliner.renderOutlinerNoteRow(noteRowTitled(t, outliner, "Needle plan"), false, 100, 0, nil))
+	if !strings.Contains(plain, "[pipelines]") || strings.Contains(plain, "06fd8d58") {
+		t.Fatalf("parked note row does not name its project slug:\n%q", plain)
+	}
+}

@@ -375,9 +375,10 @@ When compact Peek cannot show two lines of the resume note on its first page,
 it moves the note ahead of status, or ahead of a title that would fill the
 page. Nothing is shortened or removed: scrolling retains the full document,
 and fullscreen details starts with the title. For example,
-`Plan: Today · Status: Backlog · Priority: 1 high` distinguishes the planning
-collection from the lifecycle state. Doing and Waiting include time in that
-state. The project slug and parent chain follow, then the schedule, description,
+`Plan: Today · Status: ▣ Backlog · Priority: ◉ 1 high` distinguishes the planning
+collection from the lifecycle state. The status and priority lead with the glyph
+and color the row draws for them, so reading Peek is how the row's symbols are
+learned. Doing and Waiting include time in that state. The project slug and parent chain follow, then the schedule, description,
 checklist progress, attachments, comment count, dependencies, tags,
 and history. Empty fields are omitted.
 

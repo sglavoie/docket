@@ -43,6 +43,7 @@ var projectPopulationInventory = map[string]string{
 	"internal/tui/app_task_composer.go:availableProjects":                          "composer project completion and %project resolution",
 	"internal/tui/core_input_handlers.go:availableProjects":                        "quick capture destinations",
 	"internal/tui/outliner/cross_project_projection.go:AvailableProjects":          "scope chrome counts the parked projects the task projection is hiding",
+	"internal/tui/outliner/outliner_render_notes.go:AvailableProjects":             "a note row names its owner by slug, and the note tier searches parked projects the task population does not hold",
 	"internal/tui/outliner/cross_project_scope.go:AvailableProjects":               "unscoped selection and explicit project filters may admit parked projects",
 	"internal/tui/outliner/cross_project_scope.go:TaskWorkspaceProjects":           "scoped Outliner selection, workspace pulse counting, and a host's workspace search are all task projections",
 	"internal/engine/repository.go:AvailableProjects":                              "mutation snapshots must resolve every non-archived project",

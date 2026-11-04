@@ -28,7 +28,7 @@ func TestFullscreenPeekIncludesTheWholeTask(t *testing.T) {
 		doc := inlinePeekDocumentFor(inlinePeekOptions{Task: task, Width: width, Indent: "  ", Detailed: true, Window: peekDockGeometry{bodyRows: 12}, Planning: "Today", ProjectSlug: "project"})
 		plain := ansi.Strip(strings.Join(doc.Body, "\n"))
 		for _, value := range []string{
-			"Complete task information", "Plan: Today", "Status: Waiting", "Pinned", "Review",
+			"Complete task information", "Plan: Today", "Status: ⊘ Waiting", "Pinned", "Review",
 			"Resume: Start with the draft", "Project: project", "Context: office", "Check-in:",
 			"Full description", "[x] Read the draft", "[ ] Write the conclusion",
 			"The whole conversation is readable here.", "/documents/brief.md", "Tags: #feature",

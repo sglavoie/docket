@@ -64,6 +64,10 @@ type OutlinerModel struct {
 	// arrival is the mode switch the title draws for one phase; see
 	// mode_arrival.go. It shares ghostSeq's generation counter.
 	arrival *modeArrival
+	// unfocused is whether the terminal last reported that it lost focus. The
+	// cursor then rests dimmed — a muted mark and no band — so a glance at a
+	// background window says the keyboard is elsewhere. See SetTerminalFocused.
+	unfocused bool
 	// sectionHeaderRows names each lane's header row by the section half of
 	// OutlinerRowGroup. It is rebuilt with the rows, so the window authority can
 	// tell a header scrolled above the window from the row's own group rather

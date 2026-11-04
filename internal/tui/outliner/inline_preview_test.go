@@ -62,7 +62,7 @@ func TestInlinePeekNilAndEmptyTask(t *testing.T) {
 		Indent: "  ",
 		Width:  40,
 	})
-	if got := peekWindowText(lines); got != "  Status: Backlog" {
+	if got := peekWindowText(lines); got != "  Status: ▣ Backlog" {
 		t.Fatalf("empty Peek = %q", got)
 	}
 	// The window is still the dock's fixed height: a task with one line to say
@@ -177,7 +177,7 @@ func TestInlinePeekBodyKeepsItsContentOrder(t *testing.T) {
 	body := ansi.Strip(strings.Join(doc.Body, "\n"))
 	order := []string{
 		"Rework the sync path",
-		"Plan: Today · Status: Doing 4h · Priority: 2 medium · Pinned · Review",
+		"Plan: Today · Status: ◐ Doing 4h · Priority: ● 2 medium · Pinned · Review",
 		"Resume: Left mid-refactor",
 		"Parent: Launch platform",
 		"Due: " + chrome.FormatWeekdayDate(due, time.Now(), task.DueHasTime()) + " (" + chrome.DayGloss(due, time.Now()) + ")" +

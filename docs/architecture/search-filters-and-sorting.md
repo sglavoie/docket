@@ -438,13 +438,14 @@ rather than elided, so a chain six levels deep is read to its end by scrolling.
 The two summary lines beneath them are what the row abbreviates or drops
 entirely. `inlinePeekStatusLine` leads with the planning collection under
 `chrome.PlanFieldLabel` and follows it with the lifecycle state under
-`chrome.StatusFieldLabel`, spelled in words rather than as a glyph — with the age
+`chrome.StatusFieldLabel`, spelled in words after the row's own state badge, so
+the glyph is learned beside the word it abbreviates — with the age
 appended for the two states whose age is a question about the work, Doing and
-Waiting, read off `StateChangedAt` — then the priority as a number under the same
+Waiting, read off `StateChangedAt` — then the priority as a number after its badge, under the same
 `ValidatePriority` gate the badge takes, and the two boolean axes as bare capitalized words,
 since a label beside `Pinned` would say it twice. Plan leads rather than trails
 because the two are one question asked twice and the pair is only readable as a
-pair: `Plan: Today · Status: Backlog` says where the work was committed and what
+pair: `Plan: Today · Status: ▣ Backlog` says where the work was committed and what
 state it still holds, where `today` alone reads as a tenth state. The words are
 `chrome`'s, not this line's, so the workflow chord's headings, the capture route
 row, and this line cannot drift into three synonyms; every line here is the
