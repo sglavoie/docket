@@ -285,7 +285,7 @@ func (m *OutlinerModel) taskIdentityLabel(row OutlinerRow, rowWidth int) string 
 		if label != "" {
 			label += " "
 		}
-		label += theme.TaskContextBadgeStyle(row.Task).Render("[" + context + "]")
+		label += theme.TaskContextLabel(row.Task, context)
 	}
 	return label
 }

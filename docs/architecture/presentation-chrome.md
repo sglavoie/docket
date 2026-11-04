@@ -947,3 +947,61 @@ facet applies that same predicate as a row refinement except in Recent, where it
 is unavailable. Entering Recent with it active clears only Stale and reports
 `Stale filter cleared: Recent only includes the last 30 days`. The `fs` facet
 never reloads the project population.
+
+#### Motion and the day's bookends
+
+Motion is `lifecycleController.motion`, which only `RunApp`'s interactive launch
+arms (`WithMotion`), so the scenario harness and every test run without it and
+no observation depends on a timer the scenario never waits for. Every animation
+counts frames through `status.TickCmd` and voids a superseded run by sequence,
+and each changes paint alone: no width, no row, no window input.
+
+- **Departure ghost.** `CaptureOutlinerRelocation` records the cursor row's plain
+  text, the list line it was drawn on, and its state glyph. When
+  `FinishOutlinerRelocation` finds the task departed its group,
+  `leaveDepartureGhost` redraws that text struck through at the vacated line for
+  two 160 ms phases, success-colored with the glyph replaced by Done's when the
+  task completed. It is never part of `m.Rows`. `renderOutlinerRows` inserts it,
+  lending a full window's last line except when that line is the cursor's, and
+  records the slot as `LastViewport.ghostOffset`. `CursorScreenRow`,
+  `pointerHitAt`, and the Peek dock's padding read that slot. Any keystroke
+  retires the ghost through `DropMotion`.
+- **Mode arrival.** The shell compares the Outliner's mode across one `Update`.
+  On a change, `MarkModeArrival` draws `chrome.ModeArrival` for 180 ms: the badge
+  reversed, and the `‹` or `›` the Tab cycle turned through lit.
+  `ModeArrivalBetween` names the direction, and a jump lights no arrow.
+- **Undo countdown.** `setUndoableStatus` starts a 24-step countdown beside the
+  undo deadline. `renderFooterDivider` draws its remaining share as an accented
+  run on the idle divider and yields to the flash whenever one runs.
+- **Today clear.** The deferred closure in `AppModel.Update` compares the pulse
+  across the update. When Today held open work, holds none after, and Done rose,
+  `celebrateClearedToday` appends `Today is clear` through `appendNote`, keeping
+  `u undo` last. With motion it records `flashCelebrate`, the one success
+  severity `animates()` admits. It speaks once per local day per session.
+
+Two launch options sit beside motion and are also `RunApp`'s alone.
+`WithDailyGreeting` lets `settleLaunchFocus` publish `pulse.DailyGreeting` once
+per local day, recorded as `machine.json`'s `greeted_on`. A keystroke that
+spends the launch intent first also forgoes the greeting.
+`WithRoomyLaunchPeek` lets the same seam call `OpenPeekIfRoomy`, which writes
+`PeekMode` only when the dock draws at its preferred height with every row above
+it.
+
+When the program ends, `RunApp` prints `pulse.QuitSummary` to stdout for a
+terminal session; a headless or control-socket session prints nothing.
+`pulse.TerminalProgress` is the view's `ProgressBar` (OSC 9;4), present only
+while Today holds open work, valued as Done against Done plus Today, and in the
+warning state while anything is overdue. The renderer diffs it and resets it on
+exit. The window title is unchanged, since Docket.app parses it.
+
+Capture's inline suggestion is
+`QuickCaptureInput.RenderInputWithInlineSuggestion`. It takes the caret cell
+from a real-cursor copy of the textarea (`Cursor()`) and writes the selected
+value's untyped remainder, dimmed, into blank cells after the virtual cursor. It
+does so only when the caret ends the draft and the value continues the typed
+partial, case aside; otherwise the input's own view stands.
+
+A task row's context label is `theme.TaskContextLabel`: muted brackets around
+the context color, never bold, painted as the project label is. The Backlog
+badge glyph is `▣` (U+25A3), the BMP form of the heavy square, chosen for font
+coverage.

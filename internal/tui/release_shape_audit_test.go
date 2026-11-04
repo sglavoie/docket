@@ -73,6 +73,7 @@ func TestReleaseSchemaVersionsIncludeCheckIns(t *testing.T) {
 var machineStateJSONTags = []string{
 	"active_lens_id",
 	"advisories_hidden",
+	"greeted_on",
 	"lenses_adopted",
 	"menu_bar_visible",
 	"mouse_disabled",

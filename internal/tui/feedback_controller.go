@@ -84,6 +84,12 @@ type feedbackController struct {
 	// rejects a tick from a superseded one.
 	flash    footerFlashState
 	flashSeq uint64
+	// celebratedDay is the local day celebrateClearedToday last spoke for, so
+	// emptying Today twice in one day is said once.
+	celebratedDay string
+	// countdown is the undo window drawn draining on the footer divider; see
+	// undo_countdown.go.
+	countdown undoCountdown
 
 	// outstandingConflicts is how many bundles `.docket/conflicts/` holds, cached so
 	// no render reads the directory. It is deliberately not part of

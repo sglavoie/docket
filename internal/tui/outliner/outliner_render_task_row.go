@@ -7,10 +7,12 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/tui/textfit"
 	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
@@ -394,4 +396,78 @@ func renderTaskPrefix(prefix, foldIndicator string, bg color.Color, style lipglo
 // unresolved project keeps the muted default ProjectColorStyle falls back to.
 func (m *OutlinerModel) treeConnectorStyle(row OutlinerRow) lipgloss.Style {
 	return theme.ProjectColorStyle(m.ResolveProjectForRow(row))
+}
+
+// captureDepartureLine records what the cursor row looks like, in plain text,
+// and where the last render drew it, so a departure can leave it behind. It
+// reads the last drawn window and never computes one; a cursor that frame did
+// not draw records nothing.
+func (m *OutlinerModel) captureDepartureLine(capture *OutlinerRelocationCapture) {
+	if !m.motion || capture == nil || m.Cursor < 0 || m.Cursor >= len(m.Rows) {
+		return
+	}
+	viewport := m.LastViewport
+	if viewport.VisibleRows <= 0 || viewport.rowWidth <= 0 ||
+		m.Cursor < viewport.startIdx || m.Cursor >= viewport.endIdx {
+		return
+	}
+	row := m.Rows[m.Cursor]
+	if !row.IsTaskRow() || row.Task == nil {
+		return
+	}
+	offset := m.Cursor - viewport.startIdx
+	if viewport.pinned {
+		offset++
+	}
+	// A ghost still on screen is not counted: the keypress dropped it, so the
+	// next frame draws the rows where they stand without it.
+	layout := m.computeRowLayout(m.Rows, viewport.rowWidth, &m.hiddenLayout)
+	line := ansi.Strip(m.RenderOutlinerTaskRow(row, false, viewport.rowWidth, m.Cursor, layout))
+	capture.departureLine = strings.TrimRight(line, " ")
+	capture.departureOffset = offset
+	capture.departureIcon = theme.StateBadgeIcon(row.Task.State())
+}
+
+// renderDepartureGhost paints the ghost's line for its phase: struck through
+// in the success color when the task completed and in the muted color
+// otherwise, then faint. The indentation is never struck.
+func (m *OutlinerModel) renderDepartureGhost(rowWidth int) string {
+	ghost := m.ghost
+	line := textfit.TruncateToVisualWidth(ghost.line, rowWidth)
+	trimmed := strings.TrimLeft(line, " ")
+	lead := line[:len(line)-len(trimmed)]
+	style := lipgloss.NewStyle().Foreground(theme.ColorMuted).Strikethrough(true)
+	if ghost.done {
+		style = style.Foreground(theme.ColorSuccess)
+	}
+	if ghost.phase > 0 {
+		style = style.Foreground(theme.ColorMuted).Faint(true)
+	}
+	rendered := lead + style.Render(trimmed)
+	if pad := rowWidth - lipgloss.Width(rendered); pad > 0 {
+		rendered += strings.Repeat(" ", pad)
+	}
+	return rendered
+}
+
+// ghostSlot decides where this frame draws the ghost, if anywhere: its
+// recorded offset, inside the lines the window draws or directly below them.
+// A full window lends the slot of its last row, which is why a ghost is never
+// drawn where that row is the cursor's.
+func (m *OutlinerModel) ghostSlot(viewport outlinerViewport) (offset int, dropLast bool, ok bool) {
+	if m.ghost == nil {
+		return 0, false, false
+	}
+	drawn := viewport.drawnRows()
+	offset = m.ghost.screenOffset
+	if offset < 0 || offset > drawn || offset >= viewport.VisibleRows {
+		return 0, false, false
+	}
+	if drawn < viewport.VisibleRows {
+		return offset, false, true
+	}
+	if viewport.endIdx-1 == m.Cursor || viewport.endIdx-1 < viewport.startIdx || offset >= drawn {
+		return 0, false, false
+	}
+	return offset, true, true
 }

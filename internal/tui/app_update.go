@@ -27,6 +27,8 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 	textBefore := m.desktopTextBuffer()
 	draftBefore := m.quitBlockReason() != ""
 	externalRefreshWasSafe := m.safeToAdoptExternalChange()
+	pulseBefore := m.workspacePulse
+	modeBefore := m.outlinerModeForMotion()
 	defer func() {
 		if r := recover(); r != nil {
 			m.retireInteraction()
@@ -55,6 +57,10 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		}
 		m.observeCheckInFeedbackMessage(msg)
 		outCmd = tea.Batch(outCmd, m.publishCheckInFeedback())
+		m.celebrateClearedToday(pulseBefore, time.Now())
+		if m.crossOutliner != nil && m.outlinerModeForMotion() != modeBefore {
+			outCmd = tea.Batch(outCmd, m.crossOutliner.MarkModeArrival(modeBefore))
+		}
 		if interactive || isInteractionInput(msg) {
 			outCmd = withCommandOrigin(outCmd, origin)
 		}

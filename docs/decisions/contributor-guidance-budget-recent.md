@@ -505,3 +505,16 @@ hidden clause opens it, attention readers never admit it, and no edit
 surface may drop it because it has no sigil; plus where `fH` and `wh` sit
 in their chords. Behavior lives in docs/guide/search-and-lenses.md and
 docs/guide/storage.md. No rule elsewhere was trimmed to pay for it.
+
+Raise from 78320 to 78960 for motion and the launch's day bookends. 640
+bytes buy the rules the new behavior is held to: motion is armed by
+`RunApp` alone, so no scenario depends on a timer it never waits for;
+every animation is frame-counted, voided by sequence, and changes paint
+but never width; the departure ghost is render-only, never in `m.Rows`
+and never on the cursor's line, and both screen-row readers step over
+it; `flashCelebrate` is the one success severity that animates; the
+launch may open Peek only where every row fits above a whole dock; the
+inline capture suggestion appears only where `Tab` would insert it; and
+`machine.json` gains `greeted_on`. The mechanism lives in
+docs/architecture/presentation-chrome.md. No rule elsewhere was trimmed to
+pay for it.

@@ -129,6 +129,13 @@ func SemanticTaskTitleStyle(
 	return style.Foreground(foreground)
 }
 
+// TaskContextLabel is a row's context spelled as the project label is: the
+// brackets muted and the name in the context color, so the label reads as
+// identity beside the title rather than competing with it.
+func TaskContextLabel(task *models.Task, context string) string {
+	return MutedStyle.Render("[") + TaskContextBadgeStyle(task).Render(context) + MutedStyle.Render("]")
+}
+
 func TaskContextBadgeStyle(task *models.Task) lipgloss.Style {
 	style := ContextBadgeStyle
 	if task != nil && task.IsDeferred() {
@@ -341,3 +348,9 @@ func PadBadge(rendered string, width int) string {
 // EmptyBadge returns a whitespace placeholder sized to width. Used by row
 // renderers to keep badge columns aligned when a row has no badge for a
 // given column. Returns "" when width <= 0.
+
+// StateBadgeIcon is the glyph GetStateBadge draws for a state, unstyled, so a
+// surface repainting a row it already drew can find that glyph in it.
+func StateBadgeIcon(state models.WorkflowState) string {
+	return stateBadgeIcon(state)
+}

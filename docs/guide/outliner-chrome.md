@@ -195,11 +195,31 @@ to correct it. Messages can reduce the room available to the list or editor;
 the active field and its recovery controls remain visible.
 
 Ordinary feedback lasts two to six seconds, depending on its length; undo
-feedback lasts six seconds. Warnings allow six to twelve seconds, based on text
+feedback lasts six seconds, and the divider above it drains from right to left
+as that window closes, so you can see how long `u` still answers. Warnings allow six to twelve seconds, based on text
 length and wrapped rows when published. Warnings and errors wrap across up to
 three rows so the reason and recovery action can be read together. Longer
 diagnostics point to Help → Recent Messages for their full text.
 A mode change clears transient view feedback.
+
+Finishing the last task planned for Today adds `Today is clear` to the
+completion's feedback, ahead of `u undo`, and the divider sweeps once in the
+success color. It is said once a day; replanning Today's work away is not
+finishing it and says nothing.
+
+The first launch of each day opens with a greeting that names what the day
+already holds, such as `Good morning · 3 planned for Today · 1 overdue · 2 in
+Inbox`. The day it greeted is remembered on this machine, so later launches
+that day stay quiet, and a key pressed before the workspace finishes loading
+skips it. Quitting leaves one line in the terminal, such as `docket: 4 done
+today · 2 still in Today`, or nothing when the day has nothing to report.
+
+Docket draws a little motion where an action needs following. A task that
+leaves the view, such as one you just finished, stays in its place for a moment,
+struck through and checked when it was completed, before the rows close up; the
+next key retires it at once. A mode switch lands its badge highlighted for a
+moment and lights the `‹` or `›` it traveled through. Tests and the harness run
+without this motion.
 A save failure with a retained draft stays visible until that field is edited
 or the draft is saved or discarded. Moving the cursor, waiting, or opening Help
 does not dismiss it. The selection count stays in the second header row.
@@ -250,7 +270,11 @@ every project failed to load.
 Docket names its window after the workspace pulse — `Docket · inbox 2 · today 3 ·
 overdue 1`, nonzero counts only — so a terminal tab or title bar reads it
 without switching to Docket; a view that names its own title keeps it, and quitting
-clears it.
+clears it. While Today holds open work, Docket also sets the terminal's progress
+indicator (OSC 9;4, drawn in the tab by Ghostty, Windows Terminal, and others) to the
+day's completions against what Today still holds, so it fills as Today empties
+and turns to its warning color while anything is overdue. Terminals without
+support ignore it.
 
 In a terminal that reports focus, Docket notes the workspace on disk when it loses
 focus and compares on return. If another machine's sync, or another Docket,

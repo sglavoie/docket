@@ -1,11 +1,15 @@
 package outliner
 
 import (
+	"strings"
+
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/coordinator"
 	"github.com/sglavoie/docket/internal/tui/listsurface"
 	"github.com/sglavoie/docket/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // outlinerRelocationCapture travels with a mutation until its committed rows
@@ -64,6 +68,14 @@ type OutlinerRelocationCapture struct {
 	// ReviewSuccessors is the ordered deduplicated sequence of eligible task
 	// identities that followed the cursor when the acknowledgement was issued.
 	ReviewSuccessors []taskref.TaskIdentity
+
+	// departureLine, departureOffset, and departureIcon are what the departure
+	// ghost redraws: the cursor row's plain text as the keypress saw it, the
+	// list line it stood on, and the state glyph a completion repaints. They
+	// are recorded only in a session with motion; see departure_ghost.go.
+	departureLine   string
+	departureOffset int
+	departureIcon   string
 }
 
 // StampTransaction satisfies coordinator.TransactionRelocation, which is how a
@@ -129,7 +141,7 @@ func (m *OutlinerModel) CaptureOutlinerRelocation(targets []taskref.TaskIdentity
 	if len(preceding) > 0 {
 		origin.Preceding = preceding[0]
 	}
-	return &OutlinerRelocationCapture{
+	capture := &OutlinerRelocationCapture{
 		Task:               cursorTask,
 		Group:              cursorRow.Group,
 		PromotedChildren:   promotableChildIdentities(cursorRow, cursorTask.ProjectID, targetSet),
@@ -138,6 +150,8 @@ func (m *OutlinerModel) CaptureOutlinerRelocation(targets []taskref.TaskIdentity
 		Origin:             origin,
 		Projection:         m.RelocationHistory.Projection,
 	}
+	m.captureDepartureLine(capture)
+	return capture
 }
 
 // unselectedNeighborIdentities walks the drawn rows outward from start in the
@@ -315,7 +329,7 @@ func (m *OutlinerModel) FinishOutlinerRelocation(capture *OutlinerRelocationCapt
 	destination, retained := m.rowIndexForTaskInGroup(capture.Task, capture.Group)
 	if !retained {
 		m.recoverCursorAfterDeparture(capture)
-		return nil, false
+		return m.leaveDepartureGhost(capture), false
 	}
 	if !forceFollow && m.CurrentTaskIdentity() != capture.Task {
 		return nil, false
@@ -440,4 +454,24 @@ func (m *OutlinerModel) FinishTaskLineEditRelocation(capture *OutlinerRelocation
 	m.Cursor = nearest
 	m.ViewScrollOffset = capture.Origin.ScrollOffset
 	return listsurface.FlashIfJumped(oldCursor, nearest, &m.CursorFlash), false
+}
+
+// leaveDepartureGhost starts the ghost for a capture whose task departed,
+// returning the tick that advances it. A capture without a recorded line, or a
+// session without motion, leaves none.
+func (m *OutlinerModel) leaveDepartureGhost(capture *OutlinerRelocationCapture) tea.Cmd {
+	if !m.motion || capture == nil || capture.departureLine == "" {
+		return nil
+	}
+	line := capture.departureLine
+	done := false
+	if task, _ := m.TaskAndProjectForIdentity(capture.Task); task != nil && task.State() == models.StateDone {
+		done = true
+		if capture.departureIcon != "" {
+			line = strings.Replace(line, capture.departureIcon, theme.StateBadgeIcon(models.StateDone), 1)
+		}
+	}
+	m.ghostSeq++
+	m.ghost = &departureGhost{line: line, screenOffset: capture.departureOffset, done: done, seq: m.ghostSeq}
+	return departureGhostTick(m.ghostSeq)
 }

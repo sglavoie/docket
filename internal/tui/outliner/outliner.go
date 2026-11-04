@@ -55,6 +55,15 @@ type OutlinerModel struct {
 	// rather than recomputing the window, which would re-derive it from a
 	// different footer state and move ViewScrollOffset.
 	LastViewport outlinerViewport
+	// motion is whether this session animates; ghost is the struck row a
+	// committed departure leaves on screen for a moment, and ghostSeq the
+	// generation that voids a superseded ghost's ticks. See departure_ghost.go.
+	motion   bool
+	ghost    *departureGhost
+	ghostSeq int
+	// arrival is the mode switch the title draws for one phase; see
+	// mode_arrival.go. It shares ghostSeq's generation counter.
+	arrival *modeArrival
 	// sectionHeaderRows names each lane's header row by the section half of
 	// OutlinerRowGroup. It is rebuilt with the rows, so the window authority can
 	// tell a header scrolled above the window from the row's own group rather
@@ -451,12 +460,21 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.updateSearchHistoryPicker(msg)
 		}
 	}
+	if _, ok := msg.(tea.KeyPressMsg); ok {
+		// The user has moved on: the rows close up under their next action.
+		m.dropDepartureGhost()
+	}
 	switch msg := msg.(type) {
 	case BackgroundSearchResultMsg:
 		m.acceptBackgroundSearch(msg)
 		return m, nil
 	case status.CursorFlashClearMsg:
 		m.CursorFlash = false
+		return m, nil
+	case DepartureGhostTickMsg:
+		return m, m.advanceDepartureGhost(msg)
+	case ModeArrivalTickMsg:
+		m.endModeArrival(msg)
 		return m, nil
 
 	case taskdetail.CommentAddedMsg:

@@ -1,11 +1,15 @@
 package outliner
 
 import (
+	"time"
+
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/route"
+	"github.com/sglavoie/docket/internal/tui/status"
 )
 
 // ComputeOutlinerRowLayout is the one measurement of a projection's shared row
@@ -106,6 +110,11 @@ type outlinerViewport struct {
 	// header rows and any search dropdown, so a cursor row can be named on
 	// screen without a second window computation.
 	topRow int
+	// ghostActive and ghostOffset are the list line the last render lent the
+	// departure ghost, counted from the window's first line: rows at or past it
+	// were drawn one line lower. Only renderOutlinerRows writes them.
+	ghostActive bool
+	ghostOffset int
 }
 
 // drawnRows is the screen rows the window fills: its own rows and the pinned
@@ -113,6 +122,9 @@ type outlinerViewport struct {
 func (v outlinerViewport) drawnRows() int {
 	drawn := v.endIdx - v.startIdx
 	if v.pinned {
+		drawn++
+	}
+	if v.ghostActive {
 		drawn++
 	}
 	return drawn
@@ -392,4 +404,81 @@ func (m *OutlinerModel) nearestNavigableRow(from, start, end int) (int, bool) {
 		}
 	}
 	return best, found
+}
+
+// The departure ghost is the one frame of motion a committed departure earns:
+// the row the keypress was aimed at stays on screen, struck through, at the
+// position it vacated, for departureGhostPhaseDuration per phase, then the rows
+// under it close up. It is render-only — never a row of m.Rows, never a cursor
+// position, never a window input — so every row invariant, every index, and
+// ComputeOutlinerViewport are untouched; the render records the screen slot it
+// borrowed in LastViewport so the two readers of screen rows, CursorScreenRow
+// and the pointer's hit map, step over it.
+//
+// It is motion, so it exists only where the shell armed motion: an interactive
+// launch. The harness and every test leave it off, which is what keeps a
+// scenario's observations independent of a timer they never wait for.
+const (
+	departureGhostPhaseDuration = 160 * time.Millisecond
+	departureGhostPhases        = 2
+)
+
+// departureGhost is the struck row a departure leaves behind for a moment.
+type departureGhost struct {
+	// line is the row's plain text as the keypress saw it, and screenOffset
+	// the list line it was drawn on, counted from the window's first line.
+	line         string
+	screenOffset int
+	// done reports that the task departed by completing, so its state glyph
+	// is repainted as the check it became.
+	done  bool
+	phase int
+	seq   int
+}
+
+// DepartureGhostTickMsg advances the ghost Seq names; a stale one is inert.
+type DepartureGhostTickMsg struct{ Seq int }
+
+// SetMotion arms or disarms the session's motion. Disarming drops a live
+// ghost at once.
+func (m *OutlinerModel) SetMotion(enabled bool) {
+	m.motion = enabled
+	if !enabled {
+		m.ghost = nil
+		m.arrival = nil
+	}
+}
+
+func departureGhostTick(seq int) tea.Cmd {
+	return status.TickCmd(departureGhostPhaseDuration, func(time.Time) tea.Msg {
+		return DepartureGhostTickMsg{Seq: seq}
+	})
+}
+
+// advanceDepartureGhost moves the ghost to its next phase, or retires it after
+// the last one.
+func (m *OutlinerModel) advanceDepartureGhost(msg DepartureGhostTickMsg) tea.Cmd {
+	if m.ghost == nil || m.ghost.seq != msg.Seq {
+		return nil
+	}
+	m.ghost.phase++
+	if m.ghost.phase >= departureGhostPhases {
+		m.ghost = nil
+		return nil
+	}
+	return departureGhostTick(msg.Seq)
+}
+
+// DropMotion retires every animation still settling on this view; the shell
+// calls it on each keystroke.
+func (m *OutlinerModel) DropMotion() {
+	if m != nil {
+		m.dropDepartureGhost()
+	}
+}
+
+// dropDepartureGhost retires a live ghost at once: a keypress means the user
+// has moved on, and the rows close up under their next action.
+func (m *OutlinerModel) dropDepartureGhost() {
+	m.ghost = nil
 }

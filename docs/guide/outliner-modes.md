@@ -25,7 +25,9 @@ Pinned, Today, Doing, Review, Inbox, Next, Paused, Backlog, Waiting, Someday
 Each launch opens with the Backlog and Someday sections folded, so the first
 screen leads with work already in motion; each header still counts what it
 hides, and `l` or `s` opens it. Only a launch folds them: `Esc`, `0`, and a reload leave it as you
-last set it.
+last set it. When the whole outline fits with room to spare, the launch also
+opens Peek on the task the cursor landed on; `b` closes it as usual, and nothing
+reopens it.
 
 A task appears once in All, so Pinned and Review lift their rows out of the
 section they would otherwise sit in, and that section says so after its count:

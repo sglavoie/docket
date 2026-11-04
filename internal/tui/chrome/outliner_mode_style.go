@@ -42,24 +42,36 @@ func GetOutlinerModeStyle(mode OutlinerModeID) lipgloss.Style {
 	return theme.ViewModeAllStyle
 }
 
-// OperationalTitleModeSegment renders the mode identity segment of the
-// operational title row.
-//
-// It sits here rather than beside the rest of the title row because it is the
-// one segment built out of the mode catalog: OutlinerMode and the style table
-// above are chrome vocabulary, and internal/tui/pulse is below chrome. The
-// badge itself is pulse's, so this is the adapter that hands chrome's mode to
-// it and nothing more.
-func OperationalTitleModeSegment(mode OutlinerMode) string {
-	return pulse.OperationalTitleBadge(GetOutlinerModeStyle(mode.ID), mode.Label)
+// ModeArrival is how the active mode was just reached, for the one phase the
+// mode switch is drawn arriving: through Tab, through Shift+Tab, or some other
+// way (a chord, a lens, Esc).
+type ModeArrival uint8
+
+const (
+	ModeArrivalNone ModeArrival = iota
+	ModeArrivalForward
+	ModeArrivalBackward
+	ModeArrivalJump
+)
+
+// OperationalTitleModeSegmentArriving renders the mode identity segment of the
+// operational title row: the badge is pulse's, styled by the mode, and it
+// lands reversed while the mode is arriving, at the same width.
+func OperationalTitleModeSegmentArriving(mode OutlinerMode, arrival ModeArrival) string {
+	style := GetOutlinerModeStyle(mode.ID)
+	if arrival != ModeArrivalNone {
+		style = style.Reverse(true)
+	}
+	return pulse.OperationalTitleBadge(style, mode.Label)
 }
 
-// OperationalTitleModeStrip renders the active mode's badge followed by its two
-// Tab neighbors, muted — `Inbox  ‹ Today  Next ›` — so a wide title says where
-// Shift+Tab and Tab go without moving the badge off the scope it qualifies. The
-// badge is the segment OperationalTitleModeSegment draws, so a title that falls
-// back to the lone badge names the mode identically.
-func OperationalTitleModeStrip(active OutlinerModeID) string {
+// OperationalTitleModeStripArriving renders the active mode's badge followed
+// by its two Tab neighbors, muted — `Inbox  ‹ Today  Next ›` — so a wide title
+// says where Shift+Tab and Tab go. While the mode is arriving the badge lands
+// reversed and the arrow the switch traveled
+// through — › for Tab, ‹ for Shift+Tab — is lit, so the strip says which way
+// the modes turned. Every cell keeps its width.
+func OperationalTitleModeStripArriving(active OutlinerModeID, arrival ModeArrival) string {
 	modes := OutlinerTabModes()
 	index := -1
 	for i, mode := range modes {
@@ -70,12 +82,49 @@ func OperationalTitleModeStrip(active OutlinerModeID) string {
 	}
 	if index < 0 || len(modes) < 2 {
 		if mode, ok := OutlinerModeByID(active); ok {
-			return OperationalTitleModeSegment(mode)
+			return OperationalTitleModeSegmentArriving(mode, arrival)
 		}
 		return ""
 	}
 	previous := modes[(index-1+len(modes))%len(modes)]
 	next := modes[(index+1)%len(modes)]
-	return OperationalTitleModeSegment(modes[index]) + "  " +
-		theme.MutedStyle.Render("‹ "+previous.Label+"  "+next.Label+" ›")
+	back, forward := theme.MutedStyle, theme.MutedStyle
+	lit := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true)
+	switch arrival {
+	case ModeArrivalForward:
+		forward = lit
+	case ModeArrivalBackward:
+		back = lit
+	case ModeArrivalNone, ModeArrivalJump:
+	}
+	return OperationalTitleModeSegmentArriving(modes[index], arrival) + "  " +
+		back.Render("‹") + theme.MutedStyle.Render(" "+previous.Label+"  "+next.Label+" ") + forward.Render("›")
+}
+
+// ModeArrivalBetween names how from became to: one step along the Tab cycle
+// either way, or a jump.
+func ModeArrivalBetween(from, to OutlinerModeID) ModeArrival {
+	if from == to {
+		return ModeArrivalNone
+	}
+	modes := OutlinerTabModes()
+	fromIndex, toIndex := -1, -1
+	for i, mode := range modes {
+		if mode.ID == from {
+			fromIndex = i
+		}
+		if mode.ID == to {
+			toIndex = i
+		}
+	}
+	if fromIndex < 0 || toIndex < 0 {
+		return ModeArrivalJump
+	}
+	switch toIndex {
+	case (fromIndex + 1) % len(modes):
+		return ModeArrivalForward
+	case (fromIndex - 1 + len(modes)) % len(modes):
+		return ModeArrivalBackward
+	}
+	return ModeArrivalJump
 }

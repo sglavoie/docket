@@ -58,13 +58,13 @@ func TestGetTitlePriorityStyleOutOfRange(t *testing.T) {
 
 func TestTaskContextBadgeStyleUsesDeferredVariant(t *testing.T) {
 	normal := TaskContextBadgeStyle(&models.Task{})
-	if !normal.GetBold() || normal.GetFaint() || normal.GetForeground() != ColorTaskContext {
+	if normal.GetBold() || normal.GetFaint() || normal.GetForeground() != ColorTaskContext {
 		t.Fatalf("normal context style bold/faint/foreground = %v/%v/%v", normal.GetBold(), normal.GetFaint(), normal.GetForeground())
 	}
 
 	future := time.Now().Add(time.Hour)
 	deferred := TaskContextBadgeStyle(&models.Task{DeferredUntil: &future})
-	if !deferred.GetBold() || !deferred.GetFaint() || deferred.GetForeground() != ColorTaskContextDeferred {
+	if deferred.GetBold() || !deferred.GetFaint() || deferred.GetForeground() != ColorTaskContextDeferred {
 		t.Fatalf("deferred context style bold/faint/foreground = %v/%v/%v", deferred.GetBold(), deferred.GetFaint(), deferred.GetForeground())
 	}
 }

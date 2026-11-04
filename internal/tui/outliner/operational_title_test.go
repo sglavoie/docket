@@ -174,13 +174,13 @@ func TestOperationalTitleModeSegmentSpelling(t *testing.T) {
 	const context = "Search: \"needle\""
 	for _, mode := range chrome.OutlinerModeCatalog() {
 		t.Run(mode.Label, func(t *testing.T) {
-			if chip := ansi.Strip(chrome.OperationalTitleModeSegment(mode)); chip != mode.Label {
+			if chip := ansi.Strip(chrome.OperationalTitleModeSegmentArriving(mode, chrome.ModeArrivalNone)); chip != mode.Label {
 				t.Fatalf("mode chip = %q, want %q", chip, mode.Label)
 			}
 			plain := ansi.Strip(pulse.RenderOperationalTitle(pulse.OperationalTitleSpec{
 				Surface: theme.TitleStyle.Render("Outliner"),
 				Scope:   theme.TitleStyle.Render(activeProjectsScopeLabel),
-				Mode:    chrome.OperationalTitleModeSegment(mode),
+				Mode:    chrome.OperationalTitleModeSegmentArriving(mode, chrome.ModeArrivalNone),
 				Context: []string{theme.MutedStyle.Render(context)},
 			}, 160))
 			want := operationalTitleSeparator + mode.Label + operationalTitleContextGap + context

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 )
 
 // SearchHistoryLimit bounds submitted queries retained on this machine.
@@ -52,6 +53,11 @@ type MachineState struct {
 	// a lens home but never whether *this* machine has joined it. See
 	// Manager.AdoptPortableLenses.
 	LensHomeAdopted bool `json:"lenses_adopted,omitempty"`
+	// GreetedOn is the local calendar day (YYYY-MM-DD) this machine last showed
+	// the launch greeting, so the first interactive launch of a day greets and
+	// every later one that day does not. It is chrome on the same terms as
+	// MouseDisabled: machine-local, omitempty, never seeded.
+	GreetedOn string `json:"greeted_on,omitempty"`
 }
 
 // NewMachineState returns the default built-in theme selection and the starter
@@ -77,6 +83,11 @@ func (m *MachineState) Validate() error {
 	}
 	if m.Theme != "" && m.Theme != "dark" && m.Theme != "light" {
 		return fmt.Errorf("machine: theme %q must be dark or light", m.Theme)
+	}
+	if m.GreetedOn != "" {
+		if _, err := time.Parse(time.DateOnly, m.GreetedOn); err != nil {
+			return fmt.Errorf("machine: greeted_on %q must be a YYYY-MM-DD day", m.GreetedOn)
+		}
 	}
 	if m.ActiveLensID != "" {
 		if err := ValidateNamedLensID(m.ActiveLensID); err != nil {

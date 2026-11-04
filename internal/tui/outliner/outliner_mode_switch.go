@@ -2,6 +2,7 @@ package outliner
 
 import (
 	"fmt"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/listsurface"
 	"github.com/sglavoie/docket/internal/tui/query"
+	"github.com/sglavoie/docket/internal/tui/status"
 	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
@@ -343,4 +345,54 @@ func (m *OutlinerModel) applyOutlinerModeTransition(target chrome.OutlinerMode) 
 	}, prev, target)
 	m.Sort = next.ActiveSort
 	m.TreeSort = next.TreeSort
+}
+
+// modeArrivalDuration is how long a mode switch is drawn arriving: one phase,
+// long enough to read the direction and short enough never to be waited on.
+const modeArrivalDuration = 180 * time.Millisecond
+
+// modeArrival is the mode switch being drawn: how the mode was reached, and
+// the generation that voids a superseded switch's tick.
+type modeArrival struct {
+	arrival chrome.ModeArrival
+	mode    chrome.OutlinerModeID
+	seq     int
+}
+
+// ModeArrivalTickMsg ends the arrival Seq names.
+type ModeArrivalTickMsg struct{ Seq int }
+
+// MarkModeArrival draws the switch from one mode to the active one, returning
+// the tick that ends it. The shell calls it when an Update changed the mode,
+// whichever key or seam changed it. A session without motion draws nothing.
+func (m *OutlinerModel) MarkModeArrival(from chrome.OutlinerModeID) tea.Cmd {
+	if m == nil || !m.motion {
+		return nil
+	}
+	to := m.ActiveOutlinerMode()
+	arrival := chrome.ModeArrivalBetween(from, to)
+	if arrival == chrome.ModeArrivalNone {
+		return nil
+	}
+	m.ghostSeq++
+	seq := m.ghostSeq
+	m.arrival = &modeArrival{arrival: arrival, mode: to, seq: seq}
+	return status.TickCmd(modeArrivalDuration, func(time.Time) tea.Msg {
+		return ModeArrivalTickMsg{Seq: seq}
+	})
+}
+
+func (m *OutlinerModel) endModeArrival(msg ModeArrivalTickMsg) {
+	if m.arrival != nil && m.arrival.seq == msg.Seq {
+		m.arrival = nil
+	}
+}
+
+// modeArrivalShown is the arrival the title draws: only while the mode it
+// arrived at is still the active one.
+func (m *OutlinerModel) modeArrivalShown() chrome.ModeArrival {
+	if m == nil || m.arrival == nil || m.arrival.mode != m.ActiveOutlinerMode() {
+		return chrome.ModeArrivalNone
+	}
+	return m.arrival.arrival
 }

@@ -119,6 +119,9 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 	case FooterFlashTickMsg:
 		return true, m.advanceFooterFlash(msg.Seq)
 
+	case UndoCountdownTickMsg:
+		return true, m.advanceUndoCountdown(msg.Seq)
+
 	case status.UndoToastTimeoutMsg:
 		// Only clear if the deadline that fired this tick is still the
 		// active one. A newer toast (with later expiresAt) may have

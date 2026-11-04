@@ -12,6 +12,8 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/pulse"
+	"github.com/sglavoie/docket/internal/tui/status"
 	"github.com/sglavoie/docket/internal/tui/textfit"
 	"github.com/sglavoie/docket/internal/tui/theme"
 )
@@ -30,6 +32,9 @@ func (m *AppModel) renderFooterDivider(width int) string {
 	}
 	base := theme.ColorMuted
 	if !m.feedback.flash.active() {
+		if cells := m.undoCountdownCells(width); cells > 0 {
+			return renderUndoCountdownDivider(width, cells)
+		}
 		return chrome.RenderHorizontalDivider(width)
 	}
 
@@ -151,6 +156,10 @@ const (
 	flashSuccess
 	flashWarning
 	flashError
+	// flashCelebrate is the one success that moves: the commit that empties
+	// Today. It is never recorded by an ordinary setter, only by
+	// celebrateClearedToday, and only in a session with motion.
+	flashCelebrate
 )
 
 // color resolves against the live palette rather than the palette in effect
@@ -158,7 +167,7 @@ const (
 // on the previous theme's color.
 func (s footerFlashSeverity) color() color.Color {
 	switch s {
-	case flashSuccess:
+	case flashSuccess, flashCelebrate:
 		return theme.ColorSuccess
 	case flashWarning:
 		return theme.ColorWarning
@@ -177,9 +186,10 @@ func (s footerFlashSeverity) color() color.Color {
 // for it, so motion at the bottom of the screen buys nothing and spends the one
 // thing the warning needs — that the same motion is unusual. Severity is still
 // recorded for every status, because that record is exactly what tells the two
-// apart here.
+// apart here. The one exception is flashCelebrate, the commit that empties
+// Today: it happens at most once a day, so its motion stays unusual too.
 func (s footerFlashSeverity) animates() bool {
-	return s == flashWarning || s == flashError
+	return s == flashWarning || s == flashError || s == flashCelebrate
 }
 
 type footerFlashState struct {
@@ -264,4 +274,130 @@ func (m *AppModel) footerFlashBackgroundColor() color.Color {
 	progress := float64(frame) / float64(footerFlashFrames-1)
 	mix := footerFlashBackgroundMix * (1 - easeInOutCubic(progress))
 	return blendColor(background, m.feedback.flash.severity.color(), mix)
+}
+
+// The undo countdown draws the inline undo's window on the footer divider
+// above it: a run of accented rule from the left edge that drains as the
+// window closes, so how long `u undo` still answers is visible rather than
+// guessed. It changes no text and no width, so nothing in the footer sheds or
+// moves for it, and it yields to the flash, which owns that divider whenever
+// it runs. It is motion, so only a session with motion draws it.
+//
+// It is frame-counted rather than read off the clock, as the flash is: the
+// render stays pure, and a superseded window's ticks are voided by sequence.
+const (
+	undoCountdownSteps = 24
+	undoCountdownMix   = 0.55
+)
+
+type undoCountdown struct {
+	seq   uint64
+	frame int
+	live  bool
+}
+
+// UndoCountdownTickMsg drains the countdown Seq names by one step.
+type UndoCountdownTickMsg struct{ Seq uint64 }
+
+func undoCountdownTick(seq uint64) tea.Cmd {
+	return status.TickCmd(UndoToastTimeout/undoCountdownSteps, func(time.Time) tea.Msg {
+		return UndoCountdownTickMsg{Seq: seq}
+	})
+}
+
+// startUndoCountdown begins draining for the undo window just armed.
+func (m *AppModel) startUndoCountdown() tea.Cmd {
+	if !m.lifecycle.motion {
+		return nil
+	}
+	c := &m.feedback.countdown
+	c.seq++
+	c.frame = 0
+	c.live = true
+	return undoCountdownTick(c.seq)
+}
+
+// advanceUndoCountdown drains one step, stopping when the window has closed
+// or the toast it measured was replaced.
+func (m *AppModel) advanceUndoCountdown(seq uint64) tea.Cmd {
+	c := &m.feedback.countdown
+	if !c.live || c.seq != seq {
+		return nil
+	}
+	if m.feedback.undoCb == nil {
+		c.live = false
+		return nil
+	}
+	c.frame++
+	if c.frame >= undoCountdownSteps {
+		c.live = false
+		return nil
+	}
+	return undoCountdownTick(seq)
+}
+
+// undoCountdownCells is how much of a width-wide divider the countdown still
+// holds, or zero when none is drawn.
+func (m *AppModel) undoCountdownCells(width int) int {
+	c := m.feedback.countdown
+	if !c.live || m.feedback.undoCb == nil || width <= 0 {
+		return 0
+	}
+	remaining := 1 - float64(c.frame)/float64(undoCountdownSteps)
+	return min(max(int(math.Round(remaining*float64(width))), 0), width)
+}
+
+// renderUndoCountdownDivider is the idle divider with its draining run.
+func renderUndoCountdownDivider(width, cells int) string {
+	var divider strings.Builder
+	accent := blendColor(theme.ColorMuted, theme.ColorPrimary, undoCountdownMix)
+	writeFooterDividerRun(&divider, footerDividerIdleGlyph, cells, accent)
+	writeFooterDividerRun(&divider, footerDividerIdleGlyph, width-cells, theme.ColorMuted)
+	return divider.String()
+}
+
+// todayClearNote is what the commit that empties Today adds to the line it
+// published.
+const todayClearNote = "Today is clear"
+
+// celebrateClearedToday marks the one commit a day that empties Today: Today
+// held open work before this Update and holds none after it, and the day's
+// Done count rose, so it was finished rather than replanned or undone. It
+// rides the line this Update published through appendNote, keeping `u undo`
+// last, or speaks alone when nothing did. With motion armed it upgrades that
+// line's quiet severity to flashCelebrate, so the divider sweeps in the
+// success color; a warning or an error already speaking keeps its own.
+//
+// It schedules nothing itself: the flash is armed later in the same
+// deferred closure, from the generation recorded here.
+//
+// It runs in the one deferred closure in AppModel.Update, after every refresh
+// the Update made, and says it at most once per local day per session.
+func (m *AppModel) celebrateClearedToday(before pulse.WorkspacePulse, now time.Time) {
+	after := m.workspacePulse
+	if before.Today <= 0 || after.Today != 0 || after.Done <= before.Done {
+		return
+	}
+	day := now.Format(time.DateOnly)
+	if m.feedback.celebratedDay == day {
+		return
+	}
+	m.feedback.celebratedDay = day
+	if !m.feedback.appendNote(todayClearNote) {
+		m.setSuccessStatus(todayClearNote)
+	}
+	if m.lifecycle.motion && !m.feedback.severity.animates() {
+		// A new generation is what the flash arms on, so the sweep starts
+		// even when the line it rides was published by an earlier Update.
+		m.feedback.recordSeverity(flashCelebrate)
+	}
+}
+
+// outlinerModeForMotion is the mode the Update's motion compares across one
+// Update, or the zero mode when there is no Outliner.
+func (m *AppModel) outlinerModeForMotion() chrome.OutlinerModeID {
+	if m.crossOutliner == nil {
+		return ""
+	}
+	return m.crossOutliner.ActiveOutlinerMode()
 }

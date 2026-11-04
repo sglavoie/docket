@@ -23,7 +23,7 @@ func TestTaskRowStatusIconUsesSemanticAccent(t *testing.T) {
 				if segments.statusIcon != want {
 					t.Errorf("%s/%s selected=%v status icon = %q, want %q", themeName, entry.Name, selected, segments.statusIcon, want)
 				}
-				icon := "🞑"
+				icon := "▣"
 				if got := ansi.Strip(segments.statusIcon); got != icon {
 					t.Errorf("status symbol = %q, want %q", got, icon)
 				}

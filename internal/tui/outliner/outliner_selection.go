@@ -283,3 +283,23 @@ func (m *OutlinerModel) QuitBlockReason() string {
 	}
 	return ""
 }
+
+// OpenPeekIfRoomy opens the dock only where it costs nothing: the cursor row
+// owns a document, the dock draws at its full preferred height, and the whole
+// projection still fits above it without scrolling. It is the launch's one
+// chance to show what the cursor stands on rather than blank rows; it opens
+// through the same PeekMode TogglePeek writes, so `b` closes it as ever, and
+// it reports whether it opened.
+func (m *OutlinerModel) OpenPeekIfRoomy() bool {
+	if m == nil || m.PeekMode || m.MultiSelectMode || !m.cursorRowSupportsPeek() {
+		return false
+	}
+	m.PeekMode = true
+	geometry := m.peekDockGeometry()
+	whole := geometry.Displayed() && geometry.TotalRows() == m.peekDockPreferredRows()
+	if !whole || len(m.Rows) > m.outlinerListRows(m.StatusStripHeight(max(m.Width(), 1))) {
+		m.PeekMode = false
+		return false
+	}
+	return true
+}

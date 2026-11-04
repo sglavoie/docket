@@ -42,6 +42,21 @@ const periodicSaveInterval = 60 * time.Second
 // stays virtualizable by the scenario harness; keeping the construction here is
 // what stops a second, differently-scheduled periodic save from appearing.
 type lifecycleController struct {
+	// greets is whether this session opens the local day with the daily
+	// greeting. Only RunApp's interactive launch arms it, so a headless host
+	// session, the harness, and every test leave the day ungreeted.
+	greets bool
+	// motion is whether this session animates beyond the footer flash: the
+	// departure ghost, the Today-clear sweep, the undo countdown, and the mode
+	// switch. Only RunApp's interactive launch arms it, for the same reason as
+	// greets: a scenario's observations must never depend on a timer it does
+	// not wait for.
+	motion bool
+	// roomyPeek opens Peek at launch when the projection leaves the dock its
+	// whole height; see OutlinerModel.OpenPeekIfRoomy. RunApp arms it for an
+	// interactive launch alone, so every scenario still starts with Peek shut.
+	roomyPeek bool
+
 	// keyDisambiguation is negotiated by Bubble Tea; until then use legacy-safe hints.
 	keyDisambiguation bool
 
@@ -72,6 +87,29 @@ type lifecycleController struct {
 	// is written outside the renderer's color profile, so that run announces
 	// none rather than color the terminal behind a colorless frame.
 	colorDisabled bool
+}
+
+// WithDailyGreeting arms the once-a-day launch greeting. RunApp adds it for
+// an interactive launch alone; see greetLocalDay.
+func WithDailyGreeting() AppOption {
+	return func(m *AppModel) { m.lifecycle.greets = true }
+}
+
+// WithRoomyLaunchPeek arms the launch's roomy Peek; see
+// lifecycleController.roomyPeek.
+func WithRoomyLaunchPeek() AppOption {
+	return func(m *AppModel) { m.lifecycle.roomyPeek = true }
+}
+
+// WithMotion arms the session's motion; see lifecycleController.motion. It
+// also reaches an Outliner already wired, so a test can arm it after launch.
+func WithMotion() AppOption {
+	return func(m *AppModel) {
+		m.lifecycle.motion = true
+		if m.crossOutliner != nil {
+			m.crossOutliner.SetMotion(true)
+		}
+	}
 }
 
 // WithDisabledColor marks a --no-color run. RunApp translates the flag into
@@ -174,6 +212,9 @@ func RunApp(rt *engine.Runtime, runOpts RunOptions, opts ...AppOption) error {
 	if runOpts.DisableColor {
 		opts = append(opts, WithDisabledColor())
 	}
+	if !runOpts.Headless {
+		opts = append(opts, WithDailyGreeting(), WithMotion(), WithRoomyLaunchPeek())
+	}
 	if rt == nil {
 		return fmt.Errorf("runtime is required")
 	}
@@ -236,8 +277,26 @@ func RunApp(rt *engine.Runtime, runOpts RunOptions, opts ...AppOption) error {
 		}
 	}()
 
-	_, err = p.Run()
+	final, err := p.Run()
+	// A terminal session leaves one line behind once the alternate screen is
+	// gone; a host-run session has no terminal to leave it on.
+	if err == nil && !runOpts.Headless && runOpts.ControlSocket == "" {
+		if app, ok := final.(*AppModel); ok {
+			if line := app.quitSummary(); line != "" {
+				_, _ = fmt.Fprintln(os.Stdout, line)
+			}
+		}
+	}
 	return err
+}
+
+// quitSummary is the line RunApp prints after the program ends: the day's
+// pulse as last measured, or nothing when no workspace ever loaded.
+func (m *AppModel) quitSummary() string {
+	if m.domain.runtime == nil {
+		return ""
+	}
+	return pulse.QuitSummary(m.workspacePulse)
 }
 
 // headlessHostPoll is how often a headless session checks that the host that

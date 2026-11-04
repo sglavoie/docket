@@ -159,6 +159,8 @@ would have shown. An active-lens pointer that no longer resolves fails closed to
 no lens, silently. That clean start folds All's Backlog and Someday lanes and
 nothing else: `FoldQuietLanesForLaunch` seeds them after `ResetToGlobalAll`,
 beside the launch focus, so a reset, a reload, and Esc never reapply them.
+Spending that focus may open Peek once, through `OpenPeekIfRoomy`, only where
+every row fits above a whole dock; that and the greeting are `RunApp`'s alone.
 
 The cursor is the one position a launch writes, as a one-shot intent the launch
 message alone arms — `ResetToGlobalAll` does not, so no reload, mode change, Esc
@@ -477,7 +479,8 @@ Capture recovery is local, checked before overwrite, and never replays
 an interrupted submission.
 
 Capture completion and syntax help follow the caret; feedback recall holds 20
-session events. Details: `docs/architecture/capture-and-outline-editor.md`.
+session events. Inline suggestion text continues the typed token at the draft's
+end only, so `Tab` inserts exactly what it showed. Details: `docs/architecture/capture-and-outline-editor.md`.
 
 Only the composer offers a missing project: when every refusal is an unknown
 `%slug` already canonical and held by no project, it confirms `Create project
@@ -585,7 +588,8 @@ consumed whether or not the document moves; `queryReadoutRowLimit` is the digit
 set, so digits stay on the first nine of `QueryReadoutRows()` at any offset and a
 tenth axis is scrolled to rather than dropped or bound.
 
-Only warning and error status text arms footer flash; cleared text, a quiet
+Only warning and error status text arms footer flash, plus `flashCelebrate`,
+recorded by `celebrateClearedToday` alone; cleared text, a quiet
 severity, and other chrome do not. `footerFlashSeverity.animates()` is that
 closed table, read off the severity every setter records, and `retireFlash` the
 supersession: quiet feedback cancels the live animation and advances `flashSeq`,
@@ -594,6 +598,11 @@ animates, so an `Update` changing none retires nothing and expiry never cancels
 frames; a message's clock is `scheduleViewStatusExpiry` alone. Arming
 stays in the one deferred closure in `AppModel.Update`. Feed divider appearance
 to all three `renderFooterChrome` dividers and keep the strip divider outside.
+
+Motion is `lifecycleController.motion`, armed by `RunApp` alone: frame-counted,
+voided by sequence, changing paint and never width. `departureGhost` is
+render-only, never in `m.Rows` nor the cursor's line, and `CursorScreenRow` and
+`pointerHitAt` step over its `LastViewport.ghostOffset`.
 The interactive TUI ignores an inherited `NO_COLOR`; `--no-color` still
 disables color, and non-interactive commands honor it.
 
@@ -1099,8 +1108,8 @@ projects/<slug>/{tasks.md,notes/,.attachments/}
 `.tt/` is the tombstone older builds refuse; never sync it.
 
 Machine-local `~/.docket/runtime/<workspace-id>/machine.json` holds theme,
-menu-bar and advisory visibility, submitted search history, and the active-lens
-pointer. Validate that pointer for shape alone, never referentially. Chrome
+menu-bar and advisory visibility, submitted search history, the active-lens
+pointer, and `greeted_on`. Validate that pointer for shape alone, never referentially. Chrome
 flags carry `omitempty`; absence is the default, never seeded.
 
 History holds at most 50 distinct trimmed submitted queries, oldest first;

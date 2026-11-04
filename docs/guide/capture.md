@@ -80,8 +80,10 @@ values, literal tokens, files with spaces, and relationship rules.
 
 ### Complete a token or look up syntax
 
-Type a sigil to see suggestions. Move the caret into an earlier token to complete
-it there. After closing suggestions with `Esc`, press `?` for syntax help at the
+Type a sigil to see suggestions. With the caret at the end of the draft, the
+rest of the selected suggestion appears dimmed after it, as a shell suggests the
+rest of a command: `%web` shows `site` when Website is selected, and `Tab` inserts
+it. Move the caret into an earlier token to complete it there. After closing suggestions with `Esc`, press `?` for syntax help at the
 caret. Closing help returns to the same draft.
 
 ### Expand and edit a capture

@@ -271,7 +271,9 @@ func (m *TaskComposerModel) renderCompactPanel(rows int) string {
 	b.WriteString(chrome.RenderLabeledDivider(m.Preset.label(), width))
 	b.WriteString("\n")
 	b.WriteString(m.renderComposerRouteRow(width))
-	input := m.Input.View()
+	// The selected completion's untyped remainder rides the caret's own row,
+	// dimmed, in cells that were blank; the input's height is unchanged.
+	input := m.RenderInputWithInlineSuggestion()
 	detailRows := rows - lipgloss.Height(input)
 	if details := m.renderComposerPanelDetails(detailRows-lipgloss.Height(b.String()), errors); details != "" {
 		b.WriteString("\n")

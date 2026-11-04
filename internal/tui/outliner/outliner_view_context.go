@@ -249,7 +249,7 @@ func (m *OutlinerModel) BuildOutlinerTitleLine(width int) string {
 	}
 	spec := pulse.OperationalTitleSpec{
 		Scope: theme.TitleStyle.Render(m.outlinerScopeLabel()),
-		Mode:  chrome.OperationalTitleModeSegment(m.ActiveOutlinerModeEntry()),
+		Mode:  chrome.OperationalTitleModeSegmentArriving(m.ActiveOutlinerModeEntry(), m.modeArrivalShown()),
 		Pace:  pace,
 		Pulse: &workspacePulse,
 	}
@@ -264,7 +264,7 @@ func (m *OutlinerModel) BuildOutlinerTitleLine(width int) string {
 	// so the reader sees where Tab and Shift+Tab go. It is offered only where the whole title still
 	// fits unshortened; anywhere narrower the lone active badge stands.
 	strip := spec
-	strip.Mode = chrome.OperationalTitleModeStrip(m.ActiveOutlinerMode())
+	strip.Mode = chrome.OperationalTitleModeStripArriving(m.ActiveOutlinerMode(), m.modeArrivalShown())
 	if pulse.OperationalTitleFitsWhole(strip, width) {
 		spec = strip
 	}

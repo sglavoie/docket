@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/docket/internal/logging"
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/conflict"
 	"github.com/sglavoie/docket/internal/tui/coordinator"
@@ -15,6 +16,7 @@ import (
 	"github.com/sglavoie/docket/internal/tui/operation"
 	"github.com/sglavoie/docket/internal/tui/operationhost"
 	"github.com/sglavoie/docket/internal/tui/outliner"
+	"github.com/sglavoie/docket/internal/tui/pulse"
 	"github.com/sglavoie/docket/internal/tui/status"
 	"github.com/sglavoie/docket/internal/tui/valuepicker"
 )
@@ -59,6 +61,11 @@ func (m *AppModel) handleGlobalInputMessage(msg tea.Msg) (bool, tea.Cmd) {
 		// no longer move what the first press has begun steering. A bare modifier
 		// is not a keystroke, which is why this sits under that drop.
 		m.lifecycle.dropLaunchFocus()
+		if m.crossOutliner != nil {
+			// A keystroke retires motion still settling: the rows close up under
+			// the next action rather than after it.
+			m.crossOutliner.DropMotion()
+		}
 		return m.handleGlobalKeyPress(msg)
 	case tea.PasteMsg:
 		return m.handleActivePasteOverlay(msg)
@@ -130,6 +137,14 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 			return true, cmd
 		}
 		return true, tea.Batch(cmd, returnCmd, lensCmd, noteCmd)
+	case outliner.DepartureGhostTickMsg, outliner.ModeArrivalTickMsg:
+		// Routed to the one Outliner whichever presentation is active, so a
+		// ghost started under a panel still retires on time.
+		if m.crossOutliner == nil {
+			return true, nil
+		}
+		_, cmd := m.crossOutliner.Update(msg)
+		return true, cmd
 	case outliner.LensProjectsLoadedMsg:
 		// A lens application publishes a whole population or none of it, so the
 		// shell cache is adopted only once the lens actually went live.
@@ -178,6 +193,34 @@ func (m *AppModel) settleLaunchFocus() {
 	}
 	m.lifecycle.dropLaunchFocus()
 	m.crossOutliner.FocusFirstLaunchRow()
+	if m.lifecycle.roomyPeek {
+		m.crossOutliner.OpenPeekIfRoomy()
+	}
+	m.greetLocalDay(time.Now())
+}
+
+// greetLocalDay opens the first interactive launch of a local day with
+// pulse.DailyGreeting. It rides the launch intent being spent, so it reads the
+// accepted population's pulse and is said at most once per session; the day it
+// was said is machine-local, so a later launch the same day stays quiet. A
+// keystroke that dropped the launch intent first also forgoes the greeting,
+// since the user is already working. A failed save still greets: the
+// consequence is a second greeting, never a lost one.
+func (m *AppModel) greetLocalDay(now time.Time) {
+	if !m.lifecycle.greets || m.domain.runtime == nil || m.domain.runtime.Machine() == nil {
+		return
+	}
+	m.lifecycle.greets = false
+	day := now.Format(time.DateOnly)
+	machine := *m.domain.runtime.Machine()
+	if machine.GreetedOn == day {
+		return
+	}
+	machine.GreetedOn = day
+	if err := m.domain.runtime.CommitMachine(&machine); err != nil {
+		logging.Warn("save greeted day: %v", err)
+	}
+	m.setInfoStatus(pulse.DailyGreeting(m.workspacePulse, now))
 }
 
 func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {

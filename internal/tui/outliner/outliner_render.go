@@ -58,38 +58,47 @@ func (m *OutlinerModel) singleProjectRowsFingerprint() string {
 func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 	colLayout := m.computeRowLayout(m.Rows, viewport.rowWidth, &m.hiddenLayout)
 
-	var rowBuilder strings.Builder
-	if viewport.pinned {
-		rowBuilder.WriteString(m.renderPinnedContextRow(viewport))
-		if viewport.startIdx < viewport.endIdx {
-			rowBuilder.WriteString("\n")
-		}
+	// The departure ghost borrows one list line; a full window lends it the
+	// last row's. Recorded on LastViewport so screen-row readers step over it.
+	ghostOffset, dropLast, ghosted := m.ghostSlot(viewport)
+	endIdx := viewport.endIdx
+	if dropLast {
+		endIdx--
 	}
-	for i := viewport.startIdx; i < viewport.endIdx; i++ {
+	m.LastViewport.ghostActive, m.LastViewport.ghostOffset = ghosted, ghostOffset
+	if dropLast {
+		m.LastViewport.endIdx = endIdx
+	}
+	var lines []string
+	if viewport.pinned {
+		lines = append(lines, m.renderPinnedContextRow(viewport))
+	}
+	for i := viewport.startIdx; i < endIdx; i++ {
 		row := m.Rows[i]
 		selected := i == m.Cursor
 
 		switch {
 		case row.IsSeparator:
-			rowBuilder.WriteString(chrome.RenderHorizontalDivider(viewport.rowWidth, chrome.WithDividerColor(theme.ColorBorder)))
+			lines = append(lines, chrome.RenderHorizontalDivider(viewport.rowWidth, chrome.WithDividerColor(theme.ColorBorder)))
 		case row.IsSectionHeader:
-			rowBuilder.WriteString(m.RenderOutlinerSectionHeaderRow(row, selected, viewport.rowWidth, i))
+			lines = append(lines, m.RenderOutlinerSectionHeaderRow(row, selected, viewport.rowWidth, i))
 		case row.IsProjectHeader:
-			rowBuilder.WriteString(m.RenderOutlinerProjectHeaderRow(row, selected, viewport.rowWidth, i))
+			lines = append(lines, m.RenderOutlinerProjectHeaderRow(row, selected, viewport.rowWidth, i))
 		case row.IsChecklistItem:
-			rowBuilder.WriteString(m.RenderOutlinerChecklistRow(row, selected, viewport.rowWidth, i))
+			lines = append(lines, m.RenderOutlinerChecklistRow(row, selected, viewport.rowWidth, i))
 		case row.IsNoteRow:
-			rowBuilder.WriteString(m.renderOutlinerNoteRow(row, selected, viewport.rowWidth, i, colLayout))
+			lines = append(lines, m.renderOutlinerNoteRow(row, selected, viewport.rowWidth, i, colLayout))
 		case selected && m.isQuickEditRow(row):
-			rowBuilder.WriteString(m.RenderOutlinerQuickEditRow(row, viewport.rowWidth, colLayout))
+			lines = append(lines, m.RenderOutlinerQuickEditRow(row, viewport.rowWidth, colLayout))
 		default:
-			rowBuilder.WriteString(m.RenderOutlinerTaskRow(row, selected, viewport.rowWidth, i, colLayout))
-		}
-
-		if i < viewport.endIdx-1 {
-			rowBuilder.WriteString("\n")
+			lines = append(lines, m.RenderOutlinerTaskRow(row, selected, viewport.rowWidth, i, colLayout))
 		}
 	}
+	if ghosted {
+		lines = append(lines[:ghostOffset], append([]string{m.renderDepartureGhost(viewport.rowWidth)}, lines[ghostOffset:]...)...)
+	}
+	var rowBuilder strings.Builder
+	rowBuilder.WriteString(strings.Join(lines, "\n"))
 
 	scrollbar := chrome.RenderScrollbar(len(m.Rows), viewport.VisibleRows, viewport.startIdx)
 	return chrome.AttachScrollbarAtWidth(rowBuilder.String(), scrollbar, viewport.rowWidth)
@@ -163,6 +172,9 @@ func (m *OutlinerModel) CursorScreenRow() (int, bool) {
 	if viewport.pinned {
 		row++
 	}
+	if viewport.ghostActive && row-viewport.topRow >= viewport.ghostOffset {
+		row++
+	}
 	return row, true
 }
 
@@ -225,6 +237,16 @@ func (m *OutlinerModel) pointerHitAt(x, y int) (outlinerPointerHit, bool) {
 		return outlinerPointerHit{}, false
 	}
 	offset := y - viewport.topRow
+	if viewport.ghostActive {
+		// The ghost's line names no row, and every row past it was drawn one
+		// line lower than the window places it.
+		if offset == viewport.ghostOffset {
+			return outlinerPointerHit{}, false
+		}
+		if offset > viewport.ghostOffset {
+			offset--
+		}
+	}
 	if viewport.pinned {
 		// The context row is not a row and draws no fold of its own to toggle: it
 		// stands in for its header, so a click on it is a click on that header's
@@ -405,7 +427,8 @@ func (m *OutlinerModel) renderOutlinerHostContent(width int) string {
 	m.LastViewport.topRow = strings.Count(b.String(), "\n")
 	m.pointerFrame = outlinerPointerFrame{rows: true}
 	b.WriteString(m.renderOutlinerRows(viewport))
-	m.writePeekDock(&b, viewport)
+	// The rows render records what it drew, a departure ghost included.
+	m.writePeekDock(&b, m.LastViewport)
 
 	return b.String()
 }

@@ -180,9 +180,9 @@ func (m *AppModel) setUndoableStatus(msg string, undoCb func() tea.Cmd) tea.Cmd 
 	}
 	m.setInfoStatus(msg)
 	m.feedback.armUndo(undoCb, time.Now().Add(UndoToastTimeout))
-	return status.TickCmd(UndoToastTimeout, func(time.Time) tea.Msg {
+	return tea.Batch(status.TickCmd(UndoToastTimeout, func(time.Time) tea.Msg {
 		return status.UndoToastTimeoutMsg{}
-	})
+	}), m.startUndoCountdown())
 }
 
 // setRecoveryFeedback installs the canonical recovery feedback only when the

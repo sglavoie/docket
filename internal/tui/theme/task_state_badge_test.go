@@ -38,7 +38,7 @@ func TestTaskStateBadgeUsesSemanticAccentWithoutChangingState(t *testing.T) {
 					badge := GetTaskStateBadge(task)
 					icon := state.Icon()
 					if state == models.StateBacklog {
-						icon = "🞑"
+						icon = "▣"
 					}
 					if badge != want.Render(icon) || ansi.Strip(badge) != ansi.Strip(GetStateBadge(state)) {
 						t.Fatalf("badge %q changed the workflow symbol or lost its semantic accent", badge)

@@ -32,6 +32,10 @@ func TestCaptureEditorStaysAtTerminalBottom(t *testing.T) {
 				}
 				plain := ansi.Strip(content)
 				lines := strings.Split(plain, "\n")
+				// The selected completion's untyped rest rides the editor row.
+				if rest := composer.InlineSuggestionRemainder(); rest != "" && lastLine == strings.TrimSpace(composer.Input.Value()) {
+					lastLine += " " + rest
+				}
 				if len(lines) != size[1] || strings.TrimSpace(lines[len(lines)-1]) != lastLine {
 					t.Fatalf("want editor %q on terminal row %d:\n%s", lastLine, size[1], plain)
 				}

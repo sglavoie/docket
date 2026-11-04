@@ -94,7 +94,7 @@ func TestSingletonProjectGroupMergesIntoItsRow(t *testing.T) {
 	}
 
 	line := ansi.Strip(outliner.RenderOutlinerTaskRow(rootRow, false, 120, rootIndex, nil))
-	if !strings.Contains(line, "[alpha] 🞑 alpha-root") {
+	if !strings.Contains(line, "[alpha] ▣ alpha-root") {
 		t.Fatalf("merged row %q does not lead with its project", line)
 	}
 	childLine := ansi.Strip(outliner.RenderOutlinerTaskRow(childRow, false, 120, rootIndex+1, nil))
@@ -232,7 +232,7 @@ func TestMergedRowLabelsUseOnlyTheirOwnWidth(t *testing.T) {
 		layout := outliner.ComputeOutlinerRowLayout(outliner.Rows, width)
 		index, row := mustRowForTask(t, outliner, root.ID)
 		line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, width, index, layout))
-		if !strings.Contains(line, "[alpha] 🞑 alpha-root") {
+		if !strings.Contains(line, "[alpha] ▣ alpha-root") {
 			t.Fatalf("width %d: merged row reserves another task's label width: %q", width, line)
 		}
 	}
@@ -251,9 +251,9 @@ func TestGroupedRowsDoNotReserveSpaceForOtherTasksContexts(t *testing.T) {
 		for _, task := range []*models.Task{plain, contextual} {
 			index, row := mustRowForTask(t, outliner, task.ID)
 			line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, width, index, layout))
-			want := "🞑 " + task.Title
+			want := "▣ " + task.Title
 			if task.Context != "" {
-				want = "🞑 " + ansi.Strip(outliner.taskIdentityLabel(row, width)) + " " + task.Title
+				want = "▣ " + ansi.Strip(outliner.taskIdentityLabel(row, width)) + " " + task.Title
 			}
 			if !strings.Contains(line, want) {
 				t.Fatalf("width %d: grouped row has an empty metadata gap: %q, want %q", width, line, want)
@@ -276,7 +276,7 @@ func TestMergedRowDescendantsHangBeneathItsBadge(t *testing.T) {
 		}
 		parent := ansi.Strip(outliner.RenderOutlinerTaskRow(rootRow, false, width, rootIndex, layout))
 		line := ansi.Strip(outliner.RenderOutlinerTaskRow(childRow, false, width, childIndex, layout))
-		badge := ansi.StringWidth(parent[:strings.Index(parent, "🞑")])
+		badge := ansi.StringWidth(parent[:strings.Index(parent, "▣")])
 		connector := ansi.StringWidth(line[:strings.Index(line, connectorLastItem)])
 		if connector != badge {
 			t.Fatalf("width %d: child connector at column %d, want the lead's badge column %d:\n%s\n%s", width, connector, badge, parent, line)

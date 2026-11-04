@@ -286,6 +286,7 @@ func (m *AppModel) wireOutlinerOperationExecutor(outlinerView *outliner.Outliner
 	outlinerView.SetSyncAdvisory(m.feedback.syncAdvisoryLine)
 	outlinerView.SetAdvisoriesHidden(m.feedback.advisoriesHidden)
 	outlinerView.SetMouseDisabled(m.mouseDisabled)
+	outlinerView.SetMotion(m.lifecycle.motion)
 	outlinerView.SetPointerKeyDispatch(m.dispatchPointerKey)
 }
 

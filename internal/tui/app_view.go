@@ -42,6 +42,11 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 		if !m.lifecycle.quitting && result.WindowTitle == "" {
 			result.WindowTitle = pulse.WindowTitle(m.workspacePulse)
 		}
+		// The terminal's own progress indicator fills as Today empties; the
+		// renderer diffs it and resets it on exit.
+		if !m.lifecycle.quitting && result.ProgressBar == nil {
+			result.ProgressBar = pulse.TerminalProgress(m.workspacePulse)
+		}
 		result.BackgroundColor = m.terminalBackground()
 		if r := recover(); r != nil {
 			stack := debug.Stack()
