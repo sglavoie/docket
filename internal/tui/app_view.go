@@ -74,7 +74,7 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 	if current := m.activeView(); current != nil {
 		policy, classified := route.ChromePolicyForPresentation(m.currentPresentationView())
 		if injector, ok := current.(pulse.WorkspacePulseAware); classified && policy.WorkspacePulseEligible() && ok {
-			injector.SetWorkspacePulse(m.workspacePulse)
+			injector.SetWorkspacePulse(m.shownWorkspacePulse())
 		}
 		if injector, ok := current.(pulse.CompletionActivityAware); classified && policy.WorkspacePulseEligible() && ok {
 			injector.SetCompletionActivity(m.completionActivity)
@@ -86,7 +86,7 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 	if frame, ok := m.hostedPanelFrame(); ok && frame.layout.HostDrawn {
 		policy, classified := route.ChromePolicyForPresentation(frame.host)
 		if injector, ok := frame.view.(pulse.WorkspacePulseAware); classified && policy.WorkspacePulseEligible() && ok {
-			injector.SetWorkspacePulse(m.workspacePulse)
+			injector.SetWorkspacePulse(m.shownWorkspacePulse())
 		}
 		if injector, ok := frame.view.(pulse.CompletionActivityAware); classified && policy.WorkspacePulseEligible() && ok {
 			injector.SetCompletionActivity(m.completionActivity)

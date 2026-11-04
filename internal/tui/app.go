@@ -134,6 +134,8 @@ type AppModel struct {
 	// title row. It is recomputed after committed count-changing mutations so
 	// paint paths can read it without an extra full-tree walk.
 	workspacePulse pulse.WorkspacePulse
+	// pulseMotion is the count change the title is drawing; see pulse_motion.go.
+	pulseMotion pulseMotion
 	// workspaceAgenda names the pulse's Today and Overdue tasks for a control
 	// socket host, and is computed only while one is connected.
 	workspaceAgenda pulse.WorkspaceAgenda

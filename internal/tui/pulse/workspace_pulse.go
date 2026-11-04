@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"charm.land/lipgloss/v2"
+
 	"github.com/sglavoie/docket/internal/app"
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/taskref"
@@ -19,6 +21,86 @@ type WorkspacePulse struct {
 	Today   int
 	Overdue int
 	Done    int
+
+	// lit is how the readout draws a count that just changed. It is a
+	// render-only annotation the shell adds to the copy it hands a view, never
+	// part of the measured pulse, so it changes paint and never a width or a
+	// ladder rung. See Lit.
+	lit PulseChange
+}
+
+// PulseComponent names one count of the readout, as a bit of a set.
+type PulseComponent uint8
+
+const (
+	PulseInbox PulseComponent = 1 << iota
+	PulseToday
+	PulseOverdue
+	PulseDone
+)
+
+// PulseChange is which counts moved between two pulses and which way, plus the
+// phase they are drawn in. Fresh is the first phase, lit in the component's
+// accent; settling is the second, bold in its ordinary color, after which the
+// count reads as any other.
+type PulseChange struct {
+	Raised   PulseComponent
+	Lowered  PulseComponent
+	Settling bool
+}
+
+// Any reports whether some count moved.
+func (c PulseChange) Any() bool { return c.Raised|c.Lowered != 0 }
+
+// PulseChangeBetween names the counts that differ from before to after. Only
+// the values compare; neither pulse's own annotation is read.
+func PulseChangeBetween(before, after WorkspacePulse) PulseChange {
+	var change PulseChange
+	for _, pair := range []struct {
+		component     PulseComponent
+		before, after int
+	}{
+		{PulseInbox, before.Inbox, after.Inbox},
+		{PulseToday, before.Today, after.Today},
+		{PulseOverdue, before.Overdue, after.Overdue},
+		{PulseDone, before.Done, after.Done},
+	} {
+		switch {
+		case pair.after > pair.before:
+			change.Raised |= pair.component
+		case pair.after < pair.before:
+			change.Lowered |= pair.component
+		}
+	}
+	return change
+}
+
+// Lit returns the pulse annotated to draw change. A component the change does
+// not name, or one at zero and so not drawn, renders as it always does.
+func (p WorkspacePulse) Lit(change PulseChange) WorkspacePulse {
+	p.lit = change
+	return p
+}
+
+// componentStyle is how one count is drawn: base unless it just changed. A
+// fresh change takes the accent its direction earns — success for Done rising,
+// the warning ink for Overdue rising, the primary otherwise — and a settling
+// one keeps base's color, bold. Neither adds a cell.
+func (p WorkspacePulse) componentStyle(component PulseComponent, base lipgloss.Style) lipgloss.Style {
+	raised, lowered := p.lit.Raised&component != 0, p.lit.Lowered&component != 0
+	if !raised && !lowered {
+		return base
+	}
+	if p.lit.Settling {
+		return base.Bold(true)
+	}
+	switch {
+	case raised && component == PulseDone:
+		return base.Foreground(theme.ColorSuccess).Bold(true)
+	case raised && component == PulseOverdue:
+		return base.Foreground(theme.ColorWarning).Bold(true)
+	}
+	return base.Foreground(theme.ColorPrimary).Bold(true)
 }
 
 type workspacePulseLevel uint8
@@ -116,16 +198,16 @@ func formatWorkspacePulseComponents(pulse WorkspacePulse, level workspacePulseLe
 
 	parts := make([]string, 0, 4)
 	if level < workspacePulseWithoutInbox && pulse.Inbox > 0 {
-		parts = append(parts, theme.MutedStyle.Render(fmt.Sprintf("inbox %d", pulse.Inbox)))
+		parts = append(parts, pulse.componentStyle(PulseInbox, theme.MutedStyle).Render(fmt.Sprintf("inbox %d", pulse.Inbox)))
 	}
 	if pulse.Today > 0 {
-		parts = append(parts, theme.MutedStyle.Render(fmt.Sprintf("today %d", pulse.Today)))
+		parts = append(parts, pulse.componentStyle(PulseToday, theme.MutedStyle).Render(fmt.Sprintf("today %d", pulse.Today)))
 	}
 	if level < workspacePulseTodayOnly && pulse.Overdue > 0 {
-		parts = append(parts, theme.PreviewWarningStyle.Render(fmt.Sprintf("overdue %d", pulse.Overdue)))
+		parts = append(parts, pulse.componentStyle(PulseOverdue, theme.PreviewWarningStyle).Render(fmt.Sprintf("overdue %d", pulse.Overdue)))
 	}
 	if level < workspacePulseWithoutDone && pulse.Done > 0 {
-		parts = append(parts, theme.MutedStyle.Render(fmt.Sprintf("done %d", pulse.Done)))
+		parts = append(parts, pulse.componentStyle(PulseDone, theme.MutedStyle).Render(fmt.Sprintf("done %d", pulse.Done)))
 	}
 	if len(parts) == 0 {
 		return ""

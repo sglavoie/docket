@@ -28,6 +28,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 	draftBefore := m.quitBlockReason() != ""
 	externalRefreshWasSafe := m.safeToAdoptExternalChange()
 	pulseBefore := m.workspacePulse
+	launchArmedBefore := m.lifecycle.launchFocusArmed()
 	modeBefore := m.outlinerModeForMotion()
 	defer func() {
 		if r := recover(); r != nil {
@@ -58,6 +59,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		m.observeCheckInFeedbackMessage(msg)
 		outCmd = tea.Batch(outCmd, m.publishCheckInFeedback())
 		m.celebrateClearedToday(pulseBefore, time.Now())
+		outCmd = tea.Batch(outCmd, m.markPulseChange(pulseBefore, launchArmedBefore))
 		if m.crossOutliner != nil && m.outlinerModeForMotion() != modeBefore {
 			outCmd = tea.Batch(outCmd, m.crossOutliner.MarkModeArrival(modeBefore))
 		}

@@ -14,18 +14,6 @@ func clearTodayDriver(t *testing.T, motion bool) *UITestDriver {
 	return driver
 }
 
-func pressKeys(t *testing.T, driver *UITestDriver, keys ...string) UITestObservation {
-	t.Helper()
-	var obs UITestObservation
-	for _, key := range keys {
-		var err error
-		if obs, err = driver.ApplyAction(UITestAction{Type: UITestActionKey, Key: key}, ObserveOptions{}); err != nil {
-			t.Fatal(err)
-		}
-	}
-	return obs
-}
-
 // Planning one task for Today and finishing it empties Today: the toast says
 // so ahead of its undo, and with motion the divider sweeps in the success color.
 func TestFinishingTheLastTodayTaskCelebrates(t *testing.T) {

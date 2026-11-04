@@ -401,3 +401,62 @@ func (m *AppModel) outlinerModeForMotion() chrome.OutlinerModeID {
 	}
 	return m.crossOutliner.ActiveOutlinerMode()
 }
+
+// The two phases a changed pulse count is drawn in: lit in its accent, then
+// bold in its own color, then plain. Long enough for an eye on the row to
+// catch which number moved, short enough that nothing waits on it.
+const (
+	pulseMotionFreshDuration    = 260 * time.Millisecond
+	pulseMotionSettlingDuration = 420 * time.Millisecond
+)
+
+// pulseMotion is the workspace pulse's count change being drawn, and the
+// generation that voids a superseded change's ticks.
+type pulseMotion struct {
+	change pulse.PulseChange
+	seq    int
+}
+
+// pulseMotionTickMsg advances the change Seq names one phase.
+type pulseMotionTickMsg struct{ Seq int }
+
+// markPulseChange draws the counts that moved across one Update. It runs from
+// the deferred closure in AppModel.Update, so every seam that recomputes the
+// pulse — a commit, an undo, a sync, the periodic tick — is covered without
+// one of them asking. A session without motion draws nothing, and neither does
+// the launch, whose first pulse is a reading rather than a change: launchArmed
+// is whether the launch focus was still owed when the Update began.
+func (m *AppModel) markPulseChange(before pulse.WorkspacePulse, launchArmed bool) tea.Cmd {
+	if !m.lifecycle.motion || launchArmed || m.lifecycle.launchFocusArmed() {
+		return nil
+	}
+	change := pulse.PulseChangeBetween(before, m.workspacePulse)
+	if !change.Any() {
+		return nil
+	}
+	m.pulseMotion.seq++
+	m.pulseMotion.change = change
+	return pulseMotionTick(pulseMotionFreshDuration, m.pulseMotion.seq)
+}
+
+func (m *AppModel) advancePulseMotion(msg pulseMotionTickMsg) tea.Cmd {
+	if msg.Seq != m.pulseMotion.seq || !m.pulseMotion.change.Any() {
+		return nil
+	}
+	if !m.pulseMotion.change.Settling {
+		m.pulseMotion.change.Settling = true
+		return pulseMotionTick(pulseMotionSettlingDuration, msg.Seq)
+	}
+	m.pulseMotion.change = pulse.PulseChange{}
+	return nil
+}
+
+func pulseMotionTick(delay time.Duration, seq int) tea.Cmd {
+	return status.TickCmd(delay, func(time.Time) tea.Msg { return pulseMotionTickMsg{Seq: seq} })
+}
+
+// shownWorkspacePulse is the pulse a view is handed to draw: the measured
+// counts, annotated with the change still settling.
+func (m *AppModel) shownWorkspacePulse() pulse.WorkspacePulse {
+	return m.workspacePulse.Lit(m.pulseMotion.change)
+}

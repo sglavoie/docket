@@ -970,6 +970,15 @@ and each changes paint alone: no width, no row, no window input.
   On a change, `MarkModeArrival` draws `chrome.ModeArrival` for 180 ms: the badge
   reversed, and the `‹` or `›` the Tab cycle turned through lit.
   `ModeArrivalBetween` names the direction, and a jump lights no arrow.
+- **Pulse counts.** The same closure hands `markPulseChange` the pulse it held
+  before the update. `pulse.PulseChangeBetween` names the components that rose
+  or fell, and the shell draws them for two phases: 260 ms in an accent
+  (success for Done rising, warning for Overdue rising, primary otherwise), then
+  420 ms bold in their own color. The change is an annotation, not a count:
+  `shownWorkspacePulse` attaches it to the copy `View` hands each pulse-aware
+  view through `WorkspacePulse.Lit`, so `m.workspacePulse`, the window title,
+  the progress indicator, and every comparison read bare values. A launch draws
+  nothing, since the launch focus is still owed while its first pulse lands.
 - **Undo countdown.** `setUndoableStatus` starts a 24-step countdown beside the
   undo deadline. `renderFooterDivider` draws its remaining share as an accented
   run on the idle divider and yields to the flash whenever one runs.

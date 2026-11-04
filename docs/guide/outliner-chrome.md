@@ -218,8 +218,10 @@ Docket draws a little motion where an action needs following. A task that
 leaves the view, such as one you just finished, stays in its place for a moment,
 struck through and checked when it was completed, before the rows close up; the
 next key retires it at once. A mode switch lands its badge highlighted for a
-moment and lights the `‹` or `›` it traveled through. Tests and the harness run
-without this motion.
+moment and lights the `‹` or `›` it traveled through. A workspace count in the
+title that just changed, such as `done` after you finish a task, lights for a
+moment and settles back: green when Done rises, amber when Overdue rises, and
+the accent color otherwise. Tests and the harness run without this motion.
 A save failure with a retained draft stays visible until that field is edited
 or the draft is saved or discarded. Moving the cursor, waiting, or opening Help
 does not dismiss it. The selection count stays in the second header row.
