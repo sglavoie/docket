@@ -11,11 +11,11 @@
     { "type": "assert", "label": "Peek leads with the whole title, wrapped rather than elided", "assert": "contains", "value": "Investigate intermittent timeout when syncing very" },
     { "type": "assert", "assert": "contains", "value": "project archives over slow connections" },
     { "type": "assert", "label": "the summary line names the status and priority the row abbreviates", "assert": "contains", "value": "Status: ▣ Backlog · Priority: ◉ 1" },
-    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "0 above · 3 below" },
+    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "↓ 3 more" },
 
     { "type": "key", "label": "the rest of the document is a page turn away", "key": "ctrl+f" },
     { "type": "assert", "label": "every tag the row abbreviated to +1 is named in full", "assert": "contains", "value": "Tags: #infrastructure #reliability #sync" },
-    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "3 above · 0 below" },
+    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "↑ 3 more" },
 
     { "type": "assert", "assert": "contains", "value": "Context: distributed-systems" },
     { "type": "key", "label": "Esc dismisses Peek before Outliner navigation", "key": "esc" },

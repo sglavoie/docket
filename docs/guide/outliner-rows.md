@@ -161,9 +161,13 @@ Grouped rows use only the space their labels need: a task without context
 leaves no empty context column. Cross-project ranked results align their labels.
 Peek (`b`) shows the full context; `#` opens the picker to change it.
 
-An overdue deadline includes `overdue` in its badge, such as `Oct 15 overdue` or
-`Today 09:00 overdue`, so it remains identifiable without color. Peek's Due line
-shows the date, any time, and `overdue`. A date-only deadline becomes overdue
+Within a week either way, a deadline badge counts days instead of naming a
+date: `Yesterday`, `3 days ago`, `Today`, `Tomorrow`, `In 2 days`, up to
+`6 days ago` and `In 6 days`. Further out it shows the date, such as `Nov 12`.
+A deadline that has passed says so in words, so it stays identifiable without
+color: a recent one by its distance (`Yesterday`, `3 days ago`), an older one as
+`Oct 15 overdue`, and a timed deadline already passed today as
+`Today 09:00 overdue`. Peek's Due line shows the date, any time, and `overdue`. A date-only deadline becomes overdue
 the following day; a timed deadline becomes overdue after its time passes.
 
 A title too wide for its row is display-compacted before it is cut: a link
@@ -217,11 +221,13 @@ Waiting and Doing ages appear in Peek. Their rows become prominent only when
 there is something to act on, such as a deadline, priority, or owed review.
 
 Due-date chips include the year when the date is outside the current year,
-including overdue dates. Today and Tomorrow keep their relative labels.
+including overdue dates.
 
-Due dates and arrived check-ins use filled chips. Today and overdue dates are
-bold; upcoming dates are quieter. In `--no-color`, bold and the `⊡` date marker
-remain, so urgency does not depend on color.
+Due dates and arrived check-ins use filled chips. Upcoming and today's
+deadlines are teal; an overdue one is red, because a missed deadline is the one
+date that is a problem rather than a plan. Today and overdue dates are bold;
+upcoming dates are quieter. In `--no-color`, the bold and the words remain, so
+urgency does not depend on color.
 
 A Doing task similarly reads `doing <age>` in Peek, measured from the moment it
 entered Doing rather than from its last touch. It reports how long work has
@@ -404,7 +410,8 @@ Long details wrap and remain accessible by scrolling:
 | `PgDn` / `PgUp` | Move the outline, even with Peek open |
 | `b` / `Esc` | Close Peek before unwinding navigation |
 
-The bottom line reports hidden content, such as `12 above · 7 below`.
+The bottom line reports hidden content in each direction that has any, such as
+`↓ 7 more` at the top or `↑ 12 more · ↓ 7 more` partway through.
 At either end, Peek's scrolling keys stop rather than moving the outline.
 The footer offers only directions that can move.
 

@@ -8,10 +8,10 @@
     { "type": "assert", "label": "the row reserves its context badge", "assert": "contains", "value": "[distrib…]" },
     { "type": "key", "label": "select the long-context task", "key": "end" },
     { "type": "key", "label": "Peek recovers the context abbreviated on the row", "key": "b" },
-    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "0 above · 3 below" },
+    { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "↓ 3 more" },
     { "type": "key", "label": "page to the end of the document", "key": "ctrl+f" },
     { "type": "assert", "label": "paging Peek leaves context visible on the row", "assert": "contains", "value": "[distrib…]" },
-    { "type": "assert", "assert": "contains", "value": "3 above · 0 below", "label": "the position row accounts for the compact window and its current offset" },
+    { "type": "assert", "assert": "contains", "value": "↑ 3 more", "label": "the position row accounts for the compact window and its current offset" },
     { "type": "assert", "assert": "contains", "value": "Context: distributed-systems" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

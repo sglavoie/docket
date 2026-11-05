@@ -110,10 +110,22 @@ func (doc inlinePeekDocument) Lines(offset int) []string {
 // positionLine spends the reserved row on exact counts rather than an ordinal:
 // what a reader needs to know is how much detail is still unread in each
 // direction, and a page number only answers that after arithmetic — the more so
-// once a window can stop between two pages.
+// once a window can stop between two pages. It names only a direction that
+// holds something, as an arrow and a count ("↓ 10 more", "↑ 3 more · ↓ 7
+// more"), so a window at the top never spends words on the nothing above it.
 func (doc inlinePeekDocument) positionLine(above, below int) string {
-	counts := fmt.Sprintf("%d above · %d below", above, below)
-	return doc.indent + theme.MutedStyle.Render(textfit.TruncateIntentional(counts, doc.width, "…"))
+	return doc.indent + theme.MutedStyle.Render(textfit.TruncateIntentional(peekPositionCounts(above, below), doc.width, "…"))
+}
+
+func peekPositionCounts(above, below int) string {
+	parts := make([]string, 0, 2)
+	if above > 0 {
+		parts = append(parts, fmt.Sprintf("↑ %d more", above))
+	}
+	if below > 0 {
+		parts = append(parts, fmt.Sprintf("↓ %d more", below))
+	}
+	return strings.Join(parts, " · ")
 }
 
 type inlinePeekOptions struct {

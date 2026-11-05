@@ -32,20 +32,20 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "not_contains", "value": "No comments yet." },
 
-    { "type": "assert", "label": "adding a comment preserves the summary reading position", "assert": "contains", "value": "1 above ·" },
+    { "type": "assert", "label": "adding a comment preserves the summary reading position", "assert": "contains", "value": "↑ 1 more" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "Ctrl+F pages the pane, not the list", "key": "ctrl+f" },
     { "type": "assert", "label": "which is where the stored comment body reads", "assert": "contains", "value": "Planning stays parked until" },
-    { "type": "assert", "assert": "not_contains", "value": "0 above ·" },
+    { "type": "assert", "assert": "contains", "value": "↑ " },
     { "type": "assert", "assert": "contains", "value": "[mix-quiet-planning]" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "Ctrl+U walks back half a page", "key": "ctrl+u" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "key": "ctrl+b" },
-    { "type": "assert", "label": "and the top of the document is the top again", "assert": "contains", "value": "0 above ·" },
+    { "type": "assert", "label": "and the top of the document is the top again", "assert": "not_contains", "value": "↑ " },
     { "type": "key", "label": "Ctrl+D travels the shorter distance", "key": "ctrl+d" },
-    { "type": "assert", "assert": "not_contains", "value": "0 above ·" },
+    { "type": "assert", "assert": "contains", "value": "↑ " },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "restart", "label": "relaunching reads the comment back from durable state" },
@@ -58,7 +58,7 @@
     { "type": "assert", "label": "a fresh launch opens with no pane", "assert": "not_contains", "value": "Planning stays parked until" },
     { "type": "key", "key": "b" },
     { "type": "assert", "label": "the document leads with the project's own name", "assert": "contains", "value": "Mix Quiet Planning" },
-    { "type": "assert", "label": "and a fresh window starts at the top", "assert": "contains", "value": "0 above ·" },
+    { "type": "assert", "label": "and a fresh window starts at the top", "assert": "not_contains", "value": "↑ " },
     { "type": "key", "key": "ctrl+f" },
     { "type": "assert", "label": "with the stored comment a page turn below it", "assert": "contains", "value": "Planning stays parked until" },
     { "type": "assert", "assert": "no_layout_issues" }

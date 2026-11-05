@@ -86,7 +86,7 @@ func emptyProjectPeekFrame(t *testing.T, m *OutlinerModel, width int, label stri
 // on. It is the render's own statement of how much detail is still unread, which
 // is what makes "the walk reached the end" a claim about the screen rather than
 // about an offset only the keys can see.
-var emptyProjectPeekCounter = regexp.MustCompile(`^(\d+) above · (\d+) below$`)
+var emptyProjectPeekCounter = regexp.MustCompile(`^(?:↑ (\d+) more)?(?: · )?(?:↓ (\d+) more)?$`)
 
 // assertEmptyProjectPeekIsDrawn holds one stop of a walk to the frame: every row
 // of the window the scrolling keys act on must be a row the render drew. It
@@ -107,8 +107,9 @@ func assertEmptyProjectPeekIsDrawn(t *testing.T, m *OutlinerModel, width int, la
 	}
 
 	for _, line := range frame {
-		match := emptyProjectPeekCounter.FindStringSubmatch(strings.TrimSpace(line))
-		if match == nil {
+		trimmed := strings.TrimSpace(line)
+		match := emptyProjectPeekCounter.FindStringSubmatch(trimmed)
+		if trimmed == "" || match == nil {
 			continue
 		}
 		above, _ = strconv.Atoi(match[1])

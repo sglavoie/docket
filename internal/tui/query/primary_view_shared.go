@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sglavoie/docket/internal/icons"
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/theme"
@@ -135,15 +134,19 @@ func FormatDueDate(task *models.Task) string {
 	if task.DueDate == nil || task.IsComplete() {
 		return ""
 	}
-	dateStr, style := chrome.ClassifyDueDate(task.DueDate)
+	dateStr, style, saysPast := chrome.ClassifyDueDate(task.DueDate, time.Now())
 	if clock := chrome.FormatDueClock(task); clock != "" {
 		dateStr += " " + clock
 	}
 	if task.IsOverdue() {
-		dateStr += " overdue"
+		if !saysPast {
+			dateStr += " overdue"
+		}
 		style = theme.OverdueStyle
 	}
-	return style.Render(icons.Get("date") + " " + dateStr)
+	// The badge's fill and padding already bound it as one date object, so it
+	// spends no columns on a calendar glyph saying so.
+	return style.Render(dateStr)
 }
 
 // DeferWakeWindow bounds how long a lapsed deferral keeps announcing that the

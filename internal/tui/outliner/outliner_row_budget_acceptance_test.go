@@ -66,7 +66,9 @@ func TestLongIdentityAndPresenceMarkersKeepAReadableTitle(t *testing.T) {
 				if lipgloss.Width(plain) > width {
 					t.Fatalf("%d-column row overruns: %q", width, plain)
 				}
-				for _, want := range []string{"Confirm the", "▤", "📎", "*"} {
+				// "Confirm th" is what 60 columns keep once the deadline reads
+				// "In 3 days" rather than a two-column glyph and "Nov 8".
+				for _, want := range []string{"Confirm th", "▤", "📎", "*"} {
 					if !strings.Contains(plain, want) {
 						t.Fatalf("%d-column row merged=%v lost %q: %q", width, merged, want, plain)
 					}
@@ -119,7 +121,7 @@ func TestNestedRowUnderALongProjectNameKeepsItsEssentials(t *testing.T) {
 				}
 			}
 			// A recognizable phrase survives even in the deepest, narrowest row.
-			if !strings.Contains(plain, "Confirm the vend") {
+			if !strings.Contains(plain, "Confirm the ve") {
 				t.Fatalf("%d-column nested row spent nothing on the title: %q", width, plain)
 			}
 			// And the long project name never reaches the task row at all, so it
@@ -224,7 +226,7 @@ func TestSelectedNestedRowKeepsTheSameEssentials(t *testing.T) {
 	for _, want := range []string{
 		ansi.Strip(chrome.RenderPriorityBadge(1)),
 		ansi.Strip(query.FormatDueDate(task)),
-		"Confirm the vend",
+		"Confirm the ve",
 	} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("selected row traded an essential for its mark, missing %q: %q", want, plain)

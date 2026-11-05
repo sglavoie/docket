@@ -7,14 +7,16 @@ import "charm.land/lipgloss/v2"
 // context. Their fills are curated pairs, not palette derivations, so a user
 // palette override cannot mint an unreadable badge.
 //
-// The family lives in the teal band because every section badge is spoken for:
-// the twelve ViewMode fills already claim green, orange, blue, indigo, purple,
-// violet, slate, mauve and maroon, and a due chip that borrowed one of those
-// hues read as a section header rather than as a date. Teal sits at least 26°
-// from all of them in both themes, so a due chip is its own object on sight;
-// `TestDueBadgeFillsAvoidSectionBadges` holds that apart. Urgency is carried by
-// saturation within the one hue rather than by hue, keeping lightness inside
-// the band the section badges already occupy so a row never glares.
+// Hue says what a date means. A deadline still ahead, or arriving today, lives in
+// the teal band: every section badge is spoken for — the twelve ViewMode fills
+// already claim green, orange, blue, indigo, purple, violet, slate, mauve and
+// maroon — and teal sits at least 26° from all of them, so a due chip is its own
+// object on sight; `TestDueBadgeFillsAvoidSectionBadges` holds that apart. Within
+// teal, today and upcoming differ by saturation and weight. A deadline that has
+// passed leaves the band for the palette's danger red, because lateness is the
+// one date reading that is a problem rather than a plan, and a teal "overdue"
+// read as calm. Its crimson is brighter and more saturated than the Canceled
+// section's dark maroon, so the two never read as one object.
 //
 // Two of the three tiers are emphasized, and emphasis is a pair: bold, and ink
 // pushed away from the fill rather than toward it. A deadline that has arrived
@@ -30,8 +32,8 @@ import "charm.land/lipgloss/v2"
 // startup look and the repainted look drift apart.
 func newOverdueBadgeStyle() lipgloss.Style {
 	return makeDueBadgeStyle(dueBadgeTone{
-		darkFill: "#0a5c54", darkInk: "#f0fdfa",
-		lightFill: "#5eead4", lightInk: "#042f2e",
+		darkFill: "#8a1c30", darkInk: "#fff1f2",
+		lightFill: "#fecdd3", lightInk: "#4c0519",
 		emphasized: true,
 	})
 }

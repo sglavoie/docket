@@ -11,7 +11,7 @@ With an existing `web` project, capturing
 `fix login redirect !1 @friday #auth %web $today` on Friday 28 August 2026
 creates a Backlog task planned for Today, with High priority and a September 4
 deadline. A weekday means the next occurrence, never today. Its row reads
-`□ ◉ fix login redirect  ⊡ Sep 4`; the `auth` tag is visible in Peek (`b`).
+`□ ◉ fix login redirect  Sep 4`; the `auth` tag is visible in Peek (`b`).
 Today and Next are planning collections, so `$today` does not create a new
 lifecycle state. `%web` names the destination project; see the project-creation
 confirmation below for slugs that do not yet exist.
@@ -201,8 +201,11 @@ section badges, the preview's state glyph the badge the new row will carry,
 and each tag its chip color; `Mixed`
 and `Unavailable` read muted. The deadline preview includes its resolved
 weekday and any clock time, adding the year when it differs from the current
-year. Date suggestions also show the resolved weekday and date before you
-accept them; accepting one inserts only the original date token.
+year, followed by how far away that day is: `@Fri Nov 6 (tomorrow)`,
+`@Sat Nov 7 (in 2 days)`, `@Wed Nov 4 (yesterday)`. Date suggestions also show
+the resolved weekday, date, and distance before you accept them, leaving the
+distance off a suggestion that already is one, such as `@tomorrow`; accepting
+one inserts only the original date token.
 If the parsed title matches an unfinished task in the resolved project,
 the preview adds `Matching title: web#42 · Backlog` (and a count if more match).
 It shows the referenced task's current status and, for a child, its parent as

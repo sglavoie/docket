@@ -7,7 +7,6 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/docket/internal/icons"
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/theme"
 	"github.com/sglavoie/docket/internal/util"
@@ -32,14 +31,22 @@ func TestFormatDueDateRendersTheThemeTierUnchanged(t *testing.T) {
 				text string
 				want func() string
 			}{
-				{"overdue", today.AddDate(0, 0, -3), today.AddDate(0, 0, -3).Format("Jan 2") + " overdue",
+				{"long overdue", today.AddDate(0, 0, -9), today.AddDate(0, 0, -9).Format("Jan 2") + " overdue",
 					func() string {
-						return theme.OverdueStyle.Render(icons.Get("date") + " " + today.AddDate(0, 0, -3).Format("Jan 2") + " overdue")
+						return theme.OverdueStyle.Render(today.AddDate(0, 0, -9).Format("Jan 2") + " overdue")
 					}},
+				{"recently overdue", today.AddDate(0, 0, -3), "3 days ago",
+					func() string { return theme.OverdueStyle.Render("3 days ago") }},
+				{"yesterday", today.AddDate(0, 0, -1), "Yesterday",
+					func() string { return theme.OverdueStyle.Render("Yesterday") }},
 				{"today", today, "Today",
-					func() string { return theme.DueTodayStyle.Render(icons.Get("date") + " Today") }},
+					func() string { return theme.DueTodayStyle.Render("Today") }},
 				{"tomorrow", today.AddDate(0, 0, 1), "Tomorrow",
-					func() string { return theme.DueDateStyle.Render(icons.Get("date") + " Tomorrow") }},
+					func() string { return theme.DueDateStyle.Render("Tomorrow") }},
+				{"in two days", today.AddDate(0, 0, 2), "In 2 days",
+					func() string { return theme.DueDateStyle.Render("In 2 days") }},
+				{"later", today.AddDate(0, 0, 9), today.AddDate(0, 0, 9).Format("Jan 2"),
+					func() string { return theme.DueDateStyle.Render(today.AddDate(0, 0, 9).Format("Jan 2")) }},
 			}
 			for _, tc := range cases {
 				due := tc.due
@@ -49,24 +56,35 @@ func TestFormatDueDateRendersTheThemeTierUnchanged(t *testing.T) {
 					t.Errorf("%s due chip = %q, want the theme tier's own render %q", tc.name, got, tc.want())
 				}
 				// Emphasis may not cost a column: the ladder measures the chip, and
-				// --no-color leaves exactly this text behind — the glyph, the value,
-				// and the chip's own two padding cells.
-				if plain, want := ansi.Strip(got), " "+icons.Get("date")+" "+tc.text+" "; plain != want {
+				// --no-color leaves exactly this text behind — the value and the
+				// chip's own two padding cells, with no calendar glyph.
+				if plain, want := ansi.Strip(got), " "+tc.text+" "; plain != want {
 					t.Errorf("%s due chip monochrome text = %q, want %q", tc.name, plain, want)
 				}
 			}
 
 			// A timed overdue date states its clock and still reaches the overdue
 			// tier, which is the one place FormatDueDate overrides the tier itself.
-			timed := today.AddDate(0, 0, -1).Add(15*time.Hour + 30*time.Minute)
+			// Past the relative window the text names the date, so it says overdue.
+			timed := today.AddDate(0, 0, -8).Add(15*time.Hour + 30*time.Minute)
 			task := &models.Task{
 				ID:            "timed",
 				WorkflowState: models.StateBacklog,
 				DueDate:       &timed,
 			}
-			want := theme.OverdueStyle.Render(icons.Get("date") + " " + timed.Format("Jan 2") + " 15:30 overdue")
+			want := theme.OverdueStyle.Render(timed.Format("Jan 2") + " 15:30 overdue")
 			if got := FormatDueDate(task); got != want {
 				t.Errorf("timed overdue chip = %q, want %q", got, want)
+			}
+
+			// A timed deadline passed earlier today keeps the day and adds the
+			// word, since "Today" alone would not say it is late.
+			earlier := today.Add(time.Minute)
+			if time.Now().After(earlier) {
+				task := &models.Task{ID: "earlier", WorkflowState: models.StateBacklog, DueDate: &earlier}
+				if got, want := ansi.Strip(FormatDueDate(task)), " Today 00:01 overdue "; got != want {
+					t.Errorf("timed deadline passed today = %q, want %q", got, want)
+				}
 			}
 		})
 	}
@@ -86,7 +104,10 @@ func TestOverdueDeadlineLabelSurvivesMonochrome(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			task := &models.Task{WorkflowState: models.StateBacklog, DueDate: &tc.due}
 			plain := ansi.Strip(FormatDueDate(task))
-			if strings.Contains(plain, " overdue") != tc.wantLate {
+			// A relative past day ("Yesterday", "3 days ago") already says late in
+			// words; every other passed deadline spells "overdue".
+			late := strings.Contains(plain, " overdue") || strings.Contains(plain, "Yesterday") || strings.Contains(plain, " ago")
+			if late != tc.wantLate {
 				t.Fatalf("deadline label = %q, want overdue=%v", plain, tc.wantLate)
 			}
 		})

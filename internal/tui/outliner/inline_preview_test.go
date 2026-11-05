@@ -109,7 +109,7 @@ func TestInlinePeekPageIsBoundedWhileTheDocumentIsNot(t *testing.T) {
 	if got := ansi.Strip(rendered[0]); got != "    Selected" {
 		t.Fatalf("page does not lead with the whole title: %q\n%s", got, plain)
 	}
-	if !strings.Contains(ansi.Strip(rendered[len(rendered)-1]), "0 above · ") {
+	if !strings.HasPrefix(strings.TrimSpace(ansi.Strip(rendered[len(rendered)-1])), "↓ ") {
 		t.Fatalf("paged Peek did not reserve a counter row:\n%s", plain)
 	}
 

@@ -37,7 +37,7 @@ func TestClassifyDueDateTiersCarryTheirEmphasis(t *testing.T) {
 			}
 			for _, tc := range cases {
 				due := tc.due
-				text, style := ClassifyDueDate(&due)
+				text, style, _ := ClassifyDueDate(&due, time.Now())
 				if text == "" {
 					t.Fatalf("%s due date rendered no text", tc.name)
 				}
@@ -52,7 +52,7 @@ func TestClassifyDueDateTiersCarryTheirEmphasis(t *testing.T) {
 				}
 			}
 
-			if text, style := ClassifyDueDate(nil); text != "" || style.GetBold() {
+			if text, style, _ := ClassifyDueDate(nil, time.Now()); text != "" || style.GetBold() {
 				t.Errorf("absent due date classified as %q with bold = %v", text, style.GetBold())
 			}
 		})
@@ -62,8 +62,36 @@ func TestClassifyDueDateTiersCarryTheirEmphasis(t *testing.T) {
 func TestClassifyDueDateKeepsYearOnOldOverdueDates(t *testing.T) {
 	now := time.Now()
 	old := time.Date(now.Year()-1, time.January, 2, 0, 0, 0, 0, time.Local)
-	text, style := ClassifyDueDate(&old)
+	text, style, _ := ClassifyDueDate(&old, now)
 	if text != old.Format("Jan 2 '06") || style.GetForeground() != theme.OverdueStyle.GetForeground() {
 		t.Fatalf("old deadline lost year or overdue styling: %q", text)
+	}
+}
+
+// Inside a week either way the badge speaks in days, sharing DayGloss's words;
+// outside it the calendar date returns. Only a past relative day reports that
+// its text already says late, so the caller adds "overdue" exactly once.
+func TestClassifyDueDateSpeaksRelativelyInsideAWeek(t *testing.T) {
+	now := time.Date(2026, time.November, 5, 10, 0, 0, 0, time.Local)
+	for _, tc := range []struct {
+		offset   int
+		want     string
+		saysPast bool
+	}{
+		{-7, "Oct 29", false},
+		{-6, "6 days ago", true},
+		{-2, "2 days ago", true},
+		{-1, "Yesterday", true},
+		{0, "Today", false},
+		{1, "Tomorrow", false},
+		{2, "In 2 days", false},
+		{6, "In 6 days", false},
+		{7, "Nov 12", false},
+	} {
+		due := util.StartOfDay(now).AddDate(0, 0, tc.offset)
+		text, _, saysPast := ClassifyDueDate(&due, now)
+		if text != tc.want || saysPast != tc.saysPast {
+			t.Errorf("offset %d = (%q, %v), want (%q, %v)", tc.offset, text, saysPast, tc.want, tc.saysPast)
+		}
 	}
 }

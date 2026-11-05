@@ -257,7 +257,8 @@ func TestOutlinerRowsKeepTheDeadlineAndSendSupportingSignalsToPeek(t *testing.T)
 	outlinerView.MoveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID})
 
 	plain := ansi.Strip(outlinerView.View().Content)
-	for _, want := range []string{"Operational task", due.Format("Jan 2")} {
+	dueText, _, _ := chrome.ClassifyDueDate(&due, time.Now())
+	for _, want := range []string{"Operational task", dueText} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("row missing %q:\n%s", want, plain)
 		}

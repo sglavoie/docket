@@ -57,13 +57,13 @@
     { "type": "key", "label": "an unhinted key still commits", "key": "m" },
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Set Due Date" },
-    { "type": "assert", "assert": "count_contains", "value": "⊡ Tomorrow", "count": 1 },
+    { "type": "assert", "assert": "count_contains", "value": "Tomorrow", "count": 1 },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "restart" },
-    { "type": "assert", "assert": "count_contains", "value": "⊡ Tomorrow", "count": 1 },
+    { "type": "assert", "assert": "count_contains", "value": "Tomorrow", "count": 1 },
     { "type": "key", "key": "u" },
     { "type": "wait" },
-    { "type": "assert", "assert": "not_contains", "value": "⊡ Tomorrow" },
+    { "type": "assert", "assert": "not_contains", "value": "Tomorrow" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

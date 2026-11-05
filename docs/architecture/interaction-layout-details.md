@@ -275,15 +275,21 @@ scoped to one project draw none.
 Due dates and arrived check-ins both render as a filled chip rather than as colored
 text, so a date reads as one bounded object at the end of a row the title now
 owns. All three tiers are chips — overdue, today, and
-upcoming — and they share one hue that no section header uses, so a date is
-never mistaken for a section; urgency is carried by how saturated the fill is
-rather than by its hue. The two tiers that demand an answer — overdue and today
+upcoming. Today and upcoming share a teal that no section header uses, so a date
+is never mistaken for a section, and differ by saturation; overdue leaves that
+hue for the palette's danger red, a crimson held apart from the Canceled
+section's dark maroon, since a passed deadline is the one reading that is a
+problem rather than a plan. The two tiers that demand an answer — overdue and today
 — are also emphasized: they are bold, and their text is pushed away from the
 fill rather than toward it, so it is lighter than the chip in the dark theme and
 darker than it in the light one. An upcoming date stays quieter on both. Under
 the cursor the chip keeps its own colors like every other colored segment, and
-under `--no-color` the fill drops away, the bold survives, and the `⊡` glyph
-marks the date on its own.
+under `--no-color` the fill drops away and the bold survives. The chip spends
+no column on a calendar glyph: its fill and padding already bound it as one
+date object, and its text names the day — relatively inside a week either way
+(`Yesterday`, `In 2 days`) through `chrome.ClassifyDueDate`, which shares
+`chrome.DayGloss`'s words with Peek and the capture preview, and as a date
+beyond it.
 
 
 

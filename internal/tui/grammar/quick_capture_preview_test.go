@@ -20,10 +20,12 @@ func TestCaptureDuePreview(t *testing.T) {
 		due  time.Time
 		want string
 	}{
-		{"date only", time.Date(2026, 12, 31, 0, 0, 0, 0, time.Local), "Thu Dec 31"},
-		{"timed", time.Date(2026, 12, 31, 15, 30, 0, 0, time.Local), "Thu Dec 31 15:30"},
-		{"next year", time.Date(2027, 1, 1, 0, 0, 0, 0, time.Local), "Fri Jan 1 2027"},
-		{"previous year timed", time.Date(2025, 12, 31, 9, 5, 0, 0, time.Local), "Wed Dec 31 2025 09:05"},
+		{"date only", time.Date(2026, 12, 31, 0, 0, 0, 0, time.Local), "Thu Dec 31 (today)"},
+		{"timed", time.Date(2026, 12, 31, 15, 30, 0, 0, time.Local), "Thu Dec 31 15:30 (today)"},
+		{"next year", time.Date(2027, 1, 1, 0, 0, 0, 0, time.Local), "Fri Jan 1 2027 (tomorrow)"},
+		{"in two days", time.Date(2027, 1, 2, 0, 0, 0, 0, time.Local), "Sat Jan 2 2027 (in 2 days)"},
+		{"yesterday", time.Date(2026, 12, 30, 0, 0, 0, 0, time.Local), "Wed Dec 30 (yesterday)"},
+		{"previous year timed", time.Date(2025, 12, 31, 9, 5, 0, 0, time.Local), "Wed Dec 31 2025 09:05 (365 days ago)"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := captureDuePreview(tc.due, now); got != tc.want {

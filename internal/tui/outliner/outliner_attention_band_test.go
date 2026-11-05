@@ -98,7 +98,11 @@ func TestAttentionBandSharesCursorCellAndYieldsToSelectionWithoutMovingTitles(t 
 				if selected {
 					cursorVisible = strings.Contains(mono.String(), "\x1b[7m")
 				}
-				if !strings.Contains(ansi.Strip(mono.String()), "overdue") || (cursor && !cursorVisible) {
+				// The deadline's lateness is in words either way: "overdue" past
+				// the relative window, "N days ago" inside it.
+				monoText := ansi.Strip(mono.String())
+				late := strings.Contains(monoText, "overdue") || strings.Contains(monoText, " ago")
+				if !late || (cursor && !cursorVisible) {
 					t.Fatalf("monochrome lost the deadline or cursor: %q", mono.String())
 				}
 			}

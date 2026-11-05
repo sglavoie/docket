@@ -18,9 +18,9 @@ import (
 //
 // Each accent keeps its family's hue and moves only its lightness: on a dark
 // theme a section fill is far too dark to read as text, and on a light theme the
-// curated light fill is already a readable mid-tone. Urgency inside the teal due
-// family stays carried by saturation, the same ladder the chips use, so the
-// three due accents read as one family with an order rather than three colors.
+// curated light fill is already a readable mid-tone. Today and upcoming stay in
+// the teal due family, ordered by saturation as the chips are, and overdue takes
+// the chip's danger red, so a lens or header naming late work reads as late.
 //
 // The pairs live in these constructors alone, because rebuildLensAccentStyles
 // repaints the same vars on every ApplyTheme and a second copy of a hex would
@@ -34,7 +34,7 @@ func newLensAccentPausedStyle() lipgloss.Style   { return makeLensAccentStyle("#
 func newLensAccentSomedayStyle() lipgloss.Style  { return makeLensAccentStyle("#9f7ae0", "#6d28d9") }
 func newLensAccentCompleteStyle() lipgloss.Style { return makeLensAccentStyle("#9aa0b8", "#4b5563") }
 func newLensAccentCanceledStyle() lipgloss.Style { return makeLensAccentStyle("#e06c75", "#991b1b") }
-func newLensAccentOverdueStyle() lipgloss.Style  { return makeLensAccentStyle("#5eead4", "#0f766e") }
+func newLensAccentOverdueStyle() lipgloss.Style  { return makeLensAccentStyle("#ff7a90", "#be123c") }
 func newLensAccentDueTodayStyle() lipgloss.Style { return makeLensAccentStyle("#2dd4bf", "#146e64") }
 func newLensAccentDueStyle() lipgloss.Style      { return makeLensAccentStyle("#8fbdb8", "#4a6764") }
 func newLensAccentDeferredStyle() lipgloss.Style { return makeLensAccentStyle("#e08aa8", "#9d174d") }

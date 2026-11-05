@@ -10,7 +10,6 @@ package icons
 import "sync/atomic"
 
 var registry = map[string]string{
-	"date":         "⊡",
 	"status.inbox": "◌", "status.backlog": "□", "status.doing": "◐",
 	"status.backlog.bold": "▣",
 	"status.waiting":      "⧗", "status.paused": "‖", "status.someday": "¿",
@@ -27,7 +26,6 @@ var registry = map[string]string{
 // width function Docket measures with, which a test holds; a key it lacks
 // falls back to the Unicode glyph.
 var nerdRegistry = map[string]string{
-	"date":                "\U000F0B67", // nf-md-calendar_outline
 	"status.inbox":        "\U000F0120", // nf-md-tray_arrow_down
 	"status.backlog":      "\U000F14FC", // nf-md-square_rounded_outline
 	"status.backlog.bold": "\U000F14FC", // nf-md-square_rounded_outline

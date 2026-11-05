@@ -266,8 +266,17 @@ func captureVocabularyMarker(value string, vocabulary []string) string {
 	return theme.MutedStyle.Render(" (new)")
 }
 
-// captureDuePreview keeps the resolved weekday and clock visible before save.
-// Only dates outside the current year need the extra year qualifier.
+// captureDuePreview keeps the resolved weekday and clock visible before save,
+// glossed with how far the day is — "(tomorrow)", "(in 2 days)", "(yesterday)"
+// — in Peek's own words, so a typed `@fri` is confirmed as a distance and not
+// only as a date to work out. Only dates outside the current year need the
+// extra year qualifier.
 func captureDuePreview(due, now time.Time) string {
+	return captureDueDate(due, now) + " (" + chrome.DayGloss(due, now) + ")"
+}
+
+// captureDueDate is the preview without its gloss, for a suggestion whose typed
+// value already is the gloss (`@tomorrow`, `@today`).
+func captureDueDate(due, now time.Time) string {
 	return chrome.FormatWeekdayDate(due, now, (&models.Task{DueDate: &due}).DueHasTime())
 }

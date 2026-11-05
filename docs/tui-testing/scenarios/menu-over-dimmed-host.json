@@ -6,7 +6,7 @@
     { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
     { "type": "key", "label": "open Peek, so the dock is part of the host the menu will stand on", "key": "b" },
     { "type": "assert", "label": "the dock's history line closes a document that fits", "assert": "contains", "value": "Created: " },
-    { "type": "assert", "label": "so its position row is reserved but blank, with nothing off screen to count", "assert": "not_contains", "value": "0 above · 0 below" },
+    { "type": "assert", "label": "so its position row is reserved but blank, with nothing off screen to count", "assert": "not_contains", "value": "0 more" },
     { "type": "assert", "assert": "contains", "value": "Unicode display-width" },
     { "type": "assert", "assert": "no_layout_issues" },
 

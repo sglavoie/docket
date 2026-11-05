@@ -140,7 +140,7 @@ contrast contract — a tone-aware fill under a high-contrast foreground. A tier
 passes that constructor one `dueBadgeTone`: the fill and the ink that reads on
 it, once per theme, plus whether the tier is emphasized. The overdue and today
 tiers are, and emphasis is a pair — bold, and ink pushed away from the fill
-rather than toward it, which is why the light fills are pale teals under
+rather than toward it, which is why the light fills are pale tints under
 near-black ink rather than the saturated mid-tones white text needed. Upcoming
 declares neither, so a deadline that has arrived reads as weight while one the
 user still has time for reads as tone. `TestDueBadgeInkContrastIsTieredInBothThemes`
@@ -148,11 +148,15 @@ holds the emphasized pair to the enhanced ratio and the quiet tier strictly
 below both, and `TestEmphasizedDueBadgeInkFollowsThePaper` holds the direction so
 a repaint cannot invert a tier. The fills are
 curated dark/light pairs rather than palette derivations, so a palette override
-cannot mint an unreadable badge. They live in the teal band because the twelve
-`ViewMode` section fills already claim every other hue, and a chip that borrowed
-one read as a section header instead of a date; `TestDueBadgeFillsAvoidSectionBadges`
-holds the two populations apart, and urgency travels on saturation within the
-one hue so lightness stays in the band section badges already occupy. The chip's
+cannot mint an unreadable badge. Today and upcoming live in the teal band
+because the twelve `ViewMode` section fills already claim every other hue, and a
+chip that borrowed one read as a section header instead of a date; between them
+urgency travels on saturation, so lightness stays in the band section badges
+already occupy. Overdue alone leaves teal for the palette's danger red — a
+crimson brighter than the Canceled section's maroon — because hue is what says a
+date is a problem; `TestDueBadgeFillsAvoidSectionBadges` still holds every tier
+apart from every section fill, and `LensAccentOverdueStyle` and the
+`! overdue N` project pressure follow it to red. The chip's
 two `Padding(0, 1)` cells need
 no width formula of their own: `outlinerNonTitleWidth` sums `lipgloss.Width`
 over the already-styled segments, so the title budget shrinks by exactly two

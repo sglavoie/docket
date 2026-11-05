@@ -19,7 +19,7 @@
     {"type": "assert", "assert": "contains", "value": "Now: due Mon Jan 7 2030"},
     {"type": "assert", "assert": "no_layout_issues"},
     {"type": "key", "label": "leaving writes nothing", "key": "esc"},
-    {"type": "assert", "assert": "contains", "value": "⊡ Jan 7 '30"},
+    {"type": "assert", "assert": "contains", "value": "Jan 7 '30"},
     {"type": "resize", "label": "back at the minimum, a timed deadline keeps its clock", "width": 60, "height": 20},
     {"type": "key", "key": "e"},
     {"type": "text", "text": " @2030-01-17 09:30"},

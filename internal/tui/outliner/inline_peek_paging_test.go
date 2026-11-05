@@ -170,11 +170,11 @@ func TestInlinePeekPositionRowNamesWhatIsOffScreen(t *testing.T) {
 	}
 
 	first := ansi.Strip(doc.Lines(0)[window.WindowRows()-1])
-	if !strings.HasPrefix(strings.TrimSpace(first), "0 above · ") {
+	if !strings.HasPrefix(strings.TrimSpace(first), "↓ ") || strings.Contains(first, "↑") {
 		t.Fatalf("top position row = %q, want nothing above it", first)
 	}
 	last := doc.Lines(doc.MaxOffset())
-	if !strings.HasSuffix(strings.TrimSpace(ansi.Strip(last[len(last)-1])), "· 0 below") {
+	if end := strings.TrimSpace(ansi.Strip(last[len(last)-1])); !strings.HasPrefix(end, "↑ ") || strings.Contains(end, "↓") {
 		t.Fatalf("end position row = %q, want nothing below it", ansi.Strip(last[len(last)-1]))
 	}
 

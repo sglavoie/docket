@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/docket/internal/fuzzy"
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/textgrammar"
+	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/textfit"
 	"github.com/sglavoie/docket/internal/tui/theme"
 )
@@ -143,7 +144,11 @@ func (q *QuickCaptureInput) getDateSuggestions(partial string) []ACSuggestion {
 		if partial == "" || strings.Contains(value, partialLower) {
 			display := def.Trigger + value
 			if due, err := capturetext.ParseDueDateValue(value); err == nil {
-				display += " · " + captureDuePreview(due, now)
+				if strings.EqualFold(value, chrome.DayGloss(due, now)) {
+					display += " · " + captureDueDate(due, now)
+				} else {
+					display += " · " + captureDuePreview(due, now)
+				}
 			}
 			suggestions = append(suggestions, ACSuggestion{
 				Display: display,
