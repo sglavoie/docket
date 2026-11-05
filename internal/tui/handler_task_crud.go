@@ -94,6 +94,7 @@ func (m *AppModel) handleTaskCreated(msg coordinator.TaskCreatedMsg) (bool, tea.
 
 	refreshCmd := m.handleWithRefresh(!msg.KeepComposerOpen, true)
 
+	var landingCmd tea.Cmd
 	if msg.Task != nil && !msg.KeepComposerOpen {
 		project := msg.Project
 		if project == nil && msg.Result != nil {
@@ -101,6 +102,7 @@ func (m *AppModel) handleTaskCreated(msg coordinator.TaskCreatedMsg) (bool, tea.
 		}
 		if m.crossOutliner != nil && project != nil {
 			m.crossOutliner.NavigateToTaskInProject(msg.Task, project)
+			landingCmd = m.crossOutliner.LightLanding(msg.Task.ID)
 		}
 	}
 
@@ -148,14 +150,14 @@ func (m *AppModel) handleTaskCreated(msg coordinator.TaskCreatedMsg) (bool, tea.
 		if project != nil {
 			if freshTask := project.GetTaskByID(msg.Task.ID); freshTask != nil {
 				openMsg := EditTaskContentMsg{Task: freshTask, Project: project}
-				return true, tea.Batch(refreshCmd, cmd, feedbackCmd, func() tea.Msg {
+				return true, tea.Batch(refreshCmd, cmd, feedbackCmd, landingCmd, func() tea.Msg {
 					return openMsg
 				})
 			}
 		}
 	}
 
-	return true, tea.Batch(refreshCmd, cmd, feedbackCmd)
+	return true, tea.Batch(refreshCmd, cmd, feedbackCmd, landingCmd)
 }
 
 func (m *AppModel) createdTaskSectionLabel(task *models.Task, project *models.Project) string {

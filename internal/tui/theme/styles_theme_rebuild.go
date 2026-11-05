@@ -30,7 +30,7 @@ func rebuildTaskStyles() {
 	TodoStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	InProgressStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	DoneStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
-	WaitingStyle = lipgloss.NewStyle().Foreground(ColorError)
+	WaitingStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	StandbyStyle = lipgloss.NewStyle().Foreground(ColorViewStandby)
 	MaybeStyle = lipgloss.NewStyle().Foreground(ColorViewSomeday)
 	CanceledStyle = lipgloss.NewStyle().Foreground(ColorMuted).Strikethrough(true)
@@ -62,7 +62,7 @@ func rebuildBadgeStyles() {
 	TodoBadgeStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	InProgressBadgeStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	DoneBadgeStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
-	WaitingBadgeStyle = lipgloss.NewStyle().Foreground(ColorError)
+	WaitingBadgeStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	if ActiveThemeName == "light" {
 		StandbyBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#6d28d9"))
 	} else {

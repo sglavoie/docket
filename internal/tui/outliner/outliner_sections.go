@@ -390,7 +390,7 @@ func (a rowAttention) render() string {
 }
 
 func (a rowAttention) renderColumn(paint cursorPaint) string {
-	if paint.marked {
+	if paint.marked || paint.landing != nil {
 		return paint.halfBlock(a.color())
 	}
 	return a.render()
@@ -411,7 +411,12 @@ func (p cursorPaint) halfBlock(attention color.Color) string {
 		accent = p.landing
 	}
 	style := lipgloss.NewStyle().Foreground(accent)
-	if attention != nil {
+	switch {
+	case attention != nil && !p.marked:
+		// A landing off the cursor keeps the attention band whole beneath
+		// its own accent, so the arrival never hides what the row owes.
+		style = style.Background(attention)
+	case attention != nil:
 		style = style.Foreground(attention).Background(attention)
 	}
 	return style.Render("▌")

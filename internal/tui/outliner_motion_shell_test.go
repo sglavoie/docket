@@ -258,3 +258,56 @@ func TestMotionOffDisablesScrollRevealAndTrail(t *testing.T) {
 		})
 	}
 }
+
+// A capture keeps the user's place, so its new task is lit where it lands
+// rather than under the cursor: the captured row wears the landing mark, the
+// cursor's own row is painted as a session without motion paints it, and the
+// mark fades on its own.
+func TestCaptureLightsTheNewTaskWhereItLands(t *testing.T) {
+	capture := func(driver *UITestDriver) UITestObservation {
+		t.Helper()
+		var obs UITestObservation
+		for _, action := range []UITestAction{
+			{Type: UITestActionKey, Key: "a"},
+			{Type: UITestActionText, Text: "Freshly captured"},
+			{Type: UITestActionKey, Key: "enter"},
+		} {
+			var err error
+			if obs, err = driver.ApplyAction(action, ObserveOptions{IncludeANSI: true}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		assertMotionFrameLayout(t, obs)
+		return obs
+	}
+	still := motionFixture(t, false, 3, 0)
+	want := capture(still)
+	moving := motionFixture(t, true, 3, 0)
+	frame := capture(moving)
+
+	landed := -1
+	for index, line := range strings.Split(want.PlainScreen, "\n") {
+		if strings.Contains(line, "Freshly captured") {
+			landed = index
+			break
+		}
+	}
+	if landed < 0 {
+		t.Fatalf("the capture drew no row:\n%s", want.PlainScreen)
+	}
+	plain := strings.Split(frame.PlainScreen, "\n")
+	if !strings.HasPrefix(plain[landed], "▌") || strings.HasPrefix(strings.Split(want.PlainScreen, "\n")[landed], "▌") {
+		t.Fatalf("the captured row wears no landing mark:\n%s", frame.PlainScreen)
+	}
+	row := cursorRow(t, moving)
+	if row == landed {
+		t.Fatal("the capture moved the cursor onto its task")
+	}
+	wantANSI := still.Observe(ObserveOptions{IncludeANSI: true}).ANSIScreen
+	if ansiLine(frame.ANSIScreen, row) != ansiLine(wantANSI, row) {
+		t.Fatal("the landing repainted the cursor's row")
+	}
+	if got := settledFrame(t, moving); ansiLine(got.ANSIScreen, landed) != ansiLine(wantANSI, landed) {
+		t.Fatal("the landing did not fade to the ordinary row")
+	}
+}

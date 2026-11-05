@@ -429,26 +429,47 @@ func (m *OutlinerModel) captureDepartureLine(capture *OutlinerRelocationCapture)
 	capture.departureIcon = theme.StateBadgeIcon(row.Task.State())
 }
 
-// renderDepartureGhost paints the ghost's line for its phase: struck through
-// in the success color when the task completed and in the muted color
-// otherwise, then faint. The indentation is never struck.
+// renderDepartureGhost paints the ghost's line for its phase. A completion
+// first lands its check: the row as it stood, the check in bold success ink.
+// Then the row is struck through, in the success color for a completion and in
+// the muted color otherwise, then faint. The indentation is never struck.
 func (m *OutlinerModel) renderDepartureGhost(rowWidth int) string {
 	ghost := m.ghost
 	line := textfit.TruncateToVisualWidth(ghost.line, rowWidth)
 	trimmed := strings.TrimLeft(line, " ")
 	lead := line[:len(line)-len(trimmed)]
-	style := lipgloss.NewStyle().Foreground(theme.ColorMuted).Strikethrough(true)
-	if ghost.done {
-		style = style.Foreground(theme.ColorSuccess)
+	var rendered string
+	switch ghost.look() {
+	case ghostChecked:
+		rendered = lead + renderLandedCheck(trimmed, ghost.icon)
+	case ghostFaded:
+		rendered = lead + lipgloss.NewStyle().Foreground(theme.ColorMuted).Strikethrough(true).Faint(true).Render(trimmed)
+	default:
+		style := lipgloss.NewStyle().Foreground(theme.ColorMuted).Strikethrough(true)
+		if ghost.done {
+			style = style.Foreground(theme.ColorSuccess)
+		}
+		rendered = lead + style.Render(trimmed)
 	}
-	if ghost.phase > 0 {
-		style = style.Foreground(theme.ColorMuted).Faint(true)
-	}
-	rendered := lead + style.Render(trimmed)
 	if pad := rowWidth - lipgloss.Width(rendered); pad > 0 {
 		rendered += strings.Repeat(" ", pad)
 	}
 	return rendered
+}
+
+// renderLandedCheck paints a completed row's first beat: what leads the check
+// stays muted, the check is bold in the success ink, and the title keeps the
+// ordinary text color, unstruck, so the check is the one thing that changed.
+func renderLandedCheck(text, icon string) string {
+	before, after, found := "", text, false
+	if icon != "" {
+		before, after, found = strings.Cut(text, icon)
+	}
+	check := lipgloss.NewStyle().Foreground(theme.ColorSuccess).Bold(true)
+	if !found {
+		return check.Render(text)
+	}
+	return theme.MutedStyle.Render(before) + check.Render(icon) + after
 }
 
 // ghostSlot decides where this frame draws the ghost, if anywhere: its

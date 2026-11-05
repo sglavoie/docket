@@ -8,10 +8,10 @@ import (
 
 // Semantic color contract:
 // Green (ColorSuccess) = completion, positive state (done tasks, diffs added)
-// Red   (ColorError)   = danger, critical, overdue, waiting
+// Red   (ColorError)   = danger, critical, overdue
 // Yellow(ColorWarning) = caution, due soon, attention needed
 // Blue  (ColorPrimary) = information, navigation, neutral emphasis
-// Gray  (ColorMuted)   = disabled, inactive, secondary
+// Gray  (ColorMuted)   = disabled, inactive, secondary, waiting
 
 // Color palette.
 var (

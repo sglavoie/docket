@@ -464,14 +464,15 @@ func (m *OutlinerModel) leaveDepartureGhost(capture *OutlinerRelocationCapture) 
 		return nil
 	}
 	line := capture.departureLine
-	done := false
+	done, icon := false, ""
 	if task, _ := m.TaskAndProjectForIdentity(capture.Task); task != nil && task.State() == models.StateDone {
 		done = true
 		if capture.departureIcon != "" {
-			line = strings.Replace(line, capture.departureIcon, theme.StateBadgeIcon(models.StateDone), 1)
+			icon = theme.StateBadgeIcon(models.StateDone)
+			line = strings.Replace(line, capture.departureIcon, icon, 1)
 		}
 	}
 	m.ghostSeq++
-	m.ghost = &departureGhost{line: line, screenOffset: capture.departureOffset, done: done, seq: m.ghostSeq}
-	return departureGhostTick(m.ghostSeq)
+	m.ghost = &departureGhost{line: line, screenOffset: capture.departureOffset, done: done, icon: icon, seq: m.ghostSeq}
+	return departureGhostTick(m.ghost.schedule()[0], m.ghostSeq)
 }

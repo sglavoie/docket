@@ -1,6 +1,12 @@
 package outliner
 
-import "testing"
+import (
+	"regexp"
+	"strings"
+	"testing"
+
+	"github.com/charmbracelet/x/ansi"
+)
 
 // A line the render lent the departure ghost names no row, and every row
 // below it is read one line lower, by the cursor's screen row and by a click.
@@ -45,5 +51,38 @@ func TestDepartureGhostSlotNeverHidesTheCursor(t *testing.T) {
 	short := outlinerViewport{VisibleRows: 6, startIdx: 0, endIdx: 4}
 	if offset, dropLast, ok := m.ghostSlot(short); !ok || dropLast || offset != 1 {
 		t.Fatalf("short window slot = %d %v %v, want 1 false true", offset, dropLast, ok)
+	}
+}
+
+// A completion lands its check before the strike: the first beat leaves the
+// title unstruck with the check in bold, the second strikes the row, and the
+// third fades it. Any other departure starts at the strike.
+func TestCompletionGhostLandsTheCheckBeforeTheStrike(t *testing.T) {
+	struck := regexp.MustCompile(`\x1b\[(?:[0-9:;]*;)?9(?:;[0-9:;]*)?m`)
+	ghost := &departureGhost{line: "  ✓   Plan the weekend walk", done: true, icon: "✓"}
+	m := &OutlinerModel{ghost: ghost}
+
+	first := m.renderDepartureGhost(40)
+	if struck.MatchString(first) {
+		t.Fatalf("the check beat struck the row: %q", first)
+	}
+	if got := ansi.Strip(first); !strings.HasPrefix(got, "  ✓   Plan the weekend walk") || ansi.StringWidth(got) != 40 {
+		t.Fatalf("the check beat drew %q", got)
+	}
+	if want := len(completionGhostSchedule); want != 3 {
+		t.Fatalf("a completion paints %d phases, want 3", want)
+	}
+	ghost.phase = 1
+	if second := m.renderDepartureGhost(40); !struck.MatchString(second) {
+		t.Fatalf("the second beat left the row unstruck: %q", second)
+	}
+
+	other := &departureGhost{line: "  □   Moved away"}
+	m.ghost = other
+	if look := other.look(); look != ghostStruck {
+		t.Fatalf("a non-completion starts at look %d, want the strike", look)
+	}
+	if len(other.schedule()) != 2 {
+		t.Fatalf("a non-completion paints %d phases, want 2", len(other.schedule()))
 	}
 }

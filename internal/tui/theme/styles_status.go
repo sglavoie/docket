@@ -14,7 +14,7 @@ var (
 			Foreground(ColorSuccess)
 
 	WaitingStyle = lipgloss.NewStyle().
-			Foreground(ColorError)
+			Foreground(ColorMuted)
 
 	StandbyStyle = lipgloss.NewStyle().
 			Foreground(ColorViewStandby)

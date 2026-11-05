@@ -11,7 +11,7 @@
     { "type": "text", "text": "Pinned inbox task *pin" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },
-    { "type": "assert", "label": "a pinned inbox task is drawn in Pinned, so Inbox counts one", "assert": "contains", "value": "Inbox  (1) +1 above" },
+    { "type": "assert", "label": "a pinned inbox task is drawn in Pinned, so Inbox counts one", "assert": "contains", "value": "Inbox  (1) +1 in Pinned" },
     { "type": "assert", "label": "and the pulse still counts both", "assert": "contains", "value": "inbox 2" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

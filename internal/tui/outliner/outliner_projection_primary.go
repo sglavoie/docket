@@ -71,7 +71,7 @@ func (m *OutlinerModel) allPrimaryGroupOrder() []models.WorkflowStateGroup {
 func (m *OutlinerModel) appendStateGroupForests(
 	group models.WorkflowStateGroup,
 	forests []stateGroupProjectForest,
-	lifted int,
+	lifted LiftedCounts,
 ) {
 	if len(forests) == 0 {
 		return
@@ -85,13 +85,13 @@ func (m *OutlinerModel) appendStateGroupForests(
 		return
 	}
 	m.Rows = append(m.Rows, OutlinerRow{
-		Group:              OutlinerRowGroup{SectionKey: collapseKey},
-		IsSectionHeader:    true,
-		SectionName:        group.Label(),
-		SectionCount:       total,
-		StateGroup:         group,
-		SectionLiftedCount: lifted,
-		CollapseKey:        collapseKey,
+		Group:           OutlinerRowGroup{SectionKey: collapseKey},
+		IsSectionHeader: true,
+		SectionName:     group.Label(),
+		SectionCount:    total,
+		StateGroup:      group,
+		SectionLifted:   lifted,
+		CollapseKey:     collapseKey,
 	})
 	if m.sectionCollapsed(collapseKey) {
 		for _, item := range forests {

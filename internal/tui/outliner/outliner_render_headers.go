@@ -157,7 +157,7 @@ func outlinerCursorRow(gutter, content string, rowWidth int, paint cursorPaint) 
 type sectionHeaderOpts struct {
 	Name        string
 	Count       int
-	Lifted      int // members drawn in a promoted lane above; zero says nothing
+	Lifted      LiftedCounts // members drawn in a promoted lane above; zero says nothing
 	Collapsed   bool
 	AccentColor lipgloss.Style // applied to the name portion
 	Width       int            // if > 0, trailing ─ fill is added
@@ -197,8 +197,8 @@ func renderSectionHeader(opts sectionHeaderOpts) (gutter, content string) {
 	gutter = attention + gutterPiece(opts.Cursor.gutterBg(), indicatorStyle, indicator)
 	namePart := opts.AccentColor.Bold(true).Render(opts.Prefix + opts.Name)
 	content = namePart + " " + theme.MutedStyle.Render(fmt.Sprintf("(%d)", opts.Count))
-	if opts.Lifted > 0 {
-		content += " " + theme.MutedStyle.Render(fmt.Sprintf("+%d above", opts.Lifted))
+	if opts.Lifted.Any() {
+		content += " " + theme.MutedStyle.Render(liftedLabel(opts.Lifted))
 	}
 
 	if opts.Width > 0 {
@@ -208,6 +208,20 @@ func renderSectionHeader(opts sectionHeaderOpts) (gutter, content string) {
 		}
 	}
 	return gutter, content
+}
+
+// liftedLabel names the lane each lifted member went to, so a header reading
+// `Inbox (1) +1 in Pinned` says where its other task is rather than only that
+// it is somewhere above.
+func liftedLabel(c LiftedCounts) string {
+	var parts []string
+	if c.Pinned > 0 {
+		parts = append(parts, fmt.Sprintf("+%d in Pinned", c.Pinned))
+	}
+	if c.Review > 0 {
+		parts = append(parts, fmt.Sprintf("+%d in Review", c.Review))
+	}
+	return strings.Join(parts, " · ")
 }
 
 // sectionHeaderLabel is the name a section header spells and the mark that
@@ -271,7 +285,7 @@ func (m *OutlinerModel) RenderOutlinerSectionHeaderRow(row OutlinerRow, selected
 	gutter, content := renderSectionHeader(sectionHeaderOpts{
 		Name:         displayName,
 		Count:        row.SectionCount,
-		Lifted:       row.SectionLiftedCount,
+		Lifted:       row.SectionLifted,
 		Collapsed:    m.IsSectionRowCollapsed(row),
 		AccentColor:  accent,
 		Prefix:       prefix,

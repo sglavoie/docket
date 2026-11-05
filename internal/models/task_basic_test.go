@@ -117,7 +117,7 @@ func TestWorkflowStateClassificationAndIcons(t *testing.T) {
 		{StateBacklog, false, "□"},
 		{StateDoing, false, "◐"},
 		{StateDone, true, "✓"},
-		{StateWaiting, false, "⊘"},
+		{StateWaiting, false, "⧗"},
 		{StateCanceled, true, "✕"},
 	}
 

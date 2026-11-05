@@ -31,9 +31,11 @@ func demoText(text string, holdMS int, caption string) readmeDemoStep {
 	return readmeDemoStep{UITestAction{Type: UITestActionText, Text: text}, holdMS, caption}
 }
 
-// readmeDemoScript is the tour the README animation plays: capture a task with
-// sigils, read it in Peek, start it, search, plan another for Today, finish it
-// there, and undo, ending back on All so the loop closes where it began. It names no date, so the frames
+// readmeDemoScript is the tour the README animation plays. It opens with Peek
+// already reading the task in progress, as a roomy launch does, and Peek follows
+// the cursor from there: capture a task with sigils, read it, start it, search,
+// plan another for Today, finish it there, and undo, ending back on All so the
+// loop closes where it began. It names no date, so the frames
 // do not change with the day they are regenerated on.
 var readmeDemoScript = []readmeDemoStep{
 	demoKey("a", 700, "a  capture"),
@@ -46,8 +48,7 @@ var readmeDemoScript = []readmeDemoStep{
 	demoKey("j", 300, "j  move"),
 	demoKey("j", 300, "j  move"),
 	demoKey("j", 300, "j  move"),
-	demoKey("j", 900, "j  move"),
-	demoKey("b", 2200, "b  peek"),
+	demoKey("j", 2200, "j  Peek follows the cursor"),
 	demoKey("w", 1800, "w  workflow chord"),
 	demoKey("g", 2000, "w g  start it"),
 	demoKey("/", 700, "/  search"),
@@ -68,8 +69,16 @@ var readmeDemoScript = []readmeDemoStep{
 func TestReadmeDemo(t *testing.T) {
 	driver := launchReadmeFixture(t)
 	opts := ObserveOptions{IncludeANSI: true}
-	first := driver.Observe(opts)
-	frames := []readmeDemoFrame{{ANSI: first.ANSIScreen, HoldMS: 2500, Caption: "tt  all your work, one outline"}}
+	// The opening frame is the poster: Peek is open on the task in progress, so
+	// the first thing a reader sees is the outline and the detail beside it.
+	first, peekErr := driver.ApplyAction(UITestAction{Type: UITestActionKey, Key: "b"}, opts)
+	if peekErr != nil {
+		t.Fatal(peekErr)
+	}
+	if !strings.Contains(first.PlainScreen, "Start with the narrow-screen navigation") {
+		t.Fatalf("the opening frame does not read the task in progress:\n%s", first.PlainScreen)
+	}
+	frames := []readmeDemoFrame{{ANSI: first.ANSIScreen, HoldMS: 3000, Caption: "Docket  all your work, one outline"}}
 	for i, step := range readmeDemoScript {
 		obs, err := driver.ApplyAction(step.action, opts)
 		if err != nil {

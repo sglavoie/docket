@@ -14,8 +14,10 @@ import (
 
 // The departure ghost is the one frame of motion a committed departure earns:
 // the row the keypress was aimed at stays on screen, struck through, at the
-// position it vacated, for departureGhostPhaseDuration per phase, then the rows
-// under it close up. It is render-only — never a row of m.Rows, never a cursor
+// position it vacated, for the phases departureGhostSchedule names, then the
+// rows under it close up. A completion earns one beat more ahead of the strike:
+// the check lands on the row as it stood, so finishing a task reads as a check
+// being made before the row leaves. It is render-only — never a row of m.Rows, never a cursor
 // position, never a window input — so every row invariant, every index, and
 // ComputeOutlinerViewport are untouched; the render records the screen slot it
 // borrowed in LastViewport so the two readers of screen rows, CursorScreenRow
@@ -24,9 +26,17 @@ import (
 // It is motion, so it exists only where the shell armed motion: an interactive
 // launch. The harness and every test leave it off, which is what keeps a
 // scenario's observations independent of a timer they never wait for.
+var (
+	departureGhostSchedule  = []time.Duration{160 * time.Millisecond, 160 * time.Millisecond}
+	completionGhostSchedule = []time.Duration{120 * time.Millisecond, 150 * time.Millisecond, 150 * time.Millisecond}
+)
+
+// The phases a ghost paints, in order. A completion's ghost starts at
+// ghostChecked; any other starts at ghostStruck.
 const (
-	departureGhostPhaseDuration = 160 * time.Millisecond
-	departureGhostPhases        = 2
+	ghostChecked = iota
+	ghostStruck
+	ghostFaded
 )
 
 // departureGhost is the struck row a departure leaves behind for a moment.
@@ -36,10 +46,27 @@ type departureGhost struct {
 	line         string
 	screenOffset int
 	// done reports that the task departed by completing, so its state glyph
-	// is repainted as the check it became.
+	// is repainted as the check it became, and icon is that check.
 	done  bool
+	icon  string
 	phase int
 	seq   int
+}
+
+// schedule is the delay each phase holds before the next.
+func (g *departureGhost) schedule() []time.Duration {
+	if g.done {
+		return completionGhostSchedule
+	}
+	return departureGhostSchedule
+}
+
+// look is what the current phase paints.
+func (g *departureGhost) look() int {
+	if g.done {
+		return g.phase
+	}
+	return g.phase + ghostStruck
 }
 
 // DepartureGhostTickMsg advances the ghost Seq names; a stale one is inert.
@@ -57,8 +84,8 @@ func (m *OutlinerModel) SetMotion(enabled bool) {
 	}
 }
 
-func departureGhostTick(seq int) tea.Cmd {
-	return status.TickCmd(departureGhostPhaseDuration, func(time.Time) tea.Msg {
+func departureGhostTick(delay time.Duration, seq int) tea.Cmd {
+	return status.TickCmd(delay, func(time.Time) tea.Msg {
 		return DepartureGhostTickMsg{Seq: seq}
 	})
 }
@@ -70,11 +97,12 @@ func (m *OutlinerModel) advanceDepartureGhost(msg DepartureGhostTickMsg) tea.Cmd
 		return nil
 	}
 	m.ghost.phase++
-	if m.ghost.phase >= departureGhostPhases {
+	schedule := m.ghost.schedule()
+	if m.ghost.phase >= len(schedule) {
 		m.ghost = nil
 		return nil
 	}
-	return departureGhostTick(msg.Seq)
+	return departureGhostTick(schedule[m.ghost.phase], msg.Seq)
 }
 
 // DropMotion retires every animation still settling on this view, and every
@@ -247,17 +275,31 @@ func (m *OutlinerModel) revealedBlank(withheld []bool, index, rowWidth int) (str
 	return strings.Repeat(" ", max(rowWidth, 0)), true
 }
 
-// landingPaint is the trail on the cursor's band: the task the move landed
-// lights the mark in the primary accent, over the flash's dimmer band for the
-// first phase and the ordinary band for the second. It is a variant of the one
-// band, never a second background, so background precedence is unchanged; a
-// flash or a resting cursor already says something else and keeps its paint.
+// landingPaint is the trail a landed task wears. On the cursor's band the mark
+// lights in the primary accent, over the flash's dimmer band for the first
+// phase and the ordinary band for the second. It is a variant of the one band,
+// never a second background, so background precedence is unchanged; a flash or
+// a resting cursor already says something else and keeps its paint.
+//
+// A task that landed off the cursor — a capture, which keeps the user's place —
+// wears the mark alone, in the accent and then dimmed, and no band: the row says
+// where the new work went without claiming the keyboard is there.
 func (m *OutlinerModel) landingPaint(row OutlinerRow, paint cursorPaint) cursorPaint {
-	if !paint.marked || paint.resting || paint.flash || row.Task == nil {
+	if row.Task == nil {
 		return paint
 	}
 	task, phase, ok := m.anim.TrailTask()
 	if !ok || task != row.Task.ID {
+		return paint
+	}
+	if !paint.marked {
+		paint.landing = theme.ColorPrimary
+		if phase > 0 {
+			paint.landing = theme.ColorDimmed
+		}
+		return paint
+	}
+	if paint.resting || paint.flash {
 		return paint
 	}
 	paint.landing = theme.ColorPrimary
@@ -284,4 +326,16 @@ func (m *OutlinerModel) updatePaintTick(msg tea.Msg) (tea.Cmd, bool) {
 		return m.anim.Advance(msg.Tick), true
 	}
 	return nil, false
+}
+
+// LightLanding lights the trail on the task a creation just minted, wherever
+// the rebuilt projection draws it: the same accent a move leaves where it
+// lands, so a capture is seen arriving rather than only counted in a status.
+// The cursor is not moved; a task the view does not draw lights nothing, and a
+// session without motion starts nothing.
+func (m *OutlinerModel) LightLanding(taskID string) tea.Cmd {
+	if m == nil || !m.anim.Armed() || taskID == "" {
+		return nil
+	}
+	return m.anim.StartTrail(taskID, "")
 }

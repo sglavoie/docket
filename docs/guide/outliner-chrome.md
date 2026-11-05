@@ -135,7 +135,7 @@ recent check-in reminder.
 View → Motion turns off the brief animations: the struck-through row a task
 leaves behind, the mode badge lighting, workspace pulse counts lighting when they
 change, the undo countdown on the divider, the Today sweep, the list gliding on a
-page jump, a fold rolling open, and the mark a moved task lights where it lands. View → Nerd Font
+page jump, a fold rolling open, and the mark a moved or captured task lights where it lands. View → Nerd Font
 Glyphs draws the state, priority, date, checkbox, notice, pin, attachment, and
 description symbols from a Nerd Font, such as Someday's thought bubble in place
 of `¿`; it needs a terminal font that carries them. Every glyph keeps its
@@ -232,9 +232,10 @@ skips it. Quitting leaves one line in the terminal, such as `docket: 4 done
 today · 2 still in Today`, or nothing when the day has nothing to report.
 
 Docket draws a little motion where an action needs following. A task that
-leaves the view, such as one you just finished, stays in its place for a moment,
-struck through and checked when it was completed, before the rows close up; the
-next key retires it at once. A mode switch lands its badge highlighted for a
+leaves the view, such as one you just finished, stays in its place for a moment
+before the rows close up: a finished task first shows its check landing on the
+row as it stood, then is struck through and fades; any other departure is
+struck through and fades. The next key retires it at once. A mode switch lands its badge highlighted for a
 moment and lights the `‹` or `›` it traveled through. A workspace count in the
 title that just changed, such as `done` after you finish a task, lights for a
 moment and settles back: green when Done rises, amber when Overdue rises, and
@@ -247,7 +248,9 @@ closing one is not animated. A task you move with `J`, `K`, `Ctrl+J`, `Ctrl+K`,
 `]`, `[`, `>`, or `%` lights the cursor's mark in the accent where it lands, on
 a brighter band at first and then on the ordinary one, for about half a second,
 and each further move lights it again; a move that takes the task out of view,
-such as `%` from a scoped project, shows the departing row instead. Any key,
+such as `%` from a scoped project, shows the departing row instead. A task you
+capture lights its own mark in the accent wherever it lands, then dims; the
+cursor stays where you were reading. Any key,
 click, or wheel step finishes whatever is still animating, and a click always
 lands on the rows the list is settling on. Tests and the harness run without this
 motion.

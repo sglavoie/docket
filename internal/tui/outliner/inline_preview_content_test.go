@@ -40,7 +40,7 @@ func TestInlinePeekStatusLineNamesWhatTheRowAbbreviates(t *testing.T) {
 			"waiting carries its age",
 			&models.Task{WorkflowState: models.StateWaiting, StateChangedAt: now.Add(-90 * time.Minute)},
 			"",
-			"Status: ⊘ Waiting 1h",
+			"Status: ⧗ Waiting 1h",
 		},
 		{
 			"a quiet state has no age to give",

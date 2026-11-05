@@ -74,7 +74,7 @@ func TestCheckInVisualAcceptance(t *testing.T) {
 				case 62:
 					rowsRequired = []string{"Migrated vendor", "▤", "Apr 1 '20 15:30 overdue", "workspace: today 2 · overdue 1"}
 				case 60:
-					rowsRequired = []string{"├── ⊘ Migrated vendor wait", "▤", "Apr 1 '20 15:30 overdue", "workspace: today 2 · overdue 1"}
+					rowsRequired = []string{"├── ⧗ Migrated vendor wait", "▤", "Apr 1 '20 15:30 overdue", "workspace: today 2 · overdue 1"}
 				}
 				capture("rows", rowsRequired...)
 				out := driver.App().crossOutliner

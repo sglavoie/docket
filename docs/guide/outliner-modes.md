@@ -31,7 +31,8 @@ reopens it.
 
 A task appears once in All, so Pinned and Review lift their rows out of the
 section they would otherwise sit in, and that section says so after its count:
-`Inbox (1) +1 above` is one inbox task here and one in a lane above it. That is
+`Inbox (1) +1 in Pinned` is one inbox task here and one drawn in Pinned above
+it; a task lifted into Review reads `+1 in Review`. That is
 what keeps a header in step with the workspace pulse, which counts `inbox 2`
 wherever the rows are drawn.
 

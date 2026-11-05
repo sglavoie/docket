@@ -149,6 +149,17 @@ func (m *OutlinerModel) buildAllPrimaryRows(
 	}
 }
 
+// LiftedCounts is how many of a group's members Pinned and Review drew above
+// instead of in that group. The two lanes are disjoint: Review never claims a
+// pinned task.
+type LiftedCounts struct {
+	Pinned int
+	Review int
+}
+
+// Any reports whether the group lost a member to a promoted lane.
+func (c LiftedCounts) Any() bool { return c.Pinned > 0 || c.Review > 0 }
+
 // liftedLaneCounts counts, per All group, the members Pinned or Review drew
 // above instead of in that group. The workspace pulse counts a state or a plan
 // wherever its rows are drawn, so a lane header naming what was lifted out of it
@@ -157,8 +168,8 @@ func (m *OutlinerModel) buildAllPrimaryRows(
 func liftedLaneCounts(
 	input OutlinerModeInput,
 	pinned, review, today, next map[taskref.TaskIdentity]bool,
-) map[models.WorkflowStateGroup]int {
-	lifted := make(map[models.WorkflowStateGroup]int)
+) map[models.WorkflowStateGroup]LiftedCounts {
+	lifted := make(map[models.WorkflowStateGroup]LiftedCounts)
 	for _, candidate := range orderedModeTasks(input) {
 		task, project := candidate.row.Task, candidate.row.Project
 		if task == nil || project == nil {
@@ -168,14 +179,20 @@ func liftedLaneCounts(
 		if !pinned[identity] && !review[identity] {
 			continue
 		}
+		group := theme.TaskStateGroup(task)
 		switch {
 		case today[identity]:
-			lifted[models.StateGroupToday]++
+			group = models.StateGroupToday
 		case next[identity]:
-			lifted[models.StateGroupNext]++
-		default:
-			lifted[theme.TaskStateGroup(task)]++
+			group = models.StateGroupNext
 		}
+		counts := lifted[group]
+		if pinned[identity] {
+			counts.Pinned++
+		} else {
+			counts.Review++
+		}
+		lifted[group] = counts
 	}
 	return lifted
 }

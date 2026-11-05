@@ -983,9 +983,12 @@ and each changes paint alone: no width, no row, no window input.
 - **Departure ghost.** `CaptureOutlinerRelocation` records the cursor row's plain
   text, the list line it was drawn on, and its state glyph. When
   `FinishOutlinerRelocation` finds the task departed its group,
-  `leaveDepartureGhost` redraws that text struck through at the vacated line for
-  two 160 ms phases, success-colored with the glyph replaced by Done's when the
-  task completed. It is never part of `m.Rows`. `renderOutlinerRows` inserts it,
+  `leaveDepartureGhost` redraws that text at the vacated line. Any other
+  departure paints two 160 ms phases, struck through and then faint. A
+  completion replaces the glyph with Done's and paints three
+  (`completionGhostSchedule`): 120 ms with the check bold in the success ink and
+  the row unstruck, so the check is the one thing that changed, then 150 ms
+  struck in the success ink, then 150 ms faint. It is never part of `m.Rows`. `renderOutlinerRows` inserts it,
   lending a full window's last line except when that line is the cursor's, and
   records the slot as `LastViewport.ghostOffset`. `CursorScreenRow`,
   `pointerHitAt`, and the Peek dock's padding read that slot. Any keystroke
@@ -1029,6 +1032,14 @@ and each changes paint alone: no width, no row, no window input.
     A flash or a resting cursor keeps its own paint. The intent stands until
     input, so a commit landing after its key still lights, and a burst of moves
     lights once per landing. A task the cursor did not follow lights nothing.
+  - *Capture landing.* A creation keeps the cursor where it was: the async
+    reload `handleWithRefresh` requests restores it by the identity it held.
+    `handleTaskCreated` therefore calls `LightLanding`, which starts the same
+    trail on the minted task without a place, and `landingPaint` lights a row
+    the cursor is not on with the half-block mark alone, primary in the first
+    phase and `ColorDimmed` in the second, and no band. On a row owing
+    attention the mark keeps that band as its background. A task the projection
+    does not draw lights nothing.
 - **Mode arrival.** The shell compares the Outliner's mode across one `Update`.
   On a change, `MarkModeArrival` draws `chrome.ModeArrival` for 180 ms: the badge
   reversed, and the `‹` or `›` the Tab cycle turned through lit.

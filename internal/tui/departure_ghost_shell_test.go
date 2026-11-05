@@ -55,7 +55,7 @@ func TestDepartureGhostHoldsTheCompletedRowThenCloses(t *testing.T) {
 		t.Fatalf("CursorScreenRow %d names %q, want the successor row", row, lines[min(row, len(lines)-1)])
 	}
 
-	obs = applyGhostSteps(t, driver, UITestAction{Type: UITestActionWait, Duration: "400ms"})
+	obs = applyGhostSteps(t, driver, UITestAction{Type: UITestActionWait, Duration: "600ms"})
 	if strings.Contains(obs.PlainScreen, "   Plan the weekend walk") {
 		t.Fatalf("ghost outlived its phases:\n%s", obs.PlainScreen)
 	}
