@@ -69,6 +69,7 @@ var headerTargetAudit = map[operation.OperationID]string{
 	"tui.core.help":                   "target-free",
 	"tui.core.jump-backward":          "target-free",
 	"tui.core.jump-forward":           "target-free",
+	"tui.core.jump-labels":            "target-free",
 	"tui.core.multi-select":           "target-free",
 	"tui.core.named-lenses":           "target-free",
 	"tui.core.next":                   "reject",

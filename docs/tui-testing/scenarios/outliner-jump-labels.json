@@ -1,0 +1,40 @@
+{
+  "name": "outliner-jump-labels",
+  "fixture": "checklist",
+  "size": "80x24",
+  "actions": [
+    { "type": "key", "label": "launch folds Backlog with the cursor on its header, so open it", "key": "l" },
+    { "type": "assert", "assert": "contains", "value": "Retire the legacy runbook" },
+
+    { "type": "key", "label": "the apostrophe labels every other row on screen, nearest first", "key": "'" },
+    { "type": "assert", "label": "jump mode publishes its own footer", "assert": "contains", "value": "type label" },
+    { "type": "assert", "assert": "contains", "value": "Esc cancel" },
+    { "type": "assert", "label": "the project header right under the cursor takes the first home-row letter", "assert": "contains", "value": "a▾ [checklist-delivery]" },
+    { "type": "assert", "label": "the fifth-nearest row takes the fifth", "assert": "contains", "value": "g└──" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "typing a label moves the cursor there and closes the mode", "key": "g" },
+    { "type": "assert", "assert": "not_contains", "value": "type label" },
+    { "type": "key", "key": "y" },
+    { "type": "assert", "assert": "clipboard_contains", "value": "Retire the legacy runbook" },
+
+    { "type": "key", "label": "the jump pushed its origin, so Ctrl+O returns to the lane header", "key": "ctrl+o" },
+    { "type": "assert", "assert": "contains", "value": "s sections" },
+
+    { "type": "key", "label": "Esc puts the labels down and moves nothing", "key": "'" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "type label" },
+    { "type": "assert", "assert": "contains", "value": "s sections" },
+
+    { "type": "key", "label": "a label letter naming no row cancels and says so", "key": "'" },
+    { "type": "key", "key": "x" },
+    { "type": "assert", "assert": "contains", "value": "No row labelled x" },
+    { "type": "assert", "assert": "contains", "value": "s sections" },
+
+    { "type": "key", "label": "a root key inside the mode only cancels; it never opens search", "key": "'" },
+    { "type": "key", "key": "/" },
+    { "type": "assert", "assert": "not_contains", "value": "type label" },
+    { "type": "assert", "assert": "not_contains", "value": "Enter apply search" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

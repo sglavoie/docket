@@ -1,0 +1,22 @@
+{
+  "name": "outliner-jump-labels-narrow",
+  "fixture": "checklist",
+  "size": "60x20",
+  "actions": [
+    { "type": "key", "label": "open Backlog, step onto the runbook, and open the Peek dock", "key": "l" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "b" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "jump labels paint over the dock's list at the floor width", "key": "'" },
+    { "type": "assert", "assert": "contains", "value": "type label" },
+    { "type": "assert", "label": "the nearest rows take a and s, below the cursor first", "assert": "contains", "value": "a├── ▾ ▣ Coordinate" },
+    { "type": "assert", "assert": "contains", "value": "s▾ [checklist-delivery]" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the jump lands on the project header and the dock follows the cursor", "key": "s" },
+    { "type": "assert", "assert": "not_contains", "value": "type label" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

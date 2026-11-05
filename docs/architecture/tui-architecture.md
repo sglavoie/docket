@@ -807,6 +807,57 @@ retain and would push a scope of its own over the destination. Every ordinary wa
 of leaving a focus still sheds it, the return's own scope pop included, and an
 origin that really did vanish still unwinds to the base scope and says so.
 
+### Jump labels
+
+`'` is `OperationCoreJumpLabels`, "Jump to Row": one target-free navigation
+descriptor in the simplified strategy, so `?` help, the Go menu, and scenario
+discovery project it like any other key. It carries no `FooterRank`. Cursor
+motion is unranked throughout the ladder, and the six leading rungs are sized to
+the floor, so a rank anywhere would buy a hint nobody reaches for before they
+have found `j`/`k`.
+
+Jump mode is `OutlinerModel.Jump`, a view-local gated sub-state on the `Q`
+readout's terms: no `PresentationID`, overlay, `InputStrategy`, or manifest
+entry. While open it claims every key through `nonSearchInlineControlOwnsInput`
+and `ShouldCaptureEsc`, and `ContextualGuidance` publishes `type label · Esc
+cancel` (with `Backspace undo` once a first letter is typed). The root grammar
+never sees a key typed inside the mode: Esc cancels, Backspace takes back a
+typed first letter and otherwise cancels, a label letter selects or narrows, a
+letter naming no row cancels with `No row labelled x`, and anything else cancels
+silently. Any click or wheel step cancels too, through `handleModalPointer`. A
+modifier pressed alone never arrives, because the shell drops it first. Every
+text input, the capture panel, the inline editor, and the pickers own `'` as a
+character before the root grammar is asked, so the mode opens only on the list.
+
+`internal/tui/jumplabel` owns the vocabulary and nothing of the Outliner: the
+alphabet, the order labels are handed out in, the keystroke rule, and the
+paint. The alphabet is the home row, then the top row, then the bottom row,
+lowercase only, so no label asks for Shift. The candidates are the navigable
+rows of `VisibleRowWindow`, the range the last frame drew: the pinned context
+row is outside it and the departure ghost is not a row. The cursor's own row
+takes no label. Candidates are ordered nearest the cursor first, ties going
+below, so the easiest letters land on the shortest trips. Up to 26 targets get
+one letter each. Past that every target gets two, the second letter varying
+fastest, so lengths never mix and a first letter is never both a whole label and
+a prefix. The targets are never stored. The render and the key handler both
+derive them from the window and the cursor, so the label on screen is always the
+label a key resolves.
+
+`renderOutlinerRows` paints after each row renders. `jumplabel.Paint` strips the
+row, draws the label over its first cells in `theme.HighlightStyle`, and dims
+the remainder. A label that no longer matches the typed prefix is dimmed too.
+Padding keeps the row exactly as wide as it was, even where a wide rune
+straddles the cut. The cursor row is left as drawn, so the origin stays legible.
+
+A jump writes `m.Cursor` and a jump-history frame. `jumpToLabelledRow` takes
+`RefocusRestoredTask`'s path: `SyncJumpProjection`, push the origin, clear the
+forward stack, `AdoptNavigatedCursor`. `Ctrl+O` therefore returns. The target is
+already inside the window, so `ComputeOutlinerViewport` keeps the offset it
+holds and no fold, mode, query, or selection membership changes. Under a `V`
+range the jump calls `UpdateRangeSelection` as `j`/`k` do, so the range follows
+the cursor. Under `v` the cursor simply moves, because a jump is a cursor move
+and not a selection gesture.
+
 ### Desktop editing and quit
 
 The control `edit` operation routes native Undo/Redo to the focused

@@ -53,6 +53,10 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		// First because the readout owns input outright: every other profile below
 		// describes keys the stack is currently refusing.
 		return m.queryReadoutGuidance(), true
+	case m.Jump.Active:
+		// Jump mode owns input as the readout does, so the labels on screen and
+		// the way out are the only keys worth naming.
+		return m.jumpLabelGuidance(), true
 	case m.Confirm.IsActive():
 		return chrome.GuidanceSpec{Hints: chrome.RequiredGuidanceHints("y confirm", "n/Esc cancel"), Rows: 2}, true
 	case m.QuickEdit.IsActive():

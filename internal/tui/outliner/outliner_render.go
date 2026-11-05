@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/jumplabel"
 	"github.com/sglavoie/docket/internal/tui/route"
 	"github.com/sglavoie/docket/internal/tui/textfit"
 	"github.com/sglavoie/docket/internal/tui/theme"
@@ -73,6 +74,7 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 	// tail; LastViewport keeps the settled window either way.
 	first, last, pinned := m.motionRowRange(viewport, endIdx)
 	withheld := m.anim.RevealHidden(len(m.Rows))
+	labels := m.jumpLabelsForWindow(viewport.startIdx, endIdx)
 	var lines []string
 	if pinned {
 		lines = append(lines, m.renderPinnedContextRow(viewport))
@@ -100,6 +102,9 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 			lines = append(lines, m.RenderOutlinerQuickEditRow(row, viewport.rowWidth, colLayout))
 		default:
 			lines = append(lines, m.RenderOutlinerTaskRow(row, selected, viewport.rowWidth, i, colLayout))
+		}
+		if labels != nil && !selected {
+			lines[len(lines)-1] = jumplabel.Paint(lines[len(lines)-1], labels[i], m.Jump.Prefix)
 		}
 	}
 	if ghosted {

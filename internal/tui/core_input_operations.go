@@ -191,6 +191,10 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		if out, ok := m.outlinerPrimary(); ok {
 			message = commandMessage(out.JumpForward())
 		}
+	case operation.OperationCoreJumpLabels:
+		if out, ok := m.outlinerPrimary(); ok {
+			message = commandMessage(out.OpenJumpLabels())
+		}
 	case operation.OperationCoreFocusLatest:
 		if out, ok := m.outlinerPrimary(); ok {
 			message = commandMessage(out.FocusLatestActivity())

@@ -25,6 +25,7 @@ const (
 	OperationCorePreviousHeader     OperationID = "tui.core.previous-header"
 	OperationCoreJumpBackward       OperationID = "tui.core.jump-backward"
 	OperationCoreJumpForward        OperationID = "tui.core.jump-forward"
+	OperationCoreJumpLabels         OperationID = "tui.core.jump-labels"
 	OperationCoreFocusLatest        OperationID = "tui.core.focus-latest"
 	OperationCoreGotoTaskProject    OperationID = "tui.core.goto-task-project"
 	OperationCoreGotoParentTask     OperationID = "tui.core.goto-parent-task"

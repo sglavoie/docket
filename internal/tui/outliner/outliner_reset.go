@@ -17,6 +17,7 @@ func (m *OutlinerModel) ResetToGlobalAll() {
 	m.Confirm.Cancel()
 	m.QuickEdit.Exit()
 	m.closeMenuBar()
+	m.Jump.Cancel()
 	m.Scope.clearStack()
 	m.Scope.clearProject()
 	m.dropParkedProjectFocus()

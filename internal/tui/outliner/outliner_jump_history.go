@@ -7,8 +7,11 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/jumplabel"
 	"github.com/sglavoie/docket/internal/tui/listsurface"
 	"github.com/sglavoie/docket/internal/tui/query"
+	"github.com/sglavoie/docket/internal/tui/status"
 	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
@@ -287,4 +290,95 @@ func projectIDForJumpProjection(m *OutlinerModel) string {
 		return m.Project.ID
 	}
 	return ""
+}
+
+// Jump mode (`'`) is the long-distance cursor move this history exists for, so
+// it lives beside it: a jump pushes the origin `Ctrl+O` returns to, exactly as a
+// refocused restore does. The targets are the navigable rows of the window the
+// last frame drew — never the pinned context row, which is not in that range,
+// nor the departure ghost, which is not a row — and they are read again on
+// every render and every key rather than stored, so a label on screen is always
+// the label a key resolves. The cursor's own row takes none, because jumping to
+// it moves nothing.
+
+// jumpLabelsForWindow labels the navigable rows of [start, end), nil when jump
+// mode is closed.
+func (m *OutlinerModel) jumpLabelsForWindow(start, end int) jumplabel.Assignment {
+	if m == nil || !m.Jump.Active {
+		return nil
+	}
+	candidates := make([]int, 0, max(end-start, 0))
+	for i := max(start, 0); i < end && i < len(m.Rows); i++ {
+		if m.Rows[i].IsNavigable() {
+			candidates = append(candidates, i)
+		}
+	}
+	return jumplabel.Assign(candidates, m.Cursor)
+}
+
+// currentJumpLabels is the assignment the last frame painted.
+func (m *OutlinerModel) currentJumpLabels() jumplabel.Assignment {
+	start, end := m.VisibleRowWindow()
+	return m.jumpLabelsForWindow(start, end)
+}
+
+// OpenJumpLabels enters jump mode, refusing with a status when the window holds
+// no row other than the cursor's.
+func (m *OutlinerModel) OpenJumpLabels() tea.Cmd {
+	if m == nil {
+		return nil
+	}
+	m.Jump.Open()
+	if len(m.currentJumpLabels()) == 0 {
+		m.Jump.Cancel()
+		m.SetTransientStatus("No other row on screen to jump to")
+		return status.DefaultStatusTimeout()
+	}
+	return nil
+}
+
+// handleJumpLabelKey consumes one key inside jump mode. Nothing it is handed
+// falls through to the grammar: a key that is not a label letter, Backspace, or
+// Esc closes the mode silently, and a label letter naming no row closes it with
+// a status saying so.
+func (m *OutlinerModel) handleJumpLabelKey(key string) tea.Cmd {
+	typed := m.Jump.Prefix + key
+	outcome, row := m.Jump.Press(key, m.currentJumpLabels())
+	switch outcome {
+	case jumplabel.Selected:
+		return m.jumpToLabelledRow(row)
+	case jumplabel.Missed:
+		m.SetTransientStatus("No row labelled " + typed)
+		return status.DefaultStatusTimeout()
+	}
+	return nil
+}
+
+// jumpToLabelledRow writes the cursor and the origin frame, nothing else: the
+// row is already inside the window, so ComputeOutlinerViewport keeps the window
+// where it is, and no fold, mode, query, or selection membership changes. A
+// range selection extends to the new row exactly as a j/k move extends it.
+func (m *OutlinerModel) jumpToLabelledRow(row int) tea.Cmd {
+	if row < 0 || row >= len(m.Rows) || row == m.Cursor {
+		return nil
+	}
+	m.SyncJumpProjection()
+	origin, hasOrigin := m.currentJumpPosition()
+	previous := m.Cursor
+	m.Cursor = row
+	if hasOrigin {
+		m.PushJumpBack(origin)
+		m.RelocationHistory.forward = nil
+	}
+	m.UpdateRangeSelection()
+	m.AdoptNavigatedCursor(previous)
+	return listsurface.FlashIfJumped(previous, row, &m.CursorFlash)
+}
+
+// jumpLabelGuidance is the footer while jump mode owns input.
+func (m *OutlinerModel) jumpLabelGuidance() chrome.GuidanceSpec {
+	if m.Jump.Prefix != "" {
+		return chrome.GuidanceSpec{Hints: chrome.RequiredGuidanceHints("type label", "Backspace undo", "Esc cancel"), Rows: 1}
+	}
+	return chrome.GuidanceSpec{Hints: chrome.RequiredGuidanceHints("type label", "Esc cancel"), Rows: 1}
 }

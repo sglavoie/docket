@@ -94,6 +94,11 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationCoreCursorPageDown, Keys: []string{"ctrl+d", "pgdown"}, DisplayKey: "Ctrl+D/PgDn", SharedKey: true},
 			{OperationID: OperationCoreJumpBackward, Keys: []string{"ctrl+o"}, DisplayKey: "Ctrl+O"},
 			{OperationID: OperationCoreJumpForward, Keys: []string{"alt+right", "ctrl+i"}, DisplayKey: "Alt+→"},
+			// ' carries no FooterRank, like every other cursor motion: the leading six
+			// are sized to the floor and this is an accelerator for a reader who has
+			// already found j/k, so `?` help and the Go menu teach it instead. Once the
+			// mode is open its own gated guidance names the labels and the way out.
+			{OperationID: OperationCoreJumpLabels, Keys: []string{"'"}, DisplayKey: "'"},
 			{OperationID: OperationCoreFocusLatest, Keys: []string{"ctrl+l"}, DisplayKey: "Ctrl+L"},
 			{OperationID: OperationCoreSelectPinned, Keys: []string{"ctrl+p"}, DisplayKey: "Ctrl+P"},
 			{OperationID: OperationCoreCollapseParent, Keys: []string{"h", "left"}, DisplayKey: "h/←"},

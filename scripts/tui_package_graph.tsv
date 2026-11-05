@@ -198,6 +198,10 @@
 #     generations that void a superseded run, and the frame arithmetic, with no
 #     row type to know about. It names `status` alone, for TickCmd, and only
 #     `outliner -> motion` reads it; the shell routes its tick through an alias.
+#   - `jumplabel` is L1 beside `chrome`, reaching only `theme`:
+#     it is the jump mode's label vocabulary, keystroke rule and row paint,
+#     with no row, window or cursor of its own, so the Outliner (`outliner ->
+#     jumplabel`) is its one consumer and the edge can close no cycle.
 package	layer	depends_on
 presentation	L0	-
 theme	L0	-
@@ -209,6 +213,7 @@ keymap	L0	-
 motion	L0	status
 chrome	L1	theme,textfit,pulse,taskref,keymap
 coordinator	L1	taskref,status
+jumplabel	L1	theme
 grammar	L2	chrome,theme,textfit,taskref
 query	L2	theme,pulse,taskref,chrome,grammar
 operation	L3	presentation,chrome,taskref,status,grammar,query
@@ -224,7 +229,7 @@ taskform	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordi
 lens	L7	presentation,theme,textfit,status,keymap,chrome,query,operation,route,listsurface
 conflict	L7	theme,textfit,status,keymap,chrome,listsurface,route
 projecthub	L7	presentation,theme,textfit,status,pulse,keymap,chrome,coordinator,operation,route,listsurface,help,notes
-outliner	L7	presentation,theme,textfit,taskref,status,pulse,keymap,motion,chrome,coordinator,grammar,query,operation,route,listsurface,help,notes,taskform,taskdetail,lens,projecthub
+outliner	L7	presentation,theme,textfit,taskref,status,pulse,keymap,motion,chrome,jumplabel,coordinator,grammar,query,operation,route,listsurface,help,notes,taskform,taskdetail,lens,projecthub
 entityops	L7	presentation,theme,taskref,status,keymap,chrome,coordinator,operation,route,listsurface,help,taskdetail,outliner
 lensops	L7	lens,operation,listsurface,outliner,valuepicker
 filterops	L7	theme,taskref,status,keymap,chrome,query,operation,listsurface,outliner,projecthub,valuepicker

@@ -154,6 +154,7 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, checks ViewMenuChecks) 
 				menuSeparator(),
 				{OperationID: operation.OperationCoreCursorTop, Label: "Top"},
 				{OperationID: operation.OperationCoreCursorBottom, Label: "Bottom"},
+				{OperationID: operation.OperationCoreJumpLabels},
 				{OperationID: operation.OperationCoreJumpBackward, Label: "Jump Back"},
 				{OperationID: operation.OperationCoreJumpForward, Label: "Jump Forward"},
 				{OperationID: operation.OperationCoreFocusLatest, Label: "Latest Activity"},

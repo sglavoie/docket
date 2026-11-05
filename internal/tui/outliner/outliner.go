@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/coordinator"
 	"github.com/sglavoie/docket/internal/tui/grammar"
+	"github.com/sglavoie/docket/internal/tui/jumplabel"
 	"github.com/sglavoie/docket/internal/tui/listsurface"
 	"github.com/sglavoie/docket/internal/tui/motion"
 	"github.com/sglavoie/docket/internal/tui/operation"
@@ -229,6 +230,11 @@ type OutlinerModel struct {
 	// carries the whole of that sub-state; nothing here can go stale, because the
 	// rows are read off the live axes each frame.
 	QueryReadout queryReadoutState
+
+	// Jump is `'`'s jump mode: open, and the first letter of a two-letter label
+	// typed so far. The targets are never stored; outliner_jump_history.go reads
+	// them off the window the last frame drew, on every render and every key.
+	Jump jumplabel.State
 
 	// menuBar is the menu bar's dropdown gate and the two indices that say where
 	// the highlight sits inside it. Like the readout above it is a named field

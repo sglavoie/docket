@@ -375,6 +375,11 @@ type outlinerModalFrame struct {
 // not it acts; with no modal open, only a click on a bar label is.
 func (m *OutlinerModel) handleModalPointer(event route.PointerEvent) (tea.Cmd, bool) {
 	switch {
+	case m.Jump.Active:
+		// Any click or wheel step puts jump mode down and does nothing else: the
+		// labels name rows of a window the pointer is about to move or act on.
+		m.Jump.Cancel()
+		return nil, true
 	case m.RelationPickerOpen():
 		return m.relationPickerPointer(event), true
 	case m.MenuBar.Open:

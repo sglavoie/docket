@@ -269,6 +269,11 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		core(OperationCorePreviousHeader, "Previous Section", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "jump to previous section", "previous group"),
 		core(OperationCoreJumpBackward, "Jump to Older Task Position", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(OperationCoreJumpForward, "Jump to Newer Task Position", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
+		// Jump mode labels every row the window draws and moves the cursor to the
+		// one whose label is typed. It is navigation like gg and n: target-free,
+		// because the label typed inside the mode is what names the row, not the
+		// cursor the key was pressed on.
+		core(OperationCoreJumpLabels, "Jump to Row", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "jump labels", "leap", "easymotion", "go to visible row"),
 		core(OperationCoreFocusLatest, "Focus Latest Activity", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "latest activity", "last touched"),
 		core(OperationCoreCollapseParent, "Collapse or Go to Parent", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(OperationCoreExpand, "Expand", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
