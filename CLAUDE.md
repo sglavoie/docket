@@ -183,8 +183,8 @@ before any axis is written.
 invocation pipeline, and each surface's `InputStrategy` the source of its direct
 dispatch, handled keys, chord hints, `?` help, and scenario discovery. Register
 an operation once and let those projections consume it; do not add a parallel
-key router, palette, or view-specific copy. `surfaceOperationGates()` lists the
-five live strategies. A footer has one source: the strategy's ranks, or the
+key router, palette, or view-specific copy; the `:` palette is help search's
+list. `surfaceOperationGates()` lists the five live strategies. A footer has one source: the strategy's ranks, or the
 gated keymap where modal sub-states narrow a key.
 
 Plan and Status are one vocabulary `internal/tui/chrome` owns: a plan is the
@@ -666,7 +666,7 @@ the clock it superseded while a rejected snapshot observes nothing. A step's
 ledger context names
 the gesture, so its toast names the outcome instead through `RecoveryContext` —
 one deadline, or changed and cleared counts including hidden members — and a
-re-render of that same toast keeps it.
+re-render of that toast keeps it.
 
 `outlinerCursorRow` marks the cursor with a left half-block, and a
 task row alone also wears `cursorPaint.rowBg` under everything it drew; a flash
@@ -713,7 +713,7 @@ Row and Peek budget:
   projection is therefore no exception and may not shorten the dock or lift it —
   it only reads the reservation without computing a window, having no rows to
   window. A
-  row owning no document draws `peekDockPlaceholderDocument` at that same height;
+  row owning no document draws `peekDockPlaceholderDocument` at that height;
   `b` closes an open dock from any row, through the one shared
   `CommandContextSatisfiesPeekRequirement`.
 - `inlinePeekDocument` separates the whole detail from the window of it on
@@ -792,7 +792,7 @@ Row and Peek budget:
   including rows a fold hides, and never a window or a cursor, so titles hold
   still while the list scrolls or a fold opens. `HasFold` keeps that
   column blank on a row with nothing to fold, and a nil layout reserves none; the inline editor and the Hub preview
-  painter read that same layout.
+  painter read that layout.
 - `taskRowSegments.titlePrefix()` is where the inline row editor gets its indent
   and its width, so the title budget reaches the caret by construction and never
   as a second copy of the row's arithmetic. A validation refusal is readable
@@ -868,9 +868,9 @@ not give notes tags, links, or bulk actions.
 
 ## Key bindings
 
-The old `d`, `m`, `$`, `:`, `Ctrl+Esc`, `H`, `L`, and the
-comma state prefix stay unbound, as does `SortByStatus`; repeating a sort field
-key is the only reverse route. Done is `wd` alone and no `d` alias may return.
+The old `d`, `m`, `$`, `Ctrl+Esc`, `H`, `L`, and the
+comma state prefix stay unbound, as does `SortByStatus`; repeating a sort key
+is the only reverse route. Done is `wd` alone and no `d` alias may return.
 `b` took Peek from the retired `Ctrl+Enter`; no alias returns it.
 
 `;` opens the panel that reads, edits, and deletes comments and `C`
@@ -1065,7 +1065,7 @@ language. Its sigil set is the capture set minus `>parent`, `<child`, `&link`,
 and `;comment;`, which refuse by name, plus `~task`, whose `~0` refuses by name
 there too. `&` still reaches search, reading presence alone: `&any` and `&none`
 are its whole vocabulary there, so a locator refuses by name and `R&D` is prose. Sigils compile to an AND gate applied before scoring, and the
-case-relaxed retry re-runs that same gate.
+case-relaxed retry re-runs that gate.
 Only a recognized value the grammar cannot honor blocks a query.
 
 - `-` is the one negation: on a mutation surface it removes a value from the

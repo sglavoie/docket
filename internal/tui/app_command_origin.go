@@ -382,6 +382,8 @@ func (m *AppModel) overlayPointerOwner() widthRenderer {
 		return m.lenses.Picker()
 	case m.conflictBrowser != nil:
 		return m.conflictBrowser
+	case m.commandPalette != nil:
+		return m.commandPalette
 	}
 	return nil
 }

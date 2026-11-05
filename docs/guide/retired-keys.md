@@ -30,7 +30,10 @@ exchange, since `Ctrl+Enter` gave Peek up to it and is now silent with no alias
 back. A letter earns a place beside `Enter` and `Shift+Enter`, which zoom and
 widen, better than a modifier does. `R` is a seventh: it marks the cursor task
 reviewed and moves to the next candidate, the capital beside the `=` that flags
-one.
+one. `:` is an eighth: it opens the command palette, the Outliner's action list
+as a modal you type into, and it is the first of the returns that is a way to
+find acts rather than an act. It is not the old finder back: it lists
+operations, never tasks or projects, and runs each exactly as its own key does.
 `d` is unbound: Done stays `wd` alone, `@` answers both dates, and root `z` is
 the scroll chord prefix. `w` joins them as a chord prefix rather than a key of
 its own, and `$` left the keyboard entirely when the workflow chord took that

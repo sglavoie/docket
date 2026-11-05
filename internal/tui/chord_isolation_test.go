@@ -155,12 +155,13 @@ func TestAbandonedChordNamesThePathItLeft(t *testing.T) {
 // it too: Mark Reviewed took the capital, which the sigil grammar never spelled.
 // w left it as well, in the other direction: the workflow chord took the letter,
 // and $ took w's place here, because the chord it used to open now answers to a
-// letter and the sigil is typed rather than pressed.
+// letter and the sigil is typed rather than pressed. : left it last: the
+// Command Palette took it, a way to find acts rather than an alias for one.
 func TestRetiredRootKeysStaySilentlyUnbound(t *testing.T) {
 	strategy := SimplifiedInputStrategy()
 	app := headerTargetAuditApp(t)
 	for _, name := range []string{
-		"$", "d", "m", ":", ",", "|",
+		"$", "d", "m", ",", "|",
 	} {
 		t.Run(name, func(t *testing.T) {
 			for _, binding := range strategy.Bindings {

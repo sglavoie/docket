@@ -388,6 +388,14 @@ func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		}
 		return true, cmd
 	}
+	if m.commandPalette != nil {
+		// Nothing opens above the palette either: a chosen row closes it first.
+		dismiss, cmd := dispatchOverlayKey(m.commandPalette, msg)
+		if dismiss {
+			m.commandPalette = nil
+		}
+		return true, cmd
+	}
 	return false, nil
 }
 
@@ -403,6 +411,9 @@ func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 func (m *AppModel) handleActivePasteOverlay(msg tea.PasteMsg) (bool, tea.Cmd) {
 	if m.conflictBrowser != nil {
 		return true, m.conflictBrowser.HandlePaste(msg)
+	}
+	if m.commandPalette != nil {
+		return true, m.commandPalette.HandlePaste(msg)
 	}
 	if m.checkInSetup != nil && m.checkInSetup.busy {
 		return true, nil

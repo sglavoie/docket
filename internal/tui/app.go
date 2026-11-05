@@ -252,6 +252,11 @@ type AppModel struct {
 	// it registers no operations, so nothing ever nests above it, and Esc is the
 	// whole of its lifecycle.
 	conflictBrowser *conflict.ConflictBrowserModel
+
+	// commandPalette is `:` over the Outliner. Like the conflict browser it
+	// registers nothing and nothing nests above it: a chosen row closes it
+	// before the operation runs, so any picker that row opens stands alone.
+	commandPalette *help.CommandPaletteModel
 }
 
 // AppOption is a functional option for configuring AppModel.

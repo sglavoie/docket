@@ -428,6 +428,8 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		}
 	case operation.OperationCoreHelp:
 		message = m.outlinerHelpMessage(invocation.Context)
+	case operation.OperationCoreCommandPalette:
+		err = m.openCommandPalette(invocation.Context)
 	case operation.OperationCoreQuit:
 		message = status.QuitMsg{}
 	case operation.OperationCoreNextWorkMode:

@@ -199,6 +199,7 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, checks ViewMenuChecks) 
 			Entries: []menuEntrySpec{
 				{OperationID: operation.OperationCoreHelp, Label: "Key Reference"},
 				{OperationID: operation.OperationCoreLastMessage},
+				{OperationID: operation.OperationCoreCommandPalette},
 			},
 		},
 	}

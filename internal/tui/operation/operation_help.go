@@ -101,9 +101,23 @@ func (registry *OperationRegistry) helpItemsForInputStrategy(id InputStrategyID,
 			Aliases:        descriptor.Aliases,
 			Action:         &HelpAction{ID: descriptor.ID},
 			DisabledReason: reason,
+			Rank:           binding.FooterRank,
 		})
 	}
 	return items
+}
+
+// chordGroupRank is the FooterRank of the chord group a sequence runs through,
+// so a preset row ranks where its prefix stands in the footer.
+func chordGroupRank(strategy InputStrategy, sequence []string) int {
+	rank := 0
+	for _, group := range strategy.ChordGroups {
+		if group.FooterRank > 0 && len(group.Sequence) < len(sequence) &&
+			slices.Equal(group.Sequence, sequence[:len(group.Sequence)]) {
+			rank = group.FooterRank
+		}
+	}
+	return rank
 }
 
 // presetChordHelpItems spells a chord whose one display key compresses several
@@ -135,6 +149,7 @@ func presetChordHelpItems(strategy InputStrategy, operationID OperationID, descr
 			Order:       binding.HelpOrder,
 			Aliases:     aliases,
 			Action:      &HelpAction{ID: operationID, Value: binding.PresetValue, HasValue: binding.HasPresetValue},
+			Rank:        chordGroupRank(strategy, binding.Sequence),
 		})
 	}
 	return items

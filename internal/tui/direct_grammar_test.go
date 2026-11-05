@@ -281,7 +281,7 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"Q":   operation.OperationCoreQueryReadout,
 		"'":   operation.OperationCoreJumpLabels,
 		"u":   operation.OperationCoreUndo, "ctrl+r": operation.OperationCoreRedo,
-		"esc": operation.OperationCoreBack, "?": operation.OperationCoreHelp, "ctrl+c": operation.OperationCoreQuit, "q": operation.OperationCoreQuit,
+		"esc": operation.OperationCoreBack, "?": operation.OperationCoreHelp, ":": operation.OperationCoreCommandPalette, "ctrl+c": operation.OperationCoreQuit, "q": operation.OperationCoreQuit,
 		"tab": operation.OperationCoreNextWorkMode, "shift+tab": operation.OperationCorePreviousWorkMode,
 		"@": operation.OperationTaskSetDueDate,
 		"-": operation.OperationTaskStepDueEarlier,
@@ -371,7 +371,7 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	// has likewise left this list: Peek took it off Ctrl+Enter, and direct above
 	// is where it is asserted, as has R, which Mark Reviewed took.
 	for _, removed := range []string{
-		"d", "g", "z", ",", "m", ":", "ctrl+esc",
+		"d", "g", "z", ",", "m", "ctrl+esc",
 		"H", "L",
 	} {
 		if owners := owners[removed]; len(owners) > 0 {

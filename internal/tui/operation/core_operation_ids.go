@@ -80,6 +80,7 @@ const (
 	OperationCoreRedo               OperationID = "tui.core.redo"
 	OperationCoreBack               OperationID = "tui.core.back"
 	OperationCoreHelp               OperationID = "tui.core.help"
+	OperationCoreCommandPalette     OperationID = "tui.core.command-palette"
 	OperationCoreQuit               OperationID = "tui.core.quit"
 	OperationCoreNextWorkMode       OperationID = "tui.core.next-work-mode"
 	OperationCorePreviousWorkMode   OperationID = "tui.core.previous-work-mode"

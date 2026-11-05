@@ -29,7 +29,7 @@ func (m *AppModel) desktopTextBuffer() *chrome.DesktopTextBuffer {
 	if m.operations.CheckInEditor != nil {
 		return m.operations.CheckInEditor.DesktopTextBuffer()
 	}
-	if m.operations.ActionSheet != nil || m.operations.Confirm.IsActive() || m.lenses.Mounted() || m.conflictBrowser != nil {
+	if m.operations.ActionSheet != nil || m.operations.Confirm.IsActive() || m.lenses.Mounted() || m.conflictBrowser != nil || m.commandPalette != nil {
 		return nil
 	}
 	if provider, ok := m.activeView().(chrome.DesktopTextProvider); ok {

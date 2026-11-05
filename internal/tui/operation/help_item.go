@@ -15,6 +15,9 @@ type HelpItem struct {
 	Action         *HelpAction
 	DisabledReason string
 	Target         string
+	// Rank is the binding's FooterRank, or its chord group's for a preset row;
+	// zero is unranked. The command palette orders an empty query by it.
+	Rank int
 }
 
 // HelpAction keeps the binding's identity and preset, never a rendered key to

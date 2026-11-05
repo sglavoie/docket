@@ -78,16 +78,22 @@ func (m *HelpViewModel) prepareActionResults() {
 	if !m.actionSearch() {
 		return
 	}
-	categoryOrder := make(map[string]int, len(m.categories))
-	for i, category := range m.categories {
+	rankActionResults(m.filteredItems, m.searchQuery, m.categories)
+}
+
+// rankActionResults is the one order a runnable search reads, help search and
+// the command palette alike: exact matches, then literal words, then sections.
+func rankActionResults(results []filteredHelpItem, query string, categories []string) {
+	categoryOrder := make(map[string]int, len(categories))
+	for i, category := range categories {
 		categoryOrder[category] = i
 	}
-	sort.SliceStable(m.filteredItems, func(i, j int) bool {
-		a, b := m.filteredItems[i], m.filteredItems[j]
+	sort.SliceStable(results, func(i, j int) bool {
+		a, b := results[i], results[j]
 		if a.exactMatch != b.exactMatch {
 			return a.exactMatch
 		}
-		ar, br := actionMatchRank(a, m.searchQuery), actionMatchRank(b, m.searchQuery)
+		ar, br := actionMatchRank(a, query), actionMatchRank(b, query)
 		if ar != br {
 			return ar < br
 		}

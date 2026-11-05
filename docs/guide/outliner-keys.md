@@ -17,7 +17,7 @@ those keys open, the `Space` action sheets, and the two edit surfaces. What the 
 | Content | `&` opens the cursor task's Attachments panel, and `;` opens the Comments panel of whatever the cursor names — the task, or the project a group header names — the two capture sigils reaching, as keys, the panels that own add and delete, with reorder and unlink in Attachments alone; `C` appends one comment to the same two things without opening that panel, in a multiline popup where `Enter` starts a new line and `Ctrl+S` saves; `r` writes the cursor task's one-line resume note, prefilled with what it already holds — `Enter` saves, an emptied line clears it, `Esc` cancels, and unchanged text writes nothing |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both; each copies the whole visual selection, in displayed order, as one write |
 | Selection | `v` toggles the cursor task; `V` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
-| Global | `Ctrl+P` Select Pinned Project, `P` Select Project, `Q` the narrowing readout, `\` Named Lenses, `Ctrl+N` Notes, `T` theme, `M` menu bar, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `q`/`Ctrl+C` quit (`q` on the Outliner itself; inside a text input or picker it is just a letter) |
+| Global | `Ctrl+P` Select Pinned Project, `P` Select Project, `Q` the narrowing readout, `\` Named Lenses, `Ctrl+N` Notes, `T` theme, `M` menu bar, `/` search, `?` help, `:` command palette, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `q`/`Ctrl+C` quit (`q` on the Outliner itself; inside a text input or picker it is just a letter) |
 
 `Ctrl+G` opens **Search Recovery** while typing or browsing a ranked task search.
 Choose matching finished or deferred work when offered, or **Explain Current
@@ -133,6 +133,20 @@ the sigils — `@@defer` among them — that no key spells. Its tabs fit one row
 jumps to a section, `/` filters the rows, and the filter reads vocabulary the
 labels hide: `defer` finds `@` **Set Due, Defer, or Check-In** and `hidden` finds `f@`
 **Filter by Due or Deferred**, each row naming the word that matched it.
+
+`:` opens the **Command Palette** over the Outliner: one input with every action
+the Outliner offers below it, each row naming the action, its key, and its
+section. Typing narrows the list fuzzily, as `?` search does, and an empty query
+leads with the footer's own order — `a` capture, the `w` workflow, `e` edit.
+`↑`/`↓` or `Ctrl+N`/`Ctrl+P` choose, `Enter` runs, and `Esc` closes. Running a row
+is pressing its key on the task, header, or visual selection the cursor held
+when you pressed `:`: `wd` completes the task, `@` opens its scheduling picker,
+a destructive row still asks first, and a refusal is the key's own sentence. The
+list includes the actions no key reaches, under the menu that holds them —
+**Clear All Folds**, **Toggle Motion**, **Set Up Check-Ins** — and an action the
+cursor cannot take stays listed, dimmed, with the reason under the list. While
+you are typing anywhere else — capture, `/` search, a prompt — `:` is a colon.
+The palette is Outliner-only for now; Notes, the Hub, and the panels keep `?`.
 
 
 Task updates that move the focused task—such as `wg` moving it into In

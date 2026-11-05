@@ -82,7 +82,6 @@ func TestSoleTUIFoundations(t *testing.T) {
 		"selector.go":                                true,
 		"command.go":                                 true,
 		"command_registry.go":                        true,
-		"command_palette.go":                         true,
 		"keybindings.go":                             true,
 		"handled_keys.go":                            true,
 		"repeat_action.go":                           true,

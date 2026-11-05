@@ -118,10 +118,11 @@ func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T)
 
 	// s and t are absent: the three-toggle fold family took both back, s for
 	// section headers and t for task subtrees. b is absent too, because Peek
-	// answers to it now, R because Mark Reviewed does, and q because it quits.
+	// answers to it now, R because Mark Reviewed does, q because it quits, and :
+	// because it opens the Command Palette.
 	for _, retired := range []string{
 		"i", "|", "ctrl+x",
-		":", "ctrl+esc", "m", ",",
+		"ctrl+esc", "m", ",",
 	} {
 		key, err := parseUITestKey(retired)
 		if err != nil {
@@ -167,7 +168,7 @@ func TestSimplifiedHelpContainsNoRetiredShortcutAliases(t *testing.T) {
 	}
 	for _, retired := range []string{
 		"i", "x", "|", "Ctrl+X",
-		":", "Ctrl+Esc", "m",
+		"Ctrl+Esc", "m",
 	} {
 		if keys[retired] {
 			t.Errorf("simplified help retains retired shortcut alias %q", retired)

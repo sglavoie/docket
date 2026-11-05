@@ -388,6 +388,10 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		core(OperationCoreRedo, "Redo", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation),
 		core(OperationCoreBack, "Back", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(OperationCoreHelp, "Help", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "keyboard shortcuts"),
+		// The palette is help search's action list as a modal over the Outliner:
+		// it discovers what the cursor can do and runs it as that key would, so
+		// it owns no target and writes nothing of its own.
+		core(OperationCoreCommandPalette, "Command Palette", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "run an action", "find an action", "commands"),
 		core(OperationCoreQuit, "Quit", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "exit"),
 		core(OperationCoreNextWorkMode, "Next Work Mode", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly),
 		core(OperationCorePreviousWorkMode, "Previous Work Mode", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly),

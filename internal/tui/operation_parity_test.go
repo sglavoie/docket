@@ -141,10 +141,11 @@ func TestHarnessAndRetiredOperationsStayOutOfProductionSurfaces(t *testing.T) {
 		t.Fatal("no harness operation was registered, so the exclusion proves nothing")
 	}
 
-	// Restoring discovery must not restore the retired palette grammar or the
-	// screens the simplified daily loop replaced.
+	// Restoring discovery must not restore the retired prefix grammar or the
+	// screens the simplified daily loop replaced. The `:` Command Palette is not
+	// that grammar: it projects help search's list and runs through the executor.
 	retired := []string{
-		"palette", "prefix", "quick-capture", "bulk-capture", "quick-switch",
+		"prefix", "quick-capture", "bulk-capture", "quick-switch",
 		"focus-board", "attr-filter", "pinned-tasks", "recent-tasks",
 		"inbox-processor", "archive-all",
 	}

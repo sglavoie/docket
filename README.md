@@ -40,7 +40,8 @@ Press `?` whenever you want the keys for the surface you are on. Press `F10`
 to browse menus; Task groups everyday actions under Plan, Status, and Details.
 In Outliner help, press `/`, search an action such as `defer`, and press `Enter`
 to run the selected result. Up/down choose another result; its shortcut and
-target remain visible.
+target remain visible. `:` opens the same list as a Command Palette over the
+Outliner, typing straight into its search.
 
 ### Capture more in one line
 
@@ -202,7 +203,7 @@ and the rare.
 | `v` `V` `Ctrl+A` | select one · select a range · select every visible row |
 | `&` `;` `b` `O` | attachments · comments · Peek · outline-edit the project |
 | `y`/`Y` `u`/`Ctrl+R` `Ctrl+N` `T` | copy · undo and redo · Notes · theme |
-| `Space` `?` `q`/`Ctrl+C` | menu · the generated key reference for this surface · quit |
+| `Space` `?` `:` `q`/`Ctrl+C` | menu · the generated key reference for this surface · command palette · quit |
 
 `?` is always the honest answer: it is generated from the same operation
 descriptors that dispatch the keys, for whichever surface you are on.

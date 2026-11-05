@@ -58,7 +58,8 @@ func (m *AppModel) shellModalMounted() bool {
 	return m.checkInSetup != nil ||
 		m.operations.OverlayMounted() ||
 		m.lenses.Mounted() ||
-		m.conflictBrowser != nil
+		m.conflictBrowser != nil ||
+		m.commandPalette != nil
 }
 
 // activePresentationPublishesToShell asks whether the footer is still this

@@ -341,7 +341,6 @@ func TestArchitectureDocumentationRejectsRetiredLiveProduct(t *testing.T) {
 	for _, stale := range []string{
 		"Review mode",
 		"Finder",
-		"Command Palette",
 		"Task Type",
 		"Inspector",
 		"live schema 4",

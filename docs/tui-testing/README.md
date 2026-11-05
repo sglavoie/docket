@@ -204,9 +204,9 @@ on a row the same characters open the Attachments and Comments panels that own
 add and delete, with reorder and unlink in Attachments alone. `C` and `;` are the same pair once more on a
 project header, where both answer for the project rather than for a task. The
 old standalone `d` action and comma state prefix are intentionally unbound, as
-are `m`, `$`, `:`, `H`, `L`, and `Ctrl+Esc`. `b`, `c`, `t`, `P`, `R`, and `w` are
+are `m`, `$`, `H`, `L`, and `Ctrl+Esc`. `b`, `c`, `t`, `P`, `R`, `w`, and `:` are
 live again with different acts: Peek, Add Checklist Item, the subtree fold,
-Select Project, Mark Reviewed, and the workflow chord. The workflow chord is the
+Select Project, Mark Reviewed, the workflow chord, and the Command Palette. The workflow chord is the
 one key that does not spell its sigil: `$destination` is typed, `w` is pressed.
 
 The presentation grammar is also part of the scenario contract. Full-screen

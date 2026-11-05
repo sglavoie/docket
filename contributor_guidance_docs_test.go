@@ -98,7 +98,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`fs` is unavailable in Recent; entry clears only Stale: " +
 			"`Stale filter cleared: Recent only includes the last 30 days`",
 		"There is no `$delete` sigil",
-		"The old `d`, `m`, `$`, `:`, `Ctrl+Esc`, `H`, `L`, and the " +
+		"The old `d`, `m`, `$`, `Ctrl+Esc`, `H`, `L`, and the " +
 			"comma state prefix stay unbound, as does `SortByStatus`",
 		"`b` took Peek from the retired `Ctrl+Enter`; no alias returns it",
 		"`;` opens the panel that reads, edits, and deletes comments and `C` " +

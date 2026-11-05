@@ -84,6 +84,8 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		return true, nil
 	case help.RunActionMsg:
 		return true, m.runHelpAction(msg)
+	case help.RunPaletteActionMsg:
+		return true, m.runPaletteAction(msg)
 
 	case status.StatusClearMsg:
 		// A failed save belongs to the retained draft. Timers (including older
@@ -362,6 +364,18 @@ func (m *AppModel) handleCaptureAndBulkMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 func (m *AppModel) outlinerHelpMessage(ctx operation.CommandContext) help.ShowHelpMsg {
 	ctx = operation.CloneCommandContext(ctx)
+	return help.ShowHelpMsg{
+		ViewName: "Outliner", Items: m.coreHelpItemsForContext(ctx, false),
+		ActionContext: &ctx, SearchItems: m.outlinerActionItems(ctx),
+	}
+}
+
+// outlinerActionItems is the Outliner's one runnable action list: every key the
+// strategy binds, every menu-only sheet entry under its real menu key, and every
+// menu bar operation bound to no key at all, each with the availability reason
+// and target the context gives it. Help search and the command palette both
+// read it, so neither can list an action the other cannot run.
+func (m *AppModel) outlinerActionItems(ctx operation.CommandContext) []operation.HelpItem {
 	items := m.coreHelpItemsForContext(ctx, true)
 	strategy, _ := m.operations.Registry.InputStrategy(operation.InputStrategySimplified)
 	// Sheets already declare the rare entity actions. Project their menu-only
@@ -382,6 +396,7 @@ func (m *AppModel) outlinerHelpMessage(ctx operation.CommandContext) help.ShowHe
 			})
 		}
 	}
+	items = append(items, m.menuOnlyActionItems(items, ctx)...)
 	for i := range items {
 		if items[i].Action == nil {
 			continue
@@ -391,10 +406,44 @@ func (m *AppModel) outlinerHelpMessage(ctx operation.CommandContext) help.ShowHe
 			items[i].Target = m.helpActionTarget(descriptor.TargetSource, ctx)
 		}
 	}
-	return help.ShowHelpMsg{
-		ViewName: "Outliner", Items: m.coreHelpItemsForContext(ctx, false),
-		ActionContext: &ctx, SearchItems: items,
+	return items
+}
+
+// menuOnlyActionItems projects the menu bar's rows that no other route lists:
+// the keyless chrome toggles and Clear All Folds, spelled by the menu that holds
+// them, so a search names the one place they can otherwise be found.
+func (m *AppModel) menuOnlyActionItems(listed []operation.HelpItem, ctx operation.CommandContext) []operation.HelpItem {
+	seen := make(map[operation.OperationID]bool, len(listed))
+	for _, item := range listed {
+		if item.Action != nil {
+			seen[item.Action.ID] = true
+		}
 	}
+	mode := chrome.ModeAll
+	if out, ok := m.outlinerPrimary(); ok && out != nil {
+		mode = out.PrimaryMode
+	}
+	var items []operation.HelpItem
+	for _, menu := range outliner.OutlinerMenuSpecs(mode, outliner.ViewMenuChecks{}) {
+		for _, entry := range menu.Entries {
+			descriptor, ok := m.operations.Registry.Descriptor(entry.OperationID)
+			if entry.OperationID == "" || seen[entry.OperationID] || !ok {
+				continue
+			}
+			seen[entry.OperationID] = true
+			aliases := descriptor.Aliases
+			if entry.Label != "" && entry.Label != descriptor.Label {
+				aliases = append(slices.Clone(aliases), entry.Label)
+			}
+			items = append(items, operation.HelpItem{
+				Key: m.menuOpenHint() + " → " + menu.Title, Description: descriptor.Label, Aliases: aliases,
+				Category:       operation.OperationCategoryLabel(descriptor.Category),
+				Action:         &operation.HelpAction{ID: descriptor.ID},
+				DisabledReason: operation.AvailabilityReason(descriptor, ctx),
+			})
+		}
+	}
+	return items
 }
 
 func (m *AppModel) helpActionTarget(source operation.OperationTargetSource, ctx operation.CommandContext) string {
@@ -443,20 +492,7 @@ func (m *AppModel) runHelpAction(msg help.RunActionMsg) tea.Cmd {
 	if m.currentView() != presentation.ViewHelp || msg.Source != m.helpView {
 		return nil
 	}
-	descriptor, ok := m.operations.Registry.Descriptor(msg.Request.ID)
-	if !ok || m.crossOutliner == nil {
-		return nil
-	}
-	live := m.crossOutliner.OperationCommandContext()
-	if reason := operation.AvailabilityReason(descriptor, live); reason != "" {
-		m.helpView.RefuseAction(descriptor.ID, reason)
-		return nil
-	}
-	resolver := operation.OperationTargetResolver{}
-	before, beforeErr := resolver.Resolve(descriptor, msg.Request.Context)
-	now, nowErr := resolver.Resolve(descriptor, live)
-	if beforeErr != nil || nowErr != nil || !slices.Equal(before.Targets, now.Targets) {
-		m.helpView.RefuseAction(descriptor.ID, "The task or selection changed. Close help and choose it again.")
+	if !m.frozenActionStillRuns(msg.Request, "Close help", m.helpView.RefuseAction) {
 		return nil
 	}
 	resume := m.popView()
@@ -464,4 +500,63 @@ func (m *AppModel) runHelpAction(msg help.RunActionMsg) tea.Cmd {
 		return resume
 	}
 	return tea.Batch(resume, operation.ResultCmd(m.operations.Executor.Execute(msg.Request)))
+}
+
+// frozenActionStillRuns is the one check a help result and a palette row pass
+// before they execute: the operation still applies to the live Outliner, and it
+// still resolves the targets it resolved when the list was frozen. A refusal is
+// written onto the row that asked, which stays open with the reason.
+func (m *AppModel) frozenActionStillRuns(
+	request operation.OperationExecutionRequest,
+	closing string,
+	refuse func(operation.OperationID, string),
+) bool {
+	descriptor, ok := m.operations.Registry.Descriptor(request.ID)
+	if !ok || m.crossOutliner == nil {
+		return false
+	}
+	live := m.crossOutliner.OperationCommandContext()
+	if reason := operation.AvailabilityReason(descriptor, live); reason != "" {
+		refuse(descriptor.ID, reason)
+		return false
+	}
+	resolver := operation.OperationTargetResolver{}
+	before, beforeErr := resolver.Resolve(descriptor, request.Context)
+	now, nowErr := resolver.Resolve(descriptor, live)
+	if beforeErr != nil || nowErr != nil || !slices.Equal(before.Targets, now.Targets) {
+		refuse(descriptor.ID, "The task or selection changed. "+closing+" and choose it again.")
+		return false
+	}
+	return true
+}
+
+// openCommandPalette mounts `:` over the Outliner with the help search list,
+// frozen against the context of the keypress that opened it.
+func (m *AppModel) openCommandPalette(ctx operation.CommandContext) error {
+	if m.currentView() != presentation.ViewCrossProjectOutliner || m.crossOutliner == nil {
+		return fmt.Errorf("the command palette belongs to the Outliner")
+	}
+	ctx = operation.CloneCommandContext(ctx)
+	// The menu bar's Help entry reaches here too, so the palette names the view
+	// it stands over rather than trusting every caller to have.
+	ctx.View = presentation.ViewCrossProjectOutliner
+	m.commandPalette = help.NewCommandPalette(ctx, m.outlinerActionItems(ctx))
+	return nil
+}
+
+// runPaletteAction closes the palette and runs its row through the executor,
+// exactly as the row's key would: a picker, a prompt, a confirmation, or a
+// refusal is the operation's own and arrives over the Outliner.
+func (m *AppModel) runPaletteAction(msg help.RunPaletteActionMsg) tea.Cmd {
+	if m.commandPalette == nil || msg.Source != m.commandPalette {
+		return nil
+	}
+	if !m.frozenActionStillRuns(msg.Request, "Close the palette", m.commandPalette.RefuseAction) {
+		return nil
+	}
+	m.commandPalette = nil
+	if m.currentView() != msg.Request.Context.View {
+		return nil
+	}
+	return operation.ResultCmd(m.operations.Executor.Execute(msg.Request))
 }

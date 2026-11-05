@@ -138,8 +138,10 @@ func TestSimplifiedInputStrategyUsesVisibleSearchAndFinalNavigation(t *testing.T
 	if !helpHasJumpBackward || !helpHasJumpForward {
 		t.Errorf("generated help jump rows = backward %t forward %t, want both", helpHasJumpBackward, helpHasJumpForward)
 	}
-	if _, _, ok := registry.InputBindingForKey(operation.InputStrategySimplified, ":", ctx); ok {
-		t.Error("removed Finder key still resolves")
+	// : came back as the Command Palette, never as the retired Finder.
+	if binding, _, ok := registry.InputBindingForKey(operation.InputStrategySimplified, ":", ctx); !ok ||
+		binding.OperationID != operation.OperationCoreCommandPalette {
+		t.Errorf(": resolves to %+v, want the Command Palette", binding)
 	}
 }
 

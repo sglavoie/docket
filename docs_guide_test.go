@@ -54,7 +54,7 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 		"a comment you edit or delete is the one you were looking at rather than the row it sat on",
 		"`y` title, `Y` description, `Ctrl+Y` both",
 		"`o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `or` switch the held query between the flat ranked list slash opens and a narrowing of the mode, `ox` clear; repeat a field key to reverse it",
-		"`\\` Named Lenses, `Ctrl+N` Notes, `T` theme, `M` menu bar, `/` search, `?` help, `u` undo, " +
+		"`\\` Named Lenses, `Ctrl+N` Notes, `T` theme, `M` menu bar, `/` search, `?` help, `:` command palette, `u` undo, " +
 			"`Ctrl+R` redo, `Esc` unwind/clear, `q`/`Ctrl+C` quit",
 		// Session 7 moved n/N off the header row onto the block: a group whose
 		// heading is not drawn still starts one, so the guide names what is stepped

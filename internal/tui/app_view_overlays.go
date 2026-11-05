@@ -141,6 +141,9 @@ func (m *AppModel) dimmedOverlayRenderers() []widthRenderer {
 	if m.conflictBrowser != nil {
 		out = append(out, m.conflictBrowser)
 	}
+	if m.commandPalette != nil {
+		out = append(out, m.commandPalette)
+	}
 	return out
 }
 

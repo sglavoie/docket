@@ -128,7 +128,6 @@ func TestREADMEDocumentsFinalDailyLoop(t *testing.T) {
 		// All has no automatic Stale lane; old work stays in its lifecycle group.
 		"Review, Stale, Inbox",
 		"Next → Backlog → Active → All",
-		"Command Palette",
 		"Inbox Processor",
 		"Weekly Review",
 		"`Ctrl+Esc` reset",

@@ -256,6 +256,22 @@ confirmations, transactions, and undo remain the executor's. Help session recall
 stores only the result key beside its query/category/scroll; each reopening
 receives fresh actions, targets, and availability.
 
+The `:` Command Palette is that same search as a shell modal over the Outliner,
+not a second action list. `outlinerActionItems` builds the one list both read —
+the strategy's bindings, the manifests' menu-only entries, and every menu bar
+operation no key reaches, under its `F10 → Menu` route — and
+`help.CommandPaletteModel` keeps its runnable rows, ranks a query with the
+helper help search uses, and orders an empty query by `HelpItem.Rank`, the
+binding's `FooterRank` or its chord group's. Enter sends `RunPaletteActionMsg`
+with the context frozen at the keypress; `frozenActionStillRuns` is the check
+help results take too, so a changed target refuses on the row, and only then is
+the palette closed and the request handed to `OperationExecutor`. It registers
+nothing and has no `PresentationID`: `shellModalMounted` names it, so
+`route.ActiveGuidanceOwner` resolves the modal and its own box draws
+`Enter run · Esc close · ↑/↓ choose`. `:` carries no `FooterRank`, like `F10`:
+`? help` already holds the footer's discovery rung. The palette is Outliner-only;
+other surfaces may adopt it by supplying their own projection of the same kind.
+
 A value provider is exactly one of `operation.TextEntry()` (a separate overlay),
 `operation.TagEntry()` (inline add mode), `operation.DateEntry()` (inline add mode), or a plain list
 such as `ValueProviderParent`.
@@ -650,14 +666,14 @@ state, and that read is what lets the strip name the axes it cleared or answer
 `w`, `z`, `f`, `F`, and `o` are the other root prefixes. `w` is the workflow
 chord, so no lifecycle destination carries a bare root key and `d` is unbound
 rather than aliasing `wd`; `z` is the scroll chord and never means defer. Every
-other retired root key — `m`, `$`, `:`, the comma state
+other retired root key — `m`, `$`, the comma state
 prefix, and `Ctrl+Esc` — is simply absent from the strategy, because a
 compatibility shim would keep a second vocabulary alive next to the sigils.
-`t`, `P`, `c`, `C`, `b`, and `R` left that list by an explicit decision rather
-than by drift: `t` took the task-subtree fold, `P` took Select Project, `c` took
-Add Checklist Item, `C` took quick Add Comment, `b` took Peek, and `R` took Mark
-Reviewed, so all six are live keys with new acts rather than aliases for the ones
-they used to name.
+`t`, `P`, `c`, `C`, `b`, `R`, and `:` left that list by an explicit decision
+rather than by drift: `t` took the task-subtree fold, `P` took Select Project, `c`
+took Add Checklist Item, `C` took quick Add Comment, `b` took Peek, `R` took Mark
+Reviewed, and `:` took the Command Palette, so all seven are live keys with new
+acts rather than aliases for the ones they used to name.
 
 Set Parent's key is its sigil too: `>` opens `ValueProviderParent`, a plain list
 built by `operationParentListSource` from the cursor task's own
