@@ -164,6 +164,38 @@ final class GhosttyConfigTests: XCTestCase {
         XCTAssertEqual([original.r, original.g, original.b], [0x1E, 0x1E, 0x2E])
     }
 
+    /// The built-in font is Ghostty's embedded fallback, reached by emptying
+    /// every family list rather than by a name CoreText cannot resolve.
+    func testBuiltInFontResetsEveryFamilyTheUserFileNames() throws {
+        let user = try writeUserConfig("font-family = Menlo\nfont-family-bold = Menlo Bold\n")
+        var font = overrides
+        font.font = .builtIn
+        XCTAssertEqual(Array(font.lines.filter { $0.hasPrefix("font-family") }), [
+            #"font-family = """#, #"font-family-bold = """#, #"font-family-italic = """#, #"font-family-bold-italic = """#,
+        ])
+        XCTAssertEqual(Ghostty.Config(userConfig: user, overrides: font).diagnostics, [])
+
+        font.font = .family("Menlo")
+        XCTAssertEqual(font.lines.filter { $0.hasPrefix("font-family") }.last, "font-family = Menlo")
+        XCTAssertEqual(font.lines.filter { $0.hasPrefix("font-family") }.count, 5)
+        XCTAssertEqual(Ghostty.Config(userConfig: user, overrides: font).diagnostics, [])
+
+        font.font = nil
+        XCTAssertFalse(font.lines.contains { $0.hasPrefix("font-family") }, "the config decides")
+    }
+
+    func testFontFamilyRejectsInjectedConfigLines() {
+        XCTAssertNil(TerminalFont.named("Menlo\ncommand = /bin/sh"))
+        XCTAssertNil(TerminalFont.named("  "))
+        XCTAssertEqual(TerminalFont.named(" Menlo "), .family("Menlo"))
+    }
+
+    func testInstalledMonospacedFamiliesIncludeMenloNotHelvetica() {
+        let families = TerminalFont.installedMonospacedFamilies()
+        XCTAssertTrue(families.contains("Menlo"), "\(families)")
+        XCTAssertFalse(families.contains("Helvetica"))
+    }
+
     func testThemeOverrideRejectsInjectedConfigLines() {
         var selected = overrides
         selected.theme = "Catppuccin Latte\ncommand = /bin/sh"

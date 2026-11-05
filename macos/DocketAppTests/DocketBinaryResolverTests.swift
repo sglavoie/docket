@@ -160,7 +160,9 @@ final class DocketBinaryResolverTests: XCTestCase {
             path: "/bin",
             forwarded: ["EDITOR": "nvim", "DOCKET_DATA_DIR": "/data"]
         )
-        XCTAssertEqual(env.commandEnvironment, ["HOME": "/Users/me", "PATH": "/bin", "EDITOR": "nvim", "DOCKET_DATA_DIR": "/data"])
+        XCTAssertEqual(env.commandEnvironment, [
+            "HOME": "/Users/me", "PATH": "/bin", "EDITOR": "nvim", "DOCKET_DATA_DIR": "/data", "DOCKET_GLYPHS": "nerd",
+        ])
     }
 
     func testReportScriptNamesEveryForwardedVariable() {

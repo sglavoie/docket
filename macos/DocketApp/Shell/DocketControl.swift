@@ -36,6 +36,7 @@ struct DocketControlRequest: Encodable, Equatable {
     enum Op: String, Encodable {
         case reveal, acknowledge, done, capture, complete, preview, quit, appearance, view, undo, edit, version, search, index, projects, focus
         case themePalette = "theme_palette"
+        case reduceMotion = "reduce_motion"
         case deferTask = "defer"
         case captureOnce = "capture_once"
         case captureContext = "capture_context"
@@ -134,6 +135,12 @@ struct DocketControlRequest: Encodable, Equatable {
     }
 
     static let clearThemePalette = Self(op: .themePalette, text: "")
+
+    /// Forwards macOS's Reduce Motion: `on` holds the session's motion off,
+    /// `off` returns it to Docket's own preference. Presentation alone.
+    static func reduceMotion(_ reduce: Bool) -> Self {
+        Self(op: .reduceMotion, text: reduce ? "on" : "off")
+    }
 
     /// Switches the running Docket to the mode `view` names, as its mode jump
     /// does; refused while something is open in Docket.

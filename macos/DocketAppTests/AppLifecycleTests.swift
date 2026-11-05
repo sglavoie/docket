@@ -54,7 +54,7 @@ final class ExitPolicyTests: XCTestCase {
 
 final class MainMenuTests: XCTestCase {
     private func titles(_ menu: NSMenu?) -> [String] {
-        (menu?.items ?? []).filter { !$0.isSeparatorItem }.map(\.title)
+        (menu?.items ?? []).filter { !$0.isSeparatorItem && !$0.isHidden }.map(\.title)
     }
 
     private func submenu(_ main: NSMenu, _ title: String) -> NSMenu? {
@@ -67,7 +67,7 @@ final class MainMenuTests: XCTestCase {
         for title in ["About Docket", "Settings…", "Relaunch Docket", "Hide Docket", "Quit Docket"] {
             XCTAssertTrue(app.contains(title), "\(title) missing from \(app)")
         }
-        XCTAssertEqual(titles(submenu(main, "Edit")), ["Undo", "Redo", "Cut", "Copy", "Paste", "Select All", "Find…"])
+        XCTAssertEqual(titles(submenu(main, "Edit")), ["Undo", "Redo", "Cut", "Copy", "Paste", "Select All", "Find…", "Command Palette…"])
         XCTAssertEqual(main.items.compactMap { $0.submenu?.title }, ["", "Edit", "View", "Window", "Help"])
     }
 
@@ -148,6 +148,16 @@ final class MainMenuTests: XCTestCase {
         for action in MainMenu.textOnlyEditActions {
             XCTAssertFalse(Ghostty.SurfaceView.instancesRespond(to: action), NSStringFromSelector(action))
         }
+    }
+
+    /// Cmd+K and Shift+Cmd+P both open Docket's palette, ahead of Ghostty's
+    /// clear-screen and palette bindings for the same keys.
+    func testCommandPaletteAnswersBothShortcutsAheadOfTheTerminal() throws {
+        let main = MainMenu.make()
+        XCTAssertEqual(MainMenu.item(in: main, key: "k", modifiers: .command)?.action, MainMenu.commandPalette)
+        XCTAssertEqual(MainMenu.item(in: main, key: "P", modifiers: [.shift, .command])?.action, MainMenu.commandPalette)
+        XCTAssertTrue(MainMenu.terminalEditActions.contains(MainMenu.commandPalette))
+        XCTAssertEqual(Ghostty.SurfaceView.commandPaletteAction, "text::")
     }
 
     func testAboutCreditsNameTheGhosttyVersionAndNotice() {

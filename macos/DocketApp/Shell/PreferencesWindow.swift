@@ -193,6 +193,46 @@ final class PreferencesModel: ObservableObject {
         return choices
     }
 
+    /// The terminal font: the built-in one by default, an installed family, or
+    /// nil to leave the families to the Ghostty config.
+    @Published var terminalFont: TerminalFont? {
+        didSet {
+            guard terminalFont != oldValue else { return }
+            DocketTerminalFontPreference.save(terminalFont, to: defaults)
+            onTerminalFontChange?()
+        }
+    }
+
+    /// Installed fixed-pitch families, read when Settings opens.
+    @Published var availableFonts: [String] = []
+
+    static let builtInFontTag = "\u{1}built-in"
+    static let configFontTag = "\u{1}config"
+
+    /// The font picker's selection: a family name or one of the two tags.
+    var fontChoice: String {
+        get {
+            switch terminalFont {
+            case .builtIn: return Self.builtInFontTag
+            case .family(let name): return name
+            case nil: return Self.configFontTag
+            }
+        }
+        set {
+            switch newValue {
+            case Self.builtInFontTag: terminalFont = .builtIn
+            case Self.configFontTag: terminalFont = nil
+            default: terminalFont = TerminalFont.named(newValue) ?? .builtIn
+            }
+        }
+    }
+
+    /// Keep a saved family visible even if it was uninstalled.
+    var fontChoices: [String] {
+        guard case .family(let name) = terminalFont, !availableFonts.contains(name) else { return availableFonts }
+        return availableFonts + [name]
+    }
+
     /// The size the terminal uses while `defaultFontSize` is nil: the Ghostty
     /// config's, set by whoever loads it.
     @Published var configFontSize: Float = 13
@@ -284,6 +324,7 @@ final class PreferencesModel: ObservableObject {
     var onAgendaHotKeyChange: ((HotKeyCombo?) -> Void)?
     var onDefaultFontSizeChange: ((Float?) -> Void)?
     var onTerminalThemeChange: (() -> Void)?
+    var onTerminalFontChange: (() -> Void)?
     var onDockBadgeChange: ((Bool) -> Void)?
     var onSpotlightChange: ((Bool) -> Void)?
     var onNotificationsChange: ((Bool) -> Void)?
@@ -308,6 +349,7 @@ final class PreferencesModel: ObservableObject {
         defaultFontSize = DocketDefaultFontSize.load(from: defaults)
         terminalTheme = DocketTerminalThemePreference.load(from: defaults)
         availableThemes = TerminalTheme.available()
+        terminalFont = DocketTerminalFontPreference.load(from: defaults)
         notificationsEnabled = DocketNotificationsPreference.load(from: defaults)
         backgroundSession = DocketBackgroundPreference.load(from: defaults)
         dockBadge = DocketDockBadgePreference.load(from: defaults)
@@ -326,6 +368,8 @@ final class PreferencesModel: ObservableObject {
         exitBehavior = .load(from: defaults)
         terminalTheme = DocketTerminalThemePreference.load(from: defaults)
         availableThemes = TerminalTheme.available()
+        terminalFont = DocketTerminalFontPreference.load(from: defaults)
+        availableFonts = TerminalFont.installedMonospacedFamilies()
         let stored = defaults.string(forKey: DocketBinaryResolver.overrideDefaultsKey) ?? ""
         if stored != binaryOverride.trimmingCharacters(in: .whitespacesAndNewlines) {
             binaryOverride = stored
@@ -673,6 +717,17 @@ struct PreferencesView: View {
                     : "Overrides the Ghostty config's font-size. ")
                     + "⌘+ and ⌘− zoom until Docket.app quits; each launch and ⌘0 return to this size.")
 
+                Picker("Font", selection: $model.fontChoice) {
+                    Text("JetBrains Mono Nerd Font (built in)").tag(PreferencesModel.builtInFontTag)
+                    Text("From the Ghostty config").tag(PreferencesModel.configFontTag)
+                    Divider()
+                    ForEach(model.fontChoices, id: \.self) { Text($0).tag($0) }
+                }
+                note((model.terminalFont == nil
+                    ? "Uses the Ghostty config's font-family. "
+                    : "Overrides the Ghostty config's font-family. ")
+                    + "Any font still draws Docket's icons from Ghostty's built-in Nerd Font symbols.")
+
                 Picker("Theme", selection: $model.themeName) {
                     Text("From the Ghostty config").tag(String?.none)
                     Divider()
@@ -744,11 +799,14 @@ struct PreferencesView: View {
                 ForEach(DocketEnvironmentOverrides.names, id: \.self) { name in
                     LabeledContent(name) {
                         let detected = model.detectedEnvironment?.value(of: name)
-                        TextField("", text: environmentBinding(name), prompt: Text(detected ?? "not set"))
+                        let fallback = LaunchEnvironment.defaultValues[name]
+                        TextField("", text: environmentBinding(name), prompt: Text(detected ?? fallback ?? "not set"))
                             .labelsHidden()
                             .font(.system(.body, design: .monospaced))
                             .frame(minWidth: 260)
-                            .help(detected.map { "From your login shell: \($0)" } ?? "Your login shell does not set \(name).")
+                            .help(detected.map { "From your login shell: \($0)" }
+                                ?? fallback.map { "Your login shell does not set \(name); Docket.app sends \($0)." }
+                                ?? "Your login shell does not set \(name).")
                     }
                 }
                 if model.environmentAwaitsRelaunch {

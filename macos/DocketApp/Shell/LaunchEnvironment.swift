@@ -10,7 +10,13 @@ struct LaunchEnvironment: Equatable {
     /// `DOCKET_DATA_DIR` exported from `~/.zshrc` never reaches a Finder-launched
     /// app, so without these `Ctrl+E` would pick another editor and Docket could
     /// open another workspace than the terminal's.
-    static let forwardedNames = ["EDITOR", "VISUAL", "DOCKET_EDITOR", "DOCKET_DATA_DIR"]
+    /// `DOCKET_GLYPHS` too, so a shell's own choice wins over the default below.
+    static let forwardedNames = ["EDITOR", "VISUAL", "DOCKET_EDITOR", "DOCKET_DATA_DIR", "DOCKET_GLYPHS"]
+
+    /// What Docket receives for a forwarded name neither the shell nor
+    /// Preferences sets: the terminal always has Nerd Font symbols, from the
+    /// built-in font or Ghostty's fallback to it.
+    static let defaultValues = ["DOCKET_GLYPHS": "nerd"]
 
     var home: String
     var path: String
@@ -19,7 +25,8 @@ struct LaunchEnvironment: Equatable {
 
     /// Variables the surface's command receives on top of its inherited ones.
     var commandEnvironment: [String: String] {
-        forwarded.merging(["HOME": home, "PATH": path]) { _, fixed in fixed }
+        Self.defaultValues.merging(forwarded) { _, set in set }
+            .merging(["HOME": home, "PATH": path]) { _, fixed in fixed }
     }
 
     /// The value Docket receives for one of `PATH` and the forwarded names.

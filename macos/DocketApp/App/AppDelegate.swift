@@ -50,6 +50,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     var quitTimeout = DocketQuitHandshake.defaultTimeout
     /// Watches macOS's appearance for Docket's theme.
     private var appearanceObserver: NSKeyValueObservation?
+    /// Watches macOS's Reduce Motion for Docket's motion.
+    private var reduceMotionObserver: NSObjectProtocol?
     /// Asks whether to quit over what Docket has open; true quits anyway.
     var confirmQuitAnyway: (String) -> Bool = AppDelegate.runBusyQuitAlert
     /// The Services menu's Capture to Docket.
@@ -129,6 +131,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             var current = overrides
             current.fontSize = model.defaultFontSize
             current.theme = model.terminalTheme?.configValue
+            current.font = model.terminalFont
             if let binary = binaries.current {
                 current.arguments += [binary.path] + DocketControlLaunch.arguments(
                     controlPath: binary.controlSupported ? DocketControlLaunch.socketPath() : nil,
@@ -157,6 +160,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             self.ghostty?.reloadConfig()
             self.sendTheme(clearWhenUnselected: true)
         }
+        // A reload keeps the session's zoom, as a theme change does.
+        model.onTerminalFontChange = { [weak self] in self?.ghostty?.reloadConfig() }
         model.onEnvironmentChange = { [weak self] in self?.scheduleEnvironmentReload() }
         model.onRelaunch = { [weak self] in self?.relaunchTerminal() }
         refreshConfigFontSize()
@@ -615,6 +620,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             if connected {
                 self?.sendFocus()
                 self?.sendTheme(clearWhenUnselected: true)
+                self?.sendReduceMotion()
                 self?.drainWidgetActions()
                 // Ask the process itself: replacing its executable on disk
                 // must not rewrite what Settings calls the running version.
@@ -713,6 +719,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         } else if clearWhenUnselected {
             control.send(.clearThemePalette)
         }
+    }
+
+    /// Forwards macOS's Reduce Motion to the running Docket. An older Docket
+    /// answers "unknown operation", which is ignored.
+    private func sendReduceMotion() {
+        guard let control, control.isConnected else { return }
+        control.send(.reduceMotion(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion))
     }
 
     /// A notification naming a task was clicked: bring Docket forward on it.
@@ -1253,6 +1266,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         appearanceObserver = NSApp.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
             DispatchQueue.main.async { self?.sendTheme() }
         }
+        reduceMotionObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil, queue: .main
+        ) { [weak self] _ in self?.sendReduceMotion() }
 
         serviceProvider.present = { [weak self] draft in self?.presentCapture(draft) }
         NSApp.servicesProvider = serviceProvider

@@ -121,9 +121,51 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
         let applied = shell.applying(["PATH": "/opt/bin:/bin", "EDITOR": "hx", "DOCKET_DATA_DIR": "/data", "HOME": "/x"])
         XCTAssertEqual(applied.commandEnvironment, [
             "HOME": "/Users/me", "PATH": "/opt/bin:/bin", "EDITOR": "hx", "VISUAL": "nvim", "DOCKET_DATA_DIR": "/data",
+            "DOCKET_GLYPHS": "nerd",
         ])
         XCTAssertEqual(applied.value(of: "PATH"), "/opt/bin:/bin")
         XCTAssertNil(shell.value(of: "DOCKET_EDITOR"))
+    }
+
+    /// Docket draws Nerd Font glyphs unless the shell or Settings says otherwise.
+    func testGlyphsDefaultToNerdButAForwardedValueWins() {
+        let bare = LaunchEnvironment(home: "/h", path: "/bin")
+        XCTAssertEqual(bare.commandEnvironment["DOCKET_GLYPHS"], "nerd")
+        let shell = LaunchEnvironment(home: "/h", path: "/bin", forwarded: ["DOCKET_GLYPHS": "ascii"])
+        XCTAssertEqual(shell.commandEnvironment["DOCKET_GLYPHS"], "ascii")
+        XCTAssertEqual(bare.applying(["DOCKET_GLYPHS": "unicode"]).commandEnvironment["DOCKET_GLYPHS"], "unicode")
+        XCTAssertTrue(LaunchEnvironment.forwardedNames.contains("DOCKET_GLYPHS"))
+        XCTAssertEqual(
+            LaunchEnvironment.current(processEnvironment: ["HOME": "/h", "SHELL": "/usr/bin/false", "DOCKET_GLYPHS": "ascii"])
+                .commandEnvironment["DOCKET_GLYPHS"],
+            "ascii", "an inherited value is forwarded"
+        )
+    }
+
+    func testTerminalFontDefaultsToBuiltInAndPersists() {
+        XCTAssertEqual(DocketTerminalFontPreference.load(from: defaults), .builtIn)
+        let model = PreferencesModel(defaults: defaults)
+        XCTAssertEqual(model.terminalFont, .builtIn)
+        XCTAssertEqual(model.fontChoice, PreferencesModel.builtInFontTag)
+        var changes = 0
+        model.onTerminalFontChange = { changes += 1 }
+
+        model.fontChoice = PreferencesModel.configFontTag
+        XCTAssertNil(model.terminalFont)
+        XCTAssertEqual(defaults.string(forKey: DocketTerminalFontPreference.defaultsKey), "ghostty-config")
+        XCTAssertNil(PreferencesModel(defaults: defaults).terminalFont)
+
+        model.fontChoice = "Menlo"
+        XCTAssertEqual(model.terminalFont, .family("Menlo"))
+        XCTAssertEqual(DocketTerminalFontPreference.load(from: defaults), .family("Menlo"))
+        XCTAssertTrue(model.fontChoices.contains("Menlo"), "a saved family stays listed")
+
+        model.fontChoice = PreferencesModel.builtInFontTag
+        XCTAssertNil(defaults.object(forKey: DocketTerminalFontPreference.defaultsKey), "absence is the built-in")
+        XCTAssertEqual(changes, 3)
+
+        defaults.set("Bad\nName", forKey: DocketTerminalFontPreference.defaultsKey)
+        XCTAssertEqual(DocketTerminalFontPreference.load(from: defaults), .builtIn)
     }
 
     func testAnEnvironmentEditAwaitsARelaunchOnlyWhileTheOldValuesRun() {

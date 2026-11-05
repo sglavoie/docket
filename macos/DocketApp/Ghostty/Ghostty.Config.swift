@@ -23,6 +23,8 @@ extension Ghostty {
         /// A Ghostty theme name, or light/dark theme pair. Nil keeps the
         /// theme from the user's Ghostty config.
         var theme: String?
+        /// The terminal font, or nil to keep the user config's families.
+        var font: TerminalFont?
 
         /// The override file's lines, in the order Ghostty reads them.
         var lines: [String] {
@@ -33,6 +35,9 @@ extension Ghostty {
             ]
             if let fontSize {
                 lines.append("font-size = \(Self.number(fontSize))")
+            }
+            if let font {
+                lines += font.configLines
             }
             if let theme, Self.isSingleLine(theme), !theme.isEmpty {
                 lines.append("theme = \(theme)")

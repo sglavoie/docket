@@ -79,12 +79,14 @@ Docket runs.
 
 A Finder-launched app inherits almost no environment, so Docket.app asks your
 login shell, interactively (`$SHELL -l -i`), for `PATH`, `EDITOR`, `VISUAL`,
-`DOCKET_EDITOR`, and `DOCKET_DATA_DIR`, and passes those to Docket: `Ctrl+E` opens the
+`DOCKET_EDITOR`, `DOCKET_DATA_DIR`, and `DOCKET_GLYPHS`, and passes those to Docket: `Ctrl+E` opens the
 editor your terminal would, and `DOCKET_DATA_DIR` picks the same workspace. A
 shell that cannot run interactively within five seconds is asked again as a
-plain login shell.
+plain login shell. When neither the shell nor Settings sets `DOCKET_GLYPHS`,
+Docket.app sends `DOCKET_GLYPHS=nerd`, since its terminal always has Nerd Font
+symbols (see Terminal font below).
 
-Settings lists the five, each showing the shell's value in gray. Typing a
+Settings lists the six, each showing the shell's value in gray. Typing a
 value gives Docket that instead, and clearing the field returns to the shell's.
 They are stored together as the `docketEnvironment` dictionary default:
 
@@ -649,7 +651,8 @@ config-file = ~/.config/ghostty/config
 Settings has Open and Reload for it; Reload says "Reloaded." or lists what
 Ghostty found wrong in the file. The app always overrides `command`,
 `wait-after-command`, and `confirm-close-surface`, since it owns the process
-Docket runs in.
+Docket runs in. By default it also resets the `font-family` keys to the built-in
+font; see [Terminal font](#terminal-font).
 
 ### Pointer
 
@@ -694,12 +697,21 @@ starts and again whenever macOS changes appearance. Docket uses that theme for t
 session only, so a Docket started from a terminal keeps the theme it saved, and
 `T` still toggles until the next change. An older Docket ignores the request.
 
+Docket.app likewise forwards System Settings › Accessibility › Display › Reduce
+motion: when a session connects and whenever it changes, it sends the control op
+`reduce_motion` with `on` or `off`. `on` holds that session's motion off
+whatever Docket's own setting says; `off` returns it to that setting. Nothing
+is saved, and an older Docket's "unknown operation" answer is ignored.
+
 ### Menus
 
 Edit has Undo, Redo, Cut, Copy, Paste, Select All, and Find. In the terminal,
 `Cmd+Z` and `Shift+Cmd+Z` undo and redo the focused draft; while browsing,
 they use Docket’s workspace history. The menu names the available action and
-disables it when unavailable. `Cmd+F` opens Outliner search. Native fields
+disables it when unavailable. `Cmd+F` opens Outliner search. Command Palette…
+(`Cmd+K`, and also `Shift+Cmd+P`) types `:`, Docket's command palette key, into
+the terminal; both shortcuts take precedence over Ghostty's own bindings for them
+(clear screen and Ghostty's palette). Native fields
 in Settings and quick capture retain AppKit editing; Cut remains a native
 text-field action. View names the
 zoom keys (Actual Size, Zoom In, Zoom Out) and Enter Full Screen
@@ -721,6 +733,36 @@ stored as the `docketDefaultFontSize` default, 6 to 72:
 defaults write io.github.sglavoie.docket docketDefaultFontSize -float 15
 defaults delete io.github.sglavoie.docket docketDefaultFontSize   # use the config's
 ```
+
+### Terminal font
+
+Settings › Terminal › Font defaults to JetBrains Mono Nerd Font (built in), so
+every Docket.app looks the same whatever the config file says: that choice
+overrides any `font-family`, `font-family-bold`, `font-family-italic`, and
+`font-family-bold-italic` in `~/.config/docket-app/ghostty.conf`. The built-in
+face is not an installed font. Ghostty compiles JetBrains Mono and the Symbols
+Nerd Font into libghostty (`src/font/embedded.zig`) and adds them after every
+configured family as fallbacks (`SharedGridSet.collection`), without
+registering them with CoreText, so no family name selects them. Docket.app
+therefore writes `font-family = ""` (and the same for the three styled keys),
+which empties Ghostty's lists so that fallback becomes the face. The picker also
+offers “From the Ghostty config”, which writes nothing and leaves the families to
+the config file, and every installed fixed-pitch family. An installed family resets
+those four lists too, then sets `font-family`, so its bold and italic come from its
+own styles. Because the embedded symbols font is always the fallback, any family
+still draws Docket's Nerd Font glyphs.
+
+A change applies immediately to the open terminal and keeps its zoom. The choice is
+stored as `docketTerminalFont`: absent is the built-in font, `ghostty-config`
+defers to the config, and any other value names a family:
+
+```bash
+defaults write io.github.sglavoie.docket docketTerminalFont -string "Menlo"
+defaults write io.github.sglavoie.docket docketTerminalFont -string ghostty-config
+defaults delete io.github.sglavoie.docket docketTerminalFont   # the built-in font
+```
+
+### Terminal theme
 
 Ghostty's standard themes ship inside the app, so `theme = Catppuccin Mocha`
 works without Ghostty.app installed; `build-ghosttykit.sh` vendors them, with

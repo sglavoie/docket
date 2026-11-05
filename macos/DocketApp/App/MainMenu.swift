@@ -25,7 +25,11 @@ enum MainMenu {
     /// items. Undo, Redo, and Find instead route to Docket over the control socket.
     static let textOnlyEditActions: Set<Selector> = [cut]
     static let find = #selector(Ghostty.SurfaceView.findTasks(_:))
-    static let terminalEditActions: Set<Selector> = [undo, redo, find]
+    /// Types `:`, Docket's command palette key, into the terminal.
+    static let commandPalette = #selector(Ghostty.SurfaceView.openCommandPalette(_:))
+    /// Shortcuts the menu claims ahead of the terminal's own Ghostty bindings
+    /// (Cmd+K clears the screen, Shift+Cmd+P opens Ghostty's palette).
+    static let terminalEditActions: Set<Selector> = [undo, redo, find, commandPalette]
     /// Docket's repository, which the guide and issue links are read from.
     static let repositoryURL = URL(string: "https://github.com/sglavoie/docket")!
     /// The user guide, read on GitHub: an installed app carries no docs tree.
@@ -78,6 +82,11 @@ enum MainMenu {
         editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
         editMenu.addItem(.separator())
         editMenu.addItem(withTitle: "Find…", action: find, keyEquivalent: "f")
+        editMenu.addItem(withTitle: "Command Palette…", action: commandPalette, keyEquivalent: "k")
+        // A second shortcut for the same item, matched though never shown.
+        let paletteAlias = editMenu.addItem(withTitle: "Command Palette…", action: commandPalette, keyEquivalent: "p")
+        paletteAlias.keyEquivalentModifierMask = [.shift, .command]
+        paletteAlias.isHidden = true
         editItem.submenu = editMenu
         main.addItem(editItem)
 

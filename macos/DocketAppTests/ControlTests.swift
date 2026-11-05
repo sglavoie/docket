@@ -262,6 +262,15 @@ final class ControlWireTests: XCTestCase {
         XCTAssertEqual(DocketAppearanceScheme(try XCTUnwrap(NSAppearance(named: .aqua))), .light)
     }
 
+    func testReduceMotionEncodesOnOrOff() throws {
+        for (reduce, text) in [(true, "on"), (false, "off")] {
+            let data = try JSONEncoder().encode(DocketControlRequest.reduceMotion(reduce))
+            let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+            XCTAssertEqual(object["op"] as? String, "reduce_motion")
+            XCTAssertEqual(object["text"] as? String, text)
+        }
+    }
+
     func testViewEncodesTheModeTtTakes() throws {
         for view in [DocketView.inbox, .today, .due] {
             let data = try JSONEncoder().encode(DocketControlRequest.view(view))

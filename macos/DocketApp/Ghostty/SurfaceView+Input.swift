@@ -460,6 +460,9 @@ extension Ghostty.SurfaceView: NSMenuItemValidation {
     @objc func undo(_ sender: Any?) { onDesktopEdit?("undo") }
     @objc func redo(_ sender: Any?) { onDesktopEdit?("redo") }
     @objc func findTasks(_ sender: Any?) { onDesktopEdit?("search") }
+    /// Sends `:` as typed input, the key Docket opens its command palette on.
+    @objc func openCommandPalette(_ sender: Any?) { performBindingAction(Self.commandPaletteAction) }
+    static let commandPaletteAction = "text::"
 
     func validateMenuItem(_ item: NSMenuItem) -> Bool {
         switch item.action {
