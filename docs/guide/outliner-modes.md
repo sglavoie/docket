@@ -75,6 +75,17 @@ The workspace pulse's `today` count and Today's `open` pace count include
 planned, due-today, and overdue tasks, counted once each across the active
 workspace.
 
+While the day holds fewer tasks than your usual pace, Today mode closes with a
+`Suggested for today` lane: up to seven open tasks worth planning, strongest
+reason first — work already in Doing, a review or check-in that is owed, a
+deadline in the next seven days, the Next plan, then priority 1. Press `wt` on
+one to plan it: it moves up into Today and the cursor lands on the next
+suggestion, so a few keystrokes plan the day. The lane steps aside once Today
+holds three tasks, or your 30-day median of completions if that is higher (at
+most eight). Nothing Today or Pinned already shows is offered, a search hides
+the lane, and folding it with `h` or `s` dismisses it for the session. It is an
+offer, not a plan: nothing is saved until you press `wt`.
+
 Every mode groups its tasks by project when you are looking at more than one
 project. Each group opens with a foldable `[slug] (count)` header, and its
 tasks sit one level beneath it without repeating the project's name; `h` folds

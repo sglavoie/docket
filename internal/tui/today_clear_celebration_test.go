@@ -18,7 +18,7 @@ func clearTodayDriver(t *testing.T, motion bool) *UITestDriver {
 // so ahead of its undo, and with motion the divider sweeps in the success color.
 func TestFinishingTheLastTodayTaskCelebrates(t *testing.T) {
 	driver := clearTodayDriver(t, true)
-	obs := pressKeys(t, driver, "j", "j", "j", "j", "w", "t", "tab", "w", "d")
+	obs := pressKeys(t, driver, "j", "j", "j", "j", "w", "t", "tab", "g", "g", "w", "d")
 	if !strings.Contains(obs.PlainScreen, "Today is clear · u undo") {
 		t.Fatalf("emptying Today was not said:\n%s", obs.PlainScreen)
 	}
@@ -37,7 +37,7 @@ func TestFinishingTheLastTodayTaskCelebrates(t *testing.T) {
 
 func TestClearingTodayWithoutMotionSpeaksQuietly(t *testing.T) {
 	driver := clearTodayDriver(t, false)
-	obs := pressKeys(t, driver, "j", "j", "j", "j", "w", "t", "tab", "w", "d")
+	obs := pressKeys(t, driver, "j", "j", "j", "j", "w", "t", "tab", "g", "g", "w", "d")
 	if !strings.Contains(obs.PlainScreen, "Today is clear") {
 		t.Fatalf("emptying Today was not said:\n%s", obs.PlainScreen)
 	}
@@ -50,7 +50,7 @@ func TestClearingTodayWithoutMotionSpeaksQuietly(t *testing.T) {
 // which is not a celebration.
 func TestReplanningTodayAwayIsNotACelebration(t *testing.T) {
 	driver := clearTodayDriver(t, true)
-	obs := pressKeys(t, driver, "j", "j", "j", "j", "w", "t", "tab", "w", "b")
+	obs := pressKeys(t, driver, "j", "j", "j", "j", "w", "t", "tab", "g", "g", "w", "b")
 	if strings.Contains(obs.PlainScreen, "Today is clear") {
 		t.Fatalf("replanning celebrated:\n%s", obs.PlainScreen)
 	}

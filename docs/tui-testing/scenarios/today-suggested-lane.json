@@ -1,0 +1,28 @@
+{
+  "name": "today-suggested-lane",
+  "fixture": "rich",
+  "size": "100x30",
+  "actions": [
+    { "type": "key", "label": "Today mode", "key": "tab" },
+    { "type": "assert", "label": "a short day offers work worth planning", "assert": "contains", "value": "Suggested for today  (3)" },
+    { "type": "assert", "label": "Doing work is offered first", "assert": "contains", "value": "▌├── ◐   Build login form" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "wt plans the suggestion under the cursor", "key": "w" },
+    { "type": "key", "key": "t" },
+    { "type": "assert", "label": "the day holds it", "assert": "contains", "value": "1 open" },
+    { "type": "assert", "label": "the lane shrinks by the planned task", "assert": "contains", "value": "Suggested for today  (2)" },
+    { "type": "assert", "label": "the cursor carries on to the next suggestion", "assert": "contains", "value": "▌├── ▣ ◉ Launch platform" },
+    { "type": "key", "label": "two more plans fill the day", "key": "w" },
+    { "type": "key", "key": "t" },
+    { "type": "key", "key": "w" },
+    { "type": "key", "key": "t" },
+    { "type": "assert", "assert": "contains", "value": "3 open" },
+    { "type": "assert", "label": "a full day steps the lane aside", "assert": "not_contains", "value": "Suggested for today" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "undo reopens a place, and the lane returns", "key": "u" },
+    { "type": "assert", "assert": "contains", "value": "Suggested for today  (1)" },
+    { "type": "resize", "label": "the lane fits the floor", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "Suggested for today" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

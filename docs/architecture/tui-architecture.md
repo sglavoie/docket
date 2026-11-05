@@ -306,7 +306,16 @@ That kernel takes the group's tasks rather than a count, because it computes the
 header's own `OverdueCount` and `TodayCount` from them; the Today membership
 comes from `Planning().GetToday()` directly, so no projection has to thread its
 input down to the row appenders. The Today projection also includes tasks due on
-the current calendar day or overdue without adding them to the stored plan. A Today section
+the current calendar day or overdue without adding them to the stored plan.
+Today mode alone then appends one computed section, `Suggested for today`, through
+`appendFilteredModeSections`: `BuildTodaySuggestions` ranks open, eligible work
+Today and Pinned do not draw (Doing, `TaskNeedsAttention`, a deadline within
+seven days, Next, priority 1), keeps seven, and returns nothing once the day
+holds `todayPlanTarget` tasks — the rounded 30-day completion median clamped to
+three through eight. Its fold key `_suggest:today` is its own namespace, and a
+search projection suppresses it. It writes nothing: `wt` is the one way a
+suggestion becomes a plan, and relocation recovery carries the cursor on to the
+next suggestion because the planned task left the lane's group. A Today section
 suppresses its `today` count, leaving the group's full size as its one count.
 `appendProjectHeaderPressure` renders
 the suffix and degrades it before `TruncateToVisualWidth` sees the line,

@@ -107,6 +107,9 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 	switch mode.RowStrategy {
 	case chrome.RowStrategyAll, chrome.RowStrategyInbox, chrome.RowStrategyToday, chrome.RowStrategyNext, chrome.RowStrategyBacklog:
 		m.buildPrimaryModeRowsWithInput(projects, input, pinned.projected)
+		if mode.RowStrategy == chrome.RowStrategyToday {
+			m.appendTodaySuggestions(input, pinned.projected)
+		}
 	case chrome.RowStrategyDue:
 		m.appendFilteredModeSections(BuildDueModeSections(input), pinned.projected, input.TaskFilter)
 	case chrome.RowStrategyRecent:

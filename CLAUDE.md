@@ -141,6 +141,7 @@ and only when the state actually changes. A task reaching
 - Next membership is an explicit project-qualified planning collection, never a
   lifecycle state.
 - Today is project-qualified and mutually exclusive with Next.
+- Today mode's Suggested lane is an offer: it writes nothing; `wt` plans.
 - Backlog removes Today/Next references.
 - Starting sets Doing; completing sets Done and clears planning.
 - Waiting is an explicit lifecycle state.

@@ -323,7 +323,8 @@ func TestPrimaryModeMembershipHierarchyOrderingAndQualifiedRows(t *testing.T) {
 	}
 
 	outliner.SelectOutlinerMode(chrome.ModeToday)
-	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{alphaToday.ID}) {
+	// The Suggested lane offers work Today does not hold; it is not membership.
+	if got := visibleTaskIDsOutsideSuggestions(outliner); !slices.Equal(got, []string{alphaToday.ID}) {
 		t.Fatalf("Today rows = %v, want explicit durable membership only", got)
 	}
 
