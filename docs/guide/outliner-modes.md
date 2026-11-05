@@ -22,6 +22,12 @@ All mode shows open, undeferred work in this order:
 Pinned, Today, Doing, Review, Inbox, Next, Paused, Backlog, Waiting, Someday
 ```
 
+A lifecycle section — Doing, Inbox, Backlog, Waiting, Paused, Someday, and Done
+or Canceled when a filter shows them — already names its state, so a task in
+its own section leaves its state glyph's column blank. A glyph tinted by a
+semantic tag still draws, and Pinned, Today, Next, and Review rows, like a child
+whose state differs from its section, keep theirs.
+
 Each launch opens with the Backlog and Someday sections folded, so the first
 screen leads with work already in motion; each header still counts what it
 hides, and `l` or `s` opens it. Only a launch folds them: `Esc`, `0`, and a reload leave it as you
@@ -76,7 +82,10 @@ the cursor's own group down to that header once nothing nearer — a checklist,
 children, a parent — is left to fold, and `p` folds or opens every project group
 at once. A group holding a single top-level task draws no header while it is
 open: that task's row leads with the `[slug]` instead, with its checkbox aligned
-with the other projects' tasks and its own subtasks beneath it. Folding it with
+with the other projects' tasks and its own subtasks beneath it. Every such
+row pads its `[slug]` to one shared column, as wide as the longest slug of any
+project in view, folded sections included, so their titles line up; below 60
+columns the slug stays inline. Folding it with
 `h` or `p` brings the header back as the summary,
 and `l` on that header merges it into the row again. On that row the task keys
 answer, so to act on the project itself — edit it, tag it, Peek it, or `Enter`

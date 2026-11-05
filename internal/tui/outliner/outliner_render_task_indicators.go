@@ -292,15 +292,15 @@ func (m *OutlinerModel) taskIdentityLabel(row OutlinerRow, rowWidth int) string 
 
 func (m *OutlinerModel) taskProjectLabel(row OutlinerRow, rowWidth int, colLayout *chrome.ColumnLayout) string {
 	label := m.taskIdentityLabel(row, rowWidth)
-	// Only the flat cross-project ranked list needs an identity column.
-	// Grouped rows keep labels inline, so one context or long project slug
-	// cannot leave an empty metadata column on every other task.
-	if colLayout != nil && m.showsRankedProjectLabel() {
+	// The flat cross-project ranked list and the merged singleton rows share an
+	// identity column, so their titles start on one column. Rows under a project
+	// header carry context alone and are never padded, so one context cannot
+	// leave an empty metadata column on every other task.
+	switch {
+	case colLayout != nil && m.showsRankedProjectLabel():
 		label += strings.Repeat(" ", max(colLayout.ProjectWidth-lipgloss.Width(label), 0))
-	}
-	if row.LeadsMergedGroup {
-		_, project := m.projectSlugForRow(row)
-		label = m.projectHeaderPinMarker(project) + label
+	case row.LeadsMergedGroup:
+		label += strings.Repeat(" ", max(m.mergedIdentityWidth(rowWidth)-lipgloss.Width(label), 0))
 	}
 	if label == "" {
 		return ""
@@ -345,4 +345,19 @@ func taskMatchSourceCue(row OutlinerRow) string {
 		return ""
 	}
 	return theme.MutedStyle.Render("  · " + label)
+}
+
+// LaneSpellsTaskState reports whether the row sits in a lifecycle lane whose
+// header names exactly the state the task holds. Planning lanes (Pinned, Today,
+// Next) and computed groupings never do, and a child seated under a root of
+// another state keeps its glyph.
+func LaneSpellsTaskState(row OutlinerRow) bool {
+	if row.Task == nil {
+		return false
+	}
+	group, ok := strings.CutPrefix(row.Group.SectionKey, stateGroupCollapsePrefix)
+	if !ok {
+		return false
+	}
+	return models.WorkflowStateGroup(group) == models.WorkflowStateGroupForState(row.Task.State())
 }

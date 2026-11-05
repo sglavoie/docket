@@ -49,9 +49,9 @@ var uxDailyUseDailySize = [2]int{100, 35}
 // TestUXDailyUseSingletonGroupsLeadWithTheirProject is this contract after
 // one-task project groups merged into their row. Each of the fixture's four
 // projects holds one task, so no group draws a `[slug] (count)` header: the
-// task row leads with its own `[slug]` instead, and the label stays inline, so
-// four projects with four different name lengths leave no padding gap between
-// a short label and its title.
+// task row leads with its own `[slug]` instead, and the four labels share one
+// identity column, so four projects with four different name lengths still
+// start their titles on one column.
 //
 // Both halves are asserted, because either alone passes on an arrangement this
 // is meant to refuse: an inline title alone would still hold if the project
@@ -63,6 +63,7 @@ func TestUXDailyUseSingletonGroupsLeadWithTheirProject(t *testing.T) {
 			driver, _ := uxDailyUseStagedDriver(t, "project-label-widths", size[0], size[1])
 			screen := driver.Observe(ObserveOptions{}).PlainScreen
 			lines := strings.Split(screen, "\n")
+			titleColumns := map[int]bool{}
 
 			for _, title := range uxDailyUseMultiProjectTitles {
 				index := slices.IndexFunc(lines, func(line string) bool { return strings.Contains(line, title) })
@@ -77,9 +78,10 @@ func TestUXDailyUseSingletonGroupsLeadWithTheirProject(t *testing.T) {
 				if index > 0 && strings.Contains(lines[index-1], "] (") {
 					t.Fatalf("a project header still opens the one-task group holding %q:\n%s", title, screen)
 				}
-				if gap := line[strings.Index(line, "]")+1 : strings.Index(line, title)]; strings.Contains(gap, "  ") {
-					t.Fatalf("the label for %q is padded away from its title:\n%s", title, line)
-				}
+				titleColumns[ansi.StringWidth(line[:strings.Index(line, title)])] = true
+			}
+			if size[0] >= 80 && len(titleColumns) != 1 {
+				t.Fatalf("merged rows start their titles on %d columns, want one:\n%s", len(titleColumns), screen)
 			}
 		})
 	}
@@ -202,15 +204,16 @@ func uxDailyUseRowContent(t *testing.T, line, title string) string {
 	start := strings.Index(line, uxDailyUseRowGutter)
 	end := strings.Index(line, title)
 	if start < 0 || end < start {
-		t.Fatalf("the row carries no state badge before %q:\n%q", title, line)
+		t.Fatalf("the row carries no project label before %q:\n%q", title, line)
 	}
 	return line[start : end+len(title)]
 }
 
-// uxDailyUseRowGutter is where the compared run starts: the Backlog state badge
-// the alpha row draws first. Every `multi-project` task is its project's only
-// one, so its group merges into the row and no tree connector precedes it.
-const uxDailyUseRowGutter = "▣"
+// uxDailyUseRowGutter is where the compared run starts: the project slug the
+// alpha row leads with. Every `multi-project` task is its project's only one, so
+// its group merges into the row and no tree connector precedes it; its Backlog
+// glyph is left to the lane header, so the slug is the first thing it draws.
+const uxDailyUseRowGutter = "client-alpha"
 
 // TestUXDailyUseSelectionCountsAreStatedOnce is this contract after session 4
 // rewrote it. A visual selection used to be counted in two places at once — the

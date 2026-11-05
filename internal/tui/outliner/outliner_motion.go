@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/docket/internal/tui/motion"
 	"github.com/sglavoie/docket/internal/tui/status"
@@ -338,4 +339,19 @@ func (m *OutlinerModel) LightLanding(taskID string) tea.Cmd {
 		return nil
 	}
 	return m.anim.StartTrail(taskID, "")
+}
+
+// renderLandedCheck paints a completed row's first beat: what leads the check
+// stays muted, the check is bold in the success ink, and the title keeps the
+// ordinary text color, unstruck, so the check is the one thing that changed.
+func renderLandedCheck(text, icon string) string {
+	before, after, found := "", text, false
+	if icon != "" {
+		before, after, found = strings.Cut(text, icon)
+	}
+	check := lipgloss.NewStyle().Foreground(theme.ColorSuccess).Bold(true)
+	if !found {
+		return check.Render(text)
+	}
+	return theme.MutedStyle.Render(before) + check.Render(icon) + after
 }

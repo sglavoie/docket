@@ -176,11 +176,30 @@ func (m *OutlinerModel) flattenSectionRowRoots(
 type hiddenRowLayout struct {
 	hasFold bool
 	tasks   []*models.Task
+	// projects names every project a folded lane hid whole, so the merged-row
+	// identity column already makes room for its slug before the lane opens.
+	projects map[string]bool
+	// mergedWidths caches mergedIdentityWidth per row width for the rows this
+	// accumulator was reset with; a rebuild clears it.
+	mergedWidths map[int]int
 }
 
 func (h *hiddenRowLayout) reset() {
 	h.hasFold = false
 	h.tasks = h.tasks[:0]
+	clear(h.projects)
+	clear(h.mergedWidths)
+}
+
+// addProject records one project whose rows a fold left undrawn.
+func (h *hiddenRowLayout) addProject(projectID string) {
+	if projectID == "" {
+		return
+	}
+	if h.projects == nil {
+		h.projects = make(map[string]bool)
+	}
+	h.projects[projectID] = true
 }
 
 // add records one hidden task. hasChildren is what HasVisibleChildren would
@@ -205,6 +224,7 @@ func (m *OutlinerModel) hideSectionRowNodes(nodes []*sectionRowNode) {
 // hideProjectRowGroups records every project group of one folded section.
 func (m *OutlinerModel) hideProjectRowGroups(groups []projectRowGroup) {
 	for _, group := range groups {
+		m.hiddenLayout.addProject(group.projectID)
 		m.hideSectionRowNodes(group.forest.roots)
 	}
 }

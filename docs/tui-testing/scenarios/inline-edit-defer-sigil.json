@@ -33,6 +33,7 @@
     { "type": "key", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "label": "the deferral is gone, so the deferred-only filter drops the row", "assert": "not_contains", "value": "▣ Alpha still hidden" },
+    { "type": "assert", "label": "nor does the glyph-less form a lifecycle lane would draw", "assert": "not_contains", "value": "  Alpha still hidden" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "reopen the filter chord", "key": "f" },
@@ -49,6 +50,7 @@
     { "type": "wait" },
     { "type": "assert", "assert": "status_contains", "value": "Edit Task Line: #6 Alpha overdue intake" },
     { "type": "assert", "label": "a same-day deferral hides the row at once", "assert": "not_contains", "value": "▣ Alpha overdue intake" },
+    { "type": "assert", "label": "nor does the glyph-less form a lifecycle lane would draw", "assert": "not_contains", "value": "  Alpha overdue intake" },
     { "type": "assert", "label": "the other two overdue tasks remain in Today", "assert": "contains", "value": "Today  (2)" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

@@ -1,6 +1,7 @@
 package outliner
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -187,7 +188,7 @@ func TestCrossProjectProjectIdentityHasExactlyOneCarrier(t *testing.T) {
 			continue
 		}
 		line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, index, nil))
-		named := strings.Contains(line, "["+row.ProjectID+"] ▣ "+row.Task.Title)
+		named := regexp.MustCompile(`\[` + regexp.QuoteMeta(row.ProjectID) + `\]\s+` + regexp.QuoteMeta(row.Task.Title)).MatchString(line)
 		if named != row.LeadsMergedGroup {
 			t.Errorf("task row %q named its project = %t, leads merged group = %t: %q",
 				row.Task.ID, named, row.LeadsMergedGroup, line)

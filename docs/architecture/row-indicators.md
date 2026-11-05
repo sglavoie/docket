@@ -20,9 +20,9 @@ Description presence uses the same reserved width policy: `taskDescriptionMarker
 renders `▤` before the attachment marker when `strings.TrimSpace(task.Description)`
 is nonempty. The description text remains in Peek.
 
-`taskIdentityLabel` joins `[project] [context]`. Only cross-project ranked
-results pad that combined label to a shared project column. Grouped and merged
-rows use the actual label width; rows under a project header carry context
+`taskIdentityLabel` joins `[project] [context]`. Cross-project ranked results
+pad that combined label to a shared project column, and merged singleton rows
+pad it to `mergedIdentityWidth`; rows under a project header carry context
 alone and reserve no space when it is absent. Context text is bounded to one eighth of the row width,
 clamped to 8–20 columns. A combined project/context label spends at most one
 third of the row, including brackets and the separator; the project slug
@@ -104,8 +104,9 @@ one value on one surface: `inlinePeekStatusValue` appends
 `FormatRecencyAge(task.StateChangedAt, now)` to the state for those two states
 alone, so Peek says `Waiting 12d` or `Doing now` and the row says neither. A
 comment, a tag, or a reparent on a blocked task therefore cannot reset how long
-it has been blocked, and the state badge on the row carries the fact while the
-age carries the duration. A Waiting deadline remains the ordinary
+it has been blocked, and the Waiting lane header carries the fact while the
+age carries the duration; outside a Waiting lane the state badge on the row
+carries it. A Waiting deadline remains the ordinary
 `FormatDueDate` segment on the row; check-ins are a separate schedule and never
 reinterpret or suppress it.
 
@@ -175,6 +176,16 @@ rather than urgency, so it is never a hero and never demoted, which is what
 leaves an ordinary Waiting row readable without making it look urgent. Waiting
 earns a hero only on the terms any other task does — its own deadline, review, or
 priority.
+
+A lifecycle lane already names its state, so `LaneSpellsTaskState` — the row's
+section key is a state group and the task's state belongs to that group —
+blanks the badge to its own width rather than repeat the header on every row,
+and the column stays reserved so titles hold their position across lanes. A
+badge wearing a semantic accent (`theme.TaskStateBadgeAccented`) still draws,
+since the accent is information the header does not carry. Planning lanes
+(Pinned, Today, Next, Review), the narrow modes' project groups, and a child
+whose state differs from its lane keep the badge. The departure ghost draws its
+row with the section key cleared, since its check lands on the glyph.
 
 The first gutter cell projects that same ladder through
 `outliner_attention_band.go`: `▐` uses the theme error accent for overdue,
@@ -297,7 +308,11 @@ room for both a recognizable title and the reserved content glyphs. When context
 shares the label, the combined identity budget can shorten the slug further.
 `ComputeOutlinerRowLayout` measures the widest ranked label into
 `ColumnLayout.ProjectWidth`, so those titles start in one column. Merged rows
-keep their labels inline without that padding. The label is part of
+share a column of their own: `mergedIdentityWidth` is the widest merged label,
+floored at the widest `[slug]` any project present in the projection would
+draw — a project hidden whole by a folded lane included, so opening the lane
+moves no title — and cached per row width until the next rebuild. Below 60
+columns of row width it is zero and the labels stay inline. The label is part of
 `titlePrefix`, so the inline editor opens after it. A
 single-project scope keeps its focused header and no label.
 
@@ -387,19 +402,15 @@ inside All or Today all get the mark, while the lane's own rows stay bare
 because the section header above them already states it.
 
 A pinned *project* wears the same glyph, from the same `PinnedMarker()` helper,
-on every surface that lists one: the Outliner project group header, the Select
-Project rows, and the `%` Move to Project picker. One vocabulary, so `*` writes
+on the surfaces that list projects: the Select Project rows and the `%` Move to
+Project picker. The Outliner draws no project pin marker, on a project group
+header or on a merged row's `[slug]`, so in the Outliner `*` only ever marks a
+task. One vocabulary, so `*` writes
 what `*pin` names and what every list shows. It is a glyph rather than a color
 because `SelectedLine` strips styling and re-renders, and `RenderListSurfaceRow`
 skips `PrimaryStyle` on the cursor row outright — a style-only signal is
 invisible on exactly the row the user is on, while a character survives both.
-On the group header the marker leads the badge, so it lands in the column a
-pinned task's `*` occupies one row below, and it goes on before
-`appendProjectHeaderPressure` measures, so its two columns are inside that
-budget and `today` then `overdue` shed first; the marker itself is never
-dropped. Unlike the task row's it is not *reserved*: a header has no
-`ColumnLayout`, so an unpinned header pays nothing for it. On the list surfaces
-it rides `ListItem.PrimaryMarker`, pre-styled chrome drawn immediately before
+On the list surfaces it rides `ListItem.PrimaryMarker`, pre-styled chrome drawn immediately before
 the primary text and charged to `markerWidth` so `LayoutListText`'s budget stays
 honest. Like `PrimaryStyle` it is presentation metadata the behavior model never
 inspects — query and ranking read the plain `PrimaryText` — which is what keeps

@@ -478,6 +478,8 @@ share the one secondary line that carries the counts beside them.
 
 The semantic tags `bug`, `question`, `epic`, `story`, `feature`, and `idea` also
 tint the task's state glyph, in that precedence order when several apply.
+That tint is why such a glyph still draws inside its own lifecycle section,
+where an untinted one is left to the section header.
 The task title stays ordinary text.
 
 A task row shows no chips at all. Its columns go to the title, and Peek names

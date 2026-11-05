@@ -70,6 +70,68 @@ func (m *OutlinerModel) computeRowLayout(rows []OutlinerRow, rowWidth int, hidde
 	return layout
 }
 
+// mergedIdentityWidth is the one identity column every merged singleton row
+// pads its `[slug]` and context to, so their titles start on one column. It is
+// measured over the projection's own rows and what its folds hide — never a
+// window or a cursor — and floored at the widest slug a present project would
+// draw, so a lane opening on a longer slug moves no title. Below the alignment
+// floor, and in the ranked list, which has its own column, it is zero. The
+// render, the merged descendants' hanging indent, and the inline editor all read
+// it, so they cannot disagree about where a merged row's badge sits.
+func (m *OutlinerModel) mergedIdentityWidth(rowWidth int) int {
+	if rowWidth < chrome.MinColumnAlignWidth || m.showsRankedProjectLabel() {
+		return 0
+	}
+	if width, ok := m.hiddenLayout.mergedWidths[rowWidth]; ok {
+		return width
+	}
+	width := 0
+	for _, row := range m.Rows {
+		if row.LeadsMergedGroup && row.Task != nil {
+			width = max(width, lipgloss.Width(m.taskIdentityLabel(row, rowWidth)))
+		}
+	}
+	if width > 0 {
+		width = max(width, m.mergedSlugFloor(m.Rows, &m.hiddenLayout, rowWidth))
+	}
+	if m.hiddenLayout.mergedWidths == nil {
+		m.hiddenLayout.mergedWidths = make(map[int]int)
+	}
+	m.hiddenLayout.mergedWidths[rowWidth] = width
+	return width
+}
+
+// mergedSlugFloor is the widest `[slug]` a project present in the projection
+// would draw on a merged row — drawn, or hidden whole by a folded lane — bounded
+// by the same ceiling the label itself obeys.
+func (m *OutlinerModel) mergedSlugFloor(rows []OutlinerRow, hidden *hiddenRowLayout, rowWidth int) int {
+	present := make(map[string]bool)
+	for _, row := range rows {
+		if row.Group.ProjectID != "" {
+			present[row.Group.ProjectID] = true
+		}
+	}
+	if hidden != nil {
+		for id := range hidden.projects {
+			present[id] = true
+		}
+	}
+	width := 0
+	for _, project := range m.ScopeProjects() {
+		if project == nil || !present[project.ID] {
+			continue
+		}
+		slug := project.Slug
+		if slug == "" {
+			slug = project.Name
+		}
+		if slug = m.abbreviatedProjectSlug(slug, rankedProjectLabelMaxSlug(rowWidth)); slug != "" {
+			width = max(width, lipgloss.Width("["+slug+"]"))
+		}
+	}
+	return width
+}
+
 // noteLabelWidth is the widest label the notes tier draws, folded into the
 // task rows' project column so a note title starts where a task title does. A
 // result set holding only notes still measures it, which is why the layout is

@@ -97,6 +97,9 @@ func (m *OutlinerModel) appendStateGroupForests(
 		for _, item := range forests {
 			header := &m.Rows[len(m.Rows)-1]
 			header.attentionTasks = append(header.attentionTasks, item.forest.tasks()...)
+			if item.project != nil {
+				m.hiddenLayout.addProject(item.project.ID)
+			}
 			m.hideSectionForestTasks(item.forest, item.forest.roots)
 		}
 		return

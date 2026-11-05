@@ -9,7 +9,6 @@ import (
 
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/chrome"
-	"github.com/sglavoie/docket/internal/tui/listsurface"
 	"github.com/sglavoie/docket/internal/tui/textfit"
 	"github.com/sglavoie/docket/internal/tui/theme"
 )
@@ -379,7 +378,7 @@ func (m *OutlinerModel) RenderOutlinerProjectHeaderRow(row OutlinerRow, selected
 	gutter := m.renderHeaderAttention(row, paint) +
 		gutterPiece(bg, theme.MutedStyle, indicator) +
 		gutterSpace(bg)
-	content := m.projectHeaderPinMarker(project) + badge
+	content := badge
 	if row.SectionCount > 0 {
 		content += " " + theme.MutedStyle.Render(fmt.Sprintf("(%d)", row.SectionCount))
 	}
@@ -395,23 +394,6 @@ func (m *OutlinerModel) RenderOutlinerProjectHeaderRow(row OutlinerRow, selected
 	// in the dock below the list, on the same key and under the same cursor rule
 	// as a task's.
 	return line
-}
-
-// projectHeaderPinMarker reserves the same columns on grouped project rows
-// when any project in scope is pinned, keeping their labels aligned.
-func (m *OutlinerModel) projectHeaderPinMarker(project *models.Project) string {
-	if project != nil && project.Pinned {
-		return listsurface.PinnedMarker()
-	}
-	if !m.groupsRowsByProject() {
-		return ""
-	}
-	for _, candidate := range m.ScopeProjects() {
-		if candidate != nil && candidate.Pinned {
-			return strings.Repeat(" ", lipgloss.Width(listsurface.PinnedMarker()))
-		}
-	}
-	return ""
 }
 
 // appendProjectHeaderPressure names the overdue and Today-planned work a

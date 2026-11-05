@@ -140,6 +140,13 @@ func (m *OutlinerModel) buildTaskRowSegmentsFor(row OutlinerRow, rowWidth int, c
 	bg := paint.gutterBg()
 	foldIndicator := m.renderTaskFoldIndicator(row, colLayout, bg)
 	statusIcon := m.renderTaskStatusIcon(task)
+	if LaneSpellsTaskState(row) && !theme.TaskStateBadgeAccented(task) {
+		// The lane header already names this state, so the glyph would only
+		// repeat it on every row. The column stays reserved, so titles hold their
+		// position across lanes. A semantic accent is information the header
+		// does not carry, so an accented glyph still draws.
+		statusIcon = strings.Repeat(" ", lipgloss.Width(statusIcon))
+	}
 	if colLayout != nil && colLayout.HasStatus {
 		statusIcon = theme.PadBadge(statusIcon, colLayout.StatusWidth)
 	}
@@ -423,7 +430,11 @@ func (m *OutlinerModel) captureDepartureLine(capture *OutlinerRelocationCapture)
 	// A ghost still on screen is not counted: the keypress dropped it, so the
 	// next frame draws the rows where they stand without it.
 	layout := m.computeRowLayout(m.Rows, viewport.rowWidth, &m.hiddenLayout)
-	line := ansi.Strip(m.RenderOutlinerTaskRow(row, false, viewport.rowWidth, m.Cursor, layout))
+	// The ghost lands its check on the state glyph, so it draws the glyph even
+	// in a lane that otherwise leaves it to the header.
+	ghostRow := row
+	ghostRow.Group.SectionKey = ""
+	line := ansi.Strip(m.RenderOutlinerTaskRow(ghostRow, false, viewport.rowWidth, m.Cursor, layout))
 	capture.departureLine = strings.TrimRight(line, " ")
 	capture.departureOffset = offset
 	capture.departureIcon = theme.StateBadgeIcon(row.Task.State())
@@ -455,21 +466,6 @@ func (m *OutlinerModel) renderDepartureGhost(rowWidth int) string {
 		rendered += strings.Repeat(" ", pad)
 	}
 	return rendered
-}
-
-// renderLandedCheck paints a completed row's first beat: what leads the check
-// stays muted, the check is bold in the success ink, and the title keeps the
-// ordinary text color, unstruck, so the check is the one thing that changed.
-func renderLandedCheck(text, icon string) string {
-	before, after, found := "", text, false
-	if icon != "" {
-		before, after, found = strings.Cut(text, icon)
-	}
-	check := lipgloss.NewStyle().Foreground(theme.ColorSuccess).Bold(true)
-	if !found {
-		return check.Render(text)
-	}
-	return theme.MutedStyle.Render(before) + check.Render(icon) + after
 }
 
 // ghostSlot decides where this frame draws the ghost, if anywhere: its

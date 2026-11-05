@@ -9,7 +9,6 @@ import (
 
 	"github.com/sglavoie/docket/internal/control"
 	"github.com/sglavoie/docket/internal/icons"
-	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/presentation"
 )
 
@@ -176,7 +175,9 @@ func TestNerdGlyphsKeepEveryLineItsWidth(t *testing.T) {
 	if !slices.Equal(unicodeWidths, nerdWidths) {
 		t.Fatalf("line widths changed with the glyph set:\nunicode %v\nnerd    %v", unicodeWidths, nerdWidths)
 	}
-	if nerdScreen == unicodeScreen || !strings.Contains(nerdScreen, models.StateDoing.Icon()) {
+	// A lane leaves its own state's glyph to the header, so the priority badge
+	// is the glyph every fixture row is sure to draw.
+	if nerdScreen == unicodeScreen || !strings.Contains(nerdScreen, icons.Get("priority.1")) {
 		t.Fatalf("the Nerd set drew no Nerd glyph:\n%s", nerdScreen)
 	}
 }

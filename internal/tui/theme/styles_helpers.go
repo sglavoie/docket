@@ -226,14 +226,25 @@ func stateBadgeIcon(state models.WorkflowState) string {
 	return state.Icon()
 }
 
-func taskStateBadgeStyle(task *models.Task) lipgloss.Style {
-	style := stateBadgeStyle(task.State())
+// TaskStateBadgeAccented reports whether the task's state glyph wears a
+// semantic tag's accent, which is information beyond the state itself.
+func TaskStateBadgeAccented(task *models.Task) bool {
+	return task != nil && taskSemanticRole(task) != models.SemanticTaskTagNone
+}
+
+func taskSemanticRole(task *models.Task) models.SemanticTaskTagRole {
 	role := models.SemanticTaskTagNone
 	for _, tag := range task.Tags {
 		if entry, ok := models.SemanticTaskTagByName(tag); ok && (role == models.SemanticTaskTagNone || entry.Role < role) {
 			role = entry.Role
 		}
 	}
+	return role
+}
+
+func taskStateBadgeStyle(task *models.Task) lipgloss.Style {
+	style := stateBadgeStyle(task.State())
+	role := taskSemanticRole(task)
 	if role != models.SemanticTaskTagNone {
 		style = style.Foreground(SemanticTaskTitleStyle(role, 0, false, false).GetForeground())
 	}

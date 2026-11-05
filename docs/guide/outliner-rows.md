@@ -198,7 +198,9 @@ that is only narrowing the mode's own lanes is not one of those states: it is
 re-answered on every rebuild, so the woken task is matched against it like any
 other row and returns with them.
 
-A Waiting task carries its state badge and nothing else about the waiting. Peek
+A Waiting task in the Waiting lane draws no state glyph, since the lane header
+already says it, and nothing else about the waiting; elsewhere it carries its
+state badge. Peek
 reads `waiting <age>`, measured from the moment it entered Waiting rather than
 from the last time anything touched it, so recording a chase in the comments
 does not reset how long the work has been blocked. A due date beside it remains
@@ -309,11 +311,10 @@ before its title. Rows inside the Pinned lane wear nothing,
 because the section header already says it. The marker is reserved columns like
 the relation mark and is never dropped.
 
-A pinned project wears the same `*`, so one glyph means pinned everywhere: on
-the Outliner project group header, where it sits in the column a pinned task's
-mark occupies one row below, on the Select Project rows, and in the `%` Move to
-Project list. It is never dropped there either — a crowded project header sheds
-its `today` and `overdue` counts first. An archived project keeps the marker,
+A pinned project wears the same `*` on the Select Project rows and in the `%`
+Move to Project list. The Outliner draws no project pin marker, on a project
+group header or on the `[slug]` a merged row leads with, so there `*` always
+means a pinned task. An archived project keeps the marker,
 because the pin is real state that survives archiving, but `*` itself does not
 work there and the footer stops offering it: the marker shows the state, the key
 hides because the act is unavailable.

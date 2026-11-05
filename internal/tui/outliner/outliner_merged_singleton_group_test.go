@@ -2,6 +2,7 @@ package outliner
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -94,7 +95,7 @@ func TestSingletonProjectGroupMergesIntoItsRow(t *testing.T) {
 	}
 
 	line := ansi.Strip(outliner.RenderOutlinerTaskRow(rootRow, false, 120, rootIndex, nil))
-	if !strings.Contains(line, "[alpha] ▣ alpha-root") {
+	if !regexp.MustCompile(`\[alpha\]\s+alpha-root`).MatchString(line) {
 		t.Fatalf("merged row %q does not lead with its project", line)
 	}
 	childLine := ansi.Strip(outliner.RenderOutlinerTaskRow(childRow, false, 120, rootIndex+1, nil))
@@ -150,9 +151,14 @@ func TestSingletonProjectLabelAlignsWithProjectHeaders(t *testing.T) {
 						if label < 0 || want < 0 || ansi.StringWidth(line[:label]) != ansi.StringWidth(headerLine[:want]) {
 							t.Fatalf("project labels are misaligned: header %q, task %q", headerLine, line)
 						}
-						badge := strings.TrimSpace(ansi.Strip(outliner.renderTaskStatusIcon(row.Task)))
-						if strings.Index(line, badge) <= label {
-							t.Fatalf("checkbox must follow the project: %q", line)
+						if strings.Index(line, "beta-one") <= label {
+							t.Fatalf("title must follow the project: %q", line)
+						}
+						if !LaneSpellsTaskState(row) {
+							badge := strings.TrimSpace(ansi.Strip(outliner.renderTaskStatusIcon(row.Task)))
+							if strings.Index(line, badge) <= label {
+								t.Fatalf("checkbox must follow the project: %q", line)
+							}
 						}
 					})
 				}
@@ -222,19 +228,42 @@ func TestToggleProjectGroupsFoldsSingletonsToo(t *testing.T) {
 	}
 }
 
-// A long label elsewhere in the list must not create a gap between a merged
-// row's own label and its state badge.
-func TestMergedRowLabelsUseOnlyTheirOwnWidth(t *testing.T) {
+// Merged rows share one identity column, so a short slug and a long slug with
+// a context still start their titles on one column, and that column is the
+// same at every width the alignment floor admits.
+func TestMergedRowsShareOneTitleColumn(t *testing.T) {
 	outliner, root, _ := mergedSingletonFixture(t)
 	_, beta := mustRowForTask(t, outliner, "beta-backlog")
 	beta.Task.Context = "mobile-app"
+	outliner.Population.Invalidate()
+	outliner.RebuildRows()
 	for _, width := range []int{60, 80, 120, 180} {
 		layout := outliner.ComputeOutlinerRowLayout(outliner.Rows, width)
-		index, row := mustRowForTask(t, outliner, root.ID)
-		line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, width, index, layout))
-		if !strings.Contains(line, "[alpha] ▣ alpha-root") {
-			t.Fatalf("width %d: merged row reserves another task's label width: %q", width, line)
+		columns := map[int]string{}
+		for _, id := range []string{root.ID, "beta-backlog", "alpha-waiting"} {
+			index, row := mustRowForTask(t, outliner, id)
+			if !row.LeadsMergedGroup {
+				continue
+			}
+			line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, width, index, layout))
+			columns[ansi.StringWidth(line[:strings.Index(line, row.Task.Title)])] = line
 		}
+		if len(columns) != 1 {
+			t.Fatalf("width %d: merged titles start on %d columns: %v", width, len(columns), columns)
+		}
+	}
+}
+
+// Below the alignment floor merged rows keep only their own label width.
+func TestMergedRowLabelsUseOnlyTheirOwnWidthWhenNarrow(t *testing.T) {
+	outliner, root, _ := mergedSingletonFixture(t)
+	root.Tags = []string{"bug"} // an accented glyph draws in its own lane
+	outliner.Population.Invalidate()
+	outliner.RebuildRows()
+	index, row := mustRowForTask(t, outliner, root.ID)
+	line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, chrome.MinColumnAlignWidth-1, index, nil))
+	if !strings.Contains(line, "[alpha] ▣ alpha-root") {
+		t.Fatalf("narrow merged row reserves another task's label width: %q", line)
 	}
 }
 
@@ -242,6 +271,8 @@ func TestGroupedRowsDoNotReserveSpaceForOtherTasksContexts(t *testing.T) {
 	plain := primaryRowsTask("plain", models.StateBacklog)
 	contextual := primaryRowsTask("contextual", models.StateBacklog)
 	contextual.Context = "mobile-app"
+	// An accented glyph draws even in the lane that names its state.
+	plain.Tags, contextual.Tags = []string{"bug"}, []string{"bug"}
 	alpha := primaryRowsProject("alpha", plain, contextual)
 	beta := primaryRowsProject("beta", primaryRowsTask("beta-one", models.StateBacklog))
 	outliner, _ := primaryRowsOutliner(alpha, beta)
@@ -267,6 +298,9 @@ func TestGroupedRowsDoNotReserveSpaceForOtherTasksContexts(t *testing.T) {
 func TestMergedRowDescendantsHangBeneathItsBadge(t *testing.T) {
 	outliner, root, child := mergedSingletonFixture(t)
 	root.Context = "infra"
+	root.Tags = []string{"bug"} // an accented glyph draws in its own lane
+	outliner.Population.Invalidate()
+	outliner.RebuildRows()
 	for _, width := range []int{60, 80, 120} {
 		layout := outliner.ComputeOutlinerRowLayout(outliner.Rows, width)
 		rootIndex, rootRow := mustRowForTask(t, outliner, root.ID)

@@ -11,7 +11,7 @@
 
     { "type": "key", "label": "jump labels paint over the dock's list at the floor width", "key": "'" },
     { "type": "assert", "assert": "contains", "value": "type label" },
-    { "type": "assert", "label": "the nearest rows take a and s, below the cursor first", "assert": "contains", "value": "a├── ▾ ▣ Coordinate" },
+    { "type": "assert", "label": "the nearest rows take a and s, below the cursor first", "assert": "contains", "value": "a├── ▾   Coordinate" },
     { "type": "assert", "assert": "contains", "value": "s▾ [checklist-delivery]" },
     { "type": "assert", "assert": "no_layout_issues" },
 
