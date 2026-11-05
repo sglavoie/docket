@@ -1062,7 +1062,10 @@ and each changes paint alone: no width, no row, no window input.
 Two launch options sit beside motion and are also `RunApp`'s alone.
 `WithDailyGreeting` lets `settleLaunchFocus` publish `pulse.DailyGreeting` once
 per local day, recorded as `machine.json`'s `greeted_on`. A keystroke that
-spends the launch intent first also forgoes the greeting.
+spends the launch intent first also forgoes the greeting. When that stored day
+falls before the current local week's Monday (`pulse.OpensNewWeek`), the
+greeting also carries `pulse.WeeklyRecap` over the cached completion
+history, so the weekly recap needs no field of its own.
 `WithRoomyLaunchPeek` lets the same seam call `OpenPeekIfRoomy`, which writes
 `PeekMode` only when the dock draws at its preferred height with every row above
 it.

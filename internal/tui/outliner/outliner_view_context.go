@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"charm.land/lipgloss/v2"
+
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/pulse"
 	"github.com/sglavoie/docket/internal/tui/query"
@@ -253,22 +255,39 @@ func (m *OutlinerModel) BuildOutlinerTitleLine(width int) string {
 		Pace:  pace,
 		Pulse: &workspacePulse,
 	}
+	mark := chrome.OperationalTitleBrandMark(m.ActiveOutlinerMode())
 	if m.ShowsRankedList() {
 		// The mode underneath search is a return destination, not a limit on
 		// these results. Say so even before the first character is typed.
 		spec.Mode = theme.MutedStyle.Render("Search · all modes")
 		spec.Pace = nil
-		return pulse.RenderOperationalTitle(spec, max(width, 1))
+		return renderTitleWithMark(mark, []pulse.OperationalTitleSpec{spec}, width)
 	}
 	// A wide title spends its blank middle on the active mode's Tab neighbors,
 	// so the reader sees where Tab and Shift+Tab go. It is offered only where the whole title still
 	// fits unshortened; anywhere narrower the lone active badge stands.
 	strip := spec
 	strip.Mode = chrome.OperationalTitleModeStripArriving(m.ActiveOutlinerMode(), m.modeArrivalShown())
-	if pulse.OperationalTitleFitsWhole(strip, width) {
-		spec = strip
+	return renderTitleWithMark(mark, []pulse.OperationalTitleSpec{strip, spec}, width)
+}
+
+// renderTitleWithMark draws the first spec, richest first, that fits whole,
+// leading with Docket's mark wherever the mark also fits: a spec is tried with
+// the mark and then without it before a poorer spec is, so the Tab strip
+// outranks the mark and the mark outranks nothing else. The mark never costs the
+// pulse or pace a rung, since it is spent only beside a title that fits whole.
+// Where nothing fits whole the last spec renders alone and fits itself.
+func renderTitleWithMark(mark string, specs []pulse.OperationalTitleSpec, width int) string {
+	markWidth := lipgloss.Width(mark)
+	for _, spec := range specs {
+		if pulse.OperationalTitleFitsWhole(spec, width-markWidth) {
+			return mark + pulse.RenderOperationalTitle(spec, width-markWidth)
+		}
+		if pulse.OperationalTitleFitsWhole(spec, width) {
+			return pulse.RenderOperationalTitle(spec, width)
+		}
 	}
-	return pulse.RenderOperationalTitle(spec, max(width, 1))
+	return pulse.RenderOperationalTitle(specs[len(specs)-1], max(width, 1))
 }
 
 // writeOutlinerHeader is the one place the header's rows are written, so both

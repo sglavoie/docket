@@ -144,7 +144,7 @@ func fullscreenCommentSection(task *models.Task, indent string, width int) inlin
 		section.lines = append(section.lines, indent+theme.MutedStyle.Render(at))
 		// Preserve paragraph breaks in the full reader; only the dock needs a
 		// compact summary. Every line wraps rather than losing a long tail.
-		for _, line := range textfit.WrapText(comment.Text, max(width-2, 1)) {
+		for _, line := range textfit.WrapLinkedText(comment.Text, max(width-2, 1)) {
 			section.lines = append(section.lines, indent+"  "+line)
 		}
 	}

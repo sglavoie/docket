@@ -224,7 +224,9 @@ finishing it and says nothing.
 
 The first launch of each day opens with a greeting that names what the day
 already holds, such as `Good morning · 3 planned for Today · 1 overdue · 2 in
-Inbox`. The day it greeted is remembered on this machine, so later launches
+Inbox`. The first greeting of a week also recaps the week before, such as
+`last week 23 done, most on Tuesday`; a week with nothing done adds nothing.
+The day it greeted is remembered on this machine, so later launches
 that day stay quiet, and a key pressed before the workspace finishes loading
 skips it. Quitting leaves one line in the terminal, such as `docket: 4 done
 today · 2 still in Today`, or nothing when the day has nothing to report.

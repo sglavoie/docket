@@ -171,7 +171,8 @@ func inlinePeekResumeLines(note, indent string, width int) []string {
 // Peek body. The resume note and the description differ only in their label, so
 // they share this rather than each owning a copy of the hanging-indent rules.
 // Blank rows inside the body are dropped rather than wrapped: a page is five
-// rows wide and an empty one buys nothing.
+// rows wide and an empty one buys nothing. A bare web address in the body links
+// to itself (OSC 8), row by row, as an attachment's rows do.
 func inlinePeekWrappedBodyLines(label, body, indent string, width int) []string {
 	body = strings.TrimSpace(strings.ReplaceAll(body, "\r\n", "\n"))
 	if body == "" || width <= 0 {
@@ -180,7 +181,7 @@ func inlinePeekWrappedBodyLines(label, body, indent string, width int) []string 
 
 	bodyWidth := max(width-lipgloss.Width(label), 1)
 	chunks := make([]string, 0, 4)
-	for _, line := range textfit.WrapText(body, bodyWidth) {
+	for _, line := range textfit.WrapLinkedText(body, bodyWidth) {
 		if strings.TrimSpace(line) != "" {
 			chunks = append(chunks, line)
 		}

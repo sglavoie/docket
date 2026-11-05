@@ -391,8 +391,9 @@ and history. Empty fields are omitted.
 | Search | `Match: comment · …` | An excerpt explaining a match outside the title |
 
 URL and `path:line` attachments are clickable in terminals that support OSC 8
-links (`Cmd`-click in Ghostty and Docket.app). Wrapped links still open the complete
-address. Open stored files through the `&` panel.
+links (`Cmd`-click in Ghostty and Docket.app), and so is any `http://` or
+`https://` address written in a description, resume note, or comment. Wrapped
+links still open the complete address. Open stored files through the `&` panel.
 
 Long details wrap and remain accessible by scrolling:
 

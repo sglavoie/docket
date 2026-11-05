@@ -460,3 +460,35 @@ func (m *AppModel) ensurePulseLoader() *workspace.Loader {
 	}
 	return m.pulseLoader
 }
+
+// greetLocalDay opens the first interactive launch of a local day with
+// pulse.DailyGreeting. It rides the launch intent being spent, so it reads the
+// accepted population's pulse and is said at most once per session; the day it
+// was said is machine-local, so a later launch the same day stays quiet. A
+// keystroke that dropped the launch intent first also forgoes the greeting,
+// since the user is already working. A failed save still greets: the
+// consequence is a second greeting, never a lost one. The first greeting of a
+// local week, read off the same greeted day, also recaps the week before.
+func (m *AppModel) greetLocalDay(now time.Time) {
+	if !m.lifecycle.greets || m.domain.runtime == nil || m.domain.runtime.Machine() == nil {
+		return
+	}
+	m.lifecycle.greets = false
+	day := now.Format(time.DateOnly)
+	machine := *m.domain.runtime.Machine()
+	if machine.GreetedOn == day {
+		return
+	}
+	opensWeek := pulse.OpensNewWeek(machine.GreetedOn, now)
+	machine.GreetedOn = day
+	if err := m.domain.runtime.CommitMachine(&machine); err != nil {
+		logging.Warn("save greeted day: %v", err)
+	}
+	greeting := pulse.DailyGreeting(m.workspacePulse, now)
+	if opensWeek {
+		if recap := pulse.WeeklyRecap(m.completionActivity.DailyCompletions, now); recap != "" {
+			greeting += " · " + recap
+		}
+	}
+	m.setInfoStatus(greeting)
+}

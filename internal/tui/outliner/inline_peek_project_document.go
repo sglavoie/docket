@@ -221,7 +221,7 @@ func inlinePeekProjectCommentTextRows(text string, width int) []string {
 	}
 	const hanging = "  "
 	rows := make([]string, 0, 2)
-	for _, line := range textfit.WrapText(text, max(width-len(hanging), 1)) {
+	for _, line := range textfit.WrapLinkedText(text, max(width-len(hanging), 1)) {
 		if strings.TrimSpace(line) != "" {
 			rows = append(rows, hanging+line)
 		}

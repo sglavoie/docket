@@ -5,4 +5,7 @@ const (
 	IconExpanded    = "▾"
 	IconCollapsed   = "▸"
 	IconCursorRight = "▸"
+	// IconBrand is Docket's mark on the Outliner title row: one cell, in the
+	// active mode's ink.
+	IconBrand = "❖"
 )

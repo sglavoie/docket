@@ -5,7 +5,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/sglavoie/docket/internal/logging"
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/conflict"
 	"github.com/sglavoie/docket/internal/tui/coordinator"
@@ -16,7 +15,6 @@ import (
 	"github.com/sglavoie/docket/internal/tui/operation"
 	"github.com/sglavoie/docket/internal/tui/operationhost"
 	"github.com/sglavoie/docket/internal/tui/outliner"
-	"github.com/sglavoie/docket/internal/tui/pulse"
 	"github.com/sglavoie/docket/internal/tui/status"
 	"github.com/sglavoie/docket/internal/tui/valuepicker"
 )
@@ -197,30 +195,6 @@ func (m *AppModel) settleLaunchFocus() {
 		m.crossOutliner.OpenPeekIfRoomy()
 	}
 	m.greetLocalDay(time.Now())
-}
-
-// greetLocalDay opens the first interactive launch of a local day with
-// pulse.DailyGreeting. It rides the launch intent being spent, so it reads the
-// accepted population's pulse and is said at most once per session; the day it
-// was said is machine-local, so a later launch the same day stays quiet. A
-// keystroke that dropped the launch intent first also forgoes the greeting,
-// since the user is already working. A failed save still greets: the
-// consequence is a second greeting, never a lost one.
-func (m *AppModel) greetLocalDay(now time.Time) {
-	if !m.lifecycle.greets || m.domain.runtime == nil || m.domain.runtime.Machine() == nil {
-		return
-	}
-	m.lifecycle.greets = false
-	day := now.Format(time.DateOnly)
-	machine := *m.domain.runtime.Machine()
-	if machine.GreetedOn == day {
-		return
-	}
-	machine.GreetedOn = day
-	if err := m.domain.runtime.CommitMachine(&machine); err != nil {
-		logging.Warn("save greeted day: %v", err)
-	}
-	m.setInfoStatus(pulse.DailyGreeting(m.workspacePulse, now))
 }
 
 func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {

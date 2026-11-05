@@ -164,6 +164,9 @@ type sectionHeaderOpts struct {
 	Prefix      string         // inserted between indicator and name (e.g. "◷ ")
 	Cursor      cursorPaint    // how this header wears the cursor; zero on an ordinary row
 	Attention   string         // one-column summary for a folded header; empty is a blank
+	// IndicatorInk colors the fold arrow in the lane's own ink, so a lane reads
+	// as one colored block before its name is; nil keeps the arrow muted.
+	IndicatorInk color.Color
 }
 
 // renderSectionHeader renders a standardized collapsible section header:
@@ -187,7 +190,11 @@ func renderSectionHeader(opts sectionHeaderOpts) (gutter, content string) {
 	if attention == "" {
 		attention = opts.Cursor.bar(lipgloss.NewStyle(), " ")
 	}
-	gutter = attention + gutterPiece(opts.Cursor.gutterBg(), theme.MutedStyle, indicator)
+	indicatorStyle := theme.MutedStyle
+	if opts.IndicatorInk != nil {
+		indicatorStyle = lipgloss.NewStyle().Foreground(opts.IndicatorInk)
+	}
+	gutter = attention + gutterPiece(opts.Cursor.gutterBg(), indicatorStyle, indicator)
 	namePart := opts.AccentColor.Bold(true).Render(opts.Prefix + opts.Name)
 	content = namePart + " " + theme.MutedStyle.Render(fmt.Sprintf("(%d)", opts.Count))
 	if opts.Lifted > 0 {
@@ -260,15 +267,17 @@ func (m *OutlinerModel) RenderOutlinerSectionHeaderRow(row OutlinerRow, selected
 	}
 
 	paint := m.cursorPaintFor(selected)
+	accent := theme.StructuralSectionStyle(sectionStyle)
 	gutter, content := renderSectionHeader(sectionHeaderOpts{
-		Name:        displayName,
-		Count:       row.SectionCount,
-		Lifted:      row.SectionLiftedCount,
-		Collapsed:   m.IsSectionRowCollapsed(row),
-		AccentColor: theme.StructuralSectionStyle(sectionStyle),
-		Prefix:      prefix,
-		Cursor:      paint,
-		Attention:   m.renderHeaderAttention(row, paint),
+		Name:         displayName,
+		Count:        row.SectionCount,
+		Lifted:       row.SectionLiftedCount,
+		Collapsed:    m.IsSectionRowCollapsed(row),
+		AccentColor:  accent,
+		Prefix:       prefix,
+		Cursor:       paint,
+		Attention:    m.renderHeaderAttention(row, paint),
+		IndicatorInk: accent.GetForeground(),
 	})
 
 	if row.ProjectID != "" {
@@ -279,12 +288,38 @@ func (m *OutlinerModel) RenderOutlinerSectionHeaderRow(row OutlinerRow, selected
 		}
 		content += "  " + theme.ProjectLabel(project, projectName)
 	}
+	ruleBase := lipgloss.NewStyle()
+	if selected {
+		// The rule spends the columns the cursor's dim reach used to fill, so it
+		// is drawn over that same fill rather than in place of it.
+		ruleBase = paint.trail()
+	}
+	content += laneHeaderRule(ruleBase, rowWidth-lipgloss.Width(gutter)-lipgloss.Width(content))
 
 	if selected {
 		return outlinerCursorRow(gutter, content, rowWidth, paint)
 	}
 
 	return chrome.ZebraLine(gutter+content, rowWidth, rowIndex)
+}
+
+// laneHeaderRuleMinCells is the shortest rule worth drawing: below it the rule
+// reads as a stray dash beside the count rather than as the lane's edge.
+const laneHeaderRuleMinCells = 3
+
+// laneHeaderRule is the faint line a lane header runs to the row's edge, so the
+// outline reads as blocks at a glance. It is drawn in the border ink, quieter
+// than the muted count, and never in the lane's color: the arrow and the name
+// already carry that. room is the columns left after the header's text; the
+// rule spends all of them but the one space that separates it from the text.
+// The pinned context row keeps its own muted rule and padded name, so the two
+// still read apart where a profile has color. base carries the background the
+// row's trailing columns wear: none at rest, the cursor's dim reach under it.
+func laneHeaderRule(base lipgloss.Style, room int) string {
+	if room-1 < laneHeaderRuleMinCells {
+		return ""
+	}
+	return base.Render(" ") + base.Foreground(theme.ColorBorder).Render(strings.Repeat("─", room-1))
 }
 
 // projectSlugForRow is the name a project header spells for the row's

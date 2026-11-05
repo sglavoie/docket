@@ -65,6 +65,16 @@ func OperationalTitleModeSegmentArriving(mode OutlinerMode, arrival ModeArrival)
 	return pulse.OperationalTitleBadge(style, mode.Label)
 }
 
+// OperationalTitleBrandMark is Docket's mark as the title row leads with it:
+// the glyph in the active mode's ink, bold, then the one space that parts it
+// from the scope. It changes color with the mode, so Tab recolors the mark the
+// switch lands on as well as the badge. It is decoration and is spent only from
+// columns the title would otherwise leave blank.
+func OperationalTitleBrandMark(mode OutlinerModeID) string {
+	ink := theme.StructuralSectionStyle(GetOutlinerModeStyle(mode)).GetForeground()
+	return lipgloss.NewStyle().Foreground(ink).Bold(true).Render(theme.IconBrand) + " "
+}
+
 // OperationalTitleModeStripArriving renders the active mode's badge followed
 // by its two Tab neighbors, muted — `Inbox  ‹ Today  Next ›` — so a wide title
 // says where Shift+Tab and Tab go. While the mode is arriving the badge lands
