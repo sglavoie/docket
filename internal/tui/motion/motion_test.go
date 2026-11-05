@@ -133,10 +133,19 @@ func TestRevealMaskIgnoresAReshapedProjection(t *testing.T) {
 }
 
 func TestDurationsStayShortOfALateKey(t *testing.T) {
-	if Duration(Scroll) > 60*time.Millisecond || Duration(Reveal) > 60*time.Millisecond {
-		t.Fatalf("scroll %v, reveal %v: a navigation frame should settle within 60ms", Duration(Scroll), Duration(Reveal))
+	if runDuration(Scroll) > 60*time.Millisecond || runDuration(Reveal) > 60*time.Millisecond {
+		t.Fatalf("scroll %v, reveal %v: a navigation frame should settle within 60ms", runDuration(Scroll), runDuration(Reveal))
 	}
-	if Duration(Trail) != 600*time.Millisecond {
-		t.Fatalf("trail = %v, want 600ms", Duration(Trail))
+	if runDuration(Trail) != 600*time.Millisecond {
+		t.Fatalf("trail = %v, want 600ms", runDuration(Trail))
 	}
+}
+
+// runDuration is a kind's whole run, first frame to retirement.
+func runDuration(kind Kind) time.Duration {
+	var total time.Duration
+	for _, step := range schedules[kind-1] {
+		total += step
+	}
+	return total
 }

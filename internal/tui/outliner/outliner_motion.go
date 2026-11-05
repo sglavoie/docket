@@ -49,6 +49,7 @@ type DepartureGhostTickMsg struct{ Seq int }
 // ghost, the arrival, and every motion run at once.
 func (m *OutlinerModel) SetMotion(enabled bool) {
 	m.motion = enabled
+	m.anim.SetEmit(emitMotionTick)
 	m.anim.SetArmed(enabled)
 	if !enabled {
 		m.ghost = nil
@@ -103,7 +104,12 @@ func (m *OutlinerModel) dropDepartureGhost() {
 // decided, which is what CursorScreenRow and the pointer read.
 
 // MotionTickMsg advances one of the three motion runs; a stale one is inert.
-type MotionTickMsg = motion.TickMsg
+// It carries motion's own tick so the shell can route it without importing
+// motion; emitMotionTick, the fire hook SetMotion hands the runs, is its one
+// emitter.
+type MotionTickMsg struct{ Tick motion.TickMsg }
+
+func emitMotionTick(tick motion.TickMsg) tea.Msg { return MotionTickMsg{Tick: tick} }
 
 // NoteScrollJump records the window a page key is about to leave: Ctrl+D,
 // Ctrl+U, PgDn, PgUp, gg/Home, G/End, and the z chord. The Peek dock's own
@@ -275,7 +281,7 @@ func (m *OutlinerModel) updatePaintTick(msg tea.Msg) (tea.Cmd, bool) {
 		m.endModeArrival(msg)
 		return nil, true
 	case MotionTickMsg:
-		return m.anim.Advance(msg), true
+		return m.anim.Advance(msg.Tick), true
 	}
 	return nil, false
 }

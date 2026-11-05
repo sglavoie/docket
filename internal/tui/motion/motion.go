@@ -55,15 +55,6 @@ var schedules = [kinds][]time.Duration{
 // Phases is the number of frames a kind paints before it settles.
 func Phases(kind Kind) int { return len(schedules[kind-1]) }
 
-// Duration is a kind's whole run, first frame to retirement.
-func Duration(kind Kind) time.Duration {
-	var total time.Duration
-	for _, step := range schedules[kind-1] {
-		total += step
-	}
-	return total
-}
-
 // TickMsg advances the run of Kind that Seq names; a stale one is inert.
 type TickMsg struct {
 	Kind Kind
@@ -78,6 +69,7 @@ type run struct {
 
 // Runs is every run one view holds, and every intent waiting to become one.
 type Runs struct {
+	emit  func(TickMsg) tea.Msg
 	armed bool
 	seq   int
 	runs  [kinds]run
@@ -92,6 +84,10 @@ type Runs struct {
 	trailIntent      string
 	trailIntentPlace string
 }
+
+// SetEmit names the message each tick fires as, so a view can deliver its own
+// type; without one a tick fires as TickMsg.
+func (b *Runs) SetEmit(emit func(TickMsg) tea.Msg) { b.emit = emit }
 
 // SetArmed arms or disarms every run. Disarming retires every run and intent.
 func (b *Runs) SetArmed(armed bool) {
@@ -125,12 +121,17 @@ func (b *Runs) Live(kind Kind) (phase int, ok bool) {
 func (b *Runs) start(kind Kind) tea.Cmd {
 	b.seq++
 	b.runs[kind-1] = run{live: true, seq: b.seq}
-	return tick(kind, 0, b.seq)
+	return b.tick(kind, 0, b.seq)
 }
 
-func tick(kind Kind, phase, seq int) tea.Cmd {
+func (b *Runs) tick(kind Kind, phase, seq int) tea.Cmd {
+	emit := b.emit
 	return status.TickCmd(schedules[kind-1][phase], func(time.Time) tea.Msg {
-		return TickMsg{Kind: kind, Seq: seq}
+		msg := TickMsg{Kind: kind, Seq: seq}
+		if emit != nil {
+			return emit(msg)
+		}
+		return msg
 	})
 }
 
@@ -152,7 +153,7 @@ func (b *Runs) Advance(msg TickMsg) tea.Cmd {
 		}
 		return nil
 	}
-	return tick(msg.Kind, r.phase, msg.Seq)
+	return b.tick(msg.Kind, r.phase, msg.Seq)
 }
 
 // NoteScroll records that a page key is about to move the cursor from a window
