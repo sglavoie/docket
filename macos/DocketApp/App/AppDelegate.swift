@@ -721,11 +721,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         }
     }
 
-    /// Forwards macOS's Reduce Motion to the running Docket. An older Docket
-    /// answers "unknown operation", which is ignored.
+    /// Forwards macOS's Reduce Motion, and Settings › General › Motion, to the
+    /// running Docket. An older Docket answers "unknown operation", which is
+    /// ignored.
     private func sendReduceMotion() {
         guard let control, control.isConnected else { return }
-        control.send(.reduceMotion(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion))
+        control.send(.reduceMotion(DocketMotionPreference.reducesMotion(
+            motion: preferencesModel.motion,
+            systemReducesMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)))
     }
 
     /// A notification naming a task was clicked: bring Docket forward on it.
@@ -1263,6 +1266,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         quickFind.reveal = { [weak self] task in self?.showTask(task) }
         quickFind.act = { [weak self] action, task, done in self?.perform(action, on: task, reply: done) }
         model.onFollowAppearanceChange = { [weak self] _ in self?.sendTheme(clearWhenUnselected: true) }
+        model.onMotionChange = { [weak self] _ in self?.sendReduceMotion() }
         appearanceObserver = NSApp.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
             DispatchQueue.main.async { self?.sendTheme() }
         }

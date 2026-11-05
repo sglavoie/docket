@@ -168,6 +168,29 @@ enum DocketFollowAppearancePreference {
     }
 }
 
+/// Whether Docket draws its brief animations, such as a new mode or screen
+/// easing in. Off, Docket.app holds the running Docket's motion off for the
+/// session through the `reduce_motion` op, exactly as macOS's Reduce Motion
+/// does; Docket's own View › Motion setting is left as saved.
+/// Persisted in `UserDefaults` key `docketMotion`; absent reads as on.
+enum DocketMotionPreference {
+    static let defaultsKey = "docketMotion"
+
+    static func load(from defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: defaultsKey) as? Bool ?? true
+    }
+
+    static func save(_ enabled: Bool, to defaults: UserDefaults = .standard) {
+        defaults.set(enabled, forKey: defaultsKey)
+    }
+
+    /// What Docket.app asks the running Docket: hold motion off when either
+    /// this setting is off or macOS reduces motion.
+    static func reducesMotion(motion: Bool, systemReducesMotion: Bool) -> Bool {
+        !motion || systemReducesMotion
+    }
+}
+
 /// The two themes Docket maintains, spelled as its `appearance` op takes them.
 enum DocketAppearanceScheme: String {
     case dark, light

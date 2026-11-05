@@ -254,6 +254,7 @@ func (m *AppModel) applyMotion() {
 		m.feedback.countdown.live = false
 		m.pulseMotion.seq++
 		m.pulseMotion.change = pulse.PulseChange{}
+		m.stopViewFade()
 	}
 	if m.crossOutliner != nil {
 		m.crossOutliner.SetMotion(c.motion)

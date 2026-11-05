@@ -117,7 +117,13 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 				content = composeSurfaceFooterFeedback(content, m.footerFeedbackLine())
 			}
 			content = m.applyOverlays(content, m.viewNav.height, noPanelDivider)
-			resultView.SetContent(m.applyBackground(content))
+			footerTop := m.viewNav.height
+			if !inZen {
+				if divider := surfaceFooterDividerIndex(strings.Split(content, "\n")); divider >= 0 {
+					footerTop = divider
+				}
+			}
+			resultView.SetContent(m.fadeViewBody(m.applyBackground(content), footerTop))
 			return resultView
 		}
 	}
@@ -161,7 +167,7 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 	// than a spare one — lipgloss.Height counts it, and so did the padding above —
 	// so joining without it hands the footer that row and leaves the frame a row
 	// short of the terminal, with the footer floating above a blank bottom line.
-	resultView.SetContent(m.applyBackground(content + "\n" + statusBar))
+	resultView.SetContent(m.fadeViewBody(m.applyBackground(content+"\n"+statusBar), targetContentHeight))
 	return resultView
 }
 

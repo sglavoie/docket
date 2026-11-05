@@ -30,6 +30,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 	pulseBefore := m.workspacePulse
 	launchArmedBefore := m.lifecycle.launchFocusArmed()
 	modeBefore := m.outlinerModeForMotion()
+	screenBefore := m.screenForMotion()
 	defer func() {
 		if r := recover(); r != nil {
 			m.retireInteraction()
@@ -64,6 +65,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		if m.crossOutliner != nil && m.outlinerModeForMotion() != modeBefore {
 			outCmd = tea.Batch(outCmd, m.crossOutliner.MarkModeArrival(modeBefore))
 		}
+		outCmd = tea.Batch(outCmd, m.markViewFade(screenBefore, launchArmedBefore))
 		// Every handler has run, so a scroll, a reveal, or a landing is measured
 		// against the rows and the cursor this update leaves.
 		outCmd = tea.Batch(outCmd, m.crossOutliner.SettleMotion())

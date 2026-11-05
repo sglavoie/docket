@@ -1,8 +1,16 @@
 package tui
 
 import (
+	"strings"
+	"time"
+
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/tui/status"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // applyOverlays composites all popup/overlay layers onto the base content.
@@ -173,4 +181,132 @@ func (m *AppModel) renderConfirmDialogOverlay() string {
 		return ""
 	}
 	return cd.RenderOverlay(m.viewNav.width)
+}
+
+// Switching views eases the new body in under a still title and footer: a
+// motion session only, so the harness and Reduce Motion never see it. The body
+// starts at viewFadeFloor rather than blank, so quick tabbing never flashes an
+// empty screen, and the text and layout of every frame are the settled ones.
+const (
+	viewFadeFrame  = 32 * time.Millisecond
+	viewFadeFrames = 5 // about a sixth of a second
+	viewFadeFloor  = 0.3
+	// viewFadeTitleRows is the title row every surface draws first; it names
+	// where the user now is, so it changes at once rather than fading.
+	viewFadeTitleRows = 1
+)
+
+// viewFade is the view switch being drawn: the frames it has left, counted
+// rather than timed so a frame the terminal drew late is still drawn, and the
+// generation that voids a superseded switch's ticks.
+type viewFade struct {
+	remaining int
+	seq       int
+}
+
+// viewFadeTickMsg draws the next frame of the switch Seq names.
+type viewFadeTickMsg struct{ Seq int }
+
+// screenForMotion is what a view switch compares across one Update: the
+// presentation on screen and, in the Outliner, its mode. A bounded panel names
+// its host, which stays drawn, so opening or closing one is not a switch.
+type screenForMotion struct {
+	view presentation.PresentationID
+	mode chrome.OutlinerModeID
+}
+
+func (m *AppModel) screenForMotion() screenForMotion {
+	view := m.currentPresentationView()
+	if frame, ok := m.hostedPanelFrame(); ok && frame.layout.HostDrawn {
+		view = frame.host
+	}
+	return screenForMotion{view: view, mode: m.outlinerModeForMotion()}
+}
+
+// markViewFade starts the fade when an Update changed the view or the mode,
+// whichever key or seam changed it. Like the pulse, the launch's first frame
+// is an arrival rather than a switch, so it draws nothing.
+func (m *AppModel) markViewFade(before screenForMotion, launchArmed bool) tea.Cmd {
+	if !m.lifecycle.motion || launchArmed || m.lifecycle.launchFocusArmed() || m.screenForMotion() == before {
+		return nil
+	}
+	m.viewFade.seq++
+	m.viewFade.remaining = viewFadeFrames
+	return viewFadeTick(m.viewFade.seq)
+}
+
+func (m *AppModel) advanceViewFade(msg viewFadeTickMsg) tea.Cmd {
+	if msg.Seq != m.viewFade.seq || m.viewFade.remaining <= 0 {
+		return nil
+	}
+	m.viewFade.remaining--
+	if m.viewFade.remaining == 0 {
+		return nil
+	}
+	return viewFadeTick(msg.Seq)
+}
+
+// stopViewFade drops a fade in progress, as turning motion off does.
+func (m *AppModel) stopViewFade() {
+	m.viewFade.seq++
+	m.viewFade.remaining = 0
+}
+
+func viewFadeTick(seq int) tea.Cmd {
+	return status.TickCmd(viewFadeFrame, func(time.Time) tea.Msg { return viewFadeTickMsg{Seq: seq} })
+}
+
+// viewFadeReveal is how far the new view has faded in, from viewFadeFloor on
+// the switch's own frame to 1 once its last tick has run.
+func (m *AppModel) viewFadeReveal() float64 {
+	if !m.lifecycle.motion || m.viewFade.remaining <= 0 {
+		return 1
+	}
+	t := float64(viewFadeFrames-m.viewFade.remaining) / viewFadeFrames
+	eased := 1 - (1-t)*(1-t)*(1-t)
+	return viewFadeFloor + (1-viewFadeFloor)*eased
+}
+
+// fadeViewBody draws the body of a backgrounded frame, the rows between the
+// title and footerTop, partway between the background and their own colors.
+// Every other row is returned byte for byte.
+func (m *AppModel) fadeViewBody(frame string, footerTop int) string {
+	reveal := m.viewFadeReveal()
+	if reveal >= 1 || theme.ThemeBgColor == "" || m.lifecycle.colorDisabled {
+		return frame
+	}
+	return fadeLines(frame, viewFadeTitleRows, footerTop, reveal)
+}
+
+// fadeLines blends every cell of lines [from, to) toward the theme background
+// by 1-reveal. Cells are read back from the rendered line, so nested styles,
+// the shell's background fill, and wide characters all keep their geometry.
+func fadeLines(frame string, from, to int, reveal float64) string {
+	background := lipgloss.Color(theme.ThemeBgColor)
+	foreground := lipgloss.Color(theme.ColorNormalText)
+	lines := strings.Split(frame, "\n")
+	for y := max(from, 0); y < min(to, len(lines)); y++ {
+		width := lipgloss.Width(lines[y])
+		if width == 0 {
+			continue
+		}
+		canvas := lipgloss.NewCanvas(width, 1).Compose(lipgloss.NewLayer(lines[y]))
+		for x := range width {
+			cell := canvas.CellAt(x, 0)
+			if cell == nil || cell.Width == 0 {
+				continue
+			}
+			fg, bg := cell.Style.Fg, cell.Style.Bg
+			if fg == nil {
+				fg = foreground
+			}
+			if bg == nil {
+				bg = background
+			}
+			cell.Style.Fg = blendColor(background, fg, reveal)
+			cell.Style.Bg = blendColor(background, bg, reveal)
+		}
+		lines[y] = canvas.Render()
+	}
+	return strings.Join(lines, "\n")
 }

@@ -698,10 +698,12 @@ session only, so a Docket started from a terminal keeps the theme it saved, and
 `T` still toggles until the next change. An older Docket ignores the request.
 
 Docket.app likewise forwards System Settings › Accessibility › Display › Reduce
-motion: when a session connects and whenever it changes, it sends the control op
-`reduce_motion` with `on` or `off`. `on` holds that session's motion off
-whatever Docket's own setting says; `off` returns it to that setting. Nothing
-is saved, and an older Docket's "unknown operation" answer is ignored.
+motion, together with its own Settings › General › Motion (`docketMotion`, on by
+default): when a session connects and whenever either changes, it sends the
+control op `reduce_motion`, `on` when Reduce motion is on or Motion is off and
+`off` otherwise. `on` holds that session's motion off whatever Docket's own
+setting says; `off` returns it to that setting. Nothing is saved in Docket, and
+an older Docket's "unknown operation" answer is ignored.
 
 ### Menus
 

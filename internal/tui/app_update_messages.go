@@ -64,6 +64,7 @@ func (m *AppModel) handleGlobalInputMessage(msg tea.Msg) (bool, tea.Cmd) {
 			// the next action rather than after it.
 			m.crossOutliner.DropMotion()
 		}
+		m.stopViewFade()
 		return m.handleGlobalKeyPress(msg)
 	case tea.PasteMsg:
 		return m.handleActivePasteOverlay(msg)

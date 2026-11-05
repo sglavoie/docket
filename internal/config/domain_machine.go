@@ -37,8 +37,8 @@ type MachineState struct {
 	// is on.
 	MouseDisabled bool `json:"mouse_disabled,omitempty"`
 	// MotionDisabled records whether an interactive launch leaves motion off: the
-	// departure ghost, mode arrival, pulse lighting, undo countdown, and the Today
-	// sweep. Chrome on the same terms as MouseDisabled; the omitted key is the
+	// departure ghost, mode arrival, view fade, pulse lighting, undo countdown,
+	// and the Today sweep. Chrome on the same terms as MouseDisabled; the omitted key is the
 	// default, which is that motion is on.
 	MotionDisabled bool `json:"motion_disabled,omitempty"`
 	// NerdGlyphs records whether the TUI draws its glyphs from the Nerd Font set

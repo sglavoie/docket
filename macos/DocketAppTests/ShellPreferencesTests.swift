@@ -440,6 +440,31 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
         XCTAssertTrue(DocketFollowAppearancePreference.load(from: defaults))
     }
 
+    func testMotionDefaultsOnAndSavesEachChange() {
+        XCTAssertTrue(DocketMotionPreference.load(from: defaults))
+        let model = PreferencesModel(defaults: defaults)
+        XCTAssertTrue(model.motion)
+
+        var changes: [Bool] = []
+        model.onMotionChange = { changes.append($0) }
+        model.motion = false
+        model.motion = false
+        XCTAssertEqual(changes, [false], "an unchanged value applies nothing")
+        XCTAssertFalse(DocketMotionPreference.load(from: defaults))
+        XCTAssertFalse(PreferencesModel(defaults: defaults).motion, "the next launch starts from it")
+
+        model.motion = true
+        XCTAssertEqual(changes, [false, true])
+        XCTAssertTrue(DocketMotionPreference.load(from: defaults))
+    }
+
+    func testMotionOffOrSystemReduceMotionHoldsDocketStill() {
+        XCTAssertFalse(DocketMotionPreference.reducesMotion(motion: true, systemReducesMotion: false))
+        XCTAssertTrue(DocketMotionPreference.reducesMotion(motion: false, systemReducesMotion: false))
+        XCTAssertTrue(DocketMotionPreference.reducesMotion(motion: true, systemReducesMotion: true))
+        XCTAssertTrue(DocketMotionPreference.reducesMotion(motion: false, systemReducesMotion: true))
+    }
+
     func testTerminalThemeSelectionPersistsAndNotifiesOnlyOnChanges() throws {
         let model = PreferencesModel(defaults: defaults)
         XCTAssertNil(model.terminalTheme)

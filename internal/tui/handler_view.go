@@ -127,6 +127,9 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 	case pulseMotionTickMsg:
 		return true, m.advancePulseMotion(msg)
 
+	case viewFadeTickMsg:
+		return true, m.advanceViewFade(msg)
+
 	case status.UndoToastTimeoutMsg:
 		// Only clear if the deadline that fired this tick is still the
 		// active one. A newer toast (with later expiresAt) may have

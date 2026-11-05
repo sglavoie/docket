@@ -298,6 +298,7 @@ func (m *AppModel) handlePointerMessage(msg tea.Msg) (bool, tea.Cmd) {
 	// A click or a wheel step is input like a key: motion still settling is
 	// retired first, so the frame after it paints the window it hit-tested.
 	m.crossOutliner.DropMotion()
+	m.stopViewFade()
 	return true, m.routePointer(event)
 }
 

@@ -135,7 +135,8 @@ recent check-in reminder.
 View → Motion turns off the brief animations: the struck-through row a task
 leaves behind, the mode badge lighting, workspace pulse counts lighting when they
 change, the undo countdown on the divider, the Today sweep, the list gliding on a
-page jump, a fold rolling open, and the mark a moved or captured task lights where it lands. View → Nerd Font
+page jump, a fold rolling open, the mark a moved or captured task lights where
+it lands, and a new mode or screen easing in. View → Nerd Font
 Glyphs draws the state, priority, date, checkbox, notice, pin, attachment, and
 description symbols from a Nerd Font, such as Someday's thought bubble in place
 of `¿`; it needs a terminal font that carries them. Every glyph keeps its
@@ -160,8 +161,9 @@ use `Alt+Enter`; `Shift+Enter` remains an alias. Multiline paste works in captur
 too. The menu keeps every operation available by arrow keys and Enter.
 
 Docket.app can follow macOS appearance for the current session without changing
-the saved terminal theme. It also follows the system's Reduce Motion setting:
-while that is on, the session draws no motion whatever View → Motion says, and
+the saved terminal theme. It also follows the system's Reduce Motion setting,
+and its own Settings › General › Motion: while Reduce Motion is on or that
+setting is off, the session draws no motion whatever View → Motion says, and
 the saved setting is unchanged.
 
 ## Read workload and feedback
@@ -254,7 +256,11 @@ leaves the view, such as one you just finished, stays in its place for a moment
 before the rows close up: a finished task first shows its check landing on the
 row as it stood, then is struck through and fades; any other departure is
 struck through and fades. The next key retires it at once. A mode switch lands its badge highlighted for a
-moment and lights the `‹` or `›` it traveled through. A workspace count in the
+moment and lights the `‹` or `›` it traveled through. Switching modes with
+`Tab`, `Shift+Tab`, a digit, or the `g` chord, and opening or leaving a screen
+such as the project hub, Help, comments, or attachments, eases the new rows in
+from the background over about a sixth of a second while the title and the
+footer stay put; nothing moves, and capture's panel opens without it. A workspace count in the
 title that just changed, such as `done` after you finish a task, lights for a
 moment and settles back: green when Done rises, amber when Overdue rises, and
 the accent color otherwise. A page jump — `Ctrl+D`, `Ctrl+U`, `PgDn`, `PgUp`,

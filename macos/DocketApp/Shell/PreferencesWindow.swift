@@ -123,6 +123,15 @@ final class PreferencesModel: ObservableObject {
         }
     }
 
+    /// Docket draws its brief animations.
+    @Published var motion: Bool {
+        didSet {
+            guard motion != oldValue else { return }
+            DocketMotionPreference.save(motion, to: defaults)
+            onMotionChange?(motion)
+        }
+    }
+
     /// Spotlight finds the workspace's tasks.
     @Published var spotlight: Bool {
         didSet {
@@ -330,6 +339,7 @@ final class PreferencesModel: ObservableObject {
     var onNotificationsChange: ((Bool) -> Void)?
     var onBackgroundSessionChange: ((Bool) -> Void)?
     var onFollowAppearanceChange: ((Bool) -> Void)?
+    var onMotionChange: ((Bool) -> Void)?
     /// True while the recorder listens, so the live shortcuts can step aside
     /// and be recorded like any other key.
     var onRecordingChange: ((Bool) -> Void)?
@@ -355,6 +365,7 @@ final class PreferencesModel: ObservableObject {
         dockBadge = DocketDockBadgePreference.load(from: defaults)
         spotlight = DocketSpotlightPreference.load(from: defaults)
         followAppearance = DocketFollowAppearancePreference.load(from: defaults)
+        motion = DocketMotionPreference.load(from: defaults)
         binaryOverride = defaults.string(forKey: DocketBinaryResolver.overrideDefaultsKey) ?? ""
         environmentOverrides = DocketEnvironmentOverrides.load(from: defaults)
         resolveNextBinary = { [defaults] searchPath in
@@ -622,6 +633,13 @@ struct PreferencesView: View {
                 Toggle("Match macOS appearance", isOn: $model.followAppearance)
                 note("Docket switches between its light and dark themes with the system, without changing "
                     + "the theme it saves. T still toggles it until the next change.")
+            }
+
+            Section {
+                Toggle("Motion", isOn: $model.motion)
+                note("Brief animations: a new mode or screen easing in, a finished task fading from its row, "
+                    + "changed counts lighting up. Off, or with Reduce Motion on in System Settings › Accessibility, "
+                    + "Docket stays still, without changing its own View › Motion setting.")
             }
 
             Section {

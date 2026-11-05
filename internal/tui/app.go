@@ -139,6 +139,8 @@ type AppModel struct {
 	footerKeys learnedFooterKeys
 	// pulseMotion is the count change the title is drawing; see pulse_motion.go.
 	pulseMotion pulseMotion
+	// viewFade is the view or mode switch being eased in; see app_view_overlays.go.
+	viewFade viewFade
 	// glyphs is the session's glyph set; see app_advisories.go.
 	glyphs glyphPreferences
 	// workspaceAgenda names the pulse's Today and Overdue tasks for a control
