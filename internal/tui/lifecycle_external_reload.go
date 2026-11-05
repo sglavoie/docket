@@ -1,9 +1,13 @@
 package tui
 
 import (
+	"os"
+
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/docket/internal/handoff"
 	"github.com/sglavoie/docket/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/util"
 	"github.com/sglavoie/docket/internal/workspace"
 )
 
@@ -47,11 +51,44 @@ func (m *AppModel) workspaceStamps() workspace.Stamps {
 	return workspace.StampWorkspace(rs.DataDir(), rs.AllProjects())
 }
 
+// raiseWindowMsg is a later launch's nudge, which internal/handoff sends this
+// terminal session as SIGUSR1 when the workspace's lock refused it.
+type raiseWindowMsg struct{}
+
+// sessionNudges names the session RunApp's lock records and, for a terminal
+// session, subscribes to the nudge before that lock advertises it, since
+// SIGUSR1 left unhandled ends the process. A headless session has no terminal
+// to raise, so it subscribes to nothing.
+func sessionNudges(headless bool) (string, <-chan os.Signal, func()) {
+	if headless {
+		return util.SessionHeadless, nil, func() {}
+	}
+	nudges, stop := handoff.ListenForNudges()
+	return util.SessionTerminal, nudges, stop
+}
+
+// forwardNudges hands each nudge to the program until done closes. A nil
+// channel never delivers, so a platform with no nudge waits for done alone.
+func forwardNudges(p *tea.Program, nudges <-chan os.Signal, done <-chan struct{}) {
+	for {
+		select {
+		case <-done:
+			return
+		case <-nudges:
+			p.Send(raiseWindowMsg{})
+		}
+	}
+}
+
 // handleFocusMessage answers the terminal's focus reports. A blur records the
 // workspace as it stands; a focus compares against it and adopts whatever
-// changed on disk meanwhile.
+// changed on disk meanwhile. A nudge writes handoff.RaiseSequence, asking the
+// terminal to raise this window; one that does not implement it ignores it, and
+// the focus report that follows a raise is answered as any other.
 func (m *AppModel) handleFocusMessage(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg.(type) {
+	case raiseWindowMsg:
+		return true, tea.Raw(handoff.RaiseSequence)
 	case tea.BlurMsg:
 		m.externalReload.blurFingerprint = m.workspaceFingerprint()
 		m.noteTerminalFocus(false)

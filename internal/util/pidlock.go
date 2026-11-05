@@ -18,18 +18,49 @@ import (
 // dies — even uncleanly — the kernel releases the lock automatically, so a
 // leftover lock file never blocks a new acquire regardless of how old it is.
 //
-// The PID and start identity written into the file are diagnostics only,
-// surfaced in the "already running" error to help a human identify the holder.
+// The PID, start identity, and session kind written into the file never decide
+// exclusion: they ride the "already running" refusal, a *LockHeldError, so a
+// human or a second launch can identify the holder.
 type PIDLock struct {
 	file *os.File
 }
 
+// The sessions a TUI process lock may name. A holder that names none — a
+// workspace move, or a build older than the field — is never handed off to.
+const (
+	// SessionTerminal is an ordinary TUI drawn in a terminal. On macOS it
+	// answers SIGUSR1 by asking its terminal to raise the window, which is part
+	// of how a second launch hands off to it.
+	SessionTerminal = "terminal"
+	// SessionHeadless is a --headless session Docket.app runs with no terminal.
+	SessionHeadless = "headless"
+)
+
 // lockOwner is the diagnostic identity recorded in a lock file. startedAt tags
 // the moment the lock was acquired so a reused PID can be told apart from the
-// original holder when inspecting the file.
+// original holder when inspecting the file. session is what kind of process
+// holds it, empty when the holder recorded none.
 type lockOwner struct {
 	pid       int
 	startedAt string
+	session   string
+}
+
+// LockHeldError is AcquirePIDLock's refusal when another live process holds the
+// lock. It carries the identity the holder recorded, so a caller can try to
+// reach that holder; its message is the "already running" diagnostic.
+type LockHeldError struct {
+	// PID is the holder's recorded process ID, or -1 when none was recorded.
+	PID int
+	// StartedAt is the holder's recorded acquisition time, RFC3339 UTC.
+	StartedAt string
+	// Session is the kind of session the holder recorded, one of the Session
+	// constants, or empty.
+	Session string
+}
+
+func (e *LockHeldError) Error() string {
+	return "docket TUI already running" + formatLockOwner(lockOwner{pid: e.PID, startedAt: e.StartedAt})
 }
 
 // AcquirePIDLock opens (creating if needed) the lock file at path and takes an
@@ -38,6 +69,13 @@ type lockOwner struct {
 // underlying file descriptor open — the OS lock is held until Release is called
 // or the process exits.
 func AcquirePIDLock(path string) (*PIDLock, error) {
+	return AcquireSessionLock(path, "")
+}
+
+// AcquireSessionLock is AcquirePIDLock for a TUI session, recording session
+// beside the PID so a refused second launch knows what it found. An empty
+// session records none.
+func AcquireSessionLock(path, session string) (*PIDLock, error) {
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, FilePermissions)
 	if err != nil {
 		return nil, fmt.Errorf("open lock file: %w", err)
@@ -45,15 +83,15 @@ func AcquirePIDLock(path string) (*PIDLock, error) {
 
 	if lockErr := flockExclusiveNB(f); lockErr != nil {
 		if errors.Is(lockErr, errLockWouldBlock) {
-			diag := formatLockOwner(readLockOwner(f))
+			owner := readLockOwner(f)
 			_ = f.Close()
-			return nil, fmt.Errorf("docket TUI already running%s", diag)
+			return nil, &LockHeldError{PID: owner.pid, StartedAt: owner.startedAt, Session: owner.session}
 		}
 		_ = f.Close()
 		return nil, fmt.Errorf("acquire lock: %w", lockErr)
 	}
 
-	if err := writeLockOwner(f); err != nil {
+	if err := writeLockOwner(f, session); err != nil {
 		_ = flockUnlock(f)
 		_ = f.Close()
 		return nil, err
@@ -77,9 +115,12 @@ func (l *PIDLock) Release() {
 }
 
 // writeLockOwner truncates the lock file and records the current process
-// identity for diagnostics.
-func writeLockOwner(f *os.File) error {
+// identity for diagnostics, and the session kind when one is named.
+func writeLockOwner(f *os.File, session string) error {
 	body := fmt.Sprintf("pid=%d\nstarted=%s\n", os.Getpid(), time.Now().UTC().Format(time.RFC3339))
+	if session != "" {
+		body += "session=" + session + "\n"
+	}
 	if err := f.Truncate(0); err != nil {
 		return fmt.Errorf("truncate lock file: %w", err)
 	}
@@ -107,6 +148,8 @@ func readLockOwner(f *os.File) lockOwner {
 			}
 		case strings.HasPrefix(line, "started="):
 			owner.startedAt = strings.TrimPrefix(line, "started=")
+		case strings.HasPrefix(line, "session="):
+			owner.session = strings.TrimPrefix(line, "session=")
 		}
 	}
 	return owner

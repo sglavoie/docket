@@ -87,4 +87,4 @@ internal/tui/taskdetail/comments_external_editor.go:readEditedCommentText	extern
 internal/util/durable_batch.go:DurableBatch.MkdirAll	commit-journal	creates journal staging directories and queues their new ancestors for the batch durability barrier
 internal/util/files.go:WithFileLock	commit-staging	advisory lock file; local-only
 internal/util/files.go:atomicWriteFile	commit-journal	temp-write, fsync, rename primitive behind AtomicWriteFile and DurableBatch.WriteFile that every durable writer uses
-internal/util/pidlock.go:AcquirePIDLock	machine-local	process lock file
+internal/util/pidlock.go:AcquireSessionLock	machine-local	process lock file recording the holder and its session kind

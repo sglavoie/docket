@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,10 +10,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/handoff"
 	"github.com/sglavoie/docket/internal/logging"
 	"github.com/sglavoie/docket/internal/storage"
 	"github.com/sglavoie/docket/internal/ttenv"
 	"github.com/sglavoie/docket/internal/tui"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 var noColor bool
@@ -264,7 +267,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 
 	version, _, _ := resolveBuildInfo()
 	tui.AppVersion = version
-	return tui.RunApp(runtime, tui.RunOptions{
+	err = tui.RunApp(runtime, tui.RunOptions{
 		DisableColor:   noColor,
 		HideAdvisories: noAdvisories,
 		DisableMouse:   noMouse,
@@ -273,6 +276,37 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		Headless:       headless,
 		VersionLine:    versionLine(),
 	})
+	// Only a launch a person typed hands off. A host-run session (--control or
+	// --headless) keeps the refusal, since Docket.app reads it to decide what
+	// to do about the session already holding the workspace.
+	if !headless && controlSocket == "" {
+		if line, ok := handOffToRunningSession(sessionHandoff, err); ok {
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), line)
+			return nil
+		}
+	}
+	return err
+}
+
+// sessionHandoff is the platform a refused launch hands off through; tests
+// replace it so no test spawns ps or open.
+var sessionHandoff = handoff.System()
+
+// handOffToRunningSession answers a launch the workspace's process lock
+// refused by switching to the session that holds it. It reports the line to
+// print and true when it switched; otherwise the caller returns err unchanged,
+// so the "already running" refusal and its exit status stand.
+func handOffToRunningSession(platform handoff.Platform, err error) (string, bool) {
+	var held *util.LockHeldError
+	if !errors.As(err, &held) {
+		return "", false
+	}
+	outcome, switchErr := handoff.Switch(platform, held)
+	if switchErr != nil {
+		logging.Warn("handoff: could not switch to PID %d: %v", held.PID, switchErr)
+		return "", false
+	}
+	return handoff.Message(held, outcome), true
 }
 
 func printVersion() {

@@ -238,6 +238,33 @@ blurred from the start so every request adopts what changed on disk first;
 it is how Docket.app keeps answering after `q`, and it quits when its parent
 process changes, since an orphan would hold the lock the next session needs.
 
+That lock is `util.AcquireSessionLock` over `config.TUIProcessLockPath`, an
+advisory flock whose file records `pid`, `started`, and `session` —
+`terminal` or `headless` — as diagnostics that never decide exclusion. A
+refused acquire returns `*util.LockHeldError` carrying them, and its message is
+the `docket TUI already running (PID …, started …)` refusal. A plain launch,
+with neither `--control` nor `--headless`, hands that refusal to
+`internal/handoff` before returning it. `handoff.Switch` refuses, touching
+nothing, unless a `Platform` exists (macOS alone) and the holder recorded a
+session, so a workspace move, which takes the same lock with no session, or an
+older build is never signaled. It walks the holder's ancestors with `ps -o
+ppid=,comm=`, starting at its parent so a `docket` inside Docket.app's bundle
+run from a terminal belongs to the terminal, to the first executable inside an
+application bundle, takes the outermost bundle so a nested helper resolves to
+its app, and runs `open -a` on it, which activates a running app and sends it
+the reopen event Docket.app answers by showing its window. Activation alone
+decides success: the launch prints `Docket is already open (PID …) — switched to
+<App>.` and exits 0, and otherwise returns the refusal unchanged and logs why.
+For a `terminal` holder it then sends SIGUSR1 as a best-effort nudge. A
+terminal session subscribes to that signal before its lock advertises
+`terminal`, since the signal's default action ends a process, and answers it in
+`handleFocusMessage` by writing `handoff.RaiseSequence`, xterm's de-iconify and
+raise (`CSI 1 t`, `CSI 5 t`), which ask for no reply; a headless session neither
+subscribes nor is nudged. Neither half can select a tab or split: activation
+raises the application and its key window, and no terminal-neutral escape names
+a tab. Inside tmux or screen, over SSH, or under launchd no ancestor is an app,
+so the launch refuses as before.
+
 The strip is also where `Q` expands the narrowing readout: one numbered row per
 narrowing the view is under, then an `Also in view` block for the axes nothing
 peels — your selection, the effective sort, a focus, a section zoom — with the

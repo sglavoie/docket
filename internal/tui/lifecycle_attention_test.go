@@ -6,7 +6,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/docket/internal/handoff"
 	"github.com/sglavoie/docket/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // The shell half of Docket's background attention: the focus reload's owed state
@@ -61,5 +63,36 @@ func TestNotifyArrivalsIsOptIn(t *testing.T) {
 	app.notifications.since = time.Now().Add(-time.Hour)
 	if cmd := app.notifyArrivals(time.Now()); cmd != nil {
 		t.Fatal("a run without --notify produced a notification")
+	}
+}
+
+// TestANudgeAsksTheTerminalToRaiseTheWindow covers the running half of a
+// second launch's hand-off: the nudge writes the raise sequence and nothing
+// else, wherever the session stands.
+func TestANudgeAsksTheTerminalToRaiseTheWindow(t *testing.T) {
+	app := typedTestApp(t)
+	setTestPresentationPath(app, presentation.ViewCrossProjectOutliner, presentation.ViewNotes)
+	handled, cmd := app.handleFocusMessage(raiseWindowMsg{})
+	if !handled || cmd == nil {
+		t.Fatalf("nudge handled = %v, cmd = %v; want a raise", handled, cmd)
+	}
+	raw, ok := cmd().(tea.RawMsg)
+	if !ok || raw.Msg != handoff.RaiseSequence {
+		t.Fatalf("nudge wrote %#v, want the raise sequence", cmd())
+	}
+}
+
+// TestOnlyATerminalSessionAdvertisesTheNudge keeps a headless session, which
+// has no terminal to raise, from subscribing to the signal or claiming it.
+func TestOnlyATerminalSessionAdvertisesTheNudge(t *testing.T) {
+	session, nudges, stop := sessionNudges(true)
+	stop()
+	if session != util.SessionHeadless || nudges != nil {
+		t.Fatalf("headless = %q, %v; want a headless session with no nudge", session, nudges)
+	}
+	session, _, stop = sessionNudges(false)
+	stop()
+	if session != util.SessionTerminal {
+		t.Fatalf("terminal session = %q", session)
 	}
 }

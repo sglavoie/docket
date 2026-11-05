@@ -1,6 +1,7 @@
 package util
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -138,5 +139,52 @@ func TestFormatLockOwner(t *testing.T) {
 				t.Errorf("formatLockOwner(%+v) = %q, want %q", tc.owner, got, tc.want)
 			}
 		})
+	}
+}
+
+// TestAcquireSessionLock_RefusalCarriesTheHolder verifies a session lock
+// records its kind and that a refused acquire hands the holder's identity back
+// as a *LockHeldError whose message is unchanged.
+func TestAcquireSessionLock_RefusalCarriesTheHolder(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "pid.lock")
+	first, err := AcquireSessionLock(path, SessionTerminal)
+	if err != nil {
+		t.Fatalf("AcquireSessionLock: %v", err)
+	}
+	defer first.Release()
+
+	data, _ := os.ReadFile(path)
+	if !strings.Contains(string(data), "session=terminal\n") {
+		t.Fatalf("lock file = %q, want a session=terminal line", data)
+	}
+
+	_, acquireErr := AcquirePIDLock(path)
+	var held *LockHeldError
+	if !errors.As(acquireErr, &held) {
+		t.Fatalf("second acquire error = %v, want a *LockHeldError", acquireErr)
+	}
+	if held.PID != os.Getpid() || held.Session != SessionTerminal || held.StartedAt == "" {
+		t.Fatalf("held = %+v, want this process's terminal session", held)
+	}
+	want := "docket TUI already running (PID " + strconv.Itoa(os.Getpid()) + ", started " + held.StartedAt + ")"
+	if acquireErr.Error() != want {
+		t.Fatalf("message = %q, want %q", acquireErr.Error(), want)
+	}
+}
+
+// TestAcquirePIDLock_RecordsNoSession keeps a maintenance holder, such as a
+// workspace move, from ever looking like a session a launch could switch to.
+func TestAcquirePIDLock_RecordsNoSession(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "pid.lock")
+	first, err := AcquirePIDLock(path)
+	if err != nil {
+		t.Fatalf("AcquirePIDLock: %v", err)
+	}
+	defer first.Release()
+
+	_, acquireErr := AcquireSessionLock(path, SessionTerminal)
+	var held *LockHeldError
+	if !errors.As(acquireErr, &held) || held.Session != "" {
+		t.Fatalf("second acquire = %v (%+v), want a holder with no session", acquireErr, held)
 	}
 }

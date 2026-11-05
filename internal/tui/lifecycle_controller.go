@@ -237,7 +237,9 @@ func RunApp(rt *engine.Runtime, runOpts RunOptions, opts ...AppOption) error {
 	if mkdirErr := os.MkdirAll(filepath.Dir(lockPath), 0700); mkdirErr != nil {
 		return fmt.Errorf("create runtime dir: %w", mkdirErr)
 	}
-	lock, err := util.AcquirePIDLock(lockPath)
+	session, nudges, stopNudges := sessionNudges(runOpts.Headless)
+	defer stopNudges()
+	lock, err := util.AcquireSessionLock(lockPath, session)
 	if err != nil {
 		return err
 	}
@@ -259,6 +261,9 @@ func RunApp(rt *engine.Runtime, runOpts RunOptions, opts ...AppOption) error {
 			tea.WithWindowSize(headlessWidth, headlessHeight))
 	}
 	p := tea.NewProgram(model, programOpts...)
+	done := make(chan struct{})
+	defer close(done)
+	go forwardNudges(p, nudges, done)
 
 	if runOpts.ControlSocket != "" {
 		server, listenErr := control.Listen(runOpts.ControlSocket, controlDispatch(p.Send))

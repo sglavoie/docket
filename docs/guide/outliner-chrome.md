@@ -377,6 +377,22 @@ beside one, and it quits by itself if the host that started it goes away.
 See [Docket.app](../../macos/README.md#talking-to-docket) for host behavior and
 [the architecture](../architecture.md) for the control protocol.
 
+### Launching Docket twice
+
+One session holds a workspace at a time. On macOS, typing `docket` while a
+session already holds the workspace switches to that session instead: Docket
+brings the application it runs in to the front — your terminal, or Docket.app
+for a session Docket.app hosts, windowed or not — says `Docket is already open
+(PID 75819) — switched to Ghostty.`, and exits successfully. The terminal is
+also asked to raise the window that session is drawn in, which a terminal
+implementing the xterm window operations honors and any other ignores.
+Switching brings the application forward, not necessarily the tab or split the
+session sits in. Where no application owns the session — inside tmux or
+screen, over SSH — or on other systems, the launch refuses as before, `docket
+TUI already running (PID 75819, started 2026-11-05T18:49:30Z)`, and exits with
+status 1. A launch with `--control` or `--headless` never switches, so a host
+always hears the refusal.
+
 ## Resolve a conflict
 
 `gc` opens the conflict browser in the TUI and desktop app. It lists recorded
