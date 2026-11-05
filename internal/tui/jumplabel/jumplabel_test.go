@@ -40,7 +40,7 @@ func TestLabelsAreAllOneLetterUntilTheAlphabetRunsOut(t *testing.T) {
 		t.Fatalf("labels past capacity = %d, want %d", got, Capacity)
 	}
 	if Labels(0) != nil {
-		t.Fatal("zero targets were labelled")
+		t.Fatal("zero targets were labeled")
 	}
 }
 
@@ -56,7 +56,7 @@ func TestOrderPutsTheNearestRowsFirstAndSkipsTheCursor(t *testing.T) {
 		}
 	}
 	assignment := Assign([]int{0, 1, 2, 3, 4, 5, 6}, 3)
-	if _, labelled := assignment[3]; labelled {
+	if _, labeled := assignment[3]; labeled {
 		t.Fatal("the cursor row took a label")
 	}
 	if assignment[4] != "a" || assignment[2] != "s" {

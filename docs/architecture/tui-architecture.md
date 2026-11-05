@@ -823,7 +823,7 @@ and `ShouldCaptureEsc`, and `ContextualGuidance` publishes `type label · Esc
 cancel` (with `Backspace undo` once a first letter is typed). The root grammar
 never sees a key typed inside the mode: Esc cancels, Backspace takes back a
 typed first letter and otherwise cancels, a label letter selects or narrows, a
-letter naming no row cancels with `No row labelled x`, and anything else cancels
+letter naming no row cancels with `No row labeled x`, and anything else cancels
 silently. Any click or wheel step cancels too, through `handleModalPointer`. A
 modifier pressed alone never arrives, because the shell drops it first. Every
 text input, the capture panel, the inline editor, and the pickers own `'` as a

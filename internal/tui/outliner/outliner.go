@@ -483,20 +483,13 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// The user has moved on: the rows close up under their next action.
 		m.dropDepartureGhost()
 	}
+	if cmd, ok := m.updatePaintTick(msg); ok {
+		return m, cmd
+	}
 	switch msg := msg.(type) {
 	case BackgroundSearchResultMsg:
 		m.acceptBackgroundSearch(msg)
 		return m, nil
-	case status.CursorFlashClearMsg:
-		m.CursorFlash = false
-		return m, nil
-	case DepartureGhostTickMsg:
-		return m, m.advanceDepartureGhost(msg)
-	case ModeArrivalTickMsg:
-		m.endModeArrival(msg)
-		return m, nil
-	case MotionTickMsg:
-		return m, m.anim.Advance(msg)
 
 	case taskdetail.CommentAddedMsg:
 		// Rebuild rows so cloned tasks from tree projections pick up the

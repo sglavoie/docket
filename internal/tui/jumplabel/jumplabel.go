@@ -1,6 +1,6 @@
 // Package jumplabel is the Outliner's jump mode with nothing of the Outliner in
 // it: which labels a set of on-screen rows gets, what a keystroke inside the
-// mode means, and how a labelled row is painted. The Outliner owns the rows, the
+// mode means, and how a labeled row is painted. The Outliner owns the rows, the
 // window, and the cursor; this package owns only the vocabulary, so the label a
 // render paints and the label a key resolves are one function of the same
 // inputs and cannot disagree.

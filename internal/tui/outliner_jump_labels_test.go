@@ -62,7 +62,7 @@ func cursorTitle(d *UITestDriver) string {
 }
 
 // TestJumpLabelsMoveTheCursorAloneAndCtrlOReturns holds the jump to its one
-// write: the cursor moves to the labelled row, the window, the rows, and the
+// write: the cursor moves to the labeled row, the window, the rows, and the
 // selection stay as they were, and Ctrl+O comes back to the origin.
 func TestJumpLabelsMoveTheCursorAloneAndCtrlOReturns(t *testing.T) {
 	d := jumpLabelDriver(t, 6, 80, 30)

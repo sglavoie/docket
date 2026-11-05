@@ -346,19 +346,20 @@ func (m *OutlinerModel) handleJumpLabelKey(key string) tea.Cmd {
 	outcome, row := m.Jump.Press(key, m.currentJumpLabels())
 	switch outcome {
 	case jumplabel.Selected:
-		return m.jumpToLabelledRow(row)
+		return m.jumpToLabeledRow(row)
 	case jumplabel.Missed:
-		m.SetTransientStatus("No row labelled " + typed)
+		m.SetTransientStatus("No row labeled " + typed)
 		return status.DefaultStatusTimeout()
+	case jumplabel.Pending, jumplabel.Canceled:
 	}
 	return nil
 }
 
-// jumpToLabelledRow writes the cursor and the origin frame, nothing else: the
+// jumpToLabeledRow writes the cursor and the origin frame, nothing else: the
 // row is already inside the window, so ComputeOutlinerViewport keeps the window
 // where it is, and no fold, mode, query, or selection membership changes. A
 // range selection extends to the new row exactly as a j/k move extends it.
-func (m *OutlinerModel) jumpToLabelledRow(row int) tea.Cmd {
+func (m *OutlinerModel) jumpToLabeledRow(row int) tea.Cmd {
 	if row < 0 || row >= len(m.Rows) || row == m.Cursor {
 		return nil
 	}

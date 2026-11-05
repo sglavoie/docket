@@ -285,6 +285,8 @@ func (m *AppModel) noteOutlinerMotion(id operation.OperationID) {
 		operation.OperationTaskIndent, operation.OperationTaskOutdent,
 		operation.OperationTaskSetParent, operation.OperationTaskMoveToProject:
 		out.NoteMoveTrail()
+	default:
+		// Every other operation earns no motion run.
 	}
 }
 

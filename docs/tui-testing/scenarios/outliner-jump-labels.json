@@ -28,7 +28,7 @@
 
     { "type": "key", "label": "a label letter naming no row cancels and says so", "key": "'" },
     { "type": "key", "key": "x" },
-    { "type": "assert", "assert": "contains", "value": "No row labelled x" },
+    { "type": "assert", "assert": "contains", "value": "No row labeled x" },
     { "type": "assert", "assert": "contains", "value": "s sections" },
 
     { "type": "key", "label": "a root key inside the mode only cancels; it never opens search", "key": "'" },

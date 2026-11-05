@@ -260,3 +260,22 @@ func (m *OutlinerModel) landingPaint(row OutlinerRow, paint cursorPaint) cursorP
 	}
 	return paint
 }
+
+// updatePaintTick answers the timers that change paint alone: the cursor
+// flash, the departure ghost, the mode arrival, and the motion runs. It reports
+// whether msg was one of them, so Update returns its command unchanged.
+func (m *OutlinerModel) updatePaintTick(msg tea.Msg) (tea.Cmd, bool) {
+	switch msg := msg.(type) {
+	case status.CursorFlashClearMsg:
+		m.CursorFlash = false
+		return nil, true
+	case DepartureGhostTickMsg:
+		return m.advanceDepartureGhost(msg), true
+	case ModeArrivalTickMsg:
+		m.endModeArrival(msg)
+		return nil, true
+	case MotionTickMsg:
+		return m.anim.Advance(msg), true
+	}
+	return nil, false
+}

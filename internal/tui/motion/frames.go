@@ -1,6 +1,6 @@
 package motion
 
-// scrollShares is how far each scroll phase has travelled from the window it
+// scrollShares is how far each scroll phase has traveled from the window it
 // left toward the one it arrives at: an ease-out, so most of the distance is
 // covered by the first frame and the last one settles.
 var scrollShares = [...]float64{0.5, 0.8}
