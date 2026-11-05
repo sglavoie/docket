@@ -121,6 +121,16 @@ func TestSyncStatusReachesTheStripAndTheConflictBrowser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewAppModel: %v", err)
 	}
+	// The sync status walks the whole history, so the launch defers it off the
+	// first frame and applies it when the background read lands.
+	if line := model.feedback.syncAdvisoryLine(); line != "" {
+		t.Fatalf("launch read the sync status in front of the first frame: %q", line)
+	}
+	readCmd := model.launchSyncStatusReadCmd()
+	if readCmd == nil {
+		t.Fatal("an enrolled launch issued no deferred sync status read")
+	}
+	model.Update(readCmd())
 	line := model.feedback.syncAdvisoryLine()
 	if !strings.Contains(line, "1 saved here, not yet published") || !strings.Contains(line, "exchanged") {
 		t.Fatalf("sync line = %q", line)
@@ -197,5 +207,29 @@ func TestSyncAdvisoryTextNamesEachStateApart(t *testing.T) {
 				t.Fatalf("syncAdvisoryText = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+// TestLaunchSyncStatusReadYieldsToANewerRead keeps a deferred launch read from
+// overwriting a sync status an exchange pass applied while it was on its way.
+func TestLaunchSyncStatusReadYieldsToANewerRead(t *testing.T) {
+	pair := newEnrolledPair(t)
+	model, err := NewAppModel(pair.desk)
+	if err != nil {
+		t.Fatalf("NewAppModel: %v", err)
+	}
+	readCmd := model.launchSyncStatusReadCmd()
+	if readCmd == nil {
+		t.Fatal("an enrolled launch issued no deferred sync status read")
+	}
+	stale := readCmd()
+	newer := &engine.SyncStatus{Enrolled: true}
+	model.applySyncStatus(syncStatusRead{status: newer})
+	model.Update(stale)
+	if model.feedback.syncStatus != newer {
+		t.Fatal("the launch read overwrote a newer sync status")
+	}
+	if model.launchSyncStatusReadCmd() != nil {
+		t.Fatal("the launch read was still owed after a newer read applied")
 	}
 }

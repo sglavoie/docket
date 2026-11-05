@@ -589,7 +589,7 @@ set, so digits stay on the first nine of `QueryReadoutRows()` at any offset and 
 tenth axis is scrolled to rather than dropped or bound.
 
 Only warning and error status text arms footer flash, plus `flashCelebrate`,
-recorded by `celebrateClearedToday` alone; cleared text, a quiet
+recorded by `celebrateCleared*` alone; cleared text, a quiet
 severity, and other chrome do not. `footerFlashSeverity.animates()` is that
 closed table, read off the severity every setter records, and `retireFlash` the
 supersession: quiet feedback cancels the live animation and advances `flashSeq`,

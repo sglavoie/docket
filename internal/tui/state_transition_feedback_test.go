@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/docket/internal/icons"
+
 	"github.com/sglavoie/docket/internal/models"
 )
 
@@ -100,7 +102,7 @@ func TestDirectStateTransitionFeedbackUsesResolvedTaskCardinality(t *testing.T) 
 
 		env.completeSelection(t)
 
-		const want = "Change Status: First transition target → Done · u undo"
+		want := icons.Get("status.done") + " Done: First transition target · first done today · u undo"
 		if got := env.driver.App().feedback.message; got != want {
 			t.Fatalf("status = %q, want %q", got, want)
 		}
@@ -120,7 +122,7 @@ func TestDirectStateTransitionFeedbackUsesResolvedTaskCardinality(t *testing.T) 
 
 		env.completeSelection(t)
 
-		const want = "Bulk Change Status: Done · u undo"
+		want := icons.Get("status.done") + " Done · 2 done today · u undo"
 		if got := env.driver.App().feedback.message; got != want {
 			t.Fatalf("status = %q, want %q", got, want)
 		}

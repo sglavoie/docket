@@ -389,6 +389,11 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		if err == nil {
 			message = commandMessage(m.statusReadingTimeout())
 		}
+	case operation.OperationCoreResetFooterHints:
+		err = m.coreResetLearnedHints()
+		if err == nil {
+			message = commandMessage(m.statusReadingTimeout())
+		}
 	case operation.OperationCoreToggleNerdGlyphs:
 		err = m.coreToggleNerdGlyphs()
 		if err == nil {

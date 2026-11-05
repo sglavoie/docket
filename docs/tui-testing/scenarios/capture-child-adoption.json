@@ -23,7 +23,7 @@
 
     { "type": "key", "label": "commit one atomic capture", "key": "enter" },
     { "type": "wait" },
-    { "type": "assert", "assert": "status_contains", "value": "Add Task: #9 Consolidate follow-ups" },
+    { "type": "assert", "assert": "status_contains", "value": "Captured to rich-project · Inbox: Consolidate follow-ups" },
     { "type": "assert", "label": "both adopted tasks now wear the marker", "assert": "contains", "value": "User authentication  ‹" },
     { "type": "assert", "assert": "contains", "value": "Fix redirect loop after logout  ‹" },
     { "type": "key", "key": "home" },

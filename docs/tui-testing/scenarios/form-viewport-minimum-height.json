@@ -135,7 +135,7 @@
     { "type": "key", "label": "every draft entered through the window commits", "key": "ctrl+s" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "status_contains", "value": "Add Task: #1 Wire the Extras viewport" },
+    { "type": "assert", "assert": "status_contains", "value": "Captured to unfiled · Inbox: Wire the Extras viewport" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

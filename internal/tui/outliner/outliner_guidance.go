@@ -146,10 +146,10 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		return chrome.GuidanceSpec{}, false
 	}
 
-	hints := m.OperationRegistry.GuidanceHintsForInputStrategy(
+	hints := m.retireLearnedFooterHints(m.OperationRegistry.GuidanceHintsForInputStrategy(
 		operation.InputStrategySimplified,
 		m.OperationCommandContext(),
-	)
+	))
 	// A Focus, a zoom, a scope, and a relationship hop all leave the ordinary row
 	// footer standing, and none of them is a key the cursor names: the strategy's
 	// ranks cannot answer what Esc does, because the answer is what is standing
@@ -164,6 +164,33 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		return chrome.GuidanceSpec{}, false
 	}
 	return chrome.GuidanceSpec{Hints: hints, Rows: 1}, true
+}
+
+// helpFooterKey is the one ranked footer key never retired: it is the way to
+// every key the footer stopped naming.
+const helpFooterKey = "?"
+
+// retireLearnedFooterHints drops the ranked hints this machine has learned, so
+// the task-row footer quiets as the hand learns the grammar and the hints
+// behind them move up into the room. `? help` stays, and nothing else is
+// touched: the menu bar, `?` help, and `:` still list every key, and a modal
+// or chord footer is never filtered, since those name what this moment takes.
+func (m *OutlinerModel) retireLearnedFooterHints(hints []chrome.GuidanceHint) []chrome.GuidanceHint {
+	if m.Runtime == nil {
+		return hints
+	}
+	machine := m.Runtime.Machine()
+	if machine == nil || len(machine.LearnedFooterKeys) == 0 {
+		return hints
+	}
+	kept := hints[:0:0]
+	for _, hint := range hints {
+		if hint.Key != helpFooterKey && machine.FooterKeyLearned(hint.Key) {
+			continue
+		}
+		kept = append(kept, hint)
+	}
+	return kept
 }
 
 func (m *OutlinerModel) multiSelectGuidance() chrome.GuidanceSpec {

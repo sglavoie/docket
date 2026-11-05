@@ -134,6 +134,9 @@ type AppModel struct {
 	// title row. It is recomputed after committed count-changing mutations so
 	// paint paths can read it without an extra full-tree walk.
 	workspacePulse pulse.WorkspacePulse
+	// footerKeys counts footer key presses not yet recorded in the machine
+	// state; see learned_footer_keys.go.
+	footerKeys learnedFooterKeys
 	// pulseMotion is the count change the title is drawing; see pulse_motion.go.
 	pulseMotion pulseMotion
 	// glyphs is the session's glyph set; see app_advisories.go.

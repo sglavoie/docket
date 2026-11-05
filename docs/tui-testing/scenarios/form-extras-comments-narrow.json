@@ -41,7 +41,7 @@
     { "type": "key", "label": "save task, attachment, and comments as one transaction", "key": "ctrl+s" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "status_contains", "value": "Add Task: #1 Wire the Comments section" },
+    { "type": "assert", "assert": "status_contains", "value": "Captured to unfiled · Inbox: Wire the Comments section" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "key": "home" },

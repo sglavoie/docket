@@ -36,7 +36,7 @@
     { "type": "key", "label": "save the task and its context as one transaction", "key": "ctrl+s" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "status_contains", "value": "Add Task: #1 Ship the launch" },
+    { "type": "assert", "assert": "status_contains", "value": "Captured to unfiled · Inbox: Ship the launch" },
     { "type": "assert", "label": "the context appears beside the project on the row", "assert": "contains", "value": "[acme-eu]" },
     { "type": "key", "key": "b" },
     { "type": "assert", "label": "Peek recovers the full context", "assert": "contains", "value": "Context: acme-eu" },

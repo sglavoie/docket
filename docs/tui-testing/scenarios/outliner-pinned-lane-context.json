@@ -39,6 +39,7 @@
     { "type": "key", "label": "the ranked list has no lanes, so a scrolled one pins nothing", "key": "/" },
     { "type": "text", "text": "acceptance" },
     { "type": "key", "key": "enter" },
+    { "type": "key", "label": "the query seats the cursor on the top result, so three half pages scroll it", "key": "ctrl+d" },
     { "type": "key", "key": "ctrl+d" },
     { "type": "key", "key": "ctrl+d" },
     { "type": "assert", "assert": "contains", "value": "[release-pro…]" },

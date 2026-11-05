@@ -101,7 +101,7 @@
     { "type": "key", "key": "w" },
     { "type": "key", "label": "wd completes that one", "key": "d" },
     { "type": "wait" },
-    { "type": "assert", "assert": "status_contains", "value": "Change Status: Design settings screen → Done" },
+    { "type": "assert", "assert": "status_contains", "value": "Done: Design settings screen" },
     { "type": "assert", "label": "only the toast still names it: the row left All", "assert": "count_contains", "value": "Design settings screen", "count": 1 },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

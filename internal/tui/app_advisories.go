@@ -334,3 +334,44 @@ func (m *AppModel) controlReduceMotion(text string, reply chan<- control.Reply) 
 	m.applyMotion()
 	answer(reply, true, "Reduce motion: "+text)
 }
+
+// launchSyncStatusReadMsg carries the launch's sync status read back to the UI
+// goroutine.
+type launchSyncStatusReadMsg struct{ read syncStatusRead }
+
+// refreshOutstandingConflictsAtLaunch is the launch's conflict refresh. The
+// bundle count is cheap and read here; an enrolled workspace's sync status
+// derives its open conflicts from the whole history, which would sit in front
+// of the first frame, so a session with a background reader defers it to
+// launchSyncStatusReadCmd and draws the sync line a moment after.
+func (m *AppModel) refreshOutstandingConflictsAtLaunch() {
+	if m == nil || m.domain.runtime == nil {
+		return
+	}
+	if m.automaticSync.readStatus == nil {
+		m.refreshOutstandingConflicts()
+		return
+	}
+	m.feedback.launchSyncReadPending = true
+	m.recountOutstandingConflicts()
+}
+
+// launchSyncStatusReadCmd reads the deferred launch sync status off the UI
+// goroutine, through a runtime of its own.
+func (m *AppModel) launchSyncStatusReadCmd() tea.Cmd {
+	read := m.automaticSync.readStatus
+	if !m.feedback.launchSyncReadPending || read == nil {
+		return nil
+	}
+	return func() tea.Msg { return launchSyncStatusReadMsg{read: read()} }
+}
+
+// applyLaunchSyncStatusRead applies the launch read unless a newer read was
+// applied while it was on its way.
+func (m *AppModel) applyLaunchSyncStatusRead(msg launchSyncStatusReadMsg) {
+	if !m.feedback.launchSyncReadPending {
+		return
+	}
+	m.applySyncStatus(msg.read)
+	m.recountOutstandingConflicts()
+}

@@ -219,7 +219,7 @@
     {
       "type": "assert",
       "assert": "status_contains",
-      "value": "Add Task:"
+      "value": "Captured to"
     },
     {
       "type": "assert",
@@ -251,7 +251,7 @@
     {
       "type": "assert",
       "assert": "status_contains",
-      "value": "Add Task:"
+      "value": "Captured to"
     },
     {
       "type": "assert",
@@ -431,7 +431,7 @@
     {
       "type": "assert",
       "assert": "status_contains",
-      "value": "Add Task:"
+      "value": "Captured to"
     },
     {
       "type": "assert",
@@ -956,7 +956,7 @@
     {
       "type": "assert",
       "assert": "status_contains",
-      "value": "Change Status: Chase the signed vendor… → Done"
+      "value": "Done: Chase the signed vendor…"
     },
     {
       "type": "assert",

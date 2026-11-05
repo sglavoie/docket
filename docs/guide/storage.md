@@ -340,7 +340,8 @@ it narrows by, so what a lens selects is one line you can read.
 Machine-local `~/.docket/runtime/<workspace-id>/machine.json` contains only the
 dark/light theme choice, whether the Outliner draws its menu bar, whether it
 draws ambient advisories, whether the mouse, motion, and Nerd Font glyphs are on,
-a pointer to the lens that was last open, and the last
+a pointer to the lens that was last open, how often each footer key has been
+pressed (up to the ten that retire its hint), and the last
 50 submitted search queries for this workspace. These
 are answers about this machine rather than about the workspace, which is why they
 stay behind while the definitions travel: a second machine opens on its own
@@ -350,7 +351,8 @@ that has never pressed `M` writes no menu-bar key at all, and the absent key is
 what says the bar is hidden; the advisory key works the same way, so its absence
 says advisories are shown, and so do `mouse_disabled`, `motion_disabled`, and
 `nerd_glyphs`: absent means the mouse and motion are on and the glyphs are plain
-Unicode. The active-lens pointer is a
+Unicode. `learned_footer_keys` is absent until a footer key is pressed, so its
+absence means every footer hint shows. The active-lens pointer is a
 hint rather than a record: it is checked for shape alone when the file loads, so
 one naming a lens that is no longer there costs you a stale hint and never a
 failed launch.

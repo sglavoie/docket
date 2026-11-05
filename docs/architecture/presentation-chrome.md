@@ -1069,6 +1069,20 @@ and each changes paint alone: no width, no row, no window input.
   `celebrateClearedToday` appends `Today is clear` through `appendNote`, keeping
   `u undo` last. With motion it records `flashCelebrate`, the one success
   severity `animates()` admits. It speaks once per local day per session.
+- **Learned footer keys.** `retireLearnedFooterHints` drops a ranked task-row
+  hint once `machine.json`'s `learned_footer_keys` counts
+  `config.FooterKeyLearnedUses` keyboard presses of it on the Outliner. Only a
+  key the ranked footer advertises in the dispatch context counts, `?` never
+  does, and modal, chord, and header footers are never filtered. Presses ride in
+  memory (`learnedFooterKeys.pending`) until the press that retires a hint or
+  the quit, so no keypress waits on a machine write; View → Reset Footer Hints
+  clears both halves.
+- **Inbox zero.** `celebrateClearedInbox` is the same seam for the Inbox: it
+  held tasks before the update, holds none after, and the update published a
+  committed mutation's recovery line (a new `seq` ending in `u undo`), which is
+  what keeps an undo, a redo, a sync, and an external reload quiet. It appends
+  `Inbox zero` and keeps its own day, so the two celebrations never spend each
+  other's.
 
 Two launch options sit beside motion and are also `RunApp`'s alone.
 `WithDailyGreeting` lets `settleLaunchFocus` publish `pulse.DailyGreeting` once

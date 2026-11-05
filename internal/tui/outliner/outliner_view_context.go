@@ -264,11 +264,26 @@ func (m *OutlinerModel) BuildOutlinerTitleLine(width int) string {
 		return renderTitleWithMark(mark, []pulse.OperationalTitleSpec{spec}, width)
 	}
 	// A wide title spends its blank middle on the active mode's Tab neighbors,
-	// so the reader sees where Tab and Shift+Tab go. It is offered only where the whole title still
-	// fits unshortened; anywhere narrower the lone active badge stands.
+	// so the reader sees where Tab and Shift+Tab go, and how much waits in the
+	// two modes the pulse already counts. It is offered only where the whole
+	// title still fits unshortened: the counted strip first, then the bare one,
+	// and anywhere narrower the lone active badge stands.
+	counted := spec
+	counted.Mode = chrome.OperationalTitleModeStripArriving(m.ActiveOutlinerMode(), m.modeArrivalShown(), modeTabCounts(workspacePulse))
 	strip := spec
-	strip.Mode = chrome.OperationalTitleModeStripArriving(m.ActiveOutlinerMode(), m.modeArrivalShown())
-	return renderTitleWithMark(mark, []pulse.OperationalTitleSpec{strip, spec}, width)
+	strip.Mode = chrome.OperationalTitleModeStripArriving(m.ActiveOutlinerMode(), m.modeArrivalShown(), nil)
+	return renderTitleWithMark(mark, []pulse.OperationalTitleSpec{counted, strip, spec}, width)
+}
+
+// modeTabCounts is what a Tab neighbor counts: the Inbox and Today totals the
+// workspace pulse measures, so the strip and the pulse can never disagree.
+// Every other mode is uncounted, since nothing measures it as cheaply or as
+// exactly.
+func modeTabCounts(workspacePulse pulse.WorkspacePulse) map[chrome.OutlinerModeID]int {
+	return map[chrome.OutlinerModeID]int{
+		chrome.ModeInbox: workspacePulse.Inbox,
+		chrome.ModeToday: workspacePulse.Today,
+	}
 }
 
 // renderTitleWithMark draws the first spec, richest first, that fits whole,

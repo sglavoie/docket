@@ -2,6 +2,7 @@ package theme
 
 import (
 	"bytes"
+	"fmt"
 	"image/color"
 	"strings"
 	"testing"
@@ -95,4 +96,28 @@ func monochrome(t *testing.T, styled string) string {
 		t.Fatalf("monochrome write: %v", err)
 	}
 	return out.String()
+}
+
+// TestLaneRuleIsQuieterThanTheBorder keeps the lane rule between the paper and
+// the border ink in both themes: it must still be visible, and it must not be
+// the full border that every frame and divider is drawn in.
+func TestLaneRuleIsQuieterThanTheBorder(t *testing.T) {
+	for _, name := range []string{"dark", "light"} {
+		t.Run(name, func(t *testing.T) {
+			ApplyTheme(ThemeConfig{Name: name})
+			t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+			paper, border, rule := hexOfColor(ColorBackground), hexOfColor(ColorBorder), hexOfColor(ColorLaneRule)
+			if rule == paper || rule == border {
+				t.Fatalf("lane rule %s is not between paper %s and border %s", rule, paper, border)
+			}
+			if contrastHex(rule, paper) >= contrastHex(border, paper) {
+				t.Fatalf("lane rule %s stands out from the paper as much as the border %s", rule, border)
+			}
+		})
+	}
+}
+
+func hexOfColor(c color.Color) string {
+	r, g, b, _ := c.RGBA()
+	return fmt.Sprintf("#%02x%02x%02x", r>>8, g>>8, b>>8)
 }

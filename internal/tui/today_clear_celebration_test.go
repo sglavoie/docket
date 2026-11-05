@@ -19,7 +19,7 @@ func clearTodayDriver(t *testing.T, motion bool) *UITestDriver {
 func TestFinishingTheLastTodayTaskCelebrates(t *testing.T) {
 	driver := clearTodayDriver(t, true)
 	obs := pressKeys(t, driver, "j", "j", "j", "j", "w", "t", "tab", "w", "d")
-	if !strings.Contains(obs.PlainScreen, "Done · Today is clear · u undo") {
+	if !strings.Contains(obs.PlainScreen, "Today is clear · u undo") {
 		t.Fatalf("emptying Today was not said:\n%s", obs.PlainScreen)
 	}
 	flash := driver.App().feedback.flash

@@ -25,7 +25,10 @@ type backgroundSearch struct {
 	revision    uint64
 	fingerprint string
 	anchor      modeCursorAnchor
-	result      *OutlinerModel
+	// top seats the cursor on the first result rather than restoring anchor:
+	// the query changed under a ranked list, so the best answer is row one.
+	top    bool
+	result *OutlinerModel
 }
 
 type BackgroundSearchResultMsg struct {
@@ -110,8 +113,12 @@ func (m *OutlinerModel) rebuildLiveSearch() tea.Cmd {
 		anchor = m.Search.flight.anchor
 	}
 	m.Search.cancelBackground()
+	top := m.ShowsRankedList()
 	if !m.needsBackgroundSearch() {
 		RebuildOutlinerPreservingCursor(m)
+		if top {
+			m.seatCursorOnTopResult()
+		}
 		return nil
 	}
 	worker, err := m.detachedSearchModel()
@@ -125,7 +132,7 @@ func (m *OutlinerModel) rebuildLiveSearch() tea.Cmd {
 	ctx, cancel := context.WithCancel(context.Background())
 	worker.Search.workContext = ctx
 	flight := &backgroundSearch{cancel: cancel, revision: m.Population.revision,
-		fingerprint: m.crossProjectRowsFingerprint(), anchor: anchor}
+		fingerprint: m.crossProjectRowsFingerprint(), anchor: anchor, top: top}
 	m.Search.flight = flight
 	if m.Search.worker == nil {
 		m.Search.worker = &sync.Mutex{}
@@ -251,7 +258,20 @@ func (m *OutlinerModel) acceptBackgroundSearch(msg BackgroundSearchResultMsg) {
 	}
 	msg.flight.result = msg.result
 	m.rebuildRows()
+	if msg.flight.top {
+		m.seatCursorOnTopResult()
+		return
+	}
 	m.restoreModeCursor(msg.flight.anchor)
+	m.ClampCursor()
+}
+
+// seatCursorOnTopResult puts the cursor on the ranked list's first row. A
+// ranked list is ordered by relevance, so editing its query is asking for a
+// new best answer: keeping the old row index, or chasing the old task down
+// the new order, would leave the cursor on whatever happened to land there.
+func (m *OutlinerModel) seatCursorOnTopResult() {
+	m.Cursor = 0
 	m.ClampCursor()
 }
 

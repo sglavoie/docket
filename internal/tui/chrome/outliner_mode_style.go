@@ -1,6 +1,8 @@
 package chrome
 
 import (
+	"strconv"
+
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/docket/internal/models"
@@ -76,12 +78,14 @@ func OperationalTitleBrandMark(mode OutlinerModeID) string {
 }
 
 // OperationalTitleModeStripArriving renders the active mode's badge followed
-// by its two Tab neighbors, muted — `Inbox  ‹ Today  Next ›` — so a wide title
-// says where Shift+Tab and Tab go. While the mode is arriving the badge lands
+// by its two Tab neighbors, muted — `Inbox  ‹ Today 2  Next ›` — so a wide
+// title says where Shift+Tab and Tab go and, where counts names one, how much
+// waits there. A neighbor counts only when counts holds a nonzero entry for it,
+// so a mode with nothing waiting reads as bare as one that is never counted. While the mode is arriving the badge lands
 // reversed and the arrow the switch traveled
 // through — › for Tab, ‹ for Shift+Tab — is lit, so the strip says which way
 // the modes turned. Every cell keeps its width.
-func OperationalTitleModeStripArriving(active OutlinerModeID, arrival ModeArrival) string {
+func OperationalTitleModeStripArriving(active OutlinerModeID, arrival ModeArrival, counts map[OutlinerModeID]int) string {
 	modes := OutlinerTabModes()
 	index := -1
 	for i, mode := range modes {
@@ -108,7 +112,15 @@ func OperationalTitleModeStripArriving(active OutlinerModeID, arrival ModeArriva
 	case ModeArrivalNone, ModeArrivalJump:
 	}
 	return OperationalTitleModeSegmentArriving(modes[index], arrival) + "  " +
-		back.Render("‹") + theme.MutedStyle.Render(" "+previous.Label+"  "+next.Label+" ") + forward.Render("›")
+		back.Render("‹") + theme.MutedStyle.Render(" "+countedModeLabel(previous, counts)+"  "+countedModeLabel(next, counts)+" ") + forward.Render("›")
+}
+
+// countedModeLabel is a Tab neighbor's label with its count, when it has one.
+func countedModeLabel(mode OutlinerMode, counts map[OutlinerModeID]int) string {
+	if count := counts[mode.ID]; count > 0 {
+		return mode.Label + " " + strconv.Itoa(count)
+	}
+	return mode.Label
 }
 
 // ModeArrivalBetween names how from became to: one step along the Tab cycle

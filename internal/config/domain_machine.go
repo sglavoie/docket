@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -67,6 +68,39 @@ type MachineState struct {
 	// every later one that day does not. It is chrome on the same terms as
 	// MouseDisabled: machine-local, omitempty, never seeded.
 	GreetedOn string `json:"greeted_on,omitempty"`
+	// LearnedFooterKeys counts how often each footer key was pressed on this
+	// machine, up to FooterKeyLearnedUses, after which the Outliner's idle footer
+	// stops advertising it: a key in the hand needs no reminder on the screen.
+	// Chrome on the same terms as GreetedOn — machine-local, omitempty, never
+	// seeded — and the omitted key is the default, which is that every hint shows.
+	LearnedFooterKeys map[string]int `json:"learned_footer_keys,omitempty"`
+}
+
+// FooterKeyLearnedUses is how many presses retire a footer hint.
+const FooterKeyLearnedUses = 10
+
+// FooterKeyLearned reports whether key has been pressed often enough on this
+// machine that the footer no longer needs to name it.
+func (m *MachineState) FooterKeyLearned(key string) bool {
+	return m != nil && m.LearnedFooterKeys[key] >= FooterKeyLearnedUses
+}
+
+// WithFooterKeyUse returns a copy of the state counting one more press of key,
+// and whether the count moved. A learned key stops counting, so the file is
+// written at most FooterKeyLearnedUses times per key. The map is cloned rather
+// than shared, because a caller commits the copy and the live state must not
+// change underneath it if that commit fails.
+func (m MachineState) WithFooterKeyUse(key string) (MachineState, bool) {
+	if key == "" || m.LearnedFooterKeys[key] >= FooterKeyLearnedUses {
+		return m, false
+	}
+	learned := maps.Clone(m.LearnedFooterKeys)
+	if learned == nil {
+		learned = make(map[string]int, 1)
+	}
+	learned[key]++
+	m.LearnedFooterKeys = learned
+	return m, true
 }
 
 // NewMachineState returns the default built-in theme selection and the starter
@@ -96,6 +130,11 @@ func (m *MachineState) Validate() error {
 	if m.GreetedOn != "" {
 		if _, err := time.Parse(time.DateOnly, m.GreetedOn); err != nil {
 			return fmt.Errorf("machine: greeted_on %q must be a YYYY-MM-DD day", m.GreetedOn)
+		}
+	}
+	for key, uses := range m.LearnedFooterKeys {
+		if key == "" || uses < 1 || uses > FooterKeyLearnedUses {
+			return fmt.Errorf("machine: learned footer key %q must count 1 to %d uses", key, FooterKeyLearnedUses)
 		}
 	}
 	if m.ActiveLensID != "" {
@@ -166,5 +205,6 @@ func (m *MachineState) Clone() *MachineState {
 	cp := *m
 	cp.NamedLenses = m.NamedLenses.Clone()
 	cp.SearchHistory = slices.Clone(m.SearchHistory)
+	cp.LearnedFooterKeys = maps.Clone(m.LearnedFooterKeys)
 	return &cp
 }

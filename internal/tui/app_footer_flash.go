@@ -356,43 +356,6 @@ func renderUndoCountdownDivider(width, cells int) string {
 	return divider.String()
 }
 
-// todayClearNote is what the commit that empties Today adds to the line it
-// published.
-const todayClearNote = "Today is clear"
-
-// celebrateClearedToday marks the one commit a day that empties Today: Today
-// held open work before this Update and holds none after it, and the day's
-// Done count rose, so it was finished rather than replanned or undone. It
-// rides the line this Update published through appendNote, keeping `u undo`
-// last, or speaks alone when nothing did. With motion armed it upgrades that
-// line's quiet severity to flashCelebrate, so the divider sweeps in the
-// success color; a warning or an error already speaking keeps its own.
-//
-// It schedules nothing itself: the flash is armed later in the same
-// deferred closure, from the generation recorded here.
-//
-// It runs in the one deferred closure in AppModel.Update, after every refresh
-// the Update made, and says it at most once per local day per session.
-func (m *AppModel) celebrateClearedToday(before pulse.WorkspacePulse, now time.Time) {
-	after := m.workspacePulse
-	if before.Today <= 0 || after.Today != 0 || after.Done <= before.Done {
-		return
-	}
-	day := now.Format(time.DateOnly)
-	if m.feedback.celebratedDay == day {
-		return
-	}
-	m.feedback.celebratedDay = day
-	if !m.feedback.appendNote(todayClearNote) {
-		m.setSuccessStatus(todayClearNote)
-	}
-	if m.lifecycle.motion && !m.feedback.severity.animates() {
-		// A new generation is what the flash arms on, so the sweep starts
-		// even when the line it rides was published by an earlier Update.
-		m.feedback.recordSeverity(flashCelebrate)
-	}
-}
-
 // outlinerModeForMotion is the mode the Update's motion compares across one
 // Update, or the zero mode when there is no Outliner.
 func (m *AppModel) outlinerModeForMotion() chrome.OutlinerModeID {

@@ -229,6 +229,8 @@ func (m *AppModel) setRecoveryFeedbackWithContext(
 	}
 	if headline := strings.TrimSpace(words.Headline); headline != "" {
 		action, context = headline, ""
+	} else if headline := m.statusChangeHeadline(entry.Action, context); headline != "" {
+		action, context = headline, ""
 	}
 	undoCb := func() tea.Cmd { return m.handleLedgerTaskUndoRedo(false) }
 	cmd := m.setUndoableStatus(formatRecoveryFeedback(action, context, originRecorded), undoCb)

@@ -21,7 +21,7 @@
     { "type": "key", "label": "commit the capture", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "status_contains", "value": "Add Task: #1 Flagged task" },
+    { "type": "assert", "assert": "status_contains", "value": "Captured to unfiled · Inbox: Flagged task" },
     { "type": "assert", "label": "the new task renders in the All-mode Review lane", "assert": "contains", "value": "Review  (1)" },
     { "type": "assert", "assert": "no_layout_issues" },
 

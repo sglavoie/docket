@@ -3,15 +3,19 @@ package tui
 import (
 	"cmp"
 	"fmt"
+	"strconv"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/icons"
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/coordinator"
 	"github.com/sglavoie/docket/internal/tui/taskform"
 	"github.com/sglavoie/docket/internal/tui/taskref"
 	"github.com/sglavoie/docket/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // handleTaskCRUDMessages handles task CRUD messages (create, edit, delete).
@@ -136,7 +140,8 @@ func (m *AppModel) handleTaskCreated(msg coordinator.TaskCreatedMsg) (bool, tea.
 	}
 	m.undoFocus.ObserveCommit(transactionID, created)
 	successMessage = cmp.Or(msg.RecoveryWarning, successMessage)
-	feedbackCmd := m.setRecoveryFeedback(successMessage, transactionID, false)
+	feedbackCmd := m.setRecoveryFeedbackWithContext(successMessage, transactionID,
+		recoveryWords{Headline: m.capturedTasksHeadline(msg)}, false)
 
 	// Delegate to the current view so it can reload its state
 	cmd := m.viewNav.views.Update(m.currentView(), msg)
@@ -160,6 +165,36 @@ func (m *AppModel) handleTaskCreated(msg coordinator.TaskCreatedMsg) (bool, tea.
 	return true, tea.Batch(refreshCmd, cmd, feedbackCmd, landingCmd)
 }
 
+// capturedTasksHeadline is the toast a committed capture answers with. A
+// single task names the project and lane it landed in, the lane read the way
+// createdTaskSectionLabel reads it; several name their count and where they
+// went. A legacy form result carrying no titles keeps the ledger's words, and
+// a capture that owes a recovery warning says that instead.
+func (m *AppModel) capturedTasksHeadline(msg coordinator.TaskCreatedMsg) string {
+	if msg.RecoveryWarning != "" {
+		return ""
+	}
+	results := msg.Results
+	if len(results) == 0 && msg.Result != nil {
+		results = []app.TaskResult{*msg.Result}
+	}
+	titles := make([]string, 0, len(results))
+	projects := make([]*models.Project, 0, 1)
+	seen := make(map[string]bool, 1)
+	for _, result := range results {
+		titles = append(titles, result.Title)
+		if !seen[result.ProjectID] {
+			seen[result.ProjectID] = true
+			projects = append(projects, m.projectByID(result.ProjectID))
+		}
+	}
+	lane := ""
+	if len(results) == 1 && msg.Task != nil {
+		lane = m.createdTaskSectionLabel(msg.Task, msg.Project)
+	}
+	return captureHeadline(titles, projects, lane)
+}
+
 func (m *AppModel) createdTaskSectionLabel(task *models.Task, project *models.Project) string {
 	if task == nil {
 		return ""
@@ -174,4 +209,94 @@ func (m *AppModel) createdTaskSectionLabel(task *models.Task, project *models.Pr
 		}
 	}
 	return theme.TaskStateGroupLabel(task)
+}
+
+// The ledger records each transaction in the words Change History lists it
+// by — an action and the context it acted on — and the recovery toast reads
+// them back verbatim. For the two gestures made dozens of times a day, finishing
+// a task and capturing one, that reads as a log line, so the toast says what
+// happened the way a person would instead. Change History keeps the ledger's
+// words; only the toast is rephrased, and the `u undo` ending is unchanged.
+
+// statusChangeHeadline phrases a status change that finished work: the done
+// glyph, the title, and the day's tally the pulse already counts. Any other
+// destination keeps the ledger's own sentence, which is what an empty answer
+// means.
+func (m *AppModel) statusChangeHeadline(action, context string) string {
+	done := models.WorkflowStateGroupForState(models.StateDone).Label()
+	var headline string
+	switch action {
+	case app.StateChangeUndoAction:
+		title, lane, ok := app.ParseStateChangeUndoContext(context)
+		if !ok || lane != done || strings.TrimSpace(title) == "" {
+			return ""
+		}
+		headline = icons.Get("status.done") + " Done: " + title
+	case app.BulkStateChangeUndoAction:
+		if strings.TrimSpace(context) != done {
+			return ""
+		}
+		headline = icons.Get("status.done") + " Done"
+	default:
+		return ""
+	}
+	if count := m.workspacePulse.Done; count > 0 {
+		headline += " · " + doneTodayTally(count)
+	}
+	return headline
+}
+
+// doneTodayTally is the day's completion count as the toast spells it.
+func doneTodayTally(count int) string {
+	if count == 1 {
+		return "first done today"
+	}
+	return strconv.Itoa(count) + " done today"
+}
+
+// captureHeadline names where a capture landed before what it was, because a
+// toast wider than its row keeps its start: the destination is what a capture
+// most often leaves the screen with, and the title is already on the row the
+// cursor landed on. A multiline capture names its count and where it went.
+func captureHeadline(titles []string, projects []*models.Project, lane string) string {
+	switch {
+	case len(titles) == 0:
+		return ""
+	case len(projects) > 1:
+		return "Captured " + util.Count(len(titles), "task") + " across " + util.Count(len(projects), "project")
+	}
+	where := ""
+	if len(projects) == 1 && projects[0] != nil {
+		where = cmpNonEmpty(projects[0].Slug, projects[0].Name)
+	}
+	if len(titles) > 1 {
+		if where == "" {
+			return "Captured " + util.Count(len(titles), "task")
+		}
+		return "Captured " + util.Count(len(titles), "task") + " to " + where
+	}
+	destination := strings.Join(nonEmpty(where, lane), " · ")
+	if destination == "" {
+		return "Captured: " + titles[0]
+	}
+	return "Captured to " + destination + ": " + titles[0]
+}
+
+func cmpNonEmpty(values ...string) string {
+	for _, value := range values {
+		if value = strings.TrimSpace(value); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func nonEmpty(values ...string) []string {
+	kept := make([]string, 0, len(values))
+	for _, value := range values {
+		if value = strings.TrimSpace(value); value != "" {
+			kept = append(kept, value)
+		}
+	}
+	return kept
 }

@@ -322,8 +322,9 @@ func (m *OutlinerModel) RenderOutlinerSectionHeaderRow(row OutlinerRow, selected
 const laneHeaderRuleMinCells = 3
 
 // laneHeaderRule is the faint line a lane header runs to the row's edge, so the
-// outline reads as blocks at a glance. It is drawn in the border ink, quieter
-// than the muted count, and never in the lane's color: the arrow and the name
+// outline reads as blocks at a glance. It is drawn in the lane-rule ink, the
+// border pulled toward the paper and so quieter than the muted count and every
+// other border, and never in the lane's color: the arrow and the name
 // already carry that. room is the columns left after the header's text; the
 // rule spends all of them but the one space that separates it from the text.
 // The pinned context row keeps its own muted rule and padded name, so the two
@@ -333,7 +334,7 @@ func laneHeaderRule(base lipgloss.Style, room int) string {
 	if room-1 < laneHeaderRuleMinCells {
 		return ""
 	}
-	return base.Render(" ") + base.Foreground(theme.ColorBorder).Render(strings.Repeat("─", room-1))
+	return base.Render(" ") + base.Foreground(theme.ColorLaneRule).Render(strings.Repeat("─", room-1))
 }
 
 // projectSlugForRow is the name a project header spells for the row's

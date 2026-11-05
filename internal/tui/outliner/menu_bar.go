@@ -282,6 +282,9 @@ func viewMenuEntries(activeMode chrome.OutlinerModeID, checks ViewMenuChecks) []
 			Label:       "Nerd Font Glyphs",
 			Checked:     &checks.NerdGlyphs,
 		},
+		// The footer quiets as keys are learned; this row is the way back to
+		// every hint. Keyless and target-free like the rows above it.
+		menuEntrySpec{OperationID: operation.OperationCoreResetFooterHints},
 	)
 }
 

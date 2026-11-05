@@ -14,7 +14,7 @@
     { "type": "key", "label": "commit the capture", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "label": "the comment span left the title and the rest stayed literal", "assert": "status_contains", "value": "Add Task: #1 Fix login then retry" },
+    { "type": "assert", "label": "the comment span left the title and the rest stayed literal", "assert": "status_contains", "value": "Captured to unfiled · Inbox: Fix login then retry" },
     { "type": "assert", "assert": "contains", "value": "Fix login then retry" },
     { "type": "assert", "label": "no tag was minted from the comment text", "assert": "not_contains", "value": "auth" },
     { "type": "assert", "assert": "no_layout_issues" },

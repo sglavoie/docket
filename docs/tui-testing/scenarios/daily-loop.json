@@ -26,12 +26,12 @@
     { "type": "key", "label": "open workflow actions", "key": "w" },
     { "type": "key", "label": "complete the fourth Inbox task", "key": "d" },
     { "type": "wait" },
-    { "type": "assert", "assert": "status_contains", "value": "Change Status: Untriaged inbox item 4 → Done · u undo" },
+    { "type": "assert", "assert": "status_contains", "value": "Done: Untriaged inbox item 4 · first done today · u undo" },
     { "type": "assert", "label": "same-day completion advances the non-deficit pulse count", "assert": "contains", "value": "done 1" },
     { "type": "assert", "assert": "contains", "value": "Untriaged inbox item 5" },
     { "type": "key", "label": "open workflow actions", "key": "w" },
     { "type": "key", "label": "plan the final Inbox task for Today", "key": "t" },
-    { "type": "assert", "assert": "status_contains", "value": "Plan for Today: Untriaged inbox item 5 · u undo" },
+    { "type": "assert", "assert": "status_contains", "value": "Plan for Today: Untriaged inbox item 5 · Inbox zero · u undo" },
     { "type": "assert", "assert": "contains", "value": "Inbox is clear" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

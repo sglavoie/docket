@@ -80,14 +80,17 @@ is left out, and a pulse with nothing to report is left out whole rather than
 leaving a bare `workspace:` behind. Narrow terminals drop Done, Inbox, overdue,
 then Today before shortening required interaction context. A terminal wide
 enough to hold all of that whole follows the mode with its two Tab neighbours,
-muted — `Inbox  ‹ Today  Next ›` — so the title shows where `Shift+Tab` and
-`Tab` go; anywhere narrower the active mode stands alone. The Outliner's title
+muted — `Inbox  ‹ Today 2  Next ›` — so the title shows where `Shift+Tab` and
+`Tab` go. Inbox and Today carry their count when it is nonzero, the same numbers
+the pulse reports; a strip too wide with counts is tried without them, and
+anywhere narrower the active mode stands alone. The Outliner's title
 leads with Docket's mark, `❖`, in the active mode's ink, spent only from columns
 a whole title leaves blank: the Tab strip outranks it, and it never costs the
 pulse or the pace a rung.
 
-Lane headers run a faint rule in the border ink from their count to the row's
-edge, and their fold arrow takes the lane's ink, so the outline reads as blocks.
+Lane headers run a faint rule from their count to the row's edge, in the
+border ink pulled toward the paper (`theme.ColorLaneRule`) so the rules mark
+each lane without drawing a grid, and their fold arrow takes the lane's ink, so the outline reads as blocks.
 On the cursor row the rule is drawn over the cursor's dim trailing fill.
 
 What is narrowing the view gets a second row, immediately under that one and

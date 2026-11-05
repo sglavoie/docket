@@ -175,6 +175,13 @@ The footer describes the current interaction. Press a chord prefix such as `w`,
 shortcuts, including those a narrow footer cannot show. Pickers and editors
 show their own controls, and closing them restores the outline's shortcuts.
 
+The task-row footer learns with you. Once you have pressed one of its keys ten
+times on this machine, such as `b` for Peek, the footer stops naming it and the
+hints behind it move up into the room. `? help` always stays, and `?`, `:`, and
+the menus still list every key. View → Reset Footer Hints brings every hint
+back. Chord, picker, and editor footers are never shortened this way, since they
+name what the moment in front of you takes.
+
 The `Esc` entry names what the next press does, not what you are in. Standing in
 a Focus inside a lens it reads `Esc leave Focus`, because that is the layer the
 key takes first; once the Focus is gone it reads `Esc leave lens`. Open Peek and
@@ -217,10 +224,21 @@ three rows so the reason and recovery action can be read together. Longer
 diagnostics point to Help → Recent Messages for their full text.
 A mode change clears transient view feedback.
 
+Finishing a task says so plainly, with the day's tally: `✓ Done: Write the
+release notes · 3 done today · u undo` (the first one of the day reads `first
+done today`). Capturing names where the task landed before what it was, so a
+long title is what gets shortened: `Captured to website · Inbox: Draft the
+release notes · u undo`, or `Captured 3 tasks to website` for a multiline
+capture. Change History keeps each change's own record, such as `Change Status`
+or `Add Task`, and so does the `Undid:` line an undo answers with.
+
 Finishing the last task planned for Today adds `Today is clear` to the
 completion's feedback, ahead of `u undo`, and the divider sweeps once in the
 success color. It is said once a day; replanning Today's work away is not
-finishing it and says nothing.
+finishing it and says nothing. Triaging the last Inbox task, whether you start
+it, plan it, file it, or finish it, adds `Inbox zero` the same way, once a day.
+An undo, a redo, or a sync that empties the Inbox is not triage and says
+nothing.
 
 The first launch of each day opens with a greeting that names what the day
 already holds, such as `Good morning · 3 planned for Today · 1 overdue · 2 in

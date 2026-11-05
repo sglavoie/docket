@@ -52,7 +52,7 @@ func (s *Service) Transition(req StateRequest) (TaskResult, error) {
 	if err != nil {
 		return TaskResult{}, err
 	}
-	result, err := s.commitProjectWithArtifacts(ref, revision, artifacts, "Change Status", stateChangeUndoContext(ref, target))
+	result, err := s.commitProjectWithArtifacts(ref, revision, artifacts, StateChangeUndoAction, stateChangeUndoContext(ref, target))
 	if err != nil {
 		return TaskResult{}, err
 	}
@@ -66,7 +66,30 @@ func (s *Service) Transition(req StateRequest) (TaskResult, error) {
 // The title is capped so the route a check-in note appends beside it still fits
 // the footer.
 func stateChangeUndoContext(ref TaskRef, target models.WorkflowState) string {
-	return fitStateChangeTitle(ref.Task.Title) + " → " + models.WorkflowStateGroupForState(target).Label()
+	return fitStateChangeTitle(ref.Task.Title) + stateChangeUndoArrow + models.WorkflowStateGroupForState(target).Label()
+}
+
+// stateChangeUndoArrow joins the title and the destination lane in a status
+// change's ledger context.
+const stateChangeUndoArrow = " → "
+
+// StateChangeUndoAction is the ledger action a single-task status change
+// records; BulkStateChangeUndoAction is the one a multi-task change records,
+// whose context is the destination lane alone.
+const (
+	StateChangeUndoAction     = "Change Status"
+	BulkStateChangeUndoAction = "Bulk Change Status"
+)
+
+// ParseStateChangeUndoContext reads back what stateChangeUndoContext wrote: the
+// fitted title and the destination lane's label. It lives beside the writer so
+// a frontend phrasing the outcome in its own words never re-derives the format.
+func ParseStateChangeUndoContext(context string) (title, lane string, ok bool) {
+	index := strings.LastIndex(context, stateChangeUndoArrow)
+	if index < 0 {
+		return "", "", false
+	}
+	return context[:index], context[index+len(stateChangeUndoArrow):], true
 }
 
 // fitStateChangeTitle cuts title to stateChangeTitleWidth terminal columns, its

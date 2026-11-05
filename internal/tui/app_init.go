@@ -127,7 +127,7 @@ func NewAppModel(rt *engine.Runtime, opts ...AppOption) (*AppModel, error) {
 	theme.ApplyTheme(theme.NewThemeConfig(app.domain.machine()))
 
 	app.refreshWorkspacePulseAt(time.Now())
-	app.refreshOutstandingConflicts()
+	app.refreshOutstandingConflictsAtLaunch()
 
 	// The Outliner is the sole root: construct and register the global
 	// (Active Projects) Outliner in All so the first frame renders the root even
@@ -313,6 +313,9 @@ func (m *AppModel) Init() tea.Cmd {
 	// note collection would sit in front of that frame.
 	if noteCmd := m.requestNoteSearchIndexLoad(); noteCmd != nil {
 		cmds = append(cmds, noteCmd)
+	}
+	if syncCmd := m.launchSyncStatusReadCmd(); syncCmd != nil {
+		cmds = append(cmds, syncCmd)
 	}
 	return tea.Batch(cmds...)
 }

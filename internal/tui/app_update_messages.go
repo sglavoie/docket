@@ -89,6 +89,7 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case status.QuitMsg:
 		m.saveProjectViewState()
 		m.saveOutlinerFilterState()
+		m.flushFooterKeyUses()
 		m.lifecycle.quitting = true
 		return true, tea.Quit
 	case outliner.CrossProjectsLoadedMsg:

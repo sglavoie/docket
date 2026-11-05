@@ -59,6 +59,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		m.observeCheckInFeedbackMessage(msg)
 		outCmd = tea.Batch(outCmd, m.publishCheckInFeedback())
 		m.celebrateClearedToday(pulseBefore, time.Now())
+		m.celebrateClearedInbox(pulseBefore, statusBefore, time.Now())
 		outCmd = tea.Batch(outCmd, m.markPulseChange(pulseBefore, launchArmedBefore))
 		if m.crossOutliner != nil && m.outlinerModeForMotion() != modeBefore {
 			outCmd = tea.Batch(outCmd, m.crossOutliner.MarkModeArrival(modeBefore))

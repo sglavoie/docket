@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/config"
 	"github.com/sglavoie/docket/internal/logging"
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/chrome"
@@ -96,6 +97,7 @@ func (m *AppModel) dispatchOperationKey(
 	case operation.ChordTerminal:
 	}
 	m.operations.Chord = nil
+	m.noteFooterKeyUse(strategyID, ctx, footerKeyForSequence(binding, sequence))
 
 	result := m.operations.Executor.Execute(operation.OperationExecutionRequest{
 		ID:       binding.OperationID,
@@ -277,4 +279,117 @@ func (m *AppModel) applyTagsToTask(identity taskref.TaskIdentity, task *models.T
 		Targets:   []app.TaskLocator{identity.Locator()},
 		Tags:      selectedTags,
 	}, "Set Tags", fmt.Sprintf("Tagged #%d", task.ShortID))
+}
+
+// learnedFooterKeys is the session's half of the learned footer: presses of a
+// footer key counted since the machine state last recorded them. Writing the
+// machine file on every keypress would put a disk write in front of the key's
+// own work, so a count rides in memory until the press that retires its hint,
+// which is the one moment the footer must change, or until the session quits.
+// A crash loses only a few presses toward a hint that is still showing.
+type learnedFooterKeys struct {
+	pending map[string]int
+}
+
+var errMachineChromeUnavailable = errors.New("machine chrome state is unavailable")
+
+// machineState is the machine-local state the shell's runtime holds, or nil
+// where no runtime is attached.
+func (m *AppModel) machineState() *config.MachineState {
+	if m == nil || m.domain.runtime == nil {
+		return nil
+	}
+	return m.domain.runtime.Machine()
+}
+
+// footerKeyForSequence is the footer's own spelling of the key path a dispatch
+// just resolved: a chord is advertised by its prefix group, `w workflow`, and a
+// direct key by its binding's display key, `a capture`.
+func footerKeyForSequence(binding operation.OperationKeyBinding, sequence []string) string {
+	if len(sequence) > 1 {
+		return operation.NormalizeOperationKey(sequence[0])
+	}
+	return binding.DisplayKey
+}
+
+// noteFooterKeyUse counts one keyboard press of a footer key on the Outliner.
+// Only the simplified strategy's keys on the Outliner count, because that is
+// the footer that retires them; a menu click or a palette run is not the hand
+// learning a key.
+func (m *AppModel) noteFooterKeyUse(strategyID operation.InputStrategyID, ctx operation.CommandContext, key string) {
+	if key == "" || key == "?" || strategyID != operation.InputStrategySimplified || ctx.View != presentation.ViewCrossProjectOutliner {
+		return
+	}
+	machine := m.machineState()
+	if machine == nil || machine.FooterKeyLearned(key) || !m.footerAdvertises(ctx, key) {
+		return
+	}
+	if m.footerKeys.pending == nil {
+		m.footerKeys.pending = make(map[string]int, 4)
+	}
+	m.footerKeys.pending[key]++
+	if machine.LearnedFooterKeys[key]+m.footerKeys.pending[key] >= config.FooterKeyLearnedUses {
+		m.flushFooterKeyUses()
+	}
+}
+
+// footerAdvertises reports whether the ranked footer names key in this
+// context, so only a key the footer could retire is ever counted.
+func (m *AppModel) footerAdvertises(ctx operation.CommandContext, key string) bool {
+	for _, hint := range m.operations.Registry.GuidanceHintsForInputStrategy(operation.InputStrategySimplified, ctx) {
+		if hint.Key == key {
+			return true
+		}
+	}
+	return false
+}
+
+// flushFooterKeyUses records the pending presses in the machine state. A failed
+// write keeps them pending, so the next flush tries again; nothing about the
+// failure is worth interrupting the user for.
+func (m *AppModel) flushFooterKeyUses() {
+	if len(m.footerKeys.pending) == 0 {
+		return
+	}
+	machine := m.machineState()
+	if machine == nil {
+		return
+	}
+	next := *machine.Clone()
+	changed := false
+	for key, presses := range m.footerKeys.pending {
+		for range presses {
+			var moved bool
+			if next, moved = next.WithFooterKeyUse(key); !moved {
+				break
+			}
+			changed = true
+		}
+	}
+	if !changed {
+		m.footerKeys.pending = nil
+		return
+	}
+	if err := m.domain.runtime.CommitMachine(&next); err != nil {
+		logging.Warn("save learned footer keys: %v", err)
+		return
+	}
+	m.footerKeys.pending = nil
+}
+
+// coreResetLearnedHints forgets every learned footer key, persisted and
+// pending, so the footer names the whole grammar again.
+func (m *AppModel) coreResetLearnedHints() error {
+	machine := m.machineState()
+	if machine == nil {
+		return errMachineChromeUnavailable
+	}
+	m.footerKeys.pending = nil
+	next := *machine.Clone()
+	next.LearnedFooterKeys = nil
+	if err := m.domain.runtime.CommitMachine(&next); err != nil {
+		return err
+	}
+	m.setInfoStatus("Footer hints restored")
+	return nil
 }

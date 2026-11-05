@@ -176,6 +176,47 @@ func rebuildAccentColors() {
 
 // rebuildPalette resets the palette color variables from user overrides.
 // Empty fields fall back to the canonical defaults from config.DefaultTheme.
+// laneRuleDarkWeight and laneRuleLightWeight are how far a lane header's rule
+// sits from the paper toward the border ink. A lane rule repeats down the whole
+// outline, so at full border strength the rules, not the rows, are what the eye
+// lands on. Pulled toward the paper they still mark each lane's edge without
+// drawing a grid; the light theme's border is near-black ink, so it moves
+// further.
+const (
+	laneRuleDarkWeight  = 0.55
+	laneRuleLightWeight = 0.3
+)
+
+// laneRuleColor is the border ink pulled toward the paper. Without a known
+// paper it is the border itself, the color the rule always had.
+func laneRuleColor(paper, border string) color.Color {
+	if !isHexColor(paper) || !isHexColor(border) {
+		return lipgloss.Color(border)
+	}
+	weight := laneRuleDarkWeight
+	if ActiveThemeName == "light" {
+		weight = laneRuleLightWeight
+	}
+	return lipgloss.Color(blendHex(paper, border, weight))
+}
+
+func isHexColor(s string) bool {
+	if len(s) != 7 || s[0] != '#' {
+		return false
+	}
+	_, err := strconv.ParseUint(s[1:], 16, 32)
+	return err == nil
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
 func rebuildPalette(p config.PaletteColors) {
 	defaults := config.DefaultTheme(ActiveThemeName)
 	d := defaults.Palette
@@ -197,6 +238,7 @@ func rebuildPalette(p config.PaletteColors) {
 	ColorDimmedBg = fallback(p.DimmedBg, d.DimmedBg)
 	ColorDimmedFg = fallback(p.DimmedFg, d.DimmedFg)
 	ColorBorder = fallback(p.Border, d.Border)
+	ColorLaneRule = laneRuleColor(ThemeBgColor, firstNonEmpty(p.Border, d.Border))
 
 	accent := fallback(p.Accent, d.Accent)
 	ColorHighlight = accent

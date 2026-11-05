@@ -31,17 +31,24 @@ const (
 	cursorFlashLightFactor = 0.8
 
 	// A dark theme can take the fill past its own paper, where it reads as a
-	// recess; a light one washes out to invisible long before that, so it stops
-	// at a tint of the cursor color.
+	// recess. On light paper the same fill reads as a highlighter stroke across
+	// a lane header and outshouts the rows under it, so it stays a faint tint
+	// of the cursor color, quieter than the task-row band.
 	cursorTrailDarkFactor  = 0.8
-	cursorTrailLightFactor = 0.5
+	cursorTrailLightFactor = 0.72
+
+	// A host palette's trail is a blend of its paper toward its cursor; light
+	// paper takes the smaller share for the same reason as the factor above.
+	cursorTrailDarkBlend  = 0.35
+	cursorTrailLightBlend = 0.2
 
 	// The band under the whole marked task row is the quietest of the three,
 	// because it is the one that has to sit under text without changing what the
 	// text says: every foreground the row earned — the state badge, the priority
 	// badge, the deadline, the owed review, the reference census, a search
-	// highlight — is read on top of it. It stops well short of the trail, which
-	// covers no drawn column and can afford to be the darkest thing on the row.
+	// highlight — is read on top of it. On dark paper it stops well short of
+	// the trail, which covers no drawn column and can afford to be the darkest
+	// thing on the row; on light paper the trail is the fainter of the two.
 	cursorRowDarkFactor  = 0.4
 	cursorRowLightFactor = 0.55
 )
@@ -129,7 +136,11 @@ func ApplyTheme(tc ThemeConfig) {
 	ColorFlashDimBg = lipgloss.Color(dim(effectiveFlash, dimFactor))
 	if tc.Ghostty != nil {
 		ColorSelectedTextFg = lipgloss.Color(legibleHex(tc.Ghostty.SelectionForeground, effectiveBg))
-		ColorSelectedDimBg = lipgloss.Color(blendHex(effectiveBgColor, effectiveBg, 0.35))
+		trailBlend := cursorTrailDarkBlend
+		if tc.Name == "light" {
+			trailBlend = cursorTrailLightBlend
+		}
+		ColorSelectedDimBg = lipgloss.Color(blendHex(effectiveBgColor, effectiveBg, trailBlend))
 	} else if tc.Name == "light" {
 		ColorSelectedTextFg = lipgloss.Color("#0f172a")
 	} else {

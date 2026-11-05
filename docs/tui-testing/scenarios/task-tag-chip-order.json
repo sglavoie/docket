@@ -10,7 +10,7 @@
     { "type": "key", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "status_contains", "value": "Add Task: #1 Ship the invoice redesign to the billing portal" },
+    { "type": "assert", "assert": "status_contains", "value": "Captured to unfiled · Inbox: Ship the invoice redesign to the billing portal" },
 
     { "type": "assert", "label": "the row spends every column on the title; tags are Peek's", "assert": "not_clipped", "value": "Ship the invoice redesign to the billing portal" },
     { "type": "assert", "assert": "not_contains", "value": "#billing" },

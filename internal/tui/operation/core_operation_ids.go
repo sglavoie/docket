@@ -75,6 +75,7 @@ const (
 	OperationCoreToggleAdvisories   OperationID = "tui.core.toggle-advisories"
 	OperationCoreToggleMouse        OperationID = "tui.core.toggle-mouse"
 	OperationCoreToggleMotion       OperationID = "tui.core.toggle-motion"
+	OperationCoreResetFooterHints   OperationID = "tui.core.reset-footer-hints"
 	OperationCoreToggleNerdGlyphs   OperationID = "tui.core.toggle-nerd-glyphs"
 	OperationCoreUndo               OperationID = "tui.core.undo"
 	OperationCoreRedo               OperationID = "tui.core.redo"

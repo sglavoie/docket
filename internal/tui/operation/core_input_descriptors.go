@@ -379,6 +379,10 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		// Two more on the same terms: presentation preferences that act on the
 		// session's chrome alone, so they stay keyless and target-free.
 		core(OperationCoreToggleMotion, "Toggle Motion", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "animation", "reduce motion"),
+		// The footer retires a hint once this machine has pressed its key often
+		// enough; this brings every hint back. Chrome on the same terms: keyless,
+		// target-free, and reached from the View menu and `:` alone.
+		core(OperationCoreResetFooterHints, "Reset Footer Hints", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "learned keys", "show all hints", "footer"),
 		core(OperationCoreToggleNerdGlyphs, "Toggle Nerd Font Glyphs", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "icons", "glyphs", "symbols"),
 		core(OperationCoreChangeHistory, "Change History", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "undo history", "recent changes", "transactions", "recovery"),
 		core(OperationCoreLastMessage, "Recent Messages", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "feedback", "last error", "last message"),

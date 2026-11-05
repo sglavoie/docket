@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/docket/internal/engine"
 	"github.com/sglavoie/docket/internal/tui/conflict"
 	"github.com/sglavoie/docket/internal/tui/help"
+	"github.com/sglavoie/docket/internal/tui/pulse"
 	"github.com/sglavoie/docket/internal/tui/textfit"
 )
 
@@ -87,6 +88,9 @@ type feedbackController struct {
 	// celebratedDay is the local day celebrateClearedToday last spoke for, so
 	// emptying Today twice in one day is said once.
 	celebratedDay string
+	// inboxCelebratedDay is celebrateClearedInbox's own day, kept apart so
+	// emptying Today does not use up the Inbox's celebration or the reverse.
+	inboxCelebratedDay string
 	// countdown is the undo window drawn draining on the footer divider; see
 	// undo_countdown.go.
 	countdown undoCountdown
@@ -109,6 +113,10 @@ type feedbackController struct {
 	// or the conflicts under it, which leaves all three empty rather than
 	// current: the next exchange pass reads again whatever else it found.
 	syncRefreshOwed bool
+	// launchSyncReadPending is the launch's sync status read, taken off the
+	// launch path because deriving sync conflicts walks the whole history. Any
+	// read applied first is newer, so a launch read landing after one is void.
+	launchSyncReadPending bool
 
 	// hideAdvisories suppresses every ambient advisory for this session: the
 	// conflict count and the load-failure notices alike. Both the machine-local
@@ -381,4 +389,71 @@ func (c *feedbackController) feedbackSnapshot() []help.RecalledMessage {
 		messages[len(c.history)-1-i] = entry.RecalledMessage
 	}
 	return messages
+}
+
+// todayClearNote is what the commit that empties Today adds to the line it
+// published.
+const todayClearNote = "Today is clear"
+
+// celebrateClearedToday marks the one commit a day that empties Today: Today
+// held open work before this Update and holds none after it, and the day's
+// Done count rose, so it was finished rather than replanned or undone. It
+// rides the line this Update published through appendNote, keeping `u undo`
+// last, or speaks alone when nothing did. With motion armed it upgrades that
+// line's quiet severity to flashCelebrate, so the divider sweeps in the
+// success color; a warning or an error already speaking keeps its own.
+//
+// It schedules nothing itself: the flash is armed later in the same
+// deferred closure, from the generation recorded here.
+//
+// It runs in the one deferred closure in AppModel.Update, after every refresh
+// the Update made, and says it at most once per local day per session.
+func (m *AppModel) celebrateClearedToday(before pulse.WorkspacePulse, now time.Time) {
+	after := m.workspacePulse
+	if before.Today <= 0 || after.Today != 0 || after.Done <= before.Done {
+		return
+	}
+	day := now.Format(time.DateOnly)
+	if m.feedback.celebratedDay == day {
+		return
+	}
+	m.feedback.celebratedDay = day
+	if !m.feedback.appendNote(todayClearNote) {
+		m.setSuccessStatus(todayClearNote)
+	}
+	if m.lifecycle.motion && !m.feedback.severity.animates() {
+		// A new generation is what the flash arms on, so the sweep starts
+		// even when the line it rides was published by an earlier Update.
+		m.feedback.recordSeverity(flashCelebrate)
+	}
+}
+
+// inboxClearNote is what the commit that empties the Inbox adds to the line it
+// published.
+const inboxClearNote = "Inbox zero"
+
+// celebrateClearedInbox marks the one commit a day that triages the Inbox
+// empty: it held tasks before this Update and holds none after it, and this
+// Update published a committed mutation's recovery line, so the user's own
+// gesture emptied it. An undo, a redo, a sync, or another process's write
+// publishes no such line and so is never mistaken for triage. It speaks the
+// way celebrateClearedToday does — on the line, keeping `u undo` last, with the
+// celebration flash under motion — and at most once per local day per session.
+func (m *AppModel) celebrateClearedInbox(before pulse.WorkspacePulse, statusBefore footerFlashProbe, now time.Time) {
+	after := m.workspacePulse
+	if before.Inbox <= 0 || after.Inbox != 0 || m.feedback.seq == statusBefore.statusSeq {
+		return
+	}
+	if _, undo, _ := splitRecoverySuffix(m.feedback.message); !undo {
+		return
+	}
+	day := now.Format(time.DateOnly)
+	if m.feedback.inboxCelebratedDay == day {
+		return
+	}
+	m.feedback.inboxCelebratedDay = day
+	m.feedback.appendNote(inboxClearNote)
+	if m.lifecycle.motion && !m.feedback.severity.animates() {
+		m.feedback.recordSeverity(flashCelebrate)
+	}
 }

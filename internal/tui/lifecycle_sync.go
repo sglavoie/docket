@@ -116,6 +116,9 @@ func backgroundSyncStatusReader(load func() (*engine.Runtime, error)) func() syn
 
 func (m *AppModel) handleAutomaticSyncMessage(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
+	case launchSyncStatusReadMsg:
+		m.applyLaunchSyncStatusRead(msg)
+		return true, nil
 	case automaticSyncTickMsg:
 		m.pollExternalWorkspaceChanges()
 		return true, tea.Batch(m.automaticSyncTickCmd(), m.adoptExternalWorkspaceChange(), m.startAutomaticSync())
@@ -326,6 +329,7 @@ func readSyncStatus(
 
 // applySyncStatus replaces the feedback cluster's sync status with a read.
 func (m *AppModel) applySyncStatus(read syncStatusRead) {
+	m.feedback.launchSyncReadPending = false
 	m.feedback.syncStatus, m.feedback.syncAdvisory, m.feedback.syncConflicts = nil, "", nil
 	m.feedback.syncRefreshOwed = false
 	if read.statusErr != nil {

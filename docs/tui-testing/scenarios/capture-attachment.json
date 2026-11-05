@@ -13,7 +13,7 @@
     { "type": "key", "label": "commit the capture", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "label": "the unrecognized ampersand stayed in the title", "assert": "status_contains", "value": "Add Task: #1 Plan the R&D offsite" },
+    { "type": "assert", "label": "the unrecognized ampersand stayed in the title", "assert": "status_contains", "value": "Captured to unfiled · Inbox: Plan the R&D offsite" },
     { "type": "assert", "assert": "contains", "value": "Plan the R&D offsite" },
     { "type": "assert", "label": "the attachment value left the title", "assert": "not_contains", "value": "example.com/spec.pdf" },
     { "type": "assert", "assert": "no_layout_issues" },
@@ -40,7 +40,7 @@
     { "type": "key", "label": "commit the capture", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "label": "no half of the path stayed in the title", "assert": "status_contains", "value": "Add Task: #2 Review the layout" },
+    { "type": "assert", "label": "no half of the path stayed in the title", "assert": "status_contains", "value": "Captured to unfiled · Inbox: Review the layout" },
     { "type": "assert", "assert": "not_contains", "value": "Design" },
     { "type": "assert", "assert": "no_layout_issues" },
 
