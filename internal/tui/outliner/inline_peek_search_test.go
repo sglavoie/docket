@@ -45,7 +45,9 @@ func TestPeekSearchExcerptTracksQueryAndCommentChanges(t *testing.T) {
 	}
 	m.ClearSearch()
 	m.RebuildRows()
-	if got := ansi.Strip(strings.Join(cursorPeekDocument(t, m).Body, "\n")); strings.Contains(got, "Match:") || strings.Contains(got, "hangar repaired") {
+	if got := ansi.Strip(strings.Join(cursorPeekDocument(t, m).Body, "\n")); strings.Contains(got, "Match:") {
+		// The comment itself still reads as the latest one; only the excerpt
+		// line is search-only.
 		t.Fatalf("ordinary Peek retained the search-only comment excerpt: %s", got)
 	}
 }

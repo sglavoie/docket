@@ -394,9 +394,15 @@ anchor and restores both on `Esc`, `B`, or `b`.
 The reader owns a gated keymap for line, half-page, full-page, and end scrolling,
 plus its own help. Its guidance and help project that keymap, and unlisted keys
 are consumed. The pointer wheel scrolls the document. The task document's
-`Detailed` option expands checklist and comment counts into their full bodies,
+`Detailed` option expands the checklist count and the newest comment into every body,
 adds attachment locations and timestamps, and appends identity and exact history
 instants. Project and checklist documents use the same frame and scrolling.
+
+Schedule is what the task still owes: its deadline, a pending deferral, its
+check-in, and that check-in's repeat. History closes the document with what is
+already spent: created, updated only when its age reads differently from the
+creation's, last review, a recently lapsed wake, and the avoidance count, last.
+The deferral instant keys both sections, since the wake is read off it.
 
 The window is therefore a bound on what is visible, not on what Peek holds.
 `inlinePeekDocument` is that split: `Body` is every detail row the task has,
@@ -591,8 +597,8 @@ at once; keying on the row would make a page turn under one of them a different
 window under the next. `projectPeekOwner("")` is the unwritten owner, which
 matches nothing, so two anonymous headers never agree.
 
-Task Peek is unchanged by all of this, comment count included: a task's comments
-have the `;` panel standing behind their count, and a project header carries no
+Task Peek is unchanged by all of this: it keeps its comment count and the newest
+comment, since a task's comments have the `;` panel standing behind them, and a project header carries no
 count at all because the row has no column for one.
 
 The empty projection is the one place the dock is not reserved by

@@ -130,9 +130,17 @@ func inlinePeekProjectTaskSection(project *models.Project, indent string, width 
 		entries = append(entries, fmt.Sprintf("Other %d", counts[""]))
 	}
 	summary := strconv.Itoa(total) + " · " + strings.Join(entries, " · ")
+	lines := inlinePeekEntryLines("Tasks: ", []string{summary}, indent, width)
+	// Progress reads the same counts as a fraction: finished against everything
+	// that is still work, canceled tasks being neither.
+	if work := total - counts[models.StateGroupCanceled]; work > 0 {
+		done := counts[models.StateGroupDone]
+		entry := fmt.Sprintf("%d/%d done %s", done, work, inlinePeekMeter(done, work))
+		lines = append(lines, inlinePeekStyledLines(theme.MutedStyle.Render("Progress: "), entry, indent, width)...)
+	}
 	return inlinePeekSection{
 		key:   "tasks:" + summary,
-		lines: inlinePeekEntryLines("Tasks: ", []string{summary}, indent, width),
+		lines: lines,
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 
 	"charm.land/lipgloss/v2"
@@ -21,10 +22,15 @@ import (
 // Root-first and uncompacted — Peek has the width the row did not — and wrapped
 // rather than elided, so a chain six levels deep is read to its end by scrolling
 // like every other long section.
-func inlinePeekParentLines(breadcrumb, indent string, width int) []string {
+// The parent's subtask progress follows the chain, so a step reads as one of
+// how many and how far along its siblings are.
+func inlinePeekParentLines(breadcrumb string, progress subtaskProgress, indent string, width int) []string {
 	chain := strings.TrimSuffix(strings.TrimSpace(breadcrumb), " ›")
 	if chain == "" {
 		return nil
+	}
+	if progress.total > 0 {
+		chain += theme.MutedStyle.Render(" · ") + fmt.Sprintf("%d/%d done ", progress.done, progress.total) + inlinePeekMeter(progress.done, progress.total)
 	}
 	return inlinePeekStyledLines(theme.MutedStyle.Render("Parent: "), chain, indent, width)
 }
@@ -130,9 +136,42 @@ func inlinePeekReferenceKey(details []DependencyDetail) string {
 	return strings.Join(entries, ",")
 }
 
-// inlinePeekCommentsLines keeps comments a count. The bodies belong to the
-// Comments panel, which reads, edits, and deletes them; repeating one
-// here would spend the page budget on a surface that already exists.
+// inlinePeekLatestCommentSection is the dock's comment block: the count, then
+// the newest comment whole and wrapped, since the latest word on a task is
+// usually where it stands. The older ones stay the Comments panel's and the
+// fullscreen reader's. The key reads stored values alone, so the age beside the
+// comment can tick without restarting the window.
+func inlinePeekLatestCommentSection(task *models.Task, now time.Time, indent string, width int) inlinePeekSection {
+	section := inlinePeekSection{key: "comments:" + strconv.Itoa(len(task.Comments))}
+	var latest *models.Comment
+	for i := len(task.Comments) - 1; i >= 0; i-- {
+		if task.Comments[i] != nil && strings.TrimSpace(task.Comments[i].Text) != "" {
+			latest = task.Comments[i]
+			break
+		}
+	}
+	if latest == nil {
+		section.lines = inlinePeekCommentsLines(task, indent, width)
+		return section
+	}
+	section.key += "\x1e" + latest.CreatedAt.Format(time.RFC3339Nano) + "\x1e" + latest.Text
+	entry := strconv.Itoa(len(task.Comments))
+	switch age := inlinePeekPastAge(latest.CreatedAt, now); age {
+	case "":
+	case "now":
+		entry += " · latest just now"
+	default:
+		entry += " · latest " + age
+	}
+	section.lines = inlinePeekEntryLines("Comments: ", []string{entry}, indent, width)
+	for _, line := range textfit.WrapLinkedText(latest.Text, max(width-2, 1)) {
+		section.lines = append(section.lines, indent+"  "+line)
+	}
+	return section
+}
+
+// inlinePeekCommentsLines is the comment count alone, which the fullscreen
+// reader leads its full list with.
 func inlinePeekCommentsLines(task *models.Task, indent string, width int) []string {
 	if task == nil || len(task.Comments) == 0 {
 		return nil

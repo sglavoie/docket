@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"charm.land/lipgloss/v2"
+
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/query"
@@ -160,7 +162,7 @@ func inlinePeekChecklistLines(task *models.Task, indent string, width int) []str
 		}
 	}
 	entry := fmt.Sprintf("%d/%d done", done, len(task.Checklist))
-	return inlinePeekEntryLines("Checklist: ", []string{entry}, indent, width)
+	return inlinePeekStyledLines(theme.MutedStyle.Render("Checklist: "), entry+" "+inlinePeekMeter(done, len(task.Checklist)), indent, width)
 }
 
 func inlinePeekChecklistKey(task *models.Task) string {
@@ -246,7 +248,9 @@ func inlinePeekHistoryLine(task *models.Task, now time.Time) string {
 	fields.add("Created", inlinePeekPastAge(task.CreatedAt, now))
 	// A task never touched since its creation was updated when it was created,
 	// so a second instant saying the same thing is noise.
-	if !sameStoredSecond(task.CreatedAt, task.UpdatedAt) {
+	// The same holds for a touch that reads the same at this precision.
+	if !sameStoredSecond(task.CreatedAt, task.UpdatedAt) &&
+		inlinePeekPastAge(task.UpdatedAt, now) != inlinePeekPastAge(task.CreatedAt, now) {
 		fields.add("Updated", inlinePeekPastAge(task.UpdatedAt, now))
 	}
 	if task.LastReviewedAt != nil {
@@ -302,4 +306,84 @@ func inlinePeekHistoryKey(task *models.Task) string {
 		parts = append(parts, "last-review:"+task.LastReviewedAt.Format(time.RFC3339Nano))
 	}
 	return strings.Join(parts, "|")
+}
+
+// inlinePeekMeterCells is how many cells a progress meter spends: enough to read
+// a fraction at a glance, few enough to sit beside its count on a narrow dock.
+const inlinePeekMeterCells = 8
+
+// inlinePeekMeter draws done of total as a short bar: filled cells in the
+// success ink, the rest muted. A meter carries no number of its own; the count
+// beside it is the reading, and the bar is how far along it looks.
+func inlinePeekMeter(done, total int) string {
+	if total <= 0 {
+		return ""
+	}
+	done = min(max(done, 0), total)
+	filled := (done*inlinePeekMeterCells + total/2) / total
+	if done > 0 && filled == 0 {
+		filled = 1
+	}
+	if done < total && filled == inlinePeekMeterCells {
+		filled--
+	}
+	return lipgloss.NewStyle().Foreground(theme.ColorSuccess).Render(strings.Repeat("▰", filled)) +
+		theme.MutedStyle.Render(strings.Repeat("▱", inlinePeekMeterCells-filled))
+}
+
+// subtaskProgress is a task's stored direct children, finished against the
+// whole: canceled children are counted in neither, since they are not work.
+type subtaskProgress struct {
+	done, total int
+}
+
+func (p subtaskProgress) key() string {
+	if p.total == 0 {
+		return "subtasks:"
+	}
+	return fmt.Sprintf("subtasks:%d/%d", p.done, p.total)
+}
+
+func (p subtaskProgress) lines(indent string, width int) []string {
+	if p.total == 0 {
+		return nil
+	}
+	entry := fmt.Sprintf("%d/%d done %s", p.done, p.total, inlinePeekMeter(p.done, p.total))
+	return inlinePeekStyledLines(theme.MutedStyle.Render("Subtasks: "), entry, indent, width)
+}
+
+// subtaskProgressOf counts the stored task's direct children.
+func subtaskProgressOf(stored *models.Task) subtaskProgress {
+	var progress subtaskProgress
+	if stored == nil {
+		return progress
+	}
+	for _, child := range stored.Children {
+		if child == nil || child.State() == models.StateCanceled {
+			continue
+		}
+		progress.total++
+		if child.State() == models.StateDone {
+			progress.done++
+		}
+	}
+	return progress
+}
+
+// storedTaskForRow is the stored task a row names, whose children are the
+// project's own rather than the projection's.
+func (m *OutlinerModel) storedTaskForRow(row OutlinerRow) *models.Task {
+	if row.Task == nil {
+		return nil
+	}
+	project := m.ResolveProjectForRow(row)
+	if project == nil {
+		return nil
+	}
+	for _, task := range project.Tasks {
+		if task != nil && task.ID == row.Task.ID {
+			return task
+		}
+	}
+	return nil
 }

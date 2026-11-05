@@ -387,14 +387,17 @@ and fullscreen details starts with the title. For example,
 collection from the lifecycle state. The status and priority lead with the glyph
 and color the row draws for them, so reading Peek is how the row's symbols are
 learned. Doing and Waiting include time in that state. The project slug and parent chain follow, then the schedule, description,
-checklist progress, attachments, comment count, dependencies, tags,
+subtask and checklist progress, attachments, comments, dependencies, tags,
 and history. Empty fields are omitted.
 
 | Detail | Example | Meaning |
 | --- | --- | --- |
 | Schedule | `Check-in: Thu Aug 20 (in 10 days) · Repeat: every 7d` | What is still owed; an arrived check-in adds `review owed` |
-| History | `Created: 12d ago · Updated: 2d ago · Woke: 1d ago` | Past activity; Updated is omitted when it repeats Created |
-| Checklist | `Checklist: 1/4 done` | Progress; open the task's checklist rows to edit items |
+| History | `Created: 12d ago · Updated: 2d ago · Woke: 1d ago` | Past activity; Updated is omitted when it reads the same as Created |
+| Parent | `Parent: Launch · 2/5 done ▰▰▰▱▱▱▱▱` | The ancestor chain, always shown, then how far along the parent's subtasks are |
+| Subtasks | `Subtasks: 1/3 done ▰▰▰▱▱▱▱▱` | Direct children finished; canceled ones count in neither number |
+| Checklist | `Checklist: 1/4 done ▰▰▱▱▱▱▱▱` | Progress; open the task's checklist rows to edit items |
+| Comments | `Comments: 3 · latest 2d ago` | The count, then the newest comment in full; `;` opens them all |
 | Search | `Match: comment · …` | An excerpt explaining a match outside the title |
 
 URL and `path:line` attachments are clickable in terminals that support OSC 8
@@ -424,14 +427,15 @@ start of its section; removing the section or changing the search query returns
 to the top. A shorter document clamps the position to its end.
 
 On a project header, Peek shows the full project name, a task summary such as
-`Tasks: 12 · Doing 2 · Backlog 7 · Done 3`, description, tags, and every comment
+`Tasks: 12 · Doing 2 · Backlog 7 · Done 3` and `Progress: 3/12 done` with a
+meter, description, tags, and every comment
 newest first. Counts include all stored tasks regardless of the current view.
 An empty project says `0 · no sections`; an unread project says `Not loaded`.
 With no comments, it says `No comments yet. Press C to add one.`
 
 All headers for the same project share its reading position. A group with one
 task has no project header: fold it with `h` to reach the header and its Peek.
-Task Peek shows a comment count; `;` opens the full conversation.
+Task Peek shows the comment count and the newest comment; `;` opens the full conversation.
 
 Both reference lists are read-only wherever Peek is open, and
 both carry their own count. `Dependencies` names what this task stores, in the
@@ -442,7 +446,7 @@ point back from there and no key edits it at all. Each entry takes a row of its
 own, reading as its project, short ID, title, and
 state; a reference whose project is not loaded keeps its stored
 `project-id:task-id` locator and reads `(unavailable)` rather than being dropped.
-Comments stay a count below any search excerpt, because `;` is the panel that reads them, and the
+Older comments stay out of the dock, because `;` is the panel that reads them, and the
 checklist stays a count because its items are already rows of their own beneath
 the task, where you tick, edit, and promote them. Nothing in Peek sits outside
 the pane: the whole title leads the detail, so a title the row had to clip

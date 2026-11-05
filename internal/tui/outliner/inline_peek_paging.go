@@ -164,6 +164,17 @@ func (m *OutlinerModel) inlinePeekDocumentForRow(
 	index := m.dependencyIndex()
 	excerpt := m.peekSearchExcerpt(row)
 	projectSlug, _ := m.projectSlugForRow(row)
+	stored := m.storedTaskForRow(row)
+	// Peek names the parent whether or not the outline draws it above the row:
+	// a dock reads one task at a time, and the connectors are not in it.
+	breadcrumb := row.Breadcrumb
+	var parentProgress subtaskProgress
+	if stored != nil && stored.Parent != nil {
+		if breadcrumb == "" {
+			breadcrumb = taskAncestorBreadcrumb(stored)
+		}
+		parentProgress = subtaskProgressOf(stored.Parent)
+	}
 	return inlinePeekDocumentFor(inlinePeekOptions{
 		Task:             row.Task,
 		Indent:           indent,
@@ -171,7 +182,8 @@ func (m *OutlinerModel) inlinePeekDocumentForRow(
 		Window:           geometry,
 		Compact:          !m.PeekFullscreen,
 		Detailed:         m.PeekFullscreen,
-		Breadcrumb:       row.Breadcrumb,
+		Breadcrumb:       breadcrumb,
+		ParentProgress:   parentProgress,
 		ProjectSlug:      projectSlug,
 		SearchExcerpt:    excerpt,
 		SearchExcerptKey: m.searchTextQuery() + "\x1e" + excerpt,
@@ -179,6 +191,7 @@ func (m *OutlinerModel) inlinePeekDocumentForRow(
 		Dependencies:     outgoingDependencyDetails(row.Task, index),
 		Dependents:       incomingDependencyDetails(m.rowIdentity(row), index),
 		DependencyCensus: DependencyCensusFor(row.Task, index),
+		Subtasks:         subtaskProgressOf(stored),
 	})
 }
 

@@ -268,10 +268,10 @@ func TestProjectPeekFingerprintReadsStoredValuesAlone(t *testing.T) {
 	}
 }
 
-// TestTaskPeekKeepsItsCommentCount is the boundary this session did not cross.
-// A project header shows comment bodies because nothing else on the Outliner
-// does; a task's comments have the `;` panel standing behind their count, so the
-// task document still counts them and names none.
+// TestTaskPeekKeepsItsCommentCount holds the task dock's comment block: the
+// count, then the newest comment whole, since the latest word on a task is
+// usually where it stands. Older comments stay the `;` panel's and the
+// fullscreen reader's.
 func TestTaskPeekKeepsItsCommentCount(t *testing.T) {
 	task := pagedPeekTask()
 	task.Comments = []*models.Comment{{Text: "First decision"}, {Text: "Second decision"}}
@@ -281,9 +281,10 @@ func TestTaskPeekKeepsItsCommentCount(t *testing.T) {
 	if !strings.Contains(body, "Comments: 2") {
 		t.Fatalf("task Peek dropped its comment count:\n%s", body)
 	}
-	for _, comment := range task.Comments {
-		if strings.Contains(body, comment.Text) {
-			t.Fatalf("task Peek named comment body %q:\n%s", comment.Text, body)
-		}
+	if !strings.Contains(body, "Second decision") {
+		t.Fatalf("task Peek did not read the latest comment:\n%s", body)
+	}
+	if strings.Contains(body, "First decision") {
+		t.Fatalf("task Peek named an older comment:\n%s", body)
 	}
 }

@@ -214,7 +214,7 @@ func TestInlinePeekWrapsALongAncestorChain(t *testing.T) {
 	const chain = "Launch platform › User authentication › Token rotation › Refresh flow ›"
 
 	const width = 34
-	lines := inlinePeekParentLines(chain, "  ", width-2)
+	lines := inlinePeekParentLines(chain, subtaskProgress{}, "  ", width-2)
 	plain := ansi.Strip(strings.Join(lines, "\n"))
 	if len(lines) < 2 {
 		t.Fatalf("a chain this long did not wrap: %q", plain)
@@ -232,7 +232,7 @@ func TestInlinePeekWrapsALongAncestorChain(t *testing.T) {
 			t.Fatalf("chain row %d = %d columns, want <= %d: %q", index, got, width, ansi.Strip(line))
 		}
 	}
-	if inlinePeekParentLines("", "  ", width) != nil {
+	if inlinePeekParentLines("", subtaskProgress{}, "  ", width) != nil {
 		t.Fatal("a root task grew a Parent line")
 	}
 }

@@ -717,34 +717,32 @@ Row and Peek budget:
   `b` closes an open dock from any row, through the one shared
   `CommandContextSatisfiesPeekRequirement`.
 - `inlinePeekDocument` separates the whole detail from the window of it on
-  screen, and `Lines` is the only way to either, so render and measurement cannot
-  disagree about height. The body is complete and wrapped, never elided;
-  the geometry's `BodyRows` bounds visibility alone, a short document pads, and
-  `positionLine` is a further row reserved for every document, blank when the
-  body fits. Nothing sits outside that window and the document has no header:
-  body order is title, status, resume, project, context, parent, optional search excerpt, schedule, description, checklist
-  count, attachments, comment count, `Dependencies`/`Dependents`, tags,
-  history; compact Peek prioritizes resume. Schedule is what is still owed —
-  deadline, pending deferral, check-in, repeat — and history records created,
-  updated if later, last review, a lapsed wake, avoidance count on its last line.
-  The deferral instant keys both. Title and ancestor chain are uncompacted.
+  screen, and `Lines` is the only way to either, so render and measurement agree
+  on height. The body is complete and wrapped, never elided; `BodyRows` bounds
+  visibility alone, a short document pads, and `positionLine` is one more row
+  every document reserves, blank when the body fits. Nothing sits outside that
+  window and the document has no header:
+  body order is title, status, resume, project, context, parent, search excerpt, schedule, description, subtasks,
+  checklist, attachments, comments, `Dependencies`/`Dependents`, tags,
+  history; compact Peek prioritizes resume. The deferral instant keys schedule
+  and history. Title and chain are uncompacted.
   Status spells plan (collection), state with Doing/Waiting age off
   `StateChangedAt`, overdue/check-in attention, priority, pinned, and review;
-  stored values including schedule key it, so ticks
-  never reset the window. Every labeled line is `Label: value` joined by ` · `;
+  stored values including schedule key it, so ticks never reset it. Labeled lines are `Label: value` joined by ` · `;
   `Pinned` and `Review` are bare flags, and a list's count follows its colon.
-  Compact checklist and comments stay counts; fullscreen reads their bodies.
+  Parent always shows, with its subtask progress; it, `Subtasks:`, checklist,
+  and project `Progress:` add `inlinePeekMeter`, canceled excluded. Compact
+  comments: count and newest whole; fullscreen reads all.
   A search `Match:` excerpt may quote checklist/comments: use the projection's
   source, remainder and case mode, mark elision, key on query and excerpt.
-  A reference target is named nowhere
-  else, and an unresolvable one degrades to its stored locator, never dropped.
+  A reference target is named nowhere else, and an unresolvable one degrades to its stored locator, never dropped.
   `project export` shares that fallback and writes no dependents.
 - Project headers Peek by row `ProjectID`: name, folded `Attention:` from the
-  band's admitted tasks, `Tasks:` from all stored tasks regardless of view
+  band's admitted tasks, `Tasks:` and `Progress:` from all stored tasks regardless of view
   (`0 · no sections` empty, `Not loaded` unread), description, tags, and
   comments newest first or `No comments yet. Press C to add one.` An unresolved
   project has no document. `projectPeekOwner` shares one window across its
-  headers; task Peek retains its comment count.
+  headers.
 - Folded section headers Peek name, count, and strongest admitted attention
   (`None` if quiet). The collapse key owns the reading position; expanded
   section headers keep the placeholder.

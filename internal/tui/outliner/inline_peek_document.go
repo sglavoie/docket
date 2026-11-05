@@ -2,7 +2,6 @@ package outliner
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -162,6 +161,13 @@ type inlinePeekOptions struct {
 	// so Peek's Dependencies label repeats those numbers rather than recounting
 	// them against a population of its own.
 	DependencyCensus dependencyCensus
+	// Subtasks is the stored direct children's progress, which the projection
+	// cannot supply: a lane holds only the children that share its state, and
+	// finished ones are not drawn at all.
+	Subtasks subtaskProgress
+	// ParentProgress is the parent's own subtask progress, this task among
+	// them, spelled after the ancestor chain.
+	ParentProgress subtaskProgress
 }
 
 // inlinePeekSection is one labeled block of the body together with the
@@ -244,7 +250,7 @@ func inlinePeekBodySections(opts inlinePeekOptions, width int) []inlinePeekSecti
 	}
 	add("project:"+opts.ProjectSlug, inlinePeekStyledLines(theme.MutedStyle.Render("Project: "), opts.ProjectSlug, opts.Indent, width))
 	add("context:"+task.Context, inlinePeekStyledLines(theme.MutedStyle.Render("Context: "), task.Context, opts.Indent, width))
-	add("parent:"+opts.Breadcrumb, inlinePeekParentLines(opts.Breadcrumb, opts.Indent, width))
+	add("parent:"+opts.Breadcrumb+"\x1e"+opts.ParentProgress.key(), inlinePeekParentLines(opts.Breadcrumb, opts.ParentProgress, opts.Indent, width))
 	add("match:"+opts.SearchExcerptKey, inlinePeekStyledLines(theme.MutedStyle.Render("Match: "), opts.SearchExcerpt, opts.Indent, width))
 	add("schedule:"+inlinePeekScheduleKey(task), inlinePeekScheduleLines(task, now, opts.Indent, width))
 	add("description:"+task.Description, inlinePeekDescriptionLines(task.Description, opts.Indent, width))
@@ -256,6 +262,7 @@ func inlinePeekBodySections(opts inlinePeekOptions, width int) []inlinePeekSecti
 	if opts.Detailed {
 		checklist = fullscreenChecklistLines(task, opts.Indent, width)
 	}
+	add(opts.Subtasks.key(), opts.Subtasks.lines(opts.Indent, width))
 	checklistKey := inlinePeekChecklistKey(task)
 	if opts.Detailed {
 		checklistKey += fmt.Sprint(task.Checklist)
@@ -268,7 +275,7 @@ func inlinePeekBodySections(opts inlinePeekOptions, width int) []inlinePeekSecti
 		attachmentKey += fmt.Sprint(task.Attachments)
 	}
 	add("attachments:"+attachmentKey, attachments)
-	comments := inlinePeekSection{"comments:" + strconv.Itoa(len(task.Comments)), inlinePeekCommentsLines(task, opts.Indent, width)}
+	comments := inlinePeekLatestCommentSection(task, now, opts.Indent, width)
 	if opts.Detailed {
 		comments = fullscreenCommentSection(task, opts.Indent, width)
 	}

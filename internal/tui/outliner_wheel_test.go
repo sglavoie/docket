@@ -143,16 +143,17 @@ func TestWheelOverTheDockScrollsPeekAndNotTheList(t *testing.T) {
 	pointerKey(t, driver, "l")
 	pointerClickAt(t, driver, 30, pointerRowY(t, driver, "Add password validat"), "", 1)
 	pointerKey(t, driver, "b")
-	dockY := pointerRowY(t, driver, "↓ 2 more")
+	// The child's Parent line, with its subtask progress, wraps to two rows.
+	dockY := pointerRowY(t, driver, "↓ 4 more")
 	offset, cursor := out.ViewScrollOffset, out.Cursor
 
-	for _, want := range []string{"↑ 1 more · ↓ 1 more", "↑ 2 more", "↑ 2 more"} {
+	for _, want := range []string{"↑ 1 more · ↓ 3 more", "↑ 2 more · ↓ 2 more", "↑ 3 more · ↓ 1 more", "↑ 4 more", "↑ 4 more"} {
 		pointerWheelAt(t, driver, dockY, 1)
 		if !hasLiteral(driver, want) {
 			t.Fatalf("a step down over the dock did not reach %q:\n%s", want, driver.Render())
 		}
 	}
-	for _, want := range []string{"↑ 1 more · ↓ 1 more", "↓ 2 more", "↓ 2 more"} {
+	for _, want := range []string{"↑ 3 more · ↓ 1 more", "↑ 2 more · ↓ 2 more", "↑ 1 more · ↓ 3 more", "↓ 4 more", "↓ 4 more"} {
 		pointerWheelAt(t, driver, dockY-2, -1)
 		if !hasLiteral(driver, want) {
 			t.Fatalf("a step up over the dock did not reach %q:\n%s", want, driver.Render())
