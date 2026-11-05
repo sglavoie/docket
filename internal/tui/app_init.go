@@ -45,12 +45,18 @@ func NewAppModel(rt *engine.Runtime, opts ...AppOption) (*AppModel, error) {
 		app.feedback.hideAdvisories = machine.AdvisoriesHidden
 		// The mouse follows the same rule: `--no-mouse` can only turn it off.
 		app.pointer.disabled = machine.MouseDisabled
+		// Motion and the glyph set are preferences an option may override:
+		// WithMotion arms motion the preference can still hold off, and
+		// WithGlyphOverride (DOCKET_GLYPHS) replaces the glyph set outright.
+		app.lifecycle.motionOff = machine.MotionDisabled
+		app.glyphs.nerd = machine.NerdGlyphs
 	}
 
 	// Apply functional options
 	for _, opt := range opts {
 		opt(app)
 	}
+	app.applyGlyphs()
 	app.operations.BindExecutor()
 
 	// Bind the primary feature coordinators to the runtime's application

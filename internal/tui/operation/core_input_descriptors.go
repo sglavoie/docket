@@ -371,6 +371,10 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		// is its launcher twin, and a key spent on it would be the one key a user
 		// who turned the mouse off by accident cannot click their way back to.
 		core(OperationCoreToggleMouse, "Toggle Mouse", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "pointer", "trackpad", "scrolling", "clicks"),
+		// Two more on the same terms: presentation preferences that act on the
+		// session's chrome alone, so they stay keyless and target-free.
+		core(OperationCoreToggleMotion, "Toggle Motion", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "animation", "reduce motion"),
+		core(OperationCoreToggleNerdGlyphs, "Toggle Nerd Font Glyphs", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "icons", "glyphs", "symbols"),
 		core(OperationCoreChangeHistory, "Change History", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "undo history", "recent changes", "transactions", "recovery"),
 		core(OperationCoreLastMessage, "Recent Messages", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "feedback", "last error", "last message"),
 		core(OperationCoreClearSearchHistory, "Clear Search History", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "forget queries", "recall"),

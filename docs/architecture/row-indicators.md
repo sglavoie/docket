@@ -10,7 +10,7 @@ recency chip — is now read in Peek, at full value rather than in a fixed-width
 badge. The trade is deliberate and one-directional: a row is scanned to decide
 what to do next, so it carries required interaction context and spends every
 other column on the title, while Peek is the complete document one `b` away.
-Attachment presence is a reserved `📎` segment after the title, rendered by
+Attachment presence is a reserved `📎` segment (`icons.Get("marker.attachment")`) after the title, rendered by
 `taskAttachmentMarker` from `Task.HasAttachments()`. It carries no count and
 stays outside `indicatorDropLadder`, so narrowing the row never hides it.
 `taskRowSegments` charges its display width before fitting the title, including

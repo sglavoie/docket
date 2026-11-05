@@ -137,7 +137,7 @@ func TestRenderMenuBarRowMarksOnlyTheOpenMenu(t *testing.T) {
 func TestViewMenuBarRowCarriesLiveVisibility(t *testing.T) {
 	for _, visible := range []bool{false, true} {
 		var found bool
-		for _, entry := range viewMenuEntries(chrome.ModeAll, visible, true, true) {
+		for _, entry := range viewMenuEntries(chrome.ModeAll, ViewMenuChecks{MenuBarVisible: visible, AdvisoriesVisible: true, MouseEnabled: true}) {
 			if entry.OperationID != operation.OperationCoreToggleMenuBar {
 				continue
 			}

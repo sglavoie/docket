@@ -77,7 +77,7 @@ func OrderedTaskTags(tags []string) []string {
 // is a glyph rather than a color because SelectedLine strips styling from the
 // cursor row, so a colored name says nothing about the row the user is on.
 func PinnedMarker() string {
-	return theme.PinnedMarkerStyle.Render("*") + " "
+	return theme.PinnedMarkerStyle.Render(icons.Get("marker.pin")) + " "
 }
 
 // formatGitHubIssueRef renders the compact owner/repo#number form. It carries

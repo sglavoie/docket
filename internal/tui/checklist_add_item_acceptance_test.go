@@ -35,7 +35,7 @@ func TestChecklistAddItemIsNamedInHelpAndTaskMenu(t *testing.T) {
 	if !ok {
 		t.Fatal("simplified input strategy is not registered")
 	}
-	menus, err := outliner.ResolveMenuEntries(registry, strategy, ctx, outliner.OutlinerMenuSpecs(chrome.ModeAll, false, true, true))
+	menus, err := outliner.ResolveMenuEntries(registry, strategy, ctx, outliner.OutlinerMenuSpecs(chrome.ModeAll, outliner.ViewMenuChecks{AdvisoriesVisible: true, MouseEnabled: true, MotionEnabled: true}))
 	if err != nil {
 		t.Fatalf("resolve menus: %v", err)
 	}

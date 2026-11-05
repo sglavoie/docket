@@ -148,3 +148,24 @@ func (m *OutlinerModel) MouseEnabled() bool {
 	}
 	return !m.mouseDisabledAccessor()
 }
+
+// SetPresentationPreferences injects the shell's Motion preference and glyph
+// set, mirroring SetMouseDisabled. The Outliner only reads them to tick the
+// View menu's rows; a nil accessor reads as motion on and the Unicode set.
+func (m *OutlinerModel) SetPresentationPreferences(motionPreferred, nerdGlyphs func() bool) {
+	m.motionPreferredAccessor = motionPreferred
+	m.nerdGlyphsAccessor = nerdGlyphs
+}
+
+// MotionPreferred reports whether the session's Motion preference is on.
+func (m *OutlinerModel) MotionPreferred() bool {
+	if m == nil || m.motionPreferredAccessor == nil {
+		return true
+	}
+	return m.motionPreferredAccessor()
+}
+
+// NerdGlyphs reports whether the session draws the Nerd Font glyph set.
+func (m *OutlinerModel) NerdGlyphs() bool {
+	return m != nil && m.nerdGlyphsAccessor != nil && m.nerdGlyphsAccessor()
+}

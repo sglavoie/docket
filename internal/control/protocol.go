@@ -64,6 +64,13 @@ const (
 	// TUI. Empty Text restores the saved machine theme. Like OpAppearance it
 	// changes presentation only, even while an editor is open.
 	OpThemePalette = "theme_palette"
+	// OpReduceMotion forwards the system's Reduce Motion: Text "on" holds the
+	// session's motion off whatever the machine preference says, and "off"
+	// returns it to that preference. Like OpAppearance it is presentation alone,
+	// answered even while the user is mid-interaction, and writes no machine
+	// state. A Docket that predates it answers "unknown operation", which a host
+	// may ignore.
+	OpReduceMotion = "reduce_motion"
 	// OpView switches the Outliner to the mode Text names, "inbox", "today", or
 	// "due", exactly as the mode jump does, or, for "done", to All with its
 	// filters replaced by "$canceled $done ?completed". It is refused where the

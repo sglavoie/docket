@@ -287,3 +287,36 @@ func TestMachineStateMouseDisabledJSONRoundTripAndOmission(t *testing.T) {
 		t.Fatalf("round-tripped machine state should validate: %v", err)
 	}
 }
+
+func TestMachineStatePresentationPreferencesJSONRoundTripAndOmission(t *testing.T) {
+	bare, err := json.Marshal(NewMachineState())
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	for _, key := range []string{"motion_disabled", "nerd_glyphs"} {
+		if strings.Contains(string(bare), key) {
+			t.Fatalf("a default machine must omit %q entirely: %s", key, bare)
+		}
+	}
+	m := NewMachineState()
+	m.MotionDisabled, m.NerdGlyphs = true, true
+	data, err := json.Marshal(m)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	for _, want := range []string{`"motion_disabled":true`, `"nerd_glyphs":true`} {
+		if !strings.Contains(string(data), want) {
+			t.Fatalf("payload lacks %s: %s", want, data)
+		}
+	}
+	reloaded := NewMachineState()
+	if err := json.Unmarshal(data, reloaded); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if !reloaded.MotionDisabled || !reloaded.NerdGlyphs {
+		t.Fatalf("the presentation preferences did not survive the round trip: %s", data)
+	}
+	if err := reloaded.Validate(); err != nil {
+		t.Fatalf("round-tripped machine state should validate: %v", err)
+	}
+}

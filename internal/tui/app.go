@@ -136,6 +136,8 @@ type AppModel struct {
 	workspacePulse pulse.WorkspacePulse
 	// pulseMotion is the count change the title is drawing; see pulse_motion.go.
 	pulseMotion pulseMotion
+	// glyphs is the session's glyph set; see app_advisories.go.
+	glyphs glyphPreferences
 	// workspaceAgenda names the pulse's Today and Overdue tasks for a control
 	// socket host, and is computed only while one is connected.
 	workspaceAgenda pulse.WorkspaceAgenda

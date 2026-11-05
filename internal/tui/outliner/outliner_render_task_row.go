@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/sglavoie/docket/internal/icons"
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/taskref"
@@ -80,7 +81,7 @@ func taskDescriptionMarker(task *models.Task) string {
 	if task == nil || strings.TrimSpace(task.Description) == "" {
 		return ""
 	}
-	return theme.MutedStyle.Render(" ▤")
+	return theme.MutedStyle.Render(" " + icons.Get("marker.description"))
 }
 
 // taskAttachmentMarker reserves a presence cue even when the row sheds its
@@ -89,7 +90,7 @@ func taskAttachmentMarker(task *models.Task) string {
 	if task == nil || !task.HasAttachments() {
 		return ""
 	}
-	return theme.MutedStyle.Render(" 📎")
+	return theme.MutedStyle.Render(" " + icons.Get("marker.attachment"))
 }
 
 // taskRelationMarker names the family the outline placed elsewhere: `‹` for a

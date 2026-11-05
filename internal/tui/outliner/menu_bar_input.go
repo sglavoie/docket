@@ -359,7 +359,13 @@ func (m *OutlinerModel) resolvedMenuBar() []ResolvedMenu {
 		// from what this frame draws: a bar revealed only for the open menu is not
 		// a bar the user asked to keep, and a tick that said otherwise would make
 		// the next Enter on that row read as "hide" while it shows.
-		OutlinerMenuSpecs(m.PrimaryMode, m.MenuBarPinned(), !m.AdvisoriesSuppressed(), m.MouseEnabled()),
+		OutlinerMenuSpecs(m.PrimaryMode, ViewMenuChecks{
+			MenuBarVisible:    m.MenuBarPinned(),
+			AdvisoriesVisible: !m.AdvisoriesSuppressed(),
+			MouseEnabled:      m.MouseEnabled(),
+			MotionEnabled:     m.MotionPreferred(),
+			NerdGlyphs:        m.NerdGlyphs(),
+		}),
 	)
 	if err != nil {
 		// Startup already refused a spec naming an operation the registry does not

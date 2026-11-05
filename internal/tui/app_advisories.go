@@ -8,12 +8,11 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/control"
+	"github.com/sglavoie/docket/internal/icons"
 	"github.com/sglavoie/docket/internal/logging"
 	"github.com/sglavoie/docket/internal/storage"
-	"github.com/sglavoie/docket/internal/util"
-
-	"github.com/sglavoie/docket/internal/engine"
-	"github.com/sglavoie/docket/internal/tui/conflict"
+	"github.com/sglavoie/docket/internal/tui/pulse"
 )
 
 // The shell half of the advisory opt-out. advisories.go owns what an advisory
@@ -111,214 +110,6 @@ func (m *AppModel) recountOutstandingConflicts() {
 	m.feedback.outstandingConflicts = countOutstandingConflicts(m.domain.runtime.DataDir()) + len(m.feedback.syncConflicts)
 }
 
-// refreshSyncStatus re-reads an enrolled workspace's sync status into the
-// feedback cluster: the strip's sync line and the open sync conflicts the
-// conflict count and `gc` include. A workspace that is not enrolled, a shell
-// with no runtime, and a status that cannot be read all report nothing: an
-// indicator that cannot be read must not be asserted. A read that failed is
-// owed again, at either port, so the next exchange pass repeats it however
-// little that pass changed.
-func (m *AppModel) refreshSyncStatus() {
-	if m == nil {
-		return
-	}
-	m.applySyncStatus(readSyncStatus(m.domain.syncStatus, m.domain.syncConflicts))
-}
-
-// syncStatusRead is one read of the sync status and, when that status names
-// open conflicts, of those conflicts. It holds only what was read, so it can be
-// taken off the UI goroutine and applied on it.
-type syncStatusRead struct {
-	status       *engine.SyncStatus
-	statusErr    error
-	conflicts    []engine.ConflictView
-	conflictsErr error
-}
-
-// readSyncStatus reads through the given ports. A missing status port reads
-// nothing; a missing conflicts port reads no conflicts.
-func readSyncStatus(
-	status func() (*engine.SyncStatus, error),
-	conflicts func(map[string]string) ([]engine.ConflictView, error),
-) syncStatusRead {
-	var read syncStatusRead
-	if status == nil {
-		return read
-	}
-	read.status, read.statusErr = status()
-	if read.statusErr != nil || read.status == nil || !read.status.Enrolled ||
-		len(read.status.Conflicts) == 0 || conflicts == nil {
-		return read
-	}
-	read.conflicts, read.conflictsErr = conflicts(nil)
-	return read
-}
-
-// applySyncStatus replaces the feedback cluster's sync status with a read.
-func (m *AppModel) applySyncStatus(read syncStatusRead) {
-	m.feedback.syncStatus, m.feedback.syncAdvisory, m.feedback.syncConflicts = nil, "", nil
-	m.feedback.syncRefreshOwed = false
-	if read.statusErr != nil {
-		logging.Warn("reading sync status: %v", read.statusErr)
-		m.feedback.syncRefreshOwed = true
-		if m.automaticSync.err != nil {
-			m.feedback.syncAdvisory = "sync: automatic exchange failed (docket sync doctor)"
-		}
-		return
-	}
-	status := read.status
-	if status == nil || !status.Enrolled {
-		return
-	}
-	m.feedback.syncStatus = status
-	m.renderSyncAdvisory()
-	if read.conflictsErr != nil {
-		logging.Warn("reading sync conflicts: %v", read.conflictsErr)
-		m.feedback.syncRefreshOwed = true
-		return
-	}
-	if read.conflicts != nil {
-		m.feedback.syncConflicts = syncConflictEntries(read.conflicts)
-	}
-}
-
-// renderSyncAdvisory redraws the strip's sync line from the status last read,
-// which is what keeps its age and the failure of a pass current between reads.
-// With no status read it leaves the line as the last read left it.
-func (m *AppModel) renderSyncAdvisory() {
-	status := m.feedback.syncStatus
-	if status == nil {
-		return
-	}
-	m.feedback.syncAdvisory = syncAdvisoryText(status, time.Now())
-	// A failure before reaching the transport (for example, a removed folder
-	// configuration) has no persisted report to show in the ordinary status.
-	if m.automaticSync.err != nil && (status.LastExchange == nil || status.LastExchange.Succeeded) {
-		pending := strings.TrimPrefix(m.feedback.syncAdvisory, "sync: ")
-		m.feedback.syncAdvisory = "sync: automatic exchange failed (docket sync doctor)"
-		if pending != "" {
-			m.feedback.syncAdvisory += " · " + pending
-		}
-	}
-}
-
-// syncAdvisoryText is the strip's sync line. Local saves, outgoing and
-// incoming work, holds, and a failed exchange are named separately, because
-// a commit written here is not a delivery; an enrolled workspace with nothing
-// waiting draws no line at all.
-func syncAdvisoryText(status *engine.SyncStatus, now time.Time) string {
-	var parts []string
-	if len(status.Upgrades) > 0 || len(status.Held) > 0 {
-		parts = append(parts, "update Docket to apply held changes (docket sync status)")
-	}
-	if last := status.LastExchange; last != nil && !last.Succeeded {
-		parts = append(parts, "last exchange failed (docket sync doctor)")
-	}
-	if last := status.LastExchange; last != nil {
-		if len(last.Unavailable) > 0 {
-			parts = append(parts, util.Count(len(last.Unavailable), "file")+" waiting to download")
-		}
-		if last.Succeeded && len(last.Errors) > 0 {
-			parts = append(parts, "exchange errors (docket sync doctor)")
-		}
-	}
-	if status.OutstandingUp > 0 {
-		parts = append(parts, fmt.Sprintf("%d saved here, not yet published", status.OutstandingUp))
-	}
-	if status.OutstandingDown > 0 {
-		parts = append(parts, fmt.Sprintf("%d waiting to apply", status.OutstandingDown))
-	}
-	if len(parts) == 0 {
-		return ""
-	}
-	switch {
-	case status.LastSuccess.IsZero():
-		parts = append(parts, "never exchanged")
-	default:
-		parts = append(parts, "exchanged "+syncAge(now.Sub(status.LastSuccess))+" ago")
-	}
-	return "sync: " + strings.Join(parts, " · ")
-}
-
-// syncAge is a coarse duration: the line says how stale, not when.
-func syncAge(d time.Duration) string {
-	switch {
-	case d < time.Minute:
-		return "<1m"
-	case d < time.Hour:
-		return fmt.Sprintf("%dm", int(d.Minutes()))
-	case d < 48*time.Hour:
-		return fmt.Sprintf("%dh", int(d.Hours()))
-	default:
-		return fmt.Sprintf("%dd", int(d.Hours()/24))
-	}
-}
-
-// syncConflictEntries converts the engine's conflict views into the rows the
-// conflict browser lists.
-func syncConflictEntries(views []engine.ConflictView) []conflict.SyncConflictEntry {
-	if len(views) == 0 {
-		return nil
-	}
-	entries := make([]conflict.SyncConflictEntry, 0, len(views))
-	for _, view := range views {
-		entry := conflict.SyncConflictEntry{ID: view.ID, Path: view.Path, Kind: view.Kind, Label: view.Label, Base: syncConflictContent(view.Base), BaseText: conflictEditableText(view.Base), CurrentText: conflictEditableText(view.Current), Replaceable: view.Replaceable}
-		if view.Current != nil {
-			entry.Result = view.Current.Digest
-		}
-		for _, candidate := range view.Versions {
-			version := conflict.SyncConflictVersion{Index: candidate.Index, Text: conflictEditableText(&candidate.ConflictContent), Blob: candidate.Digest, Content: syncConflictContent(&candidate.ConflictContent), Current: candidate.Current}
-			for _, writer := range candidate.Writers {
-				version.Writers = append(version.Writers, conflict.SyncConflictWriter{
-					TxnID: writer.TxnID, Device: writer.DeviceID, DeviceName: writer.DeviceName,
-					ThisDevice: writer.ThisDevice, Change: writer.Change, At: writer.CreatedAt,
-				})
-			}
-			for _, also := range candidate.AlsoResolves {
-				version.AlsoResolves = append(version.AlsoResolves, also.Label)
-			}
-			entry.Versions = append(entry.Versions, version)
-		}
-		for _, detail := range view.Details {
-			line := detail.Detail
-			if detail.Subject != "" || detail.Field != "" {
-				line = strings.TrimSpace(detail.Subject+" "+detail.Field) + ": " + detail.Detail
-			}
-			entry.Details = append(entry.Details, line)
-		}
-		entries = append(entries, entry)
-	}
-	return entries
-}
-
-// syncConflictContent is a version's content as the browser prints it: its
-// text, or a sentence saying why there is none to print.
-func syncConflictContent(content *engine.ConflictContent) []string {
-	switch {
-	case content == nil:
-		return []string{"(the file did not exist)"}
-	case content.Deleted:
-		return []string{"(deleted)"}
-	case !content.Available:
-		return []string{"(not on this device)"}
-	case content.Text == nil:
-		return []string{fmt.Sprintf("(%d bytes, not text)", content.Size)}
-	}
-	return strings.Split(strings.TrimRight(*content.Text, "\n"), "\n")
-}
-
-// A deletion is an empty diff input; unavailable/binary content has no text.
-func conflictEditableText(content *engine.ConflictContent) *string {
-	if content == nil || content.Deleted {
-		empty := ""
-		return &empty
-	}
-	if !content.Available {
-		return nil
-	}
-	return content.Text
-}
-
 // The shell half of the mouse opt-out, on the advisory precedent exactly (see
 // the top of this file). Two inputs decide it: the machine-local flag the View
 // menu's Mouse row writes, and the process-level `--no-mouse` flag, which turns
@@ -376,4 +167,139 @@ func (m *AppModel) coreToggleMouse() error {
 		m.setInfoStatus("Mouse on")
 	}
 	return nil
+}
+
+// Two machine-local presentation preferences on the mouse precedent (see
+// above): Motion and the Nerd Font glyph set. Each is a keyless,
+// target-free View menu row and a durable machine.json key, and each has a
+// session-only override a host or the process environment supplies.
+
+// glyphsEnv names the process-level glyph override. Docket.app sets it when it
+// spawns docket inside its bundled terminal, whose font carries the Nerd set.
+const glyphsEnv = "DOCKET_GLYPHS"
+
+// glyphPreferences is the shell's session value for the glyph set. nerd is what
+// icons.SetNerdGlyphs was last told; forced records that DOCKET_GLYPHS decided
+// it at launch, which makes the View toggle session-only: persisting a choice
+// the environment overrides on every launch would save a state nobody sees.
+type glyphPreferences struct {
+	nerd   bool
+	forced bool
+}
+
+// glyphOverrideFromEnv reads DOCKET_GLYPHS: "nerd" forces the Nerd set,
+// "unicode" forces the Unicode set, and anything else leaves the preference.
+func glyphOverrideFromEnv(value string) (nerd, ok bool) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "nerd":
+		return true, true
+	case "unicode":
+		return false, true
+	}
+	return false, false
+}
+
+// WithGlyphOverride forces the glyph set for this session and writes nothing.
+// RunApp translates DOCKET_GLYPHS into it.
+func WithGlyphOverride(nerd bool) AppOption {
+	return func(m *AppModel) { m.glyphs = glyphPreferences{nerd: nerd, forced: true} }
+}
+
+// applyGlyphs publishes the session value to the one icon registry, so every
+// render after it draws from that set. Nothing is cached per glyph, so the next
+// frame is the whole switch.
+func (m *AppModel) applyGlyphs() {
+	icons.SetNerdGlyphs(m.glyphs.nerd)
+}
+
+// nerdGlyphs reports the session's glyph set; it ticks the View menu's row.
+func (m *AppModel) nerdGlyphs() bool { return m != nil && m.glyphs.nerd }
+
+// coreToggleNerdGlyphs flips the glyph set. Without an environment override it
+// commits machine.json first, as the mouse toggle does; under one it changes the
+// session alone and says so.
+func (m *AppModel) coreToggleNerdGlyphs() error {
+	next := !m.glyphs.nerd
+	if !m.glyphs.forced {
+		if m.domain.runtime == nil || m.domain.runtime.Machine() == nil {
+			return fmt.Errorf("machine chrome state is unavailable")
+		}
+		machine := *m.domain.runtime.Machine()
+		machine.NerdGlyphs = next
+		if err := m.domain.runtime.CommitMachine(&machine); err != nil {
+			return fmt.Errorf("save glyph setting: %w", err)
+		}
+	}
+	m.glyphs.nerd = next
+	m.applyGlyphs()
+	label := "Nerd Font glyphs off"
+	if next {
+		label = "Nerd Font glyphs on"
+	}
+	if m.glyphs.forced {
+		label += " for this session (" + glyphsEnv + " decides at launch)"
+	}
+	m.setInfoStatus(label)
+	return nil
+}
+
+// applyMotion derives the session's motion from its three inputs and hands it
+// to the Outliner. Turning it off drops whatever is animating at once: the
+// Outliner's ghost and arrival, the undo countdown, and a lit pulse.
+func (m *AppModel) applyMotion() {
+	c := &m.lifecycle
+	c.motion = c.motionArmed && !c.motionOff && !c.hostReducesMotion
+	if !c.motion {
+		m.feedback.countdown.live = false
+		m.pulseMotion.seq++
+		m.pulseMotion.change = pulse.PulseChange{}
+	}
+	if m.crossOutliner != nil {
+		m.crossOutliner.SetMotion(c.motion)
+	}
+}
+
+// motionPreferred reports the preference, which is what the View menu's Motion
+// row ticks: a launch the harness never arms, and a host's Reduce Motion, both
+// hold motion off without unticking what the user chose.
+func (m *AppModel) motionPreferred() bool { return m != nil && !m.lifecycle.motionOff }
+
+// coreToggleMotion flips the machine-local preference and the session together.
+func (m *AppModel) coreToggleMotion() error {
+	if m.domain.runtime == nil || m.domain.runtime.Machine() == nil {
+		return fmt.Errorf("machine chrome state is unavailable")
+	}
+	machine := *m.domain.runtime.Machine()
+	machine.MotionDisabled = !m.lifecycle.motionOff
+	if err := m.domain.runtime.CommitMachine(&machine); err != nil {
+		return fmt.Errorf("save motion setting: %w", err)
+	}
+	m.lifecycle.motionOff = machine.MotionDisabled
+	m.applyMotion()
+	switch {
+	case m.lifecycle.motionOff:
+		m.setInfoStatus("Motion off")
+	case m.lifecycle.hostReducesMotion:
+		m.setInfoStatus("Motion on (held off while the system reduces motion)")
+	default:
+		m.setInfoStatus("Motion on")
+	}
+	return nil
+}
+
+// controlReduceMotion answers control.OpReduceMotion: "on" holds motion off for
+// the session whatever the preference says, "off" returns it to the preference.
+// It writes no machine state.
+func (m *AppModel) controlReduceMotion(text string, reply chan<- control.Reply) {
+	switch text {
+	case "on":
+		m.lifecycle.hostReducesMotion = true
+	case "off":
+		m.lifecycle.hostReducesMotion = false
+	default:
+		answer(reply, false, fmt.Sprintf("unknown reduce motion %q: want on or off", text))
+		return
+	}
+	m.applyMotion()
+	answer(reply, true, "Reduce motion: "+text)
 }

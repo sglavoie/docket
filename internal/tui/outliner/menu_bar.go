@@ -75,15 +75,20 @@ const (
 // menuSeparator is the rule between two groups of entries.
 func menuSeparator() menuEntrySpec { return menuEntrySpec{} }
 
+// ViewMenuChecks is the live chrome state the View menu's toggle rows tick.
+type ViewMenuChecks struct {
+	MenuBarVisible, AdvisoriesVisible, MouseEnabled, MotionEnabled, NerdGlyphs bool
+}
+
 // outlinerMenuSpecs is the hand-curated bar over the Outliner's grammar. Every
 // entry names a registered operation identifier rather than a string literal,
 // which is what lets the parity test hold the whole bar to the catalog.
 //
-// activeMode, menuBarVisible, advisoriesVisible, and mouseEnabled are the live states the View
-// menu's rows show. They are passed in rather than read from a model so the
-// specification stays pure data: a menu row can describe live state, but it
-// cannot reach back into the Outliner to find it.
-func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisoriesVisible, mouseEnabled bool) []menuSpec {
+// activeMode and checks are the live states the View menu's rows show. They are
+// passed in rather than read from a model so the specification stays pure data:
+// a menu row can describe live state, but it cannot reach back into the
+// Outliner to find it.
+func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, checks ViewMenuChecks) []menuSpec {
 	return []menuSpec{
 		{
 			ID:    MenuIDTask,
@@ -131,7 +136,7 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 		{
 			ID:      MenuIDView,
 			Title:   "View",
-			Entries: viewMenuEntries(activeMode, menuBarVisible, advisoriesVisible, mouseEnabled),
+			Entries: viewMenuEntries(activeMode, checks),
 		},
 		{
 			ID:    MenuIDGo,
@@ -207,8 +212,8 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 // drawn. A menu that can hide the surface it is opened from is unusual, but the
 // key that shows the bar is the one thing a user who found the bar by accident
 // cannot read off the bar itself, so it belongs here rather than only in `?`.
-func viewMenuEntries(activeMode chrome.OutlinerModeID, menuBarVisible, advisoriesVisible, mouseEnabled bool) []menuEntrySpec {
-	entries := make([]menuEntrySpec, 0, len(chrome.OutlinerModes)+14)
+func viewMenuEntries(activeMode chrome.OutlinerModeID, checks ViewMenuChecks) []menuEntrySpec {
+	entries := make([]menuEntrySpec, 0, len(chrome.OutlinerModes)+16)
 	for _, mode := range chrome.OutlinerModes {
 		checked := mode.ID == activeMode
 		entries = append(entries, menuEntrySpec{
@@ -241,7 +246,7 @@ func viewMenuEntries(activeMode chrome.OutlinerModeID, menuBarVisible, advisorie
 		menuEntrySpec{
 			OperationID: operation.OperationCoreToggleMenuBar,
 			Label:       "Menu Bar",
-			Checked:     &menuBarVisible,
+			Checked:     &checks.MenuBarVisible,
 		},
 		// Advisories are chrome the way the bar and the theme are, and this row is
 		// the only way to reach the toggle from inside the app: it is bound to no
@@ -251,7 +256,7 @@ func viewMenuEntries(activeMode chrome.OutlinerModeID, menuBarVisible, advisorie
 		menuEntrySpec{
 			OperationID: operation.OperationCoreToggleAdvisories,
 			Label:       "Advisories",
-			Checked:     &advisoriesVisible,
+			Checked:     &checks.AdvisoriesVisible,
 		},
 		// Mouse is the same kind of row: keyless, target-free chrome, ticked when
 		// the terminal reports clicks and wheel steps. `--no-mouse` is the other
@@ -259,7 +264,21 @@ func viewMenuEntries(activeMode chrome.OutlinerModeID, menuBarVisible, advisorie
 		menuEntrySpec{
 			OperationID: operation.OperationCoreToggleMouse,
 			Label:       "Mouse",
-			Checked:     &mouseEnabled,
+			Checked:     &checks.MouseEnabled,
+		},
+		// Motion and Nerd Font Glyphs are presentation preferences on the same
+		// terms. Motion ticks the preference, which a host's Reduce Motion and an
+		// unarmed launch can still hold off; the glyph row ticks the session's set,
+		// which DOCKET_GLYPHS may have chosen.
+		menuEntrySpec{
+			OperationID: operation.OperationCoreToggleMotion,
+			Label:       "Motion",
+			Checked:     &checks.MotionEnabled,
+		},
+		menuEntrySpec{
+			OperationID: operation.OperationCoreToggleNerdGlyphs,
+			Label:       "Nerd Font Glyphs",
+			Checked:     &checks.NerdGlyphs,
 		},
 	)
 }

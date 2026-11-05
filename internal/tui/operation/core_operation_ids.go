@@ -73,6 +73,8 @@ const (
 	OperationCoreSetUpCheckIns      OperationID = "tui.core.set-up-check-ins"
 	OperationCoreToggleAdvisories   OperationID = "tui.core.toggle-advisories"
 	OperationCoreToggleMouse        OperationID = "tui.core.toggle-mouse"
+	OperationCoreToggleMotion       OperationID = "tui.core.toggle-motion"
+	OperationCoreToggleNerdGlyphs   OperationID = "tui.core.toggle-nerd-glyphs"
 	OperationCoreUndo               OperationID = "tui.core.undo"
 	OperationCoreRedo               OperationID = "tui.core.redo"
 	OperationCoreBack               OperationID = "tui.core.back"

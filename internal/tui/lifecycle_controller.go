@@ -50,8 +50,18 @@ type lifecycleController struct {
 	// departure ghost, the Today-clear sweep, the undo countdown, and the mode
 	// switch. Only RunApp's interactive launch arms it, for the same reason as
 	// greets: a scenario's observations must never depend on a timer it does
-	// not wait for.
+	// not wait for. It is derived, never written directly: applyMotion sets it
+	// from motionArmed, motionOff, and hostReducesMotion.
 	motion bool
+	// motionArmed is RunApp's half: WithMotion sets it for an interactive launch.
+	motionArmed bool
+	// motionOff is the machine-local preference (MachineState.MotionDisabled)
+	// the View menu's Motion row writes.
+	motionOff bool
+	// hostReducesMotion is a host's session-only override (control.OpReduceMotion),
+	// so Docket.app can forward the system's Reduce Motion without touching the
+	// preference.
+	hostReducesMotion bool
 	// roomyPeek opens Peek at launch when the projection leaves the dock its
 	// whole height; see OutlinerModel.OpenPeekIfRoomy. RunApp arms it for an
 	// interactive launch alone, so every scenario still starts with Peek shut.
@@ -103,12 +113,11 @@ func WithRoomyLaunchPeek() AppOption {
 
 // WithMotion arms the session's motion; see lifecycleController.motion. It
 // also reaches an Outliner already wired, so a test can arm it after launch.
+// The machine preference and a host's Reduce Motion can still hold it off.
 func WithMotion() AppOption {
 	return func(m *AppModel) {
-		m.lifecycle.motion = true
-		if m.crossOutliner != nil {
-			m.crossOutliner.SetMotion(true)
-		}
+		m.lifecycle.motionArmed = true
+		m.applyMotion()
 	}
 }
 
@@ -214,6 +223,9 @@ func RunApp(rt *engine.Runtime, runOpts RunOptions, opts ...AppOption) error {
 	}
 	if !runOpts.Headless {
 		opts = append(opts, WithDailyGreeting(), WithMotion(), WithRoomyLaunchPeek())
+	}
+	if nerd, ok := glyphOverrideFromEnv(os.Getenv(glyphsEnv)); ok {
+		opts = append(opts, WithGlyphOverride(nerd))
 	}
 	if rt == nil {
 		return fmt.Errorf("runtime is required")

@@ -401,6 +401,19 @@ operations is not an advisory, nor is the query readout, nor the refusal that
 explains a population where every project failed to load — a silent empty screen
 is worse than a line a flag cannot reach.
 
+The glyph set is a process-wide switch in `internal/icons`: `Get` answers from
+`nerdRegistry` (Nerd Font `nf-md-*` codepoints) when `SetNerdGlyphs(true)` and
+from the Unicode `registry` otherwise, so no call site branches and nothing is
+cached per glyph. Only the shell's `applyGlyphs` sets it, which is why CLI
+output keeps the Unicode set. The session value is `AppModel.glyphs`, from
+`MachineState.NerdGlyphs` (`nerd_glyphs`) unless `RunApp` read `DOCKET_GLYPHS`
+(`nerd` or `unicode`) into `WithGlyphOverride`. `OperationCoreToggleNerdGlyphs`
+commits machine.json first, except under that override, where it changes the
+session alone. Every Nerd glyph is one cell under `lipgloss.Width` and
+`ansi.StringWidth`, which `TestNerdSetIsOneCellAndOverridesOnlyKnownKeys` holds;
+tree connectors, fold arrows, cursor half-blocks, and relation marks stay in
+both sets.
+
 Mouse reporting is chrome on exactly those terms. `AppModel.View` declares
 `tea.MouseModeCellMotion` unless `AppModel.pointer.disabled`, which
 `MachineState.MouseDisabled` (read once in `NewAppModel`) and
@@ -952,7 +965,18 @@ never reloads the project population.
 
 Motion is `lifecycleController.motion`, which only `RunApp`'s interactive launch
 arms (`WithMotion`), so the scenario harness and every test run without it and
-no observation depends on a timer the scenario never waits for. Every animation
+no observation depends on a timer the scenario never waits for. It is derived,
+never written: `applyMotion` sets it to `motionArmed && !motionOff &&
+!hostReducesMotion` and hands it to the Outliner's `SetMotion`, and a result of
+off drops the ghost, the arrival, the undo countdown, and a lit pulse at once.
+`motionOff` is `MachineState.MotionDisabled` (`motion_disabled`), read in
+`NewAppModel` and written by the keyless `OperationCoreToggleMotion` (View →
+Motion), so the preference can hold motion off but never arm it.
+`hostReducesMotion` is `control.OpReduceMotion` — Text `on` or `off` — a
+session-only override Docket.app sends from macOS Reduce Motion. Like
+`OpAppearance` it is answered ahead of the busy guard and writes no machine
+state; an older Docket answers `unknown operation`. The View row ticks the
+preference, not the derived value. Every animation
 counts frames through `status.TickCmd` and voids a superseded run by sequence,
 and each changes paint alone: no width, no row, no window input.
 

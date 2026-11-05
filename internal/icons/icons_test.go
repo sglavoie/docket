@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 func TestGetUsesStableUnicodeRegistry(t *testing.T) {
@@ -116,11 +117,51 @@ func TestColumnAlignedGroupsHaveConsistentWidth(t *testing.T) {
 		"priority": {"priority.1", "priority.2", "priority.3"},
 		"checkbox": {"checkbox.checked", "checkbox.unchecked"},
 	} {
-		width := lipgloss.Width(Get(keys[0]))
-		for _, key := range keys[1:] {
-			if got := lipgloss.Width(Get(key)); got != width {
-				t.Errorf("%s icon %q width = %d, want %d", group, key, got, width)
+		for _, nerdSet := range []bool{false, true} {
+			SetNerdGlyphs(nerdSet)
+			width := lipgloss.Width(Get(keys[0]))
+			for _, key := range keys[1:] {
+				if got := lipgloss.Width(Get(key)); got != width {
+					t.Errorf("nerd=%v %s icon %q width = %d, want %d", nerdSet, group, key, got, width)
+				}
 			}
 		}
+		SetNerdGlyphs(false)
+	}
+}
+
+// TestNerdSetIsOneCellAndOverridesOnlyKnownKeys holds the Nerd Font set to the
+// cell budget rows are measured with: every glyph is one cell under both the
+// lipgloss and the ansi width functions, and it overrides a key the Unicode
+// registry holds rather than minting one.
+func TestNerdSetIsOneCellAndOverridesOnlyKnownKeys(t *testing.T) {
+	for key, glyph := range nerdRegistry {
+		if _, ok := registry[key]; !ok {
+			t.Errorf("nerd key %q has no Unicode counterpart", key)
+		}
+		if w := lipgloss.Width(glyph); w != 1 {
+			t.Errorf("nerd glyph %q (%U) lipgloss width = %d, want 1", key, []rune(glyph)[0], w)
+		}
+		if w := ansi.StringWidth(glyph); w != 1 {
+			t.Errorf("nerd glyph %q (%U) ansi width = %d, want 1", key, []rune(glyph)[0], w)
+		}
+	}
+}
+
+func TestSetNerdGlyphsSwitchesGetAndBack(t *testing.T) {
+	t.Cleanup(func() { SetNerdGlyphs(false) })
+	if nerd.Load() {
+		t.Fatal("the process must start on the Unicode set")
+	}
+	SetNerdGlyphs(true)
+	if got := Get("status.someday"); got != "\U000F07F7" {
+		t.Errorf("Nerd Get(status.someday) = %q", got)
+	}
+	if got := Get("nonexistent_key"); got != "" {
+		t.Errorf("Nerd Get(unknown) = %q", got)
+	}
+	SetNerdGlyphs(false)
+	if got := Get("status.someday"); got != "¿" {
+		t.Errorf("Unicode Get(status.someday) = %q", got)
 	}
 }

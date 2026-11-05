@@ -35,6 +35,15 @@ type MachineState struct {
 	// never seeded, and the omitted key is the default, which is that the mouse
 	// is on.
 	MouseDisabled bool `json:"mouse_disabled,omitempty"`
+	// MotionDisabled records whether an interactive launch leaves motion off: the
+	// departure ghost, mode arrival, pulse lighting, undo countdown, and the Today
+	// sweep. Chrome on the same terms as MouseDisabled; the omitted key is the
+	// default, which is that motion is on.
+	MotionDisabled bool `json:"motion_disabled,omitempty"`
+	// NerdGlyphs records whether the TUI draws its glyphs from the Nerd Font set
+	// rather than plain Unicode. Chrome on the same terms; the omitted key is the
+	// default, which is the Unicode set. DOCKET_GLYPHS overrides it per process.
+	NerdGlyphs bool `json:"nerd_glyphs,omitempty"`
 	// SearchHistory holds submitted slash queries oldest first, per workspace.
 	// Drafts, the active query, and the recall position are never persisted.
 	SearchHistory []string `json:"search_history,omitempty"`

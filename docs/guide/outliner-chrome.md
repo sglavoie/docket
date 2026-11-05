@@ -132,8 +132,20 @@ Folds opens every folded section, project group, and task subtree, reporting
 workspace notices. Task → Set Up Check-Ins schedules the tasks named by a
 recent check-in reminder.
 
-Menu-bar visibility is saved on this machine, as are the theme and advisory
-setting. These preferences do not follow a workspace to another computer.
+View → Motion turns off the brief animations: the struck-through row a task
+leaves behind, the mode badge lighting, workspace pulse counts lighting when they
+change, the undo countdown on the divider, and the Today sweep. View → Nerd Font
+Glyphs draws the state, priority, date, checkbox, notice, pin, attachment, and
+description symbols from a Nerd Font, such as Someday's thought bubble in place
+of `¿`; it needs a terminal font that carries them. Every glyph keeps its
+one-cell width, so no row moves when you switch.
+
+Menu-bar visibility is saved on this machine, as are the theme, advisory,
+motion, and glyph settings. These preferences do not follow a workspace to
+another computer. Launching with `DOCKET_GLYPHS=nerd` or `DOCKET_GLYPHS=unicode`
+chooses the glyph set regardless of the saved setting; under it, the View row
+still switches the set, for that session only, and saves nothing. Command-line
+output such as `project export` always uses plain Unicode.
 
 ### Terminal keyboard compatibility
 
@@ -147,7 +159,9 @@ use `Alt+Enter`; `Shift+Enter` remains an alias. Multiline paste works in captur
 too. The menu keeps every operation available by arrow keys and Enter.
 
 Docket.app can follow macOS appearance for the current session without changing
-the saved terminal theme.
+the saved terminal theme. It also follows the system's Reduce Motion setting:
+while that is on, the session draws no motion whatever View → Motion says, and
+the saved setting is unchanged.
 
 ## Read workload and feedback
 

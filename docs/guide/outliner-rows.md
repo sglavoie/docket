@@ -138,7 +138,8 @@ and the checklist, comment, and attachment counts. None of those is gone: `b`
 opens Peek on the same row and shows every one of them at full value, unclipped,
 rather than in a fixed-width badge the row had to buy out of the title.
 
-A paperclip (`📎`) after the title means the task has one or more attachments,
+A paperclip (`📎`, or the Nerd Font paperclip under View → Nerd Font Glyphs)
+after the title means the task has one or more attachments,
 including files, URLs, and code references. It stays visible on narrow rows.
 Press `&` to open the attachments panel; Peek shows the count and details.
 

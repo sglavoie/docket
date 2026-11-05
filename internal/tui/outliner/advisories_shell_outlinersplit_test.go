@@ -17,7 +17,7 @@ import (
 func TestAdvisoriesMenuRowCarriesLiveVisibility(t *testing.T) {
 	for _, visible := range []bool{false, true} {
 		var found bool
-		for _, entry := range viewMenuEntries(chrome.ModeAll, true, visible, true) {
+		for _, entry := range viewMenuEntries(chrome.ModeAll, ViewMenuChecks{MenuBarVisible: true, AdvisoriesVisible: visible, MouseEnabled: true}) {
 			if entry.OperationID != operation.OperationCoreToggleAdvisories {
 				continue
 			}
@@ -40,7 +40,7 @@ func TestAdvisoriesMenuRowCarriesLiveVisibility(t *testing.T) {
 func TestMouseMenuRowCarriesLiveState(t *testing.T) {
 	for _, enabled := range []bool{false, true} {
 		var found bool
-		for _, entry := range viewMenuEntries(chrome.ModeAll, true, true, enabled) {
+		for _, entry := range viewMenuEntries(chrome.ModeAll, ViewMenuChecks{MenuBarVisible: true, AdvisoriesVisible: true, MouseEnabled: enabled}) {
 			if entry.OperationID != operation.OperationCoreToggleMouse {
 				continue
 			}
@@ -68,5 +68,45 @@ func TestMouseEnabledReadsTheInjectedSetting(t *testing.T) {
 	m.SetMouseDisabled(func() bool { return true })
 	if m.MouseEnabled() {
 		t.Fatal("the injected setting was not read")
+	}
+}
+
+// TestPresentationPreferenceRowsCarryLiveState holds Motion and Nerd Font
+// Glyphs to the same reading: each row ticks its own field and no other.
+func TestPresentationPreferenceRowsCarryLiveState(t *testing.T) {
+	rows := map[operation.OperationID]string{
+		operation.OperationCoreToggleMotion:     "Motion",
+		operation.OperationCoreToggleNerdGlyphs: "Nerd Font Glyphs",
+	}
+	for _, checks := range []ViewMenuChecks{{MotionEnabled: true}, {NerdGlyphs: true}, {}} {
+		want := map[operation.OperationID]bool{
+			operation.OperationCoreToggleMotion:     checks.MotionEnabled,
+			operation.OperationCoreToggleNerdGlyphs: checks.NerdGlyphs,
+		}
+		found := 0
+		for _, entry := range viewMenuEntries(chrome.ModeAll, checks) {
+			label, ok := rows[entry.OperationID]
+			if !ok {
+				continue
+			}
+			found++
+			if entry.Label != label || entry.Checked == nil {
+				t.Fatalf("the %s row is %+v", label, entry)
+			}
+			if *entry.Checked != want[entry.OperationID] {
+				t.Errorf("%+v: %s checked=%v", checks, label, *entry.Checked)
+			}
+		}
+		if found != len(rows) {
+			t.Fatalf("%+v: the View menu offers %d of the %d preference rows", checks, found, len(rows))
+		}
+	}
+	m := &OutlinerModel{}
+	if !m.MotionPreferred() || m.NerdGlyphs() {
+		t.Fatal("a model with no accessors reads motion off or the Nerd set")
+	}
+	m.SetPresentationPreferences(func() bool { return false }, func() bool { return true })
+	if m.MotionPreferred() || !m.NerdGlyphs() {
+		t.Fatal("the injected preferences were not read")
 	}
 }

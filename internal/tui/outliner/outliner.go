@@ -158,6 +158,11 @@ type OutlinerModel struct {
 	// mouseDisabledAccessor is the shell-injected mouse setting the View menu's
 	// Mouse row ticks from. A nil accessor reads as on; see advisories.go.
 	mouseDisabledAccessor func() bool
+	// motionPreferredAccessor and nerdGlyphsAccessor are the shell-injected
+	// presentation preferences the View menu's Motion and Nerd Font Glyphs rows
+	// tick; see SetPresentationPreferences.
+	motionPreferredAccessor func() bool
+	nerdGlyphsAccessor      func() bool
 
 	// pointerKey is the shell's root key path, injected so a double-click and a
 	// right-click reach the operation Enter and Space would, refusals included.

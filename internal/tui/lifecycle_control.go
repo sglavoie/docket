@@ -183,6 +183,10 @@ func (m *AppModel) executeControlRequest(request control.Request, reply chan<- c
 	case control.OpThemePalette:
 		m.controlThemePalette(request.Text, reply)
 		return nil
+	case control.OpReduceMotion:
+		// Presentation alone, like a theme: answered ahead of the busy guard.
+		m.controlReduceMotion(request.Text, reply)
+		return nil
 	case control.OpQuit:
 		if reason := m.quitBlockReason(); reason != "" {
 			answer(reply, false, "Docket is busy: "+reason)
