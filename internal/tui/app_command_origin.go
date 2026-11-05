@@ -295,6 +295,9 @@ func (m *AppModel) handlePointerMessage(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 	}
 	m.lifecycle.dropLaunchFocus()
+	// A click or a wheel step is input like a key: motion still settling is
+	// retired first, so the frame after it paints the window it hit-tested.
+	m.crossOutliner.DropMotion()
 	return true, m.routePointer(event)
 }
 

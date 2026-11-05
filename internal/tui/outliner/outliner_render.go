@@ -69,13 +69,21 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 	if dropLast {
 		m.LastViewport.endIdx = endIdx
 	}
+	// Motion paints a scroll's intermediate window and withholds a reveal's
+	// tail; LastViewport keeps the settled window either way.
+	first, last, pinned := m.motionRowRange(viewport, endIdx)
+	withheld := m.anim.RevealHidden(len(m.Rows))
 	var lines []string
-	if viewport.pinned {
+	if pinned {
 		lines = append(lines, m.renderPinnedContextRow(viewport))
 	}
-	for i := viewport.startIdx; i < endIdx; i++ {
+	for i := first; i < last; i++ {
 		row := m.Rows[i]
 		selected := i == m.Cursor
+		if blank, ok := m.revealedBlank(withheld, i, viewport.rowWidth); ok {
+			lines = append(lines, blank)
+			continue
+		}
 
 		switch {
 		case row.IsSeparator:
@@ -100,7 +108,7 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 	var rowBuilder strings.Builder
 	rowBuilder.WriteString(strings.Join(lines, "\n"))
 
-	scrollbar := chrome.RenderScrollbar(len(m.Rows), viewport.VisibleRows, viewport.startIdx)
+	scrollbar := chrome.RenderScrollbar(len(m.Rows), viewport.VisibleRows, first)
 	return chrome.AttachScrollbarAtWidth(rowBuilder.String(), scrollbar, viewport.rowWidth)
 }
 

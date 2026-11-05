@@ -134,7 +134,8 @@ recent check-in reminder.
 
 View → Motion turns off the brief animations: the struck-through row a task
 leaves behind, the mode badge lighting, workspace pulse counts lighting when they
-change, the undo countdown on the divider, and the Today sweep. View → Nerd Font
+change, the undo countdown on the divider, the Today sweep, the list gliding on a
+page jump, a fold rolling open, and the mark a moved task lights where it lands. View → Nerd Font
 Glyphs draws the state, priority, date, checkbox, notice, pin, attachment, and
 description symbols from a Nerd Font, such as Someday's thought bubble in place
 of `¿`; it needs a terminal font that carries them. Every glyph keeps its
@@ -235,7 +236,19 @@ next key retires it at once. A mode switch lands its badge highlighted for a
 moment and lights the `‹` or `›` it traveled through. A workspace count in the
 title that just changed, such as `done` after you finish a task, lights for a
 moment and settles back: green when Done rises, amber when Overdue rises, and
-the accent color otherwise. Tests and the harness run without this motion.
+the accent color otherwise. A page jump — `Ctrl+D`, `Ctrl+U`, `PgDn`, `PgUp`,
+`gg`, `G`, or the `z` chord — glides the list through two in-between windows
+before it settles, in well under a tenth of a second; Peek's own scrolling does
+not glide. A fold you open with `l`, `Enter`, `s`, `p`, `t`, or a click on its
+arrow rolls its rows out over two quick frames instead of appearing at once;
+closing one is not animated. A task you move with `J`, `K`, `Ctrl+J`, `Ctrl+K`,
+`]`, `[`, `>`, or `%` lights the cursor's mark in the accent where it lands, on
+a brighter band at first and then on the ordinary one, for about half a second,
+and each further move lights it again; a move that takes the task out of view,
+such as `%` from a scoped project, shows the departing row instead. Any key,
+click, or wheel step finishes whatever is still animating, and a click always
+lands on the rows the list is settling on. Tests and the harness run without this
+motion.
 
 In a terminal that reports focus, the cursor rests while the window is in the
 background: its mark turns muted and the row loses its band, so a glance says

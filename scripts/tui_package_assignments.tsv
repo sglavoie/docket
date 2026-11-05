@@ -406,7 +406,7 @@ outliner_projection.go	outliner	L7	merged
 outliner_quick_edit_view.go	outliner	L7	receiver:OutlinerModel
 outliner_render.go	outliner	L7	receiver:OutlinerModel
 outliner_render_task_row.go	outliner	L7	receiver:OutlinerModel
-outliner_reorder.go	outliner	L7	receiver:OutlinerModel
+outliner_motion.go	outliner	L7	receiver:OutlinerModel
 outliner_rows.go	outliner	L7	receiver:OutlinerModel
 outliner_scope.go	outliner	L7	receiver:OutlinerModel
 outliner_search.go	outliner	L7	merged

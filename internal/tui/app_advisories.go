@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/docket/internal/icons"
 	"github.com/sglavoie/docket/internal/logging"
 	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/tui/operation"
 	"github.com/sglavoie/docket/internal/tui/pulse"
 )
 
@@ -256,6 +257,34 @@ func (m *AppModel) applyMotion() {
 	}
 	if m.crossOutliner != nil {
 		m.crossOutliner.SetMotion(c.motion)
+	}
+}
+
+// noteOutlinerMotion tells the Outliner which paint-only run the operation about
+// to execute may earn, so the update that carries it can start that run once it
+// has settled. It runs inside the operation's own update, after the keystroke
+// retired whatever was animating, and it records nothing in a session without
+// motion. The Peek dock's paging operations are absent: only the list scrolls.
+func (m *AppModel) noteOutlinerMotion(id operation.OperationID) {
+	out, ok := m.outlinerPrimary()
+	if !ok || out == nil {
+		return
+	}
+	switch id {
+	case operation.OperationCoreCursorTop, operation.OperationCoreCursorBottom,
+		operation.OperationCoreCursorPageUp, operation.OperationCoreCursorPageDown,
+		operation.OperationCoreScrollCursorTop, operation.OperationCoreScrollCursorMiddle,
+		operation.OperationCoreScrollCursorBottom:
+		out.NoteScrollJump()
+	case operation.OperationCoreExpand, operation.OperationCoreActivateGroup,
+		operation.OperationCoreToggleSections, operation.OperationCoreToggleProjectGroup,
+		operation.OperationCoreToggleSubtrees, operation.OperationCoreClearFolds:
+		out.NoteFoldReveal()
+	case operation.OperationCoreReorderUp, operation.OperationCoreReorderDown,
+		operation.OperationCoreReorderTop, operation.OperationCoreReorderBottom,
+		operation.OperationTaskIndent, operation.OperationTaskOutdent,
+		operation.OperationTaskSetParent, operation.OperationTaskMoveToProject:
+		out.NoteMoveTrail()
 	}
 }
 

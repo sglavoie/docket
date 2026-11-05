@@ -193,6 +193,11 @@
 #     `operationhost -> taskform,coordinator` for editor invocation, retry and
 #     commit refusals. Neither dependency reaches back to operationhost or
 #     introduces an upward edge.
+#   - `motion` is an L0 package the Outliner's animation glue was lifted into
+#     when that package reached its file ceiling: the run schedules, the
+#     generations that void a superseded run, and the frame arithmetic, with no
+#     row type to know about. It names `status` alone, for TickCmd, and only
+#     `outliner -> motion` reads it; the shell routes its tick through an alias.
 package	layer	depends_on
 presentation	L0	-
 theme	L0	-
@@ -201,6 +206,7 @@ taskref	L0	-
 status	L0	presentation
 pulse	L0	theme,textfit,taskref
 keymap	L0	-
+motion	L0	status
 chrome	L1	theme,textfit,pulse,taskref,keymap
 coordinator	L1	taskref,status
 grammar	L2	chrome,theme,textfit,taskref
@@ -218,7 +224,7 @@ taskform	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordi
 lens	L7	presentation,theme,textfit,status,keymap,chrome,query,operation,route,listsurface
 conflict	L7	theme,textfit,status,keymap,chrome,listsurface,route
 projecthub	L7	presentation,theme,textfit,status,pulse,keymap,chrome,coordinator,operation,route,listsurface,help,notes
-outliner	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,notes,taskform,taskdetail,lens,projecthub
+outliner	L7	presentation,theme,textfit,taskref,status,pulse,keymap,motion,chrome,coordinator,grammar,query,operation,route,listsurface,help,notes,taskform,taskdetail,lens,projecthub
 entityops	L7	presentation,theme,taskref,status,keymap,chrome,coordinator,operation,route,listsurface,help,taskdetail,outliner
 lensops	L7	lens,operation,listsurface,outliner,valuepicker
 filterops	L7	theme,taskref,status,keymap,chrome,query,operation,listsurface,outliner,projecthub,valuepicker

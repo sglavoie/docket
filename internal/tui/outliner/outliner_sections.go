@@ -407,6 +407,8 @@ func (p cursorPaint) halfBlock(attention color.Color) string {
 		accent = theme.ColorMuted
 	case p.flash:
 		accent = theme.ColorFlashBg
+	case p.landing != nil:
+		accent = p.landing
 	}
 	style := lipgloss.NewStyle().Foreground(accent)
 	if attention != nil {

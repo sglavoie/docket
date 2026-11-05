@@ -990,6 +990,45 @@ and each changes paint alone: no width, no row, no window input.
   records the slot as `LastViewport.ghostOffset`. `CursorScreenRow`,
   `pointerHitAt`, and the Peek dock's padding read that slot. Any keystroke
   retires the ghost through `DropMotion`.
+- **Motion runs.** Three further runs live on `motion.Runs`, an L0
+  package the Outliner reads, since the Outliner package is at its file ceiling.
+  The shell notes an intent before the operation runs (`noteOutlinerMotion`,
+  called from `executeCoreInputOperation` and `executeSingleTaskOperation`),
+  and the deferred closure in `AppModel.Update` calls `SettleMotion`, which
+  turns intents into runs against the rows and cursor the update left. A
+  keystroke, click, or wheel step calls `DropMotion` first, so only the
+  operation's own intent survives into that settle. Each run keeps
+  `LastViewport` the settled window, so `CursorScreenRow` and `pointerHitAt`
+  read where the list is going, and the input that would act on a stale paint
+  retires it. A ghost holds the window still, so a scroll never paints under one.
+  - *Smooth scroll.* The page keys (`gg`/`Home`, `G`/`End`, `Ctrl+D`/`PgDn`,
+    `Ctrl+U`/`PgUp`, and `zt`/`zz`/`zb`) note the window's first row. If the
+    window `pinnedContextWindowAt` settles on for the new cursor starts more
+    than one row away, two frames 20 ms apart paint the same number of rows
+    from `motion.ScrollStart`, half and then four fifths of the way there, the
+    pinned context row spent on one more row, before the settled window draws.
+    20 ms is longer than Bubble Tea's 16.7 ms frame, so neither is coalesced
+    away. `renderOutlinerRows` reads `motionRowRange` and never writes
+    `ViewScrollOffset`. The Peek dock's paging is not noted, so it never glides,
+    and `Ctrl+F`/`Ctrl+B` page only Peek.
+  - *Fold roll-out.* `l`, `Enter` on a header, `s`, `p`, `t`, and Clear All
+    Folds note the drawn rows by `motionRowKey`. After the rebuild every row
+    without a key in that set is revealed, and `motion.RevealHidden` withholds
+    the tail of each contiguous revealed run for two 24 ms frames, drawing the
+    first third and then two thirds, with blanks of `rowWidth` at the rows
+    still to come. Nothing below the block moves, the cursor's row is always
+    drawn, and a projection whose length changed mid-run withholds nothing.
+    Closing a fold is not animated.
+  - *Move trail.* `J`, `K`, their edge forms, `]`, `[`, Set Parent, and Move to
+    Project note the cursor's task and its place: row, project, parent, tree,
+    and group. Each settle in which the cursor's row names that task somewhere
+    else lights it for two phases, 260 ms then 340 ms, through `landingPaint`:
+    the half-block mark in the primary accent, over `ColorFlashDimBg` in the
+    first phase and the ordinary band in the second. It is a variant of the one
+    band and never a second background, so background precedence is unchanged.
+    A flash or a resting cursor keeps its own paint. The intent stands until
+    input, so a commit landing after its key still lights, and a burst of moves
+    lights once per landing. A task the cursor did not follow lights nothing.
 - **Mode arrival.** The shell compares the Outliner's mode across one `Update`.
   On a change, `MarkModeArrival` draws `chrome.ModeArrival` for 180 ms: the badge
   reversed, and the `‹` or `›` the Tab cycle turned through lit.

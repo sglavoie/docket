@@ -63,6 +63,9 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		if m.crossOutliner != nil && m.outlinerModeForMotion() != modeBefore {
 			outCmd = tea.Batch(outCmd, m.crossOutliner.MarkModeArrival(modeBefore))
 		}
+		// Every handler has run, so a scroll, a reveal, or a landing is measured
+		// against the rows and the cursor this update leaves.
+		outCmd = tea.Batch(outCmd, m.crossOutliner.SettleMotion())
 		if interactive || isInteractionInput(msg) {
 			outCmd = withCommandOrigin(outCmd, origin)
 		}

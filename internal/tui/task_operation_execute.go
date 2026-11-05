@@ -335,6 +335,7 @@ func (m *AppModel) executeSingleTaskOperation(
 		return cmdResult(withOutlinerRelocationCapture(cmd, capture))
 	}
 
+	m.noteOutlinerMotion(invocation.Descriptor.ID)
 	switch invocation.Descriptor.ID {
 	case operation.OperationTaskSetState:
 		state, ok := invocation.Value.(models.WorkflowState)

@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/docket/internal/tui/coordinator"
 	"github.com/sglavoie/docket/internal/tui/grammar"
 	"github.com/sglavoie/docket/internal/tui/listsurface"
+	"github.com/sglavoie/docket/internal/tui/motion"
 	"github.com/sglavoie/docket/internal/tui/operation"
 	"github.com/sglavoie/docket/internal/tui/pulse"
 	"github.com/sglavoie/docket/internal/tui/query"
@@ -64,6 +65,9 @@ type OutlinerModel struct {
 	// arrival is the mode switch the title draws for one phase; see
 	// mode_arrival.go. It shares ghostSeq's generation counter.
 	arrival *modeArrival
+	// anim holds the motion runs: the smooth scroll, the fold roll-out, and the
+	// move trail. It paints and writes nothing else; see outliner_motion.go.
+	anim motion.Runs
 	// unfocused is whether the terminal last reported that it lost focus. The
 	// cursor then rests dimmed — a muted mark and no band — so a glance at a
 	// background window says the keyboard is elsewhere. See SetTerminalFocused.
@@ -485,6 +489,8 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ModeArrivalTickMsg:
 		m.endModeArrival(msg)
 		return m, nil
+	case MotionTickMsg:
+		return m, m.anim.Advance(msg)
 
 	case taskdetail.CommentAddedMsg:
 		// Rebuild rows so cloned tasks from tree projections pick up the

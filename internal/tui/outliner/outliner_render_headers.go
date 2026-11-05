@@ -31,6 +31,9 @@ type cursorPaint struct {
 	// mark stays, muted, and the band is withheld, so the cursor still says
 	// where the keyboard will land without claiming it is there now.
 	resting bool
+	// landing is the mark's accent while the move trail lights this row; nil
+	// everywhere else. See landingPaint.
+	landing color.Color
 }
 
 func (m *OutlinerModel) cursorPaintFor(selected bool) cursorPaint {

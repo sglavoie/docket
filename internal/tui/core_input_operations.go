@@ -94,6 +94,7 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		return operation.OperationHandlerResult{Err: operation.OperationTargetRejection(invocation.Descriptor)}
 	}
 
+	m.noteOutlinerMotion(invocation.Descriptor.ID)
 	var message tea.Msg
 	var err error
 	//nolint:exhaustive // Only core input operations are registered with this handler.

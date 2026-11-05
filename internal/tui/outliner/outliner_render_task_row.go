@@ -229,7 +229,7 @@ func (m *OutlinerModel) RenderOutlinerTaskRow(
 ) string {
 	task := row.Task
 	titleStyle := m.renderTaskTitleStyle(task)
-	paint := m.cursorPaintFor(selected).overTaskRow()
+	paint := m.landingPaint(row, m.cursorPaintFor(selected).overTaskRow())
 	segments := m.buildTaskRowSegments(row, rowWidth, colLayout, paint)
 	title := m.renderTaskTitle(row, titleStyle, rowWidth, segments)
 
