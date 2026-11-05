@@ -329,21 +329,102 @@ func TestHelpWideColumnsFitDescriptionsButKeepGrammarFullWidth(t *testing.T) {
 		items := []filteredHelpItem{
 			{HelpItem: operation.HelpItem{Key: "a", Description: strings.Repeat("x", 32), Category: category}},
 			{HelpItem: operation.HelpItem{Key: "b", Description: "Second item", Category: category}},
+			{HelpItem: operation.HelpItem{Key: "c", Description: "Third item", Category: category}},
 		}
 		for _, width := range []int{160, 240} {
-			content := ansi.Strip(renderHelpItemGroup(items, width, 1))
+			content := ansi.Strip(renderHelpItemGroup(items, width, 1, 0))
+			lines := strings.Split(strings.TrimRight(content, "\n"), "\n")
 			want := 3 + 32 + 4
+			wantRows := 1
 			if category == helpGrammarCategory {
+				// Grammar keeps its prose at the full width and never takes a
+				// third column, so the third item opens a second row.
 				want = (width-4)/2 + 4
+				wantRows = 2
 			}
 			if got := strings.Index(content, "b  Second item"); got != want {
 				t.Fatalf("%s at width %d: second column starts at %d, want %d:\n%s",
 					category, width, got, want, content)
 			}
+			if len(lines) != wantRows || !strings.Contains(lines[len(lines)-1], "c  Third item") {
+				t.Fatalf("%s at width %d: %d rows, want %d with the third item last:\n%s",
+					category, width, len(lines), wantRows, content)
+			}
 			if !strings.Contains(content, items[0].Description) {
 				t.Fatalf("%s at width %d: description wrapped despite available space:\n%s",
 					category, width, content)
 			}
+		}
+	}
+}
+
+func TestHelpThreeColumnsOnlyWhenEveryDescriptionFitsWhole(t *testing.T) {
+	long := strings.Repeat("y", 30)
+	items := []filteredHelpItem{
+		{HelpItem: operation.HelpItem{Key: "a", Description: "Short", Category: "Tasks"}},
+		{HelpItem: operation.HelpItem{Key: "b", Description: long, Category: "Tasks"}},
+		{HelpItem: operation.HelpItem{Key: "c", Description: "Third", Category: "Tasks"}},
+	}
+	// One column is the key, its separator, and the widest description; three
+	// of them and two gaps are the whole threshold.
+	threshold := 3*(1+2+len(long)) + 2*helpColumnGap
+	for _, width := range []int{threshold - 1, threshold, threshold + 40} {
+		content := ansi.Strip(renderHelpItemGroup(items, width, 1, 0))
+		lines := strings.Split(strings.TrimRight(content, "\n"), "\n")
+		if three := len(lines) == 1; three != (width >= threshold) {
+			t.Fatalf("width %d (threshold %d): %d rows:\n%s", width, threshold, len(lines), content)
+		}
+		if !strings.Contains(content, long) {
+			t.Fatalf("width %d: the widest description did not fit whole:\n%s", width, content)
+		}
+		for _, line := range lines {
+			if lipgloss.Width(line) > width {
+				t.Fatalf("width %d overflows: %q", width, line)
+			}
+		}
+	}
+}
+
+// The shared description measure is what decides three columns, so one group's
+// long entry keeps every group of the render on the same grid.
+func TestHelpGroupsShareOneColumnCount(t *testing.T) {
+	items := []operation.HelpItem{
+		{Key: "a", Description: "Capture", Category: "Tasks", Group: "Everyday", Order: 1},
+		{Key: "e", Description: "Edit", Category: "Tasks", Group: "Everyday", Order: 2},
+		{Key: "/", Description: "Search", Category: "Tasks", Group: "Everyday", Order: 3},
+		{Key: "o@", Description: strings.Repeat("z", 40), Category: "Sorting"},
+	}
+	m := NewHelpViewModel(items, "Outliner")
+	for _, width := range []int{120, 200} {
+		m.SetSize(width, 40)
+		content := ansi.Strip(m.renderContent())
+		together := false
+		for _, line := range strings.Split(content, "\n") {
+			if strings.Contains(line, "Capture") && strings.Contains(line, "Search") {
+				together = true
+			}
+		}
+		threshold := 3*(2+2+40) + 2*helpColumnGap
+		if together != (m.viewport.Width() >= threshold) {
+			t.Fatalf("width %d (viewport %d, threshold %d): unexpected column count:\n%s",
+				width, m.viewport.Width(), threshold, content)
+		}
+	}
+}
+
+func TestHelpGroupsAreSeparatedByOneBlankLine(t *testing.T) {
+	items := []operation.HelpItem{
+		{Key: "a", Description: "Capture", Category: "Tasks", Group: "Everyday", Order: 1},
+		{Key: "wt", Description: "Toggle Today Plan", Category: "Tasks", Group: "Plan", Order: 100},
+		{Key: "o@", Description: "Sort by Due Date", Category: "Sorting"},
+	}
+	m := NewHelpViewModel(items, "Outliner")
+	m.SetSize(120, 40)
+	lines := strings.Split(ansi.Strip(m.renderContent()), "\n")
+	want := []string{"Everyday", "a  Capture", "", "Plan", "wt  Toggle Today Plan", "", "Sorting", "o@  Sort by Due Date"}
+	for i, text := range want {
+		if i >= len(lines) || strings.TrimSpace(lines[i]) != text {
+			t.Fatalf("line %d: want %q:\n%s", i, text, strings.Join(lines, "\n"))
 		}
 	}
 }

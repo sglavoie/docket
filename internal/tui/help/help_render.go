@@ -17,6 +17,17 @@ import (
 // Keep enough prose beside each key to read a short action without wrapping.
 const helpMinDescriptionWidth = 24
 
+// helpColumnGap is the blank run between two columns of one group.
+const helpColumnGap = 4
+
+// helpShortcutMaxColumns is how many columns an ordinary shortcut group may
+// spread across; helpGrammarMaxColumns caps any group holding a grammar form,
+// whose prose-sized spellings and descriptions cannot fit whole in a third.
+const (
+	helpShortcutMaxColumns = 3
+	helpGrammarMaxColumns  = 2
+)
+
 // helpSectionOrder is the display order of `?` help sections. Its names are the
 // categories the projections actually emit: OperationCategoryLabel produces the
 // registry ones, the keymap-projected providers add View, Actions, and Filters,
@@ -115,13 +126,17 @@ func (m *HelpViewModel) renderBySectionContent() string {
 	buckets := make(map[string][]filteredHelpItem)
 	categories := make([]string, 0, len(m.filteredItems))
 	keyWidth := 1
+	descWidth := helpMinDescriptionWidth
 	const exactSection = "Exact matches"
 	for _, item := range m.filteredItems {
 		section := helpSectionForItem(item.HelpItem)
-		// Shortcuts share one alignment across categories and task groups.
-		// Grammar forms are prose-sized and keep their own key column.
+		// Shortcuts share one grid across categories and task groups: one key
+		// column and one description measure, the widest whole entry, so every
+		// group takes the same column count and its columns line up with the
+		// next group's. Grammar forms are prose-sized and keep their own.
 		if section != helpGrammarCategory {
 			keyWidth = max(keyWidth, lipgloss.Width(item.Key))
+			descWidth = max(descWidth, helpItemDescriptionWidth(item))
 		}
 		if m.searchQuery != "" && item.exactMatch {
 			buckets[exactSection] = append(buckets[exactSection], item)
@@ -138,10 +153,9 @@ func (m *HelpViewModel) renderBySectionContent() string {
 	compactHeadings := m.viewport.Height() < 20
 	writeHeading := func(title string) {
 		heading := theme.HelpCategoryStyle
+		// The heading's own top margin is the one blank row between groups.
 		if first || compactHeadings {
 			heading = heading.MarginTop(0)
-		} else {
-			b.WriteString("\n")
 		}
 		first = false
 		b.WriteString(heading.Render(title))
@@ -184,7 +198,7 @@ func (m *HelpViewModel) renderBySectionContent() string {
 					end++
 				}
 			}
-			b.WriteString(renderHelpItemGroup(items[start:end], max(m.viewport.Width(), 1), groupKeyWidth))
+			b.WriteString(renderHelpItemGroup(items[start:end], max(m.viewport.Width(), 1), groupKeyWidth, descWidth))
 			start = end
 		}
 	}
@@ -192,36 +206,66 @@ func (m *HelpViewModel) renderBySectionContent() string {
 	return b.String()
 }
 
-// Use the shared shortcut width, expanding it for grammar forms when needed.
-func renderHelpItemGroup(items []filteredHelpItem, contentWidth, keyWidth int) string {
+// helpItemDescriptionWidth is the width an item's description occupies whole,
+// including the aliases a search matched, which render beside it.
+func helpItemDescriptionWidth(item filteredHelpItem) int {
+	description := item.Description
+	if len(item.matchedAliases) > 0 {
+		description += " · " + strings.Join(item.matchedAliases, ", ")
+	}
+	return lipgloss.Width(description)
+}
+
+// helpColumnLayout chooses a group's column count and description width, given
+// what one column's key and its two-column separator cost.
+//
+// A shortcut group takes three columns only when each can hold the widest whole
+// description, so the threshold is measured from the entries rather than fixed:
+// contentWidth >= 3*(overhead+preferred) + 2*helpColumnGap. Below it, two
+// columns keep their rule — any room of at least helpMinDescriptionWidth,
+// wrapping a longer description — and below that one column takes the width.
+// A group holding a grammar form never exceeds helpGrammarMaxColumns and keeps
+// its prose at the full available width.
+func helpColumnLayout(contentWidth, overhead, preferred int, grammar bool) (columns, descWidth int) {
+	available := func(columns int) int {
+		return (contentWidth - columns*overhead - (columns-1)*helpColumnGap) / columns
+	}
+	maxColumns := helpShortcutMaxColumns
+	if grammar {
+		maxColumns = helpGrammarMaxColumns
+	}
+	for columns := maxColumns; columns > 2; columns-- {
+		if available(columns) >= preferred {
+			return columns, preferred
+		}
+	}
+	if width := available(2); width >= helpMinDescriptionWidth {
+		if grammar {
+			return 2, width
+		}
+		// Short shortcut groups need no more space than their descriptions.
+		return 2, min(width, preferred)
+	}
+	return 1, max(contentWidth-overhead, 1)
+}
+
+// renderHelpItemGroup lays one group out on the shared shortcut grid, keyWidth
+// and shortcutDescWidth, expanding the key column for grammar forms when needed.
+func renderHelpItemGroup(items []filteredHelpItem, contentWidth, keyWidth, shortcutDescWidth int) string {
+	grammar := false
+	preferredWidth := max(helpMinDescriptionWidth, shortcutDescWidth)
 	for _, item := range items {
 		keyWidth = max(keyWidth, lipgloss.Width(item.Key))
-	}
-	columnGap := 4
-	columnOverhead := keyWidth + 2
-	columns := 2
-	descWidth := (contentWidth - 2*columnOverhead - columnGap) / 2
-	if descWidth < helpMinDescriptionWidth {
-		columns = 1
-		descWidth = max(contentWidth-columnOverhead, 1)
-	} else {
-		// Short shortcut groups need no more space than their descriptions.
-		// Keep grammar's prose at the available width, including exact matches
-		// that combine grammar forms with ordinary shortcuts.
-		preferredWidth := helpMinDescriptionWidth
-		for _, item := range items {
-			if item.Category == helpGrammarCategory {
-				preferredWidth = descWidth
-				break
-			}
-			description := item.Description
-			if len(item.matchedAliases) > 0 {
-				description += " · " + strings.Join(item.matchedAliases, ", ")
-			}
-			preferredWidth = max(preferredWidth, lipgloss.Width(description))
+		// Exact matches can combine grammar forms with ordinary shortcuts; one
+		// grammar form puts the whole group on grammar's layout.
+		if item.Category == helpGrammarCategory {
+			grammar = true
+			continue
 		}
-		descWidth = min(descWidth, preferredWidth)
+		preferredWidth = max(preferredWidth, helpItemDescriptionWidth(item))
 	}
+	columnOverhead := keyWidth + 2
+	columns, descWidth := helpColumnLayout(contentWidth, columnOverhead, preferredWidth, grammar)
 	columnWidth := keyWidth + 2 + descWidth
 
 	keyStyle := lipgloss.NewStyle().
@@ -261,15 +305,17 @@ func renderHelpItemGroup(items []filteredHelpItem, contentWidth, keyWidth int) s
 	}
 
 	var b strings.Builder
-	for j := 0; j < len(items); {
-		col1 := columnStyle.Render(renderItem(items[j]))
-		j++
-		if columns == 2 && j < len(items) {
-			col2 := columnStyle.Render(renderItem(items[j]))
-			col1 = lipgloss.JoinHorizontal(lipgloss.Top, col1, strings.Repeat(" ", columnGap), col2)
-			j++
+	gap := strings.Repeat(" ", helpColumnGap)
+	for start := 0; start < len(items); start += columns {
+		end := min(start+columns, len(items))
+		cells := make([]string, 0, 2*(end-start)-1)
+		for j := start; j < end; j++ {
+			if j > start {
+				cells = append(cells, gap)
+			}
+			cells = append(cells, columnStyle.Render(renderItem(items[j])))
 		}
-		b.WriteString(col1)
+		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, cells...))
 		b.WriteString("\n")
 	}
 	return b.String()

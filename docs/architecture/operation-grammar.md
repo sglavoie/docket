@@ -220,8 +220,19 @@ The help tab bar renders through `chrome.RenderWrappingTabBar` with
 tabs — which is what fits every Outliner section on one row at 80 columns; every
 wrapped row takes the header's one-column pad, and the first section heading
 drops `theme.HelpCategoryStyle`'s top margin, which separates sections rather
-than leading them. Short viewports omit decorative gaps and use one Tasks
-heading, preserving the daily action order through Undo on the first screen.
+than leading them; that margin is the one blank row between groups. Short
+viewports omit decorative gaps and use one Tasks heading, preserving the daily
+action order through Undo on the first screen.
+
+`renderBySectionContent` measures one shortcut grid over every non-grammar
+item it renders — the widest key and the widest description, matched aliases
+included — and `helpColumnLayout` turns it into a column count per group: three
+when `3*(key+2+description) + 2*helpColumnGap` fits the viewport, so no entry
+wraps or truncates; otherwise two with at least `helpMinDescriptionWidth`;
+otherwise one. Because the measure is shared, every shortcut group in one
+render takes the same count and its columns line up. A group holding a grammar
+form — the Grammar section, or exact matches that include one — is capped at
+`helpGrammarMaxColumns`, two, and keeps its prose at the full column width.
 
 When a selected category has no results and other categories do, Help offers
 `Tab show all matches`. The action selects All, preserves the query and input

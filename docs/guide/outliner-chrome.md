@@ -35,9 +35,11 @@ own case-insensitive fallback. If that category has
 no matches but others do, the empty view names the category and counts the
 matches available elsewhere. Press `Tab` to show all matches with the same
 query, including while typing. This explicitly selects All; search never
-switches categories on its own. Help measures shortcut widths per section or
-task group and uses two columns when each description has at least 24 columns
-of room. Search
+switches categories on its own. Every shortcut group shares one grid, measured
+from the widest key and the widest description on screen: three columns when
+each can hold that widest description whole, otherwise two when each
+description has at least 24 columns of room, otherwise one. Grammar never
+takes more than two columns. One blank line separates groups. Search
 highlighting follows matches across wrapped description lines. When a search
 matches an alias, that alias stays beside the description and wraps as needed
 so the reason for the match remains readable.
