@@ -24,6 +24,14 @@ you to the named field or capture token when the engine identifies one.
 Long errors have a bounded summary so the editor stays usable; Read full error
 opens the complete, scrollable explanation.
 
+A task's detail reads in working order: the title with its status, plan, and
+project, the resume note under "Where you left off", and one prominent action
+for the task's next move — Start, Resume (paused or waiting), Mark Done
+(doing), or Reopen (done or canceled). The description, checklist, related
+tasks, comments, and attachments follow; the deadline, priority, flags,
+context, and tags sit under Details, and Workflow, Check-in, and Organize keep
+every other plan and status change at the bottom.
+
 Task details always show a Description section. Tap Add Description or Edit
 Description to open the task editor at its multiline description field, then
 Save. Clear the field and save to remove a description. New tasks can include

@@ -421,7 +421,12 @@ final class BrowsingUITests: XCTestCase {
     func testDetailCompletionOffersUndoAndRestoresToday() throws {
         let app = try launchSeeded()
         row(app, "Order bathroom tiles").tap()
-        require(app.buttons["detail.status.menu"], "the detail status control")
+        let statusMenu = app.buttons["detail.status.menu"]
+        for _ in 0..<5 {
+            if statusMenu.waitForExistence(timeout: 2), statusMenu.isHittable { break }
+            app.swipeUp()
+        }
+        require(statusMenu, "the detail status control")
         app.buttons["detail.status.menu"].tap()
         require(app.buttons["Done"].firstMatch, "the Done status")
         app.buttons["Done"].firstMatch.tap()
@@ -436,6 +441,24 @@ final class BrowsingUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["detail.receipt"].label.hasPrefix("Undone:"))
         back(app)
         require(text(app, "Order bathroom tiles"), "the restored Today task")
+    }
+
+    func testDetailLeadsWithTheTasksNextMove() throws {
+        let app = try launchSeeded()
+        row(app, "Order bathroom tiles").tap()
+        require(app.staticTexts["detail.title"], "the task detail")
+        // Doing work offers to finish it, above everything but its title.
+        let primary = app.buttons["detail.primary"]
+        require(primary, "the detail's primary action")
+        XCTAssertEqual(primary.label, "Mark Done")
+        XCTAssertTrue(primary.isHittable, "the primary action is not on the first screen")
+        XCTAssertTrue(app.staticTexts["detail.summary"].label.hasPrefix("Doing"), app.staticTexts["detail.summary"].label)
+        primary.tap()
+        require(app.staticTexts["detail.receipt"], "the completion receipt")
+        XCTAssertEqual(app.staticTexts["detail.receipt"].label, "Completed “Order bathroom tiles”")
+        // Finished work offers to reopen instead.
+        let reopen = app.buttons.matching(NSPredicate(format: "identifier == 'detail.primary' AND label == 'Reopen'")).firstMatch
+        require(reopen, "Reopen as the finished task's primary action")
     }
 
     func testCompletionReceiptCanUndoTheTaskThatLeftToday() throws {

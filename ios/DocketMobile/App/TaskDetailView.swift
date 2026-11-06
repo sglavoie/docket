@@ -152,9 +152,10 @@ struct TaskDetailView: View {
     @ViewBuilder
     private func workflow(_ detail: TaskDetail) -> some View {
         let task = detail.task
-        let plan = detail.today == true ? "Today" : detail.next == true ? "Next" : "None"
         Section("Workflow") {
-            LabeledContent("Plan", value: plan)
+            LabeledContent("Status", value: task.state.rawValue.capitalized)
+                .accessibilityIdentifier("detail.status")
+            LabeledContent("Plan", value: Self.planName(detail) ?? "None")
                 .accessibilityIdentifier("detail.plan.value")
             Button("Change Plan") { choosingPlan = true }
                 .accessibilityIdentifier("detail.plan")
@@ -181,6 +182,37 @@ struct TaskDetailView: View {
         }
     }
 
+    private static func planName(_ detail: TaskDetail) -> String? {
+        detail.today == true ? "Today" : detail.next == true ? "Next" : nil
+    }
+
+    /// The one move a task's state most plausibly asks for next. Every other
+    /// transition stays under Change Status.
+    private struct PrimaryAction {
+        let title: String
+        let systemImage: String
+        let target: WorkflowState
+
+        init(_ state: WorkflowState) {
+            switch state {
+            case .done, .canceled:
+                self.init("Reopen", "arrow.uturn.backward", .inbox)
+            case .doing:
+                self.init("Mark Done", "checkmark", .done)
+            case .paused, .waiting:
+                self.init("Resume", "play.fill", .doing)
+            default:
+                self.init("Start", "play.fill", .doing)
+            }
+        }
+
+        private init(_ title: String, _ systemImage: String, _ target: WorkflowState) {
+            self.title = title
+            self.systemImage = systemImage
+            self.target = target
+        }
+    }
+
     private func act(_ command: @escaping () async -> String?) {
         guard !acting else { return }
         acting = true
@@ -190,50 +222,57 @@ struct TaskDetailView: View {
         }
     }
 
+    /// What the task is and where you left it come first, then the work
+    /// itself, then the record around it and the controls that manage it.
+    @ViewBuilder
+    private func header(_ detail: TaskDetail) -> some View {
+        let task = detail.task
+        let primary = PrimaryAction(task.state)
+        Section {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(task.title)
+                    .font(.title3.weight(.semibold))
+                    .accessibilityIdentifier("detail.title")
+                Text([task.state.rawValue.capitalized, Self.planName(detail), detail.project.name]
+                        .compactMap { $0 }.joined(separator: " · "))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("detail.summary")
+            }
+            if let resume = task.resumeNote, !resume.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Where you left off", systemImage: "bookmark")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(resume)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("detail.resume")
+            }
+            Button {
+                act { await workspace.transition(task.locator, to: primary.target) }
+            } label: {
+                Label(primary.title, systemImage: primary.systemImage)
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+            }
+            // Primary on the page's background inverted keeps full contrast
+            // in light and dark mode, where white on the accent fill does not.
+            .buttonStyle(.borderedProminent)
+            .tint(.primary)
+            .foregroundStyle(Color(uiColor: .systemBackground))
+            .controlSize(.large)
+            .accessibilityIdentifier("detail.primary")
+        }
+    }
+
     private func content(_ detail: TaskDetail) -> some View {
         let task = detail.task
         let relations = detail.relations
         return List {
-            Section {
-                Text(task.title)
-                    .font(.title3.weight(.semibold))
-                    .accessibilityIdentifier("detail.title")
-                if let resume = task.resumeNote, !resume.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Resume").font(.caption).foregroundStyle(.secondary)
-                        Text(resume)
-                    }
-                    .accessibilityElement(children: .combine)
-                    .accessibilityIdentifier("detail.resume")
-                }
-                LabeledContent("Status", value: task.state.rawValue.capitalized)
-                    .accessibilityIdentifier("detail.status")
-                LabeledContent("Project", value: detail.project.name)
-                if task.priority > 0 {
-                    LabeledContent("Priority", value: "P\(task.priority)")
-                }
-                if task.pinned || task.review || task.hidden == true {
-                    LabeledContent("Flags", value: [
-                        task.pinned ? "Pinned" : nil,
-                        task.review ? "Review" : nil,
-                        task.hidden == true ? "Hidden" : nil,
-                    ].compactMap { $0 }.joined(separator: " · "))
-                }
-            }
-            workflow(detail)
+            header(detail)
             if let ancestors = relations?.ancestors, !ancestors.isEmpty {
                 relationSection("Inside", ancestors, identifier: "detail.ancestor")
-            }
-            if task.dueDate != nil || task.deferredUntil != nil {
-                Section("Schedule") {
-                    if let due = task.dueDate {
-                        LabeledContent("Due", value: TaskSchedule.deadline(due))
-                            .accessibilityIdentifier("detail.due")
-                    }
-                    if let deferred = task.deferredUntil {
-                        LabeledContent("Deferred until", value: deferred.formatted(date: .abbreviated, time: .shortened))
-                    }
-                }
             }
             Section("Description") {
                 if let description = task.description, !description.isEmpty {
@@ -246,6 +285,9 @@ struct TaskDetailView: View {
                 }
                 .accessibilityIdentifier("detail.description.edit")
             }
+            ChecklistSection(task: task) { action, seen in
+                act { await workspace.checklist(task.locator, action, seen: seen) }
+            }
             if let children = relations?.children, !children.isEmpty {
                 relationSection("Subtasks", children, identifier: "detail.child")
             }
@@ -255,9 +297,20 @@ struct TaskDetailView: View {
             if let dependents = relations?.dependents, !dependents.isEmpty {
                 relationSection("Needed by", dependents, identifier: "detail.dependent")
             }
-            ChecklistSection(task: task) { action, seen in
-                act { await workspace.checklist(task.locator, action, seen: seen) }
-            }
+            CommentsSection(
+                comments: detail.comments ?? [],
+                compose: { editing in commentRequest = CommentRequest(owner: .task(task.locator), editing: editing) },
+                delete: { comment in act { await workspace.comment(.task(task.locator), .delete(comment)) } }
+            )
+            AttachmentsSection(
+                detail: detail, sync: workspace.sync, pending: pendingImports,
+                add: { attachmentActions.isPresented = true },
+                preview: { previewRequest = AttachmentPreviewRequest(url: $0) },
+                share: { sharing = AttachmentShareRequest(url: $0) },
+                remove: { attachment in act { await workspace.attachment(task.locator, .remove(attachment)) } }
+            )
+            details(task)
+            workflow(detail)
             if !task.state.isTerminal {
                 CheckInSection(task: task) { action in
                     await workspace.checkIn([task.locator], action)
@@ -275,23 +328,35 @@ struct TaskDetailView: View {
                         return outcome.refusal
                 }
             )
-            CommentsSection(
-                comments: detail.comments ?? [],
-                compose: { editing in commentRequest = CommentRequest(owner: .task(task.locator), editing: editing) },
-                delete: { comment in act { await workspace.comment(.task(task.locator), .delete(comment)) } }
-            )
-            AttachmentsSection(
-                detail: detail, sync: workspace.sync, pending: pendingImports,
-                add: { attachmentActions.isPresented = true },
-                preview: { previewRequest = AttachmentPreviewRequest(url: $0) },
-                share: { sharing = AttachmentShareRequest(url: $0) },
-                remove: { attachment in act { await workspace.attachment(task.locator, .remove(attachment)) } }
-            )
-            if task.context != nil || !task.tags.isEmpty {
-                Section("More") {
-                    if let context = task.context { LabeledContent("Context", value: context) }
-                    if !task.tags.isEmpty { LabeledContent("Tags", value: task.tags.joined(separator: ", ")) }
+        }
+    }
+
+    /// The record's supporting values, each shown only when set.
+    @ViewBuilder
+    private func details(_ task: TaskSnapshot) -> some View {
+        let flags = [
+            task.pinned ? "Pinned" : nil,
+            task.review ? "Review" : nil,
+            task.hidden == true ? "Hidden" : nil,
+        ].compactMap { $0 }
+        if task.dueDate != nil || task.deferredUntil != nil || task.priority > 0
+            || !flags.isEmpty || task.context != nil || !task.tags.isEmpty {
+            Section("Details") {
+                if let due = task.dueDate {
+                    LabeledContent("Due", value: TaskSchedule.deadline(due))
+                        .accessibilityIdentifier("detail.due")
                 }
+                if let deferred = task.deferredUntil {
+                    LabeledContent("Deferred until", value: deferred.formatted(date: .abbreviated, time: .shortened))
+                }
+                if task.priority > 0 {
+                    LabeledContent("Priority", value: "P\(task.priority)")
+                }
+                if !flags.isEmpty {
+                    LabeledContent("Flags", value: flags.joined(separator: " · "))
+                }
+                if let context = task.context { LabeledContent("Context", value: context) }
+                if !task.tags.isEmpty { LabeledContent("Tags", value: task.tags.joined(separator: ", ")) }
             }
         }
     }

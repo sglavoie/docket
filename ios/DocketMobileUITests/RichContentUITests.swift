@@ -124,8 +124,11 @@ final class RichContentUITests: XCTestCase {
             app.swipeDown()
         }
         require(element, what)
+        // An element drawn but not hittable may sit under the top inset as
+        // well as below the fold, so scroll toward wherever it is.
+        let middle = app.windows.firstMatch.frame.midY
         for _ in 0..<4 where !element.isHittable {
-            app.swipeUp()
+            if element.frame.midY < middle { app.swipeDown() } else { app.swipeUp() }
         }
     }
 

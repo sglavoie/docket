@@ -181,7 +181,12 @@ final class CaptureEditingUITests: XCTestCase {
 
     private func menu(_ app: XCUIApplication, _ identifier: String, _ option: String) {
         let button = app.buttons[identifier].firstMatch
-        if !button.waitForExistence(timeout: 3) { app.swipeUp() }
+        // The detail's management controls sit below its content, and a list
+        // draws only the rows near the screen.
+        for _ in 0..<5 {
+            if button.waitForExistence(timeout: 2), button.isHittable { break }
+            app.swipeUp()
+        }
         require(button, identifier)
         let item = app.buttons[option].firstMatch
         // A reload that lands while the menu opens can close it again, so an
@@ -859,7 +864,10 @@ final class CaptureEditingUITests: XCTestCase {
 
         // A parent cannot finish over an open subtask, and says which one.
         openTask(app, "Ship beta build")
-        XCTAssertEqual(app.staticTexts["detail.plan.value"].firstMatch.label.contains("Today"), true)
+        // Workflow sits below the task's content.
+        let planValue = app.staticTexts["detail.plan.value"].firstMatch
+        for _ in 0..<5 where !planValue.exists || !planValue.isHittable { app.swipeUp() }
+        XCTAssertEqual(planValue.label.contains("Today"), true)
         menu(app, "detail.status.menu", "Done")
         let failure = app.staticTexts["detail.failure"].firstMatch
         require(failure, "the completion refusal")

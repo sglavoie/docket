@@ -155,12 +155,24 @@ final class OrganizingUITests: XCTestCase {
     /// Opens a related task from the detail screen by its link.
     private func openRelated(_ app: XCUIApplication, _ identifier: String, _ title: String) {
         let link = app.buttons.matching(NSPredicate(format: "identifier == %@ AND label CONTAINS %@", identifier, title)).firstMatch
-        for _ in 0..<4 where !link.isHittable {
-            app.swipeUp()
-        }
+        // The link may sit below the rows in view, or above them as after Add
+        // Subtask, where it can rest under the navigation bar.
+        for _ in 0..<5 where !link.exists { app.swipeUp() }
+        for _ in 0..<8 where !link.exists { app.swipeDown() }
         require(link, "the \(title) link")
-        link.tap()
-        eventually("the \(title) detail") { app.staticTexts["detail.title"].firstMatch.label == title }
+        let window = app.windows.firstMatch.frame
+        let top = app.navigationBars.firstMatch.frame.maxY
+        for _ in 0..<6 where !link.isHittable || link.frame.minY < top {
+            if link.frame.midY < window.midY { app.swipeDown() } else { app.swipeUp() }
+        }
+        // A tap landing while the list still scrolls only stops it, so the
+        // link is tapped again until its own detail opens.
+        let opened = app.staticTexts.matching(NSPredicate(format: "identifier == 'detail.title' AND label == %@", title)).firstMatch
+        for _ in 0..<3 where !opened.exists {
+            if link.exists, link.isHittable { link.tap() }
+            if opened.waitForExistence(timeout: 4) { break }
+        }
+        require(opened, "the \(title) detail")
     }
 
     /// Taps a button by identifier, scrolling it into reach first.
@@ -574,9 +586,9 @@ final class OrganizingUITests: XCTestCase {
         let paint = try XCTUnwrap(taskLine("Pick paint colors", in: markdown("home-renovation")))
         XCTAssertTrue(paint.contains("depends: 6f1d3c2a-1b4e-4c8a-9a0e-0d5b7c1e2a02:\(signing)"), paint)
         // The screen follows the task to its new project rather than calling
-        // it unavailable; its project row is at the top of the detail.
+        // it unavailable; its summary under the title names the project.
         XCTAssertFalse(app.staticTexts["Task unavailable"].exists, "the detail lost the moved task")
-        let project = app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Project, Home Renovation'")).firstMatch
+        let project = app.staticTexts.matching(NSPredicate(format: "identifier == 'detail.summary' AND label CONTAINS 'Home Renovation'")).firstMatch
         for _ in 0..<5 where !project.exists {
             app.swipeDown()
         }
