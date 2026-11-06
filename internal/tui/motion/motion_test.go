@@ -149,3 +149,69 @@ func runDuration(kind Kind) time.Duration {
 	}
 	return total
 }
+
+func TestCollapseRowsShrinksTheGapAndRoundsUp(t *testing.T) {
+	for _, tc := range []struct {
+		rows int
+		want []int
+	}{
+		{rows: 6, want: []int{4, 2, 0}},
+		{rows: 1, want: []int{1, 1, 0}},
+		{rows: 0, want: []int{0, 0, 0}},
+	} {
+		var got []int
+		for phase := 0; phase <= Phases(Collapse); phase++ {
+			got = append(got, CollapseRows(tc.rows, phase))
+		}
+		if !slices.Equal(got, tc.want) {
+			t.Errorf("CollapseRows(%d) = %v, want %v", tc.rows, got, tc.want)
+		}
+	}
+}
+
+func TestDockRowsRollsTheBodyOutTopFirst(t *testing.T) {
+	var got []int
+	for phase := 0; phase <= Phases(Dock); phase++ {
+		got = append(got, DockRows(9, phase))
+	}
+	if want := []int{3, 6, 9}; !slices.Equal(got, want) {
+		t.Fatalf("DockRows(9) = %v, want %v", got, want)
+	}
+	if DockRows(1, 0) != 1 {
+		t.Fatal("a one-row body is always drawn")
+	}
+}
+
+func TestCollapseAndDockRunsRetireAndDropWithInput(t *testing.T) {
+	var runs Runs
+	if runs.StartCollapse([]Gap{{After: 0, Rows: 3}}) != nil || runs.StartDock() != nil {
+		t.Fatal("an unarmed runs started a collapse or a dock")
+	}
+	runs.SetArmed(true)
+	if runs.StartCollapse(nil) != nil {
+		t.Fatal("a collapse with no gap started")
+	}
+	runs.StartCollapse([]Gap{{After: 1, Rows: 3}})
+	if got := runs.CollapseGaps(4); len(got) != 1 || got[0] != (Gap{After: 1, Rows: 2}) {
+		t.Fatalf("phase 0 gaps = %v, want one gap of two rows under row 1", got)
+	}
+	if runs.CollapseGaps(1) != nil {
+		t.Fatal("a gap past the rebuilt rows still draws")
+	}
+	runs.Advance(TickMsg{Kind: Collapse, Seq: runs.seq})
+	if got := runs.CollapseGaps(4); len(got) != 1 || got[0].Rows != 1 {
+		t.Fatalf("phase 1 gaps = %v, want one row", got)
+	}
+	runs.Advance(TickMsg{Kind: Collapse, Seq: runs.seq})
+	if runs.CollapseGaps(4) != nil {
+		t.Fatal("a spent collapse still draws a gap")
+	}
+	runs.StartDock()
+	if phase, ok := runs.DockPhase(); !ok || phase != 0 {
+		t.Fatalf("dock phase = %d (live %t), want a live phase 0", phase, ok)
+	}
+	runs.Drop()
+	if _, ok := runs.DockPhase(); ok {
+		t.Fatal("input left the dock rolling")
+	}
+}

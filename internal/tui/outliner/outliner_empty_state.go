@@ -3,12 +3,16 @@ package outliner
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/grammar"
 	"github.com/sglavoie/docket/internal/tui/listsurface"
 	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/pulse"
+	"github.com/sglavoie/docket/internal/tui/query"
 	"github.com/sglavoie/docket/internal/tui/textfit"
 	"github.com/sglavoie/docket/internal/tui/theme"
 	"github.com/sglavoie/docket/internal/util"
@@ -62,6 +66,19 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int) string {
 			body.WriteString("\n")
 		}
 		body.WriteString(theme.MutedStyle.Render(line))
+	}
+	// A card earned by this empty view — the welcome, or Today's resting card
+	// — is centered in the rows the explanation left, drawn whole or not at
+	// all, so it never pushes the dock or the footer.
+	if card := m.emptyStateCard(width); len(card) > 0 && fitCardLines(card, width) {
+		room := m.outlinerListRows(extraFooter) - lipgloss.Height(body.String())
+		if len(card)+1 <= room {
+			// A third of the way down rather than the middle, so the card reads
+			// as following the sentence above it rather than floating free.
+			top := max((room-len(card))/3, 1)
+			body.WriteString(strings.Repeat("\n", top))
+			body.WriteString(strings.Join(card, "\n"))
+		}
 	}
 	b.WriteString(body.String())
 
@@ -275,4 +292,118 @@ func escActionClause(action string) string {
 	default:
 		return action
 	}
+}
+
+// The day canvas is what the Outliner draws in room its rows leave empty: in
+// Today mode, the work finished today and the week ahead under the list; in an
+// empty Today, a resting card that says the day is clear; and in a workspace
+// with no task at all, a welcome that teaches capture by example.
+//
+// It is paint in the padding, never a row: it is not in m.Rows, takes no
+// cursor, answers no click, and moves no window, so ComputeOutlinerViewport,
+// CursorScreenRow, and the pointer's hit map are untouched. Each block is drawn
+// whole or not at all, from what the window left after the rows, the ghost,
+// and a closing gap took their share; a canvas that does not fit is simply not
+// drawn, so the list never yields a row to it.
+
+// dayCanvasEligible reports whether the canvas may speak for the view: the
+// plain cross-project Today, with nothing narrowing it, since the canvas reads
+// the whole scope and a narrowed list beside it would disagree with it.
+func (m *OutlinerModel) dayCanvasEligible() bool {
+	return m.PrimaryMode == chrome.ModeToday && m.Project == nil &&
+		!m.HasSearchProjection() && !m.ShowsRankedList() && !m.HasActiveLens() &&
+		!m.Focus.Active() && !m.Focus.Zoom.Active() &&
+		!query.HasActiveCommonFilters(&m.Filter.CommonFilterState)
+}
+
+func (m *OutlinerModel) computeDayCanvas(now time.Time) pulse.DayCanvas {
+	return pulse.ComputeDayCanvas(m.ScopeProjects(), m.CompletionActivity, now)
+}
+
+// todayCanvasLines is the canvas under a populated Today: as many whole blocks
+// as budget rows hold, each after one blank row, so it never touches the list.
+func (m *OutlinerModel) todayCanvasLines(width, budget int) []string {
+	if budget < 3 || !m.dayCanvasEligible() {
+		return nil
+	}
+	canvas := m.computeDayCanvas(time.Now())
+	var out []string
+	if done := canvas.DoneBlock(width, budget-1); len(done) > 0 {
+		out = append(out, "")
+		out = append(out, done...)
+	}
+	if ahead := canvas.AheadBlock(width); len(ahead) > 0 && len(out)+1+len(ahead) <= budget {
+		out = append(out, "")
+		out = append(out, ahead...)
+	}
+	return out
+}
+
+// workspaceHoldsNoTask reports whether no project in scope holds a task of
+// any state: the one moment the welcome is for. A workspace whose work is all
+// finished, hidden, or deferred is not new, and keeps the plain sentence.
+func (m *OutlinerModel) workspaceHoldsNoTask() bool {
+	if m.Project != nil || m.Scope.scoped() || !m.Population.SnapshotReady {
+		return false
+	}
+	for _, project := range m.Population.Projects {
+		if project != nil && len(project.Tasks) > 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// emptyStateCard is the card the empty state centers under its explanation,
+// if this empty view earns one.
+func (m *OutlinerModel) emptyStateCard(width int) []string {
+	switch m.ClassifyEmptyCause() {
+	case outlinerEmptyNoTasks:
+		if m.workspaceHoldsNoTask() {
+			return grammar.WelcomeCard(width)
+		}
+	case outlinerEmptyMode:
+		if m.dayCanvasEligible() {
+			return m.computeDayCanvas(time.Now()).RestingCard(width)
+		}
+	default:
+		// Every other empty view explains itself in its sentence alone.
+	}
+	return nil
+}
+
+// fitCardLines reports whether every card line fits width unclipped: a card is
+// drawn whole or not at all, never cut.
+func fitCardLines(lines []string, width int) bool {
+	for _, line := range lines {
+		if lipgloss.Width(line) > width {
+			return false
+		}
+	}
+	return true
+}
+
+// writeDayCanvas draws Today's canvas in the window rows the list left empty.
+// Its blocks are chosen against the settled window — the rows alone — so a
+// ghost or a closing gap borrowing a row for a few frames trims the canvas's
+// tail rather than choosing different blocks and flickering. The rows it drew
+// are recorded so the dock's padding counts them.
+func (m *OutlinerModel) writeDayCanvas(b *strings.Builder, viewport outlinerViewport) {
+	m.LastViewport.canvasRows = 0
+	drawn := m.LastViewport.drawnRows()
+	settled := drawn - m.LastViewport.gapRows - boolRows(m.LastViewport.ghostActive)
+	lines := m.todayCanvasLines(viewport.rowWidth, viewport.VisibleRows-settled)
+	lines = lines[:min(len(lines), max(viewport.VisibleRows-drawn, 0))]
+	for _, line := range lines {
+		b.WriteString("\n")
+		b.WriteString(line)
+	}
+	m.LastViewport.canvasRows = len(lines)
+}
+
+func boolRows(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }

@@ -1,5 +1,7 @@
 package motion
 
+import "math"
+
 // scrollShares is how far each scroll phase has traveled from the window it
 // left toward the one it arrives at: an ease-out, so most of the distance is
 // covered by the first frame and the last one settles.
@@ -42,4 +44,28 @@ func RevealHidden(revealed []bool, phase int) []bool {
 		start = end
 	}
 	return hidden
+}
+
+// collapseShares is how much of a closed block's height each collapse phase
+// still holds open: two thirds, then one third, then none.
+var collapseShares = [...]float64{2.0 / 3, 1.0 / 3}
+
+// CollapseRows is the blank rows a gap of rows still holds in phase, rounded
+// up so a short block still visibly closes. A phase past the schedule holds
+// none.
+func CollapseRows(rows, phase int) int {
+	if rows <= 0 || phase < 0 || phase >= len(collapseShares) {
+		return 0
+	}
+	return int(math.Ceil(float64(rows) * collapseShares[phase]))
+}
+
+// DockRows is how many of a dock's body rows phase draws, top first: a third,
+// then two thirds, then all of them. A body of one row is always drawn.
+func DockRows(body, phase int) int {
+	phases := Phases(Dock)
+	if phase < 0 || phase >= phases || body <= 1 {
+		return body
+	}
+	return max((body*(phase+1)+phases)/(phases+1), 1)
 }

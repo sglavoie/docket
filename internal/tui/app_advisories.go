@@ -277,7 +277,7 @@ func (m *AppModel) noteOutlinerMotion(id operation.OperationID) {
 		operation.OperationCoreScrollCursorTop, operation.OperationCoreScrollCursorMiddle,
 		operation.OperationCoreScrollCursorBottom:
 		out.NoteScrollJump()
-	case operation.OperationCoreExpand, operation.OperationCoreActivateGroup,
+	case operation.OperationCoreExpand, operation.OperationCoreCollapseParent, operation.OperationCoreActivateGroup,
 		operation.OperationCoreToggleSections, operation.OperationCoreToggleProjectGroup,
 		operation.OperationCoreToggleSubtrees, operation.OperationCoreClearFolds:
 		out.NoteFoldReveal()

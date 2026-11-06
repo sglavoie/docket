@@ -114,7 +114,47 @@ func (m *OutlinerModel) DropMotion() {
 	if m != nil {
 		m.dropDepartureGhost()
 		m.anim.Drop()
+		m.foldBefore = nil
 	}
+}
+
+// collapseGapLines is the blank rows a live collapse holds open under each
+// row, by index. A ghost, which borrows a slot of its own, keeps it still.
+func (m *OutlinerModel) collapseGapLines() map[int]int {
+	if m.ghost != nil {
+		return nil
+	}
+	gaps := m.anim.CollapseGaps(len(m.Rows))
+	if len(gaps) == 0 {
+		return nil
+	}
+	out := make(map[int]int, len(gaps))
+	for _, gap := range gaps {
+		out[gap.After] += gap.Rows
+	}
+	return out
+}
+
+// dockRollLines blanks the tail of an opening dock's document for the phase
+// it is in: the divider and the rows a third, then two thirds, of the way
+// down are drawn, and every line keeps its place, so the dock is the height
+// it reserved on every frame.
+func (m *OutlinerModel) dockRollLines(lines []string, width int) []string {
+	phase, ok := m.anim.DockPhase()
+	if !ok || len(lines) <= 1 {
+		return lines
+	}
+	body := len(lines) - 1
+	shown := motion.DockRows(body, phase)
+	if shown >= body {
+		return lines
+	}
+	out := append([]string(nil), lines[:1+shown]...)
+	blank := strings.Repeat(" ", max(width, 0))
+	for range body - shown {
+		out = append(out, blank)
+	}
+	return out
 }
 
 // dropDepartureGhost retires a live ghost at once: a keypress means the user
@@ -151,16 +191,53 @@ func (m *OutlinerModel) NoteScrollJump() {
 }
 
 // NoteFoldReveal records the rows drawn before a fold operation, so the rows it
-// opens can be told from the rows that were already there.
+// opens can be told from the rows that were already there, and the rows it
+// closes from the rows that stay.
 func (m *OutlinerModel) NoteFoldReveal() {
 	if m == nil || !m.anim.Armed() {
 		return
 	}
 	before := make(map[string]struct{}, len(m.Rows))
+	order := make([]string, 0, len(m.Rows))
 	for _, row := range m.Rows {
-		before[m.motionRowKey(row)] = struct{}{}
+		key := m.motionRowKey(row)
+		before[key] = struct{}{}
+		order = append(order, key)
 	}
 	m.anim.NoteReveal(before)
+	m.foldBefore = order
+}
+
+// foldCollapseGaps names the blocks a fold closed: each maximal run of rows
+// drawn before the fold and gone after it, under the surviving row it hung
+// from. A block above the cursor is not animated, since closing it moves the
+// cursor's own screen row, and CursorScreenRow reads the settled window; a
+// block is capped at the window it could have filled.
+func (m *OutlinerModel) foldCollapseGaps(before []string) []motion.Gap {
+	after := make(map[string]int, len(m.Rows))
+	for index, row := range m.Rows {
+		after[m.motionRowKey(row)] = index
+	}
+	limit := max(m.LastViewport.VisibleRows, 0)
+	var gaps []motion.Gap
+	anchor, run := -1, 0
+	flush := func() {
+		if run > 0 && anchor >= 0 && anchor >= m.Cursor {
+			gaps = append(gaps, motion.Gap{After: anchor, Rows: min(run, limit)})
+		}
+		run = 0
+	}
+	for _, key := range before {
+		index, kept := after[key]
+		if !kept {
+			run++
+			continue
+		}
+		flush()
+		anchor = index
+	}
+	flush()
+	return gaps
 }
 
 // NoteMoveTrail records the cursor's task and the place it holds before a move
@@ -205,6 +282,19 @@ func (m *OutlinerModel) SettleMotion() tea.Cmd {
 			cmds = append(cmds, m.anim.StartReveal(revealed))
 		}
 	}
+	if before := m.foldBefore; before != nil {
+		m.foldBefore = nil
+		if gaps := m.foldCollapseGaps(before); len(gaps) > 0 && m.ghost == nil {
+			cmds = append(cmds, m.anim.StartCollapse(gaps))
+		}
+	}
+	// The dock rolls out when it opens, never when it is already standing: the
+	// cursor moving between rows under an open dock swaps the document in place.
+	dockOpen := m.PeekDockVisible() && !m.PeekFullscreen
+	if dockOpen && !m.dockSeen {
+		cmds = append(cmds, m.anim.StartDock())
+	}
+	m.dockSeen = dockOpen
 	if task, place, ok := m.anim.TrailIntent(); ok {
 		if current, now, onTask := m.cursorTaskPlace(); onTask && current == task && now != place {
 			cmds = append(cmds, m.anim.StartTrail(task, now))
@@ -354,4 +444,27 @@ func renderLandedCheck(text, icon string) string {
 		return check.Render(text)
 	}
 	return theme.MutedStyle.Render(before) + check.Render(icon) + after
+}
+
+// appendGapLines adds the blank rows a closing gap still holds under a row.
+func appendGapLines(lines []string, rows, width int) []string {
+	for range rows {
+		lines = append(lines, strings.Repeat(" ", max(width, 0)))
+	}
+	return lines
+}
+
+// fitCollapseGap bounds the list block a closing gap lengthened. The gap pushes
+// the rows under it down by the rows it still holds: into the padding under a
+// short projection, and otherwise the window's tail slides out under the dock
+// rather than past it, so the block stays the height the window paid for.
+// gapRows tells the dock's padding what the gap already spent.
+func (m *OutlinerModel) fitCollapseGap(lines []string, settled, visible int, gapping bool) []string {
+	m.LastViewport.gapRows = 0
+	if !gapping || len(lines) <= settled {
+		return lines
+	}
+	lines = lines[:min(len(lines), max(settled, visible))]
+	m.LastViewport.gapRows = len(lines) - settled
+	return lines
 }

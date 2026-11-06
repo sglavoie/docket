@@ -245,7 +245,11 @@ func (m *OutlinerModel) PeekDockLines() []string {
 	} else {
 		lines = append(lines, chrome.RenderHorizontalDivider(width, chrome.WithDividerColor(theme.ColorBorder)))
 	}
-	return append(lines, m.peekDockWindow(width, geometry)...)
+	lines = append(lines, m.peekDockWindow(width, geometry)...)
+	if m.PeekFullscreen {
+		return lines
+	}
+	return m.dockRollLines(lines, width)
 }
 
 // peekDockWindow is the document's own rows: the cursor row's detail at its

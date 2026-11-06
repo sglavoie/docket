@@ -66,9 +66,14 @@ type OutlinerModel struct {
 	// arrival is the mode switch the title draws for one phase; see
 	// mode_arrival.go. It shares ghostSeq's generation counter.
 	arrival *modeArrival
-	// anim holds the motion runs: the smooth scroll, the fold roll-out, and the
-	// move trail. It paints and writes nothing else; see outliner_motion.go.
-	anim motion.Runs
+	// anim holds the motion runs: the smooth scroll, the fold roll-out and
+	// close-up, the move trail, and the dock roll-in. It paints and writes
+	// nothing else; see outliner_motion.go. foldBefore is the row order a fold
+	// operation started from, and dockSeen whether the last settled update left
+	// the dock open, which is what tells an opening dock from a standing one.
+	anim       motion.Runs
+	foldBefore []string
+	dockSeen   bool
 	// unfocused is whether the terminal last reported that it lost focus. The
 	// cursor then rests dimmed — a muted mark and no band — so a glance at a
 	// background window says the keyboard is elsewhere. See SetTerminalFocused.

@@ -2,6 +2,7 @@ package grammar
 
 import (
 	"errors"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -228,4 +229,27 @@ func draftCellOffsets(input textarea.Model) [][]int {
 		return nil
 	}
 	return result
+}
+
+// HighlightCaptureExample draws a capture line the way the composer would
+// color it as typed, for surfaces that teach the grammar by example. It
+// resolves no project, so a %project token takes the primary color, and it
+// refuses nothing: an example is shown, never committed.
+func HighlightCaptureExample(line string) string {
+	parsed := textgrammar.Parse(line, textgrammar.SurfaceCapture)
+	var q QuickCaptureInput
+	tokens := slices.Clone(parsed.Tokens)
+	slices.SortFunc(tokens, func(a, b textgrammar.Token) int { return a.Start - b.Start })
+	var b strings.Builder
+	cursor := 0
+	for _, token := range tokens {
+		if token.Start < cursor || token.End <= token.Start || token.End > len(line) {
+			continue
+		}
+		b.WriteString(line[cursor:token.Start])
+		b.WriteString(q.captureTokenStyle(token).Render(line[token.Start:token.End]))
+		cursor = token.End
+	}
+	b.WriteString(line[cursor:])
+	return b.String()
 }

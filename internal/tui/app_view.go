@@ -157,7 +157,7 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 		}
 		panelDivider += statusBarHeight
 		content = m.applyOverlays(content, m.viewNav.height, panelDivider)
-		resultView.SetContent(m.applyBackground(content))
+		resultView.SetContent(m.risePanel(m.applyBackground(content), panelDivider, m.viewNav.height))
 		return resultView
 	}
 
@@ -167,7 +167,11 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 	// than a spare one — lipgloss.Height counts it, and so did the padding above —
 	// so joining without it hands the footer that row and leaves the frame a row
 	// short of the terminal, with the footer floating above a blank bottom line.
-	resultView.SetContent(m.fadeViewBody(m.applyBackground(content+"\n"+statusBar), targetContentHeight))
+	framed := m.fadeViewBody(m.applyBackground(content+"\n"+statusBar), targetContentHeight)
+	if panelDivider != noPanelDivider {
+		framed = m.risePanel(framed, panelDivider, targetContentHeight)
+	}
+	resultView.SetContent(framed)
 	return resultView
 }
 

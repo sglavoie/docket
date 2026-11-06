@@ -47,6 +47,106 @@ type PulseChange struct {
 	Raised   PulseComponent
 	Lowered  PulseComponent
 	Settling bool
+	// Ticking names the counts drawn at an in-between value, ticker, ahead
+	// of the fresh phase: a count that jumped by several steps counts its way
+	// there rather than snapping. See TickerAt.
+	Ticking PulseComponent
+	ticker  [4]int
+}
+
+// pulseComponents is the readout's counts in a fixed order, the order ticker
+// stores them in.
+var pulseComponents = [...]PulseComponent{PulseInbox, PulseToday, PulseOverdue, PulseDone}
+
+func (p WorkspacePulse) count(component PulseComponent) int {
+	switch component {
+	case PulseInbox:
+		return p.Inbox
+	case PulseToday:
+		return p.Today
+	case PulseOverdue:
+		return p.Overdue
+	default:
+		return p.Done
+	}
+}
+
+// pulseTickerMaxFrames bounds how many in-between values a count draws, so a
+// sync that moves a count by forty still settles within a few frames.
+const pulseTickerMaxFrames = 4
+
+// TickerFrames is how many in-between values the change from before to after
+// draws: one fewer than the largest step any count took, capped. A count that
+// moved by one has nothing between, and a count whose digits change in number
+// — 9 to 12 — never ticks, since an in-between value would be a different
+// width than the settled one and the pulse changes paint, never width. A
+// count at zero after is not drawn, so it never ticks either.
+func TickerFrames(before, after WorkspacePulse) int {
+	frames := 0
+	for _, component := range pulseComponents {
+		from, to := before.count(component), after.count(component)
+		if !tickable(from, to) {
+			continue
+		}
+		frames = max(frames, min(absInt(to-from)-1, pulseTickerMaxFrames))
+	}
+	return frames
+}
+
+func tickable(from, to int) bool {
+	return to > 0 && from > 0 && absInt(to-from) > 1 && len(fmt.Sprint(from)) == len(fmt.Sprint(to))
+}
+
+func absInt(n int) int {
+	if n < 0 {
+		return -n
+	}
+	return n
+}
+
+// TickerAt is the change drawing frame of frames in-between values from
+// before to after: each tickable count at its share of the way, eased so the
+// first frames cover most of the distance. A frame past the last draws none.
+func (c PulseChange) TickerAt(before, after WorkspacePulse, frame, frames int) PulseChange {
+	c.Ticking = 0
+	if frame < 0 || frame >= frames {
+		return c
+	}
+	t := float64(frame+1) / float64(frames+1)
+	eased := 1 - (1-t)*(1-t)
+	for index, component := range pulseComponents {
+		from, to := before.count(component), after.count(component)
+		if !tickable(from, to) {
+			continue
+		}
+		value := from + int(float64(to-from)*eased)
+		if value == to {
+			value = to - sign(to-from)
+		}
+		c.Ticking |= component
+		c.ticker[index] = value
+	}
+	return c
+}
+
+func sign(n int) int {
+	if n < 0 {
+		return -1
+	}
+	return 1
+}
+
+// shown is the value one count draws this frame: its in-between value while
+// it ticks, else its own.
+func (p WorkspacePulse) shown(component PulseComponent) int {
+	if p.lit.Ticking&component != 0 {
+		for index, candidate := range pulseComponents {
+			if candidate == component {
+				return p.lit.ticker[index]
+			}
+		}
+	}
+	return p.count(component)
 }
 
 // Any reports whether some count moved.
@@ -198,16 +298,16 @@ func formatWorkspacePulseComponents(pulse WorkspacePulse, level workspacePulseLe
 
 	parts := make([]string, 0, 4)
 	if level < workspacePulseWithoutInbox && pulse.Inbox > 0 {
-		parts = append(parts, pulse.componentStyle(PulseInbox, theme.MutedStyle).Render(fmt.Sprintf("inbox %d", pulse.Inbox)))
+		parts = append(parts, pulse.componentStyle(PulseInbox, theme.MutedStyle).Render(fmt.Sprintf("inbox %d", pulse.shown(PulseInbox))))
 	}
 	if pulse.Today > 0 {
-		parts = append(parts, pulse.componentStyle(PulseToday, theme.MutedStyle).Render(fmt.Sprintf("today %d", pulse.Today)))
+		parts = append(parts, pulse.componentStyle(PulseToday, theme.MutedStyle).Render(fmt.Sprintf("today %d", pulse.shown(PulseToday))))
 	}
 	if level < workspacePulseTodayOnly && pulse.Overdue > 0 {
-		parts = append(parts, pulse.componentStyle(PulseOverdue, theme.PreviewWarningStyle).Render(fmt.Sprintf("overdue %d", pulse.Overdue)))
+		parts = append(parts, pulse.componentStyle(PulseOverdue, theme.PreviewWarningStyle).Render(fmt.Sprintf("overdue %d", pulse.shown(PulseOverdue))))
 	}
 	if level < workspacePulseWithoutDone && pulse.Done > 0 {
-		parts = append(parts, pulse.componentStyle(PulseDone, theme.MutedStyle).Render(fmt.Sprintf("done %d", pulse.Done)))
+		parts = append(parts, pulse.componentStyle(PulseDone, theme.MutedStyle).Render(fmt.Sprintf("done %d", pulse.shown(PulseDone))))
 	}
 	if len(parts) == 0 {
 		return ""
@@ -224,13 +324,13 @@ func formatWorkspacePulseComponents(pulse WorkspacePulse, level workspacePulseLe
 func WindowTitle(pulse WorkspacePulse) string {
 	parts := []string{"Docket"}
 	if pulse.Inbox > 0 {
-		parts = append(parts, fmt.Sprintf("inbox %d", pulse.Inbox))
+		parts = append(parts, fmt.Sprintf("inbox %d", pulse.shown(PulseInbox)))
 	}
 	if pulse.Today > 0 {
-		parts = append(parts, fmt.Sprintf("today %d", pulse.Today))
+		parts = append(parts, fmt.Sprintf("today %d", pulse.shown(PulseToday)))
 	}
 	if pulse.Overdue > 0 {
-		parts = append(parts, fmt.Sprintf("overdue %d", pulse.Overdue))
+		parts = append(parts, fmt.Sprintf("overdue %d", pulse.shown(PulseOverdue)))
 	}
 	return strings.Join(parts, " · ")
 }

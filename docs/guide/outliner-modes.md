@@ -86,6 +86,16 @@ most eight). Nothing Today or Pinned already shows is offered, a search hides
 the lane, and folding it with `h` or `s` dismisses it for the session. It is an
 offer, not a plan: nothing is saved until you press `wt`.
 
+Under its rows, wherever the window has room, Today draws the day around the
+list. Once something is finished, `Done today · 3` lists today's completions
+struck through, newest first, with the last seven days as a small bar chart
+and their total beside it. `Next 7 days` follows: one column per day, with
+`●2` for two deadlines and `◇1` for a check-in falling on it, and a dot for
+a day with nothing dated. Both blocks are drawn whole or not at all, never
+at the list's expense, and neither is a row: the cursor, clicks, and folds
+pass them by. They describe the whole scope, so a search, a filter, a lens,
+or a Focus in Today draws neither.
+
 Every mode groups its tasks by project when you are looking at more than one
 project. Each group opens with a foldable `[slug] (count)` header, and its
 tasks sit one level beneath it without repeating the project's name; `h` folds
@@ -221,3 +231,10 @@ Empty Inbox offers Today (`gt`); empty Today offers Next (`gn`); empty Next
 offers Backlog (`gb`). Empty Due offers Today. These destinations match the
 iPhone app and preserve the current project scope. Search and filtered empty
 views keep their own explanations and recovery controls.
+
+An empty Today rests on a card under that sentence: `✓ Today is done` with
+the day's count and the week's when something was finished, the last seven
+days' completions as bars, and the week ahead. A workspace holding no task at
+all opens on a welcome instead, which shows three example captures colored as
+the composer colors them, what each sigil becomes, and the keys that carry
+the rest; the first capture retires it.

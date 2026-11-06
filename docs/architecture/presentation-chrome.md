@@ -993,7 +993,7 @@ and each changes paint alone: no width, no row, no window input.
   records the slot as `LastViewport.ghostOffset`. `CursorScreenRow`,
   `pointerHitAt`, and the Peek dock's padding read that slot. Any keystroke
   retires the ghost through `DropMotion`.
-- **Motion runs.** Three further runs live on `motion.Runs`, an L0
+- **Motion runs.** Five further runs live on `motion.Runs`, an L0
   package the Outliner reads, since the Outliner package is at its file ceiling.
   The shell notes an intent before the operation runs (`noteOutlinerMotion`,
   called from `executeCoreInputOperation` and `executeSingleTaskOperation`),
@@ -1021,7 +1021,23 @@ and each changes paint alone: no width, no row, no window input.
     first third and then two thirds, with blanks of `rowWidth` at the rows
     still to come. Nothing below the block moves, the cursor's row is always
     drawn, and a projection whose length changed mid-run withholds nothing.
-    Closing a fold is not animated.
+  - *Fold close-up.* The same note keeps the drawn rows in order
+    (`foldBefore`). After the rebuild `foldCollapseGaps` finds each maximal run
+    of rows that were drawn and are gone, under the surviving row it hung from,
+    and `motion.CollapseRows` holds that many blank rows open under it for two
+    24 ms frames, two thirds and then a third, rounded up. The rows below are
+    pushed down by the gap: into the padding under a short projection, recorded
+    as `LastViewport.gapRows` so the dock's padding counts it, and otherwise the
+    window's tail slides out under the dock. A gap above the cursor is not
+    animated, since it would move the cursor's own screen row, and a ghost
+    holds the list still. `h` (`OperationCoreCollapseParent`) notes it too.
+  - *Dock roll-in.* `SettleMotion` compares `PeekDockVisible` against
+    `dockSeen`, what the last settle left, so only an opening dock starts a run
+    and a cursor moving under an open one swaps its document in place.
+    `dockRollLines` blanks the document's tail for two 24 ms frames through
+    `motion.DockRows`, a third and then two thirds drawn; the slice keeps its
+    length, so `PeekDockRows` and every reservation are unchanged. Fullscreen
+    Peek never rolls.
   - *Move trail.* `J`, `K`, their edge forms, `]`, `[`, Set Parent, and Move to
     Project note the cursor's task and its place: row, project, parent, tree,
     and group. Each settle in which the cursor's row names that task somewhere
@@ -1053,6 +1069,30 @@ and each changes paint alone: no width, no row, no window input.
   view through `WorkspacePulse.Lit`, so `m.workspacePulse`, the window title,
   the progress indicator, and every comparison read bare values. A launch draws
   nothing, since the launch focus is still owed while its first pulse lands.
+  A count that moved by more than one ticks first: `pulse.TickerFrames` names
+  up to four in-between values, one fewer than the largest step, and
+  `TickerAt` draws each tickable count at its eased share for 40 ms per frame
+  through `WorkspacePulse.shown`, before the fresh phase. A count whose digit
+  count changes, or that starts or ends at zero, never ticks, so the pulse's
+  width is the settled one on every frame.
+- **Panel rise.** The deferred closure compares `hostedPanelLayout` across one
+  `Update`, and `markPanelRise` starts five 28 ms frames when a bounded panel
+  opened that was not open before. `risePanel` fades the panel's rows toward
+  the background with `fadeLines`, leaving its bottom row — capture's editor —
+  whole and revealing each row above once an eased edge rising from the floor
+  has passed it. It changes color alone, and `stopViewFade` retires it with
+  the view fade on any key or click.
+- **Day canvas.** Today's canvas and the empty state's cards
+  (`outliner_day_canvas.go`) are paint in the list window's padding, read off
+  `pulse.ComputeDayCanvas` over `ScopeProjects`. `writeDayCanvas` chooses its
+  blocks against the settled rows and trims to what a ghost or a gap left,
+  recording `LastViewport.canvasRows` for the dock's padding alone; no row,
+  cursor, click, or window reads it. `dayCanvasEligible` admits the plain Today
+  alone — no search, filter, lens, Focus, or zoom — since the canvas speaks for
+  the whole scope. The empty state centers `emptyStateCard` a third of the way
+  into the rows its sentence left, whole or not at all: the welcome when no
+  project in an unscoped, loaded workspace holds any task, and Today's resting
+  card when Today is the empty mode.
 - **Terminal focus.** `handleFocusMessage` hands each focus report to
   `noteTerminalFocus`. The Outliner's `SetTerminalFocused` turns the cursor's
   `cursorPaint` to resting: a muted mark, no band, no flash. It changes paint

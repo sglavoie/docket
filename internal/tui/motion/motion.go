@@ -1,5 +1,6 @@
 // Package motion holds the Outliner's paint-only animation runs: the smooth
-// scroll, the fold roll-out, and the move trail. It owns their schedules, their
+// scroll, the fold roll-out and close-up, the move trail, and the Peek dock's
+// roll-in. It owns their schedules, their
 // generations, and the arithmetic each frame paints from; it owns no row, no
 // cursor, and no window. The Outliner records what an operation is about to do
 // as an intent, turns an intent into a run once the update that carried it has
@@ -32,9 +33,14 @@ const (
 	Reveal
 	// Trail lights the row a moved task landed on.
 	Trail
+	// Collapse closes the gap a fold left over two frames, so the rows under
+	// it slide up rather than jumping.
+	Collapse
+	// Dock rolls an opening Peek dock's document out under its divider.
+	Dock
 )
 
-const kinds = 3
+const kinds = 5
 
 // The schedules are the delay before each phase after the first ends, so a run
 // of n phases paints its first frame on the update that started it and retires
@@ -50,6 +56,10 @@ var schedules = [kinds][]time.Duration{
 	Scroll - 1: {20 * time.Millisecond, 20 * time.Millisecond},
 	Reveal - 1: {24 * time.Millisecond, 24 * time.Millisecond},
 	Trail - 1:  {260 * time.Millisecond, 340 * time.Millisecond},
+	// Collapse and Dock take Reveal's cadence: they are its other half and its
+	// sibling, a block of rows arriving or leaving, read rather than tracked.
+	Collapse - 1: {24 * time.Millisecond, 24 * time.Millisecond},
+	Dock - 1:     {24 * time.Millisecond, 24 * time.Millisecond},
 }
 
 // Phases is the number of frames a kind paints before it settles.
@@ -77,6 +87,7 @@ type Runs struct {
 	scrollFrom int
 	revealed   []bool
 	trailTask  string
+	gaps       []Gap
 
 	scrollIntent     bool
 	scrollIntentFrom int
@@ -107,6 +118,7 @@ func (b *Runs) Drop() {
 		b.runs[index] = run{}
 	}
 	b.revealed = nil
+	b.gaps = nil
 	b.scrollIntent = false
 	b.revealIntent = nil
 	b.trailIntent, b.trailIntentPlace = "", ""
@@ -138,7 +150,7 @@ func (b *Runs) tick(kind Kind, phase, seq int) tea.Cmd {
 // Advance moves the run msg names to its next phase, retiring it after its
 // last, and returns the tick that ends the phase it moved to.
 func (b *Runs) Advance(msg TickMsg) tea.Cmd {
-	if msg.Kind < Scroll || msg.Kind > Trail {
+	if msg.Kind < Scroll || msg.Kind > Dock {
 		return nil
 	}
 	r := &b.runs[msg.Kind-1]
@@ -148,8 +160,13 @@ func (b *Runs) Advance(msg TickMsg) tea.Cmd {
 	r.phase++
 	if r.phase >= Phases(msg.Kind) {
 		*r = run{}
-		if msg.Kind == Reveal {
+		switch msg.Kind {
+		case Reveal:
 			b.revealed = nil
+		case Collapse:
+			b.gaps = nil
+		case Scroll, Trail, Dock:
+			// Their state is the run itself, already retired above.
 		}
 		return nil
 	}
@@ -249,4 +266,56 @@ func (b *Runs) StartTrail(task, place string) tea.Cmd {
 func (b *Runs) TrailTask() (task string, phase int, ok bool) {
 	phase, ok = b.Live(Trail)
 	return b.trailTask, phase, ok
+}
+
+// Gap is the room a closed fold leaves under the row that closed: After is
+// the index, in the rebuilt rows, of the row the vanished block hung under,
+// and Rows how many rows vanished.
+type Gap struct {
+	After int
+	Rows  int
+}
+
+// StartCollapse closes gaps over the collapse schedule. A run with no gap is
+// not started.
+func (b *Runs) StartCollapse(gaps []Gap) tea.Cmd {
+	if !b.armed || len(gaps) == 0 {
+		return nil
+	}
+	b.gaps = gaps
+	return b.start(Collapse)
+}
+
+// CollapseGaps is the gaps a live collapse still draws this frame, each
+// shrunk to its phase's share, or nil. rows is the projection's current
+// length, and a gap pointing past it draws nothing: a projection rebuilt
+// mid-run is not the one the gaps name.
+func (b *Runs) CollapseGaps(rows int) []Gap {
+	phase, ok := b.Live(Collapse)
+	if !ok {
+		return nil
+	}
+	var out []Gap
+	for _, gap := range b.gaps {
+		if gap.After < 0 || gap.After >= rows {
+			return nil
+		}
+		if shown := CollapseRows(gap.Rows, phase); shown > 0 {
+			out = append(out, Gap{After: gap.After, Rows: shown})
+		}
+	}
+	return out
+}
+
+// StartDock rolls an opening Peek dock's document out.
+func (b *Runs) StartDock() tea.Cmd {
+	if !b.armed {
+		return nil
+	}
+	return b.start(Dock)
+}
+
+// DockPhase is the phase of a live dock roll-in.
+func (b *Runs) DockPhase() (phase int, ok bool) {
+	return b.Live(Dock)
 }

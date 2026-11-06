@@ -371,6 +371,10 @@ func (m *AppModel) outlinerModeForMotion() chrome.OutlinerModeID {
 const (
 	pulseMotionFreshDuration    = 260 * time.Millisecond
 	pulseMotionSettlingDuration = 420 * time.Millisecond
+	// pulseMotionTickerFrame is each in-between value a count that jumped by
+	// several draws ahead of the fresh phase: a few frames, under a fifth of a
+	// second however far it moved.
+	pulseMotionTickerFrame = 40 * time.Millisecond
 )
 
 // pulseMotion is the workspace pulse's count change being drawn, and the
@@ -378,6 +382,10 @@ const (
 type pulseMotion struct {
 	change pulse.PulseChange
 	seq    int
+	// from and to are the pulses a ticking change counts between, frame the
+	// in-between value it draws, and frames how many it draws in all.
+	from, to      pulse.WorkspacePulse
+	frame, frames int
 	// away is the pulse as it stood when the terminal lost focus, held while it
 	// stays unfocused: a count that moves meanwhile — a sync, a reload, the
 	// periodic tick — is lit when the user comes back to see it, measured from
@@ -427,6 +435,12 @@ func (m *AppModel) markPulseChange(before pulse.WorkspacePulse, launchArmed bool
 		return nil
 	}
 	m.pulseMotion.seq++
+	m.pulseMotion.from, m.pulseMotion.to = before, m.workspacePulse
+	m.pulseMotion.frame, m.pulseMotion.frames = 0, pulse.TickerFrames(before, m.workspacePulse)
+	if m.pulseMotion.frames > 0 {
+		m.pulseMotion.change = change.TickerAt(before, m.workspacePulse, 0, m.pulseMotion.frames)
+		return pulseMotionTick(pulseMotionTickerFrame, m.pulseMotion.seq)
+	}
 	m.pulseMotion.change = change
 	return pulseMotionTick(pulseMotionFreshDuration, m.pulseMotion.seq)
 }
@@ -434,6 +448,14 @@ func (m *AppModel) markPulseChange(before pulse.WorkspacePulse, launchArmed bool
 func (m *AppModel) advancePulseMotion(msg pulseMotionTickMsg) tea.Cmd {
 	if msg.Seq != m.pulseMotion.seq || !m.pulseMotion.change.Any() {
 		return nil
+	}
+	if m.pulseMotion.change.Ticking != 0 {
+		m.pulseMotion.frame++
+		m.pulseMotion.change = m.pulseMotion.change.TickerAt(m.pulseMotion.from, m.pulseMotion.to, m.pulseMotion.frame, m.pulseMotion.frames)
+		if m.pulseMotion.change.Ticking != 0 {
+			return pulseMotionTick(pulseMotionTickerFrame, msg.Seq)
+		}
+		return pulseMotionTick(pulseMotionFreshDuration, msg.Seq)
 	}
 	if !m.pulseMotion.change.Settling {
 		m.pulseMotion.change.Settling = true

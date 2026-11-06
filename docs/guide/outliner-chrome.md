@@ -262,7 +262,7 @@ moment and lights the `‹` or `›` it traveled through. Switching modes with
 `Tab`, `Shift+Tab`, a digit, or the `g` chord, and opening or leaving a screen
 such as the project hub, Help, comments, or attachments, eases the new rows in
 from the background over about a sixth of a second while the title and the
-footer stay put; nothing moves, and capture's panel opens without it. A workspace count in the
+footer stay put; nothing moves. A workspace count in the
 title that just changed, such as `done` after you finish a task, lights for a
 moment and settles back: green when Done rises, amber when Overdue rises, and
 the accent color otherwise. A page jump — `Ctrl+D`, `Ctrl+U`, `PgDn`, `PgUp`,
@@ -270,13 +270,22 @@ the accent color otherwise. A page jump — `Ctrl+D`, `Ctrl+U`, `PgDn`, `PgUp`,
 before it settles, in well under a tenth of a second; Peek's own scrolling does
 not glide. A fold you open with `l`, `Enter`, `s`, `p`, `t`, or a click on its
 arrow rolls its rows out over two quick frames instead of appearing at once;
-closing one is not animated. A task you move with `J`, `K`, `Ctrl+J`, `Ctrl+K`,
+closing one closes up the same way: the rows it held stay open as
+blank space for two frames while the rows below slide up into it. A task you move with `J`, `K`, `Ctrl+J`, `Ctrl+K`,
 `]`, `[`, `>`, or `%` lights the cursor's mark in the accent where it lands, on
 a brighter band at first and then on the ordinary one, for about half a second,
 and each further move lights it again; a move that takes the task out of view,
 such as `%` from a scoped project, shows the departing row instead. A task you
 capture lights its own mark in the accent wherever it lands, then dims; the
-cursor stays where you were reading. Any key,
+cursor stays where you were reading. Opening
+Peek rolls its document out under the divider over two quick frames; the
+dock stands at its full height from the first, so nothing above it moves, and
+moving the cursor under an open dock swaps the document in place. Capture's
+panel rises into its rows: the line you type on is there at once, and the
+rows above it ease in from the background, bottom first. A workspace count
+that jumps by more than one, as a sync or a bulk change can make it, counts
+through a few in-between values before it lights, whenever the number keeps
+its width. Any key,
 click, or wheel step finishes whatever is still animating, and a click always
 lands on the rows the list is settling on. Tests and the harness run without this
 motion.

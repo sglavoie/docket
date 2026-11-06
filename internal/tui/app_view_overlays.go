@@ -246,10 +246,99 @@ func (m *AppModel) advanceViewFade(msg viewFadeTickMsg) tea.Cmd {
 	return viewFadeTick(msg.Seq)
 }
 
-// stopViewFade drops a fade in progress, as turning motion off does.
+// stopViewFade drops a fade in progress, as turning motion off does, and the
+// panel rise with it: both are an arrival a keystroke has already moved past.
 func (m *AppModel) stopViewFade() {
 	m.viewFade.seq++
 	m.viewFade.remaining = 0
+	m.panelRise.seq++
+	m.panelRise.remaining = 0
+}
+
+// A bounded panel such as capture rises into its rows rather than appearing
+// whole: its bottom row, where the caret is, is drawn at once, and the rows
+// above it ease in from the background bottom first, so the panel reads as
+// coming up from the terminal's floor. Like the view fade it is paint alone —
+// every frame has the settled text and layout — and a motion session only.
+const (
+	panelRiseFrame  = 28 * time.Millisecond
+	panelRiseFrames = 5
+)
+
+// panelRise is the panel arrival being drawn; see viewFade, which it mirrors.
+type panelRise struct {
+	remaining int
+	seq       int
+}
+
+// panelRiseTickMsg draws the next frame of the rise Seq names.
+type panelRiseTickMsg struct{ Seq int }
+
+// markPanelRise starts the rise when an Update opened a bounded panel that was
+// not open before it. Moving between two panels, or changing one's size, is
+// not an arrival.
+func (m *AppModel) markPanelRise(panelBefore, launchArmed bool) tea.Cmd {
+	if !m.lifecycle.motion || launchArmed || m.lifecycle.launchFocusArmed() || panelBefore {
+		return nil
+	}
+	if _, open := m.hostedPanelLayout(); !open {
+		return nil
+	}
+	m.panelRise.seq++
+	m.panelRise.remaining = panelRiseFrames
+	return panelRiseTick(m.panelRise.seq)
+}
+
+func (m *AppModel) advancePanelRise(msg panelRiseTickMsg) tea.Cmd {
+	if msg.Seq != m.panelRise.seq || m.panelRise.remaining <= 0 {
+		return nil
+	}
+	m.panelRise.remaining--
+	if m.panelRise.remaining == 0 {
+		return nil
+	}
+	return panelRiseTick(msg.Seq)
+}
+
+func panelRiseTick(seq int) tea.Cmd {
+	return status.TickCmd(panelRiseFrame, func(time.Time) tea.Msg { return panelRiseTickMsg{Seq: seq} })
+}
+
+// riseShare is how far the rise has come, eased out, from 0 on the panel's own
+// frame to 1 once its last tick has run.
+func (m *AppModel) riseShare() float64 {
+	if !m.lifecycle.motion || m.panelRise.remaining <= 0 {
+		return 1
+	}
+	t := float64(panelRiseFrames-m.panelRise.remaining) / panelRiseFrames
+	return 1 - (1-t)*(1-t)
+}
+
+// risePanel draws the panel rows [top, bottom) of frame partway in: the bottom
+// row whole, and each row above it revealed once the rising edge has passed
+// it, over a soft band so the edge reads as a slope rather than a cut.
+func (m *AppModel) risePanel(frame string, top, bottom int) string {
+	share := m.riseShare()
+	if share >= 1 || top < 0 || theme.ThemeBgColor == "" || m.lifecycle.colorDisabled {
+		return frame
+	}
+	rows := bottom - top
+	if rows <= 1 {
+		return frame
+	}
+	lines := strings.Split(frame, "\n")
+	bottom = min(bottom, len(lines))
+	edge := share * float64(rows) * 1.5
+	band := max(float64(rows)/2, 1)
+	for y := top; y < bottom-1; y++ {
+		distance := float64(bottom - 1 - y)
+		reveal := min(max((edge-distance)/band, 0), 1)
+		if reveal >= 1 {
+			continue
+		}
+		lines[y] = fadeLines(lines[y], 0, 1, viewFadeFloor*0.3+(1-viewFadeFloor*0.3)*reveal)
+	}
+	return strings.Join(lines, "\n")
 }
 
 func viewFadeTick(seq int) tea.Cmd {

@@ -74,6 +74,7 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 	// tail; LastViewport keeps the settled window either way.
 	first, last, pinned := m.motionRowRange(viewport, endIdx)
 	withheld := m.anim.RevealHidden(len(m.Rows))
+	gapLines := m.collapseGapLines()
 	labels := m.jumpLabelsForWindow(viewport.startIdx, endIdx)
 	var lines []string
 	if pinned {
@@ -106,7 +107,9 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 		if labels != nil && !selected {
 			lines[len(lines)-1] = jumplabel.Paint(lines[len(lines)-1], labels[i], m.Jump.Prefix)
 		}
+		lines = appendGapLines(lines, gapLines[i], viewport.rowWidth)
 	}
+	lines = m.fitCollapseGap(lines, last-first+boolRows(pinned), viewport.VisibleRows, gapLines != nil)
 	if ghosted {
 		lines = append(lines[:ghostOffset], append([]string{m.renderDepartureGhost(viewport.rowWidth)}, lines[ghostOffset:]...)...)
 	}
@@ -440,6 +443,7 @@ func (m *OutlinerModel) renderOutlinerHostContent(width int) string {
 	m.LastViewport.topRow = strings.Count(b.String(), "\n")
 	m.pointerFrame = outlinerPointerFrame{rows: true}
 	b.WriteString(m.renderOutlinerRows(viewport))
+	m.writeDayCanvas(&b, viewport)
 	// The rows render records what it drew, a departure ghost included.
 	m.writePeekDock(&b, m.LastViewport)
 

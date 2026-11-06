@@ -604,6 +604,7 @@ Motion is `lifecycleController.motion`, armed by `RunApp` alone: frame-counted,
 voided by sequence, changing paint and never width. `departureGhost` is
 render-only, never in `m.Rows` nor the cursor's line, and `CursorScreenRow` and
 `pointerHitAt` step over its `LastViewport.ghostOffset`.
+`gapRows`/`canvasRows` are paint; only dock padding reads them.
 The interactive TUI ignores an inherited `NO_COLOR`; `--no-color` still
 disables color, and non-interactive commands honor it.
 

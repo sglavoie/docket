@@ -173,6 +173,14 @@ type outlinerViewport struct {
 	// were drawn one line lower. Only renderOutlinerRows writes them.
 	ghostActive bool
 	ghostOffset int
+	// gapRows is the blank lines a closing fold's gap drew past the window's
+	// own rows, into the padding under a short projection. It is paint and
+	// moves no row's screen position above the gap.
+	gapRows int
+	// canvasRows is the lines Today's day canvas drew in the padding under
+	// the rows; like gapRows it is paint, counted only so the dock's padding
+	// lands the dock where the window paid for it.
+	canvasRows int
 }
 
 // drawnRows is the screen rows the window fills: its own rows and the pinned
@@ -185,7 +193,7 @@ func (v outlinerViewport) drawnRows() int {
 	if v.ghostActive {
 		drawn++
 	}
-	return drawn
+	return drawn + v.gapRows + v.canvasRows
 }
 
 // outlinerListRows is the height of the block between the header chrome and the
