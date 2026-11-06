@@ -108,6 +108,10 @@ struct TaskListView: View {
     @State private var loadRequest: UUID?
     @State private var retry = 0
     @State private var acting = false
+    /// The tasks a completion is in flight for, and then the ones whose commit
+    /// is being acknowledged on their rows before the reload removes them.
+    @State private var completing = Set<TaskLocator>()
+    @State private var acknowledged = Set<TaskLocator>()
     @State private var editingRow: TaskRow?
     @State private var organizingRow: TaskRow?
     @State private var openedNote: NoteRecord?
@@ -115,6 +119,11 @@ struct TaskListView: View {
     @State private var emptyCapture = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// How long a completed row stays drawn as done before the reload that
+    /// removes it.
+    static let completionAcknowledgement: Duration = .milliseconds(450)
 
     private struct LoadKey: Hashable {
         var generation: Int
@@ -152,7 +161,11 @@ struct TaskListView: View {
                     if selecting {
                         // The selection's actions sit beside Done: a bottom
                         // bar would sit under the tab bar.
-                        BulkActionsButton(workspace: workspace, selection: Array(selection)) { refusal, moved in
+                        BulkActionsButton(workspace: workspace, selection: Array(selection), started: { action, targets in
+                            if case .state(.done) = action { completing = Set(targets) }
+                        }) { refusal, moved in
+                            if refusal == nil, !completing.isEmpty { acknowledge(completing) }
+                            completing = []
                             actionFailure = refusal
                             // A moved task has a new address, so the selection
                             // naming the old one is spent; every other action
@@ -235,6 +248,12 @@ struct TaskListView: View {
                     try? await Task.sleep(for: .milliseconds(250))
                     if Task.isCancelled { return }
                 }
+                // A completion's commit moves the generation before its row has
+                // shown the result, so that reload waits out the acknowledgement.
+                if !completing.isEmpty || !acknowledged.isEmpty {
+                    try? await Task.sleep(for: Self.completionAcknowledgement)
+                    if Task.isCancelled { return }
+                }
                 await load()
                 if Task.isCancelled { return }
                 await loadSuggestions()
@@ -315,7 +334,8 @@ struct TaskListView: View {
                 ForEach(rows) { row in
                     let projectName = projectNames[row.item.task.projectID]
                     NavigationLink(value: Route.task(row.item.task.locator)) {
-                        TaskRowView(item: row.item, projectName: projectName)
+                        TaskRowView(item: row.item, projectName: projectName,
+                                    acknowledged: acknowledged.contains(row.id))
                             .padding(.leading, CGFloat(row.depth) * 18)
                     }
                     .accessibilityLabel(TaskRowView.spokenLabel(row.item, projectName: projectName))
@@ -456,6 +476,9 @@ struct TaskListView: View {
             order = proposed
         }
         rows = proposed
+        // The tick answers the drop the person sees land; a refused write
+        // still says so in words beside the list.
+        workspace.signal(.selection)
         acting = true
         actionFailure = nil
         Task {
@@ -530,13 +553,26 @@ struct TaskListView: View {
         }
     }
 
+    private func acknowledge(_ locators: Set<TaskLocator>) {
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { acknowledged = locators }
+    }
+
     private func act(_ locator: TaskLocator, _ action: TaskListAction) {
         guard !acting else { return }
         acting = true
         actionFailure = nil
+        let completes = if case .transition(.done) = action { true } else { false }
+        if completes { completing = [locator] }
         Task {
-            switch await workspace.listAction(locator, action) {
-            case .success: break
+            let result = await workspace.listAction(locator, action)
+            completing = []
+            switch result {
+            case .success(let receipt):
+                // Only a real commit is acknowledged; "No changes were needed"
+                // has nothing to show.
+                if completes, receipt.transactionID != nil {
+                    acknowledge([locator])
+                }
             case .failure(let failure):
                 actionFailure = failure.message
                 UIAccessibility.post(notification: .announcement, argument: failure.message)
@@ -692,7 +728,14 @@ struct TaskListView: View {
             projectNames = names
             diagnostics = result.diagnostics
             let reordered = (sort.field != nil && sort.field != "manual") || filter.isActive || !trimmed.isEmpty
-            rows = source.outline && !reordered ? Self.outline(result.items) : result.items.map { TaskRow(item: $0, depth: 0) }
+            let loaded = source.outline && !reordered ? Self.outline(result.items) : result.items.map { TaskRow(item: $0, depth: 0) }
+            if !acknowledged.isEmpty {
+                // The acknowledged rows leave with the reload they waited for.
+                withAnimation(reduceMotion ? nil : .default) { rows = loaded }
+                acknowledged = []
+            } else {
+                rows = loaded
+            }
             if rows.isEmpty, diagnostics.isEmpty, projectNotes.isEmpty, notesFailure == nil {
                 state = trimmed.isEmpty && !filter.isActive
                     ? .empty(title: "No tasks", message: source.emptyMessage)
@@ -702,6 +745,7 @@ struct TaskListView: View {
             }
         } catch {
             guard loadRequest == request, queryKey == requestedQuery else { return }
+            acknowledged = []
             switch TaskListLoadFailure.classify(error, hasMatchingContent: lastLoadedQuery == requestedQuery, cancelled: Task.isCancelled) {
             case .ignored: return
             case .refresh(let message):
@@ -769,6 +813,9 @@ extension WorkflowState {
 struct TaskRowView: View {
     let item: TaskQueryItem
     let projectName: String?
+    /// Drawn as just completed while the commit is acknowledged: a filled
+    /// checkmark and a struck title, so the cue survives without color.
+    var acknowledged = false
     @Environment(\.colorScheme) private var colorScheme
 
     private var metadata: String {
@@ -791,12 +838,14 @@ struct TaskRowView: View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
             let attention = TaskAttention(task: item.task, now: context.date)
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Image(systemName: item.task.state.symbol)
-                    .foregroundStyle(.secondary)
+                Image(systemName: acknowledged ? "checkmark.circle.fill" : item.task.state.symbol)
+                    .foregroundStyle(acknowledged ? AnyShapeStyle(.green) : AnyShapeStyle(.secondary))
+                    .contentTransition(.symbolEffect(.replace))
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(item.task.title)
-                        .strikethrough(item.task.state.isTerminal)
+                        .strikethrough(acknowledged || item.task.state.isTerminal)
+                        .foregroundStyle(acknowledged ? .secondary : .primary)
                     if let label = attention.label {
                         Text(label)
                             .font(.caption.weight(.semibold))
@@ -852,6 +901,8 @@ struct TaskRowView: View {
 struct BulkActionsButton: View {
     let workspace: WorkspaceModel
     let selection: [TaskLocator]
+    /// Called with an action and its frozen targets just before it runs.
+    var started: (BulkAction, [TaskLocator]) -> Void = { _, _ in }
     /// Called with the refusal, if any, and whether the action moved tasks.
     let finished: (String?, Bool) -> Void
 
@@ -904,6 +955,7 @@ struct BulkActionsButton: View {
         let targets = targets
         let moves: Bool
         if case .move = action { moves = true } else { moves = false }
+        started(action, targets)
         Task {
             finished(await workspace.bulk(targets, action).refusal, moves)
         }

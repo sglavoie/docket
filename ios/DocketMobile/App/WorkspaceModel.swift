@@ -50,6 +50,9 @@ final class WorkspaceModel {
     private(set) var actionReceipt: TaskActionReceipt?
     private(set) var undoneReceipt: TaskActionReceipt?
     private(set) var undoing = false
+    /// The last tactile response a committed action asked for; the shell
+    /// plays each new value once.
+    private(set) var tactile: TactileEvent?
     /// The last mutation refusal, shown until the next one succeeds.
     private(set) var failure: String?
     private(set) var isJoining = false
@@ -89,6 +92,12 @@ final class WorkspaceModel {
             exporter = AutomationStateExporter(destination: destination, workspace: self)
             exporter?.start()
         }
+    }
+
+    /// Asks for one tactile response. Callers raise it once per action, after
+    /// the commit, so a bulk gesture over many tasks still produces one.
+    func signal(_ kind: TactileEvent.Kind) {
+        tactile = TactileEvent(kind: kind, seq: (tactile?.seq ?? 0) + 1)
     }
 
     /// Marks the workspace as possibly changed: every list rereads, and the
@@ -350,6 +359,7 @@ final class WorkspaceModel {
             case .form:
                 _ = try await self.engine.capture(draft.fields.capture(projectID: draft.projectID, destination: draft.destination))
             }
+            self.signal(.success)
         }
         return error.map(EditorFailure.init)
     }
@@ -394,6 +404,7 @@ final class WorkspaceModel {
             }
             changed(.localChange)
             sync.exchange()
+            if case .transition(.done) = action, !result.committed.transactionID.isEmpty { signal(.success) }
             return .success(recordReceipt(action.message(title: result.task.title), result.committed))
         } catch {
             return .failure(TaskActionFailure(message: Self.describe(error)))
@@ -493,6 +504,7 @@ final class WorkspaceModel {
             case .move: "Moved \(subject) to another project"
             }
             self.recordReceipt(message, result.committed, moves: moves)
+            if case .state(.done) = action, !result.committed.transactionID.isEmpty { self.signal(.success) }
         }
         return (refusal, moves)
     }

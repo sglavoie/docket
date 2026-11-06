@@ -108,6 +108,7 @@ struct MainTabView: View {
             .padding(.bottom, 64)
         }
         .background { TabShortcuts(tab: $tab) }
+        .tactileFeedback(workspace)
         .onChange(of: tab, initial: true) { _, tab in
             workspace.screen.tab = switch tab {
             case .today: "today"
