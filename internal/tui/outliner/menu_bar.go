@@ -118,6 +118,7 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, checks ViewMenuChecks) 
 				{OperationID: operation.OperationTaskComments, Group: "Details"},
 				{OperationID: operation.OperationTaskReferences, Group: "Details"},
 				{OperationID: operation.OperationTaskSetResumeNote, Label: "Resume Note", Group: "Details"},
+				{OperationID: operation.OperationCoreNoteLeftOff, Group: "Details"},
 				{OperationID: operation.OperationTaskToggleReview, Group: "Details"},
 				{OperationID: operation.OperationCoreSetUpCheckIns, Group: "Details"},
 				menuSeparator(),

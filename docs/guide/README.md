@@ -35,10 +35,12 @@ Choose a next check-in date, optionally a repeat interval, and save with
 `Ctrl+S`. When the task needs attention, `R` acknowledges it and advances to
 the next candidate. Waiting stays Waiting until you change its state.
 
-**Pause work with a useful restart point.** On the task, press `r`, write a
-short note such as “Next: reproduce the failure with an expired token,” and
-press `Enter`. Then press `wp` to pause it. Later, `b` shows the note in Peek;
-`wg` resumes Doing.
+**Pause work with a useful restart point.** Press `wp` to pause the task. The
+footer says `No resume note · F10: Note Where I Left Off`; open that Task menu
+entry, write a short note such as “Next: reproduce the failure with an expired
+token,” and press `Enter`. (`r` on the row writes the same note.) Later, `b`
+shows the note in Peek, and `wg` resumes Doing with the note read back on the
+footer: `Left off: Next: reproduce the failure with an expired token`.
 
 **Keep a review view ready.** Press `/`, type `?review`, and press `Enter`.
 Open Named Lenses with `\`, choose `Save Current View`, and name it

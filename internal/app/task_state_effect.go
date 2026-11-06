@@ -33,3 +33,19 @@ func (e *TaskStateEffect) OffersCheckIn() bool {
 	return e != nil && e.Before != e.After && e.Unscheduled &&
 		(e.After == models.StateDoing || e.After == models.StateWaiting)
 }
+
+// LeavesDoing reports a commit that took the task out of Doing into work that
+// is still open — Paused, Waiting, Backlog, Someday, or Inbox. That is the
+// moment a resume note is worth writing, since it is the one time the user
+// knows where they stopped. Finishing or canceling is not leaving off: terminal
+// work has nothing to resume.
+func (e *TaskStateEffect) LeavesDoing() bool {
+	return e != nil && e.Before == models.StateDoing && e.After != models.StateDoing && !e.After.IsTerminal()
+}
+
+// EntersDoing reports a commit that started existing work. Creation is not
+// starting it again, so an empty Before is excluded: a task captured straight
+// into Doing has nowhere it left off.
+func (e *TaskStateEffect) EntersDoing() bool {
+	return e != nil && e.Before != "" && e.Before != models.StateDoing && e.After == models.StateDoing
+}

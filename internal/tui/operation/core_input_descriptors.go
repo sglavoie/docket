@@ -392,6 +392,10 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		// drawn rows, and each card's routing runs the row operation it names.
 		core(OperationCoreTriage, "Triage", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "triage inbox", "sort inbox", "plan suggestions", "process inbox"),
 		core(OperationCoreSetUpCheckIns, "Set Up Check-Ins", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "schedule active work", "check-in setup"),
+		// Note Where I Left Off is target-free for the same reason Set Up Check-Ins
+		// is: the task it writes for is the one a commit just took out of Doing, named
+		// by that commit rather than by a cursor that may already be a lane away.
+		core(OperationCoreNoteLeftOff, "Note Where I Left Off", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "resume note for paused task", "where I left off", "left off"),
 		core(OperationCoreUndo, "Undo", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation),
 		core(OperationCoreRedo, "Redo", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation),
 		core(OperationCoreBack, "Back", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),

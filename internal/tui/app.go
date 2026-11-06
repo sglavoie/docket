@@ -25,7 +25,11 @@ import (
 // AppModel is the main TUI model.
 type AppModel struct {
 	checkInFeedback checkInFeedbackController
-	checkInSetup    *checkInSetupPass
+	// resumeNoteFeedback says, on the line a commit already speaks, whether a task
+	// leaving Doing carries a resume note and reads the note back when one starts.
+	// See task_check_in_feedback.go.
+	resumeNoteFeedback resumeNoteFeedbackController
+	checkInSetup       *checkInSetupPass
 
 	// interaction is which user interaction owns the asynchronous work still in
 	// flight, so a refused save hands its draft and frozen targets back to the

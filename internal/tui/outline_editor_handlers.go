@@ -134,7 +134,7 @@ func (m *AppModel) applyOutlineBuffer(pending outlineApplyPending) tea.Cmd {
 	}
 
 	removeOutlineBuffer(pending.path)
-	m.noteCheckInFeedback(append(append([]app.TaskResult(nil), result.Created...), result.Updated...))
+	m.noteCommittedStateEffects(append(append([]app.TaskResult(nil), result.Created...), result.Updated...))
 	m.observeCommittedDueEffect(outlineTransactionID(result), outlinePlanDueEffect(result))
 	return tea.Batch(
 		m.setRecoveryFeedback(result.Summary(), outlineTransactionID(result), false),

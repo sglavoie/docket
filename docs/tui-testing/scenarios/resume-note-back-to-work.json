@@ -1,0 +1,45 @@
+{
+  "name": "resume-note-back-to-work",
+  "fixture": "workflow",
+  "size": "120x35",
+  "actions": [
+    { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
+    { "type": "key", "key": "a" },
+    { "type": "text", "text": "Fix reset link $doing " },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "label": "capturing into Doing is not leaving off, so no resume note is asked for", "assert": "not_contains", "value": "Note Where I Left Off" },
+
+    { "type": "key", "label": "pausing is the moment the user knows where they stopped", "key": "w" },
+    { "type": "key", "key": "p" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the departure says the task has no note and names the keyless entry, never r, which reads the cursor", "assert": "contains", "value": "No resume note · F10: Note Where I Left Off" },
+    { "type": "assert", "assert": "not_contains", "value": "Set Resume Note" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "command", "label": "the entry writes for the task that left Doing, wherever the cursor went", "command": "Note Where I Left Off" },
+    { "type": "assert", "assert": "contains", "value": "Fix reset link" },
+    { "type": "text", "text": "reproduce with an expired token" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+
+    { "type": "key", "label": "find the task again", "key": "/" },
+    { "type": "text", "text": "Fix reset link" },
+    { "type": "key", "key": "enter" },
+    { "type": "key", "label": "starting it reads the note back on the line that confirms the start", "key": "w" },
+    { "type": "key", "key": "g" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Left off: reproduce with an expired token" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "pausing again keeps the note until the user replaces it", "key": "w" },
+    { "type": "key", "key": "p" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Resume note kept · F10: Note Where I Left Off" },
+
+    { "type": "restart" },
+    { "type": "assert", "label": "a reload is not a commit, so nothing is said at launch", "assert": "not_contains", "value": "Note Where I Left Off" },
+    { "type": "command", "label": "the memory of what left Doing is session-only", "command": "Note Where I Left Off" },
+    { "type": "assert", "assert": "contains", "value": "No task has left Doing in this session" }
+  ]
+}

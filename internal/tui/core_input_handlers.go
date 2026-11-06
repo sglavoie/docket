@@ -482,6 +482,7 @@ func (m *AppModel) coreHelpItemsForContext(ctx operation.CommandContext, include
 		menu string
 	}{
 		{operation.OperationCoreSetUpCheckIns, "Task"},
+		{operation.OperationCoreNoteLeftOff, "Task"},
 		{operation.OperationCoreChangeHistory, "Edit"},
 		{operation.OperationCoreSearchFinished, "Find"},
 		{operation.OperationCoreSearchDeferred, "Find"},

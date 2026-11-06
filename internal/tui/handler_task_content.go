@@ -185,6 +185,6 @@ func (m *AppModel) commitTaskContentEdit(task *models.Task, project *models.Proj
 	}
 	// Recorded before the toast is published and spoken after it, which is the
 	// whole of what the external editor owes: its own error path returns above.
-	m.noteCheckInFeedback([]app.TaskResult{{ProjectID: edited.Task.ProjectID, TaskID: edited.Task.TaskID, TransactionID: edited.TransactionID, StateEffect: edited.StateEffect}})
+	m.noteCommittedStateEffects([]app.TaskResult{{ProjectID: edited.Task.ProjectID, TaskID: edited.Task.TaskID, TransactionID: edited.TransactionID, StateEffect: edited.StateEffect}})
 	return m.handleTaskLineEdited(coordinator.TaskLineEditedMsg{Result: edited, Source: source, Relocation: relocation})
 }

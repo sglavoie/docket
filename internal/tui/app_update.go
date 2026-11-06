@@ -59,7 +59,9 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			outCmd = tea.Batch(outCmd, m.adoptExternalWorkspaceChange())
 		}
 		m.observeCheckInFeedbackMessage(msg)
+		checkInSpokenBefore := m.checkInFeedback.spoken
 		outCmd = tea.Batch(outCmd, m.publishCheckInFeedback())
+		outCmd = tea.Batch(outCmd, m.publishResumeNoteFeedback(!checkInSpokenBefore && m.checkInFeedback.spoken))
 		m.celebrateClearedToday(pulseBefore, time.Now())
 		m.celebrateClearedInbox(pulseBefore, statusBefore, time.Now())
 		outCmd = tea.Batch(outCmd, m.markPulseChange(pulseBefore, launchArmedBefore))

@@ -27,7 +27,8 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "label": "the picker chrome is gone; only its status remains", "assert": "not_contains", "value": "Esc back" },
     { "type": "assert", "assert": "status_contains", "value": "Defer" },
-    { "type": "assert", "label": "an hour-granular deferral hides the row today, not tomorrow", "assert": "not_contains", "value": "Build login form" },
+    { "type": "assert", "label": "deferring Doing work is leaving off, so the footer asks for a resume note", "assert": "status_contains", "value": "No resume note: Build login form" },
+    { "type": "assert", "label": "an hour-granular deferral hides the row today, not tomorrow: the footer is the one place the title remains", "assert": "count_contains", "value": "Build login form", "count": 1 },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

@@ -142,7 +142,9 @@ Entries with no shortcut are available only through the menus. View → Clear Al
 Folds opens every folded section, project group, and task subtree, reporting
 `All folds cleared` or `Nothing is folded`. View → Advisories toggles ambient
 workspace notices. Task → Set Up Check-Ins schedules the tasks named by a
-recent check-in reminder.
+recent check-in reminder. Task → Note Where I Left Off writes the resume note
+of the task that most recently left Doing in this session, wherever the cursor
+is now.
 
 View → Motion turns off the brief animations: the row a task
 leaves behind, the mode badge lighting, workspace pulse counts lighting when they

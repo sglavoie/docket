@@ -419,6 +419,8 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		}
 	case operation.OperationCoreSetUpCheckIns:
 		message = commandMessage(m.startCheckInSetup())
+	case operation.OperationCoreNoteLeftOff:
+		message = commandMessage(m.openLeftOffNote())
 	case operation.OperationCoreUndo:
 		if intent, ok := invocation.Value.(changeHistoryRestoreIntent); ok {
 			message = commandMessage(m.restoreFromChangeHistory(intent, false))

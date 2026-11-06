@@ -219,6 +219,20 @@ the keyless Task menu entry, which that key opens, that schedules one rather tha
 asking for a date there and then. It is a reminder, not a refrain: the first such
 commit in a session says it, and later ones stay quiet.
 
+A task leaving Doing for open work — `wp`, `ww`, `wb`, or any edit that moves
+it — commits and opens nothing; the footer says whether it carries a resume
+note: `No resume note · F10: Note Where I Left Off`, or `Resume note kept ·
+F10: Note Where I Left Off` when it already has one. That Task menu entry opens
+the resume-note prompt for that task even though the cursor has usually
+followed the lane it left; `r` writes the same note from the row. Starting the
+task again reads the note back on the line that confirms the start, as
+`… → Doing · Left off: <note>`. The note stays until you replace or clear it.
+Finishing or canceling is not leaving off and says nothing, and moving several
+tasks at once says nothing either, since a resume note is one task's sentence.
+Unlike the check-in reminder, these speak every time — except on the one commit
+where that once-a-session reminder speaks, which keeps the line to itself; the
+menu entry still writes for the task that commit moved.
+
 Waiting and Doing ages appear in Peek. Their rows become prominent only when
 there is something to act on, such as a deadline, priority, or owed review.
 

@@ -623,6 +623,21 @@ ride, the note publishes itself through `setInfoStatus`, which is quiet. Taking
 no keyboard is also why the note asks nothing of interaction ownership: feedback
 is observed on every commit, owned or not.
 
+The resume note has a twin of that controller, `resumeNoteFeedbackController`
+in `internal/tui/task_check_in_feedback.go`, reading the same committed
+results through `committedTaskResults` and `noteCommittedStateEffects`, with its
+own transaction-ID suppression. `TaskStateEffect.LeavesDoing` (Doing to open
+work, never terminal) and `EntersDoing` (existing work, never creation) are its
+evidence. It publishes after the check-in note from the same deferred closure
+and yields the line on the one Update that note spoke, since two routes overflow
+a 100-column footer; otherwise it speaks on every qualifying commit, and only
+when the Update's commits named exactly one task, re-read from storage — a bulk
+gesture is silent even when a single member left Doing. A single
+departure is remembered as the session-only `leftOff` identity that the keyless,
+target-free `Note Where I Left Off` entry writes for; it opens the ordinary
+Set Resume Note prompt over a context naming that task alone, so the save,
+refusal, and undo entry are `r`'s own. A bulk departure forgets it.
+
 Interaction ownership therefore stands alone. `interactionOwnership` records
 which user interaction owns the asynchronous work still in flight; a command
 envelope carries a value copy of that count, so no command goroutine reads shell

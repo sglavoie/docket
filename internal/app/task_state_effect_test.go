@@ -150,3 +150,33 @@ func TestCommittedStateEffectsOutlineFormAndBulkMove(t *testing.T) {
 		t.Fatal("bulk ownership move invented a creation effect")
 	}
 }
+
+// TestStateEffectsNameLeavingAndEnteringDoing pins the two moments the resume
+// note speaks at: open work leaving Doing, and existing work entering it.
+// Finishing is not leaving off, and creation is not starting again.
+func TestStateEffectsNameLeavingAndEnteringDoing(t *testing.T) {
+	cases := []struct {
+		before, after models.WorkflowState
+		leaves, enter bool
+	}{
+		{models.StateDoing, models.StatePaused, true, false},
+		{models.StateDoing, models.StateWaiting, true, false},
+		{models.StateDoing, models.StateBacklog, true, false},
+		{models.StateDoing, models.StateDone, false, false},
+		{models.StateDoing, models.StateCanceled, false, false},
+		{models.StatePaused, models.StateDoing, false, true},
+		{models.StateWaiting, models.StateDoing, false, true},
+		{"", models.StateDoing, false, false},
+		{models.StateDoing, models.StateDoing, false, false},
+	}
+	for _, c := range cases {
+		effect := &app.TaskStateEffect{Before: c.before, After: c.after}
+		if effect.LeavesDoing() != c.leaves || effect.EntersDoing() != c.enter {
+			t.Fatalf("%q → %q: leaves=%v enters=%v", c.before, c.after, effect.LeavesDoing(), effect.EntersDoing())
+		}
+	}
+	var none *app.TaskStateEffect
+	if none.LeavesDoing() || none.EntersDoing() {
+		t.Fatal("a nil effect names no moment")
+	}
+}

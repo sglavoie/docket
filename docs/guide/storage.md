@@ -316,7 +316,8 @@ yourself about where you stopped, so a task without one writes no block at all
 and an empty note and an absent note are the same thing. `r` on the row is where
 you write it and Peek is where you read it back; it is yours to clear, so
 pausing, starting, or finishing a task never prompts for one and never throws
-one away. `/` searches it beside titles and descriptions, and `project export`
+one away. Leaving Doing only says on the footer whether the task has a note,
+and starting it again reads the note back there. `/` searches it beside titles and descriptions, and `project export`
 prints it as a labelled `Resume:` paragraph above the description.
 
 A project file may also hold comments that belong to the project itself rather

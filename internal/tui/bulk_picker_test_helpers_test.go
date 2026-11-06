@@ -13,6 +13,11 @@ import (
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/storage"
 	"github.com/sglavoie/docket/internal/tui/coordinator"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/outliner"
+	"github.com/sglavoie/docket/internal/tui/presentation"
+	"github.com/sglavoie/docket/internal/tui/route"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
 func newBulkPickerTestTask(t *testing.T, shortID int, title string, tags ...string) *models.Task {
@@ -137,4 +142,20 @@ func (e *appBulkPickerEnv) redo(t *testing.T) {
 	if _, err := e.ledger.Redo(storage.GlobalScope()); err != nil {
 		t.Fatalf("ledger redo: %v", err)
 	}
+}
+
+// bulkTaskActionTestContext freezes a visual selection over live tasks, the same
+// shape openTaskActionSheet builds from the Outliner's selected rows.
+func bulkTaskActionTestContext(project *models.Project, tasks ...*models.Task) operation.CommandContext {
+	context := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
+	context.Capabilities.Add(operation.CapabilitySimplifiedInput)
+	context.Selection.Visual = true
+	context.Selection.Tasks = make([]taskref.TaskIdentity, 0, len(tasks))
+	context.Selection.Entities = make([]operation.EntityContext, 0, len(tasks))
+	for _, task := range tasks {
+		context.Selection.Tasks = append(context.Selection.Tasks, taskref.For(task, project))
+		context.Selection.Entities = append(context.Selection.Entities, outliner.TaskOperationEntity(task, project))
+	}
+	context.Entity = context.Selection.Entities[0]
+	return context
 }

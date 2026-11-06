@@ -25,22 +25,6 @@ func taskActionTestContext() operation.CommandContext {
 	return context
 }
 
-// bulkTaskActionTestContext freezes a visual selection over live tasks, the same
-// shape openTaskActionSheet builds from the Outliner's selected rows.
-func bulkTaskActionTestContext(project *models.Project, tasks ...*models.Task) operation.CommandContext {
-	context := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
-	context.Capabilities.Add(operation.CapabilitySimplifiedInput)
-	context.Selection.Visual = true
-	context.Selection.Tasks = make([]taskref.TaskIdentity, 0, len(tasks))
-	context.Selection.Entities = make([]operation.EntityContext, 0, len(tasks))
-	for _, task := range tasks {
-		context.Selection.Tasks = append(context.Selection.Tasks, taskref.For(task, project))
-		context.Selection.Entities = append(context.Selection.Entities, outliner.TaskOperationEntity(task, project))
-	}
-	context.Entity = context.Selection.Entities[0]
-	return context
-}
-
 // taskActionTestDescriptors builds the production planning/structure
 // descriptors. The app carries no projects, so structure-dependent applicability
 // falls back to structural eligibility.

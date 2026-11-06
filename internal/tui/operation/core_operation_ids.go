@@ -72,6 +72,7 @@ const (
 	OperationCoreLastMessage        OperationID = "tui.core.last-message"
 	OperationCoreClearSearchHistory OperationID = "tui.core.clear-search-history"
 	OperationCoreSetUpCheckIns      OperationID = "tui.core.set-up-check-ins"
+	OperationCoreNoteLeftOff        OperationID = "tui.core.note-left-off"
 	OperationCoreTriage             OperationID = "tui.core.triage"
 	OperationCoreToggleAdvisories   OperationID = "tui.core.toggle-advisories"
 	OperationCoreToggleMouse        OperationID = "tui.core.toggle-mouse"
