@@ -58,8 +58,6 @@ var ErrNotASession = errors.New("the lock holder is not a session Docket can swi
 type Outcome struct {
 	// App is the application bundle Switch activated.
 	App string
-	// Nudged is whether the holder was also asked to raise its own window.
-	Nudged bool
 }
 
 // AppName is the application's display name: the bundle's base name without
@@ -95,7 +93,7 @@ func Switch(p Platform, held *util.LockHeldError) (Outcome, error) {
 	if held.Session == util.SessionTerminal {
 		// Best effort: an older terminal ignores the escape, and a failed
 		// signal leaves the activation that already happened standing.
-		outcome.Nudged = p.Nudge(held.PID) == nil
+		_ = p.Nudge(held.PID)
 	}
 	return outcome, nil
 }

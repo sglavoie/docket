@@ -157,16 +157,16 @@ type OutlinerModel struct {
 	outstandingConflicts func() int
 
 	// syncAdvisory is the shell-injected sync line for the status strip; nil is
-	// inert. See advisories.go.
+	// inert. See outliner_status_strip.go.
 	syncAdvisory func() string
 
 	// advisoriesHiddenAccessor is the shell-injected opt-out every ambient
 	// advisory is gated by. A nil accessor reads as showing them; see
-	// advisories.go.
+	// outliner_status_strip.go.
 	advisoriesHiddenAccessor func() bool
 
 	// mouseDisabledAccessor is the shell-injected mouse setting the View menu's
-	// Mouse row ticks from. A nil accessor reads as on; see advisories.go.
+	// Mouse row ticks from. A nil accessor reads as on; see outliner_status_strip.go.
 	mouseDisabledAccessor func() bool
 	// motionPreferredAccessor and nerdGlyphsAccessor are the shell-injected
 	// presentation preferences the View menu's Motion and Nerd Font Glyphs rows

@@ -16,7 +16,7 @@ import (
 	"github.com/sglavoie/docket/internal/tui/pulse"
 )
 
-// The shell half of the advisory opt-out. advisories.go owns what an advisory
+// The shell half of the advisory opt-out. outliner/outliner_status_strip.go owns what an advisory
 // is and the two helpers every ambient line routes through; this file owns the
 // session value those helpers read, which is where the machine-local setting and
 // the process-level `--no-advisories` flag meet.

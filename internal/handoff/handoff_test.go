@@ -65,8 +65,8 @@ func TestSwitchActivatesTheTerminalAndNudgesTheSession(t *testing.T) {
 	if !reflect.DeepEqual(fake.calls, want) {
 		t.Fatalf("calls = %q, want %q", fake.calls, want)
 	}
-	if !outcome.Nudged || outcome.AppName() != "Ghostty" {
-		t.Fatalf("outcome = %+v, want Ghostty nudged", outcome)
+	if outcome.AppName() != "Ghostty" {
+		t.Fatalf("outcome = %+v, want Ghostty", outcome)
 	}
 	if got := Message(held, outcome); got != "Docket is already open (PID 500) — switched to Ghostty." {
 		t.Fatalf("Message = %q", got)
@@ -80,15 +80,12 @@ func TestSwitchActivatesDocketAppForAHeadlessSession(t *testing.T) {
 		700: {ppid: 600, exe: "/Applications/Docket.app/Contents/Resources/docket"},
 		600: {ppid: 1, exe: "/Applications/Docket.app/Contents/MacOS/Docket"},
 	}}
-	outcome, err := Switch(fake, &util.LockHeldError{PID: 700, Session: util.SessionHeadless})
+	_, err := Switch(fake, &util.LockHeldError{PID: 700, Session: util.SessionHeadless})
 	if err != nil {
 		t.Fatalf("Switch: %v", err)
 	}
 	if want := []string{"activate /Applications/Docket.app"}; !reflect.DeepEqual(fake.calls, want) {
 		t.Fatalf("calls = %q, want %q", fake.calls, want)
-	}
-	if outcome.Nudged {
-		t.Fatal("a headless session was nudged")
 	}
 }
 
@@ -163,8 +160,8 @@ func TestActivationDecidesTheOutcome(t *testing.T) {
 
 	quiet := &fakePlatform{tree: ghosttyTree(), nudgeErr: errors.New("no such process")}
 	outcome, err := Switch(quiet, held)
-	if err != nil || outcome.Nudged {
-		t.Fatalf("Switch = %+v, %v; want success without a nudge", outcome, err)
+	if err != nil || outcome.AppName() != "Ghostty" {
+		t.Fatalf("Switch = %+v, %v; want the activation to stand despite the failed nudge", outcome, err)
 	}
 }
 

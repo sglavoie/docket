@@ -376,7 +376,7 @@ mechanical consequence is that `OperationalTitleSpec.Pulse` is a pointer and an
 accessor has no address, so `BuildOutlinerTitleLine` names the value in a local
 first; that local is the whole cost of not being able to shadow it again.
 
-`internal/tui/outliner/advisories.go` is the opt-out that count answers to, and it is
+`internal/tui/outliner/outliner_status_strip.go` is the opt-out that count answers to, and it is
 deliberately a category rather than a switch on one line. An advisory is ambient
 workspace state — on screen because of what the workspace holds, not because of a
 key just pressed — and today the category has exactly two members: the conflict
