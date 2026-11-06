@@ -335,6 +335,7 @@ struct TaskListView: View {
                     let projectName = projectNames[row.item.task.projectID]
                     NavigationLink(value: Route.task(row.item.task.locator)) {
                         TaskRowView(item: row.item, projectName: projectName,
+                                    listContext: TaskRowContext(source: source, filter: filter),
                                     acknowledged: acknowledged.contains(row.id))
                             .padding(.leading, CGFloat(row.depth) * 18)
                     }
@@ -810,25 +811,59 @@ extension WorkflowState {
     }
 }
 
+/// What a list already tells its reader about every row on it, so a row
+/// does not draw it again. Only the drawn metadata reads this; the spoken
+/// label keeps the whole description.
+struct TaskRowContext: Hashable {
+    /// The planning collection the list is: every row in Today is planned for
+    /// today.
+    var today = false
+    var next = false
+    /// A filter every row satisfies.
+    var pinned = false
+    var priority: Int?
+
+    init(today: Bool = false, next: Bool = false, pinned: Bool = false, priority: Int? = nil) {
+        self.today = today
+        self.next = next
+        self.pinned = pinned
+        self.priority = priority
+    }
+
+    init(source: ListSource, filter: TaskFilter) {
+        self.init(today: source.mode == "today", next: source.mode == "next",
+                  pinned: filter.pinned, priority: filter.priority)
+    }
+}
+
 struct TaskRowView: View {
     let item: TaskQueryItem
+    /// Named only when the list spans projects; a project's own list passes
+    /// none.
     let projectName: String?
+    var listContext = TaskRowContext()
     /// Drawn as just completed while the commit is acknowledged: a filled
     /// checkmark and a struck title, so the cue survives without color.
     var acknowledged = false
     @Environment(\.colorScheme) private var colorScheme
 
-    private var metadata: String {
-        Self.metadata(item, projectName: projectName)
-    }
-
-    static func metadata(_ item: TaskQueryItem, projectName: String?) -> String {
-        var parts = [item.task.state.rawValue.capitalized]
-        if item.task.priority > 0 { parts.append("P\(item.task.priority)") }
-        if let context = item.task.context, !context.isEmpty { parts.append("Context: \(context)") }
-        if item.today { parts.append("Today") }
-        if item.next { parts.append("Next") }
-        if item.task.pinned { parts.append("Pinned") }
+    /// The row's quiet second line, deadline first. The status is the glyph's
+    /// and the attention line's own cue is not repeated, nor anything the
+    /// list itself establishes. Empty when nothing is left to say.
+    nonisolated static func metadata(_ item: TaskQueryItem, projectName: String?,
+                         context: TaskRowContext = TaskRowContext(), now: Date = .now) -> String {
+        let attention = TaskAttention(task: item.task, now: now)
+        var parts: [String] = []
+        if let due = item.task.dueDate, !attention.showsDeadline {
+            parts.append("Due \(TaskSchedule.relativeDeadline(due, now: now))")
+        }
+        if item.task.priority > 0, item.task.priority != context.priority, !attention.highPriority {
+            parts.append("P\(item.task.priority)")
+        }
+        if item.today && !context.today { parts.append("Today") }
+        if item.next && !context.next { parts.append("Next") }
+        if item.task.pinned && !context.pinned { parts.append("Pinned") }
+        if let taskContext = item.task.context, !taskContext.isEmpty { parts.append("Context: \(taskContext)") }
         if let projectName, !projectName.isEmpty { parts.append(projectName) }
         return parts.joined(separator: " · ")
     }
@@ -853,16 +888,14 @@ struct TaskRowView: View {
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityIdentifier("task.attention")
                     }
-                    if let due = item.task.dueDate, !attention.showsDeadline {
-                        Text("Due \(TaskSchedule.deadline(due))")
+                    let metadata = Self.metadata(item, projectName: projectName, context: listContext, now: context.date)
+                    if !metadata.isEmpty {
+                        Text(metadata)
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("task.metadata")
                     }
-                    Text(metadata)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityIdentifier("task.metadata")
                 }
             }
         }
@@ -878,7 +911,7 @@ struct TaskRowView: View {
     /// the title, then each badge in words rather than its symbol or
     /// abbreviation, followed by tags, context and then the project when the
     /// list spans projects.
-    static func spokenLabel(_ item: TaskQueryItem, projectName: String?) -> String {
+    nonisolated static func spokenLabel(_ item: TaskQueryItem, projectName: String?) -> String {
         var parts = [item.task.state.rawValue, item.task.title]
         let attention = TaskAttention(task: item.task, now: .now)
         if let label = attention.label { parts.append(label) }

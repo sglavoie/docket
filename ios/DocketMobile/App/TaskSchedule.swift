@@ -19,6 +19,21 @@ enum TaskSchedule {
         date.formatted(date: .abbreviated, time: hasTime(date) ? .shortened : .omitted)
     }
 
+    /// A deadline as a reader of a row thinks of it: tomorrow, a weekday
+    /// within the coming week, otherwise the date, with its clock when it has
+    /// one.
+    static func relativeDeadline(_ date: Date, now: Date) -> String {
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: now),
+                                           to: calendar.startOfDay(for: date)).day ?? 0
+        let clock = hasTime(date) ? " \(date.formatted(date: .omitted, time: .shortened))" : ""
+        switch days {
+        case 0: return "today" + clock
+        case 1: return "tomorrow" + clock
+        case 2...6: return date.formatted(.dateTime.weekday(.wide)) + clock
+        default: return deadline(date)
+        }
+    }
+
     static func overdue(_ date: Date, now: Date) -> Bool {
         hasTime(date) ? date < now : calendar.startOfDay(for: date) < calendar.startOfDay(for: now)
     }
@@ -30,6 +45,8 @@ struct TaskAttention {
     var label: String?
     var overdue = false
     var showsDeadline = false
+    /// The label is P1's, so the priority badge would repeat it.
+    var highPriority = false
 
     init(task: TaskSnapshot, now: Date) {
         guard !task.state.isTerminal else { return }
@@ -48,6 +65,7 @@ struct TaskAttention {
             showsDeadline = true
         } else if task.priority == 1 {
             label = "High priority"
+            highPriority = true
         }
     }
 }

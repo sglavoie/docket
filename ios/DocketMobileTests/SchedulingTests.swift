@@ -91,6 +91,42 @@ final class SchedulingTests: XCTestCase {
         XCTAssertNil(TaskAttention(task: task, now: now).label)
     }
 
+    func testRowMetadataLeadsWithTheDeadlineAndSkipsWhatTheListEstablishes() async throws {
+        let engine = try await openEngine()
+        let captured = try await engine.capture(title: "Ship beta build", destination: .today)
+        let listed = try await engine.tasks(mode: "today").items
+        var item = try XCTUnwrap(listed.first { $0.task.locator == captured.task.locator })
+        let now = date(10, 12)
+        item.task.state = .doing
+        item.task.dueDate = date(11)
+        let today = TaskRowContext(today: true)
+        XCTAssertEqual(TaskRowView.metadata(item, projectName: "Release", context: today, now: now), "Due tomorrow · Release")
+        XCTAssertEqual(TaskRowView.metadata(item, projectName: nil, context: today, now: now), "Due tomorrow")
+        XCTAssertEqual(TaskRowView.metadata(item, projectName: nil, now: now), "Due tomorrow · Today")
+
+        item.task.dueDate = date(13, 9, 30)
+        XCTAssertTrue(TaskRowView.metadata(item, projectName: nil, context: today, now: now).hasPrefix("Due \(date(13).formatted(.dateTime.weekday(.wide))) "))
+        item.task.dueDate = date(20)
+        XCTAssertEqual(TaskRowView.metadata(item, projectName: nil, context: today, now: now),
+                       "Due \(TaskSchedule.deadline(date(20)))")
+
+        // The attention line already says P1; a priority filter says every P2.
+        item.task.dueDate = nil
+        item.task.priority = 1
+        XCTAssertEqual(TaskRowView.metadata(item, projectName: nil, context: today, now: now), "")
+        item.task.priority = 2
+        item.task.pinned = true
+        XCTAssertEqual(TaskRowView.metadata(item, projectName: nil, context: today, now: now), "P2 · Pinned")
+        XCTAssertEqual(TaskRowView.metadata(item, projectName: nil,
+                                            context: TaskRowContext(today: true, pinned: true, priority: 2), now: now), "")
+
+        // The spoken label keeps the whole description whatever the list says.
+        let spoken = TaskRowView.spokenLabel(item, projectName: "Release")
+        for word in ["doing", "priority 2", "Today", "pinned", "Release"] {
+            XCTAssertTrue(spoken.contains(word), spoken)
+        }
+    }
+
     private func date(_ day: Int, _ hour: Int = 0, _ minute: Int = 0) -> Date {
         TaskSchedule.calendar.date(from: DateComponents(year: 2030, month: 6, day: day, hour: hour, minute: minute))!
     }
