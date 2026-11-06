@@ -322,6 +322,9 @@ func (m *OutlinerModel) emptyGuidance() chrome.GuidanceSpec {
 		required = "a capture"
 	}
 	optional := []string{"P projects", "? help"}
+	if review := m.todayReviewKey(); review != "" && cause == outlinerEmptyMode {
+		optional = append([]string{review + " review completed"}, optional...)
+	}
 	if recovery := m.searchRecoveryHint(); recovery != "" {
 		optional = append([]string{recovery}, optional...)
 	}

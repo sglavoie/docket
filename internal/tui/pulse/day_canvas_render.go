@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/docket/internal/tui/textfit"
 	"github.com/sglavoie/docket/internal/tui/theme"
+	"github.com/sglavoie/docket/internal/util"
 )
 
 // The day canvas's blocks, as the Outliner draws them in the room its rows
@@ -152,18 +153,18 @@ func CenterLine(text string, width int) string {
 	return text
 }
 
-// RestingCard is the empty Today's resting card: the day's finished count
-// and the week behind when anything was done, then the week ahead. It names no
-// key — the explanation above it already does — and draws nothing for a scope
+// RestingCard is the empty Today's resting card: what was finished today and
+// the week behind when anything was done — a fact, never a claim that the day
+// owes nothing more — then the week ahead. It names no key — the explanation above it already does — and draws nothing for a scope
 // with no history and nothing dated, where it would have nothing to say.
 func (canvas DayCanvas) RestingCard(width int) []string {
 	var lines []string
 	if len(canvas.Done) > 0 {
 		check := lipgloss.NewStyle().Foreground(theme.ColorSuccess).Bold(true)
 		lines = append(lines,
-			CenterLine(check.Render("✓")+"  "+theme.TitleStyle.Render("Today is done"), width),
-			CenterLine(theme.MutedStyle.Render(fmt.Sprintf("%d done today · %d this week",
-				len(canvas.Done), canvas.WeekDone())), width))
+			CenterLine(check.Render("✓")+"  "+theme.TitleStyle.Render("Finished today"), width),
+			CenterLine(theme.MutedStyle.Render(fmt.Sprintf("%s · %d this week",
+				util.Count(len(canvas.Done), "task"), canvas.WeekDone())), width))
 	}
 	if len(canvas.Behind) > 0 && canvas.WeekDone() > 0 {
 		var days strings.Builder

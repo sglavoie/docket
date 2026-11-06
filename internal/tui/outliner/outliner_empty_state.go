@@ -7,6 +7,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/grammar"
 	"github.com/sglavoie/docket/internal/tui/listsurface"
@@ -224,6 +225,9 @@ func (m *OutlinerModel) OutlinerEmptyMessage() string {
 	case outlinerEmptyMode:
 		mode := m.ActiveOutlinerModeEntry()
 		if message, hint := m.emptyModeNextStep(mode.ID); hint != "" {
+			if review := m.todayReviewKey(); review != "" {
+				return message + " Press " + review + " to review completed work, or " + hint + "."
+			}
 			return message + " Press " + hint + "."
 		}
 		return fmt.Sprintf("%s is empty. Press Tab or Shift+Tab to change modes.", mode.Label)
@@ -247,6 +251,9 @@ func (m *OutlinerModel) emptyModeNextStep(mode chrome.OutlinerModeID) (message, 
 	case chrome.ModeToday:
 		message = "Nothing planned or due by today."
 		operationID, act = operation.OperationCoreGotoNext, "to choose from Next"
+		if finished := m.finishedTodayCount(time.Now()); finished > 0 {
+			return m.todayCompleteNextStep(finished)
+		}
 	case chrome.ModeNext:
 		message = "Nothing planned for Next."
 		operationID, act = operation.OperationCoreGotoBacklog, "to choose from Backlog"
@@ -265,6 +272,55 @@ func (m *OutlinerModel) emptyModeNextStep(mode chrome.OutlinerModeID) (message, 
 	}
 	key, _, _ = strings.Cut(key, "/")
 	return message, key + " " + act
+}
+
+// finishedTodayCount is how many tasks the view's own scope finished today,
+// read as the day canvas reads it, hidden work left out. It is what separates
+// an empty Today whose plan was worked through from one nothing was planned
+// into.
+func (m *OutlinerModel) finishedTodayCount(now time.Time) int {
+	if m == nil {
+		return 0
+	}
+	projects := m.ScopeProjects()
+	if m.Project != nil {
+		projects = []*models.Project{m.Project}
+	}
+	return len(pulse.ComputeDayCanvas(projects, m.CompletionActivity, now).Done)
+}
+
+// todayCompleteNextStep is the empty Today after work was finished in it: it
+// acknowledges the plan as complete, never the day, since other obligations may
+// still wait elsewhere. Looking back (todayReviewKey) and choosing more from
+// Next are offered as equals, so stopping here reads as a fine place to stop;
+// the footer keeps Next as its required entry, the same act as the plain
+// sentence.
+func (m *OutlinerModel) todayCompleteNextStep(finished int) (message, hint string) {
+	next := m.firstShortcut(operation.OperationCoreGotoNext)
+	if next == "" {
+		return "", ""
+	}
+	return fmt.Sprintf("Today's plan is complete. You finished %s today.", util.Count(finished, "task")),
+		next + " to choose from Next"
+}
+
+// todayReviewKey is Recent's key on an empty Today whose plan was finished,
+// where looking back over the day is one of the two offers; it is empty
+// everywhere else.
+func (m *OutlinerModel) todayReviewKey() string {
+	if m.PrimaryMode != chrome.ModeToday || m.finishedTodayCount(time.Now()) == 0 {
+		return ""
+	}
+	return m.firstShortcut(operation.OperationCoreGotoRecent)
+}
+
+func (m *OutlinerModel) firstShortcut(id operation.OperationID) string {
+	if m.OperationRegistry == nil {
+		return ""
+	}
+	key := m.OperationRegistry.InputShortcutForOperation(operation.InputStrategySimplified, id)
+	key, _, _ = strings.Cut(key, "/")
+	return key
 }
 
 // emptyEscSentence is the Esc clause of the lens, Focus, and section sentences.

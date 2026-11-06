@@ -48,7 +48,8 @@ func TestTheDayCanvasStandsDownUnderASearch(t *testing.T) {
 }
 
 // Finishing the last task planned for Today leaves the resting card under the
-// empty state's own sentence: the day is done, with its count.
+// empty state's own sentence: the plan is complete — never the day — with its
+// count, and looking back and choosing more from Next are offered as equals.
 func TestAnEmptiedTodayRestsOnTheDoneCard(t *testing.T) {
 	w, err := newUITestWorkspace()
 	if err != nil {
@@ -65,10 +66,16 @@ func TestAnEmptiedTodayRestsOnTheDoneCard(t *testing.T) {
 		t.Fatal(err)
 	}
 	obs := pressKeys(t, driver, "w", "t", "tab", "g", "g", "w", "d")
-	if !strings.Contains(obs.PlainScreen, "Nothing planned or due by today.") {
-		t.Fatalf("the empty Today lost its explanation:\n%s", obs.PlainScreen)
+	if want := "Today's plan is complete. You finished 1 task today. Press gr to review completed work, or gn to choose from Next."; !strings.Contains(strings.Join(strings.Fields(obs.PlainScreen), " "), want) {
+		t.Fatalf("the finished Today does not acknowledge its plan as %q:\n%s", want, obs.PlainScreen)
 	}
-	if !strings.Contains(obs.PlainScreen, "Today is done") || !strings.Contains(obs.PlainScreen, "1 done today") {
+	if strings.Contains(obs.PlainScreen, "Nothing planned") {
+		t.Fatalf("a finished Today reads as one nothing was planned into:\n%s", obs.PlainScreen)
+	}
+	if !strings.Contains(obs.PlainScreen, "gn to choose from Next · gr review completed") {
+		t.Fatalf("the footer does not offer both next steps:\n%s", obs.PlainScreen)
+	}
+	if !strings.Contains(obs.PlainScreen, "Finished today") || !strings.Contains(obs.PlainScreen, "1 task · ") {
 		t.Fatalf("the emptied Today drew no resting card:\n%s", obs.PlainScreen)
 	}
 	if len(obs.LayoutIssues) != 0 {

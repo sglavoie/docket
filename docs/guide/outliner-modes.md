@@ -242,11 +242,15 @@ yourself before the write lands cancels the follow.
 ## When a mode is empty
 
 Empty Inbox offers Today (`gt`); empty Today offers Next (`gn`); empty Next
-offers Backlog (`gb`). Empty Due offers Today. These destinations match the
+offers Backlog (`gb`). An empty Today where something was already finished
+today says its plan is complete instead of that nothing is planned — `Today's
+plan is complete. You finished 4 tasks today.` — and offers looking back
+(`gr`, Recent) beside choosing more from Next, as equals: it claims the plan,
+never every obligation, and stopping there is as fine an answer as either key. Empty Due offers Today. These destinations match the
 iPhone app and preserve the current project scope. Search and filtered empty
 views keep their own explanations and recovery controls.
 
-An empty Today rests on a card under that sentence: `✓ Today is done` with
+An empty Today rests on a card under that sentence: `✓ Finished today` with
 the day's count and the week's when something was finished, the last seven
 days' completions as bars, and the week ahead. A workspace holding no task at
 all opens on a welcome instead, which shows three example captures colored as
