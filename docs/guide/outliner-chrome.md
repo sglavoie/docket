@@ -144,7 +144,7 @@ Folds opens every folded section, project group, and task subtree, reporting
 workspace notices. Task → Set Up Check-Ins schedules the tasks named by a
 recent check-in reminder.
 
-View → Motion turns off the brief animations: the struck-through row a task
+View → Motion turns off the brief animations: the row a task
 leaves behind, the mode badge lighting, workspace pulse counts lighting when they
 change, the undo countdown on the divider, the Today sweep, the list gliding on a
 page jump, a fold rolling open, the mark a moved or captured task lights where
@@ -266,8 +266,9 @@ today · 2 still in Today`, or nothing when the day has nothing to report.
 Docket draws a little motion where an action needs following. A task that
 leaves the view, such as one you just finished, stays in its place for a moment
 before the rows close up: a finished task first shows its check landing on the
-row as it stood, then is struck through and fades; any other departure is
-struck through and fades. The next key retires it at once. A mode switch lands its badge highlighted for a
+row as it stood, then is struck through and fades. A task you moved is never
+struck: it names where it went, such as `→ Next`, `→ Waiting`, or `→ Website`,
+then fades. A canceled or deleted task is struck through and fades. The next key retires it at once. A mode switch lands its badge highlighted for a
 moment and lights the `‹` or `›` it traveled through. Switching modes with
 `Tab`, `Shift+Tab`, a digit, or the `g` chord, and opening or leaving a screen
 such as the project hub, Help, comments, or attachments, eases the new rows in

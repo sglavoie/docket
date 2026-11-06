@@ -6,6 +6,10 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
+
+	"github.com/sglavoie/docket/internal/config"
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
 // A line the render lent the departure ghost names no row, and every row
@@ -84,5 +88,68 @@ func TestCompletionGhostLandsTheCheckBeforeTheStrike(t *testing.T) {
 	}
 	if len(other.schedule()) != 2 {
 		t.Fatalf("a non-completion paints %d phases, want 2", len(other.schedule()))
+	}
+}
+
+// A relocation names where the task went and is never struck: the first beat
+// shows the destination after the muted row, the second fades both.
+func TestRelocationGhostNamesItsDestinationWithoutStriking(t *testing.T) {
+	struck := regexp.MustCompile(`\x1b\[(?:[0-9:;]*;)?9(?:;[0-9:;]*)?m`)
+	ghost := &departureGhost{line: "  □   Draft the brief", destination: "Next"}
+	m := &OutlinerModel{ghost: ghost}
+	if len(ghost.schedule()) != len(relocationGhostSchedule) {
+		t.Fatalf("a relocation paints %d phases, want %d", len(ghost.schedule()), len(relocationGhostSchedule))
+	}
+	for phase := range relocationGhostSchedule {
+		ghost.phase = phase
+		rendered := m.renderDepartureGhost(40)
+		if struck.MatchString(rendered) {
+			t.Fatalf("phase %d struck a relocation: %q", phase, rendered)
+		}
+		if got := ansi.Strip(rendered); !strings.Contains(got, "Draft the brief  → Next") || ansi.StringWidth(got) != 40 {
+			t.Fatalf("phase %d drew %q", phase, got)
+		}
+	}
+	// A narrow row shortens the title and keeps the destination whole.
+	ghost.phase = 0
+	if got := ansi.Strip(m.renderDepartureGhost(16)); !strings.HasSuffix(strings.TrimRight(got, " "), "→ Next") || ansi.StringWidth(got) != 16 {
+		t.Fatalf("narrow relocation drew %q", got)
+	}
+}
+
+// The destination is the one change the commit made, read against where the
+// task stood at the keypress; a cancel and a vanished task name nothing.
+func TestDepartureDestinationNamesTheChange(t *testing.T) {
+	task := primaryRowsTask("t1", models.StateBacklog)
+	alpha := primaryRowsProject("alpha", task)
+	beta := primaryRowsProject("beta")
+	beta.Name = "Website"
+	m, runtime := primaryRowsOutliner(alpha, beta)
+	identity := taskref.TaskIdentity{ProjectID: "alpha", TaskID: "t1"}
+	capture := &OutlinerRelocationCapture{Task: identity, departureFrom: m.departurePlacement(identity)}
+
+	runtime.Planning().SetNext([]config.ProjectTaskLocator{{ProjectID: "alpha", TaskID: "t1"}})
+	if got, _ := m.departureDestination(capture); got != "Next" {
+		t.Fatalf("planned into Next named %q", got)
+	}
+	runtime.Planning().SetNext(nil)
+
+	task.WorkflowState = models.StateWaiting
+	if got, _ := m.departureDestination(capture); got != "Waiting" {
+		t.Fatalf("a status change named %q", got)
+	}
+
+	alpha.Tasks, beta.Tasks = nil, []*models.Task{task}
+	if got, _ := m.departureDestination(capture); got != "Website" {
+		t.Fatalf("a move named %q", got)
+	}
+
+	task.WorkflowState = models.StateCanceled
+	if got, _ := m.departureDestination(capture); got != "" {
+		t.Fatalf("a cancel named %q", got)
+	}
+	beta.Tasks = nil
+	if got, _ := m.departureDestination(capture); got != "" {
+		t.Fatalf("a vanished task named %q", got)
 	}
 }

@@ -14,11 +14,14 @@ import (
 )
 
 // The departure ghost is the one frame of motion a committed departure earns:
-// the row the keypress was aimed at stays on screen, struck through, at the
-// position it vacated, for the phases departureGhostSchedule names, then the
-// rows under it close up. A completion earns one beat more ahead of the strike:
-// the check lands on the row as it stood, so finishing a task reads as a check
-// being made before the row leaves. It is render-only — never a row of m.Rows, never a cursor
+// the row the keypress was aimed at stays on screen at the position it
+// vacated for a few phases, then the rows under it close up. What it paints
+// says how the task left. A completion lands its check on the row as it stood,
+// then strikes and fades it, so finishing reads as a check being made. A task
+// that went somewhere — another plan, status, or project — is never struck:
+// it names where it went, `→ Next` or `→ Website`, then fades, so a move reads
+// differently from a finish without a glance at the footer. Only a departure
+// with no destination to name — a cancel, a delete — keeps the bare strike. It is render-only — never a row of m.Rows, never a cursor
 // position, never a window input — so every row invariant, every index, and
 // ComputeOutlinerViewport are untouched; the render records the screen slot it
 // borrowed in LastViewport so the two readers of screen rows, CursorScreenRow
@@ -30,14 +33,19 @@ import (
 var (
 	departureGhostSchedule  = []time.Duration{160 * time.Millisecond, 160 * time.Millisecond}
 	completionGhostSchedule = []time.Duration{120 * time.Millisecond, 150 * time.Millisecond, 150 * time.Millisecond}
+	// A destination is read, so its first beat holds longer than a strike.
+	relocationGhostSchedule = []time.Duration{280 * time.Millisecond, 160 * time.Millisecond}
 )
 
-// The phases a ghost paints, in order. A completion's ghost starts at
-// ghostChecked; any other starts at ghostStruck.
+// The looks a ghost paints. A completion runs ghostChecked, ghostStruck,
+// ghostFaded; a relocation ghostLabeled then ghostLabelFaded; any other
+// departure ghostStruck then ghostFaded.
 const (
 	ghostChecked = iota
 	ghostStruck
 	ghostFaded
+	ghostLabeled
+	ghostLabelFaded
 )
 
 // departureGhost is the struck row a departure leaves behind for a moment.
@@ -48,24 +56,38 @@ type departureGhost struct {
 	screenOffset int
 	// done reports that the task departed by completing, so its state glyph
 	// is repainted as the check it became, and icon is that check.
-	done  bool
-	icon  string
-	phase int
-	seq   int
+	done bool
+	icon string
+	// destination names where a task that did not finish went — a plan, a
+	// status, or a project — and destinationStyle inks it. It is empty for a
+	// completion and for a departure with nowhere to name.
+	destination      string
+	destinationStyle lipgloss.Style
+	phase            int
+	seq              int
 }
+
+// relocated reports a ghost that names its destination instead of striking.
+func (g *departureGhost) relocated() bool { return !g.done && g.destination != "" }
 
 // schedule is the delay each phase holds before the next.
 func (g *departureGhost) schedule() []time.Duration {
-	if g.done {
+	switch {
+	case g.done:
 		return completionGhostSchedule
+	case g.relocated():
+		return relocationGhostSchedule
 	}
 	return departureGhostSchedule
 }
 
 // look is what the current phase paints.
 func (g *departureGhost) look() int {
-	if g.done {
+	switch {
+	case g.done:
 		return g.phase
+	case g.relocated():
+		return g.phase + ghostLabeled
 	}
 	return g.phase + ghostStruck
 }

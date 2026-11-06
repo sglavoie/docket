@@ -983,8 +983,16 @@ and each changes paint alone: no width, no row, no window input.
 - **Departure ghost.** `CaptureOutlinerRelocation` records the cursor row's plain
   text, the list line it was drawn on, and its state glyph. When
   `FinishOutlinerRelocation` finds the task departed its group,
-  `leaveDepartureGhost` redraws that text at the vacated line. Any other
-  departure paints two 160 ms phases, struck through and then faint. A
+  `leaveDepartureGhost` redraws that text at the vacated line. A relocation —
+  the task still open and found again, by ID across the loaded projects, with
+  its project, plan, status, or hidden flag changed against the
+  `departurePlacement` the capture recorded — is never struck:
+  `departureDestination` names the one change (project, then a plan joined,
+  then status, then Hidden) and `relocationGhostSchedule` paints 280 ms of the
+  muted row with `→ destination` after it, the label kept whole and the title
+  shortened instead, then 160 ms faint. A departure naming nothing — a cancel,
+  a delete, an unresolvable task — paints two 160 ms phases, struck through and
+  then faint. A
   completion replaces the glyph with Done's and paints three
   (`completionGhostSchedule`): 120 ms with the check bold in the success ink and
   the row unstruck, so the check is the one thing that changed, then 150 ms

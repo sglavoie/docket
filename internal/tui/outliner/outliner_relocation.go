@@ -76,6 +76,9 @@ type OutlinerRelocationCapture struct {
 	departureLine   string
 	departureOffset int
 	departureIcon   string
+	// departureFrom is where the task stood at the keypress, so the ghost can
+	// name what changed once the commit lands.
+	departureFrom departurePlacement
 }
 
 // StampTransaction satisfies coordinator.TransactionRelocation, which is how a
@@ -474,5 +477,8 @@ func (m *OutlinerModel) leaveDepartureGhost(capture *OutlinerRelocationCapture) 
 	}
 	m.ghostSeq++
 	m.ghost = &departureGhost{line: line, screenOffset: capture.departureOffset, done: done, icon: icon, seq: m.ghostSeq}
+	if !done {
+		m.ghost.destination, m.ghost.destinationStyle = m.departureDestination(capture)
+	}
 	return departureGhostTick(m.ghost.schedule()[0], m.ghostSeq)
 }

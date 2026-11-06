@@ -438,19 +438,34 @@ func (m *OutlinerModel) captureDepartureLine(capture *OutlinerRelocationCapture)
 	capture.departureLine = strings.TrimRight(line, " ")
 	capture.departureOffset = offset
 	capture.departureIcon = theme.StateBadgeIcon(row.Task.State())
+	capture.departureFrom = m.departurePlacement(capture.Task)
 }
 
 // renderDepartureGhost paints the ghost's line for its phase. A completion
 // first lands its check: the row as it stood, the check in bold success ink.
 // Then the row is struck through, in the success color for a completion and in
-// the muted color otherwise, then faint. The indentation is never struck.
+// the muted color otherwise, then faint. A relocation is never struck: the row
+// goes muted with its destination after it, then both go faint. The
+// indentation is never struck.
 func (m *OutlinerModel) renderDepartureGhost(rowWidth int) string {
 	ghost := m.ghost
-	line := textfit.TruncateToVisualWidth(ghost.line, rowWidth)
+	label := ""
+	if ghost.relocated() {
+		label = "  → " + ghost.destination
+	}
+	labelWidth := lipgloss.Width(label)
+	if labelWidth >= rowWidth {
+		label, labelWidth = "", 0
+	}
+	line := textfit.TruncateToVisualWidth(ghost.line, rowWidth-labelWidth)
 	trimmed := strings.TrimLeft(line, " ")
 	lead := line[:len(line)-len(trimmed)]
 	var rendered string
 	switch ghost.look() {
+	case ghostLabeled:
+		rendered = lead + theme.MutedStyle.Render(trimmed) + ghost.destinationStyle.Bold(true).Render(label)
+	case ghostLabelFaded:
+		rendered = lead + lipgloss.NewStyle().Foreground(theme.ColorMuted).Faint(true).Render(trimmed+label)
 	case ghostChecked:
 		rendered = lead + renderLandedCheck(trimmed, ghost.icon)
 	case ghostFaded:
