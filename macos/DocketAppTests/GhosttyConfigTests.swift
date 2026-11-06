@@ -76,6 +76,17 @@ final class GhosttyConfigTests: XCTestCase {
         )
     }
 
+    /// The launcher script is never the executed program: a quarantined,
+    /// unsigned script is refused by Gatekeeper, while `/bin/sh` reading it is not.
+    func testTheLauncherScriptRunsUnderBinShRatherThanBeingExecuted() {
+        let script = URL(fileURLWithPath: "/Applications/Docket.app/Contents/Resources/docket-launch")
+        let arguments = DocketLauncher.arguments(script: script, statusFile: URL(fileURLWithPath: "/tmp/s"))
+        XCTAssertEqual(
+            Ghostty.ConfigOverrides.commandValue(for: DocketLauncher.shell, arguments: arguments + ["/usr/local/bin/docket"]),
+            "direct:/bin/sh /Applications/Docket.app/Contents/Resources/docket-launch /tmp/s /usr/local/bin/docket"
+        )
+    }
+
     /// Ghostty runs a `shell:` command as `bash -c "exec -l <value>"`.
     func testShellFormRunsUnderGhosttysExecPrefix() throws {
         let value = Ghostty.ConfigOverrides.commandValue(

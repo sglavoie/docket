@@ -28,6 +28,26 @@ enum DocketExitBehavior: String, CaseIterable {
     }
 }
 
+/// The bundled `docket-launch` script, run as an argument to `/bin/sh` rather
+/// than executed itself. A downloaded app's every file carries the quarantine
+/// attribute, and a script holds no code signature, so executing it directly
+/// makes Gatekeeper assess it alone and refuse it as unnotarized. Run as a
+/// file `/bin/sh` reads, it is data, and the executed program is Apple's.
+enum DocketLauncher {
+    static let shell = URL(fileURLWithPath: "/bin/sh")
+
+    /// The launcher script in `bundle`'s Resources, or nil when it is missing.
+    static func script(in bundle: Bundle = .main) -> URL? {
+        bundle.url(forResource: "docket-launch", withExtension: nil)
+    }
+
+    /// The leading arguments `shell` takes: the script, then its status file.
+    /// Docket's own path and arguments follow them.
+    static func arguments(script: URL, statusFile: URL) -> [String] {
+        [script.path, statusFile.path]
+    }
+}
+
 /// How Docket ended, as the launcher's shell reported it.
 enum DocketExitStatus: Equatable {
     case exited(Int32)

@@ -316,10 +316,12 @@ final class TerminalWindowControllerTests: XCTestCase {
     private func start(hidesApp: Bool = false) throws {
         let script = try writeFake()
 
-        let launcher = try XCTUnwrap(Bundle.main.url(forResource: "docket-launch", withExtension: nil))
+        let launcher = try XCTUnwrap(DocketLauncher.script())
         let statusFile = dir.appendingPathComponent("status")
         let overrides = Ghostty.ConfigOverrides(
-            command: launcher, arguments: [statusFile.path, script.path], waitAfterCommand: true
+            command: DocketLauncher.shell,
+            arguments: DocketLauncher.arguments(script: launcher, statusFile: statusFile) + [script.path],
+            waitAfterCommand: true
         )
         ghostty = Ghostty.App { Ghostty.Config(userConfig: nil, overrides: overrides) }
         let delegate = Delegate()
@@ -491,7 +493,7 @@ final class TerminalWindowControllerTests: XCTestCase {
     func testRelaunchRunsTheBinaryResolvedForThatSession() throws {
         let old = try writeFake(named: "old-docket", banner: "OLD")
         let new = try writeFake(named: "new-docket", banner: "NEW")
-        let launcher = try XCTUnwrap(Bundle.main.url(forResource: "docket-launch", withExtension: nil))
+        let launcher = try XCTUnwrap(DocketLauncher.script())
         let statusFile = dir.appendingPathComponent("status")
 
         var installed: URL? = old
@@ -510,7 +512,9 @@ final class TerminalWindowControllerTests: XCTestCase {
 
         ghostty = Ghostty.App {
             var overrides = Ghostty.ConfigOverrides(
-                command: launcher, arguments: [statusFile.path], waitAfterCommand: true
+                command: DocketLauncher.shell,
+                arguments: DocketLauncher.arguments(script: launcher, statusFile: statusFile),
+                waitAfterCommand: true
             )
             if let binary = binaries.current {
                 overrides.arguments.append(binary.path)

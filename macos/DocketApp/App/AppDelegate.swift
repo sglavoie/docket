@@ -109,15 +109,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         let detected = LaunchEnvironment.current()
         preferencesModel.detectedEnvironment = detected
 
-        guard let launcher = Bundle.main.url(forResource: "docket-launch", withExtension: nil) else {
+        guard let launcher = DocketLauncher.script() else {
             showLaunchError(title: "Docket.app is incomplete.", message: "Its docket-launch helper is missing from Resources.")
             return
         }
         let statusFile = FileManager.default.temporaryDirectory
             .appendingPathComponent("docket-app-\(ProcessInfo.processInfo.processIdentifier).status")
         let overrides = Ghostty.ConfigOverrides(
-            command: launcher,
-            arguments: [statusFile.path],
+            command: DocketLauncher.shell,
+            arguments: DocketLauncher.arguments(script: launcher, statusFile: statusFile),
             environment: detected.applying(preferencesModel.environmentOverrides).commandEnvironment,
             waitAfterCommand: true
         )
