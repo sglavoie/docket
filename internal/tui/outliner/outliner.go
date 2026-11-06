@@ -202,6 +202,9 @@ type OutlinerModel struct {
 	// authoritative project trees rather than from a row's own task, whose
 	// Children the filter pipeline may have rewritten.
 	openChildCounts map[taskref.TaskIdentity]int
+	// nowCard is the Doing work the last row build found, which the header's
+	// Now card names; see refreshNowCard.
+	nowCard nowCardState
 	// hiddenLayout is what this projection's folds hide from the row layout,
 	// rebuilt with the rows so a fold opening moves no title.
 	hiddenLayout hiddenRowLayout
@@ -235,6 +238,8 @@ type OutlinerModel struct {
 	// carries the whole of that sub-state; nothing here can go stale, because the
 	// rows are read off the live axes each frame.
 	QueryReadout queryReadoutState
+	// Triage is the card-at-a-time sorting pass; see triageState.
+	Triage triageState
 
 	// Jump is `'`'s jump mode: open, and the first letter of a two-letter label
 	// typed so far. The targets are never stored; outliner_jump_history.go reads

@@ -3,9 +3,11 @@ package outliner
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/pulse"
 	"github.com/sglavoie/docket/internal/tui/query"
@@ -315,4 +317,117 @@ func (m *OutlinerModel) writeOutlinerHeader(b *strings.Builder, width int) {
 		b.WriteString(row)
 		b.WriteString("\n")
 	}
+	m.writeNowCard(b, width)
+}
+
+// nowCardMinHeight is the shortest Outliner the Now card stands in. Below it the
+// card's rows are the list's, since a short terminal is read for its rows and
+// the Doing lane still names the same work.
+const nowCardMinHeight = chrome.MinTerminalHeight + 4
+
+// nowCardState is what the last row build found in Doing: the lead task the card
+// names and how many more stand beside it. It is settled state, written once per
+// build by refreshNowCard, so measuring the header reads a value rather than
+// walking the population.
+type nowCardState struct {
+	task    *models.Task
+	project *models.Project
+	more    int
+}
+
+// refreshNowCard records the Doing work the current scope and facets admit. The
+// lead is the task that entered Doing most recently — the one the reader most
+// likely means by "what was I doing" — with catalog order breaking a tie.
+func (m *OutlinerModel) refreshNowCard() {
+	m.nowCard = nowCardState{}
+	if !m.nowCardModeAdmits() {
+		return
+	}
+	admits := m.workModeTaskFilterAt(time.Now())
+	count := 0
+	for _, project := range m.ProjectsInCatalogOrder(m.WorkModeScopeProjects()) {
+		if project == nil {
+			continue
+		}
+		for _, task := range flattenTaskPointers(project.Tasks) {
+			if !task.IsInState(models.StateDoing) || (admits != nil && !admits(task, project)) {
+				continue
+			}
+			count++
+			if m.nowCard.task == nil || task.StateChangedAt.After(m.nowCard.task.StateChangedAt) {
+				m.nowCard.task, m.nowCard.project = task, project
+			}
+		}
+	}
+	m.nowCard.more = max(count-1, 0)
+}
+
+// nowCardModeAdmits is where the card belongs: the two home views, read as
+// themselves. A search, a lens, or a Focus is a narrower question than "what am
+// I doing", so each puts the card down.
+func (m *OutlinerModel) nowCardModeAdmits() bool {
+	switch m.ActiveOutlinerMode() {
+	case chrome.ModeAll, chrome.ModeToday:
+	default:
+		return false
+	}
+	return !m.ShowsRankedList() && !m.HasActiveLens() && !m.HasSuspendedLens() && len(m.Focus.Stack) == 0
+}
+
+// NowCardVisible reports whether the header draws the Now card this frame.
+func (m *OutlinerModel) NowCardVisible() bool {
+	return m.nowCard.task != nil && m.nowCardModeAdmits() && m.Height() >= nowCardMinHeight
+}
+
+// NowCardRows is the header's charge for the card, counted from state alone so
+// ContentHeight and outlinerHostHeaderRows read one answer.
+func (m *OutlinerModel) NowCardRows() int {
+	if !m.NowCardVisible() {
+		return 0
+	}
+	return chrome.NowCardRowCount(m.nowCardSpec(time.Now()))
+}
+
+func (m *OutlinerModel) writeNowCard(b *strings.Builder, width int) {
+	if !m.NowCardVisible() {
+		return
+	}
+	for _, line := range chrome.RenderNowCard(m.nowCardSpec(time.Now()), width) {
+		b.WriteString(line)
+		b.WriteString("\n")
+	}
+}
+
+// nowCardSpec reads the lead into the card: its project and age in Doing off
+// the state clock, so a comment never restarts it, and its own progress,
+// checklist first and subtasks otherwise.
+func (m *OutlinerModel) nowCardSpec(now time.Time) chrome.NowCardSpec {
+	task := m.nowCard.task
+	spec := chrome.NowCardSpec{Title: task.Title, ResumeNote: task.ResumeNote, More: m.nowCard.more}
+	meta := make([]string, 0, 2)
+	if project := m.nowCard.project; project != nil && project.Name != "" {
+		meta = append(meta, project.Name)
+	}
+	switch age := query.FormatRecencyAge(task.StateChangedAt, now); age {
+	case "":
+	case "now":
+		meta = append(meta, "started just now")
+	default:
+		meta = append(meta, age+" in Doing")
+	}
+	spec.Meta = strings.Join(meta, " · ")
+	done, total, noun := 0, len(task.Checklist), "checklist"
+	for _, item := range task.Checklist {
+		if item.Done {
+			done++
+		}
+	}
+	if total == 0 {
+		progress := subtaskProgressOf(task)
+		done, total, noun = progress.done, progress.total, "subtasks"
+	}
+	if total > 0 {
+		spec.Progress = inlinePeekMeter(done, total) + theme.MutedStyle.Render(fmt.Sprintf(" %d/%d %s", done, total, noun))
+	}
+	return spec
 }

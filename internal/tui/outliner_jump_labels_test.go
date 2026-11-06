@@ -37,7 +37,8 @@ func jumpLabelDriver(t *testing.T, n, width, height int) *UITestDriver {
 func jumpLabelOn(t *testing.T, d *UITestDriver, text string) string {
 	t.Helper()
 	for _, line := range strings.Split(ansi.Strip(d.Render()), "\n") {
-		if !strings.Contains(line, text) {
+		// The Now card names a Doing task above the list and carries no label.
+		if !strings.Contains(line, text) || strings.HasPrefix(line, chrome.NowCardRail) {
 			continue
 		}
 		end := 0

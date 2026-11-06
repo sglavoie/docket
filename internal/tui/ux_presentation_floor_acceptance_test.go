@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/docket/internal/tui/chrome"
 )
 
 // TestUXRefinementFloorHoldsContextPeekAndCapture is the one combination the
@@ -146,6 +148,10 @@ func uxDrawnListLines(t *testing.T, plain string) int {
 	}
 	var drawn int
 	for _, line := range lines[1:footer] {
+		// The Now card is header chrome above the lanes, not a list row.
+		if strings.HasPrefix(line, chrome.NowCardRail) {
+			continue
+		}
 		if uxTrimRowFurniture(line) != "" {
 			drawn++
 		}

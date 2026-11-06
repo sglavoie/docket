@@ -112,6 +112,7 @@ var headerTargetAudit = map[operation.OperationID]string{
 	"tui.core.toggle-menu-bar":        "target-free",
 	"tui.core.open-menu-bar":          "target-free",
 	"tui.core.toggle-theme":           "target-free",
+	"tui.core.triage":                 "target-free",
 	"tui.core.undo":                   "target-free",
 	"tui.core.zoom-section":           "target-free",
 	"tui.filter.clear":                "target-free",

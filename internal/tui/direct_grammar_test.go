@@ -279,6 +279,7 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"M": operation.OperationCoreToggleMenuBar, "ctrl+m": operation.OperationCoreOpenMenuBar,
 		"f10": operation.OperationCoreOpenMenuBar,
 		"Q":   operation.OperationCoreQueryReadout,
+		"I":   operation.OperationCoreTriage,
 		"'":   operation.OperationCoreJumpLabels,
 		"u":   operation.OperationCoreUndo, "ctrl+r": operation.OperationCoreRedo,
 		"esc": operation.OperationCoreBack, "?": operation.OperationCoreHelp, ":": operation.OperationCoreCommandPalette, "ctrl+c": operation.OperationCoreQuit, "q": operation.OperationCoreQuit,

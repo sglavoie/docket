@@ -132,14 +132,14 @@ func (m *OutlinerModel) RenderOutlinerTreeContent(width int) string {
 // ordinary path, so ComputeOutlinerViewport stays the one window authority and
 // the window a modal stands over is the window its close redraws.
 //
-// The relation picker is checked first for the same reason it was the first
-// branch before: it can only be opened from the list, and a menu cannot be open
-// underneath it. Both are keyed on the drawn block rather than on the sub-state's
-// own gate, because either returns nothing for a width or a resolution it cannot
-// draw, and compositing an empty popup would dim the view over a modal nobody
-// can see.
+// A triage card, then the relation picker, lead: each is opened from the list
+// with no menu beneath it. Each is keyed on the drawn block rather than its gate,
+// since one that draws nothing must not dim the view over a modal nobody sees.
 func (m *OutlinerModel) composeOutlinerModal(host string, width int) string {
 	frameHeight := m.outlinerHostFrameHeight(width)
+	if composed, ok := m.composeTriageCard(host, width, frameHeight); ok {
+		return composed
+	}
 	if picker := m.renderRelationPicker(width); picker != "" {
 		// The picker is centered and bottom-anchored, the way every shell-level
 		// picker already sits, and it is fitted to what the host's header rows leave
@@ -164,7 +164,7 @@ func (m *OutlinerModel) composeOutlinerModal(host string, width int) string {
 // immediately below them, which is also the row a centered picker is fitted
 // against.
 func (m *OutlinerModel) outlinerHostHeaderRows() int {
-	return m.menuBarRows() + 1 + m.contextRowRows()
+	return m.menuBarRows() + 1 + m.contextRowRows() + m.NowCardRows()
 }
 
 // HostHeaderRows is outlinerHostHeaderRows for a shell overlay that anchors to

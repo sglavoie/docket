@@ -1,0 +1,28 @@
+{
+  "name": "now-card",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "label": "the Now card leads the home view with the Doing task", "assert": "contains", "value": "▎ Build login form" },
+    { "type": "assert", "label": "its right edge names the project and how long it has been in Doing", "assert": "contains", "value": "in Doing" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "Today keeps the card", "key": "2" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Today" },
+    { "type": "assert", "assert": "contains", "value": "▎ Build login form" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "Inbox is a narrower question, so the card stands down", "key": "3" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Inbox" },
+    { "type": "assert", "assert": "not_contains", "value": "▎ Build login form" },
+    { "type": "key", "key": "1" },
+    { "type": "key", "label": "search puts it down too", "key": "/" },
+    { "type": "assert", "assert": "not_contains", "value": "▎ Build login form" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "▎ Build login form" },
+    { "type": "resize", "label": "a short terminal gives the card's rows back to the list", "width": 80, "height": 22 },
+    { "type": "assert", "assert": "not_contains", "value": "▎ Build login form" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "and a narrow one keeps the title over the age", "width": 60, "height": 30 },
+    { "type": "assert", "assert": "contains", "value": "▎ Build login form" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

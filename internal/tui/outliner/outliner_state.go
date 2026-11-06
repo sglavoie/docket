@@ -145,6 +145,7 @@ func (m *OutlinerModel) nonSearchInlineControlOwnsInput() bool {
 		m.QuickEdit.IsActive() ||
 		m.Confirm.IsActive() ||
 		m.QueryReadout.Expanded ||
+		m.Triage.Active ||
 		m.Jump.Active ||
 		// The relationship picker owns input outright: it is drawn over the whole
 		// frame, so a key it has not learned is a key with nothing on screen to act

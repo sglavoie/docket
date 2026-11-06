@@ -764,7 +764,7 @@
       "type": "assert",
       "label": "a menu names directly-bound operations freely",
       "assert": "contains",
-      "value": "Outline Edit Project"
+      "value": "Backlog (clear plan)"
     },
     {
       "type": "assert",
@@ -801,7 +801,7 @@
     {
       "type": "assert",
       "assert": "not_contains",
-      "value": "Outline Edit Project"
+      "value": "Backlog (clear plan)"
     },
     {
       "type": "key",

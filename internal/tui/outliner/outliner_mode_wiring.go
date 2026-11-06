@@ -191,6 +191,8 @@ func (m *OutlinerModel) finalizeModeRows() {
 	m.prependFocusedProjectHeader()
 	m.indexSectionHeaderRows()
 	m.pruneInvisibleSelections()
+	m.refreshNowCard()
+	m.settleTriage(false)
 	m.ClampCursor()
 }
 

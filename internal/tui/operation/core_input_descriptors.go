@@ -387,6 +387,10 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		core(OperationCoreChangeHistory, "Change History", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "undo history", "recent changes", "transactions", "recovery"),
 		core(OperationCoreLastMessage, "Recent Messages", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "feedback", "last error", "last message"),
 		core(OperationCoreClearSearchHistory, "Clear Search History", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "forget queries", "recall"),
+		// Triage opens a card-at-a-time pass over the view's Inbox tasks, or Today's
+		// Suggested lane. It is target-free: the pass freezes its own queue from the
+		// drawn rows, and each card's routing runs the row operation it names.
+		core(OperationCoreTriage, "Triage", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "triage inbox", "sort inbox", "plan suggestions", "process inbox"),
 		core(OperationCoreSetUpCheckIns, "Set Up Check-Ins", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "schedule active work", "check-in setup"),
 		core(OperationCoreUndo, "Undo", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation),
 		core(OperationCoreRedo, "Redo", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation),

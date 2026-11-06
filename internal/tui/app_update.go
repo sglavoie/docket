@@ -80,6 +80,10 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		m.reconcileDraftError(statusBefore.errText, textBefore, draftBefore)
 		m.rememberFeedbackSince(statusBefore)
 		m.syncHostedPanelHost()
+		if m.crossOutliner != nil {
+			// A triage card steps aside while a shell question it raised is open.
+			m.crossOutliner.SetTriageCovered(m.shellConfirmationArmed() || m.shellModalMounted())
+		}
 		// And the one place the footer this update produced can be measured
 		// before it is drawn, so the surface underneath reserves the rows it
 		// actually costs instead of the two it was sized against.

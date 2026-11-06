@@ -86,6 +86,20 @@ most eight). Nothing Today or Pinned already shows is offered, a search hides
 the lane, and folding it with `h` or `s` dismisses it for the session. It is an
 offer, not a plan: nothing is saved until you press `wt`.
 
+Press `I` to sort work one card at a time. In Today it walks the Suggested lane
+under the heading `Plan today`; anywhere else it walks the Inbox tasks the view
+draws, under `Inbox triage`. The card shows the task's title, project, how long
+ago it was captured, any due date and tags, and the head of its resume note and
+description, with `3 of 9` and a progress rule above. Each key runs the row's
+own operation on that task: `t` Today, `n` Next, `b` Backlog, `d` done, `%`
+move to a project, and `x` delete, which still asks first. `Space` skips a
+card, `u` brings back the previous one (undoing it if it was routed), and `Esc`
+stops. Each routing is its own change in the undo history, its feedback is the
+row's own, and sorting the last Inbox task still earns `Inbox zero`. The order
+is fixed when the pass opens, a selection refuses it, and the pass closes by
+itself after the last card. The morning greeting points at it when the Inbox
+holds work: `2 in Inbox (I triage)`.
+
 Under its rows, wherever the window has room, Today draws the day around the
 list. Once something is finished, `Done today · 3` lists today's completions
 struck through, newest first, with the last seven days as a small bar chart

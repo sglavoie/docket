@@ -382,6 +382,10 @@ func (m *OutlinerModel) handleModalPointer(event route.PointerEvent) (tea.Cmd, b
 		return nil, true
 	case m.RelationPickerOpen():
 		return m.relationPickerPointer(event), true
+	case m.Triage.Active:
+		// The card is keyboard-only and covers the rows a click would act on, so
+		// the pass owns every event and answers none.
+		return nil, true
 	case m.MenuBar.Open:
 		return m.openMenuPointer(event), true
 	case event.IsWheel() || m.SimplifiedInlineControlOwnsInput():

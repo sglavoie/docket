@@ -1,11 +1,16 @@
 package outliner
 
 import (
+	"slices"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/query"
 	"github.com/sglavoie/docket/internal/tui/status"
 	"github.com/sglavoie/docket/internal/tui/taskref"
 )
@@ -123,4 +128,276 @@ func (m *OutlinerModel) finishReviewAdvance(capture *OutlinerRelocationCapture) 
 		m.Cursor = index
 	}
 	return func() tea.Msg { return status.InfoStatusMsg(reviewAdvanceExhaustedStatus) }
+}
+
+// triageState is the card-at-a-time pass over the work a view is asking the
+// reader to sort: Inbox's tasks, or Today's Suggested lane. It is the review
+// pass's sibling — one task, one decision, advance — and like the query readout
+// it is a view-local gated sub-state with no presentation, strategy, or manifest
+// of its own. The queue is frozen when the pass opens, so routing one card
+// never reorders the ones still to come.
+//
+// A card commits nothing itself. Each routing key seats the cursor on the
+// card's task and hands the shell the operation the row key runs — `wt`, `wn`,
+// `wb`, `wd`, `%`, Delete — so feedback, undo, cursor recovery, and the Inbox
+// zero moment are the ones a row already earns.
+type triageState struct {
+	Active  bool
+	source  triageSource
+	queue   []taskref.TaskIdentity
+	handled map[taskref.TaskIdentity]bool
+	// trail is the order cards left the pass in, and whether each was routed
+	// rather than skipped, which is what `u` walks back.
+	trail []triageStep
+	// pending is the card whose routing opened a shell question — the project
+	// picker or the delete confirmation — and so may still be declined. It leaves
+	// the pass only once the rows stop drawing it, which is what a committed move
+	// or delete does; a declined one is simply the card again.
+	pending taskref.TaskIdentity
+	// covered is whether a shell question stands over the view, set by the shell
+	// once per update, so the card steps aside rather than stacking under it.
+	covered bool
+}
+
+type triageStep struct {
+	identity taskref.TaskIdentity
+	routed   bool
+}
+
+type triageSource int
+
+const (
+	triageSourceInbox triageSource = iota
+	triageSourceSuggested
+)
+
+// TriageRouteMsg asks the shell to run one operation against the cursor the
+// pass just seated on its card's task. Running it is the shell's because the
+// executor is.
+type TriageRouteMsg struct {
+	OperationID operation.OperationID
+	Value       any
+	HasValue    bool
+}
+
+func (msg TriageRouteMsg) String() string { return "triage route" }
+
+// triageRoutes is the card's keymap: each key names the row operation it runs.
+// Space, s, l, and → skip; u walks back; Esc and q stop.
+var triageRoutes = map[string]TriageRouteMsg{
+	"t": {OperationID: operation.OperationCoreToday},
+	"n": {OperationID: operation.OperationCoreNext},
+	"b": {OperationID: operation.OperationCoreBacklog},
+	"d": {OperationID: operation.OperationTaskSetState, Value: models.StateDone, HasValue: true},
+	"%": {OperationID: operation.OperationTaskMoveToProject},
+	"x": {OperationID: operation.OperationTaskDelete},
+}
+
+func triageRouteAsks(route TriageRouteMsg) bool {
+	return route.OperationID == operation.OperationTaskMoveToProject || route.OperationID == operation.OperationTaskDelete
+}
+
+// OpenTriage starts a pass over the drawn rows the current view offers for
+// sorting: Today's Suggested lane in Today, and every drawn Inbox task
+// elsewhere. It returns a refusal when there is nothing to sort, and opens
+// nothing.
+func (m *OutlinerModel) OpenTriage() string {
+	if m.IsMultiSelectActive() || m.IsRangeSelectionActive() {
+		return "Triage works one task at a time: clear the selection first"
+	}
+	source := triageSourceInbox
+	if m.ActiveOutlinerMode() == chrome.ModeToday {
+		source = triageSourceSuggested
+	}
+	seen := make(map[taskref.TaskIdentity]bool)
+	var queue []taskref.TaskIdentity
+	for _, row := range m.Rows {
+		if !row.IsTaskRow() || row.Task == nil {
+			continue
+		}
+		if source == triageSourceSuggested && row.Group.SectionKey != todaySuggestionsCollapseKey ||
+			source == triageSourceInbox && !row.Task.IsInState(models.StateInbox) {
+			continue
+		}
+		if identity := m.TaskIdentityForRow(row); identity.Valid() && !seen[identity] {
+			seen[identity] = true
+			queue = append(queue, identity)
+		}
+	}
+	if len(queue) == 0 {
+		if source == triageSourceSuggested {
+			return "Nothing suggested to plan: Today's Suggested lane is empty or folded"
+		}
+		return "Nothing to triage: no Inbox tasks are in view"
+	}
+	// The card is the detail now; a dock under it would describe whatever row
+	// the cursor happened to be on.
+	m.PeekMode = false
+	m.Triage = triageState{Active: true, source: source, queue: queue, handled: make(map[taskref.TaskIdentity]bool, len(queue))}
+	return ""
+}
+
+// CloseTriage ends the pass, leaving the cursor where the last card put it.
+func (m *OutlinerModel) CloseTriage() { m.Triage = triageState{} }
+
+// SetTriageCovered records whether a shell question stands over the view.
+func (m *OutlinerModel) SetTriageCovered(covered bool) {
+	if m != nil {
+		m.Triage.covered = covered
+	}
+}
+
+// triageCurrent is the card on screen: the first queued task not yet routed or
+// skipped that the projection still draws. A task the rows no longer hold —
+// another surface finished it, a sync moved it — is passed over silently.
+func (m *OutlinerModel) triageCurrent() (taskref.TaskIdentity, int, bool) {
+	for _, identity := range m.Triage.queue {
+		if m.Triage.handled[identity] {
+			continue
+		}
+		if index, ok := m.RowIndexForTask(identity); ok {
+			return identity, index, true
+		}
+	}
+	return taskref.TaskIdentity{}, 0, false
+}
+
+// settleTriage resolves a pending card against the rows the projection now
+// draws and closes a pass with nothing left to show. It runs after every row
+// build, which is when a committed move or delete lands, and before every key,
+// the first moment a question the reader declined is known to be over.
+func (m *OutlinerModel) settleTriage(declined bool) {
+	if !m.Triage.Active {
+		return
+	}
+	if pending := m.Triage.pending; pending.Valid() {
+		if _, drawn := m.RowIndexForTask(pending); !drawn {
+			m.Triage.handled[pending] = true
+			m.Triage.trail = append(m.Triage.trail, triageStep{identity: pending, routed: true})
+			m.Triage.pending = taskref.TaskIdentity{}
+		} else if declined {
+			m.Triage.pending = taskref.TaskIdentity{}
+		}
+	}
+	if _, _, ok := m.triageCurrent(); !ok {
+		m.CloseTriage()
+	}
+}
+
+// handleTriageKey owns every key while the pass is open. Anything it does not
+// name is swallowed, since the rows it would act on are under the card.
+func (m *OutlinerModel) handleTriageKey(key string) (tea.Model, tea.Cmd) {
+	if key == "esc" || key == "q" {
+		m.CloseTriage()
+		return m, nil
+	}
+	if m.settleTriage(true); !m.Triage.Active {
+		return m, nil
+	}
+	if key == "u" {
+		return m, m.triageBack()
+	}
+	identity, index, _ := m.triageCurrent()
+	route, routed := triageRoutes[key]
+	switch {
+	case routed && triageRouteAsks(route):
+		// Both ask a question first, so the card stays until the rows say the
+		// answer was yes.
+		m.Triage.pending = identity
+	case routed, key == "space", key == "s", key == "l", key == "right":
+		m.Triage.handled[identity] = true
+		m.Triage.trail = append(m.Triage.trail, triageStep{identity: identity, routed: routed})
+		if _, _, more := m.triageCurrent(); !more {
+			// The last card closes the pass at once, so the routing's own feedback
+			// — and an Inbox zero, when this emptied it — is what is left on screen.
+			m.CloseTriage()
+		}
+	default:
+		return m, nil
+	}
+	if !routed {
+		return m, nil
+	}
+	m.Cursor = index
+	return m, func() tea.Msg { return route }
+}
+
+// triageBack returns the previous card to the pass. A routed card is undone
+// through the ordinary ledger, so `u` here is the same `u` the row answers; a
+// skipped one simply comes back.
+func (m *OutlinerModel) triageBack() tea.Cmd {
+	trail := m.Triage.trail
+	if len(trail) == 0 {
+		return nil
+	}
+	last := trail[len(trail)-1]
+	m.Triage.trail = trail[:len(trail)-1]
+	delete(m.Triage.handled, last.identity)
+	if !last.routed {
+		return nil
+	}
+	return func() tea.Msg { return TriageRouteMsg{OperationID: operation.OperationCoreUndo} }
+}
+
+// composeTriageCard composites the open pass's card over the host, bottom
+// anchored so it stands directly above the footer that names its keys.
+func (m *OutlinerModel) composeTriageCard(host string, width, frameHeight int) (string, bool) {
+	if !m.Triage.Active || m.Triage.covered {
+		return "", false
+	}
+	identity, index, ok := m.triageCurrent()
+	if !ok {
+		return "", false
+	}
+	task := m.Rows[index].Task
+	spec := chrome.TriageCardSpec{
+		Heading: "Inbox triage", Title: task.Title, Total: len(m.Triage.queue),
+		Meta:       triageMeta(task, m.crossResolveProject(m.Rows[index].ProjectID), time.Now()),
+		ResumeNote: task.ResumeNote, Description: task.Description,
+	}
+	if m.Triage.source == triageSourceSuggested {
+		spec.Heading = "Plan today"
+	}
+	// Every entry ahead of the card has left the pass, so its own place in the
+	// frozen queue is the count.
+	spec.Position = slices.Index(m.Triage.queue, identity) + 1
+	card := chrome.FitOverlayPopupHeight(chrome.RenderTriageCard(spec, width), m.outlinerModalBudget(width))
+	composed, _ := chrome.OverlayPopupDimmedPlaced(host, card, width, frameHeight)
+	return composed, true
+}
+
+// triageMeta is the card's one line of context: where the task lives, how long
+// it has waited to be sorted, and what is already attached to it.
+func triageMeta(task *models.Task, project *models.Project, now time.Time) string {
+	parts := make([]string, 0, 4)
+	if project != nil && project.Name != "" {
+		parts = append(parts, project.Name)
+	}
+	switch age := query.FormatRecencyAge(task.CreatedAt, now); age {
+	case "":
+	case "now":
+		parts = append(parts, "captured just now")
+	default:
+		parts = append(parts, "captured "+age+" ago")
+	}
+	if task.DueDate != nil {
+		parts = append(parts, "due "+task.DueDate.Format("Mon Jan 2"))
+	}
+	for _, tag := range task.Tags {
+		parts = append(parts, "#"+tag)
+	}
+	return strings.Join(parts, " · ")
+}
+
+// triageGuidance is the pass's own keymap. It takes no footer rank, as a gated
+// keymap does not: these keys exist only while the card is up.
+func (m *OutlinerModel) triageGuidance() chrome.GuidanceSpec {
+	hints := chrome.RequiredGuidanceHints("t today", "n next", "b backlog", "d done")
+	hints = append(hints, chrome.OptionalGuidanceHints(3, "% project", "x delete")...)
+	hints = append(hints, chrome.RequiredGuidanceHints("Space skip")...)
+	if len(m.Triage.trail) > 0 {
+		hints = append(hints, chrome.OptionalGuidanceHints(2, "u back")...)
+	}
+	hints = append(hints, chrome.RequiredGuidanceHints("Esc stop")...)
+	return chrome.GuidanceSpec{Hints: hints, Rows: 2}
 }

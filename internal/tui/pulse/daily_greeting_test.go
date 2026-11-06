@@ -12,8 +12,8 @@ func TestDailyGreeting(t *testing.T) {
 		now   time.Time
 		want  string
 	}{
-		{WorkspacePulse{Today: 3, Overdue: 1, Inbox: 2, Done: 9}, at(8), "Good morning · 3 planned for Today · 1 overdue · 2 in Inbox"},
-		{WorkspacePulse{Inbox: 1}, at(14), "Good afternoon · 1 in Inbox"},
+		{WorkspacePulse{Today: 3, Overdue: 1, Inbox: 2, Done: 9}, at(8), "Good morning · 3 planned for Today · 1 overdue · 2 in Inbox (I triage)"},
+		{WorkspacePulse{Inbox: 1}, at(14), "Good afternoon · 1 in Inbox (I triage)"},
 		{WorkspacePulse{}, at(20), "Good evening · nothing is waiting on you"},
 		{WorkspacePulse{Today: 1}, at(2), "Working late · 1 planned for Today"},
 	}

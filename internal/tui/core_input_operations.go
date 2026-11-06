@@ -410,6 +410,13 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		if err == nil {
 			message = commandMessage(m.statusReadingTimeout())
 		}
+	case operation.OperationCoreTriage:
+		if out, ok := m.outlinerPrimary(); ok {
+			if refusal := out.OpenTriage(); refusal != "" {
+				m.setInfoStatus(refusal)
+				message = commandMessage(m.statusReadingTimeout())
+			}
+		}
 	case operation.OperationCoreSetUpCheckIns:
 		message = commandMessage(m.startCheckInSetup())
 	case operation.OperationCoreUndo:

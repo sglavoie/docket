@@ -194,7 +194,7 @@ func uxClarityHeaderRows(view *outliner.OutlinerModel, width int) int {
 	if context := view.BuildOutlinerContextRow(width); context != "" {
 		rows += lipgloss.Height(context)
 	}
-	return rows
+	return rows + view.NowCardRows()
 }
 
 // uxClarityReviewRoot resolves the artifact directory. A caller that named one

@@ -28,7 +28,8 @@ func DailyGreeting(pulse WorkspacePulse, now time.Time) string {
 		parts = append(parts, fmt.Sprintf("%d overdue", pulse.Overdue))
 	}
 	if pulse.Inbox > 0 {
-		parts = append(parts, fmt.Sprintf("%d in Inbox", pulse.Inbox))
+		// The one count with a ritual behind it names its key: I opens triage.
+		parts = append(parts, fmt.Sprintf("%d in Inbox (I triage)", pulse.Inbox))
 	}
 	if len(parts) == 0 {
 		return salutation + " · nothing is waiting on you"

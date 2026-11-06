@@ -332,6 +332,10 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 		// The menu named an operation and closed; running it is the shell's because
 		// the executor is.
 		return true, m.operations.ActivateMenuBarEntry(m, typed.OperationID)
+	case outliner.TriageRouteMsg:
+		// A triage card seated the cursor on its task; the routing it chose runs
+		// through the executor exactly as the row key would.
+		return true, m.operations.ActivateOperation(m, typed.OperationID, typed.Value, typed.HasValue)
 	case outliner.QueryReadoutReloadRequestMsg:
 		// The peel already wrote the population fields; only the reload the facet
 		// owes is left, and it is the shell's because the projects are.

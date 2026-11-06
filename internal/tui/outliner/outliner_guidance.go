@@ -44,6 +44,9 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		// First because the picker is drawn over the whole frame: every profile below
 		// describes keys the rows it hid would have answered.
 		return m.relationPickerGuidance(), true
+	case m.Triage.Active:
+		// The card covers the rows, so its keymap is the only one worth naming.
+		return m.triageGuidance(), true
 	case m.MenuBar.Open:
 		// First for the same reason the readout is first below it: while a menu is
 		// open its own keymap is what the four navigation keys mean, and every

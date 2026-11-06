@@ -233,7 +233,7 @@ func (m *OutlinerModel) ClampCursor() {
 // reduced value: the window, the page size, and the suggestion budgets are all
 // measured against the list the chrome leaves behind.
 func (m *OutlinerModel) ContentHeight() int {
-	height := m.Height() - 1 - m.menuBarRows() - m.contextRowRows()
+	height := m.Height() - 1 - m.menuBarRows() - m.contextRowRows() - m.NowCardRows()
 	if height < 1 {
 		return 1
 	}

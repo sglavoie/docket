@@ -31,6 +31,12 @@ func (m *OutlinerModel) HandleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.handleRelationPickerKey(msg)
 	}
 
+	// A triage pass owns input outright, like the readout: its card covers the
+	// rows, and every key is a routing, a skip, a step back, or the way out.
+	if m.Triage.Active {
+		return m.handleTriageKey(key)
+	}
+
 	// An open menu is read first: its navigation keys are a gated keymap the
 	// footer is advertising, and h/j/k/l mean something else entirely to the
 	// cascade below. Unlike the readout it is non-modal — an unrecognized key

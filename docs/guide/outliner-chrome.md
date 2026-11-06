@@ -90,6 +90,16 @@ all fit, `+2 more · Q details` reports the hidden segments. Press `Q` for the
 complete, scrollable explanation and numbered controls to remove restrictions.
 See [search and restrictions](search-and-lenses.md#reading-and-peeling-the-narrowing).
 
+In All and Today, while something is in Doing, a Now card stands between the
+header and the lanes, marked by an accent bar. It names the task that entered
+Doing most recently, its project, and how long it has been in Doing, such as
+`website · 12m in Doing`. A second row shows its resume note, and a third its
+checklist or subtask meter and `+2 more in Doing` when other work is active
+too. The card follows the view's scope and filters, steps aside in the other
+modes, in search, under a lens or a Focus, and in a terminal under 24 rows, and
+gives a narrow window's room to the title before the age. It takes no keys or
+clicks; the same task still sits in its Doing lane below.
+
 ## Open a menu
 
 Press `F10` to open the menus. Press `M` to keep the menu bar visible or hide it.
@@ -246,7 +256,7 @@ nothing.
 
 The first launch of each day opens with a greeting that names what the day
 already holds, such as `Good morning · 3 planned for Today · 1 overdue · 2 in
-Inbox`. The first greeting of a week also recaps the week before, such as
+Inbox (I triage)`. The first greeting of a week also recaps the week before, such as
 `last week 23 done, most on Tuesday`; a week with nothing done adds nothing.
 The day it greeted is remembered on this machine, so later launches
 that day stay quiet, and a key pressed before the workspace finishes loading

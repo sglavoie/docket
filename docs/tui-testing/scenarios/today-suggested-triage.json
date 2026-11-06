@@ -1,0 +1,19 @@
+{
+  "name": "today-suggested-triage",
+  "fixture": "busy",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "key": "2" },
+    { "type": "key", "label": "in Today, I walks the Suggested lane instead of the Inbox", "key": "I" },
+    { "type": "assert", "assert": "contains", "value": "Plan today" },
+    { "type": "assert", "assert": "contains", "value": "1 of 2" },
+    { "type": "key", "key": "t" },
+    { "type": "assert", "assert": "contains", "value": "2 of 2" },
+    { "type": "key", "label": "Esc stops the pass and leaves the rest of the lane alone", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Plan today" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "5" },
+    { "type": "key", "label": "a view with no Inbox work in it refuses by name", "key": "I" },
+    { "type": "assert", "assert": "status_contains", "value": "Nothing to triage" }
+  ]
+}

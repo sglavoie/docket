@@ -171,6 +171,9 @@ func SimplifiedInputStrategy() InputStrategy {
 			// the facets, and a "filter" prefix would be dishonest about four of them.
 			{OperationID: OperationCoreQueryReadout, Keys: []string{"Q"}, DisplayKey: "Q", FooterRank: 27, FooterLabel: "narrowing"},
 			{OperationID: OperationCoreNotes, Keys: []string{"ctrl+n"}, DisplayKey: "Ctrl+N"},
+			// Triage carries no FooterRank: the greeting and Inbox's own empty-state
+			// lead name it where it matters, and `?` teaches it everywhere else.
+			{OperationID: OperationCoreTriage, Keys: []string{"I"}, DisplayKey: "I"},
 			{OperationID: OperationCoreToggleTheme, Keys: []string{"T"}, DisplayKey: "T", FooterRank: 22, FooterLabel: "theme"},
 			// The bar is the one browsable map of this grammar, so its reveal stands
 			// at the head of the second tier rather than among the daily acts: a
