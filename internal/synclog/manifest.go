@@ -58,6 +58,9 @@ func (k Kind) valid() bool {
 	switch k {
 	case KindUser, KindUndo, KindRedo, KindMerge, KindResolution, KindRepair, KindExternal, KindEnroll:
 		return true
+	case KindCheckpoint:
+		// A checkpoint's graph node, never a manifest.
+		return false
 	}
 	return false
 }

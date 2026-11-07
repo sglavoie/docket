@@ -87,7 +87,18 @@ type staged struct {
 // a pass applies nothing, so one staged batch may arrive in any order. It
 // reads the inbox and never writes it: the transport removes what the report
 // says is spent.
+//
+// A device that has recorded no history starts from a staged checkpoint when
+// it can read one (see importCheckpoints), and imports only what the
+// checkpoint does not summarize; staged checkpoints are reported beside the
+// manifests.
 func ImportInbox(committer Committer, inbox string) (*Report, error) {
+	return ImportInboxFor(committer, inbox, "")
+}
+
+// ImportInboxFor is ImportInbox for the workspace workspaceID, refusing a
+// staged checkpoint of any other as foreign. An empty workspaceID checks none.
+func ImportInboxFor(committer Committer, inbox, workspaceID string) (*Report, error) {
 	history := committer.SyncHistory()
 	if history == nil {
 		return nil, fmt.Errorf("syncexchange: import requires a sync history")
@@ -141,6 +152,10 @@ func ImportInbox(committer Committer, inbox string) (*Report, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading sync inbox: %w", err)
 	}
+	checkpoints, err := importCheckpoints(committer, history, inbox, workspaceID, blobs)
+	if err != nil {
+		return nil, err
+	}
 	sort.Slice(queue, func(i, j int) bool {
 		if queue[i].manifest.DeviceSeq != queue[j].manifest.DeviceSeq {
 			return queue[i].manifest.DeviceSeq < queue[j].manifest.DeviceSeq
@@ -178,6 +193,7 @@ func ImportInbox(committer Committer, inbox string) (*Report, error) {
 	for _, item := range queue {
 		report.Results = append(report.Results, item.result)
 	}
+	report.Results = append(report.Results, checkpoints...)
 	sort.SliceStable(report.Results, func(i, j int) bool { return report.Results[i].Path < report.Results[j].Path })
 	return report, nil
 }

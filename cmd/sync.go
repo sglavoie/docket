@@ -114,6 +114,24 @@ previous folder stays configured.`,
 	RunE: runSyncExchange,
 }
 
+var syncCheckpointCmd = &cobra.Command{
+	Use:   "checkpoint",
+	Short: "Publish a checkpoint other devices can join from",
+	Long: `Record a checkpoint of this device's whole history and publish it to the
+exchange folder. A checkpoint is the synced workspace as this device's history
+holds it, written at this Docket's schemas, together with the exact set of
+transactions it summarizes. A device joining later starts from the newest
+checkpoint it can read and imports only what came after it, so it never has to
+replay history written by an older Docket.
+
+Exchange passes record one automatically when this device has none at its
+current schemas, and again every ` + fmt.Sprint(syncexchange.CheckpointInterval) + ` transactions; this command records one
+now. It is refused while sync conflicts are open or local work is unpublished.`,
+	Example: `  docket sync checkpoint`,
+	Args:    noArgs,
+	RunE:    runSyncCheckpoint,
+}
+
 var syncDoctorCmd = &cobra.Command{
 	Use:   "doctor",
 	Short: "Diagnose sync: placement, exchange folder, history, holds, and upgrades",
@@ -133,7 +151,7 @@ and 1 when it could not run.`,
 
 func init() {
 	rootCmd.AddCommand(syncCmd)
-	syncCmd.AddCommand(syncEnrollCmd, syncJoinCmd, syncStatusCmd, syncExchangeCmd, syncDoctorCmd)
+	syncCmd.AddCommand(syncEnrollCmd, syncJoinCmd, syncStatusCmd, syncExchangeCmd, syncCheckpointCmd, syncDoctorCmd)
 
 	syncEnrollCmd.Flags().StringVar(&syncExchangeFolder, "exchange", "", "exchange folder shared by the devices, typically in iCloud Drive (required)")
 	syncEnrollCmd.Flags().StringVar(&syncWorkingCopy, "working-copy", "", "new local directory for the enrolled working copy, outside iCloud (required)")
@@ -229,8 +247,22 @@ func runSyncJoin(_ *cobra.Command, _ []string) error {
 		}
 		return err
 	}
-	fmt.Println(successMsg("Joined; %s is now this machine's workspace (%s imported)",
-		config.DisplayPath(rt.DataDir()), Pluralize(report.Imported, "transaction", "transactions")))
+	imported, checkpoint := 0, ""
+	for _, result := range report.Results {
+		switch {
+		case result.Outcome != syncexchange.Imported:
+		case strings.HasPrefix(result.Path, "checkpoints/"):
+			checkpoint = result.TxnID
+		default:
+			imported++
+		}
+	}
+	from := ""
+	if checkpoint != "" {
+		from = fmt.Sprintf("from checkpoint %s, then ", shortTxn(checkpoint))
+	}
+	fmt.Println(successMsg("Joined; %s is now this machine's workspace (built %s%s imported)",
+		config.DisplayPath(rt.DataDir()), from, Pluralize(imported, "transaction", "transactions")))
 	return nil
 }
 
@@ -349,6 +381,54 @@ func runSyncExchange(_ *cobra.Command, _ []string) error {
 	return err
 }
 
+func runSyncCheckpoint(_ *cobra.Command, _ []string) error {
+	rt, err := openSyncRuntime()
+	if err != nil {
+		return err
+	}
+	if !rt.State().Catalog().Enrolled() {
+		return fmt.Errorf("%s", notEnrolledHint)
+	}
+	// Publish first, so the checkpoint summarizes everything committed here.
+	// That pass records and publishes one itself when one was due.
+	report, err := rt.SyncExchange(engine.SyncExchangeOptions{AppVersion: syncAppVersion()})
+	if err != nil {
+		if report != nil {
+			printFolderReport(report)
+		}
+		return err
+	}
+	if len(report.Checkpoints) == 0 {
+		if _, checkpointErr := rt.SyncCheckpoint(); checkpointErr != nil {
+			return checkpointErr
+		}
+		report, err = rt.SyncExchange(engine.SyncExchangeOptions{AppVersion: syncAppVersion()})
+		if report != nil {
+			printFolderReport(report)
+		}
+		if err != nil {
+			return err
+		}
+	} else {
+		printFolderReport(report)
+	}
+	if len(report.Checkpoints) == 0 {
+		return fmt.Errorf("the checkpoint was recorded but not published; run 'docket sync exchange' to retry")
+	}
+	records, err := syncexchange.OwnCheckpoints(rt.SyncCommits().SyncHistory())
+	if err != nil {
+		return err
+	}
+	for _, checkpoint := range records {
+		if checkpoint.CheckpointID == report.Checkpoints[len(report.Checkpoints)-1] {
+			fmt.Println(successMsg("Checkpoint %s summarizes %s at catalog schema %d",
+				shortTxn(checkpoint.CheckpointID), Pluralize(len(checkpoint.Covered), "transaction", "transactions"),
+				checkpoint.Schemas["catalog"]))
+		}
+	}
+	return nil
+}
+
 func printFolderReport(report *syncexchange.FolderReport) {
 	fmt.Printf("Exchange with %s\n", config.DisplayPath(report.Folder))
 	fmt.Printf("  published:   %d\n", len(report.Published))
@@ -362,6 +442,12 @@ func printFolderReport(report *syncexchange.FolderReport) {
 		for _, held := range report.External.Held {
 			fmt.Printf("  held edit:   %s — %s\n", held.Path, held.Reason)
 		}
+	}
+	for _, id := range report.Checkpoints {
+		fmt.Printf("  checkpoint:  %s published\n", shortTxn(id))
+	}
+	if report.CheckpointDeferred != "" {
+		fmt.Printf("  checkpoint:  not recorded yet — %s\n", report.CheckpointDeferred)
 	}
 	for _, held := range report.Held {
 		fmt.Printf("  held:        %s from %s — %s\n", shortTxn(held.TxnID), held.DeviceID, held.Upgrade)

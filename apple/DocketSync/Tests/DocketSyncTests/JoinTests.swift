@@ -83,6 +83,39 @@ final class JoinTests: XCTestCase {
         XCTAssertEqual(published.count, 1)
     }
 
+    /// An exchange whose history cannot be replayed from its beginning, with a
+    /// checkpoint the desk published: the phone starts from the checkpoint and
+    /// needs none of the history it summarizes. DOCKET_CHECKPOINT_EXCHANGE
+    /// names it.
+    func testJoinStartsFromACheckpoint() throws {
+        let exchange = root.appendingPathComponent("checkpointed", isDirectory: true)
+        try FileManager.default.copyItem(at: environment("DOCKET_CHECKPOINT_EXCHANGE"), to: exchange)
+        let provider = CoordinatedFolderProvider(access: DirectFolderAccess(folder: exchange))
+        let checkpoints = try provider.list(directory: "\(ExchangeTransport.root)/checkpoints")
+        XCTAssertEqual(checkpoints.count, 1, "the exchange holds no checkpoint")
+        let workspaceID = try JoiningSyncEngine.workspaceID(in: provider)
+        let client = try client()
+        let runtime = root.appendingPathComponent("phone/device", isDirectory: true)
+        let engine = JoiningSyncEngine(
+            client: client, workspaceID: workspaceID,
+            dataDirectory: root.appendingPathComponent("phone/workspace", isDirectory: true),
+            runtimeDirectory: runtime, deviceID: "phone-checkpoint", exchange: exchange.path
+        )
+        let transport = ExchangeTransport(
+            provider: provider, engine: engine,
+            stateDirectory: runtime.appendingPathComponent("sync-transport", isDirectory: true)
+        )
+        let first = try transport.exchange()
+        XCTAssertTrue(engine.joined, "the first pass did not join: \(first.errors)")
+        XCTAssertTrue(first.imported.isEmpty, "the checkpoint summarizes every transaction")
+        XCTAssertEqual(try titles(client, mode: "today"), ["Ship beta build", "Order bathroom tiles"])
+        XCTAssertEqual(try transport.state().downloads.count, 0, "summarized history is still queued")
+
+        _ = try client.send("command.capture", payload: ["title": "Captured after a checkpoint join"])
+        let second = try transport.exchange()
+        XCTAssertEqual(second.published.count, 1, "\(second.errors)")
+    }
+
     func testJoinRefusesAFolderWithoutAnExchange() throws {
         let empty = root.appendingPathComponent("empty", isDirectory: true)
         try FileManager.default.createDirectory(at: empty, withIntermediateDirectories: true)

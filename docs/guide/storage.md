@@ -623,6 +623,18 @@ older Docket at schema 22 migrates to 23 on first open and stays enrolled. Anoth
 `docket sync join --exchange DIR --working-copy DIR`, which builds its own local
 copy from the published history alone.
 
+A device that joins after the workspace migrated cannot replay history written
+by an older Docket, so the exchange also holds *checkpoints*: the synced
+workspace as one device's history holds it, written at the current schemas,
+with the exact set of changes it summarizes. A joining device starts from the
+newest checkpoint it can read and imports only what came after it. A desktop
+publishes one on its own when the exchange has none it could join from at its
+schemas, and again every 500 changes; `docket sync checkpoint` publishes one
+now. A checkpoint is not recorded while sync conflicts are open: resolve them
+and the next exchange records it. When a join cannot build the workspace, it
+says why — changes held until a device updates Docket, or a checkpoint still
+downloading.
+
 An enrolled desktop workspace exchanges automatically while Docket is running,
 including inside Docket.app: at launch, when the terminal regains focus, and every
 five seconds. Local saves trigger an exchange immediately; a save or focus event

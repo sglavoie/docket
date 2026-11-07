@@ -320,4 +320,52 @@ func TestBridgeJoinsFromAStagedInbox(t *testing.T) {
 	t.Run("joined_copy_is_not_joined_twice", func(t *testing.T) {
 		h.rejects(join("phone-a", h.dataDir, inbox), CodeRefused)
 	})
+	t.Run("checkpoint_joins_history_that_cannot_be_replayed", func(t *testing.T) {
+		desk, err := engine.Open(engine.Config{DataDir: filepath.Join(root, "local", "desk-copy"),
+			Machine: engine.ExplicitMachine(home, "desk-a"), Clock: clock})
+		if err != nil {
+			t.Fatal(err)
+		}
+		checkpoint, err := desk.SyncCheckpoint()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, exchangeErr := desk.SyncExchange(engine.SyncExchangeOptions{Folder: exchange}); exchangeErr != nil {
+			t.Fatal(exchangeErr)
+		}
+		// Without its genesis the history alone builds nothing, as when it is
+		// sealed at schemas an upgraded phone no longer reads.
+		staged := filepath.Join(root, "phone", "checkpoint-inbox")
+		for _, dir := range []string{"txns", "blobs", "checkpoints"} {
+			copyTree(t, filepath.Join(published, dir), filepath.Join(staged, dir))
+		}
+		genesis, err := filepath.Glob(filepath.Join(staged, "txns", "desk-a", "0000000001-*.json"))
+		if err != nil || len(genesis) != 1 {
+			t.Fatalf("genesis: %v %v", genesis, err)
+		}
+		if err := os.Remove(genesis[0]); err != nil {
+			t.Fatal(err)
+		}
+		phone := &harness{t: t, bridge: New(Options{Clock: clock, IDs: &sequentialIDs{}}), clock: clock,
+			dataDir: filepath.Join(root, "phone-b", "workspace"), runtimeDir: filepath.Join(root, "phone-b", "device")}
+		var joined joinResult
+		phone.ok(phone.call("workspace.join", map[string]any{
+			"data_dir": phone.dataDir, "runtime_dir": phone.runtimeDir, "device_id": "phone-b",
+			"workspace_id": workspaceID, "exchange": exchange, "inbox_dir": staged,
+		}), &joined)
+		installed := false
+		for _, result := range joined.Import.Results {
+			if result.Path == syncexchange.CheckpointPath(checkpoint.CheckpointID) {
+				installed = result.Outcome == syncexchange.Imported
+			}
+		}
+		if !installed {
+			t.Fatalf("join did not start from the checkpoint: %+v", joined.Import.Results)
+		}
+		phone.workspace = joined.Workspace
+		requireTitles(t, "checkpoint-joined today", phone.titles(map[string]any{"mode": "today"}), []string{"Ship beta build", "Order bathroom tiles"})
+		if status := phone.syncStatus(); len(status.Heads) == 0 {
+			t.Fatalf("checkpoint-joined sync status = %+v", status)
+		}
+	})
 }

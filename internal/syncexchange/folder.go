@@ -69,6 +69,13 @@ type FolderReport struct {
 	Held []Result `json:"held"`
 	// Unavailable are exchange files present only as cloud placeholders.
 	Unavailable []string `json:"unavailable"`
+	// Checkpoints are the checkpoints this pass published (see
+	// CheckpointInterval).
+	Checkpoints []string `json:"checkpoints,omitempty"`
+	// CheckpointDeferred says why a checkpoint that was due was not recorded:
+	// open conflicts, unpublished work, or a change Docket cannot read. The
+	// next pass asks again.
+	CheckpointDeferred string `json:"checkpoint_deferred,omitempty"`
 	// External is the observation the pass ran first, when it recorded or
 	// held anything.
 	External *storage.ExternalChanges `json:"external,omitempty"`
@@ -229,6 +236,12 @@ func exchangePass(committer FolderCommitter, history *synclog.History, opts Fold
 	if publishErr := publish(committer, history, root, report); publishErr != nil {
 		return publishErr
 	}
+	if checkpointErr := checkpointIfDue(committer, history, report); checkpointErr != nil {
+		return checkpointErr
+	}
+	if publishErr := publishCheckpoints(history, root, report); publishErr != nil {
+		return publishErr
+	}
 	if advertiseErr := advertise(history, root, opts, now()); advertiseErr != nil {
 		return advertiseErr
 	}
@@ -241,7 +254,7 @@ func exchangePass(committer FolderCommitter, history *synclog.History, opts Fold
 	if fetchErr := fetch(history, root, inbox, report); fetchErr != nil {
 		return fetchErr
 	}
-	imported, err := ImportInbox(committer, inbox)
+	imported, err := ImportInboxFor(committer, inbox, opts.WorkspaceID)
 	if err != nil {
 		return err
 	}
@@ -249,7 +262,10 @@ func exchangePass(committer FolderCommitter, history *synclog.History, opts Fold
 	for _, result := range imported.Results {
 		switch result.Outcome {
 		case Imported:
-			report.Imported++
+			// An installed checkpoint is not a transaction; the join reports it.
+			if _, isCheckpoint := ParseCheckpointPath(result.Path); !isCheckpoint {
+				report.Imported++
+			}
 		case Held:
 			report.Held = append(report.Held, result)
 			report.OutstandingDown++

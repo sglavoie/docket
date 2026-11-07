@@ -90,6 +90,7 @@ func TestPublicCommandTreeIsMaintenanceOnly(t *testing.T) {
 		"docket project",
 		"docket project export",
 		"docket sync",
+		"docket sync checkpoint",
 		"docket sync conflicts",
 		"docket sync diagnostics",
 		"docket sync doctor",

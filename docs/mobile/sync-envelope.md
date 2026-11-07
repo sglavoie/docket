@@ -15,6 +15,7 @@ is that device's materialized view of it.
 ├── workspace.json                     # exchange identity: workspace_id, format
 ├── devices/<device-id>.json           # capability advertisement, rewritten by its owner only
 ├── txns/<device-id>/<seq>-<hash>.json # immutable transaction manifests
+├── checkpoints/<hash>.json            # immutable join points, named by their digest
 └── blobs/sha256/<aa>/<hash>           # immutable content, named by its digest
 ```
 
@@ -350,6 +351,75 @@ that repair is needed instead of treating either branch as already delivered.
 
 Where a device keeps its exchange folder is device-local, in
 `.tt/sync/enrollment.json`, and never synced.
+
+## Checkpoints
+
+Every manifest is sealed at the schemas its author wrote, and the genesis is
+the oldest of them. Once the workspace migrates, a device built at the new
+schemas holds every early manifest (see capability negotiation), so it can no
+longer replay the history from its beginning, and a join would build nothing.
+A checkpoint is where such a device starts instead.
+
+```text
+checkpoints/<hash>.json
+{
+  "format": "tt-sync-checkpoint", "format_version": 1,
+  "workspace_id": "...", "checkpoint_id": "sha256:<hash>",
+  "device_id": "<author>", "created_at": "...",
+  "schemas": {...}, "requires": [...],
+  "heads": ["sha256:..."],
+  "covered": [{"txn_id": "...", "device_id": "...", "device_seq": 1, "parents": []}, ...],
+  "files": [{"kind": "catalog", "path": ".docket/workspace.json", "op": "put", "base_blob": null, "blob": "sha256:..."}, ...]
+}
+```
+
+`checkpoint_id` is the digest of the record's canonical JSON with the id
+omitted, as a manifest's `txn_id` is. `covered` is the exact set of
+transactions the checkpoint summarizes: ancestor-closed, gap-free per device,
+each with its own parents, and `heads` are its tips. `files` puts every synced
+file at the author's current schemas; it is the author's tracked state, its
+history's last indexed revision, so it is exactly the workspace those
+transactions produced, merged bytes no manifest carries included. A checkpoint
+is never a transaction: it lives outside `txns/`, so a device that already
+holds the history never reads one and an older build never sees one.
+
+`History.PlanCheckpoint` authors one; `CommitService.CommitSyncCheckpoint`
+records it under the commit lock after observing external changes, and refuses
+while sync conflicts are open (a checkpoint carries one version of each file),
+while local work is unpublished, or while a change Docket cannot read is held.
+A desktop exchange pass records one when `History.CheckpointDue` says so: no
+readable checkpoint is kept and a root transaction is written at another
+schema, which is what a migration leaves, or the history has grown
+`syncexchange.CheckpointInterval` (500) transactions past the newest kept one.
+The checkpoint a device joined from counts as kept. The pass then publishes
+every blob of the image, then the record, each verified by reading it back.
+`tt sync checkpoint` records and publishes one at once.
+
+A device that has recorded no history stages every checkpoint record and the
+image of the most summarized one it can read; its schemas must equal the
+device's, since they govern every file. `ImportInbox` waits for that one's
+content rather than settling for an older checkpoint, then
+`CommitService.InstallCheckpoint` writes the image, the record (kept in
+`.docket/sync/checkpoints/`), an index entry of origin `checkpoint` for every
+summarized transaction, and a tracking state that has received exactly those,
+in one journal transaction. The other staged records are spent. Ordinary
+import follows: a summarized manifest is already known, and everything after
+the checkpoint applies as usual.
+
+In that device's history graph the checkpoint is one node that wrote every
+file, standing for every summarized transaction: a parent the checkpoint
+summarizes is read as the node, and a summarized id resolves to it. The
+device's own manifests, heads, and later checkpoints still name the real
+transactions, so no peer ever learns of the node. That reading is exact only
+for a transaction that descends from all of the summarized history, which is
+what a transaction whose ancestry holds every checkpoint head does. One written
+concurrently with summarized work it never saw is held
+(`CheckpointGapError`) rather than applied as though it had seen it; joining
+again from a checkpoint that summarizes it is the remedy.
+
+A join that builds nothing explains itself from the import's results — what is
+held and the update it waits for, a checkpoint still downloading — instead of
+reporting the empty catalog it found (`engine.ErrJoinNotDelivered`).
 
 ## Desktop folder exchange
 

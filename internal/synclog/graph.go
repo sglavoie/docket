@@ -21,6 +21,12 @@ type graph struct {
 	writers map[string][]int
 	// keyIndexes caches each key's keyIndex, built on first use.
 	keyIndexes map[string]*keyIndex
+	// checkpoint is the installed checkpoint whose node stands for every
+	// transaction it summarizes, or nil.
+	checkpoint *graphCheckpoint
+	// original holds, by txn id, the manifest of every transaction whose
+	// parents the graph rewrote onto the checkpoint node.
+	original map[string]*Manifest
 }
 
 // keyWrite is what one transaction left at one logical key.
@@ -135,17 +141,23 @@ func (h *History) loadGraph(extra *Manifest) (*graph, error) {
 			cache.state = nil
 		}
 	}
-	manifests := append(make([]*Manifest, 0, len(cache.indexed)+1), cache.indexed...)
+	manifests := append(make([]*Manifest, 0, len(cache.indexed)+2), cache.indexed...)
 	if extra != nil {
 		manifests = append(manifests, extra)
 	}
-	return buildGraph(manifests)
+	var gc *graphCheckpoint
+	if cache.checkpoint != nil {
+		gc = newGraphCheckpoint(cache.checkpoint)
+		manifests = append(manifests, cache.checkpoint.node())
+	}
+	return buildGraphFrom(manifests, gc)
 }
 
 // walkIndex replaces cache's indexed manifests with every transaction the
 // index names, decoding only the ones the cache does not already hold.
 func (h *History) walkIndex(cache *manifestCache) error {
 	var manifests []*Manifest
+	var checkpoint *Checkpoint
 	seen := make(map[string]*Manifest, len(cache.byID))
 	root := filepath.Join(h.Dir(), "index")
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
@@ -160,7 +172,28 @@ func (h *History) walkIndex(cache *manifestCache) error {
 		}
 		txnID := "sha256:" + strings.TrimSuffix(filepath.Base(p), ".json")
 		m, ok := cache.byID[txnID]
+		if !ok && checkpoint != nil && checkpoint.summarizes(txnID) {
+			return nil
+		}
 		if !ok {
+			entry, known, lookupErr := h.Lookup(txnID)
+			if lookupErr != nil {
+				return lookupErr
+			}
+			if known && entry.Origin == originCheckpoint {
+				// A summarized transaction is the installed checkpoint's
+				// node, not a manifest of its own.
+				if checkpoint == nil {
+					var loadErr error
+					if checkpoint, loadErr = h.installedCheckpoint(); loadErr != nil {
+						return loadErr
+					}
+					if checkpoint == nil {
+						return fmt.Errorf("synclog: %s is summarized by a checkpoint this device has not installed", txnID)
+					}
+				}
+				return nil
+			}
 			var loadErr error
 			if m, loadErr = h.Transaction(txnID); loadErr != nil {
 				return loadErr
@@ -174,7 +207,7 @@ func (h *History) walkIndex(cache *manifestCache) error {
 		cache.state = nil
 		return fmt.Errorf("reading sync history: %w", err)
 	}
-	cache.byID, cache.indexed = seen, manifests
+	cache.byID, cache.indexed, cache.checkpoint = seen, manifests, checkpoint
 	return nil
 }
 
@@ -185,8 +218,22 @@ func sameFile(a, b os.FileInfo) bool {
 // buildGraph orders manifests parents first, breaking ties by txn id so every
 // device holding the same transactions builds the same graph.
 func buildGraph(manifests []*Manifest) (*graph, error) {
+	return buildGraphFrom(manifests, nil)
+}
+
+// buildGraphFrom is buildGraph over a history that starts at an installed
+// checkpoint: manifests include its node, and a parent it summarizes is read
+// as that node, which every transaction received since descends from whole
+// (see checkpointGap). A summarized id still resolves through index, to the
+// node, so conflict writers and heads named by their own ids stay meaningful.
+func buildGraphFrom(manifests []*Manifest, gc *graphCheckpoint) (*graph, error) {
 	byID := make(map[string]*Manifest, len(manifests))
+	original := map[string]*Manifest{}
 	for _, m := range manifests {
+		if rebased := gc.rebase(m); rebased != m {
+			original[m.TxnID] = m
+			m = rebased
+		}
 		byID[m.TxnID] = m
 	}
 	pending := make(map[string]int, len(byID))
@@ -208,7 +255,7 @@ func buildGraph(manifests []*Manifest) (*graph, error) {
 			ready = append(ready, id)
 		}
 	}
-	g := &graph{index: map[string]int{}, writers: map[string][]int{}, keyIndexes: map[string]*keyIndex{}}
+	g := &graph{index: map[string]int{}, writers: map[string][]int{}, keyIndexes: map[string]*keyIndex{}, checkpoint: gc, original: original}
 	for len(ready) > 0 {
 		sort.Strings(ready)
 		id := ready[0]
@@ -224,6 +271,17 @@ func buildGraph(manifests []*Manifest) (*graph, error) {
 	}
 	if len(g.txns) != len(byID) {
 		return nil, fmt.Errorf("synclog: sync history has a cycle")
+	}
+	if gc != nil {
+		node, ok := g.index[gc.record.CheckpointID]
+		if !ok {
+			return nil, fmt.Errorf("synclog: the installed checkpoint is not in the history graph")
+		}
+		for id := range gc.covered {
+			if _, collides := g.index[id]; !collides {
+				g.index[id] = node
+			}
+		}
 	}
 	n := len(g.txns)
 	g.anc = make([]bitset, n)
@@ -286,6 +344,14 @@ func (g *graph) heads() []string {
 	for _, m := range g.txns {
 		for _, parent := range m.Parents {
 			delete(heads, parent)
+		}
+	}
+	// The checkpoint node is no transaction a peer knows: a tip there is the
+	// summarized history's own tips.
+	if g.checkpoint != nil && heads[g.checkpoint.record.CheckpointID] {
+		delete(heads, g.checkpoint.record.CheckpointID)
+		for _, head := range g.checkpoint.record.Heads {
+			heads[head] = true
 		}
 	}
 	return sortedKeys(heads)

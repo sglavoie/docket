@@ -242,6 +242,12 @@ Upgrade either device first. A change written by the newer build is held on the
 older device until it is upgraded too, and `tt sync doctor` names the device
 that needs an update.
 
+A device joining after an upgrade that changed the schemas cannot replay the
+history the older build wrote; it starts from a checkpoint instead. The Mac
+publishes one on its first exchange after such an upgrade, so run
+`tt sync exchange` on the Mac (or `tt sync checkpoint`) before joining the
+iPhone afresh.
+
 - **iPhone.** Connect and unlock it, then run
   `DOCKET_IOS_DEVELOPMENT_TEAM=TEAMID ios/scripts/install-device.sh`. Installing
   over the earlier build keeps the app's data, including work not yet

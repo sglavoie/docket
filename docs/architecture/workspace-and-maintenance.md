@@ -39,7 +39,9 @@ that is never enrolled stays at `CurrentConfigVersion` and keeps its behavior;
 `SupportedConfigVersion` is what this build reads, so an older Docket refuses an
 enrolled working copy as newer than it supports and writes nothing.
 `docket sync join` builds another desktop's working copy from the exchange alone,
-`docket sync exchange` runs one pass of `syncexchange.ExchangeFolder`, and
+`docket sync exchange` runs one pass of `syncexchange.ExchangeFolder`,
+`docket sync checkpoint` records and publishes a join point through
+`engine.Runtime.SyncCheckpoint`, and
 `docket sync status` and `docket sync doctor` read `engine.Runtime.SyncStatus`. The
 contract is in [`docs/mobile/sync-envelope.md`](../mobile/sync-envelope.md).
 

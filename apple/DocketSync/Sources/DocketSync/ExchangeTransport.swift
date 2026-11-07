@@ -365,6 +365,7 @@ public final class ExchangeTransport: @unchecked Sendable {
     // MARK: Download
 
     private static let manifestPattern = try! NSRegularExpression(pattern: "^txns/([A-Za-z0-9][A-Za-z0-9._-]{0,63})/([0-9]{10})-([0-9a-f]{64})\\.json$")
+    private static let checkpointPattern = try! NSRegularExpression(pattern: "^checkpoints/([0-9a-f]{64})\\.json$")
 
     /// Check names before reading content or publishing more history. A
     /// repeated sequence must never be silently treated as an old delivery.
@@ -432,6 +433,11 @@ public final class ExchangeTransport: @unchecked Sendable {
             stagedAny = stagedAny || entry.manifestStaged
             state.downloads[index] = entry
             try store.save(state)
+        }
+        // A device joining starts from a checkpoint when the exchange holds
+        // one it can read; the engine chooses among what is staged.
+        if engine.isJoining && stageCheckpoints(blobs: blobs) {
+            stagedAny = true
         }
         guard stagedAny else { return }
 
@@ -562,8 +568,58 @@ public final class ExchangeTransport: @unchecked Sendable {
         }
     }
 
-    /// Removes staged blobs that no queued transaction still needs.
+    /// Stages every checkpoint record the exchange holds, with every blob of
+    /// its image that is delivered and intact, for a device still joining.
+    /// Records are staged even while their content is downloading, so the
+    /// engine waits for the most recent checkpoint rather than settling for
+    /// an older one; the engine judges which one it can read. It reports
+    /// whether any record is staged.
+    private func stageCheckpoints(blobs: [String: ExchangeItem]) -> Bool {
+        let items: [ExchangeItem]
+        do {
+            items = try provider.list(directory: "\(Self.root)/checkpoints")
+        } catch {
+            // No checkpoint yet, or none listed: the history alone is staged.
+            return false
+        }
+        var staged = false
+        for item in items.sorted(by: { $0.path < $1.path }) {
+            let path = relative(item.path)
+            guard Self.parseCheckpointPath(path) != nil else { continue }
+            if item.state != .current {
+                try? provider.requestDownload("\(Self.root)/\(path)")
+                continue
+            }
+            guard let data = try? provider.read("\(Self.root)/\(path)"),
+                  let digests = try? Self.checkpointBlobs(of: data)
+            else {
+                // Still arriving, or not a record: read again on a later pass.
+                continue
+            }
+            for digest in digests {
+                let blobPath = Self.blobPath(digest)
+                if FileManager.default.fileExists(atPath: inboxURL(blobPath).path) { continue }
+                guard let blob = blobs[blobPath] else { continue }
+                if blob.state != .current {
+                    try? provider.requestDownload("\(Self.root)/\(blobPath)")
+                    continue
+                }
+                guard let content = try? provider.read("\(Self.root)/\(blobPath)"),
+                      contentDigest(content) == digest
+                else { continue }
+                try? writeInbox(blobPath, data: content)
+            }
+            if (try? writeInbox(path, data: data)) != nil {
+                staged = true
+            }
+        }
+        return staged
+    }
+
+    /// Removes staged blobs that no queued transaction still needs. A device
+    /// still joining keeps them all: a staged checkpoint's image is among them.
     private func collectInboxBlobs(_ state: TransferState) {
+        if engine.isJoining { return }
         let needed = Set(state.downloads.flatMap(\.staged).map(Self.blobPath))
         let blobsDir = inbox.appendingPathComponent("blobs", isDirectory: true)
         guard let enumerator = FileManager.default.enumerator(at: blobsDir, includingPropertiesForKeys: [.isRegularFileKey]) else { return }
@@ -607,6 +663,24 @@ public final class ExchangeTransport: @unchecked Sendable {
               let number = UInt64(path[seq]), number > 0
         else { return nil }
         return (String(path[device]), number, "sha256:" + path[hex])
+    }
+
+    static func parseCheckpointPath(_ path: String) -> String? {
+        let range = NSRange(path.startIndex..., in: path)
+        guard let match = checkpointPattern.firstMatch(in: path, range: range),
+              let hex = Range(match.range(at: 1), in: path)
+        else { return nil }
+        return "sha256:" + path[hex]
+    }
+
+    /// The content addresses of every file a checkpoint record's image holds.
+    static func checkpointBlobs(of record: Data) throws -> [String] {
+        guard let object = try JSONSerialization.jsonObject(with: record) as? [String: Any],
+              let files = object["files"] as? [[String: Any]]
+        else {
+            throw ExchangeProviderError.transient("checkpoint has no files")
+        }
+        return Array(Set(files.compactMap { $0["blob"] as? String })).sorted()
     }
 
     /// Each effect's required digests, the workspace path its new content

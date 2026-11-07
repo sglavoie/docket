@@ -221,6 +221,7 @@ docket sync enroll --exchange DIR --working-copy DIR [--snapshot-dir DIR] [--for
 docket sync join --exchange DIR --working-copy DIR
 docket sync status [--json]
 docket sync exchange [--folder DIR] [--json]
+docket sync checkpoint
 docket sync doctor [--json]
 docket sync conflicts [ID] [--json]
 docket sync resolve ID --version N|--current|--file PATH [--json]

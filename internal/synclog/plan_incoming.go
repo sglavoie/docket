@@ -122,6 +122,9 @@ func (h *History) admit(m *Manifest) (*State, error) {
 	if len(missingParents) > 0 {
 		return nil, fmt.Errorf("%w: parents %s have not arrived", ErrIncomplete, strings.Join(missingParents, ", "))
 	}
+	if err := h.checkpointGap(m); err != nil {
+		return nil, err
+	}
 	return state, nil
 }
 

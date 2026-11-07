@@ -127,7 +127,21 @@ run_sync() {
 		echo "enrolling the fixture failed" >&2
 		exit 1
 	}
-	DOCKET_BRIDGEHOST="$host" DOCKET_ENROLLED_EXCHANGE="$enroll/exchange" swift_package sync "$repo_root/apple/DocketSync"
+	# A copy whose history cannot be replayed from its beginning — the genesis
+	# gone, as when it is sealed at schemas an upgraded phone no longer reads —
+	# beside a checkpoint the desk published, which the phone joins from.
+	cp -R "$enroll/exchange" "$enroll/checkpointed"
+	{
+		HOME="$enroll/home" "$enroll/docket" sync exchange --exchange "$enroll/checkpointed" &&
+			HOME="$enroll/home" "$enroll/docket" sync checkpoint &&
+			rm "$enroll/checkpointed"/tt-sync/v1/txns/*/0000000001-*.json
+	} >"$enroll/checkpoint.log" 2>&1 || {
+		cat "$enroll/checkpoint.log" >&2
+		echo "publishing the fixture's checkpoint failed" >&2
+		exit 1
+	}
+	DOCKET_BRIDGEHOST="$host" DOCKET_ENROLLED_EXCHANGE="$enroll/exchange" \
+		DOCKET_CHECKPOINT_EXCHANGE="$enroll/checkpointed" swift_package sync "$repo_root/apple/DocketSync"
 }
 
 case "$suite" in

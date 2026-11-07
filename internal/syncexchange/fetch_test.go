@@ -39,6 +39,8 @@ func (h *countingHistory) Blob(digest string) ([]byte, error) {
 	return nil, errors.New("not retained: " + digest)
 }
 
+func (h *countingHistory) CheckpointReadable(*synclog.Checkpoint) error { return nil }
+
 // publishNote writes the manifest of one note written by device at seq, and
 // its blob, under an exchange root. It returns their paths under that root.
 func publishNote(t *testing.T, root, device string, seq uint64) (manifestRel, blobRel string) {

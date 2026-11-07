@@ -21,6 +21,7 @@ type fetchHistory interface {
 	LoadState() (*synclog.State, error)
 	Lookup(txnID string) (synclog.IndexEntry, bool, error)
 	Blob(digest string) ([]byte, error)
+	CheckpointReadable(*synclog.Checkpoint) error
 }
 
 // fetch stages, into the device-local inbox, every manifest another device
@@ -39,6 +40,8 @@ func fetch(history fetchHistory, root, inbox string, report *FolderReport) error
 	var received map[string]uint64
 	if state != nil {
 		received = state.Received
+	} else if err := fetchCheckpoints(history, root, inbox, report); err != nil {
+		return err
 	}
 	txns := filepath.Join(root, "txns")
 	walkErr := filepath.WalkDir(txns, func(abs string, entry fs.DirEntry, err error) error {
@@ -96,19 +99,7 @@ func fetch(history fetchHistory, root, inbox string, report *FolderReport) error
 			if _, err := history.Blob(digest); err == nil {
 				continue
 			}
-			blobRel := BlobPath(digest)
-			blobAbs := filepath.Join(root, filepath.FromSlash(blobRel))
-			blob, readable := readExchangeFile(blobAbs)
-			if !readable {
-				if exchangeFileUnavailable(blobAbs) {
-					report.Unavailable = append(report.Unavailable, blobRel)
-				}
-				continue
-			}
-			if synclog.Digest(blob) != digest {
-				continue
-			}
-			if err := stageInbox(inbox, blobRel, blob); err != nil {
+			if err := stageExchangeBlob(root, inbox, digest, report); err != nil {
 				return err
 			}
 		}

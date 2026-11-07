@@ -110,7 +110,17 @@ func (h *History) Transaction(txnID string) (*Manifest, error) {
 		return nil, err
 	}
 	if !ok {
+		// The installed checkpoint's node is what conflict writers and the
+		// graph name in place of the history it summarizes.
+		if c, cpErr := h.installedCheckpoint(); cpErr != nil {
+			return nil, cpErr
+		} else if c != nil && c.CheckpointID == txnID {
+			return c.node(), nil
+		}
 		return nil, fmt.Errorf("synclog: unknown transaction %s", txnID)
+	}
+	if entry.Origin == originCheckpoint {
+		return nil, fmt.Errorf("%w: %s", ErrSummarized, txnID)
 	}
 	data, err := os.ReadFile(h.abs(entry.Record))
 	if err != nil {

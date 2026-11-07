@@ -70,6 +70,23 @@ type manifestCache struct {
 	state   os.FileInfo
 	indexed []*Manifest
 	byID    map[string]*Manifest
+	// checkpoint is the installed checkpoint the last walk found the index
+	// naming, nil when this device holds its history from the genesis.
+	checkpoint *Checkpoint
+	// cpMu guards installed, whole, and wholeFor apart from mu, since a walk
+	// holding mu reads the installed checkpoint.
+	cpMu sync.Mutex
+	// installed caches the installed checkpoint's record by id.
+	installed *Checkpoint
+	// whole remembers the transactions known to descend from every
+	// transaction the installed checkpoint wholeFor summarizes.
+	whole    map[string]bool
+	wholeFor string
+	// records caches this device's decoded checkpoint records by file name.
+	records map[string]*Checkpoint
+	// deferredAt is the state file as it stood when a due checkpoint was last
+	// refused; nil when none was.
+	deferredAt os.FileInfo
 }
 
 // New validates cfg and returns the device's history. It writes nothing.
@@ -228,6 +245,10 @@ type State struct {
 	// a transaction named: the device indexed the workspace it started from
 	// (see baseline), so any difference from Tracked is an external change.
 	Indexed bool `json:"indexed,omitempty"`
+	// Checkpoint is the checkpoint this device joined from, when it joined
+	// from one rather than from the enrollment genesis: every transaction it
+	// summarizes is known and received, its manifest never held here.
+	Checkpoint string `json:"checkpoint,omitempty"`
 }
 
 // OutboxEntry is one outgoing transaction awaiting publication.

@@ -938,7 +938,8 @@ verify_session_10() {
 		TestBridgeJoinsFromAStagedInbox/publishing_device_is_refused \
 		TestBridgeJoinsFromAStagedInbox/empty_inbox_delivers_nothing \
 		TestBridgeJoinsFromAStagedInbox/joined_copy_browses \
-		TestBridgeJoinsFromAStagedInbox/joined_copy_is_not_joined_twice
+		TestBridgeJoinsFromAStagedInbox/joined_copy_is_not_joined_twice \
+		TestBridgeJoinsFromAStagedInbox/checkpoint_joins_history_that_cannot_be_replayed
 
 	# The iPhone shell on a simulator against the gomobile-bound engine: seeded
 	# workspaces browsed offline, onboarding (create and join), workspace

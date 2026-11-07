@@ -171,6 +171,19 @@ func (r *Runtime) SyncExchange(opts SyncExchangeOptions) (*syncexchange.FolderRe
 	return report, err
 }
 
+// SyncCheckpoint records a checkpoint of this device's whole history now (see
+// storage.CommitService.CommitSyncCheckpoint). The next exchange pass
+// publishes it.
+func (r *Runtime) SyncCheckpoint() (*synclog.Checkpoint, error) {
+	if !r.state.Catalog().Enrolled() {
+		return nil, ErrNotEnrolled
+	}
+	if err := r.recordGenesis(); err != nil {
+		return nil, err
+	}
+	return r.repo.svc.CommitSyncCheckpoint()
+}
+
 // SyncStatus is everything a status surface shows about an enrolled
 // workspace, kept apart the way the plan requires: what is committed locally,
 // what is still outstanding in each direction, when an exchange last
@@ -359,6 +372,9 @@ func Join(cfg JoinConfig) (*Runtime, *syncexchange.FolderReport, error) {
 	if err != nil {
 		return nil, report, fmt.Errorf("join: %w", err)
 	}
+	if unjoined := joinShortfall(svc.SyncHistory(), report.Results); unjoined != nil {
+		return nil, report, unjoined
+	}
 	if recordErr := config.RecordJoinedWorkingCopy(dataDir, workspaceID, cfg.Exchange); recordErr != nil {
 		return nil, report, recordErr
 	}
@@ -432,9 +448,12 @@ func JoinInbox(cfg JoinInboxConfig) (*Runtime, *syncexchange.Report, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	report, err := syncexchange.ImportInbox(svc, filepath.Clean(cfg.InboxDir))
+	report, err := syncexchange.ImportInboxFor(svc, filepath.Clean(cfg.InboxDir), cfg.WorkspaceID)
 	if err != nil {
 		return nil, report, fmt.Errorf("join: %w", err)
+	}
+	if unjoined := joinShortfall(svc.SyncHistory(), report.Results); unjoined != nil {
+		return nil, report, unjoined
 	}
 	if recordErr := config.RecordJoinedEnrollment(dataDir, cfg.WorkspaceID, cfg.Exchange); recordErr != nil {
 		return nil, report, recordErr
