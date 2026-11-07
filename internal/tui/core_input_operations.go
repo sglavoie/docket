@@ -209,6 +209,8 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		}
 	case operation.OperationCoreGotoRelation:
 		return m.coreGotoRelation(invocation.Targets)
+	case operation.OperationCoreGotoCaptured:
+		return m.coreGotoCaptured()
 	case operation.OperationCoreCollapseParent:
 		if out, ok := m.outlinerPrimary(); ok {
 			out.CollapseOrMoveToParent()

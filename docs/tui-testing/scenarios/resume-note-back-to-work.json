@@ -9,6 +9,8 @@
     { "type": "key", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "label": "capturing into Doing is not leaving off, so no resume note is asked for", "assert": "not_contains", "value": "Note Where I Left Off" },
+    { "type": "key", "label": "capture kept the cursor where it was reading, so go to the captured task on purpose", "key": "g" },
+    { "type": "key", "key": "l" },
 
     { "type": "key", "label": "pausing is the moment the user knows where they stopped", "key": "w" },
     { "type": "key", "key": "p" },

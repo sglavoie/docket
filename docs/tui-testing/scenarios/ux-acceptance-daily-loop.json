@@ -618,7 +618,16 @@
     },
     {
       "type": "key",
-      "key": "j"
+      "label": "capture left the cursor where it was reading, so walk down from the top to the first project task",
+      "key": "home"
+    },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    {
+      "type": "assert",
+      "assert": "contains",
+      "value": "▌  [ux-client-r…] ◌ Collect the client onboarding assets"
     },
     {
       "type": "key",

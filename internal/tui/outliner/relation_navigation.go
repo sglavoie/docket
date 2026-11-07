@@ -1,8 +1,13 @@
 package outliner
 
 import (
+	"time"
+
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/listsurface"
 	"github.com/sglavoie/docket/internal/tui/query"
 	"github.com/sglavoie/docket/internal/tui/taskref"
 )
@@ -97,6 +102,14 @@ func (m *OutlinerModel) jumpToRelation(task *models.Task, project *models.Projec
 	if m == nil || task == nil || project == nil {
 		return relationStaleTargetRefusal
 	}
+	return m.hopWithReturn(task, project, m.RelationPicker.Subject)
+}
+
+// hopWithReturn replaces the projection with one that draws the task and
+// pushes the frame Esc spends to come back, parking the cursor on from. It is
+// the relationship walk's hop and the captured-task open's, so both leave the
+// same way back.
+func (m *OutlinerModel) hopWithReturn(task *models.Task, project *models.Project, from taskref.TaskIdentity) string {
 	if m.Project != nil && m.Project.ID != project.ID {
 		return "This view holds one project and cannot open " + project.Name
 	}
@@ -108,7 +121,7 @@ func (m *OutlinerModel) jumpToRelation(task *models.Task, project *models.Projec
 	frame := relationReturnFrame{
 		presentation: m.CaptureOutlinerPresentationCheckpoint(),
 		lens:         m.Lens.takeActive(),
-		from:         m.RelationPicker.Subject,
+		from:         from,
 	}
 	// forgetActiveLensFrame is the suspension seam: it drops the frame, the
 	// application still reading a population for it, the query edit, and the
@@ -241,4 +254,110 @@ func (m *OutlinerModel) enclosingCollapseKeys(index int) []string {
 		return nil
 	}
 	return m.Rows[index].Group.CollapseKeys()
+}
+
+// Opening the captured task is the deliberate half of a capture that kept the
+// reader's place: the capture lit its row and left the cursor where it was, and
+// this is the one press that goes there. It leaves through the relationship
+// trail's frame, so the way back is the same Esc whether the task was already
+// on screen or the view had to change to draw it.
+
+// Refusals OpenCapturedTask answers with.
+const (
+	CapturedTaskGoneRefusal  = "The captured task is no longer in the loaded projects"
+	CapturedTaskAlreadyThere = "Already on the captured task"
+)
+
+// OpenCapturedTask puts the cursor on the task a capture minted and records
+// the reading position it left. A task the projection already draws keeps the
+// view and moves the cursor alone; one it does not draw is reached through the
+// same hop g~ takes, which enters its project in All and opens the folds over
+// it. Either way one return frame is pushed, so Esc parks the cursor back on the
+// task it was reading. It reports a refusal, or the empty string, and the cursor
+// flash a long jump earns.
+func (m *OutlinerModel) OpenCapturedTask(identity taskref.TaskIdentity) (string, tea.Cmd) {
+	if m == nil || !identity.Valid() {
+		return CapturedTaskGoneRefusal, nil
+	}
+	task, project := m.loadedTask(identity)
+	if task == nil || project == nil {
+		return CapturedTaskGoneRefusal, nil
+	}
+	from := m.CurrentTaskIdentity()
+	if from == identity {
+		return CapturedTaskAlreadyThere, nil
+	}
+	previous := m.Cursor
+	if index, found := m.RowIndexForTask(identity); found {
+		m.relationTrail = append(m.relationTrail, relationReturnFrame{
+			presentation: m.CaptureOutlinerPresentationCheckpoint(),
+			lens:         m.Lens.Active,
+			from:         from,
+		})
+		m.Cursor = index
+		m.rebaseReloadTargetAfterRelocation()
+	} else if refusal := m.hopWithReturn(task, project, from); refusal != "" {
+		return refusal, nil
+	}
+	m.SetTransientStatus("Went to " + task.Title)
+	return "", listsurface.FlashIfJumped(previous, m.Cursor, &m.CursorFlash)
+}
+
+// SettleCapturedTask is what a capture does to the Outliner beyond lighting
+// its row. A cursor reading a task stays on it. A cursor reading no task, over
+// a projection whose only task row is the one just captured, has no place to
+// keep, so it is seated on the new task: an empty view's first capture is
+// where the reader now is. A task the projection does not draw is named by
+// NoteCapturedTaskOutOfView.
+func (m *OutlinerModel) SettleCapturedTask(identity taskref.TaskIdentity) {
+	if m == nil {
+		return
+	}
+	index, found := m.RowIndexForTask(identity)
+	if !found {
+		m.NoteCapturedTaskOutOfView(identity)
+		return
+	}
+	if m.CurrentTaskIdentity().Valid() {
+		return
+	}
+	for i, row := range m.Rows {
+		if i != index && row.IsTaskRow() && row.Task != nil {
+			return
+		}
+	}
+	m.Cursor = index
+}
+
+// NoteCapturedTaskOutOfView says why a capture's task has no row, the way a
+// jump to it would have, and moves nothing: the cursor, the folds, Focus and
+// zoom all stay as the reader left them, and the toast beside this notice
+// names gl as the way there. A task the projection draws needs no notice, and
+// one the loaded projects do not hold yet is left to the reload to draw.
+func (m *OutlinerModel) NoteCapturedTaskOutOfView(identity taskref.TaskIdentity) {
+	if m == nil {
+		return
+	}
+	task, project := m.loadedTask(identity)
+	if task == nil || project == nil {
+		return
+	}
+	if _, found := m.RowIndexForTask(identity); found {
+		return
+	}
+	m.SetTransientStatus(m.hiddenTaskNotice(task, time.Now()))
+}
+
+// loadedTask resolves a qualified identity against the projects the Outliner
+// holds, so the hop reads the same pointers its rows were built from.
+func (m *OutlinerModel) loadedTask(identity taskref.TaskIdentity) (*models.Task, *models.Project) {
+	for _, project := range m.Population.Projects {
+		if project == nil || project.ID != identity.ProjectID {
+			continue
+		}
+		if task := project.GetTaskByID(identity.TaskID); task != nil {
+			return task, project
+		}
+	}
+	return nil, nil
 }

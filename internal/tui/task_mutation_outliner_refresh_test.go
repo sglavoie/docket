@@ -240,7 +240,7 @@ func TestPlanningCaptureRefreshesRuntimeAndOutlinerSection(t *testing.T) {
 			}
 
 			_, refreshCmd := model.handleTaskCreated(created)
-			if want := "Captured to " + project.Slug + " · " + tc.group.Label() + ": Planned task · u undo"; model.feedback.message != want {
+			if want := "Captured to " + project.Slug + " · " + tc.group.Label() + ": Planned task · gl open · u undo"; model.feedback.message != want {
 				t.Fatalf("status = %q, want %q", model.feedback.message, want)
 			}
 			runSession2AppCommand(t, model, refreshCmd)

@@ -641,3 +641,20 @@ func TestControlViewSwitchesModeAsTheJumpDoes(t *testing.T) {
 		t.Fatalf("a busy view moved the mode to %q", env.outliner.PrimaryMode)
 	}
 }
+
+// A capture from outside the terminal, the macOS app's hot key, is remembered
+// the way the composer's is, and its toast names the way there while the
+// Outliner holds the keys.
+func TestControlCaptureIsRememberedForGl(t *testing.T) {
+	env := controlEnv(t, reviewSettledTask(t, 1, "existing"))
+	reply := env.request(t, control.Request{Op: control.OpCapture, Text: "Call the plumber"})
+	if !reply.OK {
+		t.Fatalf("reply = %+v", reply)
+	}
+	if !env.model.lastCapture.Valid() {
+		t.Fatal("the control capture was not remembered")
+	}
+	if got := env.model.feedback.message; !strings.HasSuffix(got, "gl open · u undo") {
+		t.Fatalf("the control capture toast offers no way there: %q", got)
+	}
+}

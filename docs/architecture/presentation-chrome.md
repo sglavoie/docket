@@ -1056,9 +1056,19 @@ and each changes paint alone: no width, no row, no window input.
     A flash or a resting cursor keeps its own paint. The intent stands until
     input, so a commit landing after its key still lights, and a burst of moves
     lights once per landing. A task the cursor did not follow lights nothing.
-  - *Capture landing.* A creation keeps the cursor where it was: the async
-    reload `handleWithRefresh` requests restores it by the identity it held.
-    `handleTaskCreated` therefore calls `LightLanding`, which starts the same
+  - *Capture landing.* A creation keeps the cursor where it was and opens no
+    fold, Focus, or zoom to show its task: `handleTaskCreated` navigates only
+    for an explicit open-after request and otherwise calls
+    `SettleCapturedTask`, which moves nothing unless the cursor names no task
+    and the new task is the projection's only task row — an empty view's first
+    capture — and names a task the projection does not draw with
+    `hiddenTaskNotice`. `rememberCapture` keeps that task's qualified identity
+    for the session; `gl` (`OpenCapturedTask`) moves the cursor onto a drawn
+    row or takes `g~`'s hop to a view that draws it, and either way pushes one
+    relationship-trail frame, so `Esc` restores the view and the task it was
+    reading. The toast advertises it as the `gl open` ending ahead of `u undo`
+    while the Outliner holds the keys and the cursor is elsewhere.
+    `handleTaskCreated` also calls `LightLanding`, which starts the same
     trail on the minted task without a place, and `landingPaint` lights a row
     the cursor is not on with the half-block mark alone, primary in the first
     phase and `ColorDimmed` in the second, and no band. On a row owing

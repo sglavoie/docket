@@ -397,6 +397,12 @@ func SimplifiedInputStrategy() InputStrategy {
 			// the strip already names as workspace state is something the user goes
 			// to look at, and root `c` appends a checklist item.
 			{OperationID: OperationCoreConflicts, Sequence: []string{"g", "c"}, DisplayKey: "gc", HintLabel: "conflicts", HintGroup: chrome.GotoSyncHintGroup},
+			// The capture toast offers this as `gl open`: the task a capture lit
+			// without moving the cursor, reached on purpose with Esc back. It names
+			// no cursor task, so it joins no Task run a header row sheds, and it is
+			// declared last and ungrouped so the floor gives it up first: the toast
+			// that needs it spells it whole.
+			{OperationID: OperationCoreGotoCaptured, Sequence: []string{"g", "l"}, DisplayKey: "gl", HintLabel: "last capture"},
 			{OperationID: OperationCoreScrollCursorTop, Sequence: []string{"z", "t"}, DisplayKey: "zt", HintLabel: "row to top"},
 			{OperationID: OperationCoreScrollCursorMiddle, Sequence: []string{"z", "z"}, DisplayKey: "zz", HintLabel: "row to middle"},
 			{OperationID: OperationCoreScrollCursorBottom, Sequence: []string{"z", "b"}, DisplayKey: "zb", HintLabel: "row to bottom"},

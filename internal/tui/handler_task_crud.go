@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/docket/internal/icons"
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/coordinator"
+	"github.com/sglavoie/docket/internal/tui/operation"
 	"github.com/sglavoie/docket/internal/tui/taskform"
 	"github.com/sglavoie/docket/internal/tui/taskref"
 	"github.com/sglavoie/docket/internal/tui/theme"
@@ -98,17 +99,7 @@ func (m *AppModel) handleTaskCreated(msg coordinator.TaskCreatedMsg) (bool, tea.
 
 	refreshCmd := m.handleWithRefresh(!msg.KeepComposerOpen, true)
 
-	var landingCmd tea.Cmd
-	if msg.Task != nil && !msg.KeepComposerOpen {
-		project := msg.Project
-		if project == nil && msg.Result != nil {
-			project = m.projectByID(msg.Result.ProjectID)
-		}
-		if m.crossOutliner != nil && project != nil {
-			m.crossOutliner.NavigateToTaskInProject(msg.Task, project)
-			landingCmd = m.crossOutliner.LightLanding(msg.Task.ID)
-		}
-	}
+	landingCmd := m.landCreatedTask(msg)
 
 	// Set status message showing section
 	if msg.Task != nil {
@@ -141,7 +132,10 @@ func (m *AppModel) handleTaskCreated(msg coordinator.TaskCreatedMsg) (bool, tea.
 	m.undoFocus.ObserveCommit(transactionID, created)
 	successMessage = cmp.Or(msg.RecoveryWarning, successMessage)
 	feedbackCmd := m.setRecoveryFeedbackWithContext(successMessage, transactionID,
-		recoveryWords{Headline: m.capturedTasksHeadline(msg)}, false)
+		recoveryWords{
+			Headline: m.capturedTasksHeadline(msg),
+			Open:     m.rememberCreatedTask(msg) && m.offersCapturedTaskOpen(msg),
+		}, false)
 
 	// Delegate to the current view so it can reload its state
 	cmd := m.viewNav.views.Update(m.currentView(), msg)
@@ -163,6 +157,38 @@ func (m *AppModel) handleTaskCreated(msg coordinator.TaskCreatedMsg) (bool, tea.
 	}
 
 	return true, tea.Batch(refreshCmd, cmd, feedbackCmd, landingCmd)
+}
+
+// landCreatedTask lights the task a creation minted wherever the Outliner
+// draws it. A capture keeps the reader's place: it opens no fold to show the
+// row, and gl is the deliberate way there. Only an explicit open-after request
+// moves the cursor to what it opens.
+func (m *AppModel) landCreatedTask(msg coordinator.TaskCreatedMsg) tea.Cmd {
+	if msg.Task == nil || msg.KeepComposerOpen || m.crossOutliner == nil {
+		return nil
+	}
+	project := msg.Project
+	if project == nil && msg.Result != nil {
+		project = m.projectByID(msg.Result.ProjectID)
+	}
+	if project == nil {
+		return nil
+	}
+	if msg.OpenContent || msg.OpenTaskID != "" {
+		m.crossOutliner.NavigateToTaskInProject(msg.Task, project)
+	} else {
+		m.crossOutliner.SettleCapturedTask(taskref.For(msg.Task, project))
+	}
+	return m.crossOutliner.LightLanding(msg.Task.ID)
+}
+
+// rememberCreatedTask records a single-task creation for gl, reporting
+// whether it did. A multiline capture names none of its tasks.
+func (m *AppModel) rememberCreatedTask(msg coordinator.TaskCreatedMsg) bool {
+	if msg.Result == nil || msg.CreatedCount > 1 {
+		return false
+	}
+	return m.rememberCapture([]app.TaskResult{*msg.Result})
 }
 
 // capturedTasksHeadline is the toast a committed capture answers with. A
@@ -299,4 +325,56 @@ func nonEmpty(values ...string) []string {
 		}
 	}
 	return kept
+}
+
+// A capture keeps the reader's place: it lights the new row wherever it lands
+// and leaves the cursor alone. The toast that names where it went also offers
+// the way there, `gl open`, so a forgotten detail is one press away rather than
+// a search. The shell remembers the task because only the shell sees every
+// capture commit, composer and control socket alike.
+
+// rememberCapture records the task a single-task capture minted. A multiline
+// capture names none of its tasks, as its undo focus does, so it leaves the
+// previous one standing rather than guessing which line was meant.
+func (m *AppModel) rememberCapture(results []app.TaskResult) bool {
+	if len(results) != 1 {
+		return false
+	}
+	identity := taskref.TaskIdentity{ProjectID: results[0].ProjectID, TaskID: results[0].TaskID}
+	if !identity.Valid() {
+		return false
+	}
+	m.lastCapture = identity
+	return true
+}
+
+// offersCapturedTaskOpen decides whether a composer capture's toast ends in
+// `gl open`. An open composer still holds the keys, so gl would type rather
+// than go; an open-after already went; and a cursor the capture left on its
+// own task has nowhere to go.
+func (m *AppModel) offersCapturedTaskOpen(msg coordinator.TaskCreatedMsg) bool {
+	if msg.KeepComposerOpen || msg.OpenContent || msg.RecoveryWarning != "" {
+		return false
+	}
+	out, ok := m.outlinerPrimary()
+	return ok && out != nil && out.CurrentTaskIdentity() != m.lastCapture
+}
+
+// coreGotoCaptured is gl. It moves the cursor onto the remembered capture, or
+// hops to a view that draws it, and the Outliner pushes the frame Esc spends to
+// come back. A task the loaded projects no longer hold refuses and stays
+// remembered: a project filtered out of the population has not lost it.
+func (m *AppModel) coreGotoCaptured() operation.OperationHandlerResult {
+	if !m.lastCapture.Valid() {
+		return operation.OperationHandlerResult{Status: "Nothing captured yet this session"}
+	}
+	out, ok := m.outlinerPrimary()
+	if !ok || out == nil {
+		return operation.OperationHandlerResult{}
+	}
+	refusal, cmd := out.OpenCapturedTask(m.lastCapture)
+	if refusal != "" {
+		return operation.OperationHandlerResult{Status: refusal}
+	}
+	return operation.OperationHandlerResult{Message: commandMessage(cmd)}
 }

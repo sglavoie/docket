@@ -14,6 +14,8 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "Offer capture" },
+    { "type": "key", "label": "capture kept the cursor where it was reading, so go to the captured task on purpose", "key": "g" },
+    { "type": "key", "key": "l" },
 
     { "type": "key", "label": "an inline edit that blocks the task commits quietly: the note is said once per session", "key": "e" },
     { "type": "key", "key": "ctrl+u" },

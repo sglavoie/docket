@@ -210,11 +210,9 @@ func (c *feedbackController) appendDetail(detail string) {
 	if detail == "" || c.undoCb == nil {
 		return
 	}
-	head, _, origin := splitRecoverySuffix(c.message)
-	c.message = head + " · " + detail + recoveryUndoSuffix
-	if origin {
-		c.message += recoveryOriginSuffix
-	}
+	head, endings := splitRecoverySuffix(c.message)
+	endings.undo = true
+	c.message = head + " · " + detail + endings.String()
 }
 
 // appendNote adds an independent observation to the line already speaking,
@@ -230,30 +228,47 @@ func (c *feedbackController) appendNote(note string) bool {
 	if note == "" || strings.TrimSpace(c.message) == "" {
 		return false
 	}
-	head, undo, origin := splitRecoverySuffix(c.message)
-	c.message = head + " · " + note
-	if undo {
-		c.message += recoveryUndoSuffix
-	}
-	if origin {
-		c.message += recoveryOriginSuffix
-	}
+	head, endings := splitRecoverySuffix(c.message)
+	c.message = head + " · " + note + endings.String()
 	return true
 }
 
-// The recovery grammar's two endings, in the order a line carries them. They
+// The recovery grammar's three endings, in the order a line carries them. They
 // are spelled here alone: every splice and every fit reads splitRecoverySuffix.
+// The open ending is a capture's, the way to the task it kept off the cursor.
 const (
+	recoveryOpenSuffix   = " · gl open"
 	recoveryUndoSuffix   = " · u undo"
 	recoveryOriginSuffix = " · Ctrl+O origin"
 )
 
+// recoveryEndings names which of those endings a line carries.
+type recoveryEndings struct {
+	open, undo, origin bool
+}
+
+// String spells the endings in their canonical order.
+func (e recoveryEndings) String() string {
+	suffix := ""
+	if e.open {
+		suffix += recoveryOpenSuffix
+	}
+	if e.undo {
+		suffix += recoveryUndoSuffix
+	}
+	if e.origin {
+		suffix += recoveryOriginSuffix
+	}
+	return suffix
+}
+
 // splitRecoverySuffix peels the recovery controls off the end of a feedback
-// line, reporting which of the two it carried.
-func splitRecoverySuffix(message string) (head string, undo, origin bool) {
-	head, origin = strings.CutSuffix(message, recoveryOriginSuffix)
-	head, undo = strings.CutSuffix(head, recoveryUndoSuffix)
-	return head, undo, origin
+// line, reporting which of them it carried.
+func splitRecoverySuffix(message string) (head string, endings recoveryEndings) {
+	head, endings.origin = strings.CutSuffix(message, recoveryOriginSuffix)
+	head, endings.undo = strings.CutSuffix(head, recoveryUndoSuffix)
+	head, endings.open = strings.CutSuffix(head, recoveryOpenSuffix)
+	return head, endings
 }
 
 // fitRecoveryFeedback fits one feedback line to width. A line ending in the
@@ -265,14 +280,8 @@ func fitRecoveryFeedback(text string, width int) string {
 	if lipgloss.Width(text) <= width {
 		return text
 	}
-	head, undo, origin := splitRecoverySuffix(text)
-	suffix := ""
-	if undo {
-		suffix += recoveryUndoSuffix
-	}
-	if origin {
-		suffix += recoveryOriginSuffix
-	}
+	head, endings := splitRecoverySuffix(text)
+	suffix := endings.String()
 	headWidth := width - lipgloss.Width(suffix)
 	if suffix == "" || headWidth < 2 {
 		return textfit.TruncateToVisualWidth(text, width)
@@ -444,7 +453,7 @@ func (m *AppModel) celebrateClearedInbox(before pulse.WorkspacePulse, statusBefo
 	if before.Inbox <= 0 || after.Inbox != 0 || m.feedback.seq == statusBefore.statusSeq {
 		return
 	}
-	if _, undo, _ := splitRecoverySuffix(m.feedback.message); !undo {
+	if _, endings := splitRecoverySuffix(m.feedback.message); !endings.undo {
 		return
 	}
 	day := now.Format(time.DateOnly)

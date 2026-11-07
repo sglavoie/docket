@@ -126,7 +126,7 @@ left. It publishes once per session and transaction ID from the one deferred
 closure, so a reload, a redraw, or a redelivery says nothing, and it rides the line
 already speaking through `appendNote`, spliced ahead of `u undo` and advancing no
 `seq`, so it takes no keyboard and asks nothing of interaction ownership.
-`splitRecoverySuffix` alone spells those two endings, and a line wider than its
+`splitRecoverySuffix` alone spells the recovery endings, and a line wider than its
 row elides its head through `fitRecoveryFeedback`, never its keys. Titles
 are re-read from the committed projects at publish, so a target scheduled or
 retired in the meantime drops out silently. Scheduling is therefore always

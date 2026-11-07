@@ -239,6 +239,12 @@ type AppModel struct {
 	// handler_task_history.go.
 	undoFocus coordinator.UndoFocusController
 
+	// lastCapture is the task the newest single-task capture minted, which gl
+	// opens on purpose because the capture itself kept the reader's place. Like
+	// undoFocus it is session memory and persisted nowhere. See
+	// handler_task_crud.go.
+	lastCapture taskref.TaskIdentity
+
 	// dueSteps serializes the deadline gestures the + and - keys record. It sits
 	// beside dueClocks for the same reason: a burst of keypresses is one chain of
 	// transactions, and only the shell sees both the keypress that freezes a

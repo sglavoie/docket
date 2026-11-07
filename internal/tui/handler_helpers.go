@@ -198,9 +198,13 @@ func (m *AppModel) setRecoveryFeedback(successMessage, transactionID string, ori
 // action and context together, for an outcome whose sentence is not
 // `Action: context` — hiding, which has to say where the rows went. Both empty
 // keep the ledger's words.
+//
+// Open offers the captured task's way there, the `gl open` ending; it is a word
+// of the toast rather than of the ledger, so a re-render keeps offering it.
 type recoveryWords struct {
 	Context  string
 	Headline string
+	Open     bool
 }
 
 // setRecoveryFeedbackWithContext is that same toast with the committed outcome
@@ -233,23 +237,20 @@ func (m *AppModel) setRecoveryFeedbackWithContext(
 		action, context = headline, ""
 	}
 	undoCb := func() tea.Cmd { return m.handleLedgerTaskUndoRedo(false) }
-	cmd := m.setUndoableStatus(formatRecoveryFeedback(action, context, originRecorded), undoCb)
+	endings := recoveryEndings{open: words.Open, undo: true, origin: originRecorded}
+	cmd := m.setUndoableStatus(formatRecoveryFeedback(action, context, endings), undoCb)
 	m.feedback.correlate(transactionID, successMessage, words)
 	return cmd
 }
 
 // formatRecoveryFeedback renders the canonical recovery grammar. Context is
 // omitted when absent; origin is advertised only after jump history records it.
-func formatRecoveryFeedback(action, context string, originRecorded bool) string {
+func formatRecoveryFeedback(action, context string, endings recoveryEndings) string {
 	message := strings.TrimSpace(action)
 	if context = strings.TrimSpace(context); context != "" {
 		message += ": " + context
 	}
-	message += " · u undo"
-	if originRecorded {
-		message += " · Ctrl+O origin"
-	}
-	return message
+	return message + endings.String()
 }
 
 // clearStatus clears the status message, the error beside it, and the info flag.

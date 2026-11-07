@@ -612,10 +612,10 @@ also what keeps the sentence and `checkInSetupEligible` agreeing about the same
 population.
 
 `feedbackController.appendNote` is how the note rides whatever line is already
-speaking: it splices ahead of the `· u undo` and `· Ctrl+O origin` suffixes, so
+speaking: it splices ahead of the `· gl open`, `· u undo`, and `· Ctrl+O origin` suffixes, so
 the recovery grammar's endings stay last and the toast advances no `seq`,
 leaving the handler's own severity and flash decision untouched.
-`splitRecoverySuffix` is the one place those two endings are spelled, and
+`splitRecoverySuffix` is the one place those three endings are spelled, and
 `fitRecoveryFeedback` reads it at render: a line wider than its row elides its
 head with `…` and keeps the endings whole, since the keys are the half a reader
 can still press, while a line carrying neither is cut from the right. With nothing to

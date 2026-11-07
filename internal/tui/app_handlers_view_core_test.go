@@ -272,12 +272,12 @@ func TestStatusClearMsgClearsExpiredUndoToast(t *testing.T) {
 }
 
 func TestFormatRecoveryFeedbackIncludesContext(t *testing.T) {
-	got := formatRecoveryFeedback("Delete Task", "#42 Login flow", true)
+	got := formatRecoveryFeedback("Delete Task", "#42 Login flow", recoveryEndings{undo: true, origin: true})
 	want := "Delete Task: #42 Login flow · u undo · Ctrl+O origin"
 	if got != want {
 		t.Errorf("formatRecoveryFeedback = %q, want %q", got, want)
 	}
-	if formatRecoveryFeedback("Bulk Edit", "", false) != "Bulk Edit · u undo" {
+	if formatRecoveryFeedback("Bulk Edit", "", recoveryEndings{undo: true}) != "Bulk Edit · u undo" {
 		t.Error("formatRecoveryFeedback should omit empty context and unrecorded origin")
 	}
 }

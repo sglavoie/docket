@@ -112,7 +112,14 @@ func (m *AppModel) adoptControlCommit(msg controlCommittedMsg) tea.Cmd {
 	if msg.feedback == "" {
 		return refresh
 	}
-	return tea.Batch(refresh, m.setRecoveryFeedback(msg.feedback, msg.txID, false))
+	// A capture made from outside the terminal is the one most likely to want a
+	// detail added later, so it is remembered like the composer's. The way there
+	// is offered only while the Outliner holds the keys.
+	open := false
+	if captured, ok := msg.inner.(coordinator.TasksCapturedMsg); ok {
+		open = m.rememberCapture(captured.Results) && m.activeOutlinerRoute()
+	}
+	return tea.Batch(refresh, m.setRecoveryFeedbackWithContext(msg.feedback, msg.txID, recoveryWords{Open: open}, false))
 }
 
 func controlCapturedSummary(results []app.TaskResult) string {

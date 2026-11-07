@@ -284,7 +284,7 @@ func TestCheckInFeedbackRidesTheLiveLineAndStandsAlone(t *testing.T) {
 			cluster := &feedbackController{}
 			switch live {
 			case "recovery":
-				cluster.message = formatRecoveryFeedback("Set Doing", "1 task", true)
+				cluster.message = formatRecoveryFeedback("Set Doing", "1 task", recoveryEndings{undo: true, origin: true})
 			case "plain":
 				cluster.message = "Captured 1 task"
 			}

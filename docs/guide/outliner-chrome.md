@@ -244,8 +244,13 @@ Finishing a task says so plainly, with the day's tally: `✓ Done: Write the
 release notes · 3 done today · u undo` (the first one of the day reads `first
 done today`). Capturing names where the task landed before what it was, so a
 long title is what gets shortened: `Captured to website · Inbox: Draft the
-release notes · u undo`, or `Captured 3 tasks to website` for a multiline
-capture. Change History keeps each change's own record, such as `Change Status`
+release notes · gl open · u undo`, or `Captured 3 tasks to website` for a
+multiline capture. `gl open` is the way to the task you just saved, for a
+detail you forgot: the cursor moves onto it, or, when this view does not draw
+it, the view changes to its project in All the way `g~` does, and `Esc` brings
+back the view and the task you were reading. `gl` keeps answering for the last
+single-task capture of the session after the toast is gone; the toast leaves the
+ending off when the cursor is already on the new task. Change History keeps each change's own record, such as `Change Status`
 or `Add Task`, and so does the `Undid:` line an undo answers with.
 
 Finishing the last task planned for Today adds `Today is clear` to the
@@ -290,7 +295,9 @@ a brighter band at first and then on the ordinary one, for about half a second,
 and each further move lights it again; a move that takes the task out of view,
 such as `%` from a scoped project, shows the departing row instead. A task you
 capture lights its own mark in the accent wherever it lands, then dims; the
-cursor stays where you were reading. Opening
+cursor stays where you were reading, and no fold opens to show the new task.
+When the view does not draw it, the status strip says why, such as `Deferred
+until …`; the first capture into an empty view puts the cursor on it. Opening
 Peek rolls its document out under the divider over two quick frames; the
 dock stands at its full height from the first, so nothing above it moves, and
 moving the cursor under an open dock swaps the document in place. Capture's

@@ -186,6 +186,24 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		"walk references",
 	))
 	gotoRelation.Applicability = gotoTaskProject.Applicability
+	// Opening the last capture names its target itself, the task the session
+	// remembers, so it is target-free like gg and Ctrl+L. It refuses a visual
+	// selection for the reason g~ does: its way back restores a whole
+	// presentation, and a selection riding that frame would be one the user can
+	// no longer see being kept.
+	gotoCaptured := core(
+		OperationCoreGotoCaptured,
+		"Open Captured Task",
+		OperationCategoryNavigation,
+		TargetCardinalityNone,
+		OperationRiskReadOnly,
+		"last capture",
+		"go to captured task",
+		"just captured",
+	)
+	gotoCaptured.Applicability = func(ctx CommandContext) bool {
+		return CoreOutlinerApplicability(ctx) && !ctx.Selection.Visual
+	}
 	zoomSection := core(
 		OperationCoreZoomSection,
 		"Zoom to Section",
@@ -299,6 +317,7 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		gotoParentTask,
 		gotoTaskProject,
 		gotoRelation,
+		gotoCaptured,
 		zoomSection,
 		activateGroup,
 		openNote,
