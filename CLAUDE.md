@@ -547,7 +547,7 @@ again. The row is exactly `m.width` and drops whole labels from the right, never
 truncating one. An open menu stands on the view it was opened from, and so does
 the relation picker: `composeOutlinerModal` is their one seam, the host renders
 unchanged underneath, and `chrome.OverlayPopupDimmedAt` composites the dropdown
-dimmed under the column its label owns, below the header rows no modal covers.
+dimmed under the column its label owns, on the row under the bar.
 A modal covers rows rather than displacing them, so the window, Peek, and a
 selection are all still what the close redraws; the box is bounded by what the
 anchor leaves and scrolls its own list rather than growing, and it composites

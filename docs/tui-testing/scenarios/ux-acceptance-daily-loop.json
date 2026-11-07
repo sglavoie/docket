@@ -785,9 +785,9 @@
     },
     {
       "type": "assert",
-      "label": "and stands on the host it was opened from, which renders unchanged underneath",
+      "label": "and hangs directly under the bar it was opened from, which stays drawn",
       "assert": "contains",
-      "value": "Active Projects · All"
+      "value": "Task  Edit  View  Go  Find  Help"
     },
     {
       "type": "assert",

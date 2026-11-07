@@ -41,8 +41,10 @@ func TestAnOpenMenuStandsOnTheViewItWasOpenedFrom(t *testing.T) {
 	if !strings.Contains(open, "Task") || !strings.Contains(open, "Help") {
 		t.Errorf("the bar left the frame the menu hangs off:\n%s", open)
 	}
-	if !strings.Contains(open, "Active Projects · All") {
-		t.Errorf("the operational title was covered by an open menu:\n%s", open)
+	// The dropdown hangs off its label: its top border is the row directly under
+	// the bar, with no gap over the title and context rows it covers.
+	if lines := strings.Split(open, "\n"); len(lines) < 2 || !strings.Contains(lines[1], "╭") {
+		t.Errorf("the dropdown does not start on the row under the bar:\n%s", open)
 	}
 	assertHostSurvivesBesideDropdown(t, baseline, open)
 	if !strings.Contains(driver.Observe(ObserveOptions{IncludeANSI: true}).ANSIScreen, dimSequence(t)) {

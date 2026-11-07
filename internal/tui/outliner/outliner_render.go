@@ -150,8 +150,12 @@ func (m *OutlinerModel) composeOutlinerModal(host string, width int) string {
 		m.modalFrame.picker = placement
 		return composed
 	}
-	if menu, startCol := m.renderOutlinerMenuDropdown(width, m.outlinerModalBudget(width)); menu != "" {
-		composed, placement := chrome.OverlayPopupDimmedAt(host, menu, width, frameHeight, m.outlinerHostHeaderRows(), startCol)
+	// A dropdown hangs off its label, so it anchors on the row directly under the
+	// bar and covers the title, context row and Now card the way any menu covers
+	// what sits beneath it; those rows are dimmed, not displaced.
+	dropdownRow := m.menuBarRows()
+	if menu, startCol := m.renderOutlinerMenuDropdown(width, max(frameHeight-dropdownRow, 1)); menu != "" {
+		composed, placement := chrome.OverlayPopupDimmedAt(host, menu, width, frameHeight, dropdownRow, startCol)
 		m.modalFrame.dropdown = placement
 		return composed
 	}

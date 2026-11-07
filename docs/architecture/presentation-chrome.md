@@ -779,11 +779,13 @@ content stream in place of it. `RenderOutlinerTreeContent` renders the host firs
 — bar row, operational title, suggestion pane, the window `ComputeOutlinerViewport`
 returns, the Peek dock — and hands it to `composeOutlinerModal`, the one seam both
 of the Outliner's view-local modals take. A resolved dropdown goes through
-`chrome.OverlayPopupDimmedAt`, anchored at `outlinerHostHeaderRows()` and at the
-open label's `StartCol`, so the bar row and the title carrying the workspace pulse
-are never covered and the box lands under the label it belongs to; the relation
-picker goes through the bottom-anchored `chrome.OverlayPopupDimmed`, fitted to the
-same `outlinerModalBudget`, so it keeps that header too. That centered path
+`chrome.OverlayPopupDimmedAt`, anchored at `menuBarRows()` — the row directly
+under the bar — and at the open label's `StartCol`, with the box's top halo row
+dropped so its border meets the bar. It covers the title, context row and Now
+card the way any menu covers what hangs beneath it, which is why the pointer
+hit-map offsets its content one row less than an ordinary untitled box; the
+relation picker goes through the bottom-anchored `chrome.OverlayPopupDimmed`, fitted to the
+`outlinerModalBudget`, so it keeps the header rows. That centered path
 alone tidies its sides: a margin under eight columns is painted with
 `theme.OverlayHaloStyle` on the popup's rows, since a sliver of a row cut
 mid-word reads as debris, while a wider margin and every anchored popup keep the

@@ -114,9 +114,9 @@ still reachable by the keys its entries carry.
 `M`, `F10`, or `Ctrl+M` opens the leftmost menu, borrowing a row for the bar if it was hidden,
 so reaching a menu is never two presses. The reveal lasts as long as the menu
 does: close the menu and the bar goes back to whatever the pinned setting last left it as, up
-if it was up and away if it was away. The dropdown falls inline under the label
-it belongs to, and the view stays underneath it: the bar stays on its row, the
-title and its workspace pulse stay on theirs, and the task list — with an open
+if it was up and away if it was away. The dropdown falls directly under the label
+it belongs to, on the next row, and the view stays underneath it: the bar stays on
+its row, the title, context row and task list — with an open
 Peek dock, a multi-select summary, whatever you were looking at — is still there,
 dimmed, everywhere the box does not reach. The box covers those rows rather than
 pushing them anywhere, so nothing shifts down and back up per press and the view

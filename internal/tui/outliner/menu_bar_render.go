@@ -138,8 +138,9 @@ const (
 	// dropdown says less than the bar above it already does.
 	menuBarDropdownMinRows = 3
 	// menuBarDropdownListRows is what the frame costs around its rows: two border
-	// lines and the two halo lines renderOverlayBox adds outside them.
-	menuBarDropdownListRows = 4
+	// lines and the bottom halo line renderOverlayBox adds under them. The top
+	// halo line is dropped so the border meets the bar it hangs from.
+	menuBarDropdownListRows = 3
 )
 
 // openMenuBarIndex is which bar label is drawn open, or -1 when none is. It is
@@ -201,6 +202,10 @@ func (m *OutlinerModel) renderOutlinerMenuDropdown(width, maxBoxRows int) (strin
 	}
 	box := chrome.RenderOverlayBox(content, innerWidth, "", "",
 		lipgloss.NewStyle().Foreground(theme.ColorPrimary))
+	// The top halo row would read as a gap between the bar and the menu it opened.
+	if _, rest, ok := strings.Cut(box, "\n"); ok {
+		box = rest
+	}
 	return box, menuBarDropdownStartCol(menus, width, m.MenuBar.MenuIndex, box)
 }
 
@@ -451,7 +456,9 @@ func (m *OutlinerModel) openMenuPointer(event route.PointerEvent) tea.Cmd {
 	if event.Button != route.PointerButtonLeft || !frame.dropdown.Whole {
 		return nil
 	}
-	local := event.Offset(frame.dropdown.Col+chrome.OverlayBoxContentLeft, frame.dropdown.Row+chrome.OverlayBoxUntitledContentTop)
+	// The dropdown drops its top halo row, so its content starts one row sooner
+	// than an ordinary untitled box's.
+	local := event.Offset(frame.dropdown.Col+chrome.OverlayBoxContentLeft, frame.dropdown.Row+chrome.OverlayBoxUntitledContentTop-1)
 	id, hit := frame.dropdownSurface.PointerItemAt(local.X, local.Y)
 	if !hit {
 		return nil

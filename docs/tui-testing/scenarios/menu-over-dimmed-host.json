@@ -12,7 +12,7 @@
 
     { "type": "key", "label": "open a menu over that view", "key": "ctrl+m" },
     { "type": "assert", "assert": "contains", "value": "Capture Child" },
-    { "type": "assert", "label": "the operational title and its workspace pulse are never covered", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "label": "the dropdown hangs off the bar, which stays drawn above the title and context rows it covers", "assert": "contains", "value": "Task  Edit  View  Go  Find  Help" },
     { "type": "assert", "assert": "contains", "value": "workspace:" },
     { "type": "assert", "label": "the dock the cursor opened is still open, in the same place", "assert": "contains", "value": "Created: " },
     { "type": "assert", "assert": "contains", "value": "Unicode display-width" },
@@ -26,7 +26,7 @@
 
     { "type": "resize", "label": "the app's own minimum still holds a bounded menu", "width": 60, "height": 20 },
     { "type": "assert", "assert": "contains", "value": "Set Status…" },
-    { "type": "assert", "assert": "contains", "value": "Active Projects" },
+    { "type": "assert", "assert": "contains", "value": "Help" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "width": 100, "height": 50 },
     { "type": "assert", "assert": "no_layout_issues" },
@@ -45,11 +45,10 @@
     { "type": "key", "key": "ctrl+m" },
     { "type": "assert", "label": "a selection narrows the menu the way it narrows every other projection", "assert": "contains", "value": "Copy Title" },
     { "type": "assert", "assert": "not_contains", "value": "Capture Child" },
-    { "type": "assert", "label": "a selection is host state, so it survives the menu standing on it", "assert": "contains", "value": "Multi-select: 2 selected" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "Copy Title" },
-    { "type": "assert", "assert": "contains", "value": "Multi-select: 2 selected" },
+    { "type": "assert", "label": "a selection is host state, so it survives the menu standing on it", "assert": "contains", "value": "Multi-select: 2 selected" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "and the sheet a selection opens dims the same host", "key": " " },
