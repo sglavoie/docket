@@ -101,6 +101,8 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationCoreJumpLabels, Keys: []string{"'"}, DisplayKey: "'"},
 			{OperationID: OperationCoreFocusLatest, Keys: []string{"ctrl+l"}, DisplayKey: "Ctrl+L"},
 			{OperationID: OperationCoreSelectPinned, Keys: []string{"ctrl+p"}, DisplayKey: "Ctrl+P"},
+			// ` steps the project scope through the pinned projects, opening each in All.
+			{OperationID: OperationCoreCyclePinnedProject, Keys: []string{"`"}, DisplayKey: "`"},
 			{OperationID: OperationCoreCollapseParent, Keys: []string{"h", "left"}, DisplayKey: "h/←"},
 			{OperationID: OperationCoreExpand, Keys: []string{"l", "right"}, DisplayKey: "l/→"},
 			// One lowercase toggle per fold axis, declared together so the family

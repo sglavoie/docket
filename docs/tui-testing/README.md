@@ -175,6 +175,7 @@ n/N                              next/previous grouping header, wrapping
 Ctrl+O/Ctrl+I                    older/newer relocated-task positions
 Ctrl+L                           Recent, focused on the newest activity
 Ctrl+P                           Select Pinned Project
+`                                the next pinned project, in All
 gp                               the cursor task's project, in All
 g~ gc                            a related task, and the conflict browser
 a/A e/E Ctrl+E O D               capture, edit, and repeat

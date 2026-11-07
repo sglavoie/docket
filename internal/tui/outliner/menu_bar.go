@@ -146,6 +146,7 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, checks ViewMenuChecks) 
 			Entries: []menuEntrySpec{
 				{OperationID: operation.OperationCoreSelectProject},
 				{OperationID: operation.OperationCoreSelectPinned},
+				{OperationID: operation.OperationCoreCyclePinnedProject},
 				{OperationID: operation.OperationCoreGotoTaskProject, Label: "Project of Task"},
 				{OperationID: operation.OperationCoreGotoRelation, Label: "Related Task"},
 				menuSeparator(),

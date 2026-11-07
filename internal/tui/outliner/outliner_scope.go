@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/query"
 )
 
@@ -375,4 +376,61 @@ func (m *OutlinerModel) projectDisplayNameByID(projectID string) string {
 type ApplyProjectScopeMsg struct {
 	ProjectID string
 	Clear     bool
+}
+
+// PinnedProjectStep is what one backtick press did: the project it scoped to,
+// that project's 1-based position among the pinned ones, and how many there are.
+// A zero Total means there was nothing to cycle through.
+type PinnedProjectStep struct {
+	Project  *models.Project
+	Position int
+	Total    int
+}
+
+// pinnedProjectsInView lists the pinned projects the base workspace admits, in
+// runtime order, and keeps only the ones the population holds. A parked project
+// is put away on purpose, so the cycle never reopens it; it stays one Select
+// Project away.
+func (m *OutlinerModel) pinnedProjectsInView() []*models.Project {
+	if m == nil || m.Runtime == nil {
+		return nil
+	}
+	var pinned []*models.Project
+	for _, project := range m.Runtime.TaskWorkspaceProjects() {
+		if project != nil && project.Pinned && m.ProjectIsLoaded(project.ID) {
+			pinned = append(pinned, project)
+		}
+	}
+	return pinned
+}
+
+// CyclePinnedProject scopes the Outliner to the pinned project after the one in
+// scope, wrapping at the end, and shows it in All. From an unscoped view, or one
+// scoped to a project that is not pinned, it starts at the first. The scope push
+// is the ordinary one, so the base frame is captured once and a single Esc
+// returns to the view the first press left, mode included.
+func (m *OutlinerModel) CyclePinnedProject() PinnedProjectStep {
+	if m == nil || m.Project != nil {
+		return PinnedProjectStep{}
+	}
+	pinned := m.pinnedProjectsInView()
+	if len(pinned) == 0 {
+		return PinnedProjectStep{}
+	}
+	next := 0
+	for index, project := range pinned {
+		if project.ID == m.Scope.ProjectID {
+			next = (index + 1) % len(pinned)
+			break
+		}
+	}
+	target := pinned[next]
+	// Search is dismissed before the push, since the push captures the frame Esc
+	// restores and that frame must be the pre-search one.
+	m.ClearSearch()
+	m.PushProjectScope(target.ID)
+	m.SelectOutlinerMode(chrome.ModeAll)
+	m.resetViewScrollOffset()
+	m.seatCursorAtProjectionTop()
+	return PinnedProjectStep{Project: target, Position: next + 1, Total: len(pinned)}
 }

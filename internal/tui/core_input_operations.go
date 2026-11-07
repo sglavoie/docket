@@ -201,6 +201,8 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		}
 	case operation.OperationCoreGotoTaskProject:
 		return m.coreGotoTaskProject(invocation.Targets)
+	case operation.OperationCoreCyclePinnedProject:
+		return m.coreCyclePinnedProject()
 	case operation.OperationCoreGotoParentTask:
 		if out, ok := m.outlinerPrimary(); ok {
 			if !out.GoToParentTaskAtCursor() {

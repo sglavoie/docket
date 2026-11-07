@@ -333,6 +333,7 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		searchRecoveryDescriptor(core(OperationCoreSearchDeferred, "Show Deferred Matches", OperationCategoryFilter, TargetCardinalityNone, OperationRiskReadOnly, "search postponed", "find deferred tasks")),
 		core(OperationCoreSelectProject, "Select Project", OperationCategoryProject, TargetCardinalityNone, OperationRiskReadOnly, "projects", "switch project"),
 		core(OperationCoreSelectPinned, "Select Pinned Project", OperationCategoryProject, TargetCardinalityNone, OperationRiskReadOnly, "pinned projects", "switch pinned project"),
+		core(OperationCoreCyclePinnedProject, "Next Pinned Project", OperationCategoryProject, TargetCardinalityNone, OperationRiskReadOnly, "cycle pinned projects", "next pinned project"),
 		core(OperationCoreMultiSelect, "Toggle Task Selection", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "visual selection"),
 		core(OperationCoreRangeSelect, "Select Task Range", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "contiguous selection", "range selection"),
 		core(OperationCoreSelectAll, "Select All Visible Tasks", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "select visible"),

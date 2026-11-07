@@ -9,6 +9,7 @@ project tag decides, and the workspace-wide Notes manager.
 | --- | --- | --- |
 | Work in one project | `P`, choose a project, `Enter` | Focus `web` before capturing its next task |
 | Reach a pinned project | `Ctrl+P` | Open a frequently used project |
+| Cycle pinned projects | `` ` `` | Step through each pinned project in All |
 | Create or edit a project | `P`, then `a` or `e` | Set its name, slug, and description |
 | Park a project | `#` on the project, add `parked` | Remove inactive work from Active Projects |
 | Permanently delete a project | `P`, choose a project, `Space` → **Delete Project**, confirm | Remove the project and everything it owns |
@@ -28,6 +29,14 @@ parked ones. It keeps the search, open-task filter, previews, selection, and
 actions of the full Select Project surface below — the Project Hub, or Hub for
 short; `Enter` focuses the selected project. With no active pins it explains
 that `Esc` returns to the Outliner, where `P` still opens the full Hub.
+
+`` ` `` skips the picker: each press scopes the Outliner to the next pinned
+project in All, in Select Pinned Project's order, and wraps after the last.
+From an unscoped view, or one scoped to a project that is not pinned, it starts
+at the first. Parked projects are left out, since parking puts a project away;
+`Ctrl+P` still reaches them. The cycle replaces the one project focus rather
+than stacking, so a single `Esc` returns to the view the first press left, mode
+included.
 
 `P` opens Select Project on a live cursor, browsing active, parked, and archived
 projects under one heading each. Each row carries its open task count beside its

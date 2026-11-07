@@ -239,6 +239,7 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"ctrl+o": operation.OperationCoreJumpBackward, "ctrl+i": operation.OperationCoreJumpForward,
 		"ctrl+l": operation.OperationCoreFocusLatest,
 		"ctrl+p": operation.OperationCoreSelectPinned,
+		"`":      operation.OperationCoreCyclePinnedProject,
 		"h":      operation.OperationCoreCollapseParent, "left": operation.OperationCoreCollapseParent,
 		"l": operation.OperationCoreExpand, "right": operation.OperationCoreExpand,
 		"s": operation.OperationCoreToggleSections,

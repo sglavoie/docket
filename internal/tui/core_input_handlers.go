@@ -500,3 +500,20 @@ func (m *AppModel) coreHelpItemsForContext(ctx operation.CommandContext, include
 	}
 	return append(items, help.GrammarHelpItems()...)
 }
+
+// coreCyclePinnedProject steps the project scope to the next pinned project and
+// names where it landed. It reports a refusal rather than staying silent when no
+// pinned project is in view, since the key otherwise reads as having done
+// nothing.
+func (m *AppModel) coreCyclePinnedProject() operation.OperationHandlerResult {
+	out, ok := m.outlinerPrimary()
+	if !ok || out == nil {
+		return operation.OperationHandlerResult{}
+	}
+	step := out.CyclePinnedProject()
+	if step.Total == 0 || step.Project == nil {
+		return operation.OperationHandlerResult{Status: "No pinned projects; * on a project header pins one"}
+	}
+	m.setInfoStatus(fmt.Sprintf("Pinned project %d/%d: %s", step.Position, step.Total, step.Project.Name))
+	return operation.OperationHandlerResult{Message: commandMessage(m.statusReadingTimeout())}
+}

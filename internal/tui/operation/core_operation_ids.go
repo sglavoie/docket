@@ -32,6 +32,7 @@ const (
 	OperationCoreGotoRelation       OperationID = "tui.core.goto-relation"
 	OperationCoreGotoCaptured       OperationID = "tui.core.goto-captured"
 	OperationCoreSelectPinned       OperationID = "tui.core.select-pinned-project"
+	OperationCoreCyclePinnedProject OperationID = "tui.core.cycle-pinned-project"
 	OperationCoreCollapseParent     OperationID = "tui.core.collapse-parent"
 	OperationCoreExpand             OperationID = "tui.core.expand"
 	OperationCoreToggleSections     OperationID = "tui.core.toggle-sections"

@@ -199,7 +199,7 @@ and the rare.
 | `[` `]` `>` `<` `%` `~` | outdent · indent · set parent · adopt children · move project · dependencies |
 | `J`/`K` `Ctrl+J`/`Ctrl+K` | reorder one step · reorder to the far end |
 | `/` `f` `F` `o` | search · row facets, `fH` the hidden tasks · which projects load · sort |
-| `P` `Ctrl+P` `\` | project scope · pinned projects · named lenses |
+| `P` `Ctrl+P` `` ` `` `\` | project scope · pinned projects · next pinned project in All · named lenses |
 | `v` `V` `Ctrl+A` | select one · select a range · select every visible row |
 | `&` `;` `b` `O` | attachments · comments · Peek · outline-edit the project |
 | `y`/`Y` `u`/`Ctrl+R` `Ctrl+N` `T` | copy · undo and redo · Notes · theme |
