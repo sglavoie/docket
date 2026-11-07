@@ -124,11 +124,9 @@ func TestMenuHistoryLabelsFollowTheWorkspaceLedger(t *testing.T) {
 func TestClosingAMenuLeavesAShownBarShown(t *testing.T) {
 	driver, outlinerView := menuBarDriver(t)
 
-	if err := driver.SendKey("M"); err != nil {
-		t.Fatalf("press M: %v", err)
-	}
+	pinMenuBar(t, driver)
 	if !driver.App().domain.runtime.Machine().MenuBarVisible {
-		t.Fatal("M did not show the bar")
+		t.Fatal("View → Menu Bar did not show the bar")
 	}
 
 	pressMenuBarKey(t, driver, "ctrl+m")

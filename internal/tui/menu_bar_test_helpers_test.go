@@ -87,6 +87,14 @@ func menuBarDriver(t *testing.T) (*UITestDriver, *outliner.OutlinerModel) {
 	return driver, outlinerView
 }
 
+// pinMenuBar runs the View menu's keyless Menu Bar entry, the one route that
+// writes the machine-local pinned flag now that `M` opens a menu instead.
+func pinMenuBar(t *testing.T, driver *UITestDriver) {
+	t.Helper()
+	driver.dispatch(outliner.MenuBarActivateMsg{OperationID: operation.OperationCoreToggleMenuBar})
+	driver.drain()
+}
+
 // pressMenuBarKey sends a key and drains what it returned. A menu key that only
 // moves the highlight returns nothing, but Enter and the non-modal fall-through
 // both hand the shell a message to run, so a test that skipped the drain would

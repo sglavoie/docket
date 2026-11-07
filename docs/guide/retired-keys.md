@@ -13,7 +13,7 @@ names came back with new acts rather than as aliases: `t` is the task-subtree
 fold and `P` is Select Project. `H`, `M`, and `L` went with the
 screen-relative cursor jumps, because the `z` scroll chord moves the window
 rather than the cursor and is the half of that pair with no other spelling. `M`
-has since been spent: it is the menu bar toggle, a third name back with a new
+has since been spent: it opens the menu bar, a third name back with a new
 act. `H` and `L` stay silent, and they are the pair that is not free to return,
 since either one alone would advertise half of a jump the `z` chord already
 owns.

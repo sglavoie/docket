@@ -206,10 +206,14 @@ func (registry *OperationRegistry) GuidanceHintsForInputStrategy(
 		if label == "" {
 			label = strings.ToLower(descriptor.Label)
 		}
+		key := binding.DisplayKey
+		if binding.FooterKey != "" {
+			key = binding.FooterKey
+		}
 		hints = append(hints, rankedHint{
 			index: index,
 			hint: chrome.GuidanceHint{
-				Key:      binding.DisplayKey,
+				Key:      key,
 				Label:    label,
 				Priority: binding.FooterRank,
 			},

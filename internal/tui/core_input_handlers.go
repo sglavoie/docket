@@ -423,7 +423,8 @@ func applySessionTheme(name string) {
 	theme.ApplyTheme(theme.ThemeConfig{Name: name})
 }
 
-// coreToggleMenuBar shows and hides the Outliner's menu bar. Visibility is
+// coreToggleMenuBar pins and unpins the Outliner's menu bar. It is keyless,
+// reached from the View menu's Menu Bar checkbox, since `M` opens a menu. Visibility is
 // machine-local for the same reason the theme is: chrome follows the terminal
 // you are sitting at rather than the workspace you opened, so a machine that
 // wants the bar keeps it without every other machine inheriting it.
@@ -449,15 +450,16 @@ func (m *AppModel) coreToggleMenuBar() error {
 }
 
 // coreOpenMenuBar drops the first menu out of the bar, revealing the bar itself
-// first when it is hidden. Revealing rather than refusing is what makes this one
-// key enough to find the whole grammar: a user who has never pressed `M` has no
-// way to know the band exists, so the key that opens a menu has to be able to
+// first when it is hidden. Revealing rather than refusing is what makes `M` (and
+// F10) enough to find the whole grammar: a user who has never pinned the bar has
+// no way to know the band exists, so the key that opens a menu has to be able to
 // put one on screen from nothing.
 //
-// The reveal is the open menu's own, not a write to the machine-local flag `M`
-// writes: an open menu draws the band it hangs from, and closing it returns
-// visibility to whatever the user last chose. Showing the bar is still `M`'s
-// alone, so a menu opened out of a hidden bar borrows the row and gives it back.
+// The reveal is the open menu's own, not a write to the machine-local pinned
+// flag: an open menu draws the band it hangs from, and closing it returns
+// visibility to whatever the user last chose. Pinning the bar is the View menu's
+// Menu Bar entry alone, so a menu opened out of a hidden bar borrows the row and
+// gives it back.
 func (m *AppModel) coreOpenMenuBar() error {
 	out, ok := m.outlinerPrimary()
 	if !ok || out == nil {

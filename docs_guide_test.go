@@ -54,7 +54,7 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 		"a comment you edit or delete is the one you were looking at rather than the row it sat on",
 		"`y` title, `Y` description, `Ctrl+Y` both",
 		"`o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `or` switch the held query between the flat ranked list slash opens and a narrowing of the mode, `ox` clear; repeat a field key to reverse it",
-		"`\\` Named Lenses, `Ctrl+N` Notes, `T` theme, `M` menu bar, `/` search, `?` help, `:` command palette, `u` undo, " +
+		"`\\` Named Lenses, `Ctrl+N` Notes, `T` theme, `M` open the menus, `/` search, `?` help, `:` command palette, `u` undo, " +
 			"`Ctrl+R` redo, `Esc` unwind/clear, `q`/`Ctrl+C` quit",
 		// Session 7 moved n/N off the header row onto the block: a group whose
 		// heading is not drawn still starts one, so the guide names what is stepped
@@ -353,7 +353,7 @@ func TestGuideDocumentsStorageAndMigration(t *testing.T) {
 			"choice, whether the Outliner draws its menu bar, whether it draws ambient advisories, " +
 			"whether the mouse, motion, and Nerd Font glyphs are on, a pointer to the lens that was last open, " +
 			"how often each footer key has been pressed (up to the ten that retire its hint), and the last 50 submitted search queries for this workspace",
-		"A machine that has never pressed `M` writes no menu-bar key at all, and the absent key is what " +
+		"A machine that has never pinned the menu bar writes no menu-bar key at all, and the absent key is what " +
 			"says the bar is hidden",
 		"The active-lens pointer is a hint rather than a record: it is checked for shape alone when " +
 			"the file loads",

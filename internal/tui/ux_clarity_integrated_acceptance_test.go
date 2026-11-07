@@ -30,7 +30,7 @@ import (
 // occupant charges against what the frame actually spent.
 type uxClarityIntegratedOccupant struct {
 	name string
-	open []string
+	open []UITestAction
 }
 
 // The three occupants this plan gave the frame or moved: the Peek dock sized as
@@ -39,9 +39,20 @@ type uxClarityIntegratedOccupant struct {
 // inside the status strip (session 5). Each is opened from the resting Outliner
 // by the key a user presses.
 var uxClarityIntegratedOccupants = []uxClarityIntegratedOccupant{
-	{name: "peek", open: []string{"b"}},
-	{name: "menu-bar", open: []string{"M"}},
-	{name: "readout", open: []string{"Q"}},
+	{name: "peek", open: uxClarityKeys("b")},
+	{name: "menu-bar", open: uxClarityPinMenuBar()},
+	{name: "readout", open: uxClarityKeys("Q")},
+}
+
+// uxClarityPinMenuBar pins the bar the way a user does: `M` opens a menu, so the
+// pinned band is reached through the keyless View → Menu Bar entry, run here
+// from the `:` palette.
+func uxClarityPinMenuBar() []UITestAction {
+	return []UITestAction{
+		{Type: UITestActionKey, Key: ":"},
+		{Type: "text", Text: "Toggle Menu Bar"},
+		{Type: UITestActionKey, Key: "enter"},
+	}
 }
 
 // TestUXClarityIntegratedFrameSpendsEveryRowOnce is the pass's central
@@ -74,7 +85,7 @@ func TestUXClarityIntegratedFrameSpendsEveryRowOnce(t *testing.T) {
 				}
 				t.Run(name, func(t *testing.T) {
 					driver, view := uxClarityStagedDriver(t, frame, size[0], size[1])
-					uxClarityPress(t, driver, uxClarityKeys(opened.keys...)...)
+					uxClarityPress(t, driver, opened.keys...)
 
 					budget := uxClarityIntegratedBudget(t, driver, view, size[0])
 					slack := size[1] - budget.total()
@@ -106,7 +117,7 @@ func TestUXClarityIntegratedFrameSpendsEveryRowOnce(t *testing.T) {
 // uxClarityIntegratedOpening is one combination of occupants raised together.
 type uxClarityIntegratedOpening struct {
 	name string
-	keys []string
+	keys []UITestAction
 }
 
 // uxClarityIntegratedOpenings is the resting frame, each occupant alone, and all
@@ -115,7 +126,7 @@ type uxClarityIntegratedOpening struct {
 // both standing.
 func uxClarityIntegratedOpenings() []uxClarityIntegratedOpening {
 	openings := []uxClarityIntegratedOpening{{name: "resting"}}
-	var all []string
+	var all []UITestAction
 	for _, occupant := range uxClarityIntegratedOccupants {
 		openings = append(openings, uxClarityIntegratedOpening{name: occupant.name, keys: occupant.open})
 		all = append(all, occupant.open...)
@@ -206,7 +217,9 @@ func TestUXClarityIntegratedResizeReturnsTheFrameItLeft(t *testing.T) {
 			seatCursorOnTaskTitled(t, view, uxAcceptanceOverdueTitle)
 			// Peek over a document long enough to scroll, so the round trip carries
 			// a window offset and not only a height.
-			uxClarityPress(t, driver, uxClarityKeys("b", "ctrl+d", "M", "Q")...)
+			uxClarityPress(t, driver, uxClarityKeys("b", "ctrl+d")...)
+			uxClarityPress(t, driver, uxClarityPinMenuBar()...)
+			uxClarityPress(t, driver, uxClarityKeys("Q")...)
 			if !view.PeekDockVisible() {
 				t.Fatal("the dock is not open, so the state under test was not reached")
 			}

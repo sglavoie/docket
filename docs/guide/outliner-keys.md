@@ -17,7 +17,7 @@ those keys open, the `Space` action sheets, and the two edit surfaces. What the 
 | Content | `&` opens the cursor task's Attachments panel, and `;` opens the Comments panel of whatever the cursor names — the task, or the project a group header names — the two capture sigils reaching, as keys, the panels that own add and delete, with reorder and unlink in Attachments alone; `C` appends one comment to the same two things without opening that panel, in a multiline popup where `Enter` starts a new line and `Ctrl+S` saves; `r` writes the cursor task's one-line resume note, prefilled with what it already holds — `Enter` saves, an emptied line clears it, `Esc` cancels, and unchanged text writes nothing |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both; each copies the whole visual selection, in displayed order, as one write |
 | Selection | `v` toggles the cursor task; `V` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
-| Global | `Ctrl+P` Select Pinned Project, `P` Select Project, `Q` the narrowing readout, `I` triage cards, `\` Named Lenses, `Ctrl+N` Notes, `T` theme, `M` menu bar, `/` search, `?` help, `:` command palette, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `q`/`Ctrl+C` quit (`q` on the Outliner itself; inside a text input or picker it is just a letter) |
+| Global | `Ctrl+P` Select Pinned Project, `P` Select Project, `Q` the narrowing readout, `I` triage cards, `\` Named Lenses, `Ctrl+N` Notes, `T` theme, `M` open the menus, `/` search, `?` help, `:` command palette, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `q`/`Ctrl+C` quit (`q` on the Outliner itself; inside a text input or picker it is just a letter) |
 
 `Ctrl+G` opens **Search Recovery** while typing or browsing a ranked task search.
 Choose matching finished or deferred work when offered, or **Explain Current
@@ -476,9 +476,9 @@ check-in date alone keeps any manual review flag and the previous review time.
 Deferral hides scheduled reminders until wake; completion or cancellation clears
 the schedule, so reopening retains review history without restarting it.
 
-To schedule existing active work, press `F10` or `Ctrl+M` and choose **Task** →
-**Set Up Check-Ins**. `M` only keeps the bar on screen; `F10` opens the menu even
-on terminals that send `Ctrl+M` as `Enter` (see
+To schedule existing active work, press `M` or `F10` and choose **Task** →
+**Set Up Check-Ins**. Both open the menu even on terminals that send `Ctrl+M`
+as `Enter` (see
 [`outliner-chrome.md`](outliner-chrome.md)). The action also appears in `?` help.
 It walks unscheduled Doing and Waiting tasks
 across every unparked, unarchived project, including tasks hidden by the current

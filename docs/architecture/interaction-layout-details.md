@@ -103,18 +103,17 @@ could not draw and `Q` is where the whole of it is written out. Press `Q` and
 every one of those values is there in full, wrapped rather than cut, in a
 readout you can scroll.
 
-`M` puts a menu bar above that title row: a single band reading
-`Task  Edit  View  Go  Find  Help`, one label per menu. `M` again takes it away. The
-bar costs exactly one row of the task list while it is shown, which is the whole
-reason it is off by default and the whole reason it is a key rather than a
-permanent fixture. A terminal too narrow for every label drops whole menus from
+View → Menu Bar pins a menu bar above that title row: a single band reading
+`Task  Edit  View  Go  Find  Help`, one label per menu. Choosing it again takes it
+away. The bar costs exactly one row of the task list while it is shown, which is
+the whole reason it is off by default rather than a permanent fixture. A terminal too narrow for every label drops whole menus from
 the right — Help first, then Find, then Go — rather than cutting a word in half,
 because a half-word is a lie about what the bar offers while a dropped menu is
 still reachable by the keys its entries carry.
 
-`F10` or `Ctrl+M` opens the leftmost menu, borrowing a row for the bar if it was hidden,
+`M`, `F10`, or `Ctrl+M` opens the leftmost menu, borrowing a row for the bar if it was hidden,
 so reaching a menu is never two presses. The reveal lasts as long as the menu
-does: close the menu and the bar goes back to whatever `M` last left it as, up
+does: close the menu and the bar goes back to whatever the pinned setting last left it as, up
 if it was up and away if it was away. The dropdown falls inline under the label
 it belongs to, and the view stays underneath it: the bar stays on its row, the
 title and its workspace pulse stay on theirs, and the task list — with an open

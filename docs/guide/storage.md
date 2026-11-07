@@ -348,7 +348,7 @@ are answers about this machine rather than about the workspace, which is why the
 stay behind while the definitions travel: a second machine opens on its own
 theme, with no menu bar, showing advisories, on no lens at all, and with its own
 search history. History saves and clears create no task undo entry. A machine
-that has never pressed `M` writes no menu-bar key at all, and the absent key is
+that has never pinned the menu bar writes no menu-bar key at all, and the absent key is
 what says the bar is hidden; the advisory key works the same way, so its absence
 says advisories are shown, and so do `mouse_disabled`, `motion_disabled`, and
 `nerd_glyphs`: absent means the mouse and motion are on and the glyphs are plain

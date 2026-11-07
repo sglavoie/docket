@@ -746,8 +746,16 @@
     },
     {
       "type": "key",
-      "label": "the menu bar is the registry's other projection",
-      "key": "M"
+      "label": "the menu bar is the registry's other projection: pin it from the palette",
+      "key": ":"
+    },
+    {
+      "type": "text",
+      "text": "Toggle Menu Bar"
+    },
+    {
+      "type": "key",
+      "key": "enter"
     },
     {
       "type": "assert",
@@ -762,7 +770,7 @@
     {
       "type": "key",
       "label": "open a dropdown",
-      "key": "ctrl+m"
+      "key": "M"
     },
     {
       "type": "assert",
@@ -815,7 +823,15 @@
     {
       "type": "key",
       "label": "unpin the bar",
-      "key": "M"
+      "key": ":"
+    },
+    {
+      "type": "text",
+      "text": "Toggle Menu Bar"
+    },
+    {
+      "type": "key",
+      "key": "enter"
     },
     {
       "type": "assert",

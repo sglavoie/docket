@@ -175,19 +175,20 @@ func SimplifiedInputStrategy() InputStrategy {
 			// lead name it where it matters, and `?` teaches it everywhere else.
 			{OperationID: OperationCoreTriage, Keys: []string{"I"}, DisplayKey: "I"},
 			{OperationID: OperationCoreToggleTheme, Keys: []string{"T"}, DisplayKey: "T", FooterRank: 22, FooterLabel: "theme"},
-			// The bar is the one browsable map of this grammar, so its reveal stands
+			// The bar is the one browsable map of this grammar, so opening it stands
 			// at the head of the second tier rather than among the daily acts: a
 			// user who cannot find anything reaches it before any single key below
 			// it, but `? help` is already on the narrow row naming the same thing
 			// more directly, so spending one of the six leading rungs on the bar
 			// would advertise two routes to discovery and no route to work.
-			{OperationID: OperationCoreToggleMenuBar, Keys: []string{"M"}, DisplayKey: "M", FooterRank: 11, FooterLabel: "menu"},
-			// Opening carries no FooterRank of its own. The band's own reveal is
-			// already ranked above, and once the band is on screen it is the label
-			// row that advertises what opening does; a second footer hint would spend
-			// a rank restating chrome the user is already looking at. The keys inside
-			// an open menu take none either, per the gated-keymap invariant.
-			{OperationID: OperationCoreOpenMenuBar, Keys: []string{"f10", "ctrl+m"}, DisplayKey: "F10/Ctrl+M"},
+			//
+			// `M` opens a menu exactly as F10 does, so the one letter a user can
+			// guess lands in the bar with the keyboard already in it. Pinning the
+			// band on screen is the View menu's Menu Bar checkbox alone, a keyless
+			// target-free entry. The footer names `M` alone: help still lists all
+			// three spellings, and the keys inside an open menu take no rank, per
+			// the gated-keymap invariant.
+			{OperationID: OperationCoreOpenMenuBar, Keys: []string{"M", "f10", "ctrl+m"}, DisplayKey: "M/F10/Ctrl+M", FooterKey: "M", FooterRank: 11, FooterLabel: "menu"},
 			{HelpGroup: "Recovery", HelpOrder: 300, HelpCategory: "Tasks", OperationID: OperationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
 			{HelpGroup: "Recovery", HelpOrder: 301, HelpCategory: "Tasks", OperationID: OperationCoreRedo, Keys: []string{"ctrl+r"}, DisplayKey: "Ctrl+R"},
 			{OperationID: OperationCoreBack, Keys: []string{"esc"}, DisplayKey: "Esc"},

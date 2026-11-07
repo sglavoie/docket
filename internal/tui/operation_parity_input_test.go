@@ -153,7 +153,11 @@ func TestOperationParityGuidanceResolvesThroughApplicableInputMetadata(t *testin
 	for _, hint := range hints {
 		resolved := false
 		for _, binding := range strategy.Bindings {
-			if binding.FooterRank <= 0 || binding.DisplayKey != hint.Key {
+			footerKey := binding.DisplayKey
+			if binding.FooterKey != "" {
+				footerKey = binding.FooterKey
+			}
+			if binding.FooterRank <= 0 || footerKey != hint.Key {
 				continue
 			}
 			descriptor, exists := registry.Descriptor(binding.OperationID)

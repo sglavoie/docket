@@ -265,7 +265,7 @@ key earns nothing. The menu bar is not a sheet but a projection of the registry,
 the class `?` help and the footer ranks belong to, so it names directly-bound
 operations freely. What it may not do is make an entity operation keyless: a
 menu-only operation's `TargetSource` is target-free or view-scoped, never a task
-or project. Clear All Folds, Advisories, Recent Messages and Set Up Check-Ins:
+or project. Clear All Folds, Advisories, Menu Bar, Recent Messages and Set Up Check-Ins:
 keyless, target-free. The
 task-row `Space` menu holds Set Check-In under `Schedule` and Delete, identical
 to the bulk menu: the editor saves with `Ctrl+S`; Delete confirms first. The Hub sheet is
@@ -540,7 +540,7 @@ returns an empty line, so the height falls out of the one `StatusStripHeight`
 measurement. Never gate a row at its render site. Operation feedback, the query
 readout, and the every-project-failed refusal are not advisories.
 
-`M` toggles the Outliner menu bar on the same terms: a view-local gated
+The Outliner menu bar is on the same terms: a view-local gated
 sub-state with no `PresentationID`, overlay, `InputStrategy`, or manifest entry.
 It costs one list row, subtracted in `ContentHeight` alone; never measure it
 again. The row is exactly `m.width` and drops whole labels from the right, never
@@ -552,9 +552,9 @@ A modal covers rows rather than displacing them, so the window, Peek, and a
 selection are all still what the close redraws; the box is bounded by what the
 anchor leaves and scrolls its own list rather than growing, and it composites
 once, never over another modal of its own.
-`MenuBarVisible` is `MenuBarPinned() || MenuBar.Open`, so `F10` or `Ctrl+M`
-borrows that row and the close gives it back; `M` alone writes the pinned flag
-the View checkbox reads.
+`MenuBarVisible` is `MenuBarPinned() || MenuBar.Open`, so `M`/`F10`/`Ctrl+M`
+opens a menu on that row, the close gives it back; keyless Menu Bar alone
+writes the pinned flag it checks.
 
 The title row is identity and pulse; the live axes take a second row under it.
 `BuildViewContextEntries` is their one structured description, and the row and

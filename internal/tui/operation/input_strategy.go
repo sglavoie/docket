@@ -45,16 +45,20 @@ const (
 type OperationKeyBinding struct {
 	// Help presentation metadata never changes dispatch or footer order.
 	// HelpLabel optionally spells a preset's action; its state remains an alias.
-	HelpLabel      string
-	HelpGroup      string
-	HelpOrder      int
-	HelpCategory   string
-	OperationID    OperationID
-	Keys           []string
-	Sequence       []string
-	DisplayKey     string
-	FooterRank     int
-	FooterLabel    string
+	HelpLabel    string
+	HelpGroup    string
+	HelpOrder    int
+	HelpCategory string
+	OperationID  OperationID
+	Keys         []string
+	Sequence     []string
+	DisplayKey   string
+	FooterRank   int
+	FooterLabel  string
+	// FooterKey optionally spells the key the footer names when DisplayKey,
+	// which help and every other projection read, lists more spellings than one
+	// ranked entry can afford. Empty means the footer reads DisplayKey.
+	FooterKey      string
 	HintLabel      string
 	HintGroup      string
 	HintKeep       bool
@@ -190,6 +194,7 @@ func (registry *OperationRegistry) RegisterInputStrategy(strategy InputStrategy)
 		presetOnlyOperations[binding.OperationID] = binding.HasPresetValue
 		binding.DisplayKey = strings.TrimSpace(binding.DisplayKey)
 		binding.FooterLabel = strings.TrimSpace(binding.FooterLabel)
+		binding.FooterKey = strings.TrimSpace(binding.FooterKey)
 		binding.HintLabel = strings.TrimSpace(binding.HintLabel)
 
 		owner := "operation " + string(binding.OperationID)

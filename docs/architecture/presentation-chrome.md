@@ -704,7 +704,7 @@ size the divider, the content rows the geometry gave it, and the position row ar
 all on screen with the header and the explanation above them.
 
 The menu bar and its open menu are the same kind of thing one level apart. The
-bar is machine-local chrome: `M` writes `MenuBarVisible`, which `MenuBarPinned`
+bar is machine-local chrome: the keyless View → Menu Bar entry writes `MenuBarVisible`, which `MenuBarPinned`
 reads back, `menuBarRows` charges
 the list exactly one row, and `ContentHeight` is the only subtraction, so a bar
 that resolved to no menus at all still owes its row rather than letting the
@@ -732,18 +732,17 @@ two indices named together as the model's `MenuBar` field, whose own
 reset, a first branch in `HandleKeyMsg` delegating to `handleMenuBarKey`, a
 claim in `SimplifiedInlineControlOwnsInput`, and `menuBarGuidance` as the first
 case of `ContextualGuidance` — which reads its own close key back through
-`InputShortcutForOperation` instead of spelling it, so a rebinding moves the
+`menuBarOpenKeys` instead of spelling it, so a rebinding moves the
 footer hint and the close arm together. It mints no `PresentationID`, opens no
 overlay, claims no `InputStrategy`, and takes no manifest entry, so
 `surfaceOperationGates()` still lists five strategies; its keymap is gated, so
 it takes no footer rank. `tui.core.open-menu-bar` is a second operation beside
 the toggle rather than a mode of it, because opening has to reveal a hidden bar
-in the same press, which is why one key never means "show" once and "open" the
-next time. The reveal is the sub-state's own: `MenuBarVisible` is
+in the same press, which is why `M` opens and the keyless toggle pins. The reveal is the sub-state's own: `MenuBarVisible` is
 `MenuBarPinned() || MenuBar.Open`, so the handler calls `OpenMenuBar` and
 commits nothing, and `closeMenuBar` returns the row without a second write. The
 View menu's own checkbox reads `MenuBarPinned` rather than `MenuBarVisible`, so
-a tick describes the flag `M` writes rather than the band the open menu is
+a tick describes the pinned flag rather than the band the open menu is
 hanging from.
 
 It diverges from the readout in exactly one place, deliberately. The readout

@@ -25,7 +25,7 @@ func TestAnOpenMenuStandsOnTheViewItWasOpenedFrom(t *testing.T) {
 
 	// Show the bar first: revealing it costs a list row, and this test is about
 	// what opening a menu does on top of a bar that is already up.
-	pressMenuBarKey(t, driver, "M")
+	pinMenuBar(t, driver)
 	driver.Render()
 	window := outlinerView.LastViewport
 	if window.VisibleRows <= 1 {
@@ -89,7 +89,7 @@ func TestMenuDropdownFlushesEveryKeyHintToOneColumn(t *testing.T) {
 	// Fit the expanded Task menu so this alignment check sees its last entry;
 	// the dropdown's scrolling behavior is exercised separately at small sizes.
 	driver.Resize(100, 50)
-	pressMenuBarKey(t, driver, "M", "ctrl+m")
+	pressMenuBarKey(t, driver, "M")
 	screen := driver.Observe(ObserveOptions{}).PlainScreen
 
 	hints := []struct{ label, key string }{
@@ -154,11 +154,9 @@ func TestMenuBarCostsExactlyOneListRowAndPersists(t *testing.T) {
 		t.Fatalf("the launch viewport draws %d rows, too few to prove a row was spent", hiddenRows)
 	}
 
-	if err := driver.SendKey("M"); err != nil {
-		t.Fatalf("press M: %v", err)
-	}
+	pinMenuBar(t, driver)
 	if !driver.App().domain.runtime.Machine().MenuBarVisible {
-		t.Fatal("M did not commit the machine-local visibility flag")
+		t.Fatal("View → Menu Bar did not commit the machine-local visibility flag")
 	}
 	if got := outlinerView.ContentHeight(); got != hiddenHeight-1 {
 		t.Errorf("showing the bar changed the row budget from %d to %d, want exactly one row less", hiddenHeight, got)
@@ -208,11 +206,9 @@ func TestMenuBarCostsExactlyOneListRowAndPersists(t *testing.T) {
 		t.Errorf("the reopened Outliner draws no bar:\n%s", reopened)
 	}
 
-	if err := driver.SendKey("M"); err != nil {
-		t.Fatalf("press M again: %v", err)
-	}
+	pinMenuBar(t, driver)
 	if driver.App().domain.runtime.Machine().MenuBarVisible {
-		t.Fatal("a second M did not hide the bar again")
+		t.Fatal("a second View → Menu Bar did not hide the bar again")
 	}
 	if got := driver.App().crossOutliner.ContentHeight(); got != hiddenHeight {
 		t.Errorf("hiding the bar left the budget at %d, want the original %d", got, hiddenHeight)

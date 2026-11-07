@@ -13,8 +13,8 @@ tag wears.
 | Find and run an action | `?`, `/`, type, `Enter` | Search `tags` to open the selected task's tag picker |
 | Explain a narrow view | `Q` | Remove one restriction with its numbered key |
 | Recover search matches | `Ctrl+G` | Show withheld finished or deferred matches, or explain the view |
-| Open the menus | `F10` | Task → Set Up Check-Ins |
-| Keep the menu bar visible | `M` | Press again to hide it |
+| Open the menus | `M` or `F10` | Task → Set Up Check-Ins |
+| Keep the menu bar visible | View → Menu Bar | Choose it again to hide the bar |
 | Reread feedback | Help → Recent Messages | Recover the full text of an expired message |
 | Inspect and reverse changes | Edit → Change History | Read before/after details, then undo or redo one change |
 
@@ -102,7 +102,8 @@ clicks; the same task still sits in its Doing lane below.
 
 ## Open a menu
 
-Press `F10` to open the menus. Press `M` to keep the menu bar visible or hide it.
+Press `M` or `F10` to open the menus; press it again or `Esc` to close them.
+Choose **View → Menu Bar** to keep the menu bar visible or hide it.
 The bar contains Task, View, Go, Find, and Help. Opening a menu temporarily shows
 a hidden bar; closing it restores the previous setting.
 

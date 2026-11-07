@@ -24,7 +24,7 @@ import (
 // cursor, never the population it points into.
 type menuBarState struct {
 	// open is the dropdown gate. The bar itself is machine-local visibility that
-	// `M` writes and this sub-state never touches — closing a menu must not hide
+	// the View menu's Menu Bar entry writes and this sub-state never touches — closing a menu must not hide
 	// the band it dropped out of.
 	Open bool
 	// menuIndex is which bar label is open and itemIndex where the highlight sits
@@ -297,12 +297,12 @@ func (m *OutlinerModel) menuBarOpenKeys() []string {
 // sub-state supplies, which is why none of these keys carries a footer rank of
 // its own and the ranked projection underneath is untouched.
 func (m *OutlinerModel) menuBarGuidance() chrome.GuidanceSpec {
+	// The close entry names the first opening key alone: every one of them
+	// closes, but the full spelling is help's, and this hint is required at the
+	// floor width.
 	closeKey := "Esc"
-	if m.OperationRegistry != nil {
-		if key := m.OperationRegistry.InputShortcutForOperation(
-			operation.InputStrategySimplified, operation.OperationCoreOpenMenuBar); key != "" {
-			closeKey = key + "/Esc"
-		}
+	if keys := m.menuBarOpenKeys(); len(keys) > 0 {
+		closeKey = keys[0] + "/Esc"
 	}
 	return chrome.GuidanceSpec{
 		Hints: append(
@@ -312,7 +312,8 @@ func (m *OutlinerModel) menuBarGuidance() chrome.GuidanceSpec {
 	}
 }
 
-// MenuBarPinned reads the machine-local flag `M` writes. RuntimeState.Machine
+// MenuBarPinned reads the machine-local flag the View menu's Menu Bar entry
+// writes. RuntimeState.Machine
 // is nil-safe and returns defaults, so an Outliner built without a runtime — the
 // dimmed preview backgrounds among them — simply draws no bar.
 func (m *OutlinerModel) MenuBarPinned() bool {
