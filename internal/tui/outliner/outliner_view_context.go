@@ -367,7 +367,7 @@ func (m *OutlinerModel) refreshNowCard() {
 // I doing", so each puts the card down.
 func (m *OutlinerModel) nowCardModeAdmits() bool {
 	switch m.ActiveOutlinerMode() {
-	case chrome.ModeAll, chrome.ModeToday:
+	case chrome.ModeAll, chrome.ModeAgenda, chrome.ModeToday:
 	default:
 		return false
 	}

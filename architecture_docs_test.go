@@ -70,7 +70,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"Today and Next are mutually exclusive",
 		"resulting subtree depth above six",
 		"## TUI architecture",
-		"The seven modes are All, Today, Inbox, Next, Backlog, Due, and Recent",
+		"The eight modes are All, Agenda, Today, Inbox, Next, Backlog, Due, and Recent",
 		"`g` is a chord prefix, not a direct key: cursor-top is `gg` or `Home`",
 		"Project grouping is universal, not per-mode",
 		"through the shared `appendProjectGroupHeader` kernel",

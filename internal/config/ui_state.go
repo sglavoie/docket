@@ -60,6 +60,7 @@ func (s *OutlinerRouteState) UnmarshalJSON(data []byte) error {
 
 const (
 	OutlinerModeAll     = "all"
+	OutlinerModeAgenda  = "agenda"
 	OutlinerModeInbox   = "inbox"
 	OutlinerModeToday   = "today"
 	OutlinerModeNext    = "next"
@@ -70,7 +71,7 @@ const (
 
 // NormalizeOutlinerRouteState returns a defensive, canonical copy of state.
 // Missing and unknown modes fall back to All. Retired mode names are translated
-// to one of the seven modes plus the smallest canonical predicate that preserves
+// to one of the eight modes plus the smallest canonical predicate that preserves
 // their meaning.
 func NormalizeOutlinerRouteState(state OutlinerRouteState) OutlinerRouteState {
 	state.FilterStates = cloneWorkflowStateSet(state.FilterStates)
@@ -117,6 +118,7 @@ func NormalizeOutlinerRouteState(state OutlinerRouteState) OutlinerRouteState {
 	case "priority":
 		state.Mode = OutlinerModeAll
 	case OutlinerModeAll,
+		OutlinerModeAgenda,
 		OutlinerModeInbox,
 		OutlinerModeToday,
 		OutlinerModeNext,

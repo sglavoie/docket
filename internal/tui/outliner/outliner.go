@@ -210,7 +210,10 @@ type OutlinerModel struct {
 	hiddenLayout hiddenRowLayout
 	// todayPlan is the Today membership one row build reads, taken once per
 	// build rather than once per project header; buildCanonicalModeRows drops it.
-	todayPlan     map[taskref.TaskIdentity]bool
+	todayPlan map[taskref.TaskIdentity]bool
+	// agendaLeftOut is what the last Agenda build counted in the lanes it does not
+	// draw, in All's order; every build drops it, so another mode holds none.
+	agendaLeftOut []agendaLeftOutLane
 	projectLabels projectLabelCache
 
 	// dependencyIndexCache is the row-rebuild pass's reading of the soft

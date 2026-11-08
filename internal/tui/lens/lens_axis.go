@@ -60,6 +60,7 @@ var ModeAxis = axis[chrome.OutlinerModeID]{
 	name: "mode",
 	tokens: map[chrome.OutlinerModeID]string{
 		chrome.ModeAll:     config.LensModeAll,
+		chrome.ModeAgenda:  config.LensModeAgenda,
 		chrome.ModeInbox:   config.LensModeInbox,
 		chrome.ModeToday:   config.LensModeToday,
 		chrome.ModeNext:    config.LensModeNext,

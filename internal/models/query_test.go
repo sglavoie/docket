@@ -238,8 +238,8 @@ func TestNewQueryValidatesEveryAxisAndClause(t *testing.T) {
 }
 
 func TestQueryModeAndSortVocabulariesValidateThemselves(t *testing.T) {
-	if len(AllQueryModes()) != 7 {
-		t.Fatalf("mode catalog size = %d, want 7", len(AllQueryModes()))
+	if len(AllQueryModes()) != 8 {
+		t.Fatalf("mode catalog size = %d, want 8", len(AllQueryModes()))
 	}
 	for _, mode := range AllQueryModes() {
 		if err := mode.Validate(); err != nil {

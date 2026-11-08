@@ -90,7 +90,7 @@ all fit, `+2 more · Q details` reports the hidden segments. Press `Q` for the
 complete, scrollable explanation and numbered controls to remove restrictions.
 See [search and restrictions](search-and-lenses.md#reading-and-peeling-the-narrowing).
 
-In All and Today, while something is in Doing, a Now card stands between the
+In All, Agenda, and Today, while something is in Doing, a Now card stands between the
 header and the lanes, marked by an accent bar. It names the task that entered
 Doing most recently, its project, and how long it has been in Doing, such as
 `website · 12m in Doing`. A second row shows its resume note, and a third its

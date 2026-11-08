@@ -454,26 +454,6 @@ func (m *OutlinerModel) renderOutlinerHostContent(width int) string {
 	return b.String()
 }
 
-// writePeekDock puts the dock under the list, at the screen row the viewport
-// already paid for. The list block is padded out to its whole window first: a
-// projection shorter than the window would otherwise pull the dock up the frame,
-// and a dock that sits in a different place per projection is the same moving
-// target docking it was meant to retire.
-func (m *OutlinerModel) writePeekDock(b *strings.Builder, viewport outlinerViewport) {
-	dock := m.PeekDockLines()
-	if len(dock) == 0 {
-		return
-	}
-	for drawn := viewport.drawnRows(); drawn < viewport.VisibleRows; drawn++ {
-		b.WriteString("\n")
-	}
-	m.pointerFrame.recordDock(strings.Count(b.String(), "\n")+1, len(dock))
-	for _, line := range dock {
-		b.WriteString("\n")
-		b.WriteString(line)
-	}
-}
-
 // renderFullWidth renders the outliner tree using the full terminal width.
 //
 // The content is wrapped and then defensively fitted to the model width. Lip Gloss'

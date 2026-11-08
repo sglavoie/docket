@@ -3,7 +3,7 @@
   "fixture": "rich",
   "size": "100x30",
   "actions": [
-    { "type": "key", "label": "Today mode", "key": "tab" },
+    { "type": "key", "label": "Today mode", "key": "3" },
     { "type": "assert", "label": "a short day offers work worth planning", "assert": "contains", "value": "Suggested for today  (3)" },
     { "type": "assert", "label": "Doing work is offered first", "assert": "contains", "value": "▌├── ◐   Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },

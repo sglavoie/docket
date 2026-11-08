@@ -2,7 +2,12 @@ package outliner
 
 import (
 	"sort"
+	"strconv"
+	"strings"
 
+	"charm.land/lipgloss/v2"
+
+	"github.com/sglavoie/docket/internal/tui/operation"
 	"github.com/sglavoie/docket/internal/tui/theme"
 
 	"github.com/sglavoie/docket/internal/app"
@@ -80,7 +85,7 @@ func (m *OutlinerModel) buildPrimaryModeRowsWithInput(
 		return
 	}
 
-	if mode == chrome.ModeAll {
+	if mode == chrome.ModeAll || mode == chrome.ModeAgenda {
 		m.buildAllPrimaryRows(projects, input, pinned)
 		return
 	}
@@ -133,6 +138,9 @@ func (m *OutlinerModel) buildAllPrimaryRows(
 		}
 	}
 
+	if m.PrimaryMode == chrome.ModeAgenda {
+		m.agendaLeftOut = agendaLeftOutLanes(grouped)
+	}
 	lifted := liftedLaneCounts(input, pinned, review.projected, today.suppressed, next.suppressed)
 	for _, group := range m.allPrimaryGroupOrder() {
 		switch group {
@@ -333,4 +341,85 @@ func removeProjectedRowsFromTree(
 		return projected[taskref.TaskIdentity{ProjectID: projectID, TaskID: task.ID}]
 	})
 	return pruned
+}
+
+// Agenda is All's head, so the rest of All is work it chose not to draw rather
+// than work that does not exist. The one line beneath its rows says how much
+// sits in each lane it leaves out, so a growing Inbox or a Waiting task never
+// leaves the screen without a trace, and names the key back to All.
+//
+// Like Today's canvas it is paint in the padding, never a row: it is not in
+// m.Rows, takes no cursor, answers no click, and moves no window. It is drawn
+// whole or not at all, from the rows the window left after the list.
+
+const agendaLeftOutLead = "Not on the agenda: "
+
+// agendaLeftOutLane is one lane Agenda leaves out and how many tasks it holds.
+type agendaLeftOutLane struct {
+	group models.WorkflowStateGroup
+	count int
+}
+
+// agendaLeftOutLanes counts the forests All would have drawn in the lanes
+// Agenda leaves out. They were built through the same filter, focus, and
+// promotion passes as the drawn lanes, so a narrowed Agenda counts a narrowed
+// remainder and a task lifted into Pinned or Review is never counted twice.
+func agendaLeftOutLanes(grouped map[models.WorkflowStateGroup][]stateGroupProjectForest) []agendaLeftOutLane {
+	var lanes []agendaLeftOutLane
+	for _, group := range models.AgendaLeavesOutWorkflowStateGroups() {
+		total := 0
+		for _, item := range grouped[group] {
+			if item.forest != nil {
+				total += item.forest.count
+			}
+		}
+		if total > 0 {
+			lanes = append(lanes, agendaLeftOutLane{group: group, count: total})
+		}
+	}
+	return lanes
+}
+
+// agendaLeftOutEligible reports whether the line may speak: an Agenda built as
+// lanes, not a ranked list and not one lane zoomed, which leaves nothing beside
+// it to compare against.
+func (m *OutlinerModel) agendaLeftOutEligible() bool {
+	return m.PrimaryMode == chrome.ModeAgenda && len(m.agendaLeftOut) > 0 &&
+		!m.ShowsRankedList() && !m.Focus.Zoom.Active()
+}
+
+// agendaLeftOutLines is the line under a populated Agenda, after one blank
+// row, when budget holds both. Lanes drop whole from the right to fit width;
+// the line keeps its lead and the key back to All or is not drawn.
+func (m *OutlinerModel) agendaLeftOutLines(width, budget int) []string {
+	if budget < 2 || !m.agendaLeftOutEligible() {
+		return nil
+	}
+	line := m.agendaLeftOutLine(width)
+	if line == "" {
+		return nil
+	}
+	return []string{"", line}
+}
+
+func (m *OutlinerModel) agendaLeftOutLine(width int) string {
+	tail := ""
+	if key := m.firstShortcut(operation.OperationCoreGotoAll); key != "" {
+		tail = " · " + key + " All"
+	}
+	segments := make([]string, 0, len(m.agendaLeftOut))
+	for _, lane := range m.agendaLeftOut {
+		segments = append(segments, lane.group.Label()+" "+strconv.Itoa(lane.count))
+	}
+	for shown := len(segments); shown > 0; shown-- {
+		text := agendaLeftOutLead + strings.Join(segments[:shown], " · ")
+		if shown < len(segments) {
+			text += " · …"
+		}
+		text += tail
+		if lipgloss.Width(text) <= width {
+			return theme.MutedStyle.Render(text)
+		}
+	}
+	return ""
 }

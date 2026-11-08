@@ -1,9 +1,11 @@
 {
-  "name": "seven-mode-cycle",
+  "name": "eight-mode-cycle",
   "fixture": "rich",
   "size": "100x35",
   "actions": [
     { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "key", "label": "cycle to Agenda", "key": "tab" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Agenda" },
     { "type": "key", "label": "cycle to Today", "key": "tab" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · Today" },
     { "type": "key", "label": "cycle to Inbox", "key": "tab" },
@@ -27,6 +29,9 @@
     { "type": "key", "label": "open the go-to chord", "key": "g" },
     { "type": "key", "label": "jump straight to Inbox", "key": "i" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · Inbox" },
+    { "type": "key", "label": "open the go-to chord", "key": "g" },
+    { "type": "key", "label": "the capital of All jumps straight to Agenda", "key": "A" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Agenda" },
     { "type": "key", "label": "open the go-to chord", "key": "g" },
     { "type": "key", "label": "jump straight to All", "key": "a" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · All" },

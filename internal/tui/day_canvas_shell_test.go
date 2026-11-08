@@ -15,7 +15,7 @@ import (
 func TestTodayDrawsTheDayCanvasUnderItsRows(t *testing.T) {
 	driver := launchReadmeFixture(t)
 	// Plan two tasks for Today, open Today, and finish the first of them.
-	obs := pressKeys(t, driver, "j", "w", "t", "j", "w", "t", "tab", "g", "g", "w", "d")
+	obs := pressKeys(t, driver, "j", "w", "t", "j", "w", "t", "g", "t", "g", "g", "w", "d")
 	if !strings.Contains(obs.PlainScreen, "Done today · 1") {
 		t.Fatalf("Today drew no Done block after a completion:\n%s", obs.PlainScreen)
 	}
@@ -40,7 +40,7 @@ func TestTodayDrawsTheDayCanvasUnderItsRows(t *testing.T) {
 // draws none rather than a canvas that disagrees with the list beside it.
 func TestTheDayCanvasStandsDownUnderASearch(t *testing.T) {
 	driver := launchReadmeFixture(t)
-	pressKeys(t, driver, "j", "w", "t", "j", "w", "t", "tab", "g", "g", "w", "d")
+	pressKeys(t, driver, "j", "w", "t", "j", "w", "t", "g", "t", "g", "g", "w", "d")
 	obs := pressKeys(t, driver, "/", "f", "e", "e", "d", "enter")
 	if strings.Contains(obs.PlainScreen, "Next 7 days") {
 		t.Fatalf("a narrowed Today still drew the canvas:\n%s", obs.PlainScreen)
@@ -65,7 +65,7 @@ func TestAnEmptiedTodayRestsOnTheDoneCard(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	obs := pressKeys(t, driver, "w", "t", "tab", "g", "g", "w", "d")
+	obs := pressKeys(t, driver, "w", "t", "g", "t", "g", "g", "w", "d")
 	if want := "Today's plan is complete. You finished 1 task today. Press gr to review completed work, or gn to choose from Next."; !strings.Contains(strings.Join(strings.Fields(obs.PlainScreen), " "), want) {
 		t.Fatalf("the finished Today does not acknowledge its plan as %q:\n%s", want, obs.PlainScreen)
 	}

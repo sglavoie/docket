@@ -91,6 +91,7 @@ const (
 	OperationCoreNextWorkMode       OperationID = "tui.core.next-work-mode"
 	OperationCorePreviousWorkMode   OperationID = "tui.core.previous-work-mode"
 	OperationCoreGotoAll            OperationID = "tui.core.goto-all"
+	OperationCoreGotoAgenda         OperationID = "tui.core.goto-agenda"
 	OperationCoreGotoInbox          OperationID = "tui.core.goto-inbox"
 	OperationCoreGotoToday          OperationID = "tui.core.goto-today"
 	OperationCoreGotoNext           OperationID = "tui.core.goto-next"

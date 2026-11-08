@@ -60,10 +60,17 @@ directions, so a package that spells no sibling import cannot slip past the edge
 check unnamed: a new package declares its layer before it can declare an import,
 and a deleted one takes its row with it.
 
-The seven modes are All, Today, Inbox, Next, Backlog, Due, and Recent.
+The eight modes are All, Agenda, Today, Inbox, Next, Backlog, Due, and Recent.
 `Tab`/`Shift+Tab` cycle only that ordered catalog, and the `g` chord jumps
 straight to one of them. A project focus is a scope frame in the same Outliner,
 never a second root.
+
+Agenda owns no row builder. It is the `RowStrategyAll` pipeline with a shorter
+lane order, `models.AgendaModeWorkflowStateGroups`, so its claim order, sort,
+project groups, and fold keys are All's by construction. The lanes it drops are
+counted from the forests that pipeline already built, recorded on the model for
+the one build, and painted in the window's padding by the same seam that draws
+Today's day canvas, so the window, the cursor, and the hit map never see them.
 
 Every mode recovers the cursor when a mutation takes the row out from under it,
 and no catalog entry gates that. The question a mutation asks is not whether the
@@ -376,7 +383,7 @@ full width, since one row can never overflow the window.
 any header row, plus the first row of a group whose predecessor carried another
 — because the header kind is not uniform: All, Due, and Recent emit section
 headers while Inbox, Backlog, Today, and Next group by project only, so a
-section-only stop set would leave the keys dead in four of the seven modes, and
+section-only stop set would leave the keys dead in four of the eight modes, and
 reading the group off the row rather than the header keeps a block reachable
 however the projection chooses to head it. `h`/`l` and the `p` toggle narrow that to
 `IsCollapsibleHeader()`, since the focused-project header is a stop without a

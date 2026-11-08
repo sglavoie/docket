@@ -60,7 +60,13 @@ func (m *OutlinerModel) primaryDefaultExclusion(now time.Time) func(*models.Task
 	}
 }
 
+// allPrimaryGroupOrder is the lane order All draws, and Agenda's is its head:
+// the lanes holding work already decided on. Review rides Doing and Pinned
+// leads both, so neither is named here.
 func (m *OutlinerModel) allPrimaryGroupOrder() []models.WorkflowStateGroup {
+	if m.PrimaryMode == chrome.ModeAgenda {
+		return models.AgendaModeWorkflowStateGroups()
+	}
 	order := models.AllModeWorkflowStateGroups()
 	if m.AdmitsTerminalPopulation() {
 		order = append(order, models.StateGroupDone, models.StateGroupCanceled)

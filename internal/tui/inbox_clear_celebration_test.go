@@ -9,9 +9,9 @@ import (
 // returns the observation the last move published.
 func triageInboxToZero(t *testing.T, driver *UITestDriver) UITestObservation {
 	t.Helper()
-	obs := pressKeys(t, driver, "tab", "tab")
+	obs := pressKeys(t, driver, "g", "i")
 	if !strings.Contains(obs.PlainScreen, "Inbox") {
-		t.Fatalf("two Tabs did not reach Inbox:\n%s", obs.PlainScreen)
+		t.Fatalf("gi did not reach Inbox:\n%s", obs.PlainScreen)
 	}
 	for range 12 {
 		if driver.App().workspacePulse.Inbox == 0 {

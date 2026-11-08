@@ -54,6 +54,30 @@ func AllModeWorkflowStateGroups() []WorkflowStateGroup {
 	}
 }
 
+// AgendaModeWorkflowStateGroups is the head of All's order that Agenda keeps:
+// the planned and started work. Inbox, Paused, Backlog, Waiting, and Someday
+// are the work not yet decided on, so Agenda leaves them, and terminal work, to
+// All.
+func AgendaModeWorkflowStateGroups() []WorkflowStateGroup {
+	return []WorkflowStateGroup{
+		StateGroupToday,
+		StateGroupDoing,
+		StateGroupNext,
+	}
+}
+
+// AgendaLeavesOutWorkflowStateGroups is the rest of All's order, the lanes
+// Agenda counts beneath its rows rather than draws.
+func AgendaLeavesOutWorkflowStateGroups() []WorkflowStateGroup {
+	return []WorkflowStateGroup{
+		StateGroupInbox,
+		StateGroupPaused,
+		StateGroupBacklog,
+		StateGroupWaiting,
+		StateGroupSomeday,
+	}
+}
+
 // IsValid reports whether g is a canonical workflow-state group.
 func (g WorkflowStateGroup) IsValid() bool {
 	switch g {

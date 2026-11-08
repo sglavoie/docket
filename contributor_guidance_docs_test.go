@@ -32,7 +32,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"[`docs/decisions/behavioral-signals-contracts.md`](docs/decisions/behavioral-signals-contracts.md) " +
 			"is the locked behavioral-signal authority",
 		"The lifecycle states are:",
-		"eight-state, seven-mode, Outliner-only product",
+		"eight-state, eight-mode, Outliner-only product",
 		"Do not recreate cross-project behavior with independent `SaveProject` calls",
 		"`StateChangedAt` is the state clock and `UpdatedAt` is the touch time",
 		"A task reaching `WriteV8ProjectDocument` without a clock is rejected, never backfilled",

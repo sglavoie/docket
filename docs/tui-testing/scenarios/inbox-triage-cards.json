@@ -3,7 +3,7 @@
   "fixture": "busy",
   "size": "100x35",
   "actions": [
-    { "type": "key", "key": "3" },
+    { "type": "key", "key": "4" },
     { "type": "key", "label": "I opens one card per Inbox task, frozen in the order the view drew them", "key": "I" },
     { "type": "assert", "assert": "contains", "value": "Inbox triage" },
     { "type": "assert", "assert": "contains", "value": "1 of 5" },

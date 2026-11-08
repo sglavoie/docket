@@ -58,6 +58,7 @@ var headerTargetAudit = map[operation.OperationID]string{
 	"tui.core.focus-parent":           "reject",
 	"tui.core.focus-subtree":          "reject",
 	"tui.core.goto-all":               "target-free",
+	"tui.core.goto-agenda":            "target-free",
 	"tui.core.goto-backlog":           "target-free",
 	"tui.core.goto-captured":          "target-free",
 	"tui.core.goto-due":               "target-free",

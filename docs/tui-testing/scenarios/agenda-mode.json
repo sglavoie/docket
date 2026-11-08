@@ -1,0 +1,39 @@
+{
+  "name": "agenda-mode",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "2 jumps straight to Agenda from the launch view", "key": "2" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Agenda" },
+    { "type": "assert", "label": "started work is on the agenda", "assert": "contains", "value": "Doing  (1)" },
+    { "type": "assert", "label": "undecided lanes are not drawn", "assert": "not_contains", "value": "Inbox  (1)" },
+    { "type": "assert", "assert": "not_contains", "value": "Backlog  (3)" },
+    { "type": "assert", "label": "what Agenda leaves out is counted beneath it, with the key back to All", "assert": "contains", "value": "Not on the agenda: Inbox 1 · Backlog 3 · Waiting 1 · Someday 1 · ga All" },
+    { "type": "assert", "label": "Agenda is a home view, so the Now card stays", "assert": "contains", "value": "▎ Build login form" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "open Inbox", "key": "4" },
+    { "type": "key", "key": "home" },
+    { "type": "key", "label": "plan the Inbox task for Today", "key": "w" },
+    { "type": "key", "key": "t" },
+    { "type": "key", "label": "back to Agenda", "key": "2" },
+    { "type": "assert", "label": "planning puts the task on the agenda", "assert": "contains", "value": "Today  (1)" },
+    { "type": "assert", "assert": "contains", "value": "Triage support inbox" },
+    { "type": "assert", "label": "and takes it off the left-out count", "assert": "contains", "value": "Not on the agenda: Backlog 3 · Waiting 1 · Someday 1 · ga All" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "a narrow window drops whole lanes from the line and keeps the key", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "Not on the agenda: Backlog 3 · Waiting 1 · … · ga All" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "Tab leaves Agenda for Today", "key": "tab" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Today" },
+    { "type": "assert", "assert": "not_contains", "value": "Not on the agenda" },
+    { "type": "key", "label": "Shift+Tab comes back", "key": "shift+tab" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Agenda" },
+    { "type": "key", "label": "1 returns to All", "key": "1" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "assert": "not_contains", "value": "Not on the agenda" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

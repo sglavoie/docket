@@ -388,6 +388,8 @@ func (m *OutlinerModel) composeTriageCard(host string, width, frameHeight int) (
 		ResumeNote: task.ResumeNote, Description: task.Description,
 	}
 	switch m.Triage.source {
+	case triageSourceInbox:
+		// The spec already carries the Inbox heading.
 	case triageSourceSuggested:
 		spec.Heading = "Plan today"
 	case triageSourceCloseDay:

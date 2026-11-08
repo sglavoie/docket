@@ -15,6 +15,7 @@ type QueryMode string
 const (
 	QueryModeUnset   QueryMode = ""
 	QueryModeAll     QueryMode = "all"
+	QueryModeAgenda  QueryMode = "agenda"
 	QueryModeInbox   QueryMode = "inbox"
 	QueryModeToday   QueryMode = "today"
 	QueryModeNext    QueryMode = "next"
@@ -25,6 +26,7 @@ const (
 
 var allQueryModes = []QueryMode{
 	QueryModeAll,
+	QueryModeAgenda,
 	QueryModeInbox,
 	QueryModeToday,
 	QueryModeNext,
@@ -33,7 +35,7 @@ var allQueryModes = []QueryMode{
 	QueryModeRecent,
 }
 
-// AllQueryModes returns the seven catalog modes in presentation order.
+// AllQueryModes returns the eight catalog modes in presentation order.
 func AllQueryModes() []QueryMode {
 	return slices.Clone(allQueryModes)
 }

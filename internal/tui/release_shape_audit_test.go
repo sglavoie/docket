@@ -33,6 +33,7 @@ import (
 func TestReleaseAddedNoOutlinerMode(t *testing.T) {
 	want := []chrome.OutlinerModeID{
 		chrome.ModeAll,
+		chrome.ModeAgenda,
 		chrome.ModeToday,
 		chrome.ModeInbox,
 		chrome.ModeNext,
@@ -45,7 +46,7 @@ func TestReleaseAddedNoOutlinerMode(t *testing.T) {
 		got = append(got, mode.ID)
 	}
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("the mode catalog is %v, want the seven final modes %v", got, want)
+		t.Fatalf("the mode catalog is %v, want the eight final modes %v", got, want)
 	}
 }
 

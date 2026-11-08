@@ -12,8 +12,8 @@ import (
 	"github.com/sglavoie/docket/internal/tui/query"
 )
 
-func TestOutlinerModeCatalogIsExactSevenModeCycle(t *testing.T) {
-	want := []chrome.OutlinerModeID{chrome.ModeAll, chrome.ModeToday, chrome.ModeInbox, chrome.ModeNext, chrome.ModeBacklog, chrome.ModeDue, chrome.ModeRecent}
+func TestOutlinerModeCatalogIsExactEightModeCycle(t *testing.T) {
+	want := []chrome.OutlinerModeID{chrome.ModeAll, chrome.ModeAgenda, chrome.ModeToday, chrome.ModeInbox, chrome.ModeNext, chrome.ModeBacklog, chrome.ModeDue, chrome.ModeRecent}
 	catalog := chrome.OutlinerModeCatalog()
 	tabModes := chrome.OutlinerTabModes()
 	if len(catalog) != len(want) {
@@ -46,12 +46,12 @@ func TestOutlinerModeCatalogIsExactSevenModeCycle(t *testing.T) {
 	}
 }
 
-func TestOutlinerTabCyclingWrapsForwardAndBackwardAcrossSevenModes(t *testing.T) {
+func TestOutlinerTabCyclingWrapsForwardAndBackwardAcrossEightModes(t *testing.T) {
 	project := primaryRowsProject("alpha")
 	outlinerView := outliner.NewOutlinerModel(project, nil, nil)
 
 	for _, want := range []chrome.OutlinerModeID{
-		chrome.ModeToday, chrome.ModeInbox, chrome.ModeNext, chrome.ModeBacklog, chrome.ModeDue, chrome.ModeRecent, chrome.ModeAll,
+		chrome.ModeAgenda, chrome.ModeToday, chrome.ModeInbox, chrome.ModeNext, chrome.ModeBacklog, chrome.ModeDue, chrome.ModeRecent, chrome.ModeAll,
 	} {
 		outlinerView.CycleWorkMode(1)
 		if got := outlinerView.ActiveOutlinerMode(); got != want {
@@ -59,7 +59,7 @@ func TestOutlinerTabCyclingWrapsForwardAndBackwardAcrossSevenModes(t *testing.T)
 		}
 	}
 	for _, want := range []chrome.OutlinerModeID{
-		chrome.ModeRecent, chrome.ModeDue, chrome.ModeBacklog, chrome.ModeNext, chrome.ModeInbox, chrome.ModeToday, chrome.ModeAll,
+		chrome.ModeRecent, chrome.ModeDue, chrome.ModeBacklog, chrome.ModeNext, chrome.ModeInbox, chrome.ModeToday, chrome.ModeAgenda, chrome.ModeAll,
 	} {
 		outlinerView.CycleWorkMode(-1)
 		if got := outlinerView.ActiveOutlinerMode(); got != want {

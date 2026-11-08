@@ -432,7 +432,7 @@ func (m *OutlinerModel) SimplifiedReorderEligible() bool {
 		return true
 	}
 	switch mode.ID {
-	case chrome.ModeAll, chrome.ModeInbox, chrome.ModeBacklog:
+	case chrome.ModeAll, chrome.ModeAgenda, chrome.ModeInbox, chrome.ModeBacklog:
 		return m.ResolveProjectForRow(row) != nil
 	default:
 		return false

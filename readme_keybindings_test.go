@@ -116,7 +116,7 @@ func TestREADMEDocumentsFinalDailyLoop(t *testing.T) {
 	content := readREADMEForContractTest(t)
 	requireDocumentationText(t, content, []string{
 		"The Outliner is the only primary task presentation",
-		"`Tab` cycles All → Today → Inbox → Next → Backlog → Due → Recent",
+		"`Tab` cycles All → Agenda → Today → Inbox → Next → Backlog → Due → Recent",
 		"capture, triage, plan, execute, and complete",
 	})
 	// The front door links to the detailed mode reference, which owns lane order.

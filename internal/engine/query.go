@@ -212,6 +212,11 @@ func planningRanks(items []config.ProjectTaskLocator) map[app.TaskLocator]int {
 
 func modeAdmits(mode models.QueryMode, task *models.Task, inToday, inNext bool, now time.Time) bool {
 	switch mode {
+	case models.QueryModeAgenda:
+		// Agenda is what All draws above its uncommitted lanes: pinned, planned
+		// or dated for today, in Doing, owed a review, or queued in Next.
+		return task.Pinned || inToday || inNext || task.IsInState(models.StateDoing) ||
+			task.IsDueTodayAt(now) || task.IsOverdueAt(now) || models.TaskNeedsAttention(task, now)
 	case models.QueryModeInbox:
 		return task.IsInState(models.StateInbox)
 	case models.QueryModeBacklog:

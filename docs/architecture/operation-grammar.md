@@ -676,12 +676,12 @@ A concurrent write to the project is still refused, but by the project's own
 transition that earned the note.
 
 `g` is a chord prefix, not a direct key: cursor-top is `gg` or `Home`. Its second
-keys jump straight to one mode, so a seventh mode never costs six `Tab` presses.
-The digits `1`–`7` are those same seven jumps at their `Tab`-cycle positions, and
-they are a second `Keys` spelling on the go-to bindings rather than seven new
+keys jump straight to one mode, so an eighth mode never costs seven `Tab` presses.
+The digits `1`–`8` are those same eight jumps at their `Tab`-cycle positions, and
+they are a second `Keys` spelling on the go-to bindings rather than eight new
 descriptors: one operation, one handler, and one composed `DisplayKey` such as
-`gb/5`, which `?` help and the footer read as it stands instead of composing a
-second one. `gg`/`Home` and the seven mode jumps are therefore where a single
+`gb/6`, which `?` help and the footer read as it stands instead of composing a
+second one. `gg`/`Home` and the eight mode jumps are therefore where a single
 binding declares both `Keys` and a `Sequence`; prefix-freeness is still fully
 enforced by the chord trie, which is also what keeps a bare digit clear of the
 `!` and `f!` chords that end in one.

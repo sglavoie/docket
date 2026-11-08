@@ -1,6 +1,6 @@
 package chrome
 
-// This file establishes the final seven-mode Outliner catalog.
+// This file establishes the final eight-mode Outliner catalog.
 
 // OutlinerModeID is the stable identifier for a catalog mode.
 type OutlinerModeID string
@@ -9,6 +9,7 @@ type OutlinerModeID string
 // mode; changing one is a breaking persisted-state change.
 const (
 	ModeAll     OutlinerModeID = "all"
+	ModeAgenda  OutlinerModeID = "agenda"
 	ModeInbox   OutlinerModeID = "inbox"
 	ModeToday   OutlinerModeID = "today"
 	ModeNext    OutlinerModeID = "next"
@@ -89,6 +90,10 @@ func (mode OutlinerMode) FixedOrder() bool {
 // OutlinerModes is the ordered catalog and the exact Tab/Shift+Tab cycle.
 var OutlinerModes = []OutlinerMode{
 	{ID: ModeAll, Label: "All", OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyAll, ShowsPinned: true},
+	// Agenda is All's head: the same builder, keeping only the lanes that hold
+	// work already decided on or asking for attention — Pinned, Today, Doing,
+	// Review, and Next — so a task is in Agenda exactly when All draws it there.
+	{ID: ModeAgenda, Label: "Agenda", OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyAll, ShowsPinned: true},
 	{ID: ModeToday, Label: "Today", OrderPolicy: OrderPolicyTodayOrder, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyToday, ShowsPinned: true},
 	{ID: ModeInbox, Label: "Inbox", OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyInbox},
 	{ID: ModeNext, Label: "Next", OrderPolicy: OrderPolicyNextOrder, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyNext},
@@ -120,7 +125,7 @@ func OutlinerModeByID(id OutlinerModeID) (OutlinerMode, bool) {
 	return mode, ok
 }
 
-// OutlinerTabModes returns the seven descriptors in exact Tab order.
+// OutlinerTabModes returns the eight descriptors in exact Tab order.
 func OutlinerTabModes() []OutlinerMode {
 	return OutlinerModeCatalog()
 }

@@ -245,6 +245,9 @@ func (m *OutlinerModel) emptyModeNextStep(mode chrome.OutlinerModeID) (message, 
 		act         string
 	)
 	switch mode {
+	case chrome.ModeAgenda:
+		message = "Nothing on the agenda."
+		operationID, act = operation.OperationCoreGotoAll, "to see everything in All"
 	case chrome.ModeInbox:
 		message = "Inbox is clear."
 		operationID, act = operation.OperationCoreGotoToday, "to open Today"
@@ -439,7 +442,8 @@ func fitCardLines(lines []string, width int) bool {
 	return true
 }
 
-// writeDayCanvas draws Today's canvas in the window rows the list left empty.
+// writeDayCanvas draws Today's canvas, or Agenda's left-out line, in the
+// window rows the list left empty.
 // Its blocks are chosen against the settled window — the rows alone — so a
 // ghost or a closing gap borrowing a row for a few frames trims the canvas's
 // tail rather than choosing different blocks and flickering. The rows it drew
@@ -449,6 +453,9 @@ func (m *OutlinerModel) writeDayCanvas(b *strings.Builder, viewport outlinerView
 	drawn := m.LastViewport.drawnRows()
 	settled := drawn - m.LastViewport.gapRows - boolRows(m.LastViewport.ghostActive)
 	lines := m.todayCanvasLines(viewport.rowWidth, viewport.VisibleRows-settled)
+	if lines == nil {
+		lines = m.agendaLeftOutLines(viewport.rowWidth, viewport.VisibleRows-settled)
+	}
 	lines = lines[:min(len(lines), max(viewport.VisibleRows-drawn, 0))]
 	for _, line := range lines {
 		b.WriteString("\n")

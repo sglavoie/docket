@@ -1,9 +1,9 @@
 # Modes
 
-What each of the seven modes lists, in what order, and how you move between
+What each of the eight modes lists, in what order, and how you move between
 them. The keys themselves are in [`outliner-keys.md`](outliner-keys.md).
 
-`Tab` cycles exactly All → Today → Inbox → Next → Backlog → Due → Recent, and
+`Tab` cycles exactly All → Agenda → Today → Inbox → Next → Backlog → Due → Recent, and
 `Shift+Tab` reverses that cycle. The `g` chord jumps straight to one mode;
 [`outliner-keys.md`](outliner-keys.md) spells its continuations.
 
@@ -42,7 +42,7 @@ it; a task lifted into Review reads `+1 in Review`. That is
 what keeps a header in step with the workspace pulse, which counts `inbox 2`
 wherever the rows are drawn.
 
-Pinned leads All and Today. Inbox, Next, Backlog, Due, and Recent each answer
+Pinned leads All, Agenda, and Today. Inbox, Next, Backlog, Due, and Recent each answer
 one narrow question and show no Pinned section, so their own order stays whole;
 a pinned task there wears a bold `*` left of its title.
 Pinned tasks appear once in project groups, each promoted child wearing the bare
@@ -61,6 +61,29 @@ being promoted automatically; `fs`, `?stale`, and the Stale lens remain the
 explicit cleanup routes. Due is date ordered. Done and Canceled work stay hidden
 unless a filter explicitly asks for them; deferred work does too unless its
 manual review flag raises it.
+
+Agenda is the work you have already decided on, and the work asking for your
+attention: All with only its top lanes,
+
+```text
+Pinned, Today, Doing, Review, Next
+```
+
+Press `2` (or `gA`) to jump to it from anywhere, or `Tab` once from All. It is
+built exactly as All is, so a task is in Agenda when All draws it in one of those
+lanes and nowhere else: the same claim order, sort, project groups, folds, and
+Peek, and a task due today or overdue is there through Today even when nothing
+planned it. Inbox, Paused, Backlog, Waiting, and Someday are left out, and so are
+Done and Canceled even when a filter asks for them. What it leaves out is still
+counted: under its rows, wherever the window has room, a muted line such as
+`Not on the agenda: Inbox 4 · Backlog 20 · Waiting 3 · ga All` says how much sits
+in each of those lanes, under the same scope, filters, and search as the rows,
+and names the key back to All. A narrow window drops lanes from the end of that
+line whole, marking the cut with `…`, rather than shortening one. The line is not
+a row: the cursor, clicks, and folds pass it by. A Waiting task comes back into
+Agenda through Review once its check-in arrives, and Inbox keeps its own
+route through `I` triage. To open Docket on Agenda every time, save it as a
+lens: a launch reapplies the active lens's mode.
 
 Today includes tasks explicitly planned for today and open tasks whose deadline
 falls today or is overdue, including deadlines with a clock time. A task that is
@@ -209,11 +232,11 @@ when you hop is put aside for the trip and restored on the way back, without
 being rewritten. `0` is the way out of a long walk: it drops the whole trail
 along with the rest of the view.
 
-The seven modes answer to the digits `1`–`7` as well, in the order `Tab` cycles
-them: `1` All, `2` Today, `3` Inbox, `4` Next, `5` Backlog, `6` Due, `7` Recent.
+The eight modes answer to the digits `1`–`8` as well, in the order `Tab` cycles
+them: `1` All, `2` Agenda, `3` Today, `4` Inbox, `5` Next, `6` Backlog, `7` Due, `8` Recent.
 A digit is the same act as the `g` chord naming the same mode rather than a
-second one, so `5` and `gb` are two spellings of one jump and `?` help lists
-them together as `gb/5`. They are root keys, so a digit typed into a search
+second one, so `6` and `gb` are two spellings of one jump and `?` help lists
+them together as `gb/6`. They are root keys, so a digit typed into a search
 query, a capture buffer, or an open picker belongs to that surface: inside the
 `Q` readout a digit peels the row it numbers, and inside Named Lenses `1`–`9`
 apply the lens on that row.

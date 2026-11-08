@@ -6,10 +6,11 @@ import (
 )
 
 // GotoModeOperations maps each direct mode-jump operation to the mode it
-// selects. Seven descriptors rather than one preset-valued operation, so the
+// selects. Eight descriptors rather than one preset-valued operation, so the
 // grammar never needs a mode value provider and cannot resurrect a mode picker.
 var GotoModeOperations = map[OperationID]chrome.OutlinerModeID{
 	OperationCoreGotoAll:     chrome.ModeAll,
+	OperationCoreGotoAgenda:  chrome.ModeAgenda,
 	OperationCoreGotoInbox:   chrome.ModeInbox,
 	OperationCoreGotoToday:   chrome.ModeToday,
 	OperationCoreGotoNext:    chrome.ModeNext,
@@ -371,7 +372,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationSortTitle, Sequence: []string{"o", "t"}, DisplayKey: "ot", HintLabel: "title"},
 			{OperationID: OperationSortClear, Sequence: []string{"o", "x"}, DisplayKey: "ox", HintLabel: "clear sort"},
 			{OperationID: OperationSortRanked, Sequence: []string{"o", "r"}, DisplayKey: "or", HintLabel: "ranked list"},
-			// 0 leads the digit row and is the only one of the eight that names no
+			// 0 leads the digit row and is the only one of the nine that names no
 			// mode: it puts the whole view back where a lens-free launch starts. It
 			// takes no footer rank, because it is the escape hatch a user reaches for
 			// once rather than an act of the daily loop.
@@ -380,12 +381,16 @@ func SimplifiedInputStrategy() InputStrategy {
 			// Tab-cycle position, so the mnemonic route and the cheap one are one
 			// binding with one composed spelling rather than two descriptors.
 			{OperationID: OperationCoreGotoAll, Keys: []string{"1"}, Sequence: []string{"g", "a"}, DisplayKey: "ga/1", HintLabel: "all", HintGroup: chrome.GotoModeHintGroup},
-			{OperationID: OperationCoreGotoInbox, Keys: []string{"3"}, Sequence: []string{"g", "i"}, DisplayKey: "gi/3", HintLabel: "inbox", HintGroup: chrome.GotoModeHintGroup},
-			{OperationID: OperationCoreGotoToday, Keys: []string{"2"}, Sequence: []string{"g", "t"}, DisplayKey: "gt/2", HintLabel: "today", HintGroup: chrome.GotoModeHintGroup},
-			{OperationID: OperationCoreGotoNext, Keys: []string{"4"}, Sequence: []string{"g", "n"}, DisplayKey: "gn/4", HintLabel: "next", HintGroup: chrome.GotoModeHintGroup},
-			{OperationID: OperationCoreGotoBacklog, Keys: []string{"5"}, Sequence: []string{"g", "b"}, DisplayKey: "gb/5", HintLabel: "backlog", HintGroup: chrome.GotoModeHintGroup},
-			{OperationID: OperationCoreGotoDue, Keys: []string{"6"}, Sequence: []string{"g", "@"}, DisplayKey: "g@/6", HintLabel: "due", HintGroup: chrome.GotoModeHintGroup},
-			{OperationID: OperationCoreGotoRecent, Keys: []string{"7"}, Sequence: []string{"g", "r"}, DisplayKey: "gr/7", HintLabel: "recent", HintGroup: chrome.GotoModeHintGroup},
+			// Agenda is the second stop of the cycle, so the view a day is worked from
+			// is one digit from anywhere; its chord is the capital of All's, since it
+			// is All narrowed to the work already decided on.
+			{OperationID: OperationCoreGotoAgenda, Keys: []string{"2"}, Sequence: []string{"g", "A"}, DisplayKey: "gA/2", HintLabel: "agenda", HintGroup: chrome.GotoModeHintGroup},
+			{OperationID: OperationCoreGotoInbox, Keys: []string{"4"}, Sequence: []string{"g", "i"}, DisplayKey: "gi/4", HintLabel: "inbox", HintGroup: chrome.GotoModeHintGroup},
+			{OperationID: OperationCoreGotoToday, Keys: []string{"3"}, Sequence: []string{"g", "t"}, DisplayKey: "gt/3", HintLabel: "today", HintGroup: chrome.GotoModeHintGroup},
+			{OperationID: OperationCoreGotoNext, Keys: []string{"5"}, Sequence: []string{"g", "n"}, DisplayKey: "gn/5", HintLabel: "next", HintGroup: chrome.GotoModeHintGroup},
+			{OperationID: OperationCoreGotoBacklog, Keys: []string{"6"}, Sequence: []string{"g", "b"}, DisplayKey: "gb/6", HintLabel: "backlog", HintGroup: chrome.GotoModeHintGroup},
+			{OperationID: OperationCoreGotoDue, Keys: []string{"7"}, Sequence: []string{"g", "@"}, DisplayKey: "g@/7", HintLabel: "due", HintGroup: chrome.GotoModeHintGroup},
+			{OperationID: OperationCoreGotoRecent, Keys: []string{"8"}, Sequence: []string{"g", "r"}, DisplayKey: "gr/8", HintLabel: "recent", HintGroup: chrome.GotoModeHintGroup},
 			// The go-to chord reads as three runs: the modes, the places the
 			// cursor's own task names, and the workspace's sync state. The last is
 			// the pair a task row sheds at the minimum width, since neither of its

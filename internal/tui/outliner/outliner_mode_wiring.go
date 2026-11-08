@@ -67,6 +67,7 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 	// membership was answered on the day currently on screen.
 	m.timeDrivenDay = time.Now()
 	m.todayPlan = nil
+	m.agendaLeftOut = nil
 	// Assigned above the ranked-list return so both branches leave a live wake
 	// clock and child census behind: a presentation the user leaves must not
 	// resume with a stale one.

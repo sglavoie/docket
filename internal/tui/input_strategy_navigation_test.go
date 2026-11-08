@@ -55,13 +55,14 @@ func TestGoToChordResolvesTopJumpAndEveryMode(t *testing.T) {
 	paths := map[string][]string{
 		"gg": {"g", "g"},
 		"ga": {"g", "a"},
+		"gA": {"g", "A"},
 		"gi": {"g", "i"},
 		"gt": {"g", "t"},
 		"gn": {"g", "n"},
 		"gb": {"g", "b"},
 		"g@": {"g", "@"},
 		"gr": {"g", "r"},
-		// The digit aliases resolve to the same seven bindings, so the second
+		// The digit aliases resolve to the same eight bindings, so the second
 		// spelling is audited beside the first rather than in a test of its own.
 		"1": {"1"},
 		"2": {"2"},
@@ -70,12 +71,14 @@ func TestGoToChordResolvesTopJumpAndEveryMode(t *testing.T) {
 		"5": {"5"},
 		"6": {"6"},
 		"7": {"7"},
-		// 0 is the eighth digit and the one that names no mode.
+		"8": {"8"},
+		// 0 is the ninth digit and the one that names no mode.
 		"0": {"0"},
 	}
 	want := map[string]operation.OperationID{
 		"gg": operation.OperationCoreCursorTop,
 		"ga": operation.OperationCoreGotoAll,
+		"gA": operation.OperationCoreGotoAgenda,
 		"gi": operation.OperationCoreGotoInbox,
 		"gt": operation.OperationCoreGotoToday,
 		"gn": operation.OperationCoreGotoNext,
@@ -83,12 +86,13 @@ func TestGoToChordResolvesTopJumpAndEveryMode(t *testing.T) {
 		"g@": operation.OperationCoreGotoDue,
 		"gr": operation.OperationCoreGotoRecent,
 		"1":  operation.OperationCoreGotoAll,
-		"2":  operation.OperationCoreGotoToday,
-		"3":  operation.OperationCoreGotoInbox,
-		"4":  operation.OperationCoreGotoNext,
-		"5":  operation.OperationCoreGotoBacklog,
-		"6":  operation.OperationCoreGotoDue,
-		"7":  operation.OperationCoreGotoRecent,
+		"2":  operation.OperationCoreGotoAgenda,
+		"3":  operation.OperationCoreGotoToday,
+		"4":  operation.OperationCoreGotoInbox,
+		"5":  operation.OperationCoreGotoNext,
+		"6":  operation.OperationCoreGotoBacklog,
+		"7":  operation.OperationCoreGotoDue,
+		"8":  operation.OperationCoreGotoRecent,
 		"0":  operation.OperationCoreResetToLaunchView,
 	}
 	for spelling, path := range paths {
@@ -136,12 +140,13 @@ func TestGoToChordResolvesTopJumpAndEveryMode(t *testing.T) {
 	// reads the binding's one DisplayKey rather than composing a second one.
 	for operationID, want := range map[operation.OperationID]string{
 		operation.OperationCoreGotoAll:           "ga/1",
-		operation.OperationCoreGotoToday:         "gt/2",
-		operation.OperationCoreGotoInbox:         "gi/3",
-		operation.OperationCoreGotoNext:          "gn/4",
-		operation.OperationCoreGotoBacklog:       "gb/5",
-		operation.OperationCoreGotoDue:           "g@/6",
-		operation.OperationCoreGotoRecent:        "gr/7",
+		operation.OperationCoreGotoAgenda:        "gA/2",
+		operation.OperationCoreGotoToday:         "gt/3",
+		operation.OperationCoreGotoInbox:         "gi/4",
+		operation.OperationCoreGotoNext:          "gn/5",
+		operation.OperationCoreGotoBacklog:       "gb/6",
+		operation.OperationCoreGotoDue:           "g@/7",
+		operation.OperationCoreGotoRecent:        "gr/8",
 		operation.OperationCoreResetToLaunchView: "0",
 	} {
 		if got := registry.InputShortcutForOperation(operation.InputStrategySimplified, operationID); got != want {

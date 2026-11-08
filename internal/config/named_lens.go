@@ -38,6 +38,7 @@ const MaxNamedLensQueryRunes = 2000
 // persisted spelling must survive any TUI refactor.
 const (
 	LensModeAll     = "all"
+	LensModeAgenda  = "agenda"
 	LensModeInbox   = "inbox"
 	LensModeToday   = "today"
 	LensModeNext    = "next"
@@ -479,7 +480,7 @@ func validLensToken(token string, allowed []string, allowDefault bool) bool {
 }
 
 func lensModeTokens() []string {
-	return []string{LensModeAll, LensModeInbox, LensModeToday, LensModeNext, LensModeBacklog, LensModeDue, LensModeRecent}
+	return []string{LensModeAll, LensModeAgenda, LensModeInbox, LensModeToday, LensModeNext, LensModeBacklog, LensModeDue, LensModeRecent}
 }
 
 func lensSortTokens() []string {

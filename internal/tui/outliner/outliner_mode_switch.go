@@ -278,7 +278,7 @@ func (m *OutlinerModel) CycleWorkMode(delta int) (tea.Model, tea.Cmd) {
 
 func isPrimaryOutlinerMode(mode chrome.OutlinerModeID) bool {
 	switch mode {
-	case chrome.ModeAll, chrome.ModeInbox, chrome.ModeToday, chrome.ModeNext, chrome.ModeBacklog:
+	case chrome.ModeAll, chrome.ModeAgenda, chrome.ModeInbox, chrome.ModeToday, chrome.ModeNext, chrome.ModeBacklog:
 		return true
 	default:
 		return false

@@ -432,6 +432,7 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		core(OperationCoreNextWorkMode, "Next Work Mode", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly),
 		core(OperationCorePreviousWorkMode, "Previous Work Mode", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly),
 		core(OperationCoreGotoAll, "Go to All", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly, "all mode"),
+		core(OperationCoreGotoAgenda, "Go to Agenda", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly, "agenda mode", "focus", "committed work"),
 		core(OperationCoreGotoInbox, "Go to Inbox", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly, "inbox mode"),
 		core(OperationCoreGotoToday, "Go to Today", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly, "today mode"),
 		core(OperationCoreGotoNext, "Go to Next", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly, "next mode"),
@@ -440,7 +441,7 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		core(OperationCoreGotoRecent, "Go to Recent", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly, "recent mode", "recent activity"),
 		// The digit that names no mode returns the view to the one a lens-free
 		// launch produces. It is a Mode operation because that is the axis it is
-		// spelled beside — 0 leads the seven — and read-only because every axis it
+		// spelled beside — 0 leads the eight — and read-only because every axis it
 		// drops is a view axis: it writes no task, no project, and not even the
 		// machine-local pointer naming which lens to open with.
 		core(

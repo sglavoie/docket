@@ -299,10 +299,10 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		// The digit row: 0 returns to the launch view and 1-7 are the seven modes
 		// in Tab-cycle order, each a second spelling on the go-to chord's binding.
 		"0": operation.OperationCoreResetToLaunchView,
-		"1": operation.OperationCoreGotoAll, "2": operation.OperationCoreGotoToday,
-		"3": operation.OperationCoreGotoInbox, "4": operation.OperationCoreGotoNext,
-		"5": operation.OperationCoreGotoBacklog, "6": operation.OperationCoreGotoDue,
-		"7": operation.OperationCoreGotoRecent,
+		"1": operation.OperationCoreGotoAll, "2": operation.OperationCoreGotoAgenda,
+		"3": operation.OperationCoreGotoToday, "4": operation.OperationCoreGotoInbox,
+		"5": operation.OperationCoreGotoNext, "6": operation.OperationCoreGotoBacklog,
+		"7": operation.OperationCoreGotoDue, "8": operation.OperationCoreGotoRecent,
 	}
 
 	// A shared key is one the cursor disambiguates, and each meaning keeps its own

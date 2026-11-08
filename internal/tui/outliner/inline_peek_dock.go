@@ -1,6 +1,8 @@
 package outliner
 
 import (
+	"strings"
+
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/docket/internal/tui/chrome"
@@ -279,5 +281,25 @@ func peekDockPlaceholderDocument(width int, geometry peekDockGeometry) inlinePee
 		indent:      peekDockIndent,
 		width:       available,
 		window:      geometry,
+	}
+}
+
+// writePeekDock puts the dock under the list, at the screen row the viewport
+// already paid for. The list block is padded out to its whole window first: a
+// projection shorter than the window would otherwise pull the dock up the frame,
+// and a dock that sits in a different place per projection is the same moving
+// target docking it was meant to retire.
+func (m *OutlinerModel) writePeekDock(b *strings.Builder, viewport outlinerViewport) {
+	dock := m.PeekDockLines()
+	if len(dock) == 0 {
+		return
+	}
+	for drawn := viewport.drawnRows(); drawn < viewport.VisibleRows; drawn++ {
+		b.WriteString("\n")
+	}
+	m.pointerFrame.recordDock(strings.Count(b.String(), "\n")+1, len(dock))
+	for _, line := range dock {
+		b.WriteString("\n")
+		b.WriteString(line)
 	}
 }

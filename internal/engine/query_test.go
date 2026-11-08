@@ -103,14 +103,14 @@ func TestRuntimeQueryAnswersPopulationCensusAndModes(t *testing.T) {
 	archived := createHeadlessProject(t, runtime, "Old")
 
 	parent := captureHeadless(t, runtime, app.CaptureRequest{ProjectID: alpha.ID, Title: "Parent", Priority: 3})
-	captureHeadless(t, runtime, app.CaptureRequest{ProjectID: alpha.ID, Title: "Child", ParentID: &parent.TaskID})
+	child := captureHeadless(t, runtime, app.CaptureRequest{ProjectID: alpha.ID, Title: "Child", ParentID: &parent.TaskID})
 	blocker := captureHeadless(t, runtime, app.CaptureRequest{ProjectID: alpha.ID, Title: "Blocker", Priority: 1})
 	dependent := captureHeadless(t, runtime, app.CaptureRequest{
 		ProjectID: alpha.ID, Title: "Dependent", Dependencies: []app.TaskLocator{blocker},
 	})
 	tomorrow := time.Date(2026, time.October, 7, 0, 0, 0, 0, time.Local)
 	later := tomorrow.AddDate(0, 0, 4)
-	captureHeadless(t, runtime, app.CaptureRequest{ProjectID: alpha.ID, Title: "Dated", Priority: 2, Due: &later})
+	dated := captureHeadless(t, runtime, app.CaptureRequest{ProjectID: alpha.ID, Title: "Dated", Priority: 2, Due: &later})
 	captureHeadless(t, runtime, app.CaptureRequest{ProjectID: alpha.ID, Title: "Soon", Priority: 3, Due: &tomorrow})
 	finished := captureHeadless(t, runtime, app.CaptureRequest{ProjectID: alpha.ID, Title: "Finished"})
 	if _, err := service.Transition(app.StateRequest{Locator: finished, Target: models.StateDone}); err != nil {
@@ -169,6 +169,17 @@ func TestRuntimeQueryAnswersPopulationCensusAndModes(t *testing.T) {
 		if !next[0].Next || next[0].Today {
 			t.Fatalf("next item carries the wrong membership: %+v", next[0])
 		}
+
+		// Agenda is the work already decided on: Next's two, the pinned one, and
+		// the one started. The rest of the inbox stays out.
+		if _, err := service.SetPinned(dated, true); err != nil {
+			t.Fatalf("SetPinned: %v", err)
+		}
+		if _, err := service.Transition(app.StateRequest{Locator: child, Target: models.StateDoing}); err != nil {
+			t.Fatalf("start: %v", err)
+		}
+		requireTitles(t, "agenda", runQuery(t, runtime, queryOf(t, models.QueryModeAgenda)),
+			"Dated", "Parent", "Child", "Dependent")
 
 		env.clock.advance(time.Hour)
 		if _, err := service.SetPriority(blocker, 2); err != nil {

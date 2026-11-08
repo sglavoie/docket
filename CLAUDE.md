@@ -1206,7 +1206,7 @@ cascade, and refuses the system Unfiled project.
 
 ## Documentation and scenarios
 
-User-facing docs must describe only the eight-state, seven-mode, Outliner-only
+User-facing docs must describe only the eight-state, eight-mode, Outliner-only
 product and maintenance-only CLI. Historical fields may appear only in
 identified migration sections.
 

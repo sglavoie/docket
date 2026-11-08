@@ -3,7 +3,7 @@
   "fixture": "busy",
   "size": "100x35",
   "actions": [
-    { "type": "key", "key": "2" },
+    { "type": "key", "key": "3" },
     { "type": "key", "label": "plan both suggestions so the day holds planned work beside the overdue task", "key": "I" },
     { "type": "key", "key": "t" },
     { "type": "key", "key": "t" },

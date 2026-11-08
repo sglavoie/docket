@@ -78,9 +78,10 @@ clears its plan. Use `wt` for Today, `wn` for Next, and `wb` for Backlog.
 **Projects organize tasks.** Capture goes to the current project, or Unfiled
 when you are browsing all projects. Tasks can have subtasks within their project.
 
-**Modes choose what you see.** `Tab` cycles All → Today → Inbox → Next → Backlog
-→ Due → Recent; `Shift+Tab` reverses it. All is home. Press `g` to see shortcuts
-for jumping directly to a mode. [Modes and lanes](docs/guide/outliner-modes.md)
+**Modes choose what you see.** `Tab` cycles All → Agenda → Today → Inbox → Next → Backlog → Due → Recent;
+`Shift+Tab` reverses it. All is home, and Agenda (`2`) is All narrowed to the
+work already decided on. Press `g` to see shortcuts for jumping directly to a
+mode. [Modes and lanes](docs/guide/outliner-modes.md)
 explains how each view groups your work.
 
 ## Install and start

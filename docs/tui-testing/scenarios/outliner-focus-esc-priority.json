@@ -8,6 +8,7 @@
     { "type": "key", "key": "tab" },
     { "type": "key", "key": "tab" },
     { "type": "key", "key": "tab" },
+    { "type": "key", "key": "tab" },
     { "type": "key", "label": "land on the first Backlog task, which leads its singleton project group", "key": "home" },
     { "type": "assert", "assert": "contains", "value": "Launch platform" },
     { "type": "key", "label": "focus the Launch platform descendants", "key": "enter" },
