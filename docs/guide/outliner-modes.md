@@ -100,6 +100,23 @@ is fixed when the pass opens, a selection refuses it, and the pass closes by
 itself after the last card. The morning greeting points at it when the Inbox
 holds work: `2 in Inbox (I triage)`.
 
+At the end of the day, Task → **Close the Day…** walks what Today still holds
+the same way, under `Close the day`. It switches the view to Today, then shows
+one card for each open task Today draws as the day's own, planned or dated,
+never the Suggested lane. Every card opens on what the day already finished,
+`✓ 3 done today`. `d` finishes the task, `n` moves it to Next, `b` to Backlog,
+and `@` reschedules it, which is the only way an overdue task leaves Today,
+since Today draws it by its date and not by its plan. `r` writes its resume
+note and brings the card back with the note on it. `Space` keeps the task in
+Today for tomorrow, and `u` takes back the last card as it does in triage.
+After the last card, or when `Esc` finishes early, the pass ends on a `Day
+closed` card. It lists the day's completions, says how many tasks went to Next
+or Backlog and how many are still in Today, shows the week behind as the same
+bars Today draws, and ends on one line of send-off. `Enter` or `Esc` closes it,
+and `u` returns to the last card. A day with nothing left open goes straight
+to that card. Each routing is the row's own change, with its own undo entry
+and feedback.
+
 Under its rows, wherever the window has room, Today draws the day around the
 list. Once something is finished, `Done today · 3` lists today's completions
 struck through, newest first, with the last seven days as a small bar chart

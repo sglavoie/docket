@@ -421,6 +421,15 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 				message = commandMessage(m.statusReadingTimeout())
 			}
 		}
+	case operation.OperationCoreCloseDay:
+		if out, ok := m.outlinerPrimary(); ok {
+			cmd, refusal := out.OpenCloseDay()
+			if refusal != "" {
+				m.setInfoStatus(refusal)
+				cmd = m.statusReadingTimeout()
+			}
+			message = commandMessage(cmd)
+		}
 	case operation.OperationCoreSetUpCheckIns:
 		message = commandMessage(m.startCheckInSetup())
 	case operation.OperationCoreNoteLeftOff:

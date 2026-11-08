@@ -191,3 +191,13 @@ func (canvas DayCanvas) RestingCard(width int) []string {
 	}
 	return lines
 }
+
+// WeekReading is the week behind as one styled phrase — the sparkline, then
+// its total — for a surface that quotes the canvas rather than drawing a
+// block of it. It says nothing before there is completion history.
+func (canvas DayCanvas) WeekReading() string {
+	if len(canvas.Behind) == 0 {
+		return ""
+	}
+	return canvas.renderSparkline("") + theme.MutedStyle.Render(fmt.Sprintf(" %d done", canvas.WeekDone()))
+}

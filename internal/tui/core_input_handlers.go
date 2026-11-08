@@ -483,6 +483,7 @@ func (m *AppModel) coreHelpItemsForContext(ctx operation.CommandContext, include
 		id   operation.OperationID
 		menu string
 	}{
+		{operation.OperationCoreCloseDay, "Task"},
 		{operation.OperationCoreSetUpCheckIns, "Task"},
 		{operation.OperationCoreNoteLeftOff, "Task"},
 		{operation.OperationCoreChangeHistory, "Edit"},

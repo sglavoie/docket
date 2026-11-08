@@ -65,6 +65,21 @@ own ledger entry. Strict project and catalog preconditions prevent concurrent
 scheduling or project parking from merging past eligibility validation. The
 pass never changes navigation, persists a queue, or broadens its initial set.
 
+The target-free `OperationCoreCloseDay` is the triage pass's third source, not
+a second pass. `OpenCloseDay`, beside triage in `outliner_review_advance.go`, selects Today when another mode stands, then
+freezes the queue from `closeDayRow`: a drawn, nonterminal `IsTodaySection`
+task row outside the Suggested lane. `closeDayRoutes` replaces the triage keymap
+under that source. `d`, `n`, and `b` run the row operations, as triage's routes
+do. `@` and `r` ask first, through `triageRouteAsks`, so their card stays
+pending until the rows stop drawing it. Exhaustion goes through
+`exhaustTriage`, which leaves this source standing with `closed` set instead of
+closing it, and `Esc` sets the same flag. The closing card is
+`chrome.RenderDayClosedCard` over `dayClosedSpec`. That spec reads completions
+and the week from the day canvas, counts destinations from the trail's routing
+keys, and counts what Today still holds from the rows as they stand, so an undo
+from `u` on that card is measured like any other. Nothing in the pass writes on
+its own: every commit is the executor's.
+
 The split lands the same way everywhere. What the surface is for stays direct;
 what is destructive or rare goes behind `Space`, and a destructive row confirms
 before any transaction begins. That is why the entity menus are so short: they

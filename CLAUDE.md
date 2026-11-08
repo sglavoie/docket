@@ -265,8 +265,8 @@ key earns nothing. The menu bar is not a sheet but a projection of the registry,
 the class `?` help and the footer ranks belong to, so it names directly-bound
 operations freely. What it may not do is make an entity operation keyless: a
 menu-only operation's `TargetSource` is target-free or view-scoped, never a task
-or project. Clear All Folds, Advisories, Menu Bar, Recent Messages and Set Up Check-Ins:
-keyless, target-free. The
+or project. Clear All Folds, Advisories, Menu Bar, Recent Messages, Set Up Check-Ins,
+Close the Day: keyless, target-free. The
 task-row `Space` menu holds Set Check-In under `Schedule` and Delete, identical
 to the bulk menu: the editor saves with `Ctrl+S`; Delete confirms first. The Hub sheet is
 Archive/Unarchive and Delete; selections use bulk tags. Notes and Comments offer Delete. The

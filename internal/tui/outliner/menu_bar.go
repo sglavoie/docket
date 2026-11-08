@@ -101,6 +101,7 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, checks ViewMenuChecks) 
 				{OperationID: operation.OperationTaskSetState, KeepUnavailable: true, Label: "Set Status…", Group: "Status"},
 				{OperationID: operation.OperationCoreBacklog, KeepUnavailable: true, Label: "Backlog (clear plan)", Group: "Status"},
 				{OperationID: operation.OperationCoreTriage, Label: "Triage…"},
+				{OperationID: operation.OperationCoreCloseDay, Label: "Close the Day…"},
 				{OperationID: operation.OperationCoreUndo, Group: "Recovery", KeepUnavailable: true},
 				{OperationID: operation.OperationCoreRedo, Group: "Recovery", KeepUnavailable: true},
 				menuSeparator(),

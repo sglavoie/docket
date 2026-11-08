@@ -117,7 +117,10 @@ func padToWidth(line string, width int) string {
 
 // TriageCardSpec is one card of a sorting pass.
 type TriageCardSpec struct {
-	Heading     string
+	Heading string
+	// Lead is an optional styled line above the progress rule: what the pass
+	// already knows about the whole of what it is sorting.
+	Lead        string
 	Position    int
 	Total       int
 	Title       string
@@ -148,6 +151,9 @@ func RenderTriageCard(spec TriageCardSpec, width int) string {
 	header := label + strings.Repeat(" ", max(contentWidth-lipgloss.Width(label)-lipgloss.Width(counter), 1)) + counter
 
 	lines := []string{triageProgressBar(spec.Position-1, spec.Total, contentWidth), ""}
+	if spec.Lead != "" {
+		lines = append([]string{textfit.TruncateIntentional(spec.Lead, contentWidth, "…")}, lines...)
+	}
 	for _, line := range textfit.WrapText(strings.TrimSpace(spec.Title), contentWidth) {
 		lines = append(lines, theme.BoldPrimaryStyle.Render(line))
 	}

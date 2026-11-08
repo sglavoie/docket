@@ -144,7 +144,7 @@ when you pressed `:`: `wd` completes the task, `@` opens its scheduling picker,
 a destructive row still asks first, and a refusal is the key's own sentence. The
 list includes the actions no key reaches, under the menu that holds them —
 **Clear All Folds**, **Toggle Motion**, **Set Up Check-Ins**, **Note Where I
-Left Off** — and an action the
+Left Off**, **Close the Day** — and an action the
 cursor cannot take stays listed, dimmed, with the reason under the list. While
 you are typing anywhere else — capture, `/` search, a prompt — `:` is a colon.
 The palette is Outliner-only for now; Notes, the Hub, and the panels keep `?`.

@@ -76,6 +76,7 @@ const (
 	OperationCoreSetUpCheckIns      OperationID = "tui.core.set-up-check-ins"
 	OperationCoreNoteLeftOff        OperationID = "tui.core.note-left-off"
 	OperationCoreTriage             OperationID = "tui.core.triage"
+	OperationCoreCloseDay           OperationID = "tui.core.close-day"
 	OperationCoreToggleAdvisories   OperationID = "tui.core.toggle-advisories"
 	OperationCoreToggleMouse        OperationID = "tui.core.toggle-mouse"
 	OperationCoreToggleMotion       OperationID = "tui.core.toggle-motion"

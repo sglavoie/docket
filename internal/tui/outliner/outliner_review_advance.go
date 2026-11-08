@@ -1,11 +1,13 @@
 package outliner
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/chrome"
@@ -13,6 +15,7 @@ import (
 	"github.com/sglavoie/docket/internal/tui/query"
 	"github.com/sglavoie/docket/internal/tui/status"
 	"github.com/sglavoie/docket/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // reviewAdvanceExhaustedStatus is what a review pass says when it has run out of
@@ -157,11 +160,18 @@ type triageState struct {
 	// covered is whether a shell question stands over the view, set by the shell
 	// once per update, so the card steps aside rather than stacking under it.
 	covered bool
+	// closed is a Close the Day pass standing on its closing card: every card
+	// has left the pass, or Esc finished it early, and what is left to read is
+	// the day. Only that source ever sets it.
+	closed bool
 }
 
 type triageStep struct {
 	identity taskref.TaskIdentity
 	routed   bool
+	// key is the routing key a routed card took, which is what the closing card
+	// counts its destinations from.
+	key string
 }
 
 type triageSource int
@@ -169,6 +179,7 @@ type triageSource int
 const (
 	triageSourceInbox triageSource = iota
 	triageSourceSuggested
+	triageSourceCloseDay
 )
 
 // TriageRouteMsg asks the shell to run one operation against the cursor the
@@ -194,7 +205,8 @@ var triageRoutes = map[string]TriageRouteMsg{
 }
 
 func triageRouteAsks(route TriageRouteMsg) bool {
-	return route.OperationID == operation.OperationTaskMoveToProject || route.OperationID == operation.OperationTaskDelete
+	return route.OperationID == operation.OperationTaskMoveToProject || route.OperationID == operation.OperationTaskDelete ||
+		route.OperationID == operation.OperationTaskSetResumeNote || route.OperationID == operation.OperationTaskSetDueDate
 }
 
 // OpenTriage starts a pass over the drawn rows the current view offers for
@@ -267,7 +279,7 @@ func (m *OutlinerModel) triageCurrent() (taskref.TaskIdentity, int, bool) {
 // build, which is when a committed move or delete lands, and before every key,
 // the first moment a question the reader declined is known to be over.
 func (m *OutlinerModel) settleTriage(declined bool) {
-	if !m.Triage.Active {
+	if !m.Triage.Active || m.Triage.closed {
 		return
 	}
 	if pending := m.Triage.pending; pending.Valid() {
@@ -280,13 +292,24 @@ func (m *OutlinerModel) settleTriage(declined bool) {
 		}
 	}
 	if _, _, ok := m.triageCurrent(); !ok {
-		m.CloseTriage()
+		m.exhaustTriage()
 	}
 }
 
 // handleTriageKey owns every key while the pass is open. Anything it does not
 // name is swallowed, since the rows it would act on are under the card.
 func (m *OutlinerModel) handleTriageKey(key string) (tea.Model, tea.Cmd) {
+	if m.Triage.closed {
+		return m, m.handleDayClosedKey(key)
+	}
+	if key == "esc" && m.Triage.source == triageSourceCloseDay {
+		// Stopping a Close the Day pass early still ends on the day it closed.
+		m.settleTriage(true)
+		if m.Triage.Active {
+			m.Triage.closed = true
+		}
+		return m, nil
+	}
 	if key == "esc" || key == "q" {
 		m.CloseTriage()
 		return m, nil
@@ -298,7 +321,7 @@ func (m *OutlinerModel) handleTriageKey(key string) (tea.Model, tea.Cmd) {
 		return m, m.triageBack()
 	}
 	identity, index, _ := m.triageCurrent()
-	route, routed := triageRoutes[key]
+	route, routed := m.triageRouteFor(key)
 	switch {
 	case routed && triageRouteAsks(route):
 		// Both ask a question first, so the card stays until the rows say the
@@ -306,11 +329,15 @@ func (m *OutlinerModel) handleTriageKey(key string) (tea.Model, tea.Cmd) {
 		m.Triage.pending = identity
 	case routed, key == "space", key == "s", key == "l", key == "right":
 		m.Triage.handled[identity] = true
-		m.Triage.trail = append(m.Triage.trail, triageStep{identity: identity, routed: routed})
+		step := triageStep{identity: identity, routed: routed}
+		if routed {
+			step.key = key
+		}
+		m.Triage.trail = append(m.Triage.trail, step)
 		if _, _, more := m.triageCurrent(); !more {
 			// The last card closes the pass at once, so the routing's own feedback
 			// — and an Inbox zero, when this emptied it — is what is left on screen.
-			m.CloseTriage()
+			m.exhaustTriage()
 		}
 	default:
 		return m, nil
@@ -345,6 +372,11 @@ func (m *OutlinerModel) composeTriageCard(host string, width, frameHeight int) (
 	if !m.Triage.Active || m.Triage.covered {
 		return "", false
 	}
+	if m.Triage.closed {
+		card := chrome.FitOverlayPopupHeight(chrome.RenderDayClosedCard(m.dayClosedSpec(time.Now()), width), m.outlinerModalBudget(width))
+		composed, _ := chrome.OverlayPopupDimmedPlaced(host, card, width, frameHeight)
+		return composed, true
+	}
 	identity, index, ok := m.triageCurrent()
 	if !ok {
 		return "", false
@@ -355,8 +387,12 @@ func (m *OutlinerModel) composeTriageCard(host string, width, frameHeight int) (
 		Meta:       triageMeta(task, m.crossResolveProject(m.Rows[index].ProjectID), time.Now()),
 		ResumeNote: task.ResumeNote, Description: task.Description,
 	}
-	if m.Triage.source == triageSourceSuggested {
+	switch m.Triage.source {
+	case triageSourceSuggested:
 		spec.Heading = "Plan today"
+	case triageSourceCloseDay:
+		spec.Heading = "Close the day"
+		spec.Lead = m.closeDayLead(time.Now())
 	}
 	// Every entry ahead of the card has left the pass, so its own place in the
 	// frozen queue is the count.
@@ -392,6 +428,9 @@ func triageMeta(task *models.Task, project *models.Project, now time.Time) strin
 // triageGuidance is the pass's own keymap. It takes no footer rank, as a gated
 // keymap does not: these keys exist only while the card is up.
 func (m *OutlinerModel) triageGuidance() chrome.GuidanceSpec {
+	if m.Triage.source == triageSourceCloseDay {
+		return m.closeDayGuidance()
+	}
 	hints := chrome.RequiredGuidanceHints("t today", "n next", "b backlog", "d done")
 	hints = append(hints, chrome.OptionalGuidanceHints(3, "% project", "x delete")...)
 	hints = append(hints, chrome.RequiredGuidanceHints("Space skip")...)
@@ -399,5 +438,173 @@ func (m *OutlinerModel) triageGuidance() chrome.GuidanceSpec {
 		hints = append(hints, chrome.OptionalGuidanceHints(2, "u back")...)
 	}
 	hints = append(hints, chrome.RequiredGuidanceHints("Esc stop")...)
+	return chrome.GuidanceSpec{Hints: hints, Rows: 2}
+}
+
+// Close the Day is the triage pass's third source: Today's own work, walked
+// one card at a time at the end of the day, then a closing card that reads the
+// day back. It is the same view-local gated sub-state as the other two — the
+// queue is frozen at opening, every routing is the row operation the card names
+// through the shell's executor, and each is its own undo entry — so it adds a
+// source and an ending, never a second pass.
+
+// closeDayRoutes is the card's keymap. Today is where every card already
+// stands, so `t` is absent, and so are `%` and `x`: closing a day decides when
+// work happens, not what or where it is. `@` reschedules, which is the only
+// way an overdue card leaves Today, since Today draws it by its date and not
+// by its plan. `r` writes the line tomorrow resumes from and leaves the card
+// up, since a note decides nothing about the task.
+var closeDayRoutes = map[string]TriageRouteMsg{
+	"d": {OperationID: operation.OperationTaskSetState, Value: models.StateDone, HasValue: true},
+	"n": {OperationID: operation.OperationCoreNext},
+	"b": {OperationID: operation.OperationCoreBacklog},
+	"@": {OperationID: operation.OperationTaskSetDueDate},
+	"r": {OperationID: operation.OperationTaskSetResumeNote},
+}
+
+// triageRouteFor is the routing a key names under the open pass's source.
+func (m *OutlinerModel) triageRouteFor(key string) (TriageRouteMsg, bool) {
+	if m.Triage.source == triageSourceCloseDay {
+		route, ok := closeDayRoutes[key]
+		return route, ok
+	}
+	route, ok := triageRoutes[key]
+	return route, ok
+}
+
+// OpenCloseDay starts a Close the Day pass. It moves the view to Today first,
+// since the day is what Today draws, then freezes the queue from the open work
+// that lane holds; a day with nothing left open goes straight to its closing
+// card. The returned command is the mode switch's own.
+func (m *OutlinerModel) OpenCloseDay() (tea.Cmd, string) {
+	if m.IsMultiSelectActive() || m.IsRangeSelectionActive() {
+		return nil, "Close the Day works one task at a time: clear the selection first"
+	}
+	var cmd tea.Cmd
+	if m.ActiveOutlinerMode() != chrome.ModeToday {
+		_, cmd = m.SelectOutlinerMode(chrome.ModeToday)
+	}
+	queue := m.closeDayQueue()
+	// The card is the detail now, as it is for every triage pass.
+	m.PeekMode = false
+	m.Triage = triageState{
+		Active: true, source: triageSourceCloseDay, queue: queue,
+		handled: make(map[taskref.TaskIdentity]bool, len(queue)),
+		closed:  len(queue) == 0,
+	}
+	return cmd, ""
+}
+
+// closeDayQueue is the open work the Today projection draws as the day's own,
+// in drawn order: never the Suggested lane, which is an offer and not a plan.
+func (m *OutlinerModel) closeDayQueue() []taskref.TaskIdentity {
+	seen := make(map[taskref.TaskIdentity]bool)
+	var queue []taskref.TaskIdentity
+	for _, row := range m.Rows {
+		if !closeDayRow(row) {
+			continue
+		}
+		if identity := m.TaskIdentityForRow(row); identity.Valid() && !seen[identity] {
+			seen[identity] = true
+			queue = append(queue, identity)
+		}
+	}
+	return queue
+}
+
+// closeDayRow is the one predicate for the day's open work: a task row Today
+// drew in its own lane, not yet finished, and not merely suggested.
+func closeDayRow(row OutlinerRow) bool {
+	return row.IsTaskRow() && row.Task != nil && row.IsTodaySection &&
+		!row.Task.IsTerminalState() && row.Group.SectionKey != todaySuggestionsCollapseKey
+}
+
+// exhaustTriage ends a pass with no card left to show. A Close the Day pass
+// stands on its closing card instead; every other source closes outright.
+func (m *OutlinerModel) exhaustTriage() {
+	if m.Triage.source == triageSourceCloseDay {
+		m.Triage.pending = taskref.TaskIdentity{}
+		m.Triage.closed = true
+		return
+	}
+	m.CloseTriage()
+}
+
+// handleDayClosedKey owns the closing card. `u` takes back the last card, as
+// it does on any card; every exit key closes the pass, and anything else is
+// swallowed, since the rows it would act on are under the card.
+func (m *OutlinerModel) handleDayClosedKey(key string) tea.Cmd {
+	switch key {
+	case "u":
+		if len(m.Triage.trail) == 0 {
+			return nil
+		}
+		m.Triage.closed = false
+		return m.triageBack()
+	case "esc", "q", "enter", "space":
+		m.CloseTriage()
+	}
+	return nil
+}
+
+// closeDayLead is the line over every card: what the day already finished, so
+// the pass opens on what went well before it asks about what did not.
+func (m *OutlinerModel) closeDayLead(now time.Time) string {
+	done := len(m.computeDayCanvas(now).Done)
+	check := lipgloss.NewStyle().Foreground(theme.ColorSuccess).Render("✓")
+	switch done {
+	case 0:
+		return theme.MutedStyle.Render("Nothing finished yet today")
+	case 1:
+		return check + theme.MutedStyle.Render(" 1 done today")
+	default:
+		return check + theme.MutedStyle.Render(fmt.Sprintf(" %d done today", done))
+	}
+}
+
+// dayClosedSpec reads the closing card. The day's completions and the week
+// come from the canvas, so they agree with the blocks Today draws; where the
+// pass sent work comes from its trail; and what Today still holds is read off
+// the rows as they now stand, after every routing has landed.
+func (m *OutlinerModel) dayClosedSpec(now time.Time) chrome.DayClosedCardSpec {
+	canvas := m.computeDayCanvas(now)
+	spec := chrome.DayClosedCardSpec{Date: now.Format("Monday, January 2"), Week: canvas.WeekReading()}
+	for _, task := range canvas.Done {
+		spec.Done = append(spec.Done, chrome.DayClosedDone{Title: task.Title, ProjectSlug: task.ProjectSlug})
+	}
+	for _, step := range m.Triage.trail {
+		switch step.key {
+		case "n":
+			spec.Next++
+		case "b":
+			spec.Backlog++
+		}
+	}
+	seen := make(map[taskref.TaskIdentity]bool)
+	for _, row := range m.Rows {
+		if identity := m.TaskIdentityForRow(row); closeDayRow(row) && identity.Valid() && !seen[identity] {
+			seen[identity] = true
+			spec.StillToday++
+		}
+	}
+	return spec
+}
+
+// closeDayGuidance is the pass's keymap, on a card and on the closing card. It
+// takes no footer rank, as no gated keymap does.
+func (m *OutlinerModel) closeDayGuidance() chrome.GuidanceSpec {
+	if m.Triage.closed {
+		hints := chrome.RequiredGuidanceHints("Enter close")
+		if len(m.Triage.trail) > 0 {
+			hints = append(hints, chrome.OptionalGuidanceHints(2, "u back")...)
+		}
+		return chrome.GuidanceSpec{Hints: hints, Rows: 1}
+	}
+	hints := chrome.RequiredGuidanceHints("d done", "n next", "b backlog", "Space keep")
+	hints = append(hints, chrome.OptionalGuidanceHints(3, "@ date", "r note")...)
+	if len(m.Triage.trail) > 0 {
+		hints = append(hints, chrome.OptionalGuidanceHints(2, "u back")...)
+	}
+	hints = append(hints, chrome.RequiredGuidanceHints("Esc finish")...)
 	return chrome.GuidanceSpec{Hints: hints, Rows: 2}
 }

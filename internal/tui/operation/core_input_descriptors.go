@@ -411,6 +411,10 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		// Suggested lane. It is target-free: the pass freezes its own queue from the
 		// drawn rows, and each card's routing runs the row operation it names.
 		core(OperationCoreTriage, "Triage", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "triage inbox", "sort inbox", "plan suggestions", "process inbox"),
+		// Close the Day is Triage over Today's own work, opened from the menu and
+		// never a key: it switches to Today itself, walks what the day still holds,
+		// and ends on a card naming what the day finished.
+		core(OperationCoreCloseDay, "Close the Day", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "wrap up the day", "end of day", "shutdown", "daily review", "close day"),
 		core(OperationCoreSetUpCheckIns, "Set Up Check-Ins", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "schedule active work", "check-in setup"),
 		// Note Where I Left Off is target-free for the same reason Set Up Check-Ins
 		// is: the task it writes for is the one a commit just took out of Doing, named
