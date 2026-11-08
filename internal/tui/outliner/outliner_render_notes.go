@@ -45,7 +45,7 @@ func (m *OutlinerModel) noteRowSlug(row notes.LocatedNoteRow, rowWidth int) (str
 		projectRow := OutlinerRow{ProjectID: row.Location.ProjectID}
 		return m.rankedProjectSlug(projectRow, rowWidth), nil, false
 	}
-	slug := project.Slug
+	slug, _ := models.ProjectDisplayLabel(project)
 	if slug == "" {
 		slug = project.Name
 	}

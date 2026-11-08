@@ -213,6 +213,12 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		return m.coreGotoRelation(invocation.Targets)
 	case operation.OperationCoreGotoCaptured:
 		return m.coreGotoCaptured()
+	case operation.OperationCoreBrowseWeek:
+		if out, ok := m.outlinerPrimary(); ok {
+			if refusal, opened := out.OpenWeekBrowse(); !opened {
+				return operation.OperationHandlerResult{Status: refusal}
+			}
+		}
 	case operation.OperationCoreCollapseParent:
 		if out, ok := m.outlinerPrimary(); ok {
 			out.CollapseOrMoveToParent()
@@ -372,6 +378,12 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		err = m.coreToggleTheme()
 		if err == nil {
 			message = commandMessage(m.statusReadingTimeout())
+		}
+	case operation.OperationCoreThemeDark, operation.OperationCoreThemeLight, operation.OperationCoreThemeEmber,
+		operation.OperationCoreThemeFjord, operation.OperationCoreThemeSepia, operation.OperationCoreThemeTerminal:
+		var query tea.Cmd
+		if query, err = m.coreSetTheme(outliner.ThemeForOperation(invocation.Descriptor.ID)); err == nil {
+			message = commandMessage(tea.Batch(query, m.statusReadingTimeout()))
 		}
 	case operation.OperationCoreToggleMenuBar:
 		err = m.coreToggleMenuBar()

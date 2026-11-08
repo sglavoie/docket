@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/docket/internal/app"
 	"github.com/sglavoie/docket/internal/external"
+	"github.com/sglavoie/docket/internal/logging"
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/help"
 	"github.com/sglavoie/docket/internal/tui/history"
@@ -547,7 +548,27 @@ func (m *AppModel) openCommandPalette(ctx operation.CommandContext) error {
 	// it stands over rather than trusting every caller to have.
 	ctx.View = presentation.ViewCrossProjectOutliner
 	m.commandPalette = help.NewCommandPalette(ctx, m.outlinerActionItems(ctx))
+	if machine := m.machineState(); machine != nil {
+		m.commandPalette.SetRecent(machine.PaletteRecent)
+	}
 	return nil
+}
+
+// rememberPaletteAction names the request's row as this machine's most recent palette action,
+// so the next empty palette leads with it. A failed write costs only that
+// ordering, so it is logged rather than said.
+func (m *AppModel) rememberPaletteAction(request operation.OperationExecutionRequest) {
+	machine := m.machineState()
+	if machine == nil || m.domain.runtime == nil {
+		return
+	}
+	next, moved := machine.Clone().WithPaletteUse(help.PaletteRecentKey(request.ID, request.Value, request.HasValue))
+	if !moved {
+		return
+	}
+	if err := m.domain.runtime.CommitMachine(&next); err != nil {
+		logging.Warn("save palette recent: %v", err)
+	}
 }
 
 // runPaletteAction closes the palette and runs its row through the executor,
@@ -564,5 +585,6 @@ func (m *AppModel) runPaletteAction(msg help.RunPaletteActionMsg) tea.Cmd {
 	if m.currentView() != msg.Request.Context.View {
 		return nil
 	}
+	m.rememberPaletteAction(msg.Request)
 	return operation.ResultCmd(m.operations.Executor.Execute(msg.Request))
 }

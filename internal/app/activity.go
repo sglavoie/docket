@@ -20,6 +20,8 @@ type CompletionActivity struct {
 	AsOf             time.Time
 	medianPerDay     float64
 	completedToday   int
+	activeDayMedian  float64
+	bestPriorDay     int
 }
 
 // IsCurrentLocalDay reports whether the snapshot was computed on the same
@@ -41,6 +43,20 @@ func (a CompletionActivity) HasHistory() bool {
 // days in the activity window, including days with zero completions.
 func (a CompletionActivity) MedianPerDay() float64 {
 	return a.medianPerDay
+}
+
+// ActiveDayMedian reports the median Done-task count across the window's days
+// before today that finished anything, or 0 when none did. It is the honest
+// reference for an occasional user, whose all-days median is 0: what a day
+// that gets worked on usually closes.
+func (a CompletionActivity) ActiveDayMedian() float64 {
+	return a.activeDayMedian
+}
+
+// BestPriorDay reports the largest Done-task count on any window day before
+// today, or 0 when none finished anything.
+func (a CompletionActivity) BestPriorDay() int {
+	return a.bestPriorDay
 }
 
 // CompletedToday reports the Done-task count in the current local calendar day.
@@ -126,17 +142,38 @@ func completionActivityFromProjects(projects []*models.Project, now time.Time) C
 	}
 
 	counts := make([]int, 0, completionActivityWindowDays)
+	active := make([]int, 0, completionActivityWindowDays)
+	best := 0
 	for _, day := range activityDays {
 		counts = append(counts, daily[day])
+		if day.Equal(today) || daily[day] == 0 {
+			continue
+		}
+		active = append(active, daily[day])
+		best = max(best, daily[day])
 	}
-	sort.Ints(counts)
-	middle := len(counts) / 2
-	median := float64(counts[middle-1]+counts[middle]) / 2
+	median := medianOfCounts(counts)
 
 	return CompletionActivity{
 		DailyCompletions: daily,
 		AsOf:             now,
 		medianPerDay:     median,
 		completedToday:   daily[today],
+		activeDayMedian:  medianOfCounts(active),
+		bestPriorDay:     best,
 	}
+}
+
+// medianOfCounts is the median of counts, averaging the middle pair of an even
+// set, or 0 for an empty one. It sorts counts in place.
+func medianOfCounts(counts []int) float64 {
+	if len(counts) == 0 {
+		return 0
+	}
+	sort.Ints(counts)
+	middle := len(counts) / 2
+	if len(counts)%2 == 1 {
+		return float64(counts[middle])
+	}
+	return float64(counts[middle-1]+counts[middle]) / 2
 }

@@ -201,9 +201,14 @@ func (m *AppModel) setRecoveryFeedback(successMessage, transactionID string, ori
 //
 // Open offers the captured task's way there, the `gl open` ending; it is a word
 // of the toast rather than of the ledger, so a re-render keeps offering it.
+//
+// Title is the committed task's whole title, which a phrased outcome reads in
+// place of the ledger's: the ledger fits its title to a narrow column, while
+// the toast has the footer's whole row to spend.
 type recoveryWords struct {
 	Context  string
 	Headline string
+	Title    string
 	Open     bool
 }
 
@@ -233,7 +238,7 @@ func (m *AppModel) setRecoveryFeedbackWithContext(
 	}
 	if headline := strings.TrimSpace(words.Headline); headline != "" {
 		action, context = headline, ""
-	} else if headline := m.statusChangeHeadline(entry.Action, context); headline != "" {
+	} else if headline := m.statusChangeHeadline(entry.Action, context, words.Title); headline != "" {
 		action, context = headline, ""
 	}
 	undoCb := func() tea.Cmd { return m.handleLedgerTaskUndoRedo(false) }

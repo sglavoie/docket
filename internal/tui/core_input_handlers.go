@@ -6,8 +6,10 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	uv "github.com/charmbracelet/ultraviolet"
 
 	"github.com/sglavoie/docket/internal/app"
+	"github.com/sglavoie/docket/internal/config"
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/help"
@@ -96,9 +98,25 @@ func (m *AppModel) coreCaptureMessage() tea.Msg {
 				unfiled = m.projectByID(id)
 			}
 		}
-		return m.captureComposerMessage(unfiled, m.availableProjects())
+		return m.modeCaptureMessage(out, unfiled)
 	}
-	return m.captureComposerMessage(project, m.availableProjects())
+	return m.modeCaptureMessage(out, project)
+}
+
+// modeCaptureMessage opens capture into project and, from Today mode, plans the
+// draft for Today: what is captured while reading the day belongs to it, so the
+// new row lands on the screen it was typed over instead of leaving to Inbox.
+// That is the draft's default destination and nothing more, so the route row
+// says it before Enter and any typed `$destination` still replaces it.
+func (m *AppModel) modeCaptureMessage(out *outliner.OutlinerModel, project *models.Project) tea.Msg {
+	preset, ok := m.captureComposerPreset(project, m.availableProjects())
+	if !ok {
+		return nil
+	}
+	if out != nil && out.PrimaryMode == chrome.ModeToday {
+		preset.Shared.Destination = app.CaptureDestinationToday
+	}
+	return taskform.ShowTaskComposerMsg{Preset: preset}
 }
 
 func operationTargetLocators(targets operation.ResolvedOperationTargets) []app.TaskLocator {
@@ -420,7 +438,32 @@ func (m *AppModel) coreToggleTheme() error {
 // applySessionTheme rebuilds every active style for name, writing no machine
 // state: the half of the theme toggle a host's appearance op shares.
 func applySessionTheme(name string) {
-	theme.ApplyTheme(theme.ThemeConfig{Name: name})
+	theme.ApplyNamedTheme(name)
+}
+
+// coreSetTheme saves name as this machine's theme and paints it. Terminal
+// Colors not yet reported this session paints Dark meanwhile and returns the
+// query that asks the terminal for them.
+func (m *AppModel) coreSetTheme(name string) (tea.Cmd, error) {
+	if m.domain.runtime == nil || m.domain.runtime.Machine() == nil {
+		return nil, fmt.Errorf("machine theme is unavailable")
+	}
+	machine := *m.domain.runtime.Machine()
+	machine.Theme = name
+	if err := m.domain.runtime.CommitMachine(&machine); err != nil {
+		return nil, fmt.Errorf("save theme: %w", err)
+	}
+	label := name
+	for _, choice := range theme.ThemeChoices() {
+		if choice.ID == name {
+			label = choice.Label
+		}
+	}
+	m.setInfoStatus("Theme: " + label)
+	if !theme.ApplyNamedTheme(name) {
+		return m.requestTerminalTheme(), nil
+	}
+	return nil, nil
 }
 
 // coreToggleMenuBar pins and unpins the Outliner's menu bar. It is keyless,
@@ -517,4 +560,119 @@ func (m *AppModel) coreCyclePinnedProject() operation.OperationHandlerResult {
 	}
 	m.setInfoStatus(fmt.Sprintf("Pinned project %d/%d: %s", step.Position, step.Total, step.Project.Name))
 	return operation.OperationHandlerResult{Message: commandMessage(m.statusReadingTimeout())}
+}
+
+// The Terminal Colors theme paints Docket in the terminal's own palette. The
+// terminal is asked once per choice: OSC 11 and 10 for its paper and ink, and
+// OSC 4 for each of the sixteen ANSI colors. The answers arrive as ordinary
+// input messages, are gathered here, and are handed to the same role mapping a
+// host's palette and the curated themes take, so a terminal palette lands on
+// the same semantic roles they do.
+//
+// A terminal that never answers costs nothing but the wait: Dark stays painted,
+// and the timeout says so once. A terminal that reports its paper and ink but
+// only some ANSI colors fills the rest from the xterm defaults, since sixteen
+// colors are what the mapping reads.
+
+// terminalThemeWait is how long the session waits for the terminal's colors
+// before it settles on what it has.
+const terminalThemeWait = 1500 * time.Millisecond
+
+// terminalThemeTimeoutMsg ends one round of asking; seq voids an earlier round.
+type terminalThemeTimeoutMsg struct{ seq int }
+
+// terminalThemeQuery gathers one round of answers.
+type terminalThemeQuery struct {
+	seq     int
+	active  bool
+	bg, fg  string
+	palette [16]string
+}
+
+// requestTerminalTheme starts a round of asking the terminal for its colors.
+func (m *AppModel) requestTerminalTheme() tea.Cmd {
+	m.terminalTheme.seq++
+	m.terminalTheme = terminalThemeQuery{seq: m.terminalTheme.seq, active: true}
+	var queries strings.Builder
+	for index := range 16 {
+		fmt.Fprintf(&queries, "\x1b]4;%d;?\x07", index)
+	}
+	seq := m.terminalTheme.seq
+	return tea.Batch(
+		tea.RequestBackgroundColor,
+		tea.RequestForegroundColor,
+		tea.Raw(queries.String()),
+		status.TickCmd(terminalThemeWait, func(time.Time) tea.Msg { return terminalThemeTimeoutMsg{seq: seq} }),
+	)
+}
+
+// handleTerminalThemeMessage gathers the terminal's answers while a round is
+// open and paints the palette once all eighteen are in.
+func (m *AppModel) handleTerminalThemeMessage(msg tea.Msg) (bool, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.BackgroundColorMsg:
+		if !m.terminalTheme.active {
+			return false, nil
+		}
+		m.terminalTheme.bg = theme.ColorHex(msg.Color)
+	case tea.ForegroundColorMsg:
+		if !m.terminalTheme.active {
+			return false, nil
+		}
+		m.terminalTheme.fg = theme.ColorHex(msg.Color)
+	case uv.UnknownOscEvent:
+		index, hex, ok := theme.ParsePaletteReport(string(msg))
+		if !ok {
+			return false, nil
+		}
+		if m.terminalTheme.active {
+			m.terminalTheme.palette[index] = hex
+		}
+	case terminalThemeTimeoutMsg:
+		if msg.seq != m.terminalTheme.seq || !m.terminalTheme.active {
+			return true, nil
+		}
+		return true, m.settleTerminalTheme(true)
+	default:
+		return false, nil
+	}
+	if m.terminalTheme.complete() {
+		return true, m.settleTerminalTheme(false)
+	}
+	return true, nil
+}
+
+func (q terminalThemeQuery) complete() bool {
+	if q.bg == "" || q.fg == "" {
+		return false
+	}
+	for _, hex := range q.palette {
+		if hex == "" {
+			return false
+		}
+	}
+	return true
+}
+
+// settleTerminalTheme closes the round and paints what it gathered. Without the
+// paper and ink there is no palette to paint, so Dark stays and the timeout
+// says why; a choice the machine has since moved off is left alone.
+func (m *AppModel) settleTerminalTheme(timedOut bool) tea.Cmd {
+	query := m.terminalTheme
+	m.terminalTheme.active = false
+	if machine := m.machineState(); machine == nil || machine.Theme != config.ThemeTerminal {
+		return nil
+	}
+	if query.bg == "" || query.fg == "" {
+		if timedOut {
+			m.setInfoStatus("This terminal did not report its colors; showing Dark")
+			return m.statusReadingTimeout()
+		}
+		return nil
+	}
+	if err := theme.ApplyTerminalPalette(theme.TerminalPalette(query.bg, query.fg, query.palette)); err != nil {
+		m.setWarningStatus("Terminal colors were unreadable: " + err.Error())
+		return m.statusReadingTimeout()
+	}
+	return nil
 }

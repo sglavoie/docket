@@ -104,10 +104,16 @@ func CreateProject(state *config.RuntimeState, service *app.Service, id, name st
 // ProjectEdit is one save of a project's own fields. The name, the
 // description, and the complete tag set are all written; a caller keeping one
 // passes its stored value.
+//
+// Alias is the one optional field: nil keeps the stored alias, so a surface
+// that never edits it (the mobile bridge, the stress generator) cannot erase
+// it by omission, while a pointer to "" clears it. A set value is trimmed and
+// held to models.NormalizeProjectAlias before anything is planned.
 type ProjectEdit struct {
 	Name        string
 	Description string
 	Tags        []string
+	Alias       *string
 	Now         time.Time
 }
 
@@ -128,6 +134,12 @@ func EditProject(state *config.RuntimeState, service *app.Service, project *mode
 	if protected && models.ProjectTagsParked(tags) {
 		return ProjectChange{}, fmt.Errorf("%w: cannot park the system Unfiled project", app.ErrProtectedSystemUnfiled)
 	}
+	alias := project.Alias
+	if edit.Alias != nil {
+		if alias, err = models.NormalizeProjectAlias(*edit.Alias); err != nil {
+			return ProjectChange{}, projectInput("project alias", err.Error())
+		}
+	}
 	newSlug := project.Slug
 	if name != project.Name {
 		if newSlug, err = app.ProjectSlug(state, name, project.ID); err != nil {
@@ -140,6 +152,7 @@ func EditProject(state *config.RuntimeState, service *app.Service, project *mode
 	updated.Slug = newSlug
 	updated.Description = strings.TrimSpace(edit.Description)
 	updated.Tags = tags
+	updated.Alias = alias
 	updated.UpdatedAt = edit.Now
 
 	var tasksMarkdown []byte

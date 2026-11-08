@@ -141,6 +141,9 @@ type AppModel struct {
 	// footerKeys counts footer key presses not yet recorded in the machine
 	// state; see learned_footer_keys.go.
 	footerKeys learnedFooterKeys
+	// terminalTheme gathers the terminal's color reports for the Terminal
+	// Colors theme; see terminal_theme.go.
+	terminalTheme terminalThemeQuery
 	// pulseMotion is the count change the title is drawing; see pulse_motion.go.
 	pulseMotion pulseMotion
 	// viewFade is the view or mode switch being eased in; see app_view_overlays.go.

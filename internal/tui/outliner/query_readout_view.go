@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 	"github.com/sglavoie/docket/internal/tui/textfit"
 	"github.com/sglavoie/docket/internal/tui/theme"
 )
@@ -260,3 +263,118 @@ func (m *OutlinerModel) queryReadoutKey() string {
 func (m *OutlinerModel) queryReadoutDetailsHint() string {
 	return m.queryReadoutKey() + " details"
 }
+
+// --- The week browse: `gw` over Today's week strip, a gated sub-state on the
+// readout's own terms. ---
+
+// The week browse is `gw` over Today's day canvas: a gated sub-state that
+// selects one day of the strip and lists what that day holds under it. The
+// canvas stays paint — it is still not in m.Rows, takes no cursor, and answers
+// no click — so the browse owns no row and moves no window; it changes which
+// ink a day name wears and which lines the padding under the strip draws.
+//
+// It is session-only and frozen nowhere: the day is an offset into the week
+// ahead, read against a canvas computed from the live population each frame,
+// so a deadline stepped while it is open moves its mark at the next paint.
+type weekBrowseState struct {
+	Active bool
+	// Day indexes the canvas's Ahead days, 0 being tomorrow.
+	Day int
+}
+
+// weekBrowseDays is the strip's length, which the canvas fixes.
+const weekBrowseDays = 7
+
+// OpenWeekBrowse selects the first dated day of the week ahead, or refuses with
+// the sentence the status line says. It opens only where the canvas is drawn
+// and has something dated, since a browse over a week the screen is not showing
+// would be keys with nothing to act on.
+func (m *OutlinerModel) OpenWeekBrowse() (string, bool) {
+	if m == nil {
+		return "", false
+	}
+	if !m.dayCanvasEligible() {
+		return "The week ahead is drawn in Today; press gt, then gw", false
+	}
+	canvas := m.computeDayCanvas(time.Now())
+	if canvas.AheadEmpty() {
+		return "Nothing is dated in the week ahead", false
+	}
+	m.closeMenuBar()
+	m.Week = weekBrowseState{Active: true}
+	for at, day := range canvas.Ahead {
+		if !day.Empty() {
+			m.Week.Day = at
+			break
+		}
+	}
+	return "", true
+}
+
+// closeWeekBrowse puts the selection down; the strip draws as before.
+func (m *OutlinerModel) closeWeekBrowse() {
+	m.Week = weekBrowseState{}
+}
+
+// weekBrowseSelected is the day the strip marks, or -1 while the browse is
+// closed or the canvas cannot speak for this view.
+func (m *OutlinerModel) weekBrowseSelected() int {
+	if !m.Week.Active || !m.dayCanvasEligible() {
+		return -1
+	}
+	return m.Week.Day
+}
+
+// HandleWeekBrowseKey is the browse's own gated keymap. Like the readout it
+// owns input while open, so an unlisted key closes it rather than running an
+// act the footer is not naming.
+func (m *OutlinerModel) HandleWeekBrowseKey(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "h", "left":
+		m.Week.Day = max(m.Week.Day-1, 0)
+		return m, nil
+	case "l", "right":
+		m.Week.Day = min(m.Week.Day+1, weekBrowseDays-1)
+		return m, nil
+	case "home":
+		m.Week.Day = 0
+		return m, nil
+	case "end":
+		m.Week.Day = weekBrowseDays - 1
+		return m, nil
+	case "enter":
+		return m.openWeekDayInDue()
+	}
+	m.closeWeekBrowse()
+	return m, nil
+}
+
+// openWeekDayInDue leaves for Due, the mode that lists dated work in date
+// order, with the cursor on the first of the selected day's tasks the
+// projection draws. A day whose work Due does not draw — check-ins alone —
+// still lands in Due, where the mode's own clamp seats the cursor.
+func (m *OutlinerModel) openWeekDayInDue() (tea.Model, tea.Cmd) {
+	canvas := m.computeDayCanvas(time.Now())
+	day := m.Week.Day
+	m.closeWeekBrowse()
+	model, cmd := m.SelectOutlinerMode(chrome.ModeDue)
+	if day < 0 || day >= len(canvas.Ahead) {
+		return model, cmd
+	}
+	for _, item := range canvas.Ahead[day].Items {
+		if m.MoveCursorToIdentity(taskref.TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}) {
+			break
+		}
+	}
+	return model, cmd
+}
+
+// weekBrowseGuidance names the browse's keys and its way out.
+func (m *OutlinerModel) weekBrowseGuidance() chrome.GuidanceSpec {
+	hints := chrome.RequiredGuidanceHints("←/→ day", "Enter open in Due", "Esc close")
+	return chrome.GuidanceSpec{Hints: hints, Rows: 1}
+}
+
+// weekBrowseRestingItems bounds the day's list under an empty Today's strip,
+// where the card is centered and has no window to measure a budget from.
+const weekBrowseRestingItems = 6

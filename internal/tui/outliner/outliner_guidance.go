@@ -44,22 +44,8 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		// First because the picker is drawn over the whole frame: every profile below
 		// describes keys the rows it hid would have answered.
 		return m.relationPickerGuidance(), true
-	case m.Triage.Active:
-		// The card covers the rows, so its keymap is the only one worth naming.
-		return m.triageGuidance(), true
-	case m.MenuBar.Open:
-		// First for the same reason the readout is first below it: while a menu is
-		// open its own keymap is what the four navigation keys mean, and every
-		// profile after this one would name acts they are not doing right now.
-		return m.menuBarGuidance(), true
-	case m.QueryReadout.Expanded:
-		// First because the readout owns input outright: every other profile below
-		// describes keys the stack is currently refusing.
-		return m.queryReadoutGuidance(), true
-	case m.Jump.Active:
-		// Jump mode owns input as the readout does, so the labels on screen and
-		// the way out are the only keys worth naming.
-		return m.jumpLabelGuidance(), true
+	case m.gatedSubStateActive():
+		return m.gatedSubStateGuidance(), true
 	case m.Confirm.IsActive():
 		return chrome.GuidanceSpec{Hints: chrome.RequiredGuidanceHints("y confirm", "n/Esc cancel"), Rows: 2}, true
 	case m.QuickEdit.IsActive():
@@ -391,4 +377,37 @@ func (m *OutlinerModel) ClassifyEmptyCause() outlinerEmptyCause {
 		return outlinerEmptyMode
 	}
 	return outlinerEmptyNoTasks
+}
+
+// gatedSubStateActive reports whether one of the Outliner's gated keymaps owns
+// input: the triage card, an open menu, the readout, the week browse, or jump
+// mode. Each names only its own keys, in the precedence below.
+func (m *OutlinerModel) gatedSubStateActive() bool {
+	return m.Triage.Active || m.MenuBar.Open || m.QueryReadout.Expanded || m.Week.Active || m.Jump.Active
+}
+
+// gatedSubStateGuidance is the active gated keymap's footer.
+func (m *OutlinerModel) gatedSubStateGuidance() chrome.GuidanceSpec {
+	switch {
+	case m.Triage.Active:
+		// The card covers the rows, so its keymap is the only one worth naming.
+		return m.triageGuidance()
+	case m.MenuBar.Open:
+		// First for the same reason the readout is first below it: while a menu is
+		// open its own keymap is what the four navigation keys mean, and every
+		// profile after this one would name acts they are not doing right now.
+		return m.menuBarGuidance()
+	case m.QueryReadout.Expanded:
+		// First because the readout owns input outright: every other profile below
+		// describes keys the stack is currently refusing.
+		return m.queryReadoutGuidance()
+	case m.Week.Active:
+		// The browse owns input as the readout does, so its day keys and the
+		// way out are the only ones worth naming.
+		return m.weekBrowseGuidance()
+	default:
+		// Jump mode, the last of the set, owns input as the readout does, so the
+		// labels on screen and the way out are the only keys worth naming.
+		return m.jumpLabelGuidance()
+	}
 }

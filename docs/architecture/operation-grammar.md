@@ -287,8 +287,12 @@ not a second action list. `outlinerActionItems` builds the one list both read �
 the strategy's bindings, the manifests' menu-only entries, and every menu bar
 operation no key reaches, under its `F10 → Menu` route — and
 `help.CommandPaletteModel` keeps its runnable rows, ranks a query with the
-helper help search uses, and orders an empty query by `HelpItem.Rank`, the
-binding's `FooterRank` or its chord group's. Enter sends `RunPaletteActionMsg`
+helper help search uses, and orders an empty query by `machine.json`'s
+`palette_recent` first — keyed by `PaletteRecentKey`, the operation and its
+preset value, since one operation can be several rows — then by
+`HelpItem.Rank`, the binding's `FooterRank` or its chord group's. A row run
+from the palette is recorded through `MachineState.WithPaletteUse` before the
+executor runs it. Enter sends `RunPaletteActionMsg`
 with the context frozen at the keypress; `frozenActionStillRuns` is the check
 help results take too, so a changed target refuses on the row, and only then is
 the palette closed and the request handed to `OperationExecutor`. It registers

@@ -145,7 +145,7 @@ func TestOperationalTitlePreservesInteractionBeforePulse(t *testing.T) {
 		Scope:   scopeLabel,
 		Mode:    "All",
 		Context: []string{theme.SelectionCountStyle.Render("Multi-select: 3 selected")},
-		Pace:    &TodayPaceReadout{OpenCount: 8, MedianPerDay: 3},
+		Pace:    &TodayPaceReadout{OpenCount: 8, DoneToday: 2, MedianPerDay: 3},
 		Pulse:   &pulse,
 	}, 40)
 	plain := ansi.Strip(rendered)
@@ -159,14 +159,14 @@ func TestOperationalTitlePreservesInteractionBeforePulse(t *testing.T) {
 	if strings.Contains(plain, "workspace:") {
 		t.Fatalf("passive pulse survived ahead of interaction context: %q", plain)
 	}
-	if strings.Contains(plain, "median") || strings.Contains(plain, "/day") {
+	if strings.Contains(plain, "usually") || strings.Contains(plain, "8 open") {
 		t.Fatalf("Today pace survived ahead of interaction context: %q", plain)
 	}
 }
 
 func TestOperationalTitleTodayPaceFittingOrder(t *testing.T) {
 	pulse := WorkspacePulse{Inbox: 9, Today: 8, Overdue: 7}
-	pace := TodayPaceReadout{OpenCount: 8, MedianPerDay: 1.5}
+	pace := TodayPaceReadout{OpenCount: 8, DoneToday: 3, MedianPerDay: 1.5}
 	spec := OperationalTitleSpec{Scope: scopeLabel, Mode: "Today", Pace: &pace, Pulse: &pulse}
 	identity := renderOperationalIdentity(spec, 200)
 	paceVariants := operationalPaceVariants(pace)
@@ -185,13 +185,13 @@ func TestOperationalTitleTodayPaceFittingOrder(t *testing.T) {
 		{
 			name:          "full pace and pulse",
 			width:         lipgloss.Width(fullBase) + operationalTitlePulseGap + lipgloss.Width(fullPulse),
-			want:          "8 open · median 1.5 done/day (30d)",
+			want:          "8 open · 3 done today · usually 1.5/day",
 			wantWorkspace: true,
 		},
-		{name: "full pace after pulse", width: lipgloss.Width(fullBase), want: "8 open · median 1.5 done/day (30d)", forbid: []string{"workspace:"}},
-		{name: "shorten window", width: lipgloss.Width(mediumBase), want: "8 open · median 1.5 done/day", forbid: []string{"(30d)", "workspace:"}},
-		{name: "shorten label", width: lipgloss.Width(shortBase), want: "8 open · 1.5 done/day", forbid: []string{"median", "workspace:"}},
-		{name: "omit pace", width: lipgloss.Width(identity), want: scopeLabel + " · Today", forbid: []string{"/day", "workspace:"}},
+		{name: "full pace after pulse", width: lipgloss.Width(fullBase), want: "8 open · 3 done today · usually 1.5/day", forbid: []string{"workspace:"}},
+		{name: "shorten words", width: lipgloss.Width(mediumBase), want: "8 open · 3 done · usually 1.5", forbid: []string{"today ·", "/day", "workspace:"}},
+		{name: "drop comparison", width: lipgloss.Width(shortBase), want: "8 open · 3 done", forbid: []string{"usually", "workspace:"}},
+		{name: "omit pace", width: lipgloss.Width(identity), want: scopeLabel + " · Today", forbid: []string{"open", "workspace:"}},
 	}
 
 	for _, tt := range tests {
@@ -218,7 +218,7 @@ func TestOperationalTitleTodayPaceFittingOrder(t *testing.T) {
 
 func TestOperationalTitlePulseAndTodayPaceFitEverySupportedWidth(t *testing.T) {
 	pulse := WorkspacePulse{Inbox: 9, Today: 8, Overdue: 7, Done: 6}
-	pace := TodayPaceReadout{OpenCount: 8, MedianPerDay: 1.5}
+	pace := TodayPaceReadout{OpenCount: 8, DoneToday: 6, MedianPerDay: 1.5}
 	spec := OperationalTitleSpec{Scope: scopeLabel, Mode: "Today", Pace: &pace, Pulse: &pulse}
 	sawPaceOnly := false
 	sawPaceAndPulse := false
@@ -233,9 +233,9 @@ func TestOperationalTitlePulseAndTodayPaceFitEverySupportedWidth(t *testing.T) {
 			t.Fatalf("width %d rendered %d cells: %q", width, got, plain)
 		}
 
-		hasPace := strings.Contains(plain, "/day")
+		hasPace := strings.Contains(plain, "8 open")
 		hasPulse := strings.Contains(plain, "workspace:")
-		if hasPulse && !strings.Contains(plain, "median 1.5 done/day (30d)") {
+		if hasPulse && !strings.Contains(plain, "6 done today · usually 1.5/day") {
 			t.Fatalf("width %d kept the pulse beside a shortened or absent pace: %q", width, plain)
 		}
 		if hasPace && !hasPulse {
@@ -243,7 +243,7 @@ func TestOperationalTitlePulseAndTodayPaceFitEverySupportedWidth(t *testing.T) {
 		}
 		if hasPace && hasPulse {
 			sawPaceAndPulse = true
-			paceEnd := strings.Index(plain, "(30d)") + len("(30d)")
+			paceEnd := strings.Index(plain, "/day") + len("/day")
 			pulseStart := strings.Index(plain, "workspace:")
 			if pulseStart-paceEnd < operationalTitlePulseGap {
 				t.Fatalf("width %d pace and pulse collided: %q", width, plain)
@@ -253,5 +253,27 @@ func TestOperationalTitlePulseAndTodayPaceFitEverySupportedWidth(t *testing.T) {
 
 	if !sawPaceOnly || !sawPaceAndPulse {
 		t.Fatalf("width sweep missed a required title state: pace-only=%v pace-and-pulse=%v", sawPaceOnly, sawPaceAndPulse)
+	}
+}
+
+// The comparison is the reader's own record: a best day says so, an idle-heavy
+// history measures against worked days, and no earlier history says nothing.
+func TestTodayPaceComparisonReadsTheReadersOwnRecord(t *testing.T) {
+	tests := []struct {
+		name string
+		pace TodayPaceReadout
+		want string
+	}{
+		{"best day", TodayPaceReadout{OpenCount: 2, DoneToday: 7, MedianPerDay: 1, BestPriorDay: 5}, "2 open · 7 done today · best day in 30 days"},
+		{"tying the best is not news", TodayPaceReadout{OpenCount: 2, DoneToday: 5, MedianPerDay: 1, BestPriorDay: 5}, "2 open · 5 done today · usually 1/day"},
+		{"occasional user", TodayPaceReadout{OpenCount: 4, DoneToday: 1, ActiveDayMedian: 2.5, BestPriorDay: 3}, "4 open · 1 done today · usually 2.5 on active days"},
+		{"first day", TodayPaceReadout{OpenCount: 4, DoneToday: 3}, "4 open · 3 done today"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ansi.Strip(operationalPaceVariants(tt.pace)[0]); got != tt.want {
+				t.Fatalf("pace = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }

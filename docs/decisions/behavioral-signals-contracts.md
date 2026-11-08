@@ -154,33 +154,44 @@ among those five sections is unchanged. The insertion point binds
 The Today-only middle-region wording is:
 
 ```text
-<open-count> open · median <completions-per-day> done/day (30d)
+<open-count> open · <done-today> done today · <comparison>
 ```
 
-For example: `9 open · median 3 done/day (30d)`. It follows the Today mode label,
-so `open` names the current Today load without repeating the mode's name and
-without reading as a count of work finished today; `median` explicitly marks
-the outside-view statistic, `done/day` says what that statistic counts, and
-`(30d)` names the observation window. When there is no completion history, render no pace
-readout rather than a zero median. The readout belongs to the interaction/middle
-region, never inside `WorkspacePulse`; this binds the region model at
-`OperationalTitleSpec` in `internal/tui/pulse/operational_title.go`.
+For example: `9 open · 3 done today · usually 2/day`. It follows the Today mode
+label, so `open` names the current Today load without repeating the mode's
+name, and `done today` is the progress already made. The comparison is the
+outside view, measured against the workspace's own 30-day record and never
+phrased as a deficit. Exactly one is chosen, first match wins:
+
+1. `best day in 30 days` when today has finished more than any earlier window day,
+   and at least one earlier day finished anything; tying the best is not news.
+2. `usually <median>/day` when the all-days median, idle days included, is nonzero.
+3. `usually <median> on active days` otherwise, over the earlier window days that
+   finished anything, so an occasional user is not told they usually finish
+   nothing.
+4. no comparison when no earlier day finished anything.
+
+When there is no completion history, render no pace readout rather than a zero.
+The readout belongs to the interaction/middle region, never inside
+`WorkspacePulse`; this binds the region model at `OperationalTitleSpec` in
+`internal/tui/pulse/operational_title.go`, and the comparison binds
+`TodayPaceReadout.comparison` in `internal/tui/pulse/today_pace.go`.
 
 Under width pressure, preserve identity and required interaction context, then
 use these pace candidates in order:
 
-1. `9 open · median 3 done/day (30d)`
-2. `9 open · median 3 done/day`
-3. `9 open · 3 done/day`
+1. `9 open · 3 done today · usually 2/day`
+2. `9 open · 3 done · usually 2` (`best in 30d` for a best day)
+3. `9 open · 3 done`
 4. omit the whole pace readout
 
-Never render `9 open` alone: without the reference-class rate it is no longer
-the contracted comparison and duplicates pulse information. On Today, the pace
-candidate outranks the passive workspace pulse; exhaust the pulse ladder before
-shortening the pace candidate, then omit pace before truncating required
-interaction context. This extends, rather than reverses, the existing rule at
-`RenderOperationalTitle` in `internal/tui/pulse/operational_title.go` that passive
-title state disappears before required context.
+A readout with no comparison starts at `9 open · 3 done today`. Never render
+`9 open` alone: without what is done it duplicates pulse information. On Today,
+the pace candidate outranks the passive workspace pulse; exhaust the pulse
+ladder before shortening the pace candidate, then omit pace before truncating
+required interaction context. This extends, rather than reverses, the existing
+rule at `RenderOperationalTitle` in `internal/tui/pulse/operational_title.go`
+that passive title state disappears before required context.
 
 ## Workspace pulse
 

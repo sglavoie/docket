@@ -349,10 +349,11 @@ func TestGuideDocumentsStorageAndMigration(t *testing.T) {
 		"Each task may finally carry an optional `depends` list of soft references",
 		"Each task may carry an optional non-negative `defer_count`; zero is omitted",
 		"`lenses.json` contains your saved named-lens definitions",
-		"Machine-local `~/.docket/runtime/<workspace-id>/machine.json` contains only the dark/light theme " +
-			"choice, whether the Outliner draws its menu bar, whether it draws ambient advisories, " +
+		"Machine-local `~/.docket/runtime/<workspace-id>/machine.json` contains only the theme " +
+			"choice (`dark`, `light`, `ember`, `fjord`, `sepia`, or `terminal`), whether the Outliner draws its menu bar, whether it draws ambient advisories, " +
 			"whether the mouse, motion, and Nerd Font glyphs are on, a pointer to the lens that was last open, " +
-			"how often each footer key has been pressed (up to the ten that retire its hint), and the last 50 submitted search queries for this workspace",
+			"how often each footer key has been pressed (up to the ten that retire its hint), the last eight actions " +
+			"run from the command palette, and the last 50 submitted search queries for this workspace",
 		"A machine that has never pinned the menu bar writes no menu-bar key at all, and the absent key is what " +
 			"says the bar is hidden",
 		"The active-lens pointer is a hint rather than a record: it is checked for shape alone when " +

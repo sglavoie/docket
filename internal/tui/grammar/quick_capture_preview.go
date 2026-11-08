@@ -150,20 +150,22 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	}
 	if q.Preview.DeferUntil != nil {
 		deferDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDefer)
-		scheduleChunks = append(scheduleChunks, deferDefinition.Trigger+chrome.FormatDeferDate(*q.Preview.DeferUntil, time.Now()))
+		scheduleChunks = append(scheduleChunks, deferDefinition.Trigger+chrome.FormatDeferDate(*q.Preview.DeferUntil, time.Now())+
+			previewGloss("hidden until then"))
 	}
 	if len(scheduleChunks) > 0 {
 		groups = append(groups, previewGroup{label: "Schedule", chunks: scheduleChunks})
 	}
 
 	if q.Preview.Priority != models.PriorityUnset {
-		groups = append(groups, previewGroup{label: "Priority", chunks: []string{fmt.Sprintf("%s%d", priorityDefinition.Trigger, q.Preview.Priority)}})
+		groups = append(groups, previewGroup{label: "Priority", chunks: []string{fmt.Sprintf("%s%d", priorityDefinition.Trigger, q.Preview.Priority) +
+			previewGloss(strings.ToLower(models.PriorityName(q.Preview.Priority)))}})
 	}
 	if q.Preview.Pinned {
-		groups = append(groups, previewGroup{label: "Pinned", chunks: []string{pinnedDefinition.Trigger + "pin"}})
+		groups = append(groups, previewGroup{label: "Pinned", chunks: []string{pinnedDefinition.Trigger + "pin" + previewGloss("kept at the top")}})
 	}
 	if q.Preview.Review {
-		groups = append(groups, previewGroup{label: "Review", chunks: []string{reviewDefinition.Trigger + "review"}})
+		groups = append(groups, previewGroup{label: "Review", chunks: []string{reviewDefinition.Trigger + "review" + previewGloss("flagged")}})
 	}
 	// Attachments sit below the metadata groups and one chunk per entry, so the
 	// preview states how many the line would create. Without this group a pasted
@@ -201,6 +203,42 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	}
 
 	return groups, true
+}
+
+// previewGloss is what a recognized token means, in the words the welcome
+// screen teaches the grammar with, set muted after the token so the typed
+// spelling stays the thing the eye lands on. An empty meaning adds nothing.
+func previewGloss(meaning string) string {
+	if meaning == "" {
+		return ""
+	}
+	return theme.MutedStyle.Render(" " + meaning)
+}
+
+// PreviewSummary is the recognized metadata as one muted line at most width
+// columns wide, without the title the input already shows, or "" when the
+// line carries none. It is what stays readable above the suggestion list,
+// which otherwise owns the whole pane: completing a token never hides what
+// the tokens already typed have been read as.
+func (q *QuickCaptureInput) PreviewSummary(width int) string {
+	if width < 1 || q.PreviewErr != "" {
+		return ""
+	}
+	groups, ok := q.previewGroups()
+	if !ok {
+		return ""
+	}
+	var chunks []string
+	for _, group := range groups {
+		if group.label == "Task" || group.label == "Notice" {
+			continue
+		}
+		chunks = append(chunks, group.chunks...)
+	}
+	if len(chunks) == 0 {
+		return ""
+	}
+	return textfit.TruncateToVisualWidth(theme.MutedStyle.Render(strings.Join(chunks, theme.MutedStyle.Render(" · "))), width)
 }
 
 // previewRouteGroup is the Route group, or shown=false where the host's own

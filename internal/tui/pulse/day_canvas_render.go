@@ -7,6 +7,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/textfit"
 	"github.com/sglavoie/docket/internal/tui/theme"
 	"github.com/sglavoie/docket/internal/util"
@@ -73,10 +74,22 @@ func (canvas DayCanvas) DoneBlock(width, budget int) []string {
 // date, then the deadlines and check-ins it brings, so a heavy day is seen
 // before it arrives. Weekend names are dimmed; an empty day is a dot.
 func (canvas DayCanvas) AheadBlock(width int) []string {
+	return canvas.AheadBlockSelecting(width, -1)
+}
+
+// AheadBlockSelecting is AheadBlock with one day marked as the week browse's
+// selection, its name set in the accent and underlined, or none for a selected
+// index outside the week. The columns do not move: a selection changes ink,
+// never width.
+func (canvas DayCanvas) AheadBlockSelecting(width, selected int) []string {
 	if len(canvas.Ahead) == 0 {
 		return nil
 	}
-	heading := dayCanvasHeading("Next 7 days", "", width)
+	trailing := ""
+	if selected >= 0 && selected < len(canvas.Ahead) {
+		trailing = canvas.Ahead[selected].Date.Format("Monday, Jan 2")
+	}
+	heading := dayCanvasHeading("Next 7 days", trailing, width)
 	if canvas.AheadEmpty() {
 		return []string{heading, dayCanvasIndent + theme.MutedStyle.Render("Nothing is dated this week.")}
 	}
@@ -91,11 +104,15 @@ func (canvas DayCanvas) AheadBlock(width int) []string {
 	var names, marks strings.Builder
 	names.WriteString(dayCanvasIndent)
 	marks.WriteString(dayCanvasIndent)
-	for _, day := range canvas.Ahead {
+	chosen := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Underline(true)
+	for at, day := range canvas.Ahead {
 		name := day.Date.Format("Mon 2")
 		style := theme.MutedStyle
 		if weekday := day.Date.Weekday(); weekday == time.Saturday || weekday == time.Sunday {
 			style = dim
+		}
+		if at == selected {
+			style = chosen
 		}
 		names.WriteString(padCell(style.Render(name), cell))
 		var mark []string
@@ -114,6 +131,76 @@ func (canvas DayCanvas) AheadBlock(width int) []string {
 	legend := dayCanvasIndent + due.Render("●") + theme.MutedStyle.Render(" due  ") +
 		checkIn.Render("◇") + theme.MutedStyle.Render(" check-in")
 	return []string{heading, names.String(), marks.String(), legend}
+}
+
+// DayItemsBlock lists what the selected day holds under the strip: each
+// deadline and check-in by title and project, in the strip's own marks, within
+// budget rows, the last one counting what did not fit. A day with nothing dated
+// says so rather than drawing nothing, since the reader moved onto it on
+// purpose.
+func (canvas DayCanvas) DayItemsBlock(selected, width, budget int) []string {
+	if selected < 0 || selected >= len(canvas.Ahead) || budget < 1 {
+		return nil
+	}
+	day := canvas.Ahead[selected]
+	if len(day.Items) == 0 {
+		return []string{dayCanvasIndent + theme.MutedStyle.Render("Nothing is dated on "+day.Date.Format("Mon Jan 2")+".")}
+	}
+	due := lipgloss.NewStyle().Foreground(theme.ColorSecondary).Render("●")
+	checkIn := lipgloss.NewStyle().Foreground(theme.ColorViewStandby).Render("◇")
+	shown := min(len(day.Items), budget)
+	if shown < len(day.Items) {
+		shown = max(budget-1, 0)
+	}
+	lines := make([]string, 0, budget)
+	for _, item := range day.Items[:shown] {
+		mark := due
+		if item.CheckIn {
+			mark = checkIn
+		}
+		slug := theme.MutedStyle.Render(" [" + item.ProjectSlug + "]")
+		room := max(width-lipgloss.Width(dayCanvasIndent)-2-lipgloss.Width(slug), 4)
+		lines = append(lines, dayCanvasIndent+mark+" "+textfit.TruncateIntentional(item.Title, room, "…")+slug)
+	}
+	if rest := len(day.Items) - shown; rest > 0 {
+		lines = append(lines, dayCanvasIndent+theme.MutedStyle.Render(fmt.Sprintf("+ %d more", rest)))
+	}
+	return lines
+}
+
+// dayCanvasMaxPickUp bounds the tasks the pick-up block lists.
+const dayCanvasMaxPickUp = 4
+
+// PickUpBlock lists the work in hand with where to restart each: the state
+// glyph, the title, then the resume note or the next checklist step, so the
+// space under a short Today answers "what was I doing" before it is asked. It
+// draws nothing without such work, or without room for its heading and one
+// task, since a heading alone would be a promise with nothing under it.
+func (canvas DayCanvas) PickUpBlock(width, budget int) []string {
+	if len(canvas.PickUp) == 0 || budget < 2 {
+		return nil
+	}
+	lines := []string{dayCanvasHeading("Pick up where you left off", "", width)}
+	shown := min(len(canvas.PickUp), dayCanvasMaxPickUp, budget-1)
+	note := theme.MutedStyle
+	for _, task := range canvas.PickUp[:shown] {
+		glyph := theme.GetTaskStateBadge(&models.Task{WorkflowState: task.State})
+		lead := "left off: "
+		if task.Step {
+			lead = "next: "
+		}
+		slug := theme.MutedStyle.Render(" [" + task.ProjectSlug + "]")
+		head := dayCanvasIndent + glyph + " "
+		room := max(width-lipgloss.Width(head)-lipgloss.Width(slug), 8)
+		title := textfit.TruncateIntentional(task.Title, max(room*2/5, 8), "…")
+		rest := max(room-lipgloss.Width(title)-3-len(lead), 0)
+		line := head + title + slug
+		if rest >= 8 {
+			line += note.Render(" · " + lead + textfit.TruncateIntentional(task.Note, rest, "…"))
+		}
+		lines = append(lines, line)
+	}
+	return lines
 }
 
 // renderSparkline draws the week behind as bars in the success ink, a day

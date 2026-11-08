@@ -150,6 +150,19 @@ at the list's expense, and neither is a row: the cursor, clicks, and folds
 pass them by. They describe the whole scope, so a search, a filter, a lens,
 or a Focus in Today draws neither.
 
+When there is still room, `Pick up where you left off` lists the work in hand —
+Doing and Paused tasks, most recently changed first — each with its resume note
+(`left off:`) or, without one, its next unticked checklist item (`next:`).
+Tasks with neither, and Waiting work, are left out.
+
+Press `gw` to browse the week ahead. The first day with something dated is
+selected and its deadlines (`●`) and check-ins (`◇`) are listed under the
+strip by title and project; `←`/`→` (or `h`/`l`) move between days, `Home` and
+`End` jump to either end, and `Enter` opens Due with the cursor on that day's
+first task. `Esc` or any other key closes the browse. The list follows the
+live workspace, so a deadline moved with `-` or `+` moves its mark on the
+strip at once.
+
 Every mode groups its tasks by project when you are looking at more than one
 project. Each group opens with a foldable `[slug] (count)` header, and its
 tasks sit one level beneath it without repeating the project's name; `h` folds

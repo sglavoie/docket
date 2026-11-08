@@ -27,6 +27,7 @@ type projectEditorField int
 
 const (
 	projectEditorFieldName projectEditorField = iota
+	projectEditorFieldAlias
 	projectEditorFieldDescription
 	projectEditorFieldTags
 	projectEditorFieldCount
@@ -43,11 +44,13 @@ type ProjectEditorModel struct {
 
 	// Original values for change detection
 	originalName        string
+	originalAlias       string
 	originalDescription string
 	originalTags        string
 
 	// Form fields
 	nameInput        textinput.Model
+	aliasInput       textinput.Model
 	descriptionInput textinput.Model
 	tagsInput        textinput.Model
 
@@ -76,6 +79,9 @@ func NewProjectEditorModel(
 	nameInput.Focus()
 	nameInput.CharLimit = 100
 
+	aliasInput := factory.NewTextInputWithValue(project.Alias, "Short label shown in lists (optional)")
+	aliasInput.CharLimit = 32
+
 	descriptionInput := factory.NewTextInputWithValue(project.Description, "Project description (optional)")
 	descriptionInput.CharLimit = 500
 
@@ -90,9 +96,11 @@ func NewProjectEditorModel(
 		appService:          svc,
 		identityProtected:   identityProtected,
 		originalName:        project.Name,
+		originalAlias:       project.Alias,
 		originalDescription: project.Description,
 		originalTags:        tags,
 		nameInput:           nameInput,
+		aliasInput:          aliasInput,
 		descriptionInput:    descriptionInput,
 		tagsInput:           tagsInput,
 		focusIndex:          projectEditorFieldName,
@@ -119,6 +127,9 @@ func (m *ProjectEditorModel) checkChanges() bool {
 	if strings.TrimSpace(m.nameInput.Value()) != m.originalName {
 		return true
 	}
+	if strings.TrimSpace(m.aliasInput.Value()) != m.originalAlias {
+		return true
+	}
 	if strings.TrimSpace(m.descriptionInput.Value()) != m.originalDescription {
 		return true
 	}
@@ -131,6 +142,7 @@ func (m *ProjectEditorModel) SetSize(width, height int) {
 
 	m.width = width
 	chrome.FormFactory.ResizeTextInputWithReserve(&m.nameInput, width, theme.FormLabelWidth)
+	chrome.FormFactory.ResizeTextInputWithReserve(&m.aliasInput, width, descriptionLabelReserve)
 	chrome.FormFactory.ResizeTextInputWithReserve(&m.descriptionInput, width, descriptionLabelReserve)
 	chrome.FormFactory.ResizeTextInputWithReserve(&m.tagsInput, width, descriptionLabelReserve)
 }
@@ -206,6 +218,8 @@ func (m *ProjectEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.focusIndex {
 	case projectEditorFieldName:
 		m.nameInput, cmd = m.nameInput.Update(msg)
+	case projectEditorFieldAlias:
+		m.aliasInput, cmd = m.aliasInput.Update(msg)
 	case projectEditorFieldDescription:
 		m.descriptionInput, cmd = m.descriptionInput.Update(msg)
 	case projectEditorFieldTags:
@@ -223,6 +237,8 @@ func (m *ProjectEditorModel) blurCurrentField() {
 	switch m.focusIndex {
 	case projectEditorFieldName:
 		m.nameInput.Blur()
+	case projectEditorFieldAlias:
+		m.aliasInput.Blur()
 	case projectEditorFieldDescription:
 		m.descriptionInput.Blur()
 	case projectEditorFieldTags:
@@ -235,6 +251,8 @@ func (m *ProjectEditorModel) focusCurrentField() {
 	switch m.focusIndex {
 	case projectEditorFieldName:
 		m.nameInput.Focus()
+	case projectEditorFieldAlias:
+		m.aliasInput.Focus()
 	case projectEditorFieldDescription:
 		m.descriptionInput.Focus()
 	case projectEditorFieldTags:
@@ -254,6 +272,7 @@ type ProjectEditorSave struct {
 	runtime     *config.RuntimeState
 	appService  *app.Service
 	description string
+	alias       string
 	tags        []string
 	parks       bool
 }
@@ -283,6 +302,12 @@ func (m *ProjectEditorModel) resolveSave() (*ProjectEditorSave, error) {
 	tags, err := parseProjectEditorTags(m.tagsInput.Value())
 	if err != nil {
 		return nil, fmt.Errorf("project tags: %w", err)
+	}
+	// The alias is checked here, by the one gate the catalog uses, so a refusal
+	// lands on the form rather than as a failed commit.
+	alias, err := models.NormalizeProjectAlias(m.aliasInput.Value())
+	if err != nil {
+		return nil, fmt.Errorf("project alias: %w", err)
 	}
 	if m.identityProtected {
 		if name != m.originalName {
@@ -314,6 +339,7 @@ func (m *ProjectEditorModel) resolveSave() (*ProjectEditorSave, error) {
 		runtime:     m.runtime,
 		appService:  m.appService,
 		description: strings.TrimSpace(m.descriptionInput.Value()),
+		alias:       alias,
 		tags:        tags,
 		parks:       models.ProjectTagsParked(tags) && !models.ProjectTagsParked(m.project.Tags),
 	}, nil
@@ -326,6 +352,7 @@ func (s *ProjectEditorSave) Commit() tea.Msg {
 	saved, err := engine.EditProject(s.runtime, s.appService, project, engine.ProjectEdit{
 		Name:        s.Name,
 		Description: s.description,
+		Alias:       &s.alias,
 		Tags:        s.tags,
 		Now:         time.Now(),
 	})
@@ -359,6 +386,13 @@ func (m *ProjectEditorModel) View() tea.View {
 			b.WriteString(renderProjectSlugPreview(slug, m.width, padding, ""))
 		}
 	}
+	b.WriteString("\n\n")
+
+	// Alias input: the short label lists use in place of the slug.
+	b.WriteString(chrome.RenderFormLabelShared("Alias:", int(projectEditorFieldAlias), int(m.focusIndex)))
+	b.WriteString(m.aliasInput.View())
+	b.WriteString("\n")
+	b.WriteString(padding + theme.MutedStyle.Render(fmt.Sprintf("Up to %d columns, no spaces; empty shows the slug", models.MaxProjectAliasWidth)))
 	b.WriteString("\n\n")
 
 	// Description input
@@ -456,6 +490,8 @@ func (m *ProjectEditorModel) DesktopTextBuffer() *chrome.DesktopTextBuffer {
 	switch m.focusIndex { //nolint:exhaustive // Only editable fields expose a text buffer.
 	case projectEditorFieldName:
 		return chrome.DesktopInput(&m.nameInput, changed)
+	case projectEditorFieldAlias:
+		return chrome.DesktopInput(&m.aliasInput, changed)
 	case projectEditorFieldDescription:
 		return chrome.DesktopInput(&m.descriptionInput, changed)
 	case projectEditorFieldTags:

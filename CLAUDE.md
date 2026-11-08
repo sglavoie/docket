@@ -1125,8 +1125,9 @@ Preserve approved roots, symlink-aware containment, checked revisions,
 deterministic locks, and recovery manifests.
 
 Schema 22 marked an enrolled catalog; from 23 the `sync` block alone does.
-Schema-23/24 catalogs hold schema-20 task Markdown; v24 only moves `.tt/` to
-`.docket/`. That pairing is descriptive,
+Schema-23/24/25 catalogs hold schema-20 task Markdown; v24 only moves `.tt/` to
+`.docket/` and v25 only admits `alias`, so the tombstone stays 24. That
+pairing is descriptive,
 never derived: v16 advanced no task grammar or `tasks.md`, v17
 lifts `review` off the tag list onto the stored flag, and v18, v19, v20, and v23
 admit the `RESUME` block, `PROJECT-COMMENTS` block, checklist-origin line, and
@@ -1149,7 +1150,12 @@ bodies under the shared prose escaping, instants in UTC, order creation time
 then identity, block omitted when empty. `WriteProjectMarkdown` renders the
 complete project and is what every production rewrite site spells; there is no
 name-plus-task-list renderer to fall back to.
-Migration v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15→v16→v17→v18→v19→v20→v21→v23→v24 validates each candidate first,
+
+A project `alias` is optional and merges field-wise like the name: empty is
+absent, `models.ValidateProjectAlias` its one gate, and a catalog below 25
+holding one is refused. `ProjectEdit.Alias` nil keeps it, so no surface erases
+it by omission.
+Migration v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15→v16→v17→v18→v19→v20→v21→v23→v24→v25 validates each candidate first,
 publishes an immutable archive/audit pair, then atomically activates the next
 schema and removes retired storage. Nothing may publish partial output before a
 snapshot boundary. v4/v5/v6/v11 decoders are migration-only: runtime code

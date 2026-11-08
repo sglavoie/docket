@@ -145,6 +145,7 @@ func (m *OutlinerModel) nonSearchInlineControlOwnsInput() bool {
 		m.QuickEdit.IsActive() ||
 		m.Confirm.IsActive() ||
 		m.QueryReadout.Expanded ||
+		m.Week.Active ||
 		m.Triage.Active ||
 		m.Jump.Active ||
 		// The relationship picker owns input outright: it is drawn over the whole

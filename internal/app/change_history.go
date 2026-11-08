@@ -301,7 +301,7 @@ func historyCatalogChanges(image storage.LedgerArtifact) []HistoryChange {
 			continue
 		}
 		for _, field := range []struct{ label, a, b string }{
-			{"Name", p.Name, q.Name}, {"Slug", p.Slug, q.Slug}, {"Description", p.Description, q.Description},
+			{"Name", p.Name, q.Name}, {"Alias", p.Alias, q.Alias}, {"Slug", p.Slug, q.Slug}, {"Description", p.Description, q.Description},
 			{"Archived", historyBool(p.Archived), historyBool(q.Archived)}, {"Pinned", historyBool(p.Pinned), historyBool(q.Pinned)},
 			{"Tags", strings.Join(p.Tags, ", "), strings.Join(q.Tags, ", ")}, {"Color", strconv.Itoa(p.ColorSlot), strconv.Itoa(q.ColorSlot)},
 		} {

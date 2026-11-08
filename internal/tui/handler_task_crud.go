@@ -248,7 +248,10 @@ func (m *AppModel) createdTaskSectionLabel(task *models.Task, project *models.Pr
 // glyph, the title, and the day's tally the pulse already counts. Any other
 // destination keeps the ledger's own sentence, which is what an empty answer
 // means.
-func (m *AppModel) statusChangeHeadline(action, context string) string {
+//
+// fullTitle, when the commit named one, replaces the ledger's fitted title, so
+// a toast with room to spare never cuts the work it is announcing.
+func (m *AppModel) statusChangeHeadline(action, context, fullTitle string) string {
 	done := models.WorkflowStateGroupForState(models.StateDone).Label()
 	var headline string
 	switch action {
@@ -256,6 +259,9 @@ func (m *AppModel) statusChangeHeadline(action, context string) string {
 		title, lane, ok := app.ParseStateChangeUndoContext(context)
 		if !ok || lane != done || strings.TrimSpace(title) == "" {
 			return ""
+		}
+		if full := strings.TrimSpace(fullTitle); full != "" {
+			title = full
 		}
 		headline = icons.Get("status.done") + " Done: " + title
 	case app.BulkStateChangeUndoAction:

@@ -204,6 +204,20 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 	gotoCaptured.Applicability = func(ctx CommandContext) bool {
 		return CoreOutlinerApplicability(ctx) && !ctx.Selection.Visual
 	}
+	// The week browse is target-free: it selects a day of Today's strip, never a
+	// row. It refuses a visual selection because its Enter leaves for Due, a
+	// mode change the selection would ride into rows it was not made over.
+	browseWeek := core(
+		OperationCoreBrowseWeek,
+		"Browse the Week Ahead",
+		OperationCategoryNavigation,
+		TargetCardinalityNone,
+		OperationRiskReadOnly,
+		"week ahead",
+		"next 7 days",
+		"calendar",
+	)
+	browseWeek.Applicability = gotoCaptured.Applicability
 	zoomSection := core(
 		OperationCoreZoomSection,
 		"Zoom to Section",
@@ -318,6 +332,7 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		gotoTaskProject,
 		gotoRelation,
 		gotoCaptured,
+		browseWeek,
 		zoomSection,
 		activateGroup,
 		openNote,
@@ -381,6 +396,15 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		),
 		core(OperationCoreNotes, "Notes", OperationCategoryNote, TargetCardinalityNone, OperationRiskReadOnly, "scratch notes"),
 		core(OperationCoreToggleTheme, "Toggle Theme", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "dark theme", "light theme"),
+		// One keyless operation per machine theme, as each mode has its own jump:
+		// the View menu draws them as radio rows and the palette finds every one
+		// by "theme", so choosing a theme needs no picker of its own.
+		core(OperationCoreThemeDark, "Theme: Dark", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "theme", "colors"),
+		core(OperationCoreThemeLight, "Theme: Light", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "theme", "colors"),
+		core(OperationCoreThemeEmber, "Theme: Ember", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "theme", "warm dark"),
+		core(OperationCoreThemeFjord, "Theme: Fjord", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "theme", "cool dark"),
+		core(OperationCoreThemeSepia, "Theme: Sepia", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "theme", "warm light"),
+		core(OperationCoreThemeTerminal, "Theme: Terminal Colors", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "theme", "match terminal", "ansi palette"),
 		core(OperationCoreToggleMenuBar, "Toggle Menu Bar", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "menu bar", "show menus"),
 		// Opening is a separate act from showing: the toggle decides whether the
 		// band is drawn at all, this one drops a menu out of it. They are two

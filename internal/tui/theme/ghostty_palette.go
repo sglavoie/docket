@@ -46,6 +46,22 @@ func ApplyGhosttyPalette(p GhosttyPalette) error {
 	if err := p.Validate(); err != nil {
 		return err
 	}
+	ActivePaletteName = ""
+	applyPalette(p)
+	return nil
+}
+
+// applyPalette is the role mapping every sixteen-color palette takes — a host's,
+// a curated theme's, or the terminal's own — so all of them land on the same
+// semantic roles and none can drift from the others. p must already be valid.
+func applyPalette(p GhosttyPalette) {
+	variant, palette := paletteRoles(p)
+	ApplyTheme(ThemeConfig{Name: variant, Override: &palette, Ghostty: &p})
+}
+
+// paletteRoles reads the variant off the paper and maps the ANSI colors to
+// Docket's roles, every accent held legible against that paper.
+func paletteRoles(p GhosttyPalette) (string, config.Theme) {
 	variant := "dark"
 	if contrastHex(p.Background, "#000000") > contrastHex(p.Background, "#ffffff") {
 		variant = "light"
@@ -75,13 +91,11 @@ func ApplyGhosttyPalette(p GhosttyPalette) error {
 		SemanticEpicDeferredTitle: deferred(5), SemanticStoryDeferredTitle: deferred(4),
 		SemanticFeatureDeferredTitle: deferred(2), SemanticIdeaDeferredTitle: deferred(3),
 	}
-	palette := config.Theme{
+	return variant, config.Theme{
 		Palette: roles, BackgroundColor: bg,
 		CursorColor:     p.SelectionBackground,
 		CursorTextColor: legibleHex(p.SelectionForeground, p.SelectionBackground),
 	}
-	ApplyTheme(ThemeConfig{Name: variant, Override: &palette, Ghostty: &p})
-	return nil
 }
 
 func validHex(s string) bool {

@@ -51,7 +51,8 @@ func (m *AppModel) handleTransactionResult(msg coordinator.TransactionResultMsg)
 			ProjectID: msg.Result.ProjectID, TaskID: msg.Result.TaskID,
 		}, msg.AttachmentReorder)
 	}
-	feedbackCmd := m.setRecoveryFeedback(msg.SuccessMessage(), msg.Result.TransactionID, false)
+	feedbackCmd := m.setRecoveryFeedbackWithContext(msg.SuccessMessage(), msg.Result.TransactionID,
+		recoveryWords{Title: msg.Result.Title}, false)
 	return tea.Batch(saveCmd, feedbackCmd)
 }
 
@@ -168,8 +169,23 @@ func (m *AppModel) handleBatchTransactionResult(msg coordinator.BatchTransaction
 	}
 	saveCmd := m.handleCommittedSaveComplete()
 	feedbackCmd := m.setRecoveryFeedbackWithContext(successMessage, msg.TransactionID,
-		recoveryWords{Context: msg.RecoveryContext, Headline: msg.RecoveryHeadline}, false)
+		recoveryWords{Context: msg.RecoveryContext, Headline: msg.RecoveryHeadline,
+			Title: m.committedTargetTitle(msg.CommittedTarget)}, false)
 	return tea.Batch(saveCmd, feedbackCmd)
+}
+
+// committedTargetTitle is the whole title of the one task a single-task gesture
+// dispatched through the batch path named, read from the reloaded workspace, or
+// "" for a bulk or project-scoped batch, which names no one task.
+func (m *AppModel) committedTargetTitle(target app.TaskLocator) string {
+	if target.TaskID == "" {
+		return ""
+	}
+	task, _ := m.taskAndProjectForIdentity(taskref.TaskIdentity{ProjectID: target.ProjectID, TaskID: target.TaskID})
+	if task == nil {
+		return ""
+	}
+	return task.Title
 }
 
 func (m *AppModel) refreshLoadedTaskWorkspace() {

@@ -106,3 +106,37 @@ func TestTickerCountsBetweenValuesOfOneWidthOnly(t *testing.T) {
 		t.Fatal("a count that moved by one has nothing in between")
 	}
 }
+
+// Work in hand reads its restart line: the resume note first, else the next
+// unticked checklist step; Waiting and unstarted work, and tasks with neither
+// line, are left out, and the most recently changed state leads.
+func TestDayCanvasPicksUpWorkInHand(t *testing.T) {
+	now := time.Date(2026, 11, 6, 15, 0, 0, 0, time.Local)
+	hour := func(h int) time.Time { return time.Date(2026, 11, 6, h, 0, 0, 0, time.Local) }
+	tasks := []*models.Task{
+		{ID: "a", Title: "Noted", WorkflowState: models.StateDoing, StateChangedAt: hour(9), ResumeNote: "halfway through",
+			Checklist: []models.ChecklistItem{{Text: "ignored"}}},
+		{ID: "b", Title: "Stepped", WorkflowState: models.StatePaused, StateChangedAt: hour(11),
+			Checklist: []models.ChecklistItem{{Text: "done", Done: true}, {Text: "write the summary"}}},
+		{ID: "c", Title: "Bare", WorkflowState: models.StateDoing, StateChangedAt: hour(12)},
+		{ID: "d", Title: "Waiting", WorkflowState: models.StateWaiting, StateChangedAt: hour(13), ResumeNote: "their move"},
+		{ID: "e", Title: "Hidden", WorkflowState: models.StateDoing, StateChangedAt: hour(14), ResumeNote: "x", Hidden: true},
+	}
+	project := &models.Project{ID: "p", Slug: "home", Tasks: tasks}
+	project.BuildTaskTree()
+
+	canvas := ComputeDayCanvas([]*models.Project{project}, app.CompletionActivity{}, now)
+
+	if len(canvas.PickUp) != 2 {
+		t.Fatalf("PickUp = %+v, want Stepped then Noted", canvas.PickUp)
+	}
+	if got := canvas.PickUp[0]; got.Title != "Stepped" || got.Note != "write the summary" || !got.Step {
+		t.Fatalf("first pick-up = %+v, want the paused task's next step", got)
+	}
+	if got := canvas.PickUp[1]; got.Title != "Noted" || got.Note != "halfway through" || got.Step {
+		t.Fatalf("second pick-up = %+v, want the resume note over the checklist", got)
+	}
+	if lines := canvas.PickUpBlock(80, 1); lines != nil {
+		t.Fatalf("a budget with no room for a task drew %v", lines)
+	}
+}

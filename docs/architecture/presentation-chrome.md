@@ -68,14 +68,16 @@ hosted capture panel, charge the same row without a second arithmetic.
 `renderOutlinerEmptyState` alike, so the two cannot disagree about the header's
 height.
 
-Today mode adds a reference-class pace comparison to the middle region:
-`9 open · median 3 done/day (30d)`. `ActivityCoordinator` refreshes one cached
+Today mode adds a reference-class pace readout to the middle region:
+`9 open · 3 done today · usually 2/day`, its one comparison chosen by
+`TodayPaceReadout.comparison` from the all-days median, the active-day median,
+and the best earlier day that `app.CompletionActivity` carries. `ActivityCoordinator` refreshes one cached
 `app.CompletionActivity` snapshot alongside operational chrome updates; the
 shell injects that cache immediately before the Outliner paints, while the open
 count comes from the separately injected `WorkspacePulse`. No history means no
 comparison. The full pace candidate outranks the passive pulse; after the pulse
-ladder is exhausted, pace degrades through the no-window and no-label forms,
-then disappears before required interaction context is truncated.
+ladder is exhausted, pace degrades through its short-word and no-comparison
+forms, then disappears before required interaction context is truncated.
 
 `GuidanceHint` and `GuidanceSpec` are the persistent control grammar. Providers
 emit complete key/label entries with priority and required status. Browse states
@@ -1101,6 +1103,15 @@ and each changes paint alone: no width, no row, no window input.
   whole and revealing each row above once an eased edge rising from the floor
   has passed it. It changes color alone, and `stopViewFade` retires it with
   the view fade on any key or click.
+- **Themes.** `theme.ApplyNamedTheme` paints a machine theme: the two
+  built-ins through `ApplyTheme`, and every palette theme — the curated ones in
+  `theme_catalog.go`, the terminal's reported colors, and a host's Ghostty
+  palette — through the one `paletteRoles` mapping, so legibility and cursor
+  depth are derived rather than tuned per theme. `ActiveThemeName` stays the
+  light-or-dark variant every rebuild reads; `ActivePaletteName` names the
+  palette. Terminal Colors is asked for in `core_input_handlers.go` with OSC 11, 10,
+  and 4; the answers arrive as input messages the shell claims ahead of every
+  overlay, and a round that times out without paper and ink keeps Dark.
 - **Day canvas.** Today's canvas and the empty state's cards
   (`outliner_day_canvas.go`) are paint in the list window's padding, read off
   `pulse.ComputeDayCanvas` over `ScopeProjects`. `writeDayCanvas` chooses its
@@ -1112,6 +1123,15 @@ and each changes paint alone: no width, no row, no window input.
   into the rows its sentence left, whole or not at all: the welcome when no
   project in an unscoped, loaded workspace holds any task, and Today's resting
   card when Today is the empty mode.
+  Below the strip, `PickUpBlock` lists `DayCanvas.PickUp` — Doing and Paused
+  work with a resume note or an unticked checklist step, read by `pickUpFor` —
+  as the canvas's last block, drawn whole only after the other two fit.
+  `gw`'s week browse (in `query_readout_view.go`, beside the readout it is modeled on) is a gated sub-state on the
+  readout's terms: `weekBrowseState` holds an open flag and a day offset, the
+  keymap owns input while open, and its only effect on paint is
+  `AheadBlockSelecting`'s accented day name and `DayItemsBlock`'s list under the
+  strip, which displaces the Done block rather than any row. It owns no row,
+  cursor, or click, and reads the live canvas each frame, so nothing is frozen.
 - **Terminal focus.** `handleFocusMessage` hands each focus report to
   `noteTerminalFocus`. The Outliner's `SetTerminalFocused` turns the cursor's
   `cursorPaint` to resting: a muted mark, no band, no flash. It changes paint

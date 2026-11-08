@@ -28,7 +28,7 @@ anything else.
 
 | Artifact | Path | Format | Synced |
 | --- | --- | --- | --- |
-| Workspace catalog | `.docket/workspace.json` | domain envelope 1, catalog payload schema 24 | yes |
+| Workspace catalog | `.docket/workspace.json` | domain envelope 1, catalog payload schema 25 | yes |
 | Planning | `.docket/planning.json` | domain envelope 1 | yes |
 | Named lenses | `.docket/lenses.json` | domain envelope 1 | yes |
 | Project document | `projects/<slug>/tasks.md` | task Markdown schema 20 | yes |
@@ -42,7 +42,7 @@ anything else.
 | Migration snapshots | `.docket/backups/` | archive/audit pairs | never |
 | Domain sidecars and locks | `*.bak`, `*.lock` | — | never |
 
-The catalog payload schema (24) and the task Markdown schema (20) are separate
+The catalog payload schema (25) and the task Markdown schema (20) are separate
 numbers. Neither one is computed from the other. Both come from the code:
 `config.CurrentConfigVersion`, `storage.CurrentTaskSchemaVersion`, and
 `config.CurrentDomainSchemaVersion` for the envelope.

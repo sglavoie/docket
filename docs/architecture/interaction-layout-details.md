@@ -138,11 +138,12 @@ operation reachable only this way never touches a task or a project — it acts 
 the view or on nothing at all — so the bar can stay off by default without hiding
 anything that edits your work.
 
-Today mode also compares its open load with the workspace's 30-day completion
-pace in the middle region, for example `9 open · median 3 done/day (30d)`. A fresh
-workspace with no completion history shows no comparison. Under pressure the
-workspace pulse disappears first; the comparison then sheds `(30d)`, then
-`median`, and finally disappears before required interaction context shortens.
+Today mode also reads its open load and the day's completions against the
+workspace's own 30-day record in the middle region, for example
+`9 open · 3 done today · usually 2/day`. A fresh workspace with no completion
+history shows no readout. Under pressure the workspace pulse disappears first;
+the readout then shortens its words, drops the comparison, and finally
+disappears before required interaction context shortens.
 
 Press a chord prefix such as `w`, `f`, or `g` to see its next keys.
 `w` separates Plan from Status; `?` lists all shortcuts, including those a

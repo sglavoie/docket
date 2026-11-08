@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/operation"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // menuBarState is the open menu's whole sub-state: the dropdown gate and where
@@ -366,6 +367,7 @@ func (m *OutlinerModel) resolvedMenuBar() []ResolvedMenu {
 			MouseEnabled:      m.MouseEnabled(),
 			MotionEnabled:     m.MotionPreferred(),
 			NerdGlyphs:        m.NerdGlyphs(),
+			Theme:             theme.ActiveMachineTheme(),
 		}),
 	)
 	if err != nil {

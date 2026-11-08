@@ -17,7 +17,7 @@ import (
 func TestCreateDomainBundle_ValidatesBeforeBootstrapEffects(t *testing.T) {
 	dataDir := filepath.Join(t.TempDir(), "absent", "workspace")
 	domains := NewDomains()
-	domains.Machine.Theme = "sepia"
+	domains.Machine.Theme = "neon"
 
 	err := createDomainBundle(
 		storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir}),

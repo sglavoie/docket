@@ -246,10 +246,8 @@ func (m *OutlinerModel) BuildOutlinerTitleLine(width int) string {
 	workspacePulse := m.CurrentWorkspacePulse()
 	var pace *pulse.TodayPaceReadout
 	if m.PrimaryMode == chrome.ModeToday && m.CompletionActivity.HasHistory() {
-		pace = &pulse.TodayPaceReadout{
-			OpenCount:    workspacePulse.Today,
-			MedianPerDay: m.CompletionActivity.MedianPerDay(),
-		}
+		readout := pulse.NewTodayPaceReadout(workspacePulse.Today, m.CompletionActivity)
+		pace = &readout
 	}
 	spec := pulse.OperationalTitleSpec{
 		Scope: theme.TitleStyle.Render(m.outlinerScopeLabel()),

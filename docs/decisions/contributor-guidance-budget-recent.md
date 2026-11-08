@@ -518,3 +518,12 @@ inline capture suggestion appears only where `Tab` would insert it; and
 `machine.json` gains `greeted_on`. The mechanism lives in
 docs/architecture/presentation-chrome.md. No rule elsewhere was trimmed to
 pay for it.
+
+Raise from 78960 to 79280 for the project alias at catalog schema 25. 320
+bytes buy the rules the field is held to: it merges field-wise like the
+name, `models.ValidateProjectAlias` is its one gate, a catalog below 25
+holding one is refused, and a nil `ProjectEdit.Alias` keeps the stored value
+so no surface erases it by omission; plus the chain's new `v25` step and why
+the `.tt/` tombstone stays at 24. The migration mechanism lives in
+docs/architecture/migration.md and the field in docs/guide/storage.md. No
+rule elsewhere was trimmed to pay for it.

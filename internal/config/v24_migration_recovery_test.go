@@ -94,13 +94,16 @@ func v24Tree(t *testing.T, dir string) map[string]string {
 }
 
 // requireV24Activated holds a recovered workspace to the finished layout: the
-// legacy bytes under .docket/ at schema 24, no undo ledger, one archive/audit
-// pair, the three-file tombstone at .tt/, and no stage or retired directory.
+// legacy bytes under .docket/ at the current schema, no undo ledger, one
+// archive/audit pair, the three-file tombstone at .tt/, and no stage or retired
+// directory. RecoverWorkspace runs the whole chain, so the catalog ends past 24
+// at whatever the later catalog-only boundaries publish, while the tombstone
+// keeps declaring 24.
 func requireV24Activated(t *testing.T, root string, legacy map[string]string) {
 	t.Helper()
 	schema, exists, err := workspaceCatalogPayloadSchema(root)
-	if err != nil || !exists || schema != V24ConfigSchemaVersion {
-		t.Fatalf("catalog schema = %d (exists %v, err %v), want %d", schema, exists, err, V24ConfigSchemaVersion)
+	if err != nil || !exists || schema != CurrentConfigVersion {
+		t.Fatalf("catalog schema = %d (exists %v, err %v), want %d", schema, exists, err, CurrentConfigVersion)
 	}
 	moved := v24Tree(t, InternalDir(root))
 	for rel, data := range legacy {

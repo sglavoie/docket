@@ -47,6 +47,7 @@ func CopyCatalogMetadata(dst, src *models.Project) {
 	}
 	dst.Slug = src.Slug
 	dst.Name = src.Name
+	dst.Alias = src.Alias
 	dst.Description = src.Description
 	dst.Path = src.Path
 	dst.CreatedAt = src.CreatedAt

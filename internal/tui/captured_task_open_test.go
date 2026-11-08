@@ -74,7 +74,9 @@ func TestOpenCapturedTaskHopsToAViewThatDrawsIt(t *testing.T) {
 	out.SelectOutlinerMode(chrome.ModeToday)
 	out.RebuildRows()
 
-	captureText(t, driver, "Lands in the Inbox")
+	// Capture from Today plans for Today by default, so the draft names Inbox
+	// to land outside the view it was typed over.
+	captureText(t, driver, "Lands in the Inbox $inbox")
 	pressKeys(t, driver, "g", "l")
 	if got := capturedCursorTitle(driver); got != "Lands in the Inbox" {
 		t.Fatalf("gl landed on %q", got)

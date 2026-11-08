@@ -31,10 +31,15 @@ import (
 // legacy models.Project carries: a project's location is derived from the data
 // directory and its safe slug (see CatalogPath), never stored, so a workspace
 // can be moved between machines or storage backends without rewriting paths.
+//
+// Alias is the optional short display label, admitted from schema 25 and gated
+// by validateCatalogProjectAlias. It is omitted when empty, so a catalog holding
+// no alias keeps its schema-24 bytes apart from the schema number.
 type CatalogProject struct {
 	ID          string     `json:"id"`
 	Slug        string     `json:"slug"`
 	Name        string     `json:"name"`
+	Alias       string     `json:"alias,omitempty"`
 	Description string     `json:"description,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
@@ -87,6 +92,7 @@ func catalogProjectFromModel(p *models.Project) CatalogProject {
 		ID:          p.ID,
 		Slug:        p.Slug,
 		Name:        p.Name,
+		Alias:       p.Alias,
 		Description: p.Description,
 		CreatedAt:   p.CreatedAt,
 		UpdatedAt:   p.UpdatedAt,
@@ -107,6 +113,7 @@ func (p CatalogProject) ToModel(dataDir string) *models.Project {
 		ID:          p.ID,
 		Slug:        p.Slug,
 		Name:        p.Name,
+		Alias:       p.Alias,
 		Description: p.Description,
 		Path:        p.CatalogPath(dataDir),
 		CreatedAt:   p.CreatedAt,
@@ -227,6 +234,9 @@ func (w *WorkspaceCatalog) validate(allowRepairableColorSlots bool, supported in
 		}
 		if !allowRepairableColorSlots && (p.ColorSlot < 0 || p.ColorSlot > ProjectColorSlotCount) {
 			return fmt.Errorf("workspace catalog: project %q has invalid color slot %d", p.ID, p.ColorSlot)
+		}
+		if err := validateCatalogProjectAlias(w.SchemaVersion, p); err != nil {
+			return err
 		}
 		normalizedTags, err := models.NormalizeProjectTags(p.Tags)
 		if err != nil {

@@ -132,6 +132,9 @@ func (m *TaskComposerModel) composerInputContentRows() int {
 func (m *TaskComposerModel) composerPanelPaneContentRows() int {
 	switch {
 	case m.IsAutocompleteActive():
+		if m.PreviewSummary(max(m.Width, 1)) != "" {
+			return len(m.AC.Items) + 1
+		}
 		return len(m.AC.Items)
 	default:
 		rows := 0
@@ -386,6 +389,12 @@ func panelBlockRows(block string) int {
 func (m *TaskComposerModel) renderComposerPanelPane(rows int) string {
 	switch {
 	case m.IsAutocompleteActive():
+		// The suggestions keep the pane, but a draft that already carries
+		// metadata keeps one line saying what it was read as, so completing
+		// the next token never hides the meaning of the ones before it.
+		if summary := m.PreviewSummary(max(m.Width, 1)); summary != "" && rows > 1 {
+			return joinPanelBlocks(summary, strings.TrimRight(m.AC.RenderDropdownWithLimit("", rows-1), "\n"))
+		}
 		return strings.TrimRight(m.AC.RenderDropdownWithLimit("", rows), "\n")
 	case m.HelpExpanded:
 		m.SetSyntaxViewportHeight(rows)

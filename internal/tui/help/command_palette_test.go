@@ -91,3 +91,53 @@ func TestCommandPaletteHoldsItsHeightAndWidth(t *testing.T) {
 		t.Fatalf("paste = %q", p.query)
 	}
 }
+
+// The actions this machine ran last lead an empty palette, most recent first,
+// and say so; an unavailable one never jumps the queue.
+func TestCommandPaletteLeadsWithRecentActions(t *testing.T) {
+	p := NewCommandPalette(operation.CommandContext{}, paletteFixture())
+	p.SetRecent([]string{"core.edit", completeTaskFixtureKey(t, p), "unregistered.id"})
+	labels := make([]string, 0, len(p.results))
+	for _, item := range p.results {
+		labels = append(labels, item.Description)
+	}
+	want := []string{"Complete Task", "Capture", "Wait on Task", "Edit Task"}
+	if strings.Join(labels, "|") != strings.Join(want, "|") {
+		t.Fatalf("empty palette = %v, want %v", labels, want)
+	}
+	if !strings.Contains(p.Render(80), "recent") {
+		t.Fatal("a recent row does not say it is recent")
+	}
+	typePalette(p, "cap")
+	if strings.Contains(p.Render(80), "· recent") {
+		t.Fatal("a typed query still marks rows recent")
+	}
+}
+
+func completeTaskFixtureKey(t *testing.T, p *CommandPaletteModel) string {
+	t.Helper()
+	for _, item := range p.items {
+		if item.Description == "Complete Task" {
+			return paletteItemKey(item)
+		}
+	}
+	t.Fatal("fixture has no Complete Task")
+	return ""
+}
+
+// Ctrl+J and Ctrl+K move like Ctrl+N and Ctrl+P, the way capture's
+// suggestions move.
+func TestCommandPaletteCtrlJKMoveTheCursor(t *testing.T) {
+	p := NewCommandPalette(operation.CommandContext{}, paletteFixture())
+	p.HandleKey(tea.KeyPressMsg{Code: 'j', Mod: tea.ModCtrl})
+	if p.cursor != 1 {
+		t.Fatalf("ctrl+j cursor = %d, want 1", p.cursor)
+	}
+	p.HandleKey(tea.KeyPressMsg{Code: 'k', Mod: tea.ModCtrl})
+	if p.cursor != 0 {
+		t.Fatalf("ctrl+k cursor = %d, want 0", p.cursor)
+	}
+	if p.query != "" {
+		t.Fatalf("ctrl+j/k typed %q into the query", p.query)
+	}
+}

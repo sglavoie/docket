@@ -2,7 +2,6 @@ package pulse
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -269,12 +268,17 @@ func operationalPulseVariants(pulse WorkspacePulse) []string {
 }
 
 func operationalPaceVariants(pace TodayPaceReadout) []string {
-	rate := strconv.FormatFloat(pace.MedianPerDay, 'f', -1, 64)
-	candidates := []string{
-		fmt.Sprintf("%d open · median %s done/day (30d)", pace.OpenCount, rate),
-		fmt.Sprintf("%d open · median %s done/day", pace.OpenCount, rate),
-		fmt.Sprintf("%d open · %s done/day", pace.OpenCount, rate),
+	open := fmt.Sprintf("%d open", pace.OpenCount)
+	full, short := pace.comparison()
+	candidates := make([]string, 0, 3)
+	if full != "" {
+		candidates = append(candidates,
+			fmt.Sprintf("%s · %d done today · %s", open, pace.DoneToday, full),
+			fmt.Sprintf("%s · %d done · %s", open, pace.DoneToday, short))
+	} else {
+		candidates = append(candidates, fmt.Sprintf("%s · %d done today", open, pace.DoneToday))
 	}
+	candidates = append(candidates, fmt.Sprintf("%s · %d done", open, pace.DoneToday))
 	variants := make([]string, 0, len(candidates))
 	for _, candidate := range candidates {
 		variants = append(variants, theme.MutedStyle.Render(candidate))

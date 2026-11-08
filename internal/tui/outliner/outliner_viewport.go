@@ -121,7 +121,7 @@ func (m *OutlinerModel) mergedSlugFloor(rows []OutlinerRow, hidden *hiddenRowLay
 		if project == nil || !present[project.ID] {
 			continue
 		}
-		slug := project.Slug
+		slug, _ := models.ProjectDisplayLabel(project)
 		if slug == "" {
 			slug = project.Name
 		}

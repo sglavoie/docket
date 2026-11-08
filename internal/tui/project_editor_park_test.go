@@ -42,7 +42,9 @@ const projectEditorRowClearPresses = 64
 // value leaves that row exactly as the project stored it.
 func fillProjectEditor(t *testing.T, editor *projecthub.ProjectEditorModel, name, description, tags string) {
 	t.Helper()
-	for index, value := range []string{name, description, tags} {
+	// The empty string is the Alias row, between Name and Description, which
+	// these park tests leave as the project stored it.
+	for index, value := range []string{name, "", description, tags} {
 		if index > 0 {
 			editor.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 		}

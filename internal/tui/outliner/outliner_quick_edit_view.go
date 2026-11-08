@@ -324,7 +324,7 @@ type StartTaskLineEditMsg struct {
 }
 
 func (m *OutlinerModel) DesktopTextBuffer() *chrome.DesktopTextBuffer {
-	if m.MenuBar.Open || m.QueryReadout.Expanded || m.Triage.Active || m.Jump.Active || m.RelationPickerOpen() {
+	if m.MenuBar.Open || m.QueryReadout.Expanded || m.Week.Active || m.Triage.Active || m.Jump.Active || m.RelationPickerOpen() {
 		return nil
 	}
 	if m.QuickEdit != nil && m.QuickEdit.IsActive() && !m.QuickEdit.Pending {

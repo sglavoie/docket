@@ -157,6 +157,15 @@ description symbols from a Nerd Font, such as Someday's thought bubble in place
 of `¿`; it needs a terminal font that carries them. Every glyph keeps its
 one-cell width, so no row moves when you switch.
 
+View → Theme chooses how Docket is painted: **Dark** and **Light**, which `T`
+toggles between, three curated palettes — **Ember**, a warm dark; **Fjord**, a
+cool dark; **Sepia**, a warm light — and **Terminal Colors**, which asks the
+terminal for its background, foreground, and sixteen ANSI colors and paints
+Docket in them. Every theme is also in the `:` palette; type `theme`. A terminal
+that does not answer within a moment leaves Dark on screen and says so; the
+choice is kept, and the next launch asks again. From any palette theme, `T`
+goes to Light or Dark by whichever the palette is not.
+
 Menu-bar visibility is saved on this machine, as are the theme, advisory,
 motion, and glyph settings. These preferences do not follow a workspace to
 another computer. Launching with `DOCKET_GLYPHS=nerd` or `DOCKET_GLYPHS=unicode`
@@ -183,8 +192,10 @@ the saved setting is unchanged.
 
 ## Read workload and feedback
 
-Today mode compares open work with the workspace's 30-day completion pace,
-for example `9 open · median 3 done/day (30d)`. It shows no comparison until
+Today mode says what is open and what is already done, against your own 30-day
+record: `9 open · 3 done today · usually 2/day`, or `best day in 30 days` once
+today beats every earlier day. If most days finish nothing, the usual rate is
+taken over the days that did (`usually 2 on active days`). It shows nothing until
 there is completion history, and hides optional information in narrow windows.
 
 The footer describes the current interaction. Press a chord prefix such as `w`,

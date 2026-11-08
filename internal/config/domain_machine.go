@@ -74,6 +74,52 @@ type MachineState struct {
 	// Chrome on the same terms as GreetedOn — machine-local, omitempty, never
 	// seeded — and the omitted key is the default, which is that every hint shows.
 	LearnedFooterKeys map[string]int `json:"learned_footer_keys,omitempty"`
+	// PaletteRecent names the command palette actions last run on this machine,
+	// most recent first, by operation ID and any preset value it carries, so an empty palette opens on what this
+	// person reaches for. Chrome on the same terms as LearnedFooterKeys; an entry a
+	// later build no longer registers is simply never matched.
+	PaletteRecent []string `json:"palette_recent,omitempty"`
+}
+
+// The machine themes: the two built-ins, Docket's curated palettes, and the
+// terminal's own colors, read from the terminal at launch.
+const (
+	ThemeDark     = "dark"
+	ThemeLight    = "light"
+	ThemeEmber    = "ember"
+	ThemeFjord    = "fjord"
+	ThemeSepia    = "sepia"
+	ThemeTerminal = "terminal"
+)
+
+// MachineThemes is every theme name machine.json may hold.
+var MachineThemes = []string{ThemeDark, ThemeLight, ThemeEmber, ThemeFjord, ThemeSepia, ThemeTerminal}
+
+// ValidMachineTheme reports whether name is one of MachineThemes.
+func ValidMachineTheme(name string) bool {
+	return slices.Contains(MachineThemes, name)
+}
+
+// PaletteRecentLimit bounds the command palette actions remembered as recent.
+const PaletteRecentLimit = 8
+
+// WithPaletteUse returns a copy of the state naming id as the most recently run
+// palette action, and whether the list moved. The list is cloned rather than
+// shared, for the same reason WithFooterKeyUse clones its map.
+func (m MachineState) WithPaletteUse(id string) (MachineState, bool) {
+	id = strings.TrimSpace(id)
+	if id == "" || (len(m.PaletteRecent) > 0 && m.PaletteRecent[0] == id) {
+		return m, false
+	}
+	recent := make([]string, 0, PaletteRecentLimit)
+	recent = append(recent, id)
+	for _, existing := range m.PaletteRecent {
+		if existing != id && len(recent) < PaletteRecentLimit {
+			recent = append(recent, existing)
+		}
+	}
+	m.PaletteRecent = recent
+	return m, true
 }
 
 // FooterKeyLearnedUses is how many presses retire a footer hint.
@@ -124,8 +170,8 @@ func (m *MachineState) Validate() error {
 		}
 		seen[query] = true
 	}
-	if m.Theme != "" && m.Theme != "dark" && m.Theme != "light" {
-		return fmt.Errorf("machine: theme %q must be dark or light", m.Theme)
+	if m.Theme != "" && !ValidMachineTheme(m.Theme) {
+		return fmt.Errorf("machine: theme %q must be one of %s", m.Theme, strings.Join(MachineThemes, ", "))
 	}
 	if m.GreetedOn != "" {
 		if _, err := time.Parse(time.DateOnly, m.GreetedOn); err != nil {
@@ -136,6 +182,16 @@ func (m *MachineState) Validate() error {
 		if key == "" || uses < 1 || uses > FooterKeyLearnedUses {
 			return fmt.Errorf("machine: learned footer key %q must count 1 to %d uses", key, FooterKeyLearnedUses)
 		}
+	}
+	if len(m.PaletteRecent) > PaletteRecentLimit {
+		return fmt.Errorf("machine: palette recent exceeds %d entries", PaletteRecentLimit)
+	}
+	recentSeen := make(map[string]bool, len(m.PaletteRecent))
+	for _, id := range m.PaletteRecent {
+		if id == "" || strings.TrimSpace(id) != id || recentSeen[id] {
+			return fmt.Errorf("machine: palette recent must contain distinct, nonblank, trimmed ids")
+		}
+		recentSeen[id] = true
 	}
 	if m.ActiveLensID != "" {
 		if err := ValidateNamedLensID(m.ActiveLensID); err != nil {
@@ -206,5 +262,6 @@ func (m *MachineState) Clone() *MachineState {
 	cp.NamedLenses = m.NamedLenses.Clone()
 	cp.SearchHistory = slices.Clone(m.SearchHistory)
 	cp.LearnedFooterKeys = maps.Clone(m.LearnedFooterKeys)
+	cp.PaletteRecent = slices.Clone(m.PaletteRecent)
 	return &cp
 }

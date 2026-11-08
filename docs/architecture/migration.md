@@ -6,7 +6,7 @@ Workspace recovery first runs the schema-24 layout activation, which moves a
 pre-v24 internal `.tt/` to `.docket/` at whatever schema it holds, because every
 reader now looks under `.docket/` (steps 40–41). It then reads the catalog
 payload schema before ordinary loading.
-Schema 24 proceeds directly. A supported schema-4 split-domain workspace first
+Schema 25 proceeds directly. A supported schema-4 split-domain workspace first
 crosses the schema-5 boundary, a supported schema-5 workspace then enters the
 schema-6 consolidation path, a schema-6 workspace crosses the schema-7
 scope-folding path, a schema-7 workspace crosses the schema-8 tag path, a
@@ -22,8 +22,9 @@ workspace crosses the schema-18 resume-note path, a schema-18 workspace crosses
 the schema-19 project-comment path, a schema-19 workspace crosses the schema-20
 checklist-origin path, a schema-20 workspace crosses the schema-21 check-in
 path, and a schema-21 workspace, or a working copy enrolled in sync at schema
-22, crosses the schema-23 hidden-flag path, and a schema-23 workspace finishes
-on the schema-24 layout path:
+22, crosses the schema-23 hidden-flag path, a schema-23 workspace crosses the
+schema-24 layout path, and a schema-24 workspace finishes on the schema-25
+project-alias path:
 
 1. Decode the v4 catalog, planning, settings, automation, machine state, task
    Markdown, completed archives, notes, blockers, and legacy indexes with
@@ -243,8 +244,19 @@ on the schema-24 layout path:
 41. `MigrateWorkspaceToV24` closes the chain: a schema-23 catalog advances to 24
    in one transaction with its expected revision and the undo ledger's cleanup.
    Only that number changes; no task grammar, lens, or conflict bundle moves.
-   Bootstrap, enrollment, and join give a workspace born at schema 24 its own
-   tombstone, and recovery writes a missing one.
+   Bootstrap, enrollment, and join give a workspace born at schema 24 or later
+   its own tombstone, and recovery writes a missing one.
+42. `MigrateWorkspaceToV25` admits the optional project `alias`. It validates
+   the strict schema-24 catalog first, publishes
+   `pre-project-alias-v25-<UTC>.tar.gz` plus its audit, then advances the
+   catalog to 25 in one transaction with its expected revision and the undo
+   ledger's cleanup, refusing if the workspace changed after the archive. No
+   catalog can hold an alias before 25 and the key is omitted when empty, so
+   only the number changes; no task document is read or rewritten. The
+   activation runs under `.docket/transactions/v25-activation.lock`, so a second
+   opener waits and then finds the boundary crossed. The `.tt/` tombstone keeps
+   declaring 24: it only has to be newer than every build that reads `.tt/`,
+   and those stop at 23.
 
 Interrupted activation recovery reads the two directories. A stage of either
 kind is never authoritative and is deleted on sight. No `.docket/` and a live
@@ -278,7 +290,7 @@ with no `lenses.json` stages nothing: the machine-local collection it falls back
 to is lifted on every load and rewritten on that machine's next commit, which is
 the only upgrade path a file this transaction does not own can have.
 
-Each boundary is idempotent: repeated schema-24 startup neither reconverts data
+Each boundary is idempotent: repeated schema-25 startup neither reconverts data
 nor creates another rollback pair. Corrupt or future input and an existing
 `unfiled` project/directory fail before mutation with concrete rename/move guidance.
 No boundary rewrites `.docket/conflicts/` (the v24 move copies it byte for byte), so a bundle recorded before one keeps the

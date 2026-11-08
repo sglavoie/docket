@@ -32,7 +32,7 @@
     {"type": "assert", "assert": "no_layout_issues"},
     {"type": "resize", "width": 140, "height": 20},
     {"type": "assert", "assert": "contains", "value": "r recent · Task: p task project · P parent task"},
-    {"type": "assert", "label": "the sync pair returns with its heading", "assert": "contains", "value": "~ related task · Sync: s sync now · c conflicts · l last capture · Esc cancel"},
+    {"type": "assert", "label": "the sync pair returns with its heading", "assert": "contains", "value": "~ related task · Sync: s sync now · c conflicts · w week ahead · l last capture · Esc cancel"},
     {"type": "assert", "assert": "no_layout_issues"},
     {"type": "key", "key": "esc"},
     {"type": "assert", "assert": "not_contains", "value": "Mode:"}

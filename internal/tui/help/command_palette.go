@@ -1,6 +1,7 @@
 package help
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
@@ -34,6 +35,26 @@ type CommandPaletteModel struct {
 	// pageRows is the result window the last render drew, which is what a page
 	// key travels.
 	pageRows int
+	// recent ranks the operation IDs this machine last ran from the palette,
+	// most recent first, ahead of the footer ladder on an empty query.
+	recent map[string]int
+}
+
+// PaletteRecentKey is how a palette row is remembered: its operation, and its
+// preset value where it carries one, since Complete Task and Wait on Task are
+// one operation told apart only by the state they pass.
+func PaletteRecentKey(id operation.OperationID, value any, hasValue bool) string {
+	if !hasValue {
+		return string(id)
+	}
+	return string(id) + "=" + fmt.Sprint(value)
+}
+
+func paletteItemKey(item operation.HelpItem) string {
+	if item.Action == nil {
+		return ""
+	}
+	return PaletteRecentKey(item.Action.ID, item.Action.Value, item.Action.HasValue)
 }
 
 // RunPaletteActionMsg asks the shell to close this palette and execute the
@@ -64,10 +85,44 @@ func NewCommandPalette(ctx operation.CommandContext, items []operation.HelpItem)
 	return p
 }
 
+// SetRecent names the actions last run from the palette, most recent first, and
+// re-reads the results so an empty query opens on them.
+func (p *CommandPaletteModel) SetRecent(keys []string) {
+	if p == nil {
+		return
+	}
+	p.recent = make(map[string]int, len(keys))
+	for index, key := range keys {
+		if _, seen := p.recent[key]; !seen {
+			p.recent[key] = index
+		}
+	}
+	p.filter()
+}
+
+// IsRecent reports whether the item is one the palette leads with as recent.
+func (p *CommandPaletteModel) IsRecent(item operation.HelpItem) bool {
+	if p == nil || item.Action == nil {
+		return false
+	}
+	_, ok := p.recent[paletteItemKey(item)]
+	return ok
+}
+
+func (p *CommandPaletteModel) recentRank(item operation.HelpItem) (int, bool) {
+	if item.Action == nil || item.DisabledReason != "" {
+		return 0, false
+	}
+	rank, ok := p.recent[paletteItemKey(item)]
+	return rank, ok
+}
+
 // filter re-reads the results for the current query. An empty query lists every
-// action with the available ones first, in footer-rank order, so the head of
-// the list is the head of the footer ladder; a typed query is matched and
-// ranked exactly as help search ranks it.
+// action with the available ones first: those this machine ran most recently
+// lead, then the rest in footer-rank order, so the head of the list is what
+// this person reaches for and then the head of the footer ladder. A typed query
+// is matched and ranked exactly as help search ranks it, with recency breaking
+// only exact ties.
 func (p *CommandPaletteModel) filter() {
 	p.cursor, p.top = 0, 0
 	if strings.TrimSpace(p.query) == "" {
@@ -77,6 +132,14 @@ func (p *CommandPaletteModel) filter() {
 		}
 		sort.SliceStable(p.results, func(i, j int) bool {
 			a, b := p.results[i], p.results[j]
+			ra, aRecent := p.recentRank(a.HelpItem)
+			rb, bRecent := p.recentRank(b.HelpItem)
+			if aRecent != bRecent {
+				return aRecent
+			}
+			if aRecent {
+				return ra < rb
+			}
 			if (a.DisabledReason == "") != (b.DisabledReason == "") {
 				return a.DisabledReason == ""
 			}
@@ -117,9 +180,9 @@ func (p *CommandPaletteModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea
 			ID: item.Action.ID, Value: item.Action.Value, HasValue: item.Action.HasValue,
 			Context: operation.CloneCommandContext(p.context),
 		}}
-	case "up", "ctrl+p":
+	case "up", "ctrl+p", "ctrl+k":
 		p.move(-1)
-	case "down", "ctrl+n":
+	case "down", "ctrl+n", "ctrl+j":
 		p.move(1)
 	case "pgup":
 		p.move(-max(p.pageRows-1, 1))

@@ -386,14 +386,26 @@ func (m *OutlinerModel) todayCanvasLines(width, budget int) []string {
 		return nil
 	}
 	canvas := m.computeDayCanvas(time.Now())
+	selected := m.weekBrowseSelected()
 	var out []string
-	if done := canvas.DoneBlock(width, budget-1); len(done) > 0 {
-		out = append(out, "")
-		out = append(out, done...)
+	// While the week browse is open the strip is what the reader is working, so
+	// the finished list yields its rows to the selected day's.
+	if selected < 0 {
+		if done := canvas.DoneBlock(width, budget-1); len(done) > 0 {
+			out = append(out, "")
+			out = append(out, done...)
+		}
 	}
-	if ahead := canvas.AheadBlock(width); len(ahead) > 0 && len(out)+1+len(ahead) <= budget {
+	if ahead := canvas.AheadBlockSelecting(width, selected); len(ahead) > 0 && len(out)+1+len(ahead) <= budget {
 		out = append(out, "")
 		out = append(out, ahead...)
+		out = append(out, canvas.DayItemsBlock(selected, width, budget-len(out))...)
+	}
+	if selected < 0 {
+		if pick := canvas.PickUpBlock(width, budget-len(out)-1); len(pick) > 0 {
+			out = append(out, "")
+			out = append(out, pick...)
+		}
 	}
 	return out
 }
@@ -423,7 +435,11 @@ func (m *OutlinerModel) emptyStateCard(width int) []string {
 		}
 	case outlinerEmptyMode:
 		if m.dayCanvasEligible() {
-			return m.computeDayCanvas(time.Now()).RestingCard(width)
+			canvas := m.computeDayCanvas(time.Now())
+			if selected := m.weekBrowseSelected(); selected >= 0 {
+				return append(canvas.AheadBlockSelecting(width, selected), canvas.DayItemsBlock(selected, width, weekBrowseRestingItems)...)
+			}
+			return canvas.RestingCard(width)
 		}
 	default:
 		// Every other empty view explains itself in its sentence alone.

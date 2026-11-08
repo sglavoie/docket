@@ -190,6 +190,9 @@ func (w *WorkspaceCatalog) upsertProject(p *models.Project, repairSystemUnfiled 
 		return fmt.Errorf("workspace catalog: project %q has invalid tags: %w", cp.ID, err)
 	}
 	cp.Tags = tags
+	if err := validateCatalogProjectAlias(next.SchemaVersion, cp); err != nil {
+		return err
+	}
 	if repairSystemUnfiled {
 		// Bootstrap repair runs before SystemUnfiledProjectID is bound, so the
 		// protected-project branch below cannot yet recognize this project.

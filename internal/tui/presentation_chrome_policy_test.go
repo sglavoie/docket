@@ -79,7 +79,7 @@ func TestTodayPaceReadoutIsTodayOnlyAndRequiresHistory(t *testing.T) {
 		outlinerView.PrimaryMode = mode.ID
 		plain := ansi.Strip(outlinerView.BuildOutlinerTitleLine(160))
 		if mode.ID == chrome.ModeToday {
-			if !strings.Contains(plain, "9 open · median 0 done/day (30d)") {
+			if !strings.Contains(plain, "9 open · 0 done today") {
 				t.Fatalf("Today title missing pace readout: %q", plain)
 			}
 			if !strings.Contains(plain, "workspace:") {
@@ -87,7 +87,7 @@ func TestTodayPaceReadoutIsTodayOnlyAndRequiresHistory(t *testing.T) {
 			}
 			continue
 		}
-		if strings.Contains(plain, "median") || strings.Contains(plain, "(30d)") {
+		if strings.Contains(plain, "9 open") {
 			t.Fatalf("%s title rendered Today-only pace: %q", mode.Label, plain)
 		}
 	}
@@ -95,7 +95,7 @@ func TestTodayPaceReadoutIsTodayOnlyAndRequiresHistory(t *testing.T) {
 	outlinerView.PrimaryMode = chrome.ModeToday
 	outlinerView.SetCompletionActivity(app.CompletionActivity{})
 	plain := ansi.Strip(outlinerView.BuildOutlinerTitleLine(160))
-	if strings.Contains(plain, "median") || strings.Contains(plain, "(30d)") {
+	if strings.Contains(plain, "9 open") {
 		t.Fatalf("history-free workspace rendered a zero pace: %q", plain)
 	}
 }

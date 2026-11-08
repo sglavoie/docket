@@ -61,6 +61,7 @@ var headerTargetAudit = map[operation.OperationID]string{
 	"tui.core.goto-agenda":            "target-free",
 	"tui.core.goto-backlog":           "target-free",
 	"tui.core.goto-captured":          "target-free",
+	"tui.core.browse-week":            "target-free",
 	"tui.core.goto-due":               "target-free",
 	"tui.core.goto-inbox":             "target-free",
 	"tui.core.goto-next":              "target-free",

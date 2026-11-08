@@ -251,3 +251,34 @@ func completedTask(id string, shortID int, completed time.Time) *models.Task {
 	task.CompletedAt = &completed
 	return task
 }
+
+// An occasional user's all-days median is 0, so the readout also needs what a
+// worked day usually closes and the best day before today, both excluding
+// today itself.
+func TestCompletionActivityActiveDayMedianAndBestPriorDay(t *testing.T) {
+	now := time.Date(2026, time.August, 19, 12, 0, 0, 0, time.UTC)
+	today := time.Date(2026, time.August, 19, 0, 0, 0, 0, time.UTC)
+	perDay := map[int]int{0: 9, 2: 1, 5: 3, 9: 4}
+	tasks := make([]*models.Task, 0, 17)
+	shortID := 1
+	for dayOffset, count := range perDay {
+		for n := 0; n < count; n++ {
+			completed := today.AddDate(0, 0, -dayOffset).Add(time.Duration(8+n) * time.Hour)
+			tasks = append(tasks, completedTask("done-"+completed.Format("20060102-15"), shortID, completed))
+			shortID++
+		}
+	}
+	activity, err := newTestServiceWithClock(newFakeRepo(newProject("p1", "Sparse", tasks...)), fixedClock{t: now}).CompletionActivity()
+	if err != nil {
+		t.Fatalf("CompletionActivity: %v", err)
+	}
+	if activity.MedianPerDay() != 0 {
+		t.Fatalf("MedianPerDay = %v, want 0 over mostly idle days", activity.MedianPerDay())
+	}
+	if activity.ActiveDayMedian() != 3 {
+		t.Fatalf("ActiveDayMedian = %v, want 3 from 1, 3, 4", activity.ActiveDayMedian())
+	}
+	if activity.BestPriorDay() != 4 {
+		t.Fatalf("BestPriorDay = %d, want 4, today's 9 excluded", activity.BestPriorDay())
+	}
+}

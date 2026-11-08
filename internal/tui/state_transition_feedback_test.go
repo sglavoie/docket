@@ -12,6 +12,10 @@ import (
 
 const stateTransitionFeedbackSettleTimeout = 2 * time.Second
 
+// firstTransitionTitle is wider than the ledger's fitted title column, so the
+// toast proves it reads the commit's whole title rather than the ledger's cut.
+const firstTransitionTitle = "First transition target with a title wider than the ledger keeps"
+
 type stateTransitionFeedbackEnv struct {
 	driver       *UITestDriver
 	firstTaskID  string
@@ -28,7 +32,7 @@ func newStateTransitionFeedbackEnv(t *testing.T) *stateTransitionFeedbackEnv {
 
 	var firstTaskID, secondTaskID string
 	project, err := workspace.addProject("State Feedback", func(project *models.Project) {
-		first := newFixtureTask(project, "First transition target")
+		first := newFixtureTask(project, firstTransitionTitle)
 		first.ApplyWorkflowState(models.StateBacklog)
 		firstTaskID = first.ID
 		second := newFixtureTask(project, "Second transition target")
@@ -102,7 +106,7 @@ func TestDirectStateTransitionFeedbackUsesResolvedTaskCardinality(t *testing.T) 
 
 		env.completeSelection(t)
 
-		want := icons.Get("status.done") + " Done: First transition target · first done today · u undo"
+		want := icons.Get("status.done") + " Done: " + firstTransitionTitle + " · first done today · u undo"
 		if got := env.driver.App().feedback.message; got != want {
 			t.Fatalf("status = %q, want %q", got, want)
 		}

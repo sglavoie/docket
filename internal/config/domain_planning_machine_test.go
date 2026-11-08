@@ -62,7 +62,7 @@ func TestNewMachineStateDefaults(t *testing.T) {
 }
 
 func TestMachineStateValidate(t *testing.T) {
-	if err := (&MachineState{Theme: "sepia"}).Validate(); err == nil {
+	if err := (&MachineState{Theme: "neon"}).Validate(); err == nil {
 		t.Error("unknown machine theme should fail")
 	}
 }

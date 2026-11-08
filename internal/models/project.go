@@ -17,10 +17,15 @@ var (
 )
 
 // Project represents a collection of tasks.
+//
+// Alias is an optional short display label drawn in place of the slug where a
+// row has little room. Empty means none; ValidateProjectAlias is its one gate
+// and ProjectDisplayLabel the one reader that chooses between the two.
 type Project struct {
 	ID          string     `json:"id"`
 	Slug        string     `json:"slug"`
 	Name        string     `json:"name"`
+	Alias       string     `json:"alias,omitempty"`
 	Description string     `json:"description,omitempty"`
 	Path        string     `json:"path"`
 	CreatedAt   time.Time  `json:"created_at"`

@@ -113,6 +113,9 @@ func (p *CommandPaletteModel) renderResult(index, width, keyWidth int) []string 
 	if len(item.matchedAliases) > 0 {
 		section += " · " + strings.Join(item.matchedAliases, ", ")
 	}
+	if strings.TrimSpace(p.query) == "" && p.IsRecent(item.HelpItem) && !disabled {
+		section += " · recent"
+	}
 	text := textfit.WrapStyled(label+theme.MutedStyle.Render(section), textWidth)
 	keys := textfit.WrapText(item.Key, keyWidth)
 	if len(keys) == 1 && !disabled {

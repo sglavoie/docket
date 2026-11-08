@@ -25,6 +25,11 @@ func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
 	if handled, cmd := m.handleControlMessage(msg); handled {
 		return true, cmd
 	}
+	// Color reports are answers to a query this model sent, never input, so they
+	// are claimed ahead of every overlay that might read them as keys.
+	if handled, cmd := m.handleTerminalThemeMessage(msg); handled {
+		return true, cmd
+	}
 	if handled, cmd := m.handleOperationOverlayMessage(msg); handled {
 		return true, cmd
 	}

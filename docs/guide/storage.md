@@ -280,7 +280,11 @@ whole, under `.docket/backups/kept-pre-v24-internal-<UTC>/`.
 
 Project task files use strict schema-20 Markdown and generic `Task` headings.
 `workspace.json` contains the lean project catalog, project tags, and the
-protected Unfiled ID. `planning.json` contains Today and
+protected Unfiled ID. From schema 25 a project may also carry an optional
+`alias`, a short label such as `IA` or `web` shown where the project's slug
+would otherwise be shortened. It is one token of at most 12 terminal columns
+with no spaces and no square brackets, it syncs like the project's name, and a
+project without one omits the key and is labeled by its slug as before. `planning.json` contains Today and
 Next ordering only.
 Each task may carry an optional non-negative `defer_count`; zero is omitted.
 Each task may also carry an optional `due_time`, a canonical `HH:MM` wall-clock
@@ -339,10 +343,11 @@ names its mode, its project scope, its sort, and one query holding every facet
 it narrows by, so what a lens selects is one line you can read.
 
 Machine-local `~/.docket/runtime/<workspace-id>/machine.json` contains only the
-dark/light theme choice, whether the Outliner draws its menu bar, whether it
-draws ambient advisories, whether the mouse, motion, and Nerd Font glyphs are on,
-a pointer to the lens that was last open, how often each footer key has been
-pressed (up to the ten that retire its hint), and the last
+theme choice (`dark`, `light`, `ember`, `fjord`, `sepia`, or `terminal`), whether
+the Outliner draws its menu bar, whether it draws ambient advisories, whether the
+mouse, motion, and Nerd Font glyphs are on, a pointer to the lens that was last
+open, how often each footer key has been pressed (up to the ten that retire its
+hint), the last eight actions run from the command palette, and the last
 50 submitted search queries for this workspace. These
 are answers about this machine rather than about the workspace, which is why they
 stay behind while the definitions travel: a second machine opens on its own
@@ -353,7 +358,8 @@ what says the bar is hidden; the advisory key works the same way, so its absence
 says advisories are shown, and so do `mouse_disabled`, `motion_disabled`, and
 `nerd_glyphs`: absent means the mouse and motion are on and the glyphs are plain
 Unicode. `learned_footer_keys` is absent until a footer key is pressed, so its
-absence means every footer hint shows. The active-lens pointer is a
+absence means every footer hint shows, and `palette_recent`, the last eight
+actions run from the command palette, is absent until one is. The active-lens pointer is a
 hint rather than a record: it is checked for shape alone when the file loads, so
 one naming a lens that is no longer there costs you a stale hint and never a
 failed launch.
@@ -390,7 +396,8 @@ two synced files, `workspace.json` and `planning.json`, do not merge — a chang
 that lands under one of those is refused and reported, because there is no
 order-independent way to combine two project catalogs.
 
-Startup migrates schema-23 workspaces to schema 24, supported schema-21
+Startup migrates schema-24 workspaces to schema 25, schema-23 workspaces to
+schema 24, supported schema-21
 workspaces, and working copies enrolled in sync at schema 22, to schema 23,
 supported
 schema-20 workspaces to schema 21, supported
@@ -421,8 +428,9 @@ for v6→v7, `pre-tag-v8-<UTC>.tar.gz` for v7→v8,
 `pre-project-comments-v19-<UTC>.tar.gz` for v18→v19,
 `pre-checklist-origin-v20-<UTC>.tar.gz` for v19→v20,
 `pre-check-ins-v21-<UTC>.tar.gz` for v20→v21,
-`pre-hidden-v23-<UTC>.tar.gz` for v21→v23 and v22→v23, and
-`pre-docket-layout-v24-<UTC>.tar.gz` for v23→v24.
+`pre-hidden-v23-<UTC>.tar.gz` for v21→v23 and v22→v23,
+`pre-docket-layout-v24-<UTC>.tar.gz` for v23→v24, and
+`pre-project-alias-v25-<UTC>.tar.gz` for v24→v25.
 
 The two structural conversions state themselves. The schema-6 conversion
 preserves notes and attachment bytes, converts retained decision text into
@@ -457,6 +465,7 @@ already say.
 | Schema 21 upgrades task Markdown to schema 19 by adding the optional `check_in` date, its `check_in_repeat` cadence, and the `reviewed` instant | This is the one boundary since schema 17 that writes a value rather than only a marker. Every Waiting task that carries a due date is given a one-off check-in on that same date, because the deadline you set on work you are waiting for is the day you meant to look at it again; the date is copied exactly, so the deadline, its `due_time`, the timestamps, the body, and the comments are untouched. No cadence and no review instant are invented, so a seeded check-in fires once and the workspace never claims a task was reviewed on a day nobody reviewed it. Every catalog-owned project is migrated, parked and archived ones included, and a task that already holds a check-in is left alone, so running the step again changes nothing. Your saved lenses are not rewritten |
 | Schema 23 upgrades task Markdown to schema 20 by adding the optional `hidden` flag | No existing task is hidden, so every document comes out byte-identical to its schema-19 source apart from the schema marker line. There is no schema-22 step: 22 was the catalog schema of a working copy enrolled in sync, and such a copy migrates to 23 like a schema-21 workspace and keeps its `sync` block, which from schema 23 alone marks enrollment. Your saved lenses are not rewritten, because no lens could name the flag before this schema |
 | Schema 24 leaves task Markdown at schema 20 and moves `.tt/` to `.docket/` | It changes the layout alone, described above. The undo history is dropped because its entries name `.tt/` paths, and `.tt/` keeps only the tombstone that makes an older version refuse the workspace |
+| Schema 25 leaves task Markdown at schema 20 and admits the optional project `alias` in `workspace.json` | No project has an alias yet, so the catalog changes at its schema number alone and no project document is rewritten. The number moves because an older version reads the catalog strictly and would otherwise refuse an alias as a malformed file rather than as a newer one. The `.tt/` tombstone keeps declaring schema 24, which is already newer than every version that reads `.tt/`. The undo history is dropped because its entries hold schema-24 catalog bytes |
 
 Invalid or future-schema input aborts without changing workspace data. An
 existing `unfiled` project or directory also aborts before snapshot publication
@@ -473,9 +482,10 @@ schema-14 boundary, `pre-dependencies-v15-<UTC>.tar.gz` for schema 15,
 `pre-project-comments-v19-<UTC>.tar.gz` for schema 19,
 `pre-checklist-origin-v20-<UTC>.tar.gz` for schema 20,
 `pre-check-ins-v21-<UTC>.tar.gz` for schema 21,
-`pre-hidden-v23-<UTC>.tar.gz` for schema 23, or
+`pre-hidden-v23-<UTC>.tar.gz` for schema 23,
 `pre-docket-layout-v24-<UTC>.tar.gz` for schema 24, whose `workspace/.tt/` is
-restored over the tombstone — into a
+restored over the tombstone, or `pre-project-alias-v25-<UTC>.tar.gz` for schema
+25 — into a
 separate directory and open that copy with a compatible build. Migration
 snapshots themselves are never modified.
 

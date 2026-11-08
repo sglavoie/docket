@@ -981,7 +981,7 @@
     {
       "type": "assert",
       "assert": "status_contains",
-      "value": "Done: Chase the signed vendor…"
+      "value": "Done: Chase the signed vendor addendum"
     },
     {
       "type": "assert",

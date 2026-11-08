@@ -243,6 +243,8 @@ type OutlinerModel struct {
 	QueryReadout queryReadoutState
 	// Triage is the card-at-a-time sorting pass; see triageState.
 	Triage triageState
+	// Week is `gw`'s browse over Today's week strip; see weekBrowseState.
+	Week weekBrowseState
 
 	// Jump is `'`'s jump mode: open, and the first letter of a two-letter label
 	// typed so far. The targets are never stored; outliner_jump_history.go reads

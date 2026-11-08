@@ -3,6 +3,7 @@ package outliner
 import (
 	"fmt"
 
+	"github.com/sglavoie/docket/internal/config"
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/operation"
 )
@@ -78,6 +79,23 @@ func menuSeparator() menuEntrySpec { return menuEntrySpec{} }
 // ViewMenuChecks is the live chrome state the View menu's toggle rows tick.
 type ViewMenuChecks struct {
 	MenuBarVisible, AdvisoriesVisible, MouseEnabled, MotionEnabled, NerdGlyphs bool
+	// Theme is the machine theme the session paints, which radio row is on.
+	Theme string
+}
+
+// ThemeOperations pairs each machine theme with the keyless operation that
+// chooses it, in the View menu's order.
+var ThemeOperations = []struct {
+	Theme       string
+	OperationID operation.OperationID
+	Label       string
+}{
+	{config.ThemeDark, operation.OperationCoreThemeDark, "Dark"},
+	{config.ThemeLight, operation.OperationCoreThemeLight, "Light"},
+	{config.ThemeEmber, operation.OperationCoreThemeEmber, "Ember"},
+	{config.ThemeFjord, operation.OperationCoreThemeFjord, "Fjord"},
+	{config.ThemeSepia, operation.OperationCoreThemeSepia, "Sepia"},
+	{config.ThemeTerminal, operation.OperationCoreThemeTerminal, "Terminal Colors"},
 }
 
 // outlinerMenuSpecs is the hand-curated bar over the Outliner's grammar. Every
@@ -148,6 +166,7 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, checks ViewMenuChecks) 
 				{OperationID: operation.OperationCoreSelectProject},
 				{OperationID: operation.OperationCoreSelectPinned},
 				{OperationID: operation.OperationCoreCyclePinnedProject},
+				{OperationID: operation.OperationCoreBrowseWeek, Label: "Week Ahead"},
 				{OperationID: operation.OperationCoreGotoTaskProject, Label: "Project of Task"},
 				{OperationID: operation.OperationCoreGotoRelation, Label: "Related Task"},
 				menuSeparator(),
@@ -228,7 +247,7 @@ func viewMenuEntries(activeMode chrome.OutlinerModeID, checks ViewMenuChecks) []
 			Checked:     &checked,
 		})
 	}
-	return append(entries,
+	entries = append(entries,
 		menuSeparator(),
 		menuEntrySpec{OperationID: operation.OperationSortDueDate},
 		menuEntrySpec{OperationID: operation.OperationSortPriority},
@@ -248,7 +267,7 @@ func viewMenuEntries(activeMode chrome.OutlinerModeID, checks ViewMenuChecks) []
 		menuEntrySpec{OperationID: operation.OperationCoreQueryReadout},
 		menuEntrySpec{OperationID: operation.OperationCoreClearSearchHistory},
 		menuSeparator(),
-		menuEntrySpec{OperationID: operation.OperationCoreToggleTheme, Label: "Theme"},
+		menuEntrySpec{OperationID: operation.OperationCoreToggleTheme, Label: "Dark/Light"},
 		menuEntrySpec{
 			OperationID: operation.OperationCoreToggleMenuBar,
 			Label:       "Menu Bar",
@@ -290,6 +309,15 @@ func viewMenuEntries(activeMode chrome.OutlinerModeID, checks ViewMenuChecks) []
 		// every hint. Keyless and target-free like the rows above it.
 		menuEntrySpec{OperationID: operation.OperationCoreResetFooterHints},
 	)
+	// The theme rows close the menu, so the chrome toggles above keep the places
+	// a reader has learned them at; the group heading names the radio set.
+	for _, choice := range ThemeOperations {
+		checked := checks.Theme == choice.Theme
+		entries = append(entries, menuEntrySpec{
+			OperationID: choice.OperationID, Label: choice.Label, Group: "Theme", Checked: &checked,
+		})
+	}
+	return entries
 }
 
 // gotoOperationForMode names the operation that selects one mode. The mode
@@ -396,4 +424,15 @@ func collapseMenuSeparators(entries []ResolvedMenuEntry) []ResolvedMenuEntry {
 		collapsed = collapsed[:len(collapsed)-1]
 	}
 	return collapsed
+}
+
+// ThemeForOperation names the machine theme a theme operation chooses, or ""
+// for any other operation.
+func ThemeForOperation(id operation.OperationID) string {
+	for _, choice := range ThemeOperations {
+		if choice.OperationID == id {
+			return choice.Theme
+		}
+	}
+	return ""
 }

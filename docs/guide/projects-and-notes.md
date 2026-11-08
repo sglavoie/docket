@@ -10,10 +10,15 @@ project tag decides, and the workspace-wide Notes manager.
 | Work in one project | `P`, choose a project, `Enter` | Focus `web` before capturing its next task |
 | Reach a pinned project | `Ctrl+P` | Open a frequently used project |
 | Cycle pinned projects | `` ` `` | Step through each pinned project in All |
-| Create or edit a project | `P`, then `a` or `e` | Set its name, slug, and description |
+| Create or edit a project | `P`, then `a` or `e` | Set its name, slug, alias, and description |
 | Park a project | `#` on the project, add `parked` | Remove inactive work from Active Projects |
 | Permanently delete a project | `P`, choose a project, `Space` → **Delete Project**, confirm | Remove the project and everything it owns |
 | Read notes | `Ctrl+N` | Open Notes from the Outliner or a project |
+
+An alias is an optional short label, up to 12 columns with no spaces, that the
+Outliner, Today's canvas, and search results show in brackets instead of the
+slug, so `[internal-archi…]` can read `[IA]`. Leave it empty to keep the slug.
+It is set in the project editor (`e` on a project) and syncs with the project.
 
 Project scope and project search are different: `P` searches project metadata;
 `/` in the Outliner searches the work. Unfiled is protected and cannot be parked

@@ -53,6 +53,12 @@ func (m *OutlinerModel) HandleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.HandleQueryReadoutKey(key)
 	}
 
+	// The week browse owns input the same way: its day keys are what the footer
+	// names, and anything else puts it down.
+	if m.Week.Active {
+		return m.HandleWeekBrowseKey(key)
+	}
+
 	// Jump mode owns input the same way: every key is a label letter, a way out,
 	// or a cancel, and none of them reaches the grammar underneath.
 	if m.Jump.Active {
@@ -256,6 +262,7 @@ func (m *OutlinerModel) ShouldCaptureEsc() bool {
 		m.MultiSelectMode ||
 		m.QuickEdit.IsActive() ||
 		m.QueryReadout.Expanded ||
+		m.Week.Active ||
 		m.Jump.Active ||
 		// The picker is drawn over the whole frame, so it is the innermost thing Esc
 		// can put down and claims the key ahead of the menu below it.

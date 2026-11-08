@@ -257,8 +257,8 @@ func projectLabelName(project *models.Project) string {
 	if project == nil {
 		return ""
 	}
-	if project.Slug != "" {
-		return project.Slug
+	if label, _ := models.ProjectDisplayLabel(project); label != "" {
+		return label
 	}
 	return project.Name
 }

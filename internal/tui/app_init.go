@@ -124,7 +124,11 @@ func NewAppModel(rt *engine.Runtime, opts ...AppOption) (*AppModel, error) {
 		return nil, err
 	}
 
-	theme.ApplyTheme(theme.NewThemeConfig(app.domain.machine()))
+	if machine := app.domain.machine(); machine != nil {
+		theme.ApplyNamedTheme(machine.Theme)
+	} else {
+		theme.ApplyTheme(theme.NewThemeConfig(nil))
+	}
 
 	app.refreshWorkspacePulseAt(time.Now())
 	app.refreshOutstandingConflictsAtLaunch()
@@ -316,6 +320,9 @@ func (m *AppModel) Init() tea.Cmd {
 	}
 	if syncCmd := m.launchSyncStatusReadCmd(); syncCmd != nil {
 		cmds = append(cmds, syncCmd)
+	}
+	if machine := m.machineState(); machine != nil && machine.Theme == theme.TerminalThemeName {
+		cmds = append(cmds, m.requestTerminalTheme())
 	}
 	return tea.Batch(cmds...)
 }

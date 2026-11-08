@@ -377,8 +377,10 @@ func (m *OutlinerModel) projectSlugForRow(row OutlinerRow) (string, *models.Proj
 	if project == nil {
 		return row.ProjectID, nil
 	}
-	if project.Slug != "" {
-		return project.Slug, project
+	// A project's alias, when set, is the label it chose to be read by, so it
+	// stands wherever the slug would; without one the slug keeps its place.
+	if label, _ := models.ProjectDisplayLabel(project); label != "" {
+		return label, project
 	}
 	return project.Name, project
 }

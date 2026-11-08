@@ -178,6 +178,7 @@ Ctrl+P                           Select Pinned Project
 `                                the next pinned project, in All
 gp                               the cursor task's project, in All
 g~ gc                            a related task, and the conflict browser
+gw                               browse Today's week ahead (←/→ day, Enter Due)
 a/A e/E Ctrl+E O D               capture, edit, and repeat
 wi wb wn wt wg ww wp wm wd wc    workflow chord
 !0-3 @ # * = r R                 metadata, review, resume note, acknowledge

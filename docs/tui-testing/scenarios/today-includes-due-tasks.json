@@ -5,7 +5,7 @@
   "actions": [
     { "type": "key", "label": "open Today for a task stored with a due date and no Today plan", "key": "3" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · Today" },
-    { "type": "assert", "label": "Today's pace counts the task even without a saved plan", "assert": "contains", "value": "2 open · median" },
+    { "type": "assert", "label": "Today's pace counts the task even without a saved plan", "assert": "contains", "value": "2 open · 1 done today" },
     { "type": "assert", "assert": "count_contains", "value": "Confirm the release sign-off owed today", "count": 1 },
     { "type": "assert", "label": "overdue work belongs in Today too", "assert": "count_contains", "value": "Restore the overdue billing", "count": 1 },
     { "type": "assert", "assert": "no_layout_issues" },
