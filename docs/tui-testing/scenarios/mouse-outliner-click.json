@@ -5,7 +5,7 @@
   "actions": [
     { "type": "click", "label": "the Backlog header's fold glyph follows the attention column", "x": 1, "y": 1 },
     { "type": "assert", "assert": "contains", "value": "Retire the legacy runbook" },
-    { "type": "assert", "assert": "contains", "value": "▾ Backlog" },
+    { "type": "assert", "assert": "contains", "value": "▾ ──────────── Backlog" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "click", "label": "a task's fold glyph sits after its tree and opens its checklist", "x": 5, "y": 3 },

@@ -25,7 +25,7 @@
     { "type": "assert", "assert": "status_contains", "value": "Change Status" },
     { "type": "assert", "assert": "contains", "value": "Waiting  (2)" },
     { "type": "assert", "assert": "contains", "value": "├──       Build login form" },
-    { "type": "assert", "assert": "contains", "value": "▾ Waiting  (2)" },
+    { "type": "assert", "assert": "contains", "value": "▾ ────────────────────── Waiting  (2)" },
     { "type": "assert", "assert": "not_contains", "value": "⧗" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "assert", "label": "at this width the whole sentence fits beside its recovery key", "assert": "contains", "value": "Build login form → Waiting · No check-in · F10: Set Up Check-Ins · u undo" },

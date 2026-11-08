@@ -5,7 +5,7 @@
   "actions": [
     { "type": "assert", "label": "a wide title leads with Docket's mark", "assert": "contains", "value": "❖ Active Projects · All" },
     { "type": "assert", "label": "the mark costs the pulse nothing", "assert": "contains", "value": "workspace: inbox 5 · today 1 · overdue 1" },
-    { "type": "assert", "label": "a lane header runs a rule to the row's edge", "assert": "contains", "value": "(5) ───" },
+    { "type": "assert", "label": "a lane header runs a rule to the row's edge", "assert": "contains", "value": "(5)  ───" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "the mark follows the mode", "key": "tab" },
     { "type": "assert", "assert": "contains", "value": "❖ Active Projects · Today" },

@@ -274,7 +274,7 @@ func TestFoldGlyphClickRefusesWhereTheKeysDo(t *testing.T) {
 	if !out.Focus.Zoom.Active() {
 		t.Fatal("Enter on the section header was meant to zoom it")
 	}
-	backlog := pointerRowY(t, driver, "▾ Backlog")
+	backlog := pointerRowY(t, driver, "Backlog  (")
 	before := driver.Render()
 	pointerClickAt(t, driver, pointerGlyphX(t, driver, backlog), backlog, "", 1)
 	if after := driver.Render(); after != before {
