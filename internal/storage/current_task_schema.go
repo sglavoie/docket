@@ -17,9 +17,6 @@ import "github.com/sglavoie/docket/internal/storage/format"
 // WriteCurrent refuses any other.
 const CurrentTaskSchemaVersion = SchemaVersionV21
 
-// currentTaskSchemaMarker is the marker line live task Markdown carries.
-const currentTaskSchemaMarker = schemaMarkerV21
-
 // currentTaskProjectDocument is one project's task file at the current schema.
 // It is an alias rather than a distinct type so the codec keeps its exported
 // version-specific name for migrations while the live path spells only

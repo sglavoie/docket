@@ -11,6 +11,10 @@ import (
 	"github.com/sglavoie/docket/internal/testutil"
 )
 
+// currentTaskSchemaMarker is the marker line live task Markdown carries; the
+// tests spell it so a schema bump moves one line rather than every fixture.
+const currentTaskSchemaMarker = schemaMarkerV21
+
 func TestSaveProject_Roundtrip(t *testing.T) {
 	dir, cleanup := testutil.TempProjectDir(t)
 	defer cleanup()
