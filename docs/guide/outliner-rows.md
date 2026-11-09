@@ -427,6 +427,14 @@ as a smooth bar that fills by eighths of a cell. The last line, `Row:`, names
 each mark the task's row drew, such as `!1 High · ▤ Has a description · & Has
 attachments`, so the row's shorthand is spelled out without opening help.
 
+A wide dock spends its width rather than scrolling. When the task's detail
+would not fit the dock in one column and the dock holds at least two columns of
+60 cells (three at most), the title keeps the full width and every other detail
+flows beneath it into side-by-side columns, top to bottom and then left to
+right in the order above. Each detail stays whole inside one column, and the
+columns are balanced so the tallest is as short as possible. Detail that fits in
+one column, and any dock narrower than that, keeps the single column.
+
 | Detail | Example | Meaning |
 | --- | --- | --- |
 | Schedule | `Check-in: Thu Aug 20 (in 10 days) · Repeat: every 7d` | What is still owed; an arrived check-in adds `review owed` |

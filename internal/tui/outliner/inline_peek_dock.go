@@ -303,3 +303,154 @@ func (m *OutlinerModel) writePeekDock(b *strings.Builder, viewport outlinerViewp
 		b.WriteString(line)
 	}
 }
+
+// inlinePeekColumnMinWidth is the narrowest column a wide dock splits into:
+// room for the aligned label column and a value worth reading beside it.
+const inlinePeekColumnMinWidth = 60
+
+// inlinePeekColumnGutter is the blank run between two columns.
+const inlinePeekColumnGutter = 3
+
+// inlinePeekMaxColumns bounds how many columns a very wide dock flows into, so
+// a section never stands so far from the title that it reads as another pane.
+const inlinePeekMaxColumns = 3
+
+// inlinePeekColumnCount is how many columns a body of this width can hold, one
+// meaning the ordinary single-column document.
+func inlinePeekColumnCount(width int) int {
+	count := (width + inlinePeekColumnGutter) / (inlinePeekColumnMinWidth + inlinePeekColumnGutter)
+	return min(max(count, 1), inlinePeekMaxColumns)
+}
+
+// inlinePeekColumnWidth is each column's content width when width is split
+// into count columns with a gutter between each pair.
+func inlinePeekColumnWidth(width, count int) int {
+	return (width - (count-1)*inlinePeekColumnGutter) / count
+}
+
+// inlinePeekPartitionSections splits sections, in order and never inside one,
+// into at most count contiguous runs whose tallest is as short as possible.
+// Ties keep more in the earlier columns, so the document still reads down the
+// first column before the second.
+func inlinePeekPartitionSections(sections []inlinePeekSection, count int) [][]inlinePeekSection {
+	n := len(sections)
+	if n == 0 {
+		return nil
+	}
+	count = min(count, n)
+	prefix := make([]int, n+1)
+	for i, section := range sections {
+		prefix[i+1] = prefix[i] + len(section.lines)
+	}
+	height := func(from, to int) int { return prefix[to] - prefix[from] }
+
+	// best[k][i] is the shortest tallest run that lays out sections[i:] in k
+	// runs; cut[k][i] is where its first run ends.
+	const unreachable = int(^uint(0) >> 1)
+	best := make([][]int, count+1)
+	cut := make([][]int, count+1)
+	for k := range best {
+		best[k] = make([]int, n+1)
+		cut[k] = make([]int, n+1)
+		for i := range best[k] {
+			best[k][i] = unreachable
+		}
+	}
+	best[0][n] = 0
+	for k := 1; k <= count; k++ {
+		for i := n - 1; i >= 0; i-- {
+			for j := n; j > i; j-- { // largest first run first: ties favor it
+				if best[k-1][j] == unreachable {
+					continue
+				}
+				tallest := max(height(i, j), best[k-1][j])
+				if tallest < best[k][i] {
+					best[k][i], cut[k][i] = tallest, j
+				}
+			}
+		}
+	}
+	k := count
+	for k > 1 && best[k-1][0] <= best[k][0] {
+		k-- // fewer columns when they are no shorter
+	}
+	runs := make([][]inlinePeekSection, 0, k)
+	for i := 0; i < n; k-- {
+		j := cut[k][i]
+		runs = append(runs, sections[i:j])
+		i = j
+	}
+	return runs
+}
+
+// inlinePeekComposeColumns sets each run of sections beside the next, every
+// row padded to its column's width, and returns the composed rows. Each
+// section's lines already carry indent and fit columnWidth after it.
+func inlinePeekComposeColumns(runs [][]inlinePeekSection, indent string, columnWidth int) []string {
+	columns := make([][]string, len(runs))
+	rows := 0
+	for i, run := range runs {
+		for _, section := range run {
+			for _, line := range section.lines {
+				columns[i] = append(columns[i], textfit.TruncateIntentional(strings.TrimPrefix(line, indent), columnWidth, ""))
+			}
+		}
+		rows = max(rows, len(columns[i]))
+	}
+	gutter := strings.Repeat(" ", inlinePeekColumnGutter)
+	composed := make([]string, rows)
+	for r := range composed {
+		var b strings.Builder
+		b.WriteString(indent)
+		for i, column := range columns {
+			cell := ""
+			if r < len(column) {
+				cell = column[r]
+			}
+			if i == len(columns)-1 {
+				b.WriteString(cell)
+				break
+			}
+			b.WriteString(cell)
+			b.WriteString(strings.Repeat(" ", max(columnWidth-lipgloss.Width(cell), 0)))
+			b.WriteString(gutter)
+		}
+		composed[r] = strings.TrimRight(b.String(), " ")
+	}
+	return composed
+}
+
+// inlinePeekColumnLayout is the wide-dock form of a document's sections: the
+// spanning lead stays one full-width block and the rest flow into balanced
+// columns, merged into one section whose lines are the composed rows. The
+// merged section is keyed by every key it holds, so the fingerprint is the
+// one the single-column form has; a reading anchor inside it is that block's,
+// so a resize across the column threshold resumes at the block's start.
+func inlinePeekColumnLayout(lead, flow [][]inlinePeekSection, indent string, columnWidth int) []inlinePeekSection {
+	sections := make([]inlinePeekSection, 0, len(lead)+1)
+	for _, run := range lead {
+		sections = append(sections, run...)
+	}
+	if len(flow) == 0 {
+		return sections
+	}
+	keys := make([]string, 0)
+	for _, run := range flow {
+		for _, section := range run {
+			keys = append(keys, section.key)
+		}
+	}
+	return append(sections, inlinePeekSection{
+		key:   "columns:" + strings.Join(keys, "\x1d"),
+		lines: inlinePeekComposeColumns(flow, indent, columnWidth),
+	})
+}
+
+// inlinePeekSectionRows is how many body rows sections take in one column.
+func inlinePeekSectionRows(sections []inlinePeekSection) int {
+	rows := 0
+	for _, section := range sections {
+		rows += len(section.lines)
+	}
+	return rows
+}

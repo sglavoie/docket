@@ -50,11 +50,12 @@
     { "type": "assert", "label": "the count is over stored locators, and it moved", "assert": "contains", "value": "Alpha migration kickoff  ~0/2" },
     { "type": "assert", "assert": "not_contains", "value": "Alpha migration kickoff  ~0/1" },
 
-    { "type": "resize", "label": "wide enough for one line to name both targets", "width": 140, "height": 35 },
+    { "type": "resize", "label": "wide enough to name both targets, set in Peek's columns", "width": 140, "height": 35 },
     { "type": "key", "label": "Peek is the only surface that names them", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "Dependencies: 0/2 · " },
     { "type": "assert", "assert": "contains", "value": "Home Errands #1 Renew passport (backlog)" },
-    { "type": "assert", "assert": "contains", "value": "Reading List #1 Finish the distributed systems book (backlog)" },
+    { "type": "assert", "assert": "contains", "value": "Reading List #1 Finish the distributed" },
+    { "type": "assert", "assert": "contains", "value": "systems book (backlog)" },
     { "type": "assert", "label": "the unchecked row left the stored set, so only its own row still names it", "assert": "count_contains", "value": "Beta rollout checklist", "count": 1 },
     { "type": "assert", "label": "the reference is one-directional", "assert": "not_contains", "value": "Dependents " },
     { "type": "assert", "assert": "no_layout_issues" }

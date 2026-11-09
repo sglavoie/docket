@@ -195,19 +195,17 @@ func inlinePeekDocumentFor(opts inlinePeekOptions) inlinePeekDocument {
 	}
 
 	available := max(opts.Width-lipgloss.Width(opts.Indent), 1)
-	sections := inlinePeekBodySections(opts, available)
-	if _, widest := inlinePeekLabelPads(sections, opts.Indent); widest > 0 && available >= inlinePeekAlignMinWidth {
-		// The values stand in one column, so the body is wrapped narrower by
-		// the most any label is pushed, then each section is pushed by its own.
-		sections = inlinePeekBodySections(opts, available-widest)
-		pads, _ := inlinePeekLabelPads(sections, opts.Indent)
-		sections = inlinePeekAlignSections(sections, pads, opts.Indent)
-	}
-	body := make([]string, 0, len(sections))
+	sections := inlinePeekAlignedBodySections(opts, available)
 	keys := make([]string, 0, len(sections))
 	for _, section := range sections {
-		body = append(body, section.lines...)
 		keys = append(keys, section.key)
+	}
+	if wide := inlinePeekWideBodySections(opts, sections, available); wide != nil {
+		sections = wide
+	}
+	body := make([]string, 0, inlinePeekSectionRows(sections))
+	for _, section := range sections {
+		body = append(body, section.lines...)
 	}
 
 	return inlinePeekDocument{
@@ -218,6 +216,62 @@ func inlinePeekDocumentFor(opts inlinePeekOptions) inlinePeekDocument {
 		width:       available,
 		window:      opts.Window,
 	}
+}
+
+// inlinePeekAlignedBodySections is the body's sections at one width with their
+// values standing in one column: the body is wrapped narrower by the most any
+// label is pushed, then each section is pushed by its own.
+func inlinePeekAlignedBodySections(opts inlinePeekOptions, width int) []inlinePeekSection {
+	sections := inlinePeekBodySections(opts, width)
+	if _, widest := inlinePeekLabelPads(sections, opts.Indent); widest > 0 && width >= inlinePeekAlignMinWidth {
+		sections = inlinePeekBodySections(opts, width-widest)
+		pads, _ := inlinePeekLabelPads(sections, opts.Indent)
+		sections = inlinePeekAlignSections(sections, pads, opts.Indent)
+	}
+	return sections
+}
+
+// inlinePeekWideBodySections lays a body that would page in one column out in
+// several when the dock is wide enough to hold them: the lead through the title
+// keeps the full width, and every section after it flows, whole and in order,
+// into balanced columns. It answers nil — the single-column document — when the
+// dock is too narrow, when one column already fits the window, or when the
+// columns would be no shorter.
+func inlinePeekWideBodySections(opts inlinePeekOptions, single []inlinePeekSection, available int) []inlinePeekSection {
+	count := inlinePeekColumnCount(available)
+	if count < 2 || !opts.Window.Displayed() || inlinePeekSectionRows(single) <= opts.Window.BodyRows() {
+		return nil
+	}
+	leadEnd := 0
+	for i, section := range single {
+		if strings.HasPrefix(section.key, "title:") {
+			leadEnd = i + 1
+			break
+		}
+	}
+	leadEnd = max(leadEnd, 1)
+	lead := single[:leadEnd]
+	spanned := make(map[string]bool, leadEnd)
+	for _, section := range lead {
+		spanned[section.key] = true
+	}
+
+	columnWidth := inlinePeekColumnWidth(available, count)
+	flow := make([]inlinePeekSection, 0, len(single))
+	for _, section := range inlinePeekAlignedBodySections(opts, columnWidth) {
+		if !spanned[section.key] {
+			flow = append(flow, section)
+		}
+	}
+	runs := inlinePeekPartitionSections(flow, count)
+	if len(runs) < 2 {
+		return nil
+	}
+	wide := inlinePeekColumnLayout([][]inlinePeekSection{lead}, runs, opts.Indent, columnWidth)
+	if inlinePeekSectionRows(wide) >= inlinePeekSectionRows(single) {
+		return nil
+	}
+	return wide
 }
 
 // peekLegendWordKey matches a legend key spelled as a word rather than a glyph.
