@@ -20,9 +20,10 @@ import (
 type composerEffectiveRoute struct {
 	project     *models.Project
 	destination app.CaptureDestination
+	parsed      *capturetext.QuickCaptureResult
 }
 
-func (m *TaskComposerModel) effectiveRouteForLine(line string) composerEffectiveRoute {
+func (m *TaskComposerModel) undeferredRouteForLine(line string) composerEffectiveRoute {
 	project := m.Preset.Project
 	parsed, _ := capturetext.ParseQuickCaptureForPreview(
 		strings.TrimSpace(line),
@@ -57,9 +58,21 @@ func (m *TaskComposerModel) effectiveRouteForLine(line string) composerEffective
 	if coordinator.DueDateIsToday(due) {
 		destination = app.CaptureDestinationToday
 	}
-	destination = capturetext.ComposerDeferredDestination(parsed, destination)
+	return composerEffectiveRoute{project: project, destination: destination, parsed: parsed}
+}
 
-	return composerEffectiveRoute{project: project, destination: destination}
+// effectiveRouteForLine is the line's landing, deferral included: the route
+// row's answer.
+func (m *TaskComposerModel) effectiveRouteForLine(line string) composerEffectiveRoute {
+	route := m.undeferredRouteForLine(line)
+	route.destination = capturetext.ComposerDeferredDestination(route.parsed, route.destination)
+	return route
+}
+
+// lineDestination is the destination the preview's Route group names for one
+// line before a deferral, which the preview applies and labels itself.
+func (m *TaskComposerModel) lineDestination(line string) app.CaptureDestination {
+	return m.undeferredRouteForLine(line).destination
 }
 
 // composerMixedValue is what one axis reports when the lines being captured do

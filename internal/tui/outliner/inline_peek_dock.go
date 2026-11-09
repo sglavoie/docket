@@ -263,7 +263,7 @@ func (m *OutlinerModel) peekDockWindow(width int, geometry peekDockGeometry) []s
 	if !ok {
 		return peekDockPlaceholderDocument(width, geometry).Lines(0)
 	}
-	return doc.Lines(m.peekOffsetForRow(row, doc))
+	return m.paintPeekFlash(row, doc.Lines(m.peekOffsetForRow(row, doc)))
 }
 
 // peekDockPlaceholderDocument is the stand-in document, built as a document

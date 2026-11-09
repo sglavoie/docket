@@ -337,3 +337,31 @@ func TestBatchPlanSummaryUsesResolvedCaptureRequests(t *testing.T) {
 		})
 	}
 }
+
+// The preview's Route group names the landing the capture will honor: a host
+// default (Today mode plans Today) is never previewed as Inbox, and where the
+// route row already says it, the group stays silent.
+func TestComposerPreviewNamesTheHostDefaultDestination(t *testing.T) {
+	project := &models.Project{ID: "home", Slug: "home", Name: "Home"}
+	other := &models.Project{ID: "other", Slug: "other", Name: "Other"}
+	m := NewTaskComposerModel(TaskComposerPreset{
+		Project:            project,
+		AllProjects:        []*models.Project{project, other},
+		AllowProjectSwitch: true,
+		Shared:             TaskComposerSharedAttributes{Destination: app.CaptureDestinationToday},
+	}, nil)
+	m.SetSize(100, 20)
+	m.Input.SetValue("Write launch post")
+	m.UpdatePreview()
+	if got := ansi.Strip(m.ComposeBoundedPreviewBlock(12)); strings.Contains(got, "$inbox") {
+		t.Fatalf("Today-mode preview names Inbox:\n%s", got)
+	}
+
+	m.Input.SetValue("One\nTwo %other")
+	m.Input.CursorEnd()
+	m.UpdatePreview()
+	got := ansi.Strip(m.ComposeBoundedPreviewBlock(12))
+	if strings.Contains(got, "$inbox") || !strings.Contains(got, "$today") {
+		t.Fatalf("mixed-project preview route = %q, want $today", got)
+	}
+}

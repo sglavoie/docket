@@ -46,6 +46,7 @@ func RenderOperationalTitle(spec OperationalTitleSpec, width int) string {
 	// active interaction state. Its full form outranks the passive workspace
 	// pulse; once the pulse ladder is exhausted, pace shortens without restoring
 	// a lower-priority pulse.
+	spec.Pulse = pulseBesidePace(spec)
 	if spec.Pace != nil {
 		paceVariants := operationalPaceVariants(*spec.Pace)
 		fullPaceBase := joinOperationalTitleRegions(base, paceVariants[0])
@@ -107,6 +108,7 @@ func OperationalTitleFitsWhole(spec OperationalTitleSpec, width int) bool {
 	if width <= 0 {
 		return false
 	}
+	spec.Pulse = pulseBesidePace(spec)
 	identity := joinOperationalTitleSegments([]string{spec.Surface, spec.Scope, spec.Mode})
 	base := joinOperationalTitleRegions(identity, joinOperationalTitleSegments(spec.Context))
 	if spec.Pace != nil {
@@ -119,6 +121,19 @@ func OperationalTitleFitsWhole(spec OperationalTitleSpec, width int) bool {
 		}
 	}
 	return need <= width
+}
+
+// pulseBesidePace is the pulse a title draws beside the Today pace: the pace
+// already says how much Today holds and how much is done, so the pulse keeps
+// only what the pace cannot — overdue and Inbox — and a row never states one
+// count twice. Without a pace the pulse is unchanged.
+func pulseBesidePace(spec OperationalTitleSpec) *WorkspacePulse {
+	if spec.Pace == nil || spec.Pulse == nil {
+		return spec.Pulse
+	}
+	quiet := *spec.Pulse
+	quiet.Today, quiet.Done = 0, 0
+	return &quiet
 }
 
 func renderOperationalIdentity(spec OperationalTitleSpec, width int) string {

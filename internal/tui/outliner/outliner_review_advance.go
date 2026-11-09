@@ -166,6 +166,12 @@ type triageState struct {
 	closed bool
 }
 
+// endsOnCard reports a source whose pass stands on a closing card once its
+// last card leaves, rather than closing outright: the two daily bookends.
+func (s triageSource) endsOnCard() bool {
+	return s == triageSourceCloseDay || s == triageSourceStartDay
+}
+
 type triageStep struct {
 	identity taskref.TaskIdentity
 	routed   bool
@@ -180,6 +186,7 @@ const (
 	triageSourceInbox triageSource = iota
 	triageSourceSuggested
 	triageSourceCloseDay
+	triageSourceStartDay
 )
 
 // TriageRouteMsg asks the shell to run one operation against the cursor the
@@ -302,7 +309,7 @@ func (m *OutlinerModel) handleTriageKey(key string) (tea.Model, tea.Cmd) {
 	if m.Triage.closed {
 		return m, m.handleDayClosedKey(key)
 	}
-	if key == "esc" && m.Triage.source == triageSourceCloseDay {
+	if key == "esc" && m.Triage.source.endsOnCard() {
 		// Stopping a Close the Day pass early still ends on the day it closed.
 		m.settleTriage(true)
 		if m.Triage.Active {
@@ -373,7 +380,11 @@ func (m *OutlinerModel) composeTriageCard(host string, width, frameHeight int) (
 		return "", false
 	}
 	if m.Triage.closed {
-		card := chrome.FitOverlayPopupHeight(chrome.RenderDayClosedCard(m.dayClosedSpec(time.Now()), width), m.outlinerModalBudget(width))
+		rendered := chrome.RenderDayClosedCard(m.dayClosedSpec(time.Now()), width)
+		if m.Triage.source == triageSourceStartDay {
+			rendered = chrome.RenderDayStartedCard(m.dayStartedSpec(time.Now()), width)
+		}
+		card := chrome.FitOverlayPopupHeight(rendered, m.outlinerModalBudget(width))
 		composed, _ := chrome.OverlayPopupDimmedPlaced(host, card, width, frameHeight)
 		return composed, true
 	}
@@ -392,9 +403,13 @@ func (m *OutlinerModel) composeTriageCard(host string, width, frameHeight int) (
 		// The spec already carries the Inbox heading.
 	case triageSourceSuggested:
 		spec.Heading = "Plan today"
+		spec.Lead = m.planTodayLead()
 	case triageSourceCloseDay:
 		spec.Heading = "Close the day"
 		spec.Lead = m.closeDayLead(time.Now())
+	case triageSourceStartDay:
+		spec.Heading = "Start the day"
+		spec.Lead = m.startDayLead(m.Rows[index], time.Now())
 	}
 	// Every entry ahead of the card has left the pass, so its own place in the
 	// frozen queue is the count.
@@ -430,8 +445,12 @@ func triageMeta(task *models.Task, project *models.Project, now time.Time) strin
 // triageGuidance is the pass's own keymap. It takes no footer rank, as a gated
 // keymap does not: these keys exist only while the card is up.
 func (m *OutlinerModel) triageGuidance() chrome.GuidanceSpec {
-	if m.Triage.source == triageSourceCloseDay {
+	switch m.Triage.source {
+	case triageSourceCloseDay:
 		return m.closeDayGuidance()
+	case triageSourceStartDay:
+		return m.startDayGuidance()
+	case triageSourceInbox, triageSourceSuggested:
 	}
 	hints := chrome.RequiredGuidanceHints("t today", "n next", "b backlog", "d done")
 	hints = append(hints, chrome.OptionalGuidanceHints(3, "% project", "x delete")...)
@@ -466,9 +485,14 @@ var closeDayRoutes = map[string]TriageRouteMsg{
 
 // triageRouteFor is the routing a key names under the open pass's source.
 func (m *OutlinerModel) triageRouteFor(key string) (TriageRouteMsg, bool) {
-	if m.Triage.source == triageSourceCloseDay {
+	switch m.Triage.source {
+	case triageSourceCloseDay:
 		route, ok := closeDayRoutes[key]
 		return route, ok
+	case triageSourceStartDay:
+		route, ok := startDayRoutes[key]
+		return route, ok
+	case triageSourceInbox, triageSourceSuggested:
 	}
 	route, ok := triageRoutes[key]
 	return route, ok
@@ -524,7 +548,7 @@ func closeDayRow(row OutlinerRow) bool {
 // exhaustTriage ends a pass with no card left to show. A Close the Day pass
 // stands on its closing card instead; every other source closes outright.
 func (m *OutlinerModel) exhaustTriage() {
-	if m.Triage.source == triageSourceCloseDay {
+	if m.Triage.source.endsOnCard() {
 		m.Triage.pending = taskref.TaskIdentity{}
 		m.Triage.closed = true
 		return
@@ -561,6 +585,26 @@ func (m *OutlinerModel) closeDayLead(now time.Time) string {
 		return check + theme.MutedStyle.Render(" 1 done today")
 	default:
 		return check + theme.MutedStyle.Render(fmt.Sprintf(" %d done today", done))
+	}
+}
+
+// planTodayLead is the line over every Plan today card: how much this pass has
+// already planned, so building the day reads as progress rather than a queue.
+func (m *OutlinerModel) planTodayLead() string {
+	planned := 0
+	for _, step := range m.Triage.trail {
+		if step.routed && step.key == "t" {
+			planned++
+		}
+	}
+	check := lipgloss.NewStyle().Foreground(theme.ColorSuccess).Render("✓")
+	switch planned {
+	case 0:
+		return theme.MutedStyle.Render("t plans a card for Today; Space leaves it for later")
+	case 1:
+		return check + theme.MutedStyle.Render(" 1 planned for Today so far")
+	default:
+		return check + theme.MutedStyle.Render(fmt.Sprintf(" %d planned for Today so far", planned))
 	}
 }
 
@@ -604,6 +648,313 @@ func (m *OutlinerModel) closeDayGuidance() chrome.GuidanceSpec {
 	}
 	hints := chrome.RequiredGuidanceHints("d done", "n next", "b backlog", "Space keep")
 	hints = append(hints, chrome.OptionalGuidanceHints(3, "@ date", "r note")...)
+	if len(m.Triage.trail) > 0 {
+		hints = append(hints, chrome.OptionalGuidanceHints(2, "u back")...)
+	}
+	hints = append(hints, chrome.RequiredGuidanceHints("Esc finish")...)
+	return chrome.GuidanceSpec{Hints: hints, Rows: 2}
+}
+
+// The Now screen is the Now card made whole: `gd` puts the list down and
+// leaves one task in Doing on the screen — its title, how long it has been in
+// hand, where it left off, and the next checklist step — so the work in front
+// of you is the only thing the frame says. It is a view-local gated sub-state
+// like the triage card: it mints no presentation, every act it offers is the
+// row operation the card names, run through the shell's executor against the
+// cursor it seats, and each is its own undo entry. It writes nothing on
+// opening, and it closes itself once the task leaves Doing, so finishing the
+// work returns to the list the completion lands on.
+
+// nowViewState is the open screen's one task, held by identity so a rebuild
+// that moves its row never retargets it.
+type nowViewState struct {
+	Active   bool
+	identity taskref.TaskIdentity
+}
+
+// nowViewRoutes is the screen's keymap: each key names the row operation it
+// runs against the task on screen. Esc and q close.
+var nowViewRoutes = map[string]TriageRouteMsg{
+	"d": {OperationID: operation.OperationTaskSetState, Value: models.StateDone, HasValue: true},
+	"p": {OperationID: operation.OperationTaskSetState, Value: models.StatePaused, HasValue: true},
+	"r": {OperationID: operation.OperationTaskSetResumeNote},
+	"c": {OperationID: operation.OperationChecklistAddItem},
+}
+
+// OpenNowView opens the screen on the cursor's task when it is in Doing, else
+// on the Now card's lead, the task most recently started. It refuses, opening
+// nothing, when no drawn task is in Doing.
+func (m *OutlinerModel) OpenNowView() string {
+	if m == nil {
+		return ""
+	}
+	if m.IsMultiSelectActive() || m.IsRangeSelectionActive() {
+		return "Now works on one task: clear the selection first"
+	}
+	identity, ok := taskref.TaskIdentity{}, false
+	if m.Cursor >= 0 && m.Cursor < len(m.Rows) {
+		if row := m.Rows[m.Cursor]; row.IsTaskRow() && row.Task != nil && row.Task.IsInState(models.StateDoing) {
+			identity, ok = m.TaskIdentityForRow(row), true
+		}
+	}
+	if !ok && m.nowCard.task != nil && m.nowCard.project != nil {
+		identity, ok = taskref.TaskIdentity{ProjectID: m.nowCard.project.ID, TaskID: m.nowCard.task.ID}, true
+	}
+	if !ok {
+		return "Nothing is in Doing: start a task with wg, then gd"
+	}
+	if _, drawn := m.nowViewRowIndex(identity); !drawn {
+		return "The task in Doing is not drawn in this view: open it from All"
+	}
+	m.closeMenuBar()
+	m.PeekMode = false
+	m.NowView = nowViewState{Active: true, identity: identity}
+	return ""
+}
+
+// CloseNowView puts the screen down; the list draws as it was.
+func (m *OutlinerModel) CloseNowView() {
+	m.NowView = nowViewState{}
+}
+
+// nowViewRowIndex is the drawn row holding identity.
+func (m *OutlinerModel) nowViewRowIndex(identity taskref.TaskIdentity) (int, bool) {
+	for i, row := range m.Rows {
+		if row.IsTaskRow() && row.Task != nil && m.TaskIdentityForRow(row) == identity {
+			return i, true
+		}
+	}
+	return 0, false
+}
+
+// nowViewTask is the open screen's task while it is still drawn and still in
+// Doing, or ok=false once it is not: a completion, a pause, or a reload that
+// lost it all end the screen.
+func (m *OutlinerModel) nowViewTask() (index int, task *models.Task, ok bool) {
+	if !m.NowView.Active {
+		return 0, nil, false
+	}
+	index, drawn := m.nowViewRowIndex(m.NowView.identity)
+	if !drawn {
+		return 0, nil, false
+	}
+	task = m.Rows[index].Task
+	if !task.IsInState(models.StateDoing) {
+		return 0, nil, false
+	}
+	return index, task, true
+}
+
+// settleNowView closes a screen whose task has left Doing. It runs after every
+// row build, so the frame the commit redraws is already the list.
+func (m *OutlinerModel) settleNowView() {
+	if !m.NowView.Active {
+		return
+	}
+	if _, _, ok := m.nowViewTask(); !ok {
+		m.CloseNowView()
+	}
+}
+
+// handleNowViewKey is the screen's own gated keymap. It owns input while open,
+// so a key it does not name is swallowed rather than run on rows that are not
+// on screen.
+func (m *OutlinerModel) handleNowViewKey(key string) (tea.Model, tea.Cmd) {
+	if key == "esc" || key == "q" {
+		m.CloseNowView()
+		return m, nil
+	}
+	index, _, ok := m.nowViewTask()
+	if !ok {
+		m.CloseNowView()
+		return m, nil
+	}
+	route, routed := nowViewRoutes[key]
+	if !routed {
+		return m, nil
+	}
+	m.Cursor = index
+	return m, func() tea.Msg { return route }
+}
+
+// nowViewGuidance is the screen's footer. It takes no footer rank, as a gated
+// keymap does not.
+func (m *OutlinerModel) nowViewGuidance() chrome.GuidanceSpec {
+	hints := chrome.RequiredGuidanceHints("d done", "p pause", "r note")
+	hints = append(hints, chrome.OptionalGuidanceHints(2, "c add step")...)
+	hints = append(hints, chrome.RequiredGuidanceHints("Esc back")...)
+	return chrome.GuidanceSpec{Hints: hints}
+}
+
+// renderNowView is the screen over the whole content area, or ok=false when it
+// is closed or its task has left Doing.
+func (m *OutlinerModel) renderNowView(width, height int) (string, bool) {
+	index, task, ok := m.nowViewTask()
+	if !ok {
+		return "", false
+	}
+	now := time.Now()
+	spec := chrome.NowScreenSpec{Title: task.Title, ResumeNote: task.ResumeNote}
+	meta := make([]string, 0, 3)
+	if project := m.crossResolveProject(m.Rows[index].ProjectID); project != nil && project.Name != "" {
+		meta = append(meta, project.Name)
+	}
+	if task.Context != "" {
+		meta = append(meta, "@"+task.Context)
+	}
+	spec.Meta = strings.Join(meta, " · ")
+	switch age := query.FormatRecencyAge(task.StateChangedAt, now); age {
+	case "", "now":
+		spec.Elapsed = "just started"
+	default:
+		spec.Elapsed = age + " in Doing"
+	}
+	done := 0
+	for _, item := range task.Checklist {
+		spec.Steps = append(spec.Steps, chrome.NowScreenStep{Text: item.Text, Done: item.Done})
+		if item.Done {
+			done++
+		}
+	}
+	if total := len(task.Checklist); total > 0 {
+		spec.Progress = inlinePeekMeter(done, total) + fmt.Sprintf(" %d/%d", done, total)
+	} else if progress := subtaskProgressOf(task); progress.total > 0 {
+		spec.Progress = inlinePeekMeter(progress.done, progress.total) + fmt.Sprintf(" %d/%d subtasks", progress.done, progress.total)
+	}
+	if more := m.nowCard.more; more > 0 {
+		spec.Beside = fmt.Sprintf("%d more in Doing", more)
+	}
+	return chrome.RenderNowScreen(spec, width, height), true
+}
+
+// Start the Day is the morning bookend to Close the Day: the same gated
+// triage pass, opened from Task → Start the Day…, over what the morning has
+// to decide. It moves the view to Today and freezes a queue of the day's
+// overdue work first — what slipped and must be settled — then Today's
+// Suggested lane, the offer worth planning. Every card is the row operation
+// its key names, so each is its own undo entry, and the pass ends on a card
+// that reads the planned day back.
+
+// startDayRoutes is the morning card's keymap: plan it, give it a new date,
+// send it to Next or Backlog, or finish it. Space keeps a card as it is.
+var startDayRoutes = map[string]TriageRouteMsg{
+	"t": {OperationID: operation.OperationCoreToday},
+	"@": {OperationID: operation.OperationTaskSetDueDate},
+	"n": {OperationID: operation.OperationCoreNext},
+	"b": {OperationID: operation.OperationCoreBacklog},
+	"d": {OperationID: operation.OperationTaskSetState, Value: models.StateDone, HasValue: true},
+}
+
+// OpenStartDay starts a Start the Day pass. A morning with nothing overdue and
+// nothing suggested goes straight to its closing card. The returned command is
+// the mode switch's own.
+func (m *OutlinerModel) OpenStartDay() (tea.Cmd, string) {
+	if m.IsMultiSelectActive() || m.IsRangeSelectionActive() {
+		return nil, "Start the Day works one task at a time: clear the selection first"
+	}
+	var cmd tea.Cmd
+	if m.ActiveOutlinerMode() != chrome.ModeToday {
+		_, cmd = m.SelectOutlinerMode(chrome.ModeToday)
+	}
+	queue := m.startDayQueue(time.Now())
+	m.PeekMode = false
+	m.Triage = triageState{
+		Active: true, source: triageSourceStartDay, queue: queue,
+		handled: make(map[taskref.TaskIdentity]bool, len(queue)),
+		closed:  len(queue) == 0,
+	}
+	return cmd, ""
+}
+
+// startDayQueue is the overdue work Today draws as the day's own, in drawn
+// order, then every task Today's Suggested lane offers.
+func (m *OutlinerModel) startDayQueue(now time.Time) []taskref.TaskIdentity {
+	seen := make(map[taskref.TaskIdentity]bool)
+	var queue []taskref.TaskIdentity
+	add := func(row OutlinerRow) {
+		if identity := m.TaskIdentityForRow(row); identity.Valid() && !seen[identity] {
+			seen[identity] = true
+			queue = append(queue, identity)
+		}
+	}
+	for _, row := range m.Rows {
+		if closeDayRow(row) && row.Task.IsOverdueAt(now) {
+			add(row)
+		}
+	}
+	for _, row := range m.Rows {
+		if row.IsTaskRow() && row.Task != nil && row.Group.SectionKey == todaySuggestionsCollapseKey {
+			add(row)
+		}
+	}
+	return queue
+}
+
+// startDayLead is the line over every morning card: why this card is here,
+// and how the plan is coming along.
+func (m *OutlinerModel) startDayLead(row OutlinerRow, now time.Time) string {
+	why := "Suggested for today"
+	if row.Task != nil && row.Task.IsOverdueAt(now) {
+		why = "Overdue · @ gives it a date it can keep"
+	}
+	planned := 0
+	for _, step := range m.Triage.trail {
+		if step.routed && step.key == "t" {
+			planned++
+		}
+	}
+	if planned == 0 {
+		return theme.MutedStyle.Render(why)
+	}
+	check := lipgloss.NewStyle().Foreground(theme.ColorSuccess).Render("✓")
+	return check + theme.MutedStyle.Render(fmt.Sprintf(" %d planned · %s", planned, why))
+}
+
+// dayStartedSpec reads the morning's closing card: what the pass decided, from
+// its trail, and what Today now holds, from the rows as they stand.
+func (m *OutlinerModel) dayStartedSpec(now time.Time) chrome.DayStartedCardSpec {
+	spec := chrome.DayStartedCardSpec{Date: now.Format("Monday, January 2")}
+	for _, step := range m.Triage.trail {
+		if !step.routed {
+			continue
+		}
+		switch step.key {
+		case "t":
+			spec.Planned++
+		case "@":
+			spec.Rescheduled++
+		case "n", "b":
+			spec.Deferred++
+		case "d":
+			spec.Done++
+		}
+	}
+	seen := make(map[taskref.TaskIdentity]bool)
+	for _, row := range m.Rows {
+		if identity := m.TaskIdentityForRow(row); closeDayRow(row) && identity.Valid() && !seen[identity] {
+			seen[identity] = true
+			spec.Today++
+			if row.Task.IsOverdueAt(now) {
+				spec.StillOverdue++
+			}
+		}
+	}
+	spec.Doing = m.nowCard.task != nil
+	return spec
+}
+
+// startDayGuidance is the morning pass's keymap, on a card and on the closing
+// card. It takes no footer rank, as no gated keymap does.
+func (m *OutlinerModel) startDayGuidance() chrome.GuidanceSpec {
+	if m.Triage.closed {
+		hints := chrome.RequiredGuidanceHints("Enter close")
+		if len(m.Triage.trail) > 0 {
+			hints = append(hints, chrome.OptionalGuidanceHints(2, "u back")...)
+		}
+		return chrome.GuidanceSpec{Hints: hints, Rows: 1}
+	}
+	hints := chrome.RequiredGuidanceHints("t today", "@ date", "n next", "Space keep")
+	hints = append(hints, chrome.OptionalGuidanceHints(3, "b backlog", "d done")...)
 	if len(m.Triage.trail) > 0 {
 		hints = append(hints, chrome.OptionalGuidanceHints(2, "u back")...)
 	}

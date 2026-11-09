@@ -7,9 +7,11 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/docket/internal/tui/motion"
 	"github.com/sglavoie/docket/internal/tui/status"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
@@ -135,6 +137,7 @@ func (m *OutlinerModel) advanceDepartureGhost(msg DepartureGhostTickMsg) tea.Cmd
 func (m *OutlinerModel) DropMotion() {
 	if m != nil {
 		m.dropDepartureGhost()
+		m.dropPeekFlash()
 		m.anim.Drop()
 		m.foldBefore = nil
 	}
@@ -287,6 +290,7 @@ func (m *OutlinerModel) SettleMotion() tea.Cmd {
 		return nil
 	}
 	var cmds []tea.Cmd
+	cmds = append(cmds, m.settlePeekFlash())
 	if from, ok := m.anim.TakeScroll(); ok && m.LastViewport.VisibleRows > 0 && len(m.Rows) > 0 {
 		window, _ := m.pinnedContextWindowAt(m.ViewScrollOffset, m.LastViewport.VisibleRows)
 		if scrollJumps(from, window.startIdx) {
@@ -437,6 +441,9 @@ func (m *OutlinerModel) updatePaintTick(msg tea.Msg) (tea.Cmd, bool) {
 		return nil, true
 	case MotionTickMsg:
 		return m.anim.Advance(msg.Tick), true
+	case PeekFlashTickMsg:
+		m.endPeekFlash(msg)
+		return nil, true
 	}
 	return nil, false
 }
@@ -489,4 +496,135 @@ func (m *OutlinerModel) fitCollapseGap(lines []string, settled, visible int, gap
 	lines = lines[:min(len(lines), max(settled, visible))]
 	m.LastViewport.gapRows = len(lines) - settled
 	return lines
+}
+
+// The Peek change flash is the dock answering a commit about the task it is
+// reading: the lines a committed change rewrote wear an accent bar in the
+// dock's left margin for a moment, so an edit shows where it landed without the
+// reader comparing the document against memory. It is motion — armed only where
+// the shell armed motion — and it is paint alone: it never moves a line, never
+// changes a width, and never touches the dock's offset or geometry.
+//
+// It answers commits and nothing else. The shell notes a committed transaction
+// with NotePeekCommit; the flash is owed until the dock's document for the same
+// owner, at the same width, next differs from the one last settled, or until
+// input drops it. A minute tick that only advances an age therefore never
+// lights, since no commit is owed when it lands.
+
+// peekFlashHold is how long the changed lines stay lit.
+const peekFlashHold = 1200 * time.Millisecond
+
+// peekWatch is the dock's last settled document: whose it was, at what width,
+// and its plain lines.
+type peekWatch struct {
+	owner taskref.TaskIdentity
+	width int
+	lines []string
+}
+
+// peekFlash is the live flash: the plain text of every lit line, and the
+// sequence its expiry tick names.
+type peekFlash struct {
+	owner taskref.TaskIdentity
+	lit   map[string]bool
+	seq   int
+}
+
+// PeekFlashTickMsg ends the flash Seq names; a stale one is inert.
+type PeekFlashTickMsg struct{ Seq int }
+
+// NotePeekCommit records that this update carried a committed change, so the
+// next settled dock document that differs is the change and lights.
+func (m *OutlinerModel) NotePeekCommit() {
+	if m != nil && m.anim.Armed() {
+		m.peekCommitOwed = true
+	}
+}
+
+// settlePeekFlash compares the dock's current document with the one last
+// settled and starts a flash when a commit is owed and the same owner's
+// document changed. It runs once per update from SettleMotion.
+func (m *OutlinerModel) settlePeekFlash() tea.Cmd {
+	row, doc, ok := m.peekCursorDocument()
+	if !ok || m.PeekFullscreen {
+		m.peekWatch = peekWatch{}
+		return nil
+	}
+	current := peekWatch{owner: m.rowIdentity(row), width: m.peekDockWidth(), lines: plainPeekLines(doc.Body)}
+	previous := m.peekWatch
+	m.peekWatch = current
+	if !m.peekCommitOwed || previous.lines == nil || previous.owner != current.owner || previous.width != current.width {
+		return nil
+	}
+	lit := changedPeekLines(previous.lines, current.lines)
+	if len(lit) == 0 {
+		return nil
+	}
+	m.peekCommitOwed = false
+	m.peekFlashSeq++
+	m.peekFlash = &peekFlash{owner: current.owner, lit: lit, seq: m.peekFlashSeq}
+	seq := m.peekFlashSeq
+	return status.TickCmd(peekFlashHold, func(time.Time) tea.Msg { return PeekFlashTickMsg{Seq: seq} })
+}
+
+// endPeekFlash retires the flash its tick names.
+func (m *OutlinerModel) endPeekFlash(msg PeekFlashTickMsg) {
+	if m.peekFlash != nil && m.peekFlash.seq == msg.Seq {
+		m.peekFlash = nil
+	}
+}
+
+// dropPeekFlash retires a live flash and any owed commit at once: input means
+// the reader has moved on.
+func (m *OutlinerModel) dropPeekFlash() {
+	m.peekFlash = nil
+	m.peekCommitOwed = false
+}
+
+// paintPeekFlash lays the accent bar over the margin of each lit line in the
+// window, for the owner the flash was started for. The bar takes the indent's
+// first cell, so every line keeps its width.
+func (m *OutlinerModel) paintPeekFlash(row OutlinerRow, lines []string) []string {
+	if m.peekFlash == nil || m.rowIdentity(row) != m.peekFlash.owner {
+		return lines
+	}
+	bar := lipgloss.NewStyle().Foreground(theme.ColorAccent).Render("▌")
+	out := make([]string, len(lines))
+	for i, line := range lines {
+		out[i] = line
+		if !m.peekFlash.lit[ansi.Strip(line)] || ansi.StringWidth(line) < len(peekDockIndent) {
+			continue
+		}
+		out[i] = bar + ansi.Cut(line, 1, ansi.StringWidth(line))
+	}
+	return out
+}
+
+func plainPeekLines(body []string) []string {
+	lines := make([]string, len(body))
+	for i, line := range body {
+		lines[i] = ansi.Strip(line)
+	}
+	return lines
+}
+
+// changedPeekLines is every line of after that before did not hold as many
+// times, so an edit lights the lines it rewrote and the lines it added, and a
+// line that only moved down keeps its count and stays quiet.
+func changedPeekLines(before, after []string) map[string]bool {
+	counts := make(map[string]int, len(before))
+	for _, line := range before {
+		counts[line]++
+	}
+	lit := make(map[string]bool)
+	for _, line := range after {
+		if counts[line] > 0 {
+			counts[line]--
+			continue
+		}
+		if len(line) > 0 && line != peekDockIndent {
+			lit[line] = true
+		}
+	}
+	return lit
 }

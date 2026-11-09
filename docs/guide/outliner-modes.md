@@ -121,7 +121,18 @@ stops. Each routing is its own change in the undo history, its feedback is the
 row's own, and sorting the last Inbox task still earns `Inbox zero`. The order
 is fixed when the pass opens, a selection refuses it, and the pass closes by
 itself after the last card. The morning greeting points at it when the Inbox
-holds work: `2 in Inbox (I triage)`.
+holds work and nothing is overdue: `2 in Inbox to sort (I triage)`.
+
+In the morning, Task → **Start the Day…** walks what the day has to decide,
+under `Start the day`. It switches the view to Today, then shows one card for
+each overdue task Today draws, then each task Today's Suggested lane offers.
+`t` plans it for Today, `@` gives it a new date, `n` sends it to Next, `b` to
+Backlog, `d` finishes it, `Space` keeps it as it is, `u` brings back the
+previous card, and `Esc` finishes early. Each card names why it is there and
+how many the pass has planned. It ends on a `Day planned` card: how many tasks
+Today now holds, what the pass planned, rescheduled, set aside, or finished,
+anything still overdue, and the way into the work (`wg`, then `gd`). The
+morning greeting points at it when something is overdue or nothing is planned.
 
 At the end of the day, Task → **Close the Day…** walks what Today still holds
 the same way, under `Close the day`. It switches the view to Today, then shows

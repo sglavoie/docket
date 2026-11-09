@@ -413,6 +413,8 @@ func SimplifiedInputStrategy() InputStrategy {
 			// The week browse is Today's alone and names no cursor task, so it is
 			// ungrouped beside gl and shed with it at the floor.
 			{OperationID: OperationCoreBrowseWeek, Sequence: []string{"g", "w"}, DisplayKey: "gw", HintLabel: "week ahead"},
+			// The Now screen names its own task, so it is ungrouped beside gw.
+			{OperationID: OperationCoreOpenNow, Sequence: []string{"g", "d"}, DisplayKey: "gd", HintLabel: "now"},
 			{OperationID: OperationCoreGotoCaptured, Sequence: []string{"g", "l"}, DisplayKey: "gl", HintLabel: "last capture"},
 			{OperationID: OperationCoreScrollCursorTop, Sequence: []string{"z", "t"}, DisplayKey: "zt", HintLabel: "row to top"},
 			{OperationID: OperationCoreScrollCursorMiddle, Sequence: []string{"z", "z"}, DisplayKey: "zz", HintLabel: "row to middle"},

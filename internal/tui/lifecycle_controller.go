@@ -496,4 +496,5 @@ func (m *AppModel) greetLocalDay(now time.Time) {
 		}
 	}
 	m.setInfoStatus(greeting)
+	m.feedback.expiryOwed = true
 }

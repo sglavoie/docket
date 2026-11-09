@@ -383,7 +383,7 @@ func (m *OutlinerModel) ClassifyEmptyCause() outlinerEmptyCause {
 // input: the triage card, an open menu, the readout, the week browse, or jump
 // mode. Each names only its own keys, in the precedence below.
 func (m *OutlinerModel) gatedSubStateActive() bool {
-	return m.Triage.Active || m.MenuBar.Open || m.QueryReadout.Expanded || m.Week.Active || m.Jump.Active
+	return m.Triage.Active || m.MenuBar.Open || m.QueryReadout.Expanded || m.Week.Active || m.NowView.Active || m.Jump.Active
 }
 
 // gatedSubStateGuidance is the active gated keymap's footer.
@@ -405,6 +405,9 @@ func (m *OutlinerModel) gatedSubStateGuidance() chrome.GuidanceSpec {
 		// The browse owns input as the readout does, so its day keys and the
 		// way out are the only ones worth naming.
 		return m.weekBrowseGuidance()
+	case m.NowView.Active:
+		// The screen covers the rows, so the task's own acts are all it names.
+		return m.nowViewGuidance()
 	default:
 		// Jump mode, the last of the set, owns input as the readout does, so the
 		// labels on screen and the way out are the only keys worth naming.

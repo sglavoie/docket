@@ -44,13 +44,18 @@ func TestCursorTaskRowKeepsEveryColorItEarned(t *testing.T) {
 			t.Fatalf("cursor row lost its %s:\n%q", name, line)
 		}
 	}
-	if !strings.Contains(line, theme.NormalStyle.Render(task.Title)) {
-		t.Fatalf("cursor row did not render its title as ordinary text:\n%q", line)
+	if !strings.Contains(line, theme.NormalStyle.Bold(true).Render(task.Title)) {
+		t.Fatalf("cursor row did not render its title as ordinary text in bold:\n%q", line)
 	}
 	for name, unwanted := range map[string]string{
 		"priority title color": theme.GetTitlePriorityStyle(2).Render(task.Title),
 		"selection style":      theme.SelectedTaskTitleStyle.Render(task.Title),
 	} {
+		// In a theme whose selection ink is the title's own, the selection style
+		// is the bold title the cursor wears, and nothing was repainted.
+		if unwanted == theme.NormalStyle.Bold(true).Render(task.Title) {
+			continue
+		}
 		if strings.Contains(line, unwanted) {
 			t.Fatalf("cursor row repainted its title with the %s:\n%q", name, line)
 		}
@@ -75,7 +80,7 @@ func TestCursorRowKeepsItsSearchMatchHighlight(t *testing.T) {
 	if len(positions) == 0 {
 		t.Fatal("fixture query matched nothing")
 	}
-	want := textfit.HighlightText(task.Title, positions, theme.NormalStyle)
+	want := textfit.HighlightText(task.Title, positions, theme.NormalStyle.Bold(true))
 	if !strings.Contains(withoutTheCursorBand(t, line), want) {
 		t.Fatalf("cursor row dropped its search-match highlight:\n%q", line)
 	}

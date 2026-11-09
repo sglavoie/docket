@@ -70,6 +70,9 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 	case help.ShowHelpMsg:
 		width, height := m.viewNav.viewSize()
 		m.helpView = m.helpSession.Open(msg.Items, msg.ViewName, width, height)
+		if len(msg.RowMarks) > 0 {
+			m.helpView.SetRowMarks(msg.RowMarks)
+		}
 		if msg.ActionContext != nil && m.currentView() == presentation.ViewCrossProjectOutliner {
 			m.helpView.EnableActions(*msg.ActionContext, msg.SearchItems)
 		}
@@ -374,7 +377,22 @@ func (m *AppModel) outlinerHelpMessage(ctx operation.CommandContext) help.ShowHe
 	return help.ShowHelpMsg{
 		ViewName: "Outliner", Items: m.coreHelpItemsForContext(ctx, false),
 		ActionContext: &ctx, SearchItems: m.outlinerActionItems(ctx),
+		RowMarks: m.outlinerRowMarks(),
 	}
+}
+
+// outlinerRowMarks is the cursor row's legend as help items.
+func (m *AppModel) outlinerRowMarks() []operation.HelpItem {
+	outliner := m.activeCrossProjectOutliner()
+	if outliner == nil {
+		return nil
+	}
+	legend := outliner.CursorRowLegend()
+	items := make([]operation.HelpItem, len(legend))
+	for i, entry := range legend {
+		items[i] = operation.HelpItem{Key: entry.Mark, Description: entry.Meaning, Category: "On this row"}
+	}
+	return items
 }
 
 // outlinerActionItems is the Outliner's one runnable action list: every key the

@@ -184,6 +184,9 @@ func (m *TaskComposerModel) EnableDraftRecovery() {
 		m.Expanded.syncInputFocus()
 	}
 	m.recoveryPending = saved.Pending
+	if !saved.Pending && saved.Expanded == nil {
+		m.restoredDraft = saved.Text
+	}
 	m.wireExpandedRecovery()
 	if saved.Pending {
 		m.pendingRecoveryIssue()

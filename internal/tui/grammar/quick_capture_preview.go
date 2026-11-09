@@ -20,6 +20,7 @@ func (q *QuickCaptureInput) UpdatePreview() {
 	q.previewMinute = time.Now().Truncate(time.Minute)
 	q.batchDuplicateHint = ""
 	q.HostRoute = nil
+	q.hostLineDestination = ""
 	if q.HostRouteSummary != nil {
 		summary := q.HostRouteSummary()
 		q.HostRoute = &summary
@@ -30,6 +31,9 @@ func (q *QuickCaptureInput) UpdatePreview() {
 		q.Preview = nil
 		q.PreviewErr = ""
 		return
+	}
+	if q.HostLineDestination != nil {
+		q.hostLineDestination = q.HostLineDestination(input)
 	}
 	q.Preview, q.PreviewErr = capturetext.ParseQuickCaptureForPreview(input, q.Project, q.allProjects, q.skipProjectSyntax)
 	if q.Preview == nil || q.PreviewErr != "" || q.Preview.Title == "" {
@@ -95,6 +99,9 @@ func (q *QuickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	}
 	if q.Preview.DestinationSet {
 		destination = q.Preview.Destination
+	}
+	if q.hostLineDestination != "" {
+		destination = q.hostLineDestination
 	}
 	// The deferral route runs through the same helper the submitted request uses,
 	// so the preview never promises a landing place the capture will not honor.

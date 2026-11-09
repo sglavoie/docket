@@ -129,10 +129,13 @@ func (p TaskComposerPreset) defaultDestination(
 type TaskComposerModel struct {
 	pulse.WorkspacePulseState
 	grammar.QuickCaptureInput
-	preservesDraft           bool
-	recovery                 *config.LocalDraft
-	recoveryBlocked          error
-	recoveryPending          bool
+	preservesDraft  bool
+	recovery        *config.LocalDraft
+	recoveryBlocked error
+	recoveryPending bool
+	// restoredDraft is the kept draft this panel reopened on; the divider says
+	// so until the draft is edited.
+	restoredDraft            string
 	recoveryAutosaveSequence uint64
 	Preset                   TaskComposerPreset
 	runtime                  *config.RuntimeState
@@ -194,6 +197,7 @@ func (m *TaskComposerModel) initCompactInput() {
 	m.QuickCaptureInput = grammar.NewQuickCaptureInput(project, m.Preset.AllProjects, placeholder, !m.Preset.AllowProjectSwitch)
 	m.DefaultParentID = cloneStringPtr(m.Preset.Shared.ParentID)
 	m.HostRouteSummary = m.routeSummary
+	m.HostLineDestination = m.lineDestination
 	m.Input.CharLimit = 4000
 	if m.Preset.InitialText != "" {
 		m.Input.SetValue(m.Preset.InitialText)

@@ -137,6 +137,10 @@ so now are tags, the neutral Waiting and Doing ages, deferral markers,
 and the checklist, comment, and attachment counts. None of those is gone: `b`
 opens Peek on the same row and shows every one of them at full value, unclipped,
 rather than in a fixed-width badge the row had to buy out of the title.
+Priority is drawn for High and Medium alone: Low is recorded and Peek names it,
+but on a row it is the common case, so it leaves the column blank and the
+badges that remain stand out. Not sure what a mark means? `?` on the row
+explains every mark it wears under **On this row**.
 
 A paperclip (`📎`, or the Nerd Font paperclip under View → Nerd Font Glyphs)
 after the title means the task has one or more attachments,
@@ -380,6 +384,12 @@ reach the ends. `?` shows the reader's help.
 `Esc`, `B`, or `b` returns to the same task and list position. If Peek was open,
 it returns at its previous reading position. Other task shortcuts are inactive
 while reading. Project headers and checklist items also support fullscreen details.
+
+When a change you commit rewrites the task Peek is reading, the lines it
+changed wear an accent bar in the dock's margin for about a second, so an edit
+shows where it landed. Only a commit lights them, never a minute's tick, and
+the next keystroke puts them out. Like the other motion, it is off when View →
+Motion is.
 
 `b` toggles a session-only Peek in a pane docked below the list, whether the
 cursor is on a task or on a project header. A folded section header supports it

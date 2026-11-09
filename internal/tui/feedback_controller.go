@@ -44,6 +44,10 @@ import (
 // decides nothing about when a flash starts, which severity is quiet, or which
 // one supersedes another.
 type feedbackController struct {
+	// expiryOwed is a notice set outside a command path — the daily greeting —
+	// whose reading timer the deferred closure in Update schedules, so it is
+	// read on arrival and then goes like any other notice.
+	expiryOwed bool
 	// err is the shell's own failure line. It outranks status text in the
 	// footer and, having no clock of its own, is compared by text rather than by
 	// sequence when the flash probe runs.

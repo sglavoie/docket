@@ -71,9 +71,15 @@ type OutlinerModel struct {
 	// nothing else; see outliner_motion.go. foldBefore is the row order a fold
 	// operation started from, and dockSeen whether the last settled update left
 	// the dock open, which is what tells an opening dock from a standing one.
-	anim       motion.Runs
-	foldBefore []string
-	dockSeen   bool
+	anim motion.Runs
+	// peekWatch, peekFlash, peekFlashSeq, and peekCommitOwed are the Peek
+	// change flash; see peek_change_flash.go.
+	peekWatch      peekWatch
+	peekFlash      *peekFlash
+	peekFlashSeq   int
+	peekCommitOwed bool
+	foldBefore     []string
+	dockSeen       bool
 	// unfocused is whether the terminal last reported that it lost focus. The
 	// cursor then rests dimmed — a muted mark and no band — so a glance at a
 	// background window says the keyboard is elsewhere. See SetTerminalFocused.
@@ -245,6 +251,8 @@ type OutlinerModel struct {
 	Triage triageState
 	// Week is `gw`'s browse over Today's week strip; see weekBrowseState.
 	Week weekBrowseState
+	// NowView is `gd`'s screen over one task in Doing; see nowViewState.
+	NowView nowViewState
 
 	// Jump is `'`'s jump mode: open, and the first letter of a two-letter label
 	// typed so far. The targets are never stored; outliner_jump_history.go reads

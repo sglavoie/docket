@@ -465,7 +465,9 @@ the row `Ctrl+P` rewrites, so only a value that row cannot carry — a child
 capture's parent — reaches the label. The pane repeats it neither: `To:` counts
 are drawn only for a batch spanning projects, through `batchSpansProjects` in
 measure and render alike, and `HostRoute` drops the preview's Route group
-where that row says it whole: not Mixed, not deferred. The discard question stays
+where that row says it whole: not Mixed, not deferred. The group's
+destination is `HostLineDestination`'s, settled beside the parse, so the
+preview never names a landing the composer's own default would not honor. The discard question stays
 the shell's confirm dialog, without a second copy. A bounded preview elides
 nothing: `ComposeBoundedPreviewBlock` falls to the compact wrapped run rather
 than clipping the grouped one. `Ctrl+F` is the composer's other
@@ -477,7 +479,8 @@ Capture's footer sheds by `Priority`, moving no drawn entry: it keeps `Ctrl+N`,
 `chrome.CapturePasteHint` last.
 
 Capture recovery is local, checked before overwrite, and never replays
-an interrupted submission.
+an interrupted submission; a reopened kept draft is named on the divider until
+edited.
 
 Capture completion and syntax help follow the caret; feedback recall holds 20
 session events. Inline suggestion text continues the typed token at the draft's
@@ -775,6 +778,10 @@ Row and Peek budget:
   never transitively: amber blocked, green settled, muted unreadable. Peek's two
   lines repeat those numbers and add no line.
   Relation, pin, attachment, and description bypass the ladder.
+  Priority Low draws no row badge: `chrome.RenderRowPriorityBadge` is every
+  row's spelling, column layout included, and Peek alone names it.
+  `CursorRowLegend` explains a row by reading its own built segments, never a
+  second table of glyphs, and `?` leads its unsearched All tab with it.
   `taskRowSegments` reserves them at every width (`📎` attachments, `▤` description).
   `taskRelationMarker` is one segment both ways.
   `taskPinnedMarker` reads `task.Pinned && !row.IsPinnedSection`, not
@@ -809,7 +816,11 @@ Row and Peek budget:
   at zero is omitted and an empty pulse renders no bare `workspace:`. Neither
   changes a counter. In Today, pace outranks the workspace pulse: exhaust that
   ladder first, then shorten and remove pace before truncating required
-  interaction context.
+  interaction context. Beside a pace the pulse drops Today and Done, which the
+  pace already states, through `pulseBesidePace` alone. The daily greeting
+  names one next move — overdue, then Inbox, then the plan — and never
+  recounts the pulse; it expires on the reading timer, and before noon it
+  names Start the Day, the morning triage source that ends on its own card.
 
 `O` refuses under a visual selection and outside `OrderPolicyTree`; its scope is
 what the dump printed, never `project.Tasks`. There is no `$delete` sigil: a dumped task whose line is gone
@@ -865,6 +876,13 @@ scope, still excludes archived projects, and is omitted entirely whenever the
 query carries a sigil, because sigils compile to an AND gate no note can
 satisfy. Enter on a note row leaves the Outliner for the Notes surface; it does
 not give notes tags, links, or bulk actions.
+
+`gd` is the Now screen, a view-local gated sub-state beside the triage card:
+no `PresentationID`, it replaces the host rather than dimming it, it routes
+`d`/`p`/`r`/`c` as `TriageRouteMsg` against the cursor it seats, writes nothing
+on opening, and `settleNowView` closes it on the build where its task leaves
+Doing. The Peek change flash answers `NotePeekCommit` alone, compares the same
+owner at the same width, paints the margin, and input drops it.
 
 ## Key bindings
 
@@ -968,7 +986,10 @@ tags.
 A task title is neutral text: priority, a deadline, an owed review, and a pin
 each reach the row through their own badge or segment, a semantic tag reaches
 Peek through its chip, and none reaches the title. `theme.TaskTitleStyleFor` is that one authority and
-answers lifecycle alone — muted, canceled, cursor-selected.
+answers lifecycle alone — muted, canceled, cursor-selected — and the
+Outliner's cursor title alone adds bold over its own color, `CursorTitleWeight`;
+row badges and identity labels wear no weight, and the daily-loop surfaces share
+`theme.ColorAccent`.
 `chrome.PickHeroAttribute` is the attention ladder — overdue, review over
 `models.TaskNeedsAttention`, due today, then priority 1 — and it demotes one
 badge, never a title. A state badge is identity, so it is neither hero nor

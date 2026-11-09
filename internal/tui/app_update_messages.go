@@ -142,7 +142,7 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 			return true, cmd
 		}
 		return true, tea.Batch(cmd, returnCmd, lensCmd, noteCmd)
-	case outliner.DepartureGhostTickMsg, outliner.ModeArrivalTickMsg, outliner.MotionTickMsg:
+	case outliner.DepartureGhostTickMsg, outliner.ModeArrivalTickMsg, outliner.MotionTickMsg, outliner.PeekFlashTickMsg:
 		// Routed to the one Outliner whichever presentation is active, so a
 		// ghost started under a panel still retires on time.
 		if m.crossOutliner == nil {

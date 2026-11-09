@@ -161,6 +161,31 @@ func (m *HelpViewModel) renderBySectionContent() string {
 		b.WriteString(heading.Render(title))
 		b.WriteString("\n")
 	}
+	// The row legend leads a screen with room for it. A short one keeps the
+	// daily groups on its first screen instead, so there it closes the
+	// reference rather than opening it.
+	marks := m.visibleRowMarks()
+	writeMarks := func() {
+		if len(marks) == 0 {
+			return
+		}
+		markWidth := 1
+		for _, mark := range marks {
+			markWidth = max(markWidth, lipgloss.Width(mark.Key))
+		}
+		if line, ok := helpRowMarksLine(marks, max(m.viewport.Width(), 1)); ok {
+			// A legend that fits beside its heading costs the reference one row.
+			first = false
+			b.WriteString(line)
+			b.WriteString("\n")
+			return
+		}
+		writeHeading(helpRowMarksHeading)
+		b.WriteString(renderHelpItemGroup(marks, max(m.viewport.Width(), 1), markWidth, descWidth))
+	}
+	if !compactHeadings {
+		writeMarks()
+	}
 	sections := helpSectionsForCategories(categories)
 	if len(buckets[exactSection]) > 0 {
 		sections = append([]string{exactSection}, sections...)
@@ -201,6 +226,9 @@ func (m *HelpViewModel) renderBySectionContent() string {
 			b.WriteString(renderHelpItemGroup(items[start:end], max(m.viewport.Width(), 1), groupKeyWidth, descWidth))
 			start = end
 		}
+	}
+	if compactHeadings {
+		writeMarks()
 	}
 
 	return b.String()
@@ -319,6 +347,42 @@ func renderHelpItemGroup(items []filteredHelpItem, contentWidth, keyWidth, short
 		b.WriteString("\n")
 	}
 	return b.String()
+}
+
+// helpRowMarksHeading heads the legend of the opener's cursor row.
+const helpRowMarksHeading = "On this row"
+
+// helpRowMarksLine is the whole legend on one row beside its heading, or
+// ok=false when it would not fit the width whole.
+func helpRowMarksLine(marks []filteredHelpItem, width int) (string, bool) {
+	parts := make([]string, 0, len(marks))
+	for _, mark := range marks {
+		parts = append(parts, theme.HelpKeyStyle.Render(mark.Key)+" "+mark.Description)
+	}
+	line := " " + theme.HelpCategoryStyle.MarginTop(0).Render(helpRowMarksHeading) + "   " + strings.Join(parts, theme.MutedStyle.Render("   ·   "))
+	if lipgloss.Width(line) > width {
+		return "", false
+	}
+	return line, true
+}
+
+// SetRowMarks installs the legend of the row help was opened from.
+func (m *HelpViewModel) SetRowMarks(marks []operation.HelpItem) {
+	m.rowMarks = marks
+	m.filterItems()
+}
+
+// visibleRowMarks is the row legend where it leads: the unsearched All view,
+// since a search or a category asks about keys, not about the row.
+func (m *HelpViewModel) visibleRowMarks() []filteredHelpItem {
+	if len(m.rowMarks) == 0 || m.searchQuery != "" || m.activeTab != 0 {
+		return nil
+	}
+	marks := make([]filteredHelpItem, len(m.rowMarks))
+	for i, item := range m.rowMarks {
+		marks[i] = filteredHelpItem{HelpItem: item}
+	}
+	return marks
 }
 
 func (m *HelpViewModel) renderContent() string {

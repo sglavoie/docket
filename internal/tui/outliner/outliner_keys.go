@@ -59,6 +59,12 @@ func (m *OutlinerModel) HandleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.HandleWeekBrowseKey(key)
 	}
 
+	// The Now screen owns input the same way: its keys are the task's acts, and
+	// the rows they would otherwise reach are not on screen.
+	if m.NowView.Active {
+		return m.handleNowViewKey(key)
+	}
+
 	// Jump mode owns input the same way: every key is a label letter, a way out,
 	// or a cancel, and none of them reaches the grammar underneath.
 	if m.Jump.Active {
@@ -263,6 +269,7 @@ func (m *OutlinerModel) ShouldCaptureEsc() bool {
 		m.QuickEdit.IsActive() ||
 		m.QueryReadout.Expanded ||
 		m.Week.Active ||
+		m.NowView.Active ||
 		m.Jump.Active ||
 		// The picker is drawn over the whole frame, so it is the innermost thing Esc
 		// can put down and claims the key ahead of the menu below it.

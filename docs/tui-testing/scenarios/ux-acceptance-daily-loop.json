@@ -24,7 +24,7 @@
     {
       "type": "assert",
       "assert": "contains",
-      "value": "[ux-support-…]     Triage the duplicate support tickets"
+      "value": "[ux-support…]      Triage the duplicate support tickets"
     },
     {
       "type": "assert",
@@ -627,7 +627,7 @@
     {
       "type": "assert",
       "assert": "contains",
-      "value": "▌  [ux-client-r…] ◌ Collect the client onboarding assets"
+      "value": "▌  [ux-client…]   ◌ Collect the client onboarding assets"
     },
     {
       "type": "key",

@@ -63,7 +63,7 @@ func ComputeBadgeWidths(tasks []*models.Task, opts BadgeWidthOpts) *ColumnLayout
 
 		w, ok := priorityWidths[task.Priority]
 		if !ok {
-			w = lipgloss.Width(RenderPriorityBadge(task.Priority))
+			w = lipgloss.Width(RenderRowPriorityBadge(task.Priority))
 			priorityWidths[task.Priority] = w
 		}
 		if w > 0 {

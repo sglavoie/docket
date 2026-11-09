@@ -80,3 +80,24 @@ func TestDailyGreetingRecapsTheWeekBeforeOnTheFirstGreetingOfAWeek(t *testing.T)
 		t.Fatalf("a later greeting in the same week recapped again:\n%s", screen)
 	}
 }
+
+// The greeting is a notice, not a fixture: it is read on arrival and then
+// leaves the footer on the ordinary reading timer.
+func TestDailyGreetingLeavesAfterItsReadingTime(t *testing.T) {
+	driver, workspace, err := NewFixtureDriver(FixtureRich, 100, 35)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = workspace.Cleanup() })
+	driver.launchOptions = append(driver.launchOptions, WithDailyGreeting())
+	if err := driver.Restart(); err != nil {
+		t.Fatal(err)
+	}
+	if screen := driver.Observe(ObserveOptions{}).PlainScreen; !greeted(screen) {
+		t.Fatalf("launch did not greet:\n%s", screen)
+	}
+	driver.advanceClock(30 * time.Second)
+	if screen := driver.Observe(ObserveOptions{}).PlainScreen; greeted(screen) {
+		t.Fatalf("the greeting outstayed its reading time:\n%s", screen)
+	}
+}

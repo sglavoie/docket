@@ -1,0 +1,28 @@
+{
+  "name": "start-the-day",
+  "fixture": "busy",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "start from All: the pass brings the view to Today", "key": "1" },
+    { "type": "command", "command": "Start the Day" },
+    { "type": "assert", "assert": "contains", "value": "Start the day" },
+    { "type": "assert", "label": "overdue work comes first and says why it is here", "assert": "contains", "value": "Overdue · @ gives it a date it can keep" },
+    { "type": "assert", "assert": "contains", "value": "t today · @ date · n next · Space keep" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "Space keeps the overdue card as it is", "key": "space" },
+    { "type": "assert", "label": "then the day's suggestions", "assert": "contains", "value": "Suggested for today" },
+    { "type": "key", "label": "t plans a suggestion for Today", "key": "t" },
+    { "type": "assert", "assert": "contains", "value": "1 planned · Suggested for today" },
+    { "type": "key", "label": "Esc finishes and reads the planned day back", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "Day planned" },
+    { "type": "assert", "assert": "contains", "value": "1 planned" },
+    { "type": "assert", "assert": "contains", "value": "1 still overdue" },
+    { "type": "assert", "assert": "contains", "value": "Enter close · u back" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "assert", "label": "the closing card fits the smallest terminal", "assert": "no_layout_issues" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "not_contains", "value": "Day planned" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

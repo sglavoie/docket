@@ -42,7 +42,7 @@
     { "type": "key", "label": "the query seats the cursor on the top result, so three half pages scroll it", "key": "ctrl+d" },
     { "type": "key", "key": "ctrl+d" },
     { "type": "key", "key": "ctrl+d" },
-    { "type": "assert", "assert": "contains", "value": "[release-pro…]" },
+    { "type": "assert", "assert": "contains", "value": "[release…]" },
     { "type": "assert", "assert": "not_contains", "value": "› [release-project]" },
     { "type": "assert", "assert": "not_contains", "value": "Release acceptance item 004" },
     { "type": "assert", "assert": "no_layout_issues" },

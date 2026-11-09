@@ -527,3 +527,18 @@ so no surface erases it by omission; plus the chain's new `v25` step and why
 the `.tt/` tombstone stays at 24. The migration mechanism lives in
 docs/architecture/migration.md and the field in docs/guide/storage.md. No
 rule elsewhere was trimmed to pay for it.
+
+Raise from 79280 to 80800 for the reading-polish pass. 1520 bytes buy the
+rules the new behavior is held to: beside the Today pace the pulse drops the
+two counts the pace states, through one seam; the greeting names one next move
+and recounts nothing; Low priority draws no row badge through one spelling;
+the row legend reads the row's own segments rather than a glyph table; the
+cursor title is the one title wearing weight; `gd` is a gated sub-state that
+replaces its host, routes through the triage message, writes nothing on
+opening, and closes when its task leaves Doing; the Peek change flash answers
+a commit alone and paints the margin; and the capture preview's destination is
+the composer's own; the greeting expires and names the morning pass, which
+ends on its own card; a reopened kept draft is named on the divider; and row
+badges and identity labels wear no weight beside one shared daily-loop accent.
+The mechanism lives in docs/guide/outliner-chrome.md, docs/guide/outliner-rows.md,
+docs/guide/outliner-modes.md, and docs/guide/capture.md. No rule elsewhere was trimmed to pay for it.

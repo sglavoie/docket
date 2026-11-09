@@ -75,5 +75,23 @@ func RenderPriorityBadge(priority int) string {
 	if models.ValidatePriority(priority, false) != nil {
 		return ""
 	}
-	return theme.GetPriorityStyle(priority).Render(theme.PriorityIcon(priority))
+	// The glyph keeps its color and sheds the title style's weight: bold on a row
+	// belongs to the cursor's title alone, so the eye's one bold landmark is the
+	// task you are on.
+	return theme.GetPriorityStyle(priority).Bold(false).Italic(false).Render(theme.PriorityIcon(priority))
+}
+
+// RowQuietPriority is the priority a list row draws no badge for. Low priority
+// is a deliberate choice worth recording, but on a row it is the common case,
+// and a mark most rows wear tells the eye nothing; the badges that remain are
+// the ones that stand out. Peek still names it.
+const RowQuietPriority = 3
+
+// RenderRowPriorityBadge is a list row's priority badge: RenderPriorityBadge,
+// silent for RowQuietPriority.
+func RenderRowPriorityBadge(priority int) string {
+	if priority == RowQuietPriority {
+		return ""
+	}
+	return RenderPriorityBadge(priority)
 }

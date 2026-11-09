@@ -100,6 +100,15 @@ modes, in search, under a lens or a Focus, and in a terminal under 24 rows, and
 gives a narrow window's room to the title before the age. It takes no keys or
 clicks; the same task still sits in its Doing lane below.
 
+`gd` (Go → Now) opens the **Now screen**: the list is put down and one task in
+Doing fills the frame — the cursor's task when it is in Doing, else the Now
+card's — with how long it has been in hand, its project, `Left off:` and its
+resume note, and its checklist with the next open step marked `→`. `d`
+completes it, `p` pauses it, `r` writes its resume note, `c` adds a checklist
+step, and `Esc` returns to the list; each is the row's own operation and its
+own undo entry. When the task leaves Doing the screen closes by itself, so
+finishing lands on the list. A visual selection, or nothing in Doing, refuses it.
+
 ## Open a menu
 
 Press `M` or `F10` to open the menus; press it again or `Esc` to close them.
@@ -273,9 +282,12 @@ it, plan it, file it, or finish it, adds `Inbox zero` the same way, once a day.
 An undo, a redo, or a sync that empties the Inbox is not triage and says
 nothing.
 
-The first launch of each day opens with a greeting that names what the day
-already holds, such as `Good morning · 3 planned for Today · 1 overdue · 2 in
-Inbox (I triage)`. The first greeting of a week also recaps the week before, such as
+The first launch of each day opens with a greeting that names the one move the
+day asks for first, since the pulse already counts the rest: overdue work, then
+an untriaged Inbox, then the plan, such as `Good morning · start with the 1
+overdue (Task → Start the Day)` or `Good morning · 2 in Inbox to sort (I
+triage)`; after noon the overdue move names `7 Due` instead. Like any notice,
+it leaves the footer after its reading time, and the pulse keeps the counts. The first greeting of a week also recaps the week before, such as
 `last week 23 done, most on Tuesday`; a week with nothing done adds nothing.
 The day it greeted is remembered on this machine, so later launches
 that day stay quiet, and a key pressed before the workspace finishes loading
@@ -471,7 +483,9 @@ The Outliner marks its cursor with a bright column at the far left. A selected
 task also carries a subtle background band across the full row, so the eye can
 follow a long title and its indicators without losing the selection. The tree
 connectors, state and priority badges, deadline, project label, and search
-highlights retain their own foreground colors over that band. Headers,
+highlights retain their own foreground colors over that band, and its title
+is the one bold title on the screen, so the task you are on is found before
+the band is read. Headers,
 checklist items, and notes keep their margin mark and trailing fill.
 
 The bar reverses the fold arrow on a section header and the `✓` on a task in a

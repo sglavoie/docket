@@ -271,7 +271,7 @@ func (m *TaskComposerModel) renderCompactPanel(rows int) string {
 	m.setInputHeight(m.composerInputRows(rows, m.composerInputContentRows(), panelBlockRows(errors)))
 
 	var b strings.Builder
-	b.WriteString(chrome.RenderLabeledDivider(m.Preset.label(), width))
+	b.WriteString(chrome.RenderLabeledDivider(m.panelLabel(), width))
 	b.WriteString("\n")
 	b.WriteString(m.renderComposerRouteRow(width))
 	// The selected completion's untyped remainder rides the caret's own row,
@@ -467,4 +467,18 @@ func (m *TaskComposerModel) batchDestinationSummary() string {
 		}
 	}
 	return ""
+}
+
+// keptDraftLabel is what the divider adds while a reopened capture still holds
+// the draft Esc kept, so typing into it is a choice rather than a surprise.
+const keptDraftLabel = " · kept draft · Ctrl+X discards"
+
+// panelLabel names the act, and says when the panel reopened on a kept draft
+// that has not been edited since.
+func (m *TaskComposerModel) panelLabel() string {
+	label := m.Preset.label()
+	if m.restoredDraft != "" && m.Input.Value() == m.restoredDraft {
+		return label + keptDraftLabel
+	}
+	return label
 }

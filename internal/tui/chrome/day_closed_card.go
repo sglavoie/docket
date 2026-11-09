@@ -110,3 +110,65 @@ func dayClosedSendOff(spec DayClosedCardSpec) string {
 		return "Rest well. Tomorrow is a fresh start."
 	}
 }
+
+// DayStartedCardSpec is the card a Start the Day pass ends on: where the pass
+// sent its cards and what Today now holds.
+type DayStartedCardSpec struct {
+	Date         string
+	Planned      int
+	Rescheduled  int
+	Deferred     int
+	Done         int
+	Today        int
+	StillOverdue int
+	// Doing reports work already in hand, which the card's last line names the
+	// way back to.
+	Doing bool
+}
+
+// RenderDayStartedCard draws the morning's closing card. Like the other cards
+// it names no keys but the one way into the day: the footer under it does.
+func RenderDayStartedCard(spec DayStartedCardSpec, width int) string {
+	innerWidth := TriageCardInnerWidth(width)
+	contentWidth := max(innerWidth-4, 12)
+
+	accent := lipgloss.NewStyle().Foreground(theme.ColorAccent).Bold(true)
+	label := accent.Render("Day planned")
+	date := theme.MutedStyle.Render(spec.Date)
+	header := label
+	if gap := contentWidth - lipgloss.Width(label) - lipgloss.Width(date); spec.Date != "" && gap >= 1 {
+		header += strings.Repeat(" ", gap) + date
+	}
+
+	lines := []string{triageProgressBar(1, 1, contentWidth), ""}
+	switch spec.Today {
+	case 0:
+		lines = append(lines, theme.BoldPrimaryStyle.Render("Today holds nothing yet."))
+	case 1:
+		lines = append(lines, theme.BoldPrimaryStyle.Render("1 task for Today"))
+	default:
+		lines = append(lines, theme.BoldPrimaryStyle.Render(fmt.Sprintf("%d tasks for Today", spec.Today)))
+	}
+	var moves []string
+	for _, move := range []struct {
+		n    int
+		verb string
+	}{{spec.Planned, "planned"}, {spec.Rescheduled, "rescheduled"}, {spec.Deferred, "set aside"}, {spec.Done, "done"}} {
+		if move.n > 0 {
+			moves = append(moves, fmt.Sprintf("%d %s", move.n, move.verb))
+		}
+	}
+	if len(moves) > 0 {
+		lines = append(lines, theme.MutedStyle.Render(textfit.TruncateIntentional(strings.Join(moves, " · "), contentWidth, "…")))
+	}
+	if spec.StillOverdue > 0 {
+		lines = append(lines, lipgloss.NewStyle().Foreground(theme.ColorWarning).Render(fmt.Sprintf("%d still overdue", spec.StillOverdue)))
+	}
+	lines = append(lines, "")
+	next := "Start one with wg; gd keeps it in front of you."
+	if spec.Doing {
+		next = "Work is in hand: gd brings it back in front of you."
+	}
+	lines = append(lines, theme.MutedStyle.Render(textfit.TruncateIntentional(next, contentWidth, "…")), "")
+	return RenderOverlayBox(strings.Join(lines, "\n"), innerWidth, header, "", lipgloss.NewStyle().Foreground(theme.ColorAccent))
+}

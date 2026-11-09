@@ -186,12 +186,39 @@ func projectAbbreviations(names []string, width int) map[string]string {
 	counts := make(map[string]int, len(names))
 	used := make(map[string]bool, len(names))
 	for _, name := range names {
-		counts[textfit.TruncateToVisualWidth(name, width)]++
+		counts[abbreviateProjectTail(name, width)]++
 	}
 	for _, name := range names {
-		label := textfit.TruncateToVisualWidth(name, width)
+		label := abbreviateProjectTail(name, width)
 		if counts[label] == 1 || lipgloss.Width(name) <= width {
 			labels[name], used[label] = label, true
+		}
+	}
+	// Colliding names keep both ends in whole words where they can — the head
+	// that says which family and the tail that says which member — so a label
+	// never reads as a word cut in half. Only a candidate no other colliding
+	// name could also spell is taken.
+	var colliding []string
+	for _, name := range names {
+		if _, ok := labels[name]; !ok {
+			colliding = append(colliding, name)
+		}
+	}
+	wordCandidates := make(map[string][]string, len(colliding))
+	spelledBy := make(map[string]int)
+	for _, name := range colliding {
+		candidates := projectWordMiddleCandidates(name, width)
+		wordCandidates[name] = candidates
+		for _, candidate := range candidates {
+			spelledBy[candidate]++
+		}
+	}
+	for _, name := range colliding {
+		for _, candidate := range wordCandidates[name] {
+			if spelledBy[candidate] == 1 && !used[candidate] {
+				labels[name], used[candidate] = candidate, true
+				break
+			}
 		}
 	}
 	for _, name := range names {
@@ -227,6 +254,93 @@ func projectAbbreviations(names []string, width int) map[string]string {
 		}
 	}
 	return labels
+}
+
+// isProjectWordSeparator reports the characters a slug or alias joins words
+// with.
+func isProjectWordSeparator(r rune) bool {
+	return r == '-' || r == '_' || r == ' ' || r == '.' || r == '/'
+}
+
+// projectWords splits a name into its words, separators dropped, along with
+// the separator that preceded each word after the first.
+func projectWords(name string) (words, seps []string) {
+	var word strings.Builder
+	sep := ""
+	for _, r := range name {
+		if isProjectWordSeparator(r) {
+			if word.Len() > 0 {
+				words = append(words, word.String())
+				seps = append(seps, sep)
+				word.Reset()
+			}
+			sep = string(r)
+			continue
+		}
+		word.WriteRune(r)
+	}
+	if word.Len() > 0 {
+		words = append(words, word.String())
+		seps = append(seps, sep)
+	}
+	return words, seps
+}
+
+func joinProjectWords(words, seps []string, from, to int) string {
+	var b strings.Builder
+	for i := from; i < to; i++ {
+		if i > from {
+			b.WriteString(seps[i])
+		}
+		b.WriteString(words[i])
+	}
+	return b.String()
+}
+
+// abbreviateProjectTail cuts a name too wide for width after its last whole
+// word that keeps at least a third of the width, so `quiet-compass-016` reads
+// `quiet-compass…` rather than `quiet-compa…`; a name with no such boundary is
+// cut by cells as before.
+func abbreviateProjectTail(name string, width int) string {
+	if lipgloss.Width(name) <= width {
+		return name
+	}
+	words, seps := projectWords(name)
+	for end := len(words) - 1; end >= 1; end-- {
+		head := joinProjectWords(words, seps, 0, end)
+		if w := lipgloss.Width(head); w+1 <= width && w*3 >= width {
+			return head + "…"
+		}
+	}
+	return textfit.TruncateToVisualWidth(name, width)
+}
+
+// projectWordMiddleCandidates are the whole-word head…tail spellings of name
+// that fit width, widest first, so a label keeps as much as the column allows.
+func projectWordMiddleCandidates(name string, width int) []string {
+	words, seps := projectWords(name)
+	type candidate struct {
+		text  string
+		width int
+	}
+	var fitting []candidate
+	for head := 1; head < len(words); head++ {
+		for tail := len(words) - 1; tail >= head; tail-- {
+			if head == tail {
+				continue
+			}
+			text := joinProjectWords(words, seps, 0, head) + "…" + joinProjectWords(words, seps, tail, len(words))
+			if w := lipgloss.Width(text); w <= width {
+				fitting = append(fitting, candidate{text, w})
+			}
+		}
+	}
+	slices.SortStableFunc(fitting, func(a, b candidate) int { return b.width - a.width })
+	out := make([]string, len(fitting))
+	for i, c := range fitting {
+		out[i] = c.text
+	}
+	return out
 }
 
 func abbreviateProjectMiddle(name string, width, head int) string {

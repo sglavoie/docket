@@ -137,6 +137,11 @@ func (m *OutlinerModel) RenderOutlinerTreeContent(width int) string {
 // since one that draws nothing must not dim the view over a modal nobody sees.
 func (m *OutlinerModel) composeOutlinerModal(host string, width int) string {
 	frameHeight := m.outlinerHostFrameHeight(width)
+	if screen, ok := m.renderNowView(width, frameHeight); ok {
+		// The Now screen replaces the host rather than dimming it: the list is
+		// put down so the one task in hand is all the frame says.
+		return screen
+	}
 	if composed, ok := m.composeTriageCard(host, width, frameHeight); ok {
 		return composed
 	}

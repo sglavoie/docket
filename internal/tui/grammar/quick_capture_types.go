@@ -100,6 +100,14 @@ type QuickCaptureInput struct {
 	// whose Route group that row already says in full stays silent about it.
 	HostRouteSummary func() CaptureRouteSummary
 	HostRoute        *CaptureRouteSummary
+	// HostLineDestination is installed by a host whose default destination is
+	// not Inbox — Today mode plans, a child lands in Backlog, a due-today date
+	// routes to Today — and answers the destination the submitted line will
+	// land on before any deferral. UpdatePreview settles hostLineDestination
+	// from it, so the Route group can never name a landing the capture will
+	// not honor and measuring the preview asks the host nothing.
+	HostLineDestination func(line string) app.CaptureDestination
+	hostLineDestination app.CaptureDestination
 
 	// Layout
 	Width int // Available width for preview wrapping

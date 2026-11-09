@@ -20,7 +20,8 @@
     { "type": "key", "label": "drop it to Low priority", "key": "!" },
     { "type": "key", "key": "3" },
     { "type": "wait" },
-    { "type": "assert", "label": "an explicit P3 shows the low-priority badge", "assert": "contains", "value": "[rich-project]   ◆ Build login form" },
+    { "type": "assert", "label": "an explicit P3 is recorded but draws no row badge: Low is the quiet case", "assert": "contains", "value": "Set Priority: priority 3" },
+    { "type": "assert", "assert": "not_contains", "value": "◆ Build login form" },
     { "type": "assert", "assert": "not_contains", "value": "[rich-project]   ◉ Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 

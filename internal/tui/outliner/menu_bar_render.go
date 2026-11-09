@@ -387,6 +387,9 @@ func (m *OutlinerModel) handleModalPointer(event route.PointerEvent) (tea.Cmd, b
 		return nil, true
 	case m.RelationPickerOpen():
 		return m.relationPickerPointer(event), true
+	case m.NowView.Active:
+		// The screen is keyboard-only and covers the rows a click would act on.
+		return nil, true
 	case m.Week.Active:
 		// The browse is keyboard-only: a click puts it down and acts on nothing,
 		// since the strip it marks is paint with no hit map.

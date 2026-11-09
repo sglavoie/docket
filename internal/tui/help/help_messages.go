@@ -19,6 +19,10 @@ type ShowHelpMsg struct {
 	// their reference viewer, including transient modal controls.
 	ActionContext *operation.CommandContext
 	SearchItems   []operation.HelpItem
+	// RowMarks explains the marks the opener's cursor row wears, each Key the
+	// mark as drawn and Description its meaning. Help leads its unsearched All
+	// view with them under On this row.
+	RowMarks []operation.HelpItem
 }
 
 // RunActionMsg asks the shell to close this help instance and execute the

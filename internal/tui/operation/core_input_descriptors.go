@@ -218,6 +218,21 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		"calendar",
 	)
 	browseWeek.Applicability = gotoCaptured.Applicability
+	// The Now screen names its task itself — the cursor's when it is in Doing,
+	// else the Now card's lead — so it is target-free like gl. It refuses a
+	// visual selection because its acts run on one task.
+	openNow := core(
+		OperationCoreOpenNow,
+		"Open Now",
+		OperationCategoryNavigation,
+		TargetCardinalityNone,
+		OperationRiskReadOnly,
+		"work in progress",
+		"doing",
+		"focus on one task",
+		"current task",
+	)
+	openNow.Applicability = gotoCaptured.Applicability
 	zoomSection := core(
 		OperationCoreZoomSection,
 		"Zoom to Section",
@@ -333,6 +348,7 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		gotoRelation,
 		gotoCaptured,
 		browseWeek,
+		openNow,
 		zoomSection,
 		activateGroup,
 		openNote,
@@ -438,6 +454,7 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		// Close the Day is Triage over Today's own work, opened from the menu and
 		// never a key: it switches to Today itself, walks what the day still holds,
 		// and ends on a card naming what the day finished.
+		core(OperationCoreStartDay, "Start the Day", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "plan the day", "morning", "start of day", "daily planning", "start day"),
 		core(OperationCoreCloseDay, "Close the Day", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "wrap up the day", "end of day", "shutdown", "daily review", "close day"),
 		core(OperationCoreSetUpCheckIns, "Set Up Check-Ins", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "schedule active work", "check-in setup"),
 		// Note Where I Left Off is target-free for the same reason Set Up Check-Ins

@@ -67,4 +67,5 @@ type HelpViewModel struct {
 	actionCursor         int
 	restoreActionKey     string
 	restoreCategory      string
+	rowMarks             []operation.HelpItem
 }

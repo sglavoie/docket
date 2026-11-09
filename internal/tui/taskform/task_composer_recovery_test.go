@@ -203,3 +203,25 @@ func TestCaptureRecoveryKeepsUnknownFormatUntouched(t *testing.T) {
 		t.Fatal("unknown format was accepted")
 	}
 }
+
+// A capture reopened on the draft Esc kept says so on its divider until the
+// draft is edited, so new typing never lands in old text unannounced.
+func TestReopenedCaptureNamesItsKeptDraftUntilEdited(t *testing.T) {
+	fresh := recoveryComposerFactory(t)
+	m := fresh()
+	if strings.Contains(m.panelLabel(), "kept draft") {
+		t.Fatal("an empty capture claimed a kept draft")
+	}
+	m.Input.SetValue("Write launch post")
+	if _, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEscape}); cmd == nil {
+		t.Fatalf("close failed: %+v", m.Errors)
+	}
+	reopened := fresh()
+	if !strings.Contains(reopened.panelLabel(), "kept draft · Ctrl+X discards") {
+		t.Fatalf("reopened label = %q, want it to name the kept draft", reopened.panelLabel())
+	}
+	reopened.Update(tea.KeyPressMsg{Code: '!', Text: "!"})
+	if strings.Contains(reopened.panelLabel(), "kept draft") {
+		t.Fatal("the label still claimed a kept draft after an edit")
+	}
+}

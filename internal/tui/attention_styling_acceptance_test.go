@@ -246,7 +246,13 @@ func TestAttentionSignalsRenderAcrossThemesAndFocus(t *testing.T) {
 						}
 					}
 					assertMonochromeKeepsContent(t, line, plain)
-					assertTitleWearsStyle(t, line, testCase.titleStyle(), task.Title)
+					want := testCase.titleStyle()
+					if focus.cursor {
+						// The cursor's title is the one that wears weight, and only
+						// lifecycle decides what weight it can wear.
+						want = outliner.CursorTitleWeight(want, task, true)
+					}
+					assertTitleWearsStyle(t, line, want, task.Title)
 					assertRowTint(t, line, testCase.tinted, focus.cursor)
 				})
 			}
@@ -262,7 +268,9 @@ func requiredPlainText(task *models.Task, testCase attentionCase) []string {
 	required := append([]string{}, testCase.plain...)
 	required = append(required, strings.TrimSpace(ansi.Strip(theme.GetStateBadge(task.WorkflowState))))
 	if task.Priority != 0 {
-		required = append(required, strings.TrimSpace(ansi.Strip(chrome.RenderPriorityBadge(task.Priority))))
+		if badge := strings.TrimSpace(ansi.Strip(chrome.RenderRowPriorityBadge(task.Priority))); badge != "" {
+			required = append(required, badge)
+		}
 	}
 	return required
 }
@@ -375,12 +383,14 @@ func TestAttentionSignalsAreDistinguishableWithoutColor(t *testing.T) {
 		"review flag":      {ID: "d", ShortID: 1, Title: title, WorkflowState: models.StateBacklog, Review: true},
 		"check-in arrived": {ID: "e", ShortID: 1, Title: title, WorkflowState: models.StateBacklog, NextCheckIn: &owed},
 		"priority 1":       {ID: "f", ShortID: 1, Title: title, WorkflowState: models.StateBacklog, Priority: 1},
-		"priority 3":       {ID: "g", ShortID: 1, Title: title, WorkflowState: models.StateBacklog, Priority: 3},
 		"waiting":          {ID: "h", ShortID: 1, Title: title, WorkflowState: models.StateWaiting, StateChangedAt: now.AddDate(0, 0, -5)},
 		"canceled":         {ID: "i", ShortID: 1, Title: title, WorkflowState: models.StateCanceled, StateChangedAt: completed},
 		"done":             {ID: "j", ShortID: 1, Title: title, WorkflowState: models.StateDone, StateChangedAt: completed, CompletedAt: &completed},
 	}
 
+	// Low priority is the stated exception, as a future check-in is below: it
+	// is the common case on a row, so the row draws no badge for it and Peek
+	// names it. TestLowPriorityAddsNothingToItsRow holds that.
 	seen := make(map[string]string, len(distinct))
 	for name, task := range distinct {
 		text := monochromeRowText(t, task)
@@ -409,5 +419,16 @@ func TestFutureCheckInAddsNothingToItsRow(t *testing.T) {
 
 	if plain != scheduled {
 		t.Fatalf("a check-in still ahead changed its row:\nwant %q\ngot  %q", plain, scheduled)
+	}
+}
+
+// TestLowPriorityAddsNothingToItsRow is the deliberate exception to the
+// distinguishability rule: Low is recorded and Peek names it, but a mark most
+// rows would wear tells the eye nothing, so the row is the unprioritized row.
+func TestLowPriorityAddsNothingToItsRow(t *testing.T) {
+	plain := &models.Task{ID: "a", ShortID: 1, Title: "Same title", WorkflowState: models.StateBacklog}
+	low := &models.Task{ID: "b", ShortID: 1, Title: "Same title", WorkflowState: models.StateBacklog, Priority: 3}
+	if got, want := monochromeRowText(t, low), monochromeRowText(t, plain); got != want {
+		t.Fatalf("a Low row differs from an unprioritized one:\nlow   %q\nplain %q", got, want)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/docket/internal/icons"
 	"github.com/sglavoie/docket/internal/models"
@@ -233,7 +234,7 @@ func (m *OutlinerModel) RenderOutlinerTaskRow(
 	colLayout *chrome.ColumnLayout,
 ) string {
 	task := row.Task
-	titleStyle := m.renderTaskTitleStyle(task)
+	titleStyle := m.renderTaskTitleStyle(task, selected)
 	paint := m.landingPaint(row, m.cursorPaintFor(selected).overTaskRow())
 	segments := m.buildTaskRowSegments(row, rowWidth, colLayout, paint)
 	title := m.renderTaskTitle(row, titleStyle, rowWidth, segments)
@@ -255,7 +256,7 @@ func (m *OutlinerModel) RenderOutlinerPreviewTaskRow(
 	colLayout *chrome.ColumnLayout,
 ) string {
 	task := row.Task
-	titleStyle := m.renderTaskTitleStyle(task)
+	titleStyle := m.renderTaskTitleStyle(task, false)
 	paint := m.cursorPaintFor(false).overTaskRow()
 	titleTarget := min(8, max(rowWidth/4, 4))
 	if task != nil {
@@ -321,15 +322,27 @@ func (m *OutlinerModel) renderTaskStatusIcon(task *models.Task) string {
 
 // renderTaskTitleStyle resolves an Outliner title's color, which for every
 // non-terminal task is ordinary text: attention travels on the badges and
-// indicators beside the title, never on the title itself. It passes no
-// CursorSelected either, because the cursor is marked by the gutter and the
-// trailing fill, so the row under it reads exactly like the rows around it.
-func (m *OutlinerModel) renderTaskTitleStyle(task *models.Task) lipgloss.Style {
-	return theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{})
+// indicators beside the title, never on the title itself. The cursor's own
+// title is the one exception, and it is weight rather than color: the one bold
+// title on the screen is the task you are on, so the eye finds it before it
+// reads the band, while every other title stays the same quiet text and the
+// badges keep their meaning.
+func (m *OutlinerModel) renderTaskTitleStyle(task *models.Task, cursor bool) lipgloss.Style {
+	return CursorTitleWeight(theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{}), task, cursor)
+}
+
+// CursorTitleWeight is the cursor row's title: the title's own style in bold,
+// so the band keeps every foreground the row earned and adds weight alone. A
+// canceled title keeps its strike and gains nothing.
+func CursorTitleWeight(style lipgloss.Style, task *models.Task, cursor bool) lipgloss.Style {
+	if !cursor || task == nil || task.IsInState(models.StateCanceled) {
+		return style
+	}
+	return style.Bold(true)
 }
 
 func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *chrome.ColumnLayout) string {
-	priorityBadge := chrome.RenderPriorityBadge(task.Priority)
+	priorityBadge := chrome.RenderRowPriorityBadge(task.Priority)
 	if colLayout != nil && colLayout.HasPriority {
 		return theme.PadBadge(priorityBadge, colLayout.PriorityWidth) + " "
 	}
@@ -402,4 +415,62 @@ func renderTaskPrefix(prefix, foldIndicator string, bg color.Color, style lipglo
 // unresolved project keeps the muted default ProjectColorStyle falls back to.
 func (m *OutlinerModel) treeConnectorStyle(row OutlinerRow) lipgloss.Style {
 	return theme.ProjectColorStyle(m.ResolveProjectForRow(row))
+}
+
+// RowLegendEntry is one mark the cursor's task row wears, spelled exactly as
+// the row draws it, beside what it means and the key that acts on it.
+type RowLegendEntry struct {
+	Mark    string
+	Meaning string
+}
+
+// CursorRowLegend explains the marks on the cursor's own task row, so `?`
+// answers "what is that glyph?" for the row in front of you instead of asking
+// the reader to find it in a reference. It reads the very segments the row
+// renderer assembles, so a mark it names is one the row can draw and a mark the
+// row draws cannot go unexplained. A non-task row, or a task row wearing no
+// marks, has no legend.
+func (m *OutlinerModel) CursorRowLegend() []RowLegendEntry {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.Rows) {
+		return nil
+	}
+	row := m.Rows[m.Cursor]
+	if !row.IsTaskRow() || row.Task == nil {
+		return nil
+	}
+	task := row.Task
+	segments := m.buildTaskRowSegments(row, max(m.Width(), 1), nil, cursorPaint{})
+	indicators := m.renderTaskIndicatorSegments(row, time.Now())
+
+	var entries []RowLegendEntry
+	add := func(rendered, meaning string) {
+		if mark := strings.TrimSpace(ansi.Strip(rendered)); mark != "" {
+			entries = append(entries, RowLegendEntry{Mark: mark, Meaning: meaning})
+		}
+	}
+	add(segments.statusIcon, "Status: "+chrome.PlanStatusValue(task.WorkflowState.String())+" · w changes it")
+	if strings.TrimSpace(ansi.Strip(segments.prioritySegment)) != "" {
+		add(segments.prioritySegment, fmt.Sprintf("Priority: %s · ! sets it", models.PriorityName(task.Priority)))
+	}
+	add(segments.pinMarker, "Pinned · * unpins it")
+	add(segments.descriptionMarker, "Has a description · E edits it, b reads it")
+	add(segments.attachmentMarker, "Has attachments · & opens them")
+	relation := strings.TrimSpace(ansi.Strip(segments.relationMarker))
+	if strings.Contains(relation, "‹") {
+		entries = append(entries, RowLegendEntry{Mark: "‹", Meaning: "Its parent is drawn elsewhere · b names it"})
+	}
+	if _, count, ok := strings.Cut(relation, "›"); ok {
+		entries = append(entries, RowLegendEntry{Mark: "›" + count, Meaning: count + " open subtasks drawn elsewhere · b lists them"})
+	}
+	// A reading wider than a glyph is spelled in the meaning under a short
+	// key, so one long date never widens the legend's key column.
+	addReading := func(rendered, key, meaning string) {
+		if reading := strings.TrimSpace(ansi.Strip(rendered)); reading != "" {
+			entries = append(entries, RowLegendEntry{Mark: key, Meaning: reading + ": " + meaning})
+		}
+	}
+	addReading(indicators.review, "review", "a review is owed · R acknowledges it")
+	addReading(indicators.due, "date", "the deadline · @ sets it, - and + step it")
+	add(indicators.dependencies, "Dependencies settled of stored · ~ edits them")
+	return entries
 }

@@ -147,7 +147,9 @@ func RenderTriageCard(spec TriageCardSpec, width int) string {
 	contentWidth := max(innerWidth-4, 12)
 
 	counter := theme.MutedStyle.Render(fmt.Sprintf("%d of %d", spec.Position, spec.Total))
-	label := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(spec.Heading)
+	// The daily loop's objects — the Now card and screen, these cards, the
+	// morning's closing card — share the theme's one accent.
+	label := lipgloss.NewStyle().Foreground(theme.ColorAccent).Bold(true).Render(spec.Heading)
 	header := label + strings.Repeat(" ", max(contentWidth-lipgloss.Width(label)-lipgloss.Width(counter), 1)) + counter
 
 	lines := []string{triageProgressBar(spec.Position-1, spec.Total, contentWidth), ""}
@@ -165,7 +167,7 @@ func RenderTriageCard(spec TriageCardSpec, width int) string {
 		lines = append(lines, body...)
 	}
 	lines = append(lines, "")
-	return RenderOverlayBox(strings.Join(lines, "\n"), innerWidth, header, "", lipgloss.NewStyle().Foreground(theme.ColorPrimary))
+	return RenderOverlayBox(strings.Join(lines, "\n"), innerWidth, header, "", lipgloss.NewStyle().Foreground(theme.ColorAccent))
 }
 
 // triageProgressBar is the pass's distance as one thin rule: sorted cards in

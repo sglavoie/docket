@@ -2,14 +2,16 @@ package pulse
 
 import (
 	"fmt"
-	"strings"
 	"time"
 )
 
 // DailyGreeting is the line the first interactive launch of a local day
-// opens with: a salutation for the hour, then what the day already holds —
-// Today, overdue, Inbox — in the pulse's own spelling, each only when nonzero.
-// A day holding none of them says so rather than standing bare.
+// opens with: a salutation for the hour, then the one move the day asks for
+// first. The pulse already counts Today, overdue, and Inbox on the title row,
+// so the greeting does not recount them; it chooses among them — overdue work
+// before an untriaged Inbox before the plan — and names only that, with the
+// key that starts it where one exists. A day holding none says so rather than
+// standing bare.
 func DailyGreeting(pulse WorkspacePulse, now time.Time) string {
 	salutation := "Good evening"
 	switch hour := now.Hour(); {
@@ -20,19 +22,26 @@ func DailyGreeting(pulse WorkspacePulse, now time.Time) string {
 	case hour < 18:
 		salutation = "Good afternoon"
 	}
-	parts := make([]string, 0, 3)
-	if pulse.Today > 0 {
-		parts = append(parts, fmt.Sprintf("%d planned for Today", pulse.Today))
+	// Before noon the move is the morning pass, which walks the overdue work and
+	// the day's suggestions one card at a time.
+	morning := now.Hour() >= 5 && now.Hour() < 12
+	switch {
+	case morning && pulse.Overdue > 0:
+		return salutation + " · " + fmt.Sprintf("start with the %d overdue (Task → Start the Day)", pulse.Overdue)
+	case pulse.Overdue > 0:
+		return salutation + " · " + fmt.Sprintf("start with the %d overdue (7 Due)", pulse.Overdue)
+	case pulse.Inbox > 0:
+		return salutation + " · " + fmt.Sprintf("%d in Inbox to sort (I triage)", pulse.Inbox)
+	case pulse.Today > 0:
+		return salutation + " · " + fmt.Sprintf("%s planned and ready (gt Today)", plural(pulse.Today, "task", "tasks"))
 	}
-	if pulse.Overdue > 0 {
-		parts = append(parts, fmt.Sprintf("%d overdue", pulse.Overdue))
+	if morning && pulse.Done == 0 {
+		return salutation + " · nothing planned yet (Task → Start the Day)"
 	}
-	if pulse.Inbox > 0 {
-		// The one count with a ritual behind it names its key: I opens triage.
-		parts = append(parts, fmt.Sprintf("%d in Inbox (I triage)", pulse.Inbox))
+	if pulse.Done == 0 && now.Hour() < 15 {
+		// An unplanned morning is the one empty day with a ritual: Today offers
+		// what is worth planning, and I walks it one card at a time.
+		return salutation + " · nothing planned yet (gt, then I to plan the day)"
 	}
-	if len(parts) == 0 {
-		return salutation + " · nothing is waiting on you"
-	}
-	return salutation + " · " + strings.Join(parts, " · ")
+	return salutation + " · nothing is waiting on you"
 }

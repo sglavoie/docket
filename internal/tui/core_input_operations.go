@@ -213,6 +213,12 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		return m.coreGotoRelation(invocation.Targets)
 	case operation.OperationCoreGotoCaptured:
 		return m.coreGotoCaptured()
+	case operation.OperationCoreOpenNow:
+		if out, ok := m.outlinerPrimary(); ok {
+			if refusal := out.OpenNowView(); refusal != "" {
+				return operation.OperationHandlerResult{Status: refusal}
+			}
+		}
 	case operation.OperationCoreBrowseWeek:
 		if out, ok := m.outlinerPrimary(); ok {
 			if refusal, opened := out.OpenWeekBrowse(); !opened {
@@ -432,6 +438,15 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 				m.setInfoStatus(refusal)
 				message = commandMessage(m.statusReadingTimeout())
 			}
+		}
+	case operation.OperationCoreStartDay:
+		if out, ok := m.outlinerPrimary(); ok {
+			cmd, refusal := out.OpenStartDay()
+			if refusal != "" {
+				m.setInfoStatus(refusal)
+				cmd = m.statusReadingTimeout()
+			}
+			message = commandMessage(cmd)
 		}
 	case operation.OperationCoreCloseDay:
 		if out, ok := m.outlinerPrimary(); ok {

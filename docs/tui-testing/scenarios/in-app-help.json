@@ -22,7 +22,7 @@
     { "type": "assert", "assert": "contains", "value": "Toggle Today" },
     { "type": "assert", "label": "the one date key names all three fields it writes", "assert": "contains", "value": "Set Due, Defer, or Check-In" },
     { "type": "assert", "label": "three columns and one blank line between groups bring the sections after Tasks onto the first screen", "assert": "contains", "value": "Sort by Updated" },
-    { "type": "assert", "assert": "contains", "value": "Clear Project Filters" },
+    { "type": "assert", "label": "opened from a task row, help leads with what that row's marks mean, on one line where they fit", "assert": "contains", "value": "On this row   ‹ Its parent is drawn elsewhere · b names it" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "key": "ctrl+d", "label": "scroll from everyday task groups into discovery" },
     { "type": "assert", "label": "the population chord is projected from the same descriptors", "assert": "contains", "value": "Filter Projects by Tag" },

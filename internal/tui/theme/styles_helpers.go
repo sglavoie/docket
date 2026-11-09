@@ -132,8 +132,15 @@ func SemanticTaskTitleStyle(
 // TaskContextLabel is a row's context spelled as the project label is: the
 // brackets muted and the name in the context color, so the label reads as
 // identity beside the title rather than competing with it.
+// TaskContextLabel is a row's context, muted like the project label beside it:
+// identity is read when looked for, and the title and the attention badges are
+// what the row is read for. A deferred task's context keeps its fainter ink.
 func TaskContextLabel(task *models.Task, context string) string {
-	return MutedStyle.Render("[") + TaskContextBadgeStyle(task).Render(context) + MutedStyle.Render("]")
+	style := MutedStyle
+	if task != nil && task.IsDeferred() {
+		style = TaskContextBadgeStyle(task)
+	}
+	return MutedStyle.Render("[") + style.Render(context) + MutedStyle.Render("]")
 }
 
 func TaskContextBadgeStyle(task *models.Task) lipgloss.Style {

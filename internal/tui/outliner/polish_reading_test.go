@@ -125,3 +125,21 @@ func TestPeekNamesTheFullProject(t *testing.T) {
 		}
 	}
 }
+
+// A shortened project label never reads as a word cut in half: a lone name
+// stops after a whole word, and colliding names keep a whole head and tail.
+func TestProjectAbbreviationsCutAtWordBoundaries(t *testing.T) {
+	names := []string{"quiet-compass-016", "shared-forge-013", "shared-forge-021", "studio-beacon-027"}
+	labels := projectAbbreviations(names, 15)
+	want := map[string]string{
+		"quiet-compass-016": "quiet-compass…",
+		"shared-forge-013":  "shared…013",
+		"shared-forge-021":  "shared…021",
+		"studio-beacon-027": "studio-beacon…",
+	}
+	for name, label := range want {
+		if labels[name] != label {
+			t.Errorf("%q => %q, want %q (all %v)", name, labels[name], label, labels)
+		}
+	}
+}

@@ -193,6 +193,7 @@ func (m *OutlinerModel) finalizeModeRows() {
 	m.indexSectionHeaderRows()
 	m.pruneInvisibleSelections()
 	m.refreshNowCard()
+	m.settleNowView()
 	m.settleTriage(false)
 	m.ClampCursor()
 }

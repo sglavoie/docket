@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/docket/internal/logging"
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/storage"
+	"github.com/sglavoie/docket/internal/tui/coordinator"
 	"github.com/sglavoie/docket/internal/tui/outliner"
 	"github.com/sglavoie/docket/internal/tui/projecthub"
 	"github.com/sglavoie/docket/internal/tui/projectops"
@@ -72,6 +73,13 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		outCmd = tea.Batch(outCmd, m.markPanelRise(panelBefore, launchArmedBefore))
 		// Every handler has run, so a scroll, a reveal, or a landing is measured
 		// against the rows and the cursor this update leaves.
+		if m.feedback.expiryOwed {
+			m.feedback.expiryOwed = false
+			outCmd = tea.Batch(outCmd, m.statusReadingTimeout())
+		}
+		if isCommittedTransactionResult(msg) {
+			m.crossOutliner.NotePeekCommit()
+		}
 		outCmd = tea.Batch(outCmd, m.crossOutliner.SettleMotion())
 		if interactive || isInteractionInput(msg) {
 			outCmd = withCommandOrigin(outCmd, origin)
@@ -523,4 +531,14 @@ func (m *AppModel) localToggleIsNewest(localAt time.Time, redo bool) bool {
 		return true
 	}
 	return !entry.Timestamp.After(localAt)
+}
+
+// isCommittedTransactionResult reports a message that carries a committed
+// mutation, single-task or batch, which is what the Peek change flash answers.
+func isCommittedTransactionResult(msg tea.Msg) bool {
+	switch msg.(type) {
+	case coordinator.TransactionResultMsg, coordinator.BatchTransactionResultMsg:
+		return true
+	}
+	return false
 }

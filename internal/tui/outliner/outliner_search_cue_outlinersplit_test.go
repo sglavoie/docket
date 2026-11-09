@@ -101,7 +101,8 @@ func TestSearchCueRendersFromTheLiveProjection(t *testing.T) {
 
 // TestSearchCueKeepsCursorPaintAndNeutralTitle holds the split paint against the
 // new segment: the cue is content, so the bar and the band still mark the cursor,
-// and the title beside them stays ordinary text in both themes.
+// and the title beside them stays ordinary text in both themes — bold under the
+// cursor, which is weight and never a priority color.
 func TestSearchCueKeepsCursorPaintAndNeutralTitle(t *testing.T) {
 	for _, themeName := range []string{"dark", "light"} {
 		t.Run(themeName, func(t *testing.T) {
@@ -116,7 +117,11 @@ func TestSearchCueKeepsCursorPaintAndNeutralTitle(t *testing.T) {
 				if !strings.Contains(line, cue) {
 					t.Fatalf("selected=%v row lost its muted cue:\n%q", selected, line)
 				}
-				if !strings.Contains(line, theme.NormalStyle.Render(task.Title)) {
+				want := theme.NormalStyle.Render(task.Title)
+				if selected {
+					want = theme.NormalStyle.Bold(true).Render(task.Title)
+				}
+				if !strings.Contains(line, want) {
 					t.Fatalf("selected=%v row did not render its title as ordinary text:\n%q", selected, line)
 				}
 				if strings.Contains(line, theme.GetTitlePriorityStyle(2).Render(task.Title)) {
