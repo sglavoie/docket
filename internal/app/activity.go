@@ -10,6 +10,10 @@ import (
 
 const completionActivityWindowDays = 30
 
+// CompletionHistoryWeeks is how far back History reaches, in whole weeks: half
+// a year, which is what an activity grid can show at a glance.
+const CompletionHistoryWeeks = 26
+
 // CompletionActivity is the read-only completion history derived from one
 // revision-consistent workspace snapshot. DailyCompletions contains only days
 // with activity; MedianPerDay still includes every zero-count day in the
@@ -17,11 +21,16 @@ const completionActivityWindowDays = 30
 // zero median with HasHistory.
 type CompletionActivity struct {
 	DailyCompletions map[time.Time]int
-	AsOf             time.Time
-	medianPerDay     float64
-	completedToday   int
-	activeDayMedian  float64
-	bestPriorDay     int
+	// History is the Done count by local day over the last
+	// CompletionHistoryWeeks weeks, today included, holding only days with
+	// activity. It is read by the activity grid alone: every median, best day,
+	// and HasHistory stays on the 30-day window above.
+	History         map[time.Time]int
+	AsOf            time.Time
+	medianPerDay    float64
+	completedToday  int
+	activeDayMedian float64
+	bestPriorDay    int
 }
 
 // IsCurrentLocalDay reports whether the snapshot was computed on the same
@@ -123,6 +132,8 @@ func completionActivityFromProjects(projects []*models.Project, now time.Time) C
 	}
 	today := activityDays[len(activityDays)-1]
 	daily := make(map[time.Time]int)
+	historyStart := util.StartOfDay(calendarAnchor.AddDate(0, 0, -(CompletionHistoryWeeks*7 - 1)))
+	history := make(map[time.Time]int)
 
 	for _, project := range projects {
 		if project == nil {
@@ -134,6 +145,9 @@ func completionActivityFromProjects(projects []*models.Project, now time.Time) C
 				continue
 			}
 			completedDay := util.StartOfDay(task.CompletedAt.In(now.Location()))
+			if !completedDay.Before(historyStart) && !completedDay.After(today) {
+				history[completedDay]++
+			}
 			if _, ok := activityDaySet[completedDay]; !ok {
 				continue
 			}
@@ -156,6 +170,7 @@ func completionActivityFromProjects(projects []*models.Project, now time.Time) C
 
 	return CompletionActivity{
 		DailyCompletions: daily,
+		History:          history,
 		AsOf:             now,
 		medianPerDay:     median,
 		completedToday:   daily[today],

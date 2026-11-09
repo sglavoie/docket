@@ -106,8 +106,16 @@ card's — with how long it has been in hand, its project, `Left off:` and its
 resume note, and its checklist with the next open step marked `→`. `d`
 completes it, `p` pauses it, `r` writes its resume note, `c` adds a checklist
 step, and `Esc` returns to the list; each is the row's own operation and its
-own undo entry. When the task leaves Doing the screen closes by itself, so
-finishing lands on the list. A visual selection, or nothing in Doing, refuses it.
+own undo entry. `f` starts a 25-minute focus session on the task: the screen and
+the Now card above the lanes read `◷ focus 18m left` with a meter of the time
+spent, and when it runs out the footer says `Focus done · 25m on <title> · take
+a break` with the success sweep, plus a desktop notification on a `--notify`
+run. `f` again stops it. A session writes nothing and lasts only while Docket
+runs; finishing or pausing the task first ends it without a word. When the task leaves Doing the screen closes by itself, so
+finishing lands on the list. From a mode that does not draw the task, such as
+Inbox or Today, `gd` steps to All to open it, and `Esc` steps back to the mode
+you came from. A visual selection, nothing in Doing, or a search or lens that
+hides the task refuses it.
 
 ## Open a menu
 
@@ -276,8 +284,9 @@ or `Add Task`, and so does the `Undid:` line an undo answers with.
 
 Finishing the last task planned for Today adds `Today is clear` to the
 completion's feedback, ahead of `u undo`, and the divider sweeps once in the
-success color. It is said once a day; replanning Today's work away is not
-finishing it and says nothing. Triaging the last Inbox task, whether you start
+success color. When the days before it finished something too, the note
+counts the run: `Today is clear · 4-day streak`. It is said once a day;
+replanning Today's work away is not finishing it and says nothing. Triaging the last Inbox task, whether you start
 it, plan it, file it, or finish it, adds `Inbox zero` the same way, once a day.
 An undo, a redo, or a sync that empties the Inbox is not triage and says
 nothing.

@@ -86,6 +86,7 @@ const (
 	OperationCoreTriage             OperationID = "tui.core.triage"
 	OperationCoreCloseDay           OperationID = "tui.core.close-day"
 	OperationCoreStartDay           OperationID = "tui.core.start-day"
+	OperationCoreReviewWeek         OperationID = "tui.core.review-week"
 	OperationCoreToggleAdvisories   OperationID = "tui.core.toggle-advisories"
 	OperationCoreToggleMouse        OperationID = "tui.core.toggle-mouse"
 	OperationCoreToggleMotion       OperationID = "tui.core.toggle-motion"

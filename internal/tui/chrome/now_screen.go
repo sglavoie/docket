@@ -20,6 +20,9 @@ type NowScreenSpec struct {
 	Steps      []NowScreenStep
 	Progress   string
 	Beside     string
+	// Focus is the running focus session's reading, already rendered, or
+	// empty when none runs on this task.
+	Focus string
 }
 
 // NowScreenStep is one checklist item as the screen lists it.
@@ -47,7 +50,11 @@ func RenderNowScreen(spec NowScreenSpec, width, height int) string {
 	note := lipgloss.NewStyle().Foreground(theme.ColorMuted).Italic(true)
 
 	var body []string
-	body = append(body, accent.Render("NOW")+muted.Render("  ·  "+spec.Elapsed), "")
+	body = append(body, accent.Render("NOW")+muted.Render("  ·  "+spec.Elapsed))
+	if spec.Focus != "" {
+		body = append(body, spec.Focus)
+	}
+	body = append(body, "")
 	for _, line := range textfit.WrapText(strings.TrimSpace(spec.Title), column) {
 		body = append(body, theme.BoldPrimaryStyle.Render(line))
 	}

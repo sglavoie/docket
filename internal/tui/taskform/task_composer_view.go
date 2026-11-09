@@ -295,7 +295,7 @@ func (m *TaskComposerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		return spec, true
 	}
 	if m.projectOffer != nil {
-		return chrome.ConfirmationGuidanceSpec(), true
+		return projectOfferGuidance(), true
 	}
 	spec := chrome.CaptureGuidanceSpec(
 		m.ConfirmDiscard,

@@ -15,11 +15,12 @@ func TestInlinePeekMeterReadsTheFraction(t *testing.T) {
 		done, total int
 		want        string
 	}{
-		{0, 5, "▱▱▱▱▱▱▱▱"},
-		{5, 5, "▰▰▰▰▰▰▰▰"},
-		{1, 100, "▰▱▱▱▱▱▱▱"},  // any progress shows
-		{99, 100, "▰▰▰▰▰▰▰▱"}, // unfinished never reads full
-		{1, 2, "▰▰▰▰▱▱▱▱"},
+		{0, 5, "░░░░░░░░"},
+		{5, 5, "████████"},
+		{1, 100, "▏░░░░░░░"},  // any progress shows
+		{99, 100, "███████▉"}, // unfinished never reads full
+		{1, 2, "████░░░░"},
+		{1, 3, "██▋░░░░░"},
 	} {
 		if got := ansi.Strip(inlinePeekMeter(tc.done, tc.total)); got != tc.want {
 			t.Errorf("meter(%d/%d) = %q, want %q", tc.done, tc.total, got, tc.want)
@@ -53,7 +54,7 @@ func TestSubtaskProgressCountsStoredChildrenButNotCanceled(t *testing.T) {
 		Task: parent, Indent: "  ", Width: 80, Window: testPeekWindow(), Subtasks: progress,
 	})
 	body := ansi.Strip(strings.Join(doc.Body, "\n"))
-	if !strings.Contains(body, "Subtasks: 1/2 done ▰▰▰▰▱▱▱▱") {
+	if !strings.Contains(body, "Subtasks: 1/2 done ████░░░░") {
 		t.Fatalf("Peek did not spell the subtask progress:\n%s", body)
 	}
 

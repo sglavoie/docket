@@ -1,6 +1,7 @@
 package taskform
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 
@@ -15,7 +16,7 @@ import (
 
 // createProjectConfirmAction is the action the offer's question is shown
 // under; the shell renders it as the ordinary confirm dialog.
-const createProjectConfirmAction = "create-project"
+const createProjectConfirmAction = chrome.CreateProjectConfirmAction
 
 // composerProjectOffer is what a refused submit offers when the only thing
 // wrong with the draft is projects nobody holds yet: the projects to create and
@@ -36,7 +37,17 @@ func (o *composerProjectOffer) prompt() string {
 	if len(o.slugs) > 1 {
 		noun = "projects"
 	}
-	return "Create " + noun + " " + strings.Join(o.slugs, ", ") + " and capture?"
+	capture := "capture"
+	if n := len(o.reqs); n > 1 {
+		// A batch names its size, so one answer is seen to cover every line.
+		capture = fmt.Sprintf("capture %d tasks", n)
+	}
+	return "Create " + noun + " " + strings.Join(o.slugs, ", ") + " and " + capture + "?"
+}
+
+// projectOfferGuidance is the question's footer, the box's own line.
+func projectOfferGuidance() chrome.GuidanceSpec {
+	return chrome.CreateProjectGuidanceSpec()
 }
 
 // offerProjectCreation arms the offer after a refused submit, and only when
@@ -96,7 +107,7 @@ func (m *TaskComposerModel) updateProjectOffer(msg tea.Msg) (tea.Model, tea.Cmd)
 		return m, nil
 	}
 	switch key.String() {
-	case "y", "Y":
+	case "y", "Y", "enter":
 		offer := m.projectOffer
 		m.projectOffer = nil
 		return m, m.submitProjectOffer(offer)

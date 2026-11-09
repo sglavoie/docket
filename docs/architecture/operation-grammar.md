@@ -65,6 +65,16 @@ own ledger entry. Strict project and catalog preconditions prevent concurrent
 scheduling or project parking from merging past eligibility validation. The
 pass never changes navigation, persists a queue, or broadens its initial set.
 
+The target-free `OperationCoreReviewWeek` is the pass's fifth source and follows
+the same shape from its own file, `outliner_week_review.go`: `OpenWeekReview`
+selects All, freezes the queue from `weekReviewReason` in rank order — overdue,
+Doing unmoved for seven days, Waiting seven days with no check-in, Next
+untouched for fourteen — and `weekReviewRoutes` adds `c`, Set Status to
+Canceled, beside `t`, `n`, `b`, `@`, and `d`. It ends on
+`chrome.RenderWeekReviewedCard` over `weekReviewedSpec`, which counts the trail,
+the last seven days of `CompletionActivity.DailyCompletions`, and the queue
+entries still drawn and never reached.
+
 The target-free `OperationCoreCloseDay` is the triage pass's third source, not
 a second pass. `OpenCloseDay`, beside triage in `outliner_review_advance.go`, selects Today when another mode stands, then
 freezes the queue from `closeDayRow`: a drawn, nonterminal `IsTodaySection`

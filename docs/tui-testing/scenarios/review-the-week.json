@@ -1,0 +1,23 @@
+{
+  "name": "review-the-week",
+  "fixture": "busy",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "start from Today: the pass brings the view to All", "key": "3" },
+    { "type": "command", "command": "Review the Week" },
+    { "type": "assert", "assert": "contains", "value": "Review the week" },
+    { "type": "assert", "label": "each card names why it is in the review", "assert": "contains", "value": "Overdue since" },
+    { "type": "assert", "assert": "contains", "value": "t today · n next · b backlog · c cancel · Space keep" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "Esc finishes early and still reads the week back", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "Week reviewed" },
+    { "type": "assert", "assert": "contains", "value": "not yet reviewed" },
+    { "type": "assert", "assert": "contains", "value": "Enter close" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "assert", "label": "the closing card fits the smallest terminal", "assert": "no_layout_issues" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "not_contains", "value": "Week reviewed" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

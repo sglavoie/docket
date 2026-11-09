@@ -415,3 +415,21 @@ func makeLensAccentStyle(darkHex, lightHex string) lipgloss.Style {
 func makeColorStyle(c color.Color) lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(c)
 }
+
+// ActivityLevelColor is the ink for one step of an intensity ramp: level 1 of
+// levels sits nearest the paper and level == levels is the full accent, so a
+// grid of counts reads as heat in both themes. Without hex paper or accent
+// there is nothing to blend and the accent is returned whole.
+func ActivityLevelColor(accent color.Color, level, levels int) color.Color {
+	paper := ThemeBgColor
+	if paper == "" {
+		paper = colorHex(ColorBackground)
+	}
+	inkHex := colorHex(accent)
+	if !isHexColor(paper) || !isHexColor(inkHex) || levels <= 0 {
+		return accent
+	}
+	level = max(1, min(level, levels))
+	weight := 0.35 + 0.65*float64(level)/float64(levels)
+	return lipgloss.Color(blendHex(paper, inkHex, weight))
+}

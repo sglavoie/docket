@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/pulse"
 	"github.com/sglavoie/docket/internal/tui/query"
+	"github.com/sglavoie/docket/internal/tui/taskref"
 	"github.com/sglavoie/docket/internal/tui/theme"
 	"github.com/sglavoie/docket/internal/util"
 )
@@ -348,6 +349,7 @@ func (m *OutlinerModel) refreshNowCard() {
 			continue
 		}
 		for _, task := range flattenTaskPointers(project.Tasks) {
+			m.settleFocusSession(project, task)
 			if !task.IsInState(models.StateDoing) || (admits != nil && !admits(task, project)) {
 				continue
 			}
@@ -426,6 +428,16 @@ func (m *OutlinerModel) nowCardSpec(now time.Time) chrome.NowCardSpec {
 	}
 	if total > 0 {
 		spec.Progress = inlinePeekMeter(done, total) + theme.MutedStyle.Render(fmt.Sprintf(" %d/%d %s", done, total, noun))
+	}
+	if project := m.nowCard.project; project != nil {
+		if focus := m.focusSessionReading(taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID}, now); focus != "" {
+			// The session leads the progress row: it is the clock the reader set,
+			// and the checklist beside it is what the clock is spent on.
+			if spec.Progress != "" {
+				focus += theme.MutedStyle.Render("  ·  ") + spec.Progress
+			}
+			spec.Progress = focus
+		}
 	}
 	return spec
 }

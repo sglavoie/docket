@@ -152,8 +152,7 @@ and only when the state actually changes. A task reaching
 
 The AppModel owns exactly one scope-aware Outliner. Every launch starts Active
 Projects, All, with no restored navigation or selection — unless a named lens was
-active, in which case that lens's saved axes (mode, query, filters, sort, and
-project scope) are reapplied on top of that clean start. Navigation, folds,
+active, in which case that lens's six saved axes are reapplied over that clean start. Navigation, folds,
 cursor, and selection are still never restored, and the first Esc after a
 restored lens lands on the same Active Projects, All view a lens-free launch
 would have shown. An active-lens pointer that no longer resolves fails closed to
@@ -266,7 +265,7 @@ the class `?` help and the footer ranks belong to, so it names directly-bound
 operations freely. What it may not do is make an entity operation keyless: a
 menu-only operation's `TargetSource` is target-free or view-scoped, never a task
 or project. Clear All Folds, Advisories, Menu Bar, Recent Messages, Set Up Check-Ins,
-Close the Day: keyless, target-free. The
+Close the Day, Review the Week: keyless, target-free. The
 task-row `Space` menu holds Set Check-In under `Schedule` and Delete, identical
 to the bulk menu: the editor saves with `Ctrl+S`; Delete confirms first. The Hub sheet is
 Archive/Unarchive and Delete; selections use bulk tags. Notes and Comments offer Delete. The
@@ -593,7 +592,7 @@ set, so digits stay on the first nine of `QueryReadoutRows()` at any offset and 
 tenth axis is scrolled to rather than dropped or bound.
 
 Only warning and error status text arms footer flash, plus `flashCelebrate`,
-recorded by `celebrateCleared*` alone; cleared text, a quiet
+recorded by `celebrateCleared*` and focus end alone; cleared text, a quiet
 severity, and other chrome do not. `footerFlashSeverity.animates()` is that
 closed table, read off the severity every setter records, and `retireFlash` the
 supersession: quiet feedback cancels the live animation and advances `flashSeq`,
@@ -729,7 +728,7 @@ Row and Peek budget:
   window and the document has no header:
   body order is title, status, resume, project, context, parent, search excerpt, schedule, description, subtasks,
   checklist, attachments, comments, `Dependencies`/`Dependents`, tags,
-  history; compact Peek prioritizes resume. The deferral instant keys schedule
+  history, legend; compact Peek prioritizes resume. The deferral instant keys schedule
   and history. Title and chain are uncompacted.
   Status spells plan (collection), state with Doing/Waiting age off
   `StateChangedAt`, overdue/check-in attention, priority, pinned, and review;
@@ -877,11 +876,11 @@ query carries a sigil, because sigils compile to an AND gate no note can
 satisfy. Enter on a note row leaves the Outliner for the Notes surface; it does
 not give notes tags, links, or bulk actions.
 
-`gd` is the Now screen, a view-local gated sub-state beside the triage card:
-no `PresentationID`, it replaces the host rather than dimming it, it routes
-`d`/`p`/`r`/`c` as `TriageRouteMsg` against the cursor it seats, writes nothing
-on opening, and `settleNowView` closes it on the build where its task leaves
-Doing. The Peek change flash answers `NotePeekCommit` alone, compares the same
+`gd` is the Now screen, a view-local gated sub-state like the triage card: no
+`PresentationID`, it replaces the host, routes `d`/`p`/`r`/`c` as
+`TriageRouteMsg` at the cursor it seats, writes nothing on opening, and
+`settleNowView` closes it when its task leaves Doing, as does its `f` focus
+session. A hiding mode steps to All; `Esc` returns. The Peek change flash answers `NotePeekCommit` alone, compares the same
 owner at the same width, paints the margin, and input drops it.
 
 ## Key bindings
@@ -987,7 +986,7 @@ A task title is neutral text: priority, a deadline, an owed review, and a pin
 each reach the row through their own badge or segment, a semantic tag reaches
 Peek through its chip, and none reaches the title. `theme.TaskTitleStyleFor` is that one authority and
 answers lifecycle alone — muted, canceled, cursor-selected — and the
-Outliner's cursor title alone adds bold over its own color, `CursorTitleWeight`;
+Outliner's cursor title and Peek's title alone add bold, `CursorTitleWeight`;
 row badges and identity labels wear no weight, and the daily-loop surfaces share
 `theme.ColorAccent`.
 `chrome.PickHeroAttribute` is the attention ladder — overdue, review over

@@ -104,7 +104,22 @@ func (c *ConfirmDialog) guidanceSpec() GuidanceSpec {
 	if c.action == DiscardConfirmAction {
 		return DiscardGuidanceSpec()
 	}
+	if c.action == CreateProjectConfirmAction {
+		return CreateProjectGuidanceSpec()
+	}
 	return ConfirmationGuidanceSpec()
+}
+
+// CreateProjectConfirmAction is the composer's offer to create the projects a
+// refused capture named. Enter answers it yes, since the press that raised it
+// already asked to capture, so a batch filing into new projects costs one more
+// Enter rather than a reach for y.
+const CreateProjectConfirmAction = "create-project"
+
+// CreateProjectGuidanceSpec is that question's answer line, in the box and on
+// the footer alike.
+func CreateProjectGuidanceSpec() GuidanceSpec {
+	return GuidanceSpec{Hints: RequiredGuidanceHints("Enter/y create", "n/Esc cancel"), Rows: 2}
 }
 
 // RenderOverlay renders the confirm dialog as a floating bordered popup box.

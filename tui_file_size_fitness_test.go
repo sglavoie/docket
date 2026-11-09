@@ -18,8 +18,11 @@ const tuiPackageFileCeiling = 40
 // The 500-line splits add 45 Outliner files and 21 shell files. These are
 // fixed ceilings, not exemptions: another file still requires an explicit
 // architectural decision, and the package graph remains independently checked.
+// The Outliner's 86th is outliner_week_review.go, Review the Week's own triage
+// source: the daily bookends' file already holds four passes and the Now
+// screen, so a fifth pass is its own concern rather than more of that one.
 var tuiPackageSplitFileCeilings = map[string]int{
-	"outliner":     85,
+	"outliner":     86,
 	tuiRootPackage: 61,
 }
 

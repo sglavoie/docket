@@ -192,6 +192,7 @@ func (m *OutlinerModel) inlinePeekDocumentForRow(
 		Dependents:       incomingDependencyDetails(m.rowIdentity(row), index),
 		DependencyCensus: DependencyCensusFor(row.Task, index),
 		Subtasks:         subtaskProgressOf(stored),
+		Legend:           peekRowLegend(m.rowLegendFor(row)),
 	})
 }
 

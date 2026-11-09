@@ -56,3 +56,6 @@ ios/DocketShared/.swiftpm/
 ios/build/
 ios/*/build/
 apple/*/build/
+
+# `just shots` output: screenshots for a taste pass, not a contract.
+/shots/

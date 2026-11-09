@@ -258,7 +258,39 @@ func ExtractDueClockSuffix(input string) (string, int, int, bool, error) {
 var errHoursAreDeferOnly = errors.New("hours are defer-only; a due date is a calendar day — try +1d")
 
 func normalizeDateInput(input string) string {
-	return strings.Join(strings.Fields(strings.ToLower(strings.TrimSpace(input))), " ")
+	input = strings.ToLower(strings.TrimSpace(input))
+	input = expandCompactDateSpelling(input)
+	return strings.Join(strings.Fields(input), " ")
+}
+
+var (
+	compactMonthDayRe = regexp.MustCompile(`^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)(\d{1,2})$`)
+	compactDayMonthRe = regexp.MustCompile(`^(\d{1,2})(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)$`)
+	compactJoinerRe   = regexp.MustCompile(`[-_]`)
+	hasLetterRe       = regexp.MustCompile(`[a-z]`)
+)
+
+// expandCompactDateSpelling admits the one-token spellings of the phrases the
+// grammar already reads with spaces, since a capture sigil's value ends at the
+// first space: "nov20" and "20nov" read as "nov 20" and "20 nov", and a hyphen
+// or underscore between words reads as a space, so "next-week",
+// "in-2-weeks", and "next_fri" are the spaced phrases. A value carrying no
+// letter is never rewritten, which keeps every written date such as
+// "2026-11-20" exactly as it was.
+func expandCompactDateSpelling(input string) string {
+	if !hasLetterRe.MatchString(input) {
+		return input
+	}
+	if m := compactMonthDayRe.FindStringSubmatch(input); m != nil {
+		return m[1] + " " + m[2]
+	}
+	if m := compactDayMonthRe.FindStringSubmatch(input); m != nil {
+		return m[1] + " " + m[2]
+	}
+	if strings.ContainsAny(input, "-_") {
+		return compactJoinerRe.ReplaceAllString(input, " ")
+	}
+	return input
 }
 
 // parseExactDateIn reads a written date in the supplied location. Callers use

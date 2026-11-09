@@ -130,7 +130,35 @@ func (canvas DayCanvas) AheadBlockSelecting(width, selected int) []string {
 	}
 	legend := dayCanvasIndent + due.Render("●") + theme.MutedStyle.Render(" due  ") +
 		checkIn.Render("◇") + theme.MutedStyle.Render(" check-in")
-	return []string{heading, names.String(), marks.String(), legend}
+	return []string{heading, names.String(), marks.String(), canvas.aheadLoadRow(cell), legend}
+}
+
+// aheadLoadBlocks are the eighth-height blocks the load row rises through.
+var aheadLoadBlocks = []rune("▁▂▃▄▅▆▇█")
+
+// aheadLoadRow draws each day's load — its deadlines and check-ins together —
+// as a bar scaled to the week's busiest day, so a heavy day is seen by its
+// height before its count is read. An empty day draws nothing, and the bar is
+// a shade deeper the higher it stands. The columns are the strip's own.
+func (canvas DayCanvas) aheadLoadRow(cell int) string {
+	peak := 0
+	for _, day := range canvas.Ahead {
+		peak = max(peak, day.Due+day.CheckIns)
+	}
+	var row strings.Builder
+	row.WriteString(dayCanvasIndent)
+	for _, day := range canvas.Ahead {
+		load := day.Due + day.CheckIns
+		if load == 0 || peak == 0 {
+			row.WriteString(strings.Repeat(" ", cell))
+			continue
+		}
+		step := (load*len(aheadLoadBlocks) + peak - 1) / peak
+		ink := theme.ActivityLevelColor(theme.ColorSecondary, (step+1)/2, len(aheadLoadBlocks)/2)
+		bar := strings.Repeat(string(aheadLoadBlocks[step-1]), min(3, cell-1))
+		row.WriteString(padCell(lipgloss.NewStyle().Foreground(ink).Render(bar), cell))
+	}
+	return strings.TrimRight(row.String(), " ")
 }
 
 // DayItemsBlock lists what the selected day holds under the strip: each

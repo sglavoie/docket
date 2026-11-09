@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/operation"
 )
 
@@ -23,7 +24,7 @@ func TestNowViewOpensOnTheDoingLeadAndFillsTheFrame(t *testing.T) {
 	idle := primaryRowsTask("idle", models.StateBacklog)
 	m := nowCardOutliner(t, 100, 30, idle, lead)
 
-	if refusal := m.OpenNowView(); refusal != "" {
+	if _, refusal := m.OpenNowView(); refusal != "" {
 		t.Fatalf("OpenNowView refused: %s", refusal)
 	}
 	view := m.RenderOutlinerTreeContent(100)
@@ -57,7 +58,7 @@ func TestNowViewKeysRouteToTheTaskAndEscCloses(t *testing.T) {
 	lead := doingTask("lead", "Lead", now.Add(-time.Hour))
 	idle := primaryRowsTask("idle", models.StateBacklog)
 	m := nowCardOutliner(t, 100, 30, idle, lead)
-	if refusal := m.OpenNowView(); refusal != "" {
+	if _, refusal := m.OpenNowView(); refusal != "" {
 		t.Fatal(refusal)
 	}
 	m.Cursor = 0
@@ -86,7 +87,7 @@ func TestNowViewKeysRouteToTheTaskAndEscCloses(t *testing.T) {
 func TestNowViewClosesWhenItsTaskLeavesDoing(t *testing.T) {
 	lead := doingTask("lead", "Lead", time.Now().Add(-time.Hour))
 	m := nowCardOutliner(t, 100, 30, lead)
-	if refusal := m.OpenNowView(); refusal != "" {
+	if _, refusal := m.OpenNowView(); refusal != "" {
 		t.Fatal(refusal)
 	}
 	lead.WorkflowState = models.StateDone
@@ -94,7 +95,7 @@ func TestNowViewClosesWhenItsTaskLeavesDoing(t *testing.T) {
 	if m.NowView.Active {
 		t.Fatal("the screen outlived its task leaving Doing")
 	}
-	if refusal := m.OpenNowView(); refusal == "" || m.NowView.Active {
+	if _, refusal := m.OpenNowView(); refusal == "" || m.NowView.Active {
 		t.Fatal("the screen opened with nothing in Doing")
 	}
 }
@@ -152,4 +153,26 @@ func taskRowIndex(t *testing.T, m *OutlinerModel, id string) int {
 	}
 	t.Fatalf("no row for %s", id)
 	return 0
+}
+
+// A mode that draws no Doing work is not a refusal: gd steps to All, opens the
+// screen there, and Esc returns to the mode it left.
+func TestNowViewStepsToAllFromAModeThatHidesDoing(t *testing.T) {
+	lead := doingTask("lead", "Fix customer migration", time.Now().Add(-time.Hour))
+	idle := primaryRowsTask("idle", models.StateInbox)
+	m := nowCardOutliner(t, 100, 30, idle, lead)
+	m.SelectOutlinerMode(chrome.ModeInbox)
+	if _, drawn := m.nowViewRowIndex(m.TaskIdentityForRow(OutlinerRow{})); drawn {
+		t.Fatal("setup: the zero identity is drawn")
+	}
+	if _, refusal := m.OpenNowView(); refusal != "" {
+		t.Fatalf("OpenNowView refused from Inbox: %s", refusal)
+	}
+	if !m.NowView.Active || m.ActiveOutlinerMode() != chrome.ModeAll {
+		t.Fatalf("screen active=%v in mode %s, want open in All", m.NowView.Active, m.ActiveOutlinerMode())
+	}
+	m.handleNowViewKey("esc")
+	if m.NowView.Active || m.ActiveOutlinerMode() != chrome.ModeInbox {
+		t.Fatalf("Esc left active=%v in mode %s, want closed in Inbox", m.NowView.Active, m.ActiveOutlinerMode())
+	}
 }

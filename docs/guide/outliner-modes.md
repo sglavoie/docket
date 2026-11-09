@@ -146,17 +146,40 @@ Today for tomorrow, and `u` takes back the last card as it does in triage.
 After the last card, or when `Esc` finishes early, the pass ends on a `Day
 closed` card. It lists the day's completions, says how many tasks went to Next
 or Backlog and how many are still in Today, shows the week behind as the same
-bars Today draws, and ends on one line of send-off. `Enter` or `Esc` closes it,
+bars Today draws, and, once anything has ever been finished, an activity grid
+of the last 26 weeks: one column per week, Monday at the top, each day's cell
+deeper the more it finished, today marked `□` until something is done, with the
+total, the best day, and the current run of days that finished something
+beneath it. A window too short for the grid leaves it out rather than cutting
+the card. It ends on one line of send-off. `Enter` or `Esc` closes it,
 and `u` returns to the last card. A day with nothing left open goes straight
 to that card. Each routing is the row's own change, with its own undo entry
 and feedback.
 
+Once a week, Task → **Review the Week…** walks the work a week lets go quiet,
+under `Review the week`. It switches the view to All, then shows one card for
+each task All draws that is overdue, in Doing for a week or more, Waiting a
+week or more with no check-in, or in Next and untouched for two weeks, in that
+order, each card naming its reason, such as `In Doing for 9 days · still the
+work in hand?`. `t` plans it for Today, `n` sends it to Next, `b` to Backlog,
+`@` gives it a new date, `d` finishes it, `c` cancels it, `Space` keeps it as
+it is, `u` brings back the previous card, and `Esc` finishes early. It ends on
+a `Week reviewed` card: what the last seven days finished, what the pass
+decided, how many cards it never reached (`2 not yet reviewed`), and the same activity grid Close the
+Day draws. A week with nothing gone quiet goes straight to that card. A folded
+lane is not reviewed, since All does not draw its tasks.
+
 Under its rows, wherever the window has room, Today draws the day around the
-list. Once something is finished, `Done today · 3` lists today's completions
+list. It opens with the day as one bar, `██▋░░░░░ 1 of 3 done today`: what
+today finished against that plus the open work Today holds as its own, the
+same work Close the Day walks, ending `· clear` once nothing is left. Once
+something is finished, `Done today · 3` lists today's completions
 struck through, newest first, with the last seven days as a small bar chart
 and their total beside it. `Next 7 days` follows: one column per day, with
 `●2` for two deadlines and `◇1` for a check-in falling on it, and a dot for
-a day with nothing dated. Both blocks are drawn whole or not at all, never
+a day with nothing dated. Under the marks a bar rises with each day's load,
+tallest on the week's busiest day, so a heavy day stands out before its count
+is read. Both blocks are drawn whole or not at all, never
 at the list's expense, and neither is a row: the cursor, clicks, and folds
 pass them by. They describe the whole scope, so a search, a filter, a lens,
 or a Focus in Today draws neither.

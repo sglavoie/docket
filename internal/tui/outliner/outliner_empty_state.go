@@ -391,7 +391,10 @@ func (m *OutlinerModel) todayCanvasLines(width, budget int) []string {
 	// While the week browse is open the strip is what the reader is working, so
 	// the finished list yields its rows to the selected day's.
 	if selected < 0 {
-		if done := canvas.DoneBlock(width, budget-1); len(done) > 0 {
+		if progress := m.todayProgressLine(len(canvas.Done), width); progress != "" {
+			out = append(out, "", progress)
+		}
+		if done := canvas.DoneBlock(width, budget-len(out)-1); len(done) > 0 {
 			out = append(out, "")
 			out = append(out, done...)
 		}

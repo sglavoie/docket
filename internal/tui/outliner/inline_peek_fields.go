@@ -46,6 +46,38 @@ func (f *inlinePeekFields) addGlyph(label, glyph, value string) {
 	f.parts = append(f.parts, theme.HelpStyle.Render(label+": ")+glyph+" "+theme.HelpKeyStyle.Render(value))
 }
 
+// addChip is a field whose value is a lane: the Plan and the Status. It wears
+// the lane header's own filled block, so the summary names the lane in the
+// color the outline draws it in, and the glyph the row abbreviates it to leads
+// the chip as addGlyph's does. An invalid group falls back to a plain value.
+func (f *inlinePeekFields) addChip(label, glyph string, group models.WorkflowStateGroup, value string) {
+	if value == "" {
+		return
+	}
+	if !group.IsValid() {
+		f.addGlyph(label, glyph, value)
+		return
+	}
+	// Unpadded, so the words read exactly as the plain summary spells them.
+	chip := theme.LaneHeaderStyle(theme.GetWorkflowStateGroupStyle(group)).UnsetPadding().Render(value)
+	lead := theme.HelpStyle.Render(label + ": ")
+	if glyph != "" {
+		lead += glyph + " "
+	}
+	f.parts = append(f.parts, lead+chip)
+}
+
+// planGroupFor is the lane a planning collection draws as, or the zero group.
+func planGroupFor(planning string) models.WorkflowStateGroup {
+	switch strings.ToLower(strings.TrimSpace(planning)) {
+	case string(models.StateGroupToday):
+		return models.StateGroupToday
+	case string(models.StateGroupNext):
+		return models.StateGroupNext
+	}
+	return ""
+}
+
 // flag is a field that is its own value. Pinned and Review are booleans a task
 // either wears or does not, so a label beside one would say the word twice.
 func (f *inlinePeekFields) flag(word string) {
@@ -76,8 +108,8 @@ func inlinePeekStatusLine(task *models.Task, planning string, now time.Time) str
 		return ""
 	}
 	var fields inlinePeekFields
-	fields.add(chrome.PlanFieldLabel, planning)
-	fields.addGlyph(chrome.StatusFieldLabel, theme.GetTaskStateBadge(task), inlinePeekStatusValue(task, now))
+	fields.addChip(chrome.PlanFieldLabel, "", planGroupFor(planning), planning)
+	fields.addChip(chrome.StatusFieldLabel, theme.GetTaskStateBadge(task), models.WorkflowStateGroup(task.State().String()), inlinePeekStatusValue(task, now))
 	// Keep the reason to act in the first summary, before optional metadata.
 	// Dates and repeat details remain complete in the schedule section.
 	if task.IsOverdueAt(now) {
@@ -312,23 +344,33 @@ func inlinePeekHistoryKey(task *models.Task) string {
 // a fraction at a glance, few enough to sit beside its count on a narrow dock.
 const inlinePeekMeterCells = 8
 
-// inlinePeekMeter draws done of total as a short bar: filled cells in the
-// success ink, the rest muted. A meter carries no number of its own; the count
-// beside it is the reading, and the bar is how far along it looks.
+// inlinePeekMeter draws done of total as a smooth bar: whole cells and one
+// partial cell at eighth resolution in the success ink, then a muted track. A
+// meter carries no number of its own; the count beside it is the reading, and
+// the bar is how far along it looks. Any progress shows at least a sliver, and
+// unfinished work never reads full.
 func inlinePeekMeter(done, total int) string {
 	if total <= 0 {
 		return ""
 	}
 	done = min(max(done, 0), total)
-	filled := (done*inlinePeekMeterCells + total/2) / total
+	steps := inlinePeekMeterCells * 8
+	filled := (done*steps + total/2) / total
 	if done > 0 && filled == 0 {
 		filled = 1
 	}
-	if done < total && filled == inlinePeekMeterCells {
+	if done < total && filled == steps {
 		filled--
 	}
-	return lipgloss.NewStyle().Foreground(theme.ColorSuccess).Render(strings.Repeat("▰", filled)) +
-		theme.MutedStyle.Render(strings.Repeat("▱", inlinePeekMeterCells-filled))
+	whole, part := filled/8, filled%8
+	bar := strings.Repeat("█", whole)
+	track := inlinePeekMeterCells - whole
+	if part > 0 {
+		bar += string([]rune("▏▎▍▌▋▊▉")[part-1])
+		track--
+	}
+	return lipgloss.NewStyle().Foreground(theme.ColorSuccess).Render(bar) +
+		theme.MutedStyle.Render(strings.Repeat("░", track))
 }
 
 // subtaskProgress is a task's stored direct children, finished against the

@@ -2,10 +2,12 @@ package outliner
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/listsurface"
@@ -168,6 +170,8 @@ type inlinePeekOptions struct {
 	// ParentProgress is the parent's own subtask progress, this task among
 	// them, spelled after the ancestor chain.
 	ParentProgress subtaskProgress
+	// Legend names the marks the row drew, glyph by glyph, already spelled.
+	Legend string
 }
 
 // inlinePeekSection is one labeled block of the body together with the
@@ -192,6 +196,13 @@ func inlinePeekDocumentFor(opts inlinePeekOptions) inlinePeekDocument {
 
 	available := max(opts.Width-lipgloss.Width(opts.Indent), 1)
 	sections := inlinePeekBodySections(opts, available)
+	if pads, widest := inlinePeekLabelPads(sections, opts.Indent); widest > 0 && available >= inlinePeekAlignMinWidth {
+		// The values stand in one column, so the body is wrapped narrower by
+		// the most any label is pushed, then each section is pushed by its own.
+		sections = inlinePeekBodySections(opts, available-widest)
+		pads, _ = inlinePeekLabelPads(sections, opts.Indent)
+		sections = inlinePeekAlignSections(sections, pads, opts.Indent)
+	}
 	body := make([]string, 0, len(sections))
 	keys := make([]string, 0, len(sections))
 	for _, section := range sections {
@@ -207,6 +218,87 @@ func inlinePeekDocumentFor(opts inlinePeekOptions) inlinePeekDocument {
 		width:       available,
 		window:      opts.Window,
 	}
+}
+
+// peekLegendWordKey matches a legend key spelled as a word rather than a glyph.
+var peekLegendWordKey = regexp.MustCompile(`^[a-z]+$`)
+
+// peekRowLegend spells a row's legend as one line: each glyph mark, then the
+// first clause of its meaning. Word keys such as "date" and "review" are left
+// out, since the schedule and status lines already spell those readings.
+func peekRowLegend(entries []RowLegendEntry) string {
+	parts := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if entry.Mark == "" || peekLegendWordKey.MatchString(entry.Mark) {
+			continue
+		}
+		meaning, _, _ := strings.Cut(entry.Meaning, " · ")
+		meaning = strings.TrimPrefix(strings.TrimPrefix(meaning, "Status: "), "Priority: ")
+		parts = append(parts, entry.Mark+" "+meaning)
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return theme.MutedStyle.Render(strings.Join(parts, " · "))
+}
+
+// inlinePeekLabelColumn is the widest leading label the value column is set
+// after, colon included: "Description:". A longer label, "Dependencies:",
+// keeps its natural width rather than pushing every value further right.
+const inlinePeekLabelColumn = len("Description:")
+
+// inlinePeekAlignMinWidth is the narrowest body that aligns its values; below
+// it the column would cost more of a line than it gives back.
+const inlinePeekAlignMinWidth = 40
+
+// inlinePeekLeadingLabel matches the label a section's first row opens with.
+var inlinePeekLeadingLabel = regexp.MustCompile(`^([A-Z][A-Za-z ]{0,14}:) `)
+
+// inlinePeekLabelPads is how far each section's leading label is pushed right
+// so the labels end in one column, and the largest push. A section opening on
+// no label, such as the title, is not moved. Padding goes before the label, so
+// every `Label: value` reads exactly as it did.
+func inlinePeekLabelPads(sections []inlinePeekSection, indent string) ([]int, int) {
+	widths := make([]int, len(sections))
+	column := 0
+	for i, section := range sections {
+		if len(section.lines) == 0 || strings.HasPrefix(section.key, "title:") {
+			continue
+		}
+		plain := strings.TrimPrefix(ansi.Strip(section.lines[0]), indent)
+		if m := inlinePeekLeadingLabel.FindStringSubmatch(plain); m != nil && len(m[1]) <= inlinePeekLabelColumn {
+			widths[i] = len(m[1])
+			column = max(column, widths[i])
+		}
+	}
+	pads := make([]int, len(sections))
+	widest := 0
+	for i, width := range widths {
+		if width > 0 {
+			pads[i] = column - width
+			widest = max(widest, pads[i])
+		}
+	}
+	return pads, widest
+}
+
+// inlinePeekAlignSections pushes every row of each section right by its pad,
+// after the indent, so a wrapped row keeps hanging under its value.
+func inlinePeekAlignSections(sections []inlinePeekSection, pads []int, indent string) []inlinePeekSection {
+	aligned := make([]inlinePeekSection, len(sections))
+	for i, section := range sections {
+		aligned[i] = section
+		if pads[i] == 0 {
+			continue
+		}
+		lines := make([]string, len(section.lines))
+		pad := strings.Repeat(" ", pads[i])
+		for j, line := range section.lines {
+			lines[j] = indent + pad + strings.TrimPrefix(line, indent)
+		}
+		aligned[i].lines = lines
+	}
+	return aligned
 }
 
 // inlinePeekBodySections is the body's content order, one entry per section
@@ -306,6 +398,10 @@ func inlinePeekBodySections(opts inlinePeekOptions, width int) []inlinePeekSecti
 	// section that answers that question rather than between the schedule and
 	// the task's own text.
 	add("history:"+inlinePeekHistoryKey(task), inlinePeekHistoryLines(task, now, opts.Indent, width))
+	// The row's own marks close the document: what each glyph on the line above
+	// the dock means, read off the segments the row drew, so Peek is where the
+	// row's shorthand is learned without opening help.
+	add("legend:"+ansi.Strip(opts.Legend), inlinePeekStyledLines(theme.MutedStyle.Render("Row: "), opts.Legend, opts.Indent, width))
 	if opts.Detailed {
 		metadata := fullscreenMetadataSection(task, opts.Indent, width)
 		add(metadata.key, metadata.lines)

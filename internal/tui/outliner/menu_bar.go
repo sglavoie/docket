@@ -121,6 +121,7 @@ func OutlinerMenuSpecs(activeMode chrome.OutlinerModeID, checks ViewMenuChecks) 
 				{OperationID: operation.OperationCoreTriage, Label: "Triage…"},
 				{OperationID: operation.OperationCoreStartDay, Label: "Start the Day…"},
 				{OperationID: operation.OperationCoreCloseDay, Label: "Close the Day…"},
+				{OperationID: operation.OperationCoreReviewWeek, Label: "Review the Week…"},
 				{OperationID: operation.OperationCoreUndo, Group: "Recovery", KeepUnavailable: true},
 				{OperationID: operation.OperationCoreRedo, Group: "Recovery", KeepUnavailable: true},
 				menuSeparator(),

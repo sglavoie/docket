@@ -281,7 +281,8 @@ func TestInlinePeekWrapsTagsRatherThanElidingThem(t *testing.T) {
 func TestInlinePeekRecoversTheFullContext(t *testing.T) {
 	task := &models.Task{Context: "platform-core", Tags: []string{"bug"}}
 	body := ansi.Strip(strings.Join(inlinePeekDocumentFor(inlinePeekOptions{Task: task, Width: 80, Window: testPeekWindow()}).Body, "\n"))
-	if body != "Status: ▣ Backlog\nContext: platform-core\nTags: #bug" {
+	// Labels end in one column, so the values beside them line up.
+	if body != " Status: ▣ Backlog\nContext: platform-core\n   Tags: #bug" {
 		t.Fatalf("Peek body = %q", body)
 	}
 }
@@ -414,5 +415,58 @@ func TestInlinePeekLinksEachWrappedAttachmentRow(t *testing.T) {
 	}
 	if urlRows < 2 {
 		t.Fatalf("the long URL wrapped over %d rows, want several", urlRows)
+	}
+}
+
+// Peek sets its values in one column: each leading label is pushed right so
+// the labels end together, a wrapped row hangs under its value, a narrow dock
+// keeps its natural layout, and no row outgrows the pane.
+func TestInlinePeekAlignsValuesInOneColumn(t *testing.T) {
+	task := &models.Task{
+		Title: "Align", Context: "desk", Tags: []string{"bug"},
+		Description: strings.Repeat("A long description that wraps. ", 6),
+	}
+	doc := inlinePeekDocumentFor(inlinePeekOptions{Task: task, Width: 60, Window: testPeekWindow()})
+	body := ansi.Strip(strings.Join(doc.Body, "\n"))
+	column := -1
+	for _, line := range strings.Split(body, "\n") {
+		if at := strings.Index(line, ": "); at > 0 && !strings.HasPrefix(strings.TrimSpace(line), "Align") {
+			if column == -1 {
+				column = at
+			} else if at != column && strings.Index(line, "·") == -1 {
+				t.Fatalf("label ends at %d, want %d:\n%s", at, column, body)
+			}
+		}
+	}
+	if !strings.Contains(body, "Description: A long") || !strings.Contains(body, "    Context: desk") {
+		t.Fatalf("labels not aligned to Description:\n%s", body)
+	}
+	for _, line := range doc.Body {
+		if lipgloss.Width(line) > 60 {
+			t.Fatalf("aligned row is %d wide:\n%s", lipgloss.Width(line), body)
+		}
+	}
+	narrow := ansi.Strip(strings.Join(inlinePeekDocumentFor(inlinePeekOptions{Task: task, Width: 30, Window: testPeekWindow()}).Body, "\n"))
+	if !strings.Contains(narrow, "\nContext: desk") {
+		t.Fatalf("a narrow dock aligned anyway:\n%s", narrow)
+	}
+}
+
+// Peek ends on the row's own legend: each glyph the row drew beside the word
+// it abbreviates, read off the row's segments rather than a second table.
+func TestInlinePeekEndsOnTheRowLegend(t *testing.T) {
+	task := primaryRowsTask("legend", models.StateBacklog)
+	task.Priority = 1
+	task.Description = "why"
+	m := nowCardOutliner(t, 100, 30, task)
+	m.Cursor = taskRowIndex(t, m, task.ID)
+	doc := m.inlinePeekDocumentForRow(m.Rows[m.Cursor], "", 100, testPeekWindow())
+	body := ansi.Strip(strings.Join(doc.Body, "\n"))
+	last := body[strings.LastIndex(body, "\n")+1:]
+	if !strings.Contains(last, "Row: ") || !strings.Contains(last, "◉ High") || !strings.Contains(last, "Has a description") {
+		t.Fatalf("legend line = %q in:\n%s", last, body)
+	}
+	if strings.Contains(last, "date ") {
+		t.Fatalf("legend repeats a word key: %q", last)
 	}
 }

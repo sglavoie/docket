@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/sglavoie/docket/internal/engine"
 	"github.com/sglavoie/docket/internal/tui/conflict"
 	"github.com/sglavoie/docket/internal/tui/help"
+	"github.com/sglavoie/docket/internal/tui/outliner"
 	"github.com/sglavoie/docket/internal/tui/pulse"
 	"github.com/sglavoie/docket/internal/tui/textfit"
 )
@@ -408,6 +410,17 @@ func (c *feedbackController) feedbackSnapshot() []help.RecalledMessage {
 // published.
 const todayClearNote = "Today is clear"
 
+// todayClearWithStreak is todayClearNote with the run of days that finished
+// something, once that run is longer than today alone. The run is read off the
+// completion history, so it counts Done days and not cleared ones: a streak is
+// showing up, and clearing Today is what earned the mention.
+func todayClearWithStreak(history map[time.Time]int, now time.Time) string {
+	if streak := pulse.CompletionStreak(history, now); streak > 1 {
+		return fmt.Sprintf("%s · %d-day streak", todayClearNote, streak)
+	}
+	return todayClearNote
+}
+
 // celebrateClearedToday marks the one commit a day that empties Today: Today
 // held open work before this Update and holds none after it, and the day's
 // Done count rose, so it was finished rather than replanned or undone. It
@@ -431,8 +444,9 @@ func (m *AppModel) celebrateClearedToday(before pulse.WorkspacePulse, now time.T
 		return
 	}
 	m.feedback.celebratedDay = day
-	if !m.feedback.appendNote(todayClearNote) {
-		m.setSuccessStatus(todayClearNote)
+	note := todayClearWithStreak(m.completionActivity.History, now)
+	if !m.feedback.appendNote(note) {
+		m.setSuccessStatus(note)
 	}
 	if m.lifecycle.motion && !m.feedback.severity.animates() {
 		// A new generation is what the flash arms on, so the sweep starts
@@ -469,4 +483,34 @@ func (m *AppModel) celebrateClearedInbox(before pulse.WorkspacePulse, statusBefo
 	if m.lifecycle.motion && !m.feedback.severity.animates() {
 		m.feedback.recordSeverity(flashCelebrate)
 	}
+}
+
+// handleFocusSessionEnded announces a focus session that ran its full span:
+// a success line naming the task, the celebration sweep under motion, and on a
+// --notify run a desktop notification, since a session usually ends while the
+// reader is looking at the work rather than at Docket. A stale timer — the
+// session was stopped, replaced, or its task left Doing — says nothing.
+func (m *AppModel) handleFocusSessionEnded(msg outliner.FocusSessionEndedMsg) tea.Cmd {
+	if m.crossOutliner == nil {
+		return nil
+	}
+	result, ok := m.crossOutliner.EndFocusSession(msg)
+	if !ok {
+		return nil
+	}
+	line := focusSessionDoneLine(result)
+	m.setSuccessStatus(line)
+	if m.lifecycle.motion {
+		m.feedback.recordSeverity(flashCelebrate)
+	}
+	cmds := []tea.Cmd{m.statusReadingTimeout()}
+	if m.notifications.enabled {
+		cmds = append(cmds, tea.Raw(pulse.DesktopNotification("Focus done", result.Title)))
+	}
+	return tea.Batch(cmds...)
+}
+
+// focusSessionDoneLine is the footer line an ended session publishes.
+func focusSessionDoneLine(result outliner.FocusSessionResult) string {
+	return fmt.Sprintf("Focus done · %dm on %s · take a break", int(result.Length.Minutes()), result.Title)
 }

@@ -45,7 +45,10 @@ validated before one atomic transaction is committed.
   such as `#billing (new)` or `##offcie (new)`. The marker is informational:
   it neither corrects the value nor adds a confirmation step.
 - `@date` accepts the supported date expressions and stores a local calendar
-  date.
+  date. Because a token ends at the first space, every spaced phrase has a
+  one-token spelling: `@nov20` and `@20nov` mean Nov 20, and a hyphen joins
+  words, so `@next-week`, `@next-fri`, and `@in-2-weeks` read as the phrases
+  they spell. `@eow` and `@eom` are the end of the week and of the month.
 - `@@defer` hides the task until an instant rather than a day, so it also
   accepts the `+Nh` hour offsets a due date refuses. Deferring carries the same
   lifecycle effect the picker's defer section does: the task moves to Backlog, loses any
@@ -73,7 +76,8 @@ validated before one atomic transaction is committed.
 - When every problem in a refused capture is a `%project` that no project
   holds, already spelled as a canonical slug (`%garden`, not `%Garden`), the
   capture panel asks `Create project garden and capture?`, naming every such
-  slug together. `y` creates the projects, named by their slugs, and captures
+  slug together and, for a batch, how many tasks it will capture (`Create
+  projects garden, shed and capture 3 tasks?`). `Enter` or `y` creates the projects, named by their slugs, and captures
   the tasks in one transaction, so one `u` takes back both; `n` or `Esc`
   returns to the draft with the refusal still shown. `Enter`, `Ctrl+E`, and
   `Ctrl+N` all ask. A draft with any other problem, a slug an archived project

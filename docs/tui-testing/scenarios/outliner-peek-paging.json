@@ -45,7 +45,7 @@
     { "type": "assert", "assert": "contains", "value": "↑ 6 more", "label": "the position row accounts for the compact window and its current offset" },
     { "type": "resize", "width": 60, "height": 20 },
     { "type": "assert", "label": "a resize keeps the metadata passage being read", "assert": "contains", "value": "Parent: Launch platform › User authentication" },
-    { "type": "assert", "assert": "contains", "value": "↑ 8 more · ↓ 1 more" },
+    { "type": "assert", "assert": "contains", "value": "↑ 9 more · ↓ 1 more" },
     { "type": "assert", "label": "and the minimum terminal draws the dock inside its own budget", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "Esc dismisses Peek before Outliner navigation", "key": "esc" },

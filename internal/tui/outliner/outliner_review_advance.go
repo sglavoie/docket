@@ -15,6 +15,7 @@ import (
 	"github.com/sglavoie/docket/internal/tui/query"
 	"github.com/sglavoie/docket/internal/tui/status"
 	"github.com/sglavoie/docket/internal/tui/taskref"
+	"github.com/sglavoie/docket/internal/tui/textfit"
 	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
@@ -169,7 +170,7 @@ type triageState struct {
 // endsOnCard reports a source whose pass stands on a closing card once its
 // last card leaves, rather than closing outright: the two daily bookends.
 func (s triageSource) endsOnCard() bool {
-	return s == triageSourceCloseDay || s == triageSourceStartDay
+	return s == triageSourceCloseDay || s == triageSourceStartDay || s == triageSourceWeekReview
 }
 
 type triageStep struct {
@@ -187,6 +188,7 @@ const (
 	triageSourceSuggested
 	triageSourceCloseDay
 	triageSourceStartDay
+	triageSourceWeekReview
 )
 
 // TriageRouteMsg asks the shell to run one operation against the cursor the
@@ -380,11 +382,28 @@ func (m *OutlinerModel) composeTriageCard(host string, width, frameHeight int) (
 		return "", false
 	}
 	if m.Triage.closed {
-		rendered := chrome.RenderDayClosedCard(m.dayClosedSpec(time.Now()), width)
-		if m.Triage.source == triageSourceStartDay {
-			rendered = chrome.RenderDayStartedCard(m.dayStartedSpec(time.Now()), width)
+		budget := m.outlinerModalBudget(width)
+		spec := m.dayClosedSpec(time.Now())
+		rendered := chrome.RenderDayClosedCard(spec, width)
+		if lipgloss.Height(rendered) > budget && spec.History != nil {
+			// The grid is the card's one optional block: a frame too short for it
+			// keeps the day's reading whole rather than clipping the send-off.
+			spec.History = nil
+			rendered = chrome.RenderDayClosedCard(spec, width)
 		}
-		card := chrome.FitOverlayPopupHeight(rendered, m.outlinerModalBudget(width))
+		switch m.Triage.source {
+		case triageSourceStartDay:
+			rendered = chrome.RenderDayStartedCard(m.dayStartedSpec(time.Now()), width)
+		case triageSourceWeekReview:
+			week := m.weekReviewedSpec(time.Now())
+			rendered = chrome.RenderWeekReviewedCard(week, width)
+			if lipgloss.Height(rendered) > budget && week.History != nil {
+				week.History = nil
+				rendered = chrome.RenderWeekReviewedCard(week, width)
+			}
+		case triageSourceInbox, triageSourceSuggested, triageSourceCloseDay:
+		}
+		card := chrome.FitOverlayPopupHeight(rendered, budget)
 		composed, _ := chrome.OverlayPopupDimmedPlaced(host, card, width, frameHeight)
 		return composed, true
 	}
@@ -410,6 +429,9 @@ func (m *OutlinerModel) composeTriageCard(host string, width, frameHeight int) (
 	case triageSourceStartDay:
 		spec.Heading = "Start the day"
 		spec.Lead = m.startDayLead(m.Rows[index], time.Now())
+	case triageSourceWeekReview:
+		spec.Heading = "Review the week"
+		spec.Lead = m.weekReviewLead(m.Rows[index], time.Now())
 	}
 	// Every entry ahead of the card has left the pass, so its own place in the
 	// frozen queue is the count.
@@ -450,6 +472,8 @@ func (m *OutlinerModel) triageGuidance() chrome.GuidanceSpec {
 		return m.closeDayGuidance()
 	case triageSourceStartDay:
 		return m.startDayGuidance()
+	case triageSourceWeekReview:
+		return m.weekReviewGuidance()
 	case triageSourceInbox, triageSourceSuggested:
 	}
 	hints := chrome.RequiredGuidanceHints("t today", "n next", "b backlog", "d done")
@@ -491,6 +515,9 @@ func (m *OutlinerModel) triageRouteFor(key string) (TriageRouteMsg, bool) {
 		return route, ok
 	case triageSourceStartDay:
 		route, ok := startDayRoutes[key]
+		return route, ok
+	case triageSourceWeekReview:
+		route, ok := weekReviewRoutes[key]
 		return route, ok
 	case triageSourceInbox, triageSourceSuggested:
 	}
@@ -614,7 +641,10 @@ func (m *OutlinerModel) planTodayLead() string {
 // the rows as they now stand, after every routing has landed.
 func (m *OutlinerModel) dayClosedSpec(now time.Time) chrome.DayClosedCardSpec {
 	canvas := m.computeDayCanvas(now)
-	spec := chrome.DayClosedCardSpec{Date: now.Format("Monday, January 2"), Week: canvas.WeekReading()}
+	spec := chrome.DayClosedCardSpec{
+		Date: now.Format("Monday, January 2"), Week: canvas.WeekReading(),
+		History: m.CompletionActivity.History, Now: now,
+	}
 	for _, task := range canvas.Done {
 		spec.Done = append(spec.Done, chrome.DayClosedDone{Title: task.Title, ProjectSlug: task.ProjectSlug})
 	}
@@ -663,13 +693,18 @@ func (m *OutlinerModel) closeDayGuidance() chrome.GuidanceSpec {
 // row operation the card names, run through the shell's executor against the
 // cursor it seats, and each is its own undo entry. It writes nothing on
 // opening, and it closes itself once the task leaves Doing, so finishing the
-// work returns to the list the completion lands on.
+// work returns to the list the completion lands on. A mode that does not draw
+// Doing work is not a reason to refuse: `gd` steps to All, where every Doing
+// task is drawn, and Esc steps back to the mode it was opened from.
 
 // nowViewState is the open screen's one task, held by identity so a rebuild
 // that moves its row never retargets it.
 type nowViewState struct {
 	Active   bool
 	identity taskref.TaskIdentity
+	// returnMode is the mode `gd` left to reach All, restored by Esc alone;
+	// empty when the screen opened where it stood.
+	returnMode chrome.OutlinerModeID
 }
 
 // nowViewRoutes is the screen's keymap: each key names the row operation it
@@ -682,15 +717,46 @@ var nowViewRoutes = map[string]TriageRouteMsg{
 }
 
 // OpenNowView opens the screen on the cursor's task when it is in Doing, else
-// on the Now card's lead, the task most recently started. It refuses, opening
-// nothing, when no drawn task is in Doing.
-func (m *OutlinerModel) OpenNowView() string {
+// on the Now card's lead, the task most recently started. When the current
+// mode does not draw that task it steps to All first, returning the mode
+// switch's command; it refuses, opening nothing, when no task is in Doing or
+// when a search or lens hides it from All too.
+func (m *OutlinerModel) OpenNowView() (tea.Cmd, string) {
 	if m == nil {
-		return ""
+		return nil, ""
 	}
 	if m.IsMultiSelectActive() || m.IsRangeSelectionActive() {
-		return "Now works on one task: clear the selection first"
+		return nil, "Now works on one task: clear the selection first"
 	}
+	refusal := m.openNowViewHere()
+	from := m.ActiveOutlinerMode()
+	if refusal == "" {
+		return nil, ""
+	}
+	if from == chrome.ModeAll || m.ShowsRankedList() || m.HasActiveLens() || m.HasSuspendedLens() || len(m.Focus.Stack) > 0 {
+		if refusal == errNowNotDrawn {
+			refusal = "The task in Doing is hidden by the current search or lens"
+		}
+		return nil, refusal
+	}
+	_, cmd := m.SelectOutlinerMode(chrome.ModeAll)
+	if retry := m.openNowViewHere(); retry != "" {
+		// All holds no Doing work either, so the step was for nothing: put the
+		// mode back and say why, as if it had never moved.
+		_, back := m.SelectOutlinerMode(from)
+		if retry == errNowNotDrawn {
+			retry = "The task in Doing is hidden by the current search or lens"
+		}
+		return tea.Batch(cmd, back), retry
+	}
+	m.NowView.returnMode = from
+	return cmd, ""
+}
+
+const errNowNotDrawn = "The task in Doing is not drawn in this view"
+
+// openNowViewHere opens the screen against the rows the current mode draws.
+func (m *OutlinerModel) openNowViewHere() string {
 	identity, ok := taskref.TaskIdentity{}, false
 	if m.Cursor >= 0 && m.Cursor < len(m.Rows) {
 		if row := m.Rows[m.Cursor]; row.IsTaskRow() && row.Task != nil && row.Task.IsInState(models.StateDoing) {
@@ -704,7 +770,7 @@ func (m *OutlinerModel) OpenNowView() string {
 		return "Nothing is in Doing: start a task with wg, then gd"
 	}
 	if _, drawn := m.nowViewRowIndex(identity); !drawn {
-		return "The task in Doing is not drawn in this view: open it from All"
+		return errNowNotDrawn
 	}
 	m.closeMenuBar()
 	m.PeekMode = false
@@ -761,13 +827,20 @@ func (m *OutlinerModel) settleNowView() {
 // on screen.
 func (m *OutlinerModel) handleNowViewKey(key string) (tea.Model, tea.Cmd) {
 	if key == "esc" || key == "q" {
+		back := m.NowView.returnMode
 		m.CloseNowView()
+		if back != "" && m.ActiveOutlinerMode() == chrome.ModeAll {
+			return m.SelectOutlinerMode(back)
+		}
 		return m, nil
 	}
 	index, _, ok := m.nowViewTask()
 	if !ok {
 		m.CloseNowView()
 		return m, nil
+	}
+	if key == "f" {
+		return m, m.toggleFocusSession(m.NowView.identity, m.Rows[index].Task, time.Now())
 	}
 	route, routed := nowViewRoutes[key]
 	if !routed {
@@ -780,7 +853,11 @@ func (m *OutlinerModel) handleNowViewKey(key string) (tea.Model, tea.Cmd) {
 // nowViewGuidance is the screen's footer. It takes no footer rank, as a gated
 // keymap does not.
 func (m *OutlinerModel) nowViewGuidance() chrome.GuidanceSpec {
-	hints := chrome.RequiredGuidanceHints("d done", "p pause", "r note")
+	focus := "f focus 25m"
+	if m.focusSession.active && m.focusSession.identity == m.NowView.identity {
+		focus = "f stop focus"
+	}
+	hints := chrome.RequiredGuidanceHints("d done", "p pause", "r note", focus)
 	hints = append(hints, chrome.OptionalGuidanceHints(2, "c add step")...)
 	hints = append(hints, chrome.RequiredGuidanceHints("Esc back")...)
 	return chrome.GuidanceSpec{Hints: hints}
@@ -824,6 +901,7 @@ func (m *OutlinerModel) renderNowView(width, height int) (string, bool) {
 	if more := m.nowCard.more; more > 0 {
 		spec.Beside = fmt.Sprintf("%d more in Doing", more)
 	}
+	spec.Focus = m.focusSessionReading(m.NowView.identity, now)
 	return chrome.RenderNowScreen(spec, width, height), true
 }
 
@@ -960,4 +1038,131 @@ func (m *OutlinerModel) startDayGuidance() chrome.GuidanceSpec {
 	}
 	hints = append(hints, chrome.RequiredGuidanceHints("Esc finish")...)
 	return chrome.GuidanceSpec{Hints: hints, Rows: 2}
+}
+
+// A focus session is a timed stretch on the task in Doing, started with `f` on
+// the Now screen. It is session-only presentation: it writes nothing, is
+// persisted nowhere, and is never an undo entry. While it runs the Now card
+// and the Now screen read its remaining time and meter; when it ends the shell
+// says so on the footer line. A task that leaves Doing before the end takes
+// its session with it, silently, since finishing early is its own answer.
+
+// FocusSessionLength is one session's span.
+const FocusSessionLength = 25 * time.Minute
+
+// focusSessionState is the running session, held by task identity so a
+// rebuild that moves the row never retargets it. seq voids the timer of a
+// session that was stopped or replaced.
+type focusSessionState struct {
+	active   bool
+	identity taskref.TaskIdentity
+	title    string
+	started  time.Time
+	length   time.Duration
+	seq      int
+}
+
+// FocusSessionEndedMsg is a session's timer firing. Seq names the session it
+// was armed for; a stale one is ignored.
+type FocusSessionEndedMsg struct {
+	Seq int
+}
+
+// FocusSessionResult is what an ended session reports to the shell.
+type FocusSessionResult struct {
+	Title  string
+	Length time.Duration
+}
+
+// FocusSessionActive reports whether a session is running.
+func (m *OutlinerModel) FocusSessionActive() bool {
+	return m != nil && m.focusSession.active
+}
+
+// toggleFocusSession starts a session on identity, or stops the one running on
+// it. Starting returns the timer that ends it.
+func (m *OutlinerModel) toggleFocusSession(identity taskref.TaskIdentity, task *models.Task, now time.Time) tea.Cmd {
+	if m.focusSession.active && m.focusSession.identity == identity {
+		m.cancelFocusSession()
+		return nil
+	}
+	seq := m.focusSession.seq + 1
+	m.focusSession = focusSessionState{
+		active: true, identity: identity, title: task.Title,
+		started: now, length: FocusSessionLength, seq: seq,
+	}
+	return status.TickCmd(FocusSessionLength, func(time.Time) tea.Msg { return FocusSessionEndedMsg{Seq: seq} })
+}
+
+// cancelFocusSession puts the session down and voids its timer.
+func (m *OutlinerModel) cancelFocusSession() {
+	m.focusSession = focusSessionState{seq: m.focusSession.seq + 1}
+}
+
+// EndFocusSession answers a session's timer: ok when msg is the running
+// session's own, which it ends.
+func (m *OutlinerModel) EndFocusSession(msg FocusSessionEndedMsg) (FocusSessionResult, bool) {
+	if m == nil || !m.focusSession.active || msg.Seq != m.focusSession.seq {
+		return FocusSessionResult{}, false
+	}
+	result := FocusSessionResult{Title: m.focusSession.title, Length: m.focusSession.length}
+	m.cancelFocusSession()
+	return result, true
+}
+
+// settleFocusSession ends a session whose task the workspace still holds but
+// no longer in Doing. A task out of the current scope is left alone, since
+// not seeing it is not evidence it moved.
+func (m *OutlinerModel) settleFocusSession(project *models.Project, task *models.Task) {
+	if !m.focusSession.active || project == nil || task == nil {
+		return
+	}
+	if (taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID}) != m.focusSession.identity {
+		return
+	}
+	if !task.IsInState(models.StateDoing) {
+		m.cancelFocusSession()
+	}
+}
+
+// focusSessionReading is the running session on identity as the cards draw
+// it — a clock glyph, the minutes left, and a meter of the time spent — or
+// empty when no session runs on it.
+func (m *OutlinerModel) focusSessionReading(identity taskref.TaskIdentity, now time.Time) string {
+	if !m.focusSession.active || m.focusSession.identity != identity {
+		return ""
+	}
+	elapsed := now.Sub(m.focusSession.started)
+	left := m.focusSession.length - elapsed
+	minutes := int((left + time.Minute - 1) / time.Minute)
+	minutes = max(minutes, 0)
+	spent := int(elapsed * 8 / m.focusSession.length)
+	spent = min(max(spent, 0), 8)
+	accent := lipgloss.NewStyle().Foreground(theme.ColorAccent)
+	return accent.Render("◷ focus") + theme.MutedStyle.Render(fmt.Sprintf(" %dm left ", minutes)) + inlinePeekMeter(spent, 8)
+}
+
+// todayProgressLine is the day read as one bar: what today finished against
+// that plus the open work Today draws as its own — the predicate Close the Day
+// walks, so the bar and the pass agree about what the day holds. It is empty
+// when the day holds nothing either way.
+func (m *OutlinerModel) todayProgressLine(done, width int) string {
+	open := 0
+	seen := make(map[taskref.TaskIdentity]bool)
+	for _, row := range m.Rows {
+		if identity := m.TaskIdentityForRow(row); closeDayRow(row) && identity.Valid() && !seen[identity] {
+			seen[identity] = true
+			open++
+		}
+	}
+	total := done + open
+	if total == 0 {
+		return ""
+	}
+	reading := fmt.Sprintf(" %d of %d done today", done, total)
+	if open == 0 {
+		reading += " · clear"
+	}
+	line := "    " + inlinePeekMeter(done, total) + theme.MutedStyle.Render(reading)
+	return textfit.FitStyledLineToWidth(line, width)
 }

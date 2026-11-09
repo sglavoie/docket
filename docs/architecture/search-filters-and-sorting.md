@@ -452,7 +452,11 @@ Waiting, read off `StateChangedAt` — then the priority as a number after its b
 since a label beside `Pinned` would say it twice. Plan leads rather than trails
 because the two are one question asked twice and the pair is only readable as a
 pair: `Plan: Today · Status: ▣ Backlog` says where the work was committed and what
-state it still holds, where `today` alone reads as a tenth state. The words are
+state it still holds, where `today` alone reads as a tenth state. Both values
+wear their lane's `theme.LaneHeaderStyle` fill through `addChip`, unpadded, so
+the summary names each lane in the color the outline draws its header in while
+the plain text stays byte-identical to the unstyled line. The title above them
+is the document's heading and the one Peek line that adds bold. The words are
 `chrome`'s, not this line's, so the workflow chord's headings, the capture route
 row, and this line cannot drift into three synonyms; every line here is the
 one `Label: value` idiom the schedule and history lines beneath share. `inlinePeekScheduleLine` follows it with what the task still

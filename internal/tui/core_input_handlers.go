@@ -528,6 +528,7 @@ func (m *AppModel) coreHelpItemsForContext(ctx operation.CommandContext, include
 	}{
 		{operation.OperationCoreStartDay, "Task"},
 		{operation.OperationCoreCloseDay, "Task"},
+		{operation.OperationCoreReviewWeek, "Task"},
 		{operation.OperationCoreSetUpCheckIns, "Task"},
 		{operation.OperationCoreNoteLeftOff, "Task"},
 		{operation.OperationCoreChangeHistory, "Edit"},

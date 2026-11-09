@@ -253,6 +253,8 @@ type OutlinerModel struct {
 	Week weekBrowseState
 	// NowView is `gd`'s screen over one task in Doing; see nowViewState.
 	NowView nowViewState
+	// focusSession is the running `f` focus session, session-only.
+	focusSession focusSessionState
 
 	// Jump is `'`'s jump mode: open, and the first letter of a two-letter label
 	// typed so far. The targets are never stored; outliner_jump_history.go reads

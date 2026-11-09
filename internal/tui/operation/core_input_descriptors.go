@@ -456,6 +456,7 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		// and ends on a card naming what the day finished.
 		core(OperationCoreStartDay, "Start the Day", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "plan the day", "morning", "start of day", "daily planning", "start day"),
 		core(OperationCoreCloseDay, "Close the Day", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "wrap up the day", "end of day", "shutdown", "daily review", "close day"),
+		core(OperationCoreReviewWeek, "Review the Week", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "weekly review", "week review", "stale work", "review week", "end of week"),
 		core(OperationCoreSetUpCheckIns, "Set Up Check-Ins", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "schedule active work", "check-in setup"),
 		// Note Where I Left Off is target-free for the same reason Set Up Check-Ins
 		// is: the task it writes for is the one a commit just took out of Doing, named

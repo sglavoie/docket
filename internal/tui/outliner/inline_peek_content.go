@@ -49,7 +49,9 @@ func inlinePeekTitleLines(task *models.Task, indent string, width int) []string 
 	if title == "" {
 		return nil
 	}
-	style := theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{})
+	// The title is the document's heading, so it alone wears weight here, as
+	// the cursor's title does on the row it was read from.
+	style := theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{}).Bold(true)
 	return inlinePeekStyledLines("", textfit.RenderTaskTitle(title, nil, style), indent, width)
 }
 

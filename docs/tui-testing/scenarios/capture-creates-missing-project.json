@@ -9,7 +9,7 @@
     { "type": "assert", "assert": "view", "value": "TaskComposer" },
     { "type": "assert", "assert": "contains", "value": "project not found: 'garden'" },
     { "type": "assert", "label": "the refusal is a canonical slug, so capture offers to create it", "assert": "contains", "value": "Create project garden and capture?" },
-    { "type": "assert", "assert": "contains", "value": "y confirm" },
+    { "type": "assert", "assert": "contains", "value": "Enter/y create" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "n returns to the draft with the refusal still shown", "key": "n" },
@@ -22,7 +22,7 @@
     { "type": "resize", "label": "the offer fits the narrowest supported terminal", "width": 60, "height": 20 },
     { "type": "key", "label": "Enter asks again", "key": "enter" },
     { "type": "assert", "label": "the dialog wraps the question inside its box", "assert": "contains", "value": "Create project garden and" },
-    { "type": "assert", "assert": "contains", "value": "y confirm · n/Esc cancel" },
+    { "type": "assert", "assert": "contains", "value": "Enter/y create · n/Esc cancel" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "y creates the project and captures the task in one transaction", "key": "y" },

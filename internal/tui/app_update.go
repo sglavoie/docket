@@ -142,6 +142,12 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		return m, nil
 	}
 
+	// A focus session belongs to the retained Outliner too, and its end is the
+	// shell's to announce, whatever presentation stands above it.
+	if ended, ok := msg.(outliner.FocusSessionEndedMsg); ok {
+		return m, m.handleFocusSessionEnded(ended)
+	}
+
 	if saved, ok := msg.(checkInSetupSavedMsg); ok {
 		return m, m.handleCheckInSetupSaved(saved)
 	}

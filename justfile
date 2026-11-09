@@ -135,6 +135,10 @@ tui-scenarios:
 readme-media:
     ./scripts/readme_media.sh
 
+# Screenshot the everyday screens into ./shots (or DIR) for a taste pass; needs vhs
+shots dir="shots":
+    ./scripts/shots.sh {{dir}}
+
 # Fail when the committed README animation no longer matches the app
 readme-media-check:
     ./scripts/readme_media.sh --check

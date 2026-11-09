@@ -215,9 +215,12 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		return m.coreGotoCaptured()
 	case operation.OperationCoreOpenNow:
 		if out, ok := m.outlinerPrimary(); ok {
-			if refusal := out.OpenNowView(); refusal != "" {
-				return operation.OperationHandlerResult{Status: refusal}
+			cmd, refusal := out.OpenNowView()
+			if refusal != "" {
+				m.setInfoStatus(refusal)
+				cmd = tea.Batch(cmd, m.statusReadingTimeout())
 			}
+			message = commandMessage(cmd)
 		}
 	case operation.OperationCoreBrowseWeek:
 		if out, ok := m.outlinerPrimary(); ok {
@@ -451,6 +454,15 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 	case operation.OperationCoreCloseDay:
 		if out, ok := m.outlinerPrimary(); ok {
 			cmd, refusal := out.OpenCloseDay()
+			if refusal != "" {
+				m.setInfoStatus(refusal)
+				cmd = m.statusReadingTimeout()
+			}
+			message = commandMessage(cmd)
+		}
+	case operation.OperationCoreReviewWeek:
+		if out, ok := m.outlinerPrimary(); ok {
+			cmd, refusal := out.OpenWeekReview()
 			if refusal != "" {
 				m.setInfoStatus(refusal)
 				cmd = m.statusReadingTimeout()

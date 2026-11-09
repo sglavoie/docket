@@ -412,15 +412,22 @@ collection from the lifecycle state. The status and priority lead with the glyph
 and color the row draws for them, so reading Peek is how the row's symbols are
 learned. Doing and Waiting include time in that state. The project slug and parent chain follow, then the schedule, description,
 subtask and checklist progress, attachments, comments, dependencies, tags,
-and history. Empty fields are omitted.
+and history. Empty fields are omitted. The title is bold, and the Plan and
+Status values sit on their lane's own color, the fill the outline draws that
+lane's header on. Labels end in one column, so the values beside them line up
+(`    Due: Fri Nov 13` under `Project: web`), and a wrapped value hangs under
+itself; a dock narrower than 40 columns keeps the plain layout. Progress reads
+as a smooth bar that fills by eighths of a cell. The last line, `Row:`, names
+each mark the task's row drew, such as `◉ High · ▤ Has a description · 📎 Has
+attachments`, so the row's shorthand is spelled out without opening help.
 
 | Detail | Example | Meaning |
 | --- | --- | --- |
 | Schedule | `Check-in: Thu Aug 20 (in 10 days) · Repeat: every 7d` | What is still owed; an arrived check-in adds `review owed` |
 | History | `Created: 12d ago · Updated: 2d ago · Woke: 1d ago` | Past activity; Updated is omitted when it reads the same as Created |
-| Parent | `Parent: Launch · 2/5 done ▰▰▰▱▱▱▱▱` | The ancestor chain, always shown, then how far along the parent's subtasks are |
-| Subtasks | `Subtasks: 1/3 done ▰▰▰▱▱▱▱▱` | Direct children finished; canceled ones count in neither number |
-| Checklist | `Checklist: 1/4 done ▰▰▱▱▱▱▱▱` | Progress; open the task's checklist rows to edit items |
+| Parent | `Parent: Launch · 2/5 done ███▎░░░░` | The ancestor chain, always shown, then how far along the parent's subtasks are |
+| Subtasks | `Subtasks: 1/3 done ██▋░░░░░` | Direct children finished; canceled ones count in neither number |
+| Checklist | `Checklist: 1/4 done ██░░░░░░` | Progress; open the task's checklist rows to edit items |
 | Comments | `Comments: 3 · latest 2d ago` | The count, then the newest comment in full; `;` opens them all |
 | Search | `Match: comment · …` | An excerpt explaining a match outside the title |
 

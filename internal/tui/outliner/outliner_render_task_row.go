@@ -434,7 +434,12 @@ func (m *OutlinerModel) CursorRowLegend() []RowLegendEntry {
 	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.Rows) {
 		return nil
 	}
-	row := m.Rows[m.Cursor]
+	return m.rowLegendFor(m.Rows[m.Cursor])
+}
+
+// rowLegendFor is CursorRowLegend for any drawn row, which is how Peek names
+// the marks of the row it reads.
+func (m *OutlinerModel) rowLegendFor(row OutlinerRow) []RowLegendEntry {
 	if !row.IsTaskRow() || row.Task == nil {
 		return nil
 	}

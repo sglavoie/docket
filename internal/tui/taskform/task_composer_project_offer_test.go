@@ -55,7 +55,7 @@ func TestComposerOffersToCreateAnUnknownProject(t *testing.T) {
 		t.Fatal("a refused submit dispatched a capture before the confirmation")
 	}
 	dialog := composer.GetConfirmDialog()
-	if dialog == nil || !dialog.IsActive() || dialog.Prompt() != "Create projects garden, shed and capture?" {
+	if dialog == nil || !dialog.IsActive() || dialog.Prompt() != "Create projects garden, shed and capture 3 tasks?" {
 		t.Fatalf("dialog = %+v, want the creation offer", dialog)
 	}
 	if len(composer.Errors) != 3 {
@@ -152,5 +152,27 @@ func TestComposerProjectOfferOnlyWhenEveryProblemQualifies(t *testing.T) {
 		if len(composer.Errors) == 0 || stub.calls != 0 {
 			t.Fatalf("%q: errors %+v, calls %d", draft, composer.Errors, stub.calls)
 		}
+	}
+}
+
+// Enter answers the offer yes, since the press that raised it already asked to
+// capture, and the box and footer both say so.
+func TestComposerProjectOfferAcceptsEnter(t *testing.T) {
+	composer, stub := newProjectOfferComposer(t)
+	composer.Input.SetValue("Plant beans %garden")
+	pressComposerKey(composer, syntheticSpecialKey(tea.KeyEnter))
+	if dialog := composer.GetConfirmDialog(); dialog == nil || dialog.Prompt() != "Create project garden and capture?" {
+		t.Fatalf("dialog = %+v, want the single-task offer", dialog)
+	}
+	spec, ok := composer.ContextualGuidance()
+	if !ok || len(spec.Hints) == 0 || spec.Hints[0].Key != "Enter/y" || spec.Hints[0].Label != "create" {
+		t.Fatalf("footer does not offer Enter: %+v", spec)
+	}
+	cmd := pressComposerKey(composer, syntheticSpecialKey(tea.KeyEnter))
+	if cmd == nil {
+		t.Fatal("Enter dispatched nothing")
+	}
+	if _, ok := cmd().(coordinator.TaskCreatedMsg); !ok || len(stub.creation.Projects) != 1 {
+		t.Fatalf("Enter did not create garden and capture: %+v", stub.creation.Projects)
 	}
 }
