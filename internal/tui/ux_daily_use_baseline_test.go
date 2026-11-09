@@ -71,11 +71,11 @@ func TestUXDailyUseSingletonGroupsLeadWithTheirProject(t *testing.T) {
 					t.Fatalf("no screen row carries %q:\n%s", title, screen)
 				}
 				line := lines[index]
-				label := strings.Index(line, "[")
+				label := strings.Index(line, theme.ProjectSigil)
 				if label < 0 || label > strings.Index(line, title) {
 					t.Fatalf("the row for %q does not lead with its project:\n%s", title, line)
 				}
-				if index > 0 && strings.Contains(lines[index-1], "] (") {
+				if index > 0 && regexp.MustCompile(`[▾▸] %\S+ \(`).MatchString(lines[index-1]) {
 					t.Fatalf("a project header still opens the one-task group holding %q:\n%s", title, screen)
 				}
 				titleColumns[ansi.StringWidth(line[:strings.Index(line, title)])] = true

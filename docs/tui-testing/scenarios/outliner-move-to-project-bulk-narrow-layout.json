@@ -42,7 +42,7 @@
 
     { "type": "key", "label": "one undo takes the whole batch back", "key": "u" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "[unfiled] (3)" },
+    { "type": "assert", "assert": "contains", "value": "%unfiled (3)" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "resize", "label": "the same act renders at the wider narrow band", "width": 72, "height": 20 },

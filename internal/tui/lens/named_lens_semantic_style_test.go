@@ -41,7 +41,6 @@ func TestNamedLensPrimaryStyle(t *testing.T) {
 		{"doing group", namedLensStatesFixture(string(models.StateDoing))},
 		{"backlog group", namedLensStatesFixture(string(models.StateBacklog))},
 		{"paused group", namedLensStatesFixture(string(models.StatePaused))},
-		{"someday group", namedLensStatesFixture(string(models.StateSomeday))},
 		{"warning", namedLensQueryFixture("?stale")},
 		{"today mode", namedLensFixture(func(l *config.NamedLens) { l.Mode = config.LensModeToday })},
 		{"recent mode", namedLensFixture(func(l *config.NamedLens) { l.Mode = config.LensModeRecent })},

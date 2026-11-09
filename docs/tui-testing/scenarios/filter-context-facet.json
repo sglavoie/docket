@@ -26,7 +26,7 @@
     { "type": "key", "key": "space" },
     { "type": "key", "key": "enter" },
     { "type": "assert", "assert": "status_contains", "value": "Filtering context: ##platform" },
-    { "type": "assert", "assert": "contains", "value": "##platform" },
+    { "type": "assert", "assert": "contains", "value": "Filters: ##platform" },
     { "type": "assert", "assert": "contains", "value": "Add password validation" },
     { "type": "assert", "assert": "not_contains", "value": "Fix redirect loop after logout" },
     { "type": "assert", "assert": "no_layout_issues" },
@@ -34,7 +34,7 @@
     { "type": "key", "label": "fx clears the context facet with every other one", "key": "f" },
     { "type": "key", "key": "x" },
     { "type": "assert", "assert": "status_contains", "value": "Filters cleared" },
-    { "type": "assert", "assert": "not_contains", "value": "##platform" },
+    { "type": "assert", "assert": "not_contains", "value": "Filters: ##platform" },
     { "type": "assert", "assert": "contains", "value": "Add password validation" },
     { "type": "assert", "assert": "contains", "value": "Fix redirect loop after logout" },
     { "type": "assert", "assert": "no_layout_issues" }

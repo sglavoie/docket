@@ -27,7 +27,7 @@ struct CaptureSheet: View {
     @FocusState private var fieldFocus: TaskField?
     @State private var correction: TaskField?
 
-    private static let destinations: [CaptureDestination] = [.inbox, .today, .next, .backlog, .doing, .waiting, .someday]
+    private static let destinations: [CaptureDestination] = [.inbox, .today, .next, .backlog, .doing, .waiting]
 
     var body: some View {
         NavigationStack {

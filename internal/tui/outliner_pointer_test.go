@@ -74,7 +74,7 @@ func TestClickSeatsTheCursorOnEveryRowKind(t *testing.T) {
 		holds   func(outliner.OutlinerRow) bool
 	}{
 		{"Backlog", func(row outliner.OutlinerRow) bool { return row.IsSectionHeader }},
-		{"[checklist-delivery]", func(row outliner.OutlinerRow) bool { return row.IsProjectHeader }},
+		{"%checklist-delivery", func(row outliner.OutlinerRow) bool { return row.IsProjectHeader }},
 		{checklistFixtureSecondItem, func(row outliner.OutlinerRow) bool { return row.IsChecklistItem }},
 		{checklistFixtureParentTitle, func(row outliner.OutlinerRow) bool {
 			return row.Task != nil && row.Task.Title == checklistFixtureParentTitle
@@ -113,7 +113,7 @@ func TestClickSeatsTheCursorOnMergedRankedNoteAndEmptyStateRows(t *testing.T) {
 	if out.HasContentRows() {
 		t.Fatal("the search was meant to leave an empty projection")
 	}
-	header := pointerRowY(t, driver, "[rich-project]")
+	header := pointerRowY(t, driver, "%rich-project")
 	out.Cursor = 3
 	pointerClickAt(t, driver, 30, header+1, "", 1)
 	if out.Cursor != 3 {
@@ -150,7 +150,7 @@ func TestClickOnThePinnedContextRowSeatsItsHeader(t *testing.T) {
 	pointerClickAt(t, driver, 20, pointerRowY(t, driver, "Untriaged inbox item 1"), "", 1)
 	pointerKey(t, driver, "b")
 	pointerKey(t, driver, "G")
-	y := pointerRowY(t, driver, "Inbox › [inbox-backlog]")
+	y := pointerRowY(t, driver, "Inbox › %inbox-backlog")
 	pointerClickAt(t, driver, 20, y, "", 1)
 	if out.Cursor < 0 || !out.Rows[out.Cursor].IsSectionHeader || out.Rows[out.Cursor].SectionName != "Inbox" {
 		t.Fatalf("a click on the pinned context row left the cursor on %d", out.Cursor)
@@ -256,7 +256,7 @@ func TestClickOnAFoldGlyphTogglesThatFoldAsHAndLWould(t *testing.T) {
 	// h on a root task folds its group and remembers it; the header's glyph is l,
 	// which puts the cursor back on the task the fold was covering.
 	pointerKey(t, driver, "h")
-	header := pointerRowY(t, driver, "[checklist-delivery]")
+	header := pointerRowY(t, driver, "%checklist-delivery")
 	pointerClickAt(t, driver, 1, header, "", 1)
 	if row := out.Rows[out.Cursor]; row.Task == nil || row.Task.Title != checklistFixturePlainTitle {
 		t.Fatalf("expanding the group by its glyph lost the remembered task, cursor on %d", out.Cursor)

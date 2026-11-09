@@ -15,7 +15,7 @@
 
     { "type": "key", "label": "zt puts the cursor row at the top", "key": "z" },
     { "type": "key", "key": "t" },
-    { "type": "assert", "label": "under the pinned context row, which takes the first list row of a window opening inside a lane", "assert": "contains", "value": "▾ Doing › [release-project]  (35)" },
+    { "type": "assert", "label": "under the pinned context row, which takes the first list row of a window opening inside a lane", "assert": "contains", "value": "▾ Doing › %release-project  (35)" },
     { "type": "assert", "assert": "contains", "value": "Release acceptance item 190" },
     { "type": "assert", "assert": "not_contains", "value": "Release acceptance item 211" },
     { "type": "assert", "assert": "not_contains", "value": "Release acceptance item 060" },

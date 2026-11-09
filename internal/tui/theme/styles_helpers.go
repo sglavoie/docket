@@ -135,12 +135,15 @@ func SemanticTaskTitleStyle(
 // TaskContextLabel is a row's context, muted like the project label beside it:
 // identity is read when looked for, and the title and the attention badges are
 // what the row is read for. A deferred task's context keeps its fainter ink.
+// TaskContextSigil leads a context label: the `##` that sets it on capture.
+const TaskContextSigil = "##"
+
 func TaskContextLabel(task *models.Task, context string) string {
 	style := MutedStyle
 	if task != nil && task.IsDeferred() {
 		style = TaskContextBadgeStyle(task)
 	}
-	return MutedStyle.Render("[") + style.Render(context) + MutedStyle.Render("]")
+	return MutedStyle.Render(TaskContextSigil) + style.Render(context)
 }
 
 func TaskContextBadgeStyle(task *models.Task) lipgloss.Style {
@@ -214,7 +217,7 @@ func TaskTitleStyleFor(task *models.Task, opts TaskTitleStyleOptions) lipgloss.S
 // Each state reuses the badge style of the legacy status it
 // collapses into (see WorkflowState.Icon): the three todo-ish planning states
 // share the todo badge, waiting uses its own badge, paused the standby
-// badge, and someday the maybe badge.
+// badge.
 func GetStateBadge(state models.WorkflowState) string {
 	return readableStateBadgeStyle(stateBadgeStyle(state)).Render(stateBadgeIcon(state))
 }
@@ -270,7 +273,7 @@ func readableStateBadgeStyle(style lipgloss.Style) lipgloss.Style {
 		hex = "#f02318"
 	case ColorSemanticQuestionTitle:
 		hex = "#e06400"
-	case ColorSemanticEpicTitle, StandbyBadgeStyle.GetForeground(), MaybeBadgeStyle.GetForeground():
+	case ColorSemanticEpicTitle, StandbyBadgeStyle.GetForeground():
 		hex = "#a020d0"
 	case ColorSemanticStoryTitle:
 		hex = "#087de0"
@@ -295,8 +298,6 @@ func stateBadgeStyle(state models.WorkflowState) lipgloss.Style {
 		return WaitingBadgeStyle
 	case models.StatePaused:
 		return StandbyBadgeStyle
-	case models.StateSomeday:
-		return MaybeBadgeStyle
 	case models.StateDone:
 		return DoneBadgeStyle
 	case models.StateCanceled:
@@ -322,8 +323,6 @@ func GetWorkflowStateGroupStyle(group models.WorkflowStateGroup) lipgloss.Style 
 		return ViewModeWaitingStyle
 	case models.StateThemePaused:
 		return ViewModeStandbyStyle
-	case models.StateThemeSomeday:
-		return ViewModeSomedayStyle
 	case models.StateThemeComplete:
 		return ViewModeCompletedStyle
 	case models.StateThemeCanceled:

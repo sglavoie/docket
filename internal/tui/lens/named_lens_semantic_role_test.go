@@ -216,11 +216,6 @@ func TestNamedLensSemanticRole(t *testing.T) {
 			want: groupRole(models.StateGroupPaused),
 		},
 		{
-			name: "someday states",
-			lens: namedLensStatesFixture(string(models.StateSomeday)),
-			want: groupRole(models.StateGroupSomeday),
-		},
-		{
 			name: "repeated state resolves to its one group",
 			lens: namedLensStatesFixture(string(models.StateDoing), string(models.StateDoing)),
 			want: groupRole(models.StateGroupDoing),

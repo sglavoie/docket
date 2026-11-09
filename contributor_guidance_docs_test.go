@@ -16,7 +16,7 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// Historical budget decisions are preserved in
 	// docs/decisions/contributor-guidance-budget-{early,middle,recent}.md.
 	// Record future increases there with their rationale.
-	const budget = 80800
+	const budget = 81000
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -32,7 +32,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"[`docs/decisions/behavioral-signals-contracts.md`](docs/decisions/behavioral-signals-contracts.md) " +
 			"is the locked behavioral-signal authority",
 		"The lifecycle states are:",
-		"eight-state, eight-mode, Outliner-only product",
+		"seven-state, eight-mode, Outliner-only product",
 		"Do not recreate cross-project behavior with independent `SaveProject` calls",
 		"`StateChangedAt` is the state clock and `UpdatedAt` is the touch time",
 		"A task reaching `WriteV8ProjectDocument` without a clock is rejected, never backfilled",

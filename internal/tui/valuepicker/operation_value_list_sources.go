@@ -318,7 +318,7 @@ func OperationProjectListSource(projects []*models.Project, currentProjectID str
 // count would read as "empty"; the slug is what the Outliner's own project
 // headers show, and the tag chips are what make a parked destination legible.
 func moveProjectRowSecondary(project *models.Project) string {
-	secondary := "[" + project.Slug + "]"
+	secondary := theme.ProjectToken(project.Slug)
 	if chips := projecthub.ProjectTagChips(project.Tags); chips != "" {
 		secondary += " · " + chips
 	}

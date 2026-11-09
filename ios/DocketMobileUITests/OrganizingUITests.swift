@@ -478,7 +478,7 @@ final class OrganizingUITests: XCTestCase {
         choose(app, "detail.status.menu", "Done")
         let refusal = failureText(app, "detail.failure")
         XCTAssertTrue(refusal.contains("open subtasks") && refusal.contains("Draw the moon"), refusal)
-        XCTAssertTrue(try taskLine("Dark mode icons", in: markdown("atlas-launch"))?.contains("state: someday") == true)
+        XCTAssertTrue(try taskLine("Dark mode icons", in: markdown("atlas-launch"))?.contains("state: backlog") == true)
 
         // Nesting stops at the engine's limit: Proofread release notes sits at
         // level 2, so four more levels fit and a fifth is refused.

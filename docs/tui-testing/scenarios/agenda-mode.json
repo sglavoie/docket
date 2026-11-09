@@ -8,7 +8,7 @@
     { "type": "assert", "label": "started work is on the agenda", "assert": "contains", "value": "Doing  (1)" },
     { "type": "assert", "label": "undecided lanes are not drawn", "assert": "not_contains", "value": "Inbox  (1)" },
     { "type": "assert", "assert": "not_contains", "value": "Backlog  (3)" },
-    { "type": "assert", "label": "what Agenda leaves out is counted beneath it, with the key back to All", "assert": "contains", "value": "Not on the agenda: Inbox 1 · Backlog 3 · Waiting 1 · Someday 1 · ga All" },
+    { "type": "assert", "label": "what Agenda leaves out is counted beneath it, with the key back to All", "assert": "contains", "value": "Not on the agenda: Inbox 1 · Backlog 3 · Waiting 2 · ga All" },
     { "type": "assert", "label": "Agenda is a home view, so the Now card stays", "assert": "contains", "value": "▎ Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 
@@ -19,11 +19,11 @@
     { "type": "key", "label": "back to Agenda", "key": "2" },
     { "type": "assert", "label": "planning puts the task on the agenda", "assert": "contains", "value": "Today  (1)" },
     { "type": "assert", "assert": "contains", "value": "Triage support inbox" },
-    { "type": "assert", "label": "and takes it off the left-out count", "assert": "contains", "value": "Not on the agenda: Backlog 3 · Waiting 1 · Someday 1 · ga All" },
+    { "type": "assert", "label": "and takes it off the left-out count", "assert": "contains", "value": "Not on the agenda: Backlog 3 · Waiting 2 · ga All" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "resize", "label": "a narrow window drops whole lanes from the line and keeps the key", "width": 60, "height": 20 },
-    { "type": "assert", "assert": "contains", "value": "Not on the agenda: Backlog 3 · Waiting 1 · … · ga All" },
+    { "type": "resize", "label": "at the floor the line still fits whole and keeps the key", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "Not on the agenda: Backlog 3 · Waiting 2 · ga All" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "Tab leaves Agenda for Today", "key": "tab" },

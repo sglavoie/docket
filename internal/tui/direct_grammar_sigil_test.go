@@ -279,6 +279,9 @@ func TestReviewKeyWritesTheFlagAndKeepsItsFacet(t *testing.T) {
 		case operation.OperationTaskToggleReview, operation.OperationTaskMarkReviewed:
 			keys[binding.OperationID] = append(keys[binding.OperationID], binding.Keys...)
 		case operation.OperationFilterReview:
+		case operation.OperationCoreReviewWeek:
+			// Review the Week is the weekly pass, not the review axis: it writes no
+			// flag and reads no facet.
 		default:
 			t.Errorf("%s is bound to %v; review is one setter, one facet, and one acknowledgement",
 				binding.OperationID, binding.Paths())

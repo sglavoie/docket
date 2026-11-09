@@ -15,17 +15,21 @@ import "github.com/sglavoie/docket/internal/storage/format"
 // CurrentTaskSchemaVersion is the schema live task Markdown is parsed and
 // written at. ProjectDocument.SchemaVersion carries this value, and
 // WriteCurrent refuses any other.
-const CurrentTaskSchemaVersion = SchemaVersionV20
+const CurrentTaskSchemaVersion = SchemaVersionV21
+
+// currentTaskSchemaMarker is the marker line live task Markdown carries.
+const currentTaskSchemaMarker = schemaMarkerV21
 
 // currentTaskProjectDocument is one project's task file at the current schema.
 // It is an alias rather than a distinct type so the codec keeps its exported
 // version-specific name for migrations while the live path spells only
 // "current"; a distinct type would need a conversion at every boundary and buy
 // nothing, since the two are the same bytes by construction.
-type currentTaskProjectDocument = V20ProjectDocument
+type currentTaskProjectDocument = V21ProjectDocument
 
 // currentTaskRecord is one task record at the current schema. Schema 20
-// advances the record grammar to carry the stored hidden flag.
+// advanced the record grammar to carry the stored hidden flag; schema 21 keeps
+// that grammar and holds its state to seven values.
 type currentTaskRecord = format.V19TaskRecord
 
 // currentProjectCommentRecord is one stored project comment at the current
@@ -34,28 +38,28 @@ type currentProjectCommentRecord = format.ProjectCommentRecord
 
 // parseCurrentTaskProjectDocument strictly parses live task Markdown.
 func parseCurrentTaskProjectDocument(content string) (currentTaskProjectDocument, error) {
-	return ParseV20ProjectDocument(content)
+	return ParseV21ProjectDocument(content)
 }
 
 // scanCurrentTaskProjectDocument parses live task Markdown into records without
 // the document-wide validation; only the repair reader may use it.
 func scanCurrentTaskProjectDocument(content string) (currentTaskProjectDocument, error) {
-	return scanV20ProjectDocument(content)
+	return scanV21ProjectDocument(content)
 }
 
 // writeValidatedCurrentTaskProjectDocument renders a live document that was
 // validated as it was built, as currentTaskProjectDocumentFromModel's are.
 func writeValidatedCurrentTaskProjectDocument(document currentTaskProjectDocument) (string, error) {
-	return writeValidatedV20ProjectDocument(document)
+	return writeValidatedV21ProjectDocument(document)
 }
 
 // validateCurrentTaskProjectDocument validates a live document without
 // rendering it.
 func validateCurrentTaskProjectDocument(document currentTaskProjectDocument) error {
-	return ValidateV20ProjectDocument(document)
+	return ValidateV21ProjectDocument(document)
 }
 
 // validateCurrentTaskRecord validates one live task record.
 func validateCurrentTaskRecord(record currentTaskRecord) error {
-	return format.ValidateV19TaskRecord(record)
+	return ValidateV21TaskRecord(record)
 }

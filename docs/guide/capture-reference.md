@@ -11,7 +11,7 @@ With an existing `web` project, capturing
 `fix login redirect !1 @friday #auth %web $today` on Friday 28 August 2026
 creates a Backlog task planned for Today, with High priority and a September 4
 deadline. A weekday means the next occurrence, never today. Its row reads
-`□ ◉ fix login redirect  Sep 4`; the `auth` tag is visible in Peek (`b`).
+`□ !1 fix login redirect  @Sep 4`; the `auth` tag is visible in Peek (`b`).
 Today and Next are planning collections, so `$today` does not create a new
 lifecycle state. `%web` names the destination project; see the project-creation
 confirmation below for slugs that do not yet exist.
@@ -58,7 +58,8 @@ validated before one atomic transaction is committed.
   the deferral on the edit surfaces; the outline buffer has no deferral channel
   and rejects the sigil by name.
 - `$destination` accepts `inbox`, `backlog`, `today`, `next`, `doing`,
-  `waiting`, `paused`, `someday`, `done`, or `canceled`. Today and Next create
+  `waiting`, `paused`, `done`, or `canceled`; `$someday` is a retired
+  destination that names `$backlog` instead. Today and Next create
   Backlog tasks with an explicit planning membership.
 - `*pin` pins the task, exactly as the `*` key does on an existing row. Only
   `pin` and `unpin` are recognized, and any other value stays in the title, so
@@ -403,7 +404,7 @@ the tag rows the section also collects.
 The eight persisted workflow states are:
 
 ```text
-inbox  backlog  doing  waiting  paused  someday  done  canceled
+inbox  backlog  doing  waiting  paused  done  canceled
 ```
 
 Today and Next are separate project-qualified planning collections, not

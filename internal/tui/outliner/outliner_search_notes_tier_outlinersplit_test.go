@@ -23,7 +23,7 @@ func TestNoteRowDropsItsCueThenItsLabelAsWidthFalls(t *testing.T) {
 	outliner := noteRowProjection(t)
 	row := noteRowWithOwner(t, outliner)
 	cue := "· " + matchSourceLabels[MatchSourceNote]
-	owner := "[alpha]"
+	owner := "%alpha"
 
 	// Rendered at each width from the widest a row is ever asked for down to the
 	// point where nothing optional survives, so the ladder is observed as a
@@ -107,7 +107,7 @@ func TestNoteRowLeadsWithTheRankedTaskLabel(t *testing.T) {
 	outliner := noteLabelProjection(t)
 	const rowWidth = 100
 	layout := outliner.ComputeOutlinerRowLayout(outliner.Rows, rowWidth)
-	if layout == nil || layout.ProjectWidth != lipgloss.Width("[global]") {
+	if layout == nil || layout.ProjectWidth != lipgloss.Width("%global") {
 		t.Fatalf("layout = %+v, want the project column widened to the global label", layout)
 	}
 
@@ -118,7 +118,7 @@ func TestNoteRowLeadsWithTheRankedTaskLabel(t *testing.T) {
 			taskTitleColumn = lipgloss.Width(plain[:strings.Index(plain, row.Task.Title)])
 		}
 	}
-	for title, label := range map[string]string{"Needle notes": "[global]", "Unrelated title": "[alpha]"} {
+	for title, label := range map[string]string{"Needle notes": "%global", "Unrelated title": "%alpha"} {
 		plain := ansi.Strip(outliner.renderOutlinerNoteRow(noteRowTitled(t, outliner, title), false, rowWidth, 0, layout))
 		labelAt, titleAt := strings.Index(plain, label), strings.Index(plain, title)
 		if labelAt < 0 || titleAt < labelAt {
@@ -143,7 +143,7 @@ func TestNotesOnlyResultStillMeasuresItsLabelColumn(t *testing.T) {
 		t.Fatalf("note rows = %d, want both notes", got)
 	}
 	layout := outliner.ComputeOutlinerRowLayout(outliner.Rows, 100)
-	if layout == nil || layout.ProjectWidth != lipgloss.Width("[global]") {
+	if layout == nil || layout.ProjectWidth != lipgloss.Width("%global") {
 		t.Fatalf("notes-only layout = %+v, want the label column measured", layout)
 	}
 }
@@ -174,7 +174,7 @@ func TestNoteBodyHitShowsAnExcerptShedFirst(t *testing.T) {
 		if hasExcerpt && !strings.Contains(excerpt, "needle") {
 			t.Fatalf("width %d drew an excerpt without its match: %q", width, excerpt)
 		}
-		if hasExcerpt && (!strings.Contains(plain, cue) || !strings.Contains(plain, "[alpha]")) {
+		if hasExcerpt && (!strings.Contains(plain, cue) || !strings.Contains(plain, "%alpha")) {
 			t.Fatalf("width %d kept the excerpt after dropping the cue or the label:\n%q", width, plain)
 		}
 		if hasExcerpt && !strings.Contains(plain, "Unrelated title") {
@@ -238,7 +238,7 @@ func TestNoteBodyExcerptKeepsMatchWithinRowBudget(t *testing.T) {
 	if at := strings.Index(body, "needle"); at < 40 {
 		t.Fatalf("fixture needle sits at %d, want at least 40 nonmatching runes ahead of it", at)
 	}
-	const title, cue, label = "Unrelated title", "· note", "[alpha]"
+	const title, cue, label = "Unrelated title", "· note", "%alpha"
 
 	budgets := map[int]bool{}
 	sawExcerpt, sawAbsent := false, false
@@ -359,7 +359,7 @@ func TestParkedProjectNoteRowNamesItsSlug(t *testing.T) {
 	searchRankedList(outliner, "needle")
 
 	plain := ansi.Strip(outliner.renderOutlinerNoteRow(noteRowTitled(t, outliner, "Needle plan"), false, 100, 0, nil))
-	if !strings.Contains(plain, "[pipelines]") || strings.Contains(plain, "06fd8d58") {
+	if !strings.Contains(plain, "%pipelines") || strings.Contains(plain, "06fd8d58") {
 		t.Fatalf("parked note row does not name its project slug:\n%q", plain)
 	}
 }

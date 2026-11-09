@@ -87,7 +87,7 @@ Enter
 Sleep 600ms
 Type "a"
 Sleep 300ms
-Type "Read the Bubble Tea docs $someday "
+Type "Read the Bubble Tea docs $backlog "
 Enter
 Sleep 1s
 Show

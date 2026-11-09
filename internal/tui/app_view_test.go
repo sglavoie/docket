@@ -204,10 +204,10 @@ func TestAppViewTaskComposerBudgetsForATallerFooter(t *testing.T) {
 		t.Fatal("ShowTaskComposerMsg should be handled")
 	}
 	composer := app.taskComposer
-	// Three draft rows under ten destinations is more content than the panel's
+	// Four draft rows under nine destinations is more content than the panel's
 	// ceiling allows, which is the state the budget is about: the pane is windowed
 	// rather than the frame overrun.
-	composer.Input.SetValue("First task\nSecond task\nThird task $")
+	composer.Input.SetValue("First task\nSecond task\nThird task\nFourth task $")
 	composer.UpdatePreview()
 	composer.RefreshAutocomplete()
 	// The feedback row is the excess: the capture controls alone fit the two rows

@@ -37,7 +37,9 @@ func (s *OutlinerRouteState) UnmarshalJSON(data []byte) error {
 	states := make([]models.WorkflowState, 0, len(raw.FilterStates))
 	for _, persisted := range raw.FilterStates {
 		target := persisted
-		if persisted == models.WorkflowState("review") {
+		// Review became a stored flag and someday was folded into Backlog, so a
+		// persisted filter naming either reads as the state that holds its work.
+		if persisted == models.WorkflowState("review") || persisted == models.WorkflowState("someday") {
 			target = models.StateBacklog
 		}
 		if !target.IsValid() {
@@ -88,7 +90,7 @@ func NormalizeOutlinerRouteState(state OutlinerRouteState) OutlinerRouteState {
 		state.FilterStates = mustWorkflowStateSet(models.StatePaused)
 	case "someday":
 		state.Mode = OutlinerModeAll
-		state.FilterStates = mustWorkflowStateSet(models.StateSomeday)
+		state.FilterStates = mustWorkflowStateSet(models.StateBacklog)
 	case "review":
 		state.Mode = OutlinerModeAll
 		// Review tasks are converted to Backlog plus the review tag by the task

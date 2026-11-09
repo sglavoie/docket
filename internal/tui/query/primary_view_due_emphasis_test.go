@@ -33,20 +33,20 @@ func TestFormatDueDateRendersTheThemeTierUnchanged(t *testing.T) {
 			}{
 				{"long overdue", today.AddDate(0, 0, -9), today.AddDate(0, 0, -9).Format("Jan 2") + " overdue",
 					func() string {
-						return theme.OverdueStyle.Render(today.AddDate(0, 0, -9).Format("Jan 2") + " overdue")
+						return theme.OverdueStyle.Render(DueSigil + today.AddDate(0, 0, -9).Format("Jan 2") + " overdue")
 					}},
 				{"recently overdue", today.AddDate(0, 0, -3), "3 days ago",
-					func() string { return theme.OverdueStyle.Render("3 days ago") }},
+					func() string { return theme.OverdueStyle.Render(DueSigil + "3 days ago") }},
 				{"yesterday", today.AddDate(0, 0, -1), "Yesterday",
-					func() string { return theme.OverdueStyle.Render("Yesterday") }},
+					func() string { return theme.OverdueStyle.Render(DueSigil + "Yesterday") }},
 				{"today", today, "Today",
-					func() string { return theme.DueTodayStyle.Render("Today") }},
+					func() string { return theme.DueTodayStyle.Render(DueSigil + "Today") }},
 				{"tomorrow", today.AddDate(0, 0, 1), "Tomorrow",
-					func() string { return theme.DueDateStyle.Render("Tomorrow") }},
+					func() string { return theme.DueDateStyle.Render(DueSigil + "Tomorrow") }},
 				{"in two days", today.AddDate(0, 0, 2), "In 2 days",
-					func() string { return theme.DueDateStyle.Render("In 2 days") }},
+					func() string { return theme.DueDateStyle.Render(DueSigil + "In 2 days") }},
 				{"later", today.AddDate(0, 0, 9), today.AddDate(0, 0, 9).Format("Jan 2"),
-					func() string { return theme.DueDateStyle.Render(today.AddDate(0, 0, 9).Format("Jan 2")) }},
+					func() string { return theme.DueDateStyle.Render(DueSigil + today.AddDate(0, 0, 9).Format("Jan 2")) }},
 			}
 			for _, tc := range cases {
 				due := tc.due
@@ -57,8 +57,9 @@ func TestFormatDueDateRendersTheThemeTierUnchanged(t *testing.T) {
 				}
 				// Emphasis may not cost a column: the ladder measures the chip, and
 				// --no-color leaves exactly this text behind — the value and the
-				// chip's own two padding cells, with no calendar glyph.
-				if plain, want := ansi.Strip(got), " "+tc.text+" "; plain != want {
+				// chip's own two padding cells and the `@` that sets it, with no calendar
+				// glyph.
+				if plain, want := ansi.Strip(got), " "+DueSigil+tc.text+" "; plain != want {
 					t.Errorf("%s due chip monochrome text = %q, want %q", tc.name, plain, want)
 				}
 			}
@@ -72,7 +73,7 @@ func TestFormatDueDateRendersTheThemeTierUnchanged(t *testing.T) {
 				WorkflowState: models.StateBacklog,
 				DueDate:       &timed,
 			}
-			want := theme.OverdueStyle.Render(timed.Format("Jan 2") + " 15:30 overdue")
+			want := theme.OverdueStyle.Render(DueSigil + timed.Format("Jan 2") + " 15:30 overdue")
 			if got := FormatDueDate(task); got != want {
 				t.Errorf("timed overdue chip = %q, want %q", got, want)
 			}
@@ -82,7 +83,7 @@ func TestFormatDueDateRendersTheThemeTierUnchanged(t *testing.T) {
 			earlier := today.Add(time.Minute)
 			if time.Now().After(earlier) {
 				task := &models.Task{ID: "earlier", WorkflowState: models.StateBacklog, DueDate: &earlier}
-				if got, want := ansi.Strip(FormatDueDate(task)), " Today 00:01 overdue "; got != want {
+				if got, want := ansi.Strip(FormatDueDate(task)), " @Today 00:01 overdue "; got != want {
 					t.Errorf("timed deadline passed today = %q, want %q", got, want)
 				}
 			}

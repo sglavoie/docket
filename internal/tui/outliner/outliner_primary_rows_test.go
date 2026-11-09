@@ -21,7 +21,6 @@ func TestPrimaryAllUsesCanonicalGroupsAndDeduplicatesToday(t *testing.T) {
 		primaryRowsTask("backlog", models.StateBacklog),
 		primaryRowsTask("waiting", models.StateWaiting),
 		primaryRowsTask("paused", models.StatePaused),
-		primaryRowsTask("someday", models.StateSomeday),
 		primaryRowsTask("done", models.StateDone),
 		primaryRowsTask("canceled", models.StateCanceled),
 		primaryRowsTask("deferred", models.StateBacklog),

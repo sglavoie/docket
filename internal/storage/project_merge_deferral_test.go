@@ -9,7 +9,7 @@ import (
 )
 
 func TestMergeRefusesConcurrentStateChangeAndDeferral(t *testing.T) {
-	for _, state := range []models.WorkflowState{models.StateInbox, models.StateDoing, models.StateWaiting, models.StatePaused, models.StateSomeday, models.StateDone, models.StateCanceled} {
+	for _, state := range []models.WorkflowState{models.StateInbox, models.StateDoing, models.StateWaiting, models.StatePaused, models.StateDone, models.StateCanceled} {
 		for _, swap := range []bool{false, true} {
 			name := string(state)
 			if swap {

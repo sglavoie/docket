@@ -234,8 +234,8 @@ func TestReviewIndicatorRendersOnlyArrivedEligibleCheckIns(t *testing.T) {
 		want     string
 	}{
 		{name: "no schedule", state: models.StateBacklog},
-		{name: "overdue", checkIn: timePtr(now.AddDate(0, 0, -5)), state: models.StateBacklog, want: "review +5d"},
-		{name: "today", checkIn: timePtr(util.StartOfDay(now)), state: models.StateBacklog, want: "review today"},
+		{name: "overdue", checkIn: timePtr(now.AddDate(0, 0, -5)), state: models.StateBacklog, want: "=review +5d"},
+		{name: "today", checkIn: timePtr(util.StartOfDay(now)), state: models.StateBacklog, want: "=review today"},
 		{name: "upcoming stays quiet", checkIn: timePtr(now.AddDate(0, 0, 3)), state: models.StateBacklog},
 		{name: "deferred schedule is suppressed", checkIn: timePtr(now.AddDate(0, 0, -2)), deferred: timePtr(now.AddDate(0, 0, 1)), state: models.StateBacklog},
 		{name: "terminal schedule is suppressed defensively", checkIn: timePtr(now.AddDate(0, 0, -2)), state: models.StateDone},
@@ -271,8 +271,8 @@ func TestReviewIndicatorSharesArrivedDueChipEmphasis(t *testing.T) {
 				day  time.Time
 				want string
 			}{
-				{"late", util.StartOfDay(now.AddDate(0, 0, -5)), theme.ReviewLateStyle.Render("review +5d")},
-				{"today", util.StartOfDay(now), theme.DueTodayStyle.Render("review today")},
+				{"late", util.StartOfDay(now.AddDate(0, 0, -5)), theme.ReviewLateStyle.Render("=review +5d")},
+				{"today", util.StartOfDay(now), theme.DueTodayStyle.Render("=review today")},
 			}
 			for _, tc := range cases {
 				day := tc.day
@@ -303,7 +303,7 @@ func TestReviewIndicatorCountsCalendarDaysAcrossDST(t *testing.T) {
 		WorkflowState: models.StateBacklog,
 		NextCheckIn:   &checkIn,
 	}
-	if got := strings.TrimSpace(ansi.Strip(formatReviewIndicator(task, now))); got != "review +1d" {
+	if got := strings.TrimSpace(ansi.Strip(formatReviewIndicator(task, now))); got != "=review +1d" {
 		t.Fatalf("DST review indicator = %q, want one calendar day", got)
 	}
 }
@@ -328,9 +328,9 @@ func TestReviewLaneRowDropsTheBareReviewOnly(t *testing.T) {
 		want string
 	}{
 		{"flag in lane", &models.Task{WorkflowState: models.StateBacklog, Review: true}, true, ""},
-		{"flag outside lane", &models.Task{WorkflowState: models.StateBacklog, Review: true}, false, "review"},
-		{"today in lane", &models.Task{WorkflowState: models.StateBacklog, NextCheckIn: &today}, true, "review today"},
-		{"late in lane", &models.Task{WorkflowState: models.StateBacklog, Review: true, NextCheckIn: &late}, true, "review +2d"},
+		{"flag outside lane", &models.Task{WorkflowState: models.StateBacklog, Review: true}, false, "=review"},
+		{"today in lane", &models.Task{WorkflowState: models.StateBacklog, NextCheckIn: &today}, true, "=review today"},
+		{"late in lane", &models.Task{WorkflowState: models.StateBacklog, Review: true, NextCheckIn: &late}, true, "=review +2d"},
 	}
 	for _, tc := range cases {
 		row := OutlinerRow{Task: tc.task}

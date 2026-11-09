@@ -20,7 +20,6 @@ const (
 	DestinationDoing    Destination = "doing"
 	DestinationWaiting  Destination = "waiting"
 	DestinationPaused   Destination = "paused"
-	DestinationSomeday  Destination = "someday"
 	DestinationDone     Destination = "done"
 	DestinationCanceled Destination = "canceled"
 )
@@ -33,7 +32,6 @@ var destinationNames = []string{
 	string(DestinationDoing),
 	string(DestinationWaiting),
 	string(DestinationPaused),
-	string(DestinationSomeday),
 	string(DestinationDone),
 	string(DestinationCanceled),
 }
@@ -63,7 +61,8 @@ var retiredDestinationMessages = map[string]string{
 	"standby":     "destination $%s was removed (use $paused)",
 	"hold":        "destination $%s was removed (use $paused)",
 	"review":      "destination $%s is not a state (use =review)",
-	"maybe":       "destination $%s was removed (use $someday)",
+	"maybe":       "destination $%s was removed (use $backlog)",
+	"someday":     "destination $%s was removed (use $backlog)",
 	"complete":    "destination $%s was removed (use $done)",
 	"completed":   "destination $%s was removed (use $done)",
 	"cancel":      "destination $%s was removed (use $canceled)",

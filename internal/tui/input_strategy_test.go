@@ -60,7 +60,7 @@ func TestSimplifiedInputStrategyIsCollisionAndPrefixFree(t *testing.T) {
 		t.Fatalf("handled keys = %d, keys on declared paths = %d", len(handled), len(pathKeys))
 	}
 	// One help row per applicable operation, except a chord whose one display key
-	// compresses several labeled presets (`wi/g/w/p/m/d/c`): `?` names each of
+	// compresses several labeled presets (`wi/g/w/p/d/c`): `?` names each of
 	// those letters on its own row instead of leaving initials to decode.
 	presetRows := make(map[operation.OperationID]int)
 	for _, binding := range strategy.Bindings {

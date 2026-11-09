@@ -486,7 +486,7 @@ func (c *Controller) NewFilterProjectsPicker(shell Shell,
 		items = append(items, listsurface.ListItem{
 			ID:            listsurface.ListItemID("filter-project:" + project.Slug),
 			PrimaryText:   project.Name,
-			SecondaryText: "[" + project.Slug + "] · " + taskCountLabel(count),
+			SecondaryText: theme.ProjectToken(project.Slug) + " · " + taskCountLabel(count),
 			Aliases:       []string{project.Slug, "%" + project.Slug},
 			Data:          project.Slug,
 		})

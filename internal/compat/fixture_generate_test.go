@@ -33,7 +33,7 @@ const (
 	fixturePromotedID  = "0a7e5d10-2c3b-4f6a-8e9d-000000000104"
 	fixtureCertID      = "0a7e5d10-2c3b-4f6a-8e9d-000000000105"
 	fixturePausedID    = "0a7e5d10-2c3b-4f6a-8e9d-000000000106"
-	fixtureSomedayID   = "0a7e5d10-2c3b-4f6a-8e9d-000000000107"
+	fixtureIdeaID      = "0a7e5d10-2c3b-4f6a-8e9d-000000000107"
 	fixtureDoneID      = "0a7e5d10-2c3b-4f6a-8e9d-000000000108"
 	fixtureCanceledID  = "0a7e5d10-2c3b-4f6a-8e9d-000000000109"
 	fixturePaintID     = "0a7e5d10-2c3b-4f6a-8e9d-000000000201"
@@ -228,12 +228,12 @@ func buildRepresentativeProjects(t *testing.T, runtime *config.RuntimeState) []*
 	cert.Tags = []string{"question"}
 
 	paused := fixtureTask(fixturePausedID, 6, "Localize installer", models.StatePaused, 8)
-	someday := fixtureTask(fixtureSomedayID, 7, "Dark mode icons", models.StateSomeday, 8)
-	someday.Tags = []string{"idea"}
+	idea := fixtureTask(fixtureIdeaID, 7, "Dark mode icons", models.StateBacklog, 8)
+	idea.Tags = []string{"idea"}
 	done := fixtureTask(fixtureDoneID, 8, "Set up CI signing", models.StateDone, 9)
 	done.LastReviewedAt = fixturePointer(fixtureInstant(8, 15))
 	canceled := fixtureTask(fixtureCanceledID, 9, "Old updater shim", models.StateCanceled, 9)
-	atlas.Tasks = []*models.Task{ship, notes, proof, promoted, cert, paused, someday, done, canceled}
+	atlas.Tasks = []*models.Task{ship, notes, proof, promoted, cert, paused, idea, done, canceled}
 
 	home := fixtureProject(t, runtime, fixtureHomeID, "Home Renovation")
 	home.Tags = []string{"personal"}

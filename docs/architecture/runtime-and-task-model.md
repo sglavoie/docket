@@ -47,7 +47,7 @@ Schema 14 task Markdown stores generic tasks with these supported fields:
 | --- | --- |
 | Identity | stable ID and project-local ShortID |
 | Content | title and description |
-| Workflow | Inbox, Backlog, Doing, Waiting, Paused, Someday, Done, Canceled |
+| Workflow | Inbox, Backlog, Doing, Waiting, Paused, Done, Canceled |
 | Planning metadata | priority, due date, deferral instant (`deferred`), deferral count (`defer_count`), pin, pin timestamp |
 | Organization | project-local parent, single-valued task context, and tags |
 | Relations | outgoing soft task references (`depends`) |

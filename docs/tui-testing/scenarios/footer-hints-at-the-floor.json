@@ -12,10 +12,9 @@
     { "type": "assert", "assert": "contains", "value": "g doing" },
     { "type": "assert", "assert": "contains", "value": "w waiting" },
     { "type": "assert", "assert": "contains", "value": "p paused" },
-    { "type": "assert", "assert": "contains", "value": "m someday" },
     { "type": "assert", "label": "the third row is what keeps Done, the entry a day is closed with", "assert": "contains", "value": "d done" },
     { "type": "assert", "assert": "contains", "value": "c canceled" },
-    { "type": "assert", "label": "the way out survives beside all ten", "assert": "contains", "value": "Esc cancel" },
+    { "type": "assert", "label": "the way out survives beside all nine", "assert": "contains", "value": "Esc cancel" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "leave the chord", "key": "esc" },

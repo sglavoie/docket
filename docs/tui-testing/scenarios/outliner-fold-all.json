@@ -24,7 +24,7 @@
 
     { "type": "key", "label": "p folds every project group header", "key": "p" },
     { "type": "assert", "label": "only the Now card above the lanes still names the Doing task", "assert": "count_contains", "value": "Build login form", "count": 1 },
-    { "type": "assert", "label": "a folded group still renders the header naming it", "assert": "contains", "value": "▸ [rich-project]" },
+    { "type": "assert", "label": "a folded group still renders the header naming it", "assert": "contains", "value": "▸ %rich-project" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "the same key restores them", "key": "p" },
     { "type": "assert", "assert": "count_contains", "value": "Build login form", "count": 2 },

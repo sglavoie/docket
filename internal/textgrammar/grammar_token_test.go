@@ -138,7 +138,7 @@ func TestRegistryInvariantsAndDestinationCoverage(t *testing.T) {
 	if err := validateRegistry(); err != nil {
 		t.Fatalf("validateRegistry: %v", err)
 	}
-	want := []string{"inbox", "backlog", "today", "next", "doing", "waiting", "paused", "someday", "done", "canceled"}
+	want := []string{"inbox", "backlog", "today", "next", "doing", "waiting", "paused", "done", "canceled"}
 	definition, ok := DefinitionFor(SurfaceEdit, FieldDestination)
 	if !ok || !reflect.DeepEqual(definition.Values, want) {
 		t.Fatalf("destination values = %v, want %v", definition.Values, want)

@@ -14,7 +14,7 @@ import (
 // render pass. When non-nil, badge columns are padded to fixed widths so
 // metadata aligns vertically across all rows. Nil = current variable behavior.
 type ColumnLayout struct {
-	PriorityWidth int // 1 when any row shows priority badge; 0 if all hidden
+	PriorityWidth int // widest priority badge any row shows; 0 if all hidden
 	StatusWidth   int // max rendered status badge visual width; 0 when column inactive
 	ProjectWidth  int // max rendered project and context label width; 0 when not in use
 	HasPriority   bool

@@ -96,7 +96,7 @@ func TestFocusConstrainsModesFiltersSortFoldsAndSearch(t *testing.T) {
 	insideBacklog.Title = "Zulu inside"
 	insideDue := primaryRowsTask("inside-due", models.StateWaiting)
 	insideDue.DueDate = &tomorrow
-	insideRecent := primaryRowsTask("inside-recent", models.StateSomeday)
+	insideRecent := primaryRowsTask("inside-recent", models.StatePaused)
 	insideRecent.UpdatedAt = now
 	insideNested := primaryRowsTask("inside-nested", models.StateBacklog)
 	insideNested.Title = "Alpha inside"
@@ -113,7 +113,7 @@ func TestFocusConstrainsModesFiltersSortFoldsAndSearch(t *testing.T) {
 	outsideBacklog.Title = "Aardvark outside"
 	outsideDue := primaryRowsTask("outside-due", models.StateWaiting)
 	outsideDue.DueDate = &tomorrow
-	outsideRecent := primaryRowsTask("outside-recent", models.StateSomeday)
+	outsideRecent := primaryRowsTask("outside-recent", models.StatePaused)
 	outsideRecent.UpdatedAt = now
 
 	project := primaryRowsProject("project", root,

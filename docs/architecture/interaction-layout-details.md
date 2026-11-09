@@ -44,7 +44,7 @@ exactly as they were.
 
 Contextual guidance is made of complete `key action` entries. Browse states use
 one row; editing, adding, confirming, autocomplete, and expanded detail may use
-two, and a pending chord may use three, which is what lets `w` name all ten of
+two, and a pending chord may use three, which is what lets `w` name all nine of
 its destinations, Done included, at the narrowest terminal. The `f` and `g`
 rows are divided the way `w` is, by a heading riding the first entry of each
 run: `f` reads `Field:` over the values a task stores and `Derived:` over the

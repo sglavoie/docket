@@ -451,9 +451,10 @@ func CoreInputOperationDescriptors() []OperationDescriptor {
 		// Suggested lane. It is target-free: the pass freezes its own queue from the
 		// drawn rows, and each card's routing runs the row operation it names.
 		core(OperationCoreTriage, "Triage", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "triage inbox", "sort inbox", "plan suggestions", "process inbox"),
-		// Close the Day is Triage over Today's own work, opened from the menu and
-		// never a key: it switches to Today itself, walks what the day still holds,
-		// and ends on a card naming what the day finished.
+		// Start the Day, Close the Day, and Review the Week are Triage over the
+		// morning's, the day's, and the week's work, bound as the go-to chord's Day
+		// run beside gd: each switches to its own view, walks what is left, and ends
+		// on a card naming what the pass did.
 		core(OperationCoreStartDay, "Start the Day", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "plan the day", "morning", "start of day", "daily planning", "start day"),
 		core(OperationCoreCloseDay, "Close the Day", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "wrap up the day", "end of day", "shutdown", "daily review", "close day"),
 		core(OperationCoreReviewWeek, "Review the Week", OperationCategorySystem, TargetCardinalityNone, OperationRiskReadOnly, "weekly review", "week review", "stale work", "review week", "end of week"),

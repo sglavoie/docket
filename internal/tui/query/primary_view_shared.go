@@ -130,6 +130,11 @@ func (f CompletionAgeFilter) Days() int {
 }
 
 // FormatDueDate returns a styled due date string for inline display.
+// DueSigil leads a row's deadline: the `@` capture and edit set it with.
+const DueSigil = "@"
+
+// FormatDueDate is a list row's deadline chip, led by the `@` that sets it so the
+// row spells a deadline in its own grammar.
 func FormatDueDate(task *models.Task) string {
 	if task.DueDate == nil || task.IsComplete() {
 		return ""
@@ -146,7 +151,7 @@ func FormatDueDate(task *models.Task) string {
 	}
 	// The badge's fill and padding already bound it as one date object, so it
 	// spends no columns on a calendar glyph saying so.
-	return style.Render(dateStr)
+	return style.Render(DueSigil + dateStr)
 }
 
 // DeferWakeWindow bounds how long a lapsed deferral keeps announcing that the

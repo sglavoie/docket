@@ -42,7 +42,7 @@ var completeCursorTask = []UITestAction{{Type: UITestActionKey, Key: "w"}, {Type
 func TestDepartureGhostHoldsTheCompletedRowThenCloses(t *testing.T) {
 	driver := ghostDriver(t, true)
 	obs := applyGhostSteps(t, driver, completeCursorTask...)
-	if !strings.Contains(obs.PlainScreen, "✓   Plan the weekend walk") {
+	if !strings.Contains(obs.PlainScreen, "✓    Plan the weekend walk") {
 		t.Fatalf("completion left no ghost:\n%s", obs.PlainScreen)
 	}
 	view := driver.App().crossOutliner

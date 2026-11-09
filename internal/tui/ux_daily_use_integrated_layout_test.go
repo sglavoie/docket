@@ -51,7 +51,7 @@ var uxDailyUseIntegratedCombinedStates = []uxDailyUseIntegratedCombinedState{
 		name:    "long-project-names-and-urgency",
 		why:     "a long project heading and a deadline indicator sharing one frame",
 		stage:   uxDailyUseIntegratedStageLongNamesAndUrgency,
-		require: []string{"[ux-"},
+		require: []string{"%ux-"},
 	},
 }
 

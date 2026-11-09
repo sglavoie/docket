@@ -16,7 +16,7 @@
     { "type": "assert", "label": "the state badge joins the title row", "assert": "contains", "value": "$inbox" },
     { "type": "assert", "assert": "contains", "value": "Triage support inbox" },
     { "type": "assert", "label": "the Waiting bug is filtered out", "assert": "not_contains", "value": "Fix redirect loop after logout" },
-    { "type": "assert", "label": "the Someday idea is filtered out", "assert": "not_contains", "value": "Explore social login" },
+    { "type": "assert", "label": "the Waiting idea is filtered out", "assert": "not_contains", "value": "Explore social login" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "cancel a reopened picker without touching the filter", "key": "f" },

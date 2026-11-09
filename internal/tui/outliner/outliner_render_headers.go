@@ -218,13 +218,19 @@ func renderSectionHeader(opts sectionHeaderOpts) (gutter, content string) {
 	return gutter, content
 }
 
-// liftedLabel names the lane each lifted member went to, so a header reading
-// `Inbox (1) +1 in Pinned` says where its other task is rather than only that
-// it is somewhere above.
+// liftedLabel names the lane each lifted member went to, in the order the lanes
+// are drawn, so a header reading `Inbox (1) +1 in Pinned` says where its other
+// task is rather than only that it is somewhere above.
 func liftedLabel(c LiftedCounts) string {
 	var parts []string
 	if c.Pinned > 0 {
 		parts = append(parts, fmt.Sprintf("+%d in Pinned", c.Pinned))
+	}
+	if c.Today > 0 {
+		parts = append(parts, fmt.Sprintf("+%d in Today", c.Today))
+	}
+	if c.Next > 0 {
+		parts = append(parts, fmt.Sprintf("+%d in Next", c.Next))
 	}
 	if c.Review > 0 {
 		parts = append(parts, fmt.Sprintf("+%d in Review", c.Review))
@@ -258,12 +264,12 @@ func (m *OutlinerModel) renderPinnedContextRow(viewport outlinerViewport) string
 	count := header.SectionCount
 	if !header.IsSectionHeader {
 		slug, _ := m.projectSlugForRow(header)
-		name, prefix, count = "["+slug+"]", "", 0
+		name, prefix, count = theme.ProjectToken(slug), "", 0
 	}
 	if projectID := m.Rows[viewport.startIdx].Group.ProjectID; projectID != "" {
 		if header.IsSectionHeader {
 			slug, _ := m.projectSlugForRow(OutlinerRow{ProjectID: projectID})
-			name += " › [" + slug + "]"
+			name += " › " + theme.ProjectToken(slug)
 		}
 	}
 	gutter, content := renderSectionHeader(sectionHeaderOpts{

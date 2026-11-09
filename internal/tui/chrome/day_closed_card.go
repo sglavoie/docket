@@ -73,7 +73,7 @@ func RenderDayClosedCard(spec DayClosedCardSpec, width int) string {
 		for _, task := range spec.Done[:shown] {
 			slug := ""
 			if task.ProjectSlug != "" {
-				slug = theme.MutedStyle.Render(" [" + task.ProjectSlug + "]")
+				slug = theme.MutedStyle.Render(" " + theme.ProjectToken(task.ProjectSlug))
 			}
 			room := max(contentWidth-2-lipgloss.Width(slug), 4)
 			lines = append(lines, "  "+struck.Render(textfit.TruncateIntentional(task.Title, room, "…"))+slug)

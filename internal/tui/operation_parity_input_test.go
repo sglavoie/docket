@@ -87,7 +87,7 @@ func auditInputStrategyHelp(t *testing.T, registry *operation.OperationRegistry,
 	help := registry.HelpItemsForInputStrategy(operation.InputStrategySimplified, ctx)
 	applicable := registry.InputStrategyOperations(operation.InputStrategySimplified, ctx)
 	// One row per applicable operation, except a chord whose one display key
-	// compresses several presets (`wi/g/w/p/m/d/c`), which `?` spells as one row
+	// compresses several presets (`wi/g/w/p/d/c`), which `?` spells as one row
 	// per preset so each letter is named.
 	index := 0
 	for _, descriptor := range applicable {

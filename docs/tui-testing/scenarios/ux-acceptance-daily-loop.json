@@ -14,23 +14,23 @@
       "type": "assert",
       "label": "three projects are scanned from one list, each group named by its header, or by its one task row's own label when it holds a single task",
       "assert": "contains",
-      "value": "[ux-platform-delivery] ("
+      "value": "%ux-platform-delivery ("
     },
     {
       "type": "assert",
       "assert": "contains",
-      "value": "[ux-client-rollout] ("
+      "value": "%ux-client-rollout ("
     },
     {
       "type": "assert",
       "assert": "contains",
-      "value": "[ux-support…]      Triage the duplicate support tickets"
+      "value": "%ux-support…       Triage the duplicate support tickets"
     },
     {
       "type": "assert",
       "label": "a single-task group draws no header of its own while it is open",
       "assert": "not_contains",
-      "value": "[ux-support-queue] ("
+      "value": "%ux-support-queue ("
     },
     {
       "type": "assert",
@@ -45,7 +45,7 @@
       "type": "assert",
       "label": "the summary a fold leaves behind is the same header, still naming the project",
       "assert": "contains",
-      "value": "[ux-platform-delivery]"
+      "value": "%ux-platform-delivery"
     },
     {
       "type": "assert",
@@ -90,7 +90,7 @@
       "type": "assert",
       "label": "an expanded group keeps its header, the one row naming the project",
       "assert": "contains",
-      "value": "[ux-platform-delivery] ("
+      "value": "%ux-platform-delivery ("
     },
     {
       "type": "assert",
@@ -262,7 +262,7 @@
     {
       "type": "assert",
       "assert": "contains",
-      "value": "  Today  "
+      "value": " Today  "
     },
     {
       "type": "assert",
@@ -627,7 +627,7 @@
     {
       "type": "assert",
       "assert": "contains",
-      "value": "▌  [ux-client…]   ◌ Collect the client onboarding assets"
+      "value": "▌  %ux-client…   ◌ Collect the client onboarding assets"
     },
     {
       "type": "key",

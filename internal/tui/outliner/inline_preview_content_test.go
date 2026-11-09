@@ -44,9 +44,9 @@ func TestInlinePeekStatusLineNamesWhatTheRowAbbreviates(t *testing.T) {
 		},
 		{
 			"a quiet state has no age to give",
-			&models.Task{WorkflowState: models.StateSomeday, StateChangedAt: now.Add(-90 * time.Hour)},
+			&models.Task{WorkflowState: models.StatePaused, StateChangedAt: now.Add(-90 * time.Hour)},
 			"",
-			"Status: ¿ Someday",
+			"Status: ‖ Paused",
 		},
 		{
 			"an unset priority names none",
@@ -67,7 +67,7 @@ func TestInlinePeekStatusLineNamesWhatTheRowAbbreviates(t *testing.T) {
 			"every axis at once",
 			&models.Task{WorkflowState: models.StatePaused, Priority: 1, Pinned: true, Review: true},
 			"Next",
-			"Plan: Next · Status: ‖ Paused · Priority: ◉ 1 high · Pinned · Review",
+			"Plan: Next · Status: ‖ Paused · Priority: !1 high · Pinned · Review",
 		},
 	}
 	for _, tc := range cases {
@@ -463,7 +463,7 @@ func TestInlinePeekEndsOnTheRowLegend(t *testing.T) {
 	doc := m.inlinePeekDocumentForRow(m.Rows[m.Cursor], "", 100, testPeekWindow())
 	body := ansi.Strip(strings.Join(doc.Body, "\n"))
 	last := body[strings.LastIndex(body, "\n")+1:]
-	if !strings.Contains(last, "Row: ") || !strings.Contains(last, "◉ High") || !strings.Contains(last, "Has a description") {
+	if !strings.Contains(last, "Row: ") || !strings.Contains(last, "!1 High") || !strings.Contains(last, "Has a description") {
 		t.Fatalf("legend line = %q in:\n%s", last, body)
 	}
 	if strings.Contains(last, "date ") {

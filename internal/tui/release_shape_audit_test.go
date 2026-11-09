@@ -55,15 +55,16 @@ func TestReleaseAddedNoOutlinerMode(t *testing.T) {
 // 21; the stored hidden flag lifted them to task schema 20 and catalog schema
 // 23, skipping 22, which was the enrolled marker rather than a step; catalog
 // schema 24 moved the internal directory to .docket/ and left task Markdown at
-// 20, and catalog schema 25 admitted the project alias, leaving it there too.
+// 20, and catalog schema 25 admitted the project alias, leaving it there too;
+// catalog schema 26 retired the someday state, lifting task Markdown to 21.
 // Moving
 // either number is a migration, not a refactor, so the pair is spelled here
 // rather than derived.
 func TestReleaseSchemaVersionsIncludeCheckIns(t *testing.T) {
-	if got, want := storage.CurrentTaskSchemaVersion, 20; got != want {
+	if got, want := storage.CurrentTaskSchemaVersion, 21; got != want {
 		t.Errorf("live task Markdown is schema %d, want %d", got, want)
 	}
-	if got, want := config.CurrentConfigVersion, 25; got != want {
+	if got, want := config.CurrentConfigVersion, 26; got != want {
 		t.Errorf("the catalog is schema %d, want %d", got, want)
 	}
 }

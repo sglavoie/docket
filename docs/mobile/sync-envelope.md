@@ -266,7 +266,7 @@ The rules:
 
 1. **Writers declare their needs.** A manifest's `requires` lists every
    capability its effects need. For example, a `project_document` effect at
-   schema 20 requires `project-document.v20`.
+   schema 21 requires `project-document.v21`.
 2. **Readers hold what they cannot apply.** A reader applies a manifest only if
    all of these hold: it supports `format_version`, no schema in the
    manifest's `schemas` is newer than its own, every older schema governs none

@@ -187,7 +187,7 @@ single row is a newline through the middle of the divider.
 status — each aggregated across the draft's lines on its own, so a multiline
 capture that agrees about the project and disagrees about the destination says
 `Mixed` in one field rather than in all three. The plan half is written only when
-`Destination.IsPlanning()`, because the eight lifecycle destinations already
+`Destination.IsPlanning()`, because the seven lifecycle destinations already
 spell their own status and a `Plan:` label over nothing would claim a membership
 the capture does not create. The row names words alone, no icon and no `$` token,
 since an axis that can read `Mixed` is one no sigil can spell; the preview keeps
@@ -543,7 +543,7 @@ locator form back unchanged, which is how a reference to archived or deleted
 work survives a round trip the workspace cannot resolve.
 
 The inline editor's header route is the project chip, then the ancestor
-chain down to the immediate parent; a task with no parent shows `[project]`
+chain down to the immediate parent; a task with no parent shows `%project`
 alone, never a placeholder word standing for the absence. Its footer keeps
 `Enter save · Esc cancel` required and then teaches the grammar from
 `textgrammar.GuideDefinitions(SurfaceEdit)`, so it reads in teach order: one

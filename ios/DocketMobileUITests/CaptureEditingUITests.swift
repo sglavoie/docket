@@ -625,11 +625,11 @@ final class CaptureEditingUITests: XCTestCase {
 
         // Fixing the line saves it, and the draft goes with the commit.
         clear(app, "capture.text")
-        type(app, "capture.text", "Renew passport $someday")
+        type(app, "capture.text", "Renew passport $paused")
         app.buttons["capture.save"].tap()
         requireAbsent(app.buttons["capture.save"], "the capture sheet")
         eventually("the fixed capture was written") {
-            try block("Renew passport", in: markdown("unfiled"))?.contains("state: someday") == true
+            try block("Renew passport", in: markdown("unfiled"))?.contains("state: paused") == true
         }
         XCTAssertEqual(draftFiles(), [])
 

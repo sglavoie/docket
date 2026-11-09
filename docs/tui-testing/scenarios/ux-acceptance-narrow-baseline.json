@@ -14,7 +14,7 @@
     { "type": "assert", "assert": "not_contains", "value": "? help" },
     { "type": "assert", "label": "grouping survives the width the titles do not", "assert": "contains", "value": "▾ ─────────── Pinned  (1)" },
     { "type": "assert", "label": "a lane header is its name alone, with no sigil ahead of it", "assert": "not_contains", "value": "@ Pinned" },
-    { "type": "assert", "label": "and the group header names its project whole", "assert": "contains", "value": "[ux-platform-delivery]" },
+    { "type": "assert", "label": "and the group header names its project whole", "assert": "contains", "value": "%ux-platform-delivery" },
 
     { "type": "resize", "width": 80, "height": 24 },
     { "type": "assert", "assert": "no_layout_issues" },
@@ -35,7 +35,7 @@
     { "type": "key", "key": "G" },
     { "type": "key", "key": "b" },
     { "type": "assert", "assert": "no_layout_issues" },
-    { "type": "assert", "label": "the narrow ranked row reserves both content glyphs and its project label; Peek below spells the whole title", "assert": "contains", "value": "[ux-plat…] [finance] Restore the overdue billin… ▤ 📎" },
+    { "type": "assert", "label": "the narrow ranked row reserves both content glyphs and its project label; Peek below spells the whole title", "assert": "contains", "value": "%ux-plat… ##finance Restore the overdue billing… ▤ &" },
     { "type": "assert", "label": "Peek wraps the whole title rather than eliding it", "assert": "contains", "value": "Restore the overdue billing reconciliation export" },
     { "type": "assert", "assert": "contains", "value": "the audit closes" },
     { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "↓ 16 more" },

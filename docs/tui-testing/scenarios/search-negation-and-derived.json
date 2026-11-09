@@ -22,7 +22,7 @@
     { "type": "key", "label": "the tag negation removes exactly what the tag selects", "key": "/" },
     { "type": "text", "text": "-#urgent" },
     { "type": "key", "key": "enter" },
-    { "type": "assert", "assert": "not_contains", "value": "[client-alpha] Alpha migration kickoff" },
+    { "type": "assert", "assert": "not_contains", "value": "%client-alpha Alpha migration kickoff" },
     { "type": "assert", "assert": "contains", "value": "Renew passport" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "key": "esc" },

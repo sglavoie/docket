@@ -216,10 +216,11 @@ func compactQuickEditRoute(route string, width int) string {
 }
 
 func compactQuickEditProjectChip(project string, width int) string {
-	if lipgloss.Width(project) <= width || width < 3 || !strings.HasPrefix(project, "[") || !strings.HasSuffix(project, "]") {
+	name, ok := strings.CutPrefix(project, theme.ProjectSigil)
+	if lipgloss.Width(project) <= width || width < 2 || !ok {
 		return textfit.TruncateToVisualWidth(project, width)
 	}
-	return "[" + textfit.TruncateToVisualWidth(strings.TrimSuffix(strings.TrimPrefix(project, "["), "]"), width-2) + "]"
+	return theme.ProjectToken(textfit.TruncateToVisualWidth(name, width-1))
 }
 
 func quickEditRouteLabel(task *models.Task, project *models.Project) string {
@@ -229,7 +230,7 @@ func quickEditRouteLabel(task *models.Task, project *models.Project) string {
 	}
 	// No parent shows nothing: the chip alone is the whole route, since a word
 	// standing in for the absence of a parent reads as a task named that.
-	path := []string{"[" + projectName + "]"}
+	path := []string{theme.ProjectToken(projectName)}
 	if task == nil || task.ParentID == nil || project == nil {
 		return path[0]
 	}

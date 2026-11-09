@@ -9,16 +9,20 @@ package icons
 
 import "sync/atomic"
 
+// The plain set spells a task's own values in the capture grammar's sigils —
+// `!1` priority, `*` pin, `&` attachment — so a row names each fact in the token
+// that writes it. The Nerd Font set is an explicit opt-in to pictograms and keeps
+// its icons.
 var registry = map[string]string{
 	"status.inbox": "◌", "status.backlog": "□", "status.doing": "◐",
 	"status.backlog.bold": "▣",
-	"status.waiting":      "⧗", "status.paused": "‖", "status.someday": "¿",
+	"status.waiting":      "⧗", "status.paused": "‖",
 	"status.done": "✓", "status.canceled": "✕",
-	"priority.1": "◉", "priority.2": "●", "priority.3": "◆",
+	"priority.1": "!1", "priority.2": "!2", "priority.3": "!3",
 	"github_issue":     "GH",
 	"checkbox.checked": "☑", "checkbox.unchecked": "☐",
 	"warning": "⚠", "success": "✓", "error": "✕",
-	"marker.pin": "*", "marker.attachment": "📎", "marker.description": "▤",
+	"marker.pin": "*", "marker.attachment": "&", "marker.description": "▤",
 }
 
 // nerdRegistry overrides registry keys with Nerd Font Material Design Icons
@@ -32,7 +36,6 @@ var nerdRegistry = map[string]string{
 	"status.doing":        "\U000F040D", // nf-md-play_circle_outline
 	"status.waiting":      "\U000F051F", // nf-md-timer_sand
 	"status.paused":       "\U000F03E6", // nf-md-pause_circle_outline
-	"status.someday":      "\U000F07F7", // nf-md-thought_bubble_outline
 	"status.done":         "\U000F05E1", // nf-md-check_circle_outline
 	"status.canceled":     "\U000F015A", // nf-md-close_circle_outline
 	"priority.1":          "\U000F0DBC", // nf-md-chevron_triple_up

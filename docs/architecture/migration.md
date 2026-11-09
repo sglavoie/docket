@@ -6,7 +6,7 @@ Workspace recovery first runs the schema-24 layout activation, which moves a
 pre-v24 internal `.tt/` to `.docket/` at whatever schema it holds, because every
 reader now looks under `.docket/` (steps 40–41). It then reads the catalog
 payload schema before ordinary loading.
-Schema 25 proceeds directly. A supported schema-4 split-domain workspace first
+Schema 26 proceeds directly. A supported schema-4 split-domain workspace first
 crosses the schema-5 boundary, a supported schema-5 workspace then enters the
 schema-6 consolidation path, a schema-6 workspace crosses the schema-7
 scope-folding path, a schema-7 workspace crosses the schema-8 tag path, a
@@ -23,8 +23,9 @@ the schema-19 project-comment path, a schema-19 workspace crosses the schema-20
 checklist-origin path, a schema-20 workspace crosses the schema-21 check-in
 path, and a schema-21 workspace, or a working copy enrolled in sync at schema
 22, crosses the schema-23 hidden-flag path, a schema-23 workspace crosses the
-schema-24 layout path, and a schema-24 workspace finishes on the schema-25
-project-alias path:
+schema-24 layout path, a schema-24 workspace crosses the schema-25
+project-alias path, and a schema-25 workspace finishes on the schema-26
+retire-someday path:
 
 1. Decode the v4 catalog, planning, settings, automation, machine state, task
    Markdown, completed archives, notes, blockers, and legacy indexes with
@@ -257,6 +258,19 @@ project-alias path:
    opener waits and then finds the boundary crossed. The `.tt/` tombstone keeps
    declaring 24: it only has to be newer than every build that reads `.tt/`,
    and those stop at 23.
+43. `MigrateWorkspaceToV26` retires the someday state. It reads every
+   catalog-owned project document, parked and archived ones included, as strict
+   schema 20 before planning a byte, then lifts each to task Markdown schema 21
+   through `V21ProjectDocumentFromV20`, which rewrites `state: someday` as
+   `state: backlog` and moves nothing else: the state clock, the touch time,
+   and planning are carried as they were, since retiring a word is no lifecycle
+   transition anyone made. It publishes `pre-retire-someday-v26-<UTC>.tar.gz`
+   plus an audit naming how many tasks moved, then commits every document and
+   the catalog at 26 in one transaction under
+   `.docket/transactions/v26-activation.lock`. The task schema moves so an
+   un-upgraded peer's `state: someday` document is held by sync rather than
+   applied to a reader that refuses it. Saved lenses are not rewritten; a
+   `$someday` query is refused with `$backlog` guidance when opened.
 
 Interrupted activation recovery reads the two directories. A stage of either
 kind is never authoritative and is deleted on sight. No `.docket/` and a live
@@ -290,7 +304,7 @@ with no `lenses.json` stages nothing: the machine-local collection it falls back
 to is lifted on every load and rewritten on that machine's next commit, which is
 the only upgrade path a file this transaction does not own can have.
 
-Each boundary is idempotent: repeated schema-25 startup neither reconverts data
+Each boundary is idempotent: repeated schema-26 startup neither reconverts data
 nor creates another rollback pair. Corrupt or future input and an existing
 `unfiled` project/directory fail before mutation with concrete rename/move guidance.
 No boundary rewrites `.docket/conflicts/` (the v24 move copies it byte for byte), so a bundle recorded before one keeps the

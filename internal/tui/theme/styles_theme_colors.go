@@ -140,7 +140,7 @@ func rebuildAccentColors() {
 		visible := func(index int) color.Color { return lipgloss.Color(legibleHex(p.Palette[index], p.Background)) }
 		AccentCapture, AccentTriage, AccentPlan = visible(1), visible(6), visible(2)
 		AccentWork, AccentExecute, AccentSupport, AccentSearch = visible(3), visible(6), visible(8), visible(5)
-		ColorViewStandby, ColorViewSomeday = visible(5), visible(13)
+		ColorViewStandby = visible(5)
 		ColorPurple, ColorOrange = visible(5), visible(3)
 		ColorRuleKeyword, ColorRuleOperator = visible(6), visible(5)
 		SectionColorPalette = []SectionColorEntry{
@@ -151,7 +151,7 @@ func rebuildAccentColors() {
 		}
 		return
 	}
-	ColorViewStandby, ColorViewSomeday = lipgloss.Color("#bb9af7"), lipgloss.Color("#9d7cd8")
+	ColorViewStandby = lipgloss.Color("#bb9af7")
 	ColorPurple, ColorOrange = lipgloss.Color("#bb9af7"), lipgloss.Color("#ff9e64")
 	ColorRuleKeyword, ColorRuleOperator = lipgloss.Color("#7dcfff"), lipgloss.Color("#bb9af7")
 	SectionColorPalette = defaultSectionColorPalette()

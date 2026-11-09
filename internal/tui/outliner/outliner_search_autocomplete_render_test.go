@@ -129,15 +129,16 @@ func TestSearchAutocompleteRenderFitsNarrowAndMinimumLayouts(t *testing.T) {
 	}
 }
 
-// TestSearchAutocompleteShowsEveryDestinationWhenRoomAllows is the reason for
-// the ten-row limit: the ten $ destinations are listed whole, with no hint.
+// TestSearchAutocompleteShowsEveryDestinationWhenRoomAllows holds the $
+// destinations, seven states and two plans, inside the ten-row limit: they are
+// listed whole, with no hint.
 func TestSearchAutocompleteShowsEveryDestinationWhenRoomAllows(t *testing.T) {
 	outliner := searchACWideOutliner(3)
 	outliner.SetSize(120, 40)
 	typeSearchAC(outliner, "$")
 	items := len(outliner.Search.Autocomplete.Ac.Items)
-	if items != outlinerSearchSuggestionLimit {
-		t.Fatalf("$ offers %d destinations, want %d", items, outlinerSearchSuggestionLimit)
+	if items != 9 || items > outlinerSearchSuggestionLimit {
+		t.Fatalf("$ offers %d destinations, want all 9 within the %d-row limit", items, outlinerSearchSuggestionLimit)
 	}
 	rendered := ansi.Strip(outliner.renderSearchAutocompleteDropdown(120))
 	if got := len(strings.Split(rendered, "\n")); got != items {

@@ -13,7 +13,7 @@
     { "type": "key", "key": "enter" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "Mix Quiet Planning · All" },
-    { "type": "assert", "label": "the one row is the focused header, above the empty explanation", "assert": "contains", "value": "[mix-quiet-planning]" },
+    { "type": "assert", "label": "the one row is the focused header, above the empty explanation", "assert": "contains", "value": "%mix-quiet-planning" },
     { "type": "assert", "assert": "contains", "value": "No tasks yet. Press a to capture one" },
     { "type": "assert", "assert": "no_layout_issues" },
 
@@ -75,7 +75,7 @@
 
     { "type": "key", "label": "Esc closes the panel onto the header it was opened from", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "contains", "value": "[mix-quiet-planning]" },
+    { "type": "assert", "assert": "contains", "value": "%mix-quiet-planning" },
 
     { "type": "key", "label": "b Peeks the same project, its own name first", "key": "b" },
     { "type": "assert", "assert": "contains", "value": "Mix Quiet Planning" },
@@ -105,7 +105,7 @@
     { "type": "assert", "assert": "not_contains", "value": "↑ " },
     { "type": "key", "label": "and the full page moves further before it clamps", "key": "ctrl+f" },
     { "type": "assert", "assert": "contains", "value": "↑ " },
-    { "type": "assert", "label": "the header the pane belongs to never leaves the screen", "assert": "contains", "value": "[mix-quiet-planning]" },
+    { "type": "assert", "label": "the header the pane belongs to never leaves the screen", "assert": "contains", "value": "%mix-quiet-planning" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "key": "ctrl+b" },
     { "type": "assert", "assert": "not_contains", "value": "↑ " },
@@ -114,7 +114,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "Mix Quiet Planning · All" },
     { "type": "key", "key": "esc" },
-    { "type": "assert", "label": "and the cross-project grouping comes back whole, its singleton group drawn as the slug-led task", "assert": "contains", "value": "[mix-active…]   Mix rollout plan" },
+    { "type": "assert", "label": "and the cross-project grouping comes back whole, its singleton group drawn as the slug-led task", "assert": "contains", "value": "%mix-active…   Mix rollout plan" },
     { "type": "key", "label": "where the same key opens the task's own comments", "key": ";" },
     { "type": "assert", "assert": "view", "value": "TaskComments" },
     { "type": "assert", "assert": "contains", "value": "Mix rollout plan" },

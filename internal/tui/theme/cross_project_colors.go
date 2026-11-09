@@ -96,9 +96,17 @@ func ProjectColorStyle(project *models.Project) lipgloss.Style {
 	return MutedStyle
 }
 
-// ProjectLabel keeps identity color on the brackets, leaving the name quiet
-// beside task titles and attention cues. Its width and plain text are unchanged.
+// ProjectSigil leads every project label a surface draws: the `%` the capture,
+// edit, and search grammar spell a project with, so the row names a project in
+// the token a reader would type to route work there.
+const ProjectSigil = "%"
+
+// ProjectToken is a project label's plain text, the sigil and the name, for a
+// surface that measures or styles it whole.
+func ProjectToken(name string) string { return ProjectSigil + name }
+
+// ProjectLabel keeps identity color on the sigil, leaving the name quiet beside
+// task titles and attention cues. Its width is ProjectToken's.
 func ProjectLabel(project *models.Project, name string) string {
-	marker := ProjectColorStyle(project)
-	return marker.Render("[") + MutedStyle.Render(name) + marker.Render("]")
+	return ProjectColorStyle(project).Render(ProjectSigil) + MutedStyle.Render(name)
 }

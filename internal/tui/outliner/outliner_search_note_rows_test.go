@@ -161,12 +161,12 @@ func TestNoteRowRendersWithoutTaskFurniture(t *testing.T) {
 	line := outliner.renderOutlinerNoteRow(row, false, rowWidth, 0, nil)
 	plain := ansi.Strip(line)
 	for _, want := range []string{noteRowGlyph, entry.row.Note.Title,
-		"[alpha]", matchSourceLabels[MatchSourceNote]} {
+		"%alpha", matchSourceLabels[MatchSourceNote]} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("note row lost %q:\n%q", want, plain)
 		}
 	}
-	if strings.Index(plain, "[alpha]") > strings.Index(plain, entry.row.Note.Title) {
+	if strings.Index(plain, "%alpha") > strings.Index(plain, entry.row.Note.Title) {
 		t.Fatalf("note row trails its title with the label instead of leading with it:\n%q", plain)
 	}
 	for _, state := range []models.WorkflowState{

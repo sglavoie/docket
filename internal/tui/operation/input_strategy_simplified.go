@@ -280,16 +280,16 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: OperationTaskSetPriority, Sequence: []string{"!", "3"}, DisplayKey: "!0-3", HintLabel: "low", PresetValue: 3, HasPresetValue: true},
 			// Workflow is the one chord whose prefix is a letter rather than the
 			// sigil its terminals write. `$` stays the destination sigil on every
-			// typed surface, but these ten acts are the most-pressed chord of the
+			// typed surface, but these nine acts are the most-pressed chord of the
 			// daily loop and a shifted key on the number row is the wrong home for
 			// them; `w` is the unshifted initial of the word the chord is named
 			// after, and the sigil grammar had already retired it. The trade is
 			// made once, here, and the states facet below follows the keyboard
 			// rather than the sigil so `w` and `fw` still read as one family.
 			//
-			// The ten terminals are declared as two runs because they are two
+			// The nine terminals are declared as two runs because they are two
 			// kinds of act: `wn` and `wt` commit a task to a planning collection
-			// and leave it in Backlog, while the other eight set the lifecycle
+			// and leave it in Backlog, while the other seven set the lifecycle
 			// state outright. Declaration order is the only thing that changed —
 			// every sequence, operation, and preset is the one it always was, so
 			// the division is what the which-key row reads and never what the
@@ -297,14 +297,13 @@ func SimplifiedInputStrategy() InputStrategy {
 			// run are two the narrow row never sheds.
 			{HelpGroup: "Plan", HelpOrder: 101, OperationID: OperationCoreNext, Sequence: []string{"w", "n"}, DisplayKey: "wn", HintLabel: "next", HintGroup: chrome.PlanHintGroup},
 			{HelpGroup: "Plan", HelpOrder: 100, OperationID: OperationCoreToday, Sequence: []string{"w", "t"}, DisplayKey: "wt", HintLabel: "today", HintGroup: chrome.PlanHintGroup},
-			{HelpGroup: "Other statuses", HelpOrder: 350, OperationID: OperationTaskSetState, Sequence: []string{"w", "i"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "inbox", HintGroup: chrome.StatusHintGroup, HelpLabel: "Move to Inbox", PresetValue: models.StateInbox, HasPresetValue: true},
+			{HelpGroup: "Other statuses", HelpOrder: 350, OperationID: OperationTaskSetState, Sequence: []string{"w", "i"}, DisplayKey: "wi/g/w/p/d/c", HintLabel: "inbox", HintGroup: chrome.StatusHintGroup, HelpLabel: "Move to Inbox", PresetValue: models.StateInbox, HasPresetValue: true},
 			{HelpGroup: "Other statuses", HelpOrder: 356, OperationID: OperationCoreBacklog, Sequence: []string{"w", "b"}, DisplayKey: "wb", HintLabel: "backlog", HintGroup: chrome.StatusHintGroup},
-			{HelpGroup: "Status", HelpOrder: 200, OperationID: OperationTaskSetState, Sequence: []string{"w", "g"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "doing", HintGroup: chrome.StatusHintGroup, HelpLabel: "Start Task", PresetValue: models.StateDoing, HasPresetValue: true},
-			{HelpGroup: "Other statuses", HelpOrder: 351, OperationID: OperationTaskSetState, Sequence: []string{"w", "w"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "waiting", HintGroup: chrome.StatusHintGroup, HelpLabel: "Wait on Task", PresetValue: models.StateWaiting, HasPresetValue: true},
-			{HelpGroup: "Other statuses", HelpOrder: 352, OperationID: OperationTaskSetState, Sequence: []string{"w", "p"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "paused", HintGroup: chrome.StatusHintGroup, HelpLabel: "Pause Task", PresetValue: models.StatePaused, HasPresetValue: true},
-			{HelpGroup: "Other statuses", HelpOrder: 353, OperationID: OperationTaskSetState, Sequence: []string{"w", "m"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "someday", HintGroup: chrome.StatusHintGroup, HelpLabel: "Save for Someday", PresetValue: models.StateSomeday, HasPresetValue: true},
-			{HelpGroup: "Status", HelpOrder: 201, OperationID: OperationTaskSetState, Sequence: []string{"w", "d"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "done", HintGroup: chrome.StatusHintGroup, HintKeep: true, HelpLabel: "Complete Task", PresetValue: models.StateDone, HasPresetValue: true},
-			{HelpGroup: "Other statuses", HelpOrder: 354, OperationID: OperationTaskSetState, Sequence: []string{"w", "c"}, DisplayKey: "wi/g/w/p/m/d/c", HintLabel: "canceled", HintGroup: chrome.StatusHintGroup, HelpLabel: "Cancel Task", PresetValue: models.StateCanceled, HasPresetValue: true},
+			{HelpGroup: "Status", HelpOrder: 200, OperationID: OperationTaskSetState, Sequence: []string{"w", "g"}, DisplayKey: "wi/g/w/p/d/c", HintLabel: "doing", HintGroup: chrome.StatusHintGroup, HelpLabel: "Start Task", PresetValue: models.StateDoing, HasPresetValue: true},
+			{HelpGroup: "Other statuses", HelpOrder: 351, OperationID: OperationTaskSetState, Sequence: []string{"w", "w"}, DisplayKey: "wi/g/w/p/d/c", HintLabel: "waiting", HintGroup: chrome.StatusHintGroup, HelpLabel: "Wait on Task", PresetValue: models.StateWaiting, HasPresetValue: true},
+			{HelpGroup: "Other statuses", HelpOrder: 352, OperationID: OperationTaskSetState, Sequence: []string{"w", "p"}, DisplayKey: "wi/g/w/p/d/c", HintLabel: "paused", HintGroup: chrome.StatusHintGroup, HelpLabel: "Pause Task", PresetValue: models.StatePaused, HasPresetValue: true},
+			{HelpGroup: "Status", HelpOrder: 201, OperationID: OperationTaskSetState, Sequence: []string{"w", "d"}, DisplayKey: "wi/g/w/p/d/c", HintLabel: "done", HintGroup: chrome.StatusHintGroup, HintKeep: true, HelpLabel: "Complete Task", PresetValue: models.StateDone, HasPresetValue: true},
+			{HelpGroup: "Other statuses", HelpOrder: 354, OperationID: OperationTaskSetState, Sequence: []string{"w", "c"}, DisplayKey: "wi/g/w/p/d/c", HintLabel: "canceled", HintGroup: chrome.StatusHintGroup, HelpLabel: "Cancel Task", PresetValue: models.StateCanceled, HasPresetValue: true},
 			// Hidden is not a status, but moving a task out of every view is a
 			// workflow act and the chord has two headings and no third word, so it
 			// closes the Status run as the entry the narrow row sheds first.
@@ -410,11 +409,17 @@ func SimplifiedInputStrategy() InputStrategy {
 			// no cursor task, so it joins no Task run a header row sheds, and it is
 			// declared last and ungrouped so the floor gives it up first: the toast
 			// that needs it spells it whole.
+			// The day is one arc and one run: the morning pass, the work in hand,
+			// the evening pass, and the week's, in the order a day meets them. Each
+			// is its own act on its own key; none reads the clock to choose, so the
+			// greeting is what points at the one the hour asks for.
+			{OperationID: OperationCoreStartDay, Sequence: []string{"g", "m"}, DisplayKey: "gm", HintLabel: "start day", HintGroup: chrome.GotoDayHintGroup},
+			{OperationID: OperationCoreOpenNow, Sequence: []string{"g", "d"}, DisplayKey: "gd", HintLabel: "now", HintGroup: chrome.GotoDayHintGroup},
+			{OperationID: OperationCoreCloseDay, Sequence: []string{"g", "e"}, DisplayKey: "ge", HintLabel: "close day", HintGroup: chrome.GotoDayHintGroup},
+			{OperationID: OperationCoreReviewWeek, Sequence: []string{"g", "W"}, DisplayKey: "gW", HintLabel: "review week", HintGroup: chrome.GotoDayHintGroup},
 			// The week browse is Today's alone and names no cursor task, so it is
 			// ungrouped beside gl and shed with it at the floor.
 			{OperationID: OperationCoreBrowseWeek, Sequence: []string{"g", "w"}, DisplayKey: "gw", HintLabel: "week ahead"},
-			// The Now screen names its own task, so it is ungrouped beside gw.
-			{OperationID: OperationCoreOpenNow, Sequence: []string{"g", "d"}, DisplayKey: "gd", HintLabel: "now"},
 			{OperationID: OperationCoreGotoCaptured, Sequence: []string{"g", "l"}, DisplayKey: "gl", HintLabel: "last capture"},
 			{OperationID: OperationCoreScrollCursorTop, Sequence: []string{"z", "t"}, DisplayKey: "zt", HintLabel: "row to top"},
 			{OperationID: OperationCoreScrollCursorMiddle, Sequence: []string{"z", "z"}, DisplayKey: "zz", HintLabel: "row to middle"},
@@ -424,7 +429,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{Sequence: []string{"!"}, HintLabel: "priority", FooterRank: 8, FooterLabel: "priority"},
 			// Workflow is the one chord among the leading six: moving work between
 			// plans and states is what the daily loop is, and the chord's own
-			// which-key row is what teaches the ten terminals once it is pressed.
+			// which-key row is what teaches the nine terminals once it is pressed.
 			{Sequence: []string{"w"}, HintLabel: "workflow", FooterRank: 2, FooterLabel: "workflow"},
 			{Sequence: []string{"f"}, HintLabel: "filter", FooterRank: 19, FooterLabel: "filter"},
 			{Sequence: []string{"f", "!"}, HintLabel: "priority threshold", HintGroup: chrome.FilterFieldHintGroup},

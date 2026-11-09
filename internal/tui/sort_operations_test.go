@@ -93,7 +93,8 @@ func TestSortAxisOrdersTasksWithinTheirGroup(t *testing.T) {
 // Pinned follows the axis like every other section, and that clearing it gives
 // the order the user built by hand back.
 func TestSortAxisOrdersPinnedWithPinOrderBreakingTies(t *testing.T) {
-	driver := sortDriver(t, FixtureRich, "end", "l", "end", "*")
+	// Explore social login is the last row, in Waiting, so pin it first.
+	driver := sortDriver(t, FixtureRich, "end", "*")
 	driver.Wait(defaultWaitTimeout)
 	// Three rows below the top: the Pinned lane header, the one row it holds,
 	// and the Doing lane header, then Doing's one task. Both lanes hold a single

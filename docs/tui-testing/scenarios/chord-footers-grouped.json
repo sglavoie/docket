@@ -22,7 +22,7 @@
     {"type": "command", "label": "open every lane so a task row is in reach", "command": "Clear All Folds"},
     {"type": "key", "key": "home"},
     {"type": "key", "label": "onto the first task, which carries its project label in place of a header", "key": "j"},
-    {"type": "assert", "assert": "contains", "value": "[rich…]     Build login form"},
+    {"type": "assert", "assert": "contains", "value": "%rich…      Build login form"},
     {"type": "key", "label": "open the go-to chord over a task row", "key": "g"},
     {"type": "assert", "label": "cursor-top stands ahead of the modes, unheaded", "assert": "contains", "value": "g… · g top · Mode: a all · A agenda · i inbox · t today"},
     {"type": "assert", "assert": "contains", "value": "b backlog · @ due · r recent · Task: p task project"},
@@ -32,7 +32,8 @@
     {"type": "assert", "assert": "no_layout_issues"},
     {"type": "resize", "width": 140, "height": 20},
     {"type": "assert", "assert": "contains", "value": "r recent · Task: p task project · P parent task"},
-    {"type": "assert", "label": "the sync pair returns with its heading", "assert": "contains", "value": "~ related task · Sync: s sync now · c conflicts · w week ahead · d now · l last capture · Esc cancel"},
+    {"type": "assert", "label": "the sync pair returns with its heading", "assert": "contains", "value": "~ related task · Sync: s sync now · c conflicts · Day:"},
+    {"type": "assert", "label": "the day's passes and the work in hand are one run, in the order a day meets them", "assert": "contains", "value": "Day: m start day · d now · e close day · W review week · w week ahead · l last capture"},
     {"type": "assert", "assert": "no_layout_issues"},
     {"type": "key", "key": "esc"},
     {"type": "assert", "assert": "not_contains", "value": "Mode:"}

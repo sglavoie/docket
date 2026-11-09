@@ -6,7 +6,7 @@
     { "type": "key", "label": "launch folds Backlog and seats the cursor on its header, so open it", "key": "l" },
     { "type": "key", "label": "step onto its first task, which has no parent", "key": "j" },
     { "type": "key", "label": "edit the task inline", "key": "e" },
-    { "type": "assert", "label": "no parent shows nothing: the route is the project chip alone", "assert": "contains", "value": "EDIT TASK · [client-alpha] · backlog" },
+    { "type": "assert", "label": "no parent shows nothing: the route is the project chip alone", "assert": "contains", "value": "EDIT TASK · %client-alpha · backlog" },
     { "type": "assert", "assert": "not_contains", "value": "› root" },
     { "type": "assert", "label": "the required pair leads the footer", "assert": "contains", "value": "Enter save · Esc cancel · !1-3 priority · #tag tag" },
     { "type": "assert", "label": "teach order puts context beside tags, before dates", "assert": "contains", "value": "##ctx context · @date due" },
@@ -17,7 +17,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "resize", "width": 60, "height": 20 },
-    { "type": "assert", "label": "the chip still stands alone at the minimum", "assert": "contains", "value": "[client-alpha]" },
+    { "type": "assert", "label": "the chip still stands alone at the minimum", "assert": "contains", "value": "%client-alpha" },
     { "type": "assert", "assert": "not_contains", "value": "› root" },
     { "type": "assert", "assert": "contains", "value": "Enter save · Esc cancel" },
     { "type": "assert", "assert": "no_layout_issues" },

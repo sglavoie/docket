@@ -12,10 +12,10 @@
     { "type": "assert", "assert": "contains", "value": "Launch platform" },
     { "type": "key", "label": "the ranked list keeps the index the outline cursor held, so take its first row", "key": "home" },
     { "type": "key", "label": "leave search on the result and focus it", "key": "enter" },
-    { "type": "assert", "assert": "contains", "value": "Focus: [Rich Project] › Launch platform" },
+    { "type": "assert", "assert": "contains", "value": "Focus: Rich Project › Launch platform" },
     { "type": "assert", "assert": "not_contains", "value": "Search:" },
     { "type": "key", "label": "unwind onto the result's own ordinary row", "key": "esc" },
-    { "type": "assert", "assert": "not_contains", "value": "Focus: [Rich Project] › Launch platform" },
+    { "type": "assert", "assert": "not_contains", "value": "Focus: Rich Project › Launch platform" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

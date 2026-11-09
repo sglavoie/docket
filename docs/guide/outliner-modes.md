@@ -19,28 +19,30 @@ and so does pressing any key while the workspace is still loading.
 All mode shows open, undeferred work in this order:
 
 ```text
-Pinned, Today, Doing, Review, Inbox, Next, Paused, Backlog, Waiting, Someday
+Pinned, Today, Doing, Review, Inbox, Next, Paused, Backlog, Waiting
 ```
 
-A lifecycle section — Doing, Inbox, Backlog, Waiting, Paused, Someday, and Done
+A lifecycle section — Doing, Inbox, Backlog, Waiting, Paused, and Done
 or Canceled when a filter shows them — already names its state, so a task in
 its own section leaves its state glyph's column blank. A glyph tinted by a
 semantic tag still draws, and Pinned, Today, Next, and Review rows, like a child
 whose state differs from its section, keep theirs.
 
-Each launch opens with the Backlog and Someday sections folded, so the first
-screen leads with work already in motion; each header still counts what it
-hides, and `l` or `s` opens it. Only a launch folds them: `Esc`, `0`, and a reload leave it as you
+Each launch opens with the Backlog section folded, so the first screen leads
+with work already in motion; its header still counts what it hides, and `l`
+or `s` opens it. Only a launch folds it: `Esc`, `0`, and a reload leave it as you
 last set it. When the whole outline fits with room to spare, the launch also
 opens Peek on the task the cursor landed on; `b` closes it as usual, and nothing
 reopens it.
 
-A task appears once in All, so Pinned and Review lift their rows out of the
-section they would otherwise sit in, and that section says so after its count:
-`Inbox (1) +1 in Pinned` is one inbox task here and one drawn in Pinned above
-it; a task lifted into Review reads `+1 in Review`. That is
-what keeps a header in step with the workspace pulse, which counts `inbox 2`
-wherever the rows are drawn.
+A task appears once in All, so Pinned, Today, Next, and Review lift their rows
+out of the state section they would otherwise sit in, and that section says so
+after its count: `Inbox (1) +1 in Pinned` is one inbox task here and one drawn
+in Pinned above it, and `Doing (1) +2 in Today` is one task in Doing here and
+two more planned for Today; a task lifted into Review reads `+1 in Review`.
+That is what keeps a header in step with the workspace pulse, which counts
+`inbox 2` wherever the rows are drawn, and with the Now card's `+2 more in
+Doing`.
 
 Pinned leads All, Agenda, and Today. Inbox, Next, Backlog, Due, and Recent each answer
 one narrow question and show no Pinned section, so their own order stays whole;
@@ -73,7 +75,7 @@ Press `2` (or `gA`) to jump to it from anywhere, or `Tab` once from All. It is
 built exactly as All is, so a task is in Agenda when All draws it in one of those
 lanes and nowhere else: the same claim order, sort, project groups, folds, and
 Peek, and a task due today or overdue is there through Today even when nothing
-planned it. Inbox, Paused, Backlog, Waiting, and Someday are left out, and so are
+planned it. Inbox, Paused, Backlog, and Waiting are left out, and so are
 Done and Canceled even when a filter asks for them. What it leaves out is still
 counted: under its rows, wherever the window has room, a muted line such as
 `Not on the agenda: Inbox 4 · Backlog 20 · Waiting 3 · ga All` says how much sits
@@ -121,9 +123,9 @@ stops. Each routing is its own change in the undo history, its feedback is the
 row's own, and sorting the last Inbox task still earns `Inbox zero`. The order
 is fixed when the pass opens, a selection refuses it, and the pass closes by
 itself after the last card. The morning greeting points at it when the Inbox
-holds work and nothing is overdue: `2 in Inbox to sort (I triage)`.
+holds work and nothing is overdue: `the Inbox wants sorting (I triage)`.
 
-In the morning, Task → **Start the Day…** walks what the day has to decide,
+In the morning, `gm` (or Task → **Start the Day…**) walks what the day has to decide,
 under `Start the day`. It switches the view to Today, then shows one card for
 each overdue task Today draws, then each task Today's Suggested lane offers.
 `t` plans it for Today, `@` gives it a new date, `n` sends it to Next, `b` to
@@ -134,7 +136,7 @@ Today now holds, what the pass planned, rescheduled, set aside, or finished,
 anything still overdue, and the way into the work (`wg`, then `gd`). The
 morning greeting points at it when something is overdue or nothing is planned.
 
-At the end of the day, Task → **Close the Day…** walks what Today still holds
+At the end of the day, `ge` (or Task → **Close the Day…**) walks what Today still holds
 the same way, under `Close the day`. It switches the view to Today, then shows
 one card for each open task Today draws as the day's own, planned or dated,
 never the Suggested lane. Every card opens on what the day already finished,
@@ -156,7 +158,7 @@ and `u` returns to the last card. A day with nothing left open goes straight
 to that card. Each routing is the row's own change, with its own undo entry
 and feedback.
 
-Once a week, Task → **Review the Week…** walks the work a week lets go quiet,
+Once a week, `gW` (or Task → **Review the Week…**) walks the work a week lets go quiet,
 under `Review the week`. It switches the view to All, then shows one card for
 each task All draws that is overdue, in Doing for a week or more, Waiting a
 week or more with no check-in, or in Next and untouched for two weeks, in that
@@ -198,21 +200,21 @@ live workspace, so a deadline moved with `-` or `+` moves its mark on the
 strip at once.
 
 Every mode groups its tasks by project when you are looking at more than one
-project. Each group opens with a foldable `[slug] (count)` header, and its
+project. Each group opens with a foldable `%slug (count)` header, and its
 tasks sit one level beneath it without repeating the project's name; `h` folds
 the cursor's own group down to that header once nothing nearer — a checklist,
 children, a parent — is left to fold, and `p` folds or opens every project group
 at once. A group holding a single top-level task draws no header while it is
-open: that task's row leads with the `[slug]` instead, with its checkbox aligned
+open: that task's row leads with the `%slug` instead, with its checkbox aligned
 with the other projects' tasks and its own subtasks beneath it. Every such
-row pads its `[slug]` to one shared column, as wide as the longest slug of any
+row pads its `%slug` to one shared column, as wide as the longest slug of any
 project in view, folded sections included, so their titles line up; below 60
 columns the slug stays inline. Folding it with
 `h` or `p` brings the header back as the summary,
 and `l` on that header merges it into the row again. On that row the task keys
 answer, so to act on the project itself — edit it, tag it, Peek it, or `Enter`
 it — fold the group with `h` and press the key on its header, or use `P`. Focus a single project and those
-per-group headers give way to one `[slug]` header at the top
+per-group headers give way to one `%slug` header at the top
 of the projection. That one is context rather than a group: it carries no fold
 arrow and no count, `h` and `l` do nothing on it, and `Enter` has nowhere to go
 because you are already inside that project. What it does carry is the project

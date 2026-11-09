@@ -28,10 +28,10 @@ anything else.
 
 | Artifact | Path | Format | Synced |
 | --- | --- | --- | --- |
-| Workspace catalog | `.docket/workspace.json` | domain envelope 1, catalog payload schema 25 | yes |
+| Workspace catalog | `.docket/workspace.json` | domain envelope 1, catalog payload schema 26 | yes |
 | Planning | `.docket/planning.json` | domain envelope 1 | yes |
 | Named lenses | `.docket/lenses.json` | domain envelope 1 | yes |
-| Project document | `projects/<slug>/tasks.md` | task Markdown schema 20 | yes |
+| Project document | `projects/<slug>/tasks.md` | task Markdown schema 21 | yes |
 | Project notes | `projects/<slug>/notes/*.md` | YAML frontmatter + Markdown | yes |
 | Global notes | `.docket/global-notes/*.md` | YAML frontmatter + Markdown | yes |
 | Attachment bytes | `projects/<slug>/.attachments/<task-hash>/<file>` | opaque bytes | yes |

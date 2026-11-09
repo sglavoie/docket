@@ -148,7 +148,7 @@ func TestV25MigrationRefusesANewerCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	newer := bytes.Replace(source, []byte(`"schema_version": 24,`), []byte(`"schema_version": 26,`), 1)
+	newer := bytes.Replace(source, []byte(`"schema_version": 24,`), []byte(`"schema_version": 27,`), 1)
 	if writeErr := os.WriteFile(catalogPath, newer, FilePermissions); writeErr != nil {
 		t.Fatal(writeErr)
 	}

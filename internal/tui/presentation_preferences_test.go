@@ -184,4 +184,4 @@ func TestNerdGlyphsKeepEveryLineItsWidth(t *testing.T) {
 
 // nerdGlyphsSelected reads the process-wide switch back through Get, the one
 // way production code reads it.
-func nerdGlyphsSelected() bool { return icons.Get("status.someday") != "¿" }
+func nerdGlyphsSelected() bool { return icons.Get("status.paused") != "‖" }

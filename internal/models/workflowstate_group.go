@@ -14,7 +14,6 @@ const (
 	StateGroupBacklog  WorkflowStateGroup = "backlog"
 	StateGroupWaiting  WorkflowStateGroup = "waiting"
 	StateGroupPaused   WorkflowStateGroup = "paused"
-	StateGroupSomeday  WorkflowStateGroup = "someday"
 	StateGroupDone     WorkflowStateGroup = "done"
 	StateGroupCanceled WorkflowStateGroup = "canceled"
 )
@@ -33,7 +32,6 @@ const (
 	StateThemeBacklog  WorkflowStateThemeRole = "backlog"
 	StateThemeWaiting  WorkflowStateThemeRole = "waiting"
 	StateThemePaused   WorkflowStateThemeRole = "paused"
-	StateThemeSomeday  WorkflowStateThemeRole = "someday"
 	StateThemeComplete WorkflowStateThemeRole = "complete"
 	StateThemeCanceled WorkflowStateThemeRole = "canceled"
 )
@@ -50,12 +48,11 @@ func AllModeWorkflowStateGroups() []WorkflowStateGroup {
 		StateGroupPaused,
 		StateGroupBacklog,
 		StateGroupWaiting,
-		StateGroupSomeday,
 	}
 }
 
 // AgendaModeWorkflowStateGroups is the head of All's order that Agenda keeps:
-// the planned and started work. Inbox, Paused, Backlog, Waiting, and Someday
+// the planned and started work. Inbox, Paused, Backlog, and Waiting
 // are the work not yet decided on, so Agenda leaves them, and terminal work, to
 // All.
 func AgendaModeWorkflowStateGroups() []WorkflowStateGroup {
@@ -74,7 +71,6 @@ func AgendaLeavesOutWorkflowStateGroups() []WorkflowStateGroup {
 		StateGroupPaused,
 		StateGroupBacklog,
 		StateGroupWaiting,
-		StateGroupSomeday,
 	}
 }
 
@@ -83,7 +79,7 @@ func (g WorkflowStateGroup) IsValid() bool {
 	switch g {
 	case StateGroupToday, StateGroupDoing, StateGroupInbox, StateGroupNext,
 		StateGroupBacklog, StateGroupWaiting, StateGroupPaused,
-		StateGroupSomeday, StateGroupDone, StateGroupCanceled:
+		StateGroupDone, StateGroupCanceled:
 		return true
 	}
 	return false
@@ -112,8 +108,6 @@ func (g WorkflowStateGroup) Label() string {
 		return "Waiting"
 	case StateGroupPaused:
 		return "Paused"
-	case StateGroupSomeday:
-		return "Someday"
 	case StateGroupDone:
 		return "Done"
 	case StateGroupCanceled:
@@ -140,8 +134,6 @@ func (g WorkflowStateGroup) ThemeRole() WorkflowStateThemeRole {
 		return StateThemeWaiting
 	case StateGroupPaused:
 		return StateThemePaused
-	case StateGroupSomeday:
-		return StateThemeSomeday
 	case StateGroupDone:
 		return StateThemeComplete
 	case StateGroupCanceled:
@@ -165,8 +157,6 @@ func WorkflowStateGroupForState(state WorkflowState) WorkflowStateGroup {
 		return StateGroupWaiting
 	case StatePaused:
 		return StateGroupPaused
-	case StateSomeday:
-		return StateGroupSomeday
 	case StateDone:
 		return StateGroupDone
 	case StateCanceled:
@@ -192,8 +182,6 @@ func (g WorkflowStateGroup) WorkflowState() (WorkflowState, bool) {
 		return StateWaiting, true
 	case StateGroupPaused:
 		return StatePaused, true
-	case StateGroupSomeday:
-		return StateSomeday, true
 	case StateGroupDone:
 		return StateDone, true
 	case StateGroupCanceled:

@@ -42,7 +42,7 @@ func TestWeekBrowseSelectsADayAndListsItsWork(t *testing.T) {
 	if !driver.App().crossOutliner.Week.Active {
 		t.Fatalf("gw did not open the week browse; status %q\n%s", driver.App().feedback.message, obs.PlainScreen)
 	}
-	if !strings.Contains(obs.PlainScreen, "● Ship the quarterly letter [week-fixture]") {
+	if !strings.Contains(obs.PlainScreen, "● Ship the quarterly letter %week-fixture") {
 		t.Fatalf("the selected day does not list its deadline:\n%s", obs.PlainScreen)
 	}
 	if !strings.Contains(obs.PlainScreen, "←/→ day") {

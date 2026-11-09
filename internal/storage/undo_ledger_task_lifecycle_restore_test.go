@@ -37,7 +37,7 @@ func lifecycleRestoreDocuments(t *testing.T, from, to models.WorkflowState) (*Pr
 func TestLifecycleRestorePreservesPeerFieldsAcrossRestarts(t *testing.T) {
 	for _, state := range []models.WorkflowState{
 		models.StateInbox, models.StateBacklog, models.StateDoing, models.StateWaiting,
-		models.StatePaused, models.StateSomeday, models.StateDone, models.StateCanceled,
+		models.StatePaused, models.StateDone, models.StateCanceled,
 	} {
 		from := models.StateBacklog
 		if state == from {

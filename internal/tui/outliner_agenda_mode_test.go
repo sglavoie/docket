@@ -28,8 +28,7 @@ func TestAgendaDrawsAllsCommittedLanesAndCountsTheRest(t *testing.T) {
 	inbox := primaryRowsTask("inbox", models.StateInbox)
 	backlog := primaryRowsTask("backlog", models.StateBacklog)
 	waiting := primaryRowsTask("waiting", models.StateWaiting)
-	someday := primaryRowsTask("someday", models.StateSomeday)
-	project := primaryRowsProject("alpha", pinned, today, doing, review, next, inbox, backlog, waiting, someday)
+	project := primaryRowsProject("alpha", pinned, today, doing, review, next, inbox, backlog, waiting)
 	outlinerView, runtime := primaryRowsOutliner(project)
 	runtime.Planning().SetToday([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: today.ID}})
 	runtime.Planning().SetNext([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: next.ID}})
@@ -52,7 +51,7 @@ func TestAgendaDrawsAllsCommittedLanesAndCountsTheRest(t *testing.T) {
 	}
 	outlinerView.SetSize(120, 40)
 	line := ansi.Strip(outlinerView.View().Content)
-	if !strings.Contains(line, "Not on the agenda: Inbox 1 · Backlog 1 · Waiting 1 · Someday 1") {
+	if !strings.Contains(line, "Not on the agenda: Inbox 1 · Backlog 1 · Waiting 1") {
 		t.Fatalf("Agenda counted no left-out lanes:\n%s", line)
 	}
 

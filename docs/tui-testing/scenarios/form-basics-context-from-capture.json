@@ -37,7 +37,7 @@
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Captured to unfiled · Inbox: Ship the launch" },
-    { "type": "assert", "label": "the context appears beside the project on the row", "assert": "contains", "value": "[acme-eu]" },
+    { "type": "assert", "label": "the context appears beside the project on the row", "assert": "contains", "value": "##acme-eu" },
     { "type": "key", "key": "b" },
     { "type": "assert", "label": "Peek recovers the full context", "assert": "contains", "value": "Context: acme-eu" },
     { "type": "key", "label": "close Peek", "key": "b" },
@@ -46,7 +46,7 @@
     { "type": "key", "label": "one undo takes back the task and its context together", "key": "u" },
     { "type": "wait", "label": "let outcome feedback expire before checking the remaining rows", "duration": "6s" },
     { "type": "assert", "assert": "not_contains", "value": "Ship the launch" },
-    { "type": "assert", "assert": "not_contains", "value": "[acme-eu]" },
+    { "type": "assert", "assert": "not_contains", "value": "##acme-eu" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

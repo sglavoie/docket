@@ -39,7 +39,6 @@ func TestAllModeWorkflowStateGroupsOrderAndSemantics(t *testing.T) {
 		StateGroupPaused,
 		StateGroupBacklog,
 		StateGroupWaiting,
-		StateGroupSomeday,
 	}
 	if got := AllModeWorkflowStateGroups(); !slices.Equal(got, want) {
 		t.Fatalf("All group order = %v, want %v", got, want)

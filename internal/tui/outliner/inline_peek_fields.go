@@ -8,6 +8,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/query"
@@ -121,7 +123,14 @@ func inlinePeekStatusLine(task *models.Task, planning string, now time.Time) str
 	// The same gate theme.PriorityIcon takes, so a task the row draws no priority
 	// badge for names no priority here either.
 	if models.ValidatePriority(task.Priority, false) == nil {
-		fields.addGlyph("Priority", chrome.RenderPriorityBadge(task.Priority), strconv.Itoa(task.Priority)+" "+strings.ToLower(models.PriorityName(task.Priority)))
+		// The plain glyph is the sigil itself, `!1`, so the number is said once;
+		// a pictogram set spells no digit and the value carries it.
+		badge := chrome.RenderPriorityBadge(task.Priority)
+		value := strings.ToLower(models.PriorityName(task.Priority))
+		if digit := strconv.Itoa(task.Priority); !strings.Contains(ansi.Strip(badge), digit) {
+			value = digit + " " + value
+		}
+		fields.addGlyph("Priority", badge, value)
 	}
 	if task.Pinned {
 		fields.flag("Pinned")

@@ -234,7 +234,7 @@ func TestParseWorkflowStateFromCanonicalStrings(t *testing.T) {
 		{"backlog", StateBacklog, true},
 		{"doing", StateDoing, true},
 		{"paused", StatePaused, true},
-		{"someday", StateSomeday, true},
+		{"someday", WorkflowState("someday"), false},
 		{"done", StateDone, true},
 		{"waiting", StateWaiting, true},
 		{"canceled", StateCanceled, true},

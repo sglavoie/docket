@@ -14,7 +14,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "label": "the link left the title", "assert": "status_contains", "value": "Captured to unfiled · Inbox: Reply to Ana" },
     { "type": "assert", "assert": "not_contains", "value": "%3Cabc" },
-    { "type": "assert", "assert": "contains", "value": "📎" },
+    { "type": "assert", "assert": "contains", "value": "&" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "key": "home" },

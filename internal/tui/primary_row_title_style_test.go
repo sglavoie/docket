@@ -52,7 +52,7 @@ func TestOutlinerChromeUsesCompactLeftMargins(t *testing.T) {
 		IsProjectHeader: true,
 		ProjectID:       "roadmap",
 	}, false, 120, 0))
-	if !strings.HasPrefix(project, " "+theme.IconExpanded+" [roadmap]") {
+	if !strings.HasPrefix(project, " "+theme.IconExpanded+" %roadmap") {
 		t.Fatalf("project header should retain a one-cell margin and fold indicator: %q", project)
 	}
 }

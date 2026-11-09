@@ -16,8 +16,8 @@ project tag decides, and the workspace-wide Notes manager.
 | Read notes | `Ctrl+N` | Open Notes from the Outliner or a project |
 
 An alias is an optional short label, up to 12 columns with no spaces, that the
-Outliner, Today's canvas, and search results show in brackets instead of the
-slug, so `[internal-archi…]` can read `[IA]`. Leave it empty to keep the slug.
+Outliner, Today's canvas, and search results show after `%` instead of the
+slug, so `%internal-archi…` can read `%IA`. Leave it empty to keep the slug.
 It is set in the project editor (`e` on a project) and syncs with the project.
 
 Project scope and project search are different: `P` searches project metadata;

@@ -7,7 +7,7 @@
     { "type": "key", "label": "open the project facet on its sigil", "key": "f" },
     { "type": "key", "key": "%" },
     { "type": "assert", "assert": "contains", "value": "Filter by Projects" },
-    { "type": "assert", "label": "each row names the project, its slug, and its load", "assert": "contains", "value": "[ ] Client Alpha  [client-alpha] · 1 task" },
+    { "type": "assert", "label": "each row names the project, its slug, and its load", "assert": "contains", "value": "[ ] Client Alpha  %client-alpha · 1 task" },
     { "type": "key", "label": "keep two projects", "key": "space" },
     { "type": "key", "key": "down" },
     { "type": "key", "key": "space" },

@@ -63,7 +63,7 @@ func TestFilterProjectsChordPickerListsLoadedProjectsSeededFromTheFacet(t *testi
 	if !slices.Equal(gotIDs, wantIDs) {
 		t.Fatalf("project picker items = %v, want %v", gotIDs, wantIDs)
 	}
-	if items[0].PrimaryText != "Alpha" || items[0].SecondaryText != "[alpha] · 2 tasks" {
+	if items[0].PrimaryText != "Alpha" || items[0].SecondaryText != "%alpha · 2 tasks" {
 		t.Errorf("alpha row = %q / %q, want the name then [slug] and its count",
 			items[0].PrimaryText, items[0].SecondaryText)
 	}

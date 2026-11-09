@@ -120,3 +120,19 @@ func TestNowCardJustifyDropsTheNoteBeforeTheTitle(t *testing.T) {
 		t.Fatalf("line = %q (%d cells)", plain, lipgloss.Width(line))
 	}
 }
+
+// A Doing subtask is one piece of Doing work, not two: the project's task list
+// already holds every task, so the card counts each once however deep it sits,
+// and its count agrees with the lanes that draw it.
+func TestNowCardCountsANestedDoingTaskOnce(t *testing.T) {
+	now := time.Now()
+	parent := primaryRowsTask("parent", models.StateBacklog)
+	child := doingTask("child", "Nested work", now.Add(-time.Hour))
+	child.ParentID = &parent.ID
+	lead := doingTask("lead", "Lead work", now.Add(-time.Minute))
+	m := nowCardOutliner(t, 100, 40, parent, child, lead)
+
+	if m.nowCard.task != lead || m.nowCard.more != 1 {
+		t.Fatalf("lead = %v, more = %d; want the lead and the one nested task beside it", m.nowCard.task, m.nowCard.more)
+	}
+}

@@ -32,7 +32,6 @@ func rebuildTaskStyles() {
 	DoneStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
 	WaitingStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	StandbyStyle = lipgloss.NewStyle().Foreground(ColorViewStandby)
-	MaybeStyle = lipgloss.NewStyle().Foreground(ColorViewSomeday)
 	CanceledStyle = lipgloss.NewStyle().Foreground(ColorMuted).Strikethrough(true)
 	OverdueStyle = newOverdueBadgeStyle()
 	ReviewLateStyle = newReviewLateBadgeStyle()
@@ -67,11 +66,6 @@ func rebuildBadgeStyles() {
 		StandbyBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#6d28d9"))
 	} else {
 		StandbyBadgeStyle = lipgloss.NewStyle().Foreground(ColorViewStandby)
-	}
-	if ActiveThemeName == "light" {
-		MaybeBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#6d28d9"))
-	} else {
-		MaybeBadgeStyle = lipgloss.NewStyle().Foreground(ColorViewSomeday)
 	}
 	CanceledBadgeStyle = lipgloss.NewStyle().Foreground(ColorMuted).Background(ColorBackground)
 
@@ -156,7 +150,6 @@ func rebuildViewStyles() {
 	ViewModeNextStyle = makeViewModeStyle("#2d3a6a", "#3730a3")
 	ViewModeInboxStyle = makeViewModeStyle("#1e3a5f", "#1d4ed8")
 	ViewModeWaitingStyle = makeViewModeStyle("#5c3a1e", "#92400e")
-	ViewModeSomedayStyle = makeViewModeStyle("#3d2a5c", "#6d28d9")
 	ViewModeCompletedStyle = makeViewModeStyle("#3b3f5c", "#4b5563")
 	ViewModeStandbyStyle = makeViewModeStyle("#4a2e6a", "#7c3aed")
 	ViewModeDeferredStyle = makeViewModeStyle("#4a2e3a", "#7c2d12")

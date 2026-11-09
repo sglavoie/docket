@@ -102,7 +102,7 @@ func TestCrossProjectFocusShowsDescendantsAndRestoresNestedViewport(t *testing.T
 		out.Focus.CrossStack[0].ScrollOffset != 4 {
 		t.Fatalf("root Focus frame = %+v", out.Focus.CrossStack)
 	}
-	if got := out.CrossProjectFocusContext(); got != "Focus: [Project] › Root" {
+	if got := out.CrossProjectFocusContext(); got != "Focus: Project › Root" {
 		t.Fatalf("root Focus context = %q", got)
 	}
 
@@ -118,7 +118,7 @@ func TestCrossProjectFocusShowsDescendantsAndRestoresNestedViewport(t *testing.T
 	if len(visible) != 1 || !visible[grandchild.ID] {
 		t.Fatalf("nested Focus rows = %v, want grandchild only", visible)
 	}
-	if got := out.CrossProjectFocusContext(); got != "Focus: [Project] › Root › Child" {
+	if got := out.CrossProjectFocusContext(); got != "Focus: Project › Root › Child" {
 		t.Fatalf("nested Focus context = %q", got)
 	}
 

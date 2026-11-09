@@ -348,7 +348,9 @@ func (m *OutlinerModel) refreshNowCard() {
 		if project == nil {
 			continue
 		}
-		for _, task := range flattenTaskPointers(project.Tasks) {
+		// project.Tasks is already every task; walking it as a tree would visit
+		// each child twice, once in the list and once under its parent.
+		for _, task := range flattenTaskPointers(project.GetRootTasks()) {
 			m.settleFocusSession(project, task)
 			if !task.IsInState(models.StateDoing) || (admits != nil && !admits(task, project)) {
 				continue

@@ -17,16 +17,16 @@
     { "type": "key", "label": "choose the system Inbox", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "label": "the destination minted its own ShortID for the moved root", "assert": "status_contains", "value": "Move to Project: #1 User authentication → unfiled" },
-    { "type": "assert", "label": "the moved root is the destination group's one top-level task, so it leads with the project label", "assert": "contains", "value": "[unfiled]      ▣ ● User authentication" },
-    { "type": "assert", "label": "and its backlog child still hangs beneath it", "assert": "contains", "value": "└──   ▣   [platform] Add password validation" },
+    { "type": "assert", "label": "the moved root is the destination group's one top-level task, so it leads with the project label", "assert": "contains", "value": "%unfiled      ▣ !2 User authentication" },
+    { "type": "assert", "label": "and its backlog child still hangs beneath it", "assert": "contains", "value": "└──   ▣    ##platform Add password validation" },
     { "type": "key", "label": "fold every project group so each header counts what it holds", "key": "p" },
-    { "type": "assert", "label": "the root and its backlog child left together", "assert": "contains", "value": "[unfiled] (2)" },
-    { "type": "assert", "label": "the ancestor that was not selected stayed behind", "assert": "contains", "value": "[rich-project] (1)" },
+    { "type": "assert", "label": "the root and its backlog child left together", "assert": "contains", "value": "%unfiled (2)" },
+    { "type": "assert", "label": "the ancestor that was not selected stayed behind", "assert": "contains", "value": "%rich-project (1)" },
     { "type": "key", "label": "unfold them again", "key": "p" },
 
     { "type": "key", "label": "back to All", "key": "g" },
     { "type": "key", "key": "a" },
-    { "type": "assert", "label": "the Doing child moved too, so the destination now owns rows in two lanes", "assert": "count_contains", "value": "[unfiled]", "count": 2 },
+    { "type": "assert", "label": "the Doing child moved too, so the destination now owns rows in two lanes", "assert": "count_contains", "value": "%unfiled", "count": 2 },
     { "type": "assert", "label": "and it still hangs under a parent", "assert": "contains", "value": "Build login form  ‹" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

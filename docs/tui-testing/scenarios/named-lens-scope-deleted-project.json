@@ -36,7 +36,7 @@
     { "type": "assert", "assert": "contains", "value": "Delete Client Beta and everything it owns?" },
     { "type": "key", "key": "y" },
     { "type": "wait" },
-    { "type": "assert", "assert": "not_contains", "value": "[client-beta]" },
+    { "type": "assert", "assert": "not_contains", "value": "%client-beta" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "switch_machine", "label": "the laptop returns to a pointer whose project is gone", "machine": "laptop" },

@@ -127,7 +127,19 @@ func (c v16NamedLensCarriers) taskClauses() ([]models.QueryClause, error) {
 	// An explicitly empty state set has no clause: the vocabulary has no
 	// match-nothing term, and inventing one would narrow a lens that narrowed
 	// nothing.
+	//
+	// A carrier naming someday names a state schema 26 folded into Backlog, so
+	// it lifts as Backlog, once: a lens that carried both reads as the one state
+	// that now holds their work rather than refusing to load.
+	seen := make(map[string]bool, len(tasks.States))
 	for _, state := range tasks.States {
+		if state == "someday" {
+			state = string(models.StateBacklog)
+		}
+		if seen[state] {
+			continue
+		}
+		seen[state] = true
 		clause, err := v16LensClause(models.QueryFieldState, models.QueryOperatorIs, state)
 		if err != nil {
 			return nil, err

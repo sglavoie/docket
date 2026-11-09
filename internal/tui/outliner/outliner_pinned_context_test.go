@@ -82,7 +82,7 @@ func TestPinnedContextIsDrawnOnlyWhenTheLaneHeaderIsAboveTheWindow(t *testing.T)
 	if !header.IsSectionHeader || viewport.pinnedHeader >= viewport.startIdx {
 		t.Fatalf("the pinned row stands in for row %d (%+v) with the window at %d", viewport.pinnedHeader, header, viewport.startIdx)
 	}
-	want := fmt.Sprintf(" ▾ Doing › [beta]  (%d) ─", header.SectionCount)
+	want := fmt.Sprintf(" ▾ Doing › %%beta  (%d) ─", header.SectionCount)
 	if !strings.HasPrefix(lines[0], want) {
 		t.Fatalf("the pinned row = %q, want it to open %q", lines[0], want)
 	}
@@ -360,7 +360,7 @@ func TestPinnedProjectContextInInbox(t *testing.T) {
 		model.SetSize(width, 20)
 		pinnedContextSeat(t, model, "beta-inbox-40", "beta")
 		viewport, lines := pinnedContextLines(model)
-		if !viewport.pinned || !strings.Contains(lines[0], "[beta]") {
+		if !viewport.pinned || !strings.Contains(lines[0], "%beta") {
 			t.Fatalf("width %d lost project context: %+v %q", width, viewport, lines[0])
 		}
 		if viewport.startIdx > model.Cursor || viewport.endIdx <= model.Cursor {

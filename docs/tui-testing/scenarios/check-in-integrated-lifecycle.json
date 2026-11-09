@@ -154,7 +154,7 @@
     {
       "type": "assert",
       "assert": "contains",
-      "value": "review today"
+      "value": "=review today"
     },
     {
       "type": "assert",
@@ -214,7 +214,7 @@
     {
       "type": "assert",
       "assert": "not_contains",
-      "value": "review today"
+      "value": "=review today"
     },
     {
       "type": "key",

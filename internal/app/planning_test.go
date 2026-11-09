@@ -55,7 +55,6 @@ func TestPlanningAddActionsNormalizeLifecycleAndDefer(t *testing.T) {
 		models.StateDoing,
 		models.StateWaiting,
 		models.StatePaused,
-		models.StateSomeday,
 	} {
 		t.Run("today_"+string(initial), func(t *testing.T) {
 			task := newTask("task", 1, "task")

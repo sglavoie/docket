@@ -90,7 +90,7 @@ At least one fixture must declare each key that `requiredFixtureCoverage` lists.
 | `checkin.one_off` | a check-in without a repeat |
 | `checkin.waiting` | a Waiting task carrying a check-in |
 | `checkin.reviewed_terminal` | a terminal task that keeps `reviewed` and has no check-in |
-| `lifecycle.all_states` | all eight lifecycle states |
+| `lifecycle.all_states` | all seven lifecycle states |
 | `schedule.due_date` | a deadline |
 | `schedule.due_time` | a deadline with a `due_time` |
 | `schedule.deferred` | a pending deferral with a non-zero defer count |

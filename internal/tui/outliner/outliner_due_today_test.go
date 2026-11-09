@@ -89,7 +89,6 @@ func TestTodayDueMembershipUsesCalendarDayAndVisibility(t *testing.T) {
 		{"inbox", models.StateInbox, &sameDayUTC, false, 1},
 		{"waiting", models.StateWaiting, &sameDayUTC, false, 1},
 		{"paused", models.StatePaused, &sameDayUTC, false, 1},
-		{"someday", models.StateSomeday, &sameDayUTC, false, 1},
 		{"yesterday", models.StateBacklog, &yesterday, false, 1},
 		{"tomorrow", models.StateBacklog, &tomorrow, false, 0},
 		{"undated", models.StateBacklog, nil, false, 0},

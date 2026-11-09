@@ -3,6 +3,8 @@ package outliner
 import (
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/docket/internal/tui/theme"
+
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/route"
@@ -126,7 +128,7 @@ func (m *OutlinerModel) mergedSlugFloor(rows []OutlinerRow, hidden *hiddenRowLay
 			slug = project.Name
 		}
 		if slug = m.abbreviatedProjectSlug(slug, rankedProjectLabelMaxSlug(rowWidth)); slug != "" {
-			width = max(width, lipgloss.Width("["+slug+"]"))
+			width = max(width, lipgloss.Width(theme.ProjectToken(slug)))
 		}
 	}
 	return width
@@ -147,7 +149,7 @@ func (m *OutlinerModel) noteLabelWidth(rows []OutlinerRow, rowWidth int) int {
 			continue
 		}
 		if slug, _, _ := m.noteRowSlug(entry.row, rowWidth); slug != "" {
-			width = max(width, lipgloss.Width("["+slug+"]"))
+			width = max(width, lipgloss.Width(theme.ProjectToken(slug)))
 		}
 	}
 	return width

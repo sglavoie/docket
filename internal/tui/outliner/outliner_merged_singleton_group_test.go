@@ -95,11 +95,11 @@ func TestSingletonProjectGroupMergesIntoItsRow(t *testing.T) {
 	}
 
 	line := ansi.Strip(outliner.RenderOutlinerTaskRow(rootRow, false, 120, rootIndex, nil))
-	if !regexp.MustCompile(`\[alpha\]\s+alpha-root`).MatchString(line) {
+	if !regexp.MustCompile(`%alpha\s+alpha-root`).MatchString(line) {
 		t.Fatalf("merged row %q does not lead with its project", line)
 	}
 	childLine := ansi.Strip(outliner.RenderOutlinerTaskRow(childRow, false, 120, rootIndex+1, nil))
-	if strings.Contains(childLine, "[alpha]") {
+	if strings.Contains(childLine, "%alpha") {
 		t.Fatalf("child row %q repeated the project", childLine)
 	}
 }
@@ -146,8 +146,8 @@ func TestSingletonProjectLabelAlignsWithProjectHeaders(t *testing.T) {
 						headerLine := ansi.Strip(outliner.RenderOutlinerProjectHeaderRow(header, selected, width, 0))
 						index, row := mustRowForTask(t, outliner, "beta-one")
 						line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, selected, width, index, layout))
-						label := strings.Index(line, "[beta]")
-						want := strings.Index(headerLine, "[alpha]")
+						label := strings.Index(line, "%beta")
+						want := strings.Index(headerLine, "%alpha")
 						if label < 0 || want < 0 || ansi.StringWidth(line[:label]) != ansi.StringWidth(headerLine[:want]) {
 							t.Fatalf("project labels are misaligned: header %q, task %q", headerLine, line)
 						}
@@ -262,7 +262,7 @@ func TestMergedRowLabelsUseOnlyTheirOwnWidthWhenNarrow(t *testing.T) {
 	outliner.RebuildRows()
 	index, row := mustRowForTask(t, outliner, root.ID)
 	line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, chrome.MinColumnAlignWidth-1, index, nil))
-	if !strings.Contains(line, "[alpha] ▣ alpha-root") {
+	if !strings.Contains(line, "%alpha ▣ alpha-root") {
 		t.Fatalf("narrow merged row reserves another task's label width: %q", line)
 	}
 }
@@ -373,7 +373,7 @@ func TestPinnedContextNamesAMergedGroupsProject(t *testing.T) {
 	if !viewport.pinned {
 		t.Fatalf("a window deep inside the merged subtree reported no pinned row: %+v", viewport)
 	}
-	if !strings.Contains(lines[0], "Doing") || !strings.Contains(lines[0], "[solo]") {
+	if !strings.Contains(lines[0], "Doing") || !strings.Contains(lines[0], "%solo") {
 		t.Fatalf("pinned row %q, want the lane and the merged group's project", lines[0])
 	}
 }

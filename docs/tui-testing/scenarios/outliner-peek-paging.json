@@ -26,7 +26,7 @@
 
     { "type": "key", "label": "page forward through the rest of the detail", "key": "ctrl+f" },
     { "type": "assert", "label": "a page is one row short of the window, so the row it ended on is carried over", "assert": "contains", "value": "RESUMEEND" },
-    { "type": "assert", "label": "and the rows the first page had no room for are readable in full", "assert": "contains", "value": "[platform]" },
+    { "type": "assert", "label": "and the rows the first page had no room for are readable in full", "assert": "contains", "value": "##platform" },
     { "type": "assert", "label": "the position row accounts for the compact window and its current offset", "assert": "contains", "value": "↑ 3 more · ↓ 3 more" },
     { "type": "assert", "assert": "no_layout_issues" },
 

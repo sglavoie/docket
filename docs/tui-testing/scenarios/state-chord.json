@@ -11,7 +11,6 @@
     { "type": "assert", "assert": "contains", "value": "g doing" },
     { "type": "assert", "assert": "contains", "value": "w waiting" },
     { "type": "assert", "assert": "contains", "value": "p paused" },
-    { "type": "assert", "assert": "contains", "value": "m someday" },
     { "type": "assert", "assert": "contains", "value": "d done" },
     { "type": "assert", "assert": "contains", "value": "c canceled" },
     { "type": "assert", "assert": "contains", "value": "t today" },
@@ -23,9 +22,9 @@
     { "type": "assert", "label": "the route is the keyless menu entry, never a key aimed at the cursor", "assert": "contains", "value": "F10: Set Up Check-Ins" },
     { "type": "assert", "label": "nothing opened, so the chord left the outline standing", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Change Status" },
-    { "type": "assert", "assert": "contains", "value": "Waiting  (2)" },
-    { "type": "assert", "assert": "contains", "value": "├──       Build login form" },
-    { "type": "assert", "assert": "contains", "value": "▾ ────────────────────── Waiting  (2)" },
+    { "type": "assert", "assert": "contains", "value": "Waiting  (3)" },
+    { "type": "assert", "assert": "contains", "value": "├──        Build login form" },
+    { "type": "assert", "assert": "contains", "value": "▾ ────────────────────── Waiting  (3)" },
     { "type": "assert", "assert": "not_contains", "value": "⧗" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "assert", "label": "at this width the whole sentence fits beside its recovery key", "assert": "contains", "value": "Build login form → Waiting · No check-in · F10: Set Up Check-Ins · u undo" },
@@ -44,9 +43,9 @@
     { "type": "key", "label": "select the cursored task and enter multi-select", "key": "v" },
     { "type": "assert", "assert": "contains", "value": "Multi-select: 1 selected" },
     { "type": "key", "label": "open workflow actions", "key": "w" },
-    { "type": "key", "label": "park the selection in Someday", "key": "m" },
+    { "type": "key", "label": "pause the selection", "key": "p" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "Someday  (2)" },
+    { "type": "assert", "assert": "contains", "value": "Paused  (1)" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }
