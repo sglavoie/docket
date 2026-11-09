@@ -15,7 +15,7 @@ Every run creates one AppModel-owned Outliner and starts in Active Projects, All
 Active Projects is the base task workspace: the non-archived projects the
 catalog does not tag parked. Search, filters, selection, folds, cursor, and
 scope are session state and are not restored; the only folds a run starts with
-are All's Backlog and Someday lanes, which `FoldQuietLanesForLaunch` seeds beside
+are All's Backlog lane, which `FoldQuietLanesForLaunch` seeds beside
 the launch focus rather than inside `ResetToGlobalAll`, so no reset, reload, or
 Esc reapplies them. Typed navigation permits that one
 root, at most one subordinate tool, and typed overlays. Covered Outliner state
@@ -266,7 +266,7 @@ top-level task merges into that task's row instead: the kernel takes the top-lev
 count, emits nothing and reports the merge, and `mergeProjectGroupRows` replaces
 the first row's connector with equal-width blank space and marks it
 `OutlinerRow.LeadsMergedGroup`. That row keeps the other tasks' depth with its
-subtree and checklist beneath it and leads with the same `[slug]` the ranked
+subtree and checklist beneath it and leads with the same `%slug` the ranked
 list draws, so a group of one spends no row on a name its only row can carry.
 Folding it — `h` once nothing nearer is left, or `p` — draws the header as the
 summary, and `l` merges it back. Project operations, project Peek, and `Enter`

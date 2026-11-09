@@ -41,7 +41,6 @@ func buildWorkflowStateFixture(t *testing.T) *models.Project {
 	add("in_progress", func(tk *models.Task) { tk.WorkflowState = models.StateDoing })
 	add("waiting", func(tk *models.Task) { tk.WorkflowState = models.StateWaiting })
 	add("paused", func(tk *models.Task) { tk.WorkflowState = models.StatePaused })
-	add("someday", func(tk *models.Task) { tk.WorkflowState = models.StateSomeday })
 	add("done", func(tk *models.Task) { tk.WorkflowState = models.StateDone })
 	add("canceled", func(tk *models.Task) { tk.WorkflowState = models.StateCanceled })
 

@@ -14,7 +14,7 @@ func TestLifecycleUndoRedoPreservesPeerChangesAcrossDevices(t *testing.T) {
 	for _, device := range []string{"desktop", "phone"} {
 		for _, tc := range []struct{ from, to string }{
 			{"backlog", "inbox"}, {"doing", "backlog"}, {"backlog", "doing"},
-			{"doing", "waiting"}, {"doing", "paused"}, {"doing", "someday"},
+			{"doing", "waiting"}, {"doing", "paused"}, {"paused", "backlog"},
 			{"waiting", "done"}, {"waiting", "canceled"}, {"done", "inbox"}, {"canceled", "inbox"},
 		} {
 			t.Run(device+"/"+tc.from+"_to_"+tc.to, func(t *testing.T) {

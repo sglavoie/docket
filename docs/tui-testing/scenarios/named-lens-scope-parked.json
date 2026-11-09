@@ -30,7 +30,7 @@
     { "type": "key", "label": "one stop reaches the Client Alpha group, merged into its one task row", "key": "n" },
     { "type": "key", "label": "a second stop reaches Client Beta's merged task row", "key": "n" },
     { "type": "key", "label": "fold that singleton group so its project header is the cursor row", "key": "h" },
-    { "type": "assert", "assert": "contains", "value": "▸ [client-beta] (1)" },
+    { "type": "assert", "assert": "contains", "value": "▸ %client-beta (1)" },
     { "type": "key", "key": "#" },
     { "type": "key", "key": "space" },
     { "type": "key", "key": "enter" },

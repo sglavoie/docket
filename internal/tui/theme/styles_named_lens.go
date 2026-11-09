@@ -31,7 +31,6 @@ func newLensAccentInboxStyle() lipgloss.Style    { return makeLensAccentStyle("#
 func newLensAccentNextStyle() lipgloss.Style     { return makeLensAccentStyle("#9fa8f5", "#3730a3") }
 func newLensAccentWaitingStyle() lipgloss.Style  { return makeLensAccentStyle("#e8b374", "#8a4a0d") }
 func newLensAccentPausedStyle() lipgloss.Style   { return makeLensAccentStyle("#b18cf7", "#7c3aed") }
-func newLensAccentSomedayStyle() lipgloss.Style  { return makeLensAccentStyle("#9f7ae0", "#6d28d9") }
 func newLensAccentCompleteStyle() lipgloss.Style { return makeLensAccentStyle("#9aa0b8", "#4b5563") }
 func newLensAccentCanceledStyle() lipgloss.Style { return makeLensAccentStyle("#e06c75", "#991b1b") }
 func newLensAccentOverdueStyle() lipgloss.Style  { return makeLensAccentStyle("#ff7a90", "#be123c") }
@@ -48,7 +47,6 @@ var (
 	lensAccentNextStyle     = newLensAccentNextStyle()
 	lensAccentWaitingStyle  = newLensAccentWaitingStyle()
 	lensAccentPausedStyle   = newLensAccentPausedStyle()
-	lensAccentSomedayStyle  = newLensAccentSomedayStyle()
 	lensAccentCompleteStyle = newLensAccentCompleteStyle()
 	lensAccentCanceledStyle = newLensAccentCanceledStyle()
 	LensAccentOverdueStyle  = newLensAccentOverdueStyle()
@@ -65,7 +63,6 @@ func rebuildLensAccentStyles() {
 	lensAccentNextStyle = newLensAccentNextStyle()
 	lensAccentWaitingStyle = newLensAccentWaitingStyle()
 	lensAccentPausedStyle = newLensAccentPausedStyle()
-	lensAccentSomedayStyle = newLensAccentSomedayStyle()
 	lensAccentCompleteStyle = newLensAccentCompleteStyle()
 	lensAccentCanceledStyle = newLensAccentCanceledStyle()
 	LensAccentOverdueStyle = newLensAccentOverdueStyle()
@@ -94,8 +91,6 @@ func WorkflowStateGroupAccentStyle(group models.WorkflowStateGroup) (lipgloss.St
 		return lensAccentWaitingStyle, true
 	case models.StateThemePaused:
 		return lensAccentPausedStyle, true
-	case models.StateThemeSomeday:
-		return lensAccentSomedayStyle, true
 	case models.StateThemeComplete:
 		return lensAccentCompleteStyle, true
 	case models.StateThemeCanceled:

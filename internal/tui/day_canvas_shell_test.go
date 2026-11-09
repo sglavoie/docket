@@ -19,7 +19,7 @@ func TestTodayDrawsTheDayCanvasUnderItsRows(t *testing.T) {
 	if !strings.Contains(obs.PlainScreen, "Done today · 1") {
 		t.Fatalf("Today drew no Done block after a completion:\n%s", obs.PlainScreen)
 	}
-	if !strings.Contains(obs.PlainScreen, "✓ ") || !strings.Contains(obs.PlainScreen, "[website]") {
+	if !strings.Contains(obs.PlainScreen, "✓ ") || !strings.Contains(obs.PlainScreen, "%website") {
 		t.Fatalf("the Done block names no finished task:\n%s", obs.PlainScreen)
 	}
 	if !strings.Contains(obs.PlainScreen, "Next 7 days") {

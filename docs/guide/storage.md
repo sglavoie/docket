@@ -278,7 +278,7 @@ yet: Docket refuses to open it, by name, rather than creating anything. A live
 `.tt/` found beside `.docket/` that holds bytes `.docket/` does not is kept,
 whole, under `.docket/backups/kept-pre-v24-internal-<UTC>/`.
 
-Project task files use strict schema-20 Markdown and generic `Task` headings.
+Project task files use strict schema-21 Markdown and generic `Task` headings.
 `workspace.json` contains the lean project catalog, project tags, and the
 protected Unfiled ID. From schema 25 a project may also carry an optional
 `alias`, a short label such as `IA` or `web` shown where the project's slug
@@ -396,7 +396,8 @@ two synced files, `workspace.json` and `planning.json`, do not merge — a chang
 that lands under one of those is refused and reported, because there is no
 order-independent way to combine two project catalogs.
 
-Startup migrates schema-24 workspaces to schema 25, schema-23 workspaces to
+Startup migrates schema-25 workspaces to schema 26, schema-24 workspaces to
+schema 25, schema-23 workspaces to
 schema 24, supported schema-21
 workspaces, and working copies enrolled in sync at schema 22, to schema 23,
 supported
@@ -429,8 +430,9 @@ for v6→v7, `pre-tag-v8-<UTC>.tar.gz` for v7→v8,
 `pre-checklist-origin-v20-<UTC>.tar.gz` for v19→v20,
 `pre-check-ins-v21-<UTC>.tar.gz` for v20→v21,
 `pre-hidden-v23-<UTC>.tar.gz` for v21→v23 and v22→v23,
-`pre-docket-layout-v24-<UTC>.tar.gz` for v23→v24, and
-`pre-project-alias-v25-<UTC>.tar.gz` for v24→v25.
+`pre-docket-layout-v24-<UTC>.tar.gz` for v23→v24,
+`pre-project-alias-v25-<UTC>.tar.gz` for v24→v25, and
+`pre-retire-someday-v26-<UTC>.tar.gz` for v25→v26.
 
 The two structural conversions state themselves. The schema-6 conversion
 preserves notes and attachment bytes, converts retained decision text into
@@ -466,6 +468,7 @@ already say.
 | Schema 23 upgrades task Markdown to schema 20 by adding the optional `hidden` flag | No existing task is hidden, so every document comes out byte-identical to its schema-19 source apart from the schema marker line. There is no schema-22 step: 22 was the catalog schema of a working copy enrolled in sync, and such a copy migrates to 23 like a schema-21 workspace and keeps its `sync` block, which from schema 23 alone marks enrollment. Your saved lenses are not rewritten, because no lens could name the flag before this schema |
 | Schema 24 leaves task Markdown at schema 20 and moves `.tt/` to `.docket/` | It changes the layout alone, described above. The undo history is dropped because its entries name `.tt/` paths, and `.tt/` keeps only the tombstone that makes an older version refuse the workspace |
 | Schema 25 leaves task Markdown at schema 20 and admits the optional project `alias` in `workspace.json` | No project has an alias yet, so the catalog changes at its schema number alone and no project document is rewritten. The number moves because an older version reads the catalog strictly and would otherwise refuse an alias as a malformed file rather than as a newer one. The `.tt/` tombstone keeps declaring schema 24, which is already newer than every version that reads `.tt/`. The undo history is dropped because its entries hold schema-24 catalog bytes |
+| Schema 26 upgrades task Markdown to schema 21 by retiring the `someday` state | Every task stored as `state: someday` becomes `state: backlog`, the lane that already held work not yet decided on; its state clock, its touch time, its planning, and every other value are kept exactly, so Recent does not fill up with migrated tasks. A saved lens whose query names `$someday` is not rewritten: opening it names `$backlog` as the replacement rather than silently widening it to the work Backlog already held. The `.tt/` tombstone keeps declaring schema 24, and the undo history is dropped because its entries hold schema-20 task bytes |
 
 Invalid or future-schema input aborts without changing workspace data. An
 existing `unfiled` project or directory also aborts before snapshot publication
@@ -484,8 +487,8 @@ schema-14 boundary, `pre-dependencies-v15-<UTC>.tar.gz` for schema 15,
 `pre-check-ins-v21-<UTC>.tar.gz` for schema 21,
 `pre-hidden-v23-<UTC>.tar.gz` for schema 23,
 `pre-docket-layout-v24-<UTC>.tar.gz` for schema 24, whose `workspace/.tt/` is
-restored over the tombstone, or `pre-project-alias-v25-<UTC>.tar.gz` for schema
-25 — into a
+restored over the tombstone, `pre-project-alias-v25-<UTC>.tar.gz` for schema
+25, or `pre-retire-someday-v26-<UTC>.tar.gz` for schema 26 — into a
 separate directory and open that copy with a compatible build. Migration
 snapshots themselves are never modified.
 

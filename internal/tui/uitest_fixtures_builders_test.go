@@ -55,7 +55,7 @@ func buildRichFixture(w *uitestWorkspace) error {
 
 		idea := newFixtureTask(p, "Explore social login")
 		idea.Description = "Google / GitHub OAuth."
-		idea.ApplyWorkflowState(models.StateSomeday)
+		idea.ApplyWorkflowState(models.StateWaiting)
 
 		inbox := newFixtureTask(p, "Triage support inbox")
 		inbox.ApplyWorkflowState(models.StateInbox)
@@ -232,7 +232,9 @@ func buildReleaseFixture(w *uitestWorkspace) error {
 		models.StateDoing,
 		models.StateWaiting,
 		models.StatePaused,
-		models.StateSomeday,
+		// The seventh step was Someday until schema 26 folded it into Backlog;
+		// the cycle keeps its length so every item keeps its lane neighbors.
+		models.StateBacklog,
 	}
 	project, err := w.addProject("Release Ω Project", func(p *models.Project) {
 		unicodeTask := newFixtureTask(p, "国際化 🚀 café résumé release check")

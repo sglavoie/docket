@@ -60,7 +60,7 @@ func (canvas DayCanvas) DoneBlock(width, budget int) []string {
 	check := lipgloss.NewStyle().Foreground(theme.ColorSuccess).Render("✓")
 	struck := theme.MutedStyle.Strikethrough(true)
 	for _, task := range canvas.Done[:shown] {
-		slug := theme.MutedStyle.Render(" [" + task.ProjectSlug + "]")
+		slug := theme.MutedStyle.Render(" " + theme.ProjectToken(task.ProjectSlug))
 		room := max(width-lipgloss.Width(dayCanvasIndent)-2-lipgloss.Width(slug), 4)
 		lines = append(lines, dayCanvasIndent+check+" "+struck.Render(textfit.TruncateIntentional(task.Title, room, "…"))+slug)
 	}
@@ -186,7 +186,7 @@ func (canvas DayCanvas) DayItemsBlock(selected, width, budget int) []string {
 		if item.CheckIn {
 			mark = checkIn
 		}
-		slug := theme.MutedStyle.Render(" [" + item.ProjectSlug + "]")
+		slug := theme.MutedStyle.Render(" " + theme.ProjectToken(item.ProjectSlug))
 		room := max(width-lipgloss.Width(dayCanvasIndent)-2-lipgloss.Width(slug), 4)
 		lines = append(lines, dayCanvasIndent+mark+" "+textfit.TruncateIntentional(item.Title, room, "…")+slug)
 	}
@@ -217,7 +217,7 @@ func (canvas DayCanvas) PickUpBlock(width, budget int) []string {
 		if task.Step {
 			lead = "next: "
 		}
-		slug := theme.MutedStyle.Render(" [" + task.ProjectSlug + "]")
+		slug := theme.MutedStyle.Render(" " + theme.ProjectToken(task.ProjectSlug))
 		head := dayCanvasIndent + glyph + " "
 		room := max(width-lipgloss.Width(head)-lipgloss.Width(slug), 8)
 		title := textfit.TruncateIntentional(task.Title, max(room*2/5, 8), "…")

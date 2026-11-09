@@ -90,13 +90,12 @@ func uxDailyUseIntegratedProjectFieldColumns(plain string) []int {
 	var columns []int
 	seen := map[int]bool{}
 	for _, line := range strings.Split(plain, "\n") {
-		index := strings.Index(line, "[release-")
+		index := strings.Index(line, "%release-")
 		if index < 0 {
 			continue
 		}
-		// The pinned context row names the project after its lane, so its
-		// bracket follows the lane's name and is no row's project field.
-		if strings.Contains(line, " › [release-") {
+		// The pinned context row names the project after its lane, so 		// label follows the lane's name and is no row's project field.
+		if strings.Contains(line, " › %release-") {
 			continue
 		}
 		column := ansi.StringWidth(line[:index])

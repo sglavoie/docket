@@ -16,9 +16,9 @@
     { "type": "key", "key": "r" },
     { "type": "assert", "assert": "status_contains", "value": "Ranked list off · results narrow the mode" },
     { "type": "assert", "label": "narrowing leaves the mode standing, so its lanes decide the rows again", "assert": "contains", "value": "Doing  (" },
-    { "type": "assert", "assert": "contains", "value": "Someday  (" },
+    { "type": "assert", "assert": "contains", "value": "Waiting  (" },
     { "type": "assert", "assert": "contains", "value": "Build login form" },
-    { "type": "assert", "label": "Someday stays folded as the launch left it, its header counting the hit", "assert": "contains", "value": "Someday  (1)" },
+    { "type": "assert", "label": "the Waiting lane draws only the hit it holds, its header counting it", "assert": "contains", "value": "Waiting  (1)" },
 
     { "type": "key", "label": "the order axis reorders the narrowed rows in place", "key": "o" },
     { "type": "key", "key": "@" },

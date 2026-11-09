@@ -17,16 +17,14 @@ func WorkflowStateSortOrder(state WorkflowState) int {
 		return 2
 	case StatePaused:
 		return 3
-	case StateSomeday:
-		return 4
 	case StateWaiting:
-		return 5
+		return 4
 	case StateDone:
-		return 6
+		return 5
 	case StateCanceled:
-		return 7
+		return 6
 	default:
-		return 8
+		return 7
 	}
 }
 

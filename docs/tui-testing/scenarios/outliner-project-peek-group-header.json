@@ -5,11 +5,11 @@
   "actions": [
     { "type": "key", "label": "launch folds Backlog and seats the cursor on its header, so open the lane", "key": "l" },
     { "type": "key", "label": "onto Client Alpha's task, which its singleton group draws in place of a header", "key": "j" },
-    { "type": "assert", "assert": "contains", "value": "[client-alpha]   Alpha migration kickoff" },
+    { "type": "assert", "assert": "contains", "value": "%client-alpha   Alpha migration kickoff" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
     { "type": "key", "label": "fold the groups, which seats the cursor on the summary covering that task", "key": "p" },
-    { "type": "assert", "label": "the header row itself says only the slug", "assert": "contains", "value": "[client-alpha]" },
+    { "type": "assert", "label": "the header row itself says only the slug", "assert": "contains", "value": "%client-alpha" },
     { "type": "assert", "assert": "not_contains", "value": "Client Alpha" },
 
     { "type": "key", "label": "b opens Peek over the project the header names", "key": "b" },
@@ -42,7 +42,7 @@
     { "type": "assert", "assert": "contains", "value": "Kickoff moved to Monday morning" },
 
     { "type": "resize", "label": "the pane holds at the narrowest supported terminal", "width": 60, "height": 20 },
-    { "type": "assert", "assert": "contains", "value": "[client-alpha]" },
+    { "type": "assert", "assert": "contains", "value": "%client-alpha" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "width": 100, "height": 35 },
 
@@ -58,6 +58,6 @@
     { "type": "key", "label": "Esc closes the pane before it unwinds anything else", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "not_contains", "value": "No comments yet." },
-    { "type": "assert", "assert": "contains", "value": "[client-alpha]" }
+    { "type": "assert", "assert": "contains", "value": "%client-alpha" }
   ]
 }

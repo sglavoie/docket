@@ -103,7 +103,7 @@ a population leaves the original search return frame intact.
 ### Read search results
 
 The ranked list has no project headings, so across several projects each row
-opens with its project's `[slug]`, in the color that project's heading wears in
+opens with its project's `%slug`, in the color that project's heading wears in
 the main view, and the titles line up after it. A long slug is shortened to an
 eighth of the row — at least eight columns and at most twenty-four — so a narrow
 terminal keeps its titles and a wide one spells the slug out. Scoped to one project, the heading
@@ -133,8 +133,8 @@ whose title does not carry the match says where it came from with a muted
 `· attachment`, `· project`, or `· details` note. That note closes the row,
 after the deadline, review, and reference indicators, the same place a note
 row's `· note` sits, and it is the first thing a narrow row drops, so the title
-stays readable. A note row leads its title with the same `[slug]` label a ranked
-task row does, or a muted `[global]` for a workspace note, so note titles start
+stays readable. A note row leads its title with the same `%slug` label a ranked
+task row does, or a muted `%global` for a workspace note, so note titles start
 in the task titles' column. A note whose body matched spends what width its
 title leaves on a muted excerpt around the match, and a narrow row drops that
 excerpt before anything else. A title match is highlighted in the title instead: the

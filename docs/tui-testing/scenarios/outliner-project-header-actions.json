@@ -25,7 +25,7 @@
 
     { "type": "key", "label": "Esc closes the sheet without acting", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "Project Actions" },
-    { "type": "assert", "assert": "contains", "value": "▸ [client-alpha] (1)" },
+    { "type": "assert", "assert": "contains", "value": "▸ %client-alpha (1)" },
 
     { "type": "key", "label": "unfolding seats the cursor on the task the summary covered", "key": "l" },
     { "type": "key", "label": "the same key on that row is the task menu, because the row names a task", "key": "space" },

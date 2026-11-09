@@ -27,12 +27,12 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 		"`a` capture, `A` child, `c` add a checklist item to the cursor's task, " +
 			"`S` turn a checklist item into a child task or a child task back into a checklist item in its current parent, " +
 			"`D` repeat the cursor task as a new draft, `e` edits whatever the cursor names",
-		"`w` opens the workflow chord over the ten destinations the `$destination` capture sigil names",
+		"`w` opens the workflow chord over the nine destinations the `$destination` capture sigil names",
 		// Session 5 divided that chord into Plan and Status, so the catalog is
 		// asserted as the two runs it is drawn as rather than as one flat list.
 		"Plan: `wn` toggle Next, `wt` toggle Today",
 		"Status: `wi` Inbox, `wb` Backlog, `wg` Doing, `ww` Waiting, `wp` Paused, " +
-			"`wm` Someday, `wd` Done, `wc` Canceled",
+			"`wd` Done, `wc` Canceled",
 		"planning a task for Today leaves it in Backlog and Peek says `Plan: Today · Status: ▣ Backlog`",
 		"the keyboard spells a sigil differently: `$` stays what you type, `w` is what you press",
 		"`!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date, defer, and check-in schedule; " +
@@ -239,7 +239,7 @@ func TestGuideDocumentsCaptureAndWorkflowContracts(t *testing.T) {
 		"On an existing row the `~` key opens Set Dependencies over the same set, " +
 			"with the stored references already checked",
 		"`#tag` creates and sets a lowercase ASCII kebab tag on the fly",
-		"`inbox`, `backlog`, `today`, `next`, `doing`, `waiting`, `paused`, `someday`, `done`, or `canceled`",
+		"`inbox`, `backlog`, `today`, `next`, `doing`, `waiting`, `paused`, `done`, or `canceled`",
 		"A new child defaults to Backlog",
 		"Exact case-insensitive `bug`, `question`, `epic`, `story`, `feature`, and `idea`",
 		"Today and Next are mutually exclusive",
@@ -332,7 +332,7 @@ func TestGuideDocumentsStorageAndMigration(t *testing.T) {
 	requireDocumentationText(t, content, []string{
 		"workspace.json",
 		"planning.json",
-		"schema-20 Markdown and generic `Task` headings",
+		"schema-21 Markdown and generic `Task` headings",
 		"A project file may also hold comments that belong to the project itself rather than to " +
 			"any one task",
 		"Schema 19 upgrades task Markdown to schema 17 by adding the optional `PROJECT-COMMENTS` " +

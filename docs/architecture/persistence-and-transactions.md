@@ -17,7 +17,7 @@ The portable workspace rooted at `<data>` is:
 ├── .tt/                     # schema-24 tombstone older builds refuse
 └── projects/
     └── <safe-slug>/
-        ├── tasks.md         # strict schema-20 generic Task Markdown
+        ├── tasks.md         # strict schema-21 generic Task Markdown
         ├── notes/           # minimal project notes
         └── .attachments/    # task-addressed file binaries
 ```
@@ -370,7 +370,7 @@ recreate the directory preflight is about to find absent.
 
 ## Concurrent edits and conflicts
 
-Project revisions hash canonical schema-20 content. A stale writer is compared
+Project revisions hash canonical schema-21 content. A stale writer is compared
 with its base and current remote document. Independent additions and
 non-overlapping field edits can merge; competing edits, delete-versus-edit,
 incompatible hierarchy/order changes, or opaque-block divergence produce a

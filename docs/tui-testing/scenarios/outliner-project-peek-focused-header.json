@@ -10,7 +10,7 @@
     { "type": "text", "text": "quiet" },
     { "type": "key", "key": "enter" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "label": "one focused header leads the empty projection", "assert": "contains", "value": "[mix-quiet-planning]" },
+    { "type": "assert", "label": "one focused header leads the empty projection", "assert": "contains", "value": "%mix-quiet-planning" },
     { "type": "assert", "assert": "contains", "value": "No tasks yet. Press a to capture one" },
 
     { "type": "key", "label": "b opens the same pane over the focused header form", "key": "b" },
@@ -38,7 +38,7 @@
     { "type": "key", "label": "Ctrl+F pages the pane, not the list", "key": "ctrl+f" },
     { "type": "assert", "label": "which is where the stored comment body reads", "assert": "contains", "value": "Planning stays parked until" },
     { "type": "assert", "assert": "contains", "value": "↑ " },
-    { "type": "assert", "assert": "contains", "value": "[mix-quiet-planning]" },
+    { "type": "assert", "assert": "contains", "value": "%mix-quiet-planning" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "Ctrl+U walks back half a page", "key": "ctrl+u" },
     { "type": "assert", "assert": "no_layout_issues" },

@@ -37,7 +37,7 @@
     { "type": "assert", "label": "the status row spells its value as Peek and the capture route do", "assert": "not_clipped", "value": "Inbox" },
     { "type": "key", "label": "open the nested state picker", "key": "enter" },
     { "type": "assert", "assert": "contains", "value": "Set State" },
-    { "type": "assert", "label": "the narrow overlay still lists every lifecycle state", "assert": "contains", "value": "someday" },
+    { "type": "assert", "label": "the narrow overlay still lists every lifecycle state", "assert": "contains", "value": "canceled" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "key": "esc" },
 

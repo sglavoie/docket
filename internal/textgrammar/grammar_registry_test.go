@@ -6,7 +6,7 @@ import (
 )
 
 func TestCaptureDestinationNamesAreExactAndOrdered(t *testing.T) {
-	want := []string{"inbox", "backlog", "today", "next", "doing", "waiting", "paused", "someday", "done", "canceled"}
+	want := []string{"inbox", "backlog", "today", "next", "doing", "waiting", "paused", "done", "canceled"}
 	definition, ok := DefinitionFor(SurfaceCapture, FieldDestination)
 	if !ok {
 		t.Fatal("capture destination definition is missing")

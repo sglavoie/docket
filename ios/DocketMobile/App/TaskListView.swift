@@ -804,7 +804,6 @@ extension WorkflowState {
         case .doing: "play.circle"
         case .waiting: "hourglass"
         case .paused: "pause.circle"
-        case .someday: "moon"
         case .done: "checkmark.circle.fill"
         case .canceled: "xmark.circle"
         }

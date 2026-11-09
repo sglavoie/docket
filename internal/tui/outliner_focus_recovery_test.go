@@ -110,7 +110,7 @@ func TestSingleProjectFocusSurvivesReloadedPointersAndRepairsReparenting(t *test
 	reloaded := primaryRowsProject(project.ID, reloadedRoot, reloadedChild, reloadedGrandchild)
 	out.Project = reloaded
 	out.RebuildRows()
-	if len(out.Focus.Stack) != 2 || out.ProjectFocusContext() != "Focus: [project] › Reloaded root › Reloaded child" {
+	if len(out.Focus.Stack) != 2 || out.ProjectFocusContext() != "Focus: project › Reloaded root › Reloaded child" {
 		t.Fatalf("reload recovery = stack %+v context %q", out.Focus.Stack, out.ProjectFocusContext())
 	}
 

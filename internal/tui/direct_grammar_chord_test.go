@@ -88,7 +88,7 @@ func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 			group:     binding.HintGroup,
 		}
 	}
-	const stateSpelling = "wi/g/w/p/m/d/c"
+	const stateSpelling = "wi/g/w/p/d/c"
 	// Session 5 grouped these ten without touching any of them: the group is
 	// metadata beside the sequence, so what changed is the declaration order that
 	// puts the two planning collections first and the heading each one draws
@@ -102,7 +102,6 @@ func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 		"g": {operation: operation.OperationTaskSetState, value: models.StateDoing, hasValue: true, display: stateSpelling, group: status},
 		"w": {operation: operation.OperationTaskSetState, value: models.StateWaiting, hasValue: true, display: stateSpelling, group: status},
 		"p": {operation: operation.OperationTaskSetState, value: models.StatePaused, hasValue: true, display: stateSpelling, group: status},
-		"m": {operation: operation.OperationTaskSetState, value: models.StateSomeday, hasValue: true, display: stateSpelling, group: status},
 		"d": {operation: operation.OperationTaskSetState, value: models.StateDone, hasValue: true, display: stateSpelling, group: status},
 		"c": {operation: operation.OperationTaskSetState, value: models.StateCanceled, hasValue: true, display: stateSpelling, group: status},
 		// wh is not a status, but the chord mints no third heading, so hiding
@@ -112,7 +111,7 @@ func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 	if len(got) != len(want) {
 		t.Fatalf("state chord terminals = %v, want %v", got, want)
 	}
-	if wantOrder := []string{"n", "t", "i", "b", "g", "w", "p", "m", "d", "c", "h"}; !reflect.DeepEqual(gotOrder, wantOrder) {
+	if wantOrder := []string{"n", "t", "i", "b", "g", "w", "p", "d", "c", "h"}; !reflect.DeepEqual(gotOrder, wantOrder) {
 		t.Fatalf("state chord terminal order = %v, want %v", gotOrder, wantOrder)
 	}
 	for key, terminal := range want {

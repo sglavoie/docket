@@ -103,7 +103,7 @@ func assertUXLaunchPresentation(t *testing.T, driver *UITestDriver, view *outlin
 		// ladder drops entries.
 		"Active Projects · All",
 		"Doing  (",
-		"[ux-",
+		"%ux-",
 	)
 
 	// Every cross-project group names its project exactly once: a heading, or,
@@ -172,7 +172,7 @@ func assertUXHierarchyReadsByDepth(t *testing.T, driver *UITestDriver, view *out
 		// title's own offset moves with the indicators and the project label a
 		// row happens to spend, while the connector is the tree itself.
 		indents = append(indents, ansi.StringWidth(line)-ansi.StringWidth(strings.TrimLeft(line, " │")))
-		if depth > 0 && strings.Contains(line, "[ux-") {
+		if depth > 0 && strings.Contains(line, "%ux-") {
 			t.Fatalf("the row for %q names its project although it is drawn under its own parent: %q",
 				generation, line)
 		}

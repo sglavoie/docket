@@ -38,7 +38,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "label": "the tags the picker did not touch survive", "assert": "contains", "value": "Add password validation" },
     { "type": "key", "label": "opening Peek keeps the cleared row visible", "key": "b" },
-    { "type": "assert", "assert": "not_contains", "value": "[platform]" },
+    { "type": "assert", "assert": "not_contains", "value": "##platform" },
     { "type": "assert", "assert": "contains", "value": "Tags: #backend #security" },
     { "type": "key", "label": "close Peek", "key": "b" },
     { "type": "assert", "assert": "no_layout_issues" },
@@ -46,7 +46,7 @@
     { "type": "key", "label": "one undo restores the context", "key": "u" },
     { "type": "wait" },
     { "type": "key", "key": "b" },
-    { "type": "assert", "assert": "contains", "value": "[platform]" },
+    { "type": "assert", "assert": "contains", "value": "##platform" },
     { "type": "key", "label": "close Peek", "key": "b" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

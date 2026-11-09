@@ -177,7 +177,7 @@ func TestInlinePeekBodyKeepsItsContentOrder(t *testing.T) {
 	body := ansi.Strip(strings.Join(doc.Body, "\n"))
 	order := []string{
 		"Rework the sync path",
-		"Plan: Today · Status: ◐ Doing 4h · Priority: ● 2 medium · Pinned · Review",
+		"Plan: Today · Status: ◐ Doing 4h · Priority: !2 medium · Pinned · Review",
 		"Resume: Left mid-refactor",
 		"Parent: Launch platform",
 		"Due: " + chrome.FormatWeekdayDate(due, time.Now(), task.DueHasTime()) + " (" + chrome.DayGloss(due, time.Now()) + ")" +

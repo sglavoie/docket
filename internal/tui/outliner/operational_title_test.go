@@ -48,7 +48,7 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 		{name: "focused project", configure: func(m *OutlinerModel) { m.Scope.ProjectID = project.ID }, wantNarrow: []string{project.Name}, wantWide: []string{project.Name, "All"}},
 		{name: "focus", configure: func(m *OutlinerModel) {
 			m.Focus.CrossStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: task.ID}}
-		}, wantNarrow: []string{"Focus:"}, wantWide: []string{"Focus: [Alpha] › " + task.Title}},
+		}, wantNarrow: []string{"Focus:"}, wantWide: []string{"Focus: Alpha › " + task.Title}},
 		{name: "search", configure: func(m *OutlinerModel) { m.SetSearchQuery("needle") }, wantNarrow: []string{"Search:"}, wantWide: []string{"Search: \"needle\""}},
 		{name: "filters", configure: func(m *OutlinerModel) {
 			m.Filter = query.NewFilterState()
@@ -67,7 +67,7 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 			m.Filter.Priority = 1
 			adoptFilterCarriers(m)
 			m.Focus.CrossStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: task.ID}}
-		}, wantNarrow: []string{"Multi-select"}, wantWide: []string{"Multi-select: 1 selected", "Search: \"needle\"", "Filters:", "Focus: [Alpha] › Launch"}},
+		}, wantNarrow: []string{"Multi-select"}, wantWide: []string{"Multi-select: 1 selected", "Search: \"needle\"", "Filters:", "Focus: Alpha › Launch"}},
 	}
 
 	for _, mode := range chrome.OutlinerModeCatalog() {
@@ -206,13 +206,13 @@ func TestOutlinerFocusContextStaysOnTheContextRow(t *testing.T) {
 	lines := strings.Split(plain, "\n")
 	// Row 0 is identity; the context row is row 1, immediately under it and above
 	// the list, which is the one place any axis is named.
-	if len(lines) < 2 || !strings.Contains(lines[1], "Focus: [Alpha] › Launch") {
+	if len(lines) < 2 || !strings.Contains(lines[1], "Focus: Alpha › Launch") {
 		t.Fatalf("Focus context is not on the context row:\n%s", plain)
 	}
 	if strings.Contains(lines[0], "Focus:") {
 		t.Fatalf("Focus context stayed on the identity row:\n%s", plain)
 	}
-	if strings.Count(plain, "Focus: [Alpha] › Launch") != 1 {
+	if strings.Count(plain, "Focus: Alpha › Launch") != 1 {
 		t.Fatalf("Focus context was duplicated into a breadcrumb row:\n%s", plain)
 	}
 }

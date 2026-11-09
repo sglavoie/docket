@@ -29,14 +29,14 @@ public struct TaskLocator: Codable, Hashable, Sendable {
     }
 }
 
-/// The eight lifecycle states.
+/// The seven lifecycle states.
 public enum WorkflowState: String, Codable, Sendable, CaseIterable {
-    case inbox, backlog, doing, waiting, paused, someday, done, canceled
+    case inbox, backlog, doing, waiting, paused, done, canceled
 }
 
 /// Where a capture lands: a lifecycle state, or the Today or Next plan.
 public enum CaptureDestination: String, Codable, Sendable {
-    case inbox, backlog, doing, waiting, paused, someday, done, canceled, today, next
+    case inbox, backlog, doing, waiting, paused, done, canceled, today, next
 }
 
 /// Revision preconditions for a mutation: canonical project revisions by

@@ -16,7 +16,7 @@ func TestUITestScenarioRunFixtureGolden(t *testing.T) {
 		"actions": [
 			{"type": "command", "command": "outliner root"},
 			{"type": "assert", "assert": "view", "value": "CrossProjectOutliner"},
-			{"type": "assert", "assert": "contains", "value": "[rich-project]"},
+			{"type": "assert", "assert": "contains", "value": "%rich-project"},
 			{"type": "assert", "assert": "no_layout_issues"}
 		]
 	}`
@@ -58,7 +58,7 @@ func TestUITestScenarioRunFixtureGolden(t *testing.T) {
 	// Golden-ish: the normalized screen carries stable fixture content and no
 	// ANSI escapes. The launch folds Backlog, so its header stands for the epic.
 	screen := result.FinalObservation.PlainScreen
-	for _, want := range []string{"[rich-project]", "Build login form", "Backlog"} {
+	for _, want := range []string{"%rich-project", "Build login form", "Backlog"} {
 		if !strings.Contains(screen, want) {
 			t.Fatalf("final screen missing stable token %q:\n%s", want, screen)
 		}

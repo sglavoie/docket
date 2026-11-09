@@ -9,7 +9,7 @@
     { "type": "key", "label": "the apostrophe labels every other row on screen, nearest first", "key": "'" },
     { "type": "assert", "label": "jump mode publishes its own footer", "assert": "contains", "value": "type label" },
     { "type": "assert", "assert": "contains", "value": "Esc cancel" },
-    { "type": "assert", "label": "the project header right under the cursor takes the first home-row letter", "assert": "contains", "value": "a▾ [checklist-delivery]" },
+    { "type": "assert", "label": "the project header right under the cursor takes the first home-row letter", "assert": "contains", "value": "a▾ %checklist-delivery" },
     { "type": "assert", "label": "the fifth-nearest row takes the fifth", "assert": "contains", "value": "g└──" },
     { "type": "assert", "assert": "no_layout_issues" },
 

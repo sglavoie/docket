@@ -20,15 +20,13 @@ const (
 	StateWaiting WorkflowState = "waiting"
 	// StatePaused is work voluntarily suspended by the user.
 	StatePaused WorkflowState = "paused"
-	// StateSomeday is uncommitted, someday/maybe work.
-	StateSomeday WorkflowState = "someday"
 	// StateDone is successfully completed, terminal work.
 	StateDone WorkflowState = "done"
 	// StateCanceled is abandoned, terminal work.
 	StateCanceled WorkflowState = "canceled"
 )
 
-// AllWorkflowStates returns all eight target workflow states in canonical order
+// AllWorkflowStates returns all seven workflow states in canonical order
 // (nonterminal states first, then the two terminal states).
 func AllWorkflowStates() []WorkflowState {
 	return []WorkflowState{
@@ -37,18 +35,17 @@ func AllWorkflowStates() []WorkflowState {
 		StateDoing,
 		StateWaiting,
 		StatePaused,
-		StateSomeday,
 		StateDone,
 		StateCanceled,
 	}
 }
 
-// IsValid reports whether the state is one of the eight target states.
-// Retired values accepted by migration readers are deliberately excluded.
+// IsValid reports whether the state is one of the seven states. Retired values
+// accepted by migration readers, someday among them, are deliberately excluded.
 func (s WorkflowState) IsValid() bool {
 	switch s {
 	case StateInbox, StateBacklog, StateDoing, StateWaiting,
-		StatePaused, StateSomeday, StateDone, StateCanceled:
+		StatePaused, StateDone, StateCanceled:
 		return true
 	}
 	return false
@@ -83,8 +80,6 @@ func (s WorkflowState) Icon() string {
 		return icons.Get("status.waiting")
 	case StatePaused:
 		return icons.Get("status.paused")
-	case StateSomeday:
-		return icons.Get("status.someday")
 	case StateDone:
 		return icons.Get("status.done")
 	case StateCanceled:

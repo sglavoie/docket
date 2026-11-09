@@ -19,9 +19,6 @@ var (
 	StandbyStyle = lipgloss.NewStyle().
 			Foreground(ColorViewStandby)
 
-	MaybeStyle = lipgloss.NewStyle().
-			Foreground(ColorViewSomeday)
-
 	CanceledStyle = lipgloss.NewStyle().
 			Foreground(ColorMuted).
 			Strikethrough(true)

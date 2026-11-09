@@ -25,12 +25,6 @@ func (t *Task) Standby() {
 	_ = t.ApplyStateTransition(StatePaused)
 }
 
-// Maybe marks the task as a tentative consideration (the someday state).
-// Deferral is cleared since maybe tasks should remain visible for review.
-func (t *Task) Maybe() {
-	_ = t.ApplyStateTransition(StateSomeday)
-}
-
 // Wait marks the task as explicitly waiting.
 // Deferral is cleared since waiting work should remain visible.
 func (t *Task) Wait() {

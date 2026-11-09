@@ -16,7 +16,7 @@ import (
 
 func TestGetUsesStableUnicodeRegistry(t *testing.T) {
 	for key, want := range map[string]string{
-		"status.backlog": "□", "priority.1": "◉",
+		"status.backlog": "□", "priority.1": "!1",
 		"checkbox.checked": "☑", "github_issue": "GH",
 	} {
 		if got := Get(key); got != want {
@@ -113,7 +113,7 @@ func repositoryRootDir(t *testing.T) string {
 
 func TestColumnAlignedGroupsHaveConsistentWidth(t *testing.T) {
 	for group, keys := range map[string][]string{
-		"status":   {"status.inbox", "status.backlog", "status.doing", "status.waiting", "status.paused", "status.someday", "status.done", "status.canceled"},
+		"status":   {"status.inbox", "status.backlog", "status.doing", "status.waiting", "status.paused", "status.done", "status.canceled"},
 		"priority": {"priority.1", "priority.2", "priority.3"},
 		"checkbox": {"checkbox.checked", "checkbox.unchecked"},
 	} {
@@ -154,14 +154,14 @@ func TestSetNerdGlyphsSwitchesGetAndBack(t *testing.T) {
 		t.Fatal("the process must start on the Unicode set")
 	}
 	SetNerdGlyphs(true)
-	if got := Get("status.someday"); got != "\U000F07F7" {
-		t.Errorf("Nerd Get(status.someday) = %q", got)
+	if got := Get("status.paused"); got != "\U000F03E6" {
+		t.Errorf("Nerd Get(status.paused) = %q", got)
 	}
 	if got := Get("nonexistent_key"); got != "" {
 		t.Errorf("Nerd Get(unknown) = %q", got)
 	}
 	SetNerdGlyphs(false)
-	if got := Get("status.someday"); got != "¿" {
-		t.Errorf("Unicode Get(status.someday) = %q", got)
+	if got := Get("status.paused"); got != "‖" {
+		t.Errorf("Unicode Get(status.paused) = %q", got)
 	}
 }

@@ -5,14 +5,14 @@
   "actions": [
     { "type": "key", "label": "go to Inbox", "key": "g" },
     { "type": "key", "key": "i" },
-    { "type": "assert", "label": "an open singleton group keeps a readable title beside the variable-width deadline", "assert": "contains", "value": "[sign…ack] ◌ Alpha overdue int" },
+    { "type": "assert", "label": "an open singleton group keeps a readable title beside the variable-width deadline", "assert": "contains", "value": "%sign…ack ◌ Alpha overdue int" },
     { "type": "key", "label": "fold every group so the singleton draws its header", "key": "p" },
-    { "type": "assert", "label": "the suffix degrades instead of being truncated", "assert": "contains", "value": "[signal-delivery-coordination-track] (1)  ! overdue 1" },
+    { "type": "assert", "label": "the suffix degrades instead of being truncated", "assert": "contains", "value": "%signal-delivery-coordination-track (1)  ! overdue 1" },
     { "type": "assert", "label": "the planned count drops first and the pulse still counts all overdue work", "assert": "count_contains", "value": "today 3", "count": 1 },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "resize", "label": "widen back out", "width": 100, "height": 35 },
-    { "type": "assert", "label": "the dropped count returns when it fits", "assert": "contains", "value": "[signal-delivery-coordination-track] (1)  ! overdue 1 · today 1" },
+    { "type": "assert", "label": "the dropped count returns when it fits", "assert": "contains", "value": "%signal-delivery-coordination-track (1)  ! overdue 1 · today 1" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

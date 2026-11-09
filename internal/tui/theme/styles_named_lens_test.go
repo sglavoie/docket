@@ -30,7 +30,6 @@ func TestLensAccentsReadApart(t *testing.T) {
 			"next":      lensAccentNextStyle,
 			"waiting":   lensAccentWaitingStyle,
 			"paused":    lensAccentPausedStyle,
-			"someday":   lensAccentSomedayStyle,
 			"complete":  lensAccentCompleteStyle,
 			"canceled":  lensAccentCanceledStyle,
 			"overdue":   LensAccentOverdueStyle,

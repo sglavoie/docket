@@ -4,7 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "assert", "label": "the Now card leads the home view with the Doing task", "assert": "contains", "value": "▎ Build login form" },
-    { "type": "assert", "label": "its right edge names the project and how long it has been in Doing", "assert": "contains", "value": "in Doing" },
+    { "type": "assert", "label": "its right edge names the project and how long it has been in Doing (the fixture starts it at build time)", "assert": "contains", "value": "Rich Project · started just now" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "Agenda is a home view too, so it keeps the card", "key": "2" },
     { "type": "assert", "assert": "contains", "value": "Active Projects · Agenda" },

@@ -154,8 +154,6 @@ func workflowStateListLabel(state models.WorkflowState) string {
 		return "Waiting"
 	case models.StatePaused:
 		return "Paused"
-	case models.StateSomeday:
-		return "Someday"
 	case models.StateDone:
 		return "Done"
 	case models.StateCanceled:

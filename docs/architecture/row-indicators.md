@@ -10,7 +10,7 @@ recency chip — is now read in Peek, at full value rather than in a fixed-width
 badge. The trade is deliberate and one-directional: a row is scanned to decide
 what to do next, so it carries required interaction context and spends every
 other column on the title, while Peek is the complete document one `b` away.
-Attachment presence is a reserved `📎` segment (`icons.Get("marker.attachment")`) after the title, rendered by
+Attachment presence is a reserved `&` segment (`icons.Get("marker.attachment")`) after the title, rendered by
 `taskAttachmentMarker` from `Task.HasAttachments()`. It carries no count and
 stays outside `indicatorDropLadder`, so narrowing the row never hides it.
 `taskRowSegments` charges its display width before fitting the title, including
@@ -20,12 +20,12 @@ Description presence uses the same reserved width policy: `taskDescriptionMarker
 renders `▤` before the attachment marker when `strings.TrimSpace(task.Description)`
 is nonempty. The description text remains in Peek.
 
-`taskIdentityLabel` joins `[project] [context]`. Cross-project ranked results
+`taskIdentityLabel` joins `%project ##context`. Cross-project ranked results
 pad that combined label to a shared project column, and merged singleton rows
 pad it to `mergedIdentityWidth`; rows under a project header carry context
 alone and reserve no space when it is absent. Context text is bounded to one eighth of the row width,
 clamped to 8–20 columns. A combined project/context label spends at most one
-third of the row, including brackets and the separator; the project slug
+third of the row, including the `%` and `##` sigils and the separator; the project slug
 abbreviates to the remaining budget. The render and measurement share this
 rule, including inline editing. Peek recovers the full context in a wrapped
 section after Project, with the value in its content fingerprint.
@@ -119,7 +119,7 @@ observation clock to label the full deadline `overdue`.
 the row and `chrome.PickHeroAttribute` read one predicate and a row can never
 demote a badge for a review it does not name. It has three tiers: a bare `review`
 for the stored flag alone, which has no day to be late against and stays until
-`R` clears it, then `review today` and `review +<age>` once
+`R` clears it, then `=review today` and `=review +<age>` once
 `Task.CheckInIsDueAt` says the schedule has arrived and is eligible. The first
 two wear the teal due-today chip; the late tier wears `theme.ReviewLateStyle`,
 the one amber chip, held apart from the P2 title ink and the Waiting section
@@ -297,7 +297,7 @@ is useful.
 
 The flat ranked list across several projects draws no project header, so its
 rows carry the one project label a task row still wears: `taskProjectLabel`
-puts the header's `[slug]`, in the same `ProjectColorStyle`, between the
+puts the header's `%slug`, in the same `ProjectColorStyle`, between the
 badges and the title. The row leading a merged one-task group wears the same
 label for the same reason — no header stands over it — and
 `rowLeadsWithProjectLabel` is the one predicate both cases share; the rows
@@ -309,7 +309,7 @@ shares the label, the combined identity budget can shorten the slug further.
 `ComputeOutlinerRowLayout` measures the widest ranked label into
 `ColumnLayout.ProjectWidth`, so those titles start in one column. Merged rows
 share a column of their own: `mergedIdentityWidth` is the widest merged label,
-floored at the widest `[slug]` any project present in the projection would
+floored at the widest `%slug` any project present in the projection would
 draw — a project hidden whole by a folded lane included, so opening the lane
 moves no title — and cached per row width until the next rebuild. Below 60
 columns of row width it is zero and the labels stay inline. The label is part of
@@ -404,7 +404,7 @@ because the section header above them already states it.
 A pinned *project* wears the same glyph, from the same `PinnedMarker()` helper,
 on the surfaces that list projects: the Select Project rows and the `%` Move to
 Project picker. The Outliner draws no project pin marker, on a project group
-header or on a merged row's `[slug]`, so in the Outliner `*` only ever marks a
+header or on a merged row's `%slug`, so in the Outliner `*` only ever marks a
 task. One vocabulary, so `*` writes
 what `*pin` names and what every list shows. It is a glyph rather than a color
 because `SelectedLine` strips styling and re-renders, and `RenderListSurfaceRow`

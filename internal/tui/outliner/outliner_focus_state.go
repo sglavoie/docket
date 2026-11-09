@@ -259,7 +259,7 @@ func taskFocusContext(project *models.Project, task *models.Task) string {
 	for left, right := 0, len(path)-1; left < right; left, right = left+1, right-1 {
 		path[left], path[right] = path[right], path[left]
 	}
-	return outlinerFocusContextPrefix + "[" + projectName + "] › " + strings.Join(path, " › ")
+	return outlinerFocusContextPrefix + projectName + " › " + strings.Join(path, " › ")
 }
 
 func focusParent(project *models.Project, task *models.Task) *models.Task {

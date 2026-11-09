@@ -10,7 +10,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "key", "label": "h's last rung folds the project group the row belongs to", "key": "h" },
     { "type": "assert", "assert": "not_contains", "value": "Triage support inbox" },
-    { "type": "assert", "label": "a folded group is the one form that spends a row on a heading, and the cursor rests on it", "assert": "contains", "value": "▸ [rich-project] (1)" },
+    { "type": "assert", "label": "a folded group is the one form that spends a row on a heading, and the cursor rests on it", "assert": "contains", "value": "▸ %rich-project (1)" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "unfold the same group", "key": "l" },
     { "type": "assert", "assert": "contains", "value": "Triage support inbox" },
@@ -25,7 +25,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "now that all are expanded the same key folds them", "key": "p" },
     { "type": "assert", "assert": "not_contains", "value": "Triage support inbox" },
-    { "type": "assert", "label": "the cursor stays on the header it was folded from", "assert": "contains", "value": "▸ [rich-project] (1)" },
+    { "type": "assert", "label": "the cursor stays on the header it was folded from", "assert": "contains", "value": "▸ %rich-project (1)" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

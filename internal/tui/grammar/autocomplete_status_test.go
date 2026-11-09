@@ -48,7 +48,7 @@ func TestQuickCaptureDestinationSuggestionsFilterByPartial(t *testing.T) {
 		{"back", []string{"backlog"}},
 		{"wait", []string{"waiting"}},
 		{"pause", []string{"paused"}},
-		{"some", []string{"someday"}},
+		{"don", []string{"done"}},
 	}
 
 	for _, tt := range tests {

@@ -114,7 +114,7 @@ rather than repeating the word ten times.
 declaration order, and `wd` alone declares it. `pendingChordGuidanceSpec` gives
 such an entry the priority of its run's first member: behind the entry carrying
 the heading, so Done is never drawn under `Plan:`, and ahead of every other
-member of that run, so a footer too narrow for all eight states sheds Done
+member of that run, so a footer too narrow for all seven states sheds Done
 last. Its slot in the row does not move. `fx` declares it too, in a run with no
 heading: there is no division for it to be drawn under wrongly, so it ranks
 ahead of every run and clear all is the last facet entry a narrow row gives up.
@@ -928,7 +928,7 @@ previous session — names neither and moves nothing. See
 [`tui-architecture.md`](tui-architecture.md).
 
 All mode projects open work as Pinned, Today, Doing, Review,
-Inbox, Next, Paused, Backlog, Waiting, and Someday. Pinned is a transient projection
+Inbox, Next, Paused, Backlog, and Waiting. Pinned is a transient projection
 the mode catalog admits through `ShowsPinned`, set on All and Today
 only; Inbox, Next, Backlog, Due, and Recent own one narrow ordered answer that a
 promoted group would split. It is
@@ -1188,7 +1188,7 @@ value's untyped remainder, dimmed, into blank cells after the virtual cursor. It
 does so only when the caret ends the draft and the value continues the typed
 partial, case aside; otherwise the input's own view stands.
 
-A task row's context label is `theme.TaskContextLabel`: muted brackets around
+A task row's context label is `theme.TaskContextLabel`: a muted `##` before
 the context color, never bold, painted as the project label is. The Backlog
 badge glyph is `▣` (U+25A3), the BMP form of the heavy square, chosen for font
 coverage.

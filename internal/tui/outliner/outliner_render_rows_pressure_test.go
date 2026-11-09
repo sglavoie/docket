@@ -58,7 +58,7 @@ func TestLoadedRowSpendsItsWidthOnTheTitle(t *testing.T) {
 			if !strings.Contains(plain, "Investig") {
 				t.Fatalf("%d-column row lost the recognizable title prefix: %q", width, plain)
 			}
-			if !strings.Contains(plain, "📎") {
+			if !strings.Contains(plain, "&") {
 				t.Fatalf("%d-column row hid attachment presence: %q", width, plain)
 			}
 			if width >= 80 && !strings.Contains(plain, ansi.Strip(query.FormatDueDate(task))) {

@@ -66,10 +66,10 @@ including literal examples and batch capture.
 
 ## Mental model
 
-**Status says where the work stands.** Each task has one of eight states:
+**Status says where the work stands.** Each task has one of seven states:
 
 ```text
-inbox  backlog  doing  waiting  paused  someday  done  canceled
+inbox  backlog  doing  waiting  paused  done  canceled
 ```
 
 **Today and Next are plans.** A task can belong to one at a time. Completing it
@@ -161,7 +161,7 @@ The Outliner is the only primary task presentation:
 
 1. `a` captures one or more tasks.
 2. `gi` moves to Inbox for triage.
-3. `w` opens the workflow chord over the ten destinations the `$destination`
+3. `w` opens the workflow chord over the nine destinations the `$destination`
    sigil names.
 4. `wb`, `wn`, and `wt` organize work; `wg` starts it and `wd` completes it.
 5. Direct metadata keys handle priority, dates, tags, and pin; state goes

@@ -176,13 +176,13 @@ func TestInlineRowEditorWideNarrowNestedAndErrorRendering(t *testing.T) {
 	row := out.Rows[out.Cursor]
 
 	wide := ansi.Strip(out.QuickEditMetadataLine(row, project, 120))
-	for _, want := range []string{"EDIT TASK", "[project] › Parent", "today", "!1", "@Jan 2", "pin", "#gamma"} {
+	for _, want := range []string{"EDIT TASK", "%project › Parent", "today", "!1", "@Jan 2", "pin", "#gamma"} {
 		if !strings.Contains(wide, want) {
 			t.Errorf("wide metadata missing %q: %q", want, wide)
 		}
 	}
 	narrow := ansi.Strip(out.QuickEditMetadataLine(row, project, 46))
-	for _, want := range []string{"EDIT TASK", "[project]", "Parent", "today"} {
+	for _, want := range []string{"EDIT TASK", "%project", "Parent", "today"} {
 		if !strings.Contains(narrow, want) {
 			t.Errorf("narrow metadata missing %q: %q", want, narrow)
 		}
@@ -197,7 +197,7 @@ func TestInlineRowEditorWideNarrowNestedAndErrorRendering(t *testing.T) {
 	parent.Title = "Parent marker with a deliberately long descriptive title"
 	project.BuildTaskTree()
 	minimum := ansi.Strip(out.QuickEditMetadataLine(row, project, chrome.MinTerminalWidth))
-	for _, want := range []string{"EDIT TASK", "[project]", "Parent", "today"} {
+	for _, want := range []string{"EDIT TASK", "%project", "Parent", "today"} {
 		if !strings.Contains(minimum, want) {
 			t.Errorf("minimum-width metadata missing mandatory segment %q: %q", want, minimum)
 		}
@@ -220,7 +220,7 @@ func TestInlineRowEditorWideNarrowNestedAndErrorRendering(t *testing.T) {
 	}
 	// The floor is chosen so both route endpoints stay recognizable: the project
 	// chip at the front, the immediate parent at the back.
-	if !strings.Contains(errorLine, "[p") || !strings.Contains(errorLine, "› P") {
+	if !strings.Contains(errorLine, "%p") || !strings.Contains(errorLine, "› P") {
 		t.Errorf("error metadata dropped an endpoint of the compacted route: %q", errorLine)
 	}
 	if got := lipgloss.Width(errorLine); got > 72 {

@@ -20,7 +20,6 @@ func TestCaptureDestinationsApplyLifecyclePlanningAndTerminalTimestamps(t *testi
 		textgrammar.DestinationDoing:    models.StateDoing,
 		textgrammar.DestinationWaiting:  models.StateWaiting,
 		textgrammar.DestinationPaused:   models.StatePaused,
-		textgrammar.DestinationSomeday:  models.StateSomeday,
 		textgrammar.DestinationDone:     models.StateDone,
 		textgrammar.DestinationCanceled: models.StateCanceled,
 	}

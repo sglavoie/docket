@@ -12,7 +12,7 @@
     { "type": "key", "label": "land on the first Backlog task, which leads its singleton project group", "key": "home" },
     { "type": "assert", "assert": "contains", "value": "Launch platform" },
     { "type": "key", "label": "focus the Launch platform descendants", "key": "enter" },
-    { "type": "assert", "assert": "contains", "value": "Focus: [Rich Project] › Launch platform" },
+    { "type": "assert", "assert": "contains", "value": "Focus: Rich Project › Launch platform" },
     { "type": "key", "label": "capture inside the focused branch", "key": "a" },
     { "type": "assert", "assert": "view", "value": "TaskComposer" },
     { "type": "assert", "label": "the divider names the parent the route row cannot carry", "assert": "contains", "value": "Capture → child of Launch platform" },
@@ -21,7 +21,7 @@
     { "type": "key", "label": "commit the child capture", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "label": "the new child appears in the focused projection", "assert": "contains", "value": "Write launch checklist" },
-    { "type": "assert", "assert": "contains", "value": "Focus: [Rich Project] › Launch platform" },
+    { "type": "assert", "assert": "contains", "value": "Focus: Rich Project › Launch platform" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

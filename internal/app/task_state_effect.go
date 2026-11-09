@@ -35,7 +35,7 @@ func (e *TaskStateEffect) OffersCheckIn() bool {
 }
 
 // LeavesDoing reports a commit that took the task out of Doing into work that
-// is still open — Paused, Waiting, Backlog, Someday, or Inbox. That is the
+// is still open — Paused, Waiting, Backlog, or Inbox. That is the
 // moment a resume note is worth writing, since it is the one time the user
 // knows where they stopped. Finishing or canceling is not leaving off: terminal
 // work has nothing to resume.

@@ -18,7 +18,7 @@
     { "type": "click", "label": "a double-click is Enter on the row, which chooses it", "on": "Tomorrow  ", "count": 2 },
     { "type": "wait" },
     { "type": "assert", "assert": "not_contains", "value": "Set Due, Defer, or Check-In" },
-    { "type": "assert", "assert": "contains", "value": "Build login form  ‹   Tomorrow" },
+    { "type": "assert", "assert": "contains", "value": "Build login form  ‹   @Tomorrow" },
 
     { "type": "key", "label": "open the tag picker", "key": "#" },
     { "type": "assert", "assert": "contains", "value": "Set Tags & Context: Build login form" },

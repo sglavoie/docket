@@ -34,9 +34,9 @@ func TestTaskContextFollowsProjectOnRow(t *testing.T) {
 		for _, width := range []int{60, 100} {
 			layout := outliner.ComputeOutlinerRowLayout([]OutlinerRow{row}, width)
 			plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, width, 0, layout))
-			want := "[platform]"
+			want := "##platform"
 			if merged {
-				want = "[project] [platform]"
+				want = "%project ##platform"
 			}
 			if !strings.Contains(plain, want) || !strings.Contains(plain, task.Title) {
 				t.Fatalf("width %d row missing context or title: %q", width, plain)
@@ -63,7 +63,7 @@ func TestTaskContextFollowsProjectOnRow(t *testing.T) {
 }
 
 func TestProjectHeaderPressureDegradesBeforeTruncation(t *testing.T) {
-	const line = "▾ [project] (4)"
+	const line = "▾ %project (4)"
 	row := OutlinerRow{OverdueCount: 2, TodayCount: 3}
 
 	cases := []struct {
@@ -71,9 +71,9 @@ func TestProjectHeaderPressureDegradesBeforeTruncation(t *testing.T) {
 		rowWidth int
 		want     string
 	}{
-		{"both counts fit", 60, "▾ [project] (4)  ! overdue 2 · today 3"},
-		{"today drops first", 30, "▾ [project] (4)  ! overdue 2"},
-		{"both drop", 20, "▾ [project] (4)"},
+		{"both counts fit", 60, "▾ %project (4)  ! overdue 2 · today 3"},
+		{"today drops first", 30, "▾ %project (4)  ! overdue 2"},
+		{"both drop", 20, "▾ %project (4)"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -98,7 +98,7 @@ func TestProjectHeaderPressureDegradesBeforeTruncation(t *testing.T) {
 func TestProjectHeaderPressureCountsCarryTheirEmphasis(t *testing.T) {
 	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
-	const line = "▾ [project] (4)"
+	const line = "▾ %project (4)"
 	row := OutlinerRow{OverdueCount: 2, TodayCount: 3}
 
 	for _, themeName := range []string{"dark", "light"} {
@@ -188,7 +188,7 @@ func TestCrossProjectProjectIdentityHasExactlyOneCarrier(t *testing.T) {
 			continue
 		}
 		line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 120, index, nil))
-		named := regexp.MustCompile(`\[` + regexp.QuoteMeta(row.ProjectID) + `\]\s+` + regexp.QuoteMeta(row.Task.Title)).MatchString(line)
+		named := regexp.MustCompile(`%` + regexp.QuoteMeta(row.ProjectID) + `\s+` + regexp.QuoteMeta(row.Task.Title)).MatchString(line)
 		if named != row.LeadsMergedGroup {
 			t.Errorf("task row %q named its project = %t, leads merged group = %t: %q",
 				row.Task.ID, named, row.LeadsMergedGroup, line)
@@ -216,7 +216,7 @@ func TestCrossProjectProjectIdentityHasExactlyOneCarrier(t *testing.T) {
 		}
 		summaries[row.ProjectID] = strings.Contains(
 			ansi.Strip(outliner.RenderOutlinerProjectHeaderRow(row, false, 120, index)),
-			"["+row.ProjectID+"]",
+			"%"+row.ProjectID,
 		)
 	}
 	for _, projectID := range []string{alpha.ID, beta.ID} {
@@ -269,7 +269,7 @@ func TestOutlinerTaskRowLeavesSupportingCountsToPeek(t *testing.T) {
 		for _, width := range []int{60, 120} {
 			for _, selected := range []bool{false, true} {
 				plain := ansi.Strip(outliner.RenderOutlinerTaskRow(row, selected, width, 0, nil))
-				if strings.Count(plain, "📎") != want {
+				if strings.Count(plain, "&") != want {
 					t.Fatalf("%d attachments should draw %d paperclips: %q", len(attachments), want, plain)
 				}
 				if lipgloss.Width(plain) > width || !strings.Contains(plain, task.Title) {
@@ -304,7 +304,7 @@ func TestTaskDescriptionGlyphSurvivesNarrowRowsAndClearsWithDescription(t *testi
 					if strings.Contains(plain, "▤") != want {
 						t.Fatalf("description %q has incorrect presence glyph: %q", description, plain)
 					}
-					if !strings.Contains(plain, "📎") || (want && !strings.Contains(plain, "▤ 📎")) {
+					if !strings.Contains(plain, "&") || (want && !strings.Contains(plain, "▤ &")) {
 						t.Fatalf("description displaced the attachment marker: %q", plain)
 					}
 					if lipgloss.Width(plain) > width || !strings.Contains(plain, "Review") {

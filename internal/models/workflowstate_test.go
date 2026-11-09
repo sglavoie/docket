@@ -4,8 +4,8 @@ import "testing"
 
 func TestAllWorkflowStatesAreValidAndComplete(t *testing.T) {
 	all := AllWorkflowStates()
-	if len(all) != 8 {
-		t.Fatalf("AllWorkflowStates() len = %d, want 8", len(all))
+	if len(all) != 7 {
+		t.Fatalf("AllWorkflowStates() len = %d, want 7", len(all))
 	}
 	seen := make(map[WorkflowState]bool, len(all))
 	for _, s := range all {

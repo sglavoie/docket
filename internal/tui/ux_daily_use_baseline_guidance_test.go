@@ -59,7 +59,7 @@ func TestUXDailyUseWorkflowChordDividesPlanFromStatus(t *testing.T) {
 // eight lifecycle states.
 var uxDailyUseWorkflowEntries = []string{
 	"n next", "t today", "i inbox", "b backlog", "g doing",
-	"w waiting", "p paused", "m someday", "d done", "c canceled",
+	"w waiting", "p paused", "d done", "c canceled",
 }
 
 // TestUXDailyUseStateChangeNotesTheMissingCheckIn records what moving a task to
@@ -108,7 +108,7 @@ func TestUXDailyUseStateChangeNotesTheMissingCheckIn(t *testing.T) {
 // twice: the cursor is on a task, and it is on the *first* one, which is what
 // separates the rule from a landing that merely happened to clear the header.
 //
-// A launch folds All's Backlog and Someday lanes and nothing else, so a fixture
+// A launch folds All's Backlog lane and nothing else, so a fixture
 // whose work all sits in those two lanes draws no task row and lands on the
 // first row, the first folded header, which is the rule's own fallback. A section holding nothing is never
 // emitted. What can stand over the first task is a section header, a project

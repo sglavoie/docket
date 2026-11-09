@@ -121,7 +121,7 @@ func chordGroupRank(strategy InputStrategy, sequence []string) int {
 }
 
 // presetChordHelpItems spells a chord whose one display key compresses several
-// presets — `wi/g/w/p/m/d/c` — as one help row per preset instead, `wi` Move
+// presets — `wi/g/w/p/d/c` — as one help row per preset instead, `wi` Move
 // to Inbox, so `?` names what each letter does rather than leaving the
 // reader to decode a run of initials. Any other operation returns nothing and
 // keeps its single row.

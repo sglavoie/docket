@@ -142,7 +142,13 @@ but on a row it is the common case, so it leaves the column blank and the
 badges that remain stand out. Not sure what a mark means? `?` on the row
 explains every mark it wears under **On this row**.
 
-A paperclip (`📎`, or the Nerd Font paperclip under View → Nerd Font Glyphs)
+The row spells each value in the sigil that writes it, so what you read is what
+you would type: `!1` and `!2` for priority, `*` for a pin, `&` for an
+attachment, `=review` for an owed review, `@Oct 19` for a deadline, `%slug` for
+the project, and `##desk` for the context. Only the workflow state and the
+description marker (`▤`) are glyphs, since neither has a sigil of its own.
+
+An ampersand (`&`, or the Nerd Font paperclip under View → Nerd Font Glyphs)
 after the title means the task has one or more attachments,
 including files, URLs, and code references. It stays visible on narrow rows.
 Press `&` to open the attachments panel; Peek shows the count and details.
@@ -153,12 +159,12 @@ Both are stored as the address alone and opened by the system, so a `message:`
 link opens the message in Mail.
 
 A document glyph (`▤`) after the title means the task has a description.
-It precedes the paperclip when both are present and stays visible on narrow
+It precedes the `&` when both are present and stays visible on narrow
 rows. Empty or whitespace-only descriptions show no glyph. Open Peek with `b`
 to read the description.
 
 Context appears on the task row immediately after the project label, as
-`[project] [context]`. When the project is named by a group header, the task
+`%project ##context`. When the project is named by a group header, the task
 shows its context before the title. Long contexts and combined project/context
 labels are shortened to leave room for the task title and its indicators.
 Grouped rows use only the space their labels need: a task without context
@@ -209,12 +215,12 @@ reads `waiting <age>`, measured from the moment it entered Waiting rather than
 from the last time anything touched it, so recording a chase in the comments
 does not reset how long the work has been blocked. A due date beside it remains
 a deadline and keeps the ordinary due chip on the row. A check-in is a separate
-schedule: once its day arrives the row says `review today` or `review +<age>`,
+schedule: once its day arrives the row says `=review today` or `=review +<age>`,
 unless the task is deferred; before then it appears only in Peek and scheduling
 controls. A task you flagged with `=` and owe no date for says a bare `review`,
 so the row always names what it is asking for; inside the Review lane that bare
 word is left off, since the lane's heading already says it. `review` and
-`review today` share the teal of a due-today date, and a late `review +<age>`
+`=review today` share the teal of a due-today date, and a late `=review +<age>`
 turns amber, a warning rather than a missed deadline. Moving a task to Waiting with
 `ww` opens nothing: the move commits, and when the task has no check-in the
 footer says so — `No check-in: <task> · F10: Set Up Check-Ins`, with `Ctrl+M`
@@ -331,7 +337,7 @@ the relation mark and is never dropped.
 
 A pinned project wears the same `*` on the Select Project rows and in the `%`
 Move to Project list. The Outliner draws no project pin marker, on a project
-group header or on the `[slug]` a merged row leads with, so there `*` always
+group header or on the `%slug` a merged row leads with, so there `*` always
 means a pinned task. An archived project keeps the marker,
 because the pin is real state that survives archiving, but `*` itself does not
 work there and the footer stops offering it: the marker shows the state, the key
@@ -348,7 +354,7 @@ made. A query that is only narrowing the mode's own lanes has nothing to leave,
 so `Enter` there is the ordinary zoom.
 
 `Enter` is that same zoom-in act on the two header rows. On a project sub-header
-it scopes the Outliner to that project — except on the `[slug]` header a focused
+it scopes the Outliner to that project — except on the `%slug` header a focused
 project leads with, which names the scope you are already in and so takes no
 `Enter` and no fold. On a section header it narrows the mode
 to that one section: `Enter` on `Next` in All shows the Next lane for every
@@ -407,7 +413,7 @@ When compact Peek cannot show two lines of the resume note on its first page,
 it moves the note ahead of status, or ahead of a title that would fill the
 page. Nothing is shortened or removed: scrolling retains the full document,
 and fullscreen details starts with the title. For example,
-`Plan: Today · Status: ▣ Backlog · Priority: ◉ 1 high` distinguishes the planning
+`Plan: Today · Status: ▣ Backlog · Priority: !1 high` distinguishes the planning
 collection from the lifecycle state. The status and priority lead with the glyph
 and color the row draws for them, so reading Peek is how the row's symbols are
 learned. Doing and Waiting include time in that state. The project slug and parent chain follow, then the schedule, description,
@@ -418,7 +424,7 @@ lane's header on. Labels end in one column, so the values beside them line up
 (`    Due: Fri Nov 13` under `Project: web`), and a wrapped value hangs under
 itself; a dock narrower than 40 columns keeps the plain layout. Progress reads
 as a smooth bar that fills by eighths of a cell. The last line, `Row:`, names
-each mark the task's row drew, such as `◉ High · ▤ Has a description · 📎 Has
+each mark the task's row drew, such as `!1 High · ▤ Has a description · & Has
 attachments`, so the row's shorthand is spelled out without opening help.
 
 | Detail | Example | Meaning |

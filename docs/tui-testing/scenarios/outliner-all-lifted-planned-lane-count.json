@@ -1,0 +1,23 @@
+{
+  "name": "outliner-all-lifted-planned-lane-count",
+  "fixture": "fresh",
+  "size": "100x32",
+  "actions": [
+    { "type": "key", "key": "a" },
+    { "type": "text", "text": "Stays in Doing $doing" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "key", "key": "a" },
+    { "type": "text", "text": "Doing and planned for today $doing" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "key", "label": "onto the task just captured", "key": "g" },
+    { "type": "key", "key": "l" },
+    { "type": "key", "label": "plan it for Today", "key": "w" },
+    { "type": "key", "key": "t" },
+    { "type": "wait" },
+    { "type": "assert", "label": "a Doing task planned for Today is drawn in Today, so the Doing lane names where its other task went", "assert": "contains", "value": "Doing  (1)  +1 in Today" },
+    { "type": "assert", "label": "which is what lets the Now card's count agree with the lane", "assert": "contains", "value": "+1 more in Doing" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

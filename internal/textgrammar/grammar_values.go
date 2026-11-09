@@ -23,8 +23,6 @@ func StateDescription(state models.WorkflowState) string {
 		return "waiting externally"
 	case models.StatePaused:
 		return "paused"
-	case models.StateSomeday:
-		return "deferred someday"
 	case models.StateDone:
 		return "completed"
 	case models.StateCanceled:

@@ -24,7 +24,7 @@ func TestTheRankedListLeavesModeAndFoldsButHonorsScopeAndFacets(t *testing.T) {
 	child.Title = "Child title"
 	child.Description = "contains Needle"
 	child.ParentID = &parent.ID
-	deferred := primaryRowsTask("deferred", models.StateSomeday)
+	deferred := primaryRowsTask("deferred", models.StatePaused)
 	deferred.Title = "Needle deferred"
 	deferred.DeferredUntil = &tomorrow
 	inbox := primaryRowsTask("inbox", models.StateInbox)

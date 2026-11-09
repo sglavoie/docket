@@ -34,13 +34,13 @@ func TestProjectAliasReplacesTheSlugLabel(t *testing.T) {
 	}
 	driver.App().crossOutliner.ClearAllFolds()
 	obs := pressKeys(t, driver, "home")
-	if !strings.Contains(obs.PlainScreen, "[IA]") {
+	if !strings.Contains(obs.PlainScreen, "%IA") {
 		t.Fatalf("the aliased project is not labeled by its alias:\n%s", obs.PlainScreen)
 	}
-	if strings.Contains(obs.PlainScreen, "[internal-archive") {
+	if strings.Contains(obs.PlainScreen, "%internal-archive") {
 		t.Fatalf("the aliased project still shows its slug:\n%s", obs.PlainScreen)
 	}
-	if !strings.Contains(obs.PlainScreen, "[garden-plans]") {
+	if !strings.Contains(obs.PlainScreen, "%garden-plans") {
 		t.Fatalf("a project without an alias lost its slug:\n%s", obs.PlainScreen)
 	}
 }

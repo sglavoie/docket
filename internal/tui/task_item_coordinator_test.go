@@ -19,13 +19,13 @@ func TestTaskItemTransitionScenario(t *testing.T) {
 	task := seedTask(t, 1, "Park me", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "state", task)
 
-	runResult(t, features.TaskItem.Transition(taskref.For(task, env.project), models.StateSomeday))
+	runResult(t, features.TaskItem.Transition(taskref.For(task, env.project), models.StatePaused))
 	got := env.reload(t).GetTaskByID(task.ID)
-	if got == nil || got.State() != models.StateSomeday {
-		t.Fatalf("reloaded state = %v, want %q", got, models.StateSomeday)
+	if got == nil || got.State() != models.StatePaused {
+		t.Fatalf("reloaded state = %v, want %q", got, models.StatePaused)
 	}
-	if got.State() != models.StateSomeday {
-		t.Errorf("reloaded state = %q, want %q", got.State(), models.StateSomeday)
+	if got.State() != models.StatePaused {
+		t.Errorf("reloaded state = %q, want %q", got.State(), models.StatePaused)
 	}
 }
 

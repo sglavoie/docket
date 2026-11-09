@@ -35,7 +35,7 @@
     { "type": "click", "label": "a double-click on a leaf is Enter, which says why it cannot focus", "on": "Retire the legacy runbook", "count": 2 },
     { "type": "assert", "assert": "status_contains", "value": "No children to focus" },
     { "type": "click", "label": "a double-click on a parent is Enter, which focuses it", "on": "Coordinate the rollout window", "count": 2 },
-    { "type": "assert", "assert": "contains", "value": "Focus: [Checklist Delivery] › Coordinate the rollout window" },
+    { "type": "assert", "assert": "contains", "value": "Focus: Checklist Delivery › Coordinate the rollout window" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "key": "esc" },
 

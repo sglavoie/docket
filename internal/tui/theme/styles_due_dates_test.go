@@ -89,7 +89,6 @@ func TestDueBadgeFillsAvoidSectionBadges(t *testing.T) {
 			{"next", ViewModeNextStyle},
 			{"inbox", ViewModeInboxStyle},
 			{"waiting", ViewModeWaitingStyle},
-			{"someday", ViewModeSomedayStyle},
 			{"completed", ViewModeCompletedStyle},
 			{"standby", ViewModeStandbyStyle},
 			{"deferred", ViewModeDeferredStyle},

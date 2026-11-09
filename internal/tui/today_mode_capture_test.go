@@ -31,12 +31,12 @@ func TestCaptureFromTodayPlansTheDraftForToday(t *testing.T) {
 func TestCaptureFromTodayKeepsATypedDestination(t *testing.T) {
 	driver := launchReadmeFixture(t)
 	pressKeys(t, driver, "g", "t", "a")
-	sendText(driver, "Parked for later $someday")
+	sendText(driver, "Parked for later $paused")
 	pressKeys(t, driver, "enter")
 	app := driver.App()
 	for identity := range app.todayIDs {
 		if task, _ := app.taskAndProjectForIdentity(identity); task != nil && task.Title == "Parked for later" {
-			t.Fatal("a typed $someday was planned for Today anyway")
+			t.Fatal("a typed $paused was planned for Today anyway")
 		}
 	}
 }

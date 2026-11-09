@@ -91,7 +91,7 @@ func (m *OutlinerModel) noteProjectLabel(row notes.LocatedNoteRow, rowWidth int,
 	}
 	label := theme.ProjectLabel(project, slug)
 	if global {
-		label = theme.MutedStyle.Render("[" + slug + "]")
+		label = theme.MutedStyle.Render(theme.ProjectToken(slug))
 	}
 	if colLayout != nil {
 		label += strings.Repeat(" ", max(colLayout.ProjectWidth-lipgloss.Width(label), 0))

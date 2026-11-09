@@ -10,7 +10,7 @@
     { "type": "key", "label": "complete that one task", "key": "w" },
     { "type": "key", "key": "d" },
     { "type": "wait" },
-    { "type": "assert", "assert": "not_contains", "value": "◉ Sketch intake flow" },
+    { "type": "assert", "assert": "not_contains", "value": "!1 Sketch intake flow" },
     { "type": "key", "label": "undo the completion", "key": "u" },
     {
       "type": "assert",
@@ -28,7 +28,7 @@
       "value": "Redo: Change Status: Sketch intake flow → Done · now in Workflow Project (Done)"
     },
     { "type": "wait" },
-    { "type": "assert", "assert": "not_contains", "value": "◉ Sketch intake flow" },
+    { "type": "assert", "assert": "not_contains", "value": "!1 Sketch intake flow" },
     { "type": "key", "label": "undo back to the whole backlog", "key": "u" },
     { "type": "wait" },
     { "type": "key", "label": "select every visible task", "key": "ctrl+a" },

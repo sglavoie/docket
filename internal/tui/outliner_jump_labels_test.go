@@ -121,7 +121,7 @@ func TestJumpLabelsReachHeadersAndChecklistRows(t *testing.T) {
 	}
 
 	sendKeys(t, d, "'")
-	sendKeys(t, d, jumpLabelOn(t, d, "[checklist-delivery]"))
+	sendKeys(t, d, jumpLabelOn(t, d, "%checklist-delivery"))
 	if !out.Rows[out.Cursor].IsProjectHeader {
 		t.Fatalf("cursor row = %+v, want the project header", out.Rows[out.Cursor])
 	}

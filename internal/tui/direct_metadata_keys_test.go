@@ -29,7 +29,6 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 		{path: []string{"w", "g"}, want: operation.OperationTaskSetState, value: models.StateDoing},
 		{path: []string{"w", "w"}, want: operation.OperationTaskSetState, value: models.StateWaiting},
 		{path: []string{"w", "p"}, want: operation.OperationTaskSetState, value: models.StatePaused},
-		{path: []string{"w", "m"}, want: operation.OperationTaskSetState, value: models.StateSomeday},
 		{path: []string{"w", "d"}, want: operation.OperationTaskSetState, value: models.StateDone},
 		{path: []string{"w", "c"}, want: operation.OperationTaskSetState, value: models.StateCanceled},
 	}
@@ -180,7 +179,6 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 			"g doing",
 			"w waiting",
 			"p paused",
-			"m someday",
 			"d done",
 			"c canceled",
 		} {

@@ -30,7 +30,7 @@
     { "type": "text", "text": "today" },
     { "type": "key", "key": "ctrl+s" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "review today" },
+    { "type": "assert", "assert": "contains", "value": "=review today" },
     { "type": "assert", "label": "a scheduled task is owed nothing, so the note is gone", "assert": "not_contains", "value": "No check-in" },
 
     { "type": "key", "label": "blocking it emptied the Doing lane, so the cursor swept into Backlog", "key": "home" },
@@ -40,12 +40,12 @@
     { "type": "wait" },
     { "type": "assert", "label": "already-scheduled work earns no offer, in either direction", "assert": "not_contains", "value": "No check-in" },
     { "type": "assert", "assert": "not_contains", "value": "Set Check-In" },
-    { "type": "assert", "assert": "contains", "value": "review today" },
+    { "type": "assert", "assert": "contains", "value": "=review today" },
 
     { "type": "restart" },
     { "type": "assert", "label": "a reload is not a commit, so nothing is offered at launch", "assert": "not_contains", "value": "No check-in" },
     { "type": "assert", "assert": "not_contains", "value": "Set Check-In" },
-    { "type": "assert", "assert": "contains", "value": "review today" },
+    { "type": "assert", "assert": "contains", "value": "=review today" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

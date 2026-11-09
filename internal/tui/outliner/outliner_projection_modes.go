@@ -157,22 +157,28 @@ func (m *OutlinerModel) buildAllPrimaryRows(
 	}
 }
 
-// LiftedCounts is how many of a group's members Pinned and Review drew above
-// instead of in that group. The two lanes are disjoint: Review never claims a
-// pinned task.
+// LiftedCounts is how many of a group's members another lane drew instead of
+// that group: Pinned and Review, which promote a task above its lane, and Today
+// and Next, which seat a planned task in its plan. The four are disjoint: Review
+// never claims a pinned task, and a pinned or reviewed task counts once, under
+// the lane that drew it.
 type LiftedCounts struct {
 	Pinned int
+	Today  int
+	Next   int
 	Review int
 }
 
-// Any reports whether the group lost a member to a promoted lane.
-func (c LiftedCounts) Any() bool { return c.Pinned > 0 || c.Review > 0 }
+// Any reports whether the group lost a member to another lane.
+func (c LiftedCounts) Any() bool { return c.Pinned > 0 || c.Today > 0 || c.Next > 0 || c.Review > 0 }
 
-// liftedLaneCounts counts, per All group, the members Pinned or Review drew
-// above instead of in that group. The workspace pulse counts a state or a plan
-// wherever its rows are drawn, so a lane header naming what was lifted out of it
-// is what lets `Inbox (1)` and `inbox 2` agree. A planned task belongs to its
-// plan's group, which is where All would otherwise have drawn it.
+// liftedLaneCounts counts, per All group, the members another lane drew instead
+// of that group. The workspace pulse and the Now card count a state wherever its
+// rows are drawn, so a lane header naming what was lifted out of it is what lets
+// `Doing (1) +2 in Today` agree with `+2 more in Doing` and `Inbox (1)` with
+// `inbox 2`. A pinned or reviewed planned task belongs to its plan's group, which
+// is where All would otherwise have drawn it; a planned task neither pin nor
+// review claimed is lifted out of its state's group into its plan.
 func liftedLaneCounts(
 	input OutlinerModeInput,
 	pinned, review, today, next map[taskref.TaskIdentity]bool,
@@ -184,10 +190,18 @@ func liftedLaneCounts(
 			continue
 		}
 		identity := taskref.For(task, project)
+		group := theme.TaskStateGroup(task)
 		if !pinned[identity] && !review[identity] {
+			switch counts := lifted[group]; {
+			case today[identity]:
+				counts.Today++
+				lifted[group] = counts
+			case next[identity]:
+				counts.Next++
+				lifted[group] = counts
+			}
 			continue
 		}
-		group := theme.TaskStateGroup(task)
 		switch {
 		case today[identity]:
 			group = models.StateGroupToday

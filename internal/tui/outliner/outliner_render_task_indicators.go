@@ -148,18 +148,22 @@ func renderDependencyIndicator(task *models.Task, index *app.DependencyIndex) st
 // The bare `review` is the flag alone — someone marked this task, so there is no
 // day to be late against — and it stays as long as the flag does, since `=` set
 // it and `R` is what takes it off.
+// reviewIndicatorWord is the review signal in the token that raises it: `=review`
+// is what capture and edit spell, so the row names the flag the way `=` sets it.
+const reviewIndicatorWord = "=review"
+
 func formatReviewIndicator(task *models.Task, now time.Time) string {
 	if !models.TaskOwesReviewAttention(nil, task, now) {
 		return ""
 	}
 	if !task.CheckInIsDueAt(now) {
-		return theme.DueTodayStyle.Render("review")
+		return theme.DueTodayStyle.Render(reviewIndicatorWord)
 	}
 	daysLate := util.DaysBetween(*task.NextCheckIn, now)
 	if daysLate == 0 {
-		return theme.DueTodayStyle.Render("review today")
+		return theme.DueTodayStyle.Render(reviewIndicatorWord + " today")
 	}
-	return theme.ReviewLateStyle.Render(fmt.Sprintf("review +%dd", daysLate))
+	return theme.ReviewLateStyle.Render(fmt.Sprintf("%s +%dd", reviewIndicatorWord, daysLate))
 }
 
 const repeatedDeferralThreshold = 3
@@ -267,13 +271,13 @@ func (m *OutlinerModel) taskIdentityLabel(row OutlinerRow, rowWidth int) string 
 	if row.Task != nil {
 		// Identity must leave space for the title and the row's fixed presence
 		// markers. One context spends at most an eighth of the row; a combined
-		// project/context label spends at most a third, brackets included.
+		// project/context label spends at most a third, sigils included.
 		context = textfit.TruncateToVisualWidth(strings.TrimSpace(row.Task.Context), min(max(rowWidth/8, 8), 20))
 	}
 	if m.rowLeadsWithProjectLabel(row) {
 		slugLimit := rankedProjectLabelMaxSlug(rowWidth)
 		if context != "" {
-			slugLimit = min(slugLimit, max(4, rowWidth/3-lipgloss.Width(context)-5))
+			slugLimit = min(slugLimit, max(4, rowWidth/3-lipgloss.Width(context)-4))
 		}
 		slug, _ := m.projectSlugForRow(row)
 		if slug = m.abbreviatedProjectSlug(slug, slugLimit); slug != "" {

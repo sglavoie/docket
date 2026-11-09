@@ -35,13 +35,15 @@ const (
 )
 
 // The go-to chord divides by what the jump is aimed at: a mode of the outline,
-// a place the cursor's own task names, or the workspace's sync state.
-// Cursor-top stands ahead of all three, since it moves within the view it is
+// a place the cursor's own task names, the workspace's sync state, or the day's
+// own arc — the morning pass, the work in hand, the evening pass, and the week's.
+// Cursor-top stands ahead of all four, since it moves within the view it is
 // already in.
 const (
 	GotoModeHintGroup = "Mode:"
 	GotoTaskHintGroup = "Task:"
 	GotoSyncHintGroup = "Sync:"
+	GotoDayHintGroup  = "Day:"
 )
 
 // PlanStatusValue spells a canonical lowercase token as this vocabulary shows

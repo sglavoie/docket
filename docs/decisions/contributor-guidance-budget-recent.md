@@ -542,3 +542,14 @@ ends on its own card; a reopened kept draft is named on the divider; and row
 badges and identity labels wear no weight beside one shared daily-loop accent.
 The mechanism lives in docs/guide/outliner-chrome.md, docs/guide/outliner-rows.md,
 docs/guide/outliner-modes.md, and docs/guide/capture.md. No rule elsewhere was trimmed to pay for it.
+
+Raise from 80800 to 81000 for the design-refinement pass. 200 bytes buy the
+rules it is held to: a task row spells each value in the sigil that writes it
+(`!N`, `*`, `&`, `=review`, `@date`, `%slug`, `##context`), leaving only the
+state and the description marker as glyphs; and the someday state is retired
+at catalog schema 26, whose task Markdown is schema 21 and whose step rewrites
+`someday` as `backlog` value for value. Trimming paid for most of it: the
+lifecycle list, the launch fold, the workflow chord's counts, and the keyless
+list each shrank with the state and with Close the Day and Review the Week
+gaining keys. The mechanism lives in docs/guide/outliner-rows.md,
+docs/guide/storage.md, and docs/architecture/migration.md.

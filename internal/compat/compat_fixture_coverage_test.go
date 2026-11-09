@@ -77,7 +77,7 @@ var coverageProbes = map[string]func(*fixtureWorld) bool{
 		}
 		for _, state := range []models.WorkflowState{
 			models.StateInbox, models.StateBacklog, models.StateDoing, models.StateWaiting,
-			models.StatePaused, models.StateSomeday, models.StateDone, models.StateCanceled,
+			models.StatePaused, models.StateDone, models.StateCanceled,
 		} {
 			if !seen[state] {
 				return false

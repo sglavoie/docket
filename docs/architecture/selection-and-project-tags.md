@@ -222,7 +222,7 @@ another:
 
 | Axis | Belongs to | Meaning |
 | --- | --- | --- |
-| Workflow state | a task | One of the eight lifecycle states. |
+| Workflow state | a task | One of the seven lifecycle states. |
 | Tags | a project | Free-form labels, one of which decides base task workspace membership. |
 | Archive lifecycle | a project | Whether the project is retired from administration. |
 

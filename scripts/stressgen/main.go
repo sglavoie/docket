@@ -559,8 +559,8 @@ type weightedDestination struct {
 }
 
 var destinations = []weightedDestination{
-	{"inbox", 8}, {"backlog", 34}, {"doing", 4}, {"waiting", 4}, {"paused", 3},
-	{"someday", 10}, {"done", 30}, {"canceled", 5}, {"today", 1}, {"next", 1},
+	{"inbox", 8}, {"backlog", 44}, {"doing", 4}, {"waiting", 4}, {"paused", 3},
+	{"done", 30}, {"canceled", 5}, {"today", 1}, {"next", 1},
 }
 
 func weighted(r *rand.Rand, options []weightedDestination) app.CaptureDestination {

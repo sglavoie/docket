@@ -18,7 +18,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "cancel leaves the project untouched", "key": "esc" },
-    { "type": "assert", "assert": "contains", "value": "[client-alpha] (1)" },
+    { "type": "assert", "assert": "contains", "value": "%client-alpha (1)" },
     { "type": "assert", "assert": "not_contains", "value": "Park Client Alpha?" },
 
     { "type": "key", "key": "#" },
@@ -26,14 +26,14 @@
     { "type": "key", "key": "enter" },
     { "type": "key", "label": "confirm the park", "key": "y" },
 
-    { "type": "assert", "label": "the rows leave the task workspace", "assert": "not_contains", "value": "[client-alpha] (1)" },
+    { "type": "assert", "label": "the rows leave the task workspace", "assert": "not_contains", "value": "%client-alpha (1)" },
     { "type": "assert", "assert": "not_contains", "value": "Alpha migration kickoff" },
     { "type": "assert", "label": "the status carries both recovery routes", "assert": "status_contains", "value": "Park Project: Client Alpha · 1 task hidden · Fp to show · u undo" },
     { "type": "wait" },
     { "type": "assert", "label": "the filtered population says how much it is hiding", "assert": "contains", "value": "Active Projects · 1 parked" },
-    { "type": "assert", "label": "the surviving projects are untouched", "assert": "contains", "value": "[client-beta] (1)" },
-    { "type": "assert", "assert": "contains", "value": "[home-errands] (1)" },
-    { "type": "assert", "assert": "contains", "value": "[reading-list] (1)" },
+    { "type": "assert", "label": "the surviving projects are untouched", "assert": "contains", "value": "%client-beta (1)" },
+    { "type": "assert", "assert": "contains", "value": "%home-errands (1)" },
+    { "type": "assert", "assert": "contains", "value": "%reading-list (1)" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "the cursor landed deliberately on the successor header, not an arbitrary row", "key": "#" },
@@ -48,7 +48,7 @@
     { "type": "key", "label": "recover with the undo route the status named", "key": "u" },
     { "type": "assert", "assert": "status_contains", "value": "Undid: Park Project" },
     { "type": "wait" },
-    { "type": "assert", "label": "the project comes back", "assert": "contains", "value": "[client-alpha] (1)" },
+    { "type": "assert", "label": "the project comes back", "assert": "contains", "value": "%client-alpha (1)" },
     { "type": "key", "label": "unfold to see the task it brought with it", "key": "p" },
     { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
     { "type": "assert", "label": "the scope anchor retires with the last parked project", "assert": "not_contains", "value": "Active Projects · 1 parked" },

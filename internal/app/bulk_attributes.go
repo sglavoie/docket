@@ -13,7 +13,7 @@ import (
 // WorkflowState (see the migration precedence in the workspace design). A
 // view's legacy "move selection to section X" bulk action is therefore not a
 // new attribute use case — it is a state transition, and its target section
-// maps onto a WorkflowState (Next->next, Waiting->waiting, Someday->someday,
+// maps onto a WorkflowState (Next->next, Waiting->waiting, Paused->paused,
 // Inbox->inbox, Completed->done, ...). Route those through BulkTransition,
 // which validates the transition and runs the same atomic single-commit path
 // these attribute operations use.

@@ -35,6 +35,7 @@ internal/config/v24_migration_activation.go:settleV24Layout	workspace-relocation
 internal/config/v24_migration_activation.go:stageV24Layout	workspace-relocation	schema-24 layout activation moving .tt/ to .docket/ and leaving the tombstone; local only, the next observation publishes nothing for it
 internal/config/v24_migration_activation.go:withV24DocketLock	commit-staging	creates .docket/transactions for the commit lock serializing schema-24 tombstone writes; directories alone carry no synced content
 internal/config/v25_migration_activation.go:withV25ActivationLock	commit-staging	creates .docket/transactions for the lock serializing the schema-25 activation; directories alone carry no synced content
+internal/config/v26_migration_activation.go:withV26ActivationLock	commit-staging	creates .docket/transactions for the lock serializing the schema-26 activation; directories alone carry no synced content
 internal/config/workspace_backup.go:CreateWorkspaceBackup	workspace-backup	creates a hash-verified snapshot outside the workspace under the workspace commit lock
 internal/config/workspace_move.go:acquireWorkspaceTUILocks	machine-local	process-lock directory for workspace move
 internal/config/workspace_move.go:moveWorkspace	workspace-relocation	workspace move creates the destination root; relocation re-enrolls rather than syncing

@@ -49,8 +49,8 @@ func TestComputeBadgeWidthsMixed(t *testing.T) {
 	if !cl.HasPriority {
 		t.Error("HasPriority should be true (t1 has priority 2)")
 	}
-	if cl.PriorityWidth != 1 {
-		t.Errorf("PriorityWidth = %d, want 1", cl.PriorityWidth)
+	if cl.PriorityWidth != 2 {
+		t.Errorf("PriorityWidth = %d, want 2, the width of a !N sigil", cl.PriorityWidth)
 	}
 	if !cl.HasStatus || cl.StatusWidth <= 0 {
 		t.Errorf("status column should be populated, got Has=%v width=%d", cl.HasStatus, cl.StatusWidth)

@@ -5,12 +5,12 @@
   "actions": [
     { "type": "command", "label": "open Backlog, which launch folds, so the scenario reads the whole workspace", "command": "Clear All Folds" },
     { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
-    { "type": "assert", "label": "unscoped, a project's lone task leads its group and carries the project's label", "assert": "contains", "value": "[mix-active…]   Mix rollout plan" },
+    { "type": "assert", "label": "unscoped, a project's lone task leads its group and carries the project's label", "assert": "contains", "value": "%mix-active…   Mix rollout plan" },
     { "type": "key", "label": "step off the Backlog section header onto that task", "key": "j" },
     { "type": "key", "label": "the group is still foldable", "key": "h" },
-    { "type": "assert", "label": "folded, it is a header with a size", "assert": "contains", "value": "[mix-active-delivery] (1)" },
+    { "type": "assert", "label": "folded, it is a header with a size", "assert": "contains", "value": "%mix-active-delivery (1)" },
     { "type": "key", "label": "and opening it merges the header back into the task", "key": "l" },
-    { "type": "assert", "assert": "contains", "value": "[mix-active…]   Mix rollout plan" },
+    { "type": "assert", "assert": "contains", "value": "%mix-active…   Mix rollout plan" },
 
     { "type": "key", "label": "focus the project that holds work", "key": "P" },
     { "type": "assert", "assert": "contains", "value": "Select Project" },
@@ -18,14 +18,14 @@
     { "type": "key", "key": "enter" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "Mix Active Delivery · All" },
-    { "type": "assert", "label": "the group gave way to one header carrying the project alone", "assert": "contains", "value": "[mix-active-delivery]" },
-    { "type": "assert", "assert": "not_contains", "value": "[mix-active-delivery] (" },
+    { "type": "assert", "label": "the group gave way to one header carrying the project alone", "assert": "contains", "value": "%mix-active-delivery" },
+    { "type": "assert", "assert": "not_contains", "value": "%mix-active-delivery (" },
     { "type": "assert", "label": "the project's work is still listed under it", "assert": "contains", "value": "Mix rollout plan" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "the focus lands on content, not on the header above it", "key": "h" },
     { "type": "assert", "label": "so h walks the ordinary section fold ladder", "assert": "not_contains", "value": "Mix rollout plan" },
-    { "type": "assert", "label": "and folds nothing of the project header above it", "assert": "contains", "value": "[mix-active-delivery]" },
+    { "type": "assert", "label": "and folds nothing of the project header above it", "assert": "contains", "value": "%mix-active-delivery" },
     { "type": "key", "key": "l" },
     { "type": "assert", "assert": "contains", "value": "Mix rollout plan" },
 
@@ -46,7 +46,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
     { "type": "key", "label": "leave the focus", "key": "esc" },
-    { "type": "assert", "label": "and the cross-project grouping comes back whole", "assert": "contains", "value": "[mix-active…]   Mix rollout plan" },
+    { "type": "assert", "label": "and the cross-project grouping comes back whole", "assert": "contains", "value": "%mix-active…   Mix rollout plan" },
 
     { "type": "key", "label": "now focus the project that holds nothing", "key": "P" },
     { "type": "key", "key": "/" },
@@ -55,12 +55,12 @@
     { "type": "key", "key": "enter" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "Mix Quiet Planning · All" },
-    { "type": "assert", "label": "an empty project keeps its header as context", "assert": "contains", "value": "[mix-quiet-planning]" },
+    { "type": "assert", "label": "an empty project keeps its header as context", "assert": "contains", "value": "%mix-quiet-planning" },
     { "type": "assert", "label": "with the ordinary explanation printed beneath it", "assert": "contains", "value": "No tasks yet. Press a to capture one" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "resize", "label": "the header holds at the narrowest supported terminal", "width": 60, "height": 20 },
-    { "type": "assert", "assert": "contains", "value": "[mix-quiet-planning]" },
+    { "type": "assert", "assert": "contains", "value": "%mix-quiet-planning" },
     { "type": "assert", "assert": "contains", "value": "No tasks yet. Press a to capture one" },
     { "type": "assert", "assert": "no_layout_issues" },
 

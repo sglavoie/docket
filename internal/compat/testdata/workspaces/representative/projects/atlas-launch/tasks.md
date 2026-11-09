@@ -1,5 +1,5 @@
 # Project: Atlas Launch
-<!-- tt-schema: 20 -->
+<!-- tt-schema: 21 -->
 <!-- PROJECT-COMMENTS -->
 <!-- project-comment: 3c9b2f4e-5d6a-4b7c-8d9e-0f1a2b3c4d01 2026-09-02T10:00:00Z -->
 Kickoff agreed: beta before October.
@@ -44,7 +44,7 @@ Notarization failed once; retrying.
 <!-- id: 0a7e5d10-2c3b-4f6a-8e9d-000000000106, short_id: 6, state: paused, priority: 0, created: 2026-09-08T09:00:00Z, updated: 2026-09-08T09:00:00Z, state_changed: 2026-09-08T09:00:00Z -->
 
 ## Task: Dark mode icons
-<!-- id: 0a7e5d10-2c3b-4f6a-8e9d-000000000107, short_id: 7, state: someday, priority: 0, tags: idea, created: 2026-09-08T09:00:00Z, updated: 2026-09-08T09:00:00Z, state_changed: 2026-09-08T09:00:00Z -->
+<!-- id: 0a7e5d10-2c3b-4f6a-8e9d-000000000107, short_id: 7, state: backlog, priority: 0, tags: idea, created: 2026-09-08T09:00:00Z, updated: 2026-09-08T09:00:00Z, state_changed: 2026-09-08T09:00:00Z -->
 
 ## Task: Set up CI signing
 <!-- id: 0a7e5d10-2c3b-4f6a-8e9d-000000000108, short_id: 8, state: done, priority: 0, created: 2026-09-09T09:00:00Z, updated: 2026-09-09T09:00:00Z, state_changed: 2026-09-09T09:00:00Z, completed: 2026-09-09T09:00:00Z, reviewed: 2026-09-08T15:00:00Z -->

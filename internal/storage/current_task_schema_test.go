@@ -174,7 +174,7 @@ func TestCurrentTaskSchemaGoldenBytes(t *testing.T) {
 		t.Fatalf("WriteProjectMarkdown: %v", err)
 	}
 	const golden = "# Project: Fixture\n" +
-		"<!-- tt-schema: 20 -->\n" +
+		"<!-- tt-schema: 21 -->\n" +
 		"\n" +
 		"## Task: Parent\n" +
 		"<!-- id: task-parent, short_id: 1, state: backlog, priority: 0, created: 2026-08-01T12:00:00Z, updated: 2026-08-01T12:00:00Z, state_changed: 2026-08-01T12:00:00Z -->\n" +

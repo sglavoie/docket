@@ -122,7 +122,7 @@ func TestREADMEDocumentsFinalDailyLoop(t *testing.T) {
 	// The front door links to the detailed mode reference, which owns lane order.
 	requireDocumentationText(t, content, []string{"docs/guide/outliner-modes.md"})
 	requireDocumentationText(t, readRepositoryDoc(t, "docs/guide/outliner-modes.md"), []string{
-		"Pinned, Today, Doing, Review, Inbox, Next, Paused, Backlog, Waiting, Someday",
+		"Pinned, Today, Doing, Review, Inbox, Next, Paused, Backlog, Waiting",
 	})
 	rejectDocumentationText(t, content, []string{
 		// All has no automatic Stale lane; old work stays in its lifecycle group.

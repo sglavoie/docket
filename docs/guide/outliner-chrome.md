@@ -170,8 +170,8 @@ change, the undo countdown on the divider, the Today sweep, the list gliding on 
 page jump, a fold rolling open, the mark a moved or captured task lights where
 it lands, and a new mode or screen easing in. View → Nerd Font
 Glyphs draws the state, priority, date, checkbox, notice, pin, attachment, and
-description symbols from a Nerd Font, such as Someday's thought bubble in place
-of `¿`; it needs a terminal font that carries them. Every glyph keeps its
+description symbols from a Nerd Font, such as Paused's pause circle in place
+of `‖`; it needs a terminal font that carries them. Every glyph keeps its
 one-cell width, so no row moves when you switch.
 
 View → Theme chooses how Docket is painted: **Dark** and **Light**, which `T`
@@ -294,10 +294,12 @@ An undo, a redo, or a sync that empties the Inbox is not triage and says
 nothing.
 
 The first launch of each day opens with a greeting that names the one move the
-day asks for first, since the pulse already counts the rest: overdue work, then
-an untriaged Inbox, then the plan, such as `Good morning · start with the 1
-overdue (Task → Start the Day)` or `Good morning · 2 in Inbox to sort (I
-triage)`; after noon the overdue move names `7 Due` instead. Like any notice,
+day asks for first and no number, since the pulse already counts: overdue work,
+then an untriaged Inbox, then the plan, such as `Good morning · overdue work
+first (gm Start the Day)` or `Good morning · the Inbox wants sorting (I
+triage)`; after noon the overdue move names `7 Due` instead. An evening with a
+plan names `ge Close the Day`, and a quiet Friday afternoon or weekend names
+`gW Review the Week`. Like any notice,
 it leaves the footer after its reading time, and the pulse keeps the counts. The first greeting of a week also recaps the week before, such as
 `last week 23 done, most on Tuesday`; a week with nothing done adds nothing.
 The day it greeted is remembered on this machine, so later launches
@@ -510,7 +512,7 @@ context row naming the lane, the project the window opens in, and the lane's
 count:
 
 ```text
-▾  Waiting › [release-catalog]  (212) ──────────────────────
+▾  Waiting › %release-catalog  (212) ──────────────────────
 ```
 
 This pinned context row cannot be selected. Moving up scrolls toward the real
@@ -518,7 +520,7 @@ header; `gg` and `N` can still reach it. It is absent when the real header is
 visible, in flat search results, and in single-project views. In a grouped
 mode without lane headers, such as Inbox, it names the project whose heading
 has scrolled away. Project names use neutral text, with identity color on their
-brackets and tree connectors, leaving task titles and attention cues prominent.
+`%` sigil and tree connectors, leaving task titles and attention cues prominent.
 
 ## Read tag colors
 

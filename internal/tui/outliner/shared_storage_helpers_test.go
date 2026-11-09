@@ -173,8 +173,6 @@ func legacyStateForStatusSection(status models.WorkflowState, section string) mo
 		return models.StateWaiting
 	case status == models.StatePaused || section == string(models.StatePaused):
 		return models.StatePaused
-	case status == models.StateSomeday || section == string(models.StateSomeday):
-		return models.StateSomeday
 	case section == string(models.StateInbox):
 		return models.StateInbox
 	case section == string(models.StateBacklog):

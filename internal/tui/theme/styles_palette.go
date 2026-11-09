@@ -33,7 +33,6 @@ var (
 	ColorSelectedBg = lipgloss.Color("#33467c")
 
 	ColorViewStandby     = lipgloss.Color("#bb9af7")
-	ColorViewSomeday     = lipgloss.Color("#9d7cd8")
 	ColorSelectedFg      = lipgloss.Color("#c0caf5")
 	ColorSelectedTextFg  = lipgloss.Color("#c0caf5") // dark-theme default; set by ApplyTheme
 	ColorCursorBarBg     = lipgloss.Color("#ffffff") // derived: lightenHex("#33467c", 1.0)

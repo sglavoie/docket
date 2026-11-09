@@ -76,13 +76,13 @@ batch, and neither changes what the move means.
 The lifecycle states are:
 
 ```text
-inbox, backlog, doing, waiting, paused, someday, done, canceled
+inbox, backlog, doing, waiting, paused, done, canceled
 ```
 
 Review is not a lifecycle state. It is a stored boolean axis beside `Pinned`,
 written by the sigil `=` and narrowed by the facet `f=`, toggled on a row by
 that same root key, and it promotes an All-mode lane. Retired fields/states: migration DTOs/audits only. Task Markdown schema
-20 uses generic `Task` headings, project-local ShortID, retained fields, the
+21 uses generic `Task` headings, project-local ShortID, retained fields, the
 stored `review` and `hidden` flags, optional single-valued task `Context`, and an optional
 `depends` list of outgoing soft task references. `DueDate` is a calendar date with
 optional `due_time`; `DeferredUntil` is an RFC3339Nano instant that can expire
@@ -156,9 +156,9 @@ active, in which case that lens's six saved axes are reapplied over that clean s
 cursor, and selection are still never restored, and the first Esc after a
 restored lens lands on the same Active Projects, All view a lens-free launch
 would have shown. An active-lens pointer that no longer resolves fails closed to
-no lens, silently. That clean start folds All's Backlog and Someday lanes and
-nothing else: `FoldQuietLanesForLaunch` seeds them after `ResetToGlobalAll`,
-beside the launch focus, so a reset, a reload, and Esc never reapply them.
+no lens, silently. That clean start folds All's Backlog lane and
+nothing else: `FoldQuietLanesForLaunch` seeds it after `ResetToGlobalAll`,
+beside the launch focus, so a reset, a reload, and Esc never reapply it.
 Spending that focus may open Peek once, through `OpenPeekIfRoomy`, only where
 every row fits above a whole dock; that and the greeting are `RunApp`'s alone.
 
@@ -191,12 +191,12 @@ Plan and Status are one vocabulary `internal/tui/chrome` owns: a plan is the
 collection a task was committed to, a status is the lifecycle state it holds,
 and no surface mints a third word. The `w` chord heads its two runs with them,
 Plan first; capture's route row names the pair only for a planning
-destination, since the eight lifecycle ones spell their own status, and the
+destination, since the seven lifecycle ones spell their own status, and the
 preview leaves it to that row; Peek leads its summary with it. That division is `HintGroup`/`GuidanceHint.Group` metadata
 over the one binding, changing no sequence and no dispatch, and a heading rides
 its run's first entry rather than standing alone, so the packer cannot strand
 one over members it shed. A pending chord alone asks for
-`chrome.MaxGuidanceRows`, three, which holds all 11 at the floor; `HintKeep`
+`chrome.MaxGuidanceRows`, three, which holds all 10 at the floor; `HintKeep`
 ranks `wd` with its run's head, shed last and never drawn under `Plan:`.
 
 The active interaction owns guidance. `route.ActiveGuidanceOwner` resolves it in
@@ -264,8 +264,8 @@ key earns nothing. The menu bar is not a sheet but a projection of the registry,
 the class `?` help and the footer ranks belong to, so it names directly-bound
 operations freely. What it may not do is make an entity operation keyless: a
 menu-only operation's `TargetSource` is target-free or view-scoped, never a task
-or project. Clear All Folds, Advisories, Menu Bar, Recent Messages, Set Up Check-Ins,
-Close the Day, Review the Week: keyless, target-free. The
+or project. Clear All Folds, Advisories, Menu Bar, Recent Messages, Set Up
+Check-Ins: keyless, target-free. The
 task-row `Space` menu holds Set Check-In under `Schedule` and Delete, identical
 to the bulk menu: the editor saves with `Ctrl+S`; Delete confirms first. The Hub sheet is
 Archive/Unarchive and Delete; selections use bulk tags. Notes and Comments offer Delete. The
@@ -382,7 +382,7 @@ time. `Ctrl+O origin` is advertised only where a frame was pushed.
 Every cross-project group names its project once. `appendProjectGroupHeader`
 emits the header when folded or over two or more top-level tasks, which carry no
 label; an expanded group of one merges into its task's row, `LeadsMergedGroup`,
-at the header's depth and led by the ranked list's `[slug]`, where task keys
+at the header's depth and led by the ranked list's `%slug`, where task keys
 answer and project ones wait for the header. Keys still read the group off the
 row, never the header: `rowStartsGroup` is `n`/`N`'s stop set —
 a header row, or a row whose predecessor carried another group — and
@@ -781,11 +781,13 @@ Row and Peek budget:
   row's spelling, column layout included, and Peek alone names it.
   `CursorRowLegend` explains a row by reading its own built segments, never a
   second table of glyphs, and `?` leads its unsearched All tab with it.
-  `taskRowSegments` reserves them at every width (`📎` attachments, `▤` description).
+  `taskRowSegments` reserves them at every width (`&` attachments, `▤` description).
+  A row spells a value in the sigil that writes it — `!N`, `*`, `&`, `=review`,
+  `@date`, `%slug`, `##context`; only state and `▤` are glyphs.
   `taskRelationMarker` is one segment both ways.
   `taskPinnedMarker` reads `task.Pinned && !row.IsPinnedSection`, not
   `ShowsPinned`. Only cross-project ranked and merged rows name the project,
-  using `[slug]` with colored brackets and neutral text. `taskIdentityLabel`
+  using `%slug` with a colored sigil and neutral text. `taskIdentityLabel`
   joins project and context; ranked results pad to `ColumnLayout.ProjectWidth`
   and merged rows to `mergedIdentityWidth`; rows under a header carry context
   alone. Cap context text at clamp(rowWidth/8,8,20)
@@ -1145,8 +1147,9 @@ Preserve approved roots, symlink-aware containment, checked revisions,
 deterministic locks, and recovery manifests.
 
 Schema 22 marked an enrolled catalog; from 23 the `sync` block alone does.
-Schema-23/24/25 catalogs hold schema-20 task Markdown; v24 only moves `.tt/` to
-`.docket/` and v25 only admits `alias`, so the tombstone stays 24. That
+Schema-23/24/25 catalogs hold schema-20 task Markdown and 26 holds 21; v24 only
+moves `.tt/` to `.docket/` and v25 only admits `alias`, so the tombstone stays
+24. v26 rewrites `someday` as `backlog`, value-preserving, and stages no lens. That
 pairing is descriptive,
 never derived: v16 advanced no task grammar or `tasks.md`, v17
 lifts `review` off the tag list onto the stored flag, and v18, v19, v20, and v23
@@ -1175,7 +1178,7 @@ A project `alias` is optional and merges field-wise like the name: empty is
 absent, `models.ValidateProjectAlias` its one gate, and a catalog below 25
 holding one is refused. `ProjectEdit.Alias` nil keeps it, so no surface erases
 it by omission.
-Migration v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15→v16→v17→v18→v19→v20→v21→v23→v24→v25 validates each candidate first,
+Migration v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15→v16→v17→v18→v19→v20→v21→v23→v24→v25→v26 validates each candidate first,
 publishes an immutable archive/audit pair, then atomically activates the next
 schema and removes retired storage. Nothing may publish partial output before a
 snapshot boundary. v4/v5/v6/v11 decoders are migration-only: runtime code
@@ -1232,7 +1235,7 @@ cascade, and refuses the system Unfiled project.
 
 ## Documentation and scenarios
 
-User-facing docs must describe only the eight-state, eight-mode, Outliner-only
+User-facing docs must describe only the seven-state, eight-mode, Outliner-only
 product and maintenance-only CLI. Historical fields may appear only in
 identified migration sections.
 
