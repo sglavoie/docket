@@ -28,11 +28,7 @@ func TestParsePaletteReportReadsOSC4(t *testing.T) {
 // Choosing Terminal Colors asks the terminal, and its answers repaint the
 // session in its own paper once all eighteen have arrived.
 func TestTerminalThemePaintsTheReportedPalette(t *testing.T) {
-	t.Cleanup(func() {
-		theme.ResetTerminalPalette()
-		theme.ApplyNamedTheme(config.ThemeDark)
-	})
-	theme.ResetTerminalPalette()
+	t.Cleanup(func() { theme.ApplyNamedTheme(config.ThemeDark) })
 	driver := launchReadmeFixture(t)
 	app := driver.App()
 	query, err := app.coreSetTheme(config.ThemeTerminal)
@@ -58,7 +54,6 @@ func TestTerminalThemePaintsTheReportedPalette(t *testing.T) {
 // A terminal that never answers keeps Dark and says so once.
 func TestTerminalThemeTimeoutKeepsDark(t *testing.T) {
 	t.Cleanup(func() { theme.ApplyNamedTheme(config.ThemeDark) })
-	theme.ResetTerminalPalette()
 	driver := launchReadmeFixture(t)
 	app := driver.App()
 	if _, err := app.coreSetTheme(config.ThemeTerminal); err != nil {

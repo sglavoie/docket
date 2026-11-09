@@ -124,8 +124,8 @@ func ApplyTerminalPalette(p GhosttyPalette) error {
 	return nil
 }
 
-// ResetTerminalPalette forgets the reported colors, for tests that paint the
-// terminal theme from a clean session.
+// ResetTerminalPalette forgets the reported colors: a new session has heard
+// nothing from its terminal yet, so choosing Terminal Colors asks it again.
 func ResetTerminalPalette() {
 	terminalPalette = nil
 }

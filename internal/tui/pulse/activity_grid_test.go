@@ -64,7 +64,7 @@ func TestCompletionStreakToleratesAnUnfinishedToday(t *testing.T) {
 	if got := CompletionStreak(history, now); got != 4 {
 		t.Fatalf("streak = %d, want 4 including today", got)
 	}
-	legend := ansi.Strip(ActivityLegend(history, now, 26))
+	legend := ansi.Strip(strings.Join(ActivityLegendLines(history, now, 26, 200), "\n"))
 	if !strings.Contains(legend, "9 done in 26 weeks") || !strings.Contains(legend, "4-day streak") || !strings.Contains(legend, "best day 4") {
 		t.Fatalf("legend = %q", legend)
 	}

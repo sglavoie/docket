@@ -112,22 +112,16 @@ func ActivityGridWeeks(weeks, width int) int {
 	return max(min(weeks, (width-activityGridLabelWidth-1)/activityGridCell), 0)
 }
 
-// ActivityLegendLines is ActivityLegend within width: one line when the ramp
-// and the reading fit side by side, else the reading under the ramp.
+// ActivityLegendLines is the grid's key and its reading within width: the ramp
+// from less to more, then the total over the grid's weeks, the best day, and
+// the current streak when it is more than a day. They share one line when they
+// fit side by side, else the reading stands under the ramp.
 func ActivityLegendLines(history map[time.Time]int, now time.Time, weeks, width int) []string {
 	ramp, reading := activityLegendParts(history, now, weeks)
 	if lipgloss.Width(ramp)+3+lipgloss.Width(reading) <= width {
 		return []string{ramp + theme.MutedStyle.Render("   "+reading)}
 	}
 	return []string{ramp, theme.MutedStyle.Render(reading)}
-}
-
-// ActivityLegend is the grid's key and its one-line reading: the ramp from
-// less to more, then the total over the grid's weeks, the best day, and the
-// current streak when it is more than a day.
-func ActivityLegend(history map[time.Time]int, now time.Time, weeks int) string {
-	ramp, reading := activityLegendParts(history, now, weeks)
-	return ramp + theme.MutedStyle.Render("   "+reading)
 }
 
 func activityLegendParts(history map[time.Time]int, now time.Time, weeks int) (string, string) {

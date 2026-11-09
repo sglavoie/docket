@@ -124,6 +124,7 @@ func NewAppModel(rt *engine.Runtime, opts ...AppOption) (*AppModel, error) {
 		return nil, err
 	}
 
+	theme.ResetTerminalPalette()
 	if app.lifecycle.sessionAppearance != "" {
 		applySessionTheme(app.lifecycle.sessionAppearance)
 	} else if machine := app.domain.machine(); machine != nil {
