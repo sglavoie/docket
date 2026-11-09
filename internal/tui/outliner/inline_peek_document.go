@@ -196,11 +196,11 @@ func inlinePeekDocumentFor(opts inlinePeekOptions) inlinePeekDocument {
 
 	available := max(opts.Width-lipgloss.Width(opts.Indent), 1)
 	sections := inlinePeekBodySections(opts, available)
-	if pads, widest := inlinePeekLabelPads(sections, opts.Indent); widest > 0 && available >= inlinePeekAlignMinWidth {
+	if _, widest := inlinePeekLabelPads(sections, opts.Indent); widest > 0 && available >= inlinePeekAlignMinWidth {
 		// The values stand in one column, so the body is wrapped narrower by
 		// the most any label is pushed, then each section is pushed by its own.
 		sections = inlinePeekBodySections(opts, available-widest)
-		pads, _ = inlinePeekLabelPads(sections, opts.Indent)
+		pads, _ := inlinePeekLabelPads(sections, opts.Indent)
 		sections = inlinePeekAlignSections(sections, pads, opts.Indent)
 	}
 	body := make([]string, 0, len(sections))

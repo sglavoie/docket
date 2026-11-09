@@ -175,6 +175,22 @@ final class GhosttyConfigTests: XCTestCase {
         XCTAssertEqual([original.r, original.g, original.b], [0x1E, 0x1E, 0x2E])
     }
 
+    /// Docket.app starts the terminal on the background Docket's theme will
+    /// paint, so the window shows it before Docket's first frame.
+    func testBackgroundOverrideSetsTheDefaultBackground() throws {
+        let user = try writeUserConfig("theme = Catppuccin Mocha\n")
+        var selected = overrides
+        selected.background = DocketAppearanceScheme.light.background
+        XCTAssertTrue(selected.lines.contains("background = #f6f6f0"))
+        let config = Ghostty.Config(userConfig: user, overrides: selected)
+        XCTAssertEqual(config.diagnostics, [])
+        let background = try XCTUnwrap(config.get("background", as: ghostty_config_color_s.self, initial: .init()))
+        XCTAssertEqual([background.r, background.g, background.b], [0xF6, 0xF6, 0xF0])
+
+        selected.background = nil
+        XCTAssertFalse(selected.lines.contains { $0.hasPrefix("background = ") })
+    }
+
     /// The built-in font is Ghostty's embedded fallback, reached by emptying
     /// every family list rather than by a name CoreText cannot resolve.
     func testBuiltInFontResetsEveryFamilyTheUserFileNames() throws {

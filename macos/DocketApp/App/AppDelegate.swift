@@ -132,8 +132,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             current.fontSize = model.defaultFontSize
             current.theme = model.terminalTheme?.configValue
             current.font = model.terminalFont
+            // The session starts in the theme it will be told to follow, and the
+            // terminal on that theme's background, so nothing paints the other first.
+            let launchScheme = DocketAppearanceLaunch.scheme(
+                terminalTheme: model.terminalTheme, followAppearance: model.followAppearance,
+                appearance: DocketAppearanceScheme(NSApp.effectiveAppearance)
+            )
+            current.background = launchScheme?.background
             if let binary = binaries.current {
-                current.arguments += [binary.path] + DocketControlLaunch.arguments(
+                current.arguments += [binary.path]
+                    + DocketAppearanceLaunch.arguments(launchScheme, supported: binary.appearanceSupported)
+                    + DocketControlLaunch.arguments(
                     controlPath: binary.controlSupported ? DocketControlLaunch.socketPath() : nil,
                     notificationsEnabled: model.notificationsEnabled,
                     notifySupported: binary.notifySupported

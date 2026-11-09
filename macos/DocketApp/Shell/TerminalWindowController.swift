@@ -331,6 +331,12 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
         try? FileManager.default.removeItem(at: statusFile)
         exitAction = nil
         window.title = "Docket"
+        // The config was just reloaded for this session, perhaps under another
+        // appearance than the one the window was made in, and the last session
+        // may have left its own background behind.
+        if let background = ghostty.config.backgroundColor {
+            setTerminalBackground(background)
+        }
 
         let surfaceView = Ghostty.SurfaceView(app: app)
         surfaceView.desktopEditing = desktopEditing

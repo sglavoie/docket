@@ -262,6 +262,20 @@ final class ControlWireTests: XCTestCase {
         XCTAssertEqual(DocketAppearanceScheme(try XCTUnwrap(NSAppearance(named: .aqua))), .light)
     }
 
+    /// Following the system with no Ghostty theme selected, the session starts
+    /// in the system's theme; otherwise its colors are not Docket.app's to name.
+    func testLaunchAppearanceIsTheSystemsOnlyWhileFollowingIt() throws {
+        XCTAssertEqual(DocketAppearanceLaunch.scheme(terminalTheme: nil, followAppearance: true, appearance: .light), .light)
+        XCTAssertEqual(DocketAppearanceLaunch.scheme(terminalTheme: nil, followAppearance: true, appearance: .dark), .dark)
+        XCTAssertNil(DocketAppearanceLaunch.scheme(terminalTheme: nil, followAppearance: false, appearance: .light))
+        XCTAssertNil(DocketAppearanceLaunch.scheme(
+            terminalTheme: try XCTUnwrap(TerminalTheme("Catppuccin Latte")), followAppearance: true, appearance: .light))
+
+        XCTAssertEqual(DocketAppearanceLaunch.arguments(.light, supported: true), ["--appearance", "light"])
+        XCTAssertEqual(DocketAppearanceLaunch.arguments(.light, supported: false), [])
+        XCTAssertEqual(DocketAppearanceLaunch.arguments(nil, supported: true), [])
+    }
+
     func testReduceMotionEncodesOnOrOff() throws {
         for (reduce, text) in [(true, "on"), (false, "off")] {
             let data = try JSONEncoder().encode(DocketControlRequest.reduceMotion(reduce))

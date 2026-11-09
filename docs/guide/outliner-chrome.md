@@ -202,7 +202,9 @@ use `Alt+Enter`; `Shift+Enter` remains an alias. Multiline paste works in captur
 too. The menu keeps every operation available by arrow keys and Enter.
 
 Docket.app can follow macOS appearance for the current session without changing
-the saved terminal theme. It also follows the system's Reduce Motion setting,
+the saved terminal theme. It starts the session that way too, with `docket
+--appearance dark|light`, and its terminal on that theme's background, so a
+launch never shows the other theme first; the flag saves nothing. It also follows the system's Reduce Motion setting,
 and its own Settings › General › Motion: while Reduce Motion is on or that
 setting is off, the session draws no motion whatever View → Motion says, and
 the saved setting is unchanged.

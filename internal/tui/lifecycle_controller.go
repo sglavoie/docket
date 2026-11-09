@@ -16,7 +16,6 @@ import (
 	"github.com/sglavoie/docket/internal/logging"
 	"github.com/sglavoie/docket/internal/storage"
 	"github.com/sglavoie/docket/internal/tui/outliner"
-	"github.com/sglavoie/docket/internal/tui/presentation"
 	"github.com/sglavoie/docket/internal/tui/pulse"
 	"github.com/sglavoie/docket/internal/tui/status"
 	"github.com/sglavoie/docket/internal/util"
@@ -97,6 +96,8 @@ type lifecycleController struct {
 	// is written outside the renderer's color profile, so that run announces
 	// none rather than color the terminal behind a colorless frame.
 	colorDisabled bool
+	// sessionAppearance is RunOptions.Appearance; empty keeps the saved theme.
+	sessionAppearance string
 }
 
 // WithDailyGreeting arms the once-a-day launch greeting. RunApp adds it for
@@ -196,6 +197,9 @@ type RunOptions struct {
 	// widget or a shortcut makes keep being answered by this same Update. It
 	// takes the same process lock, so it never runs beside a windowed session.
 	Headless bool
+	// Appearance, dark or light, starts the session in that theme as the
+	// appearance op would, saving nothing: see WithSessionAppearance.
+	Appearance string
 }
 
 // headlessSize is the terminal a headless session pretends to have, so every
@@ -220,6 +224,9 @@ func RunApp(rt *engine.Runtime, runOpts RunOptions, opts ...AppOption) error {
 	}
 	if runOpts.DisableColor {
 		opts = append(opts, WithDisabledColor())
+	}
+	if runOpts.Appearance != "" {
+		opts = append(opts, WithSessionAppearance(runOpts.Appearance))
 	}
 	if !runOpts.Headless {
 		opts = append(opts, WithDailyGreeting(), WithMotion(), WithRoomyLaunchPeek())
@@ -396,19 +403,6 @@ func workspaceLedgerFromConfig(runtime *config.RuntimeState) *storage.WorkspaceL
 		dataDir = runtime.DataDir()
 	}
 	return storage.NewWorkspaceLedger(config.UndoLedgerDir(dataDir), []string{dataDir})
-}
-
-// pipelineNextHint returns a contextual "next step" hint string for a view.
-// Returns "" for views that should show the default help text.
-func pipelineNextHint(vt presentation.PresentationID) string {
-	switch vt {
-	case presentation.ViewTaskComposer:
-		return "Next: Inbox triage | Tab cycles modes"
-	case presentation.ViewCrossProjectOutliner:
-		return "Next: Tab cycles modes | wt plans Today"
-	default:
-	}
-	return ""
 }
 
 // notificationState is a --notify run's memory of the last instant it

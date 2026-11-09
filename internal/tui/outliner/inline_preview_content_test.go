@@ -433,7 +433,7 @@ func TestInlinePeekAlignsValuesInOneColumn(t *testing.T) {
 		if at := strings.Index(line, ": "); at > 0 && !strings.HasPrefix(strings.TrimSpace(line), "Align") {
 			if column == -1 {
 				column = at
-			} else if at != column && strings.Index(line, "·") == -1 {
+			} else if at != column && !strings.Contains(line, "·") {
 				t.Fatalf("label ends at %d, want %d:\n%s", at, column, body)
 			}
 		}

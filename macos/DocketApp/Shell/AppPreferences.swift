@@ -198,4 +198,39 @@ enum DocketAppearanceScheme: String {
     init(_ appearance: NSAppearance) {
         self = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .dark : .light
     }
+
+    /// The background Docket's built-in theme of this name paints, so the
+    /// terminal starts on it rather than on Ghostty's own before Docket's first
+    /// frame. A Go test holds these to internal/tui/theme.
+    var background: String {
+        switch self {
+        case .dark: return "#1a1b26"
+        case .light: return "#f6f6f0"
+        }
+    }
+}
+
+/// The theme a session starts in when Docket.app decides it: following macOS's
+/// appearance with no Ghostty theme selected, it is the system's, passed as
+/// `--appearance` so Docket's first frame already paints it instead of its
+/// saved theme until the `appearance` op arrives.
+enum DocketAppearanceLaunch {
+    static let flag = "--appearance"
+
+    /// Nil when the session's colors are not Docket.app's to name: a selected
+    /// Ghostty theme supplies its own, and with following off the saved theme
+    /// stands.
+    static func scheme(
+        terminalTheme: TerminalTheme?, followAppearance: Bool, appearance: DocketAppearanceScheme
+    ) -> DocketAppearanceScheme? {
+        guard terminalTheme == nil, followAppearance else { return nil }
+        return appearance
+    }
+
+    /// A Docket that predates the flag starts in its saved theme and is
+    /// corrected once its control socket connects.
+    static func arguments(_ scheme: DocketAppearanceScheme?, supported: Bool) -> [String] {
+        guard let scheme, supported else { return [] }
+        return [flag, scheme.rawValue]
+    }
 }

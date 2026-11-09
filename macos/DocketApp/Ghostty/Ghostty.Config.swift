@@ -25,6 +25,9 @@ extension Ghostty {
         var theme: String?
         /// The terminal font, or nil to keep the user config's families.
         var font: TerminalFont?
+        /// The default background as `#rrggbb`, or nil to keep the theme's or
+        /// the user config's: what the window shows before the program paints.
+        var background: String?
 
         /// The override file's lines, in the order Ghostty reads them.
         var lines: [String] {
@@ -41,6 +44,9 @@ extension Ghostty {
             }
             if let theme, Self.isSingleLine(theme), !theme.isEmpty {
                 lines.append("theme = \(theme)")
+            }
+            if let background, Self.isSingleLine(background), !background.isEmpty {
+                lines.append("background = \(background)")
             }
             for key in environment.keys.sorted() {
                 guard let value = environment[key], Self.isSingleLine(key), Self.isSingleLine(value) else {

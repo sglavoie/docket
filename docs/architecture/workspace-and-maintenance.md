@@ -111,9 +111,10 @@ bare locator. Computed dependents are never exported: they are an artifact of
 what happened to be loaded, and freezing them into a document would state as
 durable something that is not. Global flags
 are `--data-dir` and `--no-color`; `--no-advisories`, `--no-mouse`, `--notify`,
-`--control`, and `--headless` are the launcher's own, declared on the root
+`--appearance`, `--control`, and `--headless` are the launcher's own, declared on the root
 command rather than persistently, because each configures a TUI session: no
-maintenance command has ambient rows to hide or a pointer to read, runs long enough to see work
+maintenance command has ambient rows to hide or a pointer to read, a first frame
+to paint, runs long enough to see work
 arrive, or has a session for a host to talk to or run without a terminal. It has no task
 mutation or undo/redo command.
 

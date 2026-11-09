@@ -41,6 +41,11 @@ var controlSocket string
 // window is closed.
 var headless bool
 
+// appearance belongs to the root command alone: it is the theme the session's
+// first frame paints, which a host following the system appearance knows
+// before the session could ask, and it is saved nowhere.
+var appearance string
+
 var (
 	openLogging  = logging.Init
 	closeLogging = logging.Close
@@ -210,6 +215,7 @@ func init() {
 	rootCmd.Flags().StringVar(&controlSocket, "control", "", "serve a control socket at this path for a host app such as Docket.app")
 	_ = rootCmd.MarkFlagFilename("control")
 	rootCmd.Flags().BoolVar(&headless, "headless", false, "run with no terminal, answering only the --control socket")
+	rootCmd.Flags().StringVar(&appearance, "appearance", "", "start this session in the dark or light theme without saving it, as a host following the system appearance asks")
 	rootCmd.Flags().Bool("version", false, "print the version and exit")
 }
 
@@ -260,6 +266,10 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		return usageRefusal(cmd, fmt.Errorf("--headless needs --control: a session with no terminal is reached only through its socket"))
 	}
 
+	if appearance != "" && appearance != "dark" && appearance != "light" {
+		return usageRefusal(cmd, fmt.Errorf("unknown --appearance %q: want dark or light", appearance))
+	}
+
 	runtime, err := openDesktopRuntime()
 	if err != nil {
 		return err
@@ -274,6 +284,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		Notify:         notify,
 		ControlSocket:  controlSocket,
 		Headless:       headless,
+		Appearance:     appearance,
 		VersionLine:    versionLine(),
 	})
 	// Only a launch a person typed hands off. A host-run session (--control or

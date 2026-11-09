@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/docket/internal/tui/chrome"
 	"github.com/sglavoie/docket/internal/tui/help"
+	"github.com/sglavoie/docket/internal/tui/presentation"
 	"github.com/sglavoie/docket/internal/tui/route"
 	"github.com/sglavoie/docket/internal/tui/theme"
 )
@@ -201,4 +202,17 @@ func (m *AppModel) surfaceFooterContent() string {
 		Render("")
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, left, spacer, right)
+}
+
+// pipelineNextHint returns a contextual "next step" hint string for a view.
+// Returns "" for views that should show the default help text.
+func pipelineNextHint(vt presentation.PresentationID) string {
+	switch vt {
+	case presentation.ViewTaskComposer:
+		return "Next: Inbox triage | Tab cycles modes"
+	case presentation.ViewCrossProjectOutliner:
+		return "Next: Tab cycles modes | wt plans Today"
+	default:
+	}
+	return ""
 }

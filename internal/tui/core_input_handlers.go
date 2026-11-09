@@ -441,6 +441,14 @@ func applySessionTheme(name string) {
 	theme.ApplyNamedTheme(name)
 }
 
+// WithSessionAppearance starts the session in the built-in dark or light theme
+// instead of the machine's saved one, writing no machine state: what a host's
+// appearance op does, applied before the first frame, so a host following the
+// system appearance never shows the other theme first.
+func WithSessionAppearance(name string) AppOption {
+	return func(m *AppModel) { m.lifecycle.sessionAppearance = name }
+}
+
 // coreSetTheme saves name as this machine's theme and paints it. Terminal
 // Colors not yet reported this session paints Dark meanwhile and returns the
 // query that asks the terminal for them.
