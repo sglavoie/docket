@@ -35,6 +35,8 @@ final class SyncModel {
     private(set) var conflicts = 0
     private(set) var lastSuccessfulExchange: Date?
     private(set) var lastError: String?
+    /// Where the last pass spent its time.
+    private(set) var lastPassTimings: PassTimings?
     /// Names other devices advertise in the exchange, by device id, read on
     /// each pass so a conflict names who wrote each version.
     private(set) var deviceNames: [String: String] = [:]
@@ -130,6 +132,7 @@ final class SyncModel {
         conflicts = 0
         lastSuccessfulExchange = nil
         lastError = nil
+        lastPassTimings = nil
         deviceNames = [:]
         lastAttempt = nil
     }
@@ -316,6 +319,7 @@ final class SyncModel {
             held = report.held
             lastSuccessfulExchange = report.lastSuccessfulExchange
             lastError = report.errors.last
+            lastPassTimings = report.timings
             if !report.imported.isEmpty {
                 onImport?()
             }
@@ -339,6 +343,7 @@ final class SyncModel {
         held = state.downloads.filter { $0.outcome == "held" }.map(\.txnID)
         lastSuccessfulExchange = state.lastSuccessfulExchange
         lastError = state.lastError
+        lastPassTimings = state.lastPassTimings
     }
 }
 

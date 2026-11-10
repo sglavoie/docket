@@ -37,6 +37,11 @@ final class FakeCloud: @unchecked Sendable {
     private(set) var downloadRequests = 0
     private(set) var truncatedServed = 0
     private(set) var placeholdersServed = 0
+    /// Reads refused because the file was still a placeholder.
+    private(set) var placeholdersRead = 0
+    /// Every directory listed by name, in order, so a test can prove a pass
+    /// left a directory alone.
+    private(set) var nameListings: [String] = []
 
     func advance(_ ticks: Int = 1) {
         lock.lock()
@@ -102,12 +107,28 @@ final class FakeCloud: @unchecked Sendable {
         }
     }
 
+    /// Lists as the coordinated provider's listNames does: without the
+    /// download state, so every visible file reports current and only read
+    /// says it is a placeholder.
+    fileprivate func listNames(_ directory: String, _ device: String) throws -> [ExchangeItem] {
+        try checkAccess(device)
+        nameListings.append(directory)
+        let prefix = directory.isEmpty ? "" : directory + "/"
+        return files.keys.sorted().compactMap { path in
+            guard path.hasPrefix(prefix), state(of: path, for: device) != nil else { return nil }
+            return ExchangeItem(path: path, size: Int64(files[path]!.data.count), state: .current)
+        }
+    }
+
     fileprivate func read(_ path: String, _ device: String) throws -> Data {
         try checkAccess(device)
         guard let state = state(of: path, for: device), let file = files[path] else {
             throw ExchangeProviderError.notFound(path)
         }
-        guard state == .current else { throw ExchangeProviderError.notDownloaded(path) }
+        guard state == .current else {
+            placeholdersRead += 1
+            throw ExchangeProviderError.notDownloaded(path)
+        }
         if file.writer != device, truncateFirstBlobRead, path.contains("/blobs/"), !truncatedOnce.contains(device + path) {
             truncatedOnce.insert(device + path)
             truncatedServed += 1
@@ -150,6 +171,7 @@ struct FakeProvider: ExchangeProvider {
     func checkAccess() throws { try cloud.withLock { try cloud.checkAccess(device) } }
     func renewAccess() throws { try cloud.withLock { try cloud.renew(device) } }
     func list(directory: String) throws -> [ExchangeItem] { try cloud.withLock { try cloud.list(directory, device) } }
+    func listNames(directory: String) throws -> [ExchangeItem] { try cloud.withLock { try cloud.listNames(directory, device) } }
     func read(_ path: String) throws -> Data { try cloud.withLock { try cloud.read(path, device) } }
     func write(_ path: String, data: Data) throws { try cloud.withLock { try cloud.write(path, data, device) } }
     func requestDownload(_ path: String) throws { try cloud.withLock { try cloud.requestDownload(path, device) } }

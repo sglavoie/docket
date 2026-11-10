@@ -60,14 +60,44 @@ public struct TransferState: Codable, Equatable, Sendable {
     public var lastAttempt: Date?
     public var lastSuccessfulExchange: Date?
     public var lastError: String?
+    /// How long the last pass spent in each phase, in seconds, so a slow
+    /// exchange names where its time went. Optional so earlier files decode.
+    public var lastPassTimings: PassTimings?
 
     public init() {}
 
     public var waitingForDownload: Int { downloads.filter { !$0.manifestStaged }.count }
     public var waitingToApply: Int { downloads.filter { $0.manifestStaged && $0.outcome != "held" }.count }
+    /// Why staged work is not applying. A held transaction comes first: every
+    /// later one from its author queues behind it, and their own reasons
+    /// ("arrived before") only restate that.
     public var blockedReason: String? {
-        downloads.first { $0.manifestStaged && $0.outcome != "held" && $0.lastError != nil }?.lastError
+        if let held = downloads.first(where: { $0.outcome == "held" }) {
+            let behind = downloads.filter { $0.deviceID == held.deviceID && $0.deviceSeq > held.deviceSeq }.count
+            var reason = "Transaction \(held.deviceSeq) from \(held.deviceID) needs a newer Docket on this device"
+            if let detail = held.lastError { reason += " (\(detail))" }
+            if behind > 0 { reason += "; \(behind) more wait behind it" }
+            return reason
+        }
+        return downloads.first { $0.manifestStaged && $0.outcome != "held" && $0.lastError != nil }?.lastError
     }
+}
+
+/// Seconds one exchange pass spent per phase.
+public struct PassTimings: Codable, Equatable, Sendable {
+    /// Account, grant, and exchange identity checks.
+    public var access: Double = 0
+    /// Listing the exchange's transactions.
+    public var listing: Double = 0
+    /// Exporting and publishing outgoing transactions.
+    public var upload: Double = 0
+    /// Copying incoming manifests and blobs into the inbox.
+    public var staging: Double = 0
+    /// The engine applying what was staged.
+    public var applying: Double = 0
+    public var total: Double = 0
+
+    public init() {}
 }
 
 /// Loads and saves the transfer state file.

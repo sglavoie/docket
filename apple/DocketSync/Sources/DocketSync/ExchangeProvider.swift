@@ -62,6 +62,14 @@ public protocol ExchangeProvider: Sendable {
     /// Every file beneath directory, recursively. A missing directory lists
     /// nothing.
     func list(directory: String) throws -> [ExchangeItem]
+    /// Every file beneath directory, like list, without asking the provider
+    /// for each file's download state, which on iCloud Drive costs a round
+    /// trip to the file provider per file. Every item reports current except
+    /// a legacy ".name.icloud" placeholder, so a caller learns that a file is
+    /// not downloaded from read, which throws notDownloaded, and never trusts
+    /// this listing for it. Providers without a cheaper listing answer with
+    /// list.
+    func listNames(directory: String) throws -> [ExchangeItem]
     /// Reads a file whose content is local, throwing notDownloaded for a
     /// placeholder and notFound for a missing file.
     func read(_ path: String) throws -> Data
@@ -69,6 +77,12 @@ public protocol ExchangeProvider: Sendable {
     func write(_ path: String, data: Data) throws
     /// Asks for a placeholder's content without waiting for it.
     func requestDownload(_ path: String) throws
+}
+
+extension ExchangeProvider {
+    public func listNames(directory: String) throws -> [ExchangeItem] {
+        try list(directory: directory)
+    }
 }
 
 /// A provider rooted at a subdirectory of another, so one disposable run can
@@ -87,7 +101,13 @@ public struct ScopedProvider: ExchangeProvider {
     public func checkAccess() throws { try base.checkAccess() }
     public func renewAccess() throws { try base.renewAccess() }
     public func list(directory: String) throws -> [ExchangeItem] {
-        try base.list(directory: full(directory)).compactMap { item in
+        unscoped(try base.list(directory: full(directory)))
+    }
+    public func listNames(directory: String) throws -> [ExchangeItem] {
+        unscoped(try base.listNames(directory: full(directory)))
+    }
+    private func unscoped(_ items: [ExchangeItem]) -> [ExchangeItem] {
+        items.compactMap { item in
             guard item.path.hasPrefix(prefix + "/") else { return nil }
             return ExchangeItem(path: String(item.path.dropFirst(prefix.count + 1)), size: item.size, state: item.state)
         }

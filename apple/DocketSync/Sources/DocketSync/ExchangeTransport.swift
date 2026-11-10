@@ -23,6 +23,8 @@ public struct ExchangeReport: Codable, Equatable, Sendable {
     public var held: [String] = []
     public var errors: [String] = []
     public var lastSuccessfulExchange: Date?
+    /// Optional so reports saved by earlier builds still decode.
+    public var timings: PassTimings?
 }
 
 /// Moves one device's sync traffic between its engine and an exchange folder.
@@ -88,7 +90,17 @@ public final class ExchangeTransport: @unchecked Sendable {
         let started = now()
         state.lastAttempt = started
         var report = ExchangeReport(condition: .reachable)
+        var timings = PassTimings()
+        var mark = Date()
+        func lap() -> Double {
+            let at = Date()
+            defer { mark = at }
+            return at.timeIntervalSince(mark)
+        }
         func finish() throws -> ExchangeReport {
+            timings.total = Date().timeIntervalSince(started)
+            state.lastPassTimings = timings
+            report.timings = timings
             report.condition = state.condition ?? report.condition
             report.outstandingUploads = state.uploads.count
             report.outstandingDownloads = state.downloads.count
@@ -106,6 +118,7 @@ public final class ExchangeTransport: @unchecked Sendable {
         if blocked == nil {
             blocked = try checkIdentity(&report)
         }
+        timings.access = lap()
         if let condition = blocked {
             state.condition = condition
             state.lastError = report.errors.last
@@ -113,7 +126,10 @@ public final class ExchangeTransport: @unchecked Sendable {
         }
         let manifests: [ExchangeItem]
         do {
-            manifests = try provider.list(directory: "\(Self.root)/txns")
+            // Names alone: the per-file download state is what makes a
+            // listing slow, and only a manifest this pass reads needs it,
+            // which read reports.
+            manifests = try provider.listNames(directory: "\(Self.root)/txns")
             if let problem = try historyProblem(manifests) {
                 state.condition = .identityConflict
                 state.lastError = problem
@@ -126,10 +142,12 @@ public final class ExchangeTransport: @unchecked Sendable {
             report.errors.append(state.lastError!)
             return try finish()
         }
+        timings.listing = lap()
         state.condition = .reachable
         try upload(&state, &report, manifests: manifests)
+        timings.upload = lap()
         if state.condition == .identityConflict { return try finish() }
-        try download(&state, &report, manifests: manifests)
+        try download(&state, &report, manifests: manifests, timings: &timings)
         state.condition = .reachable
         if report.errors.isEmpty {
             if state.uploads.isEmpty && state.downloads.isEmpty {
@@ -147,7 +165,7 @@ public final class ExchangeTransport: @unchecked Sendable {
     /// advertisements are skipped: a name only informs.
     public func deviceNames() -> [String: String] {
         guard (try? provider.checkAccess()) != nil,
-              let items = try? provider.list(directory: "\(Self.root)/devices")
+              let items = try? provider.listNames(directory: "\(Self.root)/devices")
         else { return [:] }
         var names: [String: String] = [:]
         for item in items where item.path.hasSuffix(".json") {
@@ -387,14 +405,12 @@ public final class ExchangeTransport: @unchecked Sendable {
         return nil
     }
 
-    private func download(_ state: inout TransferState, _ report: inout ExchangeReport, manifests: [ExchangeItem]) throws {
+    private func download(_ state: inout TransferState, _ report: inout ExchangeReport, manifests: [ExchangeItem], timings: inout PassTimings) throws {
+        let stagingStarted = Date()
+        defer { timings.staging = Date().timeIntervalSince(stagingStarted) - timings.applying }
         let status: EngineSyncStatus
-        var blobs: [String: ExchangeItem] = [:]
         do {
             status = try engine.status()
-            for item in try provider.list(directory: "\(Self.root)/blobs") {
-                blobs[relative(item.path)] = item
-            }
         } catch {
             report.errors.append("listing the exchange: \(error)")
             return
@@ -419,6 +435,19 @@ public final class ExchangeTransport: @unchecked Sendable {
         state.downloads.sort { ($0.deviceSeq, $0.deviceID) < ($1.deviceSeq, $1.deviceID) }
         try store.save(state)
 
+        // The blob listing is the exchange's largest directory and only
+        // staging reads it, so a pass with nothing to stage never lists it.
+        var blobListing: [String: ExchangeItem]?
+        func blobs() throws -> [String: ExchangeItem] {
+            if let blobListing { return blobListing }
+            var listing: [String: ExchangeItem] = [:]
+            for item in try provider.listNames(directory: "\(Self.root)/blobs") {
+                listing[relative(item.path)] = item
+            }
+            blobListing = listing
+            return listing
+        }
+
         var stagedAny = false
         for index in state.downloads.indices {
             var entry = state.downloads[index]
@@ -429,19 +458,28 @@ public final class ExchangeTransport: @unchecked Sendable {
             if let next = entry.nextAttempt, next > now() {
                 continue
             }
-            stage(&entry, listed: listed[entry.path], blobs: blobs, report: &report)
+            let listing: [String: ExchangeItem]
+            do {
+                listing = try blobs()
+            } catch {
+                report.errors.append("listing the exchange: \(error)")
+                break
+            }
+            stage(&entry, listed: listed[entry.path], blobs: listing, report: &report)
             stagedAny = stagedAny || entry.manifestStaged
             state.downloads[index] = entry
             try store.save(state)
         }
         // A device joining starts from a checkpoint when the exchange holds
         // one it can read; the engine chooses among what is staged.
-        if engine.isJoining && stageCheckpoints(blobs: blobs) {
+        if engine.isJoining, let listing = try? blobs(), stageCheckpoints(blobs: listing) {
             stagedAny = true
         }
         guard stagedAny else { return }
 
         let imported: ImportReport
+        let applyStarted = Date()
+        defer { timings.applying = Date().timeIntervalSince(applyStarted) }
         do {
             imported = try engine.importInbox(inbox)
         } catch {

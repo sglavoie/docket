@@ -9,6 +9,17 @@ struct SyncStatusSection: View {
     let chooseFolder: () -> Void
     @State private var showingDetails = false
 
+    static func seconds(_ value: Double) -> String {
+        String(format: "%.1f s", value)
+    }
+
+    /// Where a pass spent its time, phase by phase.
+    static func breakdown(_ t: PassTimings) -> String {
+        [("access", t.access), ("listing", t.listing), ("upload", t.upload), ("download", t.staging), ("apply", t.applying)]
+            .map { "\($0.0) \(seconds($0.1))" }
+            .joined(separator: " · ")
+    }
+
     static func needsFolderChoice(hasFolder: Bool, condition: ExchangeCondition?) -> Bool {
         !hasFolder || condition == .needsFolderAccess || condition == .foreignExchange
     }
@@ -87,6 +98,10 @@ struct SyncStatusSection: View {
                     LabeledContent("Waiting to download", value: "\(sync.waitingForDownload)")
                     LabeledContent("Waiting to apply", value: "\(sync.waitingToApply)")
                     LabeledContent("Conflicts", value: "\(sync.conflicts)")
+                    if let timings = sync.lastPassTimings {
+                        LabeledContent("Last pass", value: Self.seconds(timings.total))
+                        Text(Self.breakdown(timings)).font(.footnote).foregroundStyle(.secondary)
+                    }
                     if let error = sync.lastError {
                         Text(error).font(.footnote).foregroundStyle(.secondary)
                     }

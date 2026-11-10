@@ -162,7 +162,7 @@ final class ExchangeContractTests: XCTestCase {
         XCTAssertTrue(phoneReport.unavailableObserved.contains(ExchangeContract.attachment(run: run, role: ExchangeContract.originator)),
                       "the attachment was never reported unavailable while its content downloaded: \(phoneReport.unavailableObserved)")
         XCTAssertGreaterThan(cloud.truncatedServed, 0, "no transfer was served incomplete")
-        XCTAssertGreaterThan(cloud.placeholdersServed, 0, "no placeholder was listed")
+        XCTAssertGreaterThan(cloud.placeholdersRead, 0, "the transport never met a placeholder")
         XCTAssertGreaterThan(cloud.downloadRequests, 0, "no download was requested")
         try assertManifestsFollowTheirBlobs(cloud)
         XCTAssertNotNil(macReport.lastSuccessfulExchange)
@@ -338,6 +338,39 @@ final class ExchangeContractTests: XCTestCase {
         XCTAssertEqual(recovered.waitingToApply, 0)
         XCTAssertNil(recovered.blockedReason)
         XCTAssertNotNil(recovered.lastSuccessfulExchange)
+    }
+
+    /// The blob listing is the exchange's largest and only staging needs it,
+    /// so a pass with nothing new to download never lists it, and no pass
+    /// asks for the download state of every file.
+    func testPassWithNothingToStageLeavesTheBlobListingAlone() throws {
+        let cloud = FakeCloud()
+        let run = "idle-listing"
+        let pause = { cloud.advance() }
+        let (mac, phone) = try seededPair(
+            run: run, originator: ScopedProvider(base: cloud.provider(for: "mac"), prefix: run),
+            responder: ScopedProvider(base: cloud.provider(for: "phone"), prefix: run), pause: pause
+        )
+        try mac.capture("Arrives on the phone")
+        try mac.exchange(until: { try mac.published() }, describe: "publish", timeout: 30, pause: pause)
+        try phone.exchange(until: { try phone.titles().contains("Arrives on the phone") },
+                           describe: "the capture to arrive", timeout: 30, pause: pause)
+        let blobs = "\(run)/\(ExchangeTransport.root)/blobs"
+
+        let before = cloud.nameListings.count
+        let idle = try phone.transport.exchange()
+        XCTAssertEqual(idle.outstandingDownloads, 0)
+        let idleListings = cloud.nameListings[before...]
+        XCTAssertTrue(idleListings.contains("\(run)/\(ExchangeTransport.root)/txns"))
+        XCTAssertFalse(idleListings.contains(blobs), "an idle pass listed the blobs: \(Array(idleListings))")
+        XCTAssertNotNil(idle.timings)
+
+        try mac.capture("Needs staging")
+        try mac.exchange(until: { try mac.published() }, describe: "publish", timeout: 30, pause: pause)
+        let staging = cloud.nameListings.count
+        try phone.exchange(until: { try phone.titles().contains("Needs staging") },
+                           describe: "the second capture to arrive", timeout: 30, pause: pause)
+        XCTAssertTrue(cloud.nameListings[staging...].contains(blobs), "staging never listed the blobs")
     }
 
     func testDuplicateAuthorSequenceIsReportedEvenAfterItWasReceived() throws {

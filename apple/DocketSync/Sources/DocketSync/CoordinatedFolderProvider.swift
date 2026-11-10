@@ -45,24 +45,37 @@ public final class CoordinatedFolderProvider: ExchangeProvider, @unchecked Senda
 
     public func list(directory: String) throws -> [ExchangeItem] {
         var items: [ExchangeItem] = []
-        try walk(try url(directory), relative: directory, into: &items)
+        try walk(try url(directory), relative: directory, keys: Self.listingKeys, into: &items)
+        return items.sorted { $0.path < $1.path }
+    }
+
+    /// The listing without the ubiquity keys. Asking iCloud Drive for a
+    /// file's downloading status is what makes a listing slow — about a
+    /// millisecond and a half per file on a Mac, against a few microseconds
+    /// for its name, type, and size — and an exchange keeps every file it was
+    /// ever given, so the transport's per-pass listings use this and leave
+    /// the download state to read.
+    public func listNames(directory: String) throws -> [ExchangeItem] {
+        var items: [ExchangeItem] = []
+        try walk(try url(directory), relative: directory, keys: Self.nameKeys, into: &items)
         return items.sorted { $0.path < $1.path }
     }
 
     private static let listingKeys: [URLResourceKey] = [
         .isRegularFileKey, .isDirectoryKey, .fileSizeKey, .isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey,
     ]
+    private static let nameKeys: [URLResourceKey] = [.isRegularFileKey, .isDirectoryKey, .fileSizeKey]
 
     /// Lists one directory under its own coordinated read — which is what asks
     /// a file provider such as iCloud Drive to materialize the directory's
     /// entries, placeholders included — and recurses into its subdirectories.
-    private func walk(_ dir: URL, relative: String, into items: inout [ExchangeItem]) throws {
+    private func walk(_ dir: URL, relative: String, keys: [URLResourceKey], into items: inout [ExchangeItem]) throws {
         var children: [URL] = []
         var failure: Error?
         try coordinate { coordinator, error in
             coordinator.coordinate(readingItemAt: dir, options: [], error: error) { readable in
                 do {
-                    children = try self.fileManager.contentsOfDirectory(at: readable, includingPropertiesForKeys: Self.listingKeys, options: [])
+                    children = try self.fileManager.contentsOfDirectory(at: readable, includingPropertiesForKeys: keys, options: [])
                 } catch let error as NSError where error.domain == NSCocoaErrorDomain && (error.code == NSFileReadNoSuchFileError || error.code == NSFileNoSuchFileError) {
                     children = []
                 } catch {
@@ -75,11 +88,11 @@ public final class CoordinatedFolderProvider: ExchangeProvider, @unchecked Senda
         }
         let prefix = relative.isEmpty ? "" : relative + "/"
         for child in children {
-            let values = try? child.resourceValues(forKeys: Set(Self.listingKeys))
+            let values = try? child.resourceValues(forKeys: Set(keys))
             var name = child.lastPathComponent
             if values?.isDirectory == true {
                 if !name.hasPrefix(".") {
-                    try walk(child, relative: prefix + name, into: &items)
+                    try walk(child, relative: prefix + name, keys: keys, into: &items)
                 }
                 continue
             }
