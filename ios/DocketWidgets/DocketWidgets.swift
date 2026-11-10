@@ -5,12 +5,19 @@ import WidgetKit
 /// Today and Inbox on the Home Screen, drawn from the snapshot the app keeps
 /// in the App Group container. A widget never opens the workspace: it shows
 /// what the app last knew, says how old that is, and stops presenting it as
-/// current once the day it describes is over. Each row opens its task.
+/// current once the day it describes is over. Each row opens its task, and
+/// its checkbox ticks it off without opening the app.
 @main
 struct DocketWidgetBundle: WidgetBundle {
     var body: some Widget {
         TodayWidget()
         InboxWidget()
+        TodayProgressWidget()
+        NowWidget()
+        QuickCaptureControl()
+        StartDayControl()
+        NowControl()
+        DocketLiveActivity()
     }
 }
 
@@ -27,7 +34,10 @@ struct InboxWidget: Widget {
 private func viewWidget(_ view: WidgetView) -> some WidgetConfiguration {
     StaticConfiguration(kind: "docket.\(view.rawValue)", provider: SnapshotProvider(view: view)) { entry in
         ViewWidgetContent(entry: entry)
-            .containerBackground(.fill.tertiary, for: .widget)
+            .containerBackground(for: .widget) {
+                LinearGradient(colors: [Color(uiColor: .systemBackground), DocketPalette.brand.opacity(0.08)],
+                               startPoint: .top, endPoint: .bottom)
+            }
     }
     .configurationDisplayName(view.title)
     .description(view == .today ? "What you planned for today." : "What is waiting to be sorted, and captures not added yet.")
@@ -91,21 +101,16 @@ struct ViewWidgetContent: View {
     private var rows: [WidgetTask] { Array(state.rows(entry.view).prefix(rowLimit)) }
     private var rowLimit: Int {
         switch family {
-        case .systemSmall: 2
+        case .systemSmall: 3
         case .systemMedium: 3
         default: 7
         }
     }
+    private var tint: Color { entry.view == .today ? DocketPalette.today : DocketPalette.state("inbox") }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(entry.view.title).font(.headline)
-                Spacer()
-                if let count = state.count(entry.view) {
-                    Text("\(count)").font(.headline).foregroundStyle(.secondary)
-                }
-            }
+        VStack(alignment: .leading, spacing: family == .systemSmall ? 5 : 6) {
+            header
             if state.freshness == .expired || state.freshness == .missing {
                 Spacer()
                 Text(state.freshness == .missing ? "Open Docket to see your tasks here." : "This is yesterday’s list. Open Docket to update it.")
@@ -113,20 +118,16 @@ struct ViewWidgetContent: View {
                     .foregroundStyle(.secondary)
             } else if rows.isEmpty {
                 Spacer()
-                Text(entry.view == .today ? "Nothing planned." : "Inbox clear.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    Image(systemName: entry.view == .today ? "sun.max.fill" : "checkmark.seal.fill")
+                        .foregroundStyle(entry.view == .today ? DocketPalette.today : DocketPalette.brand)
+                    Text(entry.view == .today ? "Nothing planned." : "Inbox clear.")
+                }
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(.secondary)
             } else {
                 ForEach(rows) { row in
-                    Link(destination: link(row).url) {
-                        HStack(spacing: 4) {
-                            if row.overdue {
-                                Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.red)
-                            }
-                            Text(row.title).lineLimit(1)
-                        }
-                        .font(.subheadline)
-                    }
+                    WidgetTaskRow(row: row, workspace: state.snapshot?.workspace ?? "", compact: family == .systemSmall)
                 }
             }
             Spacer(minLength: 0)
@@ -135,14 +136,70 @@ struct ViewWidgetContent: View {
                     .font(.caption2)
                     .foregroundStyle(.orange)
             }
-            Text(state.freshnessLine)
-                .font(.caption2)
-                .foregroundStyle(state.freshness == .current ? Color.secondary : Color.orange)
+            if family != .systemSmall || state.freshness != .current {
+                Text(state.freshnessLine)
+                    .font(.caption2)
+                    .foregroundStyle(state.freshness == .current ? Color.secondary : Color.orange)
+            }
         }
         .widgetURL(DeepLink.view(entry.view).url)
     }
 
-    private func link(_ row: WidgetTask) -> DeepLink {
-        .task(workspace: state.snapshot?.workspace ?? "", projectID: row.projectID, taskID: row.taskID)
+    private var header: some View {
+        HStack(spacing: 6) {
+            Image(systemName: entry.view == .today ? "sun.max.fill" : "tray.fill")
+                .foregroundStyle(tint)
+                .font(.subheadline)
+            Text(entry.view.title).font(.headline)
+            Spacer()
+            if entry.view == .today, let progress = state.snapshot?.todayProgress, state.count(.today) != nil {
+                Gauge(value: progress) { EmptyView() }
+                    .gaugeStyle(.accessoryCircularCapacity)
+                    .tint(DocketPalette.brand)
+                    .scaleEffect(0.42)
+                    .frame(width: 24, height: 24)
+            } else if let count = state.count(entry.view) {
+                Text("\(count)")
+                    .font(.headline)
+                    .foregroundStyle(tint)
+                    .contentTransition(.numericText())
+            }
+        }
+    }
+}
+
+/// One task in a widget: a checkbox that completes it in place, and a title
+/// that opens it.
+struct WidgetTaskRow: View {
+    let row: WidgetTask
+    let workspace: String
+    var compact = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button(intent: CompleteTaskIntent(workspace: workspace, projectID: row.projectID, taskID: row.taskID)) {
+                Image(systemName: "circle")
+                    .font(compact ? .body : .title3)
+                    .foregroundStyle(row.overdue ? DocketPalette.overdue : DocketPalette.state(row.state))
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Complete \(row.title)")
+            Link(destination: DeepLink.task(workspace: workspace, projectID: row.projectID, taskID: row.taskID).url) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(row.title)
+                        .font(compact ? .caption : .subheadline)
+                        .lineLimit(1)
+                    if !compact, row.overdue || !row.projectName.isEmpty {
+                        Text(row.overdue ? "Overdue · \(row.projectName)" : row.projectName)
+                            .font(.caption2)
+                            .foregroundStyle(row.overdue ? DocketPalette.overdue : .secondary)
+                            .lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+        }
+        .transition(.push(from: .bottom))
     }
 }

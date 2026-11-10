@@ -60,9 +60,10 @@ sync history needs repair instead of silently skipping changes.
 | `DocketEngine/Frameworks/DocketBridgeCore.xcframework` | the Go engine bound by gomobile (generated, gitignored) |
 | `DocketMobile/` | the app target |
 | `DocketReminders/` | Swift package: the reminder scheduler, its reconciliation, and notification action routing, tested against a fake notification center |
-| `DocketShared/` | Swift package shared with the extensions: the App Group capture inbox, the widget snapshot and its freshness, and `docket://` links |
+| `DocketShared/` | Swift package shared with the extensions: the App Group capture inbox, the widget snapshot and its freshness, queued widget actions, the Live Activity's attributes, the color palette, and `docket://` links |
 | `DocketShare/` | the share extension, which saves what was shared to the capture inbox |
-| `DocketWidgets/` | the Today and Inbox widgets, drawn from the App Group snapshot |
+| `DocketWidgets/` | the Today, Inbox, Today's Progress, and Now widgets drawn from the App Group snapshot, the Control Center controls, and the Live Activity |
+| `SharedIntents/` | the intents a widget, control, or Live Activity runs, compiled into both the app and the widget extension |
 | `Config/` | the app's and extensions' Info.plist additions and App Group entitlements |
 | `DocketMobileUITests/` | the seeded UI suites (browsing, capture and editing, organizing, rich content, conflicts, share and widgets, accessibility), on a simulator against the real engine, and the reminder delivery suite, on a physical iPhone |
 | `DocketMobileDeviceTests/` | the responder of the real iCloud exchange, hosted in the app on a physical iPhone |
@@ -467,10 +468,26 @@ the engine refused shows its reason there and can be corrected or discarded.
 The **Today** and **Inbox** widgets draw the snapshot the app writes after
 every change (`query.widget_snapshot`). They say how old it is, mark it as
 possibly out of date after three hours, and stop presenting it as current at
-local midnight. Each row opens its task. **Open Docket** opens Today, the Inbox, or
-capture, and so do the links `docket://view/today`, `docket://view/inbox`,
-`docket://capture`, and `docket://task/<workspace>/<project>/<task>`. A task link for
-another workspace is refused.
+local midnight. Each row opens its task, and its circle completes it without
+opening the app. The tap saves a `QueuedTaskAction` under the App Group's
+`actions/`, removes the row from the snapshot at once, and the app applies it
+through the engine: right away when the system runs the intent in the app's
+process, otherwise as soon as a Darwin notification reaches the running app or
+the app next opens. An action naming another workspace, or a task that is
+gone, is dropped. The app adds tasks done since midnight, the task in
+progress, and the check-ins owed to the engine's snapshot. Those fields drive
+**Today's Progress** (a ring on the Lock Screen, inline, rectangular, or as a
+small tile) and **Now** (the task in progress with a Done button).
+
+**Open Docket** opens Today, the Inbox, capture, Start the Day, Now, or Review,
+and so do the links `docket://view/today`, `docket://view/inbox`,
+`docket://capture`, `docket://ritual/start-day`,
+`docket://ritual/now`, `docket://ritual/review`, and
+`docket://task/<workspace>/<project>/<task>`. A task link for another
+workspace is refused. Control Center, Lock Screen, and Action button controls
+open capture, Start the Day, and Now. **Complete Task** and **Start Task**
+take a task by name from Siri or Shortcuts, and Spotlight indexes the open
+tasks a few seconds after each change; a result opens the task.
 
 `cd ios/DocketShared && swift test` runs the package suite. With `DOCKET_BRIDGEHOST` (a
 built `mobile/bridgehost`) and `DOCKET_CAPTURE_FIXTURE` (the representative

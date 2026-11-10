@@ -109,6 +109,18 @@ struct DocketShortcuts: AppShortcutsProvider {
             systemImageName: "plus.circle"
         )
         AppShortcut(
+            intent: CompleteTaskEntityIntent(),
+            phrases: ["Complete \(\.$task) in \(.applicationName)", "Mark \(\.$task) done in \(.applicationName)"],
+            shortTitle: "Complete Task",
+            systemImageName: "checkmark.circle"
+        )
+        AppShortcut(
+            intent: StartTaskEntityIntent(),
+            phrases: ["Start \(\.$task) in \(.applicationName)", "Work on \(\.$task) in \(.applicationName)"],
+            shortTitle: "Start Task",
+            systemImageName: "play.circle"
+        )
+        AppShortcut(
             intent: OpenViewIntent(),
             phrases: ["Open \(\.$destination) in \(.applicationName)", "Show my \(.applicationName) \(\.$destination)"],
             shortTitle: "Open Docket",

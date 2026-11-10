@@ -83,6 +83,8 @@ final class WorkspaceModel {
     var focus: FocusSession?
     let activities = LiveActivityController()
     @ObservationIgnored var pulseRequest = 0
+    @ObservationIgnored var queueObserver: DarwinObserver?
+    @ObservationIgnored var drainingActions = false
 
     /// Marks a list cleared by the person's own action: one celebration and
     /// one tactile response.
@@ -269,6 +271,8 @@ final class WorkspaceModel {
             await importCaptures()
             captures.publishSnapshot(engine: engine)
             refreshPulse()
+            observeQueuedActions()
+            await applyQueuedActions()
         } catch {
             status = nil
             phase = .failed(Self.describe(error))

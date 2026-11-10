@@ -78,14 +78,26 @@ public struct WidgetSnapshot: Codable, Hashable, Sendable {
     public var validUntil: Date
     public var today: WidgetList
     public var inbox: WidgetList
+    /// The app's own additions, absent from the engine's answer and from a
+    /// snapshot an older app wrote: tasks finished since local midnight, the
+    /// task in progress and since when, and how many ask for a check-in.
+    public var doneToday: Int?
+    public var doing: WidgetTask?
+    public var doingSince: Date?
+    public var attention: Int?
 
     enum CodingKeys: String, CodingKey {
-        case format, workspace, day, today, inbox
+        case format, workspace, day, today, inbox, doing, attention
         case generatedAt = "generated_at"
         case validUntil = "valid_until"
+        case doneToday = "done_today"
+        case doingSince = "doing_since"
     }
 
-    public init(workspace: String, generatedAt: Date, day: String, validUntil: Date, today: WidgetList, inbox: WidgetList) {
+    public init(
+        workspace: String, generatedAt: Date, day: String, validUntil: Date, today: WidgetList, inbox: WidgetList,
+        doneToday: Int? = nil, doing: WidgetTask? = nil, doingSince: Date? = nil, attention: Int? = nil
+    ) {
         format = Self.currentFormat
         self.workspace = workspace
         self.generatedAt = generatedAt
@@ -93,6 +105,41 @@ public struct WidgetSnapshot: Codable, Hashable, Sendable {
         self.validUntil = validUntil
         self.today = today
         self.inbox = inbox
+        self.doneToday = doneToday
+        self.doing = doing
+        self.doingSince = doingSince
+        self.attention = attention
+    }
+
+    /// The share of today's work done, from zero to one, or nil when the
+    /// snapshot cannot say or there is nothing planned or done.
+    public var todayProgress: Double? {
+        guard let doneToday else { return nil }
+        let total = doneToday + today.count
+        return total == 0 ? nil : Double(doneToday) / Double(total)
+    }
+
+    /// The snapshot as it reads once a task was ticked off from a widget,
+    /// before the app has applied it: gone from both lists, counted as done,
+    /// and no longer the task in progress.
+    public func completing(projectID: String, taskID: String) -> WidgetSnapshot {
+        var copy = self
+        let matches: (WidgetTask) -> Bool = { $0.projectID == projectID && $0.taskID == taskID }
+        var removed = false
+        for keyPath in [\WidgetSnapshot.today, \WidgetSnapshot.inbox] {
+            let list = copy[keyPath: keyPath]
+            if list.tasks.contains(where: matches) {
+                copy[keyPath: keyPath] = WidgetList(count: max(0, list.count - 1), tasks: list.tasks.filter { !matches($0) })
+                removed = true
+            }
+        }
+        if copy.doing.map(matches) == true {
+            copy.doing = nil
+            copy.doingSince = nil
+            removed = true
+        }
+        if removed, let done = copy.doneToday { copy.doneToday = done + 1 }
+        return copy
     }
 
     /// Reads the engine's answer, whose instants are RFC 3339 with or

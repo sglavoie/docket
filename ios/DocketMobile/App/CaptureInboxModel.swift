@@ -76,7 +76,22 @@ final class CaptureInboxModel {
             do {
                 let value = try await engine.widgetSnapshot()
                 let data = try JSONEncoder().encode(value)
-                let snapshot = try WidgetSnapshot.decode(from: data)
+                var snapshot = try WidgetSnapshot.decode(from: data)
+                if let pulse {
+                    // The app's additions: progress, the task in progress,
+                    // and the check-ins owed, as the pulse last read them.
+                    snapshot.doneToday = pulse.doneToday
+                    snapshot.attention = pulse.attention.count
+                    if let doing = pulse.doing.first {
+                        snapshot.doing = WidgetTask(
+                            projectID: doing.projectID, taskID: doing.taskID, shortID: doing.shortID,
+                            title: doing.title, projectName: pulse.projectNames[doing.projectID] ?? "",
+                            state: doing.state.rawValue, priority: doing.priority, dueDate: doing.dueDate,
+                            pinned: doing.pinned
+                        )
+                        snapshot.doingSince = doing.stateChangedAt
+                    }
+                }
                 if try store.write(snapshot) {
                     WidgetCenter.shared.reloadAllTimelines()
                 }
@@ -85,6 +100,10 @@ final class CaptureInboxModel {
             }
         }
     }
+
+    /// The pulse the snapshot adds to the engine's answer, set by the
+    /// workspace after each reread.
+    @ObservationIgnored var pulse: DailyPulse?
 
     private static let publishDelay: Duration = .milliseconds(750)
     @ObservationIgnored private var requested = 0
