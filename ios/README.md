@@ -377,6 +377,42 @@ and shares through the system sheet; a link opens and shares; a code reference
 is kept for the desktop. A file this iPhone does not hold says so, one still
 arriving says **Waiting to download**, and **Download** asks iCloud for it now.
 
+## The daily loop
+
+Docket draws in the icon's mint on its navy, and each status keeps one color
+everywhere: rows, swipes, details, widgets, and the Live Activity. A task's
+glyph wears the accent of its strongest semantic tag (bug, question, epic,
+story, feature, idea) as the terminal does, and otherwise its status color.
+
+Today leads with a progress ring (done since midnight against what is still
+planned) and a greeting naming one next move, in the terminal's order: overdue
+work, then the Inbox (Start the Day before noon), then check-ins, then the
+plan. Chips under it open the rituals. The Inbox leads with how many captures
+are left to sort. Emptying Today or the Inbox by your own action throws
+confetti once (a fading checkmark under Reduce Motion), and both lists
+illustrate their empty state.
+
+A full swipe left completes an open task. Completing bounces the row's check
+and plays a success tap; planning for Today or Next plays a light tap, and
+starting work a firmer one. Pausing a task in progress (swipe, details,
+or Now) first asks **Where did you leave off?**. The answer becomes the resume
+note, saving it unchanged writes nothing, and **Pause Without Note** skips it.
+Resuming reads the note back in the receipt.
+
+- **Start the Day** shows the Inbox as cards. Swipe right for Today, up for
+  Next, left for Backlog, or tap Done or Skip. Each decision commits like the
+  matching swipe, Undo takes back the last one, and the stack ends on a tally.
+- **Now** shows the task in progress full screen: how long it has run, where
+  you left off, its checklist, Mark Done, and Pause. A 15, 25, or 50 minute
+  focus session counts down here, on the Lock Screen, and in the Dynamic
+  Island, ends when the task leaves Doing, and sends a quiet notice when time
+  is up if notifications are already allowed. **Lock Screen** pins the task
+  without a session. With nothing in progress, Now offers the first task
+  planned for today.
+- **Review** walks every visible open task that is flagged for review or whose
+  check-in day has arrived. **Reviewed** acknowledges it, Done finishes it,
+  Skip leaves it, and the pass never wraps.
+
 ## Reminders
 
 **Reminders** in the sync sheet turns on local notifications. They are off

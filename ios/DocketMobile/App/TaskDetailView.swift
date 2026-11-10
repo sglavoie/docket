@@ -40,6 +40,8 @@ struct TaskDetailView: View {
     @State private var loadRequest: UUID?
     @State private var retry = 0
     @State private var acting = false
+    /// The task whose pause waits on its resume note.
+    @State private var pausing: TaskSnapshot?
 
     var body: some View {
         Group {
@@ -77,6 +79,9 @@ struct TaskDetailView: View {
                         .accessibilityIdentifier("detail.failure")
                 }
             }
+        }
+        .resumeNotePrompt(for: $pausing, workspace: workspace) { task, refusal in
+            if let refusal { failure = refusal } else { act { await workspace.transition(task.locator, to: .paused) } }
         }
         .navigationTitle(detail?.task.title ?? "Task")
         .navigationBarTitleDisplayMode(.inline)
@@ -177,7 +182,13 @@ struct TaskDetailView: View {
                 .accessibilityIdentifier("detail.status.menu")
                 .confirmationDialog("Change Status", isPresented: $choosingStatus, titleVisibility: .visible) {
                     ForEach(WorkflowState.allCases.filter { $0 != task.state }, id: \.self) { target in
-                        Button(target.rawValue.capitalized) { act { await workspace.transition(task.locator, to: target) } }
+                        Button(target.rawValue.capitalized) {
+                            if target == .paused, task.state == .doing {
+                                pausing = task
+                            } else {
+                                act { await workspace.transition(task.locator, to: target) }
+                            }
+                        }
                     }
                 }
         }

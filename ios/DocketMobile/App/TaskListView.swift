@@ -118,6 +118,11 @@ struct TaskListView: View {
     @State private var openedNote: NoteRecord?
     @State private var managingProject = false
     @State private var emptyCapture = false
+    /// When the person last acted on this list, so a list their own action
+    /// empties celebrates and one emptied by a sync or a filter does not.
+    @State private var lastActionAt: Date?
+    /// The Doing task whose pause is waiting on its resume note.
+    @State private var pausing: TaskSnapshot?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -163,6 +168,7 @@ struct TaskListView: View {
                         // The selection's actions sit beside Done: a bottom
                         // bar would sit under the tab bar.
                         BulkActionsButton(workspace: workspace, selection: Array(selection), started: { action, targets in
+                            lastActionAt = .now
                             if case .state(.done) = action { completing = Set(targets) }
                         }) { refusal, moved in
                             if refusal == nil, !completing.isEmpty { acknowledge(completing) }
@@ -244,6 +250,14 @@ struct TaskListView: View {
                 NoteEditorView(workspace: workspace, location: note.location, filename: note.filename)
             }
             .refreshable { await workspace.refresh() }
+            .onChange(of: rows.isEmpty) { wasEmpty, isEmpty in celebrateIfCleared(wasEmpty, isEmpty) }
+            .resumeNotePrompt(for: $pausing, workspace: workspace) { task, refusal in
+                if let refusal {
+                    actionFailure = refusal
+                } else {
+                    act(task.locator, .transition(.paused))
+                }
+            }
             .task(id: LoadKey(generation: workspace.generation, retry: retry, query: queryKey)) {
                 if !search.isEmpty {
                     try? await Task.sleep(for: .milliseconds(250))
@@ -267,9 +281,18 @@ struct TaskListView: View {
         source == .inbox && !workspace.captures.pending.isEmpty
     }
 
-    private var showsProjectNotes: Bool {
-        source.projectID != nil && source.population != "+archived"
-            && search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !filter.isActive
+    /// Today and the Inbox lead with where the day stands, unless a search
+    /// or a filter is narrowing them.
+    private var showsDailyHeader: Bool {
+        dailyHeaderStyle != nil && search.isEmpty && !filter.isActive && source.scope == nil
+    }
+
+    private var dailyHeaderStyle: TodayHeaderView.Style? {
+        switch source {
+        case .today: .today
+        case .inbox: .inbox
+        default: nil
+        }
     }
 
     /// The illustrated empty state for the two lists whose emptiness is
@@ -283,11 +306,29 @@ struct TaskListView: View {
         }
     }
 
+    /// A list the person's own action just emptied celebrates once.
+    private func celebrateIfCleared(_ wasEmpty: Bool, _ isEmpty: Bool) {
+        guard !wasEmpty, isEmpty, dailyHeaderStyle != nil, search.isEmpty, !filter.isActive,
+              let lastActionAt, Date().timeIntervalSince(lastActionAt) < 4 else { return }
+        self.lastActionAt = nil
+        workspace.celebrate()
+    }
+
+    private var showsProjectNotes: Bool {
+        source.projectID != nil && source.population != "+archived"
+            && search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !filter.isActive
+    }
+
     @ViewBuilder
     private var content: some View {
         if let state, !(showsPendingCaptures && state.isEmpty) {
             ScrollView {
                 VStack(spacing: 12) {
+                    if showsDailyHeader, let style = dailyHeaderStyle {
+                        TodayHeaderView(workspace: workspace, style: style)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 8)
+                    }
                     ScreenStateView(state: state, hero: emptyHero)
                     if state.isEmpty {
                         if !search.isEmpty {
@@ -331,6 +372,14 @@ struct TaskListView: View {
             }
         } else {
             List(selection: $selection) {
+                if showsDailyHeader, !selecting, let style = dailyHeaderStyle {
+                    Section {
+                        TodayHeaderView(workspace: workspace, style: style)
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                    }
+                    .listSectionSpacing(.compact)
+                }
                 if showsPendingCaptures {
                     PendingCapturesSection(workspace: workspace)
                 }
@@ -520,7 +569,12 @@ struct TaskListView: View {
             .accessibilityIdentifier("task.swipe.done")
 
             Button(task.state == .doing ? "Pause" : "Start", systemImage: task.state == .doing ? "pause.fill" : "play.fill") {
-                act(task.locator, .transition(task.state == .doing ? .paused : .doing))
+                if task.state == .doing {
+                    actionFailure = nil
+                    pausing = task
+                } else {
+                    act(task.locator, .transition(.doing))
+                }
             }
             .tint(task.state == .doing ? DocketPalette.Solid.paused : DocketPalette.Solid.doing)
             .accessibilityIdentifier("task.swipe.startPause")
@@ -572,6 +626,7 @@ struct TaskListView: View {
 
     private func act(_ locator: TaskLocator, _ action: TaskListAction) {
         guard !acting else { return }
+        lastActionAt = .now
         acting = true
         actionFailure = nil
         let completes = if case .transition(.done) = action { true } else { false }

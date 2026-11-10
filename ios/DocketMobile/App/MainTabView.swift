@@ -107,6 +107,14 @@ struct MainTabView: View {
             .padding(.trailing, 20)
             .padding(.bottom, 64)
         }
+        .overlay { CelebrationOverlay(workspace: workspace) }
+        .fullScreenCover(item: Binding(get: { workspace.ritual }, set: { workspace.ritual = $0 })) { ritual in
+            switch ritual {
+            case .startDay: TriageView(workspace: workspace)
+            case .now: NowView(workspace: workspace)
+            case .review: ReviewPassView(workspace: workspace)
+            }
+        }
         .background { TabShortcuts(tab: $tab) }
         .tactileFeedback(workspace)
         .onChange(of: tab, initial: true) { _, tab in
@@ -183,12 +191,22 @@ struct MainTabView: View {
         switch link {
         case .view(.today):
             presentation.dismiss()
+            workspace.ritual = nil
             tab = .today
         case .view(.inbox):
             presentation.dismiss()
+            workspace.ritual = nil
             tab = .inbox
         case .capture:
+            workspace.ritual = nil
             presentation.show(.capture)
+        case .ritual(let ritual):
+            presentation.dismiss()
+            workspace.ritual = switch ritual {
+            case .startDay: .startDay
+            case .now: .now
+            case .review: .review
+            }
         case .task(_, let projectID, let taskID):
             let locator = TaskLocator(projectID: projectID, taskID: taskID)
             presentation.show(.task(locator))

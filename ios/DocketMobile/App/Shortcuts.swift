@@ -60,11 +60,12 @@ enum CaptureIntentError: Error, CustomLocalizedStringResourceConvertible {
 
 /// The places a shortcut can open Docket to.
 enum ShortcutDestination: String, AppEnum {
-    case today, inbox, capture
+    case today, inbox, capture, startDay, now, review
 
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Docket View"
     static let caseDisplayRepresentations: [ShortcutDestination: DisplayRepresentation] = [
         .today: "Today", .inbox: "Inbox", .capture: "Capture",
+        .startDay: "Start the Day", .now: "Now", .review: "Review",
     ]
 
     var link: DeepLink {
@@ -72,6 +73,9 @@ enum ShortcutDestination: String, AppEnum {
         case .today: .view(.today)
         case .inbox: .view(.inbox)
         case .capture: .capture
+        case .startDay: .ritual(.startDay)
+        case .now: .ritual(.now)
+        case .review: .ritual(.review)
         }
     }
 }
@@ -79,7 +83,7 @@ enum ShortcutDestination: String, AppEnum {
 /// Opens Docket to Today, the Inbox, or a new capture.
 struct OpenViewIntent: AppIntent {
     static let title: LocalizedStringResource = "Open Docket"
-    static let description = IntentDescription("Opens Docket to Today, the Inbox, or a new capture.")
+    static let description = IntentDescription("Opens Docket to Today, the Inbox, a new capture, or one of the daily rituals.")
     static let openAppWhenRun = true
 
     @Parameter(title: "View", default: .today)

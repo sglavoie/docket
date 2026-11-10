@@ -71,6 +71,25 @@ final class WorkspaceModel {
     /// A place a widget, a shortcut, or a link asked the app to open, which
     /// the shell shows once a workspace is open.
     var linkRequest: DeepLink?
+    /// The daily ritual on screen over the shell, if any: Start the Day, Now,
+    /// or a review pass.
+    var ritual: Ritual?
+    /// Bumped when an action empties Today or the Inbox, so the shell throws
+    /// its confetti once per clearing.
+    private(set) var celebration = 0
+    /// Where the day stands, reread after every change.
+    var pulse: DailyPulse?
+    /// The focus session running now, if any.
+    var focus: FocusSession?
+    let activities = LiveActivityController()
+    @ObservationIgnored var pulseRequest = 0
+
+    /// Marks a list cleared by the person's own action: one celebration and
+    /// one tactile response.
+    func celebrate() {
+        celebration += 1
+        signal(.celebrate)
+    }
     /// The open in flight, which a notification action launching the app
     /// in the background waits for rather than opening a second time.
     @ObservationIgnored private var starting: Task<Void, Never>?
@@ -102,10 +121,11 @@ final class WorkspaceModel {
 
     /// Marks the workspace as possibly changed: every list rereads, and the
     /// pending reminders are reconciled with what changed.
-    private func changed(_ reason: ReconcileReason) {
+    func changed(_ reason: ReconcileReason) {
         generation += 1
         reminders.reconcile(reason)
         captures.publishSnapshot(engine: engine)
+        refreshPulse()
     }
 
     /// Imports what the share extension and shortcuts saved. Each capture
@@ -248,6 +268,7 @@ final class WorkspaceModel {
             await resumeImports()
             await importCaptures()
             captures.publishSnapshot(engine: engine)
+            refreshPulse()
         } catch {
             status = nil
             phase = .failed(Self.describe(error))
@@ -405,7 +426,12 @@ final class WorkspaceModel {
             changed(.localChange)
             sync.exchange()
             if !result.committed.transactionID.isEmpty, let kind = action.tactileKind { signal(kind) }
-            return .success(recordReceipt(action.message(title: result.task.title), result.committed))
+            var message = action.message(title: result.task.title)
+            // Resuming reads back where the person left off.
+            if case .transition(.doing) = action, let note = result.task.resumeNote, !note.isEmpty {
+                message += " · Left off: \(note)"
+            }
+            return .success(recordReceipt(message, result.committed))
         } catch {
             return .failure(TaskActionFailure(message: Self.describe(error)))
         }

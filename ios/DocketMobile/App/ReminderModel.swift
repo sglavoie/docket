@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import DocketEngine
 import DocketReminders
+import DocketShared
 import UIKit
 import UserNotifications
 
@@ -224,7 +225,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         let userInfo = SystemNotificationCenter.strings(response.notification.request.content.userInfo)
         nonisolated(unsafe) let done = completionHandler
         Task { @MainActor in
-            await self.workspace.reminders.handle(actionIdentifier: action, userInfo: userInfo)
+            // A focus session's end notice carries its own link to the Now screen.
+            if let link = userInfo["docket_link"].flatMap(URL.init(string:)).flatMap(DeepLink.init(url:)) {
+                self.workspace.linkRequest = link
+            } else {
+                await self.workspace.reminders.handle(actionIdentifier: action, userInfo: userInfo)
+            }
             done()
         }
     }

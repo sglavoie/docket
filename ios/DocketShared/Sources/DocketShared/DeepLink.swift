@@ -8,10 +8,12 @@ import Foundation
 ///     docket://view/today
 ///     docket://view/inbox
 ///     docket://capture
+///     docket://ritual/start-day | now | review
 public enum DeepLink: Hashable, Sendable {
     case task(workspace: String, projectID: String, taskID: String)
     case view(WidgetView)
     case capture
+    case ritual(RitualLink)
 
     public static let scheme = "docket"
 
@@ -27,6 +29,9 @@ public enum DeepLink: Hashable, Sendable {
             components.path = "/" + view.rawValue
         case .capture:
             components.host = "capture"
+        case .ritual(let ritual):
+            components.host = "ritual"
+            components.path = "/" + ritual.rawValue
         }
         return components.url!
     }
@@ -47,6 +52,9 @@ public enum DeepLink: Hashable, Sendable {
         case "capture":
             guard parts.isEmpty else { return nil }
             self = .capture
+        case "ritual":
+            guard parts.count == 1, let ritual = RitualLink(rawValue: parts[0]) else { return nil }
+            self = .ritual(ritual)
         default:
             return nil
         }
@@ -57,6 +65,14 @@ public enum DeepLink: Hashable, Sendable {
         allowed.remove(charactersIn: "/%")
         return part.addingPercentEncoding(withAllowedCharacters: allowed) ?? part
     }
+}
+
+/// A daily ritual a link can open: inbox triage, the task in progress, or a
+/// review pass.
+public enum RitualLink: String, Hashable, Sendable, CaseIterable {
+    case startDay = "start-day"
+    case now
+    case review
 }
 
 /// The App Group container the app shares with its extensions.
