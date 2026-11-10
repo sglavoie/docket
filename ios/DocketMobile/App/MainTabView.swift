@@ -22,7 +22,9 @@ enum ShellTab: Hashable {
 @MainActor @Observable
 final class ShellPresentation {
     enum Destination: Identifiable, Equatable {
-        case capture, sync, task(TaskLocator)
+        /// Capture, optionally opened with text already typed.
+        case capture(String? = nil)
+        case sync, task(TaskLocator)
         var id: String {
             switch self {
             case .capture: "capture"
@@ -91,19 +93,16 @@ struct MainTabView: View {
             }
         }
         .overlay(alignment: .bottomTrailing) {
-            Button {
-                presentation.show(.capture)
-            } label: {
-                Image(systemName: "plus")
-                    .font(.title2.weight(.semibold))
-                    .frame(width: 56, height: 56)
-                    .background(.tint, in: Circle())
-                    .foregroundStyle(.white)
-                    .shadow(radius: 4, y: 2)
-            }
-            .accessibilityLabel("Capture")
-            .accessibilityIdentifier("capture.open")
-            .keyboardShortcut("n", modifiers: .command)
+            // The button reads the pulse itself, so a reread re-renders only
+            // the button and never the shell that hosts its presentations.
+            CaptureButton(
+                workspace: workspace,
+                capture: { presentation.show(.capture($0)) },
+                ritual: { ritual in
+                    presentation.dismiss()
+                    workspace.ritual = ritual
+                }
+            )
             .padding(.trailing, 20)
             .padding(.bottom, 64)
         }
@@ -115,7 +114,7 @@ struct MainTabView: View {
             case .review: ReviewPassView(workspace: workspace)
             }
         }
-        .background { TabShortcuts(tab: $tab) }
+        .background { TabShortcuts(tab: $tab, capture: { presentation.show(.capture()) }) }
         .tactileFeedback(workspace)
         .onChange(of: tab, initial: true) { _, tab in
             workspace.screen.tab = switch tab {
@@ -145,8 +144,8 @@ struct MainTabView: View {
             presentation.didDismiss()
         }) { destination in
             switch destination {
-            case .capture:
-                CaptureSheet(workspace: workspace)
+            case .capture(let prefill):
+                CaptureSheet(workspace: workspace, prefill: prefill)
             case .sync:
                 SyncView(workspace: workspace)
             case .task(let locator):
@@ -199,7 +198,10 @@ struct MainTabView: View {
             tab = .inbox
         case .capture:
             workspace.ritual = nil
-            presentation.show(.capture)
+            presentation.show(.capture())
+        case .captureText(let text):
+            workspace.ritual = nil
+            presentation.show(.capture(text))
         case .ritual(let ritual):
             presentation.dismiss()
             workspace.ritual = switch ritual {
@@ -239,13 +241,17 @@ struct MainTabView: View {
 }
 
 /// Command-1 through -4 select Today, Inbox, Notes, and Browse from a hardware
-/// keyboard. The buttons draw nothing and VoiceOver skips them; the tab bar
+/// keyboard, and Command-N opens capture. The buttons draw nothing and VoiceOver skips them; the tab bar
 /// is their accessible counterpart.
 private struct TabShortcuts: View {
     @Binding var tab: ShellTab
+    /// Command-N: a menu's primary action does not answer a keyboard
+    /// shortcut, so the capture button's lives here with the tabs'.
+    let capture: () -> Void
 
     var body: some View {
         ZStack {
+            Button("Capture", action: capture).keyboardShortcut("n", modifiers: .command)
             Button("Today") { tab = .today }.keyboardShortcut("1", modifiers: .command)
             Button("Inbox") { tab = .inbox }.keyboardShortcut("2", modifiers: .command)
             Button("Notes") { tab = .notes }.keyboardShortcut("3", modifiers: .command)
@@ -362,3 +368,60 @@ struct SyncView: View {
         }
     }
 }
+
+/// The floating capture button. A tap opens capture; a long press offers
+/// capture straight into Today or Next, and the rituals worth opening now.
+/// While work is in progress it wears a small orange dot.
+private struct CaptureButton: View {
+    let workspace: WorkspaceModel
+    let capture: (String?) -> Void
+    let ritual: (Ritual) -> Void
+
+    private var doingCount: Int { workspace.pulse?.doing.count ?? 0 }
+    private var inboxCount: Int { workspace.pulse?.inbox ?? 0 }
+
+    var body: some View {
+        // A menu with a primary action is the native tap-or-hold control. A
+        // context menu over a button competes with the tap for the same
+        // touch and, while the app is busy, can swallow it.
+        Menu {
+            Section("Capture") {
+                Button("Capture for Today", systemImage: "sun.max") { capture("$today ") }
+                Button("Capture for Next", systemImage: "arrow.right.circle") { capture("$next ") }
+                Button("Capture to Inbox", systemImage: "tray") { capture(nil) }
+            }
+            Section {
+                Button("Now", systemImage: "scope") { ritual(.now) }
+                if inboxCount > 0 {
+                    Button("Start the Day", systemImage: "sunrise") { ritual(.startDay) }
+                }
+                Button("Review", systemImage: "checkmark.seal") { ritual(.review) }
+            }
+        } label: {
+            Image(systemName: "plus")
+                .font(.title2.weight(.semibold))
+                .frame(width: 56, height: 56)
+                .background(DocketPalette.brand, in: Circle())
+                .foregroundStyle(DocketPalette.onBrand)
+                .shadow(color: DocketPalette.brand.opacity(0.35), radius: 8, y: 4)
+                .overlay(alignment: .topTrailing) {
+                    if doingCount > 0 {
+                        Circle()
+                            .fill(DocketPalette.state("doing"))
+                            .frame(width: 14, height: 14)
+                            .overlay(Circle().stroke(Color(uiColor: .systemBackground), lineWidth: 2))
+                            .transition(.scale)
+                            .accessibilityHidden(true)
+                    }
+                }
+        } primaryAction: {
+            capture(nil)
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .accessibilityLabel("Capture")
+        .accessibilityHint("Touch and hold for more ways to capture and the daily rituals.")
+        .accessibilityIdentifier("capture.open")
+    }
+}
+

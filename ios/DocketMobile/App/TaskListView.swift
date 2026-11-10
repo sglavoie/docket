@@ -123,6 +123,8 @@ struct TaskListView: View {
     @State private var lastActionAt: Date?
     /// The Doing task whose pause is waiting on its resume note.
     @State private var pausing: TaskSnapshot?
+    /// The row whose Peek is open.
+    @State private var peekRow: TaskRow?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -230,6 +232,14 @@ struct TaskListView: View {
             }
             .sheet(item: $editingRow) { row in
                 TaskEditSheet(workspace: workspace, task: row.item.task)
+            }
+            .sheet(item: $peekRow) { row in
+                ScrollView {
+                    TaskPeekView(item: row.item, projectName: projectNames[row.item.task.projectID])
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
             }
             .sheet(item: $organizingRow) { row in
                 ActionSheet(title: row.item.task.title, actionCount: 4) {
@@ -413,6 +423,9 @@ struct TaskListView: View {
                     }
                     .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         if !selecting {
+                            Button("Peek", systemImage: "eye") { peekRow = row }
+                                .tint(DocketPalette.Solid.reopen)
+                                .accessibilityIdentifier("task.swipe.peek")
                             if !row.item.task.state.isTerminal {
                                 planActions(row)
                                     .disabled(acting || workspace.undoing)

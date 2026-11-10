@@ -248,7 +248,8 @@ workspace intact; deleting the last workspace returns you to the start/join
 choices.
 
 Today, Inbox, Notes, and Browse are the tabs, and the capture button floats over all
-four. Browse holds Next, Due, All, Backlog, and Recent, every project by
+four. Touch and hold it to capture straight into Today or Next, or to open a
+ritual; it wears an orange dot while work is in progress. Browse holds Next, Due, All, Backlog, and Recent, every project by
 population (active, parked, archived), and the saved lenses. Every list is one
 engine query with search, filters, and a sort. Search offers tappable
 completions for tags, contexts, projects, states, priorities, dates, flags,
@@ -395,10 +396,12 @@ illustrate their empty state.
 
 A full swipe left completes an open task. Completing bounces the row's check
 and plays a success tap; planning for Today or Next plays a light tap, and
-starting work a firmer one. Pausing a task in progress (swipe, details,
+starting work a firmer one. Pausing a task in progress (swipe, Peek, details,
 or Now) first asks **Where did you leave off?**. The answer becomes the resume
 note, saving it unchanged writes nothing, and **Pause Without Note** skips it.
-Resuming reads the note back in the receipt.
+Resuming reads the note back in the receipt. Swipe a row right and tap
+**Peek** to read it at a glance in a half sheet; a long press stays the list's
+drag to reorder.
 
 - **Start the Day** shows the Inbox as cards. Swipe right for Today, up for
   Next, left for Backlog, or tap Done or Skip. Each decision commits like the
@@ -413,6 +416,9 @@ Resuming reads the note back in the receipt.
 - **Review** walks every visible open task that is flagged for review or whose
   check-in day has arrived. **Reviewed** acknowledges it, Done finishes it,
   Skip leaves it, and the pass never wraps.
+
+Capture colors its sigils as you type, using the same hues as the rest of the
+app. Only a token at the start of a word is colored, so `R&D` stays prose.
 
 ## Reminders
 
@@ -481,7 +487,7 @@ small tile) and **Now** (the task in progress with a Done button).
 
 **Open Docket** opens Today, the Inbox, capture, Start the Day, Now, or Review,
 and so do the links `docket://view/today`, `docket://view/inbox`,
-`docket://capture`, `docket://ritual/start-day`,
+`docket://capture` (`?text=` prefills it), `docket://ritual/start-day`,
 `docket://ritual/now`, `docket://ritual/review`, and
 `docket://task/<workspace>/<project>/<task>`. A task link for another
 workspace is refused. Control Center, Lock Screen, and Action button controls

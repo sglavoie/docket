@@ -8,6 +8,9 @@ import DocketEngine
 /// bring it back.
 struct CaptureSheet: View {
     let workspace: WorkspaceModel
+    /// Text the capture opens with, such as `$today ` from the capture
+    /// button's menu. A restored draft wins over it.
+    var prefill: String? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var draft = CaptureDraft()
     @State private var restored = false
@@ -128,6 +131,9 @@ struct CaptureSheet: View {
                         draft = saved
                         selection = NSRange(location: (saved.text as NSString).length, length: 0)
                         restored = true
+                    } else if let prefill, !prefill.isEmpty {
+                        draft.text = prefill
+                        selection = NSRange(location: (prefill as NSString).length, length: 0)
                     }
                 }
                 focused = true

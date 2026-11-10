@@ -8,11 +8,14 @@ import Foundation
 ///     docket://view/today
 ///     docket://view/inbox
 ///     docket://capture
+///     docket://capture?text=<prefill>
 ///     docket://ritual/start-day | now | review
 public enum DeepLink: Hashable, Sendable {
     case task(workspace: String, projectID: String, taskID: String)
     case view(WidgetView)
     case capture
+    /// Capture opened with text already typed, such as `$today `.
+    case captureText(String)
     case ritual(RitualLink)
 
     public static let scheme = "docket"
@@ -29,6 +32,9 @@ public enum DeepLink: Hashable, Sendable {
             components.path = "/" + view.rawValue
         case .capture:
             components.host = "capture"
+        case .captureText(let text):
+            components.host = "capture"
+            components.queryItems = [URLQueryItem(name: "text", value: text)]
         case .ritual(let ritual):
             components.host = "ritual"
             components.path = "/" + ritual.rawValue
@@ -51,7 +57,11 @@ public enum DeepLink: Hashable, Sendable {
             self = .view(view)
         case "capture":
             guard parts.isEmpty else { return nil }
-            self = .capture
+            if let text = components.queryItems?.first(where: { $0.name == "text" })?.value, !text.isEmpty {
+                self = .captureText(text)
+            } else {
+                self = .capture
+            }
         case "ritual":
             guard parts.count == 1, let ritual = RitualLink(rawValue: parts[0]) else { return nil }
             self = .ritual(ritual)

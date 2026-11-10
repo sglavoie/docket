@@ -79,6 +79,30 @@ final class DailyLoopUITests: XCTestCase {
         requireAbsent(app.alerts.firstMatch, "the resume note prompt")
     }
 
+    /// Peek is the first leading swipe: a half sheet that reads the task
+    /// without opening it, leaving the row's tap and long press alone.
+    func testPeekReadsATaskFromItsLeadingSwipe() throws {
+        let app = try launchSeeded()
+        row(app, "Ship beta build").swipeRight()
+        press(app, "task.swipe.peek")
+        require(app.descendants(matching: .any)["peek.card"].firstMatch, "the Peek sheet")
+        XCTAssertFalse(app.staticTexts["detail.title"].exists, "Peek opened the task instead")
+        keep(app, "Peek")
+    }
+
+    func testTheCaptureButtonOffersPrefilledCapturesAndColorsTheGrammar() throws {
+        let app = try launchSeeded()
+        app.buttons["capture.open"].press(forDuration: 1.2)
+        require(app.buttons["Capture for Today"], "the capture menu")
+        keep(app, "Capture menu")
+        app.buttons["Capture for Today"].tap()
+        let editor = app.textViews["capture.text"]
+        require(editor, "the capture editor")
+        eventually("the capture opens prefilled") { (editor.value as? String)?.hasPrefix("$today") == true }
+        editor.typeText("Book dentist #health @friday !2")
+        keep(app, "Capture grammar colors")
+    }
+
     // MARK: Helpers
 
     private func environmentURL(_ variable: String) throws -> URL {

@@ -43,7 +43,10 @@ struct CaptureTextEditor: UIViewRepresentable {
         context.coordinator.updating = true
         defer { context.coordinator.updating = false }
         if view.markedTextRange == nil {
-            if view.text != text { view.text = text }
+            if view.text != text {
+                view.text = text
+                CaptureHighlighter.apply(to: view)
+            }
             let length = (text as NSString).length
             if selection.location <= length, selection.length <= length - selection.location,
                view.selectedRange != selection {
@@ -71,7 +74,10 @@ struct CaptureTextEditor: UIViewRepresentable {
 
         init(_ parent: CaptureTextEditor) { self.parent = parent }
 
-        func textViewDidChange(_ textView: UITextView) { publish(textView) }
+        func textViewDidChange(_ textView: UITextView) {
+            CaptureHighlighter.apply(to: textView)
+            publish(textView)
+        }
         func textViewDidChangeSelection(_ textView: UITextView) { publish(textView) }
 
         private func publish(_ textView: UITextView) {

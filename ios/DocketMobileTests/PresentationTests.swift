@@ -5,14 +5,14 @@ import DocketEngine
 final class PresentationTests: XCTestCase {
     @MainActor func testRootSheetsWaitForDismissalAndUseLatestRequest() {
         let sheets = ShellPresentation()
-        sheets.show(.capture)
+        sheets.show(.capture())
         sheets.show(.task(TaskLocator(projectID: "p", taskID: "first")))
         XCTAssertNil(sheets.current)
         sheets.show(.sync)
         XCTAssertNil(sheets.current)
         sheets.didDismiss()
         XCTAssertEqual(sheets.current, .sync)
-        sheets.show(.capture)
+        sheets.show(.capture())
         sheets.dismiss()
         sheets.didDismiss()
         XCTAssertNil(sheets.current)
@@ -22,10 +22,10 @@ final class PresentationTests: XCTestCase {
         let sheets = ShellPresentation()
         sheets.show(.sync)
         sheets.dismiss()
-        sheets.show(.capture)
+        sheets.show(.capture())
         XCTAssertNil(sheets.current)
         sheets.didDismiss()
-        XCTAssertEqual(sheets.current, .capture)
+        XCTAssertEqual(sheets.current, .capture())
     }
 
     @MainActor func testNextPresentationWaitsForDismissalAndRunsOnlyOnce() {

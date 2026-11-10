@@ -3,18 +3,19 @@ import XCTest
 
 /// The pieces behind ticking a task off from a widget or a Live Activity:
 /// the queued action the app applies, the snapshot as it reads in the
-/// meantime, and the links the rituals spell.
+/// meantime, and the links the rituals and prefilled captures spell.
 final class WidgetActionTests: XCTestCase {
-    func testRitualLinksRoundTrip() {
+    func testRitualAndPrefilledCaptureLinksRoundTrip() {
         let links: [DeepLink] = [
             .ritual(.startDay), .ritual(.now), .ritual(.review),
-            .capture,
+            .captureText("$today "), .captureText("Buy milk #home"), .capture,
         ]
         for link in links {
             XCTAssertEqual(DeepLink(url: link.url), link, link.url.absoluteString)
         }
         XCTAssertEqual(DeepLink.ritual(.startDay).url.absoluteString, "docket://ritual/start-day")
         XCTAssertNil(DeepLink(url: URL(string: "docket://ritual/nap")!))
+        XCTAssertEqual(DeepLink(url: URL(string: "docket://capture?text=")!), .capture, "an empty prefill is a plain capture")
     }
 
     func testQueuedActionsPersistInOrderUntilRemoved() throws {
