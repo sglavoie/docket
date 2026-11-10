@@ -12,12 +12,14 @@ import XCTest
 ///   DOCKET_UITEST_EXCHANGE  an exchange folder a desktop `docket sync enroll` published
 ///   DOCKET_UITEST_WORK_DIR  a host directory each test makes its own root under
 /// The suite fails rather than skips when any is missing.
-final class BrowsingUITests: XCTestCase {
+/// Shared setup and helpers. The tests live in the subclasses below, split so
+/// parallel runs (which distribute whole classes) can balance them.
+class BrowsingUITests: XCTestCase {
     /// A required input is missing; the failure is already recorded.
-    private struct MissingInput: Error {}
+    fileprivate struct MissingInput: Error {}
 
-    private var root: URL!
-    private let timeout: TimeInterval = 20
+    fileprivate var root: URL!
+    fileprivate let timeout: TimeInterval = 20
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -28,7 +30,7 @@ final class BrowsingUITests: XCTestCase {
 
     // MARK: Fixtures
 
-    private func environmentURL(_ variable: String) throws -> URL {
+    fileprivate func environmentURL(_ variable: String) throws -> URL {
         guard let path = ProcessInfo.processInfo.environment[variable], FileManager.default.fileExists(atPath: path) else {
             XCTFail("\(variable) must name an existing host path")
             throw MissingInput()
@@ -37,7 +39,7 @@ final class BrowsingUITests: XCTestCase {
     }
 
     /// How a seeded workspace copy differs from the committed fixture.
-    private enum Seed {
+    fileprivate enum Seed {
         /// The fixture, with the one wall-clock deferral removed so the
         /// project outline is the same on every day the suite runs.
         case representative
@@ -48,7 +50,7 @@ final class BrowsingUITests: XCTestCase {
     }
 
     @discardableResult
-    private func seed(_ name: String, _ seed: Seed) throws -> URL {
+    fileprivate func seed(_ name: String, _ seed: Seed) throws -> URL {
         let target = root.appendingPathComponent("workspaces/\(name)", isDirectory: true)
         try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
         try FileManager.default.copyItem(at: environmentURL("DOCKET_UITEST_FIXTURE"), to: target)
@@ -79,7 +81,7 @@ final class BrowsingUITests: XCTestCase {
         return target
     }
 
-    private func replacing(_ old: String, with new: String, in text: String) throws -> String {
+    fileprivate func replacing(_ old: String, with new: String, in text: String) throws -> String {
         guard text.contains(old) else {
             XCTFail("the fixture no longer holds \(old)")
             throw MissingInput()
@@ -87,18 +89,18 @@ final class BrowsingUITests: XCTestCase {
         return text.replacingOccurrences(of: old, with: new)
     }
 
-    private func select(_ name: String) throws {
+    fileprivate func select(_ name: String) throws {
         try Data(name.utf8).write(to: root.appendingPathComponent("selected-workspace"))
     }
 
-    private func launch(_ extra: [String: String] = [:]) -> XCUIApplication {
+    fileprivate func launch(_ extra: [String: String] = [:]) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment = ["DOCKET_UITEST_ROOT": root.path, "DOCKET_UITEST_DEVICE_ID": "ui-test-phone"].merging(extra) { $1 }
         app.launch()
         return app
     }
 
-    private func launchSeeded() throws -> XCUIApplication {
+    fileprivate func launchSeeded() throws -> XCUIApplication {
         try seed("seeded", .representative)
         try select("seeded")
         let app = launch()
@@ -108,31 +110,31 @@ final class BrowsingUITests: XCTestCase {
 
     // MARK: Helpers
 
-    private func require(_ element: XCUIElement, _ what: String, file: StaticString = #filePath, line: UInt = #line) {
+    fileprivate func require(_ element: XCUIElement, _ what: String, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertTrue(element.waitForExistence(timeout: timeout), "\(what) never appeared", file: file, line: line)
     }
 
-    private func requireAbsent(_ element: XCUIElement, _ what: String, file: StaticString = #filePath, line: UInt = #line) {
+    fileprivate func requireAbsent(_ element: XCUIElement, _ what: String, file: StaticString = #filePath, line: UInt = #line) {
         let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: element)
         XCTAssertEqual(XCTWaiter.wait(for: [gone], timeout: timeout), .completed, "\(what) is still shown", file: file, line: line)
     }
 
-    private func text(_ app: XCUIApplication, _ value: String) -> XCUIElement {
+    fileprivate func text(_ app: XCUIApplication, _ value: String) -> XCUIElement {
         app.staticTexts[value].firstMatch
     }
 
     /// A task row: its label is the state, then the title, then its badges.
-    private func row(_ app: XCUIApplication, _ title: String) -> XCUIElement {
+    fileprivate func row(_ app: XCUIApplication, _ title: String) -> XCUIElement {
         app.buttons.matching(NSPredicate(format: "label CONTAINS %@", ", \(title)")).firstMatch
     }
 
-    private func tab(_ app: XCUIApplication, _ name: String) {
+    fileprivate func tab(_ app: XCUIApplication, _ name: String) {
         let button = app.tabBars.buttons[name]
         require(button, "the \(name) tab")
         button.tap()
     }
 
-    private func open(_ app: XCUIApplication, _ identifier: String) {
+    fileprivate func open(_ app: XCUIApplication, _ identifier: String) {
         let link = app.buttons[identifier].firstMatch
         if !link.waitForExistence(timeout: 5) {
             app.swipeUp()
@@ -143,7 +145,7 @@ final class BrowsingUITests: XCTestCase {
 
     /// Pops one screen. A tap that only dismissed an active search is
     /// repeated, so the next step always starts on the screen below.
-    private func back(_ app: XCUIApplication) {
+    fileprivate func back(_ app: XCUIApplication) {
         let screen = app.navigationBars.firstMatch.identifier
         for _ in 0..<3 {
             let button = app.navigationBars.buttons["BackButton"].firstMatch
@@ -154,14 +156,14 @@ final class BrowsingUITests: XCTestCase {
         }
     }
 
-    private func search(_ app: XCUIApplication, _ query: String) {
+    fileprivate func search(_ app: XCUIApplication, _ query: String) {
         let field = app.searchFields.firstMatch
         require(field, "the search field")
         field.tap()
         field.typeText(query)
     }
 
-    private func clearSearch(_ app: XCUIApplication) {
+    fileprivate func clearSearch(_ app: XCUIApplication) {
         let field = app.searchFields.firstMatch
         let clear = field.buttons.firstMatch
         if clear.exists { clear.tap() }
@@ -179,7 +181,7 @@ final class BrowsingUITests: XCTestCase {
     /// Picks a menu option. A picker in a menu draws its options inline or
     /// behind a submenu named for it, depending on the system, so the
     /// submenu is opened only when the option is not already shown.
-    private func choose(_ app: XCUIApplication, _ option: String, under submenu: String) {
+    fileprivate func choose(_ app: XCUIApplication, _ option: String, under submenu: String) {
         let item = app.buttons[option].firstMatch
         if !item.waitForExistence(timeout: 2) {
             app.buttons[submenu].firstMatch.tap()
@@ -190,104 +192,9 @@ final class BrowsingUITests: XCTestCase {
 
     // MARK: Tests
 
-    func testSeededTodayInboxAndBrowseModes() throws {
-        let app = try launchSeeded()
-        require(text(app, "Order bathroom tiles"), "Today's second planned task")
-        XCTAssertFalse(text(app, "Call the bank").exists, "an inbox task leaked into Today")
+}
 
-        tab(app, "Inbox")
-        require(text(app, "Call the bank"), "the Unfiled inbox task")
-        require(text(app, "Proofread release notes"), "the project inbox task")
-
-        tab(app, "Browse")
-        open(app, "browse.mode.next")
-        require(text(app, "Pick paint colors"), "the Next task")
-        XCTAssertFalse(text(app, "Finish the novel").exists, "a parked project's Next task is shown")
-        back(app)
-        open(app, "browse.mode.due")
-        require(text(app, "Await signing certificate"), "a dated task in Due")
-        require(text(app, "Ship beta build"), "the other dated task in Due")
-        back(app)
-        open(app, "browse.mode.all")
-        require(text(app, "Localize installer"), "a paused task in All")
-        XCTAssertFalse(text(app, "Set up CI signing").exists, "a done task is shown in All")
-        back(app)
-        open(app, "browse.mode.backlog")
-        require(text(app, "Pick paint colors"), "a backlog task")
-        XCTAssertFalse(text(app, "Order bathroom tiles").exists, "a doing task is shown in Backlog")
-        back(app)
-        open(app, "browse.mode.recent")
-        // Recent reads the wall clock: the fixture's activity ages out of its
-        // 30 days, so either answer is right, and an error or a hang is not.
-        let deadline = Date().addingTimeInterval(timeout)
-        var answered = false
-        while !answered, Date() < deadline {
-            answered = app.staticTexts["state.empty"].exists || app.buttons.matching(NSPredicate(format: "label CONTAINS %@", ", ")).count > 3
-            if !answered { Thread.sleep(forTimeInterval: 0.5) }
-        }
-        XCTAssertTrue(answered, "Recent answered with neither tasks nor its empty state")
-        XCTAssertFalse(app.staticTexts["state.error"].exists)
-        XCTAssertFalse(app.staticTexts["state.loading"].exists)
-    }
-
-    func testProjectsOutlineAndRelations() throws {
-        let app = try launchSeeded()
-        tab(app, "Browse")
-        open(app, "browse.project.atlas-launch")
-        require(row(app, "Ship beta build"), "the project's root task")
-        let notes = row(app, "Write release notes")
-        require(notes, "a child task in the outline")
-        XCTAssertEqual(notes.value as? String, "level 1")
-        XCTAssertEqual(row(app, "Proofread release notes").value as? String, "level 2")
-
-        row(app, "Ship beta build").tap()
-        require(app.staticTexts["detail.title"], "the task detail")
-        XCTAssertEqual(app.staticTexts["detail.title"].label, "Ship beta build")
-        require(text(app, "Waiting on notarization log; rerun step 3."), "the resume note")
-        let dependency = app.buttons["detail.dependency"].firstMatch
-        if !dependency.waitForExistence(timeout: 5) { app.swipeUp() }
-        require(dependency, "the dependency link")
-        XCTAssertTrue(dependency.label.contains("Pick paint colors"))
-        dependency.tap()
-        require(app.staticTexts["detail.title"].firstMatch, "the dependency's detail")
-        let paintTitle = app.staticTexts.matching(identifier: "detail.title").element(matching: NSPredicate(format: "label == %@", "Pick paint colors"))
-        require(paintTitle, "Pick paint colors' detail")
-        let dependent = app.buttons["detail.dependent"].firstMatch
-        if !dependent.waitForExistence(timeout: 5) { app.swipeUp() }
-        require(dependent, "the computed dependent")
-        XCTAssertTrue(dependent.label.contains("Ship beta build"))
-        XCTAssertTrue(app.buttons["detail.dependency"].firstMatch.label.contains("Await signing certificate"))
-        back(app)
-
-        let child = app.buttons["detail.child"].firstMatch
-        if !child.waitForExistence(timeout: 5) { app.swipeUp() }
-        require(child, "the subtask link")
-        XCTAssertTrue(child.label.contains("Write release notes"))
-        child.tap()
-        let ancestor = app.buttons["detail.ancestor"].firstMatch
-        require(ancestor, "the ancestor link")
-        XCTAssertTrue(ancestor.label.contains("Ship beta build"))
-        // List may not instantiate both children until they enter the viewport.
-        // Require each expected relationship to be reachable, rather than
-        // counting whichever rows happen to be materialized before scrolling.
-        for title in ["Proofread release notes", "Collect screenshots"] {
-            let subtask = app.buttons.matching(identifier: "detail.child")
-                .matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
-            for _ in 0..<4 where !subtask.exists || !subtask.isHittable { app.swipeUp() }
-            require(subtask, "the \(title) subtask link")
-            XCTAssertTrue(subtask.isHittable, "the \(title) subtask is unreachable")
-        }
-        back(app)
-        back(app)
-        back(app)
-
-        open(app, "browse.project.reading-list")
-        require(text(app, "Finish the novel"), "the parked project's task")
-        back(app)
-        open(app, "browse.project.old-website")
-        require(text(app, "Hand over credentials"), "the archived project's task")
-    }
-
+final class BrowsingUITestsPart1: BrowsingUITests {
     func testLensesSearchFiltersAndSorting() throws {
         let app = try launchSeeded()
         tab(app, "Browse")
@@ -374,31 +281,6 @@ final class BrowsingUITests: XCTestCase {
         XCTAssertTrue(inOrder(), "title order does not lead with \(ordered)")
     }
 
-    func testEmptySearchExplainsAndClearsRestrictionsIndependently() throws {
-        let app = try launchSeeded()
-        tab(app, "Browse")
-        open(app, "browse.mode.all")
-        app.buttons["list.filter"].tap()
-        choose(app, "Waiting", under: "Status")
-        require(text(app, "Await signing certificate"), "the filtered task")
-        search(app, "zzzznomatch")
-        require(app.staticTexts["state.empty"], "the empty result")
-        let message = app.staticTexts["state.empty.message"].label
-        XCTAssertTrue(message.contains("zzzznomatch"), message)
-        XCTAssertTrue(message.contains("Status: Waiting"), message)
-        app.buttons["list.clearSearch"].tap()
-        require(text(app, "Await signing certificate"), "the result after clearing only search")
-        require(app.staticTexts["list.restrictions"], "the remaining filter")
-        search(app, "zzzznomatch")
-        require(app.buttons["list.clearFilters"], "filter recovery")
-        app.buttons["list.clearFilters"].tap()
-        require(app.staticTexts["state.empty"], "the remaining search")
-        XCTAssertTrue(app.staticTexts["state.empty.message"].label.contains("zzzznomatch"))
-        requireAbsent(app.staticTexts["list.restrictions"], "cleared filter summary")
-        app.buttons["list.clearSearch"].tap()
-        require(text(app, "Call the bank"), "the recovered full list")
-    }
-
     func testEmptyScopedSearchCanSearchAllAndReturnToItsQuery() throws {
         let app = try launchSeeded()
         search(app, "Call the bank")
@@ -461,6 +343,242 @@ final class BrowsingUITests: XCTestCase {
         require(reopen, "Reopen as the finished task's primary action")
     }
 
+    func testDetailRefreshAndProjectPickerRecoverFromReadFailures() throws {
+        let app = try launchSeeded()
+        row(app, "Ship beta build").tap()
+        require(app.staticTexts["detail.title"], "the task detail")
+        let catalog = root.appendingPathComponent("workspaces/seeded/.docket/workspace.json")
+        let permissions = try FileManager.default.attributesOfItem(atPath: catalog.path)[.posixPermissions]!
+        defer { try? FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: catalog.path) }
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: catalog.path)
+        let list = app.collectionViews.firstMatch
+        list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
+            .press(forDuration: 0.1, thenDragTo: list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9)))
+        require(app.staticTexts["detail.refresh.failure"], "the stale detail explanation")
+        XCTAssertTrue(app.staticTexts["detail.title"].exists)
+        XCTAssertFalse(app.staticTexts["state.error"].exists)
+        let retained = XCTAttachment(screenshot: app.screenshot())
+        retained.name = "Detail retained after refresh failure"
+        retained.lifetime = .keepAlways
+        add(retained)
+        try FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: catalog.path)
+        app.buttons["detail.refresh.retry"].tap()
+        requireAbsent(app.staticTexts["detail.refresh.failure"], "the recovered detail")
+
+        let move = app.buttons["detail.move"].firstMatch
+        for _ in 0..<12 { guard !move.isHittable else { break }; app.swipeUp() }
+        require(move, "Move to Project")
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: catalog.path)
+        move.tap()
+        require(app.staticTexts["state.error"], "the project loading error")
+        XCTAssertFalse(app.staticTexts["state.empty"].exists)
+        try FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: catalog.path)
+        app.buttons["state.action"].tap()
+        require(app.buttons["Home Renovation"], "the recovered destination list")
+    }
+
+    func testOpeningShowsLoadingThenContent() throws {
+        try seed("seeded", .representative)
+        try select("seeded")
+        // Launch/automation startup can outlast a fixed delay. Release the
+        // real workspace open only after the loading screen is observed.
+        let gate = root.appendingPathComponent("hold-open")
+        try Data().write(to: gate)
+        defer { try? FileManager.default.removeItem(at: gate) }
+        let app = launch(["DOCKET_UITEST_HOLD_OPEN": "1"])
+        let loading = app.descendants(matching: .any)["state.loading"].firstMatch
+        require(loading, "the loading state")
+        try FileManager.default.removeItem(at: gate)
+        require(text(app, "Ship beta build"), "Today after loading")
+        XCTAssertFalse(loading.exists)
+    }
+
+    func testWorkspaceDeletionConfirmsAndPersistsWithoutRemovingOtherWorkspaces() throws {
+        let removed = try seed("unused", .representative)
+        let kept = try seed("kept", .representative)
+        let runtime = root.appendingPathComponent("devices/unused")
+        try FileManager.default.createDirectory(at: runtime, withIntermediateDirectories: true)
+        try Data("draft recovery".utf8).write(to: runtime.appendingPathComponent("draft"))
+        var app = launch()
+        require(app.buttons["onboarding.delete.unused"], "the workspace delete control")
+        app.buttons["onboarding.delete.unused"].tap()
+        let confirmation = app.alerts.firstMatch
+        require(confirmation, "the deletion confirmation")
+        XCTAssertTrue(confirmation.staticTexts.allElementsBoundByIndex.contains { $0.label.contains("unsaved drafts") })
+        confirmation.buttons["Cancel"].tap()
+        XCTAssertTrue(FileManager.default.fileExists(atPath: removed.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: runtime.path))
+        app.buttons["onboarding.delete.unused"].tap()
+        app.alerts.buttons["Delete from This iPhone"].tap()
+        requireAbsent(app.buttons["onboarding.workspace.unused"], "the deleted workspace")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: removed.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: runtime.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: kept.path))
+        app.terminate()
+        app = launch()
+        require(app.buttons["onboarding.workspace.kept"], "the retained workspace after relaunch")
+        XCTAssertFalse(app.buttons["onboarding.workspace.unused"].exists)
+        app.buttons["onboarding.workspace.kept"].tap()
+        require(text(app, "Ship beta build"), "the retained workspace's tasks")
+        app.buttons["sync.open"].tap()
+        app.buttons["workspace.switch"].tap()
+        require(app.buttons["onboarding.delete.kept"], "deleting the last workspace")
+        app.buttons["onboarding.delete.kept"].tap()
+        app.alerts.buttons["Delete from This iPhone"].tap()
+        requireAbsent(app.buttons["onboarding.workspace.kept"], "the last workspace")
+        app.buttons["onboarding.create"].tap()
+        require(app.staticTexts["state.empty"], "a fresh workspace after deleting every old one")
+    }
+
+    func testUnavailableWorkspaceAndReference() throws {
+        try select("gone")
+        var app = launch()
+        require(app.staticTexts["state.unavailable"], "the unavailable workspace state")
+        XCTAssertTrue(app.staticTexts["state.unavailable.message"].label.contains("gone"))
+        app.buttons["state.action"].tap()
+        require(app.buttons["onboarding.create"], "onboarding after choosing another workspace")
+        app.terminate()
+
+        try seed("dangling", .danglingDependency)
+        try select("dangling")
+        app = launch()
+        require(text(app, "Ship beta build"), "the seeded Today list")
+        tab(app, "Browse")
+        open(app, "browse.project.home-renovation")
+        row(app, "Pick paint colors").tap()
+        let unavailable = app.otherElements["relation.unavailable"].firstMatch
+        let found = unavailable.waitForExistence(timeout: timeout) || app.staticTexts["Unavailable task"].waitForExistence(timeout: 1)
+        XCTAssertTrue(found, "the dangling dependency is not shown as unavailable")
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "0a7e5d10-2c3b-4f6a-8e9d-000000000105")).firstMatch.exists
+            || unavailable.label.contains("0a7e5d10-2c3b-4f6a-8e9d-000000000105"),
+            "the unavailable dependency lost its stored locator")
+    }
+}
+
+final class BrowsingUITestsPart2: BrowsingUITests {
+    func testSeededTodayInboxAndBrowseModes() throws {
+        let app = try launchSeeded()
+        require(text(app, "Order bathroom tiles"), "Today's second planned task")
+        XCTAssertFalse(text(app, "Call the bank").exists, "an inbox task leaked into Today")
+
+        tab(app, "Inbox")
+        require(text(app, "Call the bank"), "the Unfiled inbox task")
+        require(text(app, "Proofread release notes"), "the project inbox task")
+
+        tab(app, "Browse")
+        open(app, "browse.mode.next")
+        require(text(app, "Pick paint colors"), "the Next task")
+        XCTAssertFalse(text(app, "Finish the novel").exists, "a parked project's Next task is shown")
+        back(app)
+        open(app, "browse.mode.due")
+        require(text(app, "Await signing certificate"), "a dated task in Due")
+        require(text(app, "Ship beta build"), "the other dated task in Due")
+        back(app)
+        open(app, "browse.mode.all")
+        require(text(app, "Localize installer"), "a paused task in All")
+        XCTAssertFalse(text(app, "Set up CI signing").exists, "a done task is shown in All")
+        back(app)
+        open(app, "browse.mode.backlog")
+        require(text(app, "Pick paint colors"), "a backlog task")
+        XCTAssertFalse(text(app, "Order bathroom tiles").exists, "a doing task is shown in Backlog")
+        back(app)
+        open(app, "browse.mode.recent")
+        // Recent reads the wall clock: the fixture's activity ages out of its
+        // 30 days, so either answer is right, and an error or a hang is not.
+        let deadline = Date().addingTimeInterval(timeout)
+        var answered = false
+        while !answered, Date() < deadline {
+            answered = app.staticTexts["state.empty"].exists || app.buttons.matching(NSPredicate(format: "label CONTAINS %@", ", ")).count > 3
+            if !answered { Thread.sleep(forTimeInterval: 0.5) }
+        }
+        XCTAssertTrue(answered, "Recent answered with neither tasks nor its empty state")
+        XCTAssertFalse(app.staticTexts["state.error"].exists)
+        XCTAssertFalse(app.staticTexts["state.loading"].exists)
+    }
+
+    func testProjectsOutlineAndRelations() throws {
+        let app = try launchSeeded()
+        tab(app, "Browse")
+        open(app, "browse.project.atlas-launch")
+        require(row(app, "Ship beta build"), "the project's root task")
+        let notes = row(app, "Write release notes")
+        require(notes, "a child task in the outline")
+        XCTAssertEqual(notes.value as? String, "level 1")
+        XCTAssertEqual(row(app, "Proofread release notes").value as? String, "level 2")
+
+        row(app, "Ship beta build").tap()
+        require(app.staticTexts["detail.title"], "the task detail")
+        XCTAssertEqual(app.staticTexts["detail.title"].label, "Ship beta build")
+        require(text(app, "Waiting on notarization log; rerun step 3."), "the resume note")
+        let dependency = app.buttons["detail.dependency"].firstMatch
+        if !dependency.waitForExistence(timeout: 5) { app.swipeUp() }
+        require(dependency, "the dependency link")
+        XCTAssertTrue(dependency.label.contains("Pick paint colors"))
+        dependency.tap()
+        require(app.staticTexts["detail.title"].firstMatch, "the dependency's detail")
+        let paintTitle = app.staticTexts.matching(identifier: "detail.title").element(matching: NSPredicate(format: "label == %@", "Pick paint colors"))
+        require(paintTitle, "Pick paint colors' detail")
+        let dependent = app.buttons["detail.dependent"].firstMatch
+        if !dependent.waitForExistence(timeout: 5) { app.swipeUp() }
+        require(dependent, "the computed dependent")
+        XCTAssertTrue(dependent.label.contains("Ship beta build"))
+        XCTAssertTrue(app.buttons["detail.dependency"].firstMatch.label.contains("Await signing certificate"))
+        back(app)
+
+        let child = app.buttons["detail.child"].firstMatch
+        if !child.waitForExistence(timeout: 5) { app.swipeUp() }
+        require(child, "the subtask link")
+        XCTAssertTrue(child.label.contains("Write release notes"))
+        child.tap()
+        let ancestor = app.buttons["detail.ancestor"].firstMatch
+        require(ancestor, "the ancestor link")
+        XCTAssertTrue(ancestor.label.contains("Ship beta build"))
+        // List may not instantiate both children until they enter the viewport.
+        // Require each expected relationship to be reachable, rather than
+        // counting whichever rows happen to be materialized before scrolling.
+        for title in ["Proofread release notes", "Collect screenshots"] {
+            let subtask = app.buttons.matching(identifier: "detail.child")
+                .matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
+            for _ in 0..<4 { guard !subtask.exists || !subtask.isHittable else { break }; app.swipeUp() }
+            require(subtask, "the \(title) subtask link")
+            XCTAssertTrue(subtask.isHittable, "the \(title) subtask is unreachable")
+        }
+        back(app)
+        back(app)
+        back(app)
+
+        open(app, "browse.project.reading-list")
+        require(text(app, "Finish the novel"), "the parked project's task")
+        back(app)
+        open(app, "browse.project.old-website")
+        require(text(app, "Hand over credentials"), "the archived project's task")
+    }
+
+    func testEmptySearchExplainsAndClearsRestrictionsIndependently() throws {
+        let app = try launchSeeded()
+        tab(app, "Browse")
+        open(app, "browse.mode.all")
+        app.buttons["list.filter"].tap()
+        choose(app, "Waiting", under: "Status")
+        require(text(app, "Await signing certificate"), "the filtered task")
+        search(app, "zzzznomatch")
+        require(app.staticTexts["state.empty"], "the empty result")
+        let message = app.staticTexts["state.empty.message"].label
+        XCTAssertTrue(message.contains("zzzznomatch"), message)
+        XCTAssertTrue(message.contains("Status: Waiting"), message)
+        app.buttons["list.clearSearch"].tap()
+        require(text(app, "Await signing certificate"), "the result after clearing only search")
+        require(app.staticTexts["list.restrictions"], "the remaining filter")
+        search(app, "zzzznomatch")
+        require(app.buttons["list.clearFilters"], "filter recovery")
+        app.buttons["list.clearFilters"].tap()
+        require(app.staticTexts["state.empty"], "the remaining search")
+        XCTAssertTrue(app.staticTexts["state.empty.message"].label.contains("zzzznomatch"))
+        requireAbsent(app.staticTexts["list.restrictions"], "cleared filter summary")
+        app.buttons["list.clearSearch"].tap()
+        require(text(app, "Call the bank"), "the recovered full list")
+    }
+
     func testCompletionReceiptCanUndoTheTaskThatLeftToday() throws {
         let app = try launchSeeded()
         XCTAssertEqual(app.searchFields.firstMatch.placeholderValue, "Search in Today")
@@ -510,56 +628,6 @@ final class BrowsingUITests: XCTestCase {
         XCTAssertTrue(text(app, "Ship beta build").exists)
     }
 
-    func testDetailRefreshAndProjectPickerRecoverFromReadFailures() throws {
-        let app = try launchSeeded()
-        row(app, "Ship beta build").tap()
-        require(app.staticTexts["detail.title"], "the task detail")
-        let catalog = root.appendingPathComponent("workspaces/seeded/.docket/workspace.json")
-        let permissions = try FileManager.default.attributesOfItem(atPath: catalog.path)[.posixPermissions]!
-        defer { try? FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: catalog.path) }
-        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: catalog.path)
-        let list = app.collectionViews.firstMatch
-        list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
-            .press(forDuration: 0.1, thenDragTo: list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9)))
-        require(app.staticTexts["detail.refresh.failure"], "the stale detail explanation")
-        XCTAssertTrue(app.staticTexts["detail.title"].exists)
-        XCTAssertFalse(app.staticTexts["state.error"].exists)
-        let retained = XCTAttachment(screenshot: app.screenshot())
-        retained.name = "Detail retained after refresh failure"
-        retained.lifetime = .keepAlways
-        add(retained)
-        try FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: catalog.path)
-        app.buttons["detail.refresh.retry"].tap()
-        requireAbsent(app.staticTexts["detail.refresh.failure"], "the recovered detail")
-
-        let move = app.buttons["detail.move"].firstMatch
-        for _ in 0..<12 where !move.isHittable { app.swipeUp() }
-        require(move, "Move to Project")
-        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: catalog.path)
-        move.tap()
-        require(app.staticTexts["state.error"], "the project loading error")
-        XCTAssertFalse(app.staticTexts["state.empty"].exists)
-        try FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: catalog.path)
-        app.buttons["state.action"].tap()
-        require(app.buttons["Home Renovation"], "the recovered destination list")
-    }
-
-    func testOpeningShowsLoadingThenContent() throws {
-        try seed("seeded", .representative)
-        try select("seeded")
-        // Launch/automation startup can outlast a fixed delay. Release the
-        // real workspace open only after the loading screen is observed.
-        let gate = root.appendingPathComponent("hold-open")
-        try Data().write(to: gate)
-        defer { try? FileManager.default.removeItem(at: gate) }
-        let app = launch(["DOCKET_UITEST_HOLD_OPEN": "1"])
-        let loading = app.descendants(matching: .any)["state.loading"].firstMatch
-        require(loading, "the loading state")
-        try FileManager.default.removeItem(at: gate)
-        require(text(app, "Ship beta build"), "Today after loading")
-        XCTAssertFalse(loading.exists)
-    }
-
     func testOnboardingStartsAnEmptyWorkspaceAndCaptures() throws {
         let app = launch()
         require(app.buttons["onboarding.create"], "onboarding")
@@ -596,43 +664,6 @@ final class BrowsingUITests: XCTestCase {
         require(text(app, "Buy milk"), "the reopened workspace's capture")
     }
 
-    func testWorkspaceDeletionConfirmsAndPersistsWithoutRemovingOtherWorkspaces() throws {
-        let removed = try seed("unused", .representative)
-        let kept = try seed("kept", .representative)
-        let runtime = root.appendingPathComponent("devices/unused")
-        try FileManager.default.createDirectory(at: runtime, withIntermediateDirectories: true)
-        try Data("draft recovery".utf8).write(to: runtime.appendingPathComponent("draft"))
-        var app = launch()
-        require(app.buttons["onboarding.delete.unused"], "the workspace delete control")
-        app.buttons["onboarding.delete.unused"].tap()
-        let confirmation = app.alerts.firstMatch
-        require(confirmation, "the deletion confirmation")
-        XCTAssertTrue(confirmation.staticTexts.allElementsBoundByIndex.contains { $0.label.contains("unsaved drafts") })
-        confirmation.buttons["Cancel"].tap()
-        XCTAssertTrue(FileManager.default.fileExists(atPath: removed.path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: runtime.path))
-        app.buttons["onboarding.delete.unused"].tap()
-        app.alerts.buttons["Delete from This iPhone"].tap()
-        requireAbsent(app.buttons["onboarding.workspace.unused"], "the deleted workspace")
-        XCTAssertFalse(FileManager.default.fileExists(atPath: removed.path))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: runtime.path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: kept.path))
-        app.terminate()
-        app = launch()
-        require(app.buttons["onboarding.workspace.kept"], "the retained workspace after relaunch")
-        XCTAssertFalse(app.buttons["onboarding.workspace.unused"].exists)
-        app.buttons["onboarding.workspace.kept"].tap()
-        require(text(app, "Ship beta build"), "the retained workspace's tasks")
-        app.buttons["sync.open"].tap()
-        app.buttons["workspace.switch"].tap()
-        require(app.buttons["onboarding.delete.kept"], "deleting the last workspace")
-        app.buttons["onboarding.delete.kept"].tap()
-        app.alerts.buttons["Delete from This iPhone"].tap()
-        requireAbsent(app.buttons["onboarding.workspace.kept"], "the last workspace")
-        app.buttons["onboarding.create"].tap()
-        require(app.staticTexts["state.empty"], "a fresh workspace after deleting every old one")
-    }
-
     func testDeletedWorkspaceDraftDoesNotReturnWhenNameIsReused() throws {
         let app = launch()
         require(app.buttons["onboarding.create"], "onboarding")
@@ -656,30 +687,6 @@ final class BrowsingUITests: XCTestCase {
         app.buttons["capture.open"].tap()
         require(field, "a fresh capture draft")
         XCTAssertFalse((field.value as? String ?? "").contains("Discarded workspace draft"))
-    }
-
-    func testUnavailableWorkspaceAndReference() throws {
-        try select("gone")
-        var app = launch()
-        require(app.staticTexts["state.unavailable"], "the unavailable workspace state")
-        XCTAssertTrue(app.staticTexts["state.unavailable.message"].label.contains("gone"))
-        app.buttons["state.action"].tap()
-        require(app.buttons["onboarding.create"], "onboarding after choosing another workspace")
-        app.terminate()
-
-        try seed("dangling", .danglingDependency)
-        try select("dangling")
-        app = launch()
-        require(text(app, "Ship beta build"), "the seeded Today list")
-        tab(app, "Browse")
-        open(app, "browse.project.home-renovation")
-        row(app, "Pick paint colors").tap()
-        let unavailable = app.otherElements["relation.unavailable"].firstMatch
-        let found = unavailable.waitForExistence(timeout: timeout) || app.staticTexts["Unavailable task"].waitForExistence(timeout: 1)
-        XCTAssertTrue(found, "the dangling dependency is not shown as unavailable")
-        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "0a7e5d10-2c3b-4f6a-8e9d-000000000105")).firstMatch.exists
-            || unavailable.label.contains("0a7e5d10-2c3b-4f6a-8e9d-000000000105"),
-            "the unavailable dependency lost its stored locator")
     }
 
     func testErrorStates() throws {

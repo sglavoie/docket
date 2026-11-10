@@ -114,7 +114,8 @@ final class ReminderDeliveryUITests: XCTestCase {
     }
 
     private func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {
-        for _ in 0..<6 where !element.isHittable {
+        for _ in 0..<6 {
+            guard !element.isHittable else { break }
             app.swipeUp()
         }
         XCTAssertTrue(element.waitForExistence(timeout: timeout), "\(element)")
@@ -139,7 +140,8 @@ final class ReminderDeliveryUITests: XCTestCase {
     /// buttons, finding it again in Notification Center if the banner went.
     private func tapAction(_ label: String, title: String) {
         let button = springboard.buttons[label]
-        for _ in 0..<3 where !button.exists {
+        for _ in 0..<3 {
+            guard !button.exists else { break }
             let notification = waitForNotification(containing: title)
             notification.press(forDuration: 1.5)
             _ = button.waitForExistence(timeout: 5)

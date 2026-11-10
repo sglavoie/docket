@@ -8,7 +8,10 @@ func waitForSimulatorEditorSave() async throws {
     guard environment["DOCKET_UITEST_EDITOR_SAVE_GATE"] == "1",
           let root = environment["DOCKET_UITEST_ROOT"], !root.isEmpty else { return }
     let gate = URL(fileURLWithPath: root).appendingPathComponent("editor-save.release")
-    for _ in 0..<600 {
+    // Two minutes: a UI test types its newer draft before releasing, and on
+    // a machine running simulators side by side that typing alone can take
+    // longer than half a minute.
+    for _ in 0..<2400 {
         if FileManager.default.fileExists(atPath: gate.path) { return }
         try await Task.sleep(for: .milliseconds(50))
     }

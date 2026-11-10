@@ -200,7 +200,7 @@ final class SimulatorQualificationUITests: XCTestCase {
             // The recovery is attached to the condition instead of a generic
             // retry below unrelated workspace information.
             let failure = app.staticTexts["sync.failure"]
-            for _ in 0..<8 where !failure.exists || !failure.isHittable { app.swipeDown() }
+            for _ in 0..<8 { guard !failure.exists || !failure.isHittable else { break }; app.swipeDown() }
             XCTAssertTrue(failure.waitForExistence(timeout: timeout))
             XCTAssertTrue(failure.isHittable)
             if access == "accessExpired" {

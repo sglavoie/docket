@@ -73,10 +73,11 @@ swift_package() {
 	fi
 }
 
+# Rebuilt on every run: a binary kept from an older checkout speaks an older
+# schema and refuses the current fixture, and Go's build cache makes an
+# up-to-date rebuild nearly free.
 bridgehost() {
-	if [ ! -x "$output/bridgehost" ]; then
-		(cd "$repo_root" && go build -trimpath -o "$output/bridgehost" ./mobile/bridgehost)
-	fi
+	(cd "$repo_root" && go build -trimpath -o "$output/bridgehost" ./mobile/bridgehost) >&2
 	echo "$output/bridgehost"
 }
 

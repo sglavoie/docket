@@ -198,7 +198,7 @@ ios-test suite="all":
 ios-qualify command="run" output="ios/.cache/qualification":
     ./ios/scripts/qualify-simulator.sh {{ command }} {{ quote(output) }}
 
-# Run the simulator UI suite, or one class, on the default or small simulator; result bundle, summary, and screenshots in ios/.cache/results/ui-<device> (outside `just ci`)
+# Run the simulator UI suite, or some classes/methods (comma-separated), across parallel simulator clones, on the default or small simulator; result bundle, summary, and screenshots in ios/.cache/results/ui-<device> (outside `just ci`)
 ios-ui-test only="" device="default":
     #!/usr/bin/env bash
     set -euo pipefail

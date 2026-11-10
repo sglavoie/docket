@@ -133,11 +133,20 @@ final class AccessibilityUITests: XCTestCase {
     /// sizes a form runs well past one screen.
     private func input(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
         let field = app.textFields[identifier].firstMatch
-        for _ in 0..<8 where !(field.exists || app.textViews[identifier].exists) {
+        for _ in 0..<8 {
+            guard !(field.exists || app.textViews[identifier].exists) else { break }
             app.swipeUp()
         }
-        if field.waitForExistence(timeout: 2) { return field }
+        // Whichever control the identifier names: polling both with plain
+        // existence checks avoids a failed wait on the other type, whose
+        // failure snapshot alone costs seconds on a loaded machine.
         let view = app.textViews[identifier].firstMatch
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if view.exists { return view }
+            if field.exists { return field }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
         require(view, identifier)
         return view
     }
@@ -217,7 +226,8 @@ final class AccessibilityUITests: XCTestCase {
     /// the largest text sizes on a small screen, one row fills the screen.
     private func openTask(_ app: XCUIApplication, _ title: String) {
         let link = row(app, title)
-        for _ in 0..<6 where !(link.exists && link.isHittable) {
+        for _ in 0..<6 {
+            guard !(link.exists && link.isHittable) else { break }
             app.swipeUp()
         }
         require(link, "the \(title) row")
@@ -374,6 +384,10 @@ final class AccessibilityUITests: XCTestCase {
         let start = app.buttons["task.swipe.startPause"].firstMatch
         require(start, "the Start action")
         start.tap()
+        // Pausing work in progress asks for a resume note first; skipping it
+        // still pauses and leaves the same receipt.
+        let skip = app.alerts.buttons["Pause Without Note"].firstMatch
+        if skip.waitForExistence(timeout: 3) { skip.tap() }
         let receipt = app.staticTexts["list.receipt"]
         require(receipt, "the action receipt")
         let undo = app.buttons["list.undo"]
@@ -420,6 +434,9 @@ final class AccessibilityUITests: XCTestCase {
         app.buttons["capture.save"].tap()
         requireAbsent(app.buttons["capture.save"], "the capture sheet")
         let captured = row(app, "Small screen capture")
+        // Today's header can push a third row below a small screen's fold,
+        // where the list has not drawn it yet.
+        for _ in 0..<3 { guard !captured.waitForExistence(timeout: 3) else { break }; app.swipeUp() }
         require(captured, "the capture in Today")
         if !captured.isHittable { app.swipeUp() }
         captured.tap()
@@ -475,7 +492,7 @@ final class AccessibilityUITests: XCTestCase {
         app.buttons["detail.edit"].firstMatch.tap()
         require(app.buttons["edit.save"], "the edit sheet")
         let context = input(app, "form.context")
-        for _ in 0..<3 where !context.isHittable { app.swipeUp() }
+        for _ in 0..<3 { guard !context.isHittable else { break }; app.swipeUp() }
         context.tap()
         context.typeText("phone")
         eventually("the edit draft was written") { self.drafts().contains { $0.hasPrefix("edit-") } }

@@ -114,21 +114,55 @@ final class RichContentUITests: XCTestCase {
     }
 
     /// Brings an element into reach by scrolling the screen it is on.
+    /// Scrolls the screen by most of its height with a held drag. A flick
+    /// sent right after an alert closes can be read as nothing at all on a
+    /// loaded simulator; a press-and-drag always moves the list.
+    private func scroll(_ app: XCUIApplication, towardEnd: Bool) {
+        let origin = app.coordinate(withNormalizedOffset: .zero)
+        let window = app.windows.firstMatch.frame
+        let low = window.minY + window.height * 0.72
+        let high = window.minY + window.height * 0.28
+        let (from, to) = towardEnd ? (low, high) : (high, low)
+        origin.withOffset(CGVector(dx: 24, dy: from))
+            .press(forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: 24, dy: to)))
+    }
+
     private func reach(_ app: XCUIApplication, _ element: XCUIElement, _ what: String) {
         for _ in 0..<6 {
             if element.waitForExistence(timeout: 2) { break }
-            app.swipeUp()
+            scroll(app, towardEnd: true)
         }
-        for _ in 0..<8 {
+        for _ in 0..<10 {
             if element.waitForExistence(timeout: 2) { break }
-            app.swipeDown()
+            scroll(app, towardEnd: false)
         }
         require(element, what)
         // An element drawn but not hittable may sit under the top inset as
         // well as below the fold, so scroll toward wherever it is.
-        let middle = app.windows.firstMatch.frame.midY
-        for _ in 0..<4 where !element.isHittable {
-            if element.frame.midY < middle { app.swipeDown() } else { app.swipeUp() }
+        // A held drag carries it toward the middle without the momentum
+        // that would fling a flick past it.
+        let window = app.windows.firstMatch.frame
+        let origin = app.coordinate(withNormalizedOffset: .zero)
+        let clamp = { (y: CGFloat) in min(max(y, window.minY + 160), window.maxY - 140) }
+        for _ in 0..<4 {
+            guard !element.isHittable else { break }
+            let frame = element.frame
+            guard frame.minY.isFinite, !frame.isEmpty else { break }
+            let from = clamp(frame.midY)
+            var to = clamp(from + window.midY - frame.midY)
+            // Off screen entirely, the drag covers what the clamp allows.
+            if abs(to - from) < 20 { to = clamp(frame.midY < window.midY ? window.maxY : window.minY) }
+            origin.withOffset(CGVector(dx: 24, dy: from))
+                .press(forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: 24, dy: to)))
+        }
+        // A tap landing while the list still coasts only stops it, so wait
+        // until the element holds still before anyone taps it.
+        var last = element.frame
+        for _ in 0..<12 {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+            let now = element.frame
+            if now == last { break }
+            last = now
         }
     }
 

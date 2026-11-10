@@ -86,14 +86,17 @@ final class ConflictRecoveryUITests: XCTestCase {
 
     /// Brings an element into reach by scrolling the screen it is on.
     private func reach(_ app: XCUIApplication, _ element: XCUIElement, _ what: String) {
-        for _ in 0..<6 where !element.waitForExistence(timeout: 2) {
+        for _ in 0..<6 {
+            guard !element.waitForExistence(timeout: 2) else { break }
             app.swipeUp()
         }
-        for _ in 0..<8 where !element.waitForExistence(timeout: 2) {
+        for _ in 0..<8 {
+            guard !element.waitForExistence(timeout: 2) else { break }
             app.swipeDown()
         }
         require(element, what)
-        for _ in 0..<6 where !element.isHittable {
+        for _ in 0..<6 {
+            guard !element.isHittable else { break }
             app.swipeUp()
         }
     }

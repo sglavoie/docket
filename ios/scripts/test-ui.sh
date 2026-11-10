@@ -25,7 +25,10 @@
 #                           available iPhone on an iOS 18 or later runtime)
 #   DOCKET_UITEST_MAX_WIDTH     the widest window the small-screen test accepts
 #   DOCKET_IOS_CACHE            cache root (default ios/.cache, gitignored)
-#   DOCKET_UITEST_ONLY          one UI test class/method (default: every class)
+#   DOCKET_UITEST_ONLY          UI test classes or methods, comma-separated
+#                           (Class or Class/testMethod; default: every class)
+#   DOCKET_UITEST_WORKERS       simulator clones the classes are spread across
+#                           (default 6; 1 runs serially on the simulator itself)
 #   DOCKET_UITEST_TARGET        UI test bundle (default: DocketMobileUITests)
 
 set -eu
@@ -113,7 +116,36 @@ HOME="$conflict/studio-home" "$output/enroll/docket" --data-dir "$conflict/studi
 	exit 1
 }
 
-echo "Testing DocketMobileUITests on simulator $simulator..." >&2
+# Each test copies what it changes into its own root under work/, so classes
+# can run side by side on clones of the simulator; a class stays on one clone.
+target="${DOCKET_UITEST_TARGET:-DocketMobileUITests}"
+set --
+if [ -n "${DOCKET_UITEST_ONLY:-}" ]; then
+	old_ifs=$IFS
+	IFS=,
+	for only in $DOCKET_UITEST_ONLY; do
+		set -- "$@" "-only-testing:$target/$only"
+	done
+	IFS=$old_ifs
+else
+	set -- "-only-testing:$target"
+fi
+workers="${DOCKET_UITEST_WORKERS:-6}"
+if [ "$workers" -gt 1 ]; then
+	set -- "$@" -parallel-testing-enabled YES -parallel-testing-worker-count "$workers"
+else
+	set -- "$@" -parallel-testing-enabled NO
+fi
+# A UI test can wedge inside XCTest itself (a typeText that never returns), and
+# without a cap it holds its worker, and the whole run, indefinitely. The
+# slowest test takes about three minutes under parallel load, so six fails a
+# wedged one quickly and leaves every honest one room.
+allowance="${DOCKET_UITEST_ALLOWANCE:-360}"
+set -- "$@" -test-timeouts-enabled YES \
+	-default-test-execution-time-allowance "$allowance" \
+	-maximum-test-execution-time-allowance "$allowance"
+
+echo "Testing DocketMobileUITests on simulator $simulator ($workers worker(s))..." >&2
 status=0
 TEST_RUNNER_DOCKET_UITEST_FIXTURE="$fixture" \
 	TEST_RUNNER_DOCKET_UITEST_CONFLICT_EXCHANGE="$conflict/exchange" \
@@ -123,8 +155,7 @@ TEST_RUNNER_DOCKET_UITEST_FIXTURE="$fixture" \
 	xcodebuild test \
 	-project "$ios_dir/DocketMobile.xcodeproj" \
 	-scheme DocketMobile \
-	-only-testing:"${DOCKET_UITEST_TARGET:-DocketMobileUITests}${DOCKET_UITEST_ONLY:+/$DOCKET_UITEST_ONLY}" \
-	-parallel-testing-enabled NO \
+	"$@" \
 	-destination "platform=iOS Simulator,id=$simulator" \
 	-derivedDataPath "$cache_root/UIDerivedData" \
 	-resultBundlePath "$output/DocketMobileUITests.xcresult" \

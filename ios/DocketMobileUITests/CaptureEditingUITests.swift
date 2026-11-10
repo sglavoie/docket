@@ -10,12 +10,14 @@ import XCTest
 ///
 /// ios/scripts/test-ui.sh runs it with the same TEST_RUNNER_ inputs as
 /// BrowsingUITests; it fails rather than skips when one is missing.
-final class CaptureEditingUITests: XCTestCase {
-    private struct MissingInput: Error {}
+/// Shared setup and helpers. The tests live in the subclasses below, split so
+/// parallel runs (which distribute whole classes) can balance them.
+class CaptureEditingUITests: XCTestCase {
+    fileprivate struct MissingInput: Error {}
 
-    private var root: URL!
-    private let timeout: TimeInterval = 20
-    private let workspaceName = "seeded"
+    fileprivate var root: URL!
+    fileprivate let timeout: TimeInterval = 20
+    fileprivate let workspaceName = "seeded"
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -31,11 +33,11 @@ final class CaptureEditingUITests: XCTestCase {
 
     // MARK: Fixture
 
-    private var workspace: URL { root.appendingPathComponent("workspaces/\(workspaceName)", isDirectory: true) }
+    fileprivate var workspace: URL { root.appendingPathComponent("workspaces/\(workspaceName)", isDirectory: true) }
 
     /// The representative fixture with its one wall-clock deferral removed,
     /// selected so the app opens it.
-    private func seed() throws {
+    fileprivate func seed() throws {
         guard let fixture = ProcessInfo.processInfo.environment["DOCKET_UITEST_FIXTURE"], FileManager.default.fileExists(atPath: fixture) else {
             XCTFail("DOCKET_UITEST_FIXTURE must name the representative workspace")
             throw MissingInput()
@@ -48,7 +50,7 @@ final class CaptureEditingUITests: XCTestCase {
         try Data(workspaceName.utf8).write(to: root.appendingPathComponent("selected-workspace"))
     }
 
-    private func launch(holdEditorSave: Bool = false) -> XCUIApplication {
+    fileprivate func launch(holdEditorSave: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment = ["DOCKET_UITEST_ROOT": root.path, "DOCKET_UITEST_DEVICE_ID": "ui-test-phone"]
         if holdEditorSave { app.launchEnvironment["DOCKET_UITEST_EDITOR_SAVE_GATE"] = "1" }
@@ -58,22 +60,22 @@ final class CaptureEditingUITests: XCTestCase {
     }
 
     /// One project's task Markdown as the engine left it on disk.
-    private func markdown(_ slug: String) throws -> String {
+    fileprivate func markdown(_ slug: String) throws -> String {
         try String(contentsOf: workspace.appendingPathComponent("projects/\(slug)/tasks.md"), encoding: .utf8)
     }
 
-    private func planning() throws -> String {
+    fileprivate func planning() throws -> String {
         try String(contentsOf: workspace.appendingPathComponent(".docket/planning.json"), encoding: .utf8)
     }
 
     /// The device-local draft files, which never live inside the workspace.
-    private func draftFiles() -> [String] {
+    fileprivate func draftFiles() -> [String] {
         let drafts = root.appendingPathComponent("devices/\(workspaceName)/drafts", isDirectory: true)
         return ((try? FileManager.default.contentsOfDirectory(atPath: drafts.path)) ?? []).sorted()
     }
 
     /// The `## Task:` block for one title, through the next heading.
-    private func block(_ title: String, in text: String) -> String? {
+    fileprivate func block(_ title: String, in text: String) -> String? {
         guard let start = text.range(of: "## Task: \(title)\n") else { return nil }
         let end = text.range(of: "\n## Task:", range: start.upperBound..<text.endIndex)?.lowerBound ?? text.endIndex
         return String(text[start.lowerBound..<end])
@@ -81,17 +83,17 @@ final class CaptureEditingUITests: XCTestCase {
 
     // MARK: Helpers
 
-    private func require(_ element: XCUIElement, _ what: String, file: StaticString = #filePath, line: UInt = #line) {
+    fileprivate func require(_ element: XCUIElement, _ what: String, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertTrue(element.waitForExistence(timeout: timeout), "\(what) never appeared", file: file, line: line)
     }
 
-    private func requireAbsent(_ element: XCUIElement, _ what: String, file: StaticString = #filePath, line: UInt = #line) {
+    fileprivate func requireAbsent(_ element: XCUIElement, _ what: String, file: StaticString = #filePath, line: UInt = #line) {
         let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: element)
         XCTAssertEqual(XCTWaiter.wait(for: [gone], timeout: timeout), .completed, "\(what) is still shown", file: file, line: line)
     }
 
     /// Waits until `condition` holds, polling the host files the app writes.
-    private func eventually(_ what: String, file: StaticString = #filePath, line: UInt = #line, _ condition: () throws -> Bool) {
+    fileprivate func eventually(_ what: String, file: StaticString = #filePath, line: UInt = #line, _ condition: () throws -> Bool) {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
             if (try? condition()) == true { return }
@@ -102,220 +104,18 @@ final class CaptureEditingUITests: XCTestCase {
 
     /// A text input by identifier, whether SwiftUI drew it as a field or a
     /// view.
-    private func input(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
-        let field = app.textFields[identifier].firstMatch
-        if field.waitForExistence(timeout: 2) { return field }
-        let view = app.textViews[identifier].firstMatch
-        require(view, identifier)
-        return view
-    }
+    /// Every sigil's partial spelling and the completion it should offer.
+    static var autocompleteCases: [(String, String)] { [
+        ("!", "!1"), ("#rel", "#release"), ("##lap", "##laptop"),
+        ("@tomo", "@tomorrow"), ("@@+2h", "@@+2h"), ("$tod", "$today"),
+        ("*p", "*pin"), ("=rev", "=review"), ("%atl", "%atlas-launch"),
+        (">Ship", ">1"), ("<Ship", "<1"), ("~home-renovation:1", "~home-renovation:1"),
+        ("&https://example.com/atlas", "&https://example.com/atlas/release"), (";", ";comment;")
+    ] }
 
-    private func type(_ app: XCUIApplication, _ identifier: String, _ text: String) {
-        let element = input(app, identifier)
-        element.tap()
-        element.typeText(text)
-    }
-
-    /// Empties a text input. The caret is put after the text first, since a
-    /// tap may land it anywhere, and the deletes are repeated until nothing
-    /// but the placeholder reads back.
-    private func clear(_ app: XCUIApplication, _ identifier: String) {
-        let element = input(app, identifier)
-        let placeholder = element.placeholderValue ?? ""
-        for _ in 0..<3 {
-            let current = (element.value as? String) ?? ""
-            if current.isEmpty || current == placeholder { return }
-            element.tap()
-            _ = app.keyboards.firstMatch.waitForExistence(timeout: 5)
-            element.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()
-            element.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + 2))
-        }
-        let left = (element.value as? String) ?? ""
-        XCTAssertTrue(left.isEmpty || left == placeholder, "\(identifier) still reads \(left)")
-    }
-
-    private func value(_ app: XCUIApplication, _ identifier: String) -> String {
-        (input(app, identifier).value as? String) ?? ""
-    }
-
-    private func toggle(_ app: XCUIApplication, _ identifier: String) {
-        let element = app.switches[identifier].firstMatch
-        if !element.waitForExistence(timeout: 3) { app.swipeUp() }
-        require(element, identifier)
-        // The keyboard a text field raised can cover the row; scrolling the
-        // form brings it out from under it.
-        for _ in 0..<3 where !element.isHittable {
-            app.swipeUp()
-        }
-        // The switch nested in the row flips it; on a system that draws none,
-        // the row's trailing edge is where the switch sits.
-        let before = element.value as? String
-        let inner = element.switches.firstMatch
-        if inner.exists {
-            inner.tap()
-        } else {
-            element.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
-        }
-        if (element.value as? String) == before {
-            element.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
-        }
-        eventually("\(identifier) flipped") { (element.value as? String) != before }
-    }
-
-    private func tab(_ app: XCUIApplication, _ name: String) {
-        let button = app.tabBars.buttons[name]
-        require(button, "the \(name) tab")
-        button.tap()
-    }
-
-    private func row(_ app: XCUIApplication, _ title: String) -> XCUIElement {
-        app.buttons.matching(NSPredicate(format: "label CONTAINS %@", ", \(title)")).firstMatch
-    }
-
-    private func openTask(_ app: XCUIApplication, _ title: String) {
-        let link = row(app, title)
-        require(link, "the \(title) row")
-        link.tap()
-        require(app.staticTexts["detail.title"], "the \(title) detail")
-    }
-
-    private func menu(_ app: XCUIApplication, _ identifier: String, _ option: String) {
-        let button = app.buttons[identifier].firstMatch
-        // The detail's management controls sit below its content, and a list
-        // draws only the rows near the screen.
-        for _ in 0..<5 {
-            if button.waitForExistence(timeout: 2), button.isHittable { break }
-            app.swipeUp()
-        }
-        require(button, identifier)
-        let item = app.buttons[option].firstMatch
-        // A reload that lands while the menu opens can close it again, so an
-        // unopened menu is opened once more before the option is required.
-        for _ in 0..<3 where !item.exists {
-            button.tap()
-            if item.waitForExistence(timeout: 4) { break }
-        }
-        if !item.exists {
-            let tree = XCTAttachment(string: app.debugDescription)
-            tree.name = "hierarchy without \(option)"
-            tree.lifetime = .keepAlways
-            add(tree)
-        }
-        require(item, "the \(option) option")
-        item.tap()
-    }
-
-    private func openCapture(_ app: XCUIApplication) {
-        let open = app.buttons["capture.open"]
-        require(open, "the capture button")
-        open.tap()
-        require(app.buttons["capture.save"], "the capture sheet")
-    }
-
-    private func discardCapture(_ app: XCUIApplication) {
-        app.buttons["capture.actions"].tap()
-        app.buttons["capture.discard"].tap()
-        let discard = app.alerts.buttons["Discard Draft"]
-        require(discard, "the capture discard confirmation")
-        discard.tap()
-    }
-
-    // MARK: Tests
-
-    @MainActor func testEmptyChangeHistoryExplainsDeviceScopeAndDisablesRecovery() throws {
-        let app = launch()
-        tab(app, "Browse")
-        app.buttons["browse.history"].tap()
-        require(app.staticTexts["No retained changes"], "empty history")
-        XCTAssertFalse(app.buttons["history.undo"].isEnabled)
-        XCTAssertFalse(app.buttons["history.redo"].isEnabled)
-        let screenshot = XCTAttachment(screenshot: app.screenshot())
-        screenshot.name = "Empty Change History"
-        screenshot.lifetime = .keepAlways
-        add(screenshot)
-    }
-
-    @MainActor func testChangeHistoryInspectsAndRecoversAnEditAfterRestart() throws {
-        var app = launch()
-        row(app, "Ship beta build").swipeLeft()
-        app.buttons["task.swipe.edit"].tap()
-        require(app.buttons["edit.save"], "the task editor")
-        clear(app, "form.resume")
-        type(app, "form.resume", "Accidental history test note")
-        app.buttons["edit.save"].tap()
-        requireAbsent(app.buttons["edit.save"], "the saved editor")
-        eventually("the accidental edit was committed") {
-            try markdown("atlas-launch").contains("Accidental history test note")
-        }
-        app.terminate()
-        app = launch()
-        tab(app, "Browse")
-        app.buttons["browse.history"].tap()
-        let undo = app.buttons["history.undo"]
-        let redo = app.buttons["history.redo"]
-        require(undo, "the persistent undo target")
-        let undoReady = expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: undo)
-        XCTAssertEqual(XCTWaiter.wait(for: [undoReady], timeout: timeout), .completed)
-        XCTAssertFalse(redo.isEnabled)
-        let entry = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "history.entry.")).firstMatch
-        require(entry, "the retained transaction")
-        let historyScreenshot = XCTAttachment(screenshot: app.screenshot())
-        historyScreenshot.name = "Change History after restart"
-        historyScreenshot.lifetime = .keepAlways
-        add(historyScreenshot)
-        entry.tap()
-        require(app.navigationBars["Change Details"], "transaction details")
-        let after = app.descendants(matching: .any)["history.change.0.after"].firstMatch
-        for _ in 0..<5 where !after.exists || !after.isHittable { app.swipeUp() }
-        require(after, "the original after value")
-        XCTAssertTrue(after.label.contains("Accidental history test note"), after.label)
-        for _ in 0..<5 where !undo.isHittable { app.swipeDown() }
-        undo.tap()
-        eventually("undo restored the original resume note") {
-            try !markdown("atlas-launch").contains("Accidental history test note")
-        }
-        let undone = app.staticTexts["history.detail.state"]
-        require(undone, "the refreshed transaction state")
-        let stateReady = expectation(for: NSPredicate(format: "label == 'Undone'"), evaluatedWith: undone)
-        XCTAssertEqual(XCTWaiter.wait(for: [stateReady], timeout: timeout), .completed)
-        XCTAssertTrue(redo.waitForExistence(timeout: timeout))
-        let redoReady = expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: redo)
-        XCTAssertEqual(XCTWaiter.wait(for: [redoReady], timeout: timeout), .completed)
-        redo.tap()
-        eventually("redo reapplied the original edit") {
-            try markdown("atlas-launch").contains("Accidental history test note")
-        }
-        // Inspection keeps showing the original direction after either restore.
-        for _ in 0..<5 where !after.exists || !after.isHittable { app.swipeUp() }
-        require(after, "the retained before/after details")
-        XCTAssertTrue(after.label.contains("Accidental history test note"), after.label)
-        let detailsScreenshot = XCTAttachment(screenshot: app.screenshot())
-        detailsScreenshot.name = "Change History details after redo"
-        detailsScreenshot.lifetime = .keepAlways
-        add(detailsScreenshot)
-    }
-
-    private func insertSigil(_ app: XCUIApplication, _ symbol: String) {
-        let bar = app.scrollViews["capture.sigils"]
-        require(bar, "the keyboard sigil shortcuts")
-        let button = app.buttons["capture.sigil.\(symbol)"]
-        // A previous insertion may have left the horizontal bar scrolled.
-        for _ in 0..<5 where !button.isHittable { bar.swipeRight() }
-        for _ in 0..<5 where !button.isHittable { bar.swipeLeft() }
-        XCTAssertTrue(button.isHittable, "the \(symbol) shortcut is unreachable")
-        button.tap()
-    }
-
-    func testCaptureAutocompleteAllSigils() throws {
+    fileprivate func assertAutocompletes(_ cases: [(String, String)]) throws {
         let app = launch()
         openCapture(app)
-        let cases: [(String, String)] = [
-            ("!", "!1"), ("#rel", "#release"), ("##lap", "##laptop"),
-            ("@tomo", "@tomorrow"), ("@@+2h", "@@+2h"), ("$tod", "$today"),
-            ("*p", "*pin"), ("=rev", "=review"), ("%atl", "%atlas-launch"),
-            (">Ship", ">1"), ("<Ship", "<1"), ("~home-renovation:1", "~home-renovation:1"),
-            ("&https://example.com/atlas", "&https://example.com/atlas/release"), (";", ";comment;")
-        ]
         for (partial, token) in cases {
             // Exercise replacement in one live editor. Draft discard and
             // reopening have their own tests; cycling nested presentations
@@ -341,6 +141,158 @@ final class CaptureEditingUITests: XCTestCase {
         requireAbsent(app.buttons["capture.save"], "the dismissed capture")
     }
 
+    fileprivate func input(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
+        let field = app.textFields[identifier].firstMatch
+        // Whichever control the identifier names: polling both with plain
+        // existence checks avoids a failed wait on the other type, whose
+        // failure snapshot alone costs seconds on a loaded machine.
+        let view = app.textViews[identifier].firstMatch
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if view.exists { return view }
+            if field.exists { return field }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
+        require(view, identifier)
+        return view
+    }
+
+    fileprivate func type(_ app: XCUIApplication, _ identifier: String, _ text: String) {
+        let element = input(app, identifier)
+        element.tap()
+        element.typeText(text)
+    }
+
+    /// Empties a text input. The caret is put after the text first, since a
+    /// tap may land it anywhere, and the deletes are repeated until nothing
+    /// but the placeholder reads back.
+    fileprivate func clear(_ app: XCUIApplication, _ identifier: String) {
+        let element = input(app, identifier)
+        let placeholder = element.placeholderValue ?? ""
+        for _ in 0..<3 {
+            let current = (element.value as? String) ?? ""
+            if current.isEmpty || current == placeholder { return }
+            element.tap()
+            _ = app.keyboards.firstMatch.waitForExistence(timeout: 5)
+            element.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()
+            element.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + 2))
+        }
+        let left = (element.value as? String) ?? ""
+        XCTAssertTrue(left.isEmpty || left == placeholder, "\(identifier) still reads \(left)")
+    }
+
+    fileprivate func value(_ app: XCUIApplication, _ identifier: String) -> String {
+        (input(app, identifier).value as? String) ?? ""
+    }
+
+    fileprivate func toggle(_ app: XCUIApplication, _ identifier: String) {
+        let element = app.switches[identifier].firstMatch
+        if !element.waitForExistence(timeout: 3) { app.swipeUp() }
+        require(element, identifier)
+        // The keyboard a text field raised can cover the row; scrolling the
+        // form brings it out from under it.
+        for _ in 0..<3 {
+            guard !element.isHittable else { break }
+            app.swipeUp()
+        }
+        // The switch nested in the row flips it; on a system that draws none,
+        // the row's trailing edge is where the switch sits.
+        let before = element.value as? String
+        let inner = element.switches.firstMatch
+        if inner.exists {
+            inner.tap()
+        } else {
+            element.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        }
+        if (element.value as? String) == before {
+            element.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        }
+        eventually("\(identifier) flipped") { (element.value as? String) != before }
+    }
+
+    fileprivate func tab(_ app: XCUIApplication, _ name: String) {
+        let button = app.tabBars.buttons[name]
+        require(button, "the \(name) tab")
+        button.tap()
+    }
+
+    fileprivate func row(_ app: XCUIApplication, _ title: String) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label CONTAINS %@", ", \(title)")).firstMatch
+    }
+
+    fileprivate func openTask(_ app: XCUIApplication, _ title: String) {
+        let link = row(app, title)
+        require(link, "the \(title) row")
+        link.tap()
+        require(app.staticTexts["detail.title"], "the \(title) detail")
+    }
+
+    fileprivate func menu(_ app: XCUIApplication, _ identifier: String, _ option: String) {
+        let button = app.buttons[identifier].firstMatch
+        // The detail's management controls sit below its content, and a list
+        // draws only the rows near the screen.
+        for _ in 0..<5 {
+            if button.waitForExistence(timeout: 2), button.isHittable { break }
+            app.swipeUp()
+        }
+        require(button, identifier)
+        let item = app.buttons[option].firstMatch
+        // A reload that lands while the menu opens can close it again, so an
+        // unopened menu is opened once more before the option is required.
+        for _ in 0..<3 {
+            guard !item.exists else { break }
+            button.tap()
+            if item.waitForExistence(timeout: 4) { break }
+        }
+        if !item.exists {
+            let tree = XCTAttachment(string: app.debugDescription)
+            tree.name = "hierarchy without \(option)"
+            tree.lifetime = .keepAlways
+            add(tree)
+        }
+        require(item, "the \(option) option")
+        item.tap()
+    }
+
+    fileprivate func openCapture(_ app: XCUIApplication) {
+        let open = app.buttons["capture.open"]
+        require(open, "the capture button")
+        open.tap()
+        require(app.buttons["capture.save"], "the capture sheet")
+    }
+
+    fileprivate func discardCapture(_ app: XCUIApplication) {
+        app.buttons["capture.actions"].tap()
+        app.buttons["capture.discard"].tap()
+        let discard = app.alerts.buttons["Discard Draft"]
+        require(discard, "the capture discard confirmation")
+        discard.tap()
+    }
+
+    // MARK: Tests
+
+    fileprivate func insertSigil(_ app: XCUIApplication, _ symbol: String) {
+        let bar = app.scrollViews["capture.sigils"]
+        require(bar, "the keyboard sigil shortcuts")
+        let button = app.buttons["capture.sigil.\(symbol)"]
+        // A previous insertion may have left the horizontal bar scrolled.
+        for _ in 0..<5 { guard !button.isHittable else { break }; bar.swipeRight() }
+        for _ in 0..<5 { guard !button.isHittable else { break }; bar.swipeLeft() }
+        XCTAssertTrue(button.isHittable, "the \(symbol) shortcut is unreachable")
+        button.tap()
+    }
+
+}
+
+final class CaptureEditingUITestsPart1: CaptureEditingUITests {
+    /// The first half of every sigil's completion; the second half runs in
+    /// another class so a parallel run takes both at once.
+    func testCaptureAutocompleteSigilsFirstHalf() throws {
+        try assertAutocompletes(Array(Self.autocompleteCases.prefix(7)))
+    }
+}
+
+final class CaptureEditingUITestsPart2: CaptureEditingUITests {
     func testCaptureAutocompleteSavesCompletedMetadata() throws {
         let app = launch()
         app.open(URL(string: "docket://capture")!)
@@ -361,80 +313,6 @@ final class CaptureEditingUITests: XCTestCase {
             guard let task = self.block("Autocomplete 🥛", in: try self.markdown("unfiled")) else { return false }
             return task.contains("tags: release") && task.contains("context: laptop") && task.contains("state: backlog")
         }
-    }
-
-    func testSwipePlanningAndLifecycleActions() throws {
-        let app = launch()
-        tab(app, "Inbox")
-        let bankID = "0a7e5d10-2c3b-4f6a-8e9d-000000000501"
-
-        row(app, "Call the bank").swipeRight()
-        require(app.buttons["task.swipe.today"], "the Today swipe action")
-        require(app.buttons["task.swipe.next"], "the Next swipe action")
-        XCTAssertFalse(try planning().contains(bankID), "revealing actions changed the plan")
-        app.buttons["task.swipe.today"].tap()
-        requireAbsent(row(app, "Call the bank"), "the planned task in Inbox")
-        tab(app, "Today")
-        require(row(app, "Call the bank"), "the planned task in Today")
-        row(app, "Call the bank").swipeRight()
-        XCTAssertEqual(app.buttons["task.swipe.today"].label, "Remove from Today")
-        app.buttons["task.swipe.next"].tap()
-        requireAbsent(row(app, "Call the bank"), "the task moved out of Today")
-
-        tab(app, "Browse")
-        app.buttons["browse.mode.next"].tap()
-        require(row(app, "Call the bank"), "the task in Next")
-        row(app, "Call the bank").swipeRight()
-        XCTAssertEqual(app.buttons["task.swipe.next"].label, "Remove from Next")
-        app.buttons["task.swipe.next"].tap()
-        requireAbsent(row(app, "Call the bank"), "the task removed from Next")
-        XCTAssertFalse(try planning().contains(bankID))
-
-        app.navigationBars.buttons["BackButton"].firstMatch.tap()
-        for _ in 0..<4 where !app.buttons["browse.project.unfiled"].exists { app.swipeUp() }
-        require(app.buttons["browse.project.unfiled"], "the Unfiled project")
-        app.buttons["browse.project.unfiled"].tap()
-        require(row(app, "Call the bank"), "the unplanned task in its project")
-        row(app, "Call the bank").swipeRight()
-        app.buttons["task.swipe.today"].tap()
-        eventually("the project row shows Today") { row(app, "Call the bank").label.contains("Today") }
-        row(app, "Call the bank").swipeRight()
-        app.buttons["task.swipe.today"].tap()
-        eventually("the project row no longer shows Today") { !row(app, "Call the bank").label.contains("Today") }
-        XCTAssertFalse(try planning().contains(bankID))
-
-        row(app, "Call the bank").swipeLeft()
-        require(app.buttons["task.swipe.done"], "the Done swipe action")
-        require(app.buttons["task.swipe.edit"], "the Edit swipe action")
-        XCTAssertEqual(app.buttons["task.swipe.startPause"].label, "Start")
-        XCTAssertTrue(try markdown("unfiled").contains("state: backlog"), "revealing actions changed the status")
-        app.buttons["task.swipe.startPause"].tap()
-        eventually("the task started") { row(app, "Call the bank").label.hasPrefix("doing,") }
-        row(app, "Call the bank").swipeLeft()
-        XCTAssertEqual(app.buttons["task.swipe.startPause"].label, "Pause")
-        app.buttons["task.swipe.startPause"].tap()
-        eventually("the task paused") { row(app, "Call the bank").label.hasPrefix("paused,") }
-        XCTAssertTrue(try markdown("unfiled").contains("state: paused"))
-        row(app, "Call the bank").swipeLeft()
-        XCTAssertEqual(app.buttons["task.swipe.startPause"].label, "Start")
-        app.buttons["task.swipe.done"].tap()
-        requireAbsent(row(app, "Call the bank"), "the completed task in the open project list")
-        XCTAssertTrue(try markdown("unfiled").contains("state: done"))
-
-        // Lists show open tasks until the query explicitly includes completed work.
-        app.searchFields.firstMatch.tap()
-        app.searchFields.firstMatch.typeText("?completed\n")
-        require(row(app, "Call the bank"), "the completed task in search results")
-        row(app, "Call the bank").swipeLeft()
-        XCTAssertFalse(app.buttons["task.swipe.today"].exists)
-        XCTAssertFalse(app.buttons["task.swipe.next"].exists)
-        require(app.buttons["task.swipe.reopen"], "the Reopen swipe action")
-        XCTAssertFalse(app.buttons["task.swipe.done"].exists)
-        XCTAssertFalse(app.buttons["task.swipe.startPause"].exists)
-        app.buttons["task.swipe.reopen"].tap()
-        eventually("the task reopened") { try markdown("unfiled").contains("state: inbox") }
-        tab(app, "Inbox")
-        require(row(app, "Call the bank"), "the reopened task in Inbox")
     }
 
     func testSwipeRefusalEditingAndSelection() throws {
@@ -469,90 +347,6 @@ final class CaptureEditingUITests: XCTestCase {
         XCTAssertFalse(app.buttons["task.swipe.organize"].exists)
     }
 
-    func testShorthandCaptureWithLivePreview() throws {
-        let app = launch()
-        openCapture(app)
-        type(app, "capture.text", "Plan the offsite !1 #ops $next\nBook the venue %atlas-launch $today")
-        let lines = app.descendants(matching: .any).matching(identifier: "capture.preview.line")
-        eventually("the preview drew both lines") { lines.count == 2 }
-        XCTAssertTrue(lines.element(boundBy: 0).label.contains("Plan: Next"), lines.element(boundBy: 0).label)
-        XCTAssertTrue(lines.element(boundBy: 1).label.contains("Atlas Launch"), lines.element(boundBy: 1).label)
-        XCTAssertTrue(lines.element(boundBy: 1).label.contains("Plan: Today"), lines.element(boundBy: 1).label)
-        app.buttons["capture.save"].tap()
-        requireAbsent(app.buttons["capture.save"], "the capture sheet")
-        require(row(app, "Book the venue"), "the Today capture in Today")
-
-        eventually("both captures reached their projects") {
-            try block("Plan the offsite", in: markdown("unfiled"))?.contains("priority: 1") == true &&
-                block("Book the venue", in: markdown("atlas-launch")) != nil
-        }
-        let offsite = try XCTUnwrap(block("Plan the offsite", in: markdown("unfiled")))
-        XCTAssertTrue(offsite.contains("tags: ops"), offsite)
-        XCTAssertTrue(offsite.contains("state: backlog"), offsite)
-        XCTAssertEqual(draftFiles(), [], "a committed capture left a draft behind")
-    }
-
-    func testQuickCaptureRoutesByItsSigilAlone() throws {
-        let app = launch()
-        openCapture(app)
-        type(app, "capture.text", "Book the venue %atlas-launch")
-        let lines = app.descendants(matching: .any).matching(identifier: "capture.preview.line")
-        eventually("the preview named the sigil's project") { lines.firstMatch.label.contains("Atlas Launch") }
-        XCTAssertFalse(app.descendants(matching: .any)["capture.project"].exists, "quick capture drew a project picker")
-    }
-
-    func testDraftStorageFailureKeepsTextAndRetrySurvivesRelaunch() throws {
-        var app = launch()
-        let drafts = root.appendingPathComponent("devices/\(workspaceName)/drafts")
-        try Data("unavailable".utf8).write(to: drafts)
-        openCapture(app)
-        type(app, "capture.text", "Keep this unsaved thought")
-        require(app.descendants(matching: .any)["draft.recovery.message"].firstMatch, "the draft storage warning")
-        app.buttons["capture.close"].tap()
-        requireAbsent(app.buttons["capture.save"], "the closed capture")
-        require(app.descendants(matching: .any)["draft.recovery.pending"].firstMatch, "the pending draft banner")
-        openCapture(app)
-        XCTAssertEqual(value(app, "capture.text"), "Keep this unsaved thought")
-        try FileManager.default.removeItem(at: drafts)
-        app.buttons["draft.recovery.retry"].tap()
-        requireAbsent(app.descendants(matching: .any)["draft.recovery.message"].firstMatch, "the recovered storage warning")
-        app.terminate()
-        app = launch()
-        openCapture(app)
-        XCTAssertEqual(value(app, "capture.text"), "Keep this unsaved thought")
-        XCTAssertNil(try block("Keep this unsaved thought", in: markdown("unfiled")), "draft retry submitted the task")
-    }
-
-    func testCaptureSaveKeepsTextTypedWhileTheSubmissionIsWaiting() throws {
-        let app = launch(holdEditorSave: true)
-        openCapture(app)
-        type(app, "capture.text", "Submitted capture")
-        app.buttons["capture.save"].tap()
-        require(app.descendants(matching: .any)["capture.saving"].firstMatch, "the pending save")
-        XCTAssertFalse(app.buttons["capture.close"].isEnabled)
-        clear(app, "capture.text")
-        type(app, "capture.text", "Newer capture")
-        XCTAssertNil(try block("Submitted capture", in: markdown("unfiled")))
-        try Data().write(to: root.appendingPathComponent("editor-save.release"))
-        require(app.staticTexts["capture.savedEarlier"], "the retained-draft confirmation")
-        let screenshot = XCTAttachment(screenshot: app.screenshot())
-        screenshot.name = "capture-newer-draft-after-save"
-        screenshot.lifetime = .keepAlways
-        add(screenshot)
-        XCTAssertEqual(value(app, "capture.text"), "Newer capture")
-        XCTAssertNotNil(try block("Submitted capture", in: markdown("unfiled")))
-        XCTAssertNil(try block("Newer capture", in: markdown("unfiled")))
-        app.buttons["capture.close"].tap()
-        openCapture(app)
-        XCTAssertEqual(value(app, "capture.text"), "Newer capture")
-        app.buttons["capture.save"].tap()
-        requireAbsent(app.buttons["capture.save"], "the saved capture")
-        let text = try markdown("unfiled")
-        XCTAssertEqual(text.components(separatedBy: "## Task: Submitted capture\n").count - 1, 1)
-        XCTAssertEqual(text.components(separatedBy: "## Task: Newer capture\n").count - 1, 1)
-        XCTAssertEqual(draftFiles(), [])
-    }
-
     func testEditSaveKeepsAndRebasesChangesTypedWhileWaiting() throws {
         let app = launch(holdEditorSave: true)
         tab(app, "Inbox")
@@ -579,6 +373,182 @@ final class CaptureEditingUITests: XCTestCase {
         XCTAssertNotNil(block("Call the bank", in: text))
         XCTAssertNil(block("Submitted bank title", in: text))
         XCTAssertEqual(draftFiles(), [])
+    }
+
+    func testDailyEditSavesOnceAndKeepsARefusedDraft() throws {
+        var app = launch()
+        tab(app, "Inbox")
+        openTask(app, "Call the bank")
+        app.buttons["detail.edit"].tap()
+        require(app.buttons["edit.save"], "the edit sheet")
+        XCTAssertEqual(value(app, "form.title"), "Call the bank")
+        clear(app, "form.title")
+        type(app, "form.title", "Call the bank about the mortgage")
+        type(app, "form.resume", "have the account number ready")
+        type(app, "form.tags", "money")
+        toggle(app, "form.review")
+        app.buttons["edit.save"].tap()
+        requireAbsent(app.buttons["edit.save"], "the edit sheet")
+        require(app.staticTexts["Call the bank about the mortgage"].firstMatch, "the edited title")
+        eventually("the edit was written") {
+            try block("Call the bank about the mortgage", in: markdown("unfiled")) != nil
+        }
+        let edited = try XCTUnwrap(block("Call the bank about the mortgage", in: markdown("unfiled")))
+        for expected in ["tags: money", "review: true", "have the account number ready"] {
+            XCTAssertTrue(edited.contains(expected), "missing \(expected) in\n\(edited)")
+        }
+
+        // The engine refuses an empty title; the sheet and the draft stay.
+        let before = try markdown("unfiled")
+        app.buttons["detail.edit"].tap()
+        require(app.buttons["edit.save"], "the edit sheet")
+        clear(app, "form.title")
+        type(app, "form.context", "phone")
+        app.buttons["edit.save"].tap()
+        let failure = app.staticTexts["edit.failure"].firstMatch
+        require(failure, "the edit's refusal")
+        XCTAssertTrue(failure.label.lowercased().contains("title"), failure.label)
+        XCTAssertTrue(failure.isHittable, "the refusal scrolled out of view")
+        XCTAssertTrue(input(app, "form.title").isHittable, "the refused title was not brought into view")
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "edit-refusal-focuses-title"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        XCTAssertEqual(try markdown("unfiled"), before, "a refused edit was written")
+        XCTAssertEqual(draftFiles().count, 1)
+
+        // Killed with the refused draft open, the edit reopens on it.
+        app.terminate()
+        app = launch()
+        tab(app, "Inbox")
+        openTask(app, "Call the bank about the mortgage")
+        app.buttons["detail.edit"].tap()
+        require(app.descendants(matching: .any)["edit.restored"].firstMatch, "the restored-edit notice")
+        XCTAssertEqual(value(app, "form.context"), "phone")
+        type(app, "form.title", "Call the bank today")
+        app.buttons["edit.save"].tap()
+        requireAbsent(app.buttons["edit.save"], "the edit sheet")
+        eventually("the restored edit was written") {
+            try block("Call the bank today", in: markdown("unfiled"))?.contains("context: phone") == true
+        }
+        XCTAssertEqual(draftFiles(), [])
+    }
+}
+
+final class CaptureEditingUITestsPart3: CaptureEditingUITests {
+    @MainActor func testEmptyChangeHistoryExplainsDeviceScopeAndDisablesRecovery() throws {
+        let app = launch()
+        tab(app, "Browse")
+        app.buttons["browse.history"].tap()
+        require(app.staticTexts["No retained changes"], "empty history")
+        XCTAssertFalse(app.buttons["history.undo"].isEnabled)
+        XCTAssertFalse(app.buttons["history.redo"].isEnabled)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Empty Change History"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+    }
+
+    func testSwipePlanningAndLifecycleActions() throws {
+        let app = launch()
+        tab(app, "Inbox")
+        let bankID = "0a7e5d10-2c3b-4f6a-8e9d-000000000501"
+
+        row(app, "Call the bank").swipeRight()
+        require(app.buttons["task.swipe.today"], "the Today swipe action")
+        require(app.buttons["task.swipe.next"], "the Next swipe action")
+        XCTAssertFalse(try planning().contains(bankID), "revealing actions changed the plan")
+        app.buttons["task.swipe.today"].tap()
+        requireAbsent(row(app, "Call the bank"), "the planned task in Inbox")
+        tab(app, "Today")
+        require(row(app, "Call the bank"), "the planned task in Today")
+        row(app, "Call the bank").swipeRight()
+        XCTAssertEqual(app.buttons["task.swipe.today"].label, "Remove from Today")
+        app.buttons["task.swipe.next"].tap()
+        requireAbsent(row(app, "Call the bank"), "the task moved out of Today")
+
+        tab(app, "Browse")
+        app.buttons["browse.mode.next"].tap()
+        require(row(app, "Call the bank"), "the task in Next")
+        row(app, "Call the bank").swipeRight()
+        XCTAssertEqual(app.buttons["task.swipe.next"].label, "Remove from Next")
+        app.buttons["task.swipe.next"].tap()
+        requireAbsent(row(app, "Call the bank"), "the task removed from Next")
+        XCTAssertFalse(try planning().contains(bankID))
+
+        app.navigationBars.buttons["BackButton"].firstMatch.tap()
+        for _ in 0..<4 { guard !app.buttons["browse.project.unfiled"].exists else { break }; app.swipeUp() }
+        require(app.buttons["browse.project.unfiled"], "the Unfiled project")
+        app.buttons["browse.project.unfiled"].tap()
+        require(row(app, "Call the bank"), "the unplanned task in its project")
+        row(app, "Call the bank").swipeRight()
+        app.buttons["task.swipe.today"].tap()
+        eventually("the project row shows Today") { row(app, "Call the bank").label.contains("Today") }
+        row(app, "Call the bank").swipeRight()
+        app.buttons["task.swipe.today"].tap()
+        eventually("the project row no longer shows Today") { !row(app, "Call the bank").label.contains("Today") }
+        XCTAssertFalse(try planning().contains(bankID))
+
+        row(app, "Call the bank").swipeLeft()
+        require(app.buttons["task.swipe.done"], "the Done swipe action")
+        require(app.buttons["task.swipe.edit"], "the Edit swipe action")
+        XCTAssertEqual(app.buttons["task.swipe.startPause"].label, "Start")
+        XCTAssertTrue(try markdown("unfiled").contains("state: backlog"), "revealing actions changed the status")
+        app.buttons["task.swipe.startPause"].tap()
+        eventually("the task started") { row(app, "Call the bank").label.hasPrefix("doing,") }
+        row(app, "Call the bank").swipeLeft()
+        XCTAssertEqual(app.buttons["task.swipe.startPause"].label, "Pause")
+        app.buttons["task.swipe.startPause"].tap()
+        // Pausing asks where you left off, and the answer becomes the resume note.
+        let note = app.alerts.textFields.firstMatch
+        require(note, "the resume note prompt")
+        note.typeText("Ask for the account number")
+        app.alerts.buttons["Pause"].firstMatch.tap()
+        eventually("the task paused") { row(app, "Call the bank").label.hasPrefix("paused,") }
+        XCTAssertTrue(try markdown("unfiled").contains("state: paused"))
+        XCTAssertTrue(try markdown("unfiled").contains("Ask for the account number"), "the resume note was saved")
+        row(app, "Call the bank").swipeLeft()
+        XCTAssertEqual(app.buttons["task.swipe.startPause"].label, "Start")
+        app.buttons["task.swipe.done"].tap()
+        requireAbsent(row(app, "Call the bank"), "the completed task in the open project list")
+        XCTAssertTrue(try markdown("unfiled").contains("state: done"))
+
+        // Lists show open tasks until the query explicitly includes completed work.
+        app.searchFields.firstMatch.tap()
+        app.searchFields.firstMatch.typeText("?completed\n")
+        require(row(app, "Call the bank"), "the completed task in search results")
+        row(app, "Call the bank").swipeLeft()
+        XCTAssertFalse(app.buttons["task.swipe.today"].exists)
+        XCTAssertFalse(app.buttons["task.swipe.next"].exists)
+        require(app.buttons["task.swipe.reopen"], "the Reopen swipe action")
+        XCTAssertFalse(app.buttons["task.swipe.done"].exists)
+        XCTAssertFalse(app.buttons["task.swipe.startPause"].exists)
+        app.buttons["task.swipe.reopen"].tap()
+        eventually("the task reopened") { try markdown("unfiled").contains("state: inbox") }
+        tab(app, "Inbox")
+        require(row(app, "Call the bank"), "the reopened task in Inbox")
+    }
+
+    func testDraftStorageFailureKeepsTextAndRetrySurvivesRelaunch() throws {
+        var app = launch()
+        let drafts = root.appendingPathComponent("devices/\(workspaceName)/drafts")
+        try Data("unavailable".utf8).write(to: drafts)
+        openCapture(app)
+        type(app, "capture.text", "Keep this unsaved thought")
+        require(app.descendants(matching: .any)["draft.recovery.message"].firstMatch, "the draft storage warning")
+        app.buttons["capture.close"].tap()
+        requireAbsent(app.buttons["capture.save"], "the closed capture")
+        require(app.descendants(matching: .any)["draft.recovery.pending"].firstMatch, "the pending draft banner")
+        openCapture(app)
+        XCTAssertEqual(value(app, "capture.text"), "Keep this unsaved thought")
+        try FileManager.default.removeItem(at: drafts)
+        app.buttons["draft.recovery.retry"].tap()
+        requireAbsent(app.descendants(matching: .any)["draft.recovery.message"].firstMatch, "the recovered storage warning")
+        app.terminate()
+        app = launch()
+        openCapture(app)
+        XCTAssertEqual(value(app, "capture.text"), "Keep this unsaved thought")
+        XCTAssertNil(try block("Keep this unsaved thought", in: markdown("unfiled")), "draft retry submitted the task")
     }
 
     func testRefusedCaptureSelectsTheTokenForImmediateCorrection() throws {
@@ -654,6 +624,241 @@ final class CaptureEditingUITests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["capture.restored"].firstMatch.waitForExistence(timeout: 2))
         XCTAssertEqual(value(app, "capture.text"), "")
     }
+}
+
+final class CaptureEditingUITestsPart4: CaptureEditingUITests {
+    @MainActor func testChangeHistoryInspectsAndRecoversAnEditAfterRestart() throws {
+        var app = launch()
+        row(app, "Ship beta build").swipeLeft()
+        app.buttons["task.swipe.edit"].tap()
+        require(app.buttons["edit.save"], "the task editor")
+        clear(app, "form.resume")
+        type(app, "form.resume", "Accidental history test note")
+        app.buttons["edit.save"].tap()
+        requireAbsent(app.buttons["edit.save"], "the saved editor")
+        eventually("the accidental edit was committed") {
+            try markdown("atlas-launch").contains("Accidental history test note")
+        }
+        app.terminate()
+        app = launch()
+        tab(app, "Browse")
+        app.buttons["browse.history"].tap()
+        let undo = app.buttons["history.undo"]
+        let redo = app.buttons["history.redo"]
+        require(undo, "the persistent undo target")
+        let undoReady = expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: undo)
+        XCTAssertEqual(XCTWaiter.wait(for: [undoReady], timeout: timeout), .completed)
+        XCTAssertFalse(redo.isEnabled)
+        let entry = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "history.entry.")).firstMatch
+        require(entry, "the retained transaction")
+        let historyScreenshot = XCTAttachment(screenshot: app.screenshot())
+        historyScreenshot.name = "Change History after restart"
+        historyScreenshot.lifetime = .keepAlways
+        add(historyScreenshot)
+        entry.tap()
+        require(app.navigationBars["Change Details"], "transaction details")
+        let after = app.descendants(matching: .any)["history.change.0.after"].firstMatch
+        for _ in 0..<5 { guard !after.exists || !after.isHittable else { break }; app.swipeUp() }
+        require(after, "the original after value")
+        XCTAssertTrue(after.label.contains("Accidental history test note"), after.label)
+        for _ in 0..<5 { guard !undo.isHittable else { break }; app.swipeDown() }
+        undo.tap()
+        eventually("undo restored the original resume note") {
+            try !markdown("atlas-launch").contains("Accidental history test note")
+        }
+        let undone = app.staticTexts["history.detail.state"]
+        require(undone, "the refreshed transaction state")
+        let stateReady = expectation(for: NSPredicate(format: "label == 'Undone'"), evaluatedWith: undone)
+        XCTAssertEqual(XCTWaiter.wait(for: [stateReady], timeout: timeout), .completed)
+        XCTAssertTrue(redo.waitForExistence(timeout: timeout))
+        let redoReady = expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: redo)
+        XCTAssertEqual(XCTWaiter.wait(for: [redoReady], timeout: timeout), .completed)
+        redo.tap()
+        eventually("redo reapplied the original edit") {
+            try markdown("atlas-launch").contains("Accidental history test note")
+        }
+        // Inspection keeps showing the original direction after either restore.
+        for _ in 0..<5 { guard !after.exists || !after.isHittable else { break }; app.swipeUp() }
+        require(after, "the retained before/after details")
+        XCTAssertTrue(after.label.contains("Accidental history test note"), after.label)
+        let detailsScreenshot = XCTAttachment(screenshot: app.screenshot())
+        detailsScreenshot.name = "Change History details after redo"
+        detailsScreenshot.lifetime = .keepAlways
+        add(detailsScreenshot)
+    }
+
+    func testTimedDeadlineIsVisibleAndSurvivesAnUnrelatedEdit() throws {
+        let file = workspace.appendingPathComponent("projects/unfiled/tasks.md")
+        let original = try String(contentsOf: file, encoding: .utf8)
+        try original.replacingOccurrences(of: "priority: 0,", with: "priority: 0, due: 2030-06-10, due_time: 15:30,")
+            .write(to: file, atomically: true, encoding: .utf8)
+        let app = launch()
+        tab(app, "Inbox")
+        let taskRow = row(app, "Call the bank")
+        require(taskRow, "the task with a timed deadline")
+        XCTAssertTrue(taskRow.label.contains(":30"), taskRow.label)
+        openTask(app, "Call the bank")
+        let due = app.descendants(matching: .any)["detail.due"].firstMatch
+        for _ in 0..<3 { guard !due.isHittable else { break }; app.swipeUp() }
+        require(due, "the full deadline")
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "timed-deadline-detail"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        app.buttons["detail.edit"].tap()
+        type(app, "form.resume", "Bring the account number")
+        app.buttons["edit.save"].tap()
+        requireAbsent(app.buttons["edit.save"], "the saved editor")
+        let saved = try markdown("unfiled")
+        XCTAssertTrue(saved.contains("due: 2030-06-10"), saved)
+        XCTAssertTrue(saved.contains("due_time: 15:30"), saved)
+    }
+
+    func testClosingAndDiscardingAnEditedTask() throws {
+        let app = launch()
+        tab(app, "Inbox")
+        openTask(app, "Call the bank")
+        let before = try markdown("unfiled")
+        app.buttons["detail.edit"].tap()
+        type(app, "form.resume", "Bring the account number")
+        app.buttons["edit.close"].tap()
+        requireAbsent(app.buttons["edit.save"], "the closed editor")
+        XCTAssertEqual(try markdown("unfiled"), before)
+        XCTAssertEqual(draftFiles().count, 1)
+        app.buttons["detail.edit"].tap()
+        require(app.descendants(matching: .any)["edit.restored"].firstMatch, "the restored edit")
+        XCTAssertEqual(value(app, "form.resume"), "Bring the account number")
+        app.buttons["edit.actions"].tap()
+        app.buttons["edit.discard"].tap()
+        app.buttons["Keep Editing"].tap()
+        XCTAssertEqual(value(app, "form.resume"), "Bring the account number")
+        app.buttons["edit.actions"].tap()
+        app.buttons["edit.discard"].tap()
+        let discard = app.alerts.buttons["Discard Draft"]
+        require(discard, "the edit discard confirmation")
+        discard.tap()
+        requireAbsent(app.buttons["edit.save"], "the discarded editor")
+        XCTAssertEqual(draftFiles(), [])
+        XCTAssertEqual(try markdown("unfiled"), before)
+    }
+
+    func testPlanStatusAndLifecycleRefusals() throws {
+        let app = launch()
+
+        // A parent cannot finish over an open subtask, and says which one.
+        openTask(app, "Ship beta build")
+        // Workflow sits below the task's content.
+        let planValue = app.staticTexts["detail.plan.value"].firstMatch
+        for _ in 0..<5 { guard !planValue.exists || !planValue.isHittable else { break }; app.swipeUp() }
+        XCTAssertEqual(planValue.label.contains("Today"), true)
+        menu(app, "detail.status.menu", "Done")
+        let failure = app.staticTexts["detail.failure"].firstMatch
+        require(failure, "the completion refusal")
+        XCTAssertTrue(failure.label.contains("open subtasks"), failure.label)
+        XCTAssertTrue(failure.label.contains("Write release notes"), failure.label)
+        XCTAssertTrue(try markdown("atlas-launch").contains("short_id: 1, state: doing"), "a refused completion was written")
+
+        // Today and Next exclude each other.
+        menu(app, "detail.plan", "Add to Next")
+        eventually("Ship beta build moved to Next") {
+            app.staticTexts["detail.plan.value"].firstMatch.label.contains("Next")
+        }
+        let shipID = "0a7e5d10-2c3b-4f6a-8e9d-000000000101"
+        let plan = try planning()
+        let next = try XCTUnwrap(plan.range(of: "\"next\""))
+        XCTAssertTrue(plan[next.upperBound...].contains(shipID), "not in Next:\n\(plan)")
+        XCTAssertFalse(plan[..<next.lowerBound].contains(shipID), "still in Today:\n\(plan)")
+
+        // Completing a planned task clears its plan.
+        tab(app, "Inbox")
+        openTask(app, "Call the bank")
+        menu(app, "detail.plan", "Add to Today")
+        eventually("Call the bank joined Today") {
+            app.staticTexts["detail.plan.value"].firstMatch.label.contains("Today")
+        }
+        let bankID = "0a7e5d10-2c3b-4f6a-8e9d-000000000501"
+        XCTAssertTrue(try planning().contains(bankID))
+        menu(app, "detail.status.menu", "Done")
+        eventually("the completion cleared the plan") {
+            app.staticTexts["detail.plan.value"].firstMatch.label.contains("None")
+        }
+        XCTAssertFalse(try planning().contains(bankID), "a completed task kept its plan")
+        XCTAssertTrue(try block("Call the bank", in: markdown("unfiled"))?.contains("state: done") == true)
+
+        // A finished task joins no plan and moves only by reopening.
+        menu(app, "detail.plan", "Add to Next")
+        require(app.staticTexts["detail.failure"].firstMatch, "the terminal plan refusal")
+        XCTAssertTrue(app.staticTexts["detail.failure"].firstMatch.label.contains("terminal"), app.staticTexts["detail.failure"].firstMatch.label)
+        menu(app, "detail.status.menu", "Waiting")
+        eventually("the terminal move was refused by name") {
+            app.staticTexts["detail.failure"].firstMatch.label.contains("Can’t move from done to waiting")
+        }
+        XCTAssertTrue(try block("Call the bank", in: markdown("unfiled"))?.contains("state: done") == true)
+    }
+}
+
+final class CaptureEditingUITestsPart5: CaptureEditingUITests {
+    func testShorthandCaptureWithLivePreview() throws {
+        let app = launch()
+        openCapture(app)
+        type(app, "capture.text", "Plan the offsite !1 #ops $next\nBook the venue %atlas-launch $today")
+        let lines = app.descendants(matching: .any).matching(identifier: "capture.preview.line")
+        eventually("the preview drew both lines") { lines.count == 2 }
+        XCTAssertTrue(lines.element(boundBy: 0).label.contains("Plan: Next"), lines.element(boundBy: 0).label)
+        XCTAssertTrue(lines.element(boundBy: 1).label.contains("Atlas Launch"), lines.element(boundBy: 1).label)
+        XCTAssertTrue(lines.element(boundBy: 1).label.contains("Plan: Today"), lines.element(boundBy: 1).label)
+        app.buttons["capture.save"].tap()
+        requireAbsent(app.buttons["capture.save"], "the capture sheet")
+        require(row(app, "Book the venue"), "the Today capture in Today")
+
+        eventually("both captures reached their projects") {
+            try block("Plan the offsite", in: markdown("unfiled"))?.contains("priority: 1") == true &&
+                block("Book the venue", in: markdown("atlas-launch")) != nil
+        }
+        let offsite = try XCTUnwrap(block("Plan the offsite", in: markdown("unfiled")))
+        XCTAssertTrue(offsite.contains("tags: ops"), offsite)
+        XCTAssertTrue(offsite.contains("state: backlog"), offsite)
+        XCTAssertEqual(draftFiles(), [], "a committed capture left a draft behind")
+    }
+
+    func testQuickCaptureRoutesByItsSigilAlone() throws {
+        let app = launch()
+        openCapture(app)
+        type(app, "capture.text", "Book the venue %atlas-launch")
+        let lines = app.descendants(matching: .any).matching(identifier: "capture.preview.line")
+        eventually("the preview named the sigil's project") { lines.firstMatch.label.contains("Atlas Launch") }
+        XCTAssertFalse(app.descendants(matching: .any)["capture.project"].exists, "quick capture drew a project picker")
+    }
+
+    func testCaptureSaveKeepsTextTypedWhileTheSubmissionIsWaiting() throws {
+        let app = launch(holdEditorSave: true)
+        openCapture(app)
+        type(app, "capture.text", "Submitted capture")
+        app.buttons["capture.save"].tap()
+        require(app.descendants(matching: .any)["capture.saving"].firstMatch, "the pending save")
+        XCTAssertFalse(app.buttons["capture.close"].isEnabled)
+        clear(app, "capture.text")
+        type(app, "capture.text", "Newer capture")
+        XCTAssertNil(try block("Submitted capture", in: markdown("unfiled")))
+        try Data().write(to: root.appendingPathComponent("editor-save.release"))
+        require(app.staticTexts["capture.savedEarlier"], "the retained-draft confirmation")
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "capture-newer-draft-after-save"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        XCTAssertEqual(value(app, "capture.text"), "Newer capture")
+        XCTAssertNotNil(try block("Submitted capture", in: markdown("unfiled")))
+        XCTAssertNil(try block("Newer capture", in: markdown("unfiled")))
+        app.buttons["capture.close"].tap()
+        openCapture(app)
+        XCTAssertEqual(value(app, "capture.text"), "Newer capture")
+        app.buttons["capture.save"].tap()
+        requireAbsent(app.buttons["capture.save"], "the saved capture")
+        let text = try markdown("unfiled")
+        XCTAssertEqual(text.components(separatedBy: "## Task: Submitted capture\n").count - 1, 1)
+        XCTAssertEqual(text.components(separatedBy: "## Task: Newer capture\n").count - 1, 1)
+        XCTAssertEqual(draftFiles(), [])
+    }
 
     func testStructuredCaptureCarriesEveryField() throws {
         let app = launch()
@@ -692,7 +897,7 @@ final class CaptureEditingUITests: XCTestCase {
 
         func openDescription(_ app: XCUIApplication, label: String) {
             let action = app.buttons["detail.description.edit"]
-            for _ in 0..<4 where !action.isHittable { app.swipeUp() }
+            for _ in 0..<4 { guard !action.isHittable else { break }; app.swipeUp() }
             require(action, "the description action")
             XCTAssertEqual(action.label, label)
             action.tap()
@@ -744,172 +949,10 @@ final class CaptureEditingUITests: XCTestCase {
         XCTAssertEqual(app.buttons["detail.description.edit"].label, "Add Description")
         XCTAssertEqual(draftFiles(), [])
     }
+}
 
-    func testDailyEditSavesOnceAndKeepsARefusedDraft() throws {
-        var app = launch()
-        tab(app, "Inbox")
-        openTask(app, "Call the bank")
-        app.buttons["detail.edit"].tap()
-        require(app.buttons["edit.save"], "the edit sheet")
-        XCTAssertEqual(value(app, "form.title"), "Call the bank")
-        clear(app, "form.title")
-        type(app, "form.title", "Call the bank about the mortgage")
-        type(app, "form.resume", "have the account number ready")
-        type(app, "form.tags", "money")
-        toggle(app, "form.review")
-        app.buttons["edit.save"].tap()
-        requireAbsent(app.buttons["edit.save"], "the edit sheet")
-        require(app.staticTexts["Call the bank about the mortgage"].firstMatch, "the edited title")
-        eventually("the edit was written") {
-            try block("Call the bank about the mortgage", in: markdown("unfiled")) != nil
-        }
-        let edited = try XCTUnwrap(block("Call the bank about the mortgage", in: markdown("unfiled")))
-        for expected in ["tags: money", "review: true", "have the account number ready"] {
-            XCTAssertTrue(edited.contains(expected), "missing \(expected) in\n\(edited)")
-        }
-
-        // The engine refuses an empty title; the sheet and the draft stay.
-        let before = try markdown("unfiled")
-        app.buttons["detail.edit"].tap()
-        require(app.buttons["edit.save"], "the edit sheet")
-        clear(app, "form.title")
-        type(app, "form.context", "phone")
-        app.buttons["edit.save"].tap()
-        let failure = app.staticTexts["edit.failure"].firstMatch
-        require(failure, "the edit's refusal")
-        XCTAssertTrue(failure.label.lowercased().contains("title"), failure.label)
-        XCTAssertTrue(failure.isHittable, "the refusal scrolled out of view")
-        XCTAssertTrue(input(app, "form.title").isHittable, "the refused title was not brought into view")
-        let screenshot = XCTAttachment(screenshot: app.screenshot())
-        screenshot.name = "edit-refusal-focuses-title"
-        screenshot.lifetime = .keepAlways
-        add(screenshot)
-        XCTAssertEqual(try markdown("unfiled"), before, "a refused edit was written")
-        XCTAssertEqual(draftFiles().count, 1)
-
-        // Killed with the refused draft open, the edit reopens on it.
-        app.terminate()
-        app = launch()
-        tab(app, "Inbox")
-        openTask(app, "Call the bank about the mortgage")
-        app.buttons["detail.edit"].tap()
-        require(app.descendants(matching: .any)["edit.restored"].firstMatch, "the restored-edit notice")
-        XCTAssertEqual(value(app, "form.context"), "phone")
-        type(app, "form.title", "Call the bank today")
-        app.buttons["edit.save"].tap()
-        requireAbsent(app.buttons["edit.save"], "the edit sheet")
-        eventually("the restored edit was written") {
-            try block("Call the bank today", in: markdown("unfiled"))?.contains("context: phone") == true
-        }
-        XCTAssertEqual(draftFiles(), [])
-    }
-
-    func testTimedDeadlineIsVisibleAndSurvivesAnUnrelatedEdit() throws {
-        let file = workspace.appendingPathComponent("projects/unfiled/tasks.md")
-        let original = try String(contentsOf: file, encoding: .utf8)
-        try original.replacingOccurrences(of: "priority: 0,", with: "priority: 0, due: 2030-06-10, due_time: 15:30,")
-            .write(to: file, atomically: true, encoding: .utf8)
-        let app = launch()
-        tab(app, "Inbox")
-        let taskRow = row(app, "Call the bank")
-        require(taskRow, "the task with a timed deadline")
-        XCTAssertTrue(taskRow.label.contains(":30"), taskRow.label)
-        openTask(app, "Call the bank")
-        let due = app.descendants(matching: .any)["detail.due"].firstMatch
-        for _ in 0..<3 where !due.isHittable { app.swipeUp() }
-        require(due, "the full deadline")
-        let screenshot = XCTAttachment(screenshot: app.screenshot())
-        screenshot.name = "timed-deadline-detail"
-        screenshot.lifetime = .keepAlways
-        add(screenshot)
-        app.buttons["detail.edit"].tap()
-        type(app, "form.resume", "Bring the account number")
-        app.buttons["edit.save"].tap()
-        requireAbsent(app.buttons["edit.save"], "the saved editor")
-        let saved = try markdown("unfiled")
-        XCTAssertTrue(saved.contains("due: 2030-06-10"), saved)
-        XCTAssertTrue(saved.contains("due_time: 15:30"), saved)
-    }
-
-    func testClosingAndDiscardingAnEditedTask() throws {
-        let app = launch()
-        tab(app, "Inbox")
-        openTask(app, "Call the bank")
-        let before = try markdown("unfiled")
-        app.buttons["detail.edit"].tap()
-        type(app, "form.resume", "Bring the account number")
-        app.buttons["edit.close"].tap()
-        requireAbsent(app.buttons["edit.save"], "the closed editor")
-        XCTAssertEqual(try markdown("unfiled"), before)
-        XCTAssertEqual(draftFiles().count, 1)
-        app.buttons["detail.edit"].tap()
-        require(app.descendants(matching: .any)["edit.restored"].firstMatch, "the restored edit")
-        XCTAssertEqual(value(app, "form.resume"), "Bring the account number")
-        app.buttons["edit.actions"].tap()
-        app.buttons["edit.discard"].tap()
-        app.buttons["Keep Editing"].tap()
-        XCTAssertEqual(value(app, "form.resume"), "Bring the account number")
-        app.buttons["edit.actions"].tap()
-        app.buttons["edit.discard"].tap()
-        let discard = app.alerts.buttons["Discard Draft"]
-        require(discard, "the edit discard confirmation")
-        discard.tap()
-        requireAbsent(app.buttons["edit.save"], "the discarded editor")
-        XCTAssertEqual(draftFiles(), [])
-        XCTAssertEqual(try markdown("unfiled"), before)
-    }
-
-    func testPlanStatusAndLifecycleRefusals() throws {
-        let app = launch()
-
-        // A parent cannot finish over an open subtask, and says which one.
-        openTask(app, "Ship beta build")
-        // Workflow sits below the task's content.
-        let planValue = app.staticTexts["detail.plan.value"].firstMatch
-        for _ in 0..<5 where !planValue.exists || !planValue.isHittable { app.swipeUp() }
-        XCTAssertEqual(planValue.label.contains("Today"), true)
-        menu(app, "detail.status.menu", "Done")
-        let failure = app.staticTexts["detail.failure"].firstMatch
-        require(failure, "the completion refusal")
-        XCTAssertTrue(failure.label.contains("open subtasks"), failure.label)
-        XCTAssertTrue(failure.label.contains("Write release notes"), failure.label)
-        XCTAssertTrue(try markdown("atlas-launch").contains("short_id: 1, state: doing"), "a refused completion was written")
-
-        // Today and Next exclude each other.
-        menu(app, "detail.plan", "Add to Next")
-        eventually("Ship beta build moved to Next") {
-            app.staticTexts["detail.plan.value"].firstMatch.label.contains("Next")
-        }
-        let shipID = "0a7e5d10-2c3b-4f6a-8e9d-000000000101"
-        let plan = try planning()
-        let next = try XCTUnwrap(plan.range(of: "\"next\""))
-        XCTAssertTrue(plan[next.upperBound...].contains(shipID), "not in Next:\n\(plan)")
-        XCTAssertFalse(plan[..<next.lowerBound].contains(shipID), "still in Today:\n\(plan)")
-
-        // Completing a planned task clears its plan.
-        tab(app, "Inbox")
-        openTask(app, "Call the bank")
-        menu(app, "detail.plan", "Add to Today")
-        eventually("Call the bank joined Today") {
-            app.staticTexts["detail.plan.value"].firstMatch.label.contains("Today")
-        }
-        let bankID = "0a7e5d10-2c3b-4f6a-8e9d-000000000501"
-        XCTAssertTrue(try planning().contains(bankID))
-        menu(app, "detail.status.menu", "Done")
-        eventually("the completion cleared the plan") {
-            app.staticTexts["detail.plan.value"].firstMatch.label.contains("None")
-        }
-        XCTAssertFalse(try planning().contains(bankID), "a completed task kept its plan")
-        XCTAssertTrue(try block("Call the bank", in: markdown("unfiled"))?.contains("state: done") == true)
-
-        // A finished task joins no plan and moves only by reopening.
-        menu(app, "detail.plan", "Add to Next")
-        require(app.staticTexts["detail.failure"].firstMatch, "the terminal plan refusal")
-        XCTAssertTrue(app.staticTexts["detail.failure"].firstMatch.label.contains("terminal"), app.staticTexts["detail.failure"].firstMatch.label)
-        menu(app, "detail.status.menu", "Waiting")
-        eventually("the terminal move was refused by name") {
-            app.staticTexts["detail.failure"].firstMatch.label.contains("Can’t move from done to waiting")
-        }
-        XCTAssertTrue(try block("Call the bank", in: markdown("unfiled"))?.contains("state: done") == true)
+final class CaptureEditingUITestsPart6: CaptureEditingUITests {
+    func testCaptureAutocompleteSigilsSecondHalf() throws {
+        try assertAutocompletes(Array(Self.autocompleteCases.dropFirst(7)))
     }
 }
