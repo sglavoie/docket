@@ -30,6 +30,17 @@ enum TaskListAction {
         }
         return "\(verb) \(subject)"
     }
+
+    /// The tactile response a committed single-task action asks for: success
+    /// for a completion, a light tap for planning, a firmer one for starting.
+    var tactileKind: TactileEvent.Kind? {
+        switch self {
+        case .transition(.done): .success
+        case .transition(.doing): .started
+        case .plan(.addToday), .plan(.addNext): .planned
+        default: nil
+        }
+    }
 }
 
 struct TaskActionReceipt: Identifiable {

@@ -1,6 +1,7 @@
 import PhotosUI
 import SwiftUI
 import DocketEngine
+import DocketShared
 
 /// One task whole: where it sits in its project's outline, what it is
 /// waiting on and what waits on it, and the rest of its record. Every related
@@ -229,21 +230,29 @@ struct TaskDetailView: View {
         let task = detail.task
         let primary = PrimaryAction(task.state)
         Section {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(task.title)
-                    .font(.title3.weight(.semibold))
-                    .accessibilityIdentifier("detail.title")
-                Text([task.state.rawValue.capitalized, Self.planName(detail), detail.project.name]
-                        .compactMap { $0 }.joined(separator: " · "))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("detail.summary")
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Image(systemName: task.state.symbol)
+                    .font(.title3)
+                    .foregroundStyle(DocketPalette.semanticAccent(tags: task.tags) ?? task.state.tint)
+                    .contentTransition(.symbolEffect(.replace))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(task.title)
+                        .font(.title3.weight(.semibold))
+                        .fontDesign(.rounded)
+                        .accessibilityIdentifier("detail.title")
+                    (Text(task.state.rawValue.capitalized).foregroundStyle(task.state.tint).fontWeight(.semibold)
+                        + Text([Self.planName(detail), detail.project.name].compactMap { $0 }
+                            .map { " · \($0)" }.joined()).foregroundStyle(.secondary))
+                        .font(.subheadline)
+                        .accessibilityIdentifier("detail.summary")
+                }
             }
             if let resume = task.resumeNote, !resume.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
-                    Label("Where you left off", systemImage: "bookmark")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Label("Where you left off", systemImage: "bookmark.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(DocketPalette.today)
                     Text(resume)
                 }
                 .accessibilityElement(children: .combine)
@@ -256,11 +265,12 @@ struct TaskDetailView: View {
                     .font(.headline)
                     .frame(maxWidth: .infinity)
             }
-            // Primary on the page's background inverted keeps full contrast
-            // in light and dark mode, where white on the accent fill does not.
+            // Each fill carries its own legible text in both appearances:
+            // the brand under its on-brand ink, the deep Doing orange under
+            // white, and a reopen as the page's background inverted.
             .buttonStyle(.borderedProminent)
-            .tint(.primary)
-            .foregroundStyle(Color(uiColor: .systemBackground))
+            .tint(primary.target == .done ? DocketPalette.brand : primary.target == .doing ? DocketPalette.Solid.doing : .primary)
+            .foregroundStyle(primary.target == .done ? DocketPalette.onBrand : primary.target == .doing ? .white : Color(uiColor: .systemBackground))
             .controlSize(.large)
             .accessibilityIdentifier("detail.primary")
         }

@@ -404,7 +404,7 @@ final class WorkspaceModel {
             }
             changed(.localChange)
             sync.exchange()
-            if case .transition(.done) = action, !result.committed.transactionID.isEmpty { signal(.success) }
+            if !result.committed.transactionID.isEmpty, let kind = action.tactileKind { signal(kind) }
             return .success(recordReceipt(action.message(title: result.task.title), result.committed))
         } catch {
             return .failure(TaskActionFailure(message: Self.describe(error)))

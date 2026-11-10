@@ -1,5 +1,6 @@
 import SwiftUI
 import DocketEngine
+import DocketShared
 import UIKit
 
 /// What a task list shows: a mode, a project, or a saved lens. Every list is
@@ -271,12 +272,23 @@ struct TaskListView: View {
             && search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !filter.isActive
     }
 
+    /// The illustrated empty state for the two lists whose emptiness is
+    /// good news.
+    private var emptyHero: ScreenStateView.Hero? {
+        guard search.isEmpty, !filter.isActive, source.scope == nil else { return nil }
+        switch source {
+        case .today: return ScreenStateView.Hero(symbol: "sun.max.fill", tint: DocketPalette.today)
+        case .inbox: return ScreenStateView.Hero(symbol: "tray.full.fill", emptySymbol: "checkmark.seal.fill", tint: DocketPalette.brand)
+        default: return nil
+        }
+    }
+
     @ViewBuilder
     private var content: some View {
         if let state, !(showsPendingCaptures && state.isEmpty) {
             ScrollView {
                 VStack(spacing: 12) {
-                    ScreenStateView(state: state)
+                    ScreenStateView(state: state, hero: emptyHero)
                     if state.isEmpty {
                         if !search.isEmpty {
                             Button("Clear Search") { search = "" }
@@ -344,7 +356,7 @@ struct TaskListView: View {
                     .accessibilityIdentifier("task.row")
                     .tag(row.id)
                     .moveDisabled(!canReorder)
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    .swipeActions(edge: .trailing, allowsFullSwipe: !row.item.task.state.isTerminal) {
                         if !selecting {
                             statusActions(row)
                                 .disabled(acting)
@@ -360,7 +372,7 @@ struct TaskListView: View {
                                 actionFailure = nil
                                 organizingRow = row
                             }
-                            .tint(.purple)
+                            .tint(DocketPalette.Solid.organize)
                             .disabled(acting || workspace.undoing)
                             .accessibilityIdentifier("task.swipe.organize")
                         }
@@ -498,26 +510,26 @@ struct TaskListView: View {
             Button("Reopen", systemImage: "arrow.uturn.backward") {
                 act(task.locator, .transition(.inbox))
             }
-            .tint(.blue)
+            .tint(DocketPalette.Solid.reopen)
             .accessibilityIdentifier("task.swipe.reopen")
         } else {
             Button("Done", systemImage: "checkmark") {
                 act(task.locator, .transition(.done))
             }
-            .tint(.green)
+            .tint(DocketPalette.Solid.done)
             .accessibilityIdentifier("task.swipe.done")
 
             Button(task.state == .doing ? "Pause" : "Start", systemImage: task.state == .doing ? "pause.fill" : "play.fill") {
                 act(task.locator, .transition(task.state == .doing ? .paused : .doing))
             }
-            .tint(.orange)
+            .tint(task.state == .doing ? DocketPalette.Solid.paused : DocketPalette.Solid.doing)
             .accessibilityIdentifier("task.swipe.startPause")
         }
         Button("Edit", systemImage: "pencil") {
             actionFailure = nil
             editingRow = row
         }
-        .tint(.gray)
+        .tint(DocketPalette.Solid.edit)
         .accessibilityIdentifier("task.swipe.edit")
     }
 
@@ -527,14 +539,14 @@ struct TaskListView: View {
         Button(item.today ? "Remove Today" : "Today", systemImage: item.today ? "calendar.badge.minus" : "calendar") {
             act(item.task.locator, .plan(item.today ? .removeToday : .addToday))
         }
-        .tint(.blue)
+        .tint(DocketPalette.Solid.today)
         .accessibilityLabel(item.today ? "Remove from Today" : "Add to Today")
         .accessibilityIdentifier("task.swipe.today")
 
         Button(item.next ? "Remove Next" : "Next", systemImage: item.next ? "minus.circle" : "arrow.right.circle") {
             act(item.task.locator, .plan(item.next ? .removeNext : .addNext))
         }
-        .tint(.indigo)
+        .tint(DocketPalette.Solid.next)
         .accessibilityLabel(item.next ? "Remove from Next" : "Add to Next")
         .accessibilityIdentifier("task.swipe.next")
     }
@@ -797,17 +809,10 @@ struct TaskListView: View {
 extension WorkflowState {
     var isTerminal: Bool { self == .done || self == .canceled }
 
-    var symbol: String {
-        switch self {
-        case .inbox: "tray"
-        case .backlog: "circle"
-        case .doing: "play.circle"
-        case .waiting: "hourglass"
-        case .paused: "pause.circle"
-        case .done: "checkmark.circle.fill"
-        case .canceled: "xmark.circle"
-        }
-    }
+    var symbol: String { DocketPalette.stateSymbol(rawValue) }
+
+    /// The state's hue, the same in rows, details, and widgets.
+    var tint: Color { DocketPalette.state(rawValue) }
 }
 
 /// What a list already tells its reader about every row on it, so a row
@@ -844,7 +849,7 @@ struct TaskRowView: View {
     /// Drawn as just completed while the commit is acknowledged: a filled
     /// checkmark and a struck title, so the cue survives without color.
     var acknowledged = false
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// The row's quiet second line, deadline first. The status is the glyph's
     /// and the attention line's own cue is not repeated, nor anything the
@@ -872,10 +877,7 @@ struct TaskRowView: View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
             let attention = TaskAttention(task: item.task, now: context.date)
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Image(systemName: acknowledged ? "checkmark.circle.fill" : item.task.state.symbol)
-                    .foregroundStyle(acknowledged ? AnyShapeStyle(.green) : AnyShapeStyle(.secondary))
-                    .contentTransition(.symbolEffect(.replace))
-                    .accessibilityHidden(true)
+                glyph
                 VStack(alignment: .leading, spacing: 4) {
                     Text(item.task.title)
                         .strikethrough(acknowledged || item.task.state.isTerminal)
@@ -883,7 +885,7 @@ struct TaskRowView: View {
                     if let label = attention.label {
                         Text(label)
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(attention.overdue ? overdueColor : Color.primary)
+                            .foregroundStyle(attentionTint(attention))
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityIdentifier("task.attention")
                     }
@@ -900,10 +902,32 @@ struct TaskRowView: View {
         }
     }
 
-    private var overdueColor: Color {
-        colorScheme == .dark
-            ? Color(red: 1, green: 0.55, blue: 0.55)
-            : Color(red: 0.70, green: 0.12, blue: 0.10)
+    private var glyph: some View {
+        Image(systemName: acknowledged ? "checkmark.circle.fill" : item.task.state.symbol)
+            .foregroundStyle(glyphTint)
+            .contentTransition(.symbolEffect(.replace))
+            .symbolEffect(.bounce.up.byLayer, options: .nonRepeating, value: acknowledged)
+            .scaleEffect(acknowledged && !reduceMotion ? 1.12 : 1)
+            .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.5), value: acknowledged)
+            .accessibilityHidden(true)
+    }
+
+    /// The glyph wears the task's state hue, or the accent of its strongest
+    /// semantic tag as the terminal app does, and turns green the moment a
+    /// completion commits.
+    private var glyphTint: Color {
+        if acknowledged { return DocketPalette.state("done") }
+        if item.task.state.isTerminal { return item.task.state.tint.opacity(0.8) }
+        return DocketPalette.semanticAccent(tags: item.task.tags) ?? item.task.state.tint
+    }
+
+    /// Each attention cue keeps the hue it has everywhere else: overdue red,
+    /// review violet, due-today sun. High priority stays plain.
+    private func attentionTint(_ attention: TaskAttention) -> Color {
+        if attention.overdue { return DocketPalette.overdue }
+        if attention.highPriority { return .primary }
+        if attention.showsDeadline { return DocketPalette.today }
+        return DocketPalette.review
     }
 
     /// What VoiceOver says for a row, in the order it is read: the state,
@@ -993,3 +1017,5 @@ struct BulkActionsButton: View {
         }
     }
 }
+
+

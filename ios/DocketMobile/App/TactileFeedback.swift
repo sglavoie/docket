@@ -9,6 +9,12 @@ struct TactileEvent: Equatable {
         case success
         /// A dragged task landed in a new position.
         case selection
+        /// A task joined Today or Next.
+        case planned
+        /// Work started: a task moved to Doing.
+        case started
+        /// A list was emptied by the person's own action.
+        case celebrate
     }
 
     let kind: Kind
@@ -21,6 +27,9 @@ struct TactileEvent: Equatable {
         switch kind {
         case .success: .success
         case .selection: .selection
+        case .planned: .impact(weight: .light, intensity: 0.7)
+        case .started: .impact(weight: .medium, intensity: 0.8)
+        case .celebrate: .impact(flexibility: .soft, intensity: 1)
         }
     }
 }

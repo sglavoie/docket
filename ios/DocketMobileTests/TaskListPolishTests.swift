@@ -104,7 +104,8 @@ extension TaskListPolishTests {
         XCTAssertTrue(cleared.task.checklist?.isEmpty ?? true)
     }
     /// A committed completion or capture asks for one success response, a bulk
-    /// completion one for the whole gesture, and nothing else asks at all.
+    /// completion one for the whole gesture, a single plan addition one light
+    /// tap, and nothing else asks at all.
     @MainActor func testOnlyCommittedCompletionsAndCapturesAskForOneTactileResponse() async throws {
         let workspace = WorkspaceModel()
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -119,27 +120,29 @@ extension TaskListPolishTests {
 
         let planned = try await workspace.engine.capture(title: "Plan only").task
         _ = try await workspace.listAction(planned.locator, .plan(.addNext)).get()
-        XCTAssertNil(workspace.tactile, "a plan change is not a completion")
+        XCTAssertEqual(workspace.tactile, TactileEvent(kind: .planned, seq: 1), "planning taps lightly, not a success")
+        _ = try await workspace.listAction(planned.locator, .plan(.removeNext)).get()
+        XCTAssertEqual(seq(), 1, "taking a task out of a plan asks for nothing")
 
         let single = try await workspace.engine.capture(title: "Finish one").task
         _ = try await workspace.listAction(single.locator, .transition(.done)).get()
-        XCTAssertEqual(workspace.tactile, TactileEvent(kind: .success, seq: 1))
+        XCTAssertEqual(workspace.tactile, TactileEvent(kind: .success, seq: 2))
 
         var batch: [TaskLocator] = []
         for title in ["A", "B", "C"] { batch.append(try await workspace.engine.capture(title: title).task.locator) }
         let outcome = await workspace.bulk(batch, .state(.done))
         XCTAssertNil(outcome.refusal)
-        XCTAssertEqual(seq(), 2, "three completed tasks are one gesture and one response")
+        XCTAssertEqual(seq(), 3, "three completed tasks are one gesture and one response")
 
         _ = await workspace.bulk(batch, .plan(.addToday))
-        XCTAssertEqual(seq(), 2, "a bulk plan change asks for nothing")
+        XCTAssertEqual(seq(), 3, "a bulk plan change asks for nothing")
 
         let refused = await workspace.listAction(TaskLocator(projectID: single.projectID, taskID: "missing"), .transition(.done))
         if case .success = refused { XCTFail("a missing task completed") }
-        XCTAssertEqual(seq(), 2, "a refusal asks for nothing")
+        XCTAssertEqual(seq(), 3, "a refusal asks for nothing")
 
         let failure = await workspace.saveCaptureDraft(CaptureDraft(text: "Captured from the sheet"))
         XCTAssertNil(failure)
-        XCTAssertEqual(workspace.tactile, TactileEvent(kind: .success, seq: 3))
+        XCTAssertEqual(workspace.tactile, TactileEvent(kind: .success, seq: 4))
     }
 }
