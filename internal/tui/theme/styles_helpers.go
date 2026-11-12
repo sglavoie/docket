@@ -311,8 +311,10 @@ func stateBadgeStyle(state models.WorkflowState) lipgloss.Style {
 // state group. Project section colors never participate.
 func GetWorkflowStateGroupStyle(group models.WorkflowStateGroup) lipgloss.Style {
 	switch group.ThemeRole() {
-	case models.StateThemePlan, models.StateThemeBacklog:
+	case models.StateThemePlan:
 		return ViewModeActiveStyle
+	case models.StateThemeBacklog:
+		return ViewModeBacklogStyle
 	case models.StateThemeWork:
 		return ViewModeWorkStyle
 	case models.StateThemeInbox:

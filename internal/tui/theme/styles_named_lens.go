@@ -26,6 +26,7 @@ import (
 // repaints the same vars on every ApplyTheme and a second copy of a hex would
 // let the startup look and the repainted look drift apart.
 func newLensAccentPlanStyle() lipgloss.Style     { return makeLensAccentStyle("#8fd694", "#15803d") }
+func newLensAccentBacklogStyle() lipgloss.Style  { return makeLensAccentStyle("#67c6dc", "#0e7490") }
 func newLensAccentWorkStyle() lipgloss.Style     { return makeLensAccentStyle("#ff9e64", "#9a3412") }
 func newLensAccentInboxStyle() lipgloss.Style    { return makeLensAccentStyle("#5fb0e8", "#1d4ed8") }
 func newLensAccentNextStyle() lipgloss.Style     { return makeLensAccentStyle("#9fa8f5", "#3730a3") }
@@ -42,6 +43,7 @@ func newLensAccentReviewStyle() lipgloss.Style   { return makeLensAccentStyle("#
 // Named lens accents, repainted by rebuildLensAccentStyles on every theme change.
 var (
 	lensAccentPlanStyle     = newLensAccentPlanStyle()
+	lensAccentBacklogStyle  = newLensAccentBacklogStyle()
 	lensAccentWorkStyle     = newLensAccentWorkStyle()
 	lensAccentInboxStyle    = newLensAccentInboxStyle()
 	lensAccentNextStyle     = newLensAccentNextStyle()
@@ -58,6 +60,7 @@ var (
 
 func rebuildLensAccentStyles() {
 	lensAccentPlanStyle = newLensAccentPlanStyle()
+	lensAccentBacklogStyle = newLensAccentBacklogStyle()
 	lensAccentWorkStyle = newLensAccentWorkStyle()
 	lensAccentInboxStyle = newLensAccentInboxStyle()
 	lensAccentNextStyle = newLensAccentNextStyle()
@@ -79,8 +82,10 @@ func rebuildLensAccentStyles() {
 // than to an invented one.
 func WorkflowStateGroupAccentStyle(group models.WorkflowStateGroup) (lipgloss.Style, bool) {
 	switch group.ThemeRole() {
-	case models.StateThemePlan, models.StateThemeBacklog:
+	case models.StateThemePlan:
 		return lensAccentPlanStyle, true
+	case models.StateThemeBacklog:
+		return lensAccentBacklogStyle, true
 	case models.StateThemeWork:
 		return lensAccentWorkStyle, true
 	case models.StateThemeInbox:

@@ -12,7 +12,8 @@ func TestLaneHeaderStandsOnItsOwnFillInBothThemes(t *testing.T) {
 	defer ApplyTheme(ThemeConfig{})
 	lanes := []models.WorkflowStateGroup{
 		models.StateGroupInbox, models.StateGroupDoing, models.StateGroupWaiting,
-		models.StateGroupBacklog,
+		models.StateGroupBacklog, models.StateGroupToday, models.StateGroupNext,
+		models.StateGroupPaused,
 	}
 	for _, name := range []string{"dark", "light"} {
 		ApplyTheme(ThemeConfig{Name: name})

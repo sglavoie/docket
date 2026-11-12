@@ -155,6 +155,7 @@ func rebuildViewStyles() {
 	ViewModeDeferredStyle = makeViewModeStyle("#4a2e3a", "#7c2d12")
 	ViewModeCanceledStyle = makeViewModeStyle("#4a2430", "#991b1b")
 	ViewModeAllStyle = makeViewModeStyle("#283352", "#0369a1")
+	ViewModeBacklogStyle = makeViewModeStyle("#1d4250", "#0e7490")
 	ViewModeReviewStyle = makeViewModeStyle("#57398c", "#5b21b6")
 }
 

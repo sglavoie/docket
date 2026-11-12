@@ -15,6 +15,12 @@ var (
 	ViewModeCanceledStyle  = makeViewModeStyle("#4a2430", "#991b1b")
 	ViewModeAllStyle       = makeViewModeStyle("#283352", "#0369a1")
 
+	// ViewModeBacklogStyle fills the Backlog lane header. Backlog is parked
+	// work, so it no longer shares Plan's green with the Today lane above it.
+	// Cyan is the one hue no other lane, nor the teal due chips standing inside
+	// a Backlog lane, already wears.
+	ViewModeBacklogStyle = makeViewModeStyle("#1d4250", "#0e7490")
+
 	// ViewModeReviewStyle fills the Review lane header. Review is promoted from
 	// a tag rather than a state group, so it resolves no ThemeRole and declares
 	// its fill here beside the ones that do: a lane that carried only a

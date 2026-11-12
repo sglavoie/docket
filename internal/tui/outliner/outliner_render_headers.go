@@ -286,7 +286,9 @@ func (m *OutlinerModel) renderPinnedContextRow(viewport outlinerViewport) string
 func (m *OutlinerModel) RenderOutlinerSectionHeaderRow(row OutlinerRow, selected bool, rowWidth, rowIndex int) string {
 	displayName, prefix := sectionHeaderLabel(row)
 
-	sectionStyle := theme.GetWorkflowStateGroupStyle(models.StateGroupBacklog)
+	// Lanes with no state group — Pinned and the computed ones — keep Plan's
+	// green, the fill they wore before Backlog took a hue of its own.
+	sectionStyle := theme.ViewModeActiveStyle
 	if row.StateGroup.IsValid() {
 		sectionStyle = theme.GetWorkflowStateGroupStyle(row.StateGroup)
 	}
@@ -296,8 +298,16 @@ func (m *OutlinerModel) RenderOutlinerSectionHeaderRow(row OutlinerRow, selected
 
 	paint := m.cursorPaintFor(selected)
 	accent := theme.LaneHeaderStyle(sectionStyle)
+	fill := accent.GetBackground()
+	var indicatorInk color.Color = accent.GetForeground()
+	if row.CollapseKey == projectNotesSectionKey {
+		// Notes are reference material, not a task lane: a muted heading on the
+		// row's own background, so the header never reads as a workflow state.
+		accent = theme.MutedStyle.Padding(0, 1)
+		fill, indicatorInk = nil, nil
+	}
 	gutter, content := renderSectionHeader(sectionHeaderOpts{
-		Fill:         accent.GetBackground(),
+		Fill:         fill,
 		Name:         displayName,
 		Count:        row.SectionCount,
 		Lifted:       row.SectionLifted,
@@ -306,7 +316,7 @@ func (m *OutlinerModel) RenderOutlinerSectionHeaderRow(row OutlinerRow, selected
 		Prefix:       prefix,
 		Cursor:       paint,
 		Attention:    m.renderHeaderAttention(row, paint),
-		IndicatorInk: accent.GetForeground(),
+		IndicatorInk: indicatorInk,
 	})
 
 	if row.ProjectID != "" {
