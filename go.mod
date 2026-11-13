@@ -16,9 +16,9 @@ require (
 
 require (
 	charm.land/bubbles/v2 v2.2.1
-	charm.land/bubbletea/v2 v2.1.0
+	charm.land/bubbletea/v2 v2.1.1
 	charm.land/glamour/v2 v2.0.1
-	charm.land/lipgloss/v2 v2.0.5
+	charm.land/lipgloss/v2 v2.1.0
 	github.com/charmbracelet/colorprofile v0.4.3
 	github.com/charmbracelet/ultraviolet v0.0.0-20261008173134-6b8d4baf91b4
 	github.com/rivo/uniseg v0.4.7
