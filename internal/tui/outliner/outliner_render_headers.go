@@ -447,22 +447,13 @@ func (m *OutlinerModel) RenderOutlinerProjectHeaderRow(row OutlinerRow, selected
 	return line
 }
 
-// appendProjectHeaderPressure names the overdue and Today-planned work a
-// project group holds, so folding the group does not hide what is urgent in it.
-// The suffix degrades before the row is truncated — today drops first, then
-// overdue — because a clipped count reads as a different number. Each chip
-// carries a word so it cannot be mistaken for the parenthesized group size beside
-// it. The Today count says "today" in the Plan vocabulary the rest of the chrome
-// speaks, never its capture sigil, and no clock, since Due mode heads its own
-// sections with ◷ and a clock there read as a deadline.
-// budget is the columns the content region has, which is the row width less the
-// gutter the cursor highlight owns.
-//
-// Both counts wear the same emphasis the rows' own deadline chips wear, because
-// a folded group hides exactly the rows that would have said it. They keep two
-// colors while doing so: OverdueCount is a deadline and takes the due family's
-// accent, TodayCount is durable Today membership and takes the Today group's, so
-// matching weight never turns a plan into a deadline.
+// appendProjectHeaderPressure keeps a folded group's overdue and Today-planned
+// counts visible. Whole chips drop before truncation, Today first, then overdue,
+// so a clipped count never reads as a different number. Words distinguish these
+// counts from the parenthesized group size; Today uses no sigil or deadline clock.
+// Both match deadline-chip emphasis but retain their own colors: the due accent
+// for overdue work, the Today accent for planning membership, keeping plans
+// distinct from deadlines. The budget excludes the cursor gutter.
 func appendProjectHeaderPressure(content string, row OutlinerRow, budget int) string {
 	var parts []string
 	if row.OverdueCount > 0 {
