@@ -34,6 +34,25 @@ enum TaskSchedule {
         }
     }
 
+    /// How long a deadline has been missed, the way a person says it: minutes
+    /// or hours on the day itself, then yesterday, days, weeks, and months.
+    /// The exact deadline stays in the task's details.
+    static func overdueSpan(_ date: Date, now: Date) -> String {
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: date),
+                                           to: calendar.startOfDay(for: now)).day ?? 0
+        switch days {
+        case ..<1:
+            let minutes = max(1, Int(now.timeIntervalSince(date) / 60))
+            return minutes < 60 ? "by \(minutes) min" : "by \(minutes / 60) h"
+        case 1: return "since yesterday"
+        case 2..<14: return "by \(days) days"
+        case 14..<60: return "by \(days / 7) weeks"
+        default:
+            let months = max(2, calendar.dateComponents([.month], from: date, to: now).month ?? days / 30)
+            return "by \(months) months"
+        }
+    }
+
     static func overdue(_ date: Date, now: Date) -> Bool {
         hasTime(date) ? date < now : calendar.startOfDay(for: date) < calendar.startOfDay(for: now)
     }
@@ -51,7 +70,7 @@ struct TaskAttention {
     init(task: TaskSnapshot, now: Date) {
         guard !task.state.isTerminal else { return }
         if let due = task.dueDate, TaskSchedule.overdue(due, now: now) {
-            label = "Overdue · \(TaskSchedule.deadline(due))"
+            label = "Overdue \(TaskSchedule.overdueSpan(due, now: now))"
             overdue = true
             showsDeadline = true
         } else if task.review {

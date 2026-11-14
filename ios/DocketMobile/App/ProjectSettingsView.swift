@@ -1,4 +1,5 @@
 import SwiftUI
+import DocketShared
 import DocketEngine
 
 /// One project's own fields and its lifecycle. Parking, archiving, and
@@ -25,38 +26,42 @@ struct ProjectSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                if let failure {
-                    Text(failure)
-                        .foregroundStyle(.red)
-                        .accessibilityIdentifier("project.failure")
-                }
-                if let detail {
-                    fields(detail.project)
-                    if !detail.project.archived {
-                        CommentsSection(
-                            comments: (detail.comments ?? []).reversed(),
-                            compose: { editing in commentRequest = CommentRequest(owner: .project(projectID), editing: editing) },
-                            delete: { comment in
-                                Task {
-                                    failure = await workspace.comment(.project(projectID), .delete(comment))
-                                    await load()
+                Group {
+                    if let failure {
+                        Text(failure)
+                            .foregroundStyle(.red)
+                            .accessibilityIdentifier("project.failure")
+                    }
+                    if let detail {
+                        fields(detail.project)
+                        if !detail.project.archived {
+                            CommentsSection(
+                                comments: (detail.comments ?? []).reversed(),
+                                compose: { editing in commentRequest = CommentRequest(owner: .project(projectID), editing: editing) },
+                                delete: { comment in
+                                    Task {
+                                        failure = await workspace.comment(.project(projectID), .delete(comment))
+                                        await load()
+                                    }
                                 }
+                            )
+                            Section("Notes") {
+                                NavigationLink(value: Route.notes(.project(projectID))) {
+                                    Label("Project Notes", systemImage: "note.text")
+                                }
+                                .accessibilityIdentifier("project.notes")
                             }
-                        )
-                        Section("Notes") {
-                            NavigationLink(value: Route.notes(.project(projectID))) {
-                                Label("Project Notes", systemImage: "note.text")
-                            }
-                            .accessibilityIdentifier("project.notes")
                         }
+                        if !detail.project.systemUnfiled {
+                            lifecycle(detail)
+                        }
+                    } else {
+                        ProgressView()
                     }
-                    if !detail.project.systemUnfiled {
-                        lifecycle(detail)
-                    }
-                } else {
-                    ProgressView()
                 }
+                .listRowBackground(DocketPalette.surface)
             }
+            .docketCanvas()
             .navigationTitle("Project")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

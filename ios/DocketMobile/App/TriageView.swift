@@ -406,9 +406,9 @@ struct TriageCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Label(projectName ?? "Inbox", systemImage: "folder")
+                Label(projectName ?? "Inbox", systemImage: projectName == nil ? "tray" : "folder.fill")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(projectName == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(DocketPalette.projectHue(task.projectID)))
                 Spacer()
                 Text("Captured \(task.createdAt, format: .relative(presentation: .named))")
                     .font(.footnote)

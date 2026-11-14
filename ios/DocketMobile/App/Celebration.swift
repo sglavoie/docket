@@ -9,6 +9,8 @@ enum Ritual: String, Identifiable, Hashable {
     case now
     /// Every task asking for review or a check-in, one after another.
     case review
+    /// The evening's close: what got done, what is left, and where it goes.
+    case recap
 
     var id: String { rawValue }
 }
@@ -29,43 +31,56 @@ struct CelebrationOverlay: View {
     private static let duration: TimeInterval = 2.2
 
     var body: some View {
-        ZStack {
-            if let start {
-                TimelineView(.animation) { timeline in
-                    Canvas { context, size in
-                        let elapsed = timeline.date.timeIntervalSince(start)
-                        for particle in particles {
-                            particle.draw(in: &context, size: size, elapsed: elapsed, duration: Self.duration)
+        GeometryReader { proxy in
+            ZStack {
+                if let start {
+                    TimelineView(.animation) { timeline in
+                        Canvas { context, size in
+                            let elapsed = timeline.date.timeIntervalSince(start)
+                            for particle in particles {
+                                particle.draw(in: &context, size: size, elapsed: elapsed, duration: Self.duration)
+                            }
                         }
                     }
                 }
+                if showingCheck {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 96, weight: .bold))
+                        .foregroundStyle(DocketPalette.brand)
+                        .transition(.opacity)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
-            if showingCheck {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 96, weight: .bold))
-                    .foregroundStyle(DocketPalette.brand)
-                    .transition(.opacity)
-            }
+            .onChange(of: trigger) { _, _ in play(in: proxy.frame(in: .global)) }
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
         .ignoresSafeArea()
-        .onChange(of: trigger) { _, _ in play() }
     }
 
-    private func play() {
-        if reduceMotion {
-            withAnimation(.easeIn(duration: 0.2)) { showingCheck = true }
-            Task {
+    /// The ring closes and its checkmark lands first; then the burst, the
+    /// chord, and the rising taps arrive together. With Today's ring on
+    /// screen the confetti bursts from it, otherwise from near the top.
+    private func play(in frame: CGRect) {
+        Task {
+            try? await Task.sleep(for: .milliseconds(reduceMotion ? 0 : 280))
+            SoundBoard.shared.play(.planDone)
+            HapticConductor.shared.planComplete()
+            if reduceMotion {
+                withAnimation(.easeIn(duration: 0.2)) { showingCheck = true }
                 try? await Task.sleep(for: .seconds(1.2))
                 withAnimation(.easeOut(duration: 0.4)) { showingCheck = false }
+                return
             }
-            return
-        }
-        particles = (0..<90).map { _ in ConfettiParticle.random() }
-        let begun = Date()
-        start = begun
-        Task {
+            let burst = workspace.delight.ringCenter.flatMap { center -> CGPoint? in
+                guard frame.width > 0, frame.height > 0 else { return nil }
+                return CGPoint(x: (center.x - frame.minX) / frame.width, y: (center.y - frame.minY) / frame.height)
+            }
+            particles = (0..<(burst == nil ? 90 : 110)).map { _ in
+                burst.map(ConfettiParticle.burst(from:)) ?? ConfettiParticle.random()
+            }
+            let begun = Date()
+            start = begun
             try? await Task.sleep(for: .seconds(Self.duration))
             if start == begun { start = nil }
         }
@@ -95,6 +110,17 @@ struct ConfettiParticle {
             color: DocketPalette.celebration.randomElement() ?? DocketPalette.brand,
             round: Bool.random() && Bool.random()
         )
+    }
+
+    /// A piece thrown outward in every direction from a point, leaning
+    /// upward, as if the ring itself burst.
+    static func burst(from origin: CGPoint) -> ConfettiParticle {
+        let angle = Double.random(in: 0...(2 * .pi))
+        let speed = Double.random(in: 260...700)
+        var particle = random()
+        particle.origin = origin
+        particle.velocity = CGVector(dx: cos(angle) * speed, dy: sin(angle) * speed - 260)
+        return particle
     }
 
     func draw(in context: inout GraphicsContext, size: CGSize, elapsed t: Double, duration: Double) {

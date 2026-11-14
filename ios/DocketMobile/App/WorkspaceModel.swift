@@ -82,6 +82,8 @@ final class WorkspaceModel {
     /// The focus session running now, if any.
     var focus: FocusSession?
     let activities = LiveActivityController()
+    /// Motion and sound that answer the person's own actions.
+    let delight = DelightCenter()
     @ObservationIgnored var pulseRequest = 0
     @ObservationIgnored var queueObserver: DarwinObserver?
     @ObservationIgnored var drainingActions = false
@@ -429,7 +431,10 @@ final class WorkspaceModel {
             }
             changed(.localChange)
             sync.exchange()
-            if !result.committed.transactionID.isEmpty, let kind = action.tactileKind { signal(kind) }
+            if !result.committed.transactionID.isEmpty, let kind = action.tactileKind {
+                signal(kind)
+                if case .transition(.done) = action { SoundBoard.shared.play(.complete) }
+            }
             var message = action.message(title: result.task.title)
             // Resuming reads back where the person left off.
             if case .transition(.doing) = action, let note = result.task.resumeNote, !note.isEmpty {

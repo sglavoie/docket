@@ -3,7 +3,8 @@ import XCTest
 
 /// The daily loop on the seeded workspace: the Today header, Start the Day
 /// triage, the Now screen and its focus session, Peek, the capture button's
-/// menu, and the capture grammar's colors. Each test keeps screenshots of the
+/// menu, the capture grammar's colors, completing from a row's circle,
+/// Today's suggestions from Next, and Wrap Up. Each test keeps screenshots of the
 /// states it reaches.
 final class DailyLoopUITests: XCTestCase {
     private struct MissingInput: Error {}
@@ -101,6 +102,48 @@ final class DailyLoopUITests: XCTestCase {
         eventually("the capture opens prefilled") { (editor.value as? String)?.hasPrefix("$today") == true }
         editor.typeText("Book dentist #health @friday !2")
         keep(app, "Capture grammar colors")
+    }
+
+    func testTappingARowsCircleCompletesItInPlace() throws {
+        let app = try launchSeeded()
+        let target = row(app, "Order bathroom tiles")
+        require(target, "the Today row")
+        // The circle answers its own tap: a touch over the state glyph, not
+        // the row's centre, completes the task without opening it.
+        target.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 34, dy: 24)).tap()
+        XCTAssertFalse(app.staticTexts["detail.title"].waitForExistence(timeout: 1), "the circle opened the task")
+        requireAbsent(target, "the completed row")
+        eventually("the ring counts it") {
+            (app.descendants(matching: .any)["today.progress"].firstMatch.value as? String)?.hasPrefix("1 done") == true
+        }
+        keep(app, "Completed from the circle")
+    }
+
+    func testTodaySuggestsWorkFromNextAndPlansItOnlyWhenAsked() throws {
+        let app = try launchSeeded()
+        let add = app.buttons["today.suggested.add"].firstMatch
+        require(add, "a suggestion from Next")
+        keep(app, "Suggested from Next")
+        let title = add.label.replacingOccurrences(of: "Add ", with: "").replacingOccurrences(of: " to Today", with: "")
+        add.tap()
+        require(row(app, title), "the suggestion planned for Today")
+        requireAbsent(app.buttons["Add \(title) to Today"], "the spent suggestion")
+    }
+
+    func testWrapUpClosesTheDayWithoutWritingUntilAsked() throws {
+        let app = try launchSeeded()
+        app.buttons["capture.open"].press(forDuration: 1.2)
+        require(app.buttons["Wrap Up"], "the capture menu's Wrap Up")
+        app.buttons["Wrap Up"].tap()
+        require(app.staticTexts["recap.headline"], "the Wrap Up headline")
+        require(app.descendants(matching: .any)["recap.week"].firstMatch, "the week's rhythm")
+        keep(app, "Wrap Up")
+        press(app, "recap.keep")
+        require(app.staticTexts["recap.goodnight"], "the closing card")
+        keep(app, "Wrap Up closing card")
+        press(app, "recap.goodnight.close")
+        requireAbsent(app.staticTexts["recap.goodnight"], "Wrap Up")
+        require(row(app, "Ship beta build"), "Today, unchanged")
     }
 
     // MARK: Helpers

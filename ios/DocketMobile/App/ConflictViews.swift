@@ -1,4 +1,5 @@
 import SwiftUI
+import DocketShared
 import DocketEngine
 
 /// The open sync conflicts, read from this iPhone's own history so they are
@@ -92,62 +93,66 @@ struct ConflictDetailView: View {
 
     var body: some View {
         List {
-            if let readFailure = read.failure {
-                Section {
-                    Text(readFailure).foregroundStyle(.red)
-                        .accessibilityIdentifier("conflict.read.failure")
-                    Button("Retry") { Task { await load(preferring: conflict?.id ?? conflictID) } }
-                        .disabled(read.loading)
-                        .accessibilityIdentifier("conflict.retry")
-                }
-            }
-            if let failure {
-                Section {
-                    Text(failure)
-                        .foregroundStyle(.red)
-                        .accessibilityIdentifier("conflict.failure")
-                }
-            }
-            if let conflict {
-                Section {
-                    Text(conflict.label).font(.headline).accessibilityIdentifier("conflict.label")
-                    Text(conflict.path).font(.caption.monospaced()).foregroundStyle(.secondary)
-                    if !conflict.details.isEmpty {
-                        ForEach(Array(conflict.details.enumerated()), id: \.offset) { _, detail in
-                            Text(describe(detail)).font(.footnote).accessibilityIdentifier("conflict.detail")
-                        }
+            Group {
+                if let readFailure = read.failure {
+                    Section {
+                        Text(readFailure).foregroundStyle(.red)
+                            .accessibilityIdentifier("conflict.read.failure")
+                        Button("Retry") { Task { await load(preferring: conflict?.id ?? conflictID) } }
+                            .disabled(read.loading)
+                            .accessibilityIdentifier("conflict.retry")
                     }
-                } footer: {
-                    Text("Every version is kept until you choose. Nothing was chosen by time.")
                 }
-                Section("Started from") {
-                    contentView(conflict.base, key: "base", missing: "The file did not exist yet.")
-                        .accessibilityIdentifier("conflict.base")
-                }
-                ForEach(conflict.versions) { version in
-                    versionSection(conflict, version)
-                }
-                Section {
-                    Button("Keep What This iPhone Has Now") { Task { await resolve(.current) } }
-                        .accessibilityIdentifier("conflict.keepCurrent")
-                        .disabled(working)
-                    if conflict.replaceable {
-                        Button("Write a Replacement…") {
-                            replacementFailure = nil
-                            replacing = true
-                        }
-                        .accessibilityIdentifier("conflict.replace")
-                        .disabled(working)
+                if let failure {
+                    Section {
+                        Text(failure)
+                            .foregroundStyle(.red)
+                            .accessibilityIdentifier("conflict.failure")
                     }
-                } footer: {
-                    Text("A resolution is a new change: it syncs to your other devices at the next exchange.")
                 }
-            } else if gone {
-                Text("This conflict is resolved.").accessibilityIdentifier("conflict.gone")
-            } else if read.loading {
-                ProgressView("Loading conflict…")
+                if let conflict {
+                    Section {
+                        Text(conflict.label).font(.headline).accessibilityIdentifier("conflict.label")
+                        Text(conflict.path).font(.caption.monospaced()).foregroundStyle(.secondary)
+                        if !conflict.details.isEmpty {
+                            ForEach(Array(conflict.details.enumerated()), id: \.offset) { _, detail in
+                                Text(describe(detail)).font(.footnote).accessibilityIdentifier("conflict.detail")
+                            }
+                        }
+                    } footer: {
+                        Text("Every version is kept until you choose. Nothing was chosen by time.")
+                    }
+                    Section("Started from") {
+                        contentView(conflict.base, key: "base", missing: "The file did not exist yet.")
+                            .accessibilityIdentifier("conflict.base")
+                    }
+                    ForEach(conflict.versions) { version in
+                        versionSection(conflict, version)
+                    }
+                    Section {
+                        Button("Keep What This iPhone Has Now") { Task { await resolve(.current) } }
+                            .accessibilityIdentifier("conflict.keepCurrent")
+                            .disabled(working)
+                        if conflict.replaceable {
+                            Button("Write a Replacement…") {
+                                replacementFailure = nil
+                                replacing = true
+                            }
+                            .accessibilityIdentifier("conflict.replace")
+                            .disabled(working)
+                        }
+                    } footer: {
+                        Text("A resolution is a new change: it syncs to your other devices at the next exchange.")
+                    }
+                } else if gone {
+                    Text("This conflict is resolved.").accessibilityIdentifier("conflict.gone")
+                } else if read.loading {
+                    ProgressView("Loading conflict…")
+                }
             }
+            .listRowBackground(DocketPalette.surface)
         }
+        .docketCanvas()
         .navigationTitle("Conflict")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load(preferring: conflictID) }

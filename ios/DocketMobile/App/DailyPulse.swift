@@ -67,7 +67,8 @@ struct DailyPulse: Equatable, Sendable {
     static func sentence(_ move: Move) -> String {
         switch move {
         case .overdue(let count):
-            count == 1 ? "One task is overdue. Start there." : "\(count) tasks are overdue. Start there."
+            // A missed deadline is a place to begin, not a verdict.
+            count == 1 ? "One task slipped past its deadline. A good place to begin." : "\(count) tasks slipped past their deadlines. Pick one to begin."
         case .startDay(let count):
             count == 1 ? "One capture is waiting. Start the day by sorting it." : "\(count) captures are waiting. Start the day by sorting them."
         case .triage(let count):

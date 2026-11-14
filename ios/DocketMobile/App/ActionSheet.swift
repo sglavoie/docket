@@ -1,5 +1,6 @@
 import Observation
 import SwiftUI
+import DocketShared
 
 /// A selection hands its next presentation to the sheet's actual onDismiss
 /// callback. No timer can open a stale dialog after navigation has moved on.
@@ -33,7 +34,8 @@ struct ActionSheet<Actions: View>: View {
 
     var body: some View {
         NavigationStack {
-            List { actions() }
+            List { actions().listRowBackground(DocketPalette.surface) }
+                .docketCanvas()
                 .accessibilityIdentifier("actions.sheet")
                 .navigationTitle(title)
                 .navigationBarTitleDisplayMode(.inline)

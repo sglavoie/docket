@@ -32,8 +32,7 @@ struct NowView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                LinearGradient(colors: [DocketPalette.navy, DocketPalette.navyDeep], startPoint: .top, endPoint: .bottom)
-                    .ignoresSafeArea()
+                FocusBackdrop(session: workspace.focus)
                 if !loaded {
                     ProgressView().controlSize(.large)
                 } else if doing.isEmpty {
@@ -75,6 +74,19 @@ struct NowView: View {
             if let refusal { failure = refusal } else { transition(task, to: .paused) }
         }
         .task(id: workspace.generation) { await load() }
+        .task(id: workspace.focus) { await chimeAtFocusEnd(workspace.focus) }
+    }
+
+    /// While Now is open, a focus session ending is heard and felt here: the
+    /// Lock Screen notice covers the times Docket is not in front.
+    private func chimeAtFocusEnd(_ session: FocusSession?) async {
+        guard let session else { return }
+        let remaining = session.end.timeIntervalSinceNow
+        guard remaining > 0 else { return }
+        try? await Task.sleep(for: .seconds(remaining))
+        guard !Task.isCancelled, workspace.focus == session else { return }
+        SoundBoard.shared.play(.focusEnd)
+        HapticConductor.shared.focusEnd()
     }
 
     private var current: TaskSnapshot? {
@@ -389,5 +401,42 @@ struct NowView: View {
     static func clock(_ interval: TimeInterval) -> String {
         let seconds = Int(interval.rounded(.up))
         return String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+}
+
+/// Now's backdrop: the icon's navy, slowly breathing, warming toward the
+/// Doing hue as a focus session runs and settling into the brand's mint when
+/// its time is up. Under Reduce Motion it holds still and only the warmth
+/// changes, a step each minute.
+struct FocusBackdrop: View {
+    let session: FocusSession?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1 / 20, paused: reduceMotion && session == nil)) { timeline in
+            let now = timeline.date
+            let t = reduceMotion ? 0 : now.timeIntervalSinceReferenceDate
+            let progress = session.map { min(1, max(0, $0.progress(at: now))) } ?? 0
+            let finished = session.map { $0.remaining(at: now) <= 0 } ?? false
+            let drift = Float(sin(t / 6) * 0.07)
+            let lift = Float(cos(t / 9) * 0.05)
+            let glow = finished ? DocketPalette.brand : DocketPalette.state("doing")
+            let warmth = finished ? 0.32 : 0.06 + 0.3 * progress
+            MeshGradient(
+                width: 3, height: 3,
+                points: [
+                    [0, 0], [0.5, 0], [1, 0],
+                    [0, 0.5], [0.5 + drift, 0.5 + lift], [1, 0.5],
+                    [0, 1], [0.5 - drift, 1], [1, 1],
+                ],
+                colors: [
+                    DocketPalette.navy, DocketPalette.navy, DocketPalette.navyDeep,
+                    DocketPalette.navyDeep, DocketPalette.navy.mix(with: glow, by: warmth * 0.6), DocketPalette.navyDeep,
+                    DocketPalette.navyDeep.mix(with: glow, by: warmth), DocketPalette.navyDeep.mix(with: glow, by: warmth * 0.8), DocketPalette.navyDeep,
+                ]
+            )
+            .animation(.easeInOut(duration: 1.2), value: finished)
+        }
+        .ignoresSafeArea()
     }
 }

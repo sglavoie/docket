@@ -67,6 +67,9 @@ struct MainTabView: View {
     let workspace: WorkspaceModel
     @State private var presentation = ShellPresentation()
     @State private var tab: ShellTab = .today
+    /// Where rows and ritual chips register so the screens they open can
+    /// zoom out of them.
+    @Namespace private var zoom
 
     var body: some View {
         TabView(selection: $tab) {
@@ -106,13 +109,21 @@ struct MainTabView: View {
             .padding(.trailing, 20)
             .padding(.bottom, 64)
         }
+        .environment(\.zoomNamespace, zoom)
+        .overlay { CompletionFlightOverlay(delight: workspace.delight) }
+        .overlay { CaptureFlightOverlay(delight: workspace.delight) }
         .overlay { CelebrationOverlay(workspace: workspace) }
         .fullScreenCover(item: Binding(get: { workspace.ritual }, set: { workspace.ritual = $0 })) { ritual in
-            switch ritual {
-            case .startDay: TriageView(workspace: workspace)
-            case .now: NowView(workspace: workspace)
-            case .review: ReviewPassView(workspace: workspace)
+            Group {
+                switch ritual {
+                case .startDay: TriageView(workspace: workspace)
+                case .now: NowView(workspace: workspace)
+                case .review: ReviewPassView(workspace: workspace)
+                case .recap: RecapView(workspace: workspace)
+                }
             }
+            .environment(\.zoomNamespace, zoom)
+            .zoomDestination(ritual)
         }
         .background { TabShortcuts(tab: $tab, capture: { presentation.show(.capture()) }) }
         .tactileFeedback(workspace)
@@ -208,6 +219,7 @@ struct MainTabView: View {
             case .startDay: .startDay
             case .now: .now
             case .review: .review
+            case .recap: .recap
             }
         case .task(_, let projectID, let taskID):
             let locator = TaskLocator(projectID: projectID, taskID: taskID)
@@ -309,7 +321,9 @@ private struct ShellChrome: ViewModifier {
     }
 
     private var syncSymbol: String {
-        if !workspace.sync.hasFolder { return "icloud.slash" }
+        // Sync not set up is a choice, not a fault: a plain outline, never a
+        // struck-through cloud that reads as broken.
+        if !workspace.sync.hasFolder { return "icloud" }
         if workspace.sync.conflicts > 0 || workspace.sync.lastError != nil { return "exclamationmark.icloud" }
         return "checkmark.icloud"
     }
@@ -326,34 +340,44 @@ struct SyncView: View {
     var body: some View {
         NavigationStack {
             List {
-                SyncStatusSection(sync: workspace.sync, chooseFolder: { choosingFolder = true })
-                ConflictsSection(workspace: workspace, notice: $conflictNotice)
-                Section("Workspace") {
-                    LabeledContent("Name", value: workspace.location?.name ?? "—")
-                    if let status = workspace.status {
-                        SyncDetailsButton(title: "Workspace details", expanded: $showingWorkspaceDetails)
-                            .accessibilityIdentifier("sync.workspaceDetails")
-                        if showingWorkspaceDetails {
-                            LabeledContent("Identity", value: String(status.workspace.prefix(8)))
-                            LabeledContent("Catalog schema", value: "\(status.schemas.catalog)")
+                Group {
+                    SyncStatusSection(sync: workspace.sync, chooseFolder: { choosingFolder = true })
+                    ConflictsSection(workspace: workspace, notice: $conflictNotice)
+                    Section("Workspace") {
+                        LabeledContent("Name", value: workspace.location?.name ?? "—")
+                        if let status = workspace.status {
+                            SyncDetailsButton(title: "Workspace details", expanded: $showingWorkspaceDetails)
+                                .accessibilityIdentifier("sync.workspaceDetails")
+                            if showingWorkspaceDetails {
+                                LabeledContent("Identity", value: String(status.workspace.prefix(8)))
+                                LabeledContent("Catalog schema", value: "\(status.schemas.catalog)")
+                            }
                         }
+                        Button("Choose Another Workspace…") {
+                            dismiss()
+                            workspace.chooseAnotherWorkspace()
+                        }
+                        .accessibilityIdentifier("workspace.switch")
                     }
-                    Button("Choose Another Workspace…") {
-                        dismiss()
-                        workspace.chooseAnotherWorkspace()
+                    Section {
+                        NavigationLink {
+                            ReminderSettingsView(reminders: workspace.reminders)
+                        } label: {
+                            LabeledContent("Reminders", value: workspace.reminders.summary)
+                        }
+                        .accessibilityIdentifier("reminders.open")
+                        NavigationLink {
+                            FeelSettingsView()
+                        } label: {
+                            Text("Sounds & Icon")
+                        }
+                        .accessibilityIdentifier("feel.open")
                     }
-                    .accessibilityIdentifier("workspace.switch")
+                    SyncRecoverySection(workspace: workspace)
                 }
-                Section {
-                    NavigationLink {
-                        ReminderSettingsView(reminders: workspace.reminders)
-                    } label: {
-                        LabeledContent("Reminders", value: workspace.reminders.summary)
-                    }
-                    .accessibilityIdentifier("reminders.open")
-                }
-                SyncRecoverySection(workspace: workspace)
+                .listRowBackground(DocketPalette.surface)
             }
+            .docketCanvas()
             .navigationTitle("Sync")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -371,7 +395,9 @@ struct SyncView: View {
 
 /// The floating capture button. A tap opens capture; a long press offers
 /// capture straight into Today or Next, and the rituals worth opening now.
-/// While work is in progress it wears a small orange dot.
+/// While work is in progress it wears a small Doing badge whose halo breathes
+/// as work starts, so the running task reads as live rather than as an
+/// unexplained dot.
 private struct CaptureButton: View {
     let workspace: WorkspaceModel
     let capture: (String?) -> Void
@@ -396,6 +422,7 @@ private struct CaptureButton: View {
                     Button("Start the Day", systemImage: "sunrise") { ritual(.startDay) }
                 }
                 Button("Review", systemImage: "checkmark.seal") { ritual(.review) }
+                Button("Wrap Up", systemImage: "moon.stars") { ritual(.recap) }
             }
         } label: {
             Image(systemName: "plus")
@@ -406,11 +433,9 @@ private struct CaptureButton: View {
                 .shadow(color: DocketPalette.brand.opacity(0.35), radius: 8, y: 4)
                 .overlay(alignment: .topTrailing) {
                     if doingCount > 0 {
-                        Circle()
-                            .fill(DocketPalette.state("doing"))
-                            .frame(width: 14, height: 14)
-                            .overlay(Circle().stroke(Color(uiColor: .systemBackground), lineWidth: 2))
-                            .transition(.scale)
+                        DoingBadge()
+                            .offset(x: 4, y: -4)
+                            .transition(.scale.combined(with: .opacity))
                             .accessibilityHidden(true)
                     }
                 }
@@ -420,8 +445,48 @@ private struct CaptureButton: View {
         .menuStyle(.button)
         .buttonStyle(.plain)
         .accessibilityLabel("Capture")
+        .accessibilityValue(doingCount > 0 ? (doingCount == 1 ? "One task in progress" : "\(doingCount) tasks in progress") : "")
         .accessibilityHint("Touch and hold for more ways to capture and the daily rituals.")
         .accessibilityIdentifier("capture.open")
     }
 }
 
+
+/// The capture button's sign of work in progress: the Doing hue around a play
+/// glyph, whose halo breathes three times when work starts and then rests, so
+/// it catches the eye without pulling at it, and the app can fall idle.
+/// Still under Reduce Motion.
+private struct DoingBadge: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var breaths = 0
+
+    var body: some View {
+        ZStack {
+            if !reduceMotion {
+                Circle()
+                    .fill(DocketPalette.state("doing").opacity(0.35))
+                    .frame(width: 20, height: 20)
+                    .keyframeAnimator(initialValue: 0.0, trigger: breaths) { halo, phase in
+                        halo.scaleEffect(1 + 0.7 * phase).opacity(phase == 0 ? 0 : 1 - phase)
+                    } keyframes: { _ in
+                        LinearKeyframe(0.0, duration: 0.01)
+                        CubicKeyframe(1.0, duration: 1.6)
+                        LinearKeyframe(0.0, duration: 0.01)
+                        CubicKeyframe(1.0, duration: 1.6)
+                        LinearKeyframe(0.0, duration: 0.01)
+                        CubicKeyframe(1.0, duration: 1.6)
+                        LinearKeyframe(0.0, duration: 0.01)
+                    }
+            }
+            Circle()
+                .fill(DocketPalette.Solid.doing)
+                .frame(width: 20, height: 20)
+                .overlay(Circle().stroke(Color(uiColor: .systemBackground), lineWidth: 2))
+            Image(systemName: "play.fill")
+                .font(.system(size: 8, weight: .heavy))
+                .foregroundStyle(.white)
+                .offset(x: 0.5)
+        }
+        .onAppear { breaths += 1 }
+    }
+}

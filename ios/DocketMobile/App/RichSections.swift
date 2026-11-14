@@ -1,4 +1,5 @@
 import SwiftUI
+import DocketShared
 import DocketEngine
 import UIKit
 
@@ -91,16 +92,20 @@ struct CommentEditorSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                DraftRecoveryNotice(store: workspace.drafts, key: .comment(request.id))
-                if let failure {
-                    Text(failure)
-                        .foregroundStyle(.red)
-                        .accessibilityIdentifier("comment.failure")
+                Group {
+                    DraftRecoveryNotice(store: workspace.drafts, key: .comment(request.id))
+                    if let failure {
+                        Text(failure)
+                            .foregroundStyle(.red)
+                            .accessibilityIdentifier("comment.failure")
+                    }
+                    TextEditor(text: $text)
+                        .frame(minHeight: 160)
+                        .accessibilityIdentifier("comment.text")
                 }
-                TextEditor(text: $text)
-                    .frame(minHeight: 160)
-                    .accessibilityIdentifier("comment.text")
+                .listRowBackground(DocketPalette.surface)
             }
+            .docketCanvas()
             .navigationTitle(request.editing == nil ? "Add Comment" : "Edit Comment")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

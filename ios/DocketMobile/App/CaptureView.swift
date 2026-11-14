@@ -1,4 +1,5 @@
 import SwiftUI
+import DocketShared
 import DocketEngine
 
 /// Capture, two ways over one engine: shorthand text read by the desktop's own
@@ -29,6 +30,10 @@ struct CaptureSheet: View {
     @State private var suggestedFor: SuggestionKey?
     @FocusState private var fieldFocus: TaskField?
     @State private var correction: TaskField?
+    /// Whether the clipboard holds a link, asked without reading it, so the
+    /// paste offer appears without the system's paste prompt.
+    @State private var clipboardHasLink = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private static let destinations: [CaptureDestination] = [.inbox, .today, .next, .backlog, .doing, .waiting]
 
@@ -36,24 +41,28 @@ struct CaptureSheet: View {
         NavigationStack {
             ScrollViewReader { scroll in
                 Form {
-                    DraftRecoveryNotice(store: workspace.drafts, key: .capture)
-                    Picker("Capture as", selection: $draft.mode) {
-                        Text("Quick").tag(CaptureDraft.Mode.quick)
-                        Text("Form").tag(CaptureDraft.Mode.form)
+                    Group {
+                        DraftRecoveryNotice(store: workspace.drafts, key: .capture)
+                        Picker("Capture as", selection: $draft.mode) {
+                            Text("Quick").tag(CaptureDraft.Mode.quick)
+                            Text("Form").tag(CaptureDraft.Mode.form)
+                        }
+                        .pickerStyle(.segmented)
+                        .accessibilityIdentifier("capture.mode")
+                        if restored {
+                            Label("Restored your unsaved capture", systemImage: "arrow.uturn.backward.circle")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .accessibilityIdentifier("capture.restored")
+                        }
+                        switch draft.mode {
+                        case .quick: quick
+                        case .form: form
+                        }
                     }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier("capture.mode")
-                    if restored {
-                        Label("Restored your unsaved capture", systemImage: "arrow.uturn.backward.circle")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .accessibilityIdentifier("capture.restored")
-                    }
-                    switch draft.mode {
-                    case .quick: quick
-                    case .form: form
-                    }
+                    .listRowBackground(DocketPalette.surface)
                 }
+                .docketCanvas()
                 .onChange(of: correction) { _, field in
                     if let field { scroll.scrollTo(field, anchor: .center) }
                 }
@@ -137,7 +146,14 @@ struct CaptureSheet: View {
                     }
                 }
                 focused = true
+                clipboardHasLink = UIPasteboard.general.hasURLs
                 projects = (try? await workspace.engine.projects().active) ?? []
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIPasteboard.changedNotification)) { _ in
+                clipboardHasLink = UIPasteboard.general.hasURLs
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                clipboardHasLink = UIPasteboard.general.hasURLs
             }
             .onChange(of: draft) { _, draft in
                 guard loaded else { return }
@@ -212,6 +228,29 @@ struct CaptureSheet: View {
                             .accessibilityHidden(true)
                     }
                 }
+            if clipboardHasLink, !draft.text.contains("&http") {
+                // The system's paste control reads the clipboard only when
+                // tapped, so offering it never raises the paste prompt.
+                HStack(spacing: 10) {
+                    Image(systemName: "link")
+                        .foregroundStyle(DocketPalette.next)
+                        .accessibilityHidden(true)
+                    Text("Link on the clipboard")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 8)
+                    PasteButton(payloadType: URL.self) { urls in
+                        guard let url = urls.first else { return }
+                        Task { @MainActor in attach(url) }
+                    }
+                    .labelStyle(.titleAndIcon)
+                    .buttonBorderShape(.capsule)
+                    .tint(DocketPalette.next)
+                    .controlSize(.small)
+                    .accessibilityIdentifier("capture.pasteLink")
+                }
+                .accessibilityElement(children: .contain)
+            }
             if suggestedFor == suggestionKey, !suggestions.isEmpty {
                 ScrollView(.horizontal) {
                     HStack {
@@ -258,6 +297,48 @@ struct CaptureSheet: View {
                     .accessibilityIdentifier("capture.preview.line")
                 }
             }
+        }
+    }
+
+    /// Adds a pasted link to the line the caret is on as an `&link`. An empty
+    /// draft keeps the caret ahead of it, ready for the title.
+    private func attach(_ url: URL) {
+        let token = "&\(url.absoluteString)"
+        let text = draft.text as NSString
+        if draft.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            draft.text = " " + token
+            selection = NSRange(location: 0, length: 0)
+        } else {
+            let caret = min(selection.location, text.length)
+            let before = caret > 0 && !(text.substring(with: NSRange(location: caret - 1, length: 1)).first?.isWhitespace ?? true) ? " " : ""
+            let inserted = before + token + " "
+            draft.text = text.replacingCharacters(in: NSRange(location: caret, length: 0), with: inserted)
+            selection = NSRange(location: caret + (inserted as NSString).length, length: 0)
+        }
+        clipboardHasLink = false
+        focused = true
+    }
+
+    /// What the saved capture's flight says and where it lands: the first
+    /// title, or a count for several lines, flying to Today, the Inbox, or
+    /// Browse for everything else.
+    private func flight(for submitted: CaptureDraft) -> (title: String, tab: ShellTab) {
+        switch submitted.mode {
+        case .form:
+            let tab: ShellTab = switch submitted.destination {
+            case .today: .today
+            case .inbox: .inbox
+            default: .browse
+            }
+            return (submitted.fields.title.trimmingCharacters(in: .whitespacesAndNewlines), tab)
+        case .quick:
+            let lines = preview.current(for: submitted.text)?.lines ?? []
+            let count = max(lines.count, submitted.text.split(whereSeparator: \.isNewline)
+                .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count)
+            let first = lines.first
+            let tab: ShellTab = if first?.plan == "today" { .today } else if first?.state == .inbox || first == nil { .inbox } else { .browse }
+            let title = count > 1 ? "\(count) tasks captured" : (first?.title ?? submitted.text.trimmingCharacters(in: .whitespacesAndNewlines))
+            return (title, tab)
         }
     }
 
@@ -331,6 +412,8 @@ struct CaptureSheet: View {
             }
             if draft == submitted,
                store == nil || revision.map({ store?.finishCapture(submitted, revision: $0) == true }) == true {
+                let landing = flight(for: submitted)
+                workspace.delight.launchCapture(title: landing.title, tab: landing.tab, reduceMotion: reduceMotion)
                 dismiss()
             } else {
                 savedEarlier = "Saved the submitted capture. Your newer draft is still open."

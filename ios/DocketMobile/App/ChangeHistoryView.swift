@@ -1,4 +1,5 @@
 import SwiftUI
+import DocketShared
 import Observation
 import DocketEngine
 
@@ -47,46 +48,50 @@ struct ChangeHistoryView: View {
 
     var body: some View {
         List {
-            HistoryRecoverySection(workspace: workspace, model: model)
-            if let failure = model.failure {
-                Section {
-                    Text(failure).foregroundStyle(.red).textSelection(.enabled)
-                    Button("Retry") { Task { await model.load(engine: workspace.engine) } }
-                        .accessibilityIdentifier("history.retry")
-                }
-            } else if let history = model.history {
-                if history.entries.isEmpty {
-                    ContentUnavailableView("No retained changes", systemImage: "clock.arrow.circlepath",
-                                           description: Text("Changes you make on this device will appear here."))
-                        .accessibilityIdentifier("history.empty")
-                } else {
-                    Section("Changes, newest first") {
-                        ForEach(history.entries) { entry in
-                            NavigationLink {
-                                HistoryDetailView(workspace: workspace, model: model, entry: entry)
-                            } label: {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(entry.description)
-                                    Text(entry.projects.joined(separator: ", "))
-                                        .font(.subheadline).foregroundStyle(.secondary)
-                                    Text(entry.at, format: .dateTime.month().day().hour().minute())
-                                        .font(.caption).foregroundStyle(.secondary)
-                                    Text(entry.undone ? "Undone" : "Applied")
-                                        .font(.caption.weight(.medium))
+            Group {
+                HistoryRecoverySection(workspace: workspace, model: model)
+                if let failure = model.failure {
+                    Section {
+                        Text(failure).foregroundStyle(.red).textSelection(.enabled)
+                        Button("Retry") { Task { await model.load(engine: workspace.engine) } }
+                            .accessibilityIdentifier("history.retry")
+                    }
+                } else if let history = model.history {
+                    if history.entries.isEmpty {
+                        ContentUnavailableView("No retained changes", systemImage: "clock.arrow.circlepath",
+                                               description: Text("Changes you make on this device will appear here."))
+                            .accessibilityIdentifier("history.empty")
+                    } else {
+                        Section("Changes, newest first") {
+                            ForEach(history.entries) { entry in
+                                NavigationLink {
+                                    HistoryDetailView(workspace: workspace, model: model, entry: entry)
+                                } label: {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(entry.description)
+                                        Text(entry.projects.joined(separator: ", "))
+                                            .font(.subheadline).foregroundStyle(.secondary)
+                                        Text(entry.at, format: .dateTime.month().day().hour().minute())
+                                            .font(.caption).foregroundStyle(.secondary)
+                                        Text(entry.undone ? "Undone" : "Applied")
+                                            .font(.caption.weight(.medium))
+                                    }
                                 }
+                                .accessibilityIdentifier("history.entry.\(entry.id)")
                             }
-                            .accessibilityIdentifier("history.entry.\(entry.id)")
                         }
                     }
+                } else {
+                    ProgressView("Loading changes…")
                 }
-            } else {
-                ProgressView("Loading changes…")
+                Section {
+                    Text("History keeps up to 50 transactions made on this device and survives restarting Docket. It does not list every synced change. A new change clears redo.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
             }
-            Section {
-                Text("History keeps up to 50 transactions made on this device and survives restarting Docket. It does not list every synced change. A new change clears redo.")
-                    .font(.footnote).foregroundStyle(.secondary)
-            }
+            .listRowBackground(DocketPalette.surface)
         }
+        .docketCanvas()
         .contentMargins(.bottom, 72, for: .scrollContent)
         .navigationTitle("Change History")
         .accessibilityIdentifier("history.list")
@@ -147,38 +152,42 @@ private struct HistoryDetailView: View {
 
     var body: some View {
         List {
-            Section {
-                Text(entry.description).font(.headline)
-                Text(entry.at, format: .dateTime.year().month().day().hour().minute().second())
-                Text(entry.projects.joined(separator: ", "))
-                if let current = model.history?.entries.first(where: { $0.id == entry.id }) {
-                    Text(current.undone ? "Undone" : "Applied")
-                        .accessibilityIdentifier("history.detail.state")
-                }
-                Text("Original before → after values. Undo reverses this direction. Recovery checks current data and may refuse if affected fields were edited elsewhere.")
-                    .font(.footnote).foregroundStyle(.secondary)
-            }
-            HistoryRecoverySection(workspace: workspace, model: model)
-            if let failure {
-                Section("Details unavailable") {
-                    Text(failure).foregroundStyle(.red).textSelection(.enabled)
-                    Button("Retry") { Task { await load() } }
-                        .accessibilityIdentifier("history.detail.retry")
-                }
-            } else if let changes {
-                ForEach(Array(changes.enumerated()), id: \.offset) { index, change in
-                    Section {
-                        LabeledContent("Field", value: change.field)
-                        value("Before", change.before, identifier: "history.change.\(index).before")
-                        value("After", change.after, identifier: "history.change.\(index).after")
-                    } header: {
-                        Text(change.entity)
+            Group {
+                Section {
+                    Text(entry.description).font(.headline)
+                    Text(entry.at, format: .dateTime.year().month().day().hour().minute().second())
+                    Text(entry.projects.joined(separator: ", "))
+                    if let current = model.history?.entries.first(where: { $0.id == entry.id }) {
+                        Text(current.undone ? "Undone" : "Applied")
+                            .accessibilityIdentifier("history.detail.state")
                     }
+                    Text("Original before → after values. Undo reverses this direction. Recovery checks current data and may refuse if affected fields were edited elsewhere.")
+                        .font(.footnote).foregroundStyle(.secondary)
                 }
-            } else {
-                ProgressView("Loading details…")
+                HistoryRecoverySection(workspace: workspace, model: model)
+                if let failure {
+                    Section("Details unavailable") {
+                        Text(failure).foregroundStyle(.red).textSelection(.enabled)
+                        Button("Retry") { Task { await load() } }
+                            .accessibilityIdentifier("history.detail.retry")
+                    }
+                } else if let changes {
+                    ForEach(Array(changes.enumerated()), id: \.offset) { index, change in
+                        Section {
+                            LabeledContent("Field", value: change.field)
+                            value("Before", change.before, identifier: "history.change.\(index).before")
+                            value("After", change.after, identifier: "history.change.\(index).after")
+                        } header: {
+                            Text(change.entity)
+                        }
+                    }
+                } else {
+                    ProgressView("Loading details…")
+                }
             }
+            .listRowBackground(DocketPalette.surface)
         }
+        .docketCanvas()
         .contentMargins(.bottom, 72, for: .scrollContent)
         .navigationTitle("Change Details")
         .accessibilityIdentifier("history.detail")

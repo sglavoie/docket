@@ -125,13 +125,16 @@ struct TaskListView: View {
     @State private var pausing: TaskSnapshot?
     /// The row whose Peek is open.
     @State private var peekRow: TaskRow?
+    /// Today's offer from Next: a few open tasks the person could plan, which
+    /// write nothing until one is added.
+    @State private var suggested: [TaskQueryItem] = []
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// How long a completed row stays drawn as done before the reload that
     /// removes it.
-    static let completionAcknowledgement: Duration = .milliseconds(450)
+    static let completionAcknowledgement: Duration = .milliseconds(600)
 
     private struct LoadKey: Hashable {
         var generation: Int
@@ -316,6 +319,19 @@ struct TaskListView: View {
         }
     }
 
+    /// Today offers a few tasks from Next while it is unnarrowed.
+    private var showsSuggestions: Bool {
+        source == .today && showsDailyHeader && !selecting && !suggested.isEmpty
+    }
+
+    /// The row's circle was tapped: complete it, and once the commit lands,
+    /// send the completion flying from the circle into Today's ring.
+    private func completeFromCircle(_ row: TaskRow, from frame: CGRect) {
+        act(row.id, .transition(.done)) {
+            workspace.delight.launchCompletion(from: frame, reduceMotion: reduceMotion)
+        }
+    }
+
     /// A list the person's own action just emptied celebrates once.
     private func celebrateIfCleared(_ wasEmpty: Bool, _ isEmpty: Bool) {
         guard !wasEmpty, isEmpty, dailyHeaderStyle != nil, search.isEmpty, !filter.isActive,
@@ -376,10 +392,37 @@ struct TaskListView: View {
                     } else if case .error = state {
                         Button("Retry") { Task { await load() } }
                     }
+                    if showsSuggestions, state.isEmpty {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("Suggested from Next")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .textCase(.uppercase)
+                                .padding(.bottom, 8)
+                            VStack(spacing: 0) {
+                                ForEach(suggested, id: \.task.locator) { item in
+                                    SuggestedRow(item: item, projectName: projectNames[item.task.projectID]) {
+                                        act(item.task.locator, .plan(.addToday))
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 10)
+                                    .disabled(acting || workspace.undoing)
+                                    if item.task.locator != suggested.last?.task.locator { Divider().padding(.leading, 16) }
+                                }
+                            }
+                            .background(DocketPalette.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                        .buttonStyle(.plain)
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier("today.suggested")
+                    }
                 }
                 .buttonStyle(.bordered)
                 .padding(.bottom, 80)
             }
+            .background(DocketPalette.canvas.ignoresSafeArea())
         } else {
             List(selection: $selection) {
                 if showsDailyHeader, !selecting, let style = dailyHeaderStyle {
@@ -392,6 +435,7 @@ struct TaskListView: View {
                 }
                 if showsPendingCaptures {
                     PendingCapturesSection(workspace: workspace)
+                        .listRowBackground(DocketPalette.surface)
                 }
                 if !diagnostics.isEmpty {
                     Section {
@@ -401,16 +445,22 @@ struct TaskListView: View {
                                 .accessibilityIdentifier("list.diagnostic")
                         }
                     }
+                    .listRowBackground(DocketPalette.surface)
                 }
                 ForEach(rows) { row in
                     let projectName = projectNames[row.item.task.projectID]
                     NavigationLink(value: Route.task(row.item.task.locator)) {
                         TaskRowView(item: row.item, projectName: projectName,
                                     listContext: TaskRowContext(source: source, filter: filter),
-                                    acknowledged: acknowledged.contains(row.id))
+                                    acknowledged: acknowledged.contains(row.id),
+                                    complete: selecting ? nil : { frame in completeFromCircle(row, from: frame) })
                             .padding(.leading, CGFloat(row.depth) * 18)
                     }
+                    .listRowBackground(DocketPalette.surface)
                     .accessibilityLabel(TaskRowView.spokenLabel(row.item, projectName: projectName))
+                    .accessibilityAction(named: row.item.task.state.isTerminal ? "Reopen" : "Mark Done") {
+                        act(row.id, .transition(row.item.task.state.isTerminal ? .inbox : .done))
+                    }
                     .accessibilityValue(row.depth > 0 ? "level \(row.depth)" : "")
                     .accessibilityIdentifier("task.row")
                     .tag(row.id)
@@ -441,6 +491,22 @@ struct TaskListView: View {
                     }
                 }
                 .onMove(perform: moveRows)
+                if showsSuggestions {
+                    Section {
+                        ForEach(suggested, id: \.task.locator) { item in
+                            SuggestedRow(item: item, projectName: projectNames[item.task.projectID]) {
+                                act(item.task.locator, .plan(.addToday))
+                            }
+                            .disabled(acting || workspace.undoing)
+                        }
+                    } header: {
+                        Text("Suggested from Next")
+                    } footer: {
+                        Text("Nothing changes until you add one.")
+                    }
+                    .listRowBackground(DocketPalette.surface)
+                    .accessibilityIdentifier("today.suggested")
+                }
                 if showsProjectNotes, !projectNotes.isEmpty || notesFailure != nil {
                     Section("Notes") {
                         ForEach(projectNotes) { note in
@@ -466,8 +532,10 @@ struct TaskListView: View {
                                 .accessibilityIdentifier("list.notes.failure")
                         }
                     }
+                    .listRowBackground(DocketPalette.surface)
                 }
             }
+            .docketCanvas()
             .accessibilityIdentifier("list.tasks")
             // The last row scrolls clear of the floating capture button.
             .contentMargins(.bottom, 72, for: .scrollContent)
@@ -637,7 +705,7 @@ struct TaskListView: View {
         withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { acknowledged = locators }
     }
 
-    private func act(_ locator: TaskLocator, _ action: TaskListAction) {
+    private func act(_ locator: TaskLocator, _ action: TaskListAction, committed: (() -> Void)? = nil) {
         guard !acting else { return }
         lastActionAt = .now
         acting = true
@@ -651,8 +719,9 @@ struct TaskListView: View {
             case .success(let receipt):
                 // Only a real commit is acknowledged; "No changes were needed"
                 // has nothing to show.
-                if completes, receipt.transactionID != nil {
-                    acknowledge([locator])
+                if receipt.transactionID != nil {
+                    if completes { acknowledge([locator]) }
+                    committed?()
                 }
             case .failure(let failure):
                 actionFailure = failure.message
@@ -792,6 +861,16 @@ struct TaskListView: View {
                     names[project.id] = project.name
                 }
             }
+            var offered: [TaskQueryItem] = []
+            if source == .today, trimmed.isEmpty, !filter.isActive, source.scope == nil,
+               let next = try? await workspace.engine.tasks(mode: "next") {
+                offered = Array(next.items.filter { !$0.task.state.isTerminal && $0.task.parentID == nil }.prefix(3))
+                if names.isEmpty, !offered.isEmpty, let projects = try? await workspace.engine.projects() {
+                    for project in projects.active + projects.parked + projects.archived {
+                        names[project.id] = project.name
+                    }
+                }
+            }
             var loadedNotes: [NoteRecord] = []
             var noteError: String?
             if showsProjectNotes, let projectID = source.projectID {
@@ -810,12 +889,18 @@ struct TaskListView: View {
             diagnostics = result.diagnostics
             let reordered = (sort.field != nil && sort.field != "manual") || filter.isActive || !trimmed.isEmpty
             let loaded = source.outline && !reordered ? Self.outline(result.items) : result.items.map { TaskRow(item: $0, depth: 0) }
-            if !acknowledged.isEmpty {
-                // The acknowledged rows leave with the reload they waited for.
-                withAnimation(reduceMotion ? nil : .default) { rows = loaded }
+            // The person's own recent action animates what it moved: an
+            // acknowledged row leaving, a suggestion joining the plan.
+            let ownAction = lastActionAt.map { Date().timeIntervalSince($0) < 3 } ?? false
+            if !acknowledged.isEmpty || ownAction {
+                withAnimation(reduceMotion ? nil : .default) {
+                    rows = loaded
+                    suggested = offered
+                }
                 acknowledged = []
             } else {
                 rows = loaded
+                suggested = offered
             }
             if rows.isEmpty, diagnostics.isEmpty, projectNotes.isEmpty, notesFailure == nil {
                 state = trimmed.isEmpty && !filter.isActive
@@ -886,6 +971,51 @@ extension WorkflowState {
 /// What a list already tells its reader about every row on it, so a row
 /// does not draw it again. Only the drawn metadata reads this; the spoken
 /// label keeps the whole description.
+/// One of Today's suggestions: an open task from Next, its project in the
+/// project's hue, and the one button that plans it. Adding is the only write.
+struct SuggestedRow: View {
+    let item: TaskQueryItem
+    let projectName: String?
+    let add: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "sparkles")
+                .foregroundStyle(DocketPalette.next)
+                .font(.subheadline)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.task.title)
+                    .lineLimit(2)
+                if let projectName, !projectName.isEmpty {
+                    Text(projectName)
+                        .font(.caption)
+                        .foregroundStyle(DocketPalette.projectHue(item.task.projectID))
+                }
+            }
+            Spacer(minLength: 8)
+            Button(action: add) {
+                HStack(spacing: 4) {
+                    Image(systemName: "plus")
+                    Text("Today")
+                }
+                .font(.subheadline.weight(.semibold))
+                .fixedSize()
+                // The sun's fill under ink that reads on it in both
+                // appearances: white by day, the night canvas by night.
+                .foregroundStyle(DocketPalette.onBrand)
+            }
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.capsule)
+            .controlSize(.small)
+            .tint(DocketPalette.today)
+            .accessibilityLabel("Add \(item.task.title) to Today")
+            .accessibilityIdentifier("today.suggested.add")
+        }
+        .accessibilityElement(children: .contain)
+    }
+}
+
 struct TaskRowContext: Hashable {
     /// The planning collection the list is: every row in Today is planned for
     /// today.
@@ -917,7 +1047,18 @@ struct TaskRowView: View {
     /// Drawn as just completed while the commit is acknowledged: a filled
     /// checkmark and a struck title, so the cue survives without color.
     var acknowledged = false
+    /// Completes the task from its circle, given where the circle sits in
+    /// the window so the completion can fly from it. Nil leaves the circle a
+    /// glyph, as on terminal work and in selection mode.
+    var complete: ((CGRect) -> Void)?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Set the instant the circle is tapped, ahead of the commit, so the
+    /// stroke draws under the finger rather than after a round trip.
+    @State private var tapped = false
+    @State private var glyphFrame: CGRect = .zero
+
+    /// Whether the row draws as finished: tapped, or its commit acknowledged.
+    private var finishing: Bool { tapped || acknowledged }
 
     /// The row's quiet second line, deadline first. The status is the glyph's
     /// and the attention line's own cue is not repeated, nor anything the
@@ -940,16 +1081,26 @@ struct TaskRowView: View {
         return parts.joined(separator: " · ")
     }
 
+    /// The metadata line drawn, with the project's name in the project's own
+    /// hue. It says exactly what `metadata` says.
+    private func metadataText(now: Date) -> Text {
+        let line = Self.metadata(item, projectName: projectName, context: listContext, now: now)
+        guard let projectName, !projectName.isEmpty, line.hasSuffix(projectName) else { return Text(line) }
+        let lead = String(line.dropLast(projectName.count))
+        return Text(lead) + Text(projectName).foregroundStyle(DocketPalette.projectHue(item.task.projectID))
+    }
+
     var body: some View {
         // Refresh time-sensitive cues even when the list's data is unchanged.
         TimelineView(.periodic(from: .now, by: 60)) { context in
             let attention = TaskAttention(task: item.task, now: context.date)
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
                 glyph
                 VStack(alignment: .leading, spacing: 4) {
                     Text(item.task.title)
-                        .strikethrough(acknowledged || item.task.state.isTerminal)
-                        .foregroundStyle(acknowledged ? .secondary : .primary)
+                        .strikethrough(finishing || item.task.state.isTerminal)
+                        .foregroundStyle(finishing ? .secondary : .primary)
+                        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: finishing)
                     if let label = attention.label {
                         Text(label)
                             .font(.caption.weight(.semibold))
@@ -959,7 +1110,7 @@ struct TaskRowView: View {
                     }
                     let metadata = Self.metadata(item, projectName: projectName, context: listContext, now: context.date)
                     if !metadata.isEmpty {
-                        Text(metadata)
+                        metadataText(now: context.date)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -970,13 +1121,52 @@ struct TaskRowView: View {
         }
     }
 
+    /// The state glyph, which completes an open task when tapped. A gesture
+    /// rather than a nested button, so the row stays one accessibility
+    /// element whose label and Mark Done action VoiceOver reads; the tap
+    /// claims only the glyph, and the rest of the row still opens the task.
+    @ViewBuilder
     private var glyph: some View {
-        Image(systemName: acknowledged ? "checkmark.circle.fill" : item.task.state.symbol)
+        if let complete, !item.task.state.isTerminal {
+            glyphImage
+                .overlay {
+                    // The completion stroke sweeping round the circle.
+                    Circle()
+                        .trim(from: 0, to: tapped ? 1 : 0)
+                        .stroke(DocketPalette.state("done"), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .padding(2)
+                        .opacity(acknowledged ? 0 : 1)
+                }
+                .contentShape(Rectangle())
+                .highPriorityGesture(TapGesture().onEnded {
+                    guard !tapped else { return }
+                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) { tapped = true }
+                    complete(glyphFrame)
+                    // A refusal or a no-op leaves the row in place; the circle
+                    // empties again rather than staying falsely filled.
+                    Task {
+                        try? await Task.sleep(for: .seconds(2))
+                        tapped = false
+                    }
+                })
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { glyphFrame = $0 }
+        } else {
+            glyphImage
+        }
+    }
+
+    private var glyphImage: some View {
+        Image(systemName: finishing ? "checkmark.circle.fill" : item.task.state.symbol)
             .foregroundStyle(glyphTint)
             .contentTransition(.symbolEffect(.replace))
-            .symbolEffect(.bounce.up.byLayer, options: .nonRepeating, value: acknowledged)
-            .scaleEffect(acknowledged && !reduceMotion ? 1.12 : 1)
-            .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.5), value: acknowledged)
+            .symbolEffect(.bounce.up.byLayer, options: .nonRepeating, value: finishing)
+            .scaleEffect(finishing && !reduceMotion ? 1.12 : 1)
+            .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.5), value: finishing)
+            // One fixed column whether or not the circle answers a tap, so
+            // titles line up across rows; the height stays the symbol's, so
+            // rows are no taller than the glyph alone made them.
+            .frame(width: 28)
             .accessibilityHidden(true)
     }
 
@@ -984,7 +1174,7 @@ struct TaskRowView: View {
     /// semantic tag as the terminal app does, and turns green the moment a
     /// completion commits.
     private var glyphTint: Color {
-        if acknowledged { return DocketPalette.state("done") }
+        if finishing { return DocketPalette.state("done") }
         if item.task.state.isTerminal { return item.task.state.tint.opacity(0.8) }
         return DocketPalette.semanticAccent(tags: item.task.tags) ?? item.task.state.tint
     }

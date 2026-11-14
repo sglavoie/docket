@@ -21,7 +21,7 @@ struct TodayHeaderView: View {
                 case .today: todayHeadline(now: context.date)
                 case .inbox: inboxHeadline
                 }
-                chips
+                chips(now: context.date)
             }
             .padding(.vertical, 6)
         }
@@ -56,7 +56,7 @@ struct TodayHeaderView: View {
     @ViewBuilder
     private func regularHeadline(now: Date) -> some View {
         HStack(alignment: .center, spacing: 16) {
-            ProgressRing(pulse: pulse)
+            ProgressRing(pulse: pulse, delight: workspace.delight)
                 .frame(width: ringSize, height: ringSize)
             VStack(alignment: .leading, spacing: 4) {
                 Text(DailyPulse.salutation(now: now))
@@ -90,63 +90,113 @@ struct TodayHeaderView: View {
     }
 
     @ViewBuilder
-    private var chips: some View {
+    private func chips(now: Date) -> some View {
         let pulse = pulse ?? DailyPulse()
+        let showRecap = style == .today && Self.isEvening(now) && ((pulse.doneToday ?? 0) > 0 || pulse.todayOpen > 0)
         let showTriage = pulse.inbox > 0
         let showNow = !pulse.doing.isEmpty && style == .today
         let showReview = !pulse.attention.isEmpty && style == .today
-        if showTriage || showNow || showReview {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    if showTriage {
-                        RitualChip(title: "Start the Day", detail: "\(pulse.inbox)", symbol: "sunrise.fill",
-                                   tint: DocketPalette.today, fill: style == .inbox ? DocketPalette.Solid.today : nil) {
-                            workspace.ritual = .startDay
-                        }
-                        .accessibilityIdentifier("ritual.startDay")
+        if showTriage || showNow || showReview || showRecap {
+            // Chips wrap onto a second line rather than scrolling off the
+            // edge, so a long Now title never ends in a clipped capsule. Now
+            // leads: the work already under way is the likeliest next tap.
+            // At the accessibility sizes wrapping would stack them past the
+            // first screen, so they scroll sideways instead.
+            if dynamicTypeSize.isAccessibilitySize {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        chipViews(pulse, now: showNow, triage: showTriage, review: showReview, recap: showRecap)
                     }
-                    if showNow, let doing = pulse.doing.first {
-                        RitualChip(title: "Now", detail: doing.title, symbol: "scope",
-                                   tint: DocketPalette.state("doing")) {
-                            workspace.ritual = .now
-                        }
-                        .accessibilityIdentifier("ritual.now")
-                    }
-                    if showReview {
-                        RitualChip(title: "Review", detail: "\(pulse.attention.count)", symbol: "checkmark.seal",
-                                   tint: DocketPalette.review) {
-                            workspace.ritual = .review
-                        }
-                        .accessibilityIdentifier("ritual.review")
-                    }
+                    .padding(.vertical, 2)
+                }
+                .scrollClipDisabled()
+            } else {
+                WrapLayout(spacing: 8, lineSpacing: 8) {
+                    chipViews(pulse, now: showNow, triage: showTriage, review: showReview, recap: showRecap)
                 }
                 .padding(.vertical, 2)
             }
-            .scrollClipDisabled()
         }
     }
 }
 
-/// Today's plan as a ring: the done share in the brand's mint, the count in
-/// the middle rolling as it changes, and a checkmark once the plan is done.
+extension TodayHeaderView {
+    /// The ritual chips worth showing now, in the order they are offered.
+    @ViewBuilder
+    func chipViews(_ pulse: DailyPulse, now showNow: Bool, triage showTriage: Bool, review showReview: Bool, recap showRecap: Bool) -> some View {
+        if showNow, let doing = pulse.doing.first {
+            RitualChip(title: "Now", detail: doing.title, symbol: "scope",
+                       tint: DocketPalette.state("doing")) {
+                workspace.ritual = .now
+            }
+            .zoomSource(Ritual.now)
+            .accessibilityIdentifier("ritual.now")
+        }
+        if showTriage {
+            RitualChip(title: "Start the Day", detail: "\(pulse.inbox)", symbol: "sunrise.fill",
+                       tint: DocketPalette.today, fill: style == .inbox ? DocketPalette.Solid.today : nil) {
+                workspace.ritual = .startDay
+            }
+            .zoomSource(Ritual.startDay)
+            .accessibilityIdentifier("ritual.startDay")
+        }
+        if showReview {
+            RitualChip(title: "Review", detail: "\(pulse.attention.count)", symbol: "checkmark.seal",
+                       tint: DocketPalette.review) {
+                workspace.ritual = .review
+            }
+            .zoomSource(Ritual.review)
+            .accessibilityIdentifier("ritual.review")
+        }
+        if showRecap {
+            RitualChip(title: "Wrap Up", detail: "\(pulse.doneToday ?? 0) done", symbol: "moon.stars.fill",
+                       tint: DocketPalette.next) {
+                workspace.ritual = .recap
+            }
+            .zoomSource(Ritual.recap)
+            .accessibilityIdentifier("ritual.recap")
+        }
+    }
+
+    /// From five in the evening until the small hours, Today offers to wrap
+    /// the day up.
+    static func isEvening(_ now: Date, calendar: Calendar = .current) -> Bool {
+        let hour = calendar.component(.hour, from: now)
+        return hour >= 17 || hour < 4
+    }
+}
+
+/// Today's plan as a ring: one segment per planned task, so a fresh plan
+/// reads as slots waiting to fill rather than an empty gauge; the done share
+/// in the brand's mint; the count in the middle rolling as it changes; and a
+/// checkmark once the plan is done. It swells each time a completion flies
+/// into it, and tells the delight center where it sits so one can.
 struct ProgressRing: View {
     let pulse: DailyPulse?
+    var delight: DelightCenter?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// Past this many tasks the gaps would crowd out the arcs, so the ring
+    /// draws continuously.
+    static let maxSegments = 8
+
     var body: some View {
+        let done = pulse?.doneToday ?? 0
+        let open = pulse?.todayOpen ?? 0
+        let total = done + open
         let progress = pulse?.progress ?? 0
         let complete = pulse?.planComplete ?? false
+        let segments = (2...Self.maxSegments).contains(total) && !complete ? total : 1
+        let swell = delight?.ringPulse ?? 0
         ZStack {
-            Circle()
-                .stroke(DocketPalette.brand.opacity(0.16), lineWidth: 7)
-            Circle()
-                .trim(from: 0, to: complete ? 1 : progress)
+            SegmentedArc(segments: segments, progress: 1)
+                .stroke(DocketPalette.brand.opacity(done == 0 ? 0.24 : 0.16), style: StrokeStyle(lineWidth: 7, lineCap: .round))
+            SegmentedArc(segments: segments, progress: complete ? 1 : progress)
                 .stroke(
                     AngularGradient(colors: [DocketPalette.brand.opacity(0.7), DocketPalette.brand],
                                     center: .center, startAngle: .degrees(-90), endAngle: .degrees(270)),
                     style: StrokeStyle(lineWidth: 7, lineCap: .round)
                 )
-                .rotationEffect(.degrees(-90))
                 .animation(reduceMotion ? nil : .spring(response: 0.6, dampingFraction: 0.8), value: progress)
             if complete {
                 Image(systemName: "checkmark")
@@ -154,12 +204,23 @@ struct ProgressRing: View {
                     .foregroundStyle(DocketPalette.brand)
                     .symbolEffect(.bounce, value: complete)
                     .transition(.scale.combined(with: .opacity))
+            } else if done == 0 {
+                // Nothing finished yet: lead with what is planned, not a zero.
+                VStack(spacing: -2) {
+                    Text("\(open)")
+                        .font(.system(.title3, design: .rounded).weight(.bold))
+                        .contentTransition(.numericText(value: Double(open)))
+                    Text("planned")
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+                .monospacedDigit()
             } else {
                 VStack(spacing: -2) {
-                    Text("\(pulse?.doneToday ?? 0)")
+                    Text("\(done)")
                         .font(.system(.title3, design: .rounded).weight(.bold))
-                        .contentTransition(.numericText(value: Double(pulse?.doneToday ?? 0)))
-                    Text("of \((pulse?.doneToday ?? 0) + (pulse?.todayOpen ?? 0))")
+                        .contentTransition(.numericText(value: Double(done)))
+                    Text("of \(total)")
                         .font(.caption2.weight(.medium))
                         .foregroundStyle(.secondary)
                         .contentTransition(.numericText())
@@ -167,6 +228,28 @@ struct ProgressRing: View {
                 .monospacedDigit()
             }
         }
+        .background {
+            // The glow a landing completion leaves behind.
+            Circle()
+                .fill(DocketPalette.brand.opacity(0.25))
+                .blur(radius: 10)
+                .keyframeAnimator(initialValue: 0.0, trigger: swell) { glow, value in
+                    glow.opacity(value).scaleEffect(1 + value * 0.2)
+                } keyframes: { _ in
+                    LinearKeyframe(1, duration: 0.08)
+                    LinearKeyframe(0, duration: 0.5)
+                }
+        }
+        .keyframeAnimator(initialValue: 1.0, trigger: swell) { ring, scale in
+            ring.scaleEffect(scale)
+        } keyframes: { _ in
+            SpringKeyframe(1.12, duration: 0.12, spring: .snappy)
+            SpringKeyframe(1, duration: 0.45, spring: .bouncy)
+        }
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame in
+            delight?.ringMoved(to: frame)
+        }
+        .onDisappear { delight?.ringMoved(to: nil) }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Today’s progress")
         .accessibilityValue(accessibilityValue)
@@ -177,6 +260,45 @@ struct ProgressRing: View {
         guard let pulse else { return "Loading" }
         if pulse.planComplete { return "Plan complete" }
         return "\(pulse.doneToday ?? 0) done, \(pulse.todayOpen) to go"
+    }
+}
+
+/// A ring cut into equal arcs with a small gap between each, drawn clockwise
+/// from twelve o'clock up to `progress` of the way round. One segment is a
+/// plain circle. `progress` animates, so a filling segment sweeps in.
+struct SegmentedArc: Shape {
+    var segments: Int
+    var progress: Double
+
+    var animatableData: Double {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let radius = min(rect.width, rect.height) / 2
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let clamped = min(max(progress, 0), 1)
+        var path = Path()
+        guard clamped > 0 else { return path }
+        guard segments > 1 else {
+            path.addArc(center: center, radius: radius, startAngle: .degrees(-90),
+                        endAngle: .degrees(-90 + 360 * clamped), clockwise: false)
+            return path
+        }
+        // The round caps reach past each arc's end, so the gap allows for them.
+        let gap = 360 / Double(segments) * 0.1 + 19
+        let span = 360 / Double(segments)
+        let filled = clamped * Double(segments)
+        for index in 0..<segments {
+            let share = min(1, max(0, filled - Double(index)))
+            guard share > 0 else { break }
+            let start = -90 + span * Double(index) + gap / 2
+            let end = start + (span - gap) * share
+            path.move(to: CGPoint(x: center.x + radius * cos(start * .pi / 180), y: center.y + radius * sin(start * .pi / 180)))
+            path.addArc(center: center, radius: radius, startAngle: .degrees(start), endAngle: .degrees(max(start + 0.1, end)), clockwise: false)
+        }
+        return path
     }
 }
 
@@ -196,12 +318,14 @@ struct RitualChip: View {
                 Image(systemName: symbol)
                     .symbolRenderingMode(.hierarchical)
                 Text(title).fontWeight(.semibold)
+                // Full strength, so the count keeps its contrast on the night
+                // canvas; the lighter weight is what sets it apart.
                 Text(detail)
+                    .fontWeight(.regular)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .frame(maxWidth: 140, alignment: .leading)
                     .fixedSize(horizontal: true, vertical: false)
-                    .opacity(0.8)
             }
             .font(.subheadline)
             .padding(.horizontal, 12)

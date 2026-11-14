@@ -1,3 +1,19 @@
+import Foundation
+
+/// Which of a palette's hues a project wears, from its identity alone, so
+/// the choice needs nothing stored and is the same on every device. FNV-1a,
+/// not `hashValue`, which Swift reseeds on every launch.
+public enum ProjectHue {
+    public static func index(_ projectID: String, count: Int) -> Int {
+        var hash: UInt64 = 0xCBF2_9CE4_8422_2325
+        for byte in projectID.utf8 {
+            hash ^= UInt64(byte)
+            hash = hash &* 0x0000_0100_0000_01B3
+        }
+        return Int(hash % UInt64(max(1, count)))
+    }
+}
+
 #if canImport(UIKit)
 import SwiftUI
 import UIKit
@@ -23,6 +39,40 @@ public enum DocketPalette {
     public static let overdue = adaptive(light: 0xB3261E, dark: 0xF7768E)
     /// Review and check-ins owed.
     public static let review = adaptive(light: 0x8A3FC9, dark: 0xBB9AF7)
+
+    /// The page under every list: the system's grouped background by day,
+    /// the terminal's Tokyo Night ink by night.
+    public static let canvas = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark ? UIColor(hex: 0x1A1B26) : .systemGroupedBackground
+    })
+    /// A row or card on that page: the grouped cell by day, the terminal's
+    /// raised panel by night, distinct enough from the canvas to read as a
+    /// surface.
+    public static let surface = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark ? UIColor(hex: 0x24283B) : .secondarySystemGroupedBackground
+    })
+
+    /// The hues a project can wear, each with a deeper variant for white.
+    static let projectHues: [Color] = [
+        adaptive(light: 0x3552C9, dark: 0x7AA2F7),
+        adaptive(light: 0x0A6E99, dark: 0x7DCFFF),
+        adaptive(light: 0x1A7F72, dark: 0x73DACA),
+        adaptive(light: 0x3B7D23, dark: 0x9ECE6A),
+        adaptive(light: 0x8E5B00, dark: 0xE0AF68),
+        adaptive(light: 0xB8501A, dark: 0xFF9E64),
+        adaptive(light: 0xB3261E, dark: 0xF7768E),
+        adaptive(light: 0x7C3AED, dark: 0xBB9AF7),
+    ]
+
+    /// A project's own hue, derived from its stable identity so it survives a
+    /// rename, matches on every device, and needs nothing stored.
+    public static func projectHue(_ projectID: String) -> Color {
+        projectHues[projectHueIndex(projectID)]
+    }
+
+    public static func projectHueIndex(_ projectID: String) -> Int {
+        ProjectHue.index(projectID, count: projectHues.count)
+    }
 
     /// A lifecycle state's hue, by its stored name.
     public static func state(_ name: String) -> Color {

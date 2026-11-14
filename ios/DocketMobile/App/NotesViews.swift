@@ -1,4 +1,5 @@
 import SwiftUI
+import DocketShared
 import DocketEngine
 
 /// Every note this iPhone can reach — the global notes and each available
@@ -18,9 +19,11 @@ struct NotesListView: View {
             } else {
                 List(notes) { note in
                     NoteListRow(note: note)
+                        .listRowBackground(DocketPalette.surface)
                 }
             }
         }
+        .docketCanvas()
         .navigationTitle("Notes")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -159,32 +162,36 @@ struct NoteEditorView: View {
 
     private var editor: some View {
         Form {
-            DraftRecoveryNotice(store: workspace.drafts, key: .note(draftKey))
-            if let failure {
-                Section {
-                    Text(failure)
-                        .foregroundStyle(.red)
-                        .accessibilityIdentifier("note.failure")
-                    if stale {
-                        Button("Save as New Note") { saveCopy() }
-                            .accessibilityIdentifier("note.saveCopy")
+            Group {
+                DraftRecoveryNotice(store: workspace.drafts, key: .note(draftKey))
+                if let failure {
+                    Section {
+                        Text(failure)
+                            .foregroundStyle(.red)
+                            .accessibilityIdentifier("note.failure")
+                        if stale {
+                            Button("Save as New Note") { saveCopy() }
+                                .accessibilityIdentifier("note.saveCopy")
+                        }
                     }
                 }
+                if let parseError = note?.parseError {
+                    Text("This note's header could not be read, so it opens read-only here: \(parseError)")
+                        .foregroundStyle(.orange)
+                }
+                Section("Title") {
+                    TextField("Title", text: $title)
+                        .accessibilityIdentifier("note.title")
+                }
+                Section(location.isGlobal ? "Global note" : note?.projectName ?? "Project note") {
+                    TextEditor(text: $noteBody)
+                        .frame(minHeight: 280)
+                        .accessibilityIdentifier("note.body")
+                }
             }
-            if let parseError = note?.parseError {
-                Text("This note's header could not be read, so it opens read-only here: \(parseError)")
-                    .foregroundStyle(.orange)
-            }
-            Section("Title") {
-                TextField("Title", text: $title)
-                    .accessibilityIdentifier("note.title")
-            }
-            Section(location.isGlobal ? "Global note" : note?.projectName ?? "Project note") {
-                TextEditor(text: $noteBody)
-                    .frame(minHeight: 280)
-                    .accessibilityIdentifier("note.body")
-            }
+            .listRowBackground(DocketPalette.surface)
         }
+        .docketCanvas()
         .disabled(note?.parseError != nil)
     }
 

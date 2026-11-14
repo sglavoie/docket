@@ -268,8 +268,10 @@ struct TaskDetailView: View {
                         .fontDesign(.rounded)
                         .accessibilityIdentifier("detail.title")
                     (Text(task.state.rawValue.capitalized).foregroundStyle(task.state.tint).fontWeight(.semibold)
-                        + Text([Self.planName(detail), detail.project.name].compactMap { $0 }
-                            .map { " · \($0)" }.joined()).foregroundStyle(.secondary))
+                        + Text([Self.planName(detail)].compactMap { $0 }
+                            .map { " · \($0)" }.joined()).foregroundStyle(.secondary)
+                        + Text(" · ").foregroundStyle(.secondary)
+                        + Text(detail.project.name).foregroundStyle(DocketPalette.projectHue(detail.project.id)))
                         .font(.subheadline)
                         .accessibilityIdentifier("detail.summary")
                 }
@@ -306,69 +308,73 @@ struct TaskDetailView: View {
         let task = detail.task
         let relations = detail.relations
         return List {
-            header(detail)
-            if let ancestors = relations?.ancestors, !ancestors.isEmpty {
-                relationSection("Inside", ancestors, identifier: "detail.ancestor")
-            }
-            Section("Description") {
-                if let description = task.description, !description.isEmpty {
-                    Text(description)
-                        .textSelection(.enabled)
-                        .accessibilityIdentifier("detail.description")
+            Group {
+                header(detail)
+                if let ancestors = relations?.ancestors, !ancestors.isEmpty {
+                    relationSection("Inside", ancestors, identifier: "detail.ancestor")
                 }
-                Button(task.description?.isEmpty == false ? "Edit Description" : "Add Description") {
-                    editRequest = EditRequest(task: task, focus: .description)
+                Section("Description") {
+                    if let description = task.description, !description.isEmpty {
+                        Text(description)
+                            .textSelection(.enabled)
+                            .accessibilityIdentifier("detail.description")
+                    }
+                    Button(task.description?.isEmpty == false ? "Edit Description" : "Add Description") {
+                        editRequest = EditRequest(task: task, focus: .description)
+                    }
+                    .accessibilityIdentifier("detail.description.edit")
                 }
-                .accessibilityIdentifier("detail.description.edit")
-            }
-            ChecklistSection(task: task) { action, seen in
-                act { await workspace.checklist(task.locator, action, seen: seen) }
-            }
-            if let children = relations?.children, !children.isEmpty {
-                relationSection("Subtasks", children, identifier: "detail.child")
-            }
-            if let dependencies = relations?.dependencies, !dependencies.isEmpty {
-                relationSection("Depends on", dependencies, identifier: "detail.dependency")
-            }
-            if let dependents = relations?.dependents, !dependents.isEmpty {
-                relationSection("Needed by", dependents, identifier: "detail.dependent")
-            }
-            CommentsSection(
-                comments: detail.comments ?? [],
-                compose: { editing in commentRequest = CommentRequest(owner: .task(task.locator), editing: editing) },
-                delete: { comment in act { await workspace.comment(.task(task.locator), .delete(comment)) } }
-            )
-            AttachmentsSection(
-                detail: detail, sync: workspace.sync, pending: pendingImports,
-                add: { attachmentActions.isPresented = true },
-                preview: { previewRequest = AttachmentPreviewRequest(url: $0) },
-                share: { sharing = AttachmentShareRequest(url: $0) },
-                remove: { attachment in act { await workspace.attachment(task.locator, .remove(attachment)) } }
-            )
-            details(task)
-            workflow(detail)
-            if !task.state.isTerminal {
-                CheckInSection(task: task) { action in
-                    await workspace.checkIn([task.locator], action)
+                ChecklistSection(task: task) { action, seen in
+                    act { await workspace.checklist(task.locator, action, seen: seen) }
+                }
+                if let children = relations?.children, !children.isEmpty {
+                    relationSection("Subtasks", children, identifier: "detail.child")
+                }
+                if let dependencies = relations?.dependencies, !dependencies.isEmpty {
+                    relationSection("Depends on", dependencies, identifier: "detail.dependency")
+                }
+                if let dependents = relations?.dependents, !dependents.isEmpty {
+                    relationSection("Needed by", dependents, identifier: "detail.dependent")
+                }
+                CommentsSection(
+                    comments: detail.comments ?? [],
+                    compose: { editing in commentRequest = CommentRequest(owner: .task(task.locator), editing: editing) },
+                    delete: { comment in act { await workspace.comment(.task(task.locator), .delete(comment)) } }
+                )
+                AttachmentsSection(
+                    detail: detail, sync: workspace.sync, pending: pendingImports,
+                    add: { attachmentActions.isPresented = true },
+                    preview: { previewRequest = AttachmentPreviewRequest(url: $0) },
+                    share: { sharing = AttachmentShareRequest(url: $0) },
+                    remove: { attachment in act { await workspace.attachment(task.locator, .remove(attachment)) } }
+                )
+                details(task)
+                workflow(detail)
+                if !task.state.isTerminal {
+                    CheckInSection(task: task) { action in
+                        await workspace.checkIn([task.locator], action)
+                    }
+                }
+                OrganizeSection(
+                    detail: detail, workspace: workspace,
+                    hierarchy: { action in act { await workspace.hierarchy(task.locator, action) } },
+                    move: { projectID in
+                            let outcome = await workspace.bulk([task.locator], .move(projectID: projectID))
+                            failure = outcome.refusal
+                            if let moved = outcome.moves.first(where: { $0.from == task.locator }) {
+                                current = moved.to
+                            }
+                            return outcome.refusal
+                    }
+                )
+                Section {
+                    Button("Delete Task", role: .destructive) { deleting = detail }
+                        .accessibilityIdentifier("detail.delete")
                 }
             }
-            OrganizeSection(
-                detail: detail, workspace: workspace,
-                hierarchy: { action in act { await workspace.hierarchy(task.locator, action) } },
-                move: { projectID in
-                        let outcome = await workspace.bulk([task.locator], .move(projectID: projectID))
-                        failure = outcome.refusal
-                        if let moved = outcome.moves.first(where: { $0.from == task.locator }) {
-                            current = moved.to
-                        }
-                        return outcome.refusal
-                }
-            )
-            Section {
-                Button("Delete Task", role: .destructive) { deleting = detail }
-                    .accessibilityIdentifier("detail.delete")
-            }
+            .listRowBackground(DocketPalette.surface)
         }
+        .docketCanvas()
     }
 
     private static func deleteQuestion(_ detail: TaskDetail) -> String {

@@ -23,13 +23,16 @@ struct TactileEvent: Equatable {
     /// The system feedback for this kind. `sensoryFeedback` plays it through
     /// the system generators, so it honors the System Haptics setting and plays
     /// nothing on hardware without a Taptic Engine.
-    var feedback: SensoryFeedback {
+    ///
+    /// A celebration plays nothing here: the confetti overlay plays its own
+    /// rising pattern, timed to the burst, through `HapticConductor`.
+    var feedback: SensoryFeedback? {
         switch kind {
         case .success: .success
         case .selection: .selection
         case .planned: .impact(weight: .light, intensity: 0.7)
         case .started: .impact(weight: .medium, intensity: 0.8)
-        case .celebrate: .impact(flexibility: .soft, intensity: 1)
+        case .celebrate: nil
         }
     }
 }

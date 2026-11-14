@@ -1,4 +1,5 @@
 import SwiftUI
+import DocketShared
 import DocketEngine
 
 /// The checklist, editable in place. Every change names the item by its
@@ -173,25 +174,29 @@ struct CheckInSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                if let failure {
-                    Text(failure).foregroundStyle(.red)
-                        .accessibilityIdentifier("checkin.failure")
+                Group {
+                    if let failure {
+                        Text(failure).foregroundStyle(.red)
+                            .accessibilityIdentifier("checkin.failure")
+                    }
+                    DatePicker("Check in on", selection: $draft.day, displayedComponents: .date)
+                        .accessibilityIdentifier("checkin.date")
+                    TextField("Repeat every N days (blank for once)", text: $draft.repeatDays)
+                        .keyboardType(.numberPad)
+                        .accessibilityIdentifier("checkin.repeat")
+                    if draft.interval == nil {
+                        Text("Enter 1–3650 days, or leave blank for a one-off check-in.")
+                            .foregroundStyle(.red)
+                            .accessibilityIdentifier("checkin.validation")
+                    }
+                    if task.nextCheckIn != nil {
+                        Button("Clear Check-In", role: .destructive) { submit(.clear) }
+                            .accessibilityIdentifier("checkin.clear")
+                    }
                 }
-                DatePicker("Check in on", selection: $draft.day, displayedComponents: .date)
-                    .accessibilityIdentifier("checkin.date")
-                TextField("Repeat every N days (blank for once)", text: $draft.repeatDays)
-                    .keyboardType(.numberPad)
-                    .accessibilityIdentifier("checkin.repeat")
-                if draft.interval == nil {
-                    Text("Enter 1–3650 days, or leave blank for a one-off check-in.")
-                        .foregroundStyle(.red)
-                        .accessibilityIdentifier("checkin.validation")
-                }
-                if task.nextCheckIn != nil {
-                    Button("Clear Check-In", role: .destructive) { submit(.clear) }
-                        .accessibilityIdentifier("checkin.clear")
-                }
+                .listRowBackground(DocketPalette.surface)
             }
+            .docketCanvas()
             .disabled(saving)
             .navigationTitle("Check-In")
             .navigationBarTitleDisplayMode(.inline)

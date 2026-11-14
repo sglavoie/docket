@@ -1,4 +1,5 @@
 import SwiftUI
+import DocketShared
 import DocketEngine
 
 /// Edits one task's daily fields in one transaction. Only what the person
@@ -25,23 +26,27 @@ struct TaskEditSheet: View {
         NavigationStack {
             ScrollViewReader { scroll in
                 Form {
-                    DraftRecoveryNotice(store: workspace.drafts, key: .edit(task.locator))
-                    if restored {
-                        Label("Restored your unsaved changes", systemImage: "arrow.uturn.backward.circle")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .accessibilityIdentifier("edit.restored")
-                    }
-                    if draft != nil {
-                        TaskFieldsForm(fields: fieldsBinding, focus: $fieldFocus)
-                            .task {
-                                if let initialFocus {
-                                    scroll.scrollTo(initialFocus, anchor: .center)
-                                    fieldFocus = initialFocus
+                    Group {
+                        DraftRecoveryNotice(store: workspace.drafts, key: .edit(task.locator))
+                        if restored {
+                            Label("Restored your unsaved changes", systemImage: "arrow.uturn.backward.circle")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .accessibilityIdentifier("edit.restored")
+                        }
+                        if draft != nil {
+                            TaskFieldsForm(fields: fieldsBinding, focus: $fieldFocus)
+                                .task {
+                                    if let initialFocus {
+                                        scroll.scrollTo(initialFocus, anchor: .center)
+                                        fieldFocus = initialFocus
+                                    }
                                 }
-                            }
+                        }
                     }
+                    .listRowBackground(DocketPalette.surface)
                 }
+                .docketCanvas()
                 .onChange(of: correction) { _, field in
                     if let field { scroll.scrollTo(field, anchor: .center) }
                 }

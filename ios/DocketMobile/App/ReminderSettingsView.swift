@@ -1,5 +1,6 @@
 import CryptoKit
 import SwiftUI
+import DocketShared
 import DocketReminders
 
 extension ReminderModel {
@@ -54,69 +55,73 @@ struct ReminderSettingsView: View {
 
     var body: some View {
         List {
-            Section {
-                Toggle("Remind Me", isOn: Binding(
-                    get: { reminders.settings.enabled },
-                    set: { enabled in
-                        var settings = reminders.settings
-                        settings.enabled = enabled
-                        Task { await reminders.update(settings) }
-                    }
-                ))
-                .accessibilityIdentifier("reminders.enabled")
-                DatePicker("Check-in time", selection: Binding(
-                    get: { checkInTime },
-                    set: { time in
-                        let parts = Calendar.current.dateComponents([.hour, .minute], from: time)
-                        var settings = reminders.settings
-                        settings.checkInHour = parts.hour ?? 9
-                        settings.checkInMinute = parts.minute ?? 0
-                        Task { await reminders.update(settings) }
-                    }
-                ), displayedComponents: .hourAndMinute)
-                .disabled(!reminders.settings.enabled)
-                .accessibilityIdentifier("reminders.checkInTime")
-            } footer: {
-                Text("A check-in day is announced at this time. Timed deadlines are announced when due, and a deferral when it ends.")
-            }
-            Section {
-                Text(reminders.statusText)
-                    .accessibilityIdentifier("reminders.status")
-                if reminders.report?.outcome == .permissionDenied {
-                    Button("Open Settings") {
-                        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
-                    }
-                    .accessibilityIdentifier("reminders.openSettings")
-                }
-                LabeledContent("Time zone", value: reminders.timeZone)
-                    .accessibilityIdentifier("reminders.timeZone")
-            } header: {
-                Text("Status")
-            } footer: {
-                Text("Check-ins and timed deadlines keep their local time when this iPhone changes time zone; a deferral ends at the same moment everywhere.")
-            }
-            if !reminders.activity.isEmpty {
-                Section("Recent") {
-                    ForEach(Array(reminders.activity.enumerated()), id: \.element.id) { index, entry in
-                        VStack(alignment: .leading) {
-                            Text(entry.summary)
-                            Text(entry.at.formatted(date: .omitted, time: .shortened))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+            Group {
+                Section {
+                    Toggle("Remind Me", isOn: Binding(
+                        get: { reminders.settings.enabled },
+                        set: { enabled in
+                            var settings = reminders.settings
+                            settings.enabled = enabled
+                            Task { await reminders.update(settings) }
                         }
-                        .accessibilityElement(children: .combine)
-                        .accessibilityIdentifier("reminders.activity.\(index)")
+                    ))
+                    .accessibilityIdentifier("reminders.enabled")
+                    DatePicker("Check-in time", selection: Binding(
+                        get: { checkInTime },
+                        set: { time in
+                            let parts = Calendar.current.dateComponents([.hour, .minute], from: time)
+                            var settings = reminders.settings
+                            settings.checkInHour = parts.hour ?? 9
+                            settings.checkInMinute = parts.minute ?? 0
+                            Task { await reminders.update(settings) }
+                        }
+                    ), displayedComponents: .hourAndMinute)
+                    .disabled(!reminders.settings.enabled)
+                    .accessibilityIdentifier("reminders.checkInTime")
+                } footer: {
+                    Text("A check-in day is announced at this time. Timed deadlines are announced when due, and a deferral when it ends.")
+                }
+                Section {
+                    Text(reminders.statusText)
+                        .accessibilityIdentifier("reminders.status")
+                    if reminders.report?.outcome == .permissionDenied {
+                        Button("Open Settings") {
+                            if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                        }
+                        .accessibilityIdentifier("reminders.openSettings")
+                    }
+                    LabeledContent("Time zone", value: reminders.timeZone)
+                        .accessibilityIdentifier("reminders.timeZone")
+                } header: {
+                    Text("Status")
+                } footer: {
+                    Text("Check-ins and timed deadlines keep their local time when this iPhone changes time zone; a deferral ends at the same moment everywhere.")
+                }
+                if !reminders.activity.isEmpty {
+                    Section("Recent") {
+                        ForEach(Array(reminders.activity.enumerated()), id: \.element.id) { index, entry in
+                            VStack(alignment: .leading) {
+                                Text(entry.summary)
+                                Text(entry.at.formatted(date: .omitted, time: .shortened))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityIdentifier("reminders.activity.\(index)")
+                        }
+                    }
+                }
+                if LaunchConfiguration.current.isUITest {
+                    Section("Build") {
+                        Text(Self.buildDigests)
+                            .font(.caption.monospaced())
+                            .accessibilityIdentifier("reminders.build")
                     }
                 }
             }
-            if LaunchConfiguration.current.isUITest {
-                Section("Build") {
-                    Text(Self.buildDigests)
-                        .font(.caption.monospaced())
-                        .accessibilityIdentifier("reminders.build")
-                }
-            }
+            .listRowBackground(DocketPalette.surface)
         }
+        .docketCanvas()
         .navigationTitle("Reminders")
         .task { await reminders.refresh() }
     }

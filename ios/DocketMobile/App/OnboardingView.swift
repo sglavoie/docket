@@ -1,4 +1,5 @@
 import SwiftUI
+import DocketShared
 
 /// First launch, or after choosing another workspace: start a workspace kept
 /// on this iPhone, join the one the Mac enrolled in an exchange folder, or
@@ -11,76 +12,80 @@ struct OnboardingView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section {
-                    Text("Docket keeps your tasks on this iPhone and works offline. Sync exchanges changes with your Mac through a folder in iCloud Drive.")
-                        .foregroundStyle(.secondary)
-                }
-                Section("Get started") {
-                    Button {
-                        Task { await workspace.createWorkspace() }
-                    } label: {
-                        Label("Start a Workspace on This iPhone", systemImage: "plus.square")
+                Group {
+                    Section {
+                        Text("Docket keeps your tasks on this iPhone and works offline. Sync exchanges changes with your Mac through a folder in iCloud Drive.")
+                            .foregroundStyle(.secondary)
                     }
-                    .accessibilityIdentifier("onboarding.create")
-                    Button {
-                        if workspace.launch.exchangeOverride != nil {
-                            Task { await workspace.join(folder: nil) }
-                        } else {
-                            choosingFolder = true
+                    Section("Get started") {
+                        Button {
+                            Task { await workspace.createWorkspace() }
+                        } label: {
+                            Label("Start a Workspace on This iPhone", systemImage: "plus.square")
                         }
-                    } label: {
-                        Label("Join from an Exchange Folder…", systemImage: "icloud.and.arrow.down")
-                    }
-                    .disabled(workspace.isJoining)
-                    .accessibilityIdentifier("onboarding.join")
-                    if workspace.isJoining {
-                        HStack {
-                            ProgressView()
-                            Text("Preparing your workspace…")
-                                .foregroundStyle(.secondary)
-                                .accessibilityIdentifier("state.loading")
+                        .accessibilityIdentifier("onboarding.create")
+                        Button {
+                            if workspace.launch.exchangeOverride != nil {
+                                Task { await workspace.join(folder: nil) }
+                            } else {
+                                choosingFolder = true
+                            }
+                        } label: {
+                            Label("Join from an Exchange Folder…", systemImage: "icloud.and.arrow.down")
+                        }
+                        .disabled(workspace.isJoining)
+                        .accessibilityIdentifier("onboarding.join")
+                        if workspace.isJoining {
+                            HStack {
+                                ProgressView()
+                                Text("Preparing your workspace…")
+                                    .foregroundStyle(.secondary)
+                                    .accessibilityIdentifier("state.loading")
+                            }
+                        }
+                        if let failure = workspace.joinFailure {
+                            Text(failure)
+                                .foregroundStyle(.red)
+                                .accessibilityIdentifier("onboarding.joinFailure")
                         }
                     }
-                    if let failure = workspace.joinFailure {
+                    let existing = workspace.existingLocations
+                    if !existing.isEmpty {
+                        Section("On this iPhone") {
+                            ForEach(existing) { location in
+                                HStack {
+                                    Button {
+                                        Task { await workspace.open(location, create: false) }
+                                    } label: {
+                                        Text(location.name)
+                                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                                            .contentShape(Rectangle())
+                                    }
+                                    .accessibilityIdentifier("onboarding.workspace.\(location.name)")
+                                    Button(role: .destructive) { deleting = location } label: {
+                                        Image(systemName: "trash")
+                                            .frame(minWidth: 44, minHeight: 44)
+                                    }
+                                    .accessibilityLabel("Delete workspace \(location.name) from this iPhone")
+                                    .accessibilityIdentifier("onboarding.delete.\(location.name)")
+                                }
+                                .buttonStyle(.borderless)
+                            }
+                        }
+                    }
+                    if workspace.isDeletingWorkspace {
+                        ProgressView("Deleting workspace…")
+                            .accessibilityIdentifier("onboarding.deleting")
+                    }
+                    if let failure = workspace.workspaceDeletionFailure {
                         Text(failure)
                             .foregroundStyle(.red)
-                            .accessibilityIdentifier("onboarding.joinFailure")
+                            .accessibilityIdentifier("onboarding.deleteFailure")
                     }
                 }
-                let existing = workspace.existingLocations
-                if !existing.isEmpty {
-                    Section("On this iPhone") {
-                        ForEach(existing) { location in
-                            HStack {
-                                Button {
-                                    Task { await workspace.open(location, create: false) }
-                                } label: {
-                                    Text(location.name)
-                                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                                        .contentShape(Rectangle())
-                                }
-                                .accessibilityIdentifier("onboarding.workspace.\(location.name)")
-                                Button(role: .destructive) { deleting = location } label: {
-                                    Image(systemName: "trash")
-                                        .frame(minWidth: 44, minHeight: 44)
-                                }
-                                .accessibilityLabel("Delete workspace \(location.name) from this iPhone")
-                                .accessibilityIdentifier("onboarding.delete.\(location.name)")
-                            }
-                            .buttonStyle(.borderless)
-                        }
-                    }
-                }
-                if workspace.isDeletingWorkspace {
-                    ProgressView("Deleting workspace…")
-                        .accessibilityIdentifier("onboarding.deleting")
-                }
-                if let failure = workspace.workspaceDeletionFailure {
-                    Text(failure)
-                        .foregroundStyle(.red)
-                        .accessibilityIdentifier("onboarding.deleteFailure")
-                }
+                .listRowBackground(DocketPalette.surface)
             }
+            .docketCanvas()
             .disabled(workspace.isJoining || workspace.isDeletingWorkspace)
             .navigationTitle("Welcome to Docket")
             .alert("Delete “\(deleting?.name ?? "")” from this iPhone?", isPresented: Binding(

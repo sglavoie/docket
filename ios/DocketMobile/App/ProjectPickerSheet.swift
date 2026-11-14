@@ -1,4 +1,5 @@
 import SwiftUI
+import DocketShared
 import DocketEngine
 
 /// Loading failed and no destination exists are distinct, recoverable states.
@@ -21,11 +22,15 @@ struct ProjectPickerSheet: View {
                     ScreenStateView(state: state, actionTitle: canRetry ? "Retry" : nil, action: { retry += 1 })
                 } else {
                     List {
-                        if let failure { Text(failure).foregroundStyle(.red) }
-                        ForEach(projects) { project in
-                            Button(project.name) { select(project.id) }
+                        Group {
+                            if let failure { Text(failure).foregroundStyle(.red) }
+                            ForEach(projects) { project in
+                                Button(project.name) { select(project.id) }
+                            }
                         }
+                        .listRowBackground(DocketPalette.surface)
                     }
+                    .docketCanvas()
                     .disabled(saving)
                 }
             }

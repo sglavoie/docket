@@ -38,6 +38,29 @@ Save. Clear the field and save to remove a description. New tasks can include
 a description through Capture → Form. Closing either form keeps unsaved text
 on this device for later.
 
+Tap a row's state circle to complete it: the stroke sweeps round, the title
+strikes through, and on Today a mint dot arcs from the circle into the
+progress ring, which swells as it lands. VoiceOver offers the same as the
+row's Mark Done action. The ring draws one segment per planned task, so a fresh
+plan reads as slots to fill, and finishing the plan bursts confetti from the
+ring with a short chord and a rising haptic. Overdue deadlines read as how long
+ago they were missed ("Overdue by 5 weeks"). Below the plan, Today suggests up
+to three open tasks from Next; nothing changes until you tap + Today on one.
+Project names wear a hue derived from the project's identity, the same on task
+rows, in Browse, on triage cards, and in task details. In dark mode, lists sit on
+the terminal app's Tokyo Night palette.
+
+From five in the evening, Today offers Wrap Up: what you finished, the week's
+rhythm as seven bars (also at the top of Browse), and a choice for what is
+still on Today, keep it for tomorrow or send it back to Next, ending on a calm
+closing card. Now's background warms as a focus session runs, and a chime
+plays when its time is up. A saved capture flies onto the tab it landed in,
+and Capture offers a link already on the clipboard as an `&link` without
+raising the paste prompt. Sync → Sounds & Icon turns the three sounds off
+(they also follow the silent switch) and picks the Terminal, Paper, or Mint
+icon; the Terminal icon has dark and tinted Home Screen variants. Ritual
+chips zoom open into the screens they lead to and back on Close.
+
 Task rows show priority and context in their secondary text, wrapping the full
 value. The dominant attention cue remains overdue, review/check-in, due today,
 then high priority. Sync leads with its current condition and the relevant

@@ -77,12 +77,13 @@ public enum DeepLink: Hashable, Sendable {
     }
 }
 
-/// A daily ritual a link can open: inbox triage, the task in progress, or a
-/// review pass.
+/// A daily ritual a link can open: inbox triage, the task in progress, a
+/// review pass, or the evening recap.
 public enum RitualLink: String, Hashable, Sendable, CaseIterable {
     case startDay = "start-day"
     case now
     case review
+    case recap
 }
 
 /// The App Group container the app shares with its extensions.
