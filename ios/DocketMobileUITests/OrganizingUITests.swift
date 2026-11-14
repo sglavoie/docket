@@ -388,6 +388,41 @@ final class OrganizingUITestsPart1: OrganizingUITests {
     }
 }
 
+final class OrganizingUITestsPart5: OrganizingUITests {
+    /// A task's detail deletes it after a confirmation, taking its Today
+    /// membership with it, and the list's receipt undoes the delete whole.
+    func testDetailDeletesATaskAndUndoRestoresIt() throws {
+        let app = launch()
+        let tiles = "0a7e5d10-2c3b-4f6a-8e9d-000000000202"
+        XCTAssertNotNil(taskLine("Order bathroom tiles", in: try markdown("home-renovation")))
+        openTask(app, "Order bathroom tiles")
+        press(app, "detail.delete")
+        let confirm = app.buttons["detail.delete.confirm"].firstMatch.waitForExistence(timeout: 4)
+            ? app.buttons["detail.delete.confirm"].firstMatch : app.alerts.buttons["Delete"].firstMatch
+        require(confirm, "the delete confirmation")
+        confirm.tap()
+        eventually("the task and its Today membership were deleted") {
+            try self.taskLine("Order bathroom tiles", in: self.markdown("home-renovation")) == nil
+                && !self.planning().contains(tiles)
+        }
+        require(app.staticTexts.matching(NSPredicate(format: "identifier == 'list.receipt' AND label CONTAINS 'Deleted'")).firstMatch,
+                "the delete receipt")
+        XCTAssertFalse(app.staticTexts["detail.title"].exists, "the deleted task's detail stayed open")
+        // The receipt dismisses itself after a few seconds, so Undo is tapped
+        // as soon as it shows rather than through the scrolling helper.
+        let undo = app.buttons["list.undo"].firstMatch
+        require(undo, "the receipt's Undo")
+        undo.tap()
+        let refusal = app.staticTexts["list.undo.failure"].firstMatch
+        XCTAssertFalse(refusal.waitForExistence(timeout: 3), "Undo was refused: \(refusal.exists ? refusal.label : "")")
+        eventually("Undo restored the task and its Today membership") {
+            try self.taskLine("Order bathroom tiles", in: self.markdown("home-renovation")) != nil
+                && self.planning().contains(tiles)
+        }
+        require(row(app, "Order bathroom tiles"), "the restored Today row")
+    }
+}
+
 final class OrganizingUITestsPart2: OrganizingUITests {
     func testLongPressReordersTodayAndSurvivesRelaunch() throws {
         var app = launch()

@@ -237,6 +237,20 @@ public actor DocketEngine {
         )
     }
 
+    /// Permanently deletes one task and its whole subtree as one undoable
+    /// transaction. `revision` is the project revision the confirmation was
+    /// shown against, so a subtree that grew since is refused, not removed.
+    public func delete(
+        _ locator: TaskLocator,
+        revision: String,
+        requestID: String = UUID().uuidString
+    ) throws -> DeleteMutation {
+        try send(
+            "command.delete", payload: DeletePayload(task: locator),
+            expect: Expectation(projects: [locator.projectID: revision]), requestID: requestID
+        )
+    }
+
     // MARK: Organizing
 
     /// Adds, edits, ticks, removes, moves, or promotes one checklist item.
@@ -458,6 +472,10 @@ private struct CapturePayload: Encodable {
         case title, destination, priority, tags
         case projectID = "project_id"
     }
+}
+
+private struct DeletePayload: Encodable {
+    var task: TaskLocator
 }
 
 private struct TransitionPayload: Encodable {

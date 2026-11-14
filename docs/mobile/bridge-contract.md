@@ -133,6 +133,7 @@ There is no bridge-only mutation path.
 | `command.hierarchy` | yes | Adds a subtask, sets or clears a parent, indents, outdents, or moves a task among its siblings. |
 | `command.bulk` | yes | One planning, status, tag, or project action over a selection, as one transaction. |
 | `command.project` | yes | Creates, edits, retags (parking included), archives, restores, or deletes a project. |
+| `command.delete` | yes | Permanently deletes one task and its subtree, guarded by the project revision the confirmation read. |
 | `query.project` | no | One project, archived ones included, with what deleting it would remove. |
 | `query.reminders` | no | The local notifications the device should hold, planned under the shared attention rules. |
 | `query.widget_snapshot` | no | Today and Inbox as the widgets show them, with the local day they are true for. |
@@ -186,6 +187,7 @@ from one the protocol never had. The current build serves these:
 | `query.widget_snapshot` | `{limit}`, optional, 0-20 (0 is 8) | `{format, workspace, generated_at, day, valid_until, today, inbox}`; each list is `{count, tasks: [{project_id, task_id, short_id, title, project_name, state, priority, due_date, overdue, pinned}]}` |
 | `capture.import` | `{captures_dir}`, absolute | `{imported: [{capture_id, outcome, tasks}], pending: [{capture_id, reason, code, message, lines}], transaction_ids}`; `outcome` is `imported`, `resumed`, or `already_imported`; `reason` is `refused`, `other_workspace`, or `incomplete` |
 | `command.project` | `{action, project_id, name, description, tags, confirm}`; `action` is `create` (`name`), `edit` (any of `name`, `description`, `tags`), `set_tags` (`tags`, the complete set), `archive`, `unarchive`, or `delete` (`confirm`, the `impact` the confirmation showed) | `{project, committed}` |
+| `command.delete` | `{task}`; `expect.projects` must name the task's project at the `revision` the confirmation read | `{removed: [locator], committed}`; `removed` is the task and every descendant |
 | `command.comment` | `{task, project_id, action, text, index, comment_id, original}` with exactly one of `task` and `project_id`; `action` is `add` (`text`), `edit` (`text`), or `delete`; `edit` and `delete` name the comment by `index` on a task or `comment_id` on a project, and send `original`, the text read there | `{task, project_id, comment_id, comments, committed}` |
 | `query.notes` | `{location}`, optional; a location is `{scope, project_id}`, `scope` `global` or `project` | `{notes: [{location, project_name, filename, title, created_at, modified_at, revision, parse_error, excerpt}]}` |
 | `query.note` | `{location, filename}` | `{note}`, the list's fields and `body` |
@@ -304,6 +306,13 @@ never renamed, parked, archived, or deleted (`refused`). `delete` is guarded:
 the stored task Markdown, so a delete confirmed before more work arrived (from
 this device or an import) answers `stale_revision` with the current `impact`
 and deletes nothing.
+
+`command.delete` is the desktop's task delete: the task and its whole
+subtree, their attachment bytes, and their Today/Next membership leave in one
+transaction its receipt can undo. It is guarded the same way through
+`expect`: a request naming no revision for the task's project is
+`invalid_request`, and one read before the subtree grew or anything else in
+that project changed answers `stale_revision` and deletes nothing.
 
 A `validation` refusal from the shared engine carries what it judged in
 `details`: `kind` is `invalid_input` with `field` and `reason`,

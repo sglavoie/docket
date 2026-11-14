@@ -16,6 +16,7 @@ struct TaskDetailView: View {
 
     let workspace: WorkspaceModel
     let locator: TaskLocator
+    @Environment(\.dismiss) private var dismiss
     /// Where the task lives now; a move to another project changes it.
     @State private var current: TaskLocator?
     @State private var detail: TaskDetail?
@@ -42,6 +43,9 @@ struct TaskDetailView: View {
     @State private var acting = false
     /// The task whose pause waits on its resume note.
     @State private var pausing: TaskSnapshot?
+    /// The read a delete was confirmed against; the engine refuses it if the
+    /// project changed since.
+    @State private var deleting: TaskDetail?
 
     var body: some View {
         Group {
@@ -94,6 +98,17 @@ struct TaskDetailView: View {
                         .accessibilityIdentifier("detail.edit")
                 }
             }
+        }
+        .alert(
+            deleting.map(Self.deleteQuestion) ?? "Delete this task?",
+            isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+            presenting: deleting
+        ) { confirmed in
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) { delete(confirmed) }
+                .accessibilityIdentifier("detail.delete.confirm")
+        } message: { _ in
+            Text("It is removed from every device that syncs this workspace. You can undo it right after.")
         }
         .sheet(item: $editRequest) { request in
             TaskEditSheet(workspace: workspace, task: request.task, initialFocus: request.focus)
@@ -349,6 +364,34 @@ struct TaskDetailView: View {
                         return outcome.refusal
                 }
             )
+            Section {
+                Button("Delete Task", role: .destructive) { deleting = detail }
+                    .accessibilityIdentifier("detail.delete")
+            }
+        }
+    }
+
+    private static func deleteQuestion(_ detail: TaskDetail) -> String {
+        let subtasks = detail.relations?.children.count ?? 0
+        return subtasks == 0 ? "Delete “\(detail.task.title)”?" : "Delete “\(detail.task.title)” and its subtasks?"
+    }
+
+    /// Deletes what the confirmation showed. A project that changed since is
+    /// reloaded so the person sees what a delete would now take.
+    private func delete(_ confirmed: TaskDetail) {
+        guard !acting else { return }
+        acting = true
+        Task {
+            let outcome = await workspace.delete(confirmed)
+            acting = false
+            if outcome.stale {
+                failure = outcome.refusal
+                await load()
+            } else if let refusal = outcome.refusal {
+                failure = refusal
+            } else {
+                dismiss()
+            }
         }
     }
 

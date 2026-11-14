@@ -318,6 +318,12 @@ public struct TaskMutation: Decodable, Hashable, Sendable {
     public var committed: CommittedEffect
 }
 
+/// What a task deletion removed: the task and every descendant it took.
+public struct DeleteMutation: Decodable, Hashable, Sendable {
+    public var removed: [TaskLocator]
+    public var committed: CommittedEffect
+}
+
 public struct UndoMutation: Decodable, Hashable, Sendable {
     public var transactionID: String
     public var action: String

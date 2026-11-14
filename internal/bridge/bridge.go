@@ -88,6 +88,7 @@ var operations = map[string]op{
 	"command.hierarchy":         {mutates: true, run: (*Bridge).commandHierarchy},
 	"command.bulk":              {mutates: true, run: (*Bridge).commandBulk},
 	"command.project":           {mutates: true, run: (*Bridge).commandProject},
+	"command.delete":            {mutates: true, run: (*Bridge).commandDelete},
 	"query.notes":               {run: (*Bridge).queryNotes},
 	"query.note":                {run: (*Bridge).queryNote},
 	"command.comment":           {mutates: true, run: (*Bridge).commandComment},

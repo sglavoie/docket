@@ -539,6 +539,29 @@ final class WorkspaceModel {
         return (refusal, moves)
     }
 
+    /// Permanently deletes one task and its subtree, guarded by the project
+    /// revision the confirmation was shown against. The receipt can undo it.
+    /// A refusal because the project changed since is reported as `stale`, so
+    /// the screen reloads and asks again rather than deleting unseen work.
+    func delete(_ detail: TaskDetail) async -> (refusal: String?, stale: Bool) {
+        var stale = false
+        let refusal = await attempt {
+            do {
+                let result = try await self.engine.delete(detail.task.locator, revision: detail.revision)
+                let subtasks = result.removed.count - 1
+                let suffix = subtasks > 0 ? " and \(subtasks) \(subtasks == 1 ? "subtask" : "subtasks")" : ""
+                self.recordReceipt("Deleted “\(detail.task.title)”\(suffix)", result.committed)
+            } catch let failure as BridgeError where failure.code == .staleRevision {
+                stale = true
+                throw failure
+            }
+        }
+        if stale {
+            return ("This project changed since you opened the task. Review it and delete again.", true)
+        }
+        return (refusal, false)
+    }
+
     func project(_ projectID: String?, _ action: ProjectAction) async -> String? {
         await attempt { _ = try await self.engine.project(projectID, action) }
     }

@@ -325,7 +325,10 @@ failure and offers **Retry**, separately from having no destinations.
 A task's detail also edits its checklist in place (tick, add, edit, reorder,
 delete, promote to a subtask), schedules and acknowledges its check-in, adds
 a subtask, indents, outdents, reorders it among its siblings, and moves it to
-another project. **Select** on any list picks several tasks for one action:
+another project. **Delete Task**, at the bottom of the detail, removes the
+task and its subtasks after a confirmation; the receipt offers **Undo**, and a
+project that changed since the detail was read is refused and reloaded rather
+than deleted unseen. **Select** on any list picks several tasks for one action:
 Today, Next, Backlog, Start, Done, a tag, or a project. A project list's
 settings rename, describe, and tag the project, park and archive it after a
 confirmation, and delete it after a confirmation that names everything the
