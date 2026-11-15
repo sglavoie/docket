@@ -234,12 +234,17 @@ come back on a date.
 The status line becomes a prompt for three acts, named at its left edge:
 
 - `a` **Inbox ›** files a typed line in the Inbox. A `%name` word files it in
-  the project that name matches instead; one matching nothing stays in the
-  text. `Enter` keeps the line and asks for the next; a blank `Enter` or
-  `Esc` closes, and `Esc` keeps what was typed.
+  the project or heading that name matches instead; the line names where it
+  will land. One matching nothing stays in the text. `Enter` keeps the line
+  and asks for the next; a blank `Enter` or `Esc` closes, and `Esc` keeps
+  what was typed.
 - `p` **Go to ›** opens a project or a list by name.
-- `m` **Move to ›** makes the cursor's row the last child of a project or the
-  Inbox.
+- `m` **Move to ›** makes the cursor's row or selection the last children of
+  a project, the Inbox or a heading, in screen order. A heading is any live
+  row ending in a colon under a project or the Inbox, at any depth; rows
+  under a deleted row are excluded. Headings are labelled by their path,
+  with colons dropped: `project › TUI › Sidebar`. Projects precede headings
+  on equal match ranks. Moving under oneself or a descendant is refused.
 
 The two pickers list their matches as you type, best first. `Down` and `Up`
 walk them, and `Enter` takes the one at the front. A name matches by its start, the start of a word, anywhere
@@ -316,7 +321,7 @@ the zoom.
 | `x` `!` | Done and back, flag | 2 |
 | `t` | Pick for Today, and unpick | 3 |
 | `Tab` `p` | Sidebar focus; go to a project or list by name | 3 |
-| `a` `m` | Capture to the Inbox from anywhere; move to a project | 3 |
+| `a` `m` | Capture to the Inbox from anywhere; move to a project or heading | 3 |
 | `v` | Select | 4 |
 | `y` | Copy rows with their subtrees | 7 |
 | `/` `:` | Filter, command | 4 |
@@ -385,7 +390,7 @@ grammar cannot read also stays prose (`@alice`, `#123`, `$5`). `\#tag` keeps a r
 | `@@date` | `start` | The same forms as `@date` |
 | `*interval` | `repeat` | A count and `d`, `w`, `m` or `y` (`*3d`, `*2w`), or `daily`, `weekly`, `monthly`, `yearly` |
 | `$state` | `state` | `open`, `doing`, `waiting`, `done`, `canceled`, `parked`, `note`, or an unambiguous prefix (`$w`, `$c`, `$p`; `$d` is not one) |
-| `%name` | | On the capture line only: the project to file the row in |
+| `%name` | | On the capture line only: the project or heading to file the row in |
 
 Typed in a row, sigils become fields when the edit ends and may sit anywhere
 in the line; a repeated `@` or `$` takes the last. Editing a row shows its
@@ -460,7 +465,8 @@ in place, never copied, so two machines closing it cannot make two.
 7. **Outliner.** Indent, outdent and reorder a selected block of adjacent
    siblings in one undo step. Rows under tasks default to notes; pasted
    checkboxes explicitly keep their task state. `y` copies rows and their
-   subtrees for lossless paste under the same kind of parent.
+   subtrees for lossless paste under the same kind of parent. `m` and capture
+   `%name` file rows under headings as well as projects.
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface.

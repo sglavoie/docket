@@ -134,7 +134,11 @@ func crowd(tb testing.TB, n int) *Model {
 			id := fmt.Sprintf("%s-%d", project, i)
 			pos = outline.Between(pos, "")
 			ops = append(ops, outline.Op{Kind: outline.Insert, Row: id, Parent: project, Pos: pos})
-			set(id, "text", "A task with a title of ordinary length")
+			title := "A task with a title of ordinary length"
+			if i%10 == 0 {
+				title = "Storage:"
+			}
+			set(id, "text", title)
 			set(id, "state", "open")
 			set(id, "tags", "alpha beta")
 			set(id, "due", "2026-12-01")
@@ -170,6 +174,11 @@ func TestAKeystrokePaintsWithinAFrame(t *testing.T) {
 	best := func(k string) time.Duration {
 		least := time.Hour
 		for i := 0; i < 20; i++ {
+			if m.ask != nil {
+				// Keep every sample matching headings, rather than measuring
+				// an ever-longer query with no remaining matches.
+				m.ask.ed = editor{}
+			}
 			at := time.Now()
 			frame(m, k)
 			least = min(least, time.Since(at))
@@ -182,6 +191,14 @@ func TestAKeystrokePaintsWithinAFrame(t *testing.T) {
 	frame(m, "o")
 	if d := best("a"); d > budget {
 		t.Errorf("typing a letter took %v", d)
+	}
+	frame(m, "esc")
+	frame(m, "m")
+	if len(m.headings) == 0 {
+		t.Fatal("move picker timing needs heading destinations")
+	}
+	if d := best("s"); d > budget {
+		t.Errorf("typing a move-picker letter took %v", d)
 	}
 }
 

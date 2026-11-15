@@ -103,6 +103,7 @@ type Model struct {
 	backedUp  string // the day of the newest snapshot
 	scanned   scanKey
 	tags      []string // tags in use, most used first
+	headings  []entry  // live heading destinations, in tree order
 	parked    int
 
 	undo, redo [][]outline.Op
@@ -960,7 +961,7 @@ type prompt struct {
 const (
 	askCapture = "capture" // a line for the Inbox
 	askJump    = "jump"    // a project or list to go to
-	askMove    = "move"    // a project to move rows into
+	askMove    = "move"    // a project, Inbox or heading to move rows into
 	askFilter  = "filter"  // a query narrowing the pane, live
 	askStamp   = "stamp"   // sigils to set on rows
 	askCommand = "command"

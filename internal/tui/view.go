@@ -32,7 +32,7 @@ const helpText = `Docket
   > <            indent, outdent
   J K            move the row down, up
   x  !  t        done and back, flag, pick for Today
-  m              move to a project
+  m              move to a project, Inbox or heading
   y              copy the row or selection, including subtrees
   v              select the row; x ! t dd m and stamps act on the selection
                  > < J K move adjacent selected siblings together
@@ -42,7 +42,7 @@ const helpText = `Docket
                  review (projects, longest untouched first),
                  save name (keep the filter; p then /name opens it), forget name,
                  sync folder (share with other machines through a synced folder)
-  a              capture a line to the Inbox; %name files it in a project
+  a              capture to the Inbox; %name files in a project or heading
   p              go to a project or list by name
   Tab            the sidebar: j k choose, Enter work in it
   dd             delete

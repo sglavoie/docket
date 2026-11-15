@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -302,4 +303,135 @@ func TestANarrowTerminalShowsTheSidebarOnlyWhileFocused(t *testing.T) {
 		"    ○ One @tomorrow",
 		"    ◔ Two",
 	)
+}
+
+func TestMoveReachesAHeading(t *testing.T) {
+	fixture := func(t *testing.T) *harness {
+		h := start(t).wide()
+		h.pasteText("Alpha\n\tStorage:\n\t\tExisting\n\tFirst\n\tSecond")
+		return h
+	}
+	children := func(h *harness, id string, want ...string) {
+		h.t.Helper()
+		var got []string
+		for _, child := range h.m.tree.Children(id) {
+			got = append(got, h.m.tree.Row(child).Text())
+		}
+		if !slices.Equal(got, want) {
+			h.t.Fatalf("children = %q, want %q", got, want)
+		}
+	}
+	t.Run("move and selection append in order", func(t *testing.T) {
+		h := fixture(t)
+		heading := h.m.headings[0].id
+		h.press("m", `"stor"`)
+		if got := h.status(); got != "Move to › stor   Alpha › Storage" {
+			t.Fatalf("picker = %q", got)
+		}
+		h.press("enter")
+		children(h, heading, "Existing", "Second")
+		h.press("u", "p", `"alpha"`, "enter", "g", "g")
+		h.press("j", "j", "v", "v")
+		h.press("m", `"stor"`, "enter")
+		children(h, heading, "Existing", "First", "Second")
+		h.press("u", "esc")
+		children(h, heading, "Existing")
+		h.want("  ▾ Storage:", "    ○ Existing", "▌ ○ First", "  ○ Second")
+	})
+	t.Run("equal ranks prefer project then Down reaches heading", func(t *testing.T) {
+		h := start(t).wide()
+		h.pasteText("Cold Storage\nAlpha\n\tStorage:\n\tStray")
+		hits := match(h.m.targets(false), "storage", 3)
+		if len(hits) != 2 || hits[0].kind != kindProject || hits[1].kind != kindHeading {
+			t.Fatalf("matches = %+v", hits)
+		}
+		project, heading := hits[0].id, hits[1].id
+		h.press("m", `"storage"`, "enter")
+		children(h, project, "Stray")
+		h.press("u", "m", `"storage"`, "down", "enter")
+		children(h, heading, "Stray")
+	})
+	t.Run("nested capture and unchanged jump picker", func(t *testing.T) {
+		h := start(t).wide()
+		h.pasteText("Alpha\n\tTUI:\n\t\tSidebar:\n\t\t\tExisting\n\tStray")
+		heading := h.m.headings[1].id
+		if h.m.headings[1].label != "Alpha › TUI › Sidebar" {
+			t.Fatalf("heading = %+v", h.m.headings[1])
+		}
+		h.press("a", `"New %sidebar"`)
+		if got := h.status(); got != "Inbox › New %sidebar   files in Alpha › TUI › Sidebar" {
+			t.Fatalf("capture = %q", got)
+		}
+		h.press("enter", "enter")
+		children(h, heading, "Existing", "New")
+		newID := h.m.tree.Children(heading)[1]
+		if h.m.tree.Row(newID).Fields["state"] != "open" {
+			t.Fatal("capture under a heading must default to a task")
+		}
+		h.press("p", `"sidebar"`, "enter")
+		if h.m.msg != "nothing matches sidebar" || h.m.ask == nil {
+			t.Fatalf("jump offered a heading: %q", h.m.msg)
+		}
+		h.press("esc", "u")
+		children(h, heading, "Existing")
+		for _, e := range h.m.targets(true) {
+			if e.kind == kindHeading {
+				t.Fatal("jump picker includes a heading")
+			}
+		}
+	})
+	t.Run("cycles fail without moving any selected row", func(t *testing.T) {
+		h := fixture(t)
+		h.press("p", `"alpha"`, "enter", "g", "g", "m", `"storage"`, "enter")
+		if h.m.msg != "a row cannot move under itself" {
+			t.Fatalf("self move = %q", h.m.msg)
+		}
+		h.press("p", `"projects"`, "enter", "g", "g", "m", `"storage"`, "enter")
+		if h.m.msg != "a row cannot move under itself" {
+			t.Fatalf("descendant move = %q", h.m.msg)
+		}
+		// First move would succeed; the second would create a cycle.
+		h = start(t).wide()
+		h.pasteText("Alpha\n\tFirst\n\tStorage:\n\t\tNested:")
+		h.press("p", `"alpha"`, "enter", "g", "g", "v", "v", "m", `"nested"`, "enter")
+		if h.m.msg != "a row cannot move under itself" {
+			t.Fatalf("selected move = %q", h.m.msg)
+		}
+		children(h, h.m.at.root, "First", "Storage:")
+		children(h, h.m.headings[1].id)
+	})
+	t.Run("live headings in Inbox and at any depth", func(t *testing.T) {
+		h := start(t).wide()
+		h.pasteText("Alpha:\n\tTask\n\t\tDeep:\n\tGone:\n\t\tHidden:\n\tClosed: $done\n\tParked: $parked")
+		h.press("p", `"alpha"`, "enter", "g", "g", "j", "j", "d", "d")
+		h.press("a", `"Inbox heading:"`, "enter", "enter")
+		var labels []string
+		for _, e := range h.m.headings {
+			labels = append(labels, e.label)
+		}
+		want := []string{"Inbox › Inbox heading", "Alpha › Task › Deep", "Alpha › Closed", "Alpha › Parked"}
+		if !slices.Equal(labels, want) {
+			t.Fatalf("headings = %q, want %q", labels, want)
+		}
+		h.press("a", `"Filed %heading"`, "enter", "enter")
+		children(h, h.m.headings[0].id, "Filed")
+	})
+	t.Run("picker letters reuse scan and edits invalidate it", func(t *testing.T) {
+		h := fixture(t)
+		// Poison the derived value, leaving the tree intact. A new derivation,
+		// even one that reuses the slice's storage, would replace this label.
+		h.m.headings[0].label = "Cached heading"
+		scanned := h.m.scanned
+		h.press("m", `"cached"`)
+		if h.m.scanned != scanned || h.m.headings[0].label != "Cached heading" {
+			t.Fatal("typing in the picker derived headings again")
+		}
+		if got := h.status(); got != "Move to › cached   Cached heading" {
+			t.Fatalf("picker did not use cached headings: %q", got)
+		}
+		h.press("esc", "p", `"alpha"`, "enter", "g", "g", "e", "ctrl+u", `"Renamed:"`, "esc")
+		if h.m.headings[0].label != "Alpha › Renamed" {
+			t.Fatalf("edit did not refresh headings: %+v", h.m.headings)
+		}
+	})
 }

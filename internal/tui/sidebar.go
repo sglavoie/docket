@@ -33,6 +33,7 @@ const (
 	kindStale    = "stale"
 	kindProjects = "projects"
 	kindProject  = "project"
+	kindHeading  = "heading"
 	kindReview   = "review" // active projects, longest untouched first
 	kindFilter   = "filter" // a saved filter
 )
@@ -130,7 +131,7 @@ type scanKey struct {
 }
 
 // scan reads the whole tree once and derives everything the sidebar states:
-// the three computed lists and each project's line. Nothing here is stored.
+// the computed lists, project lines, tags and headings. Nothing here is stored.
 func (m *Model) scan() {
 	now, today := m.now(), m.today()
 	// The pass is skipped while its answer cannot have changed, which is
@@ -147,11 +148,21 @@ func (m *Model) scan() {
 	tagUse := map[string]int{}
 	picked := 0
 	m.parked = 0
+	m.headings = m.headings[:0]
 
-	var visit func(id string, stat *entry, touch *int64, hidden bool)
-	visit = func(id string, stat *entry, touch *int64, hidden bool) {
+	var visit func(id string, stat *entry, touch *int64, hidden bool, path string)
+	visit = func(id string, stat *entry, touch *int64, hidden bool, path string) {
 		r := m.tree.Row(id)
 		l := sigil.FromFields(r.Fields)
+		label := strings.TrimSuffix(l.Text, ":")
+		if r.Parent == "" {
+			path = label
+		} else {
+			path += " › " + label
+			if strings.HasSuffix(l.Text, ":") {
+				m.headings = append(m.headings, entry{kind: kindHeading, id: id, label: path})
+			}
+		}
 		*touch = max(*touch, r.Modified)
 		for _, tag := range l.Tags {
 			tagUse[tag]++
@@ -189,7 +200,7 @@ func (m *Model) scan() {
 			}
 		}
 		for _, kid := range m.tree.Children(id) {
-			visit(kid, stat, touch, hidden)
+			visit(kid, stat, touch, hidden, path)
 		}
 	}
 
@@ -197,7 +208,7 @@ func (m *Model) scan() {
 	for _, top := range m.tree.Children("") {
 		var touch int64
 		if top == inboxID {
-			visit(top, nil, &touch, false)
+			visit(top, nil, &touch, false, "")
 			continue
 		}
 		if top == filtersID {
@@ -205,7 +216,7 @@ func (m *Model) scan() {
 		}
 		l := sigil.FromFields(m.tree.Row(top).Fields)
 		stat := entry{kind: kindProject, id: top, label: l.Text, idle: true}
-		visit(top, &stat, &touch, l.Closed())
+		visit(top, &stat, &touch, l.Closed(), "")
 		switch {
 		case l.State == sigil.Parked:
 			m.parked++
@@ -299,7 +310,7 @@ func (m *Model) sideStep(by int) {
 }
 
 // targets are the destinations a picker offers: every top-level row, the
-// Inbox, and for a jump the computed lists as well.
+// Inbox, and headings for move/capture or lists and saved filters for a jump.
 func (m *Model) targets(jump bool) []entry {
 	out := []entry{{kind: kindInbox, label: "Inbox"}}
 	if jump {
@@ -318,6 +329,8 @@ func (m *Model) targets(jump bool) []entry {
 		for _, f := range m.filters {
 			out = append(out, entry{kind: kindFilter, id: f.Name, label: "/" + f.Name})
 		}
+	} else {
+		out = append(out, m.headings...)
 	}
 	return out
 }
@@ -394,9 +407,8 @@ func (m *Model) create(parent, line string) bool {
 	return true
 }
 
-// route reads where a captured line goes: the project a %name word matches,
-// else the Inbox. A %name matching no project stays in the text, where it
-// shows.
+// route reads where a captured line goes: the project or heading a %name
+// word matches, else the Inbox. An unmatched %name stays in the text.
 func (m *Model) route(line string) (entry, []string) {
 	target := entry{kind: kindInbox, label: "Inbox"}
 	var words []string
