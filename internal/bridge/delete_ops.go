@@ -41,7 +41,7 @@ func (b *Bridge) commandDelete(request Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := runtime.Refresh(); err != nil {
+	if err = runtime.Refresh(); err != nil {
 		return nil, err
 	}
 	after, err := currentRevisions(runtime)

@@ -299,7 +299,7 @@ func (m *OutlinerModel) RenderOutlinerSectionHeaderRow(row OutlinerRow, selected
 	paint := m.cursorPaintFor(selected)
 	accent := theme.LaneHeaderStyle(sectionStyle)
 	fill := accent.GetBackground()
-	var indicatorInk color.Color = accent.GetForeground()
+	indicatorInk := accent.GetForeground()
 	if row.CollapseKey == projectNotesSectionKey {
 		// Notes are reference material, not a task lane: a muted heading on the
 		// row's own background, so the header never reads as a workflow state.

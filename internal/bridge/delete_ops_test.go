@@ -24,7 +24,7 @@ func TestBridgeDeletesATaskSubtreeOnlyAgainstWhatItRead(t *testing.T) {
 	h.ok(h.call("command.hierarchy", map[string]any{"task": parent, "action": "add_child", "title": "Draw the sun icon"}), nil)
 	sun := h.childNamed(parent, "Draw the sun icon")
 	h.unchanged("a delete confirmed before the subtree grew", func() {
-		h.refused(h.call("command.delete", map[string]any{"task": parent},
+		h.rejects(h.call("command.delete", map[string]any{"task": parent},
 			withExpect(Expect{Projects: map[string]string{atlasProject: read.Revision}})), CodeStaleRevision)
 	})
 
