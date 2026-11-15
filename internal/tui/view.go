@@ -31,8 +31,8 @@ const helpText = `Docket
   o O            new row below, above
   e              edit the row
   > <            indent, outdent
-  J K            move the row down, up
-  x  !  t        done and back, flag, pick for Today
+  J K            move the row down, up (also in Today; no selection there)
+  x  !  t        done and back, flag, pick for Today in pick order
   m              move to a project, Inbox or heading
   y              copy the row or selection, including subtrees
   v              select the row; x ! t dd m and stamps act on the selection

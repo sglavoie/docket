@@ -108,6 +108,8 @@ type Model struct {
 	headings  []entry  // live heading destinations, in tree order
 	parked    int
 
+	outlineOrder map[string]int // traversal ranks, derived in scan for Today ties
+
 	undo, redo [][]outline.Op
 	prefix     string            // a pending g or d
 	picked     map[string]bool   // the selection
@@ -377,6 +379,11 @@ func (m *Model) Notice(msg string) { m.msg = msg }
 // rebuild recomputes the visible rows and the sidebar, and keeps the cursor
 // inside the rows.
 func (m *Model) rebuild() {
+	cur := m.current()
+	m.scan()
+	if m.at.list == kindToday {
+		m.sortToday(m.at.rows)
+	}
 	// A closed row that was on screen stays until the place is left, so
 	// closing a row never pulls it from under the cursor.
 	onScreen := map[string]bool{}
@@ -438,7 +445,9 @@ func (m *Model) rebuild() {
 			delete(m.picked, id)
 		}
 	}
-	m.scan()
+	if m.at.list == kindToday {
+		m.seek(cur)
+	}
 }
 
 // flat refuses an act that needs the whole tree in view: while a list or a
@@ -628,6 +637,7 @@ func (m *Model) replay(from, to *[][]outline.Op, empty string) {
 		m.msg = empty
 		return
 	}
+	cur := m.current()
 	group := (*from)[len(*from)-1]
 	inv, err := m.apply(group)
 	if err != nil {
@@ -643,6 +653,14 @@ func (m *Model) replay(from, to *[][]outline.Op, empty string) {
 	m.keepHistory()
 	m.rebuild()
 	m.seek(group[len(group)-1].Row)
+	if m.at.list == kindToday {
+		for _, op := range group {
+			if op.Field == fieldTodayPos {
+				m.seek(cur)
+				break
+			}
+		}
+	}
 }
 
 func (m *Model) indentOp(id string) (outline.Op, bool) {
@@ -1423,7 +1441,11 @@ func (m *Model) normalKey(k string) {
 			m.shift(cur, k == ">")
 		}
 	case "J", "K":
-		if len(m.picked) > 0 {
+		if m.at.list == kindToday {
+			if m.single() {
+				m.reorderToday(cur, k == "J")
+			}
+		} else if len(m.picked) > 0 {
 			m.moveBlock(ids, k)
 		} else {
 			m.reorder(cur, k == "J")

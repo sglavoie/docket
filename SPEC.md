@@ -50,6 +50,7 @@ a rule here changes this file first.
 | `tags` | 2 | Space-separated, normalised |
 | `changed` | 2 | When `state` last changed, for Waiting and Stale ages |
 | `today` | 3 | The day the row was picked for Today |
+| `todaypos` | 7 | Fractional position in Today; read only while the row is in Today |
 
 | `start` | 5 | Not before this day, a calendar day |
 | `repeat` | 5 | An interval, as in `2w`: the row comes back after it is closed |
@@ -204,9 +205,12 @@ The pane shows the rows under one row, or a list.
 - **Today, Waiting and Stale** are flat. A list is read when it is opened and
   holds those rows until it is opened again, so closing or rescheduling a row
   never pulls it from under the cursor. Each row names its project; Waiting
-  and Stale lead with the longest wait and say how many days. A list has no
-  order to edit: `o`, `O`, `>`, `<`, `J` and `K` are refused there, and
-  `Enter` works inside a row, from which `Esc` returns to the same list.
+  and Stale lead with the longest wait and say how many days. Today alone
+  has an editable order: `J` and `K` move the cursor's row down and up,
+  keeping the cursor on it without moving it in the outline. They refuse
+  selections; Waiting, Stale and review refuse both keys. `o`, `O`, `>` and
+  `<` are refused in every list. `Enter` works inside a row, from which
+  `Esc` returns to the same list.
 - **Launch** opens Today when something is picked for the day, else Projects.
 - **A row wraps** under its own text at the pane's width, each word keeping
   its colour, so nothing is cut; a word wider than the pane breaks across
@@ -227,7 +231,12 @@ The pane shows the rows under one row, or a list.
 Today is hand-picked and rebuilt daily: a row is in Today when its `today`
 field is the current day, so yesterday's picks drop out without a write. A
 task whose start day is today is in Today too, which is how a row is made to
-come back on a date.
+come back on a date. Picks are kept in the order made: `t` assigns a fresh
+`todaypos` after the last placed row, overwriting any earlier day's place
+in the same undo step. Unpicking leaves that place stored. Rows with a place
+come first, sorted by it; rows without one follow in outline order. Before
+`J` or `K` moves a row, any missing places are filled in the order shown,
+in the same undo step. Ordering is kept across reopening and restarting.
 
 ### Bottom line
 
@@ -495,7 +504,8 @@ in place, never copied, so two machines closing it cannot make two.
    `%name` file rows under headings as well as projects. While typing,
    `Enter` splits a line and `Backspace` at its start joins it into the row
    above, each in one undo step, in outlines only. `:fold [level]` and `:unfold`
-   control the pane's folds; `Ctrl+D` and `Ctrl+U` move half a pane.
+   control the pane's folds; `Ctrl+D` and `Ctrl+U` move half a pane. Today
+   keeps pick order; `J` and `K` reorder it without moving outline rows. *Built.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface.

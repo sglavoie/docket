@@ -275,10 +275,21 @@ func (m *Model) toggle(ids []string, field, value string) {
 	if all {
 		value = ""
 	}
+	var last string
+	if field == sigil.FieldToday && value != "" {
+		m.scan()
+		for _, id := range m.lists[kindToday] {
+			last = max(last, m.tree.Row(id).Fields[fieldTodayPos])
+		}
+	}
 	var ops []outline.Op
 	for _, id := range ids {
 		if m.tree.Row(id).Fields[field] != value {
 			ops = append(ops, outline.Op{Kind: outline.Set, Row: id, Field: field, Value: value})
+			if field == sigil.FieldToday && value != "" {
+				last = outline.Between(last, "")
+				ops = append(ops, outline.Op{Kind: outline.Set, Row: id, Field: fieldTodayPos, Value: last})
+			}
 		}
 	}
 	if len(ops) > 0 {

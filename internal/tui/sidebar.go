@@ -18,9 +18,10 @@ import (
 // on it. Its position sorts before any key Between can mint, which keeps it
 // first among the top-level rows, where it is never drawn.
 const (
-	inboxID   = "inbox"
-	filtersID = "filters" // holds the saved filters, one row each
-	fixedPos  = "0"
+	inboxID       = "inbox"
+	filtersID     = "filters" // holds the saved filters, one row each
+	fixedPos      = "0"
+	fieldTodayPos = "todaypos"
 )
 
 // hiddenTop reports a top-level row that is never drawn among the projects.
@@ -149,9 +150,11 @@ func (m *Model) scan() {
 	picked := 0
 	m.parked = 0
 	m.headings = m.headings[:0]
+	m.outlineOrder = map[string]int{}
 
 	var visit func(id string, stat *entry, touch *int64, hidden bool, path string)
 	visit = func(id string, stat *entry, touch *int64, hidden bool, path string) {
+		m.outlineOrder[id] = len(m.outlineOrder)
 		r := m.tree.Row(id)
 		l := sigil.FromFields(r.Fields)
 		label := strings.TrimSuffix(l.Text, ":")
@@ -226,6 +229,8 @@ func (m *Model) scan() {
 		}
 	}
 
+	m.sortToday(lists[kindToday])
+
 	// Longest waiting and longest untouched first: the top is what to chase.
 	sort.SliceStable(lists[kindWaiting], func(i, j int) bool {
 		return m.changedAt(lists[kindWaiting][i]) < m.changedAt(lists[kindWaiting][j])
@@ -290,6 +295,74 @@ func (m *Model) open(e entry) {
 		m.at = place{list: e.kind, rows: slices.Clone(m.lists[e.kind])}
 	}
 	m.arrive()
+}
+
+// sortToday keeps placed rows first, with outline order for unplaced rows
+// and equal keys (which independent picks on two machines can produce).
+func (m *Model) sortToday(rows []string) {
+	sort.SliceStable(rows, func(i, j int) bool {
+		a, b := m.tree.Row(rows[i]), m.tree.Row(rows[j])
+		if a == nil || b == nil {
+			return a != nil
+		}
+		ap, bp := a.Fields[fieldTodayPos], b.Fields[fieldTodayPos]
+		if ap == bp {
+			return m.outlineOrder[a.ID] < m.outlineOrder[b.ID]
+		}
+		return ap != "" && (bp == "" || ap < bp)
+	})
+}
+
+func (m *Model) reorderToday(id string, down bool) {
+	if m.at.query != "" {
+		m.flat()
+		return
+	}
+	rows := make([]string, len(m.vis))
+	positions := make([]string, len(m.vis))
+	initialize := false
+	for i, v := range m.vis {
+		rows[i] = v.id
+		positions[i] = m.tree.Row(v.id).Fields[fieldTodayPos]
+		// Equal keys are possible after sync; make room before using Between.
+		if positions[i] == "" || (i > 0 && positions[i] <= positions[i-1]) {
+			initialize = true
+		}
+	}
+	at := slices.Index(rows, id)
+	next := at - 1
+	if down {
+		next = at + 1
+	}
+	if at < 0 || next < 0 || next >= len(rows) {
+		return
+	}
+	var ops []outline.Op
+	if initialize {
+		pos := ""
+		for i, row := range rows {
+			pos = outline.Between(pos, "")
+			positions[i] = pos
+			ops = append(ops, outline.Op{Kind: outline.Set, Row: row, Field: fieldTodayPos, Value: pos})
+		}
+	}
+	var before, after string
+	if down {
+		before = positions[next]
+		if next+1 < len(rows) {
+			after = positions[next+1]
+		}
+	} else {
+		after = positions[next]
+		if next > 0 {
+			before = positions[next-1]
+		}
+	}
+	ops = append(ops, outline.Op{Kind: outline.Set, Row: id, Field: fieldTodayPos, Value: outline.Between(before, after)})
+	if m.do(ops...) {
+		m.rebuild()
+		m.seek(id)
+	}
 }
 
 // sideStep moves the sidebar selection, showing each destination as it goes.

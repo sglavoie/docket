@@ -169,6 +169,180 @@ func TestTodayIsPickedAndLapsesOvernight(t *testing.T) {
 	)
 }
 
+func TestTodayIsReordered(t *testing.T) {
+	three := func(t *testing.T, startDay bool) *harness {
+		h := start(t).wide()
+		h.press("o", `"Alpha"`, "enter", "tab", `"One"`, "enter", `"Two"`, "enter", `"Three"`, "esc")
+		if startDay {
+			h.press("o", `"Scheduled @@today"`, "esc", "o", `"Later @@today"`, "esc")
+		}
+		// Pick Three, One, Two, against their outline order.
+		h.press("g", "g", "j", "j", "j", "t", "k", "k", "t", "j", "t", "p", `"today"`, "enter")
+		return h
+	}
+	t.Run("picks moves undo and restart", func(t *testing.T) {
+		h := three(t, false)
+		h.want("▌ ○ Three · Alpha", "  ○ One · Alpha", "  ○ Two · Alpha")
+		positions := map[string]string{}
+		for _, id := range h.m.at.rows {
+			positions[id] = h.m.tree.Row(id).Pos
+		}
+		h.press("j", "K")
+		h.want("▌ ○ One · Alpha", "  ○ Three · Alpha", "  ○ Two · Alpha")
+		h.press("u")
+		h.want("  ○ Three · Alpha", "▌ ○ One · Alpha", "  ○ Two · Alpha")
+		h.press("ctrl+r", "J")
+		h.want("  ○ Three · Alpha", "▌ ○ One · Alpha", "  ○ Two · Alpha")
+		h.press("J")
+		h.want("  ○ Three · Alpha", "  ○ Two · Alpha", "▌ ○ One · Alpha")
+		steps := len(h.m.undo)
+		h.press("J")
+		if len(h.m.undo) != steps {
+			t.Fatal("moving past the end made an undo step")
+		}
+		h.press("p", `"alpha"`, "enter")
+		h.want("▌ ○ One", "  ○ Two", "  ○ Three")
+		for id, pos := range positions {
+			if row := h.m.tree.Row(id); row.Pos != pos || row.Parent != h.m.at.root {
+				t.Fatal("Today changed outline structure")
+			}
+		}
+		h.press("p", `"today"`, "enter")
+		h.want("  ○ Three · Alpha", "  ○ Two · Alpha", "▌ ○ One · Alpha")
+		h.st.Close()
+		again := open(t, h.path).wide()
+		again.want("▌ ○ Three · Alpha", "  ○ Two · Alpha", "  ○ One · Alpha")
+		again.press("G", "u")
+		again.want("  ○ Three · Alpha", "▌ ○ One · Alpha", "  ○ Two · Alpha")
+		again.press("ctrl+r")
+		again.want("  ○ Three · Alpha", "  ○ Two · Alpha", "▌ ○ One · Alpha")
+	})
+	t.Run("start day rows initialize in one undo step", func(t *testing.T) {
+		h := three(t, true)
+		h.want("▌ ○ Three · Alpha", "  ○ One · Alpha", "  ○ Two · Alpha", "  ○ Scheduled @@today · Alpha", "  ○ Later @@today · Alpha")
+		before := map[string]string{}
+		for _, id := range h.m.at.rows {
+			before[id] = h.m.tree.Row(id).Fields[fieldTodayPos]
+		}
+		steps := len(h.m.undo)
+		h.press("G", "K")
+		h.want("  ○ Three · Alpha", "  ○ One · Alpha", "  ○ Two · Alpha", "▌ ○ Later @@today · Alpha", "  ○ Scheduled @@today · Alpha")
+		if len(h.m.undo) != steps+1 {
+			t.Fatal("initializing and moving did not form one undo step")
+		}
+		for _, id := range h.m.at.rows {
+			if h.m.tree.Row(id).Fields[fieldTodayPos] == "" {
+				t.Fatal("a row was left without a place")
+			}
+		}
+		h.press("u")
+		h.want("  ○ Three · Alpha", "  ○ One · Alpha", "  ○ Two · Alpha", "  ○ Scheduled @@today · Alpha", "▌ ○ Later @@today · Alpha")
+		for id, pos := range before {
+			if h.m.tree.Row(id).Fields[fieldTodayPos] != pos {
+				t.Fatal("undo did not restore the original place")
+			}
+		}
+		h.press("ctrl+r", "J")
+		h.want("  ○ Three · Alpha", "  ○ One · Alpha", "  ○ Two · Alpha", "  ○ Scheduled @@today · Alpha", "▌ ○ Later @@today · Alpha")
+	})
+	t.Run("group toggle retains earlier picks and replaces stale positions", func(t *testing.T) {
+		h := three(t, false)
+		threeID := h.m.current()
+		old := h.m.tree.Row(threeID).Fields[fieldTodayPos]
+		h.press("t")
+		if h.m.tree.Row(threeID).Fields[fieldTodayPos] != old {
+			t.Fatal("unpick cleared the stored position")
+		}
+		// A mixed selection picks only its unpicked member, at the end.
+		h.press("v", "v", "t", "esc")
+		h.want("  ○ One · Alpha", "▌ ○ Two · Alpha", "  ○ Three · Alpha")
+		h.press("u")
+		h.want("  ○ Three · Alpha", "  ○ One · Alpha", "▌ ○ Two · Alpha")
+		if h.m.tree.Row(threeID).Fields[fieldTodayPos] != old || h.m.tree.Row(threeID).Fields["today"] != "" {
+			t.Fatal("undo did not restore both pick fields")
+		}
+		// The next day overwrites old positions and assigns a group in screen order.
+		h.clock = h.clock.Add(24 * time.Hour)
+		h.press("p", `"alpha"`, "enter", "g", "g", "j", "t", "g", "g", "v", "j", "v", "t", "esc", "p", `"today"`, "enter")
+		h.want("▌ ○ Two · Alpha", "  ○ One · Alpha", "  ○ Three · Alpha")
+		if h.m.tree.Row(threeID).Fields[fieldTodayPos] == old {
+			t.Fatal("new day retained the old position")
+		}
+		h.press("g", "g", "v", "v", "v", "t")
+		for _, id := range h.m.at.rows {
+			if h.m.tree.Row(id).Fields["today"] != "" || h.m.tree.Row(id).Fields[fieldTodayPos] == "" {
+				t.Fatal("group unpick did not retain positions")
+			}
+		}
+	})
+	t.Run("retained unpicked rows with equal positions", func(t *testing.T) {
+		h := three(t, false)
+		// Unpicked rows remain in the snapshot. Repicking can reuse their keys.
+		h.press("G", "t", "k", "t", "t", "g", "g", "t", "t")
+		h.want("  ○ One · Alpha", "  ○ Two · Alpha", "▌ ○ Three · Alpha")
+		h.press("K")
+		h.want("  ○ One · Alpha", "▌ ○ Three · Alpha", "  ○ Two · Alpha")
+		h.press("u")
+		h.want("  ○ One · Alpha", "  ○ Two · Alpha", "▌ ○ Three · Alpha")
+	})
+	t.Run("refusals preserve rows and history", func(t *testing.T) {
+		h := three(t, false)
+		before, steps := h.rows(), len(h.m.undo)
+		for _, k := range []string{"o", "O", ">", "<"} {
+			h.press(k)
+			if h.m.msg == "" || h.rows() != before || len(h.m.undo) != steps {
+				t.Fatalf("Today did not refuse %s", k)
+			}
+		}
+		h.press("v")
+		for _, k := range []string{"J", "K"} {
+			h.press(k)
+			if h.m.msg != "that works on one row: press Esc to clear the selection" || len(h.m.undo) != steps {
+				t.Fatalf("Today selection did not refuse %s: %s", k, h.m.msg)
+			}
+		}
+		h.press("esc", "/", `"One"`, "enter", "J")
+		if h.m.msg != "clear the filter first (Esc)" || len(h.m.undo) != steps {
+			t.Fatal("filtered Today allowed reorder")
+		}
+		h.press("esc", "$", `"waiting"`, "enter", "p", `"waiting"`, "enter")
+		before, steps = h.rows(), len(h.m.undo)
+		for _, k := range []string{"J", "K"} {
+			h.press(k)
+			if h.m.msg != "a list has no order: press Enter on a row to work inside it" || h.rows() != before || len(h.m.undo) != steps {
+				t.Fatalf("Waiting did not refuse %s", k)
+			}
+		}
+		h.clock = h.clock.Add(15 * 24 * time.Hour)
+		for _, keys := range [][]string{{"p", `"stale"`, "enter"}, {":", `"review"`, "enter"}} {
+			h.press(keys...)
+			before, steps = h.rows(), len(h.m.undo)
+			for _, k := range []string{"J", "K"} {
+				h.press(k)
+				if h.m.msg != "a list has no order: press Enter on a row to work inside it" || h.rows() != before || len(h.m.undo) != steps {
+					t.Fatalf("%s did not refuse %s", h.header(), k)
+				}
+			}
+		}
+	})
+	t.Run("failed initialization and pick are rolled back", func(t *testing.T) {
+		h := three(t, true)
+		h.press("G")
+		before, steps := h.rows(), len(h.m.undo)
+		scheduled := h.m.current()
+		h.m.backend = &flaky{Backend: h.m.backend, fail: true}
+		for _, k := range []string{"K", "t"} {
+			h.press(k)
+			if h.rows() != before || len(h.m.undo) != steps || !strings.Contains(h.m.msg, "not saved") {
+				t.Fatalf("failed %s changed the view or history", k)
+			}
+			if row := h.m.tree.Row(scheduled); row.Fields[fieldTodayPos] != "" || row.Fields["today"] != "" {
+				t.Fatalf("failed %s left fields behind", k)
+			}
+		}
+	})
+}
+
 func TestCaptureFilesInTheInboxOrANamedProject(t *testing.T) {
 	h := two(t)
 	h.press("a", `"Buy milk"`)
