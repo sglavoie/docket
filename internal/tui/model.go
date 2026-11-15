@@ -114,6 +114,8 @@ type Model struct {
 	edit       *editor
 	ask        *prompt
 	help       bool
+	helpTop    int  // first visible help line
+	helpG      bool // a pending g in help
 	msg        string
 }
 
@@ -808,7 +810,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		switch {
 		case m.help:
-			m.help = false
+			m.helpKey(msg.String())
 		case m.edit != nil:
 			m.editKey(msg)
 		case m.ask != nil:
@@ -1041,7 +1043,7 @@ func (m *Model) sideKey(k string) {
 	case "a":
 		m.ask = &prompt{kind: askCapture}
 	case "?":
-		m.help = true
+		m.openHelp()
 	}
 }
 
@@ -1092,7 +1094,7 @@ func (m *Model) normalKey(k string) {
 	case "ctrl+r":
 		m.replay(&m.redo, &m.undo, "nothing to redo")
 	case "?":
-		m.help = true
+		m.openHelp()
 	case "tab":
 		m.sideFocus = true
 	case "p":
@@ -1305,4 +1307,53 @@ func (e *editor) insert(text []rune) {
 	buf = append(buf, text...)
 	e.buf = append(buf, e.buf[e.caret:]...)
 	e.caret += len(text)
+}
+
+func (m *Model) openHelp() {
+	m.help, m.helpTop, m.helpG = true, 0, false
+}
+
+// helpPage is the number of help lines visible at once.
+func (m *Model) helpPage() int {
+	_, h := m.size()
+	return max(h-1, 1)
+}
+
+// helpKey scrolls the help; any key it does not know closes it.
+func (m *Model) helpKey(k string) {
+	g := m.helpG
+	m.helpG = false
+	page := m.helpPage()
+	switch k {
+	case "j", "down", "ctrl+n":
+		m.helpTop++
+	case "k", "up", "ctrl+p":
+		m.helpTop--
+	case "ctrl+d":
+		m.helpTop += page / 2
+	case "ctrl+u":
+		m.helpTop -= page / 2
+	case "pgdown", "ctrl+f", "space":
+		m.helpTop += page
+	case "pgup", "ctrl+b":
+		m.helpTop -= page
+	case "G", "end":
+		m.helpTop = 1 << 30
+	case "home":
+		m.helpTop = 0
+	case "g":
+		if g {
+			m.helpTop = 0
+		} else {
+			m.helpG = true
+		}
+	default:
+		m.help = false
+	}
+	m.clampHelp()
+}
+
+func (m *Model) clampHelp() {
+	n := strings.Count(helpText, "\n") + 1
+	m.helpTop = max(min(m.helpTop, n-m.helpPage()), 0)
 }

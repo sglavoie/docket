@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -464,7 +465,16 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 func (m *Model) View() tea.View {
 	w, h := m.size()
 	if m.help {
-		v := tea.NewView(helpText)
+		all := strings.Split(helpText, "\n")
+		page := m.helpPage()
+		m.clampHelp()
+		out := all
+		if len(all) > page {
+			out = append(append([]string{}, all[m.helpTop:min(m.helpTop+page, len(all))]...),
+				sgrDim+fmt.Sprintf("  j/k scroll · gg/G ends · %d-%d of %d · any other key closes",
+					m.helpTop+1, min(m.helpTop+page, len(all)), len(all))+sgrReset)
+		}
+		v := tea.NewView(strings.Join(out, "\n"))
 		v.AltScreen = true
 		return v
 	}

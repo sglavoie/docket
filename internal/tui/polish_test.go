@@ -248,3 +248,33 @@ func TestClosedRowsCanBeLeftOut(t *testing.T) {
 		"    ○ Refactor auth #bug",
 	)
 }
+
+func TestHelpScrolls(t *testing.T) {
+	m := &Model{width: 80, height: 10}
+	m.openHelp()
+	m.helpKey("j")
+	if m.helpTop != 1 {
+		t.Fatalf("j: top=%d", m.helpTop)
+	}
+	m.helpKey("ctrl+d")
+	if m.helpTop != 1+m.helpPage()/2 {
+		t.Fatalf("ctrl+d: top=%d", m.helpTop)
+	}
+	m.helpKey("G")
+	if bottom := m.helpTop; bottom == 0 || !m.help {
+		t.Fatalf("G: top=%d help=%v", bottom, m.help)
+	}
+	m.helpKey("g")
+	m.helpKey("g")
+	if m.helpTop != 0 {
+		t.Fatalf("gg: top=%d", m.helpTop)
+	}
+	m.helpKey("ctrl+u")
+	if m.helpTop != 0 {
+		t.Fatalf("ctrl+u clamp: top=%d", m.helpTop)
+	}
+	m.helpKey("esc")
+	if m.help {
+		t.Fatal("esc should close help")
+	}
+}
