@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -36,6 +37,8 @@ func open(t *testing.T, path string) *harness {
 	}
 	m := New(tree, st, folds)
 	n := 0
+	// Noon UTC on a Sunday, so the local day is the same in every zone.
+	m.now = func() int64 { return time.Date(2026, 11, 15, 12, 0, 0, 0, time.UTC).UnixMilli() }
 	m.newID = func() string { n++; return fmt.Sprintf("%s-row%03d", filepath.Base(path), n) }
 	m.Update(tea.WindowSizeMsg{Width: 40, Height: 12})
 	return &harness{t: t, path: path, st: st, m: m}
@@ -57,8 +60,9 @@ func key(tok string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}
 	case "backspace":
 		return tea.KeyPressMsg{Code: tea.KeyBackspace}
-	case "ctrl+r":
-		return tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl}
+	}
+	if c, ok := strings.CutPrefix(tok, "ctrl+"); ok {
+		return tea.KeyPressMsg{Code: []rune(c)[0], Mod: tea.ModCtrl}
 	}
 	r := []rune(tok)
 	return tea.KeyPressMsg{Code: r[0], Text: tok}
@@ -103,9 +107,21 @@ func outlineOfThree(t *testing.T) *harness {
 	h := start(t)
 	h.press("o", `"Alpha"`, "enter", `"Beta"`, "enter", `"Gamma"`, "esc")
 	h.want(
-		"  • Alpha",
-		"  • Beta",
-		"▌ • Gamma",
+		"    Alpha",
+		"    Beta",
+		"▌   Gamma",
+	)
+	return h
+}
+
+// project is one top-level row holding two tasks, the cursor on the second.
+func project(t *testing.T) *harness {
+	h := start(t)
+	h.press("o", `"Project"`, "enter", "tab", `"First"`, "enter", `"Second"`, "esc")
+	h.want(
+		"  ▾ Project",
+		"    ○ First",
+		"▌   ○ Second",
 	)
 	return h
 }
@@ -115,37 +131,31 @@ func TestTypingAListChainsRows(t *testing.T) {
 	// A fresh row left blank disappears and the cursor returns.
 	h.press("o", "esc")
 	h.want(
-		"  • Alpha",
-		"  • Beta",
-		"▌ • Gamma",
+		"    Alpha",
+		"    Beta",
+		"▌   Gamma",
 	)
 }
 
 func TestIndentWhileTypingAndStructureKeys(t *testing.T) {
-	h := start(t)
-	h.press("o", `"Project"`, "enter", "tab", `"First"`, "enter", `"Second"`, "esc")
-	h.want(
-		"  ▾ Project",
-		"    • First",
-		"▌   • Second",
-	)
+	h := project(t)
 	h.press("K")
 	h.want(
 		"  ▾ Project",
-		"▌   • Second",
-		"    • First",
+		"▌   ○ Second",
+		"    ○ First",
 	)
 	h.press("<")
 	h.want(
 		"  ▾ Project",
-		"    • First",
-		"▌ • Second",
+		"    ○ First",
+		"▌ ○ Second",
 	)
 	h.press(">")
 	h.want(
 		"  ▾ Project",
-		"    • First",
-		"▌   • Second",
+		"    ○ First",
+		"▌   ○ Second",
 	)
 	h.press("<", "<")
 	if h.m.msg != "already at the top level" {
@@ -158,13 +168,13 @@ func TestNewRowUnderAnOpenParentIsItsFirstChild(t *testing.T) {
 	h.press("o", `"Project"`, "enter", "tab", `"Child"`, "esc", "k", "o", `"Top"`, "esc")
 	h.want(
 		"  ▾ Project",
-		"▌   • Top",
-		"    • Child",
+		"▌   ○ Top",
+		"    ○ Child",
 	)
 	h.press("k", "h", "o", `"Sibling"`, "esc")
 	h.want(
 		"  ▸ Project",
-		"▌ • Sibling",
+		"▌   Sibling",
 	)
 }
 
@@ -174,24 +184,24 @@ func TestFoldZoomAndBackOut(t *testing.T) {
 	h.press("h")
 	h.want(
 		"▌ ▾ Project",
-		"    • Child",
+		"    ○ Child",
 	)
 	h.press("h")
 	h.want("▌ ▸ Project")
 	h.press("l", "l")
 	h.want(
 		"  ▾ Project",
-		"▌   • Child",
+		"▌   ○ Child",
 	)
 	h.press("k", "enter")
-	h.want("▌ • Child")
+	h.want("▌ ○ Child")
 	if got := ansi.Strip(strings.SplitN(h.m.View().Content, "\n", 2)[0]); got != "Project" {
 		t.Fatalf("breadcrumb = %q", got)
 	}
 	h.press("esc")
 	h.want(
 		"▌ ▾ Project",
-		"    • Child",
+		"    ○ Child",
 	)
 }
 
@@ -199,41 +209,42 @@ func TestDeleteUndoRedo(t *testing.T) {
 	h := outlineOfThree(t)
 	h.press("k", "d", "d")
 	h.want(
-		"  • Alpha",
-		"▌ • Gamma",
+		"    Alpha",
+		"▌   Gamma",
 	)
 	h.press("u")
 	h.want(
-		"  • Alpha",
-		"▌ • Beta",
-		"  • Gamma",
+		"    Alpha",
+		"▌   Beta",
+		"    Gamma",
 	)
 	h.press("ctrl+r")
 	h.want(
-		"  • Alpha",
-		"▌ • Gamma",
+		"    Alpha",
+		"▌   Gamma",
 	)
-	// An edit is one undo step, text and indent together.
+	// An edit is one undo step, text and indent together, and indenting a
+	// note while typing leaves it a note.
 	h.press("u", "e", `" two"`, "tab", "esc")
 	h.want(
 		"  ▾ Alpha",
-		"▌   • Beta two",
-		"  • Gamma",
+		"▌     Beta two",
+		"    Gamma",
 	)
 	h.press("u")
 	h.want(
-		"  • Alpha",
-		"▌ • Beta",
-		"  • Gamma",
+		"    Alpha",
+		"▌   Beta",
+		"    Gamma",
 	)
 }
 
 func TestEverythingSurvivesARestart(t *testing.T) {
 	h := start(t)
-	h.press("o", `"Project"`, "enter", "tab", `"Child"`, "enter", `"Gone"`, "esc", "d", "d")
+	h.press("o", `"Project"`, "enter", "tab", `"Child ! @fri #api $doing"`, "enter", `"Gone"`, "esc", "d", "d")
 	h.press("g", "g", "o", "esc", "O", `"Above"`, "esc", "j", "h")
 	want := []string{
-		"  • Above",
+		"    Above",
 		"▌ ▸ Project",
 	}
 	h.want(want...)
@@ -244,9 +255,9 @@ func TestEverythingSurvivesARestart(t *testing.T) {
 	again.want(want...)
 	again.press("l")
 	again.want(
-		"  • Above",
+		"    Above",
 		"▌ ▾ Project",
-		"    • Child",
+		"    ● Child ! @fri #api",
 	)
 }
 
@@ -269,5 +280,127 @@ func TestLongRowIsCutToTheWidthAndScrollsWhileTyping(t *testing.T) {
 	}
 	if !strings.HasSuffix(h.rows(), "…") {
 		t.Fatalf("long row is not marked as cut:\n%s", h.rows())
+	}
+}
+
+func TestSigilsBecomeFieldsAndTheLineRoundTrips(t *testing.T) {
+	h := project(t)
+	h.m.Update(tea.WindowSizeMsg{Width: 80, Height: 12})
+	h.press("o", `"Ship it ! @fri #Release $wait"`, "esc")
+	h.want(
+		"  ▾ Project",
+		"    ○ First",
+		"    ○ Second",
+		"▌   ◔ Ship it ! @fri #release",
+	)
+	// Editing shows the canonical line: a fixed date, since a weekday would
+	// drift, and the state because it is not the default.
+	h.press("e")
+	h.want(
+		"  ▾ Project",
+		"    ○ First",
+		"    ○ Second",
+		"▌   ◔ Ship it ! @2026-11-20 #release $waiting",
+	)
+	// Deleting a sigil from the line clears its field.
+	h.press("ctrl+u", `"Ship it #release"`, "esc")
+	h.want(
+		"  ▾ Project",
+		"    ○ First",
+		"    ○ Second",
+		"▌   ○ Ship it #release",
+	)
+	h.press("u")
+	h.want(
+		"  ▾ Project",
+		"    ○ First",
+		"    ○ Second",
+		"▌   ◔ Ship it ! @fri #release",
+	)
+}
+
+func TestProseThatLooksLikeSigilsStaysProse(t *testing.T) {
+	h := project(t)
+	h.m.Update(tea.WindowSizeMsg{Width: 80, Height: 12})
+	h.press("o", `"Fix #123 for @alice in R&D \#api"`, "esc")
+	h.want(
+		"  ▾ Project",
+		"    ○ First",
+		"    ○ Second",
+		"▌   ○ Fix #123 for @alice in R&D #api",
+	)
+	h.press("e")
+	h.want(
+		"  ▾ Project",
+		"    ○ First",
+		"    ○ Second",
+		"▌   ○ Fix #123 for @alice in R&D \\#api",
+	)
+}
+
+func TestDoneAndFlagKeys(t *testing.T) {
+	h := project(t)
+	h.press("x", "k", "!")
+	h.want(
+		"  ▾ Project",
+		"▌   ○ First !",
+		"    ✓ Second",
+	)
+	changed := h.m.tree.Row(h.m.vis[2].id).Fields["changed"]
+	if changed != "1794744000000" {
+		t.Fatalf("state clock = %q", changed)
+	}
+	// Done rows stay where they are, and x takes them back.
+	h.press("!", "j", "x")
+	h.want(
+		"  ▾ Project",
+		"    ○ First",
+		"▌   ○ Second",
+	)
+	h.press("u")
+	h.want(
+		"  ▾ Project",
+		"    ○ First",
+		"▌   ✓ Second",
+	)
+	h.press("g", "g", "x")
+	if !strings.Contains(h.m.msg, "a note has no state") {
+		t.Fatalf("msg = %q", h.m.msg)
+	}
+}
+
+func TestHeadingsNotesAndFoldedTasks(t *testing.T) {
+	h := project(t)
+	h.press("o", `"Later:"`, "enter", "tab", `"Idea"`, "enter", `"a plain remark $note"`, "esc")
+	h.want(
+		"  ▾ Project",
+		"    ○ First",
+		"    ○ Second",
+		"    ▾ Later:",
+		"      ○ Idea",
+		"▌       a plain remark",
+	)
+	// A folded task keeps its state glyph and counts what it hides.
+	h.press(">", "h", "h")
+	h.want(
+		"  ▾ Project",
+		"    ○ First",
+		"    ○ Second",
+		"    ▾ Later:",
+		"▌     ○ Idea +1",
+	)
+}
+
+func TestOverdueAndTodayAreColouredUntilTheRowCloses(t *testing.T) {
+	h := project(t)
+	h.press("o", `"Late @2026-11-10"`, "enter", `"Now @today"`, "esc")
+	raw := h.m.View().Content
+	if !strings.Contains(raw, sgrAlert+"@Nov 10") || !strings.Contains(raw, sgrWarn+"@today") {
+		t.Fatalf("deadlines are not coloured:\n%q", raw)
+	}
+	h.press("x", "k", "x")
+	raw = h.m.View().Content
+	if strings.Contains(raw, sgrAlert) || strings.Contains(raw, sgrWarn) {
+		t.Fatalf("a closed row still raises an alarm:\n%q", raw)
 	}
 }

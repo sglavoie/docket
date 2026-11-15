@@ -3,12 +3,14 @@
 package tui
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/docket/internal/outline"
+	"github.com/sglavoie/docket/internal/sigil"
 	"github.com/sglavoie/docket/internal/store"
 )
 
@@ -31,6 +33,7 @@ type editor struct {
 	buf        []rune
 	caret, off int
 	fresh      bool   // the row was created by this edit
+	project    bool   // the default the line was rendered against
 	back       string // where the cursor returns if a fresh row is abandoned
 	ops, inv   []outline.Op
 }
@@ -274,30 +277,59 @@ func (m *Model) newRow(above bool) {
 	m.edit = &editor{row: op.Row, fresh: true, back: cur, ops: []outline.Op{op}, inv: inv}
 }
 
+func (m *Model) today() time.Time { return time.UnixMilli(m.now()).Local() }
+
+// isProject reports a top-level row, which is a note unless its line says otherwise.
+func (m *Model) isProject(id string) bool { return m.tree.Row(id).Parent == "" }
+
 func (m *Model) editRow(id string) {
-	buf := []rune(m.tree.Row(id).Text())
-	m.edit = &editor{row: id, buf: buf, caret: len(buf)}
+	line := sigil.FromFields(m.tree.Row(id).Fields)
+	buf := []rune(sigil.Format(line, m.isProject(id), m.today()))
+	m.edit = &editor{row: id, buf: buf, caret: len(buf), project: m.isProject(id)}
+}
+
+// setFields returns the operations that bring a row to want, skipping the
+// fields that already agree. A change of state also restarts its clock.
+func (m *Model) setFields(id string, want map[string]string) []outline.Op {
+	have := m.tree.Row(id).Fields
+	var ops []outline.Op
+	for _, name := range []string{sigil.FieldText, sigil.FieldState, sigil.FieldFlag, sigil.FieldDue, sigil.FieldTags} {
+		value, ok := want[name]
+		if !ok || value == have[name] {
+			continue
+		}
+		ops = append(ops, outline.Op{Kind: outline.Set, Row: id, Field: name, Value: value})
+		if name == sigil.FieldState {
+			ops = append(ops, outline.Op{Kind: outline.Set, Row: id, Field: sigil.FieldChanged, Value: strconv.FormatInt(m.now(), 10)})
+		}
+	}
+	return ops
 }
 
 // finishEdit ends the open edit and reports whether its row was kept. There
-// is no cancel: the text stands, undo takes it back, and only a fresh row
+// is no cancel: the line stands, undo takes it back, and only a fresh row
 // left blank disappears.
 func (m *Model) finishEdit() bool {
 	e := m.edit
 	m.edit = nil
-	text := strings.TrimSpace(string(e.buf))
-	if e.fresh && text == "" {
+	typed := strings.TrimSpace(string(e.buf))
+	if e.fresh && typed == "" {
 		m.tree.Forget(e.row)
 		m.rebuild()
 		m.seek(e.back)
 		return false
 	}
-	if text != m.tree.Row(e.row).Text() {
-		op := outline.Op{Kind: outline.Set, Row: e.row, Field: outline.FieldText, Value: text}
-		if inv, err := m.apply([]outline.Op{op}); err == nil {
-			e.ops = append(e.ops, op)
-			e.inv = append(inv, e.inv...)
-		}
+	// A fresh row takes its default from where it ended up; an existing one
+	// keeps the default its line was rendered against, so indenting it while
+	// typing never changes a state nobody touched.
+	project := e.project
+	if e.fresh {
+		project = m.isProject(e.row)
+	}
+	ops := m.setFields(e.row, sigil.Parse(typed, project, m.today()).Fields())
+	if inv, err := m.apply(ops); err == nil {
+		e.ops = append(e.ops, ops...)
+		e.inv = append(inv, e.inv...)
 	}
 	if len(e.ops) > 0 {
 		m.record(e.ops, e.inv)
@@ -405,6 +437,22 @@ func (m *Model) normalKey(k string) {
 		} else if kids := m.tree.Children(cur); len(kids) > 0 {
 			m.seek(kids[0])
 		}
+	case "x":
+		// Done and back. Any other state is typed, since it is rarer.
+		switch state := m.tree.Row(cur).Fields[sigil.FieldState]; state {
+		case "":
+			m.msg = "a note has no state: edit it and add $open"
+		case sigil.Done:
+			m.do(m.setFields(cur, map[string]string{sigil.FieldState: sigil.Open})...)
+		default:
+			m.do(m.setFields(cur, map[string]string{sigil.FieldState: sigil.Done})...)
+		}
+	case "!":
+		flag := "1"
+		if m.tree.Row(cur).Fields[sigil.FieldFlag] != "" {
+			flag = ""
+		}
+		m.do(m.setFields(cur, map[string]string{sigil.FieldFlag: flag})...)
 	case ">":
 		m.shift(cur, true)
 	case "<":

@@ -106,14 +106,16 @@ Stale is an open row untouched for 14 days.
 | `dd` | Delete | 1 |
 | `u` `Ctrl+R` | Undo, redo | 1 |
 | `?` | Help | 1 |
-| `x` `t` `!` | Done, Today, flag | 2, 3 |
+| `x` `!` | Done and back, flag | 2 |
+| `t` | Today | 3 |
 | `Tab` `p` | Sidebar focus, fuzzy project jump | 3 |
 | `a` `m` | Add to Inbox from anywhere; move to a project | 3 |
 | `v` | Select | 4 |
 | `/` `:` | Filter, command | 4 |
 
 While typing: `Enter` keeps the row and opens the next, `Esc` keeps the row,
-`Tab` and `Shift+Tab` indent and outdent. There is no cancel. A new row left
+`Tab` and `Shift+Tab` indent and outdent. There is no cancel: `u` restores
+the line. A new row left
 blank disappears.
 
 `o` on an open parent adds its first child; otherwise it adds the next
@@ -121,16 +123,45 @@ sibling.
 
 ## Sigils
 
-`!` flag, `#tag`, `@date` deadline, `$state`, `%project` to route a captured
-row. Typed in a row they become fields when the edit ends; typed alone on the
-bottom line they stamp the selected rows, and `-#tag` removes. A sigil needs
-whitespace before it, so `R&D` and `a@b` stay prose.
+A sigil is a whole word, so `R&D`, `a@b` and `wow!` stay prose. One the
+grammar cannot read also stays prose (`@alice`, `#123`, `$5`), which is the
+only feedback a mistyped sigil gets. `\#tag` keeps a readable sigil literal.
+
+| Sigil | Field | Accepts |
+| --- | --- | --- |
+| `!` | `flag` | The word `!` alone |
+| `#tag` | `tags` | A word starting with a letter; stored lowercase, once |
+| `@date` | `due` | `today`, `tomorrow`, a weekday (the next one, never today), `+3d`, `+2w`, `MM-DD` (the next such day), `YYYY-MM-DD` |
+| `$state` | `state` | `open`, `doing`, `waiting`, `done`, `canceled`, `note`, or an unambiguous prefix (`$w`, `$c`; `$d` is not one) |
+| `%project` | | Milestone 3 |
+
+Typed in a row, sigils become fields when the edit ends and may sit anywhere
+in the line; a repeated `@` or `$` takes the last. Editing a row shows its
+canonical line: text, `!`, `@YYYY-MM-DD`, tags, state. Deleting a sigil from
+that line clears its field. Typed alone on the bottom line (milestone 4) they
+stamp the selected rows, and `-#tag` removes.
+
+**Default state.** A row whose line names no state is an open task, unless it
+is top-level (a project) or its text ends in a colon (a heading); those are
+notes. The line spells `$state` only where the row differs from that default,
+so most lines carry none. A row keeps its state when it moves.
+
+**On the row.** One glyph column says what the row is: `○` open, `●` doing,
+`◔` waiting, `✓` done, `✕` canceled; a note shows `▾` or `▸` when it has
+children and nothing otherwise. A folded task keeps its state glyph and
+counts its children after its text (`+3`). Fields follow the text, each in
+the sigil that writes it; the deadline reads `@today`, `@tomorrow`, `@fri`,
+`@Nov 20`. An overdue deadline is red and today's is yellow until the row is
+done or canceled, which dims the whole row.
+
+`x` toggles done and open; `!` toggles the flag. Every other state is typed.
+Any change of state stamps `changed`.
 
 ## Milestones
 
 1. **Outline editor.** Rows on SQLite, in-place editing, indent, reorder,
    fold, zoom, undo. *Built.*
-2. **Tasks.** Sigil parsing, states, flag, deadline, row rendering.
+2. **Tasks.** Sigil parsing, states, flag, deadline, row rendering. *Built.*
 3. **Sidebar.** The four lists, project ordering, parking, `a` and `m`.
 4. **Filter line.** `/`, stamping, selection, `:` commands.
 

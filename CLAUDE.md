@@ -17,6 +17,7 @@ just run     # against ./dev.db, never the real database
 ## Layers
 
 - `internal/outline`: the tree and its three operations. No SQL, no terminal.
+- `internal/sigil`: the typed line and the fields it stands for, both ways.
 - `internal/store`: SQLite. Appends to the log and updates state in one
   transaction.
 - `internal/tui`: view state and keys. It changes the tree only through
