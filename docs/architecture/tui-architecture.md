@@ -260,9 +260,12 @@ Because the group is a value, keys never depend on the heading being drawn.
 `appendProjectGroupHeader` emits the header for a folded group and for an
 expanded group of two or more top-level tasks: it names the project, carries the
 pressure counts, is what `l` expands and `h` folds, and is what every project
-operation resolves from. The task rows under it name no project, so the title
-keeps every column the header already paid for. An expanded group of exactly one
-top-level task merges into that task's row instead: the kernel takes the top-level
+operation resolves from. The task rows under it name no project. Top-level rows
+reserve the shared identity column measured by `mergedIdentityWidth`, blank or
+carrying context, so their badges and titles start where a merged singleton's do.
+At narrow widths that reserve is zero and identity labels stay compact. An
+expanded group of exactly one top-level task merges into that task's row instead:
+the kernel takes the top-level
 count, emits nothing and reports the merge, and `mergeProjectGroupRows` replaces
 the first row's connector with equal-width blank space and marks it
 `OutlinerRow.LeadsMergedGroup`. That row keeps the other tasks' depth with its
