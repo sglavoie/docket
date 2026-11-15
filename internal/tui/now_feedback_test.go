@@ -55,7 +55,7 @@ func TestOpeningNowRetiresQuietFeedback(t *testing.T) {
 				if app.feedback.advanceFlash(seq) || app.feedback.flashSeq <= seq {
 					t.Fatal("retired tick survived")
 				}
-			} else if app.feedback.message != message || app.feedback.err != failure || app.feedback.flashSeq != seq {
+			} else if app.feedback.message != message || !errors.Is(app.feedback.err, failure) || app.feedback.flashSeq != seq {
 				t.Fatal("warning or error was changed")
 			}
 			if len(app.feedback.history) != history {

@@ -146,3 +146,12 @@ const testPeekWindowRows = 5
 func testPeekWindow() peekDockGeometry {
 	return peekDockGeometry{bodyRows: testPeekWindowRows}
 }
+
+func nowCardOutliner(t *testing.T, width, height int, tasks ...*models.Task) *OutlinerModel {
+	t.Helper()
+	project := primaryRowsProject("site", tasks...)
+	m, _ := primaryRowsOutliner(project)
+	m.SetSize(width, height)
+	m.RebuildRows()
+	return m
+}

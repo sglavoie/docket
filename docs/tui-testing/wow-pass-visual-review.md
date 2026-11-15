@@ -103,8 +103,9 @@ All 64 final PNGs were visually inspected. Each directory below contains all
 | Light | 630×380 | 60×20 | `/tmp/docket-session6-light-minimum-final` |
 
 No remaining inconsistency among the eight presentation problems required a
-production renderer change. This session changes the capture procedure and
-documentation. The screenshot filenames describe states, not assertions:
+production rendering change. This session changes the capture procedure,
+documentation, and source organization required by repository fitness checks.
+The screenshot filenames describe states, not assertions:
 `all-progress.png` at the floor intentionally contains no progress line.
 
 ## Validation
@@ -123,6 +124,17 @@ coverage, budgets, lint, module metadata, dead code, and build). Those are the
 release gate, not a conclusion inferred from screenshots. The worker does not
 duplicate that entire final gate; the runner records its result after this
 implementation handoff.
+
+The first runner replay passed the behavioral suites but found two files above
+the 500-line limit and a shared fixture in a test-bearing file. The repair
+moved day-canvas functions to their own file, split out Peek legend tests, and
+placed the fixture in the existing helper-only file. The moved function bodies
+and legend assertions were preserved, so the visual evidence remains valid. Focused race
+tests passed for both fitness guards and the affected Outliner behavior.
+Lint also identified four import-grouping errors and a direct error comparison
+in the Now-feedback test. Imports were formatted and that assertion now uses
+`errors.Is`. Its focused race test passed, and TUI-wide lint reported zero
+issues. Authoritative full CI replay remains the runner's responsibility.
 
 ## Deliberately retained
 

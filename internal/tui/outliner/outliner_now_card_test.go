@@ -12,15 +12,6 @@ import (
 	"github.com/sglavoie/docket/internal/tui/chrome"
 )
 
-func nowCardOutliner(t *testing.T, width, height int, tasks ...*models.Task) *OutlinerModel {
-	t.Helper()
-	project := primaryRowsProject("site", tasks...)
-	m, _ := primaryRowsOutliner(project)
-	m.SetSize(width, height)
-	m.RebuildRows()
-	return m
-}
-
 func doingTask(id, title string, started time.Time) *models.Task {
 	task := primaryRowsTask(id, models.StateDoing)
 	task.Title = title

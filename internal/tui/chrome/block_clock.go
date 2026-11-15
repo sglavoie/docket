@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
+
 	"github.com/sglavoie/docket/internal/tui/theme"
 )
 

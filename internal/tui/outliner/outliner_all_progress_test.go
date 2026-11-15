@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/x/ansi"
+
 	"github.com/sglavoie/docket/internal/app"
 	"github.com/sglavoie/docket/internal/models"
 	"github.com/sglavoie/docket/internal/tui/chrome"

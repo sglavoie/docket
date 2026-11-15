@@ -1,8 +1,9 @@
 package theme
 
 import (
-	"charm.land/lipgloss/v2"
 	"testing"
+
+	"charm.land/lipgloss/v2"
 )
 
 func TestLaneHeadingPalette(t *testing.T) {
