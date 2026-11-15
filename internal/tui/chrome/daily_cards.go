@@ -52,7 +52,7 @@ func RenderNowCard(spec NowCardSpec, width int) []string {
 	rail := lipgloss.NewStyle().Foreground(theme.ColorAccent).Render(strings.TrimRight(NowCardRail, " ")) + " "
 	inner := max(width-lipgloss.Width(rail), 1)
 
-	lines := []string{rail + NowCardJustify(strings.TrimSpace(spec.Title), theme.BoldPrimaryStyle, spec.Meta, inner)}
+	lines := []string{rail + nowCardJustify(strings.TrimSpace(spec.Title), theme.BoldPrimaryStyle, spec.Meta, inner, "Now: ")}
 	if spec.ResumeNote != "" {
 		marker := theme.MutedStyle.Render("  ↳ ")
 		room := max(inner-lipgloss.Width(marker), 1)
@@ -71,17 +71,30 @@ func RenderNowCard(spec NowCardSpec, width int) []string {
 // dropped whole rather than shortened, since half an age reads as a different
 // one.
 func NowCardJustify(title string, titleStyle lipgloss.Style, right string, width int) string {
+	return nowCardJustify(title, titleStyle, right, width, "")
+}
+
+func nowCardJustify(title string, titleStyle lipgloss.Style, right string, width int, label string) string {
 	rightRendered := ""
 	if right != "" {
 		rightRendered = theme.MutedStyle.Render(right)
 	}
 	rightWidth := lipgloss.Width(rightRendered)
-	room := width - rightWidth - 2
+	room := width
+	if right != "" {
+		room -= rightWidth + 2
+	}
 	if right != "" && room < min(nowCardTitleFloor, lipgloss.Width(title)) {
 		rightRendered, rightWidth = "", 0
 		room = width
 	}
-	left := titleStyle.Render(textfit.TruncateIntentional(title, max(room, 1), "…"))
+	// Decide the metadata's room independently, then keep the label only when
+	// the whole title fits beside it. The label never costs a title character.
+	labelWidth := lipgloss.Width(label)
+	if lipgloss.Width(title)+labelWidth > room {
+		label, labelWidth = "", 0
+	}
+	left := theme.MutedStyle.Render(label) + titleStyle.Render(textfit.TruncateIntentional(title, max(room-labelWidth, 1), "…"))
 	gap := width - lipgloss.Width(left) - rightWidth
 	if rightWidth == 0 || gap < 1 {
 		return padToWidth(left, width)
@@ -99,7 +112,7 @@ func nowCardProgressRow(progress string, more, width int) string {
 	}
 	right := ""
 	if more > 0 {
-		right = theme.MutedStyle.Render(fmt.Sprintf("+%d more in Doing", more))
+		right = theme.MutedStyle.Render(fmt.Sprintf("%d more in Doing", more))
 	}
 	leftWidth, rightWidth := lipgloss.Width(left), lipgloss.Width(right)
 	if leftWidth+rightWidth+1 > width {

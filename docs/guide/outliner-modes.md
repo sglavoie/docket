@@ -45,11 +45,11 @@ window; launch still opens Active Projects, All.
 
 A task appears once in All, so Pinned, Today, Next, and Review lift their rows
 out of the state section they would otherwise sit in, and that section says so
-after its count: `Inbox (1) +1 in Pinned` is one inbox task here and one drawn
-in Pinned above it, and `Doing (1) +2 in Today` is one task in Doing here and
-two more planned for Today; a task lifted into Review reads `+1 in Review`.
+after its count: `Inbox (1) 1 more in Pinned` is one inbox task here and one drawn
+in Pinned above it, and `Doing (1) 2 more in Today` is one task in Doing here and
+two more planned for Today; a task lifted into Review reads `1 more in Review`.
 That is what keeps a header in step with the workspace pulse, which counts
-`inbox 2` wherever the rows are drawn, and with the Now card's `+2 more in
+`inbox 2` wherever the rows are drawn, and with the Now card's `2 more in
 Doing`.
 
 Pinned leads All, Agenda, and Today. Inbox, Next, Backlog, Due, and Recent each answer

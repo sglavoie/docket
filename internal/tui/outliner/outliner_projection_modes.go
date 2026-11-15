@@ -175,7 +175,7 @@ func (c LiftedCounts) Any() bool { return c.Pinned > 0 || c.Today > 0 || c.Next 
 // liftedLaneCounts counts, per All group, the members another lane drew instead
 // of that group. The workspace pulse and the Now card count a state wherever its
 // rows are drawn, so a lane header naming what was lifted out of it is what lets
-// `Doing (1) +2 in Today` agree with `+2 more in Doing` and `Inbox (1)` with
+// `Doing (1) 2 more in Today` agree with `2 more in Doing` and `Inbox (1)` with
 // `inbox 2`. A pinned or reviewed planned task belongs to its plan's group, which
 // is where All would otherwise have drawn it; a planned task neither pin nor
 // review claimed is lifted out of its state's group into its plan.

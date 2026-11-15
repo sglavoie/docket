@@ -279,15 +279,15 @@ var peekLegendWordKey = regexp.MustCompile(`^[a-z]+$`)
 
 // peekRowLegend spells a row's legend as one line: each glyph mark, then the
 // first clause of its meaning. Word keys such as "date" and "review" are left
-// out, since the schedule and status lines already spell those readings.
+// out, as are state and priority: schedule and status already spell them.
 func peekRowLegend(entries []RowLegendEntry) string {
 	parts := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		if entry.Mark == "" || peekLegendWordKey.MatchString(entry.Mark) {
+		if entry.Mark == "" || peekLegendWordKey.MatchString(entry.Mark) ||
+			strings.HasPrefix(entry.Meaning, "Status: ") || strings.HasPrefix(entry.Meaning, "Priority: ") {
 			continue
 		}
 		meaning, _, _ := strings.Cut(entry.Meaning, " · ")
-		meaning = strings.TrimPrefix(strings.TrimPrefix(meaning, "Status: "), "Priority: ")
 		parts = append(parts, entry.Mark+" "+meaning)
 	}
 	if len(parts) == 0 {

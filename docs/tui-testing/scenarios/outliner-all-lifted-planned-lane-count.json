@@ -16,8 +16,8 @@
     { "type": "key", "label": "plan it for Today", "key": "w" },
     { "type": "key", "key": "t" },
     { "type": "wait" },
-    { "type": "assert", "label": "a Doing task planned for Today is drawn in Today, so the Doing lane names where its other task went", "assert": "contains", "value": "Doing  (1)  +1 in Today" },
-    { "type": "assert", "label": "which is what lets the Now card's count agree with the lane", "assert": "contains", "value": "+1 more in Doing" },
+    { "type": "assert", "label": "a Doing task planned for Today is drawn in Today, so the Doing lane names where its other task went", "assert": "contains", "value": "Doing  (1)  1 more in Today" },
+    { "type": "assert", "label": "which is what lets the Now card's count agree with the lane", "assert": "contains", "value": "1 more in Doing" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

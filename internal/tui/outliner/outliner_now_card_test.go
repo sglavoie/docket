@@ -52,7 +52,7 @@ func TestNowCardLeadsWithTheMostRecentlyStartedDoingTask(t *testing.T) {
 		t.Fatalf("drew %d lines, charged %d", len(lines), m.NowCardRows())
 	}
 	plain := ansi.Strip(strings.Join(lines, "\n"))
-	for _, want := range []string{chrome.NowCardRail + "Newer work", "site · 12m in Doing", "↳ Pick up at the parser", "+1 more in Doing"} {
+	for _, want := range []string{chrome.NowCardRail + "Now: Newer work", "site · 12m in Doing", "↳ Pick up at the parser", "1 more in Doing"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("card lacks %q:\n%s", want, plain)
 		}

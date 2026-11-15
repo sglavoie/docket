@@ -91,13 +91,14 @@ complete, scrollable explanation and numbered controls to remove restrictions.
 See [search and restrictions](search-and-lenses.md#reading-and-peeling-the-narrowing).
 
 In All, Agenda, and Today, while something is in Doing, a Now card stands between the
-header and the lanes, marked by an accent bar. It names the task that entered
-Doing most recently, its project, and how long it has been in Doing, such as
+header and the lanes, marked by an accent bar and a muted `Now:` label. It names
+the task that entered Doing most recently, its project, and how long it has been in Doing, such as
 `website · 12m in Doing`. A second row shows its resume note, and a third its
-checklist or subtask meter and `+2 more in Doing` when other work is active
+checklist or subtask meter and `2 more in Doing` when other work is active
 too. The card follows the view's scope and filters, steps aside in the other
 modes, in search, under a lens or a Focus, and in a terminal under 24 rows, and
-gives a narrow window's room to the title before the age. It takes no keys or
+drops `Now:` before shortening the title in a narrow window; the age gives way
+once the title reaches its minimum reading width. It takes no keys or
 clicks; the same task still sits in its Doing lane below.
 
 `gd` (Go → Now) opens the **Now screen**: the list is put down and one task in

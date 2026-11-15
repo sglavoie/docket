@@ -433,8 +433,10 @@ headings. Labels end in one column, so the values beside them line up
 (`    Due: Fri Nov 13` under `Project: web`), and a wrapped value hangs under
 itself; a dock narrower than 40 columns keeps the plain layout. Progress reads
 as a smooth bar that fills by eighths of a cell. The last line, `Row:`, names
-each mark the task's row drew, such as `!1 High · ▤ Has a description · & Has
-attachments`, so the row's shorthand is spelled out without opening help.
+the remaining glyphs, such as `▤ Has a description · & Has attachments`.
+State and priority are already spelled in Status and omitted here; when no
+marks remain, there is no `Row:` line. The `?` help's “On this row” block
+still explains every mark, including state and priority.
 
 A wide dock spends its width rather than scrolling. When the task's detail
 would not fit the dock in one column and the dock holds at least two columns of

@@ -109,3 +109,22 @@ func TestTreeConnectorsAreMuted(t *testing.T) {
 		}
 	}
 }
+
+func TestLiftedLabelReadsAsMore(t *testing.T) {
+	for _, tc := range []struct {
+		counts LiftedCounts
+		want   string
+	}{
+		{LiftedCounts{}, ""},
+		{LiftedCounts{Today: 1}, "1 more in Today"},
+		{LiftedCounts{Pinned: 2, Today: 1, Next: 3, Review: 4}, "2 more in Pinned · 1 more in Today · 3 more in Next · 4 more in Review"},
+	} {
+		if got := liftedLabel(tc.counts); got != tc.want {
+			t.Errorf("label = %q, want %q", got, tc.want)
+		}
+	}
+	line := ansi.Strip(strings.Join(chrome.RenderNowCard(chrome.NowCardSpec{Title: "Current task", More: 2}, 60), "\n"))
+	if !strings.Contains(line, "2 more in Doing") || strings.Contains(line, "+2") {
+		t.Fatalf("counterpart disagrees: %s", line)
+	}
+}

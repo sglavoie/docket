@@ -208,21 +208,21 @@ func renderSectionHeader(opts sectionHeaderOpts) (gutter, content string) {
 }
 
 // liftedLabel names the lane each lifted member went to, in the order the lanes
-// are drawn, so a header reading `Inbox (1) +1 in Pinned` says where its other
+// are drawn, so a header reading `Inbox (1) 1 more in Pinned` says where its other
 // task is rather than only that it is somewhere above.
 func liftedLabel(c LiftedCounts) string {
 	var parts []string
 	if c.Pinned > 0 {
-		parts = append(parts, fmt.Sprintf("+%d in Pinned", c.Pinned))
+		parts = append(parts, fmt.Sprintf("%d more in Pinned", c.Pinned))
 	}
 	if c.Today > 0 {
-		parts = append(parts, fmt.Sprintf("+%d in Today", c.Today))
+		parts = append(parts, fmt.Sprintf("%d more in Today", c.Today))
 	}
 	if c.Next > 0 {
-		parts = append(parts, fmt.Sprintf("+%d in Next", c.Next))
+		parts = append(parts, fmt.Sprintf("%d more in Next", c.Next))
 	}
 	if c.Review > 0 {
-		parts = append(parts, fmt.Sprintf("+%d in Review", c.Review))
+		parts = append(parts, fmt.Sprintf("%d more in Review", c.Review))
 	}
 	return strings.Join(parts, " · ")
 }

@@ -698,7 +698,7 @@ Row and Peek budget:
   the prior dock and anchor. Fullscreen never computes the list viewport. Available is what `ContentHeight` leaves after the
   measured footer, the status strip, and `peekDockListFloorRows` — and a total
   under `peekDockMinRows` draws no dock at all rather than a clipped one. Both
-  halves read the frame and never the cursor, the document, or a draft, so a
+  halves read only the frame, so a
   short document, a project header, a placeholder, and the empty projection share
   one geometry, and capture shrinking the dock is that frame changing rather than
   a second rule; `queryReadoutBodyRows` charges the preferred half, since the
@@ -721,14 +721,14 @@ Row and Peek budget:
   `CommandContextSatisfiesPeekRequirement`.
 - `inlinePeekDocument` separates the whole detail from the window of it on
   screen, and `Lines` is the only way to either, so render and measurement agree
-  on height. The body is complete and wrapped, never elided; `BodyRows` bounds
-  visibility alone, a short document pads, and `positionLine` is one more row
+  on height. The body wraps without elision; `BodyRows` bounds
+  visibility alone; short documents pad; `positionLine` adds a row
   every document reserves, blank when the body fits. Nothing sits outside that
   window and the document has no header:
   body order is title, status, resume, project, context, parent, search excerpt, schedule, description, subtasks,
   checklist, attachments, comments, `Dependencies`/`Dependents`, tags,
-  history, legend; compact Peek prioritizes resume. The deferral instant keys schedule
-  and history. Title and chain are uncompacted.
+  history, optional legend (no state/priority); compact Peek prioritizes resume. Deferral instant keys schedule
+  and history. Title/chain stay whole.
   Status spells plan (collection), state with Doing/Waiting age off
   `StateChangedAt`, overdue/check-in attention, priority, pinned, and review;
   stored values including schedule key it, so ticks never reset it. Labeled lines are `Label: value` joined by ` · `;
@@ -877,6 +877,7 @@ query carries a sigil, because sigils compile to an AND gate no note can
 satisfy. Enter on a note row leaves the Outliner for the Notes surface; it does
 not give notes tags, links, or bulk actions.
 
+Now card: muted `Now:`, shed before title shortening.
 `gd`: gated Now screen, no `PresentationID`, replaces host, seats cursor for
 `d`/`p`/`r`/`c` via `TriageRouteMsg`; no data writes.
 It clears quiet feedback, keeps warnings/errors. The block clock reads Doing
