@@ -101,13 +101,16 @@ func TestNowCardWithoutDoingWorkDrawsNothing(t *testing.T) {
 
 // A narrow row keeps the title and drops the right-hand note whole rather than
 // shortening an age into a different one.
-func TestNowCardJustifyDropsTheNoteBeforeTheTitle(t *testing.T) {
-	line := chrome.NowCardJustify("A fairly long task title", lipgloss.NewStyle(), "website · 3h in Doing", 30)
+func TestNowCardDropsTheNoteBeforeTheTitle(t *testing.T) {
+	line := chrome.RenderNowCard(chrome.NowCardSpec{
+		Title: "A fairly long task title",
+		Meta:  "website · 3h in Doing",
+	}, 30)[0]
 	plain := ansi.Strip(line)
 	if strings.Contains(plain, "Doing") {
 		t.Fatalf("the note survived a row too narrow for it: %q", plain)
 	}
-	if !strings.HasPrefix(plain, "A fairly long task title") || lipgloss.Width(line) != 30 {
+	if !strings.HasPrefix(plain, chrome.NowCardRail+"A fairly long task title") || lipgloss.Width(line) != 30 {
 		t.Fatalf("line = %q (%d cells)", plain, lipgloss.Width(line))
 	}
 }

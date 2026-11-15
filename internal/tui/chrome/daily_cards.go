@@ -66,14 +66,6 @@ func RenderNowCard(spec NowCardSpec, width int) []string {
 	return lines
 }
 
-// NowCardJustify lays a title on the left and a muted note on the right. The
-// title gives way first, down to nowCardTitleFloor; past that the note is
-// dropped whole rather than shortened, since half an age reads as a different
-// one.
-func NowCardJustify(title string, titleStyle lipgloss.Style, right string, width int) string {
-	return nowCardJustify(title, titleStyle, right, width, "")
-}
-
 func nowCardJustify(title string, titleStyle lipgloss.Style, right string, width int, label string) string {
 	rightRendered := ""
 	if right != "" {

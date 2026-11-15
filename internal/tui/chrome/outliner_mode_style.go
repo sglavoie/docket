@@ -12,8 +12,8 @@ import (
 
 // OutlinerModeStateGroup names the workflow-state group a mode borrows its
 // semantic color from. All has none of its own, and neither does an unknown
-// token. This is the single mode-to-group table: both the badge style below and
-// the named-lens accent read it rather than restating it.
+// token. The named-lens accent reads this table; mode badges use neutral
+// heading ink, with Today alone using the accent.
 //
 // It sits beside the mode catalog rather than beside the theme palette because
 // the question it answers is about a mode, not about a color: the theme names
@@ -33,15 +33,6 @@ func OutlinerModeStateGroup(mode OutlinerModeID) (models.WorkflowStateGroup, boo
 	default:
 		return "", false
 	}
-}
-
-// GetOutlinerModeStyle resolves one of the final eight mode identities to its
-// static theme role. Workflow group headers use GetWorkflowStateGroupStyle.
-func GetOutlinerModeStyle(mode OutlinerModeID) lipgloss.Style {
-	if group, ok := OutlinerModeStateGroup(mode); ok {
-		return theme.GetWorkflowStateGroupStyle(group)
-	}
-	return theme.ViewModeAllStyle
 }
 
 // ModeArrival is how the active mode was just reached, for the one phase the
