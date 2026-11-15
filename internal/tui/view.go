@@ -25,6 +25,7 @@ const (
 const helpText = `Docket
 
   j k  gg G      move
+  Ctrl+D Ctrl+U  move half a pane down, up (outlines, lists and filters)
   h l            fold, unfold; step to parent, first child
   Enter  Esc     zoom into a row; Esc clears the selection, the filter, the zoom
   o O            new row below, above
@@ -39,6 +40,7 @@ const helpText = `Docket
   # @ $ * -      stamp: type sigils, Enter sets them (-#tag, -@, -@@, -* remove)
   /              filter by text and sigils; -word excludes; Tab flat or in context
   :              q, export [file], closed (hide or show done and canceled rows),
+                 fold [level] (all, or show N levels), unfold (all),
                  review (projects, longest untouched first),
                  save name (keep the filter; p then /name opens it), forget name,
                  sync folder (share with other machines through a synced folder)
@@ -54,6 +56,7 @@ While typing
   Backspace      at the start, join into the row above (no children)
                  blank fresh rows disappear; lists and filters never join
                  or split; each split or join is one undo step
+  Ctrl+U         cut before the caret
   Esc            keep the row
   Tab Shift+Tab  indent, outdent
   Alt+Left Alt+Right Alt+Backspace    by word

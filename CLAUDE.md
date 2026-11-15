@@ -26,6 +26,6 @@ just run     # against ./dev.db, never the real database
 ## Rules for changes
 
 - A new stored value is a new field name, not a schema change.
-- A new key needs a free slot in the thirty-key budget in `SPEC.md`.
+- A new key needs a free slot in the thirty-two-key budget in `SPEC.md`.
 - Never add a confirmation, a dialog, or a second route to an existing act.
 - Keep this file short. Detail belongs in `SPEC.md` or in a test.

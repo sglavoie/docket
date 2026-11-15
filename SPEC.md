@@ -12,7 +12,7 @@ a rule here changes this file first.
 2. **Rows never move by themselves.** Changing a row's state leaves it where
    it is. Only the user reorders.
 3. **One way to do each thing.** No menu or palette repeats a key.
-4. **Thirty keys at most** in the outline. A new key evicts an old one. The
+4. **Thirty-two keys at most** in the outline. A new key evicts an old one. The
    five characters that open the stamp line (`#` `@` `$` `*` `-`) are the
    row grammar typed on a row, and are not counted.
 5. **Every keystroke paints within one frame.** The tree lives in memory;
@@ -268,8 +268,24 @@ Three more acts use the same line:
 - `:` runs a command: `q` quits; `export [file]` writes the whole outline as
   tab-indented lines in the row grammar, to `~/docket-YYYY-MM-DD.txt` unless
   a file is named; `closed` hides or shows closed rows; `review` opens the
-  review list; `save name` and `forget name` keep and drop a filter; `sync
+  review list; `fold [level]` and `unfold` control folds as described below;
+  `save name` and `forget name` keep and drop a filter; `sync
   folder` and `sync off` are described under Sync.
+
+`:fold` folds every row with children under the pane's root. `:fold N`
+shows N levels: rows above level N are unfolded and rows at level N are
+folded, with the root's children at level 1. Deeper folds stay as they were.
+`:unfold` unfolds everything under the pane's root. An invalid level is
+named on the status line and changes nothing. Lists and flat filters say
+there is nothing to fold; contextual filters respect folds. The cursor stays
+on its row, or moves to its nearest visible ancestor. Folds are saved together
+as this machine's view state, never logged or synced.
+
+`Ctrl+D` and `Ctrl+U` move down and up by half the pane's usable row height
+(excluding header and status), at least one row, stopping at either end.
+They work in outlines, lists and filters and keep the cursor visible. While
+typing they retain their existing behavior (`Ctrl+U` cuts before the caret);
+in help they retain half-page scrolling.
 
 ### Saved filters and review
 
@@ -311,6 +327,7 @@ the zoom.
 | Keys | Act | Milestone |
 | --- | --- | --- |
 | `j` `k` `gg` `G` | Move | 1 |
+| `Ctrl+D` `Ctrl+U` | Move half a pane down, up | 7 |
 | `h` `l` | Fold, unfold; step to parent, first child | 1 |
 | `Enter` `Esc` | Zoom in, back out | 1 |
 | `o` `O` `e` | New row below, above; edit | 1 |
@@ -477,7 +494,8 @@ in place, never copied, so two machines closing it cannot make two.
    subtrees for lossless paste under the same kind of parent. `m` and capture
    `%name` file rows under headings as well as projects. While typing,
    `Enter` splits a line and `Backspace` at its start joins it into the row
-   above, each in one undo step, in outlines only.
+   above, each in one undo step, in outlines only. `:fold [level]` and `:unfold`
+   control the pane's folds; `Ctrl+D` and `Ctrl+U` move half a pane.
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface.

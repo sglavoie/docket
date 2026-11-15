@@ -232,3 +232,40 @@ func TestTwoWindowsOnOneDatabase(t *testing.T) {
 		prev = stamp
 	}
 }
+
+func TestFoldBatchIsLocalAndAtomic(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "folds.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if err := s.SetFold("outside", true); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetFolds(map[string]bool{"a": true, "b": true}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetFolds(map[string]bool{"a": false, "c": true}); err != nil {
+		t.Fatal(err)
+	}
+	folds, err := s.Folds()
+	if err != nil || len(folds) != 3 || !folds["outside"] || !folds["b"] || !folds["c"] {
+		t.Fatalf("folds: %v, %v", folds, err)
+	}
+	var logged int
+	if err := s.db.QueryRow(`SELECT count(*) FROM ops`).Scan(&logged); err != nil || logged != 0 {
+		t.Fatalf("fold writes logged: %d, %v", logged, err)
+	}
+	// Whichever map entry is visited first, the whole transaction must roll back.
+	_, err = s.db.Exec(`CREATE TRIGGER reject_fold BEFORE INSERT ON folds WHEN NEW.row = 'bad' BEGIN SELECT RAISE(ABORT, 'disk full'); END`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetFolds(map[string]bool{"b": false, "new": true, "bad": true}); err == nil {
+		t.Fatal("expected failed transaction")
+	}
+	folds, err = s.Folds()
+	if err != nil || len(folds) != 3 || !folds["outside"] || !folds["b"] || !folds["c"] {
+		t.Fatalf("failed transaction changed folds: %v, %v", folds, err)
+	}
+}

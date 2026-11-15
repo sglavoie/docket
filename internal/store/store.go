@@ -389,6 +389,26 @@ func (s *Store) SetFold(id string, folded bool) error {
 	return err
 }
 
+// SetFolds saves a batch of local view changes in one transaction. It never
+// writes outline operations or alters folds outside the supplied rows.
+func (s *Store) SetFolds(changes map[string]bool) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for id, folded := range changes {
+		query := `DELETE FROM folds WHERE row = ?`
+		if folded {
+			query = `INSERT OR IGNORE INTO folds(row) VALUES(?)`
+		}
+		if _, err := tx.Exec(query, id); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 // Backup writes a snapshot of the database for day into dir, unless that
 // day already has one, and keeps the newest keep snapshots. A snapshot is a
 // complete database: restoring is copying it over the live file.

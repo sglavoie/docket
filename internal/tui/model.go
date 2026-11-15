@@ -22,6 +22,7 @@ import (
 type Backend interface {
 	Commit(ops []outline.Op, now int64) error
 	SetFold(id string, folded bool) error
+	SetFolds(changes map[string]bool) error
 	Meta(key string) (string, error)
 	SetMeta(key, value string) error
 	Sync(dir string) (int, error)
@@ -397,9 +398,17 @@ func (m *Model) rebuild() {
 	}
 	m.vis = m.vis[:0]
 	if m.at.query != "" {
+		hiddenBelow := -1
 		for _, v := range m.at.hits {
+			if hiddenBelow >= 0 && v.depth > hiddenBelow {
+				continue
+			}
+			hiddenBelow = -1
 			if m.live(v.id) {
 				m.vis = append(m.vis, v)
+				if m.at.list == "" && !m.at.flat && m.folded[v.id] {
+					hiddenBelow = v.depth
+				}
 			}
 		}
 	} else if m.at.list != "" {
@@ -491,6 +500,70 @@ func (m *Model) setFold(id string, folded bool) {
 	}
 	if err := m.backend.SetFold(id, folded); err != nil {
 		m.msg = "not saved: " + err.Error()
+	}
+}
+
+// foldOutline changes only this pane's subtree, saving all local view state
+// together. Levels start at one for the rows immediately below the root.
+func (m *Model) foldOutline(fold bool, args []string) {
+	level := 0
+	for i, word := range args {
+		n, err := strconv.Atoi(word)
+		if err != nil || n <= 0 || i > 0 || !fold {
+			m.msg = "invalid fold level: " + word
+			return
+		}
+		level = n
+	}
+	if m.at.list != "" || (m.at.query != "" && m.at.flat) {
+		m.msg = "nothing to fold in a list or flat filter"
+		return
+	}
+	changes := map[string]bool{}
+	var walk func(string, int)
+	walk = func(parent string, depth int) {
+		for _, id := range m.tree.Children(parent) {
+			if hiddenTop(id) {
+				continue
+			}
+			if len(m.tree.Children(id)) > 0 {
+				if level == 0 || depth <= level {
+					want := fold && (level == 0 || depth == level)
+					if m.folded[id] != want {
+						changes[id] = want
+					}
+				}
+				walk(id, depth+1)
+			}
+		}
+	}
+	walk(m.at.root, 1)
+	if len(changes) == 0 {
+		return
+	}
+	if err := m.backend.SetFolds(changes); err != nil {
+		m.msg = "not saved, nothing changed: " + err.Error()
+		return
+	}
+	cur := m.current()
+	for id, folded := range changes {
+		if folded {
+			m.folded[id] = true
+		} else {
+			delete(m.folded, id)
+		}
+	}
+	m.rebuild()
+	visible := make(map[string]int, len(m.vis))
+	for i, row := range m.vis {
+		visible[row.id] = i
+	}
+	for cur != "" && cur != m.at.root {
+		if i, ok := visible[cur]; ok {
+			m.cursor = i
+			break
+		}
+		cur = m.tree.Row(cur).Parent
 	}
 }
 
@@ -1117,6 +1190,8 @@ func (m *Model) command(line string) {
 	switch words[0] {
 	case "q", "quit":
 		m.quit = true
+	case "fold", "unfold":
+		m.foldOutline(words[0] == "fold", words[1:])
 	case "export":
 		m.export(strings.Join(words[1:], " "))
 	case "sync":
@@ -1160,7 +1235,7 @@ func (m *Model) command(line string) {
 		m.vis, m.at.kept = nil, nil
 		m.msg = said
 	default:
-		m.msg = "commands: q, export [file], closed, review, save name, forget name, sync [folder|off]"
+		m.msg = "commands: q, export [file], closed, fold [level], unfold, review, save name, forget name, sync [folder|off]"
 	}
 }
 
@@ -1210,6 +1285,13 @@ func (m *Model) normalKey(k string) {
 		m.cursor = min(m.cursor+1, max(len(m.vis)-1, 0))
 	case "k", "up":
 		m.cursor = max(m.cursor-1, 0)
+	case "ctrl+d", "ctrl+u":
+		_, height := m.size()
+		step := max((height-2)/2, 1) // exclude the header and status line
+		if k == "ctrl+u" {
+			step = -step
+		}
+		m.cursor = max(0, min(m.cursor+step, len(m.vis)-1))
 	case "G":
 		m.cursor = max(len(m.vis)-1, 0)
 	case "o":
