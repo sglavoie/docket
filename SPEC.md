@@ -283,11 +283,20 @@ it.
 ### Selection
 
 `v` selects the cursor's row and steps down; again on a selected row it
-deselects. While rows are selected, `x`, `!`, `t`, `dd`, `m` and a stamp act
-on all of them, in one undo step. `x`, `!` and `t` set their value on every
-row unless all already hold it, in which case they clear it. The keys that
-work on one row (`e`, `o`, `O`, `>`, `<`, `J`, `K`, `Enter`) are refused and
-say so. The status line counts the selection, and `Esc` clears it.
+deselects. While rows are selected, `x`, `!`, `t`, `dd`, `m`, `>`, `<`, `J`,
+`K` and a stamp act on the selection, in one undo step. `x`, `!` and `t` set
+their value on every row unless all already hold it, in which case they
+clear it. The keys that work on one row (`e`, `o`, `O`, `Enter`) are refused
+and say so. The status line counts the selection, and `Esc` clears it.
+
+For `>`, `<`, `J` and `K`, a selected row with a selected ancestor travels
+with that ancestor. The remaining rows must be adjacent children of one
+parent; otherwise the move is refused and nothing changes. `>` appends the
+block under the sibling above it and unfolds that sibling; `<` places it
+just after its parent. `J` moves it past the sibling below; `K` moves it
+before the sibling above. Order within the block, the selection and the
+cursor's row stay the same, so the key can be pressed again. Lists and
+filters still refuse these keys.
 
 `Esc` undoes the most recent narrowing: the selection, then the filter, then
 the zoom.
@@ -407,6 +416,9 @@ in place, never copied, so two machines closing it cannot make two.
    sync file is named, a session left open keeps taking backups, sync works
    in the folder away from the keys and reads only what is new, and rule 5
    is held by a test. *Built.*
+
+7. **Outliner.** Indent, outdent and reorder a selected block of adjacent
+   siblings in one undo step.
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface.

@@ -618,6 +618,107 @@ func (m *Model) shift(id string, indent bool) {
 	m.seek(id)
 }
 
+// selectedBlock drops descendants of selected rows and returns the remaining
+// roots in sibling order. Folds can hide selections, so acting order is not
+// necessarily sibling order.
+func (m *Model) selectedBlock(ids []string) []string {
+	selected := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		selected[id] = true
+	}
+	var roots []string
+	for _, id := range ids {
+		p := m.tree.Row(id).Parent
+		for p != "" && !selected[p] {
+			p = m.tree.Row(p).Parent
+		}
+		if p == "" {
+			roots = append(roots, id)
+		}
+	}
+	if len(roots) == 0 {
+		return nil
+	}
+	parent := m.tree.Row(roots[0]).Parent
+	for _, id := range roots {
+		if m.tree.Row(id).Parent != parent {
+			m.msg = "select rows that sit together to move them"
+			return nil
+		}
+	}
+	var block []string
+	for _, id := range m.tree.Children(parent) {
+		if selected[id] {
+			block = append(block, id)
+		} else if len(block) > 0 {
+			break
+		}
+	}
+	if len(block) != len(roots) {
+		m.msg = "select rows that sit together to move them"
+		return nil
+	}
+	return block
+}
+
+func (m *Model) moveBlock(ids []string, key string) {
+	if m.flat() {
+		return
+	}
+	block := m.selectedBlock(ids)
+	if len(block) == 0 {
+		return
+	}
+	first, last := block[0], block[len(block)-1]
+	parent := m.tree.Row(first).Parent
+	var pos, right string
+	switch key {
+	case ">", "<":
+		var op outline.Op
+		var ok bool
+		if key == ">" {
+			op, ok = m.indentOp(first)
+		} else {
+			op, ok = m.outdentOp(first)
+			if next := m.tree.NextSibling(parent); next != "" {
+				right = m.tree.Row(next).Pos
+			}
+		}
+		if !ok {
+			return
+		}
+		parent, pos = op.Parent, op.Pos
+	case "J":
+		next := m.tree.NextSibling(last)
+		if next == "" {
+			return
+		}
+		pos = m.tree.PosAfter(parent, next)
+		if after := m.tree.NextSibling(next); after != "" {
+			right = m.tree.Row(after).Pos
+		}
+	case "K":
+		prev := m.prevSibling(first)
+		if prev == "" {
+			return
+		}
+		pos, right = m.tree.PosBefore(parent, prev), m.tree.Row(prev).Pos
+	}
+	var ops []outline.Op
+	for _, id := range block {
+		ops = append(ops, outline.Op{Kind: outline.Move, Row: id, Parent: parent, Pos: pos})
+		pos = outline.Between(pos, right)
+	}
+	cur := m.current()
+	if m.do(ops...) {
+		if key == ">" {
+			m.setFold(parent, false)
+		}
+		m.rebuild()
+		m.seek(cur)
+	}
+}
+
 func (m *Model) reorder(id string, down bool) {
 	if m.flat() {
 		return
@@ -1195,11 +1296,15 @@ func (m *Model) normalKey(k string) {
 	case "m":
 		m.ask = &prompt{kind: askMove, rows: ids}
 	case ">", "<":
-		if m.single() {
+		if len(m.picked) > 0 {
+			m.moveBlock(ids, k)
+		} else {
 			m.shift(cur, k == ">")
 		}
 	case "J", "K":
-		if m.single() {
+		if len(m.picked) > 0 {
+			m.moveBlock(ids, k)
+		} else {
 			m.reorder(cur, k == "J")
 		}
 	}

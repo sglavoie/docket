@@ -263,6 +263,157 @@ func TestIndentWhileTypingAndStructureKeys(t *testing.T) {
 	}
 }
 
+func TestStructureKeysMoveASelectedBlock(t *testing.T) {
+	block := func(t *testing.T) *harness {
+		h := start(t)
+		h.press("o", `"Before"`, "enter", "tab", `"Existing"`, "enter", "shift+tab",
+			`"One"`, "enter", `"Two"`, "enter", `"Three"`, "enter", `"After"`, "enter", `"Tail"`, "esc",
+			"g", "g", "h", "j", "v", "v", "v", "k", "k")
+		h.want("  ▸ Before", " ┃  One", "▌┃  Two", " ┃  Three", "    After", "    Tail")
+		return h
+	}
+	for _, tc := range []struct {
+		key  string
+		want []string
+	}{
+		{">", []string{"  ▾ Before", "    ○ Existing", " ┃    One", "▌┃    Two", " ┃    Three", "    After", "    Tail"}},
+		{"<", []string{"  ▾ Before", "    ○ Existing", " ┃  One", "▌┃  Two", " ┃  Three", "    After", "    Tail"}},
+		{"J", []string{"  ▸ Before", "    After", " ┃  One", "▌┃  Two", " ┃  Three", "    Tail"}},
+		{"K", []string{" ┃  One", "▌┃  Two", " ┃  Three", "  ▸ Before", "    After", "    Tail"}},
+	} {
+		t.Run(tc.key, func(t *testing.T) {
+			h := block(t)
+			if tc.key == "<" {
+				h.press(">")
+			}
+			before, cur, steps := h.rows(), h.m.current(), len(h.m.undo)
+			ids := h.m.acting()
+			h.press(tc.key)
+			h.want(tc.want...)
+			if h.m.current() != cur || len(h.m.picked) != 3 || len(h.m.undo) != steps+1 {
+				t.Fatal("move lost the cursor or selection, or was not one undo step")
+			}
+			for _, id := range ids {
+				if !h.m.picked[id] {
+					t.Fatal("move changed selected rows")
+				}
+			}
+			h.press("u", "j") // Undo seeks the first moved row; return to Two.
+			if tc.key == ">" {
+				// Folds are view state and are not undone.
+				h.press("g", "g", "h", "j", "j")
+			}
+			if got := h.rows(); got != before || len(h.m.undo) != steps {
+				t.Fatalf("one undo did not restore the block:\n%s\nwant:\n%s", got, before)
+			}
+		})
+	}
+
+	t.Run("repeat and edges", func(t *testing.T) {
+		h := block(t)
+		h.press("J", "J")
+		h.want("  ▸ Before", "    After", "    Tail", " ┃  One", "▌┃  Two", " ┃  Three")
+		before, steps := h.rows(), len(h.m.undo)
+		h.press("J")
+		if h.rows() != before || len(h.m.undo) != steps {
+			t.Fatal("moved beyond the last sibling")
+		}
+		h.press("K", "K", "K")
+		h.want(" ┃  One", "▌┃  Two", " ┃  Three", "  ▸ Before", "    After", "    Tail")
+		before, steps = h.rows(), len(h.m.undo)
+		for _, key := range []string{"K", ">", "<"} {
+			h.press(key)
+			if h.rows() != before || len(h.m.undo) != steps {
+				t.Fatalf("%s moved beyond the first sibling or top level", key)
+			}
+		}
+	})
+
+	for _, shape := range []string{"gap", "different parents"} {
+		t.Run(shape, func(t *testing.T) {
+			h := block(t)
+			h.press("esc", "g", "g", "j", "v", "j", "v") // One and Three.
+			if shape == "different parents" {
+				h.press("esc", "g", "g", "l", "j", "v", "v") // Existing and One.
+			}
+			before, steps := h.rows(), len(h.m.undo)
+			for _, key := range []string{">", "<", "J", "K"} {
+				h.press(key)
+				if h.m.msg != "select rows that sit together to move them" || h.rows() != before || len(h.m.undo) != steps {
+					t.Fatalf("%s did not refuse the selection unchanged: %q\n%s", key, h.m.msg, h.rows())
+				}
+			}
+		})
+	}
+
+	t.Run("selected parent and child", func(t *testing.T) {
+		h := start(t)
+		h.press("o", `"Above"`, "enter", `"Parent"`, "enter", "tab", `"Child"`, "enter", "shift+tab", `"Below"`, "esc",
+			"g", "g", "j", "v", "v", "k")
+		for _, key := range []string{">", "<", "J", "K"} {
+			if key == "<" {
+				h.press(">")
+			}
+			before, cur, steps := h.rows(), h.m.current(), len(h.m.undo)
+			h.press(key)
+			if len(h.m.undo) != steps+1 || len(h.m.undo[steps]) != 1 || len(h.m.picked) != 2 || h.m.current() != cur {
+				t.Fatalf("%s did not move the parent exactly once with the cursor on its child", key)
+			}
+			h.press("u", "j")
+			if h.rows() != before {
+				t.Fatalf("%s did not restore parent and child:\n%s\nwant:\n%s", key, h.rows(), before)
+			}
+			if key == "<" {
+				h.press("u", "j")
+			}
+		}
+	})
+
+	t.Run("hidden selection follows sibling order", func(t *testing.T) {
+		h := block(t)
+		h.press("esc", "g", "g", "l", "j", "o", `"Later"`, "esc", "K")
+		// Later was created last, but now sits before Existing.
+		h.press("v", "v", "g", "g", "h")
+		cur := h.m.current() // The unselected folded parent stays under the cursor.
+		h.press("<")
+		h.want("▌   Before", " ┃○ Later", " ┃○ Existing", "    One", "    Two", "    Three", "    After", "    Tail")
+		if h.m.current() != cur {
+			t.Fatal("moving hidden rows changed the cursor's row")
+		}
+	})
+
+	for _, place := range []string{"filter", "list"} {
+		t.Run(place, func(t *testing.T) {
+			h := block(t)
+			h.press("esc")
+			if place == "filter" {
+				h.press("/", `"o"`, "enter", "v")
+			} else {
+				h.press("t", "p", `"today"`, "enter", "v")
+			}
+			before, steps := h.rows(), len(h.m.undo)
+			for _, key := range []string{">", "<", "J", "K"} {
+				h.press(key)
+				if h.m.msg == "" || h.rows() != before || len(h.m.undo) != steps {
+					t.Fatalf("%s was not refused in a %s", key, place)
+				}
+			}
+		})
+	}
+
+	t.Run("failed save", func(t *testing.T) {
+		h := block(t)
+		h.m.backend = &flaky{Backend: h.m.backend, fail: true}
+		before, steps := h.rows(), len(h.m.undo)
+		for _, key := range []string{">", "J", "K"} {
+			h.press(key)
+			if !strings.Contains(h.m.msg, "disk full") || h.rows() != before || len(h.m.undo) != steps {
+				t.Fatalf("%s left a failed block move behind: %q", key, h.m.msg)
+			}
+		}
+	})
+}
+
 func TestNewRowUnderAnOpenParentIsItsFirstChild(t *testing.T) {
 	h := start(t)
 	h.press("o", `"Project"`, "enter", "tab", `"Child"`, "esc", "k", "o", `"Top"`, "esc")

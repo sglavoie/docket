@@ -33,7 +33,8 @@ const helpText = `Docket
   J K            move the row down, up
   x  !  t        done and back, flag, pick for Today
   m              move to a project
-  v              select the row; these five then act on every selected row
+  v              select the row; x ! t dd m and stamps act on the selection
+                 > < J K move adjacent selected siblings together
   # @ $ * -      stamp: type sigils, Enter sets them (-#tag, -@, -@@, -* remove)
   /              filter by text and sigils; -word excludes; Tab flat or in context
   :              q, export [file], closed (hide or show done and canceled rows),
