@@ -37,7 +37,8 @@ const helpText = `Docket
   /              filter by text and sigils; -word excludes; Tab flat or in context
   :              q, export [file], closed (hide or show done and canceled rows),
                  review (projects, longest untouched first),
-                 save name (keep the filter; p then /name opens it), forget name
+                 save name (keep the filter; p then /name opens it), forget name,
+                 sync folder (share with other machines through a synced folder)
   a              capture a line to the Inbox; %name files it in a project
   p              go to a project or list by name
   Tab            the sidebar: j k choose, Enter work in it

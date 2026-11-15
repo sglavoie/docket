@@ -13,8 +13,8 @@ a rule here changes this file first.
    it is. Only the user reorders.
 3. **One way to do each thing.** No menu or palette repeats a key.
 4. **Thirty keys at most** in the outline. A new key evicts an old one. The
-   four characters that open the stamp line (`#` `@` `$` `-`) are the row
-   grammar typed on a row, and are not counted.
+   five characters that open the stamp line (`#` `@` `$` `*` `-`) are the
+   row grammar typed on a row, and are not counted.
 5. **Every keystroke paints within one frame.** The tree lives in memory;
    SQLite is written when a change is committed, never while typing.
 6. **Chrome is the sidebar, one header line and one status line.**
@@ -48,8 +48,8 @@ a rule here changes this file first.
 | `changed` | 2 | When `state` last changed, for Waiting and Stale ages |
 | `today` | 3 | The day the row was picked for Today |
 
-Reserved, not built: `start` (a not-before date) and `repeat` (regenerate in
-place on completion, never as spawned instances).
+| `start` | 5 | Not before this day, a calendar day |
+| `repeat` | 5 | An interval, as in `2w`: the row comes back after it is closed |
 
 ## Storage
 
@@ -79,8 +79,35 @@ database to `backups/docket-YYYY-MM-DD.db` beside it, before anything is
 changed, and keeps the newest 14. Restoring is copying one over the live
 file. A failed backup is said on the status line and does not stop the work.
 
-Sync is not built. When it is, machines exchange `ops` and never the database
-file, and conflicts resolve per field by stamp.
+### Sync
+
+`:sync folder` shares the outline with other machines through a folder that
+any file syncing tool carries. The database never goes in that folder.
+
+- Each machine appends its own operations to `<device>.ops` there, one JSON
+  object a line, and reads every file. No file has two writers.
+- A remote operation is applied by its stamp, per field: the newest write to
+  a field wins, and the newest move of a row. Renaming a row on one machine
+  and closing it on another keeps both. The same field written on both keeps
+  the later one; the earlier stays in the log.
+- Applying is idempotent and does not depend on arrival order, so machines
+  that have seen the same operations hold the same outline.
+- An operation on a row, or under a parent, that has not arrived yet waits
+  until it has. A last line still being copied is left for the next pass.
+- Two machines can each move a row under the other's. Every machine breaks
+  that loop the same way when it loads: the row in it that moved last is
+  shown at the top level. Nothing is lost.
+- After reading, the clock takes the newest stamp seen, so what is written
+  next is newer than everything received even if the wall clock is behind.
+- A machine reads its own file too, so a database restored from a backup
+  gets back what the backup lacks.
+- Sync runs at launch, once a minute, on quit, and on `:sync`. It waits while
+  a line is being typed. `:sync off` stops it.
+
+Undo on one machine is a new operation, so it reaches the others. A row
+added under a row that another machine deleted meanwhile is hidden with it,
+and returns if the delete is undone. Folds, settings, saved filters and the
+undo stacks stay on their machine. The log is never compacted.
 
 ## Screen
 
@@ -107,7 +134,8 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
 
 - **Four lists, and they stay four.** Inbox counts its rows; Today counts
   picks not yet closed; Waiting counts rows in that state; Stale counts open
-  and doing rows untouched for 14 days.
+  and doing rows untouched for 14 days, leaving out rows whose start day is
+  still ahead.
 - **Projects** shows every top-level row as one outline. It is where a
   project is added, renamed, reordered, parked or closed, with the ordinary
   keys.
@@ -151,7 +179,9 @@ The pane shows the rows under one row, or a list.
   without a key press.
 
 Today is hand-picked and rebuilt daily: a row is in Today when its `today`
-field is the current day, so yesterday's picks drop out without a write.
+field is the current day, so yesterday's picks drop out without a write. A
+task whose start day is today is in Today too, which is how a row is made to
+come back on a date.
 
 ### Bottom line
 
@@ -180,13 +210,27 @@ Three more acts use the same line:
   where the header names it; `Esc` drops it. Like a list, a filter holds the
   rows it found until the query changes, and refuses the keys that
   restructure the tree. Changing the filter clears the selection.
-- `#` `@` `$` `-` **Stamp ›** opens holding that character. The line is
-  sigils only: `#tag`, `@date`, `$state` and `!` set, `-#tag`, `-@` and `-!`
-  remove. `Enter` applies them to the selection, else to the cursor's row, as
+- `#` `@` `$` `*` `-` **Stamp ›** opens holding that character. The line is
+  sigils only: `#tag`, `@date`, `@@date`, `*interval`, `$state` and `!` set;
+  `-#tag`, `-@`, `-@@`, `-*` and `-!` remove. `Enter` applies them to the selection, else to the cursor's row, as
   one undo step. A word it cannot read is named and nothing is applied.
 - `:` runs a command: `q` quits; `export [file]` writes the whole outline as
   tab-indented lines in the row grammar, to `~/docket-YYYY-MM-DD.txt` unless
-  a file is named; `closed` hides or shows closed rows.
+  a file is named; `closed` hides or shows closed rows; `review` opens the
+  review list; `save name` and `forget name` keep and drop a filter; `sync
+  folder` and `sync off` are described under Sync.
+
+### Saved filters and review
+
+`:save name` keeps the pane's filter, with the row it was made under and
+whether it was flat, on this machine. It then appears in the `p` picker as
+`/name`. `:forget name` drops it. Saved filters are not in the sidebar.
+
+`:review` is a list of the active projects, the longest untouched first,
+each with its age and how many tasks are left to do, or `∅`. It is a list
+like the others, so the ordinary keys do the review: moving on keeps a
+project, `Enter` looks inside, and a stamp parks (`$p`) or closes (`$done`)
+it.
 
 ### Selection
 
@@ -218,7 +262,7 @@ the zoom.
 | `a` `m` | Capture to the Inbox from anywhere; move to a project | 3 |
 | `v` | Select | 4 |
 | `/` `:` | Filter, command | 4 |
-| `#` `@` `$` `-` | Stamp sigils on rows (not counted) | 4 |
+| `#` `@` `$` `*` `-` | Stamp sigils on rows (not counted) | 4 |
 
 While typing: `Enter` keeps the row and opens the next, `Esc` keeps the row,
 `Tab` and `Shift+Tab` indent and outdent. There is no cancel: `u` restores
@@ -245,6 +289,8 @@ grammar cannot read also stays prose (`@alice`, `#123`, `$5`). `\#tag` keeps a r
 | `!` | `flag` | The word `!` alone |
 | `#tag` | `tags` | A word starting with a letter; stored lowercase, once |
 | `@date` | `due` | `today`, `tomorrow`, a weekday (the next one, never today), `+3d`, `+2w`, `MM-DD` (the next such day), `YYYY-MM-DD` |
+| `@@date` | `start` | The same forms as `@date` |
+| `*interval` | `repeat` | A count and `d`, `w`, `m` or `y` (`*3d`, `*2w`), or `daily`, `weekly`, `monthly`, `yearly` |
 | `$state` | `state` | `open`, `doing`, `waiting`, `done`, `canceled`, `parked`, `note`, or an unambiguous prefix (`$w`, `$c`, `$p`; `$d` is not one) |
 | `%name` | | On the capture line only: the project to file the row in |
 
@@ -285,6 +331,18 @@ still shows a parked row that was picked, since a pick is explicit.
 or stamped.
 Any change of state stamps `changed`.
 
+**Start.** A row whose start day is ahead is dimmed like a parked one and is
+never stale. On the day it reads as live again and is in Today. The filter
+reads `@@` (has a start day) and `@@later` (one still ahead).
+
+**Repeat.** A repeating row is never done. Closing it, by `x`, a stamp or its
+line, moves it on and leaves it open: its deadline goes to the next one after
+today, counted from the deadline so the weekday or day of month holds, and
+its start day moves with it; with no deadline, its start day goes one
+interval on from today. A month step keeps the day, landing on the last day
+of a shorter month. The status line says when it is next. The row is changed
+in place, never copied, so two machines closing it cannot make two.
+
 ## Milestones
 
 1. **Outline editor.** Rows on SQLite, in-place editing, indent, reorder,
@@ -294,9 +352,11 @@ Any change of state stamps `changed`.
    *Built.*
 4. **Filter line.** `/`, stamping, selection, `:` commands. *Built.*
 
-Then two weeks of daily use before anything else is added. Not planned for
-v0: sync, recurrence, start dates, reminders, attachments, saved filters, a
-review walk, a details panel, import from v1, any command-line interface.
+5. **After the trial.** Typing polish, backups, wrapping, paste, persistent
+   undo, start dates, repeating rows, saved filters, review, sync. *Built.*
+
+Not planned: reminders, attachments, a details panel, import from v1, any
+command-line interface.
 
 ## Tests
 

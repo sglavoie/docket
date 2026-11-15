@@ -4,6 +4,9 @@ package tui
 
 import (
 	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -21,12 +24,15 @@ type Backend interface {
 	SetFold(id string, folded bool) error
 	Meta(key string) (string, error)
 	SetMeta(key, value string) error
+	Sync(dir string) (int, error)
+	Load() (*outline.Tree, error)
 }
 
 const (
 	metaHistory    = "history"     // the undo and redo stacks
 	metaHideClosed = "hide_closed" // whether outlines leave closed rows out
 	metaFilters    = "filters"     // the saved filters
+	metaSyncDir    = "sync_dir"    // the folder shared with other machines
 	undoDepth      = 200
 )
 
@@ -75,6 +81,7 @@ type Model struct {
 	lists     map[string][]string
 	stats     map[string]entry // each active project's sidebar line, by row
 	filters   []savedFilter
+	syncDir   string
 	tags      []string // tags in use, most used first
 	parked    int
 
@@ -119,7 +126,9 @@ func newModel(tree *outline.Tree, backend Backend, folds map[string]bool, now fu
 			m.undo, m.redo = h.Undo, h.Redo
 		}
 	}
+	m.syncDir, _ = backend.Meta(metaSyncDir)
 	m.ensureInbox()
+	m.syncNow(false)
 	m.rebuild()
 	// Launch where the day's work is, or among the projects when nothing
 	// has been picked yet.
@@ -146,6 +155,37 @@ func (m *Model) keepHistory() {
 	if b, err := json.Marshal(history{m.undo, m.redo}); err == nil {
 		m.backend.SetMeta(metaHistory, string(b))
 	}
+}
+
+// syncNow exchanges operations with the other machines and, when theirs
+// changed anything, reads the outline again. It waits while a line is being
+// typed, since that line is not stored yet.
+func (m *Model) syncNow(loud bool) {
+	if m.syncDir == "" || m.edit != nil || m.ask != nil {
+		return
+	}
+	n, err := m.backend.Sync(m.syncDir)
+	if err != nil {
+		m.msg = "sync failed: " + err.Error()
+		return
+	}
+	if n == 0 {
+		if loud {
+			m.msg = "synced with " + m.syncDir
+		}
+		return
+	}
+	tree, err := m.backend.Load()
+	if err != nil {
+		m.msg = "sync failed: " + err.Error()
+		return
+	}
+	cur := m.current()
+	m.tree = tree
+	m.refilter()
+	m.rebuild()
+	m.seek(cur)
+	m.msg = fmt.Sprintf("synced: %d changes from other machines", n)
 }
 
 // placeKey names a place for remembering its cursor.
@@ -575,6 +615,7 @@ func (m *Model) finishEdit() bool {
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tickMsg:
+		m.syncNow(false)
 		m.rebuild()
 		return m, tick()
 	case tea.WindowSizeMsg:
@@ -592,6 +633,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.ask != nil && m.ask.kind == askCapture {
 				m.capture(string(m.ask.ed.buf))
 			}
+			m.ask = nil
+			m.syncNow(false)
 			return m, tea.Quit
 		}
 		switch {
@@ -609,6 +652,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Every key may have changed what the sidebar counts.
 		m.rebuild()
 		if m.quit {
+			m.syncNow(false)
 			return m, tea.Quit
 		}
 	}
@@ -767,6 +811,28 @@ func (m *Model) command(line string) {
 		m.quit = true
 	case "export":
 		m.export(strings.Join(words[1:], " "))
+	case "sync":
+		dir := strings.Join(words[1:], " ")
+		switch {
+		case dir == "off":
+			m.syncDir = ""
+			m.msg = "sync is off"
+		case dir != "":
+			if rest, ok := strings.CutPrefix(dir, "~/"); ok {
+				if home, err := os.UserHomeDir(); err == nil {
+					dir = filepath.Join(home, rest)
+				}
+			}
+			m.syncDir = dir
+		case m.syncDir == "":
+			m.msg = "name a folder the machines share: sync ~/folder"
+			return
+		}
+		if err := m.backend.SetMeta(metaSyncDir, m.syncDir); err != nil {
+			m.msg = "not saved: " + err.Error()
+			return
+		}
+		m.syncNow(true)
 	case "review":
 		m.open(entry{kind: kindReview})
 	case "save", "forget":
@@ -784,7 +850,7 @@ func (m *Model) command(line string) {
 		m.vis, m.at.kept = nil, nil
 		m.msg = said
 	default:
-		m.msg = "commands: q, export [file], closed, review, save name, forget name"
+		m.msg = "commands: q, export [file], closed, review, save name, forget name, sync [folder|off]"
 	}
 }
 

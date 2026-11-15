@@ -102,10 +102,12 @@ func (s *Store) init() error {
 	// Resume the clock past the last stamp, so a wall clock that stepped
 	// backwards never mints a stamp older than one already written.
 	var last string
-	err = s.db.QueryRow(`SELECT stamp FROM ops ORDER BY seq DESC LIMIT 1`).Scan(&last)
-	if err != nil && err != sql.ErrNoRows {
+	// The newest stamp may be one received from another machine.
+	var newest sql.NullString
+	if err := s.db.QueryRow(`SELECT MAX(stamp) FROM ops`).Scan(&newest); err != nil {
 		return err
 	}
+	last = newest.String
 	if parts := strings.Split(last, "-"); len(parts) == 3 {
 		s.lastMS, _ = strconv.ParseInt(parts[0], 10, 64)
 		c, _ := strconv.ParseInt(parts[1], 16, 32)
@@ -185,16 +187,19 @@ func (s *Store) Commit(ops []outline.Op, now int64) error {
 func (s *Store) Load() (*outline.Tree, error) {
 	byID := map[string]*outline.Row{}
 	var rows []*outline.Row
-	rs, err := s.db.Query(`SELECT id, parent, pos, created, modified FROM rows`)
+	moved := map[string]string{}
+	rs, err := s.db.Query(`SELECT id, parent, pos, moved, created, modified FROM rows`)
 	if err != nil {
 		return nil, err
 	}
 	defer rs.Close()
 	for rs.Next() {
 		r := &outline.Row{Fields: map[string]string{}}
-		if err := rs.Scan(&r.ID, &r.Parent, &r.Pos, &r.Created, &r.Modified); err != nil {
+		var stamp string
+		if err := rs.Scan(&r.ID, &r.Parent, &r.Pos, &stamp, &r.Created, &r.Modified); err != nil {
 			return nil, err
 		}
+		moved[r.ID] = stamp
 		byID[r.ID] = r
 		rows = append(rows, r)
 	}
@@ -218,6 +223,7 @@ func (s *Store) Load() (*outline.Tree, error) {
 	if err := fs.Err(); err != nil {
 		return nil, err
 	}
+	breakCycles(byID, moved)
 	return outline.NewTree(rows), nil
 }
 
