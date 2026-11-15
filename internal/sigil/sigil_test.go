@@ -25,6 +25,9 @@ func TestParse(t *testing.T) {
 		{"Top-level task $open", true, Line{Text: "Top-level task", State: Open}},
 		{"Call back $w", false, Line{Text: "Call back", State: Waiting}},
 		{"old idea $p", true, Line{Text: "old idea", State: Parked}},
+		{"Pay rent @12-01 *monthly @@11-28", false,
+			Line{Text: "Pay rent", State: Open, Due: "2026-12-01", Start: "2026-11-28", Every: "1m"}},
+		{"*emphasis* and *2x and 3 * 4 and @@nope", false, Line{Text: "*emphasis* and *2x and 3 * 4 and @@nope", State: Open}},
 		// What the grammar cannot read stays prose.
 		{"Fix #123 for @alice at R&D, costs $5 $d wow!", false,
 			Line{Text: "Fix #123 for @alice at R&D, costs $5 $d wow!", State: Open}},
@@ -54,6 +57,9 @@ func TestFormatRoundTrips(t *testing.T) {
 		{Line{Text: "Ship", State: Done, Flag: true, Due: "2026-11-20", Tags: []string{"a", "b"}}, false,
 			"Ship ! @2026-11-20 #a #b $done"},
 		{Line{Text: "the #tag and @fri sigils !", State: Open}, false, `the \#tag and \@fri sigils \!`},
+		{Line{Text: "Water plants", State: Open, Start: "2026-11-20", Every: "3d", Tags: []string{"home"}}, false,
+			"Water plants @@2026-11-20 *3d #home"},
+		{Line{Text: "do it *2w or @@fri", State: Open}, false, `do it \*2w or \@@fri`},
 	}
 	for _, c := range cases {
 		got := Format(c.line, c.top, today)
@@ -116,6 +122,36 @@ func TestDueLabel(t *testing.T) {
 	for _, c := range cases {
 		if label, days := DueLabel(c.due, today); label != c.label || days != c.days {
 			t.Errorf("DueLabel(%s) = %q, %d; want %q, %d", c.due, label, days, c.label, c.days)
+		}
+	}
+}
+
+func TestParseRepeat(t *testing.T) {
+	for in, want := range map[string]string{"1d": "1d", "02W": "2w", "3m": "3m", "1y": "1y", "daily": "1d", "Weekly": "1w", "monthly": "1m", "yearly": "1y"} {
+		if got, ok := ParseRepeat(in); !ok || got != want {
+			t.Errorf("ParseRepeat(%q) = %q, %v; want %q", in, got, ok, want)
+		}
+	}
+	for _, in := range []string{"", "d", "0d", "2x", "+2d", "-1w", "1000d", "emphasis*", "2"} {
+		if got, ok := ParseRepeat(in); ok {
+			t.Errorf("ParseRepeat(%q) = %q, want a refusal", in, got)
+		}
+	}
+}
+
+func TestNextDate(t *testing.T) {
+	cases := []struct{ from, every, want string }{
+		{"", "3d", "2026-11-18"},           // nothing to step from: once from today
+		{"2026-11-20", "1w", "2026-11-27"}, // a date ahead still moves on
+		{"2026-11-15", "1d", "2026-11-16"},
+		{"2026-10-01", "1w", "2026-11-19"}, // missed weeks are skipped, the weekday kept
+		{"2026-01-31", "1m", "2026-11-30"}, // the 31st in a 30-day month
+		{"2026-10-31", "2m", "2026-12-31"},
+		{"2024-02-29", "1y", "2027-02-28"},
+	}
+	for _, c := range cases {
+		if got := NextDate(c.from, c.every, today); got != c.want {
+			t.Errorf("NextDate(%q, %s) = %s, want %s", c.from, c.every, got, c.want)
 		}
 	}
 }

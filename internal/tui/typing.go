@@ -94,6 +94,14 @@ func (m *Model) suggest(e *editor, surface string) string {
 	}
 	typed := strings.ToLower(word[1:])
 	var offers []string
+	if rest, start := strings.CutPrefix(typed, "@"); start && word[0] == '@' {
+		// A start date takes the same words as a deadline.
+		typed, word = rest, "="
+		offers = dateWords
+		if surface == askFilter {
+			offers = append([]string{"later"}, dateWords...)
+		}
+	}
 	switch word[0] {
 	case '#':
 		offers = m.tags

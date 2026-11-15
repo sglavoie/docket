@@ -26,6 +26,7 @@ type Backend interface {
 const (
 	metaHistory    = "history"     // the undo and redo stacks
 	metaHideClosed = "hide_closed" // whether outlines leave closed rows out
+	metaFilters    = "filters"     // the saved filters
 	undoDepth      = 200
 )
 
@@ -72,6 +73,8 @@ type Model struct {
 	sel       entry   // the one the outline pane was opened from
 	sideFocus bool
 	lists     map[string][]string
+	stats     map[string]entry // each active project's sidebar line, by row
+	filters   []savedFilter
 	tags      []string // tags in use, most used first
 	parked    int
 
@@ -106,6 +109,9 @@ func newModel(tree *outline.Tree, backend Backend, folds map[string]bool, now fu
 	}
 	if v, err := backend.Meta(metaHideClosed); err == nil {
 		m.hideClosed = v == "1"
+	}
+	if v, err := backend.Meta(metaFilters); err == nil && v != "" {
+		json.Unmarshal([]byte(v), &m.filters)
 	}
 	if v, err := backend.Meta(metaHistory); err == nil && v != "" {
 		var h history
@@ -486,9 +492,38 @@ func (m *Model) editRow(id string) {
 func (m *Model) setFields(id string, want map[string]string) []outline.Op {
 	have := m.tree.Row(id).Fields
 	var ops []outline.Op
-	for _, name := range []string{sigil.FieldText, sigil.FieldState, sigil.FieldFlag, sigil.FieldDue, sigil.FieldTags} {
+	field := func(name string) string {
+		if v, ok := want[name]; ok {
+			return v
+		}
+		return have[name]
+	}
+	for _, name := range []string{sigil.FieldText, sigil.FieldState, sigil.FieldFlag, sigil.FieldDue, sigil.FieldStart, sigil.FieldRepeat, sigil.FieldTags} {
 		value, ok := want[name]
 		if !ok || value == have[name] {
+			continue
+		}
+		if every := field(sigil.FieldRepeat); name == sigil.FieldState && value == sigil.Done && every != "" {
+			// A repeating row is never done: closing it moves it on to its
+			// next day and leaves it open. With a deadline, that is the
+			// next deadline; without one, the day it comes back.
+			moves := sigil.FieldStart
+			if field(sigil.FieldDue) != "" {
+				moves = sigil.FieldDue
+			}
+			next := sigil.NextDate(field(moves), every, m.today())
+			ops = append(ops, outline.Op{Kind: outline.Set, Row: id, Field: moves, Value: next})
+			if moves == sigil.FieldDue && field(sigil.FieldStart) != "" {
+				ops = append(ops, outline.Op{Kind: outline.Set, Row: id, Field: sigil.FieldStart,
+					Value: sigil.NextDate(field(sigil.FieldStart), every, m.today())})
+			}
+			if have[sigil.FieldState] != sigil.Open {
+				ops = append(ops,
+					outline.Op{Kind: outline.Set, Row: id, Field: sigil.FieldState, Value: sigil.Open},
+					outline.Op{Kind: outline.Set, Row: id, Field: sigil.FieldChanged, Value: strconv.FormatInt(m.now(), 10)})
+			}
+			label, _ := sigil.DueLabel(next, m.today())
+			m.msg = "repeats: next " + strings.TrimPrefix(label, "@")
 			continue
 		}
 		ops = append(ops, outline.Op{Kind: outline.Set, Row: id, Field: name, Value: value})
@@ -732,6 +767,10 @@ func (m *Model) command(line string) {
 		m.quit = true
 	case "export":
 		m.export(strings.Join(words[1:], " "))
+	case "review":
+		m.open(entry{kind: kindReview})
+	case "save", "forget":
+		m.keepFilter(words[0] == "save", strings.Join(words[1:], " "))
 	case "closed":
 		// Outlines leave done and canceled rows out, or show them again.
 		m.hideClosed = !m.hideClosed
@@ -745,7 +784,7 @@ func (m *Model) command(line string) {
 		m.vis, m.at.kept = nil, nil
 		m.msg = said
 	default:
-		m.msg = "commands: q, export [file], closed"
+		m.msg = "commands: q, export [file], closed, review, save name, forget name"
 	}
 }
 
@@ -865,7 +904,7 @@ func (m *Model) normalKey(k string) {
 			m.picked[cur] = true
 		}
 		m.cursor = min(m.cursor+1, len(m.vis)-1)
-	case "#", "@", "$", "-":
+	case "#", "@", "$", "-", "*":
 		// A sigil typed on the rows opens the stamp line already holding it.
 		m.ask = &prompt{kind: askStamp, ed: editor{buf: []rune(k), caret: 1}, rows: ids}
 	case "h", "left":

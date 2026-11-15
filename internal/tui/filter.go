@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -45,7 +46,19 @@ func parseQuery(q string, today time.Time) []term {
 			if state, ok := sigil.ParseState(w[1:]); ok {
 				t.kind, t.value = '$', state
 			}
+		case '*':
+			if every, ok := sigil.ParseRepeat(w[1:]); ok || w == "*" {
+				t.kind, t.value = '*', every
+			}
 		case '@':
+			if rest, start := strings.CutPrefix(strings.ToLower(w), "@@"); start {
+				if day, ok := sigil.ParseDate(rest, today); ok || rest == "" {
+					t.kind, t.value = 's', day
+				} else if rest == "later" {
+					t.kind, t.value = 's', rest
+				}
+				break
+			}
 			switch name := strings.ToLower(w[1:]); name {
 			case "", "overdue", "week":
 				t.kind, t.value = '@', name
@@ -88,6 +101,17 @@ func matches(r *outline.Row, terms []term, today time.Time) bool {
 			default:
 				ok = l.Due == t.value
 			}
+		case 's':
+			switch t.value {
+			case "":
+				ok = l.Start != ""
+			case "later":
+				ok = l.Later(today)
+			default:
+				ok = l.Start == t.value
+			}
+		case '*':
+			ok = l.Every != "" && (t.value == "" || l.Every == t.value)
 		}
 		if ok == t.neg {
 			return false
@@ -167,6 +191,10 @@ func parseStamp(line string, today time.Time) (change, string) {
 			}
 		case body == "@" && neg:
 			c.set[sigil.FieldDue], ok = "", true
+		case body == "@@" && neg:
+			c.set[sigil.FieldStart], ok = "", true
+		case body == "*" && neg:
+			c.set[sigil.FieldRepeat], ok = "", true
 		case len(body) < 2:
 		case body[0] == '#':
 			var tag string
@@ -175,8 +203,12 @@ func parseStamp(line string, today time.Time) (change, string) {
 			} else if ok {
 				c.add = append(c.add, tag)
 			}
+		case strings.HasPrefix(body, "@@") && !neg:
+			c.set[sigil.FieldStart], ok = sigil.ParseDate(body[2:], today)
 		case body[0] == '@' && !neg:
 			c.set[sigil.FieldDue], ok = sigil.ParseDate(body[1:], today)
+		case body[0] == '*' && !neg:
+			c.set[sigil.FieldRepeat], ok = sigil.ParseRepeat(body[1:])
 		case body[0] == '$' && !neg:
 			c.set[sigil.FieldState], ok = sigil.ParseState(body[1:])
 		}
@@ -287,4 +319,50 @@ func (m *Model) export(path string) {
 		return
 	}
 	m.msg = fmt.Sprintf("exported %d rows to %s", n, path)
+}
+
+// savedFilter is a query kept under a name, with the place it was made in.
+// It is a setting of this machine.
+type savedFilter struct {
+	Name, Root, Query string
+	Flat              bool
+}
+
+// keepFilter saves the pane's filter under a name, or forgets a saved one.
+func (m *Model) keepFilter(save bool, name string) {
+	at := -1
+	for i, f := range m.filters {
+		if f.Name == name {
+			at = i
+		}
+	}
+	switch {
+	case name == "":
+		m.msg = "name it: save name, or forget name"
+		return
+	case save && (m.at.query == "" || m.at.list != ""):
+		m.msg = "filter an outline first (/), then save it"
+		return
+	case save && at >= 0:
+		m.filters[at] = savedFilter{name, m.at.root, m.at.query, m.at.flat}
+	case save:
+		m.filters = append(m.filters, savedFilter{name, m.at.root, m.at.query, m.at.flat})
+	case at < 0:
+		m.msg = "no saved filter is called " + name
+		return
+	default:
+		m.filters = append(m.filters[:at], m.filters[at+1:]...)
+	}
+	b, err := json.Marshal(m.filters)
+	if err == nil {
+		err = m.backend.SetMeta(metaFilters, string(b))
+	}
+	switch {
+	case err != nil:
+		m.msg = "not saved: " + err.Error()
+	case save:
+		m.msg = "saved: p then /" + name + " opens it"
+	default:
+		m.msg = "forgot /" + name
+	}
 }

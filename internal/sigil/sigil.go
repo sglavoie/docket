@@ -21,6 +21,8 @@ const (
 	FieldTags    = "tags"
 	FieldChanged = "changed" // when the state last changed, unix milliseconds
 	FieldToday   = "today"   // the day the row was picked for Today
+	FieldStart   = "start"   // not before this day
+	FieldRepeat  = "repeat"  // the interval a closed row comes back after
 )
 
 // States. The empty state is a note or a heading.
@@ -39,7 +41,14 @@ type Line struct {
 	State string
 	Flag  bool
 	Due   string // YYYY-MM-DD, a hard deadline
+	Start string // YYYY-MM-DD, not before this day
+	Every string // a count and a unit, as in 2w: the row repeats
 	Tags  []string
+}
+
+// Later reports work that is not to be started yet.
+func (l Line) Later(today time.Time) bool {
+	return l.Start > civil(today).Format(isoDay) && !l.Closed()
 }
 
 // Closed reports a state that needs nothing further.
@@ -110,7 +119,13 @@ func IsSigil(w string, today time.Time) bool {
 	switch w[0] {
 	case '#':
 		_, ok = ParseTag(w[1:])
+	case '*':
+		_, ok = ParseRepeat(w[1:])
 	case '@':
+		if rest, start := strings.CutPrefix(w, "@@"); start {
+			_, ok = ParseDate(rest, today)
+			break
+		}
 		_, ok = ParseDate(w[1:], today)
 	case '$':
 		_, ok = ParseState(w[1:])
@@ -140,8 +155,14 @@ func Parse(s string, top bool, today time.Time) Line {
 			if tag, _ := ParseTag(w[1:]); !slices.Contains(l.Tags, tag) {
 				l.Tags = append(l.Tags, tag)
 			}
+		case '*':
+			l.Every, _ = ParseRepeat(w[1:])
 		case '@':
-			l.Due, _ = ParseDate(w[1:], today)
+			if rest, start := strings.CutPrefix(w, "@@"); start {
+				l.Start, _ = ParseDate(rest, today)
+			} else {
+				l.Due, _ = ParseDate(w[1:], today)
+			}
 		case '$':
 			state, _ = ParseState(w[1:])
 			named = true
@@ -171,6 +192,12 @@ func Format(l Line, top bool, today time.Time) string {
 	if l.Due != "" {
 		words = append(words, "@"+l.Due)
 	}
+	if l.Start != "" {
+		words = append(words, "@@"+l.Start)
+	}
+	if l.Every != "" {
+		words = append(words, "*"+l.Every)
+	}
 	for _, tag := range l.Tags {
 		words = append(words, "#"+tag)
 	}
@@ -191,6 +218,8 @@ func FromFields(f map[string]string) Line {
 		State: f[FieldState],
 		Flag:  f[FieldFlag] != "",
 		Due:   f[FieldDue],
+		Start: f[FieldStart],
+		Every: f[FieldRepeat],
 		Tags:  strings.Fields(f[FieldTags]),
 	}
 }
@@ -202,11 +231,13 @@ func (l Line) Fields() map[string]string {
 		flag = "1"
 	}
 	return map[string]string{
-		FieldText:  l.Text,
-		FieldState: l.State,
-		FieldFlag:  flag,
-		FieldDue:   l.Due,
-		FieldTags:  strings.Join(l.Tags, " "),
+		FieldText:   l.Text,
+		FieldState:  l.State,
+		FieldFlag:   flag,
+		FieldDue:    l.Due,
+		FieldStart:  l.Start,
+		FieldRepeat: l.Every,
+		FieldTags:   strings.Join(l.Tags, " "),
 	}
 }
 
@@ -293,4 +324,58 @@ func DueLabel(due string, today time.Time) (string, int) {
 		return fmt.Sprintf("@%s %d", t.Month().String()[:3], t.Day()), days
 	}
 	return "@" + due, days
+}
+
+var repeatWords = map[string]string{"daily": "1d", "weekly": "1w", "monthly": "1m", "yearly": "1y"}
+
+// ParseRepeat reads an interval: a count and d, w, m or y, or one of daily,
+// weekly, monthly, yearly.
+func ParseRepeat(s string) (string, bool) {
+	s = strings.ToLower(s)
+	if every, ok := repeatWords[s]; ok {
+		return every, true
+	}
+	if len(s) < 2 || !strings.ContainsRune("dwmy", rune(s[len(s)-1])) {
+		return "", false
+	}
+	n, err := strconv.Atoi(s[:len(s)-1])
+	if err != nil || n < 1 || n > 999 || s[0] == '+' {
+		return "", false
+	}
+	return strconv.Itoa(n) + s[len(s)-1:], true
+}
+
+// NextDate is the first day after today reached by stepping from a day by
+// an interval. With no day to step from, it steps once from today. A month
+// step that overshoots a short month lands on its last day.
+func NextDate(from, every string, today time.Time) string {
+	day := civil(today)
+	at := day
+	if t, err := time.Parse(isoDay, from); err == nil {
+		at = t
+	}
+	n, _ := strconv.Atoi(every[:len(every)-1])
+	step := func(t time.Time, k int) time.Time {
+		switch every[len(every)-1] {
+		case 'd':
+			return t.AddDate(0, 0, k*n)
+		case 'w':
+			return t.AddDate(0, 0, 7*k*n)
+		case 'y':
+			k *= 12
+		}
+		first := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC).AddDate(0, k*n, 0)
+		last := first.AddDate(0, 1, -1).Day()
+		return first.AddDate(0, 0, min(t.Day(), last)-1)
+	}
+	if n < 1 {
+		return from
+	}
+	// Steps are counted from the original day, so the 31st stays the 31st
+	// in the months that have one.
+	for k := 1; ; k++ {
+		if next := step(at, k); next.After(day) {
+			return next.Format(isoDay)
+		}
+	}
 }

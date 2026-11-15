@@ -33,9 +33,11 @@ const helpText = `Docket
   x  !  t        done and back, flag, pick for Today
   m              move to a project
   v              select the row; these five then act on every selected row
-  # @ $ -        stamp: type sigils, Enter sets them (-#tag and -@ remove)
+  # @ $ * -      stamp: type sigils, Enter sets them (-#tag, -@, -@@, -* remove)
   /              filter by text and sigils; -word excludes; Tab flat or in context
-  :              q, export [file], closed (hide or show done and canceled rows)
+  :              q, export [file], closed (hide or show done and canceled rows),
+                 review (projects, longest untouched first),
+                 save name (keep the filter; p then /name opens it), forget name
   a              capture a line to the Inbox; %name files it in a project
   p              go to a project or list by name
   Tab            the sidebar: j k choose, Enter work in it
@@ -52,6 +54,8 @@ While typing
 Sigils, typed anywhere in a row
   !              flag
   @fri @+3d @11-20 @today    deadline
+  @@mon          not before that day: dimmed until then, and in Today on the day
+  *2w *monthly   repeats: closing it moves it to its next day, still open
   #tag           tag
   $doing $waiting $done $canceled $parked $open $note    state
   A row is a task unless it is top-level or ends in a colon.
@@ -114,7 +118,7 @@ type word struct {
 // whole and raises no alarm.
 func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 	l := sigil.FromFields(r.Fields)
-	quiet := l.Closed() || l.State == sigil.Parked
+	quiet := l.Closed() || l.State == sigil.Parked || l.Later(m.today())
 	paint := func(style string) string {
 		if quiet {
 			return sgrDim
@@ -145,6 +149,13 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 		// A label such as "@Nov 20" stays in one piece.
 		out = append(out, word{paint(style), label})
 	}
+	if l.Start != "" {
+		label, _ := sigil.DueLabel(l.Start, m.today())
+		out = append(out, word{sgrDim, "@" + label})
+	}
+	if l.Every != "" {
+		out = append(out, word{sgrDim, "*" + l.Every})
+	}
 	for _, tag := range l.Tags {
 		out = append(out, word{sgrDim, "#" + tag})
 	}
@@ -161,6 +172,15 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 			out = append(out, word{sgrDim, "·"}, word{sgrDim, days(m.now() - m.changedAt(r.ID))})
 		case kindStale:
 			out = append(out, word{sgrDim, "·"}, word{sgrDim, days(m.now() - r.Modified)})
+		case kindReview:
+			// A project parked or closed during the review has no line left.
+			if st, active := m.stats[r.ID]; active {
+				todo := strconv.Itoa(st.open) + " to do"
+				if st.idle {
+					todo = "∅"
+				}
+				out = append(out, word{sgrDim, "·"}, word{sgrDim, strconv.Itoa(st.age) + "d"}, word{sgrDim, "·"}, word{sgrDim, todo})
+			}
 		}
 		if p := m.projectOf(r.ID); p != nil && p.ID != r.ID {
 			out = append(out, word{sgrDim, "·"}, word{sgrDim, p.Text()})
@@ -259,6 +279,8 @@ func (m *Model) emptyText() string {
 		return "Nothing is waiting."
 	case m.at.list == kindStale:
 		return "Nothing has gone stale."
+	case m.at.list == kindReview:
+		return "No active projects to review."
 	case m.hideClosed && len(m.tree.Children(m.at.root)) > 0 && m.at.root != "":
 		return "Nothing open here. :closed shows the closed rows."
 	case m.at.root == inboxID:

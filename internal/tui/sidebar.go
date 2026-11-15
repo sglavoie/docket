@@ -29,6 +29,8 @@ const (
 	kindStale    = "stale"
 	kindProjects = "projects"
 	kindProject  = "project"
+	kindReview   = "review" // active projects, longest untouched first
+	kindFilter   = "filter" // a saved filter
 )
 
 const (
@@ -59,6 +61,7 @@ type place struct {
 type entry struct {
 	kind, id, label string
 	count           int  // lists: rows that still need something
+	open            int  // projects: tasks to do
 	age             int  // projects: whole days since anything inside changed
 	due             int  // projects: 1 a deadline within a week, 2 one overdue
 	idle            bool // projects: no task left to do
@@ -131,7 +134,8 @@ func (m *Model) scan() {
 		for _, tag := range l.Tags {
 			tagUse[tag]++
 		}
-		if r.Fields[sigil.FieldToday] == day {
+		// Today holds what was picked, and what was set to start today.
+		if r.Fields[sigil.FieldToday] == day || (l.Start == day && l.State != "") {
 			lists[kindToday] = append(lists[kindToday], id)
 			if !l.Closed() {
 				picked++
@@ -145,12 +149,14 @@ func (m *Model) scan() {
 			case sigil.Waiting:
 				lists[kindWaiting] = append(lists[kindWaiting], id)
 			case sigil.Open, sigil.Doing:
-				if now-r.Modified > staleAfter.Milliseconds() {
+				// Work not due to start yet has not been neglected.
+				if now-r.Modified > staleAfter.Milliseconds() && !l.Later(today) {
 					lists[kindStale] = append(lists[kindStale], id)
 				}
 			}
 			if stat != nil && (l.State == sigil.Open || l.State == sigil.Doing || l.State == sigil.Waiting) {
 				stat.idle = false
+				stat.open++
 				if l.Due != "" {
 					if _, days := sigil.DueLabel(l.Due, today); days < 0 {
 						stat.due = 2
@@ -192,6 +198,16 @@ func (m *Model) scan() {
 		return m.tree.Row(lists[kindStale][i]).Modified < m.tree.Row(lists[kindStale][j]).Modified
 	})
 
+	// The review list: every active project, the longest untouched first.
+	m.stats = map[string]entry{}
+	review := make([]entry, len(projects))
+	copy(review, projects)
+	sort.SliceStable(review, func(i, j int) bool { return review[i].age > review[j].age })
+	for _, p := range review {
+		m.stats[p.id] = p
+		lists[kindReview] = append(lists[kindReview], p.id)
+	}
+
 	m.lists = lists
 	m.tags = tagsByUse(tagUse)
 	m.side = append([]entry{
@@ -217,6 +233,17 @@ func (m *Model) open(e entry) {
 		m.at = place{}
 	case kindProject:
 		m.at = place{root: e.id}
+	case kindFilter:
+		m.at = place{}
+		for _, f := range m.filters {
+			if f.Name == e.id {
+				m.at = place{query: f.Query, flat: f.Flat}
+				if m.live(f.Root) {
+					m.at.root = f.Root
+				}
+			}
+		}
+		m.refilter()
 	default:
 		m.at = place{list: e.kind, rows: slices.Clone(m.lists[e.kind])}
 	}
@@ -254,6 +281,11 @@ func (m *Model) targets(jump bool) []entry {
 	for _, top := range m.tree.Children("") {
 		if top != inboxID {
 			out = append(out, entry{kind: kindProject, id: top, label: m.tree.Row(top).Text()})
+		}
+	}
+	if jump {
+		for _, f := range m.filters {
+			out = append(out, entry{kind: kindFilter, id: f.Name, label: "/" + f.Name})
 		}
 	}
 	return out
