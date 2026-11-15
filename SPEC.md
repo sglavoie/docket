@@ -15,7 +15,7 @@ a rule here changes this file first.
 4. **Thirty keys at most** in the outline. A new key evicts an old one.
 5. **Every keystroke paints within one frame.** The tree lives in memory;
    SQLite is written when a change is committed, never while typing.
-6. **Chrome is one header line and one status line.**
+6. **Chrome is the sidebar, one header line and one status line.**
 
 ## Model
 
@@ -39,13 +39,12 @@ a rule here changes this file first.
 | --- | --- | --- |
 | `text` | 1 | The row's title |
 | `deleted` | 1 | Tombstone |
-| `state` | 2 | `open`, `doing`, `waiting`, `done`, `canceled`; unset is a note |
+| `state` | 2 | `open`, `doing`, `waiting`, `done`, `canceled`, `parked`; unset is a note |
 | `flag` | 2 | The single priority mark `!` |
 | `due` | 2 | A hard deadline, a calendar day. Never "when I plan to do it" |
 | `tags` | 2 | Space-separated, normalised |
 | `changed` | 2 | When `state` last changed, for Waiting and Stale ages |
 | `today` | 3 | The day the row was picked for Today |
-| `parked` | 3 | Project rows only: hidden from the active list |
 
 Reserved, not built: `start` (a not-before date) and `repeat` (regenerate in
 place on completion, never as spawned instances).
@@ -70,29 +69,76 @@ file, and conflicts resolve per field by stamp.
 ## Screen
 
 ```
- Inbox         4 │ docket-rewrite
- Today         3 │ ▾ Storage
- Waiting       2 │   ○ Decide op-log format  !  due Fri
- Stale         9 │     per-field, clock-stamped
-─────────────────│   ● Prototype row parser
- ACTIVE          │   ✓ Audit grammar reuse
-▸docket-rewrite  │ ▾ TUI
- blog        12d │   ○ Sidebar counts
- tax-2026  ! 3d  │
- homelab     ∅   │
- PARKED (31)     │
+  Inbox                1 │ docket-rewrite
+  Today                3 │   ▾ Storage:
+  Waiting              2 │ ▌   ○ Decide op-log format ! @fri
+  Stale                9 │         per-field, clock-stamped
+                         │     ● Prototype row parser
+▌ Projects               │     ✓ Audit grammar reuse
+  docket-rewrite         │   ▾ TUI:
+  blog               12d │     ○ Sidebar counts
+  tax-2026         ! 3d  │
+  homelab              ∅ │
+                         │
+  parked 31              │
+Inbox › Buy milk %home
 ```
 
-- **Sidebar** (milestone 3): four fixed lists, then active projects by last
-  touch, each with days since touched, `!` for a near deadline and `∅` for no
-  open task, then parked projects as a count. The four lists stay four.
-- **Outline:** the selected project or list. Rows are edited where they sit.
-- **Bottom line** (milestone 4): appears only when invoked, for `/` filter,
-  a sigil stamp, or a `:` command, and shows which of the three it is.
+### Sidebar
+
+Drawn from 72 columns up; narrower, it takes the pane only while focused.
+Everything in it is derived by one pass over the tree. Nothing is stored.
+
+- **Four lists, and they stay four.** Inbox counts its rows; Today counts
+  picks not yet closed; Waiting counts rows in that state; Stale counts open
+  and doing rows untouched for 14 days.
+- **Projects** shows every top-level row as one outline. It is where a
+  project is added, renamed, reordered, parked or closed, with the ordinary
+  keys.
+- **Active projects** follow, in the order of the top-level rows: the order
+  is the user's, so it never shuffles as work happens. Each says `!` in
+  yellow for a deadline within a week or red for one overdue, then `∅` when
+  it holds no task to do, else the whole days since anything inside changed.
+- **Parked** projects are a count. Done and canceled projects are not listed.
+
+`Tab` gives the sidebar focus. `j` and `k` then show each destination at
+once; `Enter`, `Tab` or `Esc` returns to the pane.
+
+### Pane
+
+The pane shows the rows under one row, or a list.
+
+- **A project, the Inbox, or Projects** is the outline, edited where it sits.
+  The Inbox is an ordinary row with the fixed identity `inbox`, kept first
+  among the top-level rows and never drawn among them.
+- **Today, Waiting and Stale** are flat. A list is read when it is opened and
+  holds those rows until it is opened again, so closing or rescheduling a row
+  never pulls it from under the cursor. Each row names its project; Waiting
+  and Stale lead with the longest wait and say how many days. A list has no
+  order to edit: `o`, `O`, `>`, `<`, `J` and `K` are refused there, and
+  `Enter` works inside a row, from which `Esc` returns to the same list.
+- **Launch** opens Today when something is picked for the day, else Projects.
 
 Today is hand-picked and rebuilt daily: a row is in Today when its `today`
 field is the current day, so yesterday's picks drop out without a write.
-Stale is an open row untouched for 14 days.
+
+### Bottom line
+
+The status line becomes a prompt for three acts, named at its left edge:
+
+- `a` **Inbox ›** files a typed line in the Inbox. A `%name` word files it in
+  the project that name matches instead; one matching nothing stays in the
+  text. `Enter` keeps the line and asks for the next; a blank `Enter` or
+  `Esc` closes, and `Esc` keeps what was typed.
+- `p` **Go to ›** opens a project or a list by name.
+- `m` **Move to ›** makes the cursor's row the last child of a project or the
+  Inbox.
+
+The two pickers list their matches as you type, best first, and `Enter`
+takes the first. A name matches by its start, the start of a word, anywhere
+inside, or its letters in order. `Esc` leaves a picker without acting.
+
+Milestone 4 adds `/` filter, sigil stamping and `:` commands to this line.
 
 ## Keys
 
@@ -107,9 +153,9 @@ Stale is an open row untouched for 14 days.
 | `u` `Ctrl+R` | Undo, redo | 1 |
 | `?` | Help | 1 |
 | `x` `!` | Done and back, flag | 2 |
-| `t` | Today | 3 |
-| `Tab` `p` | Sidebar focus, fuzzy project jump | 3 |
-| `a` `m` | Add to Inbox from anywhere; move to a project | 3 |
+| `t` | Pick for Today, and unpick | 3 |
+| `Tab` `p` | Sidebar focus; go to a project or list by name | 3 |
+| `a` `m` | Capture to the Inbox from anywhere; move to a project | 3 |
 | `v` | Select | 4 |
 | `/` `:` | Filter, command | 4 |
 
@@ -132,8 +178,8 @@ only feedback a mistyped sigil gets. `\#tag` keeps a readable sigil literal.
 | `!` | `flag` | The word `!` alone |
 | `#tag` | `tags` | A word starting with a letter; stored lowercase, once |
 | `@date` | `due` | `today`, `tomorrow`, a weekday (the next one, never today), `+3d`, `+2w`, `MM-DD` (the next such day), `YYYY-MM-DD` |
-| `$state` | `state` | `open`, `doing`, `waiting`, `done`, `canceled`, `note`, or an unambiguous prefix (`$w`, `$c`; `$d` is not one) |
-| `%project` | | Milestone 3 |
+| `$state` | `state` | `open`, `doing`, `waiting`, `done`, `canceled`, `parked`, `note`, or an unambiguous prefix (`$w`, `$c`, `$p`; `$d` is not one) |
+| `%name` | | On the capture line only: the project to file the row in |
 
 Typed in a row, sigils become fields when the edit ends and may sit anywhere
 in the line; a repeated `@` or `$` takes the last. Editing a row shows its
@@ -147,12 +193,17 @@ notes. The line spells `$state` only where the row differs from that default,
 so most lines carry none. A row keeps its state when it moves.
 
 **On the row.** One glyph column says what the row is: `○` open, `●` doing,
-`◔` waiting, `✓` done, `✕` canceled; a note shows `▾` or `▸` when it has
+`◔` waiting, `✓` done, `✕` canceled, `◌` parked; a note shows `▾` or `▸` when it has
 children and nothing otherwise. A folded task keeps its state glyph and
 counts its children after its text (`+3`). Fields follow the text, each in
 the sigil that writes it; the deadline reads `@today`, `@tomorrow`, `@fri`,
 `@Nov 20`. An overdue deadline is red and today's is yellow until the row is
 done or canceled, which dims the whole row.
+
+**Parked** is "not now" for any row: a project leaves the active list, and a
+parked row and everything under it is in no computed list however long it
+sits. It is the one place for work that is kept and not being done. Today
+still shows a parked row that was picked, since a pick is explicit.
 
 `x` toggles done and open; `!` toggles the flag. Every other state is typed.
 Any change of state stamps `changed`.
@@ -162,7 +213,8 @@ Any change of state stamps `changed`.
 1. **Outline editor.** Rows on SQLite, in-place editing, indent, reorder,
    fold, zoom, undo. *Built.*
 2. **Tasks.** Sigil parsing, states, flag, deadline, row rendering. *Built.*
-3. **Sidebar.** The four lists, project ordering, parking, `a` and `m`.
+3. **Sidebar.** The four lists, projects, parking, `t`, `a`, `m` and `p`.
+   *Built.*
 4. **Filter line.** `/`, stamping, selection, `:` commands.
 
 Then two weeks of daily use before anything else is added. Not planned for

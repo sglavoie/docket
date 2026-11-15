@@ -45,20 +45,31 @@ type Model struct {
 	newID   func() string
 
 	width, height int
-	root          string
-	zoom          []string // the roots Esc returns to
+	at            place
+	zoom          []place // where Esc returns to
 	folded        map[string]bool
 	vis           []visRow
 	cursor, top   int
 
+	side      []entry // the sidebar's destinations, top to bottom
+	sel       entry   // the one the outline pane was opened from
+	sideFocus bool
+	lists     map[string][]string
+	parked    int
+
 	undo, redo [][]outline.Op
 	prefix     string // a pending g or d
 	edit       *editor
+	ask        *prompt
 	help       bool
 	msg        string
 }
 
 func New(tree *outline.Tree, backend Backend, folds map[string]bool) *Model {
+	return newModel(tree, backend, folds, func() int64 { return time.Now().UnixMilli() })
+}
+
+func newModel(tree *outline.Tree, backend Backend, folds map[string]bool, now func() int64) *Model {
 	if folds == nil {
 		folds = map[string]bool{}
 	}
@@ -66,29 +77,67 @@ func New(tree *outline.Tree, backend Backend, folds map[string]bool) *Model {
 		tree:    tree,
 		backend: backend,
 		folded:  folds,
-		now:     func() int64 { return time.Now().UnixMilli() },
+		now:     now,
 		newID:   store.NewID,
 	}
+	m.ensureInbox()
 	m.rebuild()
+	// Launch where the day's work is, or among the projects when nothing
+	// has been picked yet.
+	if len(m.lists[kindToday]) > 0 {
+		m.open(entry{kind: kindToday})
+	} else {
+		m.open(entry{kind: kindProjects})
+	}
 	return m
 }
 
 func (m *Model) Init() tea.Cmd { return nil }
 
-// rebuild recomputes the visible rows and keeps the cursor inside them.
+// rebuild recomputes the visible rows and the sidebar, and keeps the cursor
+// inside the rows.
 func (m *Model) rebuild() {
 	m.vis = m.vis[:0]
-	var walk func(parent string, depth int)
-	walk = func(parent string, depth int) {
-		for _, id := range m.tree.Children(parent) {
-			m.vis = append(m.vis, visRow{id, depth})
-			if !m.folded[id] {
-				walk(id, depth+1)
+	if m.at.list != "" {
+		for _, id := range m.at.rows {
+			if m.live(id) {
+				m.vis = append(m.vis, visRow{id, 0})
 			}
 		}
+	} else {
+		var walk func(parent string, depth int)
+		walk = func(parent string, depth int) {
+			for _, id := range m.tree.Children(parent) {
+				if id == inboxID {
+					continue
+				}
+				m.vis = append(m.vis, visRow{id, depth})
+				if !m.folded[id] {
+					walk(id, depth+1)
+				}
+			}
+		}
+		walk(m.at.root, 0)
 	}
-	walk(m.root, 0)
 	m.cursor = max(0, min(m.cursor, len(m.vis)-1))
+	m.scan()
+}
+
+// flat refuses an act that needs the tree while a list is showing.
+func (m *Model) flat() bool {
+	if m.at.list != "" {
+		m.msg = "a list has no order: press Enter on a row to work inside it"
+		return true
+	}
+	return false
+}
+
+// prevSibling is the row drawn above id among its siblings.
+func (m *Model) prevSibling(id string) string {
+	if prev := m.tree.PrevSibling(id); prev != inboxID {
+		return prev
+	}
+	return ""
 }
 
 func (m *Model) current() string {
@@ -181,7 +230,7 @@ func (m *Model) replay(from, to *[][]outline.Op, empty string) {
 }
 
 func (m *Model) indentOp(id string) (outline.Op, bool) {
-	prev := m.tree.PrevSibling(id)
+	prev := m.prevSibling(id)
 	if prev == "" {
 		m.msg = "no row above to indent under"
 		return outline.Op{}, false
@@ -191,7 +240,7 @@ func (m *Model) indentOp(id string) (outline.Op, bool) {
 
 func (m *Model) outdentOp(id string) (outline.Op, bool) {
 	r := m.tree.Row(id)
-	if r.Parent == m.root {
+	if r.Parent == m.at.root {
 		m.msg = "already at the top level"
 		return outline.Op{}, false
 	}
@@ -201,6 +250,9 @@ func (m *Model) outdentOp(id string) (outline.Op, bool) {
 
 // shift indents or outdents id, inside the open edit when there is one.
 func (m *Model) shift(id string, indent bool) {
+	if m.flat() {
+		return
+	}
 	op, ok := m.outdentOp(id)
 	if indent {
 		op, ok = m.indentOp(id)
@@ -227,6 +279,9 @@ func (m *Model) shift(id string, indent bool) {
 }
 
 func (m *Model) reorder(id string, down bool) {
+	if m.flat() {
+		return
+	}
 	r := m.tree.Row(id)
 	var pos string
 	if down {
@@ -236,7 +291,7 @@ func (m *Model) reorder(id string, down bool) {
 		}
 		pos = m.tree.PosAfter(r.Parent, next)
 	} else {
-		prev := m.tree.PrevSibling(id)
+		prev := m.prevSibling(id)
 		if prev == "" {
 			return
 		}
@@ -251,11 +306,15 @@ func (m *Model) reorder(id string, down bool) {
 // newRow opens a blank row for typing: above the cursor, as the first child
 // of an open parent, or else directly below.
 func (m *Model) newRow(above bool) {
+	if m.at.list != "" {
+		m.msg = "add rows inside a project, or press a for the Inbox"
+		return
+	}
 	cur := m.current()
-	parent, pos := m.root, ""
+	parent, pos := m.at.root, ""
 	switch {
 	case cur == "":
-		pos = m.tree.PosLast(m.root)
+		pos = m.tree.PosLast(m.at.root)
 	case above:
 		parent = m.tree.Row(cur).Parent
 		pos = m.tree.PosBefore(parent, cur)
@@ -344,14 +403,20 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 	case tea.PasteMsg:
+		text := []rune(strings.Join(strings.Fields(msg.Content), " "))
 		if m.edit != nil {
-			m.edit.insert([]rune(strings.Join(strings.Fields(msg.Content), " ")))
+			m.edit.insert(text)
+		} else if m.ask != nil {
+			m.ask.ed.insert(text)
 		}
 	case tea.KeyPressMsg:
 		m.msg = ""
 		if msg.String() == "ctrl+c" {
 			if m.edit != nil {
 				m.finishEdit()
+			}
+			if m.ask != nil && m.ask.kind == askCapture {
+				m.capture(string(m.ask.ed.buf))
 			}
 			return m, tea.Quit
 		}
@@ -360,11 +425,89 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.help = false
 		case m.edit != nil:
 			m.editKey(msg)
+		case m.ask != nil:
+			m.askKey(msg)
+		case m.sideFocus:
+			m.sideKey(msg.String())
 		default:
 			m.normalKey(msg.String())
 		}
+		// Every key may have changed what the sidebar counts.
+		m.rebuild()
 	}
 	return m, nil
+}
+
+// prompt is the bottom line while it is asking for something: a line for
+// the Inbox, or the name of a project to go to or move a row into.
+type prompt struct {
+	kind string
+	ed   editor
+	row  string // the row being moved
+}
+
+const (
+	askCapture = "capture"
+	askJump    = "jump"
+	askMove    = "move"
+)
+
+func (m *Model) askKey(msg tea.KeyPressMsg) {
+	a := m.ask
+	text := strings.TrimSpace(string(a.ed.buf))
+	switch msg.String() {
+	case "esc":
+		m.ask = nil
+		if a.kind == askCapture {
+			m.capture(text)
+		}
+	case "enter":
+		if a.kind == askCapture {
+			// The line stays open for the next thought; a blank one closes it.
+			m.capture(text)
+			a.ed = editor{}
+			if text == "" {
+				m.ask = nil
+			}
+			return
+		}
+		hits := match(m.targets(a.kind == askJump), text, 3)
+		if len(hits) == 0 {
+			m.msg = "nothing matches " + text
+			return
+		}
+		m.ask = nil
+		if a.kind == askJump {
+			m.sideFocus = false
+			m.open(hits[0])
+			return
+		}
+		to := hits[0].rowID()
+		if m.do(outline.Op{Kind: outline.Move, Row: a.row, Parent: to, Pos: m.tree.PosLast(to)}) {
+			m.msg = "moved to " + hits[0].label
+		}
+	default:
+		a.ed.key(msg)
+	}
+}
+
+// sideKey handles the sidebar while it has focus. Moving shows each
+// destination at once, so leaving is the only other act.
+func (m *Model) sideKey(k string) {
+	switch k {
+	case "j", "down":
+		m.sideStep(1)
+	case "k", "up":
+		m.sideStep(-1)
+	case "tab", "enter", "esc", "l", "right":
+		m.sideFocus = false
+	case "p":
+		m.ask = &prompt{kind: askJump}
+	case "a":
+		m.ask = &prompt{kind: askCapture}
+	case "?":
+		m.help = true
+	}
 }
 
 func (m *Model) normalKey(k string) {
@@ -404,10 +547,16 @@ func (m *Model) normalKey(k string) {
 		m.replay(&m.redo, &m.undo, "nothing to redo")
 	case "?":
 		m.help = true
+	case "tab":
+		m.sideFocus = true
+	case "p":
+		m.ask = &prompt{kind: askJump}
+	case "a":
+		m.ask = &prompt{kind: askCapture}
 	case "esc":
 		if n := len(m.zoom); n > 0 {
-			was := m.root
-			m.root, m.zoom = m.zoom[n-1], m.zoom[:n-1]
+			was := m.at.root
+			m.at, m.zoom = m.zoom[n-1], m.zoom[:n-1]
 			m.rebuild()
 			m.seek(was)
 		}
@@ -420,14 +569,14 @@ func (m *Model) normalKey(k string) {
 	case "e":
 		m.editRow(cur)
 	case "enter":
-		m.zoom = append(m.zoom, m.root)
-		m.root, m.cursor = cur, 0
+		m.zoom = append(m.zoom, m.at)
+		m.at, m.cursor = place{root: cur}, 0
 		m.rebuild()
 	case "h", "left":
 		if len(m.tree.Children(cur)) > 0 && !m.folded[cur] {
 			m.setFold(cur, true)
 			m.rebuild()
-		} else if p := m.tree.Row(cur).Parent; p != m.root {
+		} else if p := m.tree.Row(cur).Parent; p != m.at.root {
 			m.seek(p)
 		}
 	case "l", "right":
@@ -453,6 +602,16 @@ func (m *Model) normalKey(k string) {
 			flag = ""
 		}
 		m.do(m.setFields(cur, map[string]string{sigil.FieldFlag: flag})...)
+	case "t":
+		// Today is a pick that lapses by itself: the field holds the day it
+		// was made, and tomorrow that is no longer today.
+		day := m.today().Format("2006-01-02")
+		if m.tree.Row(cur).Fields[sigil.FieldToday] == day {
+			day = ""
+		}
+		m.do(outline.Op{Kind: outline.Set, Row: cur, Field: sigil.FieldToday, Value: day})
+	case "m":
+		m.ask = &prompt{kind: askMove, row: cur}
 	case ">":
 		m.shift(cur, true)
 	case "<":
@@ -482,7 +641,19 @@ func (m *Model) editKey(msg tea.KeyPressMsg) {
 	case "backspace":
 		if len(e.buf) == 0 && e.fresh {
 			m.finishEdit()
-		} else if e.caret > 0 {
+		} else {
+			e.key(msg)
+		}
+	default:
+		e.key(msg)
+	}
+}
+
+// key applies a text-editing key to the buffer.
+func (e *editor) key(msg tea.KeyPressMsg) {
+	switch msg.String() {
+	case "backspace":
+		if e.caret > 0 {
 			e.buf = append(e.buf[:e.caret-1], e.buf[e.caret:]...)
 			e.caret--
 		}

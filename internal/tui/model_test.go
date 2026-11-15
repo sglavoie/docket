@@ -14,10 +14,11 @@ import (
 )
 
 type harness struct {
-	t    *testing.T
-	path string
-	st   *store.Store
-	m    *Model
+	t     *testing.T
+	path  string
+	st    *store.Store
+	m     *Model
+	clock time.Time
 }
 
 func open(t *testing.T, path string) *harness {
@@ -27,6 +28,13 @@ func open(t *testing.T, path string) *harness {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { st.Close() })
+	return resume(t, path, st, time.Date(2026, 11, 15, 12, 0, 0, 0, time.UTC))
+}
+
+// resume starts the client at a given moment. The default is noon UTC on a
+// Sunday, so the local day is the same in every zone.
+func resume(t *testing.T, path string, st *store.Store, at time.Time) *harness {
+	t.Helper()
 	tree, err := st.Load()
 	if err != nil {
 		t.Fatal(err)
@@ -35,13 +43,13 @@ func open(t *testing.T, path string) *harness {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m := New(tree, st, folds)
+	h := &harness{t: t, path: path, st: st, clock: at}
+	m := newModel(tree, st, folds, func() int64 { return h.clock.UnixMilli() })
 	n := 0
-	// Noon UTC on a Sunday, so the local day is the same in every zone.
-	m.now = func() int64 { return time.Date(2026, 11, 15, 12, 0, 0, 0, time.UTC).UnixMilli() }
 	m.newID = func() string { n++; return fmt.Sprintf("%s-row%03d", filepath.Base(path), n) }
 	m.Update(tea.WindowSizeMsg{Width: 40, Height: 12})
-	return &harness{t: t, path: path, st: st, m: m}
+	h.m = m
+	return h
 }
 
 func start(t *testing.T) *harness {
@@ -83,17 +91,71 @@ func (h *harness) press(toks ...string) *harness {
 	return h
 }
 
-// rows is the list as drawn: no header, no status line, no styling.
+const sideCols = sidebarCols + 3
+
+func (h *harness) lines() []string {
+	return strings.Split(ansi.Strip(h.m.View().Content), "\n")
+}
+
+// rows is the outline pane as drawn: no sidebar, no header, no status line,
+// no styling.
 func (h *harness) rows() string {
 	h.t.Helper()
-	lines := strings.Split(ansi.Strip(h.m.View().Content), "\n")
+	lines := h.lines()
 	var out []string
 	for _, l := range lines[1 : len(lines)-1] {
+		if r := []rune(l); h.m.width >= sidebarFrom {
+			l = string(r[min(sideCols, len(r)):])
+		}
 		if l = strings.TrimRight(l, " "); l != "" {
 			out = append(out, l)
 		}
 	}
 	return strings.Join(out, "\n")
+}
+
+// side is the sidebar, one entry per line with its spacing collapsed.
+func (h *harness) side() string {
+	h.t.Helper()
+	lines := h.lines()
+	var out []string
+	for _, l := range lines[:len(lines)-1] {
+		if r := []rune(l); h.m.width >= sidebarFrom {
+			if len(r) < sideCols {
+				h.t.Fatalf("line narrower than the sidebar: %q", l)
+			}
+			l = string(r[:sidebarCols])
+		}
+		if l = strings.Join(strings.Fields(l), " "); l != "" {
+			out = append(out, l)
+		}
+	}
+	return strings.Join(out, "\n")
+}
+
+func (h *harness) wantSide(lines ...string) {
+	h.t.Helper()
+	if got, want := h.side(), strings.Join(lines, "\n"); got != want {
+		h.t.Fatalf("sidebar:\n%s\n\nwant:\n%s", got, want)
+	}
+}
+
+func (h *harness) header() string {
+	l := h.lines()[0]
+	if r := []rune(l); h.m.width >= sidebarFrom {
+		l = string(r[min(sideCols, len(r)):])
+	}
+	return strings.TrimSpace(l)
+}
+
+func (h *harness) status() string {
+	lines := h.lines()
+	return strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(lines[len(lines)-1]), "? help"))
+}
+
+func (h *harness) wide() *harness {
+	h.m.Update(tea.WindowSizeMsg{Width: 100, Height: 16})
+	return h
 }
 
 func (h *harness) want(rows ...string) {
@@ -285,7 +347,7 @@ func TestLongRowIsCutToTheWidthAndScrollsWhileTyping(t *testing.T) {
 
 func TestSigilsBecomeFieldsAndTheLineRoundTrips(t *testing.T) {
 	h := project(t)
-	h.m.Update(tea.WindowSizeMsg{Width: 80, Height: 12})
+	h.m.Update(tea.WindowSizeMsg{Width: 70, Height: 12})
 	h.press("o", `"Ship it ! @fri #Release $wait"`, "esc")
 	h.want(
 		"  ▾ Project",
@@ -321,7 +383,7 @@ func TestSigilsBecomeFieldsAndTheLineRoundTrips(t *testing.T) {
 
 func TestProseThatLooksLikeSigilsStaysProse(t *testing.T) {
 	h := project(t)
-	h.m.Update(tea.WindowSizeMsg{Width: 80, Height: 12})
+	h.m.Update(tea.WindowSizeMsg{Width: 70, Height: 12})
 	h.press("o", `"Fix #123 for @alice in R&D \#api"`, "esc")
 	h.want(
 		"  ▾ Project",

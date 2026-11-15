@@ -24,6 +24,7 @@ func TestParse(t *testing.T) {
 		{"just a thought $note", false, Line{Text: "just a thought"}},
 		{"Top-level task $open", true, Line{Text: "Top-level task", State: Open}},
 		{"Call back $w", false, Line{Text: "Call back", State: Waiting}},
+		{"old idea $p", true, Line{Text: "old idea", State: Parked}},
 		// What the grammar cannot read stays prose.
 		{"Fix #123 for @alice at R&D, costs $5 $d wow!", false,
 			Line{Text: "Fix #123 for @alice at R&D, costs $5 $d wow!", State: Open}},

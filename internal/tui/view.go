@@ -3,6 +3,7 @@ package tui
 import (
 	"strconv"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -29,7 +30,11 @@ const helpText = `Docket
   e              edit the row
   > <            indent, outdent
   J K            move the row down, up
-  x  !           done and back, flag
+  x  !  t        done and back, flag, pick for Today
+  m              move the row to a project
+  a              capture a line to the Inbox; %name files it in a project
+  p              go to a project or list by name
+  Tab            the sidebar: j k choose, Enter work in it
   dd             delete
   u  Ctrl+R      undo, redo
   Ctrl+C         quit
@@ -43,7 +48,7 @@ Sigils, typed anywhere in a row
   !              flag
   @fri @+3d @11-20 @today    deadline
   #tag           tag
-  $doing $waiting $done $canceled $open $note    state
+  $doing $waiting $done $canceled $parked $open $note    state
   A row is a task unless it is top-level or ends in a colon.
   \#tag keeps a sigil as plain text.
 
@@ -88,6 +93,8 @@ func stateGlyph(state string, kids int, folded bool) string {
 		return sgrDim + "✓" + sgrReset
 	case sigil.Canceled:
 		return sgrDim + "✕" + sgrReset
+	case sigil.Parked:
+		return sgrDim + "◌" + sgrReset
 	}
 	switch {
 	case kids == 0:
@@ -99,10 +106,11 @@ func stateGlyph(state string, kids int, folded bool) string {
 }
 
 // rowBody is a row's text followed by its fields, each spelled with the
-// sigil that writes it. A closed row is dimmed whole and raises no alarm.
+// sigil that writes it. A closed or parked row is dimmed whole and raises no
+// alarm.
 func (m *Model) rowBody(r *outline.Row, onCursor bool) string {
 	l := sigil.FromFields(r.Fields)
-	closed := l.Closed()
+	closed := l.Closed() || l.State == sigil.Parked
 	paint := func(style, s string) string {
 		if closed {
 			style = sgrDim
@@ -140,11 +148,14 @@ func (m *Model) rowBody(r *outline.Row, onCursor bool) string {
 }
 
 func (m *Model) breadcrumb() string {
-	if m.root == "" {
-		return "Docket"
+	switch {
+	case m.at.list != "":
+		return strings.ToUpper(m.at.list[:1]) + m.at.list[1:]
+	case m.at.root == "":
+		return "Projects"
 	}
 	var parts []string
-	for id := m.root; id != ""; {
+	for id := m.at.root; id != ""; {
 		r := m.tree.Row(id)
 		if r == nil {
 			break
@@ -155,31 +166,89 @@ func (m *Model) breadcrumb() string {
 	return strings.Join(parts, " › ")
 }
 
-func (m *Model) statusLine(w int) string {
+func (m *Model) emptyText() string {
+	switch {
+	case m.at.list == kindToday:
+		return "Nothing picked for today. Press t on a row to pick it."
+	case m.at.list == kindWaiting:
+		return "Nothing is waiting."
+	case m.at.list == kindStale:
+		return "Nothing has gone stale."
+	case m.at.root == inboxID:
+		return "The Inbox is empty. Press a to capture a thought."
+	case m.at.root == "":
+		return "No projects yet. Press o to add one."
+	}
+	return "Nothing here yet. Press o to add a row."
+}
+
+func days(ms int64) string {
+	return strconv.FormatInt(ms/(24*time.Hour).Milliseconds(), 10) + "d"
+}
+
+// listNote is what a row in a list says beyond itself: how long it has
+// waited or sat untouched, and which project it lives in.
+func (m *Model) listNote(r *outline.Row) string {
+	var parts []string
+	switch m.at.list {
+	case kindWaiting:
+		parts = append(parts, days(m.now()-m.changedAt(r.ID)))
+	case kindStale:
+		parts = append(parts, days(m.now()-r.Modified))
+	}
+	if p := m.projectOf(r.ID); p != nil && p.ID != r.ID {
+		parts = append(parts, p.Text())
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return sgrDim + " · " + strings.Join(parts, " · ") + sgrReset
+}
+
+// statusLine is the bottom row, and the caret's column when it is asking.
+func (m *Model) statusLine(w int) (string, int) {
+	if a := m.ask; a != nil {
+		label := map[string]string{askCapture: "Inbox › ", askJump: "Go to › ", askMove: "Move to › "}[a.kind]
+		lw := ansi.StringWidth(label)
+		text, col := a.ed.window(max(w-lw, 1))
+		line := sgrAccent + label + sgrReset + text
+		if room := w - lw - ansi.StringWidth(text) - 3; a.kind != askCapture && room > 3 {
+			// The first name is the one Enter takes.
+			offer := sgrDim + "nothing matches" + sgrReset
+			for i, e := range match(m.targets(a.kind == askJump), strings.TrimSpace(string(a.ed.buf)), 3) {
+				if i == 0 {
+					offer = sgrBold + e.label + sgrReset
+				} else {
+					offer += sgrDim + " · " + e.label + sgrReset
+				}
+			}
+			line += "   " + ansi.Truncate(offer, room, "…") + sgrReset
+		}
+		return line, lw + col
+	}
+
 	left, right := m.msg, "? help"
+	switch {
+	case left != "":
+	case m.edit != nil:
+		left = "Enter next row · Esc done · Tab indent"
+	case m.sideFocus:
+		left = "j k choose · Enter work in it"
+	}
 	if m.edit != nil {
 		right = ""
-		if left == "" {
-			left = "Enter next row · Esc done · Tab indent"
-		}
 	}
 	left = ansi.Truncate(left, w, "…")
 	gap := w - ansi.StringWidth(left) - ansi.StringWidth(right)
 	if gap < 1 {
-		return left
+		return left, -1
 	}
-	return left + strings.Repeat(" ", gap) + sgrDim + right + sgrReset
+	return left + strings.Repeat(" ", gap) + sgrDim + right + sgrReset, -1
 }
 
-func (m *Model) View() tea.View {
-	w, h := m.size()
-	if m.help {
-		v := tea.NewView(helpText)
-		v.AltScreen = true
-		return v
-	}
-
-	listH := max(h-2, 1)
+// paneLines draws the outline pane: a header and the rows, h lines in all.
+func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
+	listH := max(h-1, 1)
 	if m.cursor < m.top {
 		m.top = m.cursor
 	}
@@ -205,6 +274,9 @@ func (m *Model) View() tea.View {
 		gutter := " "
 		if i == m.cursor {
 			gutter = sgrAccent + "▌" + sgrReset
+			if m.sideFocus {
+				gutter = sgrDim + "▌" + sgrReset
+			}
 		}
 		prefixW := 2 + 2*v.depth + 2
 		avail := max(w-prefixW, 1)
@@ -217,17 +289,59 @@ func (m *Model) View() tea.View {
 			caret.Shape = tea.CursorBar
 		} else {
 			text = m.rowBody(r, i == m.cursor)
-			if kids > 0 && m.folded[v.id] && r.Fields[sigil.FieldState] != "" {
+			// A task's glyph is its state, so the children it hides are
+			// counted after it: when folded, and always in a list.
+			if hides := m.folded[v.id] || m.at.list != ""; kids > 0 && hides && r.Fields[sigil.FieldState] != "" {
 				text += sgrDim + " +" + strconv.Itoa(kids) + sgrReset
+			}
+			if m.at.list != "" {
+				text += m.listNote(r)
 			}
 			text = ansi.Truncate(text, avail, "…") + sgrReset
 		}
 		lines = append(lines, gutter+" "+strings.Repeat("  ", v.depth)+glyph+" "+text)
 	}
 	if len(m.vis) == 0 {
-		lines[1] = sgrDim + "  Nothing here yet. Press o to add a row." + sgrReset
+		lines[1] = sgrDim + "  " + ansi.Truncate(m.emptyText(), max(w-2, 1), "…") + sgrReset
 	}
-	lines = append(lines, m.statusLine(w))
+	return lines, caret
+}
+
+func (m *Model) View() tea.View {
+	w, h := m.size()
+	if m.help {
+		v := tea.NewView(helpText)
+		v.AltScreen = true
+		return v
+	}
+
+	bodyH := max(h-1, 2)
+	var lines []string
+	var caret *tea.Cursor
+	switch {
+	case w >= sidebarFrom:
+		side := m.sideLines(sidebarCols, bodyH)
+		pane, c := m.paneLines(w-sidebarCols-3, bodyH)
+		for i := range pane {
+			lines = append(lines, side[i]+sgrDim+" │ "+sgrReset+pane[i])
+		}
+		if c != nil {
+			c.X += sidebarCols + 3
+			caret = c
+		}
+	case m.sideFocus:
+		// Too narrow for both: the sidebar takes the pane while it has focus.
+		lines = m.sideLines(w, bodyH)
+	default:
+		lines, caret = m.paneLines(w, bodyH)
+	}
+
+	status, col := m.statusLine(w)
+	if col >= 0 {
+		caret = tea.NewCursor(col, len(lines))
+		caret.Shape = tea.CursorBar
+	}
+	lines = append(lines, status)
 
 	v := tea.NewView(strings.Join(lines, "\n"))
 	v.AltScreen = true

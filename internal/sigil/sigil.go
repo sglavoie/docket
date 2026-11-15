@@ -20,6 +20,7 @@ const (
 	FieldDue     = "due"
 	FieldTags    = "tags"
 	FieldChanged = "changed" // when the state last changed, unix milliseconds
+	FieldToday   = "today"   // the day the row was picked for Today
 )
 
 // States. The empty state is a note or a heading.
@@ -29,6 +30,7 @@ const (
 	Waiting  = "waiting"
 	Done     = "done"
 	Canceled = "canceled"
+	Parked   = "parked" // not now: kept, and out of every list
 )
 
 // Line is a row's typed content.
@@ -53,7 +55,7 @@ func DefaultState(top bool, text string) string {
 	return Open
 }
 
-var stateNames = []string{Open, Doing, Waiting, Done, Canceled, "note"}
+var stateNames = []string{Open, Doing, Waiting, Done, Canceled, Parked, "note"}
 
 var stateAliases = map[string]string{"todo": Open, "wait": Waiting, "cancelled": Canceled}
 
