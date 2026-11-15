@@ -45,6 +45,7 @@ type place struct {
 	root string
 	list string
 	rows []string
+	kept map[string]bool // closed rows still shown because they closed here
 
 	// A filter narrows the place to the rows answering query. Like a list,
 	// it holds the rows it found until the query changes.
@@ -204,6 +205,7 @@ func (m *Model) scan() {
 
 // open shows a sidebar destination in the outline pane.
 func (m *Model) open(e entry) {
+	m.leave()
 	m.sel = e
 	m.zoom = nil
 	m.picked = map[string]bool{}
@@ -218,7 +220,7 @@ func (m *Model) open(e entry) {
 	default:
 		m.at = place{list: e.kind, rows: slices.Clone(m.lists[e.kind])}
 	}
-	m.rebuild()
+	m.arrive()
 }
 
 // sideStep moves the sidebar selection, showing each destination as it goes.
@@ -322,7 +324,10 @@ func (m *Model) create(parent, line string) bool {
 		m.msg = err.Error()
 		return false
 	}
-	m.record(append(ops, fields...), append(more, inv...))
+	if !m.record(append(ops, fields...), append(more, inv...)) {
+		m.tree.Forget(ops[0].Row)
+		return false
+	}
 	return true
 }
 

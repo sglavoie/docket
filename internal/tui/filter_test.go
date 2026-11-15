@@ -290,7 +290,7 @@ func TestCommands(t *testing.T) {
 		t.Fatalf("export:\n%s\nwant:\n%s", got, want)
 	}
 	h.press(":", `"nonsense"`, "enter")
-	if h.m.msg != "commands: q, export [file]" {
+	if h.m.msg != "commands: q, export [file], closed" {
 		t.Fatalf("msg = %q", h.m.msg)
 	}
 	h.press(":", `"q"`, "enter")

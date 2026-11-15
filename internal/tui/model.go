@@ -3,6 +3,7 @@
 package tui
 
 import (
+	"encoding/json"
 	"strconv"
 	"strings"
 	"time"
@@ -18,6 +19,22 @@ import (
 type Backend interface {
 	Commit(ops []outline.Op, now int64) error
 	SetFold(id string, folded bool) error
+	Meta(key string) (string, error)
+	SetMeta(key, value string) error
+}
+
+const (
+	metaHistory    = "history"     // the undo and redo stacks
+	metaHideClosed = "hide_closed" // whether outlines leave closed rows out
+	undoDepth      = 200
+)
+
+type tickMsg struct{}
+
+// tick wakes the screen once a minute, so a day that turns over while the
+// app is open is seen without a key press.
+func tick() tea.Cmd {
+	return tea.Tick(time.Minute, func(time.Time) tea.Msg { return tickMsg{} })
 }
 
 type visRow struct {
@@ -59,8 +76,10 @@ type Model struct {
 	parked    int
 
 	undo, redo [][]outline.Op
-	prefix     string          // a pending g or d
-	picked     map[string]bool // the selection
+	prefix     string            // a pending g or d
+	picked     map[string]bool   // the selection
+	last       map[string]string // each place's cursor row, for coming back
+	hideClosed bool
 	quit       bool
 	edit       *editor
 	ask        *prompt
@@ -81,8 +100,18 @@ func newModel(tree *outline.Tree, backend Backend, folds map[string]bool, now fu
 		backend: backend,
 		folded:  folds,
 		picked:  map[string]bool{},
+		last:    map[string]string{},
 		now:     now,
 		newID:   store.NewID,
+	}
+	if v, err := backend.Meta(metaHideClosed); err == nil {
+		m.hideClosed = v == "1"
+	}
+	if v, err := backend.Meta(metaHistory); err == nil && v != "" {
+		var h history
+		if json.Unmarshal([]byte(v), &h) == nil {
+			m.undo, m.redo = h.Undo, h.Redo
+		}
 	}
 	m.ensureInbox()
 	m.rebuild()
@@ -96,7 +125,40 @@ func newModel(tree *outline.Tree, backend Backend, folds map[string]bool, now fu
 	return m
 }
 
-func (m *Model) Init() tea.Cmd { return nil }
+func (m *Model) Init() tea.Cmd { return tick() }
+
+// history is the undo and redo stacks as they are kept between sessions.
+// They belong to this machine: each step undoes a change made here.
+type history struct {
+	Undo, Redo [][]outline.Op
+}
+
+func (m *Model) keepHistory() {
+	if n := len(m.undo); n > undoDepth {
+		m.undo = m.undo[n-undoDepth:]
+	}
+	if b, err := json.Marshal(history{m.undo, m.redo}); err == nil {
+		m.backend.SetMeta(metaHistory, string(b))
+	}
+}
+
+// placeKey names a place for remembering its cursor.
+func placeKey(p place) string { return p.list + "|" + p.root }
+
+// leave remembers where the cursor was, and forgets the rows on screen so
+// the next place is read fresh.
+func (m *Model) leave() {
+	if cur := m.current(); cur != "" {
+		m.last[placeKey(m.at)] = cur
+	}
+	m.vis = nil
+}
+
+// arrive puts the cursor back where it was the last time this place showed.
+func (m *Model) arrive() {
+	m.rebuild()
+	m.seek(m.last[placeKey(m.at)])
+}
 
 // Notice shows a message on the status line until the next key.
 func (m *Model) Notice(msg string) { m.msg = msg }
@@ -104,6 +166,25 @@ func (m *Model) Notice(msg string) { m.msg = msg }
 // rebuild recomputes the visible rows and the sidebar, and keeps the cursor
 // inside the rows.
 func (m *Model) rebuild() {
+	// A closed row that was on screen stays until the place is left, so
+	// closing a row never pulls it from under the cursor.
+	onScreen := map[string]bool{}
+	for _, v := range m.vis {
+		onScreen[v.id] = true
+	}
+	hidden := func(id string) bool {
+		if !m.hideClosed || !sigil.FromFields(m.tree.Row(id).Fields).Closed() {
+			return false
+		}
+		if !onScreen[id] && !m.at.kept[id] {
+			return true
+		}
+		if m.at.kept == nil {
+			m.at.kept = map[string]bool{}
+		}
+		m.at.kept[id] = true
+		return false
+	}
 	m.vis = m.vis[:0]
 	if m.at.query != "" {
 		for _, v := range m.at.hits {
@@ -121,7 +202,7 @@ func (m *Model) rebuild() {
 		var walk func(parent string, depth int)
 		walk = func(parent string, depth int) {
 			for _, id := range m.tree.Children(parent) {
-				if id == inboxID {
+				if id == inboxID || hidden(id) {
 					continue
 				}
 				m.vis = append(m.vis, visRow{id, depth})
@@ -221,13 +302,30 @@ func (m *Model) apply(ops []outline.Op) ([]outline.Op, error) {
 	return inv, nil
 }
 
+// save stores an applied group. If it cannot be stored the group is taken
+// back out of the tree, so memory never holds what the disk does not.
+func (m *Model) save(ops, inv []outline.Op) bool {
+	err := m.backend.Commit(ops, m.now())
+	if err == nil {
+		return true
+	}
+	now := m.now()
+	for _, u := range inv {
+		m.tree.Apply(u, now)
+	}
+	m.msg = "not saved, nothing changed: " + err.Error()
+	return false
+}
+
 // record stores an applied group and makes it the next undo step.
-func (m *Model) record(ops, inv []outline.Op) {
-	if err := m.backend.Commit(ops, m.now()); err != nil {
-		m.msg = "not saved: " + err.Error()
+func (m *Model) record(ops, inv []outline.Op) bool {
+	if !m.save(ops, inv) {
+		return false
 	}
 	m.undo = append(m.undo, inv)
 	m.redo = nil
+	m.keepHistory()
+	return true
 }
 
 func (m *Model) do(ops ...outline.Op) bool {
@@ -236,8 +334,7 @@ func (m *Model) do(ops ...outline.Op) bool {
 		m.msg = err.Error()
 		return false
 	}
-	m.record(ops, inv)
-	return true
+	return m.record(ops, inv)
 }
 
 // replay moves one step between the undo and redo stacks.
@@ -252,11 +349,13 @@ func (m *Model) replay(from, to *[][]outline.Op, empty string) {
 		m.msg = err.Error()
 		return
 	}
-	*from = (*from)[:len(*from)-1]
-	if err := m.backend.Commit(group, m.now()); err != nil {
-		m.msg = "not saved: " + err.Error()
+	if !m.save(group, inv) {
+		m.rebuild()
+		return
 	}
+	*from = (*from)[:len(*from)-1]
 	*to = append(*to, inv)
+	m.keepHistory()
 	m.rebuild()
 	m.seek(group[len(group)-1].Row)
 }
@@ -425,8 +524,13 @@ func (m *Model) finishEdit() bool {
 		e.ops = append(e.ops, ops...)
 		e.inv = append(inv, e.inv...)
 	}
-	if len(e.ops) > 0 {
-		m.record(e.ops, e.inv)
+	if len(e.ops) > 0 && !m.record(e.ops, e.inv) {
+		if e.fresh {
+			m.tree.Forget(e.row)
+		}
+		m.rebuild()
+		m.seek(e.back)
+		return false
 	}
 	m.rebuild()
 	m.seek(e.row)
@@ -435,15 +539,15 @@ func (m *Model) finishEdit() bool {
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tickMsg:
+		m.rebuild()
+		return m, tick()
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 	case tea.PasteMsg:
-		text := []rune(strings.Join(strings.Fields(msg.Content), " "))
-		if m.edit != nil {
-			m.edit.insert(text)
-		} else if m.ask != nil {
-			m.ask.ed.insert(text)
-		}
+		m.msg = ""
+		m.paste(msg.Content)
+		m.rebuild()
 	case tea.KeyPressMsg:
 		m.msg = ""
 		if msg.String() == "ctrl+c" {
@@ -479,9 +583,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // prompt is the bottom line while it is asking for something. Its label
 // names which of its acts it is doing.
 type prompt struct {
-	kind string
-	ed   editor
-	rows []string // the rows a move or a stamp lands on
+	kind   string
+	ed     editor
+	rows   []string // the rows a move or a stamp lands on
+	choice int      // which match a picker takes
 }
 
 const (
@@ -576,13 +681,14 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 				m.msg = "nothing matches " + text
 				return
 			}
+			hit := hits[min(a.choice, len(hits)-1)]
 			m.ask = nil
 			if a.kind == askJump {
 				m.sideFocus = false
-				m.open(hits[0])
+				m.open(hit)
 				return
 			}
-			to := hits[0].rowID()
+			to := hit.rowID()
 			var ops []outline.Op
 			for _, id := range a.rows {
 				if m.live(id) {
@@ -595,11 +701,23 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 				}
 			}
 			if len(ops) > 0 && m.do(ops...) {
-				m.msg = "moved to " + hits[0].label
+				m.msg = "moved to " + hit.label
 			}
+		}
+	case "down", "ctrl+n", "up", "ctrl+p":
+		// A picker's arrows walk its matches.
+		if a.kind == askJump || a.kind == askMove {
+			n := len(match(m.targets(a.kind == askJump), text, 3))
+			if k == "down" || k == "ctrl+n" {
+				a.choice++
+			} else {
+				a.choice--
+			}
+			a.choice = max(0, min(a.choice, n-1))
 		}
 	default:
 		a.ed.key(msg)
+		a.choice = 0
 	}
 }
 
@@ -614,8 +732,20 @@ func (m *Model) command(line string) {
 		m.quit = true
 	case "export":
 		m.export(strings.Join(words[1:], " "))
+	case "closed":
+		// Outlines leave done and canceled rows out, or show them again.
+		m.hideClosed = !m.hideClosed
+		value, said := "", "closed rows shown"
+		if m.hideClosed {
+			value, said = "1", "closed rows hidden"
+		}
+		if err := m.backend.SetMeta(metaHideClosed, value); err != nil {
+			said = "not saved: " + err.Error()
+		}
+		m.vis, m.at.kept = nil, nil
+		m.msg = said
 	default:
-		m.msg = "commands: q, export [file]"
+		m.msg = "commands: q, export [file], closed"
 	}
 }
 
@@ -700,10 +830,12 @@ func (m *Model) normalKey(k string) {
 		} else if m.at.query != "" {
 			m.at.query = ""
 			m.refilter()
+			m.vis = nil
 			m.rebuild()
 			m.seek(cur)
 		} else if n := len(m.zoom); n > 0 {
 			was := m.at.root
+			m.leave()
 			m.at, m.zoom = m.zoom[n-1], m.zoom[:n-1]
 			m.rebuild()
 			m.seek(was)
@@ -721,9 +853,10 @@ func (m *Model) normalKey(k string) {
 		}
 	case "enter":
 		if m.single() {
+			m.leave()
 			m.zoom = append(m.zoom, m.at)
 			m.at, m.cursor = place{root: cur}, 0
-			m.rebuild()
+			m.arrive()
 		}
 	case "v":
 		if m.picked[cur] {
@@ -848,6 +981,15 @@ func (e *editor) key(msg tea.KeyPressMsg) {
 		e.caret = max(e.caret-1, 0)
 	case "right":
 		e.caret = min(e.caret+1, len(e.buf))
+	case "alt+left", "ctrl+left", "alt+b":
+		e.caret = e.wordStart()
+	case "alt+right", "ctrl+right", "alt+f":
+		for e.caret < len(e.buf) && e.buf[e.caret] == ' ' {
+			e.caret++
+		}
+		for e.caret < len(e.buf) && e.buf[e.caret] != ' ' {
+			e.caret++
+		}
 	case "home", "ctrl+a":
 		e.caret = 0
 	case "end", "ctrl+e":
@@ -857,21 +999,27 @@ func (e *editor) key(msg tea.KeyPressMsg) {
 		e.caret = 0
 	case "ctrl+k":
 		e.buf = e.buf[:e.caret]
-	case "ctrl+w":
-		i := e.caret
-		for i > 0 && e.buf[i-1] == ' ' {
-			i--
-		}
-		for i > 0 && e.buf[i-1] != ' ' {
-			i--
-		}
+	case "ctrl+w", "alt+backspace":
+		i := e.wordStart()
 		e.buf = append(e.buf[:i], e.buf[e.caret:]...)
 		e.caret = i
 	default:
-		if msg.Text != "" && msg.Mod&tea.ModCtrl == 0 {
+		if msg.Text != "" && msg.Mod&(tea.ModCtrl|tea.ModAlt) == 0 {
 			e.insert([]rune(msg.Text))
 		}
 	}
+}
+
+// wordStart is where the word at or before the caret begins.
+func (e *editor) wordStart() int {
+	i := e.caret
+	for i > 0 && e.buf[i-1] == ' ' {
+		i--
+	}
+	for i > 0 && e.buf[i-1] != ' ' {
+		i--
+	}
+	return i
 }
 
 func (e *editor) insert(text []rune) {

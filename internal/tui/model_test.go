@@ -73,6 +73,18 @@ func key(tok string) tea.KeyPressMsg {
 	case "left":
 		return tea.KeyPressMsg{Code: tea.KeyLeft}
 	}
+	if rest, ok := strings.CutPrefix(tok, "alt+"); ok {
+		k := key(rest)
+		k.Mod |= tea.ModAlt
+		k.Text = ""
+		return k
+	}
+	switch tok {
+	case "up":
+		return tea.KeyPressMsg{Code: tea.KeyUp}
+	case "down":
+		return tea.KeyPressMsg{Code: tea.KeyDown}
+	}
 	if c, ok := strings.CutPrefix(tok, "ctrl+"); ok {
 		return tea.KeyPressMsg{Code: []rune(c)[0], Mod: tea.ModCtrl}
 	}
@@ -83,14 +95,20 @@ func key(tok string) tea.KeyPressMsg {
 // press sends named keys; a token in quotes is typed character by character.
 func (h *harness) press(toks ...string) *harness {
 	h.t.Helper()
+	// The program draws after every message, and drawing settles the
+	// scroll position, so the harness draws too.
+	send := func(k tea.KeyPressMsg) {
+		h.m.Update(k)
+		h.m.View()
+	}
 	for _, tok := range toks {
 		if len(tok) > 1 && strings.HasPrefix(tok, `"`) {
 			for _, r := range strings.Trim(tok, `"`) {
-				h.m.Update(key(string(r)))
+				send(key(string(r)))
 			}
 			continue
 		}
-		h.m.Update(key(tok))
+		send(key(tok))
 	}
 	return h
 }
@@ -327,7 +345,7 @@ func TestEverythingSurvivesARestart(t *testing.T) {
 	)
 }
 
-func TestLongRowIsCutToTheWidthAndScrollsWhileTyping(t *testing.T) {
+func TestLongRowScrollsWhileTypingAndWrapsWhenRead(t *testing.T) {
 	h := start(t)
 	long := strings.Repeat("word ", 12) + "end"
 	h.press("o", `"`+long+`"`)
@@ -338,14 +356,74 @@ func TestLongRowIsCutToTheWidthAndScrollsWhileTyping(t *testing.T) {
 	if !strings.HasSuffix(h.rows(), "end") {
 		t.Fatalf("typing window does not follow the caret:\n%s", h.rows())
 	}
-	h.press("esc")
-	for _, line := range strings.Split(ansi.Strip(h.m.View().Content), "\n") {
+	// Read back, nothing is cut: the row wraps under its own text, and the
+	// cursor mark runs its height.
+	h.press("enter", `"next"`, "esc")
+	h.want(
+		"    word word word word word word word",
+		"    word word word word word end",
+		"▌   next",
+	)
+	h.press("k")
+	h.want(
+		"▌   word word word word word word word",
+		"▌   word word word word word end",
+		"    next",
+	)
+	for _, line := range h.lines() {
 		if ansi.StringWidth(line) > 40 {
 			t.Fatalf("line wider than the terminal: %q", line)
 		}
 	}
-	if !strings.HasSuffix(h.rows(), "…") {
-		t.Fatalf("long row is not marked as cut:\n%s", h.rows())
+}
+
+func TestAWordWiderThanThePaneIsCutAcrossLines(t *testing.T) {
+	h := start(t)
+	h.m.Update(tea.WindowSizeMsg{Width: 24, Height: 12})
+	h.press("o", `"see https://example.com/a/very/long/path/indeed ok #x"`, "esc")
+	h.want(
+		"▌   see https://example.",
+		"▌   com/a/very/long/path",
+		"▌   /indeed ok #x",
+	)
+}
+
+func TestScrollingKeepsTheCursorRowWhole(t *testing.T) {
+	h := start(t)
+	h.m.Update(tea.WindowSizeMsg{Width: 24, Height: 6}) // four list lines
+	long := "alpha beta gamma delta epsilon zeta"
+	h.press("o", `"one"`, "enter", `"two"`, "enter", `"`+long+`"`, "enter", `"four"`, "esc", "k")
+	h.want(
+		"    two",
+		"▌   alpha beta gamma",
+		"▌   delta epsilon zeta",
+		"    four",
+	)
+	h.press("g", "g")
+	h.want(
+		"▌   one",
+		"    two",
+		"    alpha beta gamma",
+		"    delta epsilon zeta",
+	)
+	h.press("G")
+	h.want(
+		"    two",
+		"    alpha beta gamma",
+		"    delta epsilon zeta",
+		"▌   four",
+	)
+}
+
+func TestAWrappedRowKeepsItsStyleOnEveryLine(t *testing.T) {
+	h := project(t)
+	h.m.Update(tea.WindowSizeMsg{Width: 24, Height: 12})
+	h.press("o", `"alpha beta gamma delta epsilon zeta"`, "esc", "x", "k")
+	lines := strings.Split(h.m.View().Content, "\n")
+	for _, n := range []int{4, 5} {
+		if !strings.Contains(lines[n], sgrDim+"alpha") && !strings.Contains(lines[n], sgrDim+"delta") {
+			t.Fatalf("line %d of a done row is not dimmed: %q", n, lines[n])
+		}
 	}
 }
 

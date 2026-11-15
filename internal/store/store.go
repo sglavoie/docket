@@ -77,25 +77,25 @@ func (s *Store) init() error {
 	if _, err := s.db.Exec(schema); err != nil {
 		return err
 	}
-	version, err := s.meta("schema")
+	version, err := s.Meta("schema")
 	if err != nil {
 		return err
 	}
 	switch version {
 	case "":
-		if err := s.setMeta("schema", schemaVersion); err != nil {
+		if err := s.SetMeta("schema", schemaVersion); err != nil {
 			return err
 		}
 	case schemaVersion:
 	default:
 		return fmt.Errorf("database schema %s is newer than this build understands (%s)", version, schemaVersion)
 	}
-	if s.device, err = s.meta("device"); err != nil {
+	if s.device, err = s.Meta("device"); err != nil {
 		return err
 	}
 	if s.device == "" {
 		s.device = NewID()[:8]
-		if err := s.setMeta("device", s.device); err != nil {
+		if err := s.SetMeta("device", s.device); err != nil {
 			return err
 		}
 	}
@@ -114,7 +114,9 @@ func (s *Store) init() error {
 	return nil
 }
 
-func (s *Store) meta(key string) (string, error) {
+// Meta reads a setting kept on this machine; an unset one is empty. Settings
+// are never logged and never synced.
+func (s *Store) Meta(key string) (string, error) {
 	var v string
 	err := s.db.QueryRow(`SELECT value FROM meta WHERE key = ?`, key).Scan(&v)
 	if err == sql.ErrNoRows {
@@ -123,7 +125,7 @@ func (s *Store) meta(key string) (string, error) {
 	return v, err
 }
 
-func (s *Store) setMeta(key, value string) error {
+func (s *Store) SetMeta(key, value string) error {
 	_, err := s.db.Exec(`INSERT INTO meta(key, value) VALUES(?, ?)
 		ON CONFLICT(key) DO UPDATE SET value = excluded.value`, key, value)
 	return err

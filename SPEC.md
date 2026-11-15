@@ -62,8 +62,17 @@ sync tool copies.
   last move, which is what a later merge needs to resolve conflicts per field.
 - A stamp is `milliseconds-counter-device`, issued by a clock that never runs
   backwards, and sorts bytewise in issue order.
-- `folds` is view state for this machine. It is not logged.
+- `folds` and `meta` are this machine's view state and settings. They are
+  not logged.
 - Adding a field needs no schema change.
+
+**A save that fails changes nothing.** If a change cannot be written, it is
+taken back out of memory and the status line says so; the screen never shows
+what the disk does not hold.
+
+**Undo is kept.** The undo and redo stacks, 200 steps deep, are stored on
+this machine beside the folds and survive a restart. They are not logged and
+will not sync: each step undoes a change made here.
 
 **Backups.** The first launch of each day writes a whole copy of the
 database to `backups/docket-YYYY-MM-DD.db` beside it, before anything is
@@ -125,6 +134,21 @@ The pane shows the rows under one row, or a list.
   order to edit: `o`, `O`, `>`, `<`, `J` and `K` are refused there, and
   `Enter` works inside a row, from which `Esc` returns to the same list.
 - **Launch** opens Today when something is picked for the day, else Projects.
+- **A row wraps** under its own text at the pane's width, each word keeping
+  its colour, so nothing is cut; a word wider than the pane breaks across
+  lines. The cursor and selection marks run the row's height, and scrolling
+  keeps the cursor's row whole. The row being typed is the exception: it
+  stays on one line and scrolls sideways.
+- **Each place remembers its cursor** for the session, so coming back to a
+  project lands on the row you left.
+- **Closed rows can be left out.** `:closed` hides done and canceled rows,
+  and what is under them, from outlines; the header says so and the setting
+  is kept on this machine. A row closed while on screen stays until the
+  place is left. Lists and filters name what they show, so they still show
+  closed rows.
+- **The screen follows the clock.** It is read again once a minute, so a day
+  that turns over while the app is open updates Today, deadlines and ages
+  without a key press.
 
 Today is hand-picked and rebuilt daily: a row is in Today when its `today`
 field is the current day, so yesterday's picks drop out without a write.
@@ -141,8 +165,8 @@ The status line becomes a prompt for three acts, named at its left edge:
 - `m` **Move to ›** makes the cursor's row the last child of a project or the
   Inbox.
 
-The two pickers list their matches as you type, best first, and `Enter`
-takes the first. A name matches by its start, the start of a word, anywhere
+The two pickers list their matches as you type, best first. `Down` and `Up`
+walk them, and `Enter` takes the one at the front. A name matches by its start, the start of a word, anywhere
 inside, or its letters in order. `Esc` leaves a picker without acting.
 
 Three more acts use the same line:
@@ -160,9 +184,9 @@ Three more acts use the same line:
   sigils only: `#tag`, `@date`, `$state` and `!` set, `-#tag`, `-@` and `-!`
   remove. `Enter` applies them to the selection, else to the cursor's row, as
   one undo step. A word it cannot read is named and nothing is applied.
-- `:` runs a command: `q` quits, and `export [file]` writes the whole
-  outline as tab-indented lines in the row grammar, to
-  `~/docket-YYYY-MM-DD.txt` unless a file is named.
+- `:` runs a command: `q` quits; `export [file]` writes the whole outline as
+  tab-indented lines in the row grammar, to `~/docket-YYYY-MM-DD.txt` unless
+  a file is named; `closed` hides or shows closed rows.
 
 ### Selection
 
@@ -198,7 +222,14 @@ the zoom.
 
 While typing: `Enter` keeps the row and opens the next, `Esc` keeps the row,
 `Tab` and `Shift+Tab` indent and outdent. There is no cancel: `u` restores
-the line. A new row left
+the line. `Alt+Left`, `Alt+Right` and `Alt+Backspace` work by word.
+
+**Paste.** One pasted line is typed text. Several become rows: the first
+joins the row being typed and the rest follow it, or all follow the cursor's
+row when nothing is being typed. Indentation of any unit is depth; `-`, `*`
+and `+` bullets are dropped; `[x]` closes its row. The whole paste, with the
+row it was typed into, is one undo step. Rows cannot be pasted into a list, a
+filter, or over a selection. Pasted into a prompt, lines join into one. A new row left
 blank disappears.
 
 `o` on an open parent adds its first child; otherwise it adds the next
