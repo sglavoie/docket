@@ -50,7 +50,10 @@ const helpText = `Docket
   Ctrl+C         quit
 
 While typing
-  Enter          keep the row and start the next
+  Enter          split inside a line; at ends, keep it (fresh rows chain)
+  Backspace      at the start, join into the row above (no children)
+                 blank fresh rows disappear; lists and filters never join
+                 or split; each split or join is one undo step
   Esc            keep the row
   Tab Shift+Tab  indent, outdent
   Alt+Left Alt+Right Alt+Backspace    by word

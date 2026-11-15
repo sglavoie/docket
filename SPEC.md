@@ -327,9 +327,18 @@ the zoom.
 | `/` `:` | Filter, command | 4 |
 | `#` `@` `$` `*` `-` | Stamp sigils on rows (not counted) | 4 |
 
-While typing: `Enter` keeps the row and opens the next, `Esc` keeps the row,
-`Tab` and `Shift+Tab` indent and outdent. There is no cancel: `u` restores
-the line. `Alt+Left`, `Alt+Right` and `Alt+Backspace` work by word.
+While typing: `Enter` inside a line splits it literally at the caret,
+sigils included, and keeps typing at the start of the new row. It goes
+where `o` would: first child of an open parent, otherwise next sibling.
+At either end, `Enter` keeps the row and opens the next only if it was fresh.
+`Backspace` at the start joins into the row drawn above, with a space
+between their lines and the caret at the seam; a row with children or no
+row above is left alone. A blank fresh row still disappears instead.
+Each split or join is one undo step after typing ends. In lists and filters,
+`Enter` only keeps the row and `Backspace` at the start does nothing.
+`Esc` keeps the row; `Tab` and `Shift+Tab` indent and outdent. There is no
+cancel: `u` restores the line. `Alt+Left`, `Alt+Right` and `Alt+Backspace`
+work by word.
 
 **Copy.** `y` puts the cursor's row or selection, with whole subtrees, on the
 system clipboard as tab-indented row-grammar lines. Depth is relative to the
@@ -466,7 +475,9 @@ in place, never copied, so two machines closing it cannot make two.
    siblings in one undo step. Rows under tasks default to notes; pasted
    checkboxes explicitly keep their task state. `y` copies rows and their
    subtrees for lossless paste under the same kind of parent. `m` and capture
-   `%name` file rows under headings as well as projects.
+   `%name` file rows under headings as well as projects. While typing,
+   `Enter` splits a line and `Backspace` at its start joins it into the row
+   above, each in one undo step, in outlines only.
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface.

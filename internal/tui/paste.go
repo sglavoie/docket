@@ -99,9 +99,8 @@ func (m *Model) paste(content string) {
 		// The first line joins the row being typed; the rest follow it.
 		e := m.edit
 		e.insert([]rune(lines[0].text))
-		steps := len(m.undo)
 		if m.finishEdit() {
-			m.pasteRows(e.row, true, lines[1:], len(m.undo) > steps)
+			m.pasteRows(e.row, true, lines[1:], e.merge)
 		}
 	case m.sideFocus || len(m.picked) > 0 || m.flat():
 		if m.msg == "" {

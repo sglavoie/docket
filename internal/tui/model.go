@@ -64,6 +64,7 @@ type editor struct {
 	buf        []rune
 	caret, off int
 	fresh      bool   // the row was created by this edit
+	merge      bool   // continue the undo step recorded by a split
 	notes      bool   // the default the line was rendered against
 	back       string // where the cursor returns if a fresh row is abandoned
 	ops, inv   []outline.Op
@@ -758,6 +759,10 @@ func (m *Model) reorder(id string, down bool) {
 // newRow opens a blank row for typing: above the cursor, as the first child
 // of an open parent, or else directly below.
 func (m *Model) newRow(above bool) {
+	m.newRowAt(above, m.current())
+}
+
+func (m *Model) newRowAt(above bool, cur string) {
 	if m.at.list != "" && m.at.query == "" {
 		m.msg = "add rows inside a project, or press a for the Inbox"
 		return
@@ -765,7 +770,6 @@ func (m *Model) newRow(above bool) {
 	if m.flat() {
 		return
 	}
-	cur := m.current()
 	parent, pos := m.at.root, ""
 	switch {
 	case cur == "":
@@ -878,13 +882,27 @@ func (m *Model) finishEdit() bool {
 		e.ops = append(e.ops, ops...)
 		e.inv = append(inv, e.inv...)
 	}
-	if len(e.ops) > 0 && !m.record(e.ops, e.inv) {
-		if e.fresh {
-			m.tree.Forget(e.row)
+	if len(e.ops) > 0 {
+		var saved bool
+		if e.merge {
+			saved = m.save(e.ops, e.inv)
+			if saved {
+				last := len(m.undo) - 1
+				m.undo[last] = append(e.inv, m.undo[last]...)
+				m.keepHistory()
+			}
+		} else {
+			saved = m.record(e.ops, e.inv)
 		}
-		m.rebuild()
-		m.seek(e.back)
-		return false
+		if !saved {
+			if e.fresh {
+				m.tree.Forget(e.row)
+			}
+			m.rebuild()
+			m.seek(e.back)
+			return false
+		}
+		e.merge = true
 	}
 	m.rebuild()
 	m.seek(e.row)
@@ -1348,6 +1366,18 @@ func (m *Model) editKey(msg tea.KeyPressMsg) {
 	}
 	switch msg.String() {
 	case "enter":
+		if e.caret > 0 && e.caret < len(e.buf) && m.at.list == "" && m.at.query == "" {
+			tail := append([]rune(nil), e.buf[e.caret:]...)
+			e.buf = e.buf[:e.caret]
+			if m.finishEdit() {
+				m.newRowAt(false, e.row)
+				if m.edit != nil {
+					m.edit.buf = tail
+					m.edit.merge = e.merge
+				}
+			}
+			return
+		}
 		// A fresh row chains into the next one, so a list is typed without
 		// leaving the keyboard's home row.
 		if m.finishEdit() && e.fresh {
@@ -1362,12 +1392,43 @@ func (m *Model) editKey(msg tea.KeyPressMsg) {
 	case "backspace":
 		if len(e.buf) == 0 && e.fresh {
 			m.finishEdit()
+		} else if e.caret == 0 {
+			m.joinEdit()
 		} else {
 			e.key(msg)
 		}
 	default:
 		e.key(msg)
 	}
+}
+
+// joinEdit keeps typing in the displayed predecessor, carrying the removal
+// and any pending moves into that edit's undo step.
+func (m *Model) joinEdit() {
+	e := m.edit
+	if m.at.list != "" || m.at.query != "" || m.cursor == 0 || len(m.tree.Children(e.row)) > 0 {
+		return
+	}
+	previous := m.vis[m.cursor-1].id
+	if e.fresh {
+		m.tree.Forget(e.row)
+		e.ops, e.inv = nil, nil
+	} else {
+		op := outline.Op{Kind: outline.Set, Row: e.row, Field: outline.FieldDeleted, Value: "1"}
+		inv, err := m.apply([]outline.Op{op})
+		if err != nil {
+			m.msg = err.Error()
+			return
+		}
+		e.ops = append(e.ops, op)
+		e.inv = append(inv, e.inv...)
+	}
+	m.editRow(previous)
+	m.edit.buf = append(append(m.edit.buf, ' '), e.buf...)
+	m.edit.ops, m.edit.inv = e.ops, e.inv
+	m.edit.merge = e.merge
+	m.rebuild()
+	m.seek(previous)
 }
 
 // key applies a text-editing key to the buffer.
