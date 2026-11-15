@@ -75,6 +75,7 @@ Sigils, typed anywhere in a row
   yellow. The right arrow takes the dim suggestion at the end of the line.
 
 Pasting several lines adds them as rows, indentation as depth.
+Copy and export spell otherwise empty rows as $open, $note or their state.
 
 Nothing asks for confirmation: undo takes anything back.
 Press any key to return.`

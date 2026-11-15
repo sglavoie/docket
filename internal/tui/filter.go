@@ -333,7 +333,11 @@ func (m *Model) writeRows(roots []string) (string, int) {
 		row := m.tree.Row(id)
 		text := sigil.Format(sigil.FromFields(row.Fields), m.defaultsToNotes(row.Parent), today)
 		if text == "" {
-			text = "$note"
+			state := row.Fields[sigil.FieldState]
+			if state == "" {
+				state = "note"
+			}
+			text = "$" + state
 		}
 		if pastePrefix(text) {
 			text = `\` + text

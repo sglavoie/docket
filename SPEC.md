@@ -375,11 +375,12 @@ without adding dimmed ancestors. It keeps the selection and makes no undo step.
 
 Copy and export write each line against its own parent's default. Pasting
 under the same kind of parent round-trips the text, state, row-grammar fields,
-sibling order and hierarchy. An otherwise empty note is written as `$note`,
-at its indentation, and kept through editor insertion until parsing; it
-counts as a row and keeps its children. Whitespace-only external lines may
-still be ignored. There is no row-count limit; the entire paste is one undo
-step, including more than 2000 rows.
+sibling order and hierarchy. An otherwise empty row is written with its state
+sigil (`$open` for an open task, `$note` for a note), at its indentation, and
+kept through editor insertion until parsing; it counts as a row and keeps
+its children. Whitespace-only external lines may still be ignored. There is
+no row-count limit; the entire paste is one undo step, including more than
+2000 rows.
 
 Two escapes preserve literal text. First, the sigil formatter adds one
 backslash to any text token with zero or more backslashes before a recognized

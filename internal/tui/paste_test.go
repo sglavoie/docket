@@ -328,6 +328,32 @@ func roundTripCopy(t *testing.T, parentState string, rows []copyRow, expected st
 	}
 }
 
+func TestCopyKeepsABlankTask(t *testing.T) {
+	h := project(t)
+	source := h.m.current()
+	parent := h.m.tree.Row(source).Parent
+	h.press("e", "ctrl+u", "esc")
+	row := h.m.tree.Row(source)
+	if row.Fields[sigil.FieldText] != "" || row.Fields[sigil.FieldState] != sigil.Open {
+		t.Fatalf("clearing an existing task changed its state: %+v", row.Fields)
+	}
+	copyThroughUpdate(t, h, "$open\n", 1)
+	h.pasteText("$open\n")
+	pasted := h.m.current()
+	row = h.m.tree.Row(pasted)
+	if pasted == source || row.Parent != parent || row.Fields[sigil.FieldText] != "" || row.Fields[sigil.FieldState] != sigil.Open {
+		t.Fatalf("pasted blank task lost its parent or state: %+v", row)
+	}
+	// A blank note still has an explicit representation that paste retains.
+	h.press("$", `"note"`, "enter")
+	copyThroughUpdate(t, h, "$note\n", 1)
+	h.pasteText("$note\n")
+	row = h.m.tree.Row(h.m.current())
+	if h.m.current() == pasted || row.Parent != parent || row.Fields[sigil.FieldText] != "" || row.Fields[sigil.FieldState] != "" {
+		t.Fatalf("pasted blank note lost its parent or state: %+v", row)
+	}
+}
+
 func TestCopyRoundTripsThroughPaste(t *testing.T) {
 	t.Run("task-subtree", func(t *testing.T) {
 		rows := []copyRow{
