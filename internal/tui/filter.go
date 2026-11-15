@@ -310,7 +310,7 @@ func (m *Model) export(path string) {
 				continue
 			}
 			line := sigil.FromFields(m.tree.Row(id).Fields)
-			b.WriteString(strings.Repeat("\t", depth) + sigil.Format(line, parent == "", today) + "\n")
+			b.WriteString(strings.Repeat("\t", depth) + sigil.Format(line, m.defaultsToNotes(parent), today) + "\n")
 			n++
 			walk(id, depth+1)
 		}

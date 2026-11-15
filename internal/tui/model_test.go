@@ -715,3 +715,107 @@ func TestOverdueAndTodayAreColouredUntilTheRowCloses(t *testing.T) {
 		t.Fatalf("a closed row still raises an alarm:\n%q", raw)
 	}
 }
+
+func TestARowUnderATaskIsANote(t *testing.T) {
+	for _, state := range []string{"open", "doing", "waiting", "done", "canceled", "parked"} {
+		t.Run("parent "+state, func(t *testing.T) {
+			h := project(t)
+			h.press("$", `"`+state+`"`, "enter", "o", `"Detail"`, "tab", "esc")
+			if got := h.rows(); !strings.Contains(got, "▌       Detail") {
+				t.Fatalf("child should draw without a state glyph:\n%s", got)
+			}
+			h.press("e")
+			if got := string(h.m.edit.buf); got != "Detail" {
+				t.Fatalf("note edit line = %q", got)
+			}
+			h.press(`" $open"`, "esc", "e")
+			if got := string(h.m.edit.buf); got != "Detail $open" {
+				t.Fatalf("subtask edit line = %q", got)
+			}
+			h.press("esc")
+			if got := h.rows(); !strings.Contains(got, "▌     ○ Detail") {
+				t.Fatalf("explicit subtask lacks task glyph:\n%s", got)
+			}
+		})
+	}
+
+	t.Run("children of notes are tasks", func(t *testing.T) {
+		for _, parent := range []string{"Heading:", "Plain note $note"} {
+			h := project(t)
+			h.press("o", `"`+parent+`"`, "enter", "tab", `"Child"`, "esc")
+			if got := h.rows(); !strings.Contains(got, "▌     ○ Child") {
+				t.Fatalf("child of %q should be a task:\n%s", parent, got)
+			}
+		}
+		h := start(t)
+		h.press("a", `"Inbox task"`, "esc", "p", `"Inbox"`, "enter")
+		h.want("▌ ○ Inbox task")
+	})
+
+	t.Run("existing state survives moves edits and restart", func(t *testing.T) {
+		h := project(t)
+		id := h.m.current()
+		h.press("e", "tab", "esc") // Rendered as a task before moving under First.
+		h.want("  ▾ Project", "    ○ First", "▌     ○ Second")
+		h = open(t, h.path)
+		h.m.seek(id)
+		h.press("e")
+		if got := string(h.m.edit.buf); got != "Second $open" {
+			t.Fatalf("stored task after restart = %q", got)
+		}
+		h.press("esc", "<", ">")
+		h.want("  ▾ Project", "    ○ First", "▌     ○ Second")
+		h = project(t) // The restart harness reuses fixture IDs; create new rows in a new database.
+		h.press("o", "tab", `"Note"`, "esc", "e", "shift+tab", "esc", "e")
+		if got := string(h.m.edit.buf); got != "Note $note" {
+			t.Fatalf("existing note changed when outdented during editing: %q", got)
+		}
+	})
+
+	for _, tc := range []struct{ paste, line, state, glyph string }{
+		{"[ ] child", "child $open", "open", "○"},
+		{"[x] child", "child $done", "done", "✓"},
+		{"- [ ] child", "child $open", "open", "○"},
+		{"* [X] child", "child $done", "done", "✓"},
+		{"+ [ ] child $done", "child $done $open", "open", "○"},
+		{"• [x] child $open", "child $open $done", "done", "✓"},
+	} {
+		t.Run("paste "+tc.paste, func(t *testing.T) {
+			h := project(t)
+			h.press("o", "tab")
+			id, steps := h.m.edit.row, len(h.m.undo)
+			h.m.Update(tea.PasteMsg{Content: tc.paste})
+			if h.m.edit == nil || h.m.edit.row != id || string(h.m.edit.buf) != tc.line || len(h.m.undo) != steps {
+				t.Fatal("single checkbox paste must normalize in the same open editor")
+			}
+			h.press("esc")
+			fields := h.m.tree.Row(id).Fields
+			if fields["text"] != "child" || fields["state"] != tc.state {
+				t.Fatalf("pasted fields = %v", fields)
+			}
+			h.want("  ▾ Project", "    ○ First", "    ○ Second", "▌     "+tc.glyph+" child")
+			h.press("u")
+			h.want("  ▾ Project", "    ○ First", "▌   ○ Second")
+		})
+	}
+
+	t.Run("ordinary insertion keeps spaces at the caret", func(t *testing.T) {
+		h := project(t)
+		h.press("e", "ctrl+a", "right")
+		h.m.Update(tea.PasteMsg{Content: "  plain   text  "})
+		if got := string(h.m.edit.buf); got != "S  plain   text  econd" {
+			t.Fatalf("ordinary paste buffer = %q", got)
+		}
+		h.press("esc")
+	})
+}
+
+func TestCaptureUsesTheDestinationDefault(t *testing.T) {
+	h := start(t)
+	h.press("o", `"Task $open"`, "esc", "a", `"Detail %Task"`, "esc", "p", `"Task"`, "enter")
+	h.want("▌   Detail")
+	h.press("e")
+	if got := string(h.m.edit.buf); got != "Detail" {
+		t.Fatalf("captured child of task = %q", got)
+	}
+}

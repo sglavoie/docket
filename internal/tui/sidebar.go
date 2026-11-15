@@ -380,7 +380,7 @@ func (m *Model) create(parent, line string) bool {
 		m.msg = err.Error()
 		return false
 	}
-	fields := m.setFields(ops[0].Row, sigil.Parse(line, parent == "", m.today()).Fields())
+	fields := m.setFields(ops[0].Row, sigil.Parse(line, m.defaultsToNotes(parent), m.today()).Fields())
 	more, err := m.apply(fields)
 	if err != nil {
 		m.tree.Forget(ops[0].Row)

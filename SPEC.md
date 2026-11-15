@@ -325,13 +325,18 @@ While typing: `Enter` keeps the row and opens the next, `Esc` keeps the row,
 `Tab` and `Shift+Tab` indent and outdent. There is no cancel: `u` restores
 the line. `Alt+Left`, `Alt+Right` and `Alt+Backspace` work by word.
 
-**Paste.** One pasted line is typed text. Several become rows: the first
-joins the row being typed and the rest follow it, or all follow the cursor's
-row when nothing is being typed. Indentation of any unit is depth; `-`, `*`
-and `+` bullets are dropped; `[x]` closes its row. The whole paste, with the
-row it was typed into, is one undo step. Rows cannot be pasted into a list, a
-filter, or over a selection. Pasted into a prompt, lines join into one. A new row left
-blank disappears.
+**Paste.** One pasted line is typed text, with spaces preserved, except an
+unescaped checkbox line (optionally after a list bullet): its normalized text
+is inserted at the caret with `$open` for `[ ]` or `$done` for `[x]`, and editing
+continues. Several lines become rows: the first joins the row being typed
+and the rest follow it. When nothing is being typed, all pasted lines become
+rows after the cursor. Indentation of any unit is depth; `-`, `*`
+and `+` bullets are dropped; `[ ]` adds `$open` and `[x]` adds `$done`,
+so checkboxes stay tasks wherever pasted. The appended state wins over any
+state sigil in the pasted text. The whole paste, with the row it was typed
+into, is one undo step. Rows cannot be pasted into a list, a
+filter, or over a selection. Pasted into a prompt, lines stay typed text and
+join into one. A new row left blank disappears.
 
 `o` on an open parent adds its first child; otherwise it adds the next
 sibling.
@@ -366,10 +371,14 @@ use, most used first; a `$state`; a date word. The right arrow takes the
 suggestion and types nothing otherwise. The capture line also names where
 the row will land.
 
-**Default state.** A row whose line names no state is an open task, unless it
-is top-level (a project) or its text ends in a colon (a heading); those are
-notes. The line spells `$state` only where the row differs from that default,
-so most lines carry none. A row keeps its state when it moves.
+**Default state.** A row whose line names no state is a note when it is
+top-level, its text ends in a colon, or its parent has any state (is a task).
+Otherwise it is an open task: children of a project, the Inbox, a heading or
+another note default to tasks. The line spells `$state` only where the row
+differs from that default, so a subtask needs `$open`. Stored fields remain
+the truth; existing rows keep their states without migration. A row keeps
+its state when it moves, including while editing. A fresh row takes the
+default of where it ends up when the edit is kept.
 
 **On the row.** One glyph column says what the row is: `○` open, `●` doing,
 `◔` waiting, `✓` done, `✕` canceled, `◌` parked; a note shows `▾` or `▸` when it has
@@ -418,7 +427,8 @@ in place, never copied, so two machines closing it cannot make two.
    is held by a test. *Built.*
 
 7. **Outliner.** Indent, outdent and reorder a selected block of adjacent
-   siblings in one undo step.
+   siblings in one undo step. Rows under tasks default to notes; pasted
+   checkboxes explicitly keep their task state.
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface.

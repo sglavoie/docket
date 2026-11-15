@@ -64,7 +64,7 @@ type editor struct {
 	buf        []rune
 	caret, off int
 	fresh      bool   // the row was created by this edit
-	project    bool   // the default the line was rendered against
+	notes      bool   // the default the line was rendered against
 	back       string // where the cursor returns if a fresh row is abandoned
 	ops, inv   []outline.Op
 }
@@ -782,13 +782,17 @@ func (m *Model) newRow(above bool) {
 
 func (m *Model) today() time.Time { return time.UnixMilli(m.now()).Local() }
 
-// isProject reports a top-level row, which is a note unless its line says otherwise.
-func (m *Model) isProject(id string) bool { return m.tree.Row(id).Parent == "" }
+// defaultsToNotes reports whether children of parent default to notes.
+func (m *Model) defaultsToNotes(parent string) bool {
+	return parent == "" || m.tree.Row(parent).Fields[sigil.FieldState] != ""
+}
 
 func (m *Model) editRow(id string) {
-	line := sigil.FromFields(m.tree.Row(id).Fields)
-	buf := []rune(sigil.Format(line, m.isProject(id), m.today()))
-	m.edit = &editor{row: id, buf: buf, caret: len(buf), project: m.isProject(id)}
+	row := m.tree.Row(id)
+	line := sigil.FromFields(row.Fields)
+	notes := m.defaultsToNotes(row.Parent)
+	buf := []rune(sigil.Format(line, notes, m.today()))
+	m.edit = &editor{row: id, buf: buf, caret: len(buf), notes: notes}
 }
 
 // setFields returns the operations that bring a row to want, skipping the
@@ -854,11 +858,11 @@ func (m *Model) finishEdit() bool {
 	// A fresh row takes its default from where it ended up; an existing one
 	// keeps the default its line was rendered against, so indenting it while
 	// typing never changes a state nobody touched.
-	project := e.project
+	notes := e.notes
 	if e.fresh {
-		project = m.isProject(e.row)
+		notes = m.defaultsToNotes(m.tree.Row(e.row).Parent)
 	}
-	ops := m.setFields(e.row, sigil.Parse(typed, project, m.today()).Fields())
+	ops := m.setFields(e.row, sigil.Parse(typed, notes, m.today()).Fields())
 	if inv, err := m.apply(ops); err == nil {
 		e.ops = append(e.ops, ops...)
 		e.inv = append(inv, e.inv...)

@@ -13,13 +13,13 @@ const pasteLimit = 2000
 // pasted is one line of pasted text: how deep it sits below the first line,
 // and the row line it stands for.
 type pasted struct {
-	level int
-	text  string
+	level    int
+	text     string
+	checkbox bool // normalize this line even when pasted into a single-line editor
 }
 
 // readPaste reads pasted text as an outline. Depth follows indentation,
-// whatever its unit; list bullets are dropped, and a ticked checkbox closes
-// its row.
+// whatever its unit; list bullets are dropped, and checkboxes name the state.
 func readPaste(content string) []pasted {
 	var out []pasted
 	var cols []int // the indentation of each open level
@@ -49,23 +49,23 @@ func readPaste(content string) []pasted {
 				break
 			}
 		}
-		done := false
+		state := ""
 		if rest, ok := strings.CutPrefix(text, "[ ] "); ok {
-			text = rest
+			text, state = rest, sigil.Open
 		} else if len(text) > 3 && (strings.HasPrefix(text, "[x] ") || strings.HasPrefix(text, "[X] ")) {
-			text, done = text[4:], true
+			text, state = text[4:], sigil.Done
 		}
 		text = strings.Join(strings.Fields(text), " ")
-		if done {
-			text += " $done"
+		if state != "" {
+			text += " $" + state
 		}
-		out = append(out, pasted{len(cols) - 1, text})
+		out = append(out, pasted{level: len(cols) - 1, text: text, checkbox: state != ""})
 	}
 	return out
 }
 
-// paste puts pasted text where the typing is. One line is typed text; more
-// become rows, and the whole paste is one undo step.
+// paste puts pasted text where the typing is. One line stays in the editor,
+// with checkboxes normalized; more become rows in one undo step.
 func (m *Model) paste(content string) {
 	lines := readPaste(content)
 	oneLine := func() []rune {
@@ -73,11 +73,7 @@ func (m *Model) paste(content string) {
 			// A single line is typed as it was copied, spaces and all.
 			return []rune(strings.ReplaceAll(strings.Trim(content, "\r\n"), "\t", " "))
 		}
-		var words []string
-		for _, l := range lines {
-			words = append(words, l.text)
-		}
-		return []rune(strings.Join(words, " "))
+		return []rune(strings.Join(strings.Fields(content), " "))
 	}
 	switch {
 	case len(lines) == 0:
@@ -90,7 +86,11 @@ func (m *Model) paste(content string) {
 			m.picked = map[string]bool{}
 		}
 	case m.edit != nil && len(lines) == 1:
-		m.edit.insert(oneLine())
+		if lines[0].checkbox {
+			m.edit.insert([]rune(lines[0].text))
+		} else {
+			m.edit.insert(oneLine())
+		}
 	case m.edit != nil:
 		// The first line joins the row being typed; the rest follow it.
 		e := m.edit
@@ -153,7 +153,7 @@ func (m *Model) pasteRows(anchor string, anchorIsFirst bool, lines []pasted, mer
 			return
 		}
 		made = append(made, op.Row)
-		fields := m.setFields(op.Row, sigil.Parse(l.text, parent == "", today).Fields())
+		fields := m.setFields(op.Row, sigil.Parse(l.text, m.defaultsToNotes(parent), today).Fields())
 		more, err := m.apply(fields)
 		if err != nil {
 			fail(err)

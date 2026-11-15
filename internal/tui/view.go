@@ -61,7 +61,8 @@ Sigils, typed anywhere in a row
   *2w *monthly   repeats: closing it moves it to its next day, still open
   #tag           tag
   $doing $waiting $done $canceled $parked $open $note    state
-  A row is a task unless it is top-level or ends in a colon.
+  A row is a note at top-level, under a task, or when it ends in a colon.
+  Other rows default to tasks; $open under a task makes a subtask.
   \#tag keeps a sigil as plain text.
   As you type, a sigil the line reads turns cyan and one it cannot turns
   yellow. The right arrow takes the dim suggestion at the end of the line.

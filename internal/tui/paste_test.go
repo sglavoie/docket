@@ -16,8 +16,8 @@ func (h *harness) pasteText(s string) *harness {
 func TestReadPaste(t *testing.T) {
 	got := readPaste("  First\r\n\r\n      Child   a\n\t\tDeep\n      Child b\nSecond\n- [x] ticked\n* [ ] open\n   - nested\n")
 	want := []pasted{
-		{0, "First"}, {1, "Child a"}, {2, "Deep"}, {1, "Child b"},
-		{0, "Second"}, {0, "ticked $done"}, {0, "open"}, {1, "nested"},
+		{0, "First", false}, {1, "Child a", false}, {2, "Deep", false}, {1, "Child b", false},
+		{0, "Second", false}, {0, "ticked $done", true}, {0, "open $open", true}, {1, "nested", false},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %+v", got)
@@ -27,7 +27,7 @@ func TestReadPaste(t *testing.T) {
 func TestPastingLinesWhileTypingAddsRows(t *testing.T) {
 	h := project(t)
 	h.press("o", `"Plan: "`)
-	h.pasteText("the release\n  Write notes #docs\n  Tag it @fri\n    after CI $note\nAnnounce\n")
+	h.pasteText("the release\n  Write notes #docs $open\n  Tag it @fri $open\n    after CI $note\nAnnounce\n")
 	if h.m.msg != "pasted 4 rows" || h.m.edit != nil {
 		t.Fatalf("msg = %q", h.m.msg)
 	}
@@ -70,7 +70,7 @@ func TestPastingAListOnARowAddsItBelow(t *testing.T) {
 		"    ○ First",
 		"    ✓ shipped",
 		"    ○ pending",
-		"▌     ○ detail",
+		"▌       detail",
 		"    ○ Second",
 	)
 	h.press("u")
@@ -112,4 +112,48 @@ func TestPastingOneLineOrIntoAPromptIsTyping(t *testing.T) {
 		"▌ ▾ Project",
 		"    ○ Very Second",
 	)
+}
+
+func TestCheckboxPasteNormalization(t *testing.T) {
+	for _, tc := range []struct {
+		content, text string
+		checkbox      bool
+	}{
+		{"[ ] pending $done", "pending $done $open", true},
+		{"[x] shipped $open", "shipped $open $done", true},
+		{"+ [X] shipped", "shipped $done", true},
+		{`\[ ] literal`, `\[ ] literal`, false},
+		{`\- [ ] literal`, `\- [ ] literal`, false},
+		{"- plain", "plain", false},
+	} {
+		got := readPaste(tc.content)
+		want := []pasted{{level: 0, text: tc.text, checkbox: tc.checkbox}}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("readPaste(%q) = %+v, want %+v", tc.content, got, want)
+		}
+	}
+
+	h := project(t)
+	h.press("e", "ctrl+a")
+	h.pasteText("[ ] prefix ")
+	if got := string(h.m.edit.buf); got != "prefix $openSecond" {
+		t.Fatalf("checkbox text should insert at the caret: %q", got)
+	}
+	h.press("esc", "a")
+	h.pasteText("- [ ] literal ")
+	if got := string(h.m.ask.ed.buf); got != "- [ ] literal " {
+		t.Fatalf("prompt checkbox must remain typed text: %q", got)
+	}
+	h.pasteText("\n[x] another\n[ ] last")
+	if got := string(h.m.ask.ed.buf); got != "- [ ] literal [x] another [ ] last" {
+		t.Fatalf("multiline prompt checkbox must remain typed text: %q", got)
+	}
+}
+
+func TestPastedRowsUseTheirParentsDefault(t *testing.T) {
+	h := project(t)
+	h.pasteText("[ ] Parent\n  Detail\n    Under note\n  [ ] Subtask $done\n  [x] Finished $open\nHeading:\n  Child")
+	h.want("  ▾ Project", "    ○ First", "    ○ Second", "    ○ Parent",
+		"      ▾ Detail", "        ○ Under note", "      ○ Subtask", "      ✓ Finished",
+		"    ▾ Heading:", "▌     ○ Child")
 }

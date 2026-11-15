@@ -298,3 +298,18 @@ func TestCommands(t *testing.T) {
 		t.Fatal(":q did not quit")
 	}
 }
+
+func TestExportSpellsStatesAgainstParentDefaults(t *testing.T) {
+	h := project(t)
+	h.press("o", "tab", `"Detail"`, "enter", `"Subtask $open"`, "esc")
+	out := filepath.Join(t.TempDir(), "out.txt")
+	h.press(":", `"export `+out+`"`, "enter")
+	got, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "Inbox\nProject\n\tFirst\n\tSecond\n\t\tDetail\n\t\tSubtask $open\n"
+	if string(got) != want {
+		t.Fatalf("export:\n%s\nwant:\n%s", got, want)
+	}
+}

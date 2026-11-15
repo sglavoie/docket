@@ -11,12 +11,16 @@ var today = time.Date(2026, 11, 15, 10, 0, 0, 0, time.UTC)
 
 func TestParse(t *testing.T) {
 	cases := []struct {
-		line string
-		top  bool
-		want Line
+		line  string
+		notes bool
+		want  Line
 	}{
 		{"Fix the flaky test", false, Line{Text: "Fix the flaky test", State: Open}},
 		{"docket-rewrite", true, Line{Text: "docket-rewrite"}},
+		{"Detail under a task", true, Line{Text: "Detail under a task"}},
+		{"Subtask $open", true, Line{Text: "Subtask", State: Open}},
+		{"Subheading:", true, Line{Text: "Subheading:"}},
+		{"Last state wins $done $open", true, Line{Text: "Last state wins", State: Open}},
 		{"Storage:", false, Line{Text: "Storage:"}},
 		{"Ship it ! @fri #Release #release $doing", false,
 			Line{Text: "Ship it", State: Doing, Flag: true, Due: "2026-11-20", Tags: []string{"release"}}},
@@ -37,23 +41,25 @@ func TestParse(t *testing.T) {
 		{"later wins @mon @tue $done $open", false, Line{Text: "later wins", State: Open, Due: "2026-11-17"}},
 	}
 	for _, c := range cases {
-		if got := Parse(c.line, c.top, today); !reflect.DeepEqual(got, c.want) {
-			t.Errorf("Parse(%q, top=%v)\n got %+v\nwant %+v", c.line, c.top, got, c.want)
+		if got := Parse(c.line, c.notes, today); !reflect.DeepEqual(got, c.want) {
+			t.Errorf("Parse(%q, notes=%v)\n got %+v\nwant %+v", c.line, c.notes, got, c.want)
 		}
 	}
 }
 
 func TestFormatRoundTrips(t *testing.T) {
 	cases := []struct {
-		line Line
-		top  bool
-		want string
+		line  Line
+		notes bool
+		want  string
 	}{
 		{Line{Text: "Fix it", State: Open}, false, "Fix it"},
 		{Line{Text: "Fix it", State: Open}, true, "Fix it $open"},
 		{Line{Text: "Storage:"}, false, "Storage:"},
 		{Line{Text: "a thought"}, false, "a thought $note"},
 		{Line{Text: "project"}, true, "project"},
+		{Line{Text: "detail under a task"}, true, "detail under a task"},
+		{Line{Text: "Subheading:", State: Open}, true, "Subheading: $open"},
 		{Line{Text: "Ship", State: Done, Flag: true, Due: "2026-11-20", Tags: []string{"a", "b"}}, false,
 			"Ship ! @2026-11-20 #a #b $done"},
 		{Line{Text: "the #tag and @fri sigils !", State: Open}, false, `the \#tag and \@fri sigils \!`},
@@ -62,11 +68,11 @@ func TestFormatRoundTrips(t *testing.T) {
 		{Line{Text: "do it *2w or @@fri", State: Open}, false, `do it \*2w or \@@fri`},
 	}
 	for _, c := range cases {
-		got := Format(c.line, c.top, today)
+		got := Format(c.line, c.notes, today)
 		if got != c.want {
-			t.Errorf("Format(%+v, top=%v) = %q, want %q", c.line, c.top, got, c.want)
+			t.Errorf("Format(%+v, notes=%v) = %q, want %q", c.line, c.notes, got, c.want)
 		}
-		if back := Parse(got, c.top, today); !reflect.DeepEqual(back, c.line) {
+		if back := Parse(got, c.notes, today); !reflect.DeepEqual(back, c.line) {
 			t.Errorf("Parse(Format(%+v)) = %+v", c.line, back)
 		}
 	}

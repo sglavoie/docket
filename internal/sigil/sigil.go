@@ -54,11 +54,11 @@ func (l Line) Later(today time.Time) bool {
 // Closed reports a state that needs nothing further.
 func (l Line) Closed() bool { return l.State == Done || l.State == Canceled }
 
-// DefaultState is the state a row has when its line names none: a top-level
-// row is a project and a row ending in a colon is a heading, so both are
-// notes; every other row is an open task.
-func DefaultState(top bool, text string) string {
-	if top || strings.HasSuffix(text, ":") {
+// DefaultState is the state a row has when its line names none. A place that
+// defaults to notes (top-level or under a task), or text ending in a colon,
+// makes a note; every other row is an open task.
+func DefaultState(notes bool, text string) string {
+	if notes || strings.HasSuffix(text, ":") {
 		return ""
 	}
 	return Open
@@ -135,7 +135,7 @@ func IsSigil(w string, today time.Time) bool {
 
 // Parse reads a typed line. A sigil is a whole word; one the grammar cannot
 // read stays in the text, and a backslash before a sigil keeps it literal.
-func Parse(s string, top bool, today time.Time) Line {
+func Parse(s string, notes bool, today time.Time) Line {
 	var l Line
 	var words []string
 	state, named := "", false
@@ -169,7 +169,7 @@ func Parse(s string, top bool, today time.Time) Line {
 		}
 	}
 	l.Text = strings.Join(words, " ")
-	l.State = DefaultState(top, l.Text)
+	l.State = DefaultState(notes, l.Text)
 	if named {
 		l.State = state
 	}
@@ -178,7 +178,7 @@ func Parse(s string, top bool, today time.Time) Line {
 
 // Format renders the line Parse reads back to the same value. The state is
 // spelled only where it differs from the row's default.
-func Format(l Line, top bool, today time.Time) string {
+func Format(l Line, notes bool, today time.Time) string {
 	var words []string
 	for _, w := range strings.Fields(l.Text) {
 		if IsSigil(w, today) {
@@ -201,7 +201,7 @@ func Format(l Line, top bool, today time.Time) string {
 	for _, tag := range l.Tags {
 		words = append(words, "#"+tag)
 	}
-	if l.State != DefaultState(top, l.Text) {
+	if l.State != DefaultState(notes, l.Text) {
 		if l.State == "" {
 			words = append(words, "$note")
 		} else {
