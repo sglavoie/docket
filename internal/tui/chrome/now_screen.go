@@ -3,6 +3,7 @@ package chrome
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"charm.land/lipgloss/v2"
 
@@ -11,18 +12,24 @@ import (
 )
 
 // NowScreenSpec is the Now screen: one task in Doing, read whole. Progress
-// arrives rendered; every other field is plain text.
+// arrives rendered; durations stay numeric until paint.
 type NowScreenSpec struct {
-	Title      string
-	Meta       string
-	Elapsed    string
-	ResumeNote string
-	Steps      []NowScreenStep
-	Progress   string
-	Beside     string
-	// Focus is the running focus session's reading, already rendered, or
-	// empty when none runs on this task.
-	Focus string
+	Title           string
+	Meta            string
+	Elapsed         string
+	ElapsedDuration time.Duration
+	ResumeNote      string
+	Steps           []NowScreenStep
+	Progress        string
+	Beside          string
+	// Focus is present only while a session runs on this task.
+	Focus *NowScreenFocus
+}
+
+// NowScreenFocus carries the running clock without parsing card text.
+type NowScreenFocus struct {
+	Remaining time.Duration
+	Length    time.Duration
 }
 
 // NowScreenStep is one checklist item as the screen lists it.
@@ -44,20 +51,16 @@ const nowScreenMaxSteps = 7
 // footer's, so the screen names none of its own.
 func RenderNowScreen(spec NowScreenSpec, width, height int) string {
 	width, height = max(width, 1), max(height, 1)
-	column := min(nowScreenMaxWidth, max(width-8, 20))
+	column := min(nowScreenMaxWidth, max(width-8, 1))
 	accent := lipgloss.NewStyle().Foreground(theme.ColorAccent)
 	muted := theme.MutedStyle
 	note := lipgloss.NewStyle().Foreground(theme.ColorMuted).Italic(true)
 
-	var body []string
-	body = append(body, accent.Render("NOW")+muted.Render("  ·  "+spec.Elapsed))
-	if spec.Focus != "" {
-		body = append(body, spec.Focus)
-	}
-	body = append(body, "")
+	var body, essential []string
 	for _, line := range textfit.WrapText(strings.TrimSpace(spec.Title), column) {
 		body = append(body, theme.BoldPrimaryStyle.Render(line))
 	}
+	essential = append(essential, body...)
 	if spec.Meta != "" {
 		body = append(body, muted.Render(textfit.TruncateIntentional(spec.Meta, column, "…")))
 	}
@@ -65,6 +68,13 @@ func RenderNowScreen(spec NowScreenSpec, width, height int) string {
 		body = append(body, "")
 		for _, line := range textfit.WrapText("Left off: "+strings.TrimSpace(spec.ResumeNote), column) {
 			body = append(body, note.Render(line))
+			essential = append(essential, note.Render(line))
+		}
+	}
+	for _, step := range spec.Steps {
+		if !step.Done {
+			essential = append(essential, nowScreenSteps([]NowScreenStep{step}, column)...)
+			break
 		}
 	}
 	if len(spec.Steps) > 0 || spec.Progress != "" {
@@ -77,6 +87,40 @@ func RenderNowScreen(spec NowScreenSpec, width, height int) string {
 	if spec.Beside != "" {
 		body = append(body, "", muted.Render(spec.Beside))
 	}
+
+	// Measure task content before spending rows on the clock. Wrapped title,
+	// resume note and steps all outrank the large reading.
+	duration, caption := spec.ElapsedDuration, "in Doing"
+	reading := spec.Elapsed
+	if spec.Focus != nil {
+		duration, caption = spec.Focus.Remaining, "focus left"
+		reading = fmt.Sprintf("◷ focus %dm left", clockMinutes(duration, true))
+	}
+	header := []string{accent.Render("NOW") + muted.Render("  ·  "+reading), ""}
+	clock := strings.Split(RenderBlockClock(duration, spec.Focus != nil), "\n")
+	large := append([]string{accent.Render("NOW")}, clock...)
+	large = append(large, muted.Render(caption))
+	if spec.Focus != nil {
+		bar := nowFocusBar(*spec.Focus, column)
+		header = append(header[:1], bar, "")
+		large = append(large, bar)
+	}
+	large = append(large, "")
+	if len(large)+len(body) <= height && lipgloss.Width(clock[0]) <= column {
+		header = large
+	}
+	if len(header)+len(body) > height {
+		// Even the text clock can crowd a wrapped note or a long checklist.
+		// Keep the next open step ahead of metadata and completed steps.
+		body = essential
+		if len(header)+len(body) > height {
+			header = header[:1]
+		}
+		if len(header)+len(body) > height {
+			header = nil
+		}
+	}
+	body = append(header, body...)
 
 	rail := accent.Render("▎") + " "
 	for i, line := range body {

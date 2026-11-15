@@ -219,6 +219,9 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 			if refusal != "" {
 				m.setInfoStatus(refusal)
 				cmd = tea.Batch(cmd, m.statusReadingTimeout())
+			} else if m.feedback.err == nil && m.feedback.severity != flashWarning && m.feedback.severity != flashError {
+				m.feedback.retireFlash()
+				m.clearStatus()
 			}
 			message = commandMessage(cmd)
 		}

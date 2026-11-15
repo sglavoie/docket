@@ -877,12 +877,14 @@ query carries a sigil, because sigils compile to an AND gate no note can
 satisfy. Enter on a note row leaves the Outliner for the Notes surface; it does
 not give notes tags, links, or bulk actions.
 
-`gd` is the Now screen, a view-local gated sub-state like the triage card: no
-`PresentationID`, it replaces the host, routes `d`/`p`/`r`/`c` as
-`TriageRouteMsg` at the cursor it seats, writes nothing on opening, and
-`settleNowView` closes it when its task leaves Doing, as does its `f` focus
-session. A hiding mode steps to All; `Esc` returns. The Peek change flash answers `NotePeekCommit` alone, compares the same
-owner at the same width, paints the margin, and input drops it.
+`gd`: gated Now screen, no `PresentationID`, replaces host, seats cursor for
+`d`/`p`/`r`/`c` via `TriageRouteMsg`; no data writes.
+It clears quiet feedback, keeps warnings/errors. The block clock reads Doing
+age or focus minutes left on the 60s tick; its bar fills the column.
+Short: text time keeps title, resume and next step.
+`settleNowView` ends screen/focus on leaving Doing. Hidden by mode: use All;
+`Esc` returns. Peek flash answers only `NotePeekCommit`, compares owner/width,
+paints the margin, ends on input.
 
 ## Key bindings
 

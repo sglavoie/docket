@@ -29,7 +29,7 @@ func TestNowViewOpensOnTheDoingLeadAndFillsTheFrame(t *testing.T) {
 	}
 	view := m.RenderOutlinerTreeContent(100)
 	plain := ansi.Strip(view)
-	for _, want := range []string{"NOW", "12m in Doing", "Fix customer migration", "Left off: rerun with the expired token", "1/3", "✓ write migration", "→ run against staging", "○ ship"} {
+	for _, want := range []string{"NOW", "in Doing", "███", "Fix customer migration", "Left off: rerun with the expired token", "1/3", "✓ write migration", "→ run against staging", "○ ship"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("Now screen lacks %q:\n%s", want, plain)
 		}

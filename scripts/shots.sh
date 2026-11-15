@@ -90,6 +90,31 @@ Sleep 300ms
 Type "Read the Bubble Tea docs $backlog "
 Enter
 Sleep 1s
+# Give the Now reading a concrete place to resume and three next steps.
+Type "gd"
+Sleep 400ms
+Type "r"
+Sleep 300ms
+Type "Reproduce with an expired token"
+Enter
+Sleep 500ms
+Type "c"
+Sleep 300ms
+Type "Reproduce the redirect loop"
+Enter
+Sleep 500ms
+Type "c"
+Sleep 300ms
+Type "Add a regression test"
+Enter
+Sleep 500ms
+Type "c"
+Sleep 300ms
+Type "Ship the fix"
+Enter
+Sleep 500ms
+Escape
+Sleep 400ms
 Show
 
 Type "gg"

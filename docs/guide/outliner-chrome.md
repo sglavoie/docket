@@ -102,13 +102,17 @@ clicks; the same task still sits in its Doing lane below.
 
 `gd` (Go → Now) opens the **Now screen**: the list is put down and one task in
 Doing fills the frame — the cursor's task when it is in Doing, else the Now
-card's — with how long it has been in hand, its project, `Left off:` and its
+card's — with an accent block clock (`H:MM` in Doing), its project, `Left off:` and its
 resume note, and its checklist with the next open step marked `→`. `d`
 completes it, `p` pauses it, `r` writes its resume note, `c` adds a checklist
 step, and `Esc` returns to the list; each is the row's own operation and its
-own undo entry. `f` starts a 25-minute focus session on the task: the screen and
-the Now card above the lanes read `◷ focus 18m left` with a meter of the time
-spent, and when it runs out the footer says `Focus done · 25m on <title> · take
+own undo entry. `f` starts a 25-minute focus session on the task: the
+screen switches to minutes remaining, captioned `focus left`, above a meter
+spanning the reading column. The Now card keeps its compact `◷ focus 18m left`
+reading. Clocks refresh on the existing minute tick; a short frame uses a
+one-line clock to keep the title, resume note and next step visible. Opening
+Now clears quiet feedback while keeping warnings and errors. When focus runs
+out the footer says `Focus done · 25m on <title> · take
 a break` with the success sweep, plus a desktop notification on a `--notify`
 run. `f` again stops it. A session writes nothing and lasts only while Docket
 runs; finishing or pausing the task first ends it without a word. When the task leaves Doing the screen closes by itself, so

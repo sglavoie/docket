@@ -872,6 +872,9 @@ func (m *OutlinerModel) renderNowView(width, height int) (string, bool) {
 	}
 	now := time.Now()
 	spec := chrome.NowScreenSpec{Title: task.Title, ResumeNote: task.ResumeNote}
+	if !task.StateChangedAt.IsZero() {
+		spec.ElapsedDuration = max(now.Sub(task.StateChangedAt), 0)
+	}
 	meta := make([]string, 0, 3)
 	if project := m.crossResolveProject(m.Rows[index].ProjectID); project != nil && project.Name != "" {
 		meta = append(meta, project.Name)
@@ -901,7 +904,9 @@ func (m *OutlinerModel) renderNowView(width, height int) (string, bool) {
 	if more := m.nowCard.more; more > 0 {
 		spec.Beside = fmt.Sprintf("%d more in Doing", more)
 	}
-	spec.Focus = m.focusSessionReading(m.NowView.identity, now)
+	if m.focusSession.active && m.focusSession.identity == m.NowView.identity {
+		spec.Focus = &chrome.NowScreenFocus{Remaining: m.focusSession.length - now.Sub(m.focusSession.started), Length: m.focusSession.length}
+	}
 	return chrome.RenderNowScreen(spec, width, height), true
 }
 

@@ -23,7 +23,7 @@ func TestFocusSessionStartsReadsAndEnds(t *testing.T) {
 		t.Fatal("f armed no session")
 	}
 	screen := ansi.Strip(m.RenderOutlinerTreeContent(100))
-	if !strings.Contains(screen, "◷ focus 25m left") {
+	if !strings.Contains(screen, "focus left") {
 		t.Fatalf("the Now screen does not read the session:\n%s", screen)
 	}
 	if !strings.Contains(ansi.Strip(strings.Join(m.nowCardSpecLines(100), "\n")), "◷ focus 25m left") {
