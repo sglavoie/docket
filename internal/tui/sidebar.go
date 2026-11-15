@@ -18,9 +18,13 @@ import (
 // on it. Its position sorts before any key Between can mint, which keeps it
 // first among the top-level rows, where it is never drawn.
 const (
-	inboxID  = "inbox"
-	inboxPos = "0"
+	inboxID   = "inbox"
+	filtersID = "filters" // holds the saved filters, one row each
+	fixedPos  = "0"
 )
+
+// hiddenTop reports a top-level row that is never drawn among the projects.
+func hiddenTop(id string) bool { return id == inboxID || id == filtersID }
 
 const (
 	kindInbox    = "inbox"
@@ -69,14 +73,15 @@ type entry struct {
 
 func (e entry) same(o entry) bool { return e.kind == o.kind && e.id == o.id }
 
-// ensureInbox creates the Inbox row on first launch. It is not an undo step.
-func (m *Model) ensureInbox() {
-	if m.tree.Row(inboxID) != nil {
+// ensureFixed creates a row every machine agrees on, on first launch. It is
+// not an undo step.
+func (m *Model) ensureFixed(id, text string) {
+	if m.tree.Row(id) != nil {
 		return
 	}
 	ops := []outline.Op{
-		{Kind: outline.Insert, Row: inboxID, Pos: inboxPos},
-		{Kind: outline.Set, Row: inboxID, Field: sigil.FieldText, Value: "Inbox"},
+		{Kind: outline.Insert, Row: id, Pos: fixedPos},
+		{Kind: outline.Set, Row: id, Field: sigil.FieldText, Value: text},
 	}
 	if _, err := m.apply(ops); err != nil {
 		m.msg = err.Error()
@@ -178,6 +183,9 @@ func (m *Model) scan() {
 			visit(top, nil, &touch, false)
 			continue
 		}
+		if top == filtersID {
+			continue
+		}
 		l := sigil.FromFields(m.tree.Row(top).Fields)
 		stat := entry{kind: kindProject, id: top, label: l.Text, idle: true}
 		visit(top, &stat, &touch, l.Closed())
@@ -206,6 +214,12 @@ func (m *Model) scan() {
 	for _, p := range review {
 		m.stats[p.id] = p
 		lists[kindReview] = append(lists[kindReview], p.id)
+	}
+
+	m.filters = m.filters[:0]
+	for _, id := range m.tree.Children(filtersID) {
+		f := m.tree.Row(id).Fields
+		m.filters = append(m.filters, savedFilter{id, f[sigil.FieldText], f[fieldRoot], f[fieldQuery], f[fieldFlat] != ""})
 	}
 
 	m.lists = lists
@@ -279,7 +293,7 @@ func (m *Model) targets(jump bool) []entry {
 			entry{kind: kindProjects, label: "Projects"})
 	}
 	for _, top := range m.tree.Children("") {
-		if top != inboxID {
+		if !hiddenTop(top) {
 			out = append(out, entry{kind: kindProject, id: top, label: m.tree.Row(top).Text()})
 		}
 	}
@@ -439,6 +453,13 @@ func (m *Model) sideLines(w, h int) []string {
 	if m.parked > 0 {
 		text := "  " + sgrDim + "parked " + strconv.Itoa(m.parked) + sgrReset
 		lines = append(lines, line{}, line{text: text})
+	}
+	if m.syncNote != "" {
+		style := sgrDim
+		if m.syncFailed {
+			style = sgrAlert
+		}
+		lines = append(lines, line{}, line{text: "  " + style + ansi.Truncate(m.syncNote, w-2, "…") + sgrReset})
 	}
 
 	// Keep the selection in view when the list is taller than the pane.

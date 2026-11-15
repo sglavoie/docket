@@ -157,3 +157,78 @@ func TestBackupIsDailyWholeAndPruned(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestTwoWindowsOnOneDatabase(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "docket.db")
+	open := func() *Store {
+		t.Helper()
+		s, err := Open(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { s.Close() })
+		if _, err := s.Load(); err != nil {
+			t.Fatal(err)
+		}
+		return s
+	}
+	one, two := open(), open()
+	stale := func(s *Store) bool {
+		t.Helper()
+		v, err := s.Stale()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return v
+	}
+	if stale(one) || stale(two) {
+		t.Fatal("a fresh window is stale")
+	}
+
+	// One window writes; the other is told, and is not the one that wrote.
+	if err := one.Commit([]outline.Op{
+		{Kind: outline.Insert, Row: "a", Pos: "V"},
+		{Kind: outline.Set, Row: "a", Field: "text", Value: "from one"},
+	}, 9000); err != nil {
+		t.Fatal(err)
+	}
+	if stale(one) || !stale(two) {
+		t.Fatal("the wrong window is stale")
+	}
+
+	// The other writes without looking first, with its wall clock behind.
+	// Its write is still the newer one, and it still knows it must look.
+	if err := two.Commit([]outline.Op{{Kind: outline.Set, Row: "a", Field: "text", Value: "from two"}}, 100); err != nil {
+		t.Fatal(err)
+	}
+	if !stale(two) {
+		t.Fatal("writing hid the other window's change")
+	}
+	tree, err := two.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stale(two) || tree.Row("a").Text() != "from two" {
+		t.Fatalf("after a fresh read: stale=%v text=%q", stale(two), tree.Row("a").Text())
+	}
+	if !stale(one) {
+		t.Fatal("the first window was not told")
+	}
+
+	rs, err := one.db.Query(`SELECT stamp FROM ops ORDER BY seq`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rs.Close()
+	prev := ""
+	for rs.Next() {
+		var stamp string
+		if err := rs.Scan(&stamp); err != nil {
+			t.Fatal(err)
+		}
+		if stamp <= prev {
+			t.Fatalf("stamp %q does not follow %q", stamp, prev)
+		}
+		prev = stamp
+	}
+}

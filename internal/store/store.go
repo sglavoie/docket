@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS ops(
 	row TEXT NOT NULL, field TEXT NOT NULL DEFAULT '', value TEXT NOT NULL DEFAULT '',
 	parent TEXT NOT NULL DEFAULT '', pos TEXT NOT NULL DEFAULT '');
 CREATE TABLE IF NOT EXISTS folds(row TEXT PRIMARY KEY) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS ops_stamp ON ops(stamp);
 `
 
 const schemaVersion = "1"
@@ -43,6 +44,11 @@ type Store struct {
 	device  string
 	lastMS  int64
 	counter int
+
+	// seq is the newest log entry this Store has read or written. An entry
+	// past it was written by another window on the same database.
+	seq     int64
+	foreign bool
 }
 
 // NewID returns a fresh row identifier.
@@ -108,12 +114,32 @@ func (s *Store) init() error {
 		return err
 	}
 	last = newest.String
-	if parts := strings.Split(last, "-"); len(parts) == 3 {
-		s.lastMS, _ = strconv.ParseInt(parts[0], 10, 64)
-		c, _ := strconv.ParseInt(parts[1], 16, 32)
-		s.counter = int(c)
+	s.observe(last)
+	return s.db.QueryRow(`SELECT COALESCE(MAX(seq), 0) FROM ops`).Scan(&s.seq)
+}
+
+// observe moves the clock up to a stamp, time and counter, so the next
+// stamp issued here is newer than it.
+func (s *Store) observe(stamp string) {
+	parts := strings.Split(stamp, "-")
+	if len(parts) != 3 {
+		return
 	}
-	return nil
+	ms, _ := strconv.ParseInt(parts[0], 10, 64)
+	c, _ := strconv.ParseInt(parts[1], 16, 32)
+	if ms > s.lastMS || (ms == s.lastMS && int(c) > s.counter) {
+		s.lastMS, s.counter = ms, int(c)
+	}
+}
+
+// Stale reports that the log holds entries this Store did not write or
+// read: another window on the same database has made changes.
+func (s *Store) Stale() (bool, error) {
+	var top int64
+	if err := s.db.QueryRow(`SELECT COALESCE(MAX(seq), 0) FROM ops`).Scan(&top); err != nil {
+		return false, err
+	}
+	return s.foreign || top != s.seq, nil
 }
 
 // Meta reads a setting kept on this machine; an unset one is empty. Settings
@@ -154,10 +180,25 @@ func (s *Store) Commit(ops []outline.Op, now int64) error {
 		return err
 	}
 	defer tx.Rollback()
+	// Another window may have written since this one last looked. Its
+	// stamps are passed, so no two are alike and this write is the newest;
+	// and its entries are noted, so the outline here is read again.
+	var newest sql.NullString
+	var top sql.NullInt64
+	if err := tx.QueryRow(`SELECT MAX(stamp), MAX(seq) FROM ops`).Scan(&newest, &top); err != nil {
+		return err
+	}
+	s.observe(newest.String)
+	foreign := top.Int64 != s.seq
+	last := top.Int64
 	for _, op := range ops {
 		stamp := s.stamp(now)
-		if _, err := tx.Exec(`INSERT INTO ops(stamp, kind, row, field, value, parent, pos)
-			VALUES(?, ?, ?, ?, ?, ?, ?)`, stamp, string(op.Kind), op.Row, op.Field, op.Value, op.Parent, op.Pos); err != nil {
+		res, err := tx.Exec(`INSERT INTO ops(stamp, kind, row, field, value, parent, pos)
+			VALUES(?, ?, ?, ?, ?, ?, ?)`, stamp, string(op.Kind), op.Row, op.Field, op.Value, op.Parent, op.Pos)
+		if err != nil {
+			return err
+		}
+		if last, err = res.LastInsertId(); err != nil {
 			return err
 		}
 		switch op.Kind {
@@ -180,11 +221,20 @@ func (s *Store) Commit(ops []outline.Op, now int64) error {
 			return err
 		}
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	s.seq, s.foreign = last, s.foreign || foreign
+	return nil
 }
 
 // Load reads the whole outline into memory.
 func (s *Store) Load() (*outline.Tree, error) {
+	// Noted first: anything written while the rows are read is seen as new.
+	if err := s.db.QueryRow(`SELECT COALESCE(MAX(seq), 0) FROM ops`).Scan(&s.seq); err != nil {
+		return nil, err
+	}
+	s.foreign = false
 	byID := map[string]*outline.Row{}
 	var rows []*outline.Row
 	moved := map[string]string{}

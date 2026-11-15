@@ -25,13 +25,15 @@ type Backend interface {
 	Meta(key string) (string, error)
 	SetMeta(key, value string) error
 	Sync(dir string) (int, error)
+	SyncState(dir string) (machines, waiting int, err error)
+	Stale() (bool, error)
 	Load() (*outline.Tree, error)
 }
 
 const (
 	metaHistory    = "history"     // the undo and redo stacks
 	metaHideClosed = "hide_closed" // whether outlines leave closed rows out
-	metaFilters    = "filters"     // the saved filters
+	metaFilters    = "filters"     // saved filters from before they were rows
 	metaSyncDir    = "sync_dir"    // the folder shared with other machines
 	undoDepth      = 200
 )
@@ -75,15 +77,17 @@ type Model struct {
 	vis           []visRow
 	cursor, top   int
 
-	side      []entry // the sidebar's destinations, top to bottom
-	sel       entry   // the one the outline pane was opened from
-	sideFocus bool
-	lists     map[string][]string
-	stats     map[string]entry // each active project's sidebar line, by row
-	filters   []savedFilter
-	syncDir   string
-	tags      []string // tags in use, most used first
-	parked    int
+	side       []entry // the sidebar's destinations, top to bottom
+	sel        entry   // the one the outline pane was opened from
+	sideFocus  bool
+	lists      map[string][]string
+	stats      map[string]entry // each active project's sidebar line, by row
+	filters    []savedFilter
+	syncDir    string
+	syncNote   string // the sidebar's last word on sync
+	syncFailed bool
+	tags       []string // tags in use, most used first
+	parked     int
 
 	undo, redo [][]outline.Op
 	prefix     string            // a pending g or d
@@ -117,9 +121,6 @@ func newModel(tree *outline.Tree, backend Backend, folds map[string]bool, now fu
 	if v, err := backend.Meta(metaHideClosed); err == nil {
 		m.hideClosed = v == "1"
 	}
-	if v, err := backend.Meta(metaFilters); err == nil && v != "" {
-		json.Unmarshal([]byte(v), &m.filters)
-	}
 	if v, err := backend.Meta(metaHistory); err == nil && v != "" {
 		var h history
 		if json.Unmarshal([]byte(v), &h) == nil {
@@ -127,7 +128,9 @@ func newModel(tree *outline.Tree, backend Backend, folds map[string]bool, now fu
 		}
 	}
 	m.syncDir, _ = backend.Meta(metaSyncDir)
-	m.ensureInbox()
+	m.ensureFixed(inboxID, "Inbox")
+	m.ensureFixed(filtersID, "Filters")
+	m.adoptOldFilters()
 	m.syncNow(false)
 	m.rebuild()
 	// Launch where the day's work is, or among the projects when nothing
@@ -157,6 +160,64 @@ func (m *Model) keepHistory() {
 	}
 }
 
+// reload reads the outline again from the database, keeping the cursor on
+// its row.
+func (m *Model) reload() bool {
+	tree, err := m.backend.Load()
+	if err != nil {
+		m.msg = "could not read the outline: " + err.Error()
+		return false
+	}
+	cur := m.current()
+	m.tree = tree
+	m.refilter()
+	m.rebuild()
+	m.seek(cur)
+	return true
+}
+
+// refresh reads the outline again when another window on this database has
+// changed it. It waits while a row is being typed, since that row exists
+// only here.
+func (m *Model) refresh() {
+	if m.edit != nil {
+		return
+	}
+	if stale, err := m.backend.Stale(); err == nil && stale {
+		m.reload()
+	}
+}
+
+// adoptOldFilters turns saved filters from before they were rows into rows.
+func (m *Model) adoptOldFilters() {
+	v, err := m.backend.Meta(metaFilters)
+	if err != nil || v == "" {
+		return
+	}
+	var old []savedFilter
+	if json.Unmarshal([]byte(v), &old) != nil {
+		return
+	}
+	for _, f := range old {
+		flat := ""
+		if f.Flat {
+			flat = "1"
+		}
+		id := m.newID()
+		ops := []outline.Op{
+			{Kind: outline.Insert, Row: id, Parent: filtersID, Pos: m.tree.PosLast(filtersID)},
+			{Kind: outline.Set, Row: id, Field: sigil.FieldText, Value: f.Name},
+			{Kind: outline.Set, Row: id, Field: fieldQuery, Value: f.Query},
+			{Kind: outline.Set, Row: id, Field: fieldFlat, Value: flat},
+			{Kind: outline.Set, Row: id, Field: fieldRoot, Value: f.Root},
+		}
+		if _, err := m.apply(ops); err != nil || m.backend.Commit(ops, m.now()) != nil {
+			return
+		}
+	}
+	m.backend.SetMeta(metaFilters, "")
+}
+
 // syncNow exchanges operations with the other machines and, when theirs
 // changed anything, reads the outline again. It waits while a line is being
 // typed, since that line is not stored yet.
@@ -166,26 +227,26 @@ func (m *Model) syncNow(loud bool) {
 	}
 	n, err := m.backend.Sync(m.syncDir)
 	if err != nil {
+		m.syncNote, m.syncFailed = "sync failed", true
 		m.msg = "sync failed: " + err.Error()
 		return
 	}
-	if n == 0 {
-		if loud {
-			m.msg = "synced with " + m.syncDir
+	machines, waiting, _ := m.backend.SyncState(m.syncDir)
+	m.syncNote, m.syncFailed = "synced "+m.today().Format("15:04"), false
+	if waiting > 0 {
+		// Changes that name a row which has not arrived yet.
+		m.syncNote += fmt.Sprintf(" · %d waiting", waiting)
+	}
+	switch {
+	case n > 0:
+		if m.reload() {
+			m.msg = fmt.Sprintf("synced: %d changes from other machines", n)
 		}
-		return
+	case loud && machines == 1:
+		m.msg = "synced with 1 other machine"
+	case loud:
+		m.msg = fmt.Sprintf("synced with %d other machines", machines)
 	}
-	tree, err := m.backend.Load()
-	if err != nil {
-		m.msg = "sync failed: " + err.Error()
-		return
-	}
-	cur := m.current()
-	m.tree = tree
-	m.refilter()
-	m.rebuild()
-	m.seek(cur)
-	m.msg = fmt.Sprintf("synced: %d changes from other machines", n)
 }
 
 // placeKey names a place for remembering its cursor.
@@ -248,7 +309,7 @@ func (m *Model) rebuild() {
 		var walk func(parent string, depth int)
 		walk = func(parent string, depth int) {
 			for _, id := range m.tree.Children(parent) {
-				if id == inboxID || hidden(id) {
+				if hiddenTop(id) || hidden(id) {
 					continue
 				}
 				m.vis = append(m.vis, visRow{id, depth})
@@ -293,7 +354,7 @@ func (m *Model) single() bool {
 
 // prevSibling is the row drawn above id among its siblings.
 func (m *Model) prevSibling(id string) string {
-	if prev := m.tree.PrevSibling(id); prev != inboxID {
+	if prev := m.tree.PrevSibling(id); !hiddenTop(prev) {
 		return prev
 	}
 	return ""
@@ -353,6 +414,8 @@ func (m *Model) apply(ops []outline.Op) ([]outline.Op, error) {
 func (m *Model) save(ops, inv []outline.Op) bool {
 	err := m.backend.Commit(ops, m.now())
 	if err == nil {
+		// The write may have found another window's changes.
+		m.refresh()
 		return true
 	}
 	now := m.now()
@@ -615,6 +678,7 @@ func (m *Model) finishEdit() bool {
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tickMsg:
+		m.refresh()
 		m.syncNow(false)
 		m.rebuild()
 		return m, tick()
@@ -626,6 +690,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.rebuild()
 	case tea.KeyPressMsg:
 		m.msg = ""
+		m.refresh()
 		if msg.String() == "ctrl+c" {
 			if m.edit != nil {
 				m.finishEdit()
@@ -815,7 +880,7 @@ func (m *Model) command(line string) {
 		dir := strings.Join(words[1:], " ")
 		switch {
 		case dir == "off":
-			m.syncDir = ""
+			m.syncDir, m.syncNote = "", ""
 			m.msg = "sync is off"
 		case dir != "":
 			if rest, ok := strings.CutPrefix(dir, "~/"); ok {

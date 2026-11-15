@@ -26,7 +26,6 @@ import (
 
 const syncSchema = `
 CREATE TABLE IF NOT EXISTS pending(stamp TEXT PRIMARY KEY, op TEXT NOT NULL) WITHOUT ROWID;
-CREATE INDEX IF NOT EXISTS ops_stamp ON ops(stamp);
 `
 
 // wireOp is an operation as written to a sync file, one JSON object a line.
@@ -191,6 +190,11 @@ func (s *Store) absorb(dir string) (int, error) {
 	if _, err := tx.Exec(`DELETE FROM pending`); err != nil {
 		return 0, err
 	}
+	var top int64
+	if err := tx.QueryRow(`SELECT COALESCE(MAX(seq), 0) FROM ops`).Scan(&top); err != nil {
+		return 0, err
+	}
+	foreign := top != s.seq
 	exists := func(id string) (bool, error) {
 		var one int
 		err := tx.QueryRow(`SELECT 1 FROM rows WHERE id = ?`, id).Scan(&one)
@@ -271,19 +275,35 @@ func (s *Store) absorb(dir string) (int, error) {
 			return 0, err
 		}
 	}
+	if err := tx.QueryRow(`SELECT COALESCE(MAX(seq), 0) FROM ops`).Scan(&top); err != nil {
+		return 0, err
+	}
 	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
+	// The entries just written are this Store's own; one from another
+	// window, found on the way, still calls for a fresh read.
+	s.seq, s.foreign = top, s.foreign || foreign
 	// Whatever is written here next is newer than everything just seen:
 	// the clock takes the newest stamp's time and its counter.
-	if parts := strings.Split(newest, "-"); len(parts) == 3 {
-		ms, _ := strconv.ParseInt(parts[0], 10, 64)
-		c, _ := strconv.ParseInt(parts[1], 16, 32)
-		if ms > s.lastMS || (ms == s.lastMS && int(c) > s.counter) {
-			s.lastMS, s.counter = ms, int(c)
+	s.observe(newest)
+	return changed, nil
+}
+
+// SyncState reports how many other machines have written to dir, and how
+// many of their operations are waiting here for a row that has not arrived.
+func (s *Store) SyncState(dir string) (machines, waiting int, err error) {
+	files, err := filepath.Glob(filepath.Join(dir, "*.ops"))
+	if err != nil {
+		return 0, 0, err
+	}
+	for _, f := range files {
+		if filepath.Base(f) != s.device+".ops" {
+			machines++
 		}
 	}
-	return changed, nil
+	err = s.db.QueryRow(`SELECT COUNT(*) FROM pending`).Scan(&waiting)
+	return machines, waiting, err
 }
 
 // breakCycles makes the loaded rows a tree. Two machines can each move a

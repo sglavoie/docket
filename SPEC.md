@@ -106,8 +106,27 @@ any file syncing tool carries. The database never goes in that folder.
 
 Undo on one machine is a new operation, so it reaches the others. A row
 added under a row that another machine deleted meanwhile is hidden with it,
-and returns if the delete is undone. Folds, settings, saved filters and the
-undo stacks stay on their machine. The log is never compacted.
+and returns if the delete is undone. Folds, settings and the undo stacks
+stay on their machine. The log is never compacted.
+
+The sidebar's last line says `synced HH:MM`, with a count of operations
+still waiting for a row, or `sync failed` in the alarm colour; the status
+line gives the reason. Work goes on either way.
+
+Convergence is tested by three machines making random changes, moves that
+loop and deletes among them, while their files reach one another late, out
+of order and cut short. Once every file has arrived whole, all three must
+hold the same outline, with every live row reachable.
+
+### Two windows
+
+Two windows may be open on one database. Each notices the other's writes
+at its next key, at each save, and once a minute, and reads the outline
+again; it waits while a row is being typed, since that row exists only
+there. A write passes every stamp already in the log, so no two stamps are
+alike and the latest write is the newest whichever window made it. Each
+window keeps its own undo history for the session; the stored one is
+whichever was written last.
 
 ## Screen
 
@@ -154,7 +173,8 @@ The pane shows the rows under one row, or a list.
 
 - **A project, the Inbox, or Projects** is the outline, edited where it sits.
   The Inbox is an ordinary row with the fixed identity `inbox`, kept first
-  among the top-level rows and never drawn among them.
+  among the top-level rows and never drawn among them. The `filters` row is
+  the other such row.
 - **Today, Waiting and Stale** are flat. A list is read when it is opened and
   holds those rows until it is opened again, so closing or rescheduling a row
   never pulls it from under the cursor. Each row names its project; Waiting
@@ -223,8 +243,10 @@ Three more acts use the same line:
 ### Saved filters and review
 
 `:save name` keeps the pane's filter, with the row it was made under and
-whether it was flat, on this machine. It then appears in the `p` picker as
-`/name`. `:forget name` drops it. Saved filters are not in the sidebar.
+whether it was flat. It then appears in the `p` picker as `/name`.
+`:forget name` drops it. Saved filters are not in the sidebar. Each is a row
+under a hidden top-level row with the fixed identity `filters`, so saving
+and forgetting are undone, backed up and synced like any other change.
 
 `:review` is a list of the active projects, the longest untouched first,
 each with its age and how many tasks are left to do, or `∅`. It is a list

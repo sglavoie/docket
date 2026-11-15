@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -142,7 +141,7 @@ func (m *Model) refilter() {
 	walk = func(parent string, depth int) bool {
 		any := false
 		for _, id := range m.tree.Children(parent) {
-			if id == inboxID && parent == "" {
+			if hiddenTop(id) {
 				continue
 			}
 			at := len(m.at.hits)
@@ -307,6 +306,9 @@ func (m *Model) export(path string) {
 	var walk func(parent string, depth int)
 	walk = func(parent string, depth int) {
 		for _, id := range m.tree.Children(parent) {
+			if id == filtersID {
+				continue
+			}
 			line := sigil.FromFields(m.tree.Row(id).Fields)
 			b.WriteString(strings.Repeat("\t", depth) + sigil.Format(line, parent == "", today) + "\n")
 			n++
@@ -322,19 +324,30 @@ func (m *Model) export(path string) {
 }
 
 // savedFilter is a query kept under a name, with the place it was made in.
-// It is a setting of this machine.
+// It is stored as a row under a hidden top-level row, so it is undone,
+// backed up and synced like everything else.
 type savedFilter struct {
-	Name, Root, Query string
-	Flat              bool
+	ID, Name, Root, Query string
+	Flat                  bool
 }
+
+const (
+	fieldQuery = "query"
+	fieldFlat  = "flat"
+	fieldRoot  = "root"
+)
 
 // keepFilter saves the pane's filter under a name, or forgets a saved one.
 func (m *Model) keepFilter(save bool, name string) {
-	at := -1
-	for i, f := range m.filters {
+	id := ""
+	for _, f := range m.filters {
 		if f.Name == name {
-			at = i
+			id = f.ID
 		}
+	}
+	var ops []outline.Op
+	set := func(field, value string) {
+		ops = append(ops, outline.Op{Kind: outline.Set, Row: id, Field: field, Value: value})
 	}
 	switch {
 	case name == "":
@@ -343,23 +356,27 @@ func (m *Model) keepFilter(save bool, name string) {
 	case save && (m.at.query == "" || m.at.list != ""):
 		m.msg = "filter an outline first (/), then save it"
 		return
-	case save && at >= 0:
-		m.filters[at] = savedFilter{name, m.at.root, m.at.query, m.at.flat}
-	case save:
-		m.filters = append(m.filters, savedFilter{name, m.at.root, m.at.query, m.at.flat})
-	case at < 0:
+	case !save && id == "":
 		m.msg = "no saved filter is called " + name
 		return
+	case !save:
+		set(outline.FieldDeleted, "1")
 	default:
-		m.filters = append(m.filters[:at], m.filters[at+1:]...)
-	}
-	b, err := json.Marshal(m.filters)
-	if err == nil {
-		err = m.backend.SetMeta(metaFilters, string(b))
+		if id == "" {
+			id = m.newID()
+			ops = append(ops, outline.Op{Kind: outline.Insert, Row: id, Parent: filtersID, Pos: m.tree.PosLast(filtersID)})
+			set(sigil.FieldText, name)
+		}
+		flat := ""
+		if m.at.flat {
+			flat = "1"
+		}
+		set(fieldQuery, m.at.query)
+		set(fieldFlat, flat)
+		set(fieldRoot, m.at.root)
 	}
 	switch {
-	case err != nil:
-		m.msg = "not saved: " + err.Error()
+	case !m.do(ops...):
 	case save:
 		m.msg = "saved: p then /" + name + " opens it"
 	default:
