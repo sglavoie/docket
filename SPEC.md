@@ -16,7 +16,10 @@ a rule here changes this file first.
    five characters that open the stamp line (`#` `@` `$` `*` `-`) are the
    row grammar typed on a row, and are not counted.
 5. **Every keystroke paints within one frame.** The tree lives in memory;
-   SQLite is written when a change is committed, never while typing.
+   SQLite is written when a change is committed, never while typing. What
+   the sidebar states is derived again only when a row has changed or the
+   minute has turned, so a typed letter never walks the outline. A test
+   holds moving and typing to 16 ms on an outline of 10,000 rows.
 6. **Chrome is the sidebar, one header line and one status line.**
 
 ## Model
@@ -75,9 +78,18 @@ this machine beside the folds and survive a restart. They are not logged and
 will not sync: each step undoes a change made here.
 
 **Backups.** The first launch of each day writes a whole copy of the
-database to `backups/docket-YYYY-MM-DD.db` beside it, before anything is
-changed, and keeps the newest 14. Restoring is copying one over the live
-file. A failed backup is said on the status line and does not stop the work.
+database to `backups/docket-YYYY-MM-DD.db` beside it, before the outline is
+read or changed, and keeps the newest 14. A session left open takes each
+later day's copy when the day turns over. Restoring is copying one over the
+live file. A failed backup is said on the status line and does not stop the
+work.
+
+**A copy is another machine.** A database remembers the machine and the
+path it was named on. Opened anywhere else, as a file copied to a second
+machine or to a second place on this one, it takes a new sync name and says
+so once. Two databases never share a name, since each would write the same
+sync file and pass over the other's lines as its own. A backup restored
+over the file it was taken from is not a copy and keeps its name.
 
 ### Sync
 
@@ -85,7 +97,8 @@ file. A failed backup is said on the status line and does not stop the work.
 any file syncing tool carries. The database never goes in that folder.
 
 - Each machine appends its own operations to `<device>.ops` there, one JSON
-  object a line, and reads every file. No file has two writers.
+  object a line, and reads every file. No file has two writers. A last line
+  the machine never finished writing is cut before the next is added.
 - A remote operation is applied by its stamp, per field: the newest write to
   a field wins, and the newest move of a row. Renaming a row on one machine
   and closing it on another keeps both. The same field written on both keeps
@@ -101,8 +114,21 @@ any file syncing tool carries. The database never goes in that folder.
   next is newer than everything received even if the wall clock is behind.
 - A machine reads its own file too, so a database restored from a backup
   gets back what the backup lacks.
-- Sync runs at launch, once a minute, on quit, and on `:sync`. It waits while
-  a line is being typed. `:sync off` stops it.
+- A copy that took a new name writes out, once, everything it held when it
+  was copied, whoever made it: the machine it came from may never sync.
+- Each file is read from where the last pass stopped, so a pass costs what
+  is new and not the length of the log. A file found replaced, or a folder
+  not used before, is read from the top.
+- A whole line that cannot be read stops that file there, since a tool
+  copying in pieces may yet fill it in; nothing after it is applied. If the
+  next pass finds it unchanged the sidebar says `sync stuck` in the alarm
+  colour and the status line names the file and the line, until the file is
+  whole again.
+- Sync runs at launch, once a minute, on quit, and on `:sync`. The work in
+  the folder is done away from the keys, so a slow folder never holds up a
+  keystroke; only the pass on quit is waited for. A pass does not start
+  while a line is being typed, and one that ends then is applied when the
+  line is kept. `:sync off` stops it.
 
 Undo on one machine is a new operation, so it reaches the others. A row
 added under a row that another machine deleted meanwhile is hidden with it,
@@ -110,8 +136,8 @@ and returns if the delete is undone. Folds, settings and the undo stacks
 stay on their machine. The log is never compacted.
 
 The sidebar's last line says `synced HH:MM`, with a count of operations
-still waiting for a row, or `sync failed` in the alarm colour; the status
-line gives the reason. Work goes on either way.
+still waiting for a row, or `sync failed` or `sync stuck` in the alarm
+colour; the status line gives the reason. Work goes on either way.
 
 Convergence is tested by three machines making random changes, moves that
 loop and deletes among them, while their files reach one another late, out
@@ -376,6 +402,11 @@ in place, never copied, so two machines closing it cannot make two.
 
 5. **After the trial.** Typing polish, backups, wrapping, paste, persistent
    undo, start dates, repeating rows, saved filters, review, sync. *Built.*
+
+6. **Before daily use.** A copied database takes its own sync name, a stuck
+   sync file is named, a session left open keeps taking backups, sync works
+   in the folder away from the keys and reads only what is new, and rule 5
+   is held by a test. *Built.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface.

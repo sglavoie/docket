@@ -25,7 +25,9 @@ type Backend interface {
 	Meta(key string) (string, error)
 	SetMeta(key, value string) error
 	Sync(dir string) (int, error)
-	SyncState(dir string) (machines, waiting int, err error)
+	SyncBegin(dir string) (*store.SyncJob, error)
+	SyncEnd(read *store.SyncRead) (store.SyncReport, error)
+	DailyBackup(day string) error
 	Stale() (bool, error)
 	Load() (*outline.Tree, error)
 }
@@ -39,6 +41,9 @@ const (
 )
 
 type tickMsg struct{}
+
+// syncDoneMsg is a pass's work in the folder, finished and ready to apply.
+type syncDoneMsg struct{ read *store.SyncRead }
 
 // tick wakes the screen once a minute, so a day that turns over while the
 // app is open is seen without a key press.
@@ -86,8 +91,19 @@ type Model struct {
 	syncDir    string
 	syncNote   string // the sidebar's last word on sync
 	syncFailed bool
-	tags       []string // tags in use, most used first
-	parked     int
+	// A pass works in the folder off the keys' path. syncIO is that work
+	// while a pass is under way; syncSent says the program has been handed
+	// it; syncHeld is a finished pass waiting for a line to be typed out.
+	syncIO    func() tea.Msg
+	syncSent  bool
+	syncHeld  *syncDoneMsg
+	syncLoud  bool   // the pass was asked for, so its outcome is said
+	syncWant  bool   // another pass was asked for while one was under way
+	syncAgain bool   // this pass is the one retry a missing file is owed
+	backedUp  string // the day of the newest snapshot
+	scanned   scanKey
+	tags      []string // tags in use, most used first
+	parked    int
 
 	undo, redo [][]outline.Op
 	prefix     string            // a pending g or d
@@ -131,7 +147,8 @@ func newModel(tree *outline.Tree, backend Backend, folds map[string]bool, now fu
 	m.ensureFixed(inboxID, "Inbox")
 	m.ensureFixed(filtersID, "Filters")
 	m.adoptOldFilters()
-	m.syncNow(false)
+	m.backedUp = m.today().Format("2006-01-02")
+	m.syncStart(false)
 	m.rebuild()
 	// Launch where the day's work is, or among the projects when nothing
 	// has been picked yet.
@@ -143,7 +160,7 @@ func newModel(tree *outline.Tree, backend Backend, folds map[string]bool, now fu
 	return m
 }
 
-func (m *Model) Init() tea.Cmd { return tick() }
+func (m *Model) Init() tea.Cmd { return tea.Batch(tick(), m.syncCmd()) }
 
 // history is the undo and redo stacks as they are kept between sessions.
 // They belong to this machine: each step undoes a change made here.
@@ -218,34 +235,115 @@ func (m *Model) adoptOldFilters() {
 	m.backend.SetMeta(metaFilters, "")
 }
 
-// syncNow exchanges operations with the other machines and, when theirs
-// changed anything, reads the outline again. It waits while a line is being
-// typed, since that line is not stored yet.
-func (m *Model) syncNow(loud bool) {
+// syncStart begins exchanging operations with the other machines. What is
+// to be written is read here; the folder, which may be slow, is worked in
+// away from the keys, and syncDone applies what was found there. It waits
+// while a line is being typed, since that line is not stored yet.
+func (m *Model) syncStart(loud bool) {
 	if m.syncDir == "" || m.edit != nil || m.ask != nil {
 		return
 	}
-	n, err := m.backend.Sync(m.syncDir)
-	if err != nil {
-		m.syncNote, m.syncFailed = "sync failed", true
-		m.msg = "sync failed: " + err.Error()
+	m.syncLoud = m.syncLoud || loud
+	if m.syncIO != nil {
+		m.syncWant = m.syncWant || loud
 		return
 	}
-	machines, waiting, _ := m.backend.SyncState(m.syncDir)
+	job, err := m.backend.SyncBegin(m.syncDir)
+	if err != nil {
+		m.syncFail(err)
+		return
+	}
+	m.syncIO = func() tea.Msg { return syncDoneMsg{job.Run()} }
+}
+
+// syncCmd hands the program a pass that has begun, once.
+func (m *Model) syncCmd() tea.Cmd {
+	if m.syncIO == nil || m.syncSent {
+		return nil
+	}
+	m.syncSent = true
+	return m.syncIO
+}
+
+func (m *Model) syncFail(err error) {
+	m.syncNote, m.syncFailed = "sync failed", true
+	m.msg = "sync failed: " + err.Error()
+	m.syncLoud, m.syncAgain = false, false
+}
+
+// syncSettle applies a finished pass once nothing is being typed: what it
+// brings may redraw the outline, and a typed line exists only here.
+func (m *Model) syncSettle() {
+	if m.syncHeld == nil || m.edit != nil || m.ask != nil {
+		return
+	}
+	done := *m.syncHeld
+	m.syncHeld, m.syncIO, m.syncSent = nil, nil, false
+	if m.syncDir == "" {
+		m.syncLoud, m.syncWant, m.syncAgain = false, false, false
+		return
+	}
+	report, err := m.backend.SyncEnd(done.read)
+	if err != nil {
+		m.syncFail(err)
+		return
+	}
+	// This machine's file was gone from the folder: it is written whole.
+	if report.Again && !m.syncAgain {
+		m.syncAgain = true
+		m.syncStart(false)
+		return
+	}
+	loud := m.syncLoud
+	m.syncLoud, m.syncAgain = false, false
 	m.syncNote, m.syncFailed = "synced "+m.today().Format("15:04"), false
-	if waiting > 0 {
+	if report.Waiting > 0 {
 		// Changes that name a row which has not arrived yet.
-		m.syncNote += fmt.Sprintf(" · %d waiting", waiting)
+		m.syncNote += fmt.Sprintf(" · %d waiting", report.Waiting)
 	}
 	switch {
-	case n > 0:
+	case report.Changed > 0:
 		if m.reload() {
-			m.msg = fmt.Sprintf("synced: %d changes from other machines", n)
+			m.msg = fmt.Sprintf("synced: %d changes from other machines", report.Changed)
 		}
-	case loud && machines == 1:
+	case loud && report.Machines == 1:
 		m.msg = "synced with 1 other machine"
 	case loud:
-		m.msg = fmt.Sprintf("synced with %d other machines", machines)
+		m.msg = fmt.Sprintf("synced with %d other machines", report.Machines)
+	}
+	// A file that cannot be read past a line holds back everything after
+	// it, so it is said for as long as it lasts.
+	if len(report.Stuck) > 0 {
+		at := report.Stuck[0]
+		m.syncNote, m.syncFailed = "sync stuck", true
+		m.msg = fmt.Sprintf("sync stuck: line %d of %s cannot be read, and nothing after it is applied", at.Line, at.File)
+		if more := len(report.Stuck) - 1; more > 0 {
+			m.msg += fmt.Sprintf(" (and %d more)", more)
+		}
+	}
+	if m.syncWant {
+		m.syncWant = false
+		m.syncStart(true)
+	}
+}
+
+// syncQuit is the last pass, done whole before the program ends.
+func (m *Model) syncQuit() {
+	if m.syncDir != "" {
+		m.backend.Sync(m.syncDir)
+	}
+}
+
+// backup takes the day's snapshot when the day has turned over while the
+// app stayed open.
+func (m *Model) backup() {
+	day := m.today().Format("2006-01-02")
+	if day == m.backedUp {
+		return
+	}
+	m.backedUp = day
+	if err := m.backend.DailyBackup(day); err != nil {
+		m.msg = "no backup today: " + err.Error()
 	}
 }
 
@@ -678,10 +776,16 @@ func (m *Model) finishEdit() bool {
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tickMsg:
+		m.backup()
 		m.refresh()
-		m.syncNow(false)
+		m.syncSettle()
+		m.syncStart(false)
 		m.rebuild()
-		return m, tick()
+		return m, tea.Batch(tick(), m.syncCmd())
+	case syncDoneMsg:
+		m.syncHeld = &msg
+		m.syncSettle()
+		m.rebuild()
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 	case tea.PasteMsg:
@@ -699,7 +803,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.capture(string(m.ask.ed.buf))
 			}
 			m.ask = nil
-			m.syncNow(false)
+			m.syncQuit()
 			return m, tea.Quit
 		}
 		switch {
@@ -717,11 +821,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Every key may have changed what the sidebar counts.
 		m.rebuild()
 		if m.quit {
-			m.syncNow(false)
+			m.syncQuit()
 			return m, tea.Quit
 		}
+		m.syncSettle()
 	}
-	return m, nil
+	return m, m.syncCmd()
 }
 
 // prompt is the bottom line while it is asking for something. Its label
@@ -880,7 +985,7 @@ func (m *Model) command(line string) {
 		dir := strings.Join(words[1:], " ")
 		switch {
 		case dir == "off":
-			m.syncDir, m.syncNote = "", ""
+			m.syncDir, m.syncNote, m.syncFailed = "", "", false
 			m.msg = "sync is off"
 		case dir != "":
 			if rest, ok := strings.CutPrefix(dir, "~/"); ok {
@@ -897,7 +1002,9 @@ func (m *Model) command(line string) {
 			m.msg = "not saved: " + err.Error()
 			return
 		}
-		m.syncNow(true)
+		if m.syncDir != "" {
+			m.syncStart(true)
+		}
 	case "review":
 		m.open(entry{kind: kindReview})
 	case "save", "forget":

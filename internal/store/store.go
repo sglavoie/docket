@@ -5,6 +5,7 @@ package store
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"fmt"
@@ -41,7 +42,9 @@ const schemaVersion = "1"
 // Store is one open database. It is used from a single goroutine.
 type Store struct {
 	db      *sql.DB
+	path    string
 	device  string
+	renamed bool // this database was found somewhere new and took a new name
 	lastMS  int64
 	counter int
 
@@ -49,7 +52,14 @@ type Store struct {
 	// past it was written by another window on the same database.
 	seq     int64
 	foreign bool
+
+	// stuck is each sync file that holds a line this machine cannot read,
+	// and how many passes in a row found it at the same place.
+	stuck map[string]stuckAt
 }
+
+// keepBackups is how many daily snapshots are kept.
+const keepBackups = 14
 
 // NewID returns a fresh row identifier.
 func NewID() string {
@@ -71,7 +81,7 @@ func Open(path string) (*Store, error) {
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
-	s := &Store{db: db}
+	s := &Store{db: db, path: path, stuck: map[string]stuckAt{}}
 	if err := s.init(); err != nil {
 		db.Close()
 		return nil, err
@@ -96,14 +106,8 @@ func (s *Store) init() error {
 	default:
 		return fmt.Errorf("database schema %s is newer than this build understands (%s)", version, schemaVersion)
 	}
-	if s.device, err = s.Meta("device"); err != nil {
+	if err := s.identify(); err != nil {
 		return err
-	}
-	if s.device == "" {
-		s.device = NewID()[:8]
-		if err := s.SetMeta("device", s.device); err != nil {
-			return err
-		}
 	}
 	// Resume the clock past the last stamp, so a wall clock that stepped
 	// backwards never mints a stamp older than one already written.
@@ -117,6 +121,85 @@ func (s *Store) init() error {
 	s.observe(last)
 	return s.db.QueryRow(`SELECT COALESCE(MAX(seq), 0) FROM ops`).Scan(&s.seq)
 }
+
+// home names where this database lives: this machine and this path. It is
+// kept beside the device name, so a database that turns up somewhere else,
+// copied or restored onto another machine, is known for a copy.
+func (s *Store) home() string {
+	path := s.path
+	if abs, err := filepath.Abs(path); err == nil {
+		path = abs
+	}
+	if real, err := filepath.EvalSymlinks(path); err == nil {
+		path = real
+	}
+	sum := sha256.Sum256([]byte(machineID() + "\x00" + path))
+	return hex.EncodeToString(sum[:8])
+}
+
+// identify gives this database the name it syncs under. Two databases must
+// never share one: each would write the same sync file and pass over the
+// other's lines as its own. So a database found away from where it was
+// named, a copy, takes a new name. Everything it held is then written out
+// again under that name, since the machine it came from may never sync.
+func (s *Store) identify() error {
+	var err error
+	if s.device, err = s.Meta("device"); err != nil {
+		return err
+	}
+	was, err := s.Meta("home")
+	if err != nil {
+		return err
+	}
+	home := s.home()
+	switch {
+	case s.device == "":
+		s.device = NewID()[:8]
+		if err := s.SetMeta("device", s.device); err != nil {
+			return err
+		}
+		return s.SetMeta("home", home)
+	case was == "": // named by a build that did not note where
+		return s.SetMeta("home", home)
+	case was == home:
+		return nil
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	device := NewID()[:8]
+	var top int64
+	if err := tx.QueryRow(`SELECT COALESCE(MAX(seq), 0) FROM ops`).Scan(&top); err != nil {
+		return err
+	}
+	for key, value := range map[string]string{
+		"device":        device,
+		"home":          home,
+		"sync_adopted":  strconv.FormatInt(top, 10),
+		"sync_exported": "0",
+	} {
+		if _, err := tx.Exec(`INSERT INTO meta(key, value) VALUES(?, ?)
+			ON CONFLICT(key) DO UPDATE SET value = excluded.value`, key, value); err != nil {
+			return err
+		}
+	}
+	// What the copy had read of each sync file is read again: applying is
+	// idempotent, and the folder here may not be the one it knew.
+	if _, err := tx.Exec(`DELETE FROM meta WHERE key LIKE 'sync_at:%' OR key LIKE 'sync_seen:%'`); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	s.device, s.renamed = device, true
+	return nil
+}
+
+// Renamed reports that this database was found on another machine, or at
+// another path, than the one it was named on, and took a new sync name.
+func (s *Store) Renamed() bool { return s.renamed }
 
 // observe moves the clock up to a stamp, time and counter, so the next
 // stamp issued here is newer than it.
@@ -339,6 +422,11 @@ func (s *Store) Backup(dir, day string, keep int) error {
 		}
 	}
 	return nil
+}
+
+// DailyBackup writes day's snapshot beside the database, in backups/.
+func (s *Store) DailyBackup(day string) error {
+	return s.Backup(filepath.Join(filepath.Dir(s.path), "backups"), day, keepBackups)
 }
 
 func (s *Store) Close() error { return s.db.Close() }

@@ -28,7 +28,7 @@ func TestAStartDateDimsARowUntilItsDayThenPutsItInToday(t *testing.T) {
 
 	// On the day, with no key pressed, it is in Today and reads as live.
 	h.clock = h.clock.Add(5 * 24 * time.Hour)
-	h.m.Update(tickMsg{})
+	h.tick()
 	h.wantSide(
 		"Inbox",
 		"Today 1",

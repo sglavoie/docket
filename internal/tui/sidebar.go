@@ -121,10 +121,27 @@ func (m *Model) changedAt(id string) int64 {
 	return r.Created
 }
 
+// scanKey is what a scan's answer depends on: the tree as it stood, and the
+// minute it was read in.
+type scanKey struct {
+	tree   *outline.Tree
+	gen    uint64
+	minute int64
+}
+
 // scan reads the whole tree once and derives everything the sidebar states:
 // the three computed lists and each project's line. Nothing here is stored.
 func (m *Model) scan() {
 	now, today := m.now(), m.today()
+	// The pass is skipped while its answer cannot have changed, which is
+	// what keeps a keystroke that changes no row, a typed letter above all,
+	// from costing a walk of the whole outline. Ages are whole days and the
+	// screen is read again each minute, so the minute is as fine as it gets.
+	key := scanKey{m.tree, m.tree.Gen(), now / time.Minute.Milliseconds()}
+	if key == m.scanned {
+		return
+	}
+	m.scanned = key
 	day := today.Format("2006-01-02")
 	lists := map[string][]string{}
 	tagUse := map[string]int{}

@@ -57,7 +57,12 @@ var (
 type Tree struct {
 	rows map[string]*Row
 	kids map[string][]string
+	gen  uint64
 }
+
+// Gen counts the changes made to the tree. What is derived from the tree
+// stays true for as long as the count holds.
+func (t *Tree) Gen() uint64 { return t.gen }
 
 func NewTree(rows []*Row) *Tree {
 	t := &Tree{rows: make(map[string]*Row, len(rows)), kids: map[string][]string{}}
@@ -130,6 +135,7 @@ func (t *Tree) unlink(r *Row) {
 
 // Apply performs op and returns the operation that undoes it.
 func (t *Tree) Apply(op Op, now int64) (Op, error) {
+	t.gen++
 	switch op.Kind {
 	case Insert:
 		if t.rows[op.Row] != nil {
@@ -183,6 +189,7 @@ func (t *Tree) Apply(op Op, now int64) (Op, error) {
 // Forget drops a row that was inserted but never committed.
 func (t *Tree) Forget(id string) {
 	if r := t.rows[id]; r != nil {
+		t.gen++
 		t.unlink(r)
 		delete(t.rows, id)
 	}

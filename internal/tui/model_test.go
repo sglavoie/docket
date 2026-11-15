@@ -49,7 +49,22 @@ func resume(t *testing.T, path string, st *store.Store, at time.Time) *harness {
 	m.newID = func() string { n++; return fmt.Sprintf("%s-row%03d", filepath.Base(path), n) }
 	m.Update(tea.WindowSizeMsg{Width: 40, Height: 12})
 	h.m = m
+	h.settle()
 	return h
+}
+
+// settle does a sync pass's work in the folder, which the program does away
+// from the keys, and hands back what it found.
+func (h *harness) settle() {
+	for h.m.syncIO != nil && h.m.syncHeld == nil {
+		h.m.Update(h.m.syncIO())
+	}
+}
+
+// tick is the minute passing.
+func (h *harness) tick() {
+	h.m.Update(tickMsg{})
+	h.settle()
 }
 
 func start(t *testing.T) *harness {
@@ -99,6 +114,7 @@ func (h *harness) press(toks ...string) *harness {
 	// scroll position, so the harness draws too.
 	send := func(k tea.KeyPressMsg) {
 		h.m.Update(k)
+		h.settle()
 		h.m.View()
 	}
 	for _, tok := range toks {

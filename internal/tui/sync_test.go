@@ -18,7 +18,7 @@ func TestTwoMachinesShareAnOutline(t *testing.T) {
 		t.Fatalf("msg = %q", desk.m.msg)
 	}
 	desk.press("o", `"Alpha"`, "enter", "tab", `"Write the spec #doc"`, "enter", `"Ship it @fri"`, "esc")
-	desk.m.Update(tickMsg{}) // the minute tick carries it out
+	desk.tick() // the minute tick carries it out
 
 	lap.press(":", `"sync `+shared+`"`, "enter")
 	lap.want(
@@ -43,9 +43,9 @@ func TestTwoMachinesShareAnOutline(t *testing.T) {
 	// adds a row; neither has seen the other's change.
 	lap.press("j", "x", "o", `"Announce"`, "esc")
 	desk.press("k", "e", `" v2"`, "esc")
-	lap.m.Update(tickMsg{})
-	desk.m.Update(tickMsg{})
-	lap.m.Update(tickMsg{})
+	lap.tick()
+	desk.tick()
+	lap.tick()
 	for _, h := range []*harness{desk, lap} {
 		h.press("g", "g")
 		h.want(
@@ -61,8 +61,8 @@ func TestTwoMachinesShareAnOutline(t *testing.T) {
 
 	// Undo on one machine is a new change, and reaches the other.
 	lap.press("j", "u")
-	lap.m.Update(tickMsg{})
-	desk.m.Update(tickMsg{})
+	lap.tick()
+	desk.tick()
 	desk.want(
 		"▌ ▾ Alpha",
 		"    ✓ Write the spec v2 #doc",
@@ -72,13 +72,13 @@ func TestTwoMachinesShareAnOutline(t *testing.T) {
 	// Sync waits while a line is being typed, and can be turned off.
 	desk.press("o", `"half typed"`)
 	lap.press("g", "g", "j", "!")
-	lap.m.Update(tickMsg{})
-	desk.m.Update(tickMsg{})
+	lap.tick()
+	desk.tick()
 	if string(desk.m.edit.buf) != "half typed" {
 		t.Fatal("sync interrupted typing")
 	}
 	desk.press("esc")
-	desk.m.Update(tickMsg{})
+	desk.tick()
 	desk.want(
 		"  ▾ Alpha",
 		"▌   ○ half typed",
@@ -87,8 +87,8 @@ func TestTwoMachinesShareAnOutline(t *testing.T) {
 	)
 	// A saved filter is a row like any other, so it travels too.
 	desk.press("/", `"#doc"`, "enter", ":", `"save docs"`, "enter", "esc")
-	desk.m.Update(tickMsg{})
-	lap.m.Update(tickMsg{})
+	desk.tick()
+	lap.tick()
 	lap.press("p", `"/docs"`, "enter")
 	lap.want(
 		"  ▾ Alpha",
@@ -152,7 +152,7 @@ func TestTwoWindowsOnOneDatabaseStayInStep(t *testing.T) {
 	// The first window, mid-typing, is left alone; its row is not stored
 	// yet. When the row is kept it catches up, and nothing is lost.
 	one.press("o", `"typed meanwhile"`)
-	one.m.Update(tickMsg{})
+	one.tick()
 	if one.m.edit == nil || string(one.m.edit.buf) != "typed meanwhile" {
 		t.Fatal("the other window's change interrupted typing")
 	}
