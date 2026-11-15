@@ -24,6 +24,21 @@ const dayCanvasIndent = "    "
 // counting the rest.
 const dayCanvasMaxDone = 5
 
+// ProgressLine quotes the same counts and week bars as the full day canvas,
+// in muted ink. A reading too wide for one row is omitted whole.
+func (canvas DayCanvas) ProgressLine(width int) string {
+	if canvas.WeekDone() == 0 {
+		return ""
+	}
+	line := theme.MutedStyle.Render(fmt.Sprintf("  Done today · %d   this week ", len(canvas.Done))) +
+		canvas.renderSparklineStyles("", theme.MutedStyle, theme.MutedStyle) +
+		theme.MutedStyle.Render(fmt.Sprintf(" %d", canvas.WeekDone()))
+	if lipgloss.Width(line) > width {
+		return ""
+	}
+	return line
+}
+
 // dayCanvasHeading is a canvas block's title: muted, under a dim rule, and
 // indented past the fold column, so it never reads as a lane a key can fold.
 func dayCanvasHeading(label, trailing string, width int) string {
@@ -237,6 +252,10 @@ func (canvas DayCanvas) PickUpBlock(width, budget int) []string {
 func (canvas DayCanvas) renderSparkline(sep string) string {
 	done := lipgloss.NewStyle().Foreground(theme.ColorSuccess)
 	quiet := lipgloss.NewStyle().Foreground(theme.ColorDimmed)
+	return canvas.renderSparklineStyles(sep, done, quiet)
+}
+
+func (canvas DayCanvas) renderSparklineStyles(sep string, done, quiet lipgloss.Style) string {
 	var b strings.Builder
 	for i, bar := range canvas.Sparkline() {
 		if i > 0 {

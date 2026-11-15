@@ -147,6 +147,16 @@ Type "M"
 Sleep 800ms
 Screenshot menu.png
 Escape
+Sleep 400ms
+Type "a"
+Sleep 300ms
+Type "Finish weekly review $done "
+Enter
+Sleep 800ms
+Type "ga"
+Sleep 800ms
+Screenshot all-progress.png
+Sleep 500ms
 TAPE
 
 (cd "$work" && vhs shots.tape >/dev/null)

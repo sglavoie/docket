@@ -354,7 +354,8 @@ func escActionClause(action string) string {
 }
 
 // The day canvas is what the Outliner draws in room its rows leave empty: in
-// Today mode, the work finished today and the week ahead under the list; in an
+// Today mode, the work finished today and the week ahead under the list; in All,
+// a single progress reading; in an
 // empty Today, a resting card that says the day is clear; and in a workspace
 // with no task at all, a welcome that teaches capture by example.
 //
@@ -369,10 +370,27 @@ func escActionClause(action string) string {
 // plain cross-project Today, with nothing narrowing it, since the canvas reads
 // the whole scope and a narrowed list beside it would disagree with it.
 func (m *OutlinerModel) dayCanvasEligible() bool {
-	return m.PrimaryMode == chrome.ModeToday && m.Project == nil &&
+	return m.PrimaryMode == chrome.ModeToday && m.scopeCanvasEligible()
+}
+
+// Both canvas presentations read the whole scope, so narrowing hides them.
+func (m *OutlinerModel) scopeCanvasEligible() bool {
+	return m.Project == nil &&
 		!m.HasSearchProjection() && !m.ShowsRankedList() && !m.HasActiveLens() &&
 		!m.Focus.Active() && !m.Focus.Zoom.Active() &&
 		!query.HasActiveCommonFilters(&m.Filter.CommonFilterState)
+}
+
+// allProgressLines quotes the day canvas without lending it any list rows.
+// The separator and reading are one block, including during transient paint.
+func (m *OutlinerModel) allProgressLines(width, budget int) []string {
+	if budget < 2 || !m.HasContentRows() || !m.scopeCanvasEligible() {
+		return nil
+	}
+	if line := m.computeDayCanvas(time.Now()).ProgressLine(width); line != "" {
+		return []string{"", line}
+	}
+	return nil
 }
 
 func (m *OutlinerModel) computeDayCanvas(now time.Time) pulse.DayCanvas {
@@ -461,18 +479,21 @@ func fitCardLines(lines []string, width int) bool {
 	return true
 }
 
-// writeDayCanvas draws Today's canvas, or Agenda's left-out line, in the
-// window rows the list left empty.
-// Its blocks are chosen against the settled window — the rows alone — so a
+// writeDayCanvas draws Today's canvas, All's progress, or Agenda's left-out
+// line in the window rows the list left empty.
+// Today's blocks are chosen against the settled window — the rows alone — so a
 // ghost or a closing gap borrowing a row for a few frames trims the canvas's
 // tail rather than choosing different blocks and flickering. The rows it drew
-// are recorded so the dock's padding counts them.
+// are recorded so the dock's padding counts them. All admits its separator and
+// progress together against the remaining room after transient paint.
 func (m *OutlinerModel) writeDayCanvas(b *strings.Builder, viewport outlinerViewport) {
 	m.LastViewport.canvasRows = 0
 	drawn := m.LastViewport.drawnRows()
 	settled := drawn - m.LastViewport.gapRows - boolRows(m.LastViewport.ghostActive)
 	lines := m.todayCanvasLines(viewport.rowWidth, viewport.VisibleRows-settled)
-	if lines == nil {
+	if m.PrimaryMode == chrome.ModeAll {
+		lines = m.allProgressLines(viewport.rowWidth, viewport.VisibleRows-drawn)
+	} else if lines == nil {
 		lines = m.agendaLeftOutLines(viewport.rowWidth, viewport.VisibleRows-settled)
 	}
 	lines = lines[:min(len(lines), max(viewport.VisibleRows-drawn, 0))]

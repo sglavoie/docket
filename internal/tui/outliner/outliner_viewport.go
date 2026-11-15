@@ -181,7 +181,7 @@ type outlinerViewport struct {
 	// own rows, into the padding under a short projection. It is paint and
 	// moves no row's screen position above the gap.
 	gapRows int
-	// canvasRows is the lines Today's day canvas drew in the padding under
+	// canvasRows is the lines the mode's canvas drew in the padding under
 	// the rows; like gapRows it is paint, counted only so the dock's padding
 	// lands the dock where the window paid for it.
 	canvasRows int

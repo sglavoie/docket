@@ -602,17 +602,17 @@ stays in the one deferred closure in `AppModel.Update`. Feed divider appearance
 to all three `renderFooterChrome` dividers and keep the strip divider outside.
 
 Motion is `lifecycleController.motion`, armed by `RunApp` alone: frame-counted,
-voided by sequence, changing paint and never width. `departureGhost` is
-render-only, never in `m.Rows` nor the cursor's line, and `CursorScreenRow` and
-`pointerHitAt` step over its `LastViewport.ghostOffset`.
+sequence-voided paint, never width. `departureGhost` is never in `m.Rows`;
+`CursorScreenRow`/`pointerHitAt` skip `LastViewport.ghostOffset`.
 `gapRows`/`canvasRows` are paint; only dock padding reads them.
+All draws canvas progress after a blank: two spare rows, nonempty
+unnarrowed scope, completions this week; no window/cursor change.
 The interactive TUI ignores an inherited `NO_COLOR`; `--no-color` still
 disables color, and non-interactive commands honor it.
 
-A value provider is exactly one of `TextEntry()` (a separate overlay),
-`TagEntry()` or `DateEntry()` (inline add modes), or a plain list. A value the
-presets cannot express belongs in an inline mode on that picker, never a
-standalone form. `@` is the one date picker over Due, Defer, and Check-in; the
+A value provider is exactly one of `TextEntry()` (overlay), `TagEntry()`/`DateEntry()`
+(inline add), or a plain list. Other values belong inline, never in a standalone
+form. `@` is the one date picker over Due, Defer, and Check-in; the
 cursor's Defer section, not a provider method, lets `+Nh` parse. The cursor names
 the section: read the row's typed payload, never a second section index.
 It opens in Due on the due field alone — its preset, Today if unset, else

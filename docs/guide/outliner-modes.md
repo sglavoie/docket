@@ -35,6 +35,14 @@ last set it. When the whole outline fits with room to spare, the launch also
 opens Peek on the task the cursor landed on; `b` closes it as usual, and nothing
 reopens it.
 
+When All leaves two spare rows above Peek and the footer, it draws one muted
+progress line after a blank row: `Done today · 2   this week ▁▁▃▁█▂▄ 9`.
+It uses Today’s completion counts and sparkline: “this week” means the last
+seven local days, including today. It appears only with completions in that
+window and a nonempty list. Search, ranked results, filters, lenses, and task
+focus hide it. The line takes no cursor or click and never moves the list’s
+window; launch still opens Active Projects, All.
+
 A task appears once in All, so Pinned, Today, Next, and Review lift their rows
 out of the state section they would otherwise sit in, and that section says so
 after its count: `Inbox (1) +1 in Pinned` is one inbox task here and one drawn
