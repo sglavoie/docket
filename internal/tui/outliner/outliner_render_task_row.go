@@ -170,9 +170,8 @@ func (m *OutlinerModel) buildTaskRowSegmentsFor(row OutlinerRow, rowWidth int, c
 		}
 	}
 	prefix := m.outlinerTreePrefix(row, rowWidth)
-	if row.LeadsMergedGroup {
-		// The merged row replaces a project header, so its label starts in
-		// that header's column. Keep the task's fold arrow in the same gutter.
+	if m.crossProjectRoot(row) {
+		// Every root uses the header's fold and identity columns.
 		prefix = ""
 		if foldIndicator == "" {
 			foldIndicator = gutterSpace(bg) + gutterSpace(bg)
@@ -187,7 +186,7 @@ func (m *OutlinerModel) buildTaskRowSegmentsFor(row OutlinerRow, rowWidth int, c
 		statusIcon:        statusIcon,
 		prioritySegment:   prioritySegment,
 		projectLabel:      m.taskProjectLabel(row, rowWidth, colLayout),
-		projectFirst:      row.LeadsMergedGroup,
+		projectFirst:      m.crossProjectRoot(row),
 		pinMarker:         m.taskPinnedMarker(row),
 		attachmentMarker:  taskAttachmentMarker(task),
 		descriptionMarker: taskDescriptionMarker(task),
@@ -369,22 +368,33 @@ func (m *OutlinerModel) renderTaskCursorColumn(row OutlinerRow, paint cursorPain
 	return attentionForTask(row.Task, now).renderColumn(paint)
 }
 
-// outlinerTreePrefix is the tree a task or checklist row draws before its fold
-// column. A descendant of a merged singleton row trades the lead's own blank
-// connector for the columns the lead spends before its status icon, so its tree
-// hangs beneath the lead's checkbox rather than beneath its project label; the
-// compaction budget still bounds only the tree itself.
+// crossProjectRoot names a task at the top of a project group, including a
+// merged singleton. The structural prefix keeps the same root gutter even
+// when the projection promotes a task whose stored parent is elsewhere.
+func (m *OutlinerModel) crossProjectRoot(row OutlinerRow) bool {
+	return row.LeadsMergedGroup || (m.groupsRowsByProject() && !m.ShowsRankedList() && row.IsTaskRow() && row.Prefix == connectorSpace)
+}
+
+// outlinerTreePrefix places real descendants beneath the shared badge column.
+// The same prefix reaches task paint, checklist paint, and fold hit-testing.
 func (m *OutlinerModel) outlinerTreePrefix(row OutlinerRow, rowWidth int) string {
 	prefixBudget := max(min(rowWidth/3, 12), 4)
 	tree, indent := row.Prefix, ""
-	if row.MergedLead != nil && strings.HasPrefix(tree, connectorSpace) {
-		lead := row
-		lead.Task = row.MergedLead
-		lead.LeadsMergedGroup = true
-		lead.IsChecklistItem = false
+	if m.crossProjectRoot(row) {
+		return ""
+	}
+	if m.groupsRowsByProject() && !m.ShowsRankedList() && strings.HasPrefix(tree, connectorSpace) {
 		tree = strings.TrimPrefix(tree, connectorSpace)
-		// The lead's fold column is always drawn, arrow or blank.
-		indent = strings.Repeat(" ", 2+lipgloss.Width(m.taskProjectLabel(lead, rowWidth, nil)))
+		width := m.mergedIdentityWidth(rowWidth)
+		if width > 0 {
+			indent = strings.Repeat(" ", 2+width+1)
+		} else if row.MergedLead != nil {
+			lead := row
+			lead.Task, lead.LeadsMergedGroup, lead.IsChecklistItem = row.MergedLead, true, false
+			indent = strings.Repeat(" ", 2+lipgloss.Width(m.taskProjectLabel(lead, rowWidth, nil)))
+		} else {
+			indent = "  "
+		}
 	}
 	return indent + compactOutlinerTreePrefix(tree, prefixBudget)
 }

@@ -100,10 +100,13 @@ func TestProjectHubPreviewListsOpenTasksInTreeOrder(t *testing.T) {
 		}
 		previous = index
 	}
-	for _, want := range []string{"│   ├── ", "│   └── ", "└── "} {
+	for _, want := range []string{"    ├── ", "    └── "} {
 		if !strings.Contains(pane, want) {
 			t.Errorf("preview dropped the %q connector:\n%s", want, pane)
 		}
+	}
+	if strings.Contains(pane, "│   ") || strings.Count(pane, "├──") != 1 || strings.Count(pane, "└──") != 1 {
+		t.Fatalf("preview connectors must name only the two children:\n%s", pane)
 	}
 	assertProjectHubFitsWidth(t, hub.View().Content, 120)
 }

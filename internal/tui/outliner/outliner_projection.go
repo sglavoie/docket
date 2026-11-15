@@ -176,6 +176,8 @@ func (m *OutlinerModel) flattenSectionRowRoots(
 type hiddenRowLayout struct {
 	hasFold bool
 	tasks   []*models.Task
+	// Singleton identities survive project and lane folds for column measurement.
+	identities []OutlinerRow
 	// projects names every project a folded lane hid whole, so the merged-row
 	// identity column already makes room for its slug before the lane opens.
 	projects map[string]bool
@@ -187,6 +189,7 @@ type hiddenRowLayout struct {
 func (h *hiddenRowLayout) reset() {
 	h.hasFold = false
 	h.tasks = h.tasks[:0]
+	h.identities = h.identities[:0]
 	clear(h.projects)
 	clear(h.mergedWidths)
 }
@@ -225,6 +228,9 @@ func (m *OutlinerModel) hideSectionRowNodes(nodes []*sectionRowNode) {
 func (m *OutlinerModel) hideProjectRowGroups(groups []projectRowGroup) {
 	for _, group := range groups {
 		m.hiddenLayout.addProject(group.projectID)
+		if len(group.forest.roots) == 1 {
+			m.hiddenLayout.identities = append(m.hiddenLayout.identities, OutlinerRow{Task: group.forest.roots[0].row.Task, ProjectID: group.projectID, LeadsMergedGroup: true})
+		}
 		m.hideSectionRowNodes(group.forest.roots)
 	}
 }

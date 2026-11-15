@@ -27,8 +27,8 @@
     { "type": "key", "label": "undo the correlated transaction", "key": "u" },
     { "type": "assert", "assert": "status_contains", "value": "Undid" },
     { "type": "wait" },
-    { "type": "assert", "label": "the reparent is taken back whole, header and all", "assert": "contains", "value": "├──     Alpha intake ready for triage" },
-    { "type": "assert", "assert": "contains", "value": "└──     Alpha intake closing the group" },
+    { "type": "assert", "label": "the reparent is taken back whole, header and all", "assert": "contains", "value": "                  Alpha intake ready for triage" },
+    { "type": "assert", "assert": "contains", "value": "                  Alpha intake closing the group" },
     { "type": "assert", "assert": "contains", "value": "▾ %triage-alpha (2)" },
     { "type": "assert", "assert": "no_layout_issues" },
 

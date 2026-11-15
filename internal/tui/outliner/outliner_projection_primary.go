@@ -105,6 +105,9 @@ func (m *OutlinerModel) appendStateGroupForests(
 			header.attentionTasks = append(header.attentionTasks, item.forest.tasks()...)
 			if item.project != nil {
 				m.hiddenLayout.addProject(item.project.ID)
+				if len(item.forest.roots) == 1 {
+					m.hiddenLayout.identities = append(m.hiddenLayout.identities, OutlinerRow{Task: item.forest.roots[0], ProjectID: item.project.ID, LeadsMergedGroup: true})
+				}
 			}
 			m.hideSectionForestTasks(item.forest, item.forest.roots)
 		}
@@ -230,9 +233,8 @@ func (m *OutlinerModel) sortPrimaryTaskTree(tasks []*models.Task) []*models.Task
 
 // flattenPrimaryProjectTrees renders one project group per tree. A group ranks
 // by its best task, pinned projects and then an alphabetical order breaking
-// ties, and each group keeps its own tree-prefix run, so the last root of a
-// group closes with the terminal connector rather than continuing into the next
-// project.
+// ties. Roots stay flat beneath the project identity column; only their
+// descendants draw tree connectors.
 func (m *OutlinerModel) flattenPrimaryProjectTrees(trees []primaryProjectTree, mode chrome.OutlinerModeID) {
 	blocks := make([]projectBlock[primaryProjectTree], 0, len(trees))
 	for _, tree := range trees {

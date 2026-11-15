@@ -19,6 +19,15 @@ Task titles carry the visual emphasis. Project labels keep their identity color
 without bold text, lane headings have no filled background, and `‹` / `›N`
 family markers are muted. Selection and urgent dates retain stronger emphasis.
 
+Across projects, top-level rows share one title column. A singleton names its
+project before the badges; tasks under a project heading reserve that same
+space, showing only their context when present. At narrow widths the identity
+labels stay compact instead of reserving a column. Single-project views keep
+their compact layout. Top-level tasks have no tree connector: `├──` and `└──`
+mean actual subtasks, indented beneath the shared column. Lane names start
+beside the fold arrow, with the rule extending to the right; scrolled lane
+context uses the same left alignment.
+
 Crowded rows give a recognizable phrase of the title room before keeping review
 and reference badges. Deadlines yield only when even a short title would not
 fit. `b` shows the complete title and every detail the row omits.

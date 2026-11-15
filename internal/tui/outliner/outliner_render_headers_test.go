@@ -8,10 +8,8 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-// A lane header sets its name a quarter of the row in, behind a rule that
-// starts beside the fold arrow, and gives that lead back whole on a row too
-// narrow to afford it rather than squeezing the name or its count.
-func TestSectionHeaderNameSitsAQuarterInBehindALeadRule(t *testing.T) {
+// Lane names start beside the fold arrow at every width.
+func TestLaneHeaderStartsAtLeftMargin(t *testing.T) {
 	m := NewOutlinerModel(nil, nil, nil)
 	row := OutlinerRow{IsSectionHeader: true, SectionName: "Doing", SectionCount: 3}
 
@@ -20,16 +18,22 @@ func TestSectionHeaderNameSitsAQuarterInBehindALeadRule(t *testing.T) {
 		if got := lipgloss.Width(line); got != width {
 			t.Fatalf("width %d: header is %d cells wide: %q", width, got, line)
 		}
-		if !strings.HasPrefix(line, " ▾ ─") {
-			t.Fatalf("width %d: the rule should start right after the fold arrow: %q", width, line)
+		if !strings.HasPrefix(line, " ▾ Doing") {
+			t.Fatalf("width %d: the name should start right after the fold arrow: %q", width, line)
 		}
 		name := strings.Index(line, "Doing  (3)")
 		if name < 0 {
 			t.Fatalf("width %d: header lost its name or count: %q", width, line)
 		}
-		if col := lipgloss.Width(line[:name]); col != width/laneHeaderLeadDivisor+1 {
-			t.Fatalf("width %d: name starts at column %d, want %d: %q", width, col, width/laneHeaderLeadDivisor+1, line)
+		if col := lipgloss.Width(line[:name]); col != 3 {
+			t.Fatalf("width %d: name starts at column %d, want %d: %q", width, col, 3, line)
 		}
+	}
+
+	m.Rows = []OutlinerRow{row, {}}
+	pinned := ansi.Strip(m.renderPinnedContextRow(outlinerViewport{pinnedHeader: 0, startIdx: 1, rowWidth: 60}))
+	if !strings.HasPrefix(pinned, " ▾ Doing") || lipgloss.Width(pinned) != 60 {
+		t.Fatalf("pinned header must keep the same left margin and row width: %q", pinned)
 	}
 
 	narrow := ansi.Strip(m.RenderOutlinerSectionHeaderRow(row, false, 16, 0))

@@ -225,6 +225,7 @@ func applyTaskRowLineStyle(gutter, content string, task *models.Task, now time.T
 	// (ANSI-aware) so every row stays exactly one line. outlinerCursorRow clamps
 	// the cursor row the same way, against the columns its gutter leaves.
 	line := textfit.TruncateToVisualWidth(gutter+content, rowWidth)
+	line += strings.Repeat(" ", max(rowWidth-lipgloss.Width(line), 0))
 	if tinted {
 		return tint.Width(rowWidth).Render(line)
 	}
@@ -296,14 +297,12 @@ func (m *OutlinerModel) taskIdentityLabel(row OutlinerRow, rowWidth int) string 
 
 func (m *OutlinerModel) taskProjectLabel(row OutlinerRow, rowWidth int, colLayout *chrome.ColumnLayout) string {
 	label := m.taskIdentityLabel(row, rowWidth)
-	// The flat cross-project ranked list and the merged singleton rows share an
-	// identity column, so their titles start on one column. Rows under a project
-	// header carry context alone and are never padded, so one context cannot
-	// leave an empty metadata column on every other task.
+	// Cross-project roots reserve one identity column, including rows whose
+	// project is already named by a header. Single-project rows stay compact.
 	switch {
 	case colLayout != nil && m.showsRankedProjectLabel():
 		label += strings.Repeat(" ", max(colLayout.ProjectWidth-lipgloss.Width(label), 0))
-	case row.LeadsMergedGroup:
+	case m.crossProjectRoot(row):
 		label += strings.Repeat(" ", max(m.mergedIdentityWidth(rowWidth)-lipgloss.Width(label), 0))
 	}
 	if label == "" {

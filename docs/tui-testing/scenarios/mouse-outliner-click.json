@@ -5,12 +5,12 @@
   "actions": [
     { "type": "click", "label": "the Backlog header's fold glyph follows the attention column", "x": 1, "y": 1 },
     { "type": "assert", "assert": "contains", "value": "Retire the legacy runbook" },
-    { "type": "assert", "assert": "contains", "value": "▾ ──────────── Backlog" },
+    { "type": "assert", "assert": "contains", "value": "▾ Backlog" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "click", "label": "a task's fold glyph sits after its tree and opens its checklist", "x": 5, "y": 3 },
+    { "type": "click", "label": "a top-level task's fold glyph sits in the left gutter and opens its checklist", "x": 1, "y": 3 },
     { "type": "assert", "assert": "contains", "value": "Name the on-call owner" },
-    { "type": "click", "label": "the open glyph is h, which closes it again", "x": 5, "y": 3 },
+    { "type": "click", "label": "the open glyph is h, which closes it again", "x": 1, "y": 3 },
     { "type": "assert", "assert": "not_contains", "value": "Name the on-call owner" },
 
     { "type": "click", "label": "a click on a task row seats the cursor there, so Peek names it", "on": "Retire the legacy runbook" },

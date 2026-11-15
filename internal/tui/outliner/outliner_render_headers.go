@@ -333,7 +333,6 @@ func (m *OutlinerModel) RenderOutlinerSectionHeaderRow(row OutlinerRow, selected
 		// is drawn over that same fill rather than in place of it.
 		ruleBase = paint.trail()
 	}
-	content = laneHeaderLeadRule(ruleBase, rowWidth, lipgloss.Width(gutter), lipgloss.Width(content)) + content
 	content += laneHeaderRule(ruleBase, rowWidth-lipgloss.Width(gutter)-lipgloss.Width(content))
 
 	if selected {
@@ -361,28 +360,6 @@ func laneHeaderRule(base lipgloss.Style, room int) string {
 		return ""
 	}
 	return base.Render(" ") + base.Foreground(theme.ColorLaneRule).Render(strings.Repeat("─", room-1))
-}
-
-// laneHeaderLeadDivisor places a lane header's name a quarter of the row in,
-// so the lane names stand apart from the task titles and project slugs that
-// start at the left edge and read as their own column.
-const laneHeaderLeadDivisor = 4
-
-// laneHeaderLeadRule is the faint rule a lane header draws ahead of its name,
-// so the line starts beside the fold arrow and the name sits inside it. It is
-// the same ink as the trailing rule, and the space before it mirrors the one
-// the name's own padding leaves after it. The lead yields first when the row is
-// narrow: it never takes the columns the name, the count, or the trailing
-// rule's minimum need, and below its own minimum it draws nothing, leaving the
-// name at the left edge where it always fit.
-func laneHeaderLeadRule(base lipgloss.Style, rowWidth, gutterWidth, contentWidth int) string {
-	lead := rowWidth/laneHeaderLeadDivisor - gutterWidth
-	spare := rowWidth - gutterWidth - contentWidth - (laneHeaderRuleMinCells + 1)
-	lead = min(lead, spare)
-	if lead-1 < laneHeaderRuleMinCells {
-		return ""
-	}
-	return base.Render(" ") + base.Foreground(theme.ColorLaneRule).Render(strings.Repeat("─", lead-1))
 }
 
 // projectSlugForRow is the name a project header spells for the row's

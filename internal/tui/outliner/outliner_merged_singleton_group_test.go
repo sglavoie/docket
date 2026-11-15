@@ -267,27 +267,73 @@ func TestMergedRowLabelsUseOnlyTheirOwnWidthWhenNarrow(t *testing.T) {
 	}
 }
 
-func TestGroupedRowsDoNotReserveSpaceForOtherTasksContexts(t *testing.T) {
+func TestOutlinerTitlesShareOneColumn(t *testing.T) {
 	plain := primaryRowsTask("plain", models.StateBacklog)
 	contextual := primaryRowsTask("contextual", models.StateBacklog)
 	contextual.Context = "mobile-app"
-	// An accented glyph draws even in the lane that names its state.
-	plain.Tags, contextual.Tags = []string{"bug"}, []string{"bug"}
-	alpha := primaryRowsProject("alpha", plain, contextual)
+	child := primaryRowsTask("child", models.StateBacklog)
+	child.ParentID = &plain.ID
+	alpha := primaryRowsProject("alpha", plain, contextual, child)
 	beta := primaryRowsProject("beta", primaryRowsTask("beta-one", models.StateBacklog))
 	outliner, _ := primaryRowsOutliner(alpha, beta)
 	outliner.SelectOutlinerMode(chrome.ModeAll)
-	for _, width := range []int{60, 80, 120, 180} {
+	for _, width := range []int{chrome.MinTerminalWidth - 1, chrome.MinTerminalWidth, 80, 120, 180} {
 		layout := outliner.ComputeOutlinerRowLayout(outliner.Rows, width)
-		for _, task := range []*models.Task{plain, contextual} {
+		column := -1
+		for _, task := range []*models.Task{plain, contextual, beta.Tasks[0], child} {
 			index, row := mustRowForTask(t, outliner, task.ID)
 			line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, width, index, layout))
-			want := "▣ " + task.Title
-			if task.Context != "" {
-				want = "▣ " + ansi.Strip(outliner.taskIdentityLabel(row, width)) + " " + task.Title
+			if ansi.StringWidth(line) != width {
+				t.Fatalf("width %d: row is %d cells: %q", width, ansi.StringWidth(line), line)
 			}
-			if !strings.Contains(line, want) {
-				t.Fatalf("width %d: grouped row has an empty metadata gap: %q, want %q", width, line, want)
+			start := strings.Index(line, task.Title)
+			if start < 0 {
+				t.Fatalf("missing title: %q", line)
+			}
+			got := ansi.StringWidth(line[:start])
+			segments := outliner.buildTaskRowSegments(row, width, layout, cursorPaint{})
+			if caret := ansi.StringWidth(segments.titlePrefix()); caret != got {
+				t.Fatalf("inline caret column %d, title column %d: %q", caret, got, line)
+			}
+			preview := ansi.Strip(outliner.RenderOutlinerPreviewTaskRow(row, width, index, layout))
+			if at := strings.Index(preview, task.Title); at < 0 || ansi.StringWidth(preview[:at]) != got {
+				t.Fatalf("preview moved the title: %q vs %q", preview, line)
+			}
+			if width < chrome.MinColumnAlignWidth {
+				continue
+			}
+			if column < 0 {
+				column = got
+			}
+			if task.ID == child.ID {
+				if got <= column {
+					t.Fatalf("child column %d is not below root column %d", got, column)
+				}
+			} else if got != column {
+				t.Fatalf("width %d: title column %d, want %d: %q", width, got, column, line)
+			}
+		}
+	}
+}
+
+func TestTopLevelGroupRowsDrawNoConnector(t *testing.T) {
+	root := primaryRowsTask("root", models.StateBacklog)
+	child := primaryRowsTask("child", models.StateBacklog)
+	child.ParentID = &root.ID
+	alpha := primaryRowsProject("alpha", root, child, primaryRowsTask("sibling", models.StateBacklog))
+	beta := primaryRowsProject("beta", primaryRowsTask("singleton", models.StateBacklog))
+	outliner, _ := primaryRowsOutliner(alpha, beta)
+	for _, mode := range []chrome.OutlinerModeID{chrome.ModeAll, chrome.ModeBacklog} {
+		outliner.SelectOutlinerMode(mode)
+		layout := outliner.ComputeOutlinerRowLayout(outliner.Rows, 80)
+		for index, row := range outliner.Rows {
+			if !row.IsTaskRow() {
+				continue
+			}
+			line := ansi.Strip(outliner.RenderOutlinerTaskRow(row, false, 80, index, layout))
+			hasConnector := strings.ContainsAny(line, "├└│")
+			if hasConnector != (row.Task.ID == child.ID) {
+				t.Fatalf("mode %s: connectors must name parentage only: %q", mode, line)
 			}
 		}
 	}
@@ -400,5 +446,61 @@ func TestRelocationRecoveryLandsOnTheRowAGroupMergedInto(t *testing.T) {
 	}
 	if headers := collapsibleProjectHeaders(outliner); len(headers) != 0 {
 		t.Fatalf("headers = %+v, want none once both groups hold one task", headers)
+	}
+}
+
+// A folded contextual singleton still owns its identity width, and a grouped
+// context cannot move the column when its project or its lane opens.
+func TestSharedTitleColumnSurvivesContextFolds(t *testing.T) {
+	plain := primaryRowsTask("plain", models.StateDoing)
+	contextual := primaryRowsTask("contextual", models.StateBacklog)
+	contextual.Context = "mobile-app"
+	alpha := primaryRowsProject("alpha", plain)
+	beta := primaryRowsProject("beta-long", contextual)
+	outliner, _ := primaryRowsOutliner(alpha, beta)
+	outliner.SelectOutlinerMode(chrome.ModeAll)
+	for _, width := range []int{60, 80, 120} {
+		column := func() int {
+			_, row := mustRowForTask(t, outliner, plain.ID)
+			layout := outliner.computeRowLayout(outliner.Rows, width, &outliner.hiddenLayout)
+			return ansi.StringWidth(outliner.buildTaskRowSegments(row, width, layout, cursorPaint{}).titlePrefix())
+		}
+		want := column()
+		_, row := mustRowForTask(t, outliner, contextual.ID)
+		for _, key := range []string{row.Group.ProjectKey, row.Group.SectionKey} {
+			outliner.Folds.CollapsedSections[key] = true
+			outliner.RebuildRows()
+			if got := column(); got != want {
+				t.Fatalf("width %d, fold %s moved title from %d to %d", width, key, want, got)
+			}
+			delete(outliner.Folds.CollapsedSections, key)
+			outliner.RebuildRows()
+			if got := column(); got != want {
+				t.Fatalf("width %d, reopening %s moved title from %d to %d", width, key, want, got)
+			}
+		}
+	}
+}
+
+func TestSingleProjectRowsKeepCompactIdentity(t *testing.T) {
+	plain := primaryRowsTask("plain", models.StateBacklog)
+	contextual := primaryRowsTask("contextual", models.StateBacklog)
+	contextual.Context = "desk"
+	project := primaryRowsProject("alpha", plain, contextual)
+	outliner := NewOutlinerModel(project, nil, nil)
+	outliner.SelectOutlinerMode(chrome.ModeAll)
+	if width := outliner.mergedIdentityWidth(80); width != 0 {
+		t.Fatalf("single-project identity width = %d, want zero", width)
+	}
+	for _, task := range []*models.Task{plain, contextual} {
+		_, row := mustRowForTask(t, outliner, task.ID)
+		label := ansi.Strip(outliner.taskProjectLabel(row, 80, outliner.ComputeOutlinerRowLayout(outliner.Rows, 80)))
+		want := ""
+		if task.Context != "" {
+			want = "##desk "
+		}
+		if label != want {
+			t.Fatalf("single-project label = %q, want %q", label, want)
+		}
 	}
 }

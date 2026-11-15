@@ -72,16 +72,14 @@ func (m *OutlinerModel) computeRowLayout(rows []OutlinerRow, rowWidth int, hidde
 	return layout
 }
 
-// mergedIdentityWidth is the one identity column every merged singleton row
-// pads its `[slug]` and context to, so their titles start on one column. It is
-// measured over the projection's own rows and what its folds hide — never a
-// window or a cursor — and floored at the widest slug a present project would
-// draw, so a lane opening on a longer slug moves no title. Below the alignment
-// floor, and in the ranked list, which has its own column, it is zero. The
-// render, the merged descendants' hanging indent, and the inline editor all read
-// it, so they cannot disagree about where a merged row's badge sits.
+// mergedIdentityWidth is the shared identity column for cross-project roots:
+// merged rows name the project; grouped rows carry only context or blanks.
+// Visible and folded identities and the widest present slug set its width.
+// The cache belongs to one projection and is cleared on rebuild. Below the
+// alignment floor, in single-project views, and in ranked results it is zero.
+// Paint, descendant indentation, and the inline editor share this measurement.
 func (m *OutlinerModel) mergedIdentityWidth(rowWidth int) int {
-	if rowWidth < chrome.MinColumnAlignWidth || m.showsRankedProjectLabel() {
+	if rowWidth < chrome.MinColumnAlignWidth || !m.groupsRowsByProject() || m.showsRankedProjectLabel() {
 		return 0
 	}
 	if width, ok := m.hiddenLayout.mergedWidths[rowWidth]; ok {
@@ -89,12 +87,16 @@ func (m *OutlinerModel) mergedIdentityWidth(rowWidth int) int {
 	}
 	width := 0
 	for _, row := range m.Rows {
-		if row.LeadsMergedGroup && row.Task != nil {
+		if row.IsTaskRow() && row.Task != nil {
 			width = max(width, lipgloss.Width(m.taskIdentityLabel(row, rowWidth)))
 		}
 	}
-	if width > 0 {
-		width = max(width, m.mergedSlugFloor(m.Rows, &m.hiddenLayout, rowWidth))
+	for _, row := range m.hiddenLayout.identities {
+		width = max(width, lipgloss.Width(m.taskIdentityLabel(row, rowWidth)))
+	}
+	width = max(width, m.mergedSlugFloor(m.Rows, &m.hiddenLayout, rowWidth))
+	for _, task := range m.hiddenLayout.tasks {
+		width = max(width, lipgloss.Width(m.taskIdentityLabel(OutlinerRow{Task: task}, rowWidth)))
 	}
 	if m.hiddenLayout.mergedWidths == nil {
 		m.hiddenLayout.mergedWidths = make(map[int]int)

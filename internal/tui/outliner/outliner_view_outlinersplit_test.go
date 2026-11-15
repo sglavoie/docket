@@ -19,15 +19,15 @@ func TestBuildTreePrefix(t *testing.T) {
 		isLast         bool
 		expected       string
 	}{
-		{"root non-last", nil, false, "├── "},
-		{"root last", nil, true, "└── "},
-		{"depth 1, parent not last, non-last", []bool{false}, false, "│   ├── "},
-		{"depth 1, parent not last, last", []bool{false}, true, "│   └── "},
+		{"root non-last", nil, false, "    "},
+		{"root last", nil, true, "    "},
+		{"depth 1, parent not last, non-last", []bool{false}, false, "    ├── "},
+		{"depth 1, parent not last, last", []bool{false}, true, "    └── "},
 		{"depth 1, parent last, non-last", []bool{true}, false, "    ├── "},
 		{"depth 1, parent last, last", []bool{true}, true, "    └── "},
-		{"depth 3 mixed", []bool{false, true, false}, false, "│       │   ├── "},
-		{"depth 3 mixed last", []bool{false, true, false}, true, "│       │   └── "},
-		{"depth 5 all not last", []bool{false, false, false, false, false}, false, "│   │   │   │   │   ├── "},
+		{"depth 3 mixed", []bool{false, true, false}, false, "        │   ├── "},
+		{"depth 3 mixed last", []bool{false, true, false}, true, "        │   └── "},
+		{"depth 5 all not last", []bool{false, false, false, false, false}, false, "    │   │   │   │   ├── "},
 		{"depth 5 all last", []bool{true, true, true, true, true}, true, "                    └── "},
 	}
 

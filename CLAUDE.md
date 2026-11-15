@@ -379,13 +379,13 @@ selection; otherwise the restore names the location instead. It runs ahead of
 `refreshTaskViewsAfterSave`, which captures the cursor's own task at request
 time. `Ctrl+O origin` is advertised only where a frame was pushed.
 
-Every cross-project group names its project once. `appendProjectGroupHeader`
-emits the header when folded or over two or more top-level tasks, which carry no
-label; an expanded group of one merges into its task's row, `LeadsMergedGroup`,
-at the header's depth and led by the ranked list's `%slug`, where task keys
-answer and project ones wait for the header. Keys still read the group off the
-row, never the header: `rowStartsGroup` is `n`/`N`'s stop set —
-a header row, or a row whose predecessor carried another group — and
+Project groups name their project once: `appendProjectGroupHeader` emits a
+header when folded or over multiple roots; an expanded singleton uses
+`LeadsMergedGroup`, at header depth with `%slug`. Task keys answer there;
+project keys require the header. Roots draw no connectors; subtasks retain
+them below the shared column. Lane names follow the fold glyph, then a rule.
+Keys read the group off the row: `rowStartsGroup` is `n`/`N`'s stop set —
+a header, or a row whose predecessor carried another group — and
 `VisibleSections` and `VisibleProjectGroups` are what `s` and `p` fold; none of
 the three scans for a header. `h`'s last rung folds the cursor's own group, after
 the checklist, the children, and a parent that exists, and refuses where there is
@@ -789,8 +789,8 @@ Row and Peek budget:
   `ShowsPinned`. Only cross-project ranked and merged rows name the project,
   using `%slug` with a colored sigil and neutral text. `taskIdentityLabel`
   joins project and context; ranked results pad to `ColumnLayout.ProjectWidth`
-  and merged rows to `mergedIdentityWidth`; rows under a header carry context
-  alone. Cap context text at clamp(rowWidth/8,8,20)
+  and cross-project roots to `mergedIdentityWidth`; rows under a header carry
+  context or blanks before badges. Cap context at clamp(rowWidth/8,8,20)
   and combined identity at rowWidth/3, shortening the slug below
   `rankedProjectLabelMaxSlug` when needed. Peek wraps the full context.
   Shed the match cue before the indicator ladder; it explains a hit the title

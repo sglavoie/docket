@@ -141,7 +141,7 @@ func TestWheelOverTheDockScrollsPeekAndNotTheList(t *testing.T) {
 	out := pointerOutliner(t, driver)
 	pointerClickAt(t, driver, 0, pointerRowY(t, driver, "Backlog"), "", 1)
 	pointerKey(t, driver, "l")
-	pointerClickAt(t, driver, 30, pointerRowY(t, driver, "Add password validat"), "", 1)
+	pointerClickAt(t, driver, 30, pointerRowY(t, driver, "Add password"), "", 1)
 	pointerKey(t, driver, "b")
 	// The child's Parent line, with its subtask progress, wraps to two rows.
 	dockY := pointerRowY(t, driver, "↓ 4 more")

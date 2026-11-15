@@ -61,7 +61,7 @@ func TestCheckInVisualAcceptance(t *testing.T) {
 					}
 				}
 				// What one row can promise depends on the width it is given, and the
-				// project group header leaves the task's row for its own content.
+				// project identity column is shared by grouped and merged roots.
 				// At 110 the whole title, the countdown, and the
 				// deadline all arrive. At 62 and 60 the explicit overdue label leaves
 				// too little title room for both indicators, so the ladder sheds the
@@ -74,7 +74,7 @@ func TestCheckInVisualAcceptance(t *testing.T) {
 				case 62:
 					rowsRequired = []string{"Migrated vendor", "▤", "Apr 1 '20 15:30 overdue", "workspace: today 2 · overdue 1"}
 				case 60:
-					rowsRequired = []string{"├── ⧗ Migrated vendor wait", "▤", "Apr 1 '20 15:30 overdue", "workspace: today 2 · overdue 1"}
+					rowsRequired = []string{"⧗ Migrated vendor w…", "▤", "Apr 1 '20 15:30 overdue", "workspace: today 2 · overdue 1"}
 				}
 				capture("rows", rowsRequired...)
 				out := driver.App().crossOutliner

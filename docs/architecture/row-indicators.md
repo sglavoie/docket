@@ -22,8 +22,8 @@ is nonempty. The description text remains in Peek.
 
 `taskIdentityLabel` joins `%project ##context`. Cross-project ranked results
 pad that combined label to a shared project column, and merged singleton rows
-pad it to `mergedIdentityWidth`; rows under a project header carry context
-alone and reserve no space when it is absent. Context text is bounded to one eighth of the row width,
+pad it to `mergedIdentityWidth`; top-level rows under a project header carry
+context or blanks in that same column, before their badges. Context text is bounded to one eighth of the row width,
 clamped to 8–20 columns. A combined project/context label spends at most one
 third of the row, including the `%` and `##` sigils and the separator; the project slug
 abbreviates to the remaining budget. The render and measurement share this
@@ -307,14 +307,24 @@ of the row, bounded to 8–24 columns. Shortening the narrow-row identity makes
 room for both a recognizable title and the reserved content glyphs. When context
 shares the label, the combined identity budget can shorten the slug further.
 `ComputeOutlinerRowLayout` measures the widest ranked label into
-`ColumnLayout.ProjectWidth`, so those titles start in one column. Merged rows
-share a column of their own: `mergedIdentityWidth` is the widest merged label,
+`ColumnLayout.ProjectWidth`, so those titles start in one column. Cross-project roots
+share one column: `mergedIdentityWidth` is the widest merged label or grouped context,
 floored at the widest `%slug` any project present in the projection would
-draw — a project hidden whole by a folded lane included, so opening the lane
-moves no title — and cached per row width until the next rebuild. Below 60
+draw. Folded singleton identities and hidden contexts are included, so opening
+a lane or group moves no title. The width is cached until the next rebuild. Below 60
 columns of row width it is zero and the labels stay inline. The label is part of
 `titlePrefix`, so the inline editor opens after it. A
 single-project scope keeps its focused header and no label.
+
+`BuildTreePrefix` leaves the root gutter blank and suppresses continuation
+pipes between top-level siblings: grouping is not parentage. Descendants keep
+their real ancestor pipes and branches. `outlinerTreePrefix` replaces that root
+gutter with the shared identity width in cross-project views, so descendants
+hang beneath the badges for both grouped and merged roots. Its measurement is
+also used by checklist paint and pointer fold hit-testing. Single-project
+views retain their existing gutter width. Lane headers draw their name directly
+after the fold glyph and spend the remaining width on a trailing rule; pinned
+context uses the same header spelling and left alignment.
 
 The fold glyph is a column of the same layout. `ComputeOutlinerRowLayout` sets
 `ColumnLayout.HasFold` when any task row of the projection has something to
@@ -325,7 +335,9 @@ glyph and title sit two columns left of its neighbors'. The blanks are the
 `foldIndicator` segment, so they are in `gutter()` and reach `titlePrefix()`,
 the inline editor, and the Hub's preview painter with no second copy. A nil
 layout, which is every row narrower than `MinColumnAlignWidth`, reserves
-nothing, and so does a projection in which nothing folds.
+nothing, and so does a projection in which nothing folds. Cross-project roots
+always retain the header's two-cell fold gutter so merged and grouped identity
+columns begin together.
 
 That measurement covers the whole projection, including rows a fold hides. A
 layout read from the drawn rows alone moved every title the moment a fold

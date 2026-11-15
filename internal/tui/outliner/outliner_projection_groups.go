@@ -163,6 +163,9 @@ func (m *OutlinerModel) appendProjectGroupHeader(
 	if !group.ProjectGrouped() {
 		return true, false
 	}
+	if topLevel == 1 && len(tasks) > 0 {
+		m.hiddenLayout.identities = append(m.hiddenLayout.identities, OutlinerRow{Task: tasks[0], ProjectID: group.ProjectID, LeadsMergedGroup: true})
+	}
 	if topLevel == 1 && !m.sectionCollapsed(group.ProjectKey) {
 		return true, true
 	}

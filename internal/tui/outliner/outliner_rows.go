@@ -208,14 +208,16 @@ func (m *OutlinerModel) IsZoomedSectionRow(row OutlinerRow) bool {
 	return m.Focus.Zoom.Active() && row.IsSectionHeader && row.EffectiveCollapseKey() == m.Focus.Zoom.key
 }
 
-// buildTreePrefix computes the connector prefix string from the ancestor
-// is-last-child boolean stack. Each true entry means that ancestor was the
-// last child of its parent (so we render spaces), while false means we need
-// a continuation pipe.
+// BuildTreePrefix reserves the root gutter without drawing group connectors.
+// Only actual parentage draws branches; the root sibling position never adds
+// a continuation pipe beneath a project or lane.
 func BuildTreePrefix(ancestorIsLast []bool, isLast bool) string {
+	if len(ancestorIsLast) == 0 {
+		return connectorSpace
+	}
 	var b strings.Builder
-	for _, last := range ancestorIsLast {
-		if last {
+	for depth, last := range ancestorIsLast {
+		if depth == 0 || last {
 			b.WriteString(connectorSpace)
 		} else {
 			b.WriteString(connectorPipe)
