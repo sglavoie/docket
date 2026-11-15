@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -245,6 +246,41 @@ func (s *Store) SetFold(id string, folded bool) error {
 		_, err = s.db.Exec(`DELETE FROM folds WHERE row = ?`, id)
 	}
 	return err
+}
+
+// Backup writes a snapshot of the database for day into dir, unless that
+// day already has one, and keeps the newest keep snapshots. A snapshot is a
+// complete database: restoring is copying it over the live file.
+func (s *Store) Backup(dir, day string, keep int) error {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	path := filepath.Join(dir, "docket-"+day+".db")
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		// Written beside its final name and renamed, so a snapshot that
+		// exists is always whole.
+		tmp := path + ".tmp"
+		os.Remove(tmp)
+		if _, err := s.db.Exec(`VACUUM INTO ?`, tmp); err != nil {
+			return err
+		}
+		if err := os.Rename(tmp, path); err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+	old, err := filepath.Glob(filepath.Join(dir, "docket-*.db"))
+	if err != nil {
+		return err
+	}
+	sort.Strings(old)
+	for i := 0; i < len(old)-keep; i++ {
+		if err := os.Remove(old[i]); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Store) Close() error { return s.db.Close() }

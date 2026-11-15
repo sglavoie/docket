@@ -65,6 +65,11 @@ sync tool copies.
 - `folds` is view state for this machine. It is not logged.
 - Adding a field needs no schema change.
 
+**Backups.** The first launch of each day writes a whole copy of the
+database to `backups/docket-YYYY-MM-DD.db` beside it, before anything is
+changed, and keeps the newest 14. Restoring is copying one over the live
+file. A failed backup is said on the status line and does not stop the work.
+
 Sync is not built. When it is, machines exchange `ops` and never the database
 file, and conflicts resolve per field by stamp.
 
@@ -202,8 +207,7 @@ sibling.
 ## Sigils
 
 A sigil is a whole word, so `R&D`, `a@b` and `wow!` stay prose. One the
-grammar cannot read also stays prose (`@alice`, `#123`, `$5`), which is the
-only feedback a mistyped sigil gets. `\#tag` keeps a readable sigil literal.
+grammar cannot read also stays prose (`@alice`, `#123`, `$5`). `\#tag` keeps a readable sigil literal.
 
 | Sigil | Field | Accepts |
 | --- | --- | --- |
@@ -218,6 +222,15 @@ in the line; a repeated `@` or `$` takes the last. Editing a row shows its
 canonical line: text, `!`, `@YYYY-MM-DD`, tags, state. Deleting a sigil from
 that line clears its field. Typed on a row outside an edit, they open the
 stamp line.
+
+**While typing.** On every line that reads sigils (a row, the capture line,
+the stamp line, the filter) a word the line reads as a sigil is drawn in the
+accent colour, and a word that starts like one and cannot be read in the
+warning colour, so a mistyped `@firday` is seen before `Enter`. At the end of
+the line a sigil being typed is completed in dim text: a `#tag` already in
+use, most used first; a `$state`; a date word. The right arrow takes the
+suggestion and types nothing otherwise. The capture line also names where
+the row will land.
 
 **Default state.** A row whose line names no state is an open task, unless it
 is top-level (a project) or its text ends in a colon (a heading); those are

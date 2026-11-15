@@ -55,6 +55,8 @@ Sigils, typed anywhere in a row
   $doing $waiting $done $canceled $parked $open $note    state
   A row is a task unless it is top-level or ends in a colon.
   \#tag keeps a sigil as plain text.
+  As you type, a sigil the line reads turns cyan and one it cannot turns
+  yellow. The right arrow takes the dim suggestion at the end of the line.
 
 Nothing asks for confirmation: undo takes anything back.
 Press any key to return.`
@@ -68,18 +70,6 @@ func (m *Model) size() (int, int) {
 		h = 24
 	}
 	return w, h
-}
-
-// window returns the part of the buffer that fits in avail columns with the
-// caret inside it, and the caret's column within that part.
-func (e *editor) window(avail int) (string, int) {
-	if e.caret < e.off {
-		e.off = e.caret
-	}
-	for e.off < e.caret && ansi.StringWidth(string(e.buf[e.off:e.caret])) > avail-1 {
-		e.off++
-	}
-	return ansi.Truncate(string(e.buf[e.off:]), avail, ""), ansi.StringWidth(string(e.buf[e.off:e.caret]))
 }
 
 // stateGlyph is the one column that says what a row is. A note shows its
@@ -216,11 +206,17 @@ func (m *Model) statusLine(w int) (string, int) {
 	if a := m.ask; a != nil {
 		label := askLabels[a.kind]
 		lw := ansi.StringWidth(label)
-		text, col := a.ed.window(max(w-lw, 1))
+		text, col := a.ed.window(max(w-lw, 1), m.styler(a.kind))
+		text += ghost(text, m.suggest(&a.ed, a.kind), w-lw)
 		line := sgrAccent + label + sgrReset + text
 		room := w - lw - ansi.StringWidth(text) - 3
 		switch {
 		case room <= 3:
+		case a.kind == askCapture && len(a.ed.buf) == 0:
+		case a.kind == askCapture:
+			// Where the line will land, so a %name is seen to have worked.
+			to, _ := m.route(string(a.ed.buf))
+			line += "   " + sgrDim + ansi.Truncate("files in "+to.label, room, "…") + sgrReset
 		case a.kind == askFilter:
 			shape := "in context"
 			if m.at.flat {
@@ -254,6 +250,9 @@ func (m *Model) statusLine(w int) (string, int) {
 	case left != "":
 	case m.edit != nil:
 		left = "Enter next row · Esc done · Tab indent"
+		if m.suggest(m.edit, surfaceRow) != "" {
+			left += " · → completes"
+		}
 	case m.sideFocus:
 		left = "j k choose · Enter work in it"
 	}
@@ -321,7 +320,8 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 		var text string
 		if m.edit != nil && m.edit.row == v.id {
 			var col int
-			text, col = m.edit.window(avail)
+			text, col = m.edit.window(avail, m.styler(surfaceRow))
+			text += ghost(text, m.suggest(m.edit, surfaceRow), avail)
 			caret = tea.NewCursor(prefixW+col, len(lines))
 			caret.Shape = tea.CursorBar
 		} else {

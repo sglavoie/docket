@@ -171,7 +171,7 @@ func TestTodayIsPickedAndLapsesOvernight(t *testing.T) {
 func TestCaptureFilesInTheInboxOrANamedProject(t *testing.T) {
 	h := two(t)
 	h.press("a", `"Buy milk"`)
-	if got := h.lines()[len(h.lines())-1]; got != "Inbox › Buy milk" {
+	if got := h.lines()[len(h.lines())-1]; got != "Inbox › Buy milk   files in Inbox" {
 		t.Fatalf("capture line = %q", got)
 	}
 	if c := h.m.View().Cursor; c == nil || c.X != 16 || c.Y != 15 {

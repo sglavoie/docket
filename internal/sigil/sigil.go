@@ -55,7 +55,8 @@ func DefaultState(top bool, text string) string {
 	return Open
 }
 
-var stateNames = []string{Open, Doing, Waiting, Done, Canceled, Parked, "note"}
+// StateNames are the words a $ sigil accepts, in the order they are offered.
+var StateNames = []string{Open, Doing, Waiting, Done, Canceled, Parked, "note"}
 
 var stateAliases = map[string]string{"todo": Open, "wait": Waiting, "cancelled": Canceled}
 
@@ -69,7 +70,7 @@ func ParseState(s string) (string, bool) {
 	if a, ok := stateAliases[s]; ok {
 		found, n = a, 1
 	} else {
-		for _, name := range stateNames {
+		for _, name := range StateNames {
 			if strings.HasPrefix(name, s) {
 				found, n = name, n+1
 			}
@@ -97,7 +98,8 @@ func ParseTag(s string) (string, bool) {
 	return strings.ToLower(s), s != ""
 }
 
-func isSigil(w string, today time.Time) bool {
+// IsSigil reports a word the row grammar reads as a sigil.
+func IsSigil(w string, today time.Time) bool {
 	if w == "!" {
 		return true
 	}
@@ -123,11 +125,11 @@ func Parse(s string, top bool, today time.Time) Line {
 	var words []string
 	state, named := "", false
 	for _, w := range strings.Fields(s) {
-		if rest, ok := strings.CutPrefix(w, `\`); ok && isSigil(rest, today) {
+		if rest, ok := strings.CutPrefix(w, `\`); ok && IsSigil(rest, today) {
 			words = append(words, rest)
 			continue
 		}
-		if !isSigil(w, today) {
+		if !IsSigil(w, today) {
 			words = append(words, w)
 			continue
 		}
@@ -158,7 +160,7 @@ func Parse(s string, top bool, today time.Time) Line {
 func Format(l Line, top bool, today time.Time) string {
 	var words []string
 	for _, w := range strings.Fields(l.Text) {
-		if isSigil(w, today) {
+		if IsSigil(w, today) {
 			w = `\` + w
 		}
 		words = append(words, w)

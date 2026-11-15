@@ -55,6 +55,7 @@ type Model struct {
 	sel       entry   // the one the outline pane was opened from
 	sideFocus bool
 	lists     map[string][]string
+	tags      []string // tags in use, most used first
 	parked    int
 
 	undo, redo [][]outline.Op
@@ -96,6 +97,9 @@ func newModel(tree *outline.Tree, backend Backend, folds map[string]bool, now fu
 }
 
 func (m *Model) Init() tea.Cmd { return nil }
+
+// Notice shows a message on the status line until the next key.
+func (m *Model) Notice(msg string) { m.msg = msg }
 
 // rebuild recomputes the visible rows and the sidebar, and keeps the cursor
 // inside the rows.
@@ -500,8 +504,11 @@ var askLabels = map[string]string{
 
 func (m *Model) askKey(msg tea.KeyPressMsg) {
 	a := m.ask
-	text := strings.TrimSpace(string(a.ed.buf))
 	k := msg.String()
+	if m.complete(&a.ed, a.kind, k) {
+		k = "" // the line changed; a filter reads it again below
+	}
+	text := strings.TrimSpace(string(a.ed.buf))
 
 	if a.kind == askFilter {
 		// The pane follows the query as it is typed. Enter keeps it and
@@ -514,6 +521,8 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 			m.at.query = ""
 		case "tab":
 			m.at.flat = !m.at.flat
+		case "":
+			m.at.query = text
 		default:
 			a.ed.key(msg)
 			m.at.query = strings.TrimSpace(string(a.ed.buf))
@@ -527,6 +536,7 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 	}
 
 	switch k {
+	case "":
 	case "esc":
 		m.ask = nil
 		if a.kind == askCapture {
@@ -783,8 +793,21 @@ func (m *Model) normalKey(k string) {
 	}
 }
 
+// complete takes the suggestion showing at the end of the line.
+func (m *Model) complete(e *editor, surface string, k string) bool {
+	rest := m.suggest(e, surface)
+	if k != "right" || rest == "" {
+		return false
+	}
+	e.insert([]rune(rest))
+	return true
+}
+
 func (m *Model) editKey(msg tea.KeyPressMsg) {
 	e := m.edit
+	if m.complete(e, surfaceRow, msg.String()) {
+		return
+	}
 	switch msg.String() {
 	case "enter":
 		// A fresh row chains into the next one, so a list is typed without

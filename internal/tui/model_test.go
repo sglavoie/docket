@@ -68,6 +68,10 @@ func key(tok string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}
 	case "backspace":
 		return tea.KeyPressMsg{Code: tea.KeyBackspace}
+	case "right":
+		return tea.KeyPressMsg{Code: tea.KeyRight}
+	case "left":
+		return tea.KeyPressMsg{Code: tea.KeyLeft}
 	}
 	if c, ok := strings.CutPrefix(tok, "ctrl+"); ok {
 		return tea.KeyPressMsg{Code: []rune(c)[0], Mod: tea.ModCtrl}

@@ -118,6 +118,7 @@ func (m *Model) scan() {
 	now, today := m.now(), m.today()
 	day := today.Format("2006-01-02")
 	lists := map[string][]string{}
+	tagUse := map[string]int{}
 	picked := 0
 	m.parked = 0
 
@@ -126,6 +127,9 @@ func (m *Model) scan() {
 		r := m.tree.Row(id)
 		l := sigil.FromFields(r.Fields)
 		*touch = max(*touch, r.Modified)
+		for _, tag := range l.Tags {
+			tagUse[tag]++
+		}
 		if r.Fields[sigil.FieldToday] == day {
 			lists[kindToday] = append(lists[kindToday], id)
 			if !l.Closed() {
@@ -188,6 +192,7 @@ func (m *Model) scan() {
 	})
 
 	m.lists = lists
+	m.tags = tagsByUse(tagUse)
 	m.side = append([]entry{
 		{kind: kindInbox, label: "Inbox", count: len(m.tree.Children(inboxID))},
 		{kind: kindToday, label: "Today", count: picked},
@@ -321,9 +326,10 @@ func (m *Model) create(parent, line string) bool {
 	return true
 }
 
-// capture files a typed line in the Inbox, or in the project a %name word
-// points at. A %name matching no project stays in the text, where it shows.
-func (m *Model) capture(line string) {
+// route reads where a captured line goes: the project a %name word matches,
+// else the Inbox. A %name matching no project stays in the text, where it
+// shows.
+func (m *Model) route(line string) (entry, []string) {
 	target := entry{kind: kindInbox, label: "Inbox"}
 	var words []string
 	for _, w := range strings.Fields(line) {
@@ -335,6 +341,12 @@ func (m *Model) capture(line string) {
 		}
 		words = append(words, w)
 	}
+	return target, words
+}
+
+// capture files a typed line where route says.
+func (m *Model) capture(line string) {
+	target, words := m.route(line)
 	if len(words) > 0 && m.create(target.rowID(), strings.Join(words, " ")) {
 		m.msg = "added to " + target.label
 	}

@@ -1,6 +1,7 @@
 package store
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -89,5 +90,70 @@ func TestStampsStayOrderedAcrossReopenAndClockStepBack(t *testing.T) {
 			t.Fatalf("stamp %q does not follow %q", stamp, prev)
 		}
 		prev = stamp
+	}
+}
+
+func TestBackupIsDailyWholeAndPruned(t *testing.T) {
+	dir := t.TempDir()
+	s, err := Open(filepath.Join(dir, "docket.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	commit := func(id, text string) {
+		t.Helper()
+		ops := []outline.Op{
+			{Kind: outline.Insert, Row: id, Pos: "V"},
+			{Kind: outline.Set, Row: id, Field: outline.FieldText, Value: text},
+		}
+		if err := s.Commit(ops, 1000); err != nil {
+			t.Fatal(err)
+		}
+	}
+	backups := filepath.Join(dir, "backups")
+	names := func() string {
+		t.Helper()
+		found, err := filepath.Glob(filepath.Join(backups, "*"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i := range found {
+			found[i] = filepath.Base(found[i])
+		}
+		return strings.Join(found, " ")
+	}
+
+	commit("a", "first day")
+	if err := s.Backup(backups, "2026-11-15", 2); err != nil {
+		t.Fatal(err)
+	}
+	// A second launch the same day leaves that day's snapshot alone.
+	commit("b", "later the same day")
+	if err := s.Backup(backups, "2026-11-15", 2); err != nil {
+		t.Fatal(err)
+	}
+	snap, err := Open(filepath.Join(backups, "docket-2026-11-15.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree, err := snap.Load()
+	snap.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tree.Row("a") == nil || tree.Row("a").Text() != "first day" || tree.Row("b") != nil {
+		t.Fatal("the snapshot is not the database as it was at the first launch of the day")
+	}
+
+	for _, day := range []string{"2026-11-16", "2026-11-17"} {
+		if err := s.Backup(backups, day, 2); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := names(); got != "docket-2026-11-16.db docket-2026-11-17.db" {
+		t.Fatalf("backups = %q", got)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "docket.db")); err != nil {
+		t.Fatal(err)
 	}
 }
