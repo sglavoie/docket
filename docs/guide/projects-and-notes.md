@@ -76,8 +76,9 @@ under the cursor. It opens with the project's name and a single muted line —
 `Active · 4 open · 4 tasks · slug docket` (`Parked` or `Archived` for those), with
 ` · pinned` appended only when the project is pinned — followed by up to two
 lines of its description. The rest of the pane is the project's own tasks, every
-one of them, in tree order with the same connectors, badges, and indicators the
-Outliner draws, because they are the Outliner's rows. A pane too narrow for a
+one of them, in tree order with the same badges and indicators the Outliner
+draws. Roots have no connector; muted connectors mark actual subtasks, just as
+in the outline. A pane too narrow for a
 whole title sheds that row's reference count and review first, in the Outliner's
 own order, but never its deadline: an overdue date is what a glance at a project
 is for, so the title is cut before the date is dropped. `Ctrl+F` and `Ctrl+B` page that list a pane at a time, `↑ N

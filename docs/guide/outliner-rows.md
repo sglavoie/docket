@@ -15,8 +15,8 @@ The keys are in [`outliner-keys.md`](outliner-keys.md).
 | Select work together | `v`, `V`, `Ctrl+A` | Select several tasks, then `wn` to plan them for Next |
 | Put a task out of sight | `wh`, then `fH` to see it | Hide a task and its children from every view; `u` takes it back |
 
-Task titles carry the visual emphasis. Project labels keep their identity color
-without bold text, lane headings have no filled background, and `‹` / `›N`
+Task titles carry the visual emphasis. Project labels use neutral text with
+identity color on `%` alone, lane headings have no filled background, and `‹` / `›N`
 family markers are muted. Selection and urgent dates retain stronger emphasis.
 
 Across projects, top-level rows share one title column. A singleton names its

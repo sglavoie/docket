@@ -103,8 +103,8 @@ a population leaves the original search return frame intact.
 ### Read search results
 
 The ranked list has no project headings, so across several projects each row
-opens with its project's `%slug`, in the color that project's heading wears in
-the main view, and the titles line up after it. A long slug is shortened to an
+opens with its project's `%slug`: the `%` keeps the project's identity color,
+the slug is neutral text, and the titles line up after it. A long slug is shortened to an
 eighth of the row — at least eight columns and at most twenty-four — so a narrow
 terminal keeps its titles and a wide one spells the slug out. Scoped to one project, the heading
 at the top names it and the rows carry no label.

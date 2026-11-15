@@ -291,6 +291,8 @@ no longer matches what the app draws.
 The [daily-use polish review](docs/tui-testing/daily-polish-review.md) records
 presentation checks, search measurements, and allocation budgets. Run
 `just search-bench --strict-time` on an idle machine to enforce latency targets too.
+The [wow-pass visual review](docs/tui-testing/wow-pass-visual-review.md) compares
+the everyday screens in dark and light, including the minimum 60×20 terminal.
 
 ## License
 

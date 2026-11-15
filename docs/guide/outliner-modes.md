@@ -209,15 +209,15 @@ strip at once.
 
 Every mode groups its tasks by project when you are looking at more than one
 project. Each group opens with a foldable `%slug (count)` header, and its
-tasks sit one level beneath it without repeating the project's name; `h` folds
+tasks reserve its identity column without repeating the project's name; `h` folds
 the cursor's own group down to that header once nothing nearer — a checklist,
 children, a parent — is left to fold, and `p` folds or opens every project group
 at once. A group holding a single top-level task draws no header while it is
-open: that task's row leads with the `%slug` instead, with its checkbox aligned
-with the other projects' tasks and its own subtasks beneath it. Every such
-row pads its `%slug` to one shared column, as wide as the longest slug of any
-project in view, folded sections included, so their titles line up; below 60
-columns the slug stays inline. Folding it with
+open: that task's row leads with the `%slug` instead, with its badges aligned
+with the other projects' tasks and its own subtasks beneath it. Root rows share
+one bounded identity column for project and context, including identities hidden
+by folds, so their titles line up. Below 60 usable row columns, labels stay
+inline instead of reserving that column. Folding it with
 `h` or `p` brings the header back as the summary,
 and `l` on that header merges it into the row again. On that row the task keys
 answer, so to act on the project itself — edit it, tag it, Peek it, or `Enter`
