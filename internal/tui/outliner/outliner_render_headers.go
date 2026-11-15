@@ -156,6 +156,7 @@ func outlinerCursorRow(gutter, content string, rowWidth int, paint cursorPaint) 
 type sectionHeaderOpts struct {
 	Name        string
 	Count       int
+	PadCount    bool         // retain the lane count's trailing cell without a colored fill
 	Lifted      LiftedCounts // members drawn in a promoted lane above; zero says nothing
 	Collapsed   bool
 	AccentColor lipgloss.Style // applied to the name portion
@@ -163,12 +164,6 @@ type sectionHeaderOpts struct {
 	Prefix      string         // inserted between indicator and name (e.g. "◷ ")
 	Cursor      cursorPaint    // how this header wears the cursor; zero on an ordinary row
 	Attention   string         // one-column summary for a folded header; empty is a blank
-	// IndicatorInk colors the fold arrow in the lane's own ink, so a lane reads
-	// as one colored block before its name is; nil keeps the arrow muted.
-	IndicatorInk color.Color
-	// Fill is the solid block the name and count stand on, with one space of
-	// it closing the count; nil leaves both on the row's own background.
-	Fill color.Color
 }
 
 // renderSectionHeader renders a standardized collapsible section header:
@@ -192,18 +187,12 @@ func renderSectionHeader(opts sectionHeaderOpts) (gutter, content string) {
 	if attention == "" {
 		attention = opts.Cursor.bar(lipgloss.NewStyle(), " ")
 	}
-	indicatorStyle := theme.MutedStyle
-	if opts.IndicatorInk != nil {
-		indicatorStyle = lipgloss.NewStyle().Foreground(opts.IndicatorInk)
-	}
-	gutter = attention + gutterPiece(opts.Cursor.gutterBg(), indicatorStyle, indicator)
+	gutter = attention + gutterPiece(opts.Cursor.gutterBg(), theme.MutedStyle, indicator)
 	namePart := opts.AccentColor.Bold(true).Render(opts.Prefix + opts.Name)
 	count := fmt.Sprintf("(%d)", opts.Count)
-	if opts.Fill != nil {
-		fill := lipgloss.NewStyle().Background(opts.Fill)
-		content = namePart + fill.Render(" ") + theme.MutedStyle.Background(opts.Fill).Render(count) + fill.Render(" ")
-	} else {
-		content = namePart + " " + theme.MutedStyle.Render(count)
+	content = namePart + " " + theme.MutedStyle.Render(count)
+	if opts.PadCount {
+		content += " "
 	}
 	if opts.Lifted.Any() {
 		content += " " + theme.MutedStyle.Render(liftedLabel(opts.Lifted))
@@ -286,37 +275,21 @@ func (m *OutlinerModel) renderPinnedContextRow(viewport outlinerViewport) string
 func (m *OutlinerModel) RenderOutlinerSectionHeaderRow(row OutlinerRow, selected bool, rowWidth, rowIndex int) string {
 	displayName, prefix := sectionHeaderLabel(row)
 
-	// Lanes with no state group — Pinned and the computed ones — keep Plan's
-	// green, the fill they wore before Backlog took a hue of its own.
-	sectionStyle := theme.ViewModeActiveStyle
-	if row.StateGroup.IsValid() {
-		sectionStyle = theme.GetWorkflowStateGroupStyle(row.StateGroup)
-	}
-	if row.PromotedTag == reviewLaneKey {
-		sectionStyle = theme.ViewModeReviewStyle
-	}
-
 	paint := m.cursorPaintFor(selected)
-	accent := theme.LaneHeaderStyle(sectionStyle)
-	fill := accent.GetBackground()
-	indicatorInk := accent.GetForeground()
+	accent := theme.LaneHeaderStyle(row.StateGroup == models.StateGroupToday)
 	if row.CollapseKey == projectNotesSectionKey {
-		// Notes are reference material, not a task lane: a muted heading on the
-		// row's own background, so the header never reads as a workflow state.
 		accent = theme.MutedStyle.Padding(0, 1)
-		fill, indicatorInk = nil, nil
 	}
 	gutter, content := renderSectionHeader(sectionHeaderOpts{
-		Fill:         fill,
-		Name:         displayName,
-		Count:        row.SectionCount,
-		Lifted:       row.SectionLifted,
-		Collapsed:    m.IsSectionRowCollapsed(row),
-		AccentColor:  accent,
-		Prefix:       prefix,
-		Cursor:       paint,
-		Attention:    m.renderHeaderAttention(row, paint),
-		IndicatorInk: indicatorInk,
+		Name:        displayName,
+		Count:       row.SectionCount,
+		PadCount:    row.CollapseKey != projectNotesSectionKey,
+		Lifted:      row.SectionLifted,
+		Collapsed:   m.IsSectionRowCollapsed(row),
+		AccentColor: accent,
+		Prefix:      prefix,
+		Cursor:      paint,
+		Attention:   m.renderHeaderAttention(row, paint),
 	})
 
 	if row.ProjectID != "" {

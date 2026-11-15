@@ -6,6 +6,10 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+
+	"github.com/sglavoie/docket/internal/models"
+	"github.com/sglavoie/docket/internal/tui/chrome"
+	"github.com/sglavoie/docket/internal/tui/theme"
 )
 
 // Lane names start beside the fold arrow at every width.
@@ -39,5 +43,69 @@ func TestLaneHeaderStartsAtLeftMargin(t *testing.T) {
 	narrow := ansi.Strip(m.RenderOutlinerSectionHeaderRow(row, false, 16, 0))
 	if !strings.HasPrefix(narrow, " ▾ Doing  (3)") {
 		t.Fatalf("a row with no room for the lead keeps the name at the edge: %q", narrow)
+	}
+}
+
+func TestLaneHeadersShareOneNeutralStyle(t *testing.T) {
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
+	m := NewOutlinerModel(nil, nil, nil)
+	for _, name := range []string{"dark", "light"} {
+		theme.ApplyTheme(theme.ThemeConfig{Name: name})
+		for _, group := range []models.WorkflowStateGroup{
+			models.StateGroupInbox, models.StateGroupDoing, models.StateGroupWaiting,
+			models.StateGroupBacklog, models.StateGroupToday, models.StateGroupNext,
+			models.StateGroupPaused, "",
+		} {
+			row := OutlinerRow{IsSectionHeader: true, StateGroup: group, SectionName: group.Label(), SectionCount: 3}
+			if group == "" {
+				row.SectionName = "Pinned"
+			}
+			for _, promoted := range []string{"", reviewLaneKey} {
+				row.PromotedTag = promoted
+				if promoted != "" {
+					row.StateGroup = ""
+					row.SectionName = "Review"
+				}
+				want := theme.LaneHeaderStyle(row.StateGroup == models.StateGroupToday).Render(row.SectionName)
+				for _, width := range []int{60, 120} {
+					line := m.RenderOutlinerSectionHeaderRow(row, false, width, 0)
+					if !strings.Contains(line, want) || !strings.Contains(line, theme.MutedStyle.Render("(3)")) {
+						t.Fatalf("%s %s: name/count styles disagree: %q", name, row.SectionName, line)
+					}
+					if lipgloss.Width(line) != width {
+						t.Fatalf("header width = %d, want %d", lipgloss.Width(line), width)
+					}
+				}
+			}
+		}
+		for _, mode := range chrome.OutlinerTabModes() {
+			got := chrome.OperationalTitleModeSegmentArriving(mode, chrome.ModeArrivalNone)
+			want := theme.LaneHeaderStyle(mode.ID == chrome.ModeToday).Padding(0).Render(mode.Label)
+			if got != want {
+				t.Errorf("%s %s tab = %q, want %q", name, mode.Label, got, want)
+			}
+		}
+	}
+}
+
+func TestTreeConnectorsAreMuted(t *testing.T) {
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
+	m := NewOutlinerModel(nil, nil, nil)
+	m.Population.Projects = []*models.Project{{ID: "colored", ColorSlot: 1}}
+	for _, name := range []string{"dark", "light"} {
+		theme.ApplyTheme(theme.ThemeConfig{Name: name})
+		for _, projectID := range []string{"", "missing", "colored"} {
+			row := OutlinerRow{ProjectID: projectID}
+			style := m.treeConnectorStyle(row)
+			if style.GetForeground() != theme.ColorMuted || style.GetBackground() != (lipgloss.NoColor{}) {
+				t.Fatalf("%s %s: connector must be muted without its own fill", name, projectID)
+			}
+			for _, connector := range []string{"├──", "└──", "│"} {
+				got, _ := renderTaskPrefix(connector, "", nil, style)
+				if got != theme.MutedStyle.Render(connector) {
+					t.Fatalf("%s: connector lost muted paint", name)
+				}
+			}
+		}
 	}
 }

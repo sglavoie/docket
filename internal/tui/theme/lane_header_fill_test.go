@@ -1,32 +1,23 @@
 package theme
 
 import (
+	"charm.land/lipgloss/v2"
 	"testing"
-
-	"github.com/sglavoie/docket/internal/models"
 )
 
-// Every lane header stands on a solid fill of its own lane's color in both
-// themes, and the fill is neither the paper nor shared between lanes.
-func TestLaneHeaderStandsOnItsOwnFillInBothThemes(t *testing.T) {
-	defer ApplyTheme(ThemeConfig{})
-	lanes := []models.WorkflowStateGroup{
-		models.StateGroupInbox, models.StateGroupDoing, models.StateGroupWaiting,
-		models.StateGroupBacklog, models.StateGroupToday, models.StateGroupNext,
-		models.StateGroupPaused,
-	}
+func TestLaneHeadingPalette(t *testing.T) {
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 	for _, name := range []string{"dark", "light"} {
 		ApplyTheme(ThemeConfig{Name: name})
-		seen := map[string]models.WorkflowStateGroup{}
-		for _, lane := range lanes {
-			fill := colorHex(LaneHeaderStyle(GetWorkflowStateGroupStyle(lane)).GetBackground())
-			if fill == "" || fill == ThemeBgColor {
-				t.Fatalf("%s %s: header has no fill of its own (%q on paper %s)", name, lane.Label(), fill, ThemeBgColor)
+		for _, today := range []bool{false, true} {
+			style := LaneHeaderStyle(today)
+			want := NormalStyle.GetForeground()
+			if today {
+				want = ColorAccent
 			}
-			if other, dup := seen[fill]; dup {
-				t.Fatalf("%s: %s and %s share fill %s", name, other.Label(), lane.Label(), fill)
+			if style.GetForeground() != want || style.GetBackground() != (lipgloss.NoColor{}) || !style.GetBold() {
+				t.Fatalf("%s today=%v: heading must be bold primary text (Today accent) without fill: %v", name, today, style)
 			}
-			seen[fill] = lane
 		}
 	}
 }

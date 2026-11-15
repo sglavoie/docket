@@ -420,11 +420,9 @@ func renderTaskPrefix(prefix, foldIndicator string, bg color.Color, style lipglo
 	return gutterPiece(bg, style, prefix), foldIndicator
 }
 
-// treeConnectorStyle paints a row's tree connectors in its project's color, so
-// the tree reads as belonging to the header above it; an uncolored or
-// unresolved project keeps the muted default ProjectColorStyle falls back to.
-func (m *OutlinerModel) treeConnectorStyle(row OutlinerRow) lipgloss.Style {
-	return theme.ProjectColorStyle(m.ResolveProjectForRow(row))
+// treeConnectorStyle keeps parentage quiet beside project identity and attention.
+func (m *OutlinerModel) treeConnectorStyle(_ OutlinerRow) lipgloss.Style {
+	return theme.MutedStyle
 }
 
 // RowLegendEntry is one mark the cursor's task row wears, spelled exactly as

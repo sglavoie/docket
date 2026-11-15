@@ -48,10 +48,9 @@ func (f *inlinePeekFields) addGlyph(label, glyph, value string) {
 	f.parts = append(f.parts, theme.HelpStyle.Render(label+": ")+glyph+" "+theme.HelpKeyStyle.Render(value))
 }
 
-// addChip is a field whose value is a lane: the Plan and the Status. It wears
-// the lane header's own filled block, so the summary names the lane in the
-// color the outline draws it in, and the glyph the row abbreviates it to leads
-// the chip as addGlyph's does. An invalid group falls back to a plain value.
+// addChip gives Plan and Status their static workflow value tint. The row's
+// state glyph leads the chip as addGlyph's does. Lane headings use a separate
+// neutral style; an invalid group falls back to a plain value.
 func (f *inlinePeekFields) addChip(label, glyph string, group models.WorkflowStateGroup, value string) {
 	if value == "" {
 		return
@@ -61,7 +60,7 @@ func (f *inlinePeekFields) addChip(label, glyph string, group models.WorkflowSta
 		return
 	}
 	// Unpadded, so the words read exactly as the plain summary spells them.
-	chip := theme.LaneHeaderStyle(theme.GetWorkflowStateGroupStyle(group)).UnsetPadding().Render(value)
+	chip := theme.WorkflowValueStyle(theme.GetWorkflowStateGroupStyle(group)).UnsetPadding().Render(value)
 	lead := theme.HelpStyle.Render(label + ": ")
 	if glyph != "" {
 		lead += glyph + " "

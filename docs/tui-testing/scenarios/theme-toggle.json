@@ -6,8 +6,14 @@
     { "type": "key", "label": "switch from the default dark theme", "key": "T" },
     { "type": "assert", "assert": "status_contains", "value": "Theme: light" },
     { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "neutral lanes and their rows fit the minimum width in light", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "Doing  (1)" },
+    { "type": "assert", "assert": "contains", "value": "Build login form" },
+    { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "switch back to dark", "key": "T" },
     { "type": "assert", "assert": "status_contains", "value": "Theme: dark" },
+    { "type": "assert", "assert": "contains", "value": "Doing  (1)" },
+    { "type": "assert", "assert": "contains", "value": "Build login form" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

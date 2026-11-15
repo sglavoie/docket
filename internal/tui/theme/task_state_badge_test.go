@@ -87,3 +87,40 @@ func TestTaskStateBadgeWithoutSemanticTagsKeepsWorkflowColors(t *testing.T) {
 		}
 	}
 }
+
+func TestDoingStateUsesAccentColor(t *testing.T) {
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+	for _, name := range []string{"dark", "light"} {
+		ApplyTheme(ThemeConfig{Name: name})
+		task := &models.Task{WorkflowState: models.StateDoing}
+		for label, style := range map[string]lipgloss.Style{
+			"status": InProgressStyle, "badge": InProgressBadgeStyle,
+			"glyph": taskStateBadgeStyle(task),
+		} {
+			if style.GetForeground() != ColorAccent {
+				t.Errorf("%s %s foreground = %v, want accent %v", name, label, style.GetForeground(), ColorAccent)
+			}
+		}
+		if GetStateBadge(models.StateDoing) != taskStateBadgeStyle(task).Render(models.StateDoing.Icon()) {
+			t.Fatalf("%s: state badge and task glyph disagree", name)
+		}
+	}
+}
+
+func TestStateGlyphsRemainDistinctWithoutColor(t *testing.T) {
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+	for _, name := range []string{"dark", "light"} {
+		ApplyTheme(ThemeConfig{Name: name})
+		seen := map[string]models.WorkflowState{}
+		for _, state := range models.AllWorkflowStates() {
+			glyph := ansi.Strip(monochrome(t, GetStateBadge(state)))
+			if glyph == "" {
+				t.Fatalf("%s: %s lost its glyph", name, state)
+			}
+			if other, ok := seen[glyph]; ok {
+				t.Fatalf("%s: %s and %s share glyph %q", name, state, other, glyph)
+			}
+			seen[glyph] = state
+		}
+	}
+}

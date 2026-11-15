@@ -15,20 +15,10 @@ var (
 	ViewModeCanceledStyle  = makeViewModeStyle("#4a2430", "#991b1b")
 	ViewModeAllStyle       = makeViewModeStyle("#283352", "#0369a1")
 
-	// ViewModeBacklogStyle fills the Backlog lane header. Backlog is parked
-	// work, so it no longer shares Plan's green with the Today lane above it.
-	// Cyan is the one hue no other lane, nor the teal due chips standing inside
-	// a Backlog lane, already wears.
+	// Static badge tones remain available to value pickers and Peek. Lane names
+	// and mode tabs use LaneHeaderStyle instead.
 	ViewModeBacklogStyle = makeViewModeStyle("#1d4250", "#0e7490")
-
-	// ViewModeReviewStyle fills the Review lane header. Review is promoted from
-	// a tag rather than a state group, so it resolves no ThemeRole and declares
-	// its fill here beside the ones that do: a lane that carried only a
-	// foreground read as unbadged text between the badges above and below it.
-	// The fill stays in ColorPurple's violet band, the color the picker row that
-	// opens the lane already wears, and is the lightest of the three violets so
-	// it is never mistaken for Paused.
-	ViewModeReviewStyle = makeViewModeStyle("#57398c", "#5b21b6")
+	ViewModeReviewStyle  = makeViewModeStyle("#57398c", "#5b21b6")
 
 	FilterBadgeStyle = lipgloss.NewStyle().
 				Background(ColorWarning).

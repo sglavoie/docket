@@ -60,7 +60,7 @@ const (
 // operational title row: the badge is pulse's, styled by the mode, and it
 // lands reversed while the mode is arriving, at the same width.
 func OperationalTitleModeSegmentArriving(mode OutlinerMode, arrival ModeArrival) string {
-	style := GetOutlinerModeStyle(mode.ID)
+	style := theme.LaneHeaderStyle(mode.ID == ModeToday)
 	if arrival != ModeArrivalNone {
 		style = style.Reverse(true)
 	}
@@ -68,12 +68,11 @@ func OperationalTitleModeSegmentArriving(mode OutlinerMode, arrival ModeArrival)
 }
 
 // OperationalTitleBrandMark is Docket's mark as the title row leads with it:
-// the glyph in the active mode's ink, bold, then the one space that parts it
-// from the scope. It changes color with the mode, so Tab recolors the mark the
-// switch lands on as well as the badge. It is decoration and is spent only from
+// the glyph in the heading ink, bold, then the space before the scope. Today
+// alone uses the accent. It is decoration and is spent only from
 // columns the title would otherwise leave blank.
 func OperationalTitleBrandMark(mode OutlinerModeID) string {
-	ink := theme.StructuralSectionStyle(GetOutlinerModeStyle(mode)).GetForeground()
+	ink := theme.LaneHeaderStyle(mode == ModeToday).GetForeground()
 	return lipgloss.NewStyle().Foreground(ink).Bold(true).Render(theme.IconBrand) + " "
 }
 

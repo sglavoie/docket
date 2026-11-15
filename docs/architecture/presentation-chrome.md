@@ -686,6 +686,19 @@ rule that still sets it apart in a profile carrying no color; it is padded or
 cut to exactly `rowWidth`. Either single-project form, the ranked list, and any
 first row carrying no section pin nothing.
 
+`theme.LaneHeaderStyle` supplies unfilled, bold primary text to lane names and
+mode tabs, with `ColorAccent` reserved for Today's name. Counts and fold arrows
+use `MutedStyle`; the trailing rule keeps its quiet lane-rule color. Pinned,
+Review, and computed lanes share the neutral heading. `treeConnectorStyle`
+uses `MutedStyle` for task and checklist parentage, while project sigils retain
+their project palette. Peek's Plan/Status value tints remain in
+`theme.WorkflowValueStyle`, independent of these structural headings.
+
+Doing's status style and badge use `ColorAccent`, including after a theme
+rebuild. The light-theme glyph adapter preserves that exact accent. Semantic
+tag precedence still overrides the glyph, and state icons remain distinct
+without color. Priority, deadline, overdue, review, and cursor paint are unchanged.
+
 Opening Peek moves the list once and nothing the cursor does afterwards moves it
 again. `writePeekDock` pads the list block out to `VisibleRows` before writing
 the dock, so a projection shorter than its window leaves the dock at the screen

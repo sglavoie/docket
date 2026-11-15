@@ -1,10 +1,8 @@
 # CLAUDE.md
 
-This file is the invariant contract the implementation and its tests are held
-to. It states rules, not explanations: if you want to know how Docket
-behaves, read [`docs/guide/`](docs/guide/README.md) instead.
+This contract holds implementation and tests to invariants.
 
-Contributor rules only: invariants, forbidden patterns, forwarding addresses.
+Contributor rules: invariants, forbidden patterns, forwarding addresses.
 Behavior: [`docs/guide/`](docs/guide/README.md). Mechanism: [`docs/architecture.md`](docs/architecture.md).
 [`docs/decisions/behavioral-signals-contracts.md`](docs/decisions/behavioral-signals-contracts.md)
 is the locked behavioral-signal authority.
@@ -382,8 +380,9 @@ time. `Ctrl+O origin` is advertised only where a frame was pushed.
 Project groups name their project once: `appendProjectGroupHeader` emits a
 header when folded or over multiple roots; an expanded singleton uses
 `LeadsMergedGroup`, at header depth with `%slug`. Task keys answer there;
-project keys require the header. Roots draw no connectors; subtasks retain
-them below the shared column. Lane names follow the fold glyph, then a rule.
+project keys require the header. Roots draw no connectors; subtasks keep muted ones below the shared column.
+Lane/tab names are bold primary text without fill, Today accent; counts and rules muted.
+Lane names follow the fold glyph, then a rule.
 Keys read the group off the row: `rowStartsGroup` is `n`/`N`'s stop set —
 a header, or a row whose predecessor carried another group — and
 `VisibleSections` and `VisibleProjectGroups` are what `s` and `p` fold; none of
@@ -990,7 +989,7 @@ Peek through its chip, and none reaches the title. `theme.TaskTitleStyleFor` is 
 answers lifecycle alone — muted, canceled, cursor-selected — and the
 Outliner's cursor title and Peek's title alone add bold, `CursorTitleWeight`;
 row badges and identity labels wear no weight, and the daily-loop surfaces share
-`theme.ColorAccent`.
+`theme.ColorAccent`, including Doing glyphs unless a semantic tag overrides them.
 `chrome.PickHeroAttribute` is the attention ladder — overdue, review over
 `models.TaskNeedsAttention`, due today, then priority 1 — and it demotes one
 badge, never a title. A state badge is identity, so it is neither hero nor
@@ -1250,7 +1249,7 @@ authoring rules live in
 
 ## Where the details live
 
-Guessable addresses are omitted; do not restore them.
+Omit guessable addresses.
 
 | Topic | `docs/guide/` | `docs/architecture/` |
 | --- | --- | --- |

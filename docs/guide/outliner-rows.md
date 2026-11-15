@@ -428,8 +428,8 @@ and color the row draws for them, so reading Peek is how the row's symbols are
 learned. Doing and Waiting include time in that state. The project slug and parent chain follow, then the schedule, description,
 subtask and checklist progress, attachments, comments, dependencies, tags,
 and history. Empty fields are omitted. The title is bold, and the Plan and
-Status values sit on their lane's own color, the fill the outline draws that
-lane's header on. Labels end in one column, so the values beside them line up
+Status values retain their workflow tints, independent of the neutral lane
+headings. Labels end in one column, so the values beside them line up
 (`    Due: Fri Nov 13` under `Project: web`), and a wrapped value hangs under
 itself; a dock narrower than 40 columns keeps the plain layout. Progress reads
 as a smooth bar that fills by eighths of a cell. The last line, `Row:`, names

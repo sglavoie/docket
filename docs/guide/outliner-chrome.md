@@ -520,7 +520,13 @@ header; `gg` and `N` can still reach it. It is absent when the real header is
 visible, in flat search results, and in single-project views. In a grouped
 mode without lane headers, such as Inbox, it names the project whose heading
 has scrolled away. Project names use neutral text, with identity color on their
-`%` sigil and tree connectors, leaving task titles and attention cues prominent.
+`%` sigil; tree connectors are muted, leaving task titles and attention cues prominent.
+
+Lane names and the active mode tab use bold primary text without a colored
+background. Today alone uses the accent color on its name. Counts, fold arrows,
+and lane rules stay muted. The Doing `◐` glyph uses that same accent in dark
+and light themes; a semantic task tag can still override the glyph's color.
+Every state keeps its distinct glyph with `--no-color`.
 
 ## Read tag colors
 

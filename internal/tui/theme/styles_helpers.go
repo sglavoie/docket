@@ -267,6 +267,10 @@ func readableStateBadgeStyle(style lipgloss.Style) lipgloss.Style {
 	if ActiveThemeName != "light" {
 		return style
 	}
+	// Doing keeps the daily-loop accent exactly, including in the light theme.
+	if style.GetForeground() == ColorAccent {
+		return style.UnsetBackground().Bold(true)
+	}
 	hex := "#2b2f36"
 	switch style.GetForeground() {
 	case ColorSemanticBugTitle, ColorError:

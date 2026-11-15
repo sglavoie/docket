@@ -8,7 +8,7 @@ var (
 			Foreground(ColorMuted)
 
 	InProgressStyle = lipgloss.NewStyle().
-			Foreground(ColorWarning)
+			Foreground(ColorAccent)
 
 	DoneStyle = lipgloss.NewStyle().
 			Foreground(ColorSuccess)

@@ -331,9 +331,18 @@ func makeDueBadgeStyle(tone dueBadgeTone) lipgloss.Style {
 		Padding(0, 1)
 }
 
-// StructuralSectionStyle uses readable heading text without a
-// filled badge competing with task selection and deadline chips.
-func StructuralSectionStyle(badge lipgloss.Style) lipgloss.Style {
+// LaneHeaderStyle is shared by lane names and mode tabs. Only Today carries
+// an accent; structural headings never compete with attention chips for fill.
+func LaneHeaderStyle(today bool) lipgloss.Style {
+	ink := NormalStyle.GetForeground()
+	if today {
+		ink = ColorAccent
+	}
+	return lipgloss.NewStyle().Foreground(ink).Bold(true).Padding(0, 1)
+}
+
+// workflowValueHeadingStyle resolves the readable ink of a static workflow badge.
+func workflowValueHeadingStyle(badge lipgloss.Style) lipgloss.Style {
 	ink := badge.GetBackground()
 	if ActiveThemeName != "light" {
 		ink = badge.GetForeground()
@@ -341,31 +350,18 @@ func StructuralSectionStyle(badge lipgloss.Style) lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(ink).Bold(true).Padding(0, 1)
 }
 
-// laneHeaderFillDarkWeight and laneHeaderFillLightWeight are how far a
-// lane header's fill sits from the paper toward the lane's own ink: enough to
-// read as a solid block the name stands on, little enough that the full-strength
-// ink keeps its contrast on top of it. Light paper shows a tint sooner, so it
-// moves less.
 const (
-	laneHeaderFillDarkWeight  = 0.85
-	laneHeaderFillLightWeight = 0.13
+	workflowValueFillDarkWeight  = 0.85
+	workflowValueFillLightWeight = 0.13
 )
 
-// LaneHeaderStyle is StructuralSectionStyle standing on a solid fill: the
-// lane's color — the badge's fill, which in the dark theme is not the
-// heading's ink — pulled toward the paper, so each lane header reads as its own
-// colored block in both themes while the name keeps its heading ink. It is
-// the outline's lane header alone; the mode tab and the pinned context row keep
-// the unfilled heading.
-func LaneHeaderStyle(badge lipgloss.Style) lipgloss.Style {
-	return StructuralSectionStyle(badge).Background(LaneHeaderFill(badge.GetBackground()))
+// WorkflowValueStyle preserves the tinted Plan/Status values in Peek.
+func WorkflowValueStyle(badge lipgloss.Style) lipgloss.Style {
+	return workflowValueHeadingStyle(badge).Background(workflowValueFill(badge.GetBackground()))
 }
 
-// LaneHeaderFill is the fill LaneHeaderStyle paints, exposed so the rest
-// of the header — its count and the spaces between — stands on the same block.
-// Without a hex lane color or paper there is nothing to blend, and the header keeps
-// the terminal's own background.
-func LaneHeaderFill(lane color.Color) color.Color {
+// workflowValueFill blends the badge tone with the current paper.
+func workflowValueFill(lane color.Color) color.Color {
 	paper := ThemeBgColor
 	if paper == "" {
 		paper = colorHex(ColorBackground)
@@ -374,9 +370,9 @@ func LaneHeaderFill(lane color.Color) color.Color {
 	if !isHexColor(paper) || !isHexColor(inkHex) {
 		return lipgloss.NoColor{}
 	}
-	weight := laneHeaderFillDarkWeight
+	weight := workflowValueFillDarkWeight
 	if ActiveThemeName == "light" {
-		weight = laneHeaderFillLightWeight
+		weight = workflowValueFillLightWeight
 	}
 	return lipgloss.Color(blendHex(paper, inkHex, weight))
 }
