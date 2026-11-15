@@ -134,14 +134,15 @@ func IsSigil(w string, today time.Time) bool {
 }
 
 // Parse reads a typed line. A sigil is a whole word; one the grammar cannot
-// read stays in the text, and a backslash before a sigil keeps it literal.
+// read stays in the text. Before a recognized sigil, a run of backslashes
+// keeps the token literal and loses exactly one backslash.
 func Parse(s string, notes bool, today time.Time) Line {
 	var l Line
 	var words []string
 	state, named := "", false
 	for _, w := range strings.Fields(s) {
-		if rest, ok := strings.CutPrefix(w, `\`); ok && IsSigil(rest, today) {
-			words = append(words, rest)
+		if strings.HasPrefix(w, `\`) && IsSigil(strings.TrimLeft(w, `\`), today) {
+			words = append(words, w[1:])
 			continue
 		}
 		if !IsSigil(w, today) {
@@ -181,7 +182,7 @@ func Parse(s string, notes bool, today time.Time) Line {
 func Format(l Line, notes bool, today time.Time) string {
 	var words []string
 	for _, w := range strings.Fields(l.Text) {
-		if IsSigil(w, today) {
+		if IsSigil(strings.TrimLeft(w, `\`), today) {
 			w = `\` + w
 		}
 		words = append(words, w)

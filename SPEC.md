@@ -318,6 +318,7 @@ the zoom.
 | `Tab` `p` | Sidebar focus; go to a project or list by name | 3 |
 | `a` `m` | Capture to the Inbox from anywhere; move to a project | 3 |
 | `v` | Select | 4 |
+| `y` | Copy rows with their subtrees | 7 |
 | `/` `:` | Filter, command | 4 |
 | `#` `@` `$` `*` `-` | Stamp sigils on rows (not counted) | 4 |
 
@@ -325,13 +326,43 @@ While typing: `Enter` keeps the row and opens the next, `Esc` keeps the row,
 `Tab` and `Shift+Tab` indent and outdent. There is no cancel: `u` restores
 the line. `Alt+Left`, `Alt+Right` and `Alt+Backspace` work by word.
 
+**Copy.** `y` puts the cursor's row or selection, with whole subtrees, on the
+system clipboard as tab-indented row-grammar lines. Depth is relative to the
+copied roots; selected descendants are not written twice. Deleted rows are
+omitted; folded and hidden closed descendants are included. The status says
+`copied N rows`. Copy works in lists and filters, using the chosen rows
+without adding dimmed ancestors. It keeps the selection and makes no undo step.
+
+Copy and export write each line against its own parent's default. Pasting
+under the same kind of parent round-trips the text, state, row-grammar fields,
+sibling order and hierarchy. An otherwise empty note is written as `$note`,
+at its indentation, and kept through editor insertion until parsing; it
+counts as a row and keeps its children. Whitespace-only external lines may
+still be ignored. There is no row-count limit; the entire paste is one undo
+step, including more than 2000 rows.
+
+Two escapes preserve literal text. First, the sigil formatter adds one
+backslash to any text token with zero or more backslashes before a recognized
+sigil, anywhere in a line. The sigil parser removes exactly one and keeps the
+rest literal; unescaped sigils remain metadata, and backslashes before
+non-sigils stay unchanged. Second, copy/export prefix one backslash to a
+formatted line beginning with `- `, `* `, `+ `, `• `, `[ ] `, `[x] `, `[X] ` or
+a backslash. After reading indentation, paste removes this protective
+backslash only before one of those prefixes or another backslash, then skips
+bullet/checkbox normalization, including in a single-line row editor.
+Transport encoding follows sigil formatting; transport decoding precedes
+sigil parsing. Thus stored `\#tag` has three leading backslashes on the
+clipboard, two after transport decoding, and one after parsing. Prompts keep
+typed text. Defaults are not preserved when pasting under a different kind
+of parent.
+
 **Paste.** One pasted line is typed text, with spaces preserved, except an
 unescaped checkbox line (optionally after a list bullet): its normalized text
 is inserted at the caret with `$open` for `[ ]` or `$done` for `[x]`, and editing
 continues. Several lines become rows: the first joins the row being typed
 and the rest follow it. When nothing is being typed, all pasted lines become
-rows after the cursor. Indentation of any unit is depth; `-`, `*`
-and `+` bullets are dropped; `[ ]` adds `$open` and `[x]` adds `$done`,
+rows after the cursor. Indentation of any unit is depth; `-`, `*`,
+`+` and `•` bullets are dropped; `[ ]` adds `$open` and `[x]` adds `$done`,
 so checkboxes stay tasks wherever pasted. The appended state wins over any
 state sigil in the pasted text. The whole paste, with the row it was typed
 into, is one undo step. Rows cannot be pasted into a list, a
@@ -428,7 +459,8 @@ in place, never copied, so two machines closing it cannot make two.
 
 7. **Outliner.** Indent, outdent and reorder a selected block of adjacent
    siblings in one undo step. Rows under tasks default to notes; pasted
-   checkboxes explicitly keep their task state.
+   checkboxes explicitly keep their task state. `y` copies rows and their
+   subtrees for lossless paste under the same kind of parent.
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface.

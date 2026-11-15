@@ -2,6 +2,7 @@ package sigil
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -158,6 +159,36 @@ func TestNextDate(t *testing.T) {
 	for _, c := range cases {
 		if got := NextDate(c.from, c.every, today); got != c.want {
 			t.Errorf("NextDate(%q, %s) = %s, want %s", c.from, c.every, got, c.want)
+		}
+	}
+}
+
+func TestLiteralBackslashesBeforeSigils(t *testing.T) {
+	for _, notes := range []bool{false, true} {
+		for _, token := range []string{"$open", "!", "@2026-11-15", "@@2026-11-15", "*2w", "#tag"} {
+			for n := 0; n <= 2; n++ {
+				for _, prefix := range []string{"", "prefix "} {
+					line := Line{Text: prefix + strings.Repeat(`\`, n) + token,
+						State: Doing, Flag: true, Due: "2026-11-15", Start: "2026-11-15",
+						Every: "2w", Tags: []string{"real"}}
+					want := prefix + strings.Repeat(`\`, n+1) + token + " ! @2026-11-15 @@2026-11-15 *2w #real $doing"
+					if got := Format(line, notes, today); got != want {
+						t.Fatalf("Format(%q) = %q, want %q", line.Text, got, want)
+					}
+					if got := Parse(want, notes, today); !reflect.DeepEqual(got, line) {
+						t.Fatalf("Parse(%q) = %+v, want %+v", want, got, line)
+					}
+				}
+			}
+		}
+		for _, text := range []string{`\plain`, `\\plain`, `prefix \#123`, `prefix \\@alice`} {
+			line := Line{Text: text, State: DefaultState(notes, text)}
+			if got := Format(line, notes, today); got != text {
+				t.Fatalf("non-sigil changed: %q -> %q", text, got)
+			}
+			if got := Parse(text, notes, today); !reflect.DeepEqual(got, line) {
+				t.Fatalf("non-sigil parsed as %+v, want %+v", got, line)
+			}
 		}
 	}
 }

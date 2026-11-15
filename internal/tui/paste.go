@@ -8,14 +8,13 @@ import (
 	"github.com/sglavoie/docket/internal/sigil"
 )
 
-const pasteLimit = 2000
-
 // pasted is one line of pasted text: how deep it sits below the first line,
 // and the row line it stands for.
 type pasted struct {
-	level    int
-	text     string
-	checkbox bool // normalize this line even when pasted into a single-line editor
+	level     int
+	text      string
+	checkbox  bool // normalize this line even when pasted into a single-line editor
+	protected bool // transport-decoded; never normalize its literal prefixes
 }
 
 // readPaste reads pasted text as an outline. Depth follows indentation,
@@ -25,7 +24,7 @@ func readPaste(content string) []pasted {
 	var cols []int // the indentation of each open level
 	for _, raw := range strings.Split(strings.ReplaceAll(content, "\r", ""), "\n") {
 		text := strings.TrimLeft(raw, " \t")
-		if strings.TrimSpace(text) == "" || len(out) == pasteLimit {
+		if strings.TrimSpace(text) == "" {
 			continue
 		}
 		indent := 0
@@ -43,23 +42,28 @@ func readPaste(content string) []pasted {
 			cols = append(cols, indent)
 		}
 
-		for _, bullet := range []string{"- ", "* ", "+ ", "• "} {
-			if rest, ok := strings.CutPrefix(text, bullet); ok {
-				text = rest
-				break
-			}
-		}
+		protected := strings.HasPrefix(text, `\`) && pastePrefix(text[1:])
 		state := ""
-		if rest, ok := strings.CutPrefix(text, "[ ] "); ok {
-			text, state = rest, sigil.Open
-		} else if len(text) > 3 && (strings.HasPrefix(text, "[x] ") || strings.HasPrefix(text, "[X] ")) {
-			text, state = text[4:], sigil.Done
+		if protected {
+			text = text[1:]
+		} else {
+			for _, bullet := range []string{"- ", "* ", "+ ", "• "} {
+				if rest, ok := strings.CutPrefix(text, bullet); ok {
+					text = rest
+					break
+				}
+			}
+			if rest, ok := strings.CutPrefix(text, "[ ] "); ok {
+				text, state = rest, sigil.Open
+			} else if len(text) > 3 && (strings.HasPrefix(text, "[x] ") || strings.HasPrefix(text, "[X] ")) {
+				text, state = text[4:], sigil.Done
+			}
 		}
 		text = strings.Join(strings.Fields(text), " ")
 		if state != "" {
 			text += " $" + state
 		}
-		out = append(out, pasted{level: len(cols) - 1, text: text, checkbox: state != ""})
+		out = append(out, pasted{level: len(cols) - 1, text: text, checkbox: state != "", protected: protected})
 	}
 	return out
 }
@@ -86,7 +90,7 @@ func (m *Model) paste(content string) {
 			m.picked = map[string]bool{}
 		}
 	case m.edit != nil && len(lines) == 1:
-		if lines[0].checkbox {
+		if lines[0].checkbox || lines[0].protected {
 			m.edit.insert([]rune(lines[0].text))
 		} else {
 			m.edit.insert(oneLine())
@@ -189,5 +193,20 @@ func (m *Model) pasteRows(anchor string, anchorIsFirst bool, lines []pasted, mer
 	}
 	m.rebuild()
 	m.seek(made[len(made)-1])
-	m.msg = fmt.Sprintf("pasted %d rows", len(made))
+	n := len(made)
+	if anchorIsFirst {
+		n++
+	}
+	m.msg = fmt.Sprintf("pasted %d rows", n)
+}
+
+// pastePrefix identifies line starts needing protection after sigil.Format.
+// Decoding this transport layer must leave sigil escapes for sigil.Parse.
+func pastePrefix(text string) bool {
+	for _, prefix := range []string{"- ", "* ", "+ ", "• ", "[ ] ", "[x] ", "[X] ", `\`} {
+		if strings.HasPrefix(text, prefix) {
+			return true
+		}
+	}
+	return false
 }

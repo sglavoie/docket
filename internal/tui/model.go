@@ -117,6 +117,7 @@ type Model struct {
 	helpTop    int  // first visible help line
 	helpG      bool // a pending g in help
 	msg        string
+	pendingCmd tea.Cmd // command produced by normalKey for Update to deliver
 }
 
 func New(tree *outline.Tree, backend Backend, folds map[string]bool) *Model {
@@ -618,10 +619,8 @@ func (m *Model) shift(id string, indent bool) {
 	m.seek(id)
 }
 
-// selectedBlock drops descendants of selected rows and returns the remaining
-// roots in sibling order. Folds can hide selections, so acting order is not
-// necessarily sibling order.
-func (m *Model) selectedBlock(ids []string) []string {
+// selectedRoots drops descendants of selected rows, preserving acting order.
+func (m *Model) selectedRoots(ids []string) []string {
 	selected := make(map[string]bool, len(ids))
 	for _, id := range ids {
 		selected[id] = true
@@ -635,6 +634,17 @@ func (m *Model) selectedBlock(ids []string) []string {
 		if p == "" {
 			roots = append(roots, id)
 		}
+	}
+	return roots
+}
+
+// selectedBlock requires adjacent siblings and orders them by the tree.
+// Folds can hide selections, so acting order need not be sibling order.
+func (m *Model) selectedBlock(ids []string) []string {
+	roots := m.selectedRoots(ids)
+	selected := make(map[string]bool, len(roots))
+	for _, id := range roots {
+		selected[id] = true
 	}
 	if len(roots) == 0 {
 		return nil
@@ -933,7 +943,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.syncSettle()
 	}
-	return m, m.syncCmd()
+	cmd := tea.Batch(m.pendingCmd, m.syncCmd())
+	m.pendingCmd = nil
+	return m, cmd
 }
 
 // prompt is the bottom line while it is asking for something. Its label
@@ -1231,6 +1243,10 @@ func (m *Model) normalKey(k string) {
 
 	ids := m.acting()
 	switch k {
+	case "y":
+		text, n := m.writeRows(m.selectedRoots(ids))
+		m.pendingCmd = tea.SetClipboard(text)
+		m.msg = fmt.Sprintf("copied %d rows", n)
 	case "e":
 		if m.single() {
 			m.editRow(cur)

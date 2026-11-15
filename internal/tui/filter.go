@@ -301,26 +301,42 @@ func (m *Model) export(path string) {
 			path = filepath.Join(home, rest)
 		}
 	}
-	var b strings.Builder
-	n, today := 0, m.today()
-	var walk func(parent string, depth int)
-	walk = func(parent string, depth int) {
-		for _, id := range m.tree.Children(parent) {
-			if id == filtersID {
-				continue
-			}
-			line := sigil.FromFields(m.tree.Row(id).Fields)
-			b.WriteString(strings.Repeat("\t", depth) + sigil.Format(line, m.defaultsToNotes(parent), today) + "\n")
-			n++
-			walk(id, depth+1)
-		}
-	}
-	walk("", 0)
-	if err := os.WriteFile(path, []byte(b.String()), 0o600); err != nil {
+	text, n := m.writeRows(m.tree.Children(""))
+	if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
 		m.msg = err.Error()
 		return
 	}
 	m.msg = fmt.Sprintf("exported %d rows to %s", n, path)
+}
+
+// writeRows is the shared copy/export writer. Each root starts at depth zero;
+// folds and closed-row visibility do not affect the live subtree.
+func (m *Model) writeRows(roots []string) (string, int) {
+	var b strings.Builder
+	n, today := 0, m.today()
+	var walk func(string, int)
+	walk = func(id string, depth int) {
+		if id == filtersID || !m.live(id) {
+			return
+		}
+		row := m.tree.Row(id)
+		text := sigil.Format(sigil.FromFields(row.Fields), m.defaultsToNotes(row.Parent), today)
+		if text == "" {
+			text = "$note"
+		}
+		if pastePrefix(text) {
+			text = `\` + text
+		}
+		b.WriteString(strings.Repeat("\t", depth) + text + "\n")
+		n++
+		for _, child := range m.tree.Children(id) {
+			walk(child, depth+1)
+		}
+	}
+	for _, id := range roots {
+		walk(id, 0)
+	}
+	return b.String(), n
 }
 
 // savedFilter is a query kept under a name, with the place it was made in.
