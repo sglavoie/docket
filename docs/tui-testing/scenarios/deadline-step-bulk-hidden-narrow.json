@@ -31,7 +31,8 @@
     { "type": "assert", "assert": "contains", "value": "today 5" },
     { "type": "key", "key": "u" },
     { "type": "wait" },
-    { "type": "assert", "assert": "not_contains", "value": "today " },
+    { "type": "assert", "assert": "not_contains", "value": "workspace: today " },
+    { "type": "assert", "label": "Today is absent from the pulse after another counter too", "assert": "not_contains", "value": "· today " },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

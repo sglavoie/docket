@@ -131,9 +131,9 @@ func TestUXRefinementFloorHoldsContextPeekAndCapture(t *testing.T) {
 }
 
 // uxDrawnListLines counts the rows the list actually put on screen: everything
-// between the operational title and the footer divider that carries anything.
-// The padding a short projection is grown with is blank by construction, so
-// dropping the blanks is what separates the rows drawn from the window sized.
+// after header chrome, up to the first blank padding row or the footer divider.
+// All's progress reading follows a blank separator in that padding, so counting
+// every nonblank line through the footer would mistake paint for a list row.
 func uxDrawnListLines(t *testing.T, plain string) int {
 	t.Helper()
 	lines := strings.Split(plain, "\n")
@@ -152,9 +152,10 @@ func uxDrawnListLines(t *testing.T, plain string) int {
 		if strings.HasPrefix(line, chrome.NowCardRail) {
 			continue
 		}
-		if uxTrimRowFurniture(line) != "" {
-			drawn++
+		if uxTrimRowFurniture(line) == "" {
+			break
 		}
+		drawn++
 	}
 	return drawn
 }
