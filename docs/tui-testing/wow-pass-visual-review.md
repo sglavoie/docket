@@ -126,15 +126,21 @@ duplicate that entire final gate; the runner records its result after this
 implementation handoff.
 
 The first runner replay passed the behavioral suites but found two files above
-the 500-line limit and a shared fixture in a test-bearing file. The repair
-moved day-canvas functions to their own file, split out Peek legend tests, and
-placed the fixture in the existing helper-only file. The moved function bodies
-and legend assertions were preserved, so the visual evidence remains valid. Focused race
-tests passed for both fitness guards and the affected Outliner behavior.
+the 500-line limit and a shared fixture in a test-bearing file. Peek legend
+tests now live in a separate test file, and the fixture lives in the existing
+helper-only file. An initial canvas split exceeded Outliner's 86-production-file
+ceiling on the second replay. The final organization keeps canvas functions in
+`outliner_empty_state.go` and moves two row-inspection helpers into the existing
+`outliner_rows.go`. Both file-size and package-file limits are satisfied without
+changing function bodies or relaxing guards. The complete root race suite and
+focused Outliner race tests passed after this consolidation. Existing visual
+evidence remains valid.
+
 Lint also identified four import-grouping errors and a direct error comparison
 in the Now-feedback test. Imports were formatted and that assertion now uses
 `errors.Is`. Its focused race test passed, and TUI-wide lint reported zero
-issues. Authoritative full CI replay remains the runner's responsibility.
+issues. Outliner lint also passed after the final consolidation. Authoritative
+full CI replay remains the runner's responsibility.
 
 ## Deliberately retained
 

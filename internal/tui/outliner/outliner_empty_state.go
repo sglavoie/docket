@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/docket/internal/tui/listsurface"
 	"github.com/sglavoie/docket/internal/tui/operation"
 	"github.com/sglavoie/docket/internal/tui/pulse"
+	"github.com/sglavoie/docket/internal/tui/query"
 	"github.com/sglavoie/docket/internal/tui/textfit"
 	"github.com/sglavoie/docket/internal/tui/theme"
 	"github.com/sglavoie/docket/internal/util"
@@ -103,31 +104,6 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int) string {
 		}
 	}
 	return b.String()
-}
-
-// focusedProjectHeaderRow names the focused-project header the current
-// projection leads with, if it has one. It reads the rows rather than resolving
-// the owner again so that the empty state cannot draw a header the row pipeline
-// declined to build.
-func (m *OutlinerModel) focusedProjectHeaderRow() (OutlinerRow, bool) {
-	if len(m.Rows) > 0 && m.Rows[0].IsFocusedProjectHeader {
-		return m.Rows[0], true
-	}
-	return OutlinerRow{}, false
-}
-
-// hasContentRows reports whether the projection holds anything the user could
-// act on beyond the focused-project header. It is what separates "this project
-// is empty" from "there are rows": the header is always present in a focused
-// projection, so a bare length test would claim content that is not there and
-// suppress the explanation the empty state owes the user.
-func (m *OutlinerModel) HasContentRows() bool {
-	for _, row := range m.Rows {
-		if !row.IsFocusedProjectHeader {
-			return true
-		}
-	}
-	return false
 }
 
 // withheldSearchHint names the finished and deferred tasks a ranked list
@@ -352,6 +328,84 @@ func escActionClause(action string) string {
 	}
 }
 
+// The day canvas is what the Outliner draws in room its rows leave empty: in
+// Today mode, the work finished today and the week ahead under the list; in All,
+// a single progress reading; in an
+// empty Today, a resting card that says the day is clear; and in a workspace
+// with no task at all, a welcome that teaches capture by example.
+//
+// It is paint in the padding, never a row: it is not in m.Rows, takes no
+// cursor, answers no click, and moves no window, so ComputeOutlinerViewport,
+// CursorScreenRow, and the pointer's hit map are untouched. Each block is drawn
+// whole or not at all, from what the window left after the rows, the ghost,
+// and a closing gap took their share; a canvas that does not fit is simply not
+// drawn, so the list never yields a row to it.
+
+// dayCanvasEligible reports whether the canvas may speak for the view: the
+// plain cross-project Today, with nothing narrowing it, since the canvas reads
+// the whole scope and a narrowed list beside it would disagree with it.
+func (m *OutlinerModel) dayCanvasEligible() bool {
+	return m.PrimaryMode == chrome.ModeToday && m.scopeCanvasEligible()
+}
+
+// Both canvas presentations read the whole scope, so narrowing hides them.
+func (m *OutlinerModel) scopeCanvasEligible() bool {
+	return m.Project == nil &&
+		!m.HasSearchProjection() && !m.ShowsRankedList() && !m.HasActiveLens() &&
+		!m.Focus.Active() && !m.Focus.Zoom.Active() &&
+		!query.HasActiveCommonFilters(&m.Filter.CommonFilterState)
+}
+
+// allProgressLines quotes the day canvas without lending it any list rows.
+// The separator and reading are one block, including during transient paint.
+func (m *OutlinerModel) allProgressLines(width, budget int) []string {
+	if budget < 2 || !m.HasContentRows() || !m.scopeCanvasEligible() {
+		return nil
+	}
+	if line := m.computeDayCanvas(time.Now()).ProgressLine(width); line != "" {
+		return []string{"", line}
+	}
+	return nil
+}
+
+func (m *OutlinerModel) computeDayCanvas(now time.Time) pulse.DayCanvas {
+	return pulse.ComputeDayCanvas(m.ScopeProjects(), m.CompletionActivity, now)
+}
+
+// todayCanvasLines is the canvas under a populated Today: as many whole blocks
+// as budget rows hold, each after one blank row, so it never touches the list.
+func (m *OutlinerModel) todayCanvasLines(width, budget int) []string {
+	if budget < 3 || !m.dayCanvasEligible() {
+		return nil
+	}
+	canvas := m.computeDayCanvas(time.Now())
+	selected := m.weekBrowseSelected()
+	var out []string
+	// While the week browse is open the strip is what the reader is working, so
+	// the finished list yields its rows to the selected day's.
+	if selected < 0 {
+		if progress := m.todayProgressLine(len(canvas.Done), width); progress != "" {
+			out = append(out, "", progress)
+		}
+		if done := canvas.DoneBlock(width, budget-len(out)-1); len(done) > 0 {
+			out = append(out, "")
+			out = append(out, done...)
+		}
+	}
+	if ahead := canvas.AheadBlockSelecting(width, selected); len(ahead) > 0 && len(out)+1+len(ahead) <= budget {
+		out = append(out, "")
+		out = append(out, ahead...)
+		out = append(out, canvas.DayItemsBlock(selected, width, budget-len(out))...)
+	}
+	if selected < 0 {
+		if pick := canvas.PickUpBlock(width, budget-len(out)-1); len(pick) > 0 {
+			out = append(out, "")
+			out = append(out, pick...)
+		}
+	}
+	return out
+}
+
 // workspaceHoldsNoTask reports whether no project in scope holds a task of
 // any state: the one moment the welcome is for. A workspace whose work is all
 // finished, hidden, or deferred is not new, and keeps the plain sentence.
@@ -398,4 +452,36 @@ func fitCardLines(lines []string, width int) bool {
 		}
 	}
 	return true
+}
+
+// writeDayCanvas draws Today's canvas, All's progress, or Agenda's left-out
+// line in the window rows the list left empty.
+// Today's blocks are chosen against the settled window — the rows alone — so a
+// ghost or a closing gap borrowing a row for a few frames trims the canvas's
+// tail rather than choosing different blocks and flickering. The rows it drew
+// are recorded so the dock's padding counts them. All admits its separator and
+// progress together against the remaining room after transient paint.
+func (m *OutlinerModel) writeDayCanvas(b *strings.Builder, viewport outlinerViewport) {
+	m.LastViewport.canvasRows = 0
+	drawn := m.LastViewport.drawnRows()
+	settled := drawn - m.LastViewport.gapRows - boolRows(m.LastViewport.ghostActive)
+	lines := m.todayCanvasLines(viewport.rowWidth, viewport.VisibleRows-settled)
+	if m.PrimaryMode == chrome.ModeAll {
+		lines = m.allProgressLines(viewport.rowWidth, viewport.VisibleRows-drawn)
+	} else if lines == nil {
+		lines = m.agendaLeftOutLines(viewport.rowWidth, viewport.VisibleRows-settled)
+	}
+	lines = lines[:min(len(lines), max(viewport.VisibleRows-drawn, 0))]
+	for _, line := range lines {
+		b.WriteString("\n")
+		b.WriteString(line)
+	}
+	m.LastViewport.canvasRows = len(lines)
+}
+
+func boolRows(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }

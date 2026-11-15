@@ -8,6 +8,31 @@ import (
 	"github.com/sglavoie/docket/internal/tui/taskref"
 )
 
+// focusedProjectHeaderRow names the focused-project header the current
+// projection leads with, if it has one. It reads the rows rather than resolving
+// the owner again so that the empty state cannot draw a header the row pipeline
+// declined to build.
+func (m *OutlinerModel) focusedProjectHeaderRow() (OutlinerRow, bool) {
+	if len(m.Rows) > 0 && m.Rows[0].IsFocusedProjectHeader {
+		return m.Rows[0], true
+	}
+	return OutlinerRow{}, false
+}
+
+// hasContentRows reports whether the projection holds anything the user could
+// act on beyond the focused-project header. It is what separates "this project
+// is empty" from "there are rows": the header is always present in a focused
+// projection, so a bare length test would claim content that is not there and
+// suppress the explanation the empty state owes the user.
+func (m *OutlinerModel) HasContentRows() bool {
+	for _, row := range m.Rows {
+		if !row.IsFocusedProjectHeader {
+			return true
+		}
+	}
+	return false
+}
+
 // Tree connector characters for outliner rendering.
 const (
 	connectorBranch   = "├── "
