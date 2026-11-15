@@ -12,7 +12,9 @@ a rule here changes this file first.
 2. **Rows never move by themselves.** Changing a row's state leaves it where
    it is. Only the user reorders.
 3. **One way to do each thing.** No menu or palette repeats a key.
-4. **Thirty keys at most** in the outline. A new key evicts an old one.
+4. **Thirty keys at most** in the outline. A new key evicts an old one. The
+   four characters that open the stamp line (`#` `@` `$` `-`) are the row
+   grammar typed on a row, and are not counted.
 5. **Every keystroke paints within one frame.** The tree lives in memory;
    SQLite is written when a change is committed, never while typing.
 6. **Chrome is the sidebar, one header line and one status line.**
@@ -138,7 +140,36 @@ The two pickers list their matches as you type, best first, and `Enter`
 takes the first. A name matches by its start, the start of a word, anywhere
 inside, or its letters in order. `Esc` leaves a picker without acting.
 
-Milestone 4 adds `/` filter, sigil stamping and `:` commands to this line.
+Three more acts use the same line:
+
+- `/` **Filter ›** narrows the pane as the query is typed. Words match a
+  row's text; `!`, `#tag`, `$state` and `@date` match its fields; a leading
+  `-` excludes. `@` alone is any deadline, and `@overdue` and `@week` read
+  the calendar. Every term must hold. In an outline a match keeps its
+  ancestors, dimmed, so it is read where it lives; `Tab` switches to a flat
+  list of matches and back. `Enter` keeps the filter and returns to the rows,
+  where the header names it; `Esc` drops it. Like a list, a filter holds the
+  rows it found until the query changes, and refuses the keys that
+  restructure the tree. Changing the filter clears the selection.
+- `#` `@` `$` `-` **Stamp ›** opens holding that character. The line is
+  sigils only: `#tag`, `@date`, `$state` and `!` set, `-#tag`, `-@` and `-!`
+  remove. `Enter` applies them to the selection, else to the cursor's row, as
+  one undo step. A word it cannot read is named and nothing is applied.
+- `:` runs a command: `q` quits, and `export [file]` writes the whole
+  outline as tab-indented lines in the row grammar, to
+  `~/docket-YYYY-MM-DD.txt` unless a file is named.
+
+### Selection
+
+`v` selects the cursor's row and steps down; again on a selected row it
+deselects. While rows are selected, `x`, `!`, `t`, `dd`, `m` and a stamp act
+on all of them, in one undo step. `x`, `!` and `t` set their value on every
+row unless all already hold it, in which case they clear it. The keys that
+work on one row (`e`, `o`, `O`, `>`, `<`, `J`, `K`, `Enter`) are refused and
+say so. The status line counts the selection, and `Esc` clears it.
+
+`Esc` undoes the most recent narrowing: the selection, then the filter, then
+the zoom.
 
 ## Keys
 
@@ -158,6 +189,7 @@ Milestone 4 adds `/` filter, sigil stamping and `:` commands to this line.
 | `a` `m` | Capture to the Inbox from anywhere; move to a project | 3 |
 | `v` | Select | 4 |
 | `/` `:` | Filter, command | 4 |
+| `#` `@` `$` `-` | Stamp sigils on rows (not counted) | 4 |
 
 While typing: `Enter` keeps the row and opens the next, `Esc` keeps the row,
 `Tab` and `Shift+Tab` indent and outdent. There is no cancel: `u` restores
@@ -184,8 +216,8 @@ only feedback a mistyped sigil gets. `\#tag` keeps a readable sigil literal.
 Typed in a row, sigils become fields when the edit ends and may sit anywhere
 in the line; a repeated `@` or `$` takes the last. Editing a row shows its
 canonical line: text, `!`, `@YYYY-MM-DD`, tags, state. Deleting a sigil from
-that line clears its field. Typed alone on the bottom line (milestone 4) they
-stamp the selected rows, and `-#tag` removes.
+that line clears its field. Typed on a row outside an edit, they open the
+stamp line.
 
 **Default state.** A row whose line names no state is an open task, unless it
 is top-level (a project) or its text ends in a colon (a heading); those are
@@ -205,7 +237,8 @@ parked row and everything under it is in no computed list however long it
 sits. It is the one place for work that is kept and not being done. Today
 still shows a parked row that was picked, since a pick is explicit.
 
-`x` toggles done and open; `!` toggles the flag. Every other state is typed.
+`x` toggles done and open; `!` toggles the flag. Every other state is typed
+or stamped.
 Any change of state stamps `changed`.
 
 ## Milestones
@@ -215,7 +248,7 @@ Any change of state stamps `changed`.
 2. **Tasks.** Sigil parsing, states, flag, deadline, row rendering. *Built.*
 3. **Sidebar.** The four lists, projects, parking, `t`, `a`, `m` and `p`.
    *Built.*
-4. **Filter line.** `/`, stamping, selection, `:` commands.
+4. **Filter line.** `/`, stamping, selection, `:` commands. *Built.*
 
 Then two weeks of daily use before anything else is added. Not planned for
 v0: sync, recurrence, start dates, reminders, attachments, saved filters, a

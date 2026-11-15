@@ -58,7 +58,9 @@ type Model struct {
 	parked    int
 
 	undo, redo [][]outline.Op
-	prefix     string // a pending g or d
+	prefix     string          // a pending g or d
+	picked     map[string]bool // the selection
+	quit       bool
 	edit       *editor
 	ask        *prompt
 	help       bool
@@ -77,6 +79,7 @@ func newModel(tree *outline.Tree, backend Backend, folds map[string]bool, now fu
 		tree:    tree,
 		backend: backend,
 		folded:  folds,
+		picked:  map[string]bool{},
 		now:     now,
 		newID:   store.NewID,
 	}
@@ -98,7 +101,13 @@ func (m *Model) Init() tea.Cmd { return nil }
 // inside the rows.
 func (m *Model) rebuild() {
 	m.vis = m.vis[:0]
-	if m.at.list != "" {
+	if m.at.query != "" {
+		for _, v := range m.at.hits {
+			if m.live(v.id) {
+				m.vis = append(m.vis, v)
+			}
+		}
+	} else if m.at.list != "" {
 		for _, id := range m.at.rows {
 			if m.live(id) {
 				m.vis = append(m.vis, visRow{id, 0})
@@ -120,16 +129,35 @@ func (m *Model) rebuild() {
 		walk(m.at.root, 0)
 	}
 	m.cursor = max(0, min(m.cursor, len(m.vis)-1))
+	for id := range m.picked {
+		if !m.live(id) {
+			delete(m.picked, id)
+		}
+	}
 	m.scan()
 }
 
-// flat refuses an act that needs the tree while a list is showing.
+// flat refuses an act that needs the whole tree in view: while a list or a
+// filter is showing, a row's siblings are not all on screen.
 func (m *Model) flat() bool {
-	if m.at.list != "" {
+	switch {
+	case m.at.query != "":
+		m.msg = "clear the filter first (Esc)"
+	case m.at.list != "":
 		m.msg = "a list has no order: press Enter on a row to work inside it"
-		return true
+	default:
+		return false
 	}
-	return false
+	return true
+}
+
+// single refuses an act that works on one row while several are selected.
+func (m *Model) single() bool {
+	if len(m.picked) > 0 {
+		m.msg = "that works on one row: press Esc to clear the selection"
+		return false
+	}
+	return true
 }
 
 // prevSibling is the row drawn above id among its siblings.
@@ -306,8 +334,11 @@ func (m *Model) reorder(id string, down bool) {
 // newRow opens a blank row for typing: above the cursor, as the first child
 // of an open parent, or else directly below.
 func (m *Model) newRow(above bool) {
-	if m.at.list != "" {
+	if m.at.list != "" && m.at.query == "" {
 		m.msg = "add rows inside a project, or press a for the Inbox"
+		return
+	}
+	if m.flat() {
 		return
 	}
 	cur := m.current()
@@ -434,60 +465,147 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Every key may have changed what the sidebar counts.
 		m.rebuild()
+		if m.quit {
+			return m, tea.Quit
+		}
 	}
 	return m, nil
 }
 
-// prompt is the bottom line while it is asking for something: a line for
-// the Inbox, or the name of a project to go to or move a row into.
+// prompt is the bottom line while it is asking for something. Its label
+// names which of its acts it is doing.
 type prompt struct {
 	kind string
 	ed   editor
-	row  string // the row being moved
+	rows []string // the rows a move or a stamp lands on
 }
 
 const (
-	askCapture = "capture"
-	askJump    = "jump"
-	askMove    = "move"
+	askCapture = "capture" // a line for the Inbox
+	askJump    = "jump"    // a project or list to go to
+	askMove    = "move"    // a project to move rows into
+	askFilter  = "filter"  // a query narrowing the pane, live
+	askStamp   = "stamp"   // sigils to set on rows
+	askCommand = "command"
 )
+
+var askLabels = map[string]string{
+	askCapture: "Inbox › ",
+	askJump:    "Go to › ",
+	askMove:    "Move to › ",
+	askFilter:  "Filter › ",
+	askStamp:   "Stamp › ",
+	askCommand: ": ",
+}
 
 func (m *Model) askKey(msg tea.KeyPressMsg) {
 	a := m.ask
 	text := strings.TrimSpace(string(a.ed.buf))
-	switch msg.String() {
+	k := msg.String()
+
+	if a.kind == askFilter {
+		// The pane follows the query as it is typed. Enter keeps it and
+		// returns to the rows; Esc drops it.
+		switch k {
+		case "enter":
+			m.ask = nil
+		case "esc":
+			m.ask = nil
+			m.at.query = ""
+		case "tab":
+			m.at.flat = !m.at.flat
+		default:
+			a.ed.key(msg)
+			m.at.query = strings.TrimSpace(string(a.ed.buf))
+		}
+		m.refilter()
+		m.cursor, m.top = 0, 0
+		// A selection made before the rows changed could act on rows no
+		// longer on screen.
+		m.picked = map[string]bool{}
+		return
+	}
+
+	switch k {
 	case "esc":
 		m.ask = nil
 		if a.kind == askCapture {
 			m.capture(text)
 		}
 	case "enter":
-		if a.kind == askCapture {
+		switch a.kind {
+		case askCapture:
 			// The line stays open for the next thought; a blank one closes it.
 			m.capture(text)
 			a.ed = editor{}
 			if text == "" {
 				m.ask = nil
 			}
-			return
-		}
-		hits := match(m.targets(a.kind == askJump), text, 3)
-		if len(hits) == 0 {
-			m.msg = "nothing matches " + text
-			return
-		}
-		m.ask = nil
-		if a.kind == askJump {
-			m.sideFocus = false
-			m.open(hits[0])
-			return
-		}
-		to := hits[0].rowID()
-		if m.do(outline.Op{Kind: outline.Move, Row: a.row, Parent: to, Pos: m.tree.PosLast(to)}) {
-			m.msg = "moved to " + hits[0].label
+		case askStamp:
+			c, bad := parseStamp(text, m.today())
+			if bad != "" {
+				m.msg = "cannot read " + bad
+				return
+			}
+			m.ask = nil
+			var ops []outline.Op
+			for _, id := range a.rows {
+				if m.live(id) {
+					ops = append(ops, m.stampOps(id, c)...)
+				}
+			}
+			if len(ops) > 0 {
+				m.do(ops...)
+			}
+		case askCommand:
+			m.ask = nil
+			m.command(text)
+		default:
+			hits := match(m.targets(a.kind == askJump), text, 3)
+			if len(hits) == 0 {
+				m.msg = "nothing matches " + text
+				return
+			}
+			m.ask = nil
+			if a.kind == askJump {
+				m.sideFocus = false
+				m.open(hits[0])
+				return
+			}
+			to := hits[0].rowID()
+			var ops []outline.Op
+			for _, id := range a.rows {
+				if m.live(id) {
+					// Each row is placed after the one before it.
+					pos := m.tree.PosLast(to)
+					if n := len(ops); n > 0 {
+						pos = outline.Between(ops[n-1].Pos, "")
+					}
+					ops = append(ops, outline.Op{Kind: outline.Move, Row: id, Parent: to, Pos: pos})
+				}
+			}
+			if len(ops) > 0 && m.do(ops...) {
+				m.msg = "moved to " + hits[0].label
+			}
 		}
 	default:
 		a.ed.key(msg)
+	}
+}
+
+// command runs a line typed after a colon.
+func (m *Model) command(line string) {
+	words := strings.Fields(line)
+	if len(words) == 0 {
+		return
+	}
+	switch words[0] {
+	case "q", "quit":
+		m.quit = true
+	case "export":
+		m.export(strings.Join(words[1:], " "))
+	default:
+		m.msg = "commands: q, export [file]"
 	}
 }
 
@@ -518,10 +636,12 @@ func (m *Model) normalKey(k string) {
 		case "gg":
 			m.cursor = 0
 		case "dd":
-			if cur := m.current(); cur != "" {
-				if m.do(outline.Op{Kind: outline.Set, Row: cur, Field: outline.FieldDeleted, Value: "1"}) {
-					m.rebuild()
-				}
+			var ops []outline.Op
+			for _, id := range m.acting() {
+				ops = append(ops, outline.Op{Kind: outline.Set, Row: id, Field: outline.FieldDeleted, Value: "1"})
+			}
+			if len(ops) > 0 && m.do(ops...) {
+				m.rebuild()
 			}
 		}
 		return
@@ -538,9 +658,18 @@ func (m *Model) normalKey(k string) {
 	case "G":
 		m.cursor = max(len(m.vis)-1, 0)
 	case "o":
-		m.newRow(false)
+		if m.single() {
+			m.newRow(false)
+		}
 	case "O":
-		m.newRow(true)
+		if m.single() {
+			m.newRow(true)
+		}
+	case "/":
+		buf := []rune(m.at.query)
+		m.ask = &prompt{kind: askFilter, ed: editor{buf: buf, caret: len(buf)}}
+	case ":":
+		m.ask = &prompt{kind: askCommand}
 	case "u":
 		m.replay(&m.undo, &m.redo, "nothing to undo")
 	case "ctrl+r":
@@ -554,7 +683,16 @@ func (m *Model) normalKey(k string) {
 	case "a":
 		m.ask = &prompt{kind: askCapture}
 	case "esc":
-		if n := len(m.zoom); n > 0 {
+		// Esc undoes the most recent narrowing: the selection, then the
+		// filter, then the zoom.
+		if len(m.picked) > 0 {
+			m.picked = map[string]bool{}
+		} else if m.at.query != "" {
+			m.at.query = ""
+			m.refilter()
+			m.rebuild()
+			m.seek(cur)
+		} else if n := len(m.zoom); n > 0 {
 			was := m.at.root
 			m.at, m.zoom = m.zoom[n-1], m.zoom[:n-1]
 			m.rebuild()
@@ -565,13 +703,28 @@ func (m *Model) normalKey(k string) {
 		return
 	}
 
+	ids := m.acting()
 	switch k {
 	case "e":
-		m.editRow(cur)
+		if m.single() {
+			m.editRow(cur)
+		}
 	case "enter":
-		m.zoom = append(m.zoom, m.at)
-		m.at, m.cursor = place{root: cur}, 0
-		m.rebuild()
+		if m.single() {
+			m.zoom = append(m.zoom, m.at)
+			m.at, m.cursor = place{root: cur}, 0
+			m.rebuild()
+		}
+	case "v":
+		if m.picked[cur] {
+			delete(m.picked, cur)
+		} else {
+			m.picked[cur] = true
+		}
+		m.cursor = min(m.cursor+1, len(m.vis)-1)
+	case "#", "@", "$", "-":
+		// A sigil typed on the rows opens the stamp line already holding it.
+		m.ask = &prompt{kind: askStamp, ed: editor{buf: []rune(k), caret: 1}, rows: ids}
 	case "h", "left":
 		if len(m.tree.Children(cur)) > 0 && !m.folded[cur] {
 			m.setFold(cur, true)
@@ -587,39 +740,46 @@ func (m *Model) normalKey(k string) {
 			m.seek(kids[0])
 		}
 	case "x":
-		// Done and back. Any other state is typed, since it is rarer.
-		switch state := m.tree.Row(cur).Fields[sigil.FieldState]; state {
-		case "":
-			m.msg = "a note has no state: edit it and add $open"
-		case sigil.Done:
-			m.do(m.setFields(cur, map[string]string{sigil.FieldState: sigil.Open})...)
-		default:
-			m.do(m.setFields(cur, map[string]string{sigil.FieldState: sigil.Done})...)
+		// Done and back. Any other state is stamped, since it is rarer.
+		var tasks []string
+		done := true
+		for _, id := range ids {
+			if state := m.tree.Row(id).Fields[sigil.FieldState]; state != "" {
+				tasks = append(tasks, id)
+				done = done && state == sigil.Done
+			}
+		}
+		if len(tasks) == 0 {
+			m.msg = "a note has no state: stamp it with $open"
+			break
+		}
+		to := sigil.Done
+		if done {
+			to = sigil.Open
+		}
+		var ops []outline.Op
+		for _, id := range tasks {
+			ops = append(ops, m.setFields(id, map[string]string{sigil.FieldState: to})...)
+		}
+		if len(ops) > 0 {
+			m.do(ops...)
 		}
 	case "!":
-		flag := "1"
-		if m.tree.Row(cur).Fields[sigil.FieldFlag] != "" {
-			flag = ""
-		}
-		m.do(m.setFields(cur, map[string]string{sigil.FieldFlag: flag})...)
+		m.toggle(ids, sigil.FieldFlag, "1")
 	case "t":
 		// Today is a pick that lapses by itself: the field holds the day it
 		// was made, and tomorrow that is no longer today.
-		day := m.today().Format("2006-01-02")
-		if m.tree.Row(cur).Fields[sigil.FieldToday] == day {
-			day = ""
-		}
-		m.do(outline.Op{Kind: outline.Set, Row: cur, Field: sigil.FieldToday, Value: day})
+		m.toggle(ids, sigil.FieldToday, m.today().Format("2006-01-02"))
 	case "m":
-		m.ask = &prompt{kind: askMove, row: cur}
-	case ">":
-		m.shift(cur, true)
-	case "<":
-		m.shift(cur, false)
-	case "J":
-		m.reorder(cur, true)
-	case "K":
-		m.reorder(cur, false)
+		m.ask = &prompt{kind: askMove, rows: ids}
+	case ">", "<":
+		if m.single() {
+			m.shift(cur, k == ">")
+		}
+	case "J", "K":
+		if m.single() {
+			m.reorder(cur, k == "J")
+		}
 	}
 }
 

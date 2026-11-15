@@ -59,8 +59,8 @@ var stateNames = []string{Open, Doing, Waiting, Done, Canceled, Parked, "note"}
 
 var stateAliases = map[string]string{"todo": Open, "wait": Waiting, "cancelled": Canceled}
 
-// parseState accepts a state name, an alias, or an unambiguous prefix.
-func parseState(s string) (string, bool) {
+// ParseState accepts a state name, an alias, or an unambiguous prefix.
+func ParseState(s string) (string, bool) {
 	s = strings.ToLower(s)
 	if s == "" {
 		return "", false
@@ -84,8 +84,8 @@ func parseState(s string) (string, bool) {
 	return found, true
 }
 
-// parseTag accepts a word starting with a letter, so #123 stays prose.
-func parseTag(s string) (string, bool) {
+// ParseTag accepts a word starting with a letter, so #123 stays prose.
+func ParseTag(s string) (string, bool) {
 	for i, r := range s {
 		switch {
 		case unicode.IsLetter(r):
@@ -107,11 +107,11 @@ func isSigil(w string, today time.Time) bool {
 	ok := false
 	switch w[0] {
 	case '#':
-		_, ok = parseTag(w[1:])
+		_, ok = ParseTag(w[1:])
 	case '@':
 		_, ok = ParseDate(w[1:], today)
 	case '$':
-		_, ok = parseState(w[1:])
+		_, ok = ParseState(w[1:])
 	}
 	return ok
 }
@@ -135,13 +135,13 @@ func Parse(s string, top bool, today time.Time) Line {
 		case '!':
 			l.Flag = true
 		case '#':
-			if tag, _ := parseTag(w[1:]); !slices.Contains(l.Tags, tag) {
+			if tag, _ := ParseTag(w[1:]); !slices.Contains(l.Tags, tag) {
 				l.Tags = append(l.Tags, tag)
 			}
 		case '@':
 			l.Due, _ = ParseDate(w[1:], today)
 		case '$':
-			state, _ = parseState(w[1:])
+			state, _ = ParseState(w[1:])
 			named = true
 		}
 	}

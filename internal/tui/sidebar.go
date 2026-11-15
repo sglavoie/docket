@@ -45,6 +45,13 @@ type place struct {
 	root string
 	list string
 	rows []string
+
+	// A filter narrows the place to the rows answering query. Like a list,
+	// it holds the rows it found until the query changes.
+	query   string
+	flat    bool
+	hits    []visRow
+	matched map[string]bool
 }
 
 // entry is one line of the sidebar, and one destination.
@@ -194,6 +201,7 @@ func (m *Model) scan() {
 func (m *Model) open(e entry) {
 	m.sel = e
 	m.zoom = nil
+	m.picked = map[string]bool{}
 	m.cursor, m.top = 0, 0
 	switch e.kind {
 	case kindInbox:

@@ -25,13 +25,17 @@ const helpText = `Docket
 
   j k  gg G      move
   h l            fold, unfold; step to parent, first child
-  Enter  Esc     zoom into a row, back out
+  Enter  Esc     zoom into a row; Esc clears the selection, the filter, the zoom
   o O            new row below, above
   e              edit the row
   > <            indent, outdent
   J K            move the row down, up
   x  !  t        done and back, flag, pick for Today
-  m              move the row to a project
+  m              move to a project
+  v              select the row; these five then act on every selected row
+  # @ $ -        stamp: type sigils, Enter sets them (-#tag and -@ remove)
+  /              filter by text and sigils; -word excludes; Tab flat or in context
+  :              q, export [file]
   a              capture a line to the Inbox; %name files it in a project
   p              go to a project or list by name
   Tab            the sidebar: j k choose, Enter work in it
@@ -168,6 +172,8 @@ func (m *Model) breadcrumb() string {
 
 func (m *Model) emptyText() string {
 	switch {
+	case m.at.query != "":
+		return "Nothing matches."
 	case m.at.list == kindToday:
 		return "Nothing picked for today. Press t on a row to pick it."
 	case m.at.list == kindWaiting:
@@ -208,11 +214,27 @@ func (m *Model) listNote(r *outline.Row) string {
 // statusLine is the bottom row, and the caret's column when it is asking.
 func (m *Model) statusLine(w int) (string, int) {
 	if a := m.ask; a != nil {
-		label := map[string]string{askCapture: "Inbox › ", askJump: "Go to › ", askMove: "Move to › "}[a.kind]
+		label := askLabels[a.kind]
 		lw := ansi.StringWidth(label)
 		text, col := a.ed.window(max(w-lw, 1))
 		line := sgrAccent + label + sgrReset + text
-		if room := w - lw - ansi.StringWidth(text) - 3; a.kind != askCapture && room > 3 {
+		room := w - lw - ansi.StringWidth(text) - 3
+		switch {
+		case room <= 3:
+		case a.kind == askFilter:
+			shape := "in context"
+			if m.at.flat {
+				shape = "flat"
+			}
+			note := strconv.Itoa(len(m.at.matched)) + " match · " + shape + " · Tab switches"
+			line += "   " + sgrDim + ansi.Truncate(note, room, "…") + sgrReset
+		case a.kind == askStamp:
+			note := strconv.Itoa(len(a.rows)) + " row"
+			if len(a.rows) != 1 {
+				note += "s"
+			}
+			line += "   " + sgrDim + ansi.Truncate(note+" · -#tag and -@ remove", room, "…") + sgrReset
+		case a.kind == askJump || a.kind == askMove:
 			// The first name is the one Enter takes.
 			offer := sgrDim + "nothing matches" + sgrReset
 			for i, e := range match(m.targets(a.kind == askJump), strings.TrimSpace(string(a.ed.buf)), 3) {
@@ -234,6 +256,9 @@ func (m *Model) statusLine(w int) (string, int) {
 		left = "Enter next row · Esc done · Tab indent"
 	case m.sideFocus:
 		left = "j k choose · Enter work in it"
+	}
+	if n := len(m.picked); n > 0 {
+		right = strconv.Itoa(n) + " selected · Esc clears"
 	}
 	if m.edit != nil {
 		right = ""
@@ -258,7 +283,15 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 	m.top = max(0, min(m.top, len(m.vis)-listH))
 
 	lines := make([]string, 0, h)
-	lines = append(lines, sgrDim+ansi.Truncate(m.breadcrumb(), w, "…")+sgrReset)
+	header := m.breadcrumb()
+	if m.at.query != "" {
+		header += "  / " + m.at.query
+		if m.at.flat {
+			header += "  (flat)"
+		}
+	}
+	lines = append(lines, sgrDim+ansi.Truncate(header, w, "…")+sgrReset)
+	flat := m.at.list != "" || (m.at.query != "" && m.at.flat)
 
 	var caret *tea.Cursor
 	for i := m.top; i < m.top+listH; i++ {
@@ -278,6 +311,10 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 				gutter = sgrDim + "▌" + sgrReset
 			}
 		}
+		mark := " "
+		if m.picked[v.id] {
+			mark = sgrAccent + "┃" + sgrReset
+		}
 		prefixW := 2 + 2*v.depth + 2
 		avail := max(w-prefixW, 1)
 
@@ -291,15 +328,19 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 			text = m.rowBody(r, i == m.cursor)
 			// A task's glyph is its state, so the children it hides are
 			// counted after it: when folded, and always in a list.
-			if hides := m.folded[v.id] || m.at.list != ""; kids > 0 && hides && r.Fields[sigil.FieldState] != "" {
+			if hides := m.folded[v.id] || flat; kids > 0 && hides && r.Fields[sigil.FieldState] != "" {
 				text += sgrDim + " +" + strconv.Itoa(kids) + sgrReset
 			}
-			if m.at.list != "" {
+			if flat {
 				text += m.listNote(r)
+			}
+			if m.at.query != "" && !m.at.matched[v.id] {
+				// An ancestor kept only to place a match.
+				text = sgrDim + ansi.Strip(text) + sgrReset
 			}
 			text = ansi.Truncate(text, avail, "…") + sgrReset
 		}
-		lines = append(lines, gutter+" "+strings.Repeat("  ", v.depth)+glyph+" "+text)
+		lines = append(lines, gutter+mark+strings.Repeat("  ", v.depth)+glyph+" "+text)
 	}
 	if len(m.vis) == 0 {
 		lines[1] = sgrDim + "  " + ansi.Truncate(m.emptyText(), max(w-2, 1), "…") + sgrReset
