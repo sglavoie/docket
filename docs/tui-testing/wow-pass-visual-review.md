@@ -142,6 +142,14 @@ in the Now-feedback test. Imports were formatted and that assertion now uses
 issues. Outliner lint also passed after the final consolidation. Authoritative
 full CI replay remains the runner's responsibility.
 
+The third runner replay passed race tests, coverage, allocation budgets, sync
+scaling, lint, and module metadata, then found two obsolete chrome helpers:
+`NowCardJustify` and `GetOutlinerModeStyle`. Commit `b1020677` removes both and
+keeps the narrow-card assertion on the production `RenderNowCard` path. The
+worker validated that existing repair with the complete dead-code audit,
+chrome race tests, focused Outliner Now-card race tests, and an all-package
+build; all passed. No rendered behavior or visual evidence changed.
+
 ## Deliberately retained
 
 - Today keeps its richer progress and week-ahead canvas. All gets only the
