@@ -330,6 +330,55 @@ func TestFilterPhrase(t *testing.T) {
 	}
 }
 
+func TestFilterPhraseEmptyPassedOver(t *testing.T) {
+	h := work(t)
+	filter := func(query string) {
+		h.press("/")
+		for _, r := range query {
+			h.press(string(r))
+		}
+	}
+	for _, flat := range []bool{false, true} {
+		filter("$")
+		if flat {
+			h.press("tab")
+		}
+		want := h.rows()
+		h.press("esc")
+		for _, prefix := range []string{"", "-", "^", "-^", "_", "-_", "<", "-<", ">", "->"} {
+			for _, phrase := range []string{`"`, `""`, `""|""`} {
+				query := "$ " + prefix + phrase
+				filter(query)
+				if got := h.rows(); got != want {
+					t.Errorf("filter %q (flat %t) =\n%s\nwant:\n%s", query, flat, got, want)
+				}
+				h.press("enter")
+				if got := h.rows(); got != want {
+					t.Errorf("kept filter %q changed rows: %s", query, got)
+				}
+				h.press("esc")
+				if got, want := strings.Join(List(h.m.tree, h.st, query), "\n"), strings.Join(List(h.m.tree, h.st, "$"), "\n"); got != want {
+					t.Errorf("List %q = %q, want %q", query, got, want)
+				}
+			}
+		}
+	}
+	// An empty alternative must not override a populated phrase. As soon
+	// as a negated phrase has text, it narrows the pane, even before closing.
+	for query, want := range map[string]string{
+		`$ ""|"fix"`: "Fix cache, Fix login",
+		`$ "fix"|"`:  "Fix cache, Fix login",
+		`$ -"fix`:    "Write docs, Refactor auth",
+		`$ -"fix"`:   "Write docs, Refactor auth",
+	} {
+		filter(query)
+		if got := h.shown(); got != want {
+			t.Errorf("filter %q = %q, want %q", query, got, want)
+		}
+		h.press("esc")
+	}
+}
+
 func TestFilterPhraseNotStyledAsSigils(t *testing.T) {
 	for _, tc := range []struct {
 		query, styled, rest string

@@ -234,7 +234,10 @@ func parseTerm(w string, today time.Time) (term, bool) {
 	if t.any == nil {
 		t.any = []cond{parseCond(w, today)}
 	}
-	return t, true
+	// A bare quote or an empty phrase is still waiting for text, including
+	// in alternatives. It must not match everything (or exclude everything).
+	t.any = slices.DeleteFunc(t.any, func(c cond) bool { return c.kind == 't' && c.value == "" })
+	return t, len(t.any) > 0
 }
 
 // parseCond reads one word, without its minus, as a sigil or else as text.

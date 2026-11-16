@@ -380,9 +380,11 @@ Three more acts use the same line:
 - `/` **Filter ›** narrows the pane as the query is typed. Words match a
   row's text, ignoring case. Double quotes match a phrase, blanks included:
   `"per the spec"`. A quote not closed yet reads to the end of the line;
-  a quote inside a word (`5"`) stays part of that word. Words inside an open
-  or closed phrase stay plain, without sigil colours or completions. Phrases take the
-  same prefixes as words: `-"per the spec"` excludes, and `^`, `_`, `<`,
+  a quote inside a word (`5"`) stays part of that word. A bare quote or empty
+  phrase is passed over, including with prefixes or inside alternatives,
+  until it holds text. Words inside an open or closed phrase stay plain,
+  without sigil colours or completions. Phrases take the same prefixes as
+  words: `-"per the spec"` excludes, and `^`, `_`, `<`,
   `>` test the phrase on related rows. `!`, `#tag`, `$state` and `@date`
   match fields; a leading `-` excludes. `#name` holds whatever value the tag
   carries and `#name=value` only that one; `#name<value` holds for a value at most that
@@ -1180,8 +1182,9 @@ These are the only commands; everything else is done in the outline.
    left to do and sums their `#est` values; headings show done/total across
    all descendants. Filters read quoted phrases and `$first`, the first
    workable sibling under each parent. Quoted filter phrases stay plain while
-   typing, without sigil colours or completions. Dark and light palettes follow the
-   terminal background; cursor and selection backgrounds span wrapped rows,
+   typing, without sigil colours or completions; empty phrases are passed over.
+   Dark and light palettes follow the terminal background; cursor and
+   selection backgrounds span wrapped rows,
    and dates outside this year name their year. An empty interactive launch
    opens a Welcome tutorial; `:tutor` adds a fresh copy in one undo step.
    Tutorial repeat and sweep steps include sibling tasks to act on, and
