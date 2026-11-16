@@ -189,6 +189,7 @@ Sigils, typed anywhere in a row
   *2w *monthly   repeats: closing it moves it to its next day, still open
                  done rows under it reopen too, at every depth; u undoes all
   #tag           tag; #est=2h a tag with a value, one value to a name
+                 header: tasks to do and #est sum; headings: done/total
   $doing $waiting $done $canceled $parked $open $note    state
   A row is a note at top-level, under a task, or when it ends in a colon.
   Other rows default to tasks; $open under a task makes a subtask.
@@ -287,6 +288,9 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 	}
 	for _, w := range strings.Fields(l.Text) {
 		out = append(out, word{paint(body), w})
+	}
+	if total := m.totals[r.ID].under; strings.HasSuffix(l.Text, ":") && total.total > 0 {
+		out = append(out, word{sgrDim, fmt.Sprintf("%d/%d", total.done, total.total)})
 	}
 	if l.Flag {
 		out = append(out, word{paint(sgrAlert + sgrBold), "!"})
@@ -668,6 +672,9 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 
 	lines := make([]string, 0, h)
 	header := m.breadcrumb()
+	if summary := m.paneTotal.summary(); summary != "" {
+		header += "  · " + summary
+	}
 	if m.at.query != "" {
 		header += "  / " + m.at.query
 		if m.at.flat {

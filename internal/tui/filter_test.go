@@ -52,7 +52,7 @@ func TestFilterNarrowsAsItIsTypedAndKeepsContext(t *testing.T) {
 		"  ○ Refactor auth #bug · Alpha",
 	)
 	h.press("enter")
-	if h.header() != "Projects  / #bug  (flat)" {
+	if h.header() != "Projects  · 3 to do  / #bug  (flat)" {
 		t.Fatalf("header = %q", h.header())
 	}
 
@@ -361,7 +361,7 @@ func projectsWithNext(t *testing.T) *harness {
 		"    ● Fix login #home",
 		"    ○ Write docs #home",
 		"  ▾ Beta",
-		"    ▾ Spec:",
+		"    ▾ Spec: 0/1",
 		"      ○ Draft spec",
 		"    ○ Other",
 		"  ◌ Gamma",
@@ -379,7 +379,7 @@ func TestNextIsTheFirstWorkableRowOfEachProject(t *testing.T) {
 		"▌ ▾ Alpha",
 		"    ● Fix login #home",
 		"  ▾ Beta",
-		"    ▾ Spec:",
+		"    ▾ Spec: 0/1",
 		"      ○ Draft spec",
 	)
 	h.press("tab")

@@ -252,10 +252,11 @@ func (m *Model) scan() {
 	m.rowNames = m.rowNames[:0]
 	m.outlineOrder = map[string]int{}
 	m.next = map[string]bool{}
+	m.totals = map[string]rowTotals{}
 	found := false // the project being visited has its next action
 
-	var visit func(id string, stat *entry, touch *int64, hidden bool, path string)
-	visit = func(id string, stat *entry, touch *int64, hidden bool, path string) {
+	var visit func(id string, stat *entry, touch *int64, hidden bool, path string) taskTotals
+	visit = func(id string, stat *entry, touch *int64, hidden bool, path string) taskTotals {
 		m.outlineOrder[id] = len(m.outlineOrder)
 		r := m.tree.Row(id)
 		l := sigil.FromFields(r.Fields)
@@ -312,12 +313,18 @@ func (m *Model) scan() {
 				}
 			}
 		}
+		totals := rowTotals{own: countTask(l)}
 		for _, kid := range m.tree.Children(id) {
-			visit(kid, stat, touch, hidden, path)
+			totals.under.add(visit(kid, stat, touch, hidden, path))
 		}
+		m.totals[id] = totals
+		all := totals.under
+		all.add(totals.own)
+		return all
 	}
 
 	var projects []entry
+	var all taskTotals
 	for _, top := range m.tree.Children("") {
 		var touch int64
 		if top == inboxID {
@@ -330,7 +337,7 @@ func (m *Model) scan() {
 		l := sigil.FromFields(m.tree.Row(top).Fields)
 		stat := entry{kind: kindProject, id: top, label: l.Text, idle: true}
 		found = false
-		visit(top, &stat, &touch, l.Closed(), "")
+		all.add(visit(top, &stat, &touch, l.Closed(), ""))
 		switch {
 		case l.State == sigil.Parked:
 			m.parked++
@@ -340,6 +347,7 @@ func (m *Model) scan() {
 		}
 	}
 
+	m.totals[""] = rowTotals{under: all}
 	m.sortToday(lists[kindToday])
 	m.inToday = make(map[string]bool, len(lists[kindToday]))
 	for _, id := range lists[kindToday] {

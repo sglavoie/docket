@@ -63,7 +63,7 @@ func TestSidebarStatesWhatNeedsAttention(t *testing.T) {
 func TestSidebarFocusShowsEachDestination(t *testing.T) {
 	h := two(t)
 	h.press("tab", "j", "j")
-	if h.header() != "Alpha" {
+	if h.header() != "Alpha  · 2 to do" {
 		t.Fatalf("header = %q", h.header())
 	}
 	h.want(
@@ -71,7 +71,7 @@ func TestSidebarFocusShowsEachDestination(t *testing.T) {
 		"  ◔ Two",
 	)
 	h.press("k", "k", "k", "k")
-	if h.header() != "Waiting" {
+	if h.header() != "Waiting  · 1 to do" {
 		t.Fatalf("header = %q", h.header())
 	}
 	h.want("▌ ◔ Two · 0d · Alpha")
@@ -150,13 +150,13 @@ func TestTodayIsPickedAndLapsesOvernight(t *testing.T) {
 	}
 	t.Cleanup(func() { st.Close() })
 	again := resume(t, h.path, st, h.clock).wide()
-	if again.header() != "Today" {
+	if again.header() != "Today  · 1 to do" {
 		t.Fatalf("launched on %q", again.header())
 	}
 
 	// The next morning nothing is picked, and nothing was written to say so.
 	next := resume(t, h.path, st, h.clock.Add(24*time.Hour)).wide()
-	if next.header() != "Projects" {
+	if next.header() != "Projects  · 1 to do" {
 		t.Fatalf("launched on %q", next.header())
 	}
 	next.wantSide(
@@ -433,7 +433,7 @@ func TestParkedAndClosedProjectsLeaveTheSidebar(t *testing.T) {
 	)
 	// It is still reachable by name.
 	h.press("f", `"alp"`, "enter")
-	if h.header() != "Alpha" {
+	if h.header() != "Alpha  · 2 to do" {
 		t.Fatalf("header = %q", h.header())
 	}
 }
@@ -511,7 +511,7 @@ func TestMoveReachesAHeading(t *testing.T) {
 		children(h, heading, "Existing", "First", "Second")
 		h.press("u", "esc")
 		children(h, heading, "Existing")
-		h.want("  ▾ Storage:", "    ○ Existing", "▌ ○ First", "  ○ Second")
+		h.want("  ▾ Storage: 0/1", "    ○ Existing", "▌ ○ First", "  ○ Second")
 	})
 	t.Run("equal ranks prefer project then Down reaches heading", func(t *testing.T) {
 		h := start(t).wide()
@@ -548,7 +548,7 @@ func TestMoveReachesAHeading(t *testing.T) {
 		// The jump picker reaches the heading, inside its project: the
 		// sidebar stays on the project and Esc backs out to it.
 		h.press("f", `"sidebar"`, "enter")
-		if h.header() != "Alpha › TUI: › Sidebar:" {
+		if h.header() != "Alpha › TUI: › Sidebar:  · 1 to do" {
 			t.Fatalf("header = %q", h.header())
 		}
 		h.want("▌ ○ Existing")
@@ -556,7 +556,7 @@ func TestMoveReachesAHeading(t *testing.T) {
 			t.Fatalf("sidebar selection = %+v", h.m.sel)
 		}
 		h.press("esc")
-		if h.header() != "Alpha" {
+		if h.header() != "Alpha  · 2 to do" {
 			t.Fatalf("Esc went to %q", h.header())
 		}
 	})

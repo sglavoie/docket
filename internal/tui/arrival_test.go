@@ -153,7 +153,7 @@ func TestRepeatReopensRowsUnder(t *testing.T) {
 				before := []string{
 					beforeParent,
 					"    ✓ Direct @tomorrow @@today",
-					"    ▾ Notes:",
+					"    ▾ Notes: 2/2",
 					"      ✓ Nested",
 					"        ✓ Deep @fri @@tomorrow",
 					"    ✕ Canceled",
@@ -168,6 +168,7 @@ func TestRepeatReopensRowsUnder(t *testing.T) {
 				h.want(before...)
 				after := append([]string(nil), before...)
 				after[0] = afterParent
+				after[2] = "    ▾ Notes: 0/2"
 				for _, i := range []int{1, 3, 4, 6} {
 					after[i] = strings.Replace(after[i], "✓", "○", 1)
 				}
@@ -218,4 +219,116 @@ func TestRepeatReopensRowsUnder(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestHeaderCountsAndSums(t *testing.T) {
+	t.Run("held rows count themselves, not subtrees or context", func(t *testing.T) {
+		h := start(t).wide()
+		h.pasteText("Parent #est=1 $open\n\tChild #est=30m $open")
+		h.press("g", "g", "t", "f", `"Today"`, "enter")
+		if got := h.header(); got != "Today  · 1 to do · 1h" {
+			t.Fatalf("list counted descendants: %q", got)
+		}
+		h.press("f", `"Projects"`, "enter", "/", `"Child"`, "enter")
+		if got := h.header(); got != "Projects  · 1 to do · 30m  / Child" {
+			t.Fatalf("filter counted context ancestor: %q", got)
+		}
+		h.press("esc", "/", `"#est"`, "enter")
+		if got := h.header(); got != "Projects  · 2 to do · 1h30m  / #est" {
+			t.Fatalf("filter counted descendants twice: %q", got)
+		}
+		h.press("esc", "g", "g", "enter")
+		if got := h.header(); got != "Parent  · 1 to do · 30m" {
+			t.Fatalf("outline counted its root: %q", got)
+		}
+		h.press("#", `"est=2"`, "enter")
+		if got := h.header(); got != "Parent  · 1 to do · 2h" {
+			t.Fatalf("estimate edit left stale totals: %q", got)
+		}
+		h.press("u")
+		if got := h.header(); got != "Parent  · 1 to do · 30m" {
+			t.Fatalf("undo left stale totals: %q", got)
+		}
+	})
+	h := start(t).wide()
+	h.pasteText("Project\n\tStorage:\n\t\tBuild #est=1.5h $doing\n\t\tWait #est=30m $waiting\n\t\tReview #est=2d $open\n\t\tBare #est=2 $open\n\t\tUnreadable #est=oops $open\n\t\tDone #est=99h $done\n\t\tCanceled #est=99h $canceled\n\t\tParked #est=99h $parked\n\t\tNote #est=99h $note\n\tOutside $open")
+	wantHeader := func(want string) {
+		t.Helper()
+		if got := h.header(); got != want {
+			t.Fatalf("header = %q, want %q", got, want)
+		}
+	}
+	wantHeader("Projects  · 6 to do · 20h")
+	h.press("g", "g", "enter", "h")
+	wantHeader("Project  · 6 to do · 20h")
+	if !strings.Contains(h.rows(), "▸ Storage: 1/6") || strings.Contains(h.rows(), "Build") {
+		t.Fatalf("folded outline =\n%s", h.rows())
+	}
+	h.press("enter")
+	wantHeader("Project › Storage:  · 5 to do · 20h")
+	h.press("g", "g", "t", "j", "t", "f", `"Today"`, "enter")
+	wantHeader("Today  · 2 to do · 2h")
+	h.press("g", "g", "x")
+	wantHeader("Today  · 1 to do · 30m")
+	h.press("j", "x")
+	wantHeader("Today") // Held closed rows contribute neither count nor estimate.
+	h.press("f", `"Projects"`, "enter", "/", `"#est"`, "enter")
+	wantHeader("Projects  · 3 to do · 18h  / #est")
+	h.press("/", "tab", "enter")
+	wantHeader("Projects  · 3 to do · 18h  / #est  (flat)")
+	h.press("esc", "/", `"Unreadable"`, "enter")
+	wantHeader("Projects  · 1 to do  / Unreadable  (flat)")
+	h.press("x")
+	wantHeader("Projects  / Unreadable  (flat)")
+
+	for _, tc := range []struct{ value, sum string }{
+		{"30m", "30m"}, {"1.5h", "1h30m"}, {"2d", "16h"}, {"2", "2h"},
+		{"0", "0m"}, {"0.01h", "1m"}, {"oops", ""}, {"NaN", ""}, {"Inf", ""}, {"-2h", ""},
+	} {
+		t.Run(tc.value, func(t *testing.T) {
+			h := start(t).wide()
+			h.pasteText("Work #est=" + tc.value + " $open\nOther $note")
+			want := "Projects  · 1 to do"
+			if tc.sum != "" {
+				want += " · " + tc.sum
+			}
+			if got := h.header(); got != want {
+				t.Fatalf("header = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
+func TestHeadingProgress(t *testing.T) {
+	h := start(t).wide()
+	h.pasteText("Project\n\tStorage:\n\t\tBuild $open\n\t\tNested:\n\t\t\tDone $done\n\t\t\tWait $waiting\n\t\t\tCanceled $canceled\n\t\t\tParked $parked\n\tEmpty:\n\t\tNote $note")
+	h.press("g", "g", "enter")
+	wantProgress := func(storage, nested string) {
+		t.Helper()
+		rows := h.rows()
+		for _, want := range []string{"Storage: " + storage, "Nested: " + nested, "Empty:"} {
+			if !strings.Contains(rows, want) {
+				t.Fatalf("missing %q in\n%s", want, rows)
+			}
+		}
+		if strings.Contains(rows, "Empty: 0/") {
+			t.Fatalf("empty heading has progress:\n%s", rows)
+		}
+	}
+	wantProgress("1/3", "1/2")
+	if !strings.Contains(h.m.View().Content, sgrDim+"1/3"+sgrReset) {
+		t.Fatal("heading progress must be dimmed")
+	}
+	h.press("j", "x")
+	wantProgress("2/3", "1/2")
+	h.press("j", "j", "x")
+	wantProgress("1/3", "0/2")
+	h.press("u")
+	wantProgress("2/3", "1/2")
+	h.press("g", "g", "h")
+	if rows := h.rows(); !strings.Contains(rows, "▸ Storage: 2/3") || strings.Contains(rows, "Nested:") {
+		t.Fatalf("folded progress:\n%s", rows)
+	}
+	h.press("l")
+	wantProgress("2/3", "1/2")
 }

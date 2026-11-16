@@ -149,7 +149,7 @@ func TestSelectingInsideARow(t *testing.T) {
 func TestStarFiltersByTheWordUnderTheCaret(t *testing.T) {
 	h := work(t)
 	h.press("b", "*")
-	if h.m.edit != nil || h.header() != "Projects  / #bug" {
+	if h.m.edit != nil || h.header() != "Projects  · 3 to do  / #bug" {
 		t.Fatalf("header = %q", h.header())
 	}
 	h.want(
@@ -172,7 +172,7 @@ func TestStarFiltersByTheWordUnderTheCaret(t *testing.T) {
 	// A word of the text is read without what is around it, and a change
 	// made on the way in is kept.
 	h.press("g", "g", "j", "w", "x", "w", "*")
-	if h.header() != "Projects  / cache" || h.on() != "ix cache" {
+	if h.header() != "Projects  · 1 to do  / cache" || h.on() != "ix cache" {
 		t.Fatalf("header %q on %q", h.header(), h.on())
 	}
 	h.press("esc", "j", "j", "w", "f", " ", "*")

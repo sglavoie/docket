@@ -383,15 +383,15 @@ func TestGoToReachesAnyRow(t *testing.T) {
 	}
 	h.press("enter")
 	h.want("▌ ○ Buy milk", "  ○ Sell milk")
-	if h.header() != "Alpha › Heading:" || h.m.sel.kind != kindProject {
+	if h.header() != "Alpha › Heading:  · 2 to do" || h.m.sel.kind != kindProject {
 		t.Fatalf("the row did not open inside its project: %q", h.header())
 	}
 	h.press("esc")
-	if h.header() != "Alpha" {
+	if h.header() != "Alpha  · 3 to do" {
 		t.Fatalf("Esc backed out to %q", h.header())
 	}
 	h.press("ctrl+o")
-	if h.header() != "Projects" {
+	if h.header() != "Projects  · 4 to do" {
 		t.Fatalf("Ctrl+O returned to %q", h.header())
 	}
 	// Places come before rows that match as well, and Down walks on.
@@ -401,7 +401,7 @@ func TestGoToReachesAnyRow(t *testing.T) {
 	}
 	h.press("down", "down", "enter")
 	h.want("▌ ○ Buy bread")
-	if h.header() != "Beta" {
+	if h.header() != "Beta  · 1 to do" {
 		t.Fatalf("header = %q", h.header())
 	}
 	// A row must hold what is typed; a place may answer to its letters.
@@ -410,14 +410,14 @@ func TestGoToReachesAnyRow(t *testing.T) {
 		t.Fatalf("letters in order offered a row: %q", h.bottom())
 	}
 	h.press("esc", "f", `"alp"`, "enter")
-	if h.header() != "Alpha" {
+	if h.header() != "Alpha  · 3 to do" {
 		t.Fatalf("header = %q", h.header())
 	}
 	// A closed row is shown even while closed rows are hidden.
 	h.press("G", "x")
 	h.command("closed")
 	h.press("f", `"beta"`, "enter", "f", `"call"`, "enter")
-	h.want("  ▾ Heading:", "    ○ Buy milk", "    ○ Sell milk", "▌ ✓ Call Ann")
+	h.want("  ▾ Heading: 0/2", "    ○ Buy milk", "    ○ Sell milk", "▌ ✓ Call Ann")
 	// The move picker still offers only places.
 	h.press("m", `"milk"`)
 	if !strings.Contains(h.bottom(), "nothing matches") {
@@ -443,7 +443,7 @@ func TestARowLinksToAnother(t *testing.T) {
 	h.want("▌ ○ Buy bread → Buy milk", "  ○ Eggs → Buy milk")
 	h.press("g", "l")
 	h.want("▌ ○ Buy milk", "  ○ Sell milk")
-	if h.header() != "Alpha › Heading:" {
+	if h.header() != "Alpha › Heading:  · 2 to do" {
 		t.Fatalf("header = %q", h.header())
 	}
 	// The link reads as the row reads now, and following it was a jump.

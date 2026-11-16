@@ -170,8 +170,8 @@ whichever was written last.
 ## Screen
 
 ```
-  Inbox                1 │ docket-rewrite
-  Today                3 │   ▾ Storage:
+  Inbox                1 │ docket-rewrite  · 3 to do
+  Today                3 │   ▾ Storage: 1/3
   Waiting              2 │ ▌   ○ Decide op-log format ! @fri
   Stale                9 │         per-field, clock-stamped
                          │     ● Prototype row parser
@@ -184,6 +184,13 @@ whichever was written last.
   parked 31              │
 Inbox › Buy milk %home
 ```
+
+After the place’s name, the header states the open, doing and waiting tasks
+as `14 to do`, followed by their readable `#est` sum, as `14 to do · 6h30m`.
+An outline counts every such row under its root, folded or not; a list counts
+its held rows and a filter its held matches, excluding context ancestors.
+Zero tasks says nothing. These totals and heading progress are derived in
+the existing scan, never stored.
 
 ### Sidebar
 
@@ -930,6 +937,11 @@ grammar cannot read also stays prose (`@alice`, `#123`, `$5`). `\#tag` keeps a r
 | `$state` | `state` | `open`, `doing`, `waiting`, `done`, `canceled`, `parked`, `note`, or an unambiguous prefix (`$w`, `$c`, `$p`; `$d` is not one). `$next` and `$today` are read by the filter only: they are not states |
 | `%name` | | On the capture line only: the project or heading to file the row in |
 
+`#est` values are numbers with `m`, `h` or `d` (a day is 8 hours); a bare
+number means hours. Unreadable or negative values add nothing. The header
+sums estimates only for tasks left to do, writing hours and minutes, never
+days, rounded to the nearest minute after adding.
+
 Typed in a row, sigils become fields when the edit ends and may sit anywhere
 in the line; a repeated `@` or `$` takes the last. `A` opens a row showing its
 canonical line: text, `!`, `@YYYY-MM-DD`, tags, state. Deleting a sigil from
@@ -958,7 +970,10 @@ default of where it ends up when the edit is kept.
 **On the row.** One glyph column says what the row is: `○` open, `●` doing,
 `◔` waiting, `✓` done, `✕` canceled, `◌` parked; a note shows `▾` or `▸` when it has
 children and nothing otherwise. A folded task keeps its state glyph and
-counts its children after its text (`+3`). Fields follow the text, each in
+counts its children after its text (`+3`). A row ending in a colon shows
+dimmed `done/total` after its text when it has tasks beneath it, at any depth,
+folded or not. Canceled and parked rows are left out of the total.
+Fields follow the text, each in
 the sigil that writes it, and then `→` with the row a link points at; the deadline reads `@today`, `@tomorrow`, `@fri`,
 `@Nov 20`. An overdue deadline is red and today's is yellow until the row is
 done or canceled, which dims the whole row. A word starting `http://` or
@@ -1112,7 +1127,9 @@ These are the only commands; everything else is done in the outline.
 
 16. **Arrival.** Closing a repeating row reopens every done row under it,
    at any depth, preserving their dates and undoing together. `gl` opens
-   the first web address on a row with no row link. *In progress.*
+   the first web address on a row with no row link. The header counts tasks
+   left to do and sums their `#est` values; headings show done/total across
+   all descendants. *In progress.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add` and `docket ls`, macros (`.`,

@@ -119,7 +119,7 @@ func TestAFilterCanBeSavedAndReopened(t *testing.T) {
 		t.Fatalf("picker = %q", h.bottom())
 	}
 	h.press("enter")
-	if h.header() != "Projects  / #bug -$done  (flat)" {
+	if h.header() != "Projects  · 2 to do  / #bug -$done  (flat)" {
 		t.Fatalf("header = %q", h.header())
 	}
 	h.want(

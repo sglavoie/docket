@@ -27,15 +27,15 @@ func TestCtrlOGoesBackAlongTheTrailOfJumps(t *testing.T) {
 			t.Fatalf("the picker offers back: %q", h.status())
 		}
 		h.press("esc", "ctrl+o")
-		if h.header() != "Alpha" || h.rows() != alpha || !h.m.sel.same(alphaSide) {
+		if h.header() != "Alpha  · 2 to do" || h.rows() != alpha || !h.m.sel.same(alphaSide) {
 			t.Fatalf("first return = %q\n%s", h.header(), h.rows())
 		}
 		h.press("ctrl+i")
-		if h.header() != "Beta" || h.rows() != beta || !h.m.sel.same(betaSide) {
+		if h.header() != "Beta  · 2 to do" || h.rows() != beta || !h.m.sel.same(betaSide) {
 			t.Fatalf("second return = %q\n%s", h.header(), h.rows())
 		}
 		h.press("ctrl+i")
-		if h.header() != "Beta" || h.status() != "no newer place" {
+		if h.header() != "Beta  · 2 to do" || h.status() != "no newer place" {
 			t.Fatalf("past the newest = %q, %q", h.header(), h.status())
 		}
 	})
@@ -52,7 +52,7 @@ func TestCtrlOGoesBackAlongTheTrailOfJumps(t *testing.T) {
 		}
 		h.press("esc", "esc")
 		// One gained a child, so its flat rendering now includes +1.
-		if h.header() != "Today" || h.rows() != strings.Replace(today, "@tomorrow", "@tomorrow +1", 1) {
+		if h.header() != "Today  · 2 to do" || h.rows() != strings.Replace(today, "@tomorrow", "@tomorrow +1", 1) {
 			t.Fatalf("Esc lost the held list or its cursor: %q\n%s", h.header(), h.rows())
 		}
 		h.press("ctrl+i")
@@ -124,7 +124,7 @@ func TestCtrlOGoesBackAlongTheTrailOfJumps(t *testing.T) {
 			}
 			destination := h.header()
 			h.press("ctrl+o")
-			if h.header() != "Alpha" || h.rows() != before || !h.m.sel.same(side) {
+			if h.header() != "Alpha  · 2 to do" || h.rows() != before || !h.m.sel.same(side) {
 				t.Fatalf("sidebar origin = %q\n%s", h.header(), h.rows())
 			}
 			h.press("ctrl+i")
@@ -138,7 +138,7 @@ func TestCtrlOGoesBackAlongTheTrailOfJumps(t *testing.T) {
 		h := fixture(t)
 		h.press("f", `"beta"`, "enter", "f", `"alpha"`, "enter")
 		h.press("tab", "k", "j", "enter", "tab", "esc", "ctrl+o")
-		if h.header() != "Beta" {
+		if h.header() != "Beta  · 2 to do" {
 			t.Fatalf("unchanged sidebar visit replaced back: %q", h.header())
 		}
 	})
@@ -146,7 +146,7 @@ func TestCtrlOGoesBackAlongTheTrailOfJumps(t *testing.T) {
 	t.Run("zooming is no jump, and the trail lasts for the session", func(t *testing.T) {
 		h := fixture(t)
 		h.press("enter", "esc", "tab", "esc", "ctrl+o")
-		if h.header() != "Projects" || !strings.HasPrefix(h.status(), "no older place") {
+		if h.header() != "Projects  · 4 to do" || !strings.HasPrefix(h.status(), "no older place") {
 			t.Fatalf("non-jumps left a trail: %q, %q", h.header(), h.status())
 		}
 		h.press("f", "enter")
@@ -154,7 +154,7 @@ func TestCtrlOGoesBackAlongTheTrailOfJumps(t *testing.T) {
 			t.Fatalf("blank jump = %q", h.header())
 		}
 		h.press("ctrl+o")
-		if h.header() != "Projects" {
+		if h.header() != "Projects  · 4 to do" {
 			t.Fatalf("rootless return = %q", h.header())
 		}
 		h = open(t, h.path).wide()
@@ -167,19 +167,19 @@ func TestCtrlOGoesBackAlongTheTrailOfJumps(t *testing.T) {
 	t.Run("a count walks that far and a new jump drops what was newer", func(t *testing.T) {
 		h := fixture(t)
 		h.press("f", `"alpha"`, "enter", "f", `"beta"`, "enter", "f", `"inbox"`, "enter", "3", "ctrl+o")
-		if h.header() != "Projects" {
+		if h.header() != "Projects  · 4 to do" {
 			t.Fatalf("3 Ctrl+O = %q", h.header())
 		}
 		h.press("2", "ctrl+i")
-		if h.header() != "Beta" {
+		if h.header() != "Beta  · 2 to do" {
 			t.Fatalf("2 Ctrl+I = %q", h.header())
 		}
 		h.press("f", `"alpha"`, "enter", "ctrl+i")
-		if h.header() != "Alpha" || h.status() != "no newer place" {
+		if h.header() != "Alpha  · 2 to do" || h.status() != "no newer place" {
 			t.Fatalf("a jump kept newer places: %q, %q", h.header(), h.status())
 		}
 		h.press("ctrl+o")
-		if h.header() != "Beta" {
+		if h.header() != "Beta  · 2 to do" {
 			t.Fatalf("back after a new jump = %q", h.header())
 		}
 	})
@@ -206,12 +206,12 @@ func TestHShowsAListsRowWhereItLives(t *testing.T) {
 		h.press("G", "t", "k", "t", "f", `"today"`, "enter", "j", "t")
 		before := h.rows() // Unpicked here, One stays in the held list.
 		h.press("h")
-		if h.header() != "Alpha" {
+		if h.header() != "Alpha  · 2 to do" {
 			t.Fatalf("header = %q", h.header())
 		}
 		h.want("▌ ○ One @tomorrow", "  ◔ Two")
 		h.press("j", "esc")
-		if h.header() != "Today" || h.rows() != before {
+		if h.header() != "Today  · 2 to do" || h.rows() != before {
 			t.Fatalf("return = %q\n%s; want\n%s", h.header(), h.rows(), before)
 		}
 	})
@@ -303,9 +303,9 @@ func TestHShowsAListsRowWhereItLives(t *testing.T) {
 			}
 			before, header, row := h.rows(), h.header(), h.m.current()
 			h.press("h")
-			wantHeader := "Alpha"
+			wantHeader := "Alpha  · 2 to do"
 			if list == "review" {
-				wantHeader = "Projects"
+				wantHeader = "Projects  · 2 to do"
 			}
 			if h.header() != wantHeader || h.m.current() != row {
 				t.Fatalf("arrival = %q, row %q", h.header(), h.m.current())
@@ -414,7 +414,7 @@ func TestAFilterTermReachesTheRowsAbove(t *testing.T) {
 	t.Run("context keeps dim ancestors and all takes matches only", func(t *testing.T) {
 		h := fixture(t)
 		h.press("/", `"^#work"`, "enter")
-		h.want("▌ ▾ Docket #office", "    ▾ Work: #work", "      ○ First", "      ◔ Nested: #work", "        ○ Deep")
+		h.want("▌ ▾ Docket #office", "    ▾ Work: 0/3 #work", "      ○ First", "      ◔ Nested: 0/1 #work", "        ○ Deep")
 		if !strings.Contains(h.m.View().Content, sgrDim+"Work:") {
 			t.Fatal("context heading is not dimmed")
 		}
@@ -426,9 +426,9 @@ func TestAFilterTermReachesTheRowsAbove(t *testing.T) {
 	t.Run("flat excludes the tagged heading itself and negates ancestry", func(t *testing.T) {
 		h := fixture(t)
 		h.press("/", `"^#work"`, "tab")
-		h.want("▌ ○ First · Docket", "  ◔ Nested: #work +1 · Docket", "  ○ Deep · Docket")
+		h.want("▌ ○ First · Docket", "  ◔ Nested: 0/1 #work +1 · Docket", "  ○ Deep · Docket")
 		h.press("esc", "/", `"-^#work"`)
-		h.want("▌ ▾ Docket #office", "  ▾ Work: #work · Docket", "  ▾ Home: #home · Docket", "  ○ Second · Docket", "  ○ Plain · Docket", "  ▾ Elsewhere", "  ○ Other · Elsewhere")
+		h.want("▌ ▾ Docket #office", "  ▾ Work: 0/3 #work · Docket", "  ▾ Home: 0/1 #home · Docket", "  ○ Second · Docket", "  ○ Plain · Docket", "  ▾ Elsewhere", "  ○ Other · Elsewhere")
 	})
 	t.Run("project name scopes next action from Projects", func(t *testing.T) {
 		h := fixture(t)

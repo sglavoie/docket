@@ -159,7 +159,7 @@ func TestPastedRowsUseTheirParentsDefault(t *testing.T) {
 	h.pasteText("[ ] Parent\n  Detail\n    Under note\n  [ ] Subtask $done\n  [x] Finished $open\nHeading:\n  Child")
 	h.want("  ▾ Project", "    ○ First", "    ○ Second", "    ○ Parent",
 		"      ▾ Detail", "        ○ Under note", "      ○ Subtask", "      ✓ Finished",
-		"    ▾ Heading:", "▌     ○ Child")
+		"    ▾ Heading: 0/1", "▌     ○ Child")
 }
 
 // These fixtures use stored fields, deliberately bypassing Parse so a lossy

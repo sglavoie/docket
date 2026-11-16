@@ -455,7 +455,7 @@ func TestFoldZoomAndBackOut(t *testing.T) {
 	)
 	h.press("k", "enter")
 	h.want("▌ ○ Child")
-	if got := ansi.Strip(strings.SplitN(h.m.View().Content, "\n", 2)[0]); got != "Project" {
+	if got := ansi.Strip(strings.SplitN(h.m.View().Content, "\n", 2)[0]); got != "Project  · 1 to do" {
 		t.Fatalf("breadcrumb = %q", got)
 	}
 	h.press("esc")
@@ -696,7 +696,7 @@ func TestHeadingsNotesAndFoldedTasks(t *testing.T) {
 		"  ▾ Project",
 		"    ○ First",
 		"    ○ Second",
-		"    ▾ Later:",
+		"    ▾ Later: 0/1",
 		"      ○ Idea",
 		"▌       a plain remark",
 	)
@@ -706,7 +706,7 @@ func TestHeadingsNotesAndFoldedTasks(t *testing.T) {
 		"  ▾ Project",
 		"    ○ First",
 		"    ○ Second",
-		"    ▾ Later:",
+		"    ▾ Later: 0/1",
 		"▌     ○ Idea +1",
 	)
 }

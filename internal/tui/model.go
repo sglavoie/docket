@@ -168,6 +168,9 @@ type Model struct {
 	next      map[string]bool // each active project's next action, derived in scan
 	inToday   map[string]bool // the rows in Today, derived in scan
 
+	totals    map[string]rowTotals // own and descendant counts, derived in scan
+	paneTotal taskTotals           // held rows, refreshed in rebuild
+
 	outlineOrder map[string]int // traversal ranks, derived in scan for Today ties
 
 	repeat       repeatAct
@@ -543,17 +546,22 @@ func (m *Model) rebuild() {
 		return false
 	}
 	m.vis = m.vis[:0]
+	m.paneTotal = taskTotals{}
 	if m.at.query != "" {
 		// A filter shows every row it found: a fold never hides a match.
 		for _, v := range m.at.hits {
 			if m.live(v.id) {
 				m.vis = append(m.vis, v)
+				if m.at.matched[v.id] {
+					m.paneTotal.add(m.totals[v.id].own)
+				}
 			}
 		}
 	} else if m.at.list != "" {
 		for _, id := range m.at.rows {
 			if m.live(id) {
 				m.vis = append(m.vis, visRow{id, 0})
+				m.paneTotal.add(m.totals[id].own)
 			}
 		}
 	} else {
@@ -570,6 +578,7 @@ func (m *Model) rebuild() {
 			}
 		}
 		walk(m.at.root, 0)
+		m.paneTotal = m.totals[m.at.root].under
 	}
 	m.cursor = max(0, min(m.cursor, len(m.vis)-1))
 	for id := range m.picked {

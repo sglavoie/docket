@@ -118,16 +118,16 @@ func TestArchiveMovesClosedWorkUnderAHeading(t *testing.T) {
 	}
 	h.want(
 		"▌ ▾ Alpha",
-		"    ▾ Build:",
+		"    ▾ Build: 1/3",
 		"      ✓ Half",
 		"        ○ Still open",
 		"      ○ Live",
-		"    ▾ Archive:",
+		"    ▾ Archive: 1/1",
 		"      ✓ Shipped",
 		"          A detail",
 		"      ✕ Dropped",
 		"  ▾ Beta",
-		"    ▾ Archive:",
+		"    ▾ Archive: 1/1",
 		"      ✓ Old",
 	)
 	if len(h.m.undo) != steps+1 {
@@ -142,22 +142,22 @@ func TestArchiveMovesClosedWorkUnderAHeading(t *testing.T) {
 	h.command("archive")
 	h.want(
 		"  ▾ Alpha",
-		"    ▾ Build:",
+		"    ▾ Build: 0/1",
 		"      ○ Live",
-		"    ▾ Archive:",
+		"    ▾ Archive: 3/3",
 		"      ✓ Shipped",
 		"          A detail",
 		"      ✕ Dropped",
 		"      ✓ Half",
 		"▌       ✓ Still open",
 		"  ▾ Beta",
-		"    ▾ Archive:",
+		"    ▾ Archive: 1/1",
 		"      ✓ Old",
 	)
 	h.press("u", "u", "u", "g", "g")
 	h.want(
 		"▌ ▾ Alpha",
-		"    ▾ Build:",
+		"    ▾ Build: 2/4",
 		"      ✓ Shipped",
 		"          A detail",
 		"      ✓ Half",
@@ -171,14 +171,14 @@ func TestArchiveMovesClosedWorkUnderAHeading(t *testing.T) {
 	// Inside a project only that project is swept; lists and the Inbox refuse.
 	h.press("G", "k", "enter")
 	h.command("archive")
-	h.want("  ▾ Archive:", "▌   ✓ Old")
+	h.want("  ▾ Archive: 1/1", "▌   ✓ Old")
 	h.press("k", "enter")
 	h.command("archive")
 	if h.m.msg != "nothing closed to archive" {
 		t.Fatalf("inside the archive: msg = %q", h.m.msg)
 	}
 	h.press("f", `"alpha"`, "enter")
-	h.want("▌ ▾ Build:", "    ✓ Shipped", "        A detail", "    ✓ Half", "      ○ Still open", "    ○ Live", "  ✕ Dropped")
+	h.want("▌ ▾ Build: 2/4", "    ✓ Shipped", "        A detail", "    ✓ Half", "      ○ Still open", "    ○ Live", "  ✕ Dropped")
 	for _, place := range []string{"inbox", "waiting"} {
 		h.press("f", `"`+place+`"`, "enter")
 		gen := h.m.tree.Gen()
@@ -232,7 +232,7 @@ func TestCaptureFromOutsideTheApp(t *testing.T) {
 	}
 	// The open window sees the rows at its next key.
 	h.press("g", "g")
-	h.want("▌ ▾ Alpha", "    ▾ TUI:", "      ○ Existing", "      ○ Polish !")
+	h.want("▌ ▾ Alpha", "    ▾ TUI: 0/2", "      ○ Existing", "      ○ Polish !")
 	h.press("f", `"inbox"`, "enter")
 	h.want("▌ ○ Buy milk @fri #home", "  ○ Stays %nowhere")
 

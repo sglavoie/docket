@@ -654,14 +654,14 @@ func TestPPutsTheRegister(t *testing.T) {
 		h.press("f", `"Alpha"`, "enter", "j", "y", "y")
 		original, register, steps := h.m.current(), h.m.register, len(h.m.undo)
 		h.press("p")
-		h.want("  ▾ Heading:", "    ○ Task ! @Dec 1 #tag", "        Detail", "    ○ Task ! @Dec 1 #tag", "▌       Detail", "  ○ Other")
+		h.want("  ▾ Heading: 0/2", "    ○ Task ! @Dec 1 #tag", "        Detail", "    ○ Task ! @Dec 1 #tag", "▌       Detail", "  ○ Other")
 		copy := h.m.tree.Row(h.m.current()).Parent
 		if copy == original || h.m.tree.Row(copy).Parent != h.m.tree.Row(original).Parent ||
 			h.m.register != register || h.status() != "put 2 rows" || len(h.m.undo) != steps+1 {
 			t.Fatal("subtree put lost level, identity, register, status or undo grouping")
 		}
 		h.press("u")
-		h.want("  ▾ Heading:", "    ○ Task ! @Dec 1 #tag", "        Detail", "▌ ○ Other")
+		h.want("  ▾ Heading: 0/1", "    ○ Task ! @Dec 1 #tag", "        Detail", "▌ ○ Other")
 	})
 	t.Run("before keeps multiple roots and children in order", func(t *testing.T) {
 		h := start(t).wide()
@@ -760,7 +760,7 @@ func TestPPutsTheRegister(t *testing.T) {
 			t.Fatal("f did not open Go to")
 		}
 		h.press(`"Inbox"`, "enter", "ctrl+o")
-		if h.header() != "Project" || h.rows() != before {
+		if h.header() != "Project  · 3 to do" || h.rows() != before {
 			t.Fatal("Ctrl+O did not restore the previous place and cursor")
 		}
 		h.press("tab", "f", `"Inbox"`, "enter")

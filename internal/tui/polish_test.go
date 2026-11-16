@@ -187,7 +187,7 @@ func TestPickerArrowsWalkTheMatches(t *testing.T) {
 	}
 	// Typing starts over from the best match, and the walk stops at the end.
 	h.press("f", "down", `"a"`, "down", "down", "down", "down", "down", "enter")
-	if h.header() != "Beta" {
+	if h.header() != "Beta  · 1 to do" {
 		t.Fatalf("header = %q", h.header())
 	}
 }
@@ -195,7 +195,7 @@ func TestPickerArrowsWalkTheMatches(t *testing.T) {
 func TestClosedRowsCanBeLeftOut(t *testing.T) {
 	h := work(t)
 	h.press("x", ":", `"closed"`, "enter")
-	if h.m.msg != "closed rows hidden" || h.header() != "Projects  · closed hidden" {
+	if h.m.msg != "closed rows hidden" || h.header() != "Projects  · 3 to do  · closed hidden" {
 		t.Fatalf("msg = %q, header = %q", h.m.msg, h.header())
 	}
 	h.want(
@@ -300,21 +300,21 @@ func TestFoldCommandsAndHalfPages(t *testing.T) {
 		h.press("g", "g", "j", "j")
 		steps, generation := len(h.m.undo), h.m.tree.Gen()
 		command(h, "fold 2")
-		h.want("  ▾ Alpha:", "▌   ▸ Branch:", "    ○ Other", "  ▾ Beta:", "    ○ Outside")
+		h.want("  ▾ Alpha: 0/2", "▌   ▸ Branch: 0/1", "    ○ Other", "  ▾ Beta: 0/1", "    ○ Outside")
 		command(h, "fold 1")
-		h.want("▌ ▸ Alpha:", "  ▸ Beta:")
+		h.want("▌ ▸ Alpha: 0/2", "  ▸ Beta: 0/1")
 		command(h, "unfold")
-		h.want("▌ ▾ Alpha:", "    ▾ Branch:", "      ○ Leaf #match", "    ○ Other", "  ▾ Beta:", "    ○ Outside")
+		h.want("▌ ▾ Alpha: 0/2", "    ▾ Branch: 0/1", "      ○ Leaf #match", "    ○ Other", "  ▾ Beta: 0/1", "    ○ Outside")
 		h.press("j", "j")
 		command(h, "fold")
-		h.want("▌ ▸ Alpha:", "  ▸ Beta:")
+		h.want("▌ ▸ Alpha: 0/2", "  ▸ Beta: 0/1")
 		if len(h.m.folded) != 3 || len(h.m.undo) != steps || h.m.tree.Gen() != generation {
 			t.Fatal("fold-all must cover hidden descendants without changing tree or undo")
 		}
 		again := reopen(t, h)
-		again.want("▌ ▸ Alpha:", "  ▸ Beta:")
+		again.want("▌ ▸ Alpha: 0/2", "  ▸ Beta: 0/1")
 		command(again, "fold 2")
-		again.want("▌ ▾ Alpha:", "    ▸ Branch:", "    ○ Other", "  ▾ Beta:", "    ○ Outside")
+		again.want("▌ ▾ Alpha: 0/2", "    ▸ Branch: 0/1", "    ○ Other", "  ▾ Beta: 0/1", "    ○ Outside")
 		command(again, "unfold")
 		if len(again.m.folded) != 0 || len(again.m.vis) != 6 {
 			t.Fatal("unfold did not restore every level")
@@ -343,7 +343,7 @@ func TestFoldCommandsAndHalfPages(t *testing.T) {
 		h := fixture(t)
 		h.press("g", "g", "enter", "j")
 		command(h, "fold")
-		h.want("▌ ▸ Branch:", "  ○ Other")
+		h.want("▌ ▸ Branch: 0/1", "  ○ Other")
 		if len(h.m.folded) != 1 {
 			t.Fatal("fold escaped the pane root")
 		}

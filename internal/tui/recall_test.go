@@ -196,7 +196,7 @@ func TestOperatorsTakeRowObjects(t *testing.T) {
 		"  ○ a2",
 		"      deep",
 		"  ○ a3",
-		"  ▾ Beta:",
+		"  ▾ Beta: 0/1",
 		"    ○ b1 milk",
 		"  ○ Gamma",
 		"    Delta milk:",
