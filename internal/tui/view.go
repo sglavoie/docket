@@ -45,7 +45,8 @@ const helpText = `Docket
                  nothing remembered or a deleted destination says so
                  remembered only this session; sidebar ignores .
   y              copy the row or selection, including subtrees
-  v              select the row; x ! t dd m and stamps act on the selection
+  v V            pick a row; sweep with motions (V ends, Esc clears)
+                 x ! t dd m and stamps act on the selection
                  > < J K move adjacent selected siblings together
   # @ $ * -      stamp: type sigils, Enter sets them (-#tag, -@, -@@, -* remove)
   /              filter by text and sigils; -word excludes; Tab flat or in context

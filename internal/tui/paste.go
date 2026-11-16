@@ -87,7 +87,7 @@ func (m *Model) paste(content string) {
 			m.at.query = strings.TrimSpace(string(m.ask.ed.buf))
 			m.refilter()
 			m.cursor, m.top = 0, 0
-			m.picked = map[string]bool{}
+			m.clearSelection()
 		}
 	case m.edit != nil && len(lines) == 1:
 		if lines[0].checkbox || lines[0].protected {

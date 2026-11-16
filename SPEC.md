@@ -417,6 +417,17 @@ their value on every row unless all already hold it, in which case they
 clear it. The keys that work on one row (`e`, `o`, `O`, `Enter`) are refused
 and say so. The status line counts the selection, and `Esc` clears it.
 
+`V` starts a sweep at the cursor's row. Each motion, with or without a
+count, selects the shown span from that anchor to the cursor, both included;
+moving back gives rows up again. Picks made before the sweep stay selected.
+`V` ends the sweep and keeps the rows; `v` ends it, then toggles the cursor's
+row and steps down as usual. Any other non-motion key ends the sweep before
+acting: `VGdd` deletes through the end in one undo step, and `V2jx` closes
+three rows. `Esc` ends the sweep and clears the selection (a pending count
+is still canceled first). Sweeps work in lists and filters, passing over
+dimmed ancestors in a contextual filter. Changing the filter, jumping or
+opening a place clears both the selection and the sweep.
+
 `m` then `Enter` on a blank query moves the selection `here`: where `o`
 would open a row at the cursor, as the first children of its row when that
 row has children and is unfolded, else just after it. The rows keep their
@@ -499,7 +510,7 @@ Every other key, including `o`, `O`, `e`, `Enter`, `h`, `l`, `p`, `a`, `/`,
 | `t` | Pick for Today, and unpick | 3 |
 | `Tab` `p` | Sidebar focus; go to a project, heading or list by name | 3 |
 | `a` `m` | Capture to the Inbox from anywhere; move to a project or heading | 3 |
-| `v` | Select | 4 |
+| `v` `V` | Pick a row; sweep with motions | 4, 11 |
 | `y` | Copy rows with their subtrees | 7 |
 | `/` `:` | Filter, command | 4 |
 | `#` `@` `$` `*` `-` | Stamp sigils on rows | 4 |
@@ -702,7 +713,8 @@ This is the only command; everything else is done in the outline.
    *Built.*
 
 11. **Grammar.** Counts repeat motions, reorder, undo and redo, or take
-   shown rows for an act; each counted act is one undo step. *In progress.*
+   shown rows for an act; each counted act is one undo step. `V` sweeps a
+   selection with motions, preserving earlier picks. *In progress.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add`.

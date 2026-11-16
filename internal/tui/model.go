@@ -128,6 +128,8 @@ type Model struct {
 	undoGroup  []outline.Op      // inverses collected by a counted reorder
 	prefix     string            // a pending g or d
 	picked     map[string]bool   // the selection
+	sweep      string            // anchor row of a live sweep
+	sweepBase  map[string]bool   // picks made before the sweep
 	last       map[string]string // each place's cursor row, for coming back
 	hideClosed bool
 	quit       bool
@@ -451,6 +453,7 @@ func (m *Model) rebuild() {
 	for id := range m.picked {
 		if !m.live(id) {
 			delete(m.picked, id)
+			delete(m.sweepBase, id)
 		}
 	}
 	if m.at.list == kindToday {
@@ -1276,7 +1279,7 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 		m.cursor, m.top = 0, 0
 		// A selection made before the rows changed could act on rows no
 		// longer on screen.
-		m.picked = map[string]bool{}
+		m.clearSelection()
 		return
 	}
 
@@ -1600,6 +1603,7 @@ func (m *Model) sideKey(k string) {
 
 func (m *Model) normalKey(k string) {
 	if k == "esc" && m.count > 0 {
+		m.endSweep()
 		m.count, m.prefix = 0, ""
 		return
 	}
@@ -1613,11 +1617,32 @@ func (m *Model) normalKey(k string) {
 		}
 		return
 	}
+	if k == "esc" && m.sweep != "" {
+		m.prefix = ""
+	}
 	if m.prefix != "" {
 		k, m.prefix = m.prefix+k, ""
 	} else if k == "g" || k == "d" {
+		if k == "d" {
+			m.endSweep()
+		}
 		m.prefix = k
 		return
+	}
+	if k == "V" {
+		m.count = 0
+		if m.sweep != "" {
+			m.endSweep()
+		} else {
+			m.startSweep()
+		}
+		return
+	}
+	switch k {
+	case "j", "k", "down", "up", "gg", "G", "home", "end", "ctrl+d", "ctrl+u", "ctrl+f", "ctrl+b", "pgdown", "pgup":
+		defer m.updateSweep()
+	default:
+		m.endSweep()
 	}
 	count := m.count
 	m.count = 0
@@ -1677,6 +1702,7 @@ func (m *Model) normalAct(k string, count int) {
 	switch k {
 	case "gg":
 		m.cursor = 0
+		return
 	case "dd":
 		var ops []outline.Op
 		for _, id := range m.countedRows(count) {
@@ -1688,8 +1714,10 @@ func (m *Model) normalAct(k string, count int) {
 		return
 	case "j", "down":
 		m.cursor += min(max(count, 1), max(len(m.vis)-1-m.cursor, 0))
+		return
 	case "k", "up":
 		m.cursor -= min(max(count, 1), m.cursor)
+		return
 	case "ctrl+d", "ctrl+u", "ctrl+f", "ctrl+b", "pgdown", "pgup":
 		_, height := m.size()
 		step := max(height-2, 1) // exclude the header and status line
@@ -1704,10 +1732,13 @@ func (m *Model) normalAct(k string, count int) {
 		} else {
 			m.cursor += min(step, max(len(m.vis)-1-m.cursor, 0))
 		}
+		return
 	case "G", "end":
 		m.cursor = max(len(m.vis)-1, 0)
+		return
 	case "home":
 		m.cursor = 0
+		return
 	case "o":
 		if m.single() {
 			m.newRow(false)
@@ -1746,7 +1777,7 @@ func (m *Model) normalAct(k string, count int) {
 		// Esc undoes the most recent narrowing: the selection, then the
 		// filter, then the zoom.
 		if len(m.picked) > 0 {
-			m.picked = map[string]bool{}
+			m.clearSelection()
 		} else if m.at.query != "" {
 			m.at.query = ""
 			m.refilter()

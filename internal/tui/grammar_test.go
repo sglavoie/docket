@@ -262,3 +262,182 @@ func TestCountedReorderKeepsHistory(t *testing.T) {
 		}
 	})
 }
+
+func TestVSweepsASelection(t *testing.T) {
+	picks := func(h *harness, indices ...int) {
+		t.Helper()
+		want := make([]string, 0, len(indices))
+		for _, i := range indices {
+			want = append(want, h.m.vis[i].id)
+		}
+		if len(h.m.picked) != len(want) {
+			t.Fatalf("picks = %v, want rows %v", h.m.picked, indices)
+		}
+		for _, id := range want {
+			if !h.m.picked[id] {
+				t.Fatalf("missing pick %s in %v", id, h.m.picked)
+			}
+		}
+	}
+
+	t.Run("grows shrinks crosses anchor and ends", func(t *testing.T) {
+		h := countOutline(t, 5)
+		h.press("j", "V", "j", "j")
+		picks(h, 1, 2, 3)
+		h.want("  ○ Task 00", " ┃○ Task 01", " ┃○ Task 02", "▌┃○ Task 03", "  ○ Task 04")
+		h.press("k")
+		picks(h, 1, 2)
+		h.press("3", "k")
+		picks(h, 0, 1)
+		h.press("j", "j", "V", "j")
+		picks(h, 1, 2)
+		if h.m.sweep != "" || h.m.cursor != 3 {
+			t.Fatal("V did not end the sweep")
+		}
+		h.press("esc")
+		picks(h)
+	})
+
+	t.Run("delete to end is one undo step", func(t *testing.T) {
+		h := countOutline(t, 5)
+		h.press("j", "V", "G")
+		picks(h, 1, 2, 3, 4)
+		before := len(h.m.undo)
+		h.press("d")
+		if h.m.sweep != "" {
+			t.Fatal("operator prefix left the sweep live")
+		}
+		h.press("d")
+		h.want("▌ ○ Task 00")
+		if len(h.m.undo) != before+1 {
+			t.Fatal("swept delete was not one undo step")
+		}
+		h.press("u")
+		h.want("  ○ Task 00", "▌ ○ Task 01", "  ○ Task 02", "  ○ Task 03", "  ○ Task 04")
+	})
+
+	t.Run("counted motion closes three rows", func(t *testing.T) {
+		h := countOutline(t, 4)
+		h.press("V", "2", "j", "x")
+		h.want(" ┃✓ Task 00", " ┃✓ Task 01", "▌┃✓ Task 02", "  ○ Task 03")
+		h.press("j")
+		picks(h, 0, 1, 2)
+		h.press("u", "esc")
+		h.want("▌ ○ Task 00", "  ○ Task 01", "  ○ Task 02", "  ○ Task 03")
+	})
+
+	t.Run("earlier picks survive shrinking and v still toggles", func(t *testing.T) {
+		h := countOutline(t, 5)
+		h.press("v", "j", "v", "k", "k", "V", "3", "j", "3", "k")
+		picks(h, 0, 1, 2)
+		h.press("v", "j")
+		picks(h, 0, 2)
+		if h.m.cursor != 3 || h.m.sweep != "" {
+			t.Fatal("v did not toggle, advance and end the sweep")
+		}
+		h.press("V", "g", "esc", "j")
+		picks(h)
+		if h.m.sweep != "" {
+			t.Fatal("Esc left a sweep live")
+		}
+	})
+
+	t.Run("all motions and aliases", func(t *testing.T) {
+		h := countOutline(t, 12)
+		h.press("V")
+		for _, step := range []struct {
+			keys []string
+			code rune
+			last int
+		}{
+			{keys: []string{"2", "ctrl+d"}, last: 10},
+			{keys: []string{"ctrl+u"}, last: 5},
+			{keys: []string{"ctrl+f"}, last: 11},
+			{keys: []string{"ctrl+b"}, last: 1},
+			{keys: []string{"2", "down"}, last: 3},
+			{keys: []string{"up"}, last: 2},
+			{keys: []string{"2", "g", "g"}, last: 0},
+			{keys: []string{"2", "G"}, last: 11},
+			{code: tea.KeyHome, last: 0},
+			{code: tea.KeyEnd, last: 11},
+			{code: tea.KeyPgUp, last: 1},
+			{code: tea.KeyPgDown, last: 11},
+		} {
+			h.press(step.keys...)
+			if step.code != 0 {
+				h.m.Update(tea.KeyPressMsg{Code: step.code})
+			}
+			indices := make([]int, step.last+1)
+			for i := range indices {
+				indices[i] = i
+			}
+			picks(h, indices...)
+		}
+	})
+
+	t.Run("filter leaves dimmed ancestors unselected", func(t *testing.T) {
+		h := start(t)
+		h.press("o", `"First #hit"`, "esc", "o", `"Heading:"`, "esc", "o", `"Second #hit"`, "esc", ">")
+		h.press("/", `"#hit"`, "enter", "V", "G")
+		picks(h, 0, 2)
+		h.press("k")
+		picks(h, 0)
+		h.press("esc", "V") // Starting on a dimmed ancestor also skips it.
+		picks(h)
+		h.press("j")
+		picks(h, 2)
+	})
+
+	t.Run("lists flat filters and destination resets", func(t *testing.T) {
+		h := countOutline(t, 4)
+		h.press("4", "t", "p", `"Today"`, "enter", "V", "2", "j")
+		picks(h, 0, 1, 2)
+		h.press("/", `"Task"`, "tab", "enter", "V", "j")
+		picks(h, 0, 1)
+		h.press("p", "enter", "j") // Back to the project.
+		picks(h)
+		h.press("V", "p", `"Today"`, "enter", "j")
+		picks(h)
+		h.press("V", "/")
+		h.m.Update(tea.PasteMsg{Content: "Task"})
+		h.press("enter", "j")
+		picks(h)
+		if h.m.sweep != "" {
+			t.Fatal("filter paste retained a sweep")
+		}
+	})
+
+	t.Run("non motions end sweep and count cancellation keeps picks", func(t *testing.T) {
+		for _, k := range []string{"h", "l", "z", "e", "tab", "#"} {
+			h := countOutline(t, 4)
+			h.press("V", "j", k)
+			if h.m.sweep != "" {
+				t.Fatalf("%s left a live sweep", k)
+			}
+			picks(h, 0, 1)
+		}
+		h := countOutline(t, 4)
+		h.press("V", "j", "3", "esc", "j")
+		picks(h, 0, 1)
+		h.press("esc")
+		picks(h)
+	})
+
+	t.Run("empty pane and cached visible rows", func(t *testing.T) {
+		h := start(t)
+		h.press("V", "j", "G")
+		picks(h)
+		if h.m.sweep != "" {
+			t.Fatal("empty pane started a sweep")
+		}
+		h = countOutline(t, 12)
+		h.m.vis[11].depth = 99
+		before := len(h.m.undo)
+		for _, tok := range []string{"V", "2", "j", "k", "G", "g", "g", "V", "j"} {
+			h.m.Update(key(tok))
+			if h.m.vis[11].depth != 99 || len(h.m.undo) != before {
+				t.Fatalf("%s rebuilt the outline or changed history", tok)
+			}
+		}
+	})
+}

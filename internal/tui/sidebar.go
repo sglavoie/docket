@@ -115,7 +115,7 @@ func (m *Model) jump(e entry) {
 		to := m.back
 		m.leave()
 		m.at, m.zoom, m.sel = to.at, to.zoom, to.sel
-		m.picked = map[string]bool{}
+		m.clearSelection()
 		m.cursor, m.top = 0, 0
 		m.rebuild()
 		m.seek(to.row)
@@ -342,7 +342,7 @@ func (m *Model) open(e entry) {
 	m.leave()
 	m.sel = e
 	m.zoom = nil
-	m.picked = map[string]bool{}
+	m.clearSelection()
 	m.cursor, m.top = 0, 0
 	switch e.kind {
 	case kindInbox:

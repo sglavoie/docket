@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -438,6 +439,42 @@ func (m *Model) shownRange(first, last int) []string {
 		}
 	}
 	return ids
+}
+
+// A sweep owns only the span it adds; earlier picks survive shrinking it.
+func (m *Model) startSweep() {
+	if m.current() == "" {
+		return
+	}
+	m.sweep = m.current()
+	m.sweepBase = maps.Clone(m.picked)
+	m.updateSweep()
+}
+
+func (m *Model) endSweep() {
+	m.sweep, m.sweepBase = "", nil
+}
+
+func (m *Model) clearSelection() {
+	m.endSweep()
+	m.picked = map[string]bool{}
+}
+
+func (m *Model) updateSweep() {
+	if m.sweep == "" {
+		return
+	}
+	for i, row := range m.vis {
+		if row.id == m.sweep {
+			m.picked = maps.Clone(m.sweepBase)
+			for _, id := range m.shownRange(i, m.cursor) {
+				m.picked[id] = true
+			}
+			return
+		}
+	}
+	// A refresh can remove the anchor while the sweep is live.
+	m.endSweep()
 }
 
 // countedRows takes matches from the cursor down without changing selection.
