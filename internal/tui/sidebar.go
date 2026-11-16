@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"slices"
 	"sort"
 	"strconv"
@@ -280,6 +281,16 @@ func (m *Model) open(e entry) {
 		m.at = place{}
 	case kindProject:
 		m.at = place{root: e.id}
+	case kindHeading:
+		// A heading opens inside its project, so Esc backs out to it.
+		m.at = place{root: e.id}
+		if top := m.projectOf(e.id); top != nil {
+			m.zoom = []place{{root: top.ID}}
+			m.sel = entry{kind: kindProject, id: top.ID}
+			if top.ID == inboxID {
+				m.sel = entry{kind: kindInbox}
+			}
+		}
 	case kindFilter:
 		m.at = place{}
 		for _, f := range m.filters {
@@ -383,7 +394,7 @@ func (m *Model) sideStep(by int) {
 }
 
 // targets are the destinations a picker offers: every top-level row, the
-// Inbox, and headings for move/capture or lists and saved filters for a jump.
+// Inbox and the headings, and for a jump the lists and saved filters too.
 func (m *Model) targets(jump bool) []entry {
 	out := []entry{{kind: kindInbox, label: "Inbox"}}
 	if jump {
@@ -402,10 +413,8 @@ func (m *Model) targets(jump bool) []entry {
 		for _, f := range m.filters {
 			out = append(out, entry{kind: kindFilter, id: f.Name, label: "/" + f.Name})
 		}
-	} else {
-		out = append(out, m.headings...)
 	}
-	return out
+	return append(out, m.headings...)
 }
 
 // rank scores how well a name answers a query: its start, the start of one
@@ -503,6 +512,30 @@ func (m *Model) capture(line string) {
 	if len(words) > 0 && m.create(target.rowID(), strings.Join(words, " ")) {
 		m.msg = "added to " + target.label
 	}
+}
+
+// Capture files lines from outside the app, each as the capture line would,
+// and says where each went. It is what the docket add command runs: one
+// short-lived window on the database, which syncs once before it closes.
+func Capture(tree *outline.Tree, backend Backend, lines []string) ([]string, error) {
+	m := New(tree, backend, nil)
+	var said []string
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		m.msg = ""
+		target, words := m.route(line)
+		if len(words) == 0 || !m.create(target.rowID(), strings.Join(words, " ")) {
+			if m.msg == "" {
+				m.msg = "nothing to add"
+			}
+			return said, errors.New(m.msg)
+		}
+		said = append(said, "added to "+target.label)
+	}
+	m.syncQuit()
+	return said, nil
 }
 
 // sideLines draws the sidebar at exactly w columns and h rows.

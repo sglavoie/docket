@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,10 +14,16 @@ import (
 )
 
 // term is one word of a filter. Every term must hold for a row to match; a
-// leading minus turns a term into its opposite.
+// leading minus turns a term into its opposite. A word may offer several
+// readings with a bar between them, and holds when any one does.
 type term struct {
-	neg   bool
-	kind  byte // t text, ! flag, # tag, $ state, @ deadline
+	neg bool
+	any []cond
+}
+
+// cond is one reading of a term.
+type cond struct {
+	kind  byte // t text, ! flag, # tag, $ state, @ deadline, s start, * repeat, ~ changed
 	value string
 }
 
@@ -32,91 +39,159 @@ func parseQuery(q string, today time.Time) []term {
 		if w == "#" || w == "$" {
 			continue // a sigil still being typed
 		}
-		switch w[0] {
-		case '!':
-			if w == "!" {
-				t.kind = '!'
-			}
-		case '#':
-			if tag, ok := sigil.ParseTag(w[1:]); ok {
-				t.kind, t.value = '#', tag
-			}
-		case '$':
-			if state, ok := sigil.ParseState(w[1:]); ok {
-				t.kind, t.value = '$', state
-			}
-		case '*':
-			if every, ok := sigil.ParseRepeat(w[1:]); ok || w == "*" {
-				t.kind, t.value = '*', every
-			}
-		case '@':
-			if rest, start := strings.CutPrefix(strings.ToLower(w), "@@"); start {
-				if day, ok := sigil.ParseDate(rest, today); ok || rest == "" {
-					t.kind, t.value = 's', day
-				} else if rest == "later" {
-					t.kind, t.value = 's', rest
+		// The sigil is written once and stands for every alternative:
+		// $open|doing reads as $open or $doing.
+		sig := w[:len(w)-len(strings.TrimLeft(w, "#$@*~"))]
+		if parts := strings.Split(w[len(sig):], "|"); len(parts) > 1 && !slices.Contains(parts, "") {
+			for _, part := range parts {
+				c := parseCond(sig+part, today)
+				if sig != "" && c.kind == 't' {
+					t.any = nil // one alternative cannot be read: the word is text
+					break
 				}
-				break
-			}
-			switch name := strings.ToLower(w[1:]); name {
-			case "", "overdue", "week":
-				t.kind, t.value = '@', name
-			default:
-				if day, ok := sigil.ParseDate(name, today); ok {
-					t.kind, t.value = '@', day
-				}
+				t.any = append(t.any, c)
 			}
 		}
-		if t.kind == 0 {
-			t.kind, t.value = 't', strings.ToLower(w)
+		if t.any == nil {
+			t.any = []cond{parseCond(w, today)}
 		}
 		out = append(out, t)
 	}
 	return out
 }
 
+// parseCond reads one word, without its minus, as a sigil or else as text.
+func parseCond(w string, today time.Time) cond {
+	var c cond
+	switch w[0] {
+	case '!':
+		if w == "!" {
+			c.kind = '!'
+		}
+	case '#':
+		if tag, ok := sigil.ParseTag(w[1:]); ok {
+			c.kind, c.value = '#', tag
+		}
+	case '$':
+		if state, ok := sigil.ParseState(w[1:]); ok {
+			c.kind, c.value = '$', state
+		}
+	case '*':
+		if every, ok := sigil.ParseRepeat(w[1:]); ok || w == "*" {
+			c.kind, c.value = '*', every
+		}
+	case '~':
+		if day, ok := sinceDay(strings.ToLower(w[1:]), today); ok {
+			c.kind, c.value = '~', day
+		}
+	case '@':
+		if rest, start := strings.CutPrefix(strings.ToLower(w), "@@"); start {
+			if day, ok := sigil.ParseDate(rest, today); ok || rest == "" {
+				c.kind, c.value = 's', day
+			} else if rest == "later" {
+				c.kind, c.value = 's', rest
+			}
+			break
+		}
+		switch name := strings.ToLower(w[1:]); name {
+		case "", "overdue", "week":
+			c.kind, c.value = '@', name
+		default:
+			if day, ok := sigil.ParseDate(name, today); ok {
+				c.kind, c.value = '@', day
+			}
+		}
+	}
+	if c.kind == 0 {
+		c.kind, c.value = 't', strings.ToLower(w)
+	}
+	return c
+}
+
+// sinceDay reads how far back a ~ term looks, as the first day it takes in:
+// today, or a count of days, weeks, months or years before today.
+func sinceDay(s string, today time.Time) (string, bool) {
+	if s == "today" {
+		return today.Format("2006-01-02"), true
+	}
+	if len(s) < 2 {
+		return "", false
+	}
+	n, err := strconv.Atoi(s[:len(s)-1])
+	if err != nil || n < 0 || n > 9999 {
+		return "", false
+	}
+	var from time.Time
+	switch s[len(s)-1] {
+	case 'd':
+		from = today.AddDate(0, 0, -n)
+	case 'w':
+		from = today.AddDate(0, 0, -7*n)
+	case 'm':
+		from = today.AddDate(0, -n, 0)
+	case 'y':
+		from = today.AddDate(-n, 0, 0)
+	default:
+		return "", false
+	}
+	return from.Format("2006-01-02"), true
+}
+
 func matches(r *outline.Row, terms []term, today time.Time) bool {
 	l := sigil.FromFields(r.Fields)
 	for _, t := range terms {
-		var ok bool
-		switch t.kind {
-		case 't':
-			ok = strings.Contains(strings.ToLower(l.Text), t.value)
-		case '!':
-			ok = l.Flag
-		case '#':
-			ok = slices.Contains(l.Tags, t.value)
-		case '$':
-			ok = l.State == t.value
-		case '@':
-			_, days := sigil.DueLabel(l.Due, today)
-			switch t.value {
-			case "":
-				ok = l.Due != ""
-			case "overdue":
-				ok = l.Due != "" && days < 0 && !l.Closed()
-			case "week":
-				ok = l.Due != "" && days <= dueSoonDays && !l.Closed()
-			default:
-				ok = l.Due == t.value
-			}
-		case 's':
-			switch t.value {
-			case "":
-				ok = l.Start != ""
-			case "later":
-				ok = l.Later(today)
-			default:
-				ok = l.Start == t.value
-			}
-		case '*':
-			ok = l.Every != "" && (t.value == "" || l.Every == t.value)
+		ok := false
+		for _, c := range t.any {
+			ok = ok || holds(r, l, c, today)
 		}
 		if ok == t.neg {
 			return false
 		}
 	}
 	return true
+}
+
+func holds(r *outline.Row, l sigil.Line, c cond, today time.Time) bool {
+	switch c.kind {
+	case 't':
+		return strings.Contains(strings.ToLower(l.Text), c.value)
+	case '!':
+		return l.Flag
+	case '#':
+		return slices.Contains(l.Tags, c.value)
+	case '$':
+		return l.State == c.value
+	case '@':
+		_, days := sigil.DueLabel(l.Due, today)
+		switch c.value {
+		case "":
+			return l.Due != ""
+		case "overdue":
+			return l.Due != "" && days < 0 && !l.Closed()
+		case "week":
+			return l.Due != "" && days <= dueSoonDays && !l.Closed()
+		}
+		return l.Due == c.value
+	case 's':
+		switch c.value {
+		case "":
+			return l.Start != ""
+		case "later":
+			return l.Later(today)
+		}
+		return l.Start == c.value
+	case '*':
+		return l.Every != "" && (c.value == "" || l.Every == c.value)
+	case '~':
+		// When the state last changed, or for a row that never had one, when
+		// it was made.
+		at := r.Created
+		if n, err := strconv.ParseInt(r.Fields[sigil.FieldChanged], 10, 64); err == nil {
+			at = n
+		}
+		return time.UnixMilli(at).In(today.Location()).Format("2006-01-02") >= c.value
+	}
+	return false
 }
 
 // refilter reads the place's query against its rows. In an outline a match

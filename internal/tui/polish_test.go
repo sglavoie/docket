@@ -348,17 +348,15 @@ func TestFoldCommandsAndHalfPages(t *testing.T) {
 			t.Fatal("fold escaped the pane root")
 		}
 		command(h, "unfold")
-		h.press("/", `"#match"`, "enter", "j")
-		command(h, "fold 1")
-		h.want("▌ ▸ Branch:")
-		command(h, "unfold")
-		h.want("▌ ▾ Branch:", "    ○ Leaf #match")
-		h.press("/", "tab", "enter")
-		before := h.rows()
-		for _, cmd := range []string{"fold", "fold 2", "unfold"} {
-			command(h, cmd)
-			if !strings.Contains(h.bottom(), "nothing to fold") || h.rows() != before || len(h.m.folded) != 0 {
-				t.Fatal("flat filter accepted folds")
+		// A filter shows every match, so neither shape of it takes folds.
+		for _, keys := range [][]string{{"/", `"#match"`, "enter"}, {"/", "tab", "enter"}} {
+			h.press(keys...)
+			before := h.rows()
+			for _, cmd := range []string{"fold", "fold 2", "unfold"} {
+				command(h, cmd)
+				if !strings.Contains(h.bottom(), "nothing to fold") || h.rows() != before || len(h.m.folded) != 0 {
+					t.Fatal("filter accepted folds")
+				}
 			}
 		}
 	})

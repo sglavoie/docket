@@ -64,7 +64,7 @@ func (m *Model) styler(surface string) func(string) string {
 			switch {
 			case len(terms) == 0:
 				return ""
-			case terms[0].kind != 't':
+			case terms[0].any[0].kind != 't':
 				return sgrAccent
 			case looksLikeSigil(strings.TrimPrefix(w, "-")):
 				return sgrWarn
@@ -101,6 +101,9 @@ func (m *Model) suggest(e *editor, surface string) string {
 		if surface == askFilter {
 			offers = append([]string{"later"}, dateWords...)
 		}
+	}
+	if i := strings.LastIndexByte(typed, '|'); surface == askFilter && i >= 0 {
+		typed = typed[i+1:] // the alternative being typed is completed like the first
 	}
 	switch word[0] {
 	case '#':

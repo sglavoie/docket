@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -405,17 +406,10 @@ func (m *Model) rebuild() {
 	}
 	m.vis = m.vis[:0]
 	if m.at.query != "" {
-		hiddenBelow := -1
+		// A filter shows every row it found: a fold never hides a match.
 		for _, v := range m.at.hits {
-			if hiddenBelow >= 0 && v.depth > hiddenBelow {
-				continue
-			}
-			hiddenBelow = -1
 			if m.live(v.id) {
 				m.vis = append(m.vis, v)
-				if m.at.list == "" && !m.at.flat && m.folded[v.id] {
-					hiddenBelow = v.depth
-				}
 			}
 		}
 	} else if m.at.list != "" {
@@ -524,8 +518,8 @@ func (m *Model) foldOutline(fold bool, args []string) {
 		}
 		level = n
 	}
-	if m.at.list != "" || (m.at.query != "" && m.at.flat) {
-		m.msg = "nothing to fold in a list or flat filter"
+	if m.at.list != "" || m.at.query != "" {
+		m.msg = "nothing to fold in a list or filter: a filter shows every match"
 		return
 	}
 	changes := map[string]bool{}
@@ -1238,6 +1232,8 @@ func (m *Model) command(line string) {
 		}
 	case "review":
 		m.open(entry{kind: kindReview})
+	case "archive":
+		m.archive()
 	case "save", "forget":
 		m.keepFilter(words[0] == "save", strings.Join(words[1:], " "))
 	case "closed":
@@ -1253,7 +1249,107 @@ func (m *Model) command(line string) {
 		m.vis, m.at.kept = nil, nil
 		m.msg = said
 	default:
-		m.msg = "commands: q, export [file], closed, fold [level], unfold, review, save name, forget name, sync [folder|off]"
+		m.msg = "commands: q, export [file], closed, archive, fold [level], unfold, review, save name, forget name, sync [folder|off]"
+	}
+}
+
+const archiveText = "Archive:"
+
+// archive moves the closed work under the pane's root to the end of its
+// project, under a heading named Archive, as one undo step. A closed row
+// goes with everything under it, and stays where it is while anything under
+// it is still to do.
+func (m *Model) archive() {
+	if m.at.list != "" || m.at.query != "" {
+		m.msg = "archive works in an outline: open a project first"
+		return
+	}
+	if m.at.root == inboxID {
+		m.msg = "the Inbox has no archive: move the row to a project first (m)"
+		return
+	}
+	var todo func(id string) bool
+	todo = func(id string) bool {
+		if l := sigil.FromFields(m.tree.Row(id).Fields); l.State != "" && !l.Closed() && l.State != sigil.Parked {
+			return true
+		}
+		return slices.ContainsFunc(m.tree.Children(id), todo)
+	}
+	var ops []outline.Op
+	moved := 0
+	sweep := func(project, root string) {
+		shelf := ""
+		for _, id := range m.tree.Children(project) {
+			if r := m.tree.Row(id); !r.Deleted() && r.Text() == archiveText {
+				shelf = id
+			}
+		}
+		var found []string
+		var walk func(parent string)
+		walk = func(parent string) {
+			for _, id := range m.tree.Children(parent) {
+				r := m.tree.Row(id)
+				switch {
+				case r.Deleted() || id == shelf:
+				case sigil.FromFields(r.Fields).Closed() && !todo(id):
+					found = append(found, id)
+				default:
+					walk(id)
+				}
+			}
+		}
+		// Zoomed inside the archive there is nothing left to shelve.
+		if shelf == "" || (root != shelf && !m.tree.Contains(shelf, root)) {
+			walk(root)
+		}
+		if len(found) == 0 {
+			return
+		}
+		pos := ""
+		if shelf == "" {
+			shelf = m.newID()
+			last := m.tree.PosLast(project)
+			if n := len(ops); n > 0 && ops[n-1].Parent == project {
+				last = outline.Between(ops[n-1].Pos, "")
+			}
+			ops = append(ops,
+				outline.Op{Kind: outline.Insert, Row: shelf, Parent: project, Pos: last},
+				outline.Op{Kind: outline.Set, Row: shelf, Field: sigil.FieldText, Value: archiveText})
+			pos = outline.Between("", "")
+		} else {
+			pos = m.tree.PosLast(shelf)
+		}
+		for _, id := range found {
+			ops = append(ops, outline.Op{Kind: outline.Move, Row: id, Parent: shelf, Pos: pos})
+			pos = outline.Between(pos, "")
+			moved++
+		}
+	}
+	if m.at.root == "" {
+		for _, top := range m.tree.Children("") {
+			if !hiddenTop(top) && !m.tree.Row(top).Deleted() {
+				sweep(top, top)
+			}
+		}
+	} else if p := m.projectOf(m.at.root); p != nil && p.ID != inboxID {
+		sweep(p.ID, m.at.root)
+	} else {
+		m.msg = "the Inbox has no archive: move the row to a project first (m)"
+		return
+	}
+	if moved == 0 {
+		m.msg = "nothing closed to archive"
+		return
+	}
+	cur := m.current()
+	if m.do(ops...) {
+		m.vis, m.at.kept = nil, nil
+		m.rebuild()
+		m.seek(cur)
+		m.msg = fmt.Sprintf("archived %d rows under %s", moved, archiveText)
+		if moved == 1 {
+			m.msg = "archived 1 row under " + archiveText
+		}
 	}
 }
 
@@ -1388,14 +1484,26 @@ func (m *Model) normalKey(k string) {
 		// A sigil typed on the rows opens the stamp line already holding it.
 		m.ask = &prompt{kind: askStamp, ed: editor{buf: []rune(k), caret: 1}, rows: ids}
 	case "h", "left":
-		if len(m.tree.Children(cur)) > 0 && !m.folded[cur] {
+		if m.at.query != "" {
+			// A filter has no folds: the keys only step.
+			for i := m.cursor - 1; i >= 0; i-- {
+				if m.vis[i].depth < m.vis[m.cursor].depth {
+					m.cursor = i
+					break
+				}
+			}
+		} else if len(m.tree.Children(cur)) > 0 && !m.folded[cur] {
 			m.setFold(cur, true)
 			m.rebuild()
 		} else if p := m.tree.Row(cur).Parent; p != m.at.root {
 			m.seek(p)
 		}
 	case "l", "right":
-		if m.folded[cur] {
+		if m.at.query != "" {
+			if next := m.cursor + 1; next < len(m.vis) && m.vis[next].depth > m.vis[m.cursor].depth {
+				m.cursor = next
+			}
+		} else if m.folded[cur] {
 			m.setFold(cur, false)
 			m.rebuild()
 		} else if kids := m.tree.Children(cur); len(kids) > 0 {
@@ -1489,6 +1597,10 @@ func (m *Model) editKey(msg tea.KeyPressMsg) {
 		}
 	case "esc":
 		m.finishEdit()
+	case "up":
+		m.editNext(-1)
+	case "down":
+		m.editNext(1)
 	case "tab":
 		m.shift(e.row, true)
 	case "shift+tab":
@@ -1504,6 +1616,28 @@ func (m *Model) editKey(msg tea.KeyPressMsg) {
 	default:
 		e.key(msg)
 	}
+}
+
+// editNext keeps the row being typed and goes on typing in the row drawn
+// above or below it, the caret in the same column. Each row is its own undo
+// step. At either end the line stays as it is.
+func (m *Model) editNext(by int) {
+	e := m.edit
+	next := m.cursor + by
+	if next < 0 || next >= len(m.vis) {
+		return
+	}
+	target := m.vis[next].id
+	blank := e.fresh && strings.TrimSpace(string(e.buf)) == ""
+	if !m.finishEdit() && !blank {
+		return // the row could not be saved, and the status line says so
+	}
+	m.seek(target)
+	if m.current() != target {
+		return
+	}
+	m.editRow(target)
+	m.edit.caret = min(e.caret, len(m.edit.buf))
 }
 
 // joinEdit keeps typing in the displayed predecessor, carrying the removal

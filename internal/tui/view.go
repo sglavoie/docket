@@ -39,13 +39,18 @@ const helpText = `Docket
                  > < J K move adjacent selected siblings together
   # @ $ * -      stamp: type sigils, Enter sets them (-#tag, -@, -@@, -* remove)
   /              filter by text and sigils; -word excludes; Tab flat or in context
+                 a|b is either: $open|doing, #home|errands, milk|eggs
+                 ~7d ~2w ~today: state changed (or row made) since then,
+                 so $done ~7d is what was finished this week
+                 a filter shows every match, folded or not
   :              q, export [file], closed (hide or show done and canceled rows),
+                 archive (move closed rows under the project's Archive: heading),
                  fold [level] (all, or show N levels), unfold (all),
                  review (projects, longest untouched first),
                  save name (keep the filter; p then /name opens it), forget name,
                  sync folder (share with other machines through a synced folder)
   a              capture to the Inbox; %name files in a project or heading
-  p              go to a project or list by name
+  p              go to a project, heading, list or saved filter by name
   Tab            the sidebar: j k choose, Enter work in it
   dd             delete
   u  Ctrl+R      undo, redo
@@ -56,6 +61,7 @@ While typing
   Backspace      at the start, join into the row above (no children)
                  blank fresh rows disappear; lists and filters never join
                  or split; each split or join is one undo step
+  Up Down        keep the row and type in the one above, below
   Ctrl+U         cut before the caret
   Esc            keep the row
   Tab Shift+Tab  indent, outdent
@@ -76,6 +82,10 @@ Sigils, typed anywhere in a row
 
 Pasting several lines adds them as rows, indentation as depth.
 Copy and export spell otherwise empty rows as $open, $note or their state.
+
+A web address in a row is a link the terminal can open.
+From a shell, docket add "Buy milk %home @fri" captures without opening
+the app; with no words it reads one row a line from standard input.
 
 Nothing asks for confirmation: undo takes anything back.
 Press any key to return.`
@@ -117,6 +127,10 @@ func stateGlyph(state string, kids int, folded bool) string {
 	}
 	return sgrDim + "▾" + sgrReset
 }
+
+// isFolded reports a row drawn folded. A filter shows every match, so
+// nothing is folded while one is on.
+func (m *Model) isFolded(id string) bool { return m.folded[id] && m.at.query == "" }
 
 // word is one styled word of a row. A row is drawn as words so that it can
 // wrap at any of them and keep each word's colour on every line.
@@ -175,7 +189,7 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 	// A task's glyph is its state, so the children it hides are counted
 	// after it: when folded, and always in a flat view.
 	kids := len(m.tree.Children(r.ID))
-	if hides := m.folded[r.ID] || flat; kids > 0 && hides && l.State != "" {
+	if hides := m.isFolded(r.ID) || flat; kids > 0 && hides && l.State != "" {
 		out = append(out, word{sgrDim, "+" + strconv.Itoa(kids)})
 	}
 	if flat {
@@ -212,19 +226,26 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 func wrap(words []word, width int) []string {
 	lines := []string{""}
 	used := 0
+	link := ""
 	put := func(w word) {
 		if used > 0 {
 			lines[len(lines)-1] += " "
 			used++
 		}
+		text := w.text
 		if w.style != "" {
-			lines[len(lines)-1] += w.style + w.text + sgrReset
-		} else {
-			lines[len(lines)-1] += w.text
+			text = w.style + w.text + sgrReset
 		}
+		if link != "" {
+			// Every piece of an address carries the whole of it, so one
+			// broken across lines still opens.
+			text = ansi.SetHyperlink(link) + text + ansi.ResetHyperlink()
+		}
+		lines[len(lines)-1] += text
 		used += ansi.StringWidth(w.text)
 	}
 	for _, w := range words {
+		link = linkOf(w.text)
 		for ansi.StringWidth(w.text) > width {
 			// Fill what is left of this line, or start a new one.
 			room := width - used
@@ -260,6 +281,15 @@ func wrap(words []word, width int) []string {
 		lines = lines[:n-1]
 	}
 	return lines
+}
+
+// linkOf is the web address a word is, without the punctuation a sentence
+// leaves after it, or nothing.
+func linkOf(w string) string {
+	if !strings.HasPrefix(w, "https://") && !strings.HasPrefix(w, "http://") {
+		return ""
+	}
+	return strings.TrimRight(w, ".,;:!?)")
 }
 
 func (m *Model) breadcrumb() string {
@@ -428,7 +458,7 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 	for i := m.top; i < len(m.vis) && len(lines) < h; i++ {
 		v := m.vis[i]
 		r := m.tree.Row(v.id)
-		glyph := stateGlyph(r.Fields[sigil.FieldState], len(m.tree.Children(v.id)), m.folded[v.id])
+		glyph := stateGlyph(r.Fields[sigil.FieldState], len(m.tree.Children(v.id)), m.isFolded(v.id))
 		gutter := " "
 		if i == m.cursor {
 			gutter = sgrAccent + "▌" + sgrReset

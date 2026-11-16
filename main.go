@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -23,7 +26,20 @@ func dbPath() (string, error) {
 	return filepath.Join(home, ".local", "share", "docket-v2", "docket.db"), nil
 }
 
+const usage = `usage: docket              open the outline
+       docket add LINE...   capture a row without opening it, as the a key
+                            would: docket add "Buy milk %home @fri"
+       docket add           capture one row for each line of standard input`
+
 func run() error {
+	args := os.Args[1:]
+	if len(args) > 0 && (args[0] == "-h" || args[0] == "--help" || args[0] == "help") {
+		fmt.Println(usage)
+		return nil
+	}
+	if len(args) > 0 && args[0] != "add" {
+		return errors.New("unknown command " + args[0] + "\n" + usage)
+	}
 	path, err := dbPath()
 	if err != nil {
 		return err
@@ -39,6 +55,28 @@ func run() error {
 	backup := st.DailyBackup(time.Now().Format("2006-01-02"))
 	tree, err := st.Load()
 	if err != nil {
+		return err
+	}
+	if len(args) > 0 {
+		lines := []string{strings.Join(args[1:], " ")}
+		if len(args) == 1 {
+			lines = nil
+			in := bufio.NewScanner(os.Stdin)
+			in.Buffer(nil, 1<<20)
+			for in.Scan() {
+				lines = append(lines, in.Text())
+			}
+			if err := in.Err(); err != nil {
+				return err
+			}
+		}
+		said, err := tui.Capture(tree, st, lines)
+		for _, line := range said {
+			fmt.Println(line)
+		}
+		if err == nil && len(said) == 0 {
+			err = errors.New("nothing to add")
+		}
 		return err
 	}
 	folds, err := st.Folds()

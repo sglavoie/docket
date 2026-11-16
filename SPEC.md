@@ -247,7 +247,9 @@ The status line becomes a prompt for three acts, named at its left edge:
   will land. One matching nothing stays in the text. `Enter` keeps the line
   and asks for the next; a blank `Enter` or `Esc` closes, and `Esc` keeps
   what was typed.
-- `p` **Go to ›** opens a project or a list by name.
+- `p` **Go to ›** opens a project, a heading, a list or a saved filter by
+  name. A heading opens inside its project: the sidebar stays on the
+  project and `Esc` backs out to it.
 - `m` **Move to ›** makes the cursor's row or selection the last children of
   a project, the Inbox or a heading, in screen order. A heading is any live
   row ending in a colon under a project or the Inbox, at any depth; rows
@@ -264,20 +266,31 @@ Three more acts use the same line:
 - `/` **Filter ›** narrows the pane as the query is typed. Words match a
   row's text; `!`, `#tag`, `$state` and `@date` match its fields; a leading
   `-` excludes. `@` alone is any deadline, and `@overdue` and `@week` read
-  the calendar. Every term must hold. In an outline a match keeps its
+  the calendar. `~7d`, `~2w`, `~1m`, `~1y` and `~today` match a row whose
+  state last changed that recently, or which was made that recently if it
+  never had one, so `$done ~7d` is what was finished this week and
+  `$waiting -~2w` what has waited longer than two. Every term must hold. A
+  bar inside a word offers alternatives, and the word holds when any does:
+  `$open|doing`, `#home|errands`, `milk|eggs`. The sigil is written once;
+  if one alternative cannot be read as it, the whole word is text. In an
+  outline a match keeps its
   ancestors, dimmed, so it is read where it lives; `Tab` switches to a flat
   list of matches and back. `Enter` keeps the filter and returns to the rows,
   where the header names it; `Esc` drops it. Like a list, a filter holds the
   rows it found until the query changes, and refuses the keys that
-  restructure the tree. Changing the filter clears the selection.
+  restructure the tree. Changing the filter clears the selection. A filter
+  shows every match: a fold never hides one. While it is on, `h` and `l`
+  only step to the parent and the first child, and the folds are as they
+  were once it is dropped.
 - `#` `@` `$` `*` `-` **Stamp ›** opens holding that character. The line is
   sigils only: `#tag`, `@date`, `@@date`, `*interval`, `$state` and `!` set;
   `-#tag`, `-@`, `-@@`, `-*` and `-!` remove. `Enter` applies them to the selection, else to the cursor's row, as
   one undo step. A word it cannot read is named and nothing is applied.
 - `:` runs a command: `q` quits; `export [file]` writes the whole outline as
   tab-indented lines in the row grammar, to `~/docket-YYYY-MM-DD.txt` unless
-  a file is named; `closed` hides or shows closed rows; `review` opens the
-  review list; `fold [level]` and `unfold` control folds as described below;
+  a file is named; `closed` hides or shows closed rows; `archive` moves
+  closed rows under an `Archive:` heading, as described below; `review`
+  opens the review list; `fold [level]` and `unfold` control folds as described below;
   `save name` and `forget name` keep and drop a filter; `sync
   folder` and `sync off` are described under Sync.
 
@@ -285,8 +298,8 @@ Three more acts use the same line:
 shows N levels: rows above level N are unfolded and rows at level N are
 folded, with the root's children at level 1. Deeper folds stay as they were.
 `:unfold` unfolds everything under the pane's root. An invalid level is
-named on the status line and changes nothing. Lists and flat filters say
-there is nothing to fold; contextual filters respect folds. The cursor stays
+named on the status line and changes nothing. Lists and filters say
+there is nothing to fold. The cursor stays
 on its row, or moves to its nearest visible ancestor. Folds are saved together
 as this machine's view state, never logged or synced.
 
@@ -295,6 +308,19 @@ as this machine's view state, never logged or synced.
 They work in outlines, lists and filters and keep the cursor visible. While
 typing they retain their existing behavior (`Ctrl+U` cuts before the caret);
 in help they retain half-page scrolling.
+
+### Archive
+
+`:archive` moves the closed work under the pane's root to the end of its
+project, as the last children of a top-level heading there named
+`Archive:`, made when there is none. A done or canceled row goes with
+everything under it, and stays where it is while a row under it is still
+open, doing or waiting. Rows already under the heading are left alone. In
+Projects every project is swept into its own heading. The whole act is one
+undo step and says how many rows moved; the cursor stays on its row. Lists,
+filters and the Inbox refuse it. Nothing is archived unless the command is
+given, so rule 2 holds, and the heading is an ordinary row: it folds, moves
+and is deleted like any other.
 
 ### Saved filters and review
 
@@ -346,7 +372,7 @@ the zoom.
 | `?` | Help | 1 |
 | `x` `!` | Done and back, flag | 2 |
 | `t` | Pick for Today, and unpick | 3 |
-| `Tab` `p` | Sidebar focus; go to a project or list by name | 3 |
+| `Tab` `p` | Sidebar focus; go to a project, heading or list by name | 3 |
 | `a` `m` | Capture to the Inbox from anywhere; move to a project or heading | 3 |
 | `v` | Select | 4 |
 | `y` | Copy rows with their subtrees | 7 |
@@ -362,6 +388,11 @@ between their lines and the caret at the seam; a row with children or no
 row above is left alone. A blank fresh row still disappears instead.
 Each split or join is one undo step after typing ends. In lists and filters,
 `Enter` only keeps the row and `Backspace` at the start does nothing.
+`Up` and `Down` keep the row and go on typing in the row drawn above or
+below, the caret in the same column, so a run of rows is revised without
+leaving the text; each row is its own undo step, a fresh row left blank
+disappears on the way, and at either end the line stays as it is. They
+work in lists and filters too.
 `Esc` keeps the row; `Tab` and `Shift+Tab` indent and outdent. There is no
 cancel: `u` restores the line. `Alt+Left`, `Alt+Right` and `Alt+Backspace`
 work by word.
@@ -458,7 +489,10 @@ children and nothing otherwise. A folded task keeps its state glyph and
 counts its children after its text (`+3`). Fields follow the text, each in
 the sigil that writes it; the deadline reads `@today`, `@tomorrow`, `@fri`,
 `@Nov 20`. An overdue deadline is red and today's is yellow until the row is
-done or canceled, which dims the whole row.
+done or canceled, which dims the whole row. A word starting `http://` or
+`https://` is written as a terminal hyperlink, without the punctuation a
+sentence leaves after it; every piece of an address broken across lines
+carries the whole of it, so it opens wherever it is clicked.
 
 **Parked** is "not now" for any row: a project leaves the active list, and a
 parked row and everything under it is in no computed list however long it
@@ -480,6 +514,17 @@ its start day moves with it; with no deadline, its start day goes one
 interval on from today. A month step keeps the day, landing on the last day
 of a shorter month. The status line says when it is next. The row is changed
 in place, never copied, so two machines closing it cannot make two.
+
+## Outside the app
+
+`docket add LINE` captures without opening the outline. The line is read as
+the capture line reads it: sigils become fields and a `%name` word files it
+in a project or heading, else it goes to the Inbox. With no words, each line
+of standard input is one row. It prints where each row went, and exits
+non-zero with nothing added when a line holds nothing to add. It is one
+short-lived window on the database, under the rules of Two windows: an open
+window sees the row at its next key, and a sync pass runs before it ends.
+This is the only command; everything else is done in the outline.
 
 ## Milestones
 
@@ -508,8 +553,14 @@ in place, never copied, so two machines closing it cannot make two.
    control the pane's folds; `Ctrl+D` and `Ctrl+U` move half a pane. Today
    keeps pick order; `J` and `K` reorder it without moving outline rows. *Built.*
 
+8. **Fluid.** `Up` and `Down` go on typing in the next row. A filter shows
+   matches inside folded rows, reads alternatives (`$open|doing`) and when
+   a state changed (`~7d`). `p` reaches headings. `:archive` shelves closed
+   work under `Archive:`. Web addresses are links. `docket add` captures
+   from a shell. *Built.*
+
 Not planned: reminders, attachments, a details panel, import from v1, any
-command-line interface.
+command-line interface beyond `docket add`.
 
 ## Tests
 

@@ -525,7 +525,7 @@ func TestMoveReachesAHeading(t *testing.T) {
 		h.press("u", "m", `"storage"`, "down", "enter")
 		children(h, heading, "Stray")
 	})
-	t.Run("nested capture and unchanged jump picker", func(t *testing.T) {
+	t.Run("nested capture and a jump to the heading", func(t *testing.T) {
 		h := start(t).wide()
 		h.pasteText("Alpha\n\tTUI:\n\t\tSidebar:\n\t\t\tExisting\n\tStray")
 		heading := h.m.headings[1].id
@@ -542,16 +542,21 @@ func TestMoveReachesAHeading(t *testing.T) {
 		if h.m.tree.Row(newID).Fields["state"] != "open" {
 			t.Fatal("capture under a heading must default to a task")
 		}
-		h.press("p", `"sidebar"`, "enter")
-		if h.m.msg != "nothing matches sidebar" || h.m.ask == nil {
-			t.Fatalf("jump offered a heading: %q", h.m.msg)
-		}
-		h.press("esc", "u")
+		h.press("u")
 		children(h, heading, "Existing")
-		for _, e := range h.m.targets(true) {
-			if e.kind == kindHeading {
-				t.Fatal("jump picker includes a heading")
-			}
+		// The jump picker reaches the heading, inside its project: the
+		// sidebar stays on the project and Esc backs out to it.
+		h.press("p", `"sidebar"`, "enter")
+		if h.header() != "Alpha › TUI: › Sidebar:" {
+			t.Fatalf("header = %q", h.header())
+		}
+		h.want("▌ ○ Existing")
+		if h.m.sel.kind != kindProject || h.m.sel.id != h.m.projectOf(heading).ID {
+			t.Fatalf("sidebar selection = %+v", h.m.sel)
+		}
+		h.press("esc")
+		if h.header() != "Alpha" {
+			t.Fatalf("Esc went to %q", h.header())
 		}
 	})
 	t.Run("cycles fail without moving any selected row", func(t *testing.T) {
