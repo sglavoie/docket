@@ -410,7 +410,7 @@ func TestVSweepsASelection(t *testing.T) {
 	})
 
 	t.Run("non motions end sweep and count cancellation keeps picks", func(t *testing.T) {
-		for _, k := range []string{"h", "l", "z", "A", "tab", "#"} {
+		for _, k := range []string{"h", "l", "q", "A", "tab", "#"} {
 			h := countOutline(t, 4)
 			h.press("V", "j", k)
 			if h.m.sweep != "" {

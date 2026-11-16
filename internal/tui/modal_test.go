@@ -41,7 +41,11 @@ func TestWordMotionsStepIntoTheRow(t *testing.T) {
 		if c := h.m.View().Cursor; c == nil || c.Shape != 0 {
 			t.Fatalf("the caret inside a row is not a block: %+v", c)
 		}
+		// Typing opened inside the row ends inside it: the caret is back on
+		// a character, and a second Esc leaves.
 		h.press("c", "w", `"soy"`, "esc")
+		h.wantTyping("Buy oat soy today", 10)
+		h.press("esc")
 		h.want("▌ ○ Buy oat soy today")
 		if h.m.edit != nil || len(h.m.undo) != steps+1 {
 			t.Fatal("Esc did not keep the row as one undo step")
@@ -119,7 +123,7 @@ func TestWordMotionsStepIntoTheRow(t *testing.T) {
 
 	t.Run("operators take motions and text objects", func(t *testing.T) {
 		h := textRow(t, `Call "Ann Lee" (urgent, today) now`)
-		h.press("w", "f", "L", "c", "i", `"`, `"Bob"`, "esc")
+		h.press("w", "f", "L", "c", "i", `"`, `"Bob"`, "esc", "esc")
 		h.want(`▌ ○ Call "Bob" (urgent, today) now`)
 		h.press("w", "f", "u", "d", "i", "(")
 		h.wantTyping(`Call "Bob" () now`, 12)
@@ -152,7 +156,7 @@ func TestWordMotionsStepIntoTheRow(t *testing.T) {
 		if !strings.HasPrefix(h.status(), "nothing to repeat inside a row") {
 			t.Fatalf("status = %q", h.status())
 		}
-		h.press("c", "i", "w", `"X"`, "esc")
+		h.press("c", "i", "w", `"X"`, "esc", "esc")
 		h.want("▌ ○ X two three four")
 		h.press("2", "w", ".")
 		h.wantTyping("X X three four", 2)
@@ -173,20 +177,56 @@ func TestWordMotionsStepIntoTheRow(t *testing.T) {
 		h.wantTyping("Ship it @2026-11-20 #work", 20)
 		h.press("d", "a", "W", "esc")
 		h.want("▌ ○ Ship it @fri")
-		h.press("B", "c", "W", `"@tom"`, "esc")
+		h.press("B", "c", "W", `"@tom"`, "esc", "esc")
 		h.want("▌ ○ Ship it @tomorrow")
 	})
 
-	t.Run("i a I A open typing, and Esc returns to the outline", func(t *testing.T) {
-		for _, tc := range []struct{ key, want string }{
-			{"i", "one _two"}, {"a", "one t_wo"}, {"I", "_one two"}, {"A", "one two_"},
+	t.Run("i a I A open typing, Esc returns to the caret and Esc again to the outline", func(t *testing.T) {
+		for _, tc := range []struct {
+			key, want string
+			caret     int
+		}{
+			{"i", "one _two", 4}, {"a", "one t_wo", 5}, {"I", "_one two", 0}, {"A", "one two_", 7},
 		} {
 			h := textRow(t, "one two")
-			h.press("2", "w", tc.key, "_", "esc")
-			h.want("▌ ○ " + tc.want)
-			if h.m.edit != nil {
-				t.Fatal("Esc after typing stayed in the row")
+			steps := len(h.m.undo)
+			h.press("2", "w", tc.key)
+			if !strings.HasPrefix(h.status(), "Esc back to the caret") {
+				t.Fatalf("status = %q", h.status())
 			}
+			h.press("_", "esc")
+			h.wantTyping(tc.want, tc.caret)
+			h.press("esc")
+			h.want("▌ ○ " + tc.want)
+			if h.m.edit != nil || len(h.m.undo) != steps+1 {
+				t.Fatal("the second Esc did not leave the row as one undo step")
+			}
+		}
+	})
+
+	t.Run("a row takes several changes on one visit", func(t *testing.T) {
+		h := textRow(t, "one two three four")
+		steps := len(h.m.undo)
+		h.press("w", "c", "w", `"1"`, "esc", "w", "c", "w", `"2"`, "esc", "w", ".", "$", "a", `"!"`, "esc")
+		h.wantTyping("1 2 2 four!", 10)
+		// u inside the row takes back each change, typing included.
+		h.press("u")
+		h.wantTyping("1 2 2 four", 9)
+		h.press("u", "u")
+		h.wantTyping("1 two three four", 2)
+		h.press("ctrl+r", "i", "esc")
+		h.wantTyping("1 2 three four", 3)
+		h.press("u")
+		h.wantTyping("1 two three four", 2)
+		h.press("esc")
+		h.want("▌ ○ 1 two three four")
+		if len(h.m.undo) != steps+1 {
+			t.Fatal("one visit should be one undo step")
+		}
+		// Typing opened from the outline still ends in the outline.
+		h.press("A", `"."`, "esc")
+		if h.m.edit != nil {
+			t.Fatal("Esc after A stayed in the row")
 		}
 	})
 
@@ -198,7 +238,7 @@ func TestWordMotionsStepIntoTheRow(t *testing.T) {
 		}
 		h.press("esc", "t", "f", `"today"`, "enter", "w", "x", "esc")
 		h.want("▌ ○ ne two · Project")
-		h.press("/", `"two"`, "enter", "e", "s", `"N"`, "esc")
+		h.press("/", `"two"`, "enter", "e", "s", `"N"`, "esc", "esc")
 		if got := h.m.tree.Row(h.m.current()).Text(); got != "nN two" {
 			t.Fatalf("text = %q", got)
 		}

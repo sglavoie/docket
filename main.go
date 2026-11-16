@@ -29,7 +29,11 @@ func dbPath() (string, error) {
 const usage = `usage: docket              open the outline
        docket add LINE...   capture a row without opening it, as the a key
                             would: docket add "Buy milk %home @fri"
-       docket add           capture one row for each line of standard input`
+       docket add           capture one row for each line of standard input
+       docket ls FILTER...  print the rows a filter matches, as / reads it, one
+                            a line with a tab and where each lives:
+                            docket ls '$next #home'
+       docket ls            print the whole outline, as :export writes it`
 
 func run() error {
 	args := os.Args[1:]
@@ -37,7 +41,7 @@ func run() error {
 		fmt.Println(usage)
 		return nil
 	}
-	if len(args) > 0 && args[0] != "add" {
+	if len(args) > 0 && args[0] != "add" && args[0] != "ls" {
 		return errors.New("unknown command " + args[0] + "\n" + usage)
 	}
 	path, err := dbPath()
@@ -56,6 +60,13 @@ func run() error {
 	tree, err := st.Load()
 	if err != nil {
 		return err
+	}
+	if len(args) > 0 && args[0] == "ls" {
+		out := bufio.NewWriter(os.Stdout)
+		for _, line := range tui.List(tree, st, strings.Join(args[1:], " ")) {
+			fmt.Fprintln(out, line)
+		}
+		return out.Flush()
 	}
 	if len(args) > 0 {
 		lines := []string{strings.Join(args[1:], " ")}

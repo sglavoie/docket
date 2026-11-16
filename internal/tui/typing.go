@@ -57,6 +57,11 @@ func (m *Model) styler(surface string) func(string) []word {
 				}
 			}
 		case askFilter:
+			// A bar or a bracket standing alone joins or groups terms.
+			if w == "|" || w == "(" || w == ")" || w == "-(" {
+				style = sgrAccent
+				break
+			}
 			terms := parseQuery(w, today)
 			if len(terms) == 0 {
 				break
@@ -87,6 +92,12 @@ func (m *Model) styler(surface string) func(string) []word {
 				if terms[0].below {
 					part = strings.TrimPrefix(part, "_")
 				}
+				if terms[0].parent {
+					part = strings.TrimPrefix(part, "<")
+				}
+				if terms[0].child {
+					part = strings.TrimPrefix(part, ">")
+				}
 				if part != "" && strings.ContainsRune(sigilStarts, rune(part[0])) {
 					style = sgrWarn
 					break
@@ -112,13 +123,14 @@ func (m *Model) suggest(e *editor, surface string) string {
 		word = strings.TrimPrefix(word, "-")
 	}
 	if surface == askFilter {
-		if strings.HasPrefix(word, "^^") || strings.HasPrefix(word, "__") {
-			return ""
+		for _, twice := range []string{"^^", "__", "<<", ">>"} {
+			if strings.HasPrefix(word, twice) {
+				return ""
+			}
 		}
-		if rest, ok := strings.CutPrefix(word, "^"); ok {
-			word = rest
-		} else {
-			word = strings.TrimPrefix(word, "_")
+		// One mark of where the term is read: above, below, parent or child.
+		if word != "" && strings.ContainsRune("^_<>", rune(word[0])) {
+			word = word[1:]
 		}
 	}
 	if word == "" {
@@ -150,7 +162,7 @@ func (m *Model) suggest(e *editor, surface string) string {
 	case '$':
 		offers = sigil.StateNames
 		if surface == askFilter {
-			offers = append(slices.Clone(offers), "next")
+			offers = append(slices.Clone(offers), "next", "today")
 		}
 	case '@':
 		offers = dateWords
@@ -301,7 +313,11 @@ func (e *editor) wrapped(width int, style func(string) []word) editLayout {
 					next()
 				}
 				l.pos[i] = textPoint{x, y}
-				setStyle(span.style)
+				if e.sel && i >= min(e.anchor, e.caret) && i <= max(e.anchor, e.caret) {
+					setStyle(span.style + sgrReverse)
+				} else {
+					setStyle(span.style)
+				}
 				line.WriteRune(r)
 				x += widths[i]
 				i++

@@ -73,6 +73,9 @@ type editor struct {
 	column     int // preferred column during consecutive vertical moves
 	vertical   bool
 	normal     bool   // the caret is on a character: keys are a grammar, not text
+	inside     bool   // typing opened inside the row: Esc goes back to the caret
+	sel        bool   // inside the row: a selection is being swept
+	anchor     int    // inside the row: where that selection began
 	pend       string // inside the row: a pending operator, and what it waits for
 	count      int    // inside the row: a pending count
 	opCount    int    // inside the row: the count before the operator
@@ -102,6 +105,8 @@ type repeatAct struct {
 	count  int
 	how    string // the key that opened typing: o O A I cc
 	typed  string // what was typed there
+	old    string // text a substitution looks for
+	new    string // and what it puts there
 }
 
 // mark notes how typing began, so that what it adds can be repeated.
@@ -160,6 +165,7 @@ type Model struct {
 	rowNames  []entry  // every other live row with text, for the pickers
 	parked    int
 	next      map[string]bool // each active project's next action, derived in scan
+	inToday   map[string]bool // the rows in Today, derived in scan
 
 	outlineOrder map[string]int // traversal ranks, derived in scan for Today ties
 
@@ -178,6 +184,7 @@ type Model struct {
 	copied       string              // what y last took, which a delete does not replace
 	past         map[string][]string // lines kept on each recalling prompt, oldest first
 	centre       bool                // the cursor has landed somewhere: show it mid-pane if off screen
+	scroll       byte                // zt zz zb: draw the cursor's row at the top, middle or bottom
 	find         string              // the last filter kept or dropped, for n and N
 	findHere     string              // the row that filter's &. stands for
 	picked       map[string]bool     // the selection
@@ -675,6 +682,44 @@ func (m *Model) foldOutline(fold bool, args []string) {
 		}
 	}
 	walk(m.at.root, 1)
+	m.applyFolds(changes)
+}
+
+// foldBranches folds or unfolds rows all the way down: each row given and
+// every row under it that has rows of its own.
+func (m *Model) foldBranches(ids []string, fold bool) {
+	if m.at.list != "" || m.at.query != "" {
+		m.msg = "nothing to fold in a list or filter: a filter shows every match"
+		return
+	}
+	changes := map[string]bool{}
+	parents := 0
+	var walk func(id string)
+	walk = func(id string) {
+		kids := m.tree.Children(id)
+		if len(kids) == 0 {
+			return
+		}
+		parents++
+		if m.folded[id] != fold {
+			changes[id] = fold
+		}
+		for _, kid := range kids {
+			walk(kid)
+		}
+	}
+	for _, id := range ids {
+		walk(id)
+	}
+	if parents == 0 {
+		m.msg = "no rows under this one"
+	}
+	m.applyFolds(changes)
+}
+
+// applyFolds saves a set of fold changes together and shows them, leaving
+// the cursor on its row or on the nearest row above it still shown.
+func (m *Model) applyFolds(changes map[string]bool) {
 	if len(changes) == 0 {
 		return
 	}
@@ -1599,6 +1644,14 @@ func (m *Model) command(line string) {
 	if len(words) == 0 {
 		return
 	}
+	if old, new, ok := readSwap(line); ok {
+		if old == "" {
+			m.msg = "write it as s/old/new: every old in the rows' text becomes new"
+			return
+		}
+		m.swapText(m.acting(), old, new)
+		return
+	}
 	switch words[0] {
 	case "help":
 		m.openHelp()
@@ -1680,7 +1733,50 @@ func (m *Model) command(line string) {
 		m.vis, m.at.kept = nil, nil
 		m.msg = said
 	default:
-		m.msg = "commands: q, help, export [file], import file, closed, numbers, all, archive, fold [level], unfold, sort [keys], review, save name, forget name, sync [folder|off]"
+		m.msg = "commands: q, help, export [file], import file, closed, numbers, all, archive, fold [level], unfold, sort [keys], s/old/new, review, save name, forget name, sync [folder|off]"
+	}
+}
+
+// readSwap reads s/old/new, where the mark after the s may be any character
+// that is not a letter, a digit or a blank. A last mark may close the line,
+// which is how new ends in a blank. old is empty when the line is not whole.
+func readSwap(line string) (old, new string, ok bool) {
+	r := []rune(line)
+	if len(r) < 2 || r[0] != 's' || r[1] == ' ' || r[1] == '_' || wordClass(r[1], false) == 1 {
+		return "", "", false
+	}
+	parts := strings.Split(string(r[2:]), string(r[1]))
+	if len(parts) == 3 && parts[2] == "" {
+		parts = parts[:2]
+	}
+	if len(parts) != 2 {
+		return "", "", true
+	}
+	return parts[0], parts[1], true
+}
+
+// swapText puts new wherever old stands in the text of the rows given, as
+// one undo step. Fields are left alone: a stamp changes those.
+func (m *Model) swapText(rows []string, old, new string) {
+	var ops []outline.Op
+	for _, id := range rows {
+		if !m.live(id) {
+			continue
+		}
+		if text := m.tree.Row(id).Text(); strings.Contains(text, old) {
+			ops = append(ops, outline.Op{Kind: outline.Set, Row: id, Field: sigil.FieldText, Value: strings.ReplaceAll(text, old, new)})
+		}
+	}
+	if len(ops) == 0 {
+		m.msg = "no row here holds " + old
+		return
+	}
+	if m.do(ops...) {
+		m.repeat = repeatAct{old: old, new: new}
+		m.msg = fmt.Sprintf("changed %d rows", len(ops))
+		if len(ops) == 1 {
+			m.msg = "changed 1 row"
+		}
 	}
 }
 
@@ -1862,7 +1958,7 @@ func (m *Model) normalKey(k string) {
 			m.opCount = 0
 		}
 		return
-	} else if k == "g" {
+	} else if k == "g" || k == "z" {
 		m.prefix = k
 		return
 	}
@@ -1877,7 +1973,8 @@ func (m *Model) normalKey(k string) {
 	}
 	if isMotion(k) {
 		defer m.updateSweep()
-	} else {
+	} else if k != "zz" && k != "zt" && k != "zb" {
+		// Placing the row in the pane changes nothing a sweep reads.
 		m.endSweep()
 	}
 	count := m.count
@@ -1899,7 +1996,7 @@ func (m *Model) act(k string, count int) {
 	}()
 	if count > 0 {
 		switch k {
-		case "x", "!", "t", "m", "L", ".", "#", "@", "$", "*", "-", "v":
+		case "x", "!", "t", "m", "L", ".", "#", "@", "$", "*", "-", "v", "zc", "zo":
 			if len(m.picked) > 0 {
 				m.msg = "a count cannot act on a selection"
 				return
@@ -1975,7 +2072,8 @@ func (m *Model) finder() func(id string) bool {
 		return func(id string) bool { return m.at.matched[id] }
 	}
 	today := m.today()
-	terms := m.terms(m.find, m.findHere, today)
+	q := m.query(m.find, m.findHere, today)
+	terms := q.terms
 	if len(terms) == 0 {
 		return nil
 	}
@@ -1990,13 +2088,13 @@ func (m *Model) finder() func(id string) bool {
 			pr := m.tree.Row(p)
 			l := sigil.FromFields(pr.Fields)
 			for i, t := range terms {
-				if t.above && above[i] == 0 && holdsAny(pr, l, t, today, m.next) {
+				if t.above && above[i] == 0 && m.holdsAny(pr, l, t, today) {
 					above[i] = 1
 				}
 			}
 			p = pr.Parent
 		}
-		return matches(r, terms, today, m.next, above, under)
+		return m.matches(r, q, today, above, under)
 	}
 }
 
@@ -2224,6 +2322,8 @@ func (m *Model) normalAct(k string, count int) {
 			m.moveTo(m.countedRows(count), act.to)
 		case act.link.kind != "":
 			m.linkTo(m.countedRows(count), act.link)
+		case act.old != "":
+			m.swapText(m.countedRows(count), act.old, act.new)
 		case act.motion != "":
 			m.operate(act.key, act.motion, n)
 		case act.key != "":
@@ -2262,6 +2362,10 @@ func (m *Model) normalAct(k string, count int) {
 		return
 	case "a":
 		m.ask = &prompt{kind: askCapture}
+	case "zt", "zz", "zb":
+		// The cursor's row is drawn at the top, middle or bottom of the pane.
+		m.scroll = k[1]
+		return
 	case "esc":
 		// Esc undoes the most recent narrowing: the selection, then the
 		// filter, then the zoom.
@@ -2405,6 +2509,8 @@ func (m *Model) normalAct(k string, count int) {
 		if m.single() {
 			m.follow()
 		}
+	case "zc", "zo":
+		m.foldBranches(ids, k == "zc")
 	case "J", "K":
 		if m.at.list == kindToday {
 			if m.single() {
@@ -2461,7 +2567,12 @@ func (m *Model) editKey(msg tea.KeyPressMsg) {
 			m.newRow(false)
 		}
 	case "esc":
-		m.finishEdit()
+		// Typing ends where it was opened: inside the row, or in the outline.
+		if e.inside {
+			m.textBack(e)
+		} else {
+			m.finishEdit()
+		}
 	case "up":
 		m.editVertical(-1)
 	case "down":

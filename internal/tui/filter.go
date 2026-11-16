@@ -18,15 +18,53 @@ import (
 // leading minus turns a term into its opposite. A word may offer several
 // readings with a bar between them, and holds when any one does.
 type term struct {
-	neg   bool
-	above bool // tested on the row's ancestors
-	below bool // tested on the rows under it
-	any   []cond
+	neg    bool
+	above  bool // tested on the row's ancestors
+	below  bool // tested on the rows under it
+	parent bool // tested on the row's parent only
+	child  bool // tested on the rows directly under it
+	any    []cond
+}
+
+// query is a filter as read: its terms in the order written, and how they
+// combine. With no group every term must hold, which is the plain filter.
+type query struct {
+	terms []term
+	expr  *group
+}
+
+// group is a part of a filter set off by brackets or split by a bar standing
+// alone: alternatives, each a run of parts that must all hold. A group with
+// no alternatives is one term.
+type group struct {
+	neg  bool
+	leaf int
+	alts [][]group
+}
+
+// holds reads a group, asking leaf for each term it names.
+func (g *group) holds(leaf func(int) bool) bool {
+	if g.alts == nil {
+		return leaf(g.leaf)
+	}
+	for _, run := range g.alts {
+		all := true
+		for i := range run {
+			if !run[i].holds(leaf) {
+				all = false
+				break
+			}
+		}
+		if all {
+			return !g.neg
+		}
+	}
+	return g.neg
 }
 
 // cond is one reading of a term.
 type cond struct {
-	kind  byte // t text, ! flag, # tag, l g tag value range, $ state, S any state, n next action, @ deadline, < > deadline range, s start, * repeat, ~ changed, & link
+	kind  byte // t text, ! flag, # tag, l g tag value range, $ state, S any state, n next action, T in Today, @ deadline, < > deadline range, s start, * repeat, ~ changed, & link
 	value string
 	arg   string          // the value a tag range compares with
 	rows  map[string]bool // the rows a link term asks for, read by terms
@@ -35,12 +73,12 @@ type cond struct {
 // sigilStarts are the characters a filter word's sigil begins with.
 const sigilStarts = "!#$@*~&"
 
-// terms reads a query for this outline: parseQuery, and then for each link
+// query reads a filter for this outline: parseFilter, and then for each link
 // term the rows it names, since only the tree knows them. here is the row
 // &. stands for.
-func (m *Model) terms(q string, here string, today time.Time) []term {
-	out := parseQuery(q, today)
-	for _, t := range out {
+func (m *Model) query(q string, here string, today time.Time) query {
+	out := parseFilter(q, today)
+	for _, t := range out.terms {
 		for i, c := range t.any {
 			if c.kind != '&' || c.value == "" {
 				continue
@@ -66,50 +104,99 @@ func (m *Model) terms(q string, here string, today time.Time) []term {
 	return out
 }
 
-// parseQuery reads a filter in the grammar rows are written in. A word that
-// is not a readable sigil matches the row's text.
-func parseQuery(q string, today time.Time) []term {
-	var out []term
-	for _, w := range strings.Fields(q) {
-		var t term
-		if len(w) > 1 && w[0] == '-' {
-			t.neg, w = true, w[1:]
-		}
-		if w == "^" || w == "_" {
-			continue // still being typed
-		}
-		if strings.HasPrefix(w, "^^") || strings.HasPrefix(w, "__") {
-			t.any = []cond{parseCond(w, today)}
-			out = append(out, t)
-			continue
-		}
-		if strings.HasPrefix(w, "^") {
-			t.above, w = true, w[1:]
-		} else if strings.HasPrefix(w, "_") {
-			t.below, w = true, w[1:]
-		}
-		// A side without its own sigil inherits the first side's:
-		// $open|doing reads as $open or $doing, but #home|! keeps both sigils.
-		sig := w[:len(w)-len(strings.TrimLeft(w, sigilStarts))]
-		if parts := strings.Split(w, "|"); len(parts) > 1 && !slices.Contains(parts, "") {
-			for _, part := range parts {
-				if !strings.ContainsRune(sigilStarts, rune(part[0])) {
-					part = sig + part
+// parseQuery reads the terms of a filter, in the order written.
+func parseQuery(q string, today time.Time) []term { return parseFilter(q, today).terms }
+
+// parseFilter reads a filter in the grammar rows are written in. Terms side
+// by side must all hold. A bar standing alone splits what is around it into
+// alternatives, and brackets standing alone set a part off as one term, with
+// -( for its opposite. A part left empty or open while typing is passed over.
+func parseFilter(q string, today time.Time) query {
+	var out query
+	words := strings.Fields(q)
+	i := 0
+	var read func(depth int) [][]group
+	read = func(depth int) [][]group {
+		runs := [][]group{nil}
+		for i < len(words) {
+			w := words[i]
+			i++
+			switch w {
+			case ")":
+				if depth > 0 {
+					return runs
 				}
-				c := parseCond(part, today)
-				if strings.ContainsRune(sigilStarts, rune(part[0])) && c.kind == 't' {
-					t.any = nil // one alternative cannot be read: the word is text
-					break
+			case "|":
+				runs = append(runs, nil)
+			case "(", "-(":
+				inner := slices.DeleteFunc(read(depth+1), func(run []group) bool { return len(run) == 0 })
+				if len(inner) > 0 {
+					runs[len(runs)-1] = append(runs[len(runs)-1], group{neg: w == "-(", alts: inner})
 				}
-				t.any = append(t.any, c)
+			default:
+				if t, ok := parseTerm(w, today); ok {
+					out.terms = append(out.terms, t)
+					runs[len(runs)-1] = append(runs[len(runs)-1], group{leaf: len(out.terms) - 1})
+				}
 			}
 		}
-		if t.any == nil {
-			t.any = []cond{parseCond(w, today)}
-		}
-		out = append(out, t)
+		return runs
+	}
+	runs := slices.DeleteFunc(read(0), func(run []group) bool { return len(run) == 0 })
+	plain := len(runs) == 1 && !slices.ContainsFunc(runs[0], func(g group) bool { return g.alts != nil })
+	if len(runs) > 0 && !plain {
+		out.expr = &group{alts: runs}
 	}
 	return out
+}
+
+// parseTerm reads one word of a filter. A word that is not a readable sigil
+// matches the row's text; a mark still being typed is no term yet.
+func parseTerm(w string, today time.Time) (term, bool) {
+	var t term
+	if len(w) > 1 && w[0] == '-' {
+		t.neg, w = true, w[1:]
+	}
+	switch w {
+	case "^", "_", "<", ">":
+		return t, false // still being typed
+	}
+	for _, twice := range []string{"^^", "__", "<<", ">>"} {
+		if strings.HasPrefix(w, twice) {
+			t.any = []cond{parseCond(w, today)}
+			return t, true
+		}
+	}
+	switch w[0] {
+	case '^':
+		t.above, w = true, w[1:]
+	case '_':
+		t.below, w = true, w[1:]
+	case '<':
+		t.parent, w = true, w[1:]
+	case '>':
+		t.child, w = true, w[1:]
+	}
+	// A side without its own sigil inherits the first side's:
+	// $open|doing reads as $open or $doing, but #home|! keeps both sigils.
+	sig := w[:len(w)-len(strings.TrimLeft(w, sigilStarts))]
+	if parts := strings.Split(w, "|"); len(parts) > 1 && !slices.Contains(parts, "") {
+		for _, part := range parts {
+			if !strings.ContainsRune(sigilStarts, rune(part[0])) {
+				part = sig + part
+			}
+			c := parseCond(part, today)
+			if strings.ContainsRune(sigilStarts, rune(part[0])) && c.kind == 't' {
+				t.any = nil // one alternative cannot be read: the word is text
+				break
+			}
+			t.any = append(t.any, c)
+		}
+	}
+	if t.any == nil {
+		t.any = []cond{parseCond(w, today)}
+	}
+	return t, true
 }
 
 // parseCond reads one word, without its minus, as a sigil or else as text.
@@ -138,6 +225,8 @@ func parseCond(w string, today time.Time) cond {
 			c.kind = 'S'
 		} else if strings.ToLower(w) == "$next" {
 			c.kind = 'n'
+		} else if strings.ToLower(w) == "$today" {
+			c.kind = 'T'
 		} else if state, ok := sigil.ParseState(w[1:]); ok {
 			c.kind, c.value = '$', state
 		}
@@ -210,37 +299,57 @@ func sinceDay(s string, today time.Time) (string, bool) {
 	return from.Format("2006-01-02"), true
 }
 
-// matches reads one row against a query. next is each project's next
-// action, as the last scan found it.
-func matches(r *outline.Row, terms []term, today time.Time, next map[string]bool, above []int, under map[string]uint64) bool {
+// matches reads one row against a query. above and under are the answers
+// to its ancestor and descendant terms, worked out by the caller's walk.
+func (m *Model) matches(r *outline.Row, q query, today time.Time, above []int, under map[string]uint64) bool {
 	l := sigil.FromFields(r.Fields)
-	for i, t := range terms {
+	leaf := func(i int) bool {
+		t := q.terms[i]
 		var ok bool
 		switch {
 		case t.above:
 			ok = above[i] != 0
 		case t.below:
 			ok = under[r.ID]&(1<<min(i, 63)) != 0
+		case t.parent:
+			if p := m.tree.Row(r.Parent); p != nil {
+				ok = m.holdsAny(p, sigil.FromFields(p.Fields), t, today)
+			}
+		case t.child:
+			for _, kid := range m.tree.Children(r.ID) {
+				if k := m.tree.Row(kid); m.holdsAny(k, sigil.FromFields(k.Fields), t, today) {
+					ok = true
+					break
+				}
+			}
 		default:
-			ok = holdsAny(r, l, t, today, next)
+			ok = m.holdsAny(r, l, t, today)
 		}
-		if ok == t.neg {
+		return ok != t.neg
+	}
+	if q.expr != nil {
+		return q.expr.holds(leaf)
+	}
+	for i := range q.terms {
+		if !leaf(i) {
 			return false
 		}
 	}
 	return true
 }
 
-func holdsAny(r *outline.Row, l sigil.Line, t term, today time.Time, next map[string]bool) bool {
+func (m *Model) holdsAny(r *outline.Row, l sigil.Line, t term, today time.Time) bool {
 	for _, c := range t.any {
-		if holds(r, l, c, today, next) {
+		if m.holds(r, l, c, today) {
 			return true
 		}
 	}
 	return false
 }
 
-func holds(r *outline.Row, l sigil.Line, c cond, today time.Time, next map[string]bool) bool {
+// holds reads one row against one reading of a term. The next actions and
+// the day's picks are as the last scan found them.
+func (m *Model) holds(r *outline.Row, l sigil.Line, c cond, today time.Time) bool {
 	switch c.kind {
 	case 't':
 		return strings.Contains(strings.ToLower(l.Text), c.value)
@@ -264,7 +373,9 @@ func holds(r *outline.Row, l sigil.Line, c cond, today time.Time, next map[strin
 	case 'S':
 		return l.State != ""
 	case 'n':
-		return next[r.ID]
+		return m.next[r.ID]
+	case 'T':
+		return m.inToday[r.ID]
 	case '@':
 		_, days := sigil.DueLabel(l.Due, today)
 		switch c.value {
@@ -345,7 +456,7 @@ func (m *Model) underSets(terms []term, today time.Time) map[string]uint64 {
 		r := m.tree.Row(id)
 		l := sigil.FromFields(r.Fields)
 		for i, t := range terms {
-			if t.below && holdsAny(r, l, t, today, m.next) {
+			if t.below && m.holdsAny(r, l, t, today) {
 				below |= 1 << min(i, 63)
 			}
 		}
@@ -360,7 +471,8 @@ func (m *Model) underSets(terms []term, today time.Time) map[string]uint64 {
 func (m *Model) refilter() {
 	m.at.hits, m.at.matched = nil, map[string]bool{}
 	today := m.today()
-	terms := m.terms(m.at.query, m.at.here, today)
+	q := m.query(m.at.query, m.at.here, today)
+	terms := q.terms
 	if len(terms) == 0 {
 		return
 	}
@@ -377,7 +489,7 @@ func (m *Model) refilter() {
 		r := m.tree.Row(id)
 		l := sigil.FromFields(r.Fields)
 		for i, t := range terms {
-			if t.above && above[i] == 0 && holdsAny(r, l, t, today, m.next) {
+			if t.above && above[i] == 0 && m.holdsAny(r, l, t, today) {
 				above[i] = level
 			}
 		}
@@ -397,7 +509,7 @@ func (m *Model) refilter() {
 			}
 			clear(above)
 			parents(m.tree.Row(id).Parent)
-			if matches(m.tree.Row(id), terms, today, m.next, above, under) {
+			if m.matches(m.tree.Row(id), q, today, above, under) {
 				m.at.hits = append(m.at.hits, visRow{id, 0})
 				m.at.matched[id] = true
 			}
@@ -416,7 +528,7 @@ func (m *Model) refilter() {
 				continue
 			}
 			at := len(m.at.hits)
-			ok := matches(m.tree.Row(id), terms, today, m.next, above, under)
+			ok := m.matches(m.tree.Row(id), q, today, above, under)
 			if ok {
 				m.at.matched[id] = true
 			}

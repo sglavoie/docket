@@ -20,7 +20,8 @@ a rule here changes this file first.
    (`#` `@` `$` `*` `-`) are the row grammar typed on a row. The word
    motions `w` `b` `e` step into a row's text, where the same grammar reads
    characters instead of rows. The navigation aliases are the arrows,
-   `Ctrl+F` `Ctrl+B`, `PgDn` `PgUp` and `Home` `End`.
+   `Ctrl+F` `Ctrl+B`, `PgDn` `PgUp` and `Home` `End`. `zt` `zz` `zb` say
+   where in the pane the cursor's row is drawn and change nothing else.
 5. **Every keystroke paints within one frame.** The tree lives in memory;
    SQLite is written when a change is committed, never while typing. What
    the sidebar states is derived again only when a row has changed or the
@@ -359,7 +360,17 @@ Three more acts use the same line:
   state last changed that recently, or which was made that recently if it
   never had one, so `$done ~7d` is what was finished this week and
   `$waiting -~2w` what has waited longer than two. Every term must hold. A
-  bar inside a word offers alternatives, and the word holds when any does:
+  bar standing alone, with a blank on each side, splits the terms around it
+  into alternatives, and brackets standing alone set a part off as one
+  term: `#home $open | #work !` is the open rows at home or the flagged
+  ones at work, `fix ( #docs | cache )` needs `fix` and either of the two,
+  and `-(` opens a part that must not hold (`#bug -( cache | ! )`). Parts
+  nest. Terms side by side bind before a bar, so brackets are only needed
+  around a bar that is not the whole line. A part left empty, a bracket
+  not closed yet and one closed too often are passed over, so the pane
+  follows the line while it is typed. `(`, `)` and `|` touching a word
+  belong to that word.
+  A bar inside a word offers alternatives, and the word holds when any does:
   `$open|doing`, `#home|errands`, `milk|eggs`. Each side may carry its own
   sigil (`#home|!`, `$waiting|@overdue`, `milk|#food`); a side without one
   inherits the first side's sigil. If a side cannot be read as its own or
@@ -379,6 +390,13 @@ Three more acts use the same line:
   reads as `^` does: once, before the alternatives, with `-` before it; a
   bare `_` is skipped while typing and `__` starts literal text. Rows under
   a row count whether or not a fold or `:closed` hides them.
+  A leading `<` tests the term on the row's parent alone, and a leading `>`
+  on the rows directly under it: `<#work` is the rows whose parent is
+  tagged, `>$waiting` the rows holding a waiting row of their own, and
+  `->$` the rows with no task directly under them. They read as `^` and `_`
+  do: once, before the alternatives, with `-` before them; a bare `<` or
+  `>` is skipped while typing and `<<` or `>>` starts literal text. A
+  top-level row has no parent, so `<term` never holds for it.
   `$next` holds for each active project's next action: its first row, in
   outline order, that is open or doing, has no start day still ahead, and is
   not parked, under a parked row, or in a closed project, so the order of a
@@ -387,6 +405,8 @@ Three more acts use the same line:
   It combines like any state word (`$next #home`, `-$next`,
   `$next|waiting`), so `/$next`, `Tab` and
   `:save next` keep the daily list of what could be done.
+  `$today` holds for a row in Today, picked or starting on the day, and is
+  read like `$next`: a filter word, not a state.
   `&` holds for a row that links to another (see Links): `&` alone for any
   link, `&word` for a link to a row whose text holds the word, and `&.` for
   a link to the row the cursor was on when the filter was opened, which is
@@ -426,7 +446,8 @@ Three more acts use the same line:
   a file is named; `import file` reads such a file back, as described below;
   `closed` hides or shows closed rows; `numbers` shows or
   hides each row's distance from the cursor; `all` selects every
-  row the pane shows, as described under Selection; `archive` moves
+  row the pane shows, as described under Selection; `s/old/new` changes
+  text across rows, as described below; `archive` moves
   closed rows under an `Archive:` heading, as described below; `review`
   opens the review list; `fold [level]` and `unfold` control folds as described below;
   `sort [keys]` orders siblings once, as described below;
@@ -441,6 +462,23 @@ named on the status line and changes nothing. Lists and filters say
 there is nothing to fold. The cursor stays
 on its row, or moves to its nearest visible ancestor. Folds are saved together
 as this machine's view state, never logged or synced.
+
+`zc` folds the cursor's row and every row under it that has rows of its
+own, and `zo` unfolds them all, so a branch is shut or laid open whole
+where `h` and `l` take one level. They act on the selection, or with a
+count on that many shown rows, and a row with nothing under it says so.
+The commands work from the pane's root and these keys from a row, so
+neither repeats the other (rule 3).
+
+`:s/old/new` puts `new` wherever `old` stands in the text of the cursor's
+row, or of every selected row, as one undo step: `/old`, `:all`,
+`:s/old/new` renames across a project. It reads the text as typed, capitals
+included, and changes every place in a row; fields are not text, so a tag
+is renamed with a stamp. The mark after the `s` may be any character that
+is not a letter, a digit or a blank, for text that holds a slash
+(`:s,a/b,c`). A last mark may close the line, which is how `new` ends in a
+blank, and `new` may be nothing. The status line counts the rows changed,
+or says no row holds `old`; a line that is not whole changes nothing.
 
 `:sort [keys]` sorts the cursor's row and all its siblings, or a selected
 block of adjacent siblings under the Selection rule. Selected descendants
@@ -512,8 +550,8 @@ clear it. The keys that work on one row (`A`, `I`, `cc`, `o`, `O`, `Enter`,
 count, selects the shown span from that anchor to the cursor, both included;
 moving back gives rows up again. Picks made before the sweep stay selected.
 `V` ends the sweep and keeps the rows; `v` ends it, then toggles the cursor's
-row and steps down as usual. Any other non-motion key ends the sweep before
-acting: `VGdd` deletes through the end in one undo step, and `V2jx` closes
+row and steps down as usual. `zt`, `zz` and `zb` leave it as it is. Any
+other non-motion key ends the sweep before acting: `VGdd` deletes through the end in one undo step, and `V2jx` closes
 three rows. `Esc` ends the sweep and clears the selection (a pending count
 is still canceled first). Sweeps work in lists and filters, passing over
 dimmed ancestors in a contextual filter. Changing the filter, jumping or
@@ -558,6 +596,7 @@ on the cursor's row, as one undo step. What it remembers is the last of:
   project, Inbox or heading, and appends the rows as its last children,
   saying `moved to <label>`;
 - a link, to the same row or to none;
+- a substitution, with the same `old` and `new`;
 - `x`, `!`, `t`, `J`, `K`, `p`, `P`, `gp` or `gP`, pressed again as the key
   it is, so `x` on a done row opens it;
 - `d`, `>` or `<` with what completed it: `dd` takes rows again, `d}`
@@ -645,7 +684,7 @@ and a filter refuse them. No `ac` or `as` exists: the row with what is
 under it is the doubled key, and the siblings with their parent is `H`
 then the doubled key (rule 3).
 
-Before `x`, `!`, `t`, `dd`, `yy`, `>>`, `<<`, `m`, `L`, `.`, or a stamp character
+Before `x`, `!`, `t`, `dd`, `yy`, `>>`, `<<`, `m`, `L`, `.`, `zc`, `zo`, or a stamp character
 (`#` `@` `$` `*` `-`), a count takes that many shown rows from the cursor
 down, or as many as remain, without changing the selection. In a filter
 in context it passes over dimmed ancestors, taking matches only, as `:all`
@@ -657,7 +696,12 @@ a count before an act on rows (including `v`) is refused and says so.
 The word motions that step into a row take the count as theirs, and
 `Ctrl+O` and `Ctrl+I` go that many places. Every other key, including `o`,
 `O`, `A`, `I`, `cc`, `Enter`, `h`, `l`, `f`, `gl`, `p`, `P`, `gp`, `gP`,
-`a`, `/`, `:` and `Tab`, drops the count and acts as usual.
+`zt`, `zz`, `zb`, `a`, `/`, `:` and `Tab`, drops the count and acts as usual.
+
+**Placing the row.** `zt` draws the cursor's row at the top of the pane,
+`zz` in the middle and `zb` at the bottom, as far as the ends of the rows
+allow. The cursor stays on its row, nothing is selected or changed, and
+the pane stays there until a motion has to scroll it.
 
 | Keys | Act | Milestone |
 | --- | --- | --- |
@@ -667,6 +711,8 @@ The word motions that step into a row take the count as theirs, and
 | `H` `]` `[` | Parent; next, previous heading | 12 |
 | `n` `N` | Next, previous match of the last filter | 12 |
 | `h` `l` | Fold, unfold; step to parent, first child; in lists and flat filters, `h` shows the row where it lives (`Esc` returns), `l` does nothing | 1, 10 |
+| `zc` `zo` | Fold, unfold the row's whole branch | 15 |
+| `zt` `zz` `zb` | Draw the cursor's row at the top, middle, bottom of the pane | 15 |
 | `Enter` `Esc` | Zoom in, back out | 1 |
 | `o` `O` `A` `I` `cc` | New row below, above; type at end, at start; retype keeping fields | 1, 11 |
 | `w` `b` `e` `W` `B` `E` | Step into the row's text, on that word | 13 |
@@ -727,7 +773,23 @@ key of the outline:
   text register of its own, kept for the session, and `y` also writes the
   system clipboard.
 - **Typing.** `i` and `a` type at the caret and after it, `I` and `A` at the
-  start and the end, and `c`, `C` and `s` type where they cut.
+  start and the end, and `c`, `C` and `s` type where they cut. `Esc` ends
+  the typing and puts the caret back on a character, the last one typed,
+  so the next change is made from there: `cw` `new` `Esc` `w` `.` changes
+  two words on one visit.
+- **Selecting.** `v` starts a selection at the caret, drawn in reverse.
+  Motions and counts stretch it to wherever they go, both ends included,
+  and `iw`, `a"` and the other text objects make it that object. `d` or
+  `x` deletes it, `c` or `s` changes it, `y` copies it and `~` switches
+  its case; the key that acts ends the selection, as do `v` and `Esc`,
+  which stay in the row. The other keys do nothing meanwhile. `.` after
+  such a change takes as many characters again from the caret.
+- **Filtering.** `*` leaves the row, keeping it, and narrows the pane to
+  the word under the caret as if it had been typed after `/` and kept with
+  `Enter`: a sigil whole (`#work`, `$waiting`, `@2026-11-20`), else the
+  word without what touches it. The cursor stays on the row, `n` and `N`
+  walk the matches, and the filter line recalls it. It types nothing, so
+  it is not a second route to `/` (rule 3). On a blank it says so.
 - **Counts** go before a motion, an operator or an act, and multiply as in
   the outline: `3w`, `d2w`, `2dw`, `3x`, `2fa`.
 - `u` and `Ctrl+R` undo and redo the changes made in this row since
@@ -735,11 +797,15 @@ key of the outline:
   typed text included, and stays in the row; it is remembered for the
   session and apart from the outline's `.`.
 
-`Esc` drops a pending count or operator; otherwise it keeps the row and
-returns to the outline. Typing opened here is ordinary typing, so its `Esc`
-also ends in the outline: there is one way out of a row, and no second
-normal mode to be left in by mistake. Everything done between stepping in
-and leaving is one undo step, and nothing is written when nothing changed.
+`Esc` drops a pending count or operator, then ends a selection; otherwise
+it keeps the row and returns to the outline. Typing ends where it was
+opened: `Esc` after `i`, `a`, `c` or `s` pressed here goes back to the
+caret, and `Esc` after `A`, `I`, `o` or `cc` pressed on the outline goes
+back to the outline. The other keys of typing are the same in both: `Enter`
+splits or keeps the row, and `Up` and `Down` go on typing in the next.
+Everything done between stepping in and leaving is one undo step, and
+nothing is written when nothing changed. `u` inside the row takes back one
+change at a time, what was typed included.
 A sync pass and another window's changes wait, as they do for typing.
 
 While typing: `Enter` inside a line splits it literally at the caret,
@@ -848,7 +914,7 @@ grammar cannot read also stays prose (`@alice`, `#123`, `$5`). `\#tag` keeps a r
 | `@date` | `due` | `today`, `tomorrow`, a weekday (the next one, never today), `+3d`, `+2w`, `MM-DD` (the next such day), `YYYY-MM-DD` |
 | `@@date` | `start` | The same forms as `@date` |
 | `*interval` | `repeat` | A count and `d`, `w`, `m` or `y` (`*3d`, `*2w`), or `daily`, `weekly`, `monthly`, `yearly` |
-| `$state` | `state` | `open`, `doing`, `waiting`, `done`, `canceled`, `parked`, `note`, or an unambiguous prefix (`$w`, `$c`, `$p`; `$d` is not one). `$next` is read by the filter only: it is not a state |
+| `$state` | `state` | `open`, `doing`, `waiting`, `done`, `canceled`, `parked`, `note`, or an unambiguous prefix (`$w`, `$c`, `$p`; `$d` is not one). `$next` and `$today` are read by the filter only: they are not states |
 | `%name` | | On the capture line only: the project or heading to file the row in |
 
 Typed in a row, sigils become fields when the edit ends and may sit anywhere
@@ -917,7 +983,19 @@ of standard input is one row. It prints where each row went, and exits
 non-zero with nothing added when a line holds nothing to add. It is one
 short-lived window on the database, under the rules of Two windows: an open
 window sees the row at its next key, and a sync pass runs before it ends.
-This is the only command; everything else is done in the outline.
+
+`docket ls FILTER` prints the rows a filter matches, read as `/` reads it
+across every project and the Inbox, so the outline answers a script, a
+status bar or a pipe. Each row is one line: the row in the row grammar, a
+task always spelling its state since no outline is there to read a default
+from, then a tab and where the row lives (`Alpha › TUI`). The Inbox's rows
+come first, and the order is a flat filter's: the outline's, or soonest
+deadline first when the filter asks about deadlines. `&.` has no cursor to
+read and matches nothing. With no filter it prints the whole outline as
+`:export` writes it, tab-indented, which `:import` and paste read back. It
+changes nothing, prints nothing when nothing matches, and does not sync.
+
+These are the only commands; everything else is done in the outline.
 
 ## Milestones
 
@@ -1005,8 +1083,18 @@ This is the only command; everything else is done in the outline.
    delete has replaced the register. Operators take the row objects `ic`
    and `is`. A row reached from afar is drawn mid-pane. *Built.*
 
+15. **Flow.** Typing opened inside a row ends inside it, so a row takes
+   several changes on one visit; `v` selects there and `*` filters by the
+   word under the caret. A filter groups terms with a bar and brackets
+   standing alone, tests the parent with `<term` and the children with
+   `>term`, and reads `$today`. `zc` and `zo` fold and unfold a whole
+   branch; `zt` `zz` `zb` place the cursor's row in the pane.
+   `:s/old/new` changes text across rows, and `.` repeats it. `docket ls`
+   answers a filter from a shell. *Built.*
+
 Not planned: reminders, attachments, a details panel, import from v1, any
-command-line interface beyond `docket add`, marks (the trail, links and each
+command-line interface beyond `docket add` and `docket ls`, macros (`.`,
+`:all` and `:s` repeat what a recording would), marks (the trail, links and each
 place's remembered cursor reach the same rows), inline formatting.
 
 ## Tests

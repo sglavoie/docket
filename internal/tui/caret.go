@@ -315,13 +315,70 @@ func (e *editor) rest() {
 	e.caret = max(0, min(e.caret, len(e.buf)-1))
 }
 
-// typeAt opens typing at a place in the line. The row is left with Esc as
-// after any typing, and what is typed joins the change that opened it.
+// typeAt opens typing at a place in the line. What is typed joins the change
+// that opened it, and Esc puts the caret back on a character: typing opened
+// inside a row ends inside it.
 func (e *editor) typeAt(at int) int {
 	e.caret = max(0, min(at, len(e.buf)))
-	e.normal = false
+	e.normal, e.inside = false, true
 	e.mark("text")
 	return textTyping
+}
+
+// textBack ends typing opened inside the row and puts the caret back on a
+// character, where the grammar goes on.
+func (m *Model) textBack(e *editor) {
+	if typed, only := e.inserted(); only && !m.replaying {
+		m.textRepeat = textAct{keys: e.cmd, typed: typed}
+	}
+	// Typing that changed nothing leaves nothing for u to take back.
+	if n := len(e.past); n > 0 && slices.Equal(e.past[n-1].buf, e.buf) {
+		e.past = e.past[:n-1]
+	}
+	e.normal, e.inside, e.how, e.cmd, e.vertical = true, false, "", nil, false
+	e.caret--
+	e.rest()
+}
+
+// textKeys spells keys as if they had been pressed, for the dot key.
+func textKeys(s string) []tea.KeyPressMsg {
+	var keys []tea.KeyPressMsg
+	for _, r := range s {
+		keys = append(keys, tea.KeyPressMsg{Code: r, Text: string(r)})
+	}
+	return keys
+}
+
+// textFilter leaves the row and narrows the pane to the word under the
+// caret, as if it had been typed after /: a sigil whole, else the word.
+func (m *Model) textFilter(e *editor) int {
+	from, to, ok := textObject(e, "W", true)
+	if !ok || e.buf[min(e.caret, len(e.buf)-1)] == ' ' {
+		m.msg = "no word under the caret to filter by"
+		return textMoved
+	}
+	word := string(e.buf[from:to])
+	if parseCond(word, m.today()).kind == 't' {
+		from, to, _ = textObject(e, "w", true)
+		word = string(e.buf[from:to])
+	}
+	row := e.row
+	if !m.finishEdit() {
+		return textLeft
+	}
+	if m.at.query == "" {
+		m.at.here = row
+	}
+	m.at.query = word
+	m.find, m.findHere = word, m.at.here
+	m.remember(askFilter, word)
+	m.refilter()
+	m.cursor, m.top = 0, 0
+	m.clearSelection()
+	m.rebuild()
+	m.seek(row)
+	m.land()
+	return textLeft
 }
 
 // textKey handles a key while the caret is inside a row.
@@ -347,6 +404,10 @@ func (m *Model) textStep(e *editor, msg tea.KeyPressMsg) int {
 	if k == "esc" {
 		// Esc drops what is pending, else leaves the row, keeping it.
 		if e.pend != "" || e.count > 0 || e.opCount > 0 {
+			return textMoved
+		}
+		if e.sel {
+			e.sel = false
 			return textMoved
 		}
 		m.finishEdit()
@@ -386,6 +447,11 @@ func (m *Model) textStep(e *editor, msg tea.KeyPressMsg) int {
 			if !ok {
 				return textMoved
 			}
+			if e.pend[0] == 'v' {
+				// A text object named while selecting is what is selected.
+				e.anchor, e.caret = from, max(to-1, from)
+				return textMoved
+			}
 			return m.textOperate(e, e.pend[:1], from, to)
 		}
 		switch k {
@@ -399,8 +465,44 @@ func (m *Model) textStep(e *editor, msg tea.KeyPressMsg) int {
 		return m.textGo(e, k, 0)
 	}
 
+	if e.sel {
+		// A selection runs from where v was pressed to the caret, both
+		// included. The key that acts on it ends it.
+		from, to := min(e.anchor, e.caret), min(max(e.anchor, e.caret)+1, len(e.buf))
+		switch k {
+		case "v":
+			e.sel = false
+			return textMoved
+		case "i", "a":
+			e.pend = "v" + k
+			return textPending
+		case "y":
+			e.sel = false
+			return m.textOperate(e, "y", from, to)
+		case "d", "x", "c", "s", "~":
+			// Remembered as so many characters from the caret, which is what
+			// the dot key makes again.
+			if k == "d" {
+				k = "x"
+			} else if k == "c" {
+				k = "s"
+			}
+			e.sel, e.caret, e.count, e.opCount = false, from, to-from, 0
+			e.cmd = textKeys(strconv.Itoa(to-from) + k)
+		case "D", "C", "X", "r", "I", "A", "p", "P", "u", "ctrl+r", ".", "*", "delete":
+			return textMoved
+		}
+	}
+
 	n := max(e.textCount(), 1)
 	switch k {
+	case "v":
+		if len(e.buf) > 0 {
+			e.sel, e.anchor = true, e.caret
+		}
+		return textMoved
+	case "*":
+		return m.textFilter(e)
 	case "d", "c", "y":
 		e.pend, e.opCount, e.count = k, e.count, 0
 		return textPending
@@ -446,12 +548,16 @@ func (m *Model) textStep(e *editor, msg tea.KeyPressMsg) int {
 		}
 		return textChanged
 	case "i":
+		e.keep()
 		return e.typeAt(e.caret)
 	case "a":
+		e.keep()
 		return e.typeAt(e.caret + 1)
 	case "I":
+		e.keep()
 		return e.typeAt(0)
 	case "A":
+		e.keep()
 		return e.typeAt(len(e.buf))
 	case "p", "P":
 		if m.textRegister == "" {
@@ -563,7 +669,7 @@ func (m *Model) textAgain(e *editor) int {
 			return textLeft
 		case textTyping:
 			e.insert([]rune(act.typed))
-			e.normal, e.how = true, ""
+			e.normal, e.inside, e.how = true, false, ""
 			e.caret--
 		case textChanged, textMoved:
 			e.pend, e.count, e.opCount = "", 0, 0
@@ -577,7 +683,10 @@ func (m *Model) textAgain(e *editor) int {
 // textStatus is the status line while the caret is inside a row.
 func (e *editor) textStatus() string {
 	if e.pend == "" && e.count == 0 && e.opCount == 0 {
-		return "in the row: w b e f move · i a c d x change · Esc done"
+		if e.sel {
+			return "selecting: motions extend · d c y x ~ act · v or Esc ends"
+		}
+		return "in the row: w b e f move · i a c d x change · v select · Esc done"
 	}
 	left := ""
 	if e.opCount > 0 {

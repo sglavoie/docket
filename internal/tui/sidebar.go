@@ -339,6 +339,10 @@ func (m *Model) scan() {
 	}
 
 	m.sortToday(lists[kindToday])
+	m.inToday = make(map[string]bool, len(lists[kindToday]))
+	for _, id := range lists[kindToday] {
+		m.inToday[id] = true
+	}
 
 	// Longest waiting and longest untouched first: the top is what to chase.
 	sort.SliceStable(lists[kindWaiting], func(i, j int) bool {
@@ -758,6 +762,40 @@ func Capture(tree *outline.Tree, backend Backend, lines []string) ([]string, err
 	}
 	m.syncQuit()
 	return said, nil
+}
+
+// List answers a filter from a shell: the rows it matches, one a line, each
+// spelled in the row grammar with its state, then a tab and where the row
+// lives. With no filter it is the whole outline as export writes it. Nothing
+// is changed.
+func List(tree *outline.Tree, backend Backend, filter string) []string {
+	return New(tree, backend, nil).list(filter)
+}
+
+func (m *Model) list(filter string) []string {
+	if strings.TrimSpace(filter) == "" {
+		text, _ := m.writeRows(m.tree.Children(""))
+		return strings.Split(strings.TrimSuffix(text, "\n"), "\n")
+	}
+	var out []string
+	for _, root := range []string{inboxID, ""} {
+		m.at = place{root: root, query: filter, flat: true}
+		m.refilter()
+		for _, hit := range m.at.hits {
+			if !m.live(hit.id) {
+				continue
+			}
+			r := m.tree.Row(hit.id)
+			var path []string
+			for p := m.tree.Row(r.Parent); p != nil; p = m.tree.Row(p.Parent) {
+				path = append([]string{strings.TrimSuffix(p.Text(), ":")}, path...)
+			}
+			// Out of its outline a row has no default to be read against, so
+			// a task always says its state.
+			out = append(out, sigil.Format(sigil.FromFields(r.Fields), true, m.today())+"\t"+strings.Join(path, " › "))
+		}
+	}
+	return out
 }
 
 // sideLines draws the sidebar at exactly w columns and h rows.

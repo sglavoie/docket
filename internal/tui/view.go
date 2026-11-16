@@ -14,12 +14,13 @@ import (
 )
 
 const (
-	sgrReset  = "\x1b[0m"
-	sgrBold   = "\x1b[1m"
-	sgrDim    = "\x1b[2m"
-	sgrAccent = "\x1b[36m"
-	sgrWarn   = "\x1b[33m"
-	sgrAlert  = "\x1b[31m"
+	sgrReset   = "\x1b[0m"
+	sgrBold    = "\x1b[1m"
+	sgrDim     = "\x1b[2m"
+	sgrReverse = "\x1b[7m"
+	sgrAccent  = "\x1b[36m"
+	sgrWarn    = "\x1b[33m"
+	sgrAlert   = "\x1b[31m"
 )
 
 const helpText = `Docket
@@ -39,6 +40,9 @@ const helpText = `Docket
   h l            fold, unfold; step to parent, first child
                  in lists and flat filters, h shows the row where it lives;
                  Esc returns to the held rows; l does nothing
+  zc zo          fold, unfold the row's whole branch, every level under it;
+                 the selection or a count of rows too
+  zt zz zb       draw the cursor's row at the top, middle, bottom of the pane
   Enter  Esc     zoom into a row; Esc clears the selection, the filter, the zoom
   o O            new row below, above
   A I            type at the end, start of the row
@@ -56,7 +60,7 @@ const helpText = `Docket
   L  gl          link the row to another, found by name; gl follows the link
                  a row shows → and the row it points at; blank L Enter is none
   .              repeat the last change to rows on the row or selection:
-                 a stamp, a move, a link, x ! t J K p P, d > < with what
+                 a stamp, a move, a link, :s, x ! t J K p P, d > < with what
                  completed them, and text typed after o O A I cc
                  the count it was made with is used again unless one is given
                  stamps read dates again today; one undo; lists and filters too
@@ -89,15 +93,20 @@ const helpText = `Docket
                  # any tag, $ any task; -# untagged, -$ notes
                  a|b is either: $open|doing, #home|!, milk|#food
                  each side uses its own sigil or the first side's; unreadable is text
+                 | ( ) -( standing alone, a blank each side, group terms:
+                 #home $open | #work !    fix ( #docs | cache )    -( a | b )
                  ~7d ~2w ~today: state changed (or row made) since then,
                  so $done ~7d is what was finished this week
                  $next: each project's first open or doing row not starting later
+                 $today: a row in Today
                  @<fri @>+1w: open rows due by or from a day; flat lists soonest first
                  ^term tests ancestors, not this row, even above the pane root
                  ^#work|home, ^name $next; -^#work means no ancestor has #work
                  bare ^ waits for typing; ^^ is text; completion works after ^
                  _term tests the rows under this one, at any depth: _@overdue,
                  -_$open|doing (nothing left to do under it); __ is text
+                 <term tests the parent only, >term the rows directly under:
+                 <#work, >$waiting, ->$ (no task of its own); << >> are text
                  #est any value, #est=2h that one, #est<3 #est>3 at most, at least
                  & a row that links to another; &word to a row holding word;
                  &. to the row the cursor was on: the rows that point here
@@ -111,6 +120,8 @@ const helpText = `Docket
                  closed (hide or show done and canceled rows),
                  numbers (each row says how far it is from the cursor: a count),
                  all (select every row shown: /#old, :all, -#old #new retags),
+                 s/old/new (change text in the row or selection, every place,
+                 capitals as typed; one undo; any mark for the slash: s,a/b,c),
                  archive (move closed rows under the project's Archive: heading),
                  fold [level] (all, or show N levels), unfold (all),
                  sort [keys] (siblings or adjacent selected siblings, once),
@@ -150,18 +161,22 @@ Inside a row (after w b e W B E; the caret is a block)
   w b e  W B E   by word; capitals count anything but a blank as one word
   f F t T  ; ,   to a character, or before it; again, and the other way
   j k            by drawn line of a wrapped row; the row is never left
-  i a I A        type at the caret, after it, at the start, at the end
+  i a I A        type at the caret, after it, at the start, at the end;
+                 Esc ends the typing with the caret back on a character
   d c y          take a motion or a text object: dw, c2e, d$, yiw, ct,
                  iw aw iW aW a word; i" a" i' quotes and backticks;
                  i( a( ib i[ i{ i< brackets
   x X D C s      delete a character, the one before, to the end; change those
   r ~            replace a character; switch case
   p P            put what d c y x last took after, before the caret
+  v              select from the caret: motions and iw a" stretch it,
+                 d x c s y ~ act on it; v or Esc ends it
+  *              filter the pane by the word under the caret, a sigil whole,
+                 as / and Enter would; n N walk the matches
   u Ctrl+R       undo, redo changes made in this row before leaving it
   .              repeat the last change made inside a row, with what was typed
   2 3 …          count: 3w, d2w, 2fx, 3x
-  Esc            drop what is pending, else keep the row and return; typing
-                 opened here ends with Esc in the outline, as all typing does
+  Esc            drop what is pending, else keep the row and return
                  everything done on one visit is one undo step
 
 Sigils, typed anywhere in a row
@@ -183,6 +198,8 @@ Copy and export spell otherwise empty rows as $open, $note or their state.
 A web address in a row is a link the terminal can open.
 From a shell, docket add "Buy milk %home @fri" captures without opening
 the app; with no words it reads one row a line from standard input.
+docket ls '$next #home' prints the rows a filter matches, one a line with
+a tab and where each lives; with no filter, the whole outline as :export.
 
 Nothing asks for confirmation: undo takes anything back.
 Press any key to return.`
@@ -519,6 +536,9 @@ func (m *Model) statusLine(w int) (string, int) {
 		left = m.edit.textStatus()
 	case m.edit != nil:
 		left = "Enter next row · Esc done · Tab indent"
+		if m.edit.inside {
+			left = "Esc back to the caret · Enter next row · Tab indent"
+		}
 		if m.suggest(m.edit, surfaceRow) != "" {
 			left += " · → completes"
 		}
@@ -586,10 +606,18 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 		return used
 	}
 
-	// A row landed on from afar, and not on screen, is shown mid-pane.
-	if m.centre && m.cursor < len(m.vis) && (m.cursor < m.top || span(m.top, m.cursor) > listH) {
+	// A row landed on from afar, and not on screen, is shown mid-pane; zt, zz
+	// and zb place the cursor's row wherever it is.
+	afar := m.centre && m.cursor < len(m.vis) && (m.cursor < m.top || span(m.top, m.cursor) > listH)
+	if m.scroll != 0 && m.cursor < len(m.vis) || afar {
 		m.top = m.cursor
-		above := (listH - len(rowLines(m.cursor))) / 2
+		above := listH - len(rowLines(m.cursor))
+		switch m.scroll {
+		case 't':
+			above = 0
+		case 'z', 0:
+			above /= 2
+		}
 		for m.top > 0 {
 			n := len(rowLines(m.top - 1))
 			if n > above {
@@ -598,7 +626,7 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 			m.top, above = m.top-1, above-n
 		}
 	}
-	m.centre = false
+	m.centre, m.scroll = false, 0
 	// Keep the cursor's row whole on screen, and leave no gap at the end.
 	m.top = max(0, min(m.top, m.cursor))
 	for m.top < m.cursor && span(m.top, m.cursor) > listH {
