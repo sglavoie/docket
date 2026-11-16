@@ -848,6 +848,61 @@ func (m *Model) newRow(above bool) {
 	m.newRowAt(above, m.current())
 }
 
+// openSpot is where o opens a row below cur: as the first child of an open
+// parent, else directly after it, and with no row last in the place. The row
+// goes under parent, after the sibling named, or first when it is "".
+func (m *Model) openSpot(cur string) (parent, after string) {
+	switch {
+	case cur == "":
+		kids := m.tree.Children(m.at.root)
+		if len(kids) == 0 {
+			return m.at.root, ""
+		}
+		return m.at.root, kids[len(kids)-1]
+	case len(m.tree.Children(cur)) > 0 && !m.folded[cur]:
+		return cur, ""
+	default:
+		return m.tree.Row(cur).Parent, cur
+	}
+}
+
+// moveHere moves the selected roots to where o would open a row, in screen
+// order, as one undo step. The cursor stays on its row.
+func (m *Model) moveHere(ids []string) {
+	cur := m.current()
+	roots := m.selectedRoots(ids)
+	moving := make(map[string]bool, len(roots))
+	for _, id := range roots {
+		moving[id] = true
+	}
+	parent, after := m.openSpot(cur)
+	left, right := "", ""
+	if after != "" {
+		left = m.tree.Row(after).Pos
+	}
+	// The rows land before the first sibling that is not one of them.
+	kids := m.tree.Children(parent)
+	i := slices.Index(kids, after) + 1
+	for ; i < len(kids); i++ {
+		if !moving[kids[i]] {
+			right = m.tree.Row(kids[i]).Pos
+			break
+		}
+	}
+	var ops []outline.Op
+	for _, id := range roots {
+		if m.live(id) {
+			left = outline.Between(left, right)
+			ops = append(ops, outline.Op{Kind: outline.Move, Row: id, Parent: parent, Pos: left})
+		}
+	}
+	if len(ops) > 0 && m.do(ops...) {
+		m.rebuild()
+		m.seek(cur)
+		m.msg = "moved here"
+	}
+}
+
 func (m *Model) newRowAt(above bool, cur string) {
 	if m.at.list != "" && m.at.query == "" {
 		m.msg = "add rows inside a project, or press a for the Inbox"
@@ -856,19 +911,14 @@ func (m *Model) newRowAt(above bool, cur string) {
 	if m.flat() {
 		return
 	}
-	parent, pos := m.at.root, ""
-	switch {
-	case cur == "":
-		pos = m.tree.PosLast(m.at.root)
-	case above:
+	var parent, pos string
+	if above && cur != "" {
 		parent = m.tree.Row(cur).Parent
 		pos = m.tree.PosBefore(parent, cur)
-	case len(m.tree.Children(cur)) > 0 && !m.folded[cur]:
-		parent = cur
-		pos = m.tree.PosAfter(cur, "")
-	default:
-		parent = m.tree.Row(cur).Parent
-		pos = m.tree.PosAfter(parent, cur)
+	} else {
+		var after string
+		parent, after = m.openSpot(cur)
+		pos = m.tree.PosAfter(parent, after)
 	}
 	op := outline.Op{Kind: outline.Insert, Row: m.newID(), Parent: parent, Pos: pos}
 	inv, err := m.apply([]outline.Op{op})
@@ -1149,7 +1199,7 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 			m.ask = nil
 			m.command(text)
 		default:
-			hits := match(m.targets(a.kind == askJump), text, 3)
+			hits := m.offers(a, text)
 			if len(hits) == 0 {
 				m.msg = "nothing matches " + text
 				return
@@ -1159,6 +1209,10 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 			if a.kind == askJump {
 				m.sideFocus = false
 				m.open(hit)
+				return
+			}
+			if hit.kind == kindHere {
+				m.moveHere(a.rows)
 				return
 			}
 			to := hit.rowID()
@@ -1180,7 +1234,7 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 	case "down", "ctrl+n", "up", "ctrl+p":
 		// A picker's arrows walk its matches.
 		if a.kind == askJump || a.kind == askMove {
-			n := len(match(m.targets(a.kind == askJump), text, 3))
+			n := len(m.offers(a, text))
 			if k == "down" || k == "ctrl+n" {
 				a.choice++
 			} else {

@@ -38,6 +38,7 @@ const (
 	kindHeading  = "heading"
 	kindReview   = "review" // active projects, longest untouched first
 	kindFilter   = "filter" // a saved filter
+	kindHere     = "here"   // a move's destination: where o would open a row
 )
 
 const (
@@ -424,6 +425,32 @@ func (m *Model) targets(jump bool) []entry {
 		}
 	}
 	return append(out, m.headings...)
+}
+
+// offers are the destinations a picker shows for what is typed: its matches,
+// and for a blank move with the cursor off the selection, here before them.
+func (m *Model) offers(a *prompt, text string) []entry {
+	hits := match(m.targets(a.kind == askJump), text, 3)
+	if a.kind == askMove && text == "" && m.canMoveHere() {
+		hits = append([]entry{{kind: kindHere, label: "here"}}, hits...)
+	}
+	return hits
+}
+
+// canMoveHere reports whether the selection can land at the cursor: an
+// outline is on screen, and the cursor's row is neither selected nor under a
+// selected row.
+func (m *Model) canMoveHere() bool {
+	cur := m.current()
+	if len(m.picked) == 0 || cur == "" || m.at.list != "" || m.at.query != "" {
+		return false
+	}
+	for id := cur; id != ""; id = m.tree.Row(id).Parent {
+		if m.picked[id] {
+			return false
+		}
+	}
+	return true
 }
 
 // rank scores how well a name answers a query: its start, the start of one

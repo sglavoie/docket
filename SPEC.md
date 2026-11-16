@@ -256,6 +256,10 @@ The status line becomes a prompt for three acts, named at its left edge:
   under a deleted row are excluded. Headings are labelled by their path,
   with colons dropped: `project › TUI › Sidebar`. Projects precede headings
   on equal match ranks. Moving under oneself or a descendant is refused.
+  With rows selected and the cursor on a row that is neither selected nor
+  under a selected row, a blank query offers `here` at the front, so `m`
+  `Enter` moves the selection where `o` would open a row, as described under
+  Selection. Typing a name drops the offer.
 
 The two pickers list their matches as you type, best first. `Down` and `Up`
 walk them, and `Enter` takes the one at the front. A name matches by its start, the start of a word, anywhere
@@ -361,6 +365,16 @@ deselects. While rows are selected, `x`, `!`, `t`, `dd`, `m`, `>`, `<`, `J`,
 their value on every row unless all already hold it, in which case they
 clear it. The keys that work on one row (`e`, `o`, `O`, `Enter`) are refused
 and say so. The status line counts the selection, and `Esc` clears it.
+
+`m` then `Enter` on a blank query moves the selection `here`: where `o`
+would open a row at the cursor, as the first children of its row when that
+row has children and is unfolded, else just after it. The rows keep their
+screen order and their identity, a selected row under a selected row travels
+with it, and it is one undo step; the cursor and the selection stay. It is
+offered only in an outline (not a list or a filter) and only when the
+cursor's row is neither selected nor under a selected row. Selection does not
+survive leaving a place: to reach an exact spot in a project not on screen,
+`m` to the project, then `here`.
 
 `:all` replaces the selection with every row the pane shows. Under a filter
 in context it takes the matches only, never the dimmed ancestors; rows inside
@@ -585,7 +599,8 @@ This is the only command; everything else is done in the outline.
 
 9. **Queries.** `$next` filters each project's next action; `@<date` and
    `@>date` filter deadline ranges, and a flat deadline filter reads soonest
-   first. `:all` selects every row the pane shows. *In progress.*
+   first. `:all` selects every row the pane shows. `m` `Enter` moves the selection
+   `here`, where `o` would open a row. *In progress.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add`.

@@ -34,6 +34,7 @@ const helpText = `Docket
   J K            move the row down, up (also in Today; no selection there)
   x  !  t        done and back, flag, pick for Today in pick order
   m              move to a project, Inbox or heading
+                 with a selection, m Enter moves it here, where o would open a row
   y              copy the row or selection, including subtrees
   v              select the row; x ! t dd m and stamps act on the selection
                  > < J K move adjacent selected siblings together
@@ -372,7 +373,7 @@ func (m *Model) statusLine(w int) (string, int) {
 		case a.kind == askJump || a.kind == askMove:
 			// The first name is the one Enter takes.
 			offer := sgrDim + "nothing matches" + sgrReset
-			hits := match(m.targets(a.kind == askJump), strings.TrimSpace(string(a.ed.buf)), 3)
+			hits := m.offers(a, strings.TrimSpace(string(a.ed.buf)))
 			from := max(0, min(a.choice, len(hits)-1))
 			for i, e := range hits[from:] {
 				if i == 0 && from > 0 {

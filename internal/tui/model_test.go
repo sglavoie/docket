@@ -819,3 +819,142 @@ func TestCaptureUsesTheDestinationDefault(t *testing.T) {
 		t.Fatalf("captured child of task = %q", got)
 	}
 }
+
+// outlineToGather is a project of five rows, one holding a child, and a
+// second project with one task.
+func outlineToGather(t *testing.T) *harness {
+	h := start(t)
+	h.press("o", `"Alpha"`, "enter", "tab", `"A1 $open"`, "enter", `"A2 $open"`, "enter", "tab", `"A2a $open"`, "enter", "shift+tab", `"A3 $open"`, "enter", `"A4 $open"`, "esc")
+	h.press("g", "g", "O", `"Beta"`, "enter", "tab", `"B1 $open"`, "esc")
+	return h
+}
+
+func TestMoveHereGathersTheSelection(t *testing.T) {
+	t.Run("scattered rows gather after the cursor", func(t *testing.T) {
+		h := outlineToGather(t)
+		h.press("p", `"alpha"`, "enter", "v", "j", "j", "v", "k", "k")
+		h.want(
+			" ┃○ A1",
+			"  ○ A2",
+			"▌   ○ A2a",
+			" ┃○ A3",
+			"  ○ A4",
+		)
+		h.press("m")
+		if got := h.status(); got != "Move to ›    here · Inbox · Beta · Alpha" {
+			t.Fatalf("picker line = %q", got)
+		}
+		steps := len(h.m.undo)
+		h.press("enter")
+		if h.m.msg != "moved here" || len(h.m.undo) != steps+1 {
+			t.Fatalf("msg = %q, undo steps %d", h.m.msg, len(h.m.undo)-steps)
+		}
+		// The cursor stays on its row, and the selection is kept.
+		h.want(
+			"  ○ A2",
+			"▌   ○ A2a",
+			" ┃  ○ A1",
+			" ┃  ○ A3",
+			"  ○ A4",
+		)
+		// One undo puts every row back.
+		h.press("u")
+		h.want(
+			"▌┃○ A1",
+			"  ○ A2",
+			"    ○ A2a",
+			" ┃○ A3",
+			"  ○ A4",
+		)
+	})
+
+	t.Run("an open parent takes them as first children", func(t *testing.T) {
+		h := outlineToGather(t)
+		h.press("p", `"alpha"`, "enter", "v", "j", "j", "j", "v", "k", "k", "k", "m", "enter")
+		h.want(
+			"▌ ○ A2",
+			" ┃  ○ A1",
+			" ┃  ○ A4",
+			"    ○ A2a",
+			"  ○ A3",
+		)
+	})
+
+	t.Run("a folded parent takes them after it", func(t *testing.T) {
+		h := outlineToGather(t)
+		h.press("p", `"alpha"`, "enter", "v", "j", "j", "j", "v", "k", "k", "k", "h", "m", "enter")
+		h.want(
+			"▌ ○ A2 +1",
+			" ┃○ A1",
+			" ┃○ A4",
+			"  ○ A3",
+		)
+	})
+
+	t.Run("across projects in Projects", func(t *testing.T) {
+		h := outlineToGather(t)
+		// A2a is selected under A2, so it travels with it.
+		h.press("j", "j", "j", "v", "v", "g", "g", "j", "m", "enter")
+		h.want(
+			"  ▾ Beta",
+			"▌   ○ B1",
+			" ┃  ○ A2",
+			" ┃    ○ A2a",
+			"  ▾ Alpha",
+			"    ○ A1",
+			"    ○ A3",
+			"    ○ A4",
+		)
+		h.press("u")
+		h.want(
+			"  ▾ Beta",
+			"    ○ B1",
+			"  ▾ Alpha",
+			"    ○ A1",
+			"▌┃  ○ A2",
+			" ┃    ○ A2a",
+			"    ○ A3",
+			"    ○ A4",
+		)
+	})
+
+	t.Run("not offered on or under the selection", func(t *testing.T) {
+		h := outlineToGather(t)
+		h.press("p", `"alpha"`, "enter", "j", "v", "m")
+		if got := h.status(); got != "Move to ›    Inbox · Beta · Alpha" {
+			t.Fatalf("under the selection: %q", got)
+		}
+		h.press("esc", "k", "m")
+		if got := h.status(); got != "Move to ›    Inbox · Beta · Alpha" {
+			t.Fatalf("on the selection: %q", got)
+		}
+	})
+
+	t.Run("not offered in a filter or a list, nor without a selection", func(t *testing.T) {
+		h := outlineToGather(t)
+		h.press("p", `"alpha"`, "enter", "m")
+		if got := h.status(); got != "Move to ›    Inbox · Beta · Alpha" {
+			t.Fatalf("no selection: %q", got)
+		}
+		h.press("esc", "/", `"A"`, "enter", "j", "v", "m")
+		if got := h.status(); got != "Move to ›    Inbox · Beta · Alpha" {
+			t.Fatalf("filter: %q", got)
+		}
+		h.press("esc", "esc", "esc", "t", "j", "t", "p", `"today"`, "enter", "v", "m")
+		if got := h.status(); got != "Move to ›    Inbox · Beta · Alpha" {
+			t.Fatalf("list: %q", got)
+		}
+	})
+
+	t.Run("typing a name still moves to it", func(t *testing.T) {
+		h := outlineToGather(t)
+		h.press("p", `"alpha"`, "enter", "v", "j", "m", `"beta"`)
+		if got := h.status(); got != "Move to › beta   Beta" {
+			t.Fatalf("picker line = %q", got)
+		}
+		h.press("enter")
+		if h.m.msg != "moved to Beta" {
+			t.Fatalf("msg = %q", h.m.msg)
+		}
+	})
+}
