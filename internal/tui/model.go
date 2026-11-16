@@ -1276,6 +1276,21 @@ func (m *Model) setFields(id string, want map[string]string) []outline.Op {
 					outline.Op{Kind: outline.Set, Row: id, Field: sigil.FieldState, Value: sigil.Open},
 					outline.Op{Kind: outline.Set, Row: id, Field: sigil.FieldChanged, Value: strconv.FormatInt(m.now(), 10)})
 			}
+			// Reset the checklist at every depth in this same undo step,
+			// preserving each row's dates and every state other than done.
+			changed := strconv.FormatInt(m.now(), 10)
+			var reopen func(string)
+			reopen = func(parent string) {
+				for _, child := range m.tree.Children(parent) {
+					if m.tree.Row(child).Fields[sigil.FieldState] == sigil.Done {
+						ops = append(ops,
+							outline.Op{Kind: outline.Set, Row: child, Field: sigil.FieldState, Value: sigil.Open},
+							outline.Op{Kind: outline.Set, Row: child, Field: sigil.FieldChanged, Value: changed})
+					}
+					reopen(child)
+				}
+			}
+			reopen(id)
 			label, _ := sigil.DueLabel(next, m.today())
 			m.msg = "repeats: next " + strings.TrimPrefix(label, "@")
 			continue

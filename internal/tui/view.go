@@ -186,6 +186,7 @@ Sigils, typed anywhere in a row
   @fri @+3d @11-20 @today    deadline
   @@mon          not before that day: dimmed until then, and in Today on the day
   *2w *monthly   repeats: closing it moves it to its next day, still open
+                 done rows under it reopen too, at every depth; u undoes all
   #tag           tag; #est=2h a tag with a value, one value to a name
   $doing $waiting $done $canceled $parked $open $note    state
   A row is a note at top-level, under a task, or when it ends in a colon.

@@ -977,6 +977,10 @@ its start day moves with it; with no deadline, its start day goes one
 interval on from today. A month step keeps the day, landing on the last day
 of a shorter month. The status line says when it is next. The row is changed
 in place, never copied, so two machines closing it cannot make two.
+Every done row under it, at any depth, reopens with `changed` stamped in
+the same undo step. Canceled, parked, waiting, doing and open rows and notes
+stay as they are, and no date under it changes. One `u` restores the parent's
+dates and every reopened row; `.` repeats the close.
 
 ## Outside the app
 
@@ -1095,6 +1099,9 @@ These are the only commands; everything else is done in the outline.
    branch; `zt` `zz` `zb` place the cursor's row in the pane.
    `:s/old/new` changes text across rows, and `.` repeats it. `docket ls`
    answers a filter from a shell. *Built.*
+
+16. **Arrival.** Closing a repeating row reopens every done row under it,
+   at any depth, preserving their dates and undoing together. *In progress.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add` and `docket ls`, macros (`.`,
