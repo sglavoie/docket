@@ -152,6 +152,8 @@ func (m *Model) scan() {
 	m.parked = 0
 	m.headings = m.headings[:0]
 	m.outlineOrder = map[string]int{}
+	m.next = map[string]bool{}
+	found := false // the project being visited has its next action
 
 	var visit func(id string, stat *entry, touch *int64, hidden bool, path string)
 	visit = func(id string, stat *entry, touch *int64, hidden bool, path string) {
@@ -191,6 +193,12 @@ func (m *Model) scan() {
 					lists[kindStale] = append(lists[kindStale], id)
 				}
 			}
+			// A project's next action is its first row, in outline order,
+			// that can be worked on now: so the order of its rows is its
+			// priority.
+			if stat != nil && !found && (l.State == sigil.Open || l.State == sigil.Doing) && !l.Later(today) {
+				m.next[id], found = true, true
+			}
 			if stat != nil && (l.State == sigil.Open || l.State == sigil.Doing || l.State == sigil.Waiting) {
 				stat.idle = false
 				stat.open++
@@ -220,6 +228,7 @@ func (m *Model) scan() {
 		}
 		l := sigil.FromFields(m.tree.Row(top).Fields)
 		stat := entry{kind: kindProject, id: top, label: l.Text, idle: true}
+		found = false
 		visit(top, &stat, &touch, l.Closed(), "")
 		switch {
 		case l.State == sigil.Parked:

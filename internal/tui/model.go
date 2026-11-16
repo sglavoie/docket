@@ -108,6 +108,7 @@ type Model struct {
 	tags      []string // tags in use, most used first
 	headings  []entry  // live heading destinations, in tree order
 	parked    int
+	next      map[string]bool // each active project's next action, derived in scan
 
 	outlineOrder map[string]int // traversal ranks, derived in scan for Today ties
 

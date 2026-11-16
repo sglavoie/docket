@@ -23,7 +23,7 @@ type term struct {
 
 // cond is one reading of a term.
 type cond struct {
-	kind  byte // t text, ! flag, # tag, $ state, @ deadline, s start, * repeat, ~ changed
+	kind  byte // t text, ! flag, # tag, $ state, n next action, @ deadline, s start, * repeat, ~ changed
 	value string
 }
 
@@ -73,7 +73,10 @@ func parseCond(w string, today time.Time) cond {
 			c.kind, c.value = '#', tag
 		}
 	case '$':
-		if state, ok := sigil.ParseState(w[1:]); ok {
+		// $next is read before the states: it is a filter word, not a state.
+		if strings.ToLower(w) == "$next" {
+			c.kind = 'n'
+		} else if state, ok := sigil.ParseState(w[1:]); ok {
 			c.kind, c.value = '$', state
 		}
 	case '*':
@@ -137,12 +140,14 @@ func sinceDay(s string, today time.Time) (string, bool) {
 	return from.Format("2006-01-02"), true
 }
 
-func matches(r *outline.Row, terms []term, today time.Time) bool {
+// matches reads one row against a query. next is each project's next
+// action, as the last scan found it.
+func matches(r *outline.Row, terms []term, today time.Time, next map[string]bool) bool {
 	l := sigil.FromFields(r.Fields)
 	for _, t := range terms {
 		ok := false
 		for _, c := range t.any {
-			ok = ok || holds(r, l, c, today)
+			ok = ok || holds(r, l, c, today, next)
 		}
 		if ok == t.neg {
 			return false
@@ -151,7 +156,7 @@ func matches(r *outline.Row, terms []term, today time.Time) bool {
 	return true
 }
 
-func holds(r *outline.Row, l sigil.Line, c cond, today time.Time) bool {
+func holds(r *outline.Row, l sigil.Line, c cond, today time.Time, next map[string]bool) bool {
 	switch c.kind {
 	case 't':
 		return strings.Contains(strings.ToLower(l.Text), c.value)
@@ -161,6 +166,8 @@ func holds(r *outline.Row, l sigil.Line, c cond, today time.Time) bool {
 		return slices.Contains(l.Tags, c.value)
 	case '$':
 		return l.State == c.value
+	case 'n':
+		return next[r.ID]
 	case '@':
 		_, days := sigil.DueLabel(l.Due, today)
 		switch c.value {
@@ -203,9 +210,10 @@ func (m *Model) refilter() {
 	if len(terms) == 0 {
 		return
 	}
+	m.scan() // $next reads the scan's answer
 	if m.at.list != "" {
 		for _, id := range m.at.rows {
-			if m.live(id) && matches(m.tree.Row(id), terms, today) {
+			if m.live(id) && matches(m.tree.Row(id), terms, today, m.next) {
 				m.at.hits = append(m.at.hits, visRow{id, 0})
 				m.at.matched[id] = true
 			}
@@ -220,7 +228,7 @@ func (m *Model) refilter() {
 				continue
 			}
 			at := len(m.at.hits)
-			ok := matches(m.tree.Row(id), terms, today)
+			ok := matches(m.tree.Row(id), terms, today, m.next)
 			if ok {
 				m.at.matched[id] = true
 			}

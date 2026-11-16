@@ -42,6 +42,7 @@ const helpText = `Docket
                  a|b is either: $open|doing, #home|errands, milk|eggs
                  ~7d ~2w ~today: state changed (or row made) since then,
                  so $done ~7d is what was finished this week
+                 $next: each project's first open or doing row not starting later
                  a filter shows every match, folded or not
   :              q, export [file], closed (hide or show done and canceled rows),
                  archive (move closed rows under the project's Archive: heading),

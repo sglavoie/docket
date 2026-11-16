@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"sort"
 	"strings"
 
@@ -110,6 +111,9 @@ func (m *Model) suggest(e *editor, surface string) string {
 		offers = m.tags
 	case '$':
 		offers = sigil.StateNames
+		if surface == askFilter {
+			offers = append(slices.Clone(offers), "next")
+		}
 	case '@':
 		offers = dateWords
 		if surface == askFilter {

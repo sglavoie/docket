@@ -272,7 +272,15 @@ Three more acts use the same line:
   `$waiting -~2w` what has waited longer than two. Every term must hold. A
   bar inside a word offers alternatives, and the word holds when any does:
   `$open|doing`, `#home|errands`, `milk|eggs`. The sigil is written once;
-  if one alternative cannot be read as it, the whole word is text. In an
+  if one alternative cannot be read as it, the whole word is text.
+  `$next` holds for each active project's next action: its first row, in
+  outline order, that is open or doing, has no start day still ahead, and is
+  not parked, under a parked row, or in a closed project, so the order of a
+  project's rows is its priority. It is one row per project, not per
+  heading; the Inbox has none.
+  It combines like any state word (`$next #home`, `-$next`,
+  `$next|waiting`), each term tested on the row, so `/$next`, `Tab` and
+  `:save next` keep the daily list of what could be done. In an
   outline a match keeps its
   ancestors, dimmed, so it is read where it lives; `Tab` switches to a flat
   list of matches and back. `Enter` keeps the filter and returns to the rows,
@@ -456,7 +464,7 @@ grammar cannot read also stays prose (`@alice`, `#123`, `$5`). `\#tag` keeps a r
 | `@date` | `due` | `today`, `tomorrow`, a weekday (the next one, never today), `+3d`, `+2w`, `MM-DD` (the next such day), `YYYY-MM-DD` |
 | `@@date` | `start` | The same forms as `@date` |
 | `*interval` | `repeat` | A count and `d`, `w`, `m` or `y` (`*3d`, `*2w`), or `daily`, `weekly`, `monthly`, `yearly` |
-| `$state` | `state` | `open`, `doing`, `waiting`, `done`, `canceled`, `parked`, `note`, or an unambiguous prefix (`$w`, `$c`, `$p`; `$d` is not one) |
+| `$state` | `state` | `open`, `doing`, `waiting`, `done`, `canceled`, `parked`, `note`, or an unambiguous prefix (`$w`, `$c`, `$p`; `$d` is not one). `$next` is read by the filter only: it is not a state |
 | `%name` | | On the capture line only: the project or heading to file the row in |
 
 Typed in a row, sigils become fields when the edit ends and may sit anywhere
@@ -558,6 +566,8 @@ This is the only command; everything else is done in the outline.
    a state changed (`~7d`). `p` reaches headings. `:archive` shelves closed
    work under `Archive:`. Web addresses are links. `docket add` captures
    from a shell. *Built.*
+
+9. **Queries.** `$next` filters each project's next action. *In progress.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add`.

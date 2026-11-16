@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/docket/internal/sigil"
 )
 
@@ -333,5 +335,103 @@ func TestExportPreservesEmptyNotesAndEscapes(t *testing.T) {
 	want := "Inbox\nSource: $open\n\t$note\n\t\tChild\n\t" + `\\\#tag` + "\n\t" + `prefix \\#tag` + "\n\t" + `\[ ] literal` + "\nDestination: $open\n"
 	if string(got) != want {
 		t.Fatalf("export = %q, want %q", got, want)
+	}
+}
+
+// projectsWithNext is four projects whose rows test what a next action is.
+func projectsWithNext(t *testing.T) *harness {
+	h := start(t)
+	h.m.Update(tea.WindowSizeMsg{Width: 100, Height: 24})
+	h.press("o", `"Alpha"`, "enter", "tab",
+		`"Later thing @@+3d"`, "enter",
+		`"Parked thing $parked"`, "enter", "tab", `"Hidden child $open"`, "enter", "shift+tab",
+		`"Chase Bob $waiting"`, "enter",
+		`"Fix login $doing #home"`, "enter",
+		`"Write docs #home"`, "enter", "shift+tab",
+		`"Beta"`, "enter", "tab", `"Spec:"`, "enter", "tab", `"Draft spec"`, "enter", "shift+tab", `"Other"`, "enter", "shift+tab",
+		`"Gamma $parked"`, "enter", "tab", `"Ship it $open"`, "enter", "shift+tab",
+		`"Delta"`, "enter", "tab", `"Old thing $done"`, "esc",
+		"a", `"Inbox task"`, "enter", "esc")
+	h.want(
+		"  ▾ Alpha",
+		"    ○ Later thing @@wed",
+		"    ◌ Parked thing",
+		"      ○ Hidden child",
+		"    ◔ Chase Bob",
+		"    ● Fix login #home",
+		"    ○ Write docs #home",
+		"  ▾ Beta",
+		"    ▾ Spec:",
+		"      ○ Draft spec",
+		"    ○ Other",
+		"  ◌ Gamma",
+		"    ○ Ship it",
+		"  ▾ Delta",
+		"▌   ✓ Old thing",
+	)
+	return h
+}
+
+func TestNextIsTheFirstWorkableRowOfEachProject(t *testing.T) {
+	h := projectsWithNext(t)
+	h.press("/", `"$next"`)
+	h.want(
+		"▌ ▾ Alpha",
+		"    ● Fix login #home",
+		"  ▾ Beta",
+		"    ▾ Spec:",
+		"      ○ Draft spec",
+	)
+	h.press("tab")
+	h.want(
+		"▌ ● Fix login #home · Alpha",
+		"  ○ Draft spec · Beta",
+	)
+	h.press("esc")
+
+	cases := map[string][]string{
+		"$next":         {"Fix login", "Draft spec"},
+		"$next #home":   {"Fix login"},
+		"-$next #home":  {"Write docs"},
+		"$next|waiting": {"Chase Bob", "Fix login", "Draft spec"},
+		"$n -$parked":   {"Alpha", "Beta", "Spec:", "Delta"}, // $n is still $note
+		"$ne":           nil,                                 // a prefix of next is not next
+	}
+	for query, want := range cases {
+		h.press("/", `"`+query+`"`) // flat since the Tab above
+		var got []string
+		for _, v := range h.m.vis {
+			got = append(got, h.m.tree.Row(v.id).Text())
+		}
+		if strings.Join(got, ", ") != strings.Join(want, ", ") {
+			t.Errorf("filter %q = %v, want %v", query, got, want)
+		}
+		h.press("esc")
+	}
+}
+
+func TestClosingTheNextActionKeepsItUntilTheQueryIsRead(t *testing.T) {
+	h := projectsWithNext(t)
+	h.press("/", `"$next"`, "tab", "enter", "x")
+	h.want(
+		"▌ ✓ Fix login #home · Alpha",
+		"  ○ Draft spec · Beta",
+	)
+	h.press("/", "backspace", `"t"`, "enter")
+	h.want(
+		"▌ ○ Write docs #home · Alpha",
+		"  ○ Draft spec · Beta",
+	)
+}
+
+func TestNextIsOfferedOnTheFilterLineOnly(t *testing.T) {
+	h := projectsWithNext(t)
+	h.press("/", `"$ne"`)
+	if !strings.Contains(h.bottom(), "$next") {
+		t.Fatalf("filter = %q", h.bottom())
+	}
+	h.press("esc", "o", `"$ne"`)
+	if strings.Contains(strings.Join(h.lines(), "\n"), "$next") {
+		t.Fatalf("a row offers $next")
 	}
 }
