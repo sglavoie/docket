@@ -81,6 +81,8 @@ type Model struct {
 	width, height int
 	at            place
 	zoom          []place // where Esc returns to
+	back          *visit  // the place the last jump left
+	sideFrom      *visit  // where this sidebar visit began
 	folded        map[string]bool
 	vis           []visRow
 	cursor, top   int
@@ -1207,8 +1209,7 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 			hit := hits[min(a.choice, len(hits)-1)]
 			m.ask = nil
 			if a.kind == askJump {
-				m.sideFocus = false
-				m.open(hit)
+				m.jump(hit)
 				return
 			}
 			if hit.kind == kindHere {
@@ -1431,7 +1432,7 @@ func (m *Model) sideKey(k string) {
 	case "k", "up":
 		m.sideStep(-1)
 	case "tab", "enter", "esc", "l", "right":
-		m.sideFocus = false
+		m.leaveSidebar()
 	case "p":
 		m.ask = &prompt{kind: askJump}
 	case "a":
@@ -1497,6 +1498,7 @@ func (m *Model) normalKey(k string) {
 	case "?":
 		m.openHelp()
 	case "tab":
+		m.sideFrom = m.departure()
 		m.sideFocus = true
 	case "p":
 		m.ask = &prompt{kind: askJump}

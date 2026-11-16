@@ -57,6 +57,7 @@ const helpText = `Docket
                  sync folder (share with other machines through a synced folder)
   a              capture to the Inbox; %name files in a project or heading
   p              go to a project, heading, list or saved filter by name
+                 blank p Enter goes back to the place the last jump left
   Tab            the sidebar: j k choose, Enter work in it
   dd             delete
   u  Ctrl+R      undo, redo
@@ -299,14 +300,18 @@ func linkOf(w string) string {
 }
 
 func (m *Model) breadcrumb() string {
+	return m.placeName(m.at)
+}
+
+func (m *Model) placeName(p place) string {
 	switch {
-	case m.at.list != "":
-		return strings.ToUpper(m.at.list[:1]) + m.at.list[1:]
-	case m.at.root == "":
+	case p.list != "":
+		return strings.ToUpper(p.list[:1]) + p.list[1:]
+	case p.root == "":
 		return "Projects"
 	}
 	var parts []string
-	for id := m.at.root; id != ""; {
+	for id := p.root; id != ""; {
 		r := m.tree.Row(id)
 		if r == nil {
 			break

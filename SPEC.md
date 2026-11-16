@@ -253,7 +253,16 @@ The status line becomes a prompt for three acts, named at its left edge:
   what was typed.
 - `p` **Go to ›** opens a project, a heading, a list or a saved filter by
   name. A heading opens inside its project: the sidebar stays on the
-  project and `Esc` backs out to it.
+  project and `Esc` backs out to it. After a jump, a blank query offers
+  `back` and the name of the place left first; typing a name drops the
+  offer. Taking it restores that place's held rows, filter, zoom, sidebar
+  entry and cursor. It is itself a jump, so blank `p` `Enter` alternates
+  between two places. A jump is a picker destination opened with `p`
+  `Enter`, or a sidebar visit ending in a different place; walking several
+  sidebar entries counts once, from where `Tab` was pressed. `Enter`
+  zooming, `Esc` backing out and `h` are not jumps. One place is remembered
+  for this session only, and is not offered if its root row is no longer
+  live. Until a jump, blank `p` `Enter` opens the Inbox as before.
 - `m` **Move to ›** makes the cursor's row or selection the last children of
   a project, the Inbox or a heading, in screen order. A heading is any live
   row ending in a colon under a project or the Inbox, at any depth; rows
@@ -611,6 +620,8 @@ This is the only command; everything else is done in the outline.
 
 10. **Repeat and reach.** `h` in a list or flat filter shows the cursor's
    row where it lives; `Esc` returns to the held list or filter on that row.
+   Blank `p` `Enter` returns to the place the last jump left, with its zoom
+   and cursor; a sidebar visit counts as one jump.
    *In progress.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any

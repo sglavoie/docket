@@ -2,6 +2,7 @@ package tui
 
 import (
 	"errors"
+	"maps"
 	"slices"
 	"sort"
 	"strconv"
@@ -39,6 +40,7 @@ const (
 	kindReview   = "review" // active projects, longest untouched first
 	kindFilter   = "filter" // a saved filter
 	kindHere     = "here"   // a move's destination: where o would open a row
+	kindBack     = "back"   // the place the last jump left
 )
 
 const (
@@ -64,6 +66,62 @@ type place struct {
 	flat    bool
 	hits    []visRow
 	matched map[string]bool
+}
+
+// visit keeps a departure independent of later list sorting, filtering and
+// cursor bookkeeping (different filters can share the same placeKey).
+type visit struct {
+	at   place
+	zoom []place
+	sel  entry
+	row  string
+}
+
+func clonePlace(p place) place {
+	p.rows = slices.Clone(p.rows)
+	p.hits = slices.Clone(p.hits)
+	p.kept = maps.Clone(p.kept)
+	p.matched = maps.Clone(p.matched)
+	return p
+}
+
+func (m *Model) departure() *visit {
+	v := &visit{at: clonePlace(m.at), sel: m.sel, row: m.current()}
+	for _, p := range m.zoom {
+		v.zoom = append(v.zoom, clonePlace(p))
+	}
+	return v
+}
+
+func (m *Model) leaveSidebar() {
+	if v := m.sideFrom; v != nil {
+		if placeKey(v.at) != placeKey(m.at) || v.at.query != m.at.query || v.at.flat != m.at.flat {
+			m.back = v
+		}
+	}
+	m.sideFrom = nil
+	m.sideFocus = false
+}
+
+func (m *Model) jump(e entry) {
+	from := m.sideFrom
+	if from == nil {
+		from = m.departure()
+	}
+	m.sideFrom = nil
+	m.sideFocus = false
+	if e.kind == kindBack {
+		to := m.back
+		m.leave()
+		m.at, m.zoom, m.sel = to.at, to.zoom, to.sel
+		m.picked = map[string]bool{}
+		m.cursor, m.top = 0, 0
+		m.rebuild()
+		m.seek(to.row)
+	} else {
+		m.open(e)
+	}
+	m.back = from
 }
 
 // entry is one line of the sidebar, and one destination.
@@ -429,11 +487,18 @@ func (m *Model) targets(jump bool) []entry {
 }
 
 // offers are the destinations a picker shows for what is typed: its matches,
-// and for a blank move with the cursor off the selection, here before them.
+// with here for a blank move or back for a blank jump before them.
 func (m *Model) offers(a *prompt, text string) []entry {
 	hits := match(m.targets(a.kind == askJump), text, 3)
 	if a.kind == askMove && text == "" && m.canMoveHere() {
 		hits = append([]entry{{kind: kindHere, label: "here"}}, hits...)
+	}
+	if a.kind == askJump && text == "" && m.back != nil && m.live(m.back.at.root) {
+		label := "back " + m.placeName(m.back.at)
+		if m.back.at.query != "" {
+			label += " / " + m.back.at.query
+		}
+		hits = append([]entry{{kind: kindBack, label: label}}, hits...)
 	}
 	return hits
 }
