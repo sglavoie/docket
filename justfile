@@ -19,5 +19,12 @@ check:
     go vet ./...
     go test ./...
 
+# Open ./dev.db, seeding it with a heavy outline the first time
 run: build
+    test -e dev.db || go run ./tools/seed -db dev.db
     DOCKET_DB=./dev.db ./bin/docket
+
+# Replace ./dev.db with a fresh heavy outline (just seed 20000 80: tasks, projects)
+seed tasks="6000" projects="48":
+    rm -f dev.db dev.db-wal dev.db-shm
+    go run ./tools/seed -db dev.db -tasks {{ tasks }} -projects {{ projects }}

@@ -11,7 +11,8 @@ same commit as any behaviour it describes.
 just build   # bin/docket
 just test
 just check   # fmt, vet, test
-just run     # against ./dev.db, never the real database
+just run     # against ./dev.db, never the real database; seeds it if absent
+just seed    # replace ./dev.db with ~6,000 tasks in 48 projects
 ```
 
 ## Layers
