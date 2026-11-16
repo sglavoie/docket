@@ -67,6 +67,7 @@ type place struct {
 	// it holds the rows it found until the query changes.
 	query   string
 	flat    bool
+	here    string // the row &. stands for: the cursor's when the filter was opened
 	hits    []visRow
 	matched map[string]bool
 }
@@ -126,6 +127,7 @@ func (m *Model) travel(back bool) bool {
 		m.cursor, m.top = 0, 0
 		m.rebuild()
 		m.seek(v.row)
+		m.land()
 		return true
 	}
 	m.msg = "no newer place"
@@ -375,6 +377,7 @@ func (m *Model) scan() {
 
 // open shows a sidebar destination in the outline pane.
 func (m *Model) open(e entry) {
+	here := m.current()
 	m.leave()
 	m.sel = e
 	m.zoom = nil
@@ -418,7 +421,7 @@ func (m *Model) open(e entry) {
 		m.at = place{}
 		for _, f := range m.filters {
 			if f.Name == e.id {
-				m.at = place{query: f.Query, flat: f.Flat}
+				m.at = place{query: f.Query, flat: f.Flat, here: here}
 				if m.live(f.Root) {
 					m.at.root = f.Root
 				}
@@ -544,7 +547,7 @@ func (m *Model) targets(jump bool) []entry {
 }
 
 // offers are the destinations a picker shows for what is typed: its matches,
-// with here for a blank move or back for a blank jump before them.
+// with here for a blank move or none for a blank link before them.
 func (m *Model) offers(a *prompt, text string) []entry {
 	places := m.targets(a.kind == askJump)
 	if a.kind == askLink {

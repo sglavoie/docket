@@ -34,6 +34,8 @@ const helpText = `Docket
   n N            next, previous match of the filter on screen, else of the one
                  last kept with Enter or dropped with Esc; this session only
                  all are motions: 3}, d}, y), VH and dn work; lists step by row
+                 a row reached from afar (n N, a jump, the trail, a place
+                 come back to) is shown mid-pane; one on screen stays put
   h l            fold, unfold; step to parent, first child
                  in lists and flat filters, h shows the row where it lives;
                  Esc returns to the held rows; l does nothing
@@ -64,6 +66,10 @@ const helpText = `Docket
   d y            delete or copy: dd yy take the row or selection with subtrees
                  a motion takes the inclusive range; no selection with motions
                  counts multiply: d3j = 3dj; Esc or another key cancels
+                 ic is: row objects, for d y > < alike: ic the rows under
+                 this row, is the row and all its siblings, each with what
+                 is under it: dic empties a row, <ic dissolves a group,
+                 yis copies a level; outlines only, no selection
                  both fill the session register and clipboard; y alone waits
                  copy keeps the cursor; one u restores a delete, keeping the register
   p P            put the register after, before the row as new rows at its level
@@ -72,10 +78,13 @@ const helpText = `Docket
                  no lists, filters or selection; sidebar ignores p P
                  empty places receive children; each put keeps the register
                  put makes new identities; m J K keep the row's identity
+  gp gP          put the last copy instead: what y took, even after a delete
   v V            pick a row; sweep with motions (V ends, Esc clears)
                  x ! t dd yy m and stamps act on the selection
                  >> << J K move adjacent selected siblings together
   # @ $ * -      stamp: type sigils, Enter sets them (-#tag, -@, -@@, -* remove)
+                 @++1w @--3d move the deadline from the day the row has, not
+                 from today (d w m y); @@++1w the start day; no day, no change
   /              filter by text and sigils; -word excludes; Tab flat or in context
                  # any tag, $ any task; -# untagged, -$ notes
                  a|b is either: $open|doing, #home|!, milk|#food
@@ -90,8 +99,15 @@ const helpText = `Docket
                  _term tests the rows under this one, at any depth: _@overdue,
                  -_$open|doing (nothing left to do under it); __ is text
                  #est any value, #est=2h that one, #est<3 #est>3 at most, at least
+                 & a row that links to another; &word to a row holding word;
+                 &. to the row the cursor was on: the rows that point here
                  a filter shows every match, folded or not
+  Up Down        on the / : and stamp lines, recall the lines kept there
+                 before, those beginning with what is typed; kept across
+                 restarts on this machine
   :              q, help (open this page), export [file],
+                 import file (read such a file back as rows after the cursor;
+                 in Projects its Inbox line is the Inbox again; one undo),
                  closed (hide or show done and canceled rows),
                  numbers (each row says how far it is from the cursor: a count),
                  all (select every row shown: /#old, :all, -#old #new retags),
@@ -570,6 +586,19 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 		return used
 	}
 
+	// A row landed on from afar, and not on screen, is shown mid-pane.
+	if m.centre && m.cursor < len(m.vis) && (m.cursor < m.top || span(m.top, m.cursor) > listH) {
+		m.top = m.cursor
+		above := (listH - len(rowLines(m.cursor))) / 2
+		for m.top > 0 {
+			n := len(rowLines(m.top - 1))
+			if n > above {
+				break
+			}
+			m.top, above = m.top-1, above-n
+		}
+	}
+	m.centre = false
 	// Keep the cursor's row whole on screen, and leave no gap at the end.
 	m.top = max(0, min(m.top, m.cursor))
 	for m.top < m.cursor && span(m.top, m.cursor) > listH {

@@ -411,3 +411,41 @@ func NextDate(from, every string, today time.Time) string {
 		}
 	}
 }
+
+// ParseShift reads how far a stamp moves a day a row already has: ++3d or
+// --2w, a count and d, w, m or y. The count is negative for an earlier day.
+func ParseShift(s string) (n int, unit byte, ok bool) {
+	if len(s) < 4 || (s[:2] != "++" && s[:2] != "--") {
+		return 0, 0, false
+	}
+	unit = s[len(s)-1] | 0x20
+	n, err := strconv.Atoi(s[2 : len(s)-1])
+	if err != nil || n < 1 || n > 3650 || !strings.ContainsRune("dwmy", rune(unit)) {
+		return 0, 0, false
+	}
+	if s[0] == '-' {
+		n = -n
+	}
+	return n, unit, true
+}
+
+// ShiftDate moves a day by a count of days, weeks, months or years. A month
+// step keeps the day, landing on the last day of a shorter month. A day it
+// cannot read is returned as it is.
+func ShiftDate(day string, n int, unit byte) string {
+	t, err := time.Parse(isoDay, day)
+	if err != nil {
+		return day
+	}
+	switch unit {
+	case 'd':
+		return t.AddDate(0, 0, n).Format(isoDay)
+	case 'w':
+		return t.AddDate(0, 0, 7*n).Format(isoDay)
+	case 'y':
+		n *= 12
+	}
+	first := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC).AddDate(0, n, 0)
+	last := first.AddDate(0, 1, -1).Day()
+	return first.AddDate(0, 0, min(t.Day(), last)-1).Format(isoDay)
+}

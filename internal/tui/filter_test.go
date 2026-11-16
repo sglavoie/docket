@@ -294,7 +294,7 @@ func TestCommands(t *testing.T) {
 		t.Fatalf("export:\n%s\nwant:\n%s", got, want)
 	}
 	h.press(":", `"nonsense"`, "enter")
-	if h.m.msg != "commands: q, help, export [file], closed, numbers, all, archive, fold [level], unfold, sort [keys], review, save name, forget name, sync [folder|off]" {
+	if h.m.msg != "commands: q, help, export [file], import file, closed, numbers, all, archive, fold [level], unfold, sort [keys], review, save name, forget name, sync [folder|off]" {
 		t.Fatalf("msg = %q", h.m.msg)
 	}
 	h.press(":", `"q"`, "enter")

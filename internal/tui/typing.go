@@ -87,7 +87,7 @@ func (m *Model) styler(surface string) func(string) []word {
 				if terms[0].below {
 					part = strings.TrimPrefix(part, "_")
 				}
-				if part != "" && strings.ContainsRune("!#$@*~", rune(part[0])) {
+				if part != "" && strings.ContainsRune(sigilStarts, rune(part[0])) {
 					style = sgrWarn
 					break
 				}
@@ -125,9 +125,9 @@ func (m *Model) suggest(e *editor, surface string) string {
 		return ""
 	}
 	if i := strings.LastIndexByte(word, '|'); surface == askFilter && i >= 0 {
-		sig := word[:len(word)-len(strings.TrimLeft(word, "!#$@*~"))]
+		sig := word[:len(word)-len(strings.TrimLeft(word, sigilStarts))]
 		word = word[i+1:]
-		if word == "" || !strings.ContainsRune("!#$@*~", rune(word[0])) {
+		if word == "" || !strings.ContainsRune(sigilStarts, rune(word[0])) {
 			word = sig + word
 		}
 		if word == "" {

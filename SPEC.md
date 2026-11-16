@@ -85,6 +85,10 @@ what the disk does not hold.
 this machine beside the folds and survive a restart. They are not logged and
 will not sync: each step undoes a change made here.
 
+**Prompt lines are kept.** The filter, stamp and command lines each
+remember the last 50 lines they were given, on this machine beside the
+folds, across restarts. They are not logged and do not sync.
+
 **Backups.** The first launch of each day writes a whole copy of the
 database to `backups/docket-YYYY-MM-DD.db` beside it, before the outline is
 read or changed, and keeps the newest 14. A session left open takes each
@@ -233,6 +237,11 @@ The pane shows the rows under one row, or a list.
   when it is taller than the pane, scrolling keeps the caret's line visible.
 - **Each place remembers its cursor** for the session, so coming back to a
   project lands on the row you left.
+- **A row reached from afar is read in context.** When `n` or `N`, a jump,
+  the trail, a filter dropped with `Esc` or coming back to a place puts the
+  cursor on a row the pane was not showing, that row is drawn in the middle
+  of the pane, with what is above and below it. A row already on screen is
+  not scrolled, and the other motions scroll no further than they must.
 - **Closed rows can be left out.** `:closed` hides done and canceled rows,
   and what is under them, from outlines; the header says so and the setting
   is kept on this machine. A row closed while on screen stays until the
@@ -308,6 +317,16 @@ The pickers list their matches as you type, best first. `Down` and `Up`
 walk them, and `Enter` takes the one at the front. A name matches by its start, the start of a word, anywhere
 inside, or its letters in order. `Esc` leaves a picker without acting.
 
+**Recall.** On the filter, stamp and command lines `Up` brings back the
+line last kept there, and again the one before; `Down` comes forward, and
+past the newest to the line as it was typed. Only lines beginning with what
+was typed come back, so `/#h` `Up` walks the filters that began that way.
+The filter narrows the pane to each line as it is shown. A line is kept
+when it is used: a filter with `Enter`, a stamp when it is applied, a
+command with `Enter`; one given twice is kept once, at the newest end.
+`Ctrl+P` and `Ctrl+N` are aliases. The pickers and the capture line keep
+nothing: there the arrows walk the matches.
+
 ### Links
 
 A row can point at one other row. `L` asks for it by name, as `f` does but
@@ -367,7 +386,14 @@ Three more acts use the same line:
   heading; the Inbox has none.
   It combines like any state word (`$next #home`, `-$next`,
   `$next|waiting`), so `/$next`, `Tab` and
-  `:save next` keep the daily list of what could be done. In an
+  `:save next` keep the daily list of what could be done.
+  `&` holds for a row that links to another (see Links): `&` alone for any
+  link, `&word` for a link to a row whose text holds the word, and `&.` for
+  a link to the row the cursor was on when the filter was opened, which is
+  how the rows pointing at a row are found. It reads like any sigil
+  (`-&`, `&ann|bob`, `^&.`). A filter reads the pane, so in Projects `&.`
+  finds every such row. A saved filter and `n` read `&.` as the cursor's
+  row when the filter was opened. In an
   outline a match keeps its
   ancestors, dimmed, so it is read where it lives; `Tab` switches to a flat
   list of matches and back. When the query has an un-negated deadline term
@@ -388,11 +414,17 @@ Three more acts use the same line:
   sigils only: `#tag`, `@date`, `@@date`, `*interval`, `$state` and `!` set;
   `-#tag`, `-@`, `-@@`, `-*` and `-!` remove. `#name=value` sets the value,
   replacing any the name had; `-#name` takes the tag off whatever its value
-  and `-#name=value` only that one. `Enter` applies them to the selection, else to the cursor's row, as
+  and `-#name=value` only that one. `@++1w` and `@--3d` move a deadline on
+  or back from the day the row has, not from today, by a count of `d`, `w`,
+  `m` or `y`, a month keeping its day as a repeat does; `@@++1w` moves a
+  start day. A row with no such day is left as it is, so a selection of
+  rows each slips from its own date, and `.` slips them again. These two
+  forms are read on the stamp line only. `Enter` applies them to the selection, else to the cursor's row, as
   one undo step. A word it cannot read is named and nothing is applied.
 - `:` runs a command: `q` quits; `help` opens help; `export [file]` writes
   the whole outline as tab-indented lines in the row grammar, to `~/docket-YYYY-MM-DD.txt` unless
-  a file is named; `closed` hides or shows closed rows; `numbers` shows or
+  a file is named; `import file` reads such a file back, as described below;
+  `closed` hides or shows closed rows; `numbers` shows or
   hides each row's distance from the cursor; `all` selects every
   row the pane shows, as described under Selection; `archive` moves
   closed rows under an `Archive:` heading, as described below; `review`
@@ -423,6 +455,15 @@ rows were sorted, or that they are already in order (with no undo step).
 Lists, filters and incompatible selections refuse the command; an unknown
 key is named and nothing changes. Rule 2 holds: nothing stays sorted;
 sorting only happens when the command is given.
+
+`:import file` reads a file of indented lines as paste reads them, so what
+`:export` wrote, a copy made with `yy`, or any indented list or checklist,
+and adds its rows after the cursor's row in one undo step, the cursor on
+the last. In Projects an export's lines are projects again, and the rows
+under its `Inbox` line go back to the Inbox; anywhere else every line is a
+row. The rows are new: importing twice adds them twice, and links are not
+carried, as with copy. Lists, filters and selections refuse it; a file that
+cannot be read is said and nothing changes.
 
 `Ctrl+D` and `Ctrl+U` move down and up by half the pane's usable row height
 (excluding header and status), at least one row, stopping at either end;
@@ -517,10 +558,10 @@ on the cursor's row, as one undo step. What it remembers is the last of:
   project, Inbox or heading, and appends the rows as its last children,
   saying `moved to <label>`;
 - a link, to the same row or to none;
-- `x`, `!`, `t`, `J`, `K`, `p` or `P`, pressed again as the key it is, so
-  `x` on a done row opens it;
-- `d`, `>` or `<` with what completed it: `dd` takes rows again and `d}`
-  reads its motion again from the cursor;
+- `x`, `!`, `t`, `J`, `K`, `p`, `P`, `gp` or `gP`, pressed again as the key
+  it is, so `x` on a done row opens it;
+- `d`, `>` or `<` with what completed it: `dd` takes rows again, `d}`
+  reads its motion again from the cursor and `dic` its object;
 - text typed after `o`, `O`, `A`, `I` or `cc`, when adding text where the
   typing began is all the typing did: it is typed again into a new row, or
   into each row at the place the key would have put the caret. A line that
@@ -592,6 +633,18 @@ Every copy and delete writes whole subtrees to the session's text register
 and system clipboard; delete writes before deleting and is one undo step.
 `u` restores the deleted rows without changing the register.
 
+**Row objects.** An operator also takes a part of the tree named from the
+cursor's row: `ic` is the rows under it, and `is` is the row with all its
+siblings. Each row goes with everything under it, shown or folded. `dic`
+empties a row and `yic` copies what it holds; `<ic` dissolves a group,
+leaving its rows after it; `yis` copies a whole level and `>is` is refused
+as `>>` on a first row is. They are objects, as `iw` is inside a row, and
+not motions: the cursor does not move, a count is dropped, and `V` does not
+sweep with them. A row with nothing under it says so. A selection, a list
+and a filter refuse them. No `ac` or `as` exists: the row with what is
+under it is the doubled key, and the siblings with their parent is `H`
+then the doubled key (rule 3).
+
 Before `x`, `!`, `t`, `dd`, `yy`, `>>`, `<<`, `m`, `L`, `.`, or a stamp character
 (`#` `@` `$` `*` `-`), a count takes that many shown rows from the cursor
 down, or as many as remain, without changing the selection. In a filter
@@ -603,8 +656,8 @@ presses of `v` would, stopping at the last row. With rows already selected,
 a count before an act on rows (including `v`) is refused and says so.
 The word motions that step into a row take the count as theirs, and
 `Ctrl+O` and `Ctrl+I` go that many places. Every other key, including `o`,
-`O`, `A`, `I`, `cc`, `Enter`, `h`, `l`, `f`, `gl`, `p`, `P`, `a`, `/`, `:`
-and `Tab`, drops the count and acts as usual.
+`O`, `A`, `I`, `cc`, `Enter`, `h`, `l`, `f`, `gl`, `p`, `P`, `gp`, `gP`,
+`a`, `/`, `:` and `Tab`, drops the count and acts as usual.
 
 | Keys | Act | Milestone |
 | --- | --- | --- |
@@ -618,8 +671,9 @@ and `Tab`, drops the count and acts as usual.
 | `o` `O` `A` `I` `cc` | New row below, above; type at end, at start; retype keeping fields | 1, 11 |
 | `w` `b` `e` `W` `B` `E` | Step into the row's text, on that word | 13 |
 | `J` `K` | Reorder | 1 |
-| `d` `y` `>` `<` | Delete, copy, indent, outdent: doubled they take rows; a motion takes an inclusive range | 1, 7, 11, 13 |
+| `d` `y` `>` `<` | Delete, copy, indent, outdent: doubled they take rows; a motion takes an inclusive range; `ic` `is` take the rows under the row, the row and its siblings | 1, 7, 11, 13, 14 |
 | `p` `P` | Put the register after or before the row, as new rows | 11 |
+| `gp` `gP` | Put the last copy, whatever was deleted since | 14 |
 | `u` `Ctrl+R` | Undo, redo | 1 |
 | `.` | Repeat the last change to rows | 10, 13 |
 | `x` `!` | Done and back, flag | 2 |
@@ -773,6 +827,12 @@ of that place. Lists, filters and selections refuse put; with sidebar focus
 both keys do nothing. A count before either key is dropped. Put does not
 keep a row's identity; `m`, `J` and `K` do.
 
+A delete replaces the register, so after `yy` and a `dd` on the way `p`
+puts the deleted rows. `gp` and `gP` put the last copy instead, what `y`
+last took, after or before the cursor's row, under every rule of `p` and
+`P`. With nothing copied yet they say so. Until a delete follows a copy
+the two registers hold the same rows.
+
 `o` on an open parent adds its first child; otherwise it adds the next
 sibling.
 
@@ -895,12 +955,13 @@ This is the only command; everything else is done in the outline.
 9. **Queries.** `$next` filters each project's next action; `@<date` and
    `@>date` filter deadline ranges, and a flat deadline filter reads soonest
    first. `:all` selects every row the pane shows. `m` `Enter` moves the selection
-   `here`, where `o` would open a row. *In progress.*
+   `here`, where `o` would open a row. *Built.*
 
 10. **Repeat and reach.** `h` in a list or flat filter shows the cursor's
    row where it lives; `Esc` returns to the held list or filter on that row.
-   Blank `f` `Enter` returns to the place the last jump left, with its zoom
-   and cursor; a sidebar visit counts as one jump. Filters read bare `#`
+   A jump leaves a place to come back to, with its zoom and cursor, and a
+   sidebar visit counts as one jump; since milestone 13 `Ctrl+O` goes back
+   and a blank `f` `Enter` opens the Inbox. Filters read bare `#`
    and `$` as any tag and any state, and alternatives may mix sigils
    (`#home|!`, `$waiting|@overdue`, `milk|#food`). `^term` tests ancestors,
    including above the pane root; `-^term` excludes such ancestry.
@@ -935,6 +996,14 @@ This is the only command; everything else is done in the outline.
    links a row to another and `gl` follows it. `:numbers` shows each row's
    count from the cursor. Filters test the rows below with `_term`, and a
    tag carries a value (`#est=2h`, `#est<3`). *Built.*
+
+14. **Recall.** `:import file` reads back what `:export` wrote. `@++1w` and
+   `@--3d` on the stamp line move a day from where the row has it. The
+   filter, stamp and command lines recall earlier lines with `Up` and
+   `Down`, across restarts. `&` filters by link, and `&.` finds the rows
+   that point at the cursor's row. `gp` and `gP` put the last copy after a
+   delete has replaced the register. Operators take the row objects `ic`
+   and `is`. A row reached from afar is drawn mid-pane. *Built.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add`, marks (the trail, links and each

@@ -41,7 +41,9 @@ const (
 	metaFilters    = "filters"     // saved filters from before they were rows
 	metaSyncDir    = "sync_dir"    // the folder shared with other machines
 	metaNumbers    = "numbers"     // whether rows say how far they are from the cursor
+	metaPrompts    = "prompts"     // lines kept on the filter, stamp and command prompts
 	undoDepth      = 200
+	promptDepth    = 50 // lines each prompt remembers
 )
 
 type tickMsg struct{}
@@ -163,21 +165,25 @@ type Model struct {
 
 	repeat       repeatAct
 	undo, redo   [][]outline.Op
-	count        int               // pending outline count; zero means absent
-	undoGroup    []outline.Op      // inverses collected by a counted reorder
-	prefix       string            // a pending g
-	operator     string            // pending d, y, > or <, or c (cc only)
-	replaying    bool              // the dot key is typing: what it types is not remembered again
-	textRepeat   textAct           // the last change made inside a row
-	textRegister string            // what y, d, c and x inside a row last took
-	charFind     charFind          // the last f, F, t or T inside a row
-	opCount      int               // count before the operator
-	register     string            // session-local serialized rows
-	find         string            // the last filter kept or dropped, for n and N
-	picked       map[string]bool   // the selection
-	sweep        string            // anchor row of a live sweep
-	sweepBase    map[string]bool   // picks made before the sweep
-	last         map[string]string // each place's cursor row, for coming back
+	count        int                 // pending outline count; zero means absent
+	undoGroup    []outline.Op        // inverses collected by a counted reorder
+	prefix       string              // a pending g
+	operator     string              // pending d, y, > or <, or c (cc only)
+	replaying    bool                // the dot key is typing: what it types is not remembered again
+	textRepeat   textAct             // the last change made inside a row
+	textRegister string              // what y, d, c and x inside a row last took
+	charFind     charFind            // the last f, F, t or T inside a row
+	opCount      int                 // count before the operator
+	register     string              // session-local serialized rows
+	copied       string              // what y last took, which a delete does not replace
+	past         map[string][]string // lines kept on each recalling prompt, oldest first
+	centre       bool                // the cursor has landed somewhere: show it mid-pane if off screen
+	find         string              // the last filter kept or dropped, for n and N
+	findHere     string              // the row that filter's &. stands for
+	picked       map[string]bool     // the selection
+	sweep        string              // anchor row of a live sweep
+	sweepBase    map[string]bool     // picks made before the sweep
+	last         map[string]string   // each place's cursor row, for coming back
 	hideClosed   bool
 	numbers      bool // rows say how far they are from the cursor
 	quit         bool
@@ -219,6 +225,10 @@ func newModel(tree *outline.Tree, backend Backend, folds map[string]bool, now fu
 			m.undo, m.redo = h.Undo, h.Redo
 		}
 	}
+	m.past = map[string][]string{}
+	if v, err := backend.Meta(metaPrompts); err == nil && v != "" {
+		json.Unmarshal([]byte(v), &m.past)
+	}
 	m.syncDir, _ = backend.Meta(metaSyncDir)
 	m.ensureFixed(inboxID, "Inbox")
 	m.ensureFixed(filtersID, "Filters")
@@ -251,6 +261,57 @@ func (m *Model) keepHistory() {
 	if b, err := json.Marshal(history{m.undo, m.redo}); err == nil {
 		m.backend.SetMeta(metaHistory, string(b))
 	}
+}
+
+// recalls reports a prompt whose Up and Down bring back lines kept on it
+// before. The pickers walk their matches with those keys instead.
+func recalls(kind string) bool {
+	return kind == askFilter || kind == askStamp || kind == askCommand
+}
+
+// remember keeps a line a prompt was given, newest last and once only. It is
+// this machine's, like the folds, and outlasts the session.
+func (m *Model) remember(kind, line string) {
+	line = strings.TrimSpace(line)
+	if line == "" || m.replaying {
+		return
+	}
+	lines := slices.DeleteFunc(m.past[kind], func(l string) bool { return l == line })
+	lines = append(lines, line)
+	if n := len(lines); n > promptDepth {
+		lines = lines[n-promptDepth:]
+	}
+	m.past[kind] = lines
+	if b, err := json.Marshal(m.past); err == nil {
+		m.backend.SetMeta(metaPrompts, string(b))
+	}
+}
+
+// recall steps a prompt through the lines kept on it that begin with what
+// was typed: older with Up, newer with Down, and back to the typed line.
+func (m *Model) recall(a *prompt, older bool) {
+	if a.recalled == 0 {
+		a.draft = string(a.ed.buf)
+	}
+	var lines []string // newest first
+	for _, l := range slices.Backward(m.past[a.kind]) {
+		if strings.HasPrefix(l, a.draft) && l != a.draft {
+			lines = append(lines, l)
+		}
+	}
+	at := a.recalled - 1
+	if older {
+		at = a.recalled + 1
+	}
+	if at < 0 || at > len(lines) {
+		return
+	}
+	a.recalled = at
+	line := a.draft
+	if at > 0 {
+		line = lines[at-1]
+	}
+	a.ed = editor{buf: []rune(line), caret: len([]rune(line))}
 }
 
 // reload reads the outline again from the database, keeping the cursor on
@@ -439,6 +500,7 @@ func (m *Model) leave() {
 func (m *Model) arrive() {
 	m.rebuild()
 	m.seek(m.last[placeKey(m.at)])
+	m.land()
 }
 
 // Notice shows a message on the status line until the next key.
@@ -549,6 +611,10 @@ func (m *Model) current() string {
 	}
 	return ""
 }
+
+// land asks for the cursor's row to be shown mid-pane when the pane was not
+// showing it, so a row reached from afar is read with what is around it.
+func (m *Model) land() { m.centre = true }
 
 // seek puts the cursor on id when it is visible.
 func (m *Model) seek(id string) {
@@ -1350,6 +1416,10 @@ type prompt struct {
 	ed     editor
 	rows   []string // the rows a move or a stamp lands on
 	choice int      // which match a picker takes
+	// A recalling prompt: how far back among its kept lines it stands, zero
+	// being the line as typed, which draft holds meanwhile.
+	recalled int
+	draft    string
 }
 
 const (
@@ -1387,7 +1457,8 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 		case "enter":
 			m.ask = nil
 			if text != "" {
-				m.find = text
+				m.find, m.findHere = text, m.at.here
+				m.remember(askFilter, text)
 			}
 		case "esc":
 			m.ask = nil
@@ -1396,8 +1467,12 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 			m.at.flat = !m.at.flat
 		case "":
 			m.at.query = text
+		case "up", "ctrl+p", "down", "ctrl+n":
+			m.recall(a, k == "up" || k == "ctrl+p")
+			m.at.query = strings.TrimSpace(string(a.ed.buf))
 		default:
 			a.ed.key(msg)
+			a.recalled = 0
 			m.at.query = strings.TrimSpace(string(a.ed.buf))
 		}
 		m.refilter()
@@ -1430,6 +1505,7 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 			}
 		case askCommand:
 			m.ask = nil
+			m.remember(askCommand, text)
 			m.command(text)
 		default:
 			hits := m.offers(a, text)
@@ -1462,10 +1538,12 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 				a.choice--
 			}
 			a.choice = max(0, min(a.choice, n-1))
+		} else if recalls(a.kind) {
+			m.recall(a, k == "up" || k == "ctrl+p")
 		}
 	default:
 		a.ed.key(msg)
-		a.choice = 0
+		a.choice, a.recalled = 0, 0
 	}
 }
 
@@ -1485,6 +1563,9 @@ func (m *Model) applyStamp(rows []string, line string) bool {
 	}
 	if len(ops) > 0 && m.do(ops...) {
 		m.repeat = repeatAct{line: line}
+		m.remember(askStamp, line)
+	} else if len(ops) == 0 && len(c.shift) > 0 && len(c.set)+len(c.add)+len(c.strip) == 0 {
+		m.msg = "no day to move: ++ and -- count from the day a row already has"
 	}
 	return true
 }
@@ -1529,6 +1610,8 @@ func (m *Model) command(line string) {
 		m.sortRows(words[1:])
 	case "export":
 		m.export(strings.Join(words[1:], " "))
+	case "import":
+		m.importFile(strings.Join(words[1:], " "))
 	case "sync":
 		dir := strings.Join(words[1:], " ")
 		switch {
@@ -1597,7 +1680,7 @@ func (m *Model) command(line string) {
 		m.vis, m.at.kept = nil, nil
 		m.msg = said
 	default:
-		m.msg = "commands: q, help, export [file], closed, numbers, all, archive, fold [level], unfold, sort [keys], review, save name, forget name, sync [folder|off]"
+		m.msg = "commands: q, help, export [file], import file, closed, numbers, all, archive, fold [level], unfold, sort [keys], review, save name, forget name, sync [folder|off]"
 	}
 }
 
@@ -1808,7 +1891,7 @@ func (m *Model) act(k string, count int) {
 	tree, gen := m.tree, m.tree.Gen()
 	defer func() {
 		switch k {
-		case "x", "!", "t", "J", "K", "p", "P":
+		case "x", "!", "t", "J", "K", "p", "P", "gp", "gP":
 			if m.tree == tree && m.tree.Gen() != gen {
 				m.repeat = repeatAct{key: k, count: count}
 			}
@@ -1892,7 +1975,7 @@ func (m *Model) finder() func(id string) bool {
 		return func(id string) bool { return m.at.matched[id] }
 	}
 	today := m.today()
-	terms := parseQuery(m.find, today)
+	terms := m.terms(m.find, m.findHere, today)
 	if len(terms) == 0 {
 		return nil
 	}
@@ -2000,7 +2083,8 @@ func (m *Model) motionTarget(k string, count int) (int, bool) {
 func (m *Model) operatorKey(k string) {
 	if m.prefix != "" {
 		k, m.prefix = m.prefix+k, ""
-	} else if k == "g" {
+	} else if k == "g" || k == "i" {
+		// g begins a motion, i a row object: ic and is.
 		m.prefix = k
 		return
 	}
@@ -2033,10 +2117,43 @@ func (m *Model) operate(op, k string, count int) {
 			return
 		}
 		m.takeRows(op, m.shownRange(m.cursor, target))
+	} else if k == "ic" || k == "is" {
+		m.takeRows(op, m.rowObject(k))
 	}
 	if m.tree == tree && m.tree.Gen() != gen {
 		m.repeat = repeatAct{key: op, motion: k, count: count}
 	}
+}
+
+// rowObject is the rows an operator takes by the tree and not by a motion:
+// ic the rows under the cursor's row, is that row with all its siblings.
+// Each goes with everything under it, shown or folded.
+func (m *Model) rowObject(k string) []string {
+	cur := m.current()
+	switch {
+	case cur == "":
+		return nil
+	case len(m.picked) > 0:
+		m.msg = "a row object cannot act on a selection: press Esc to clear it"
+		return nil
+	case m.at.list != "" || m.at.query != "":
+		m.msg = "a list or a filter does not show a row's branch: open the row first (h)"
+		return nil
+	}
+	parent := cur
+	if k == "is" {
+		parent = m.tree.Row(cur).Parent
+	}
+	var ids []string
+	for _, id := range m.tree.Children(parent) {
+		if !hiddenTop(id) {
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) == 0 {
+		m.msg = "no rows under this one"
+	}
+	return ids
 }
 
 // Capture live subtrees before deletion, using the same format as export.
@@ -2052,6 +2169,7 @@ func (m *Model) takeRows(op string, ids []string) {
 	m.register = text
 	m.pendingCmd = tea.SetClipboard(text)
 	if op == "y" {
+		m.copied = text
 		m.msg = fmt.Sprintf("copied %d rows", n)
 		return
 	}
@@ -2068,6 +2186,9 @@ func (m *Model) takeRows(op string, ids []string) {
 func (m *Model) normalAct(k string, count int) {
 	if target, ok := m.motionTarget(k, count); ok {
 		m.cursor = target
+		if k == "n" || k == "N" {
+			m.land()
+		}
 		return
 	}
 	cur := m.current()
@@ -2081,6 +2202,10 @@ func (m *Model) normalAct(k string, count int) {
 			m.newRow(true)
 		}
 	case "/":
+		// A fresh filter reads &. as the row the cursor is on now.
+		if m.at.query == "" {
+			m.at.here = cur
+		}
 		buf := []rune(m.at.query)
 		m.ask = &prompt{kind: askFilter, ed: editor{buf: buf, caret: len(buf)}}
 	case ":":
@@ -2117,7 +2242,14 @@ func (m *Model) normalAct(k string, count int) {
 		m.sideFrom = m.departure()
 		m.sideFocus = true
 	case "p", "P":
-		m.put(k == "P")
+		m.put(m.register, k == "P")
+	case "gp", "gP":
+		// The last copy, whatever has been deleted since.
+		if m.copied == "" && !m.sideFocus {
+			m.msg = "nothing copied to put: y copies"
+		} else {
+			m.put(m.copied, k == "gP")
+		}
 	case "f":
 		m.ask = &prompt{kind: askJump}
 	case "ctrl+o", "ctrl+i":
@@ -2136,11 +2268,12 @@ func (m *Model) normalAct(k string, count int) {
 		if len(m.picked) > 0 {
 			m.clearSelection()
 		} else if m.at.query != "" {
-			m.find, m.at.query = m.at.query, ""
+			m.find, m.findHere, m.at.query = m.at.query, m.at.here, ""
 			m.refilter()
 			m.vis = nil
 			m.rebuild()
 			m.seek(cur)
+			m.land()
 		} else if n := len(m.zoom); n > 0 {
 			was := m.at.root
 			if m.at.returnRow != "" {
@@ -2150,6 +2283,7 @@ func (m *Model) normalAct(k string, count int) {
 			m.at, m.zoom = m.zoom[n-1], m.zoom[:n-1]
 			m.rebuild()
 			m.seek(was)
+			m.land()
 		}
 	}
 	if cur == "" {

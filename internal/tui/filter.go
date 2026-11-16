@@ -26,9 +26,44 @@ type term struct {
 
 // cond is one reading of a term.
 type cond struct {
-	kind  byte // t text, ! flag, # tag, l g tag value range, $ state, S any state, n next action, @ deadline, < > deadline range, s start, * repeat, ~ changed
+	kind  byte // t text, ! flag, # tag, l g tag value range, $ state, S any state, n next action, @ deadline, < > deadline range, s start, * repeat, ~ changed, & link
 	value string
-	arg   string // the value a tag range compares with
+	arg   string          // the value a tag range compares with
+	rows  map[string]bool // the rows a link term asks for, read by terms
+}
+
+// sigilStarts are the characters a filter word's sigil begins with.
+const sigilStarts = "!#$@*~&"
+
+// terms reads a query for this outline: parseQuery, and then for each link
+// term the rows it names, since only the tree knows them. here is the row
+// &. stands for.
+func (m *Model) terms(q string, here string, today time.Time) []term {
+	out := parseQuery(q, today)
+	for _, t := range out {
+		for i, c := range t.any {
+			if c.kind != '&' || c.value == "" {
+				continue
+			}
+			rows := map[string]bool{}
+			if c.value == "." {
+				rows[here] = true
+			} else {
+				var walk func(id string)
+				walk = func(id string) {
+					for _, kid := range m.tree.Children(id) {
+						if strings.Contains(strings.ToLower(m.tree.Row(kid).Text()), c.value) {
+							rows[kid] = true
+						}
+						walk(kid)
+					}
+				}
+				walk("")
+			}
+			t.any[i].rows = rows
+		}
+	}
+	return out
 }
 
 // parseQuery reads a filter in the grammar rows are written in. A word that
@@ -55,14 +90,14 @@ func parseQuery(q string, today time.Time) []term {
 		}
 		// A side without its own sigil inherits the first side's:
 		// $open|doing reads as $open or $doing, but #home|! keeps both sigils.
-		sig := w[:len(w)-len(strings.TrimLeft(w, "!#$@*~"))]
+		sig := w[:len(w)-len(strings.TrimLeft(w, sigilStarts))]
 		if parts := strings.Split(w, "|"); len(parts) > 1 && !slices.Contains(parts, "") {
 			for _, part := range parts {
-				if !strings.ContainsRune("!#$@*~", rune(part[0])) {
+				if !strings.ContainsRune(sigilStarts, rune(part[0])) {
 					part = sig + part
 				}
 				c := parseCond(part, today)
-				if strings.ContainsRune("!#$@*~", rune(part[0])) && c.kind == 't' {
+				if strings.ContainsRune(sigilStarts, rune(part[0])) && c.kind == 't' {
 					t.any = nil // one alternative cannot be read: the word is text
 					break
 				}
@@ -114,6 +149,9 @@ func parseCond(w string, today time.Time) cond {
 		if day, ok := sinceDay(strings.ToLower(w[1:]), today); ok {
 			c.kind, c.value = '~', day
 		}
+	case '&':
+		// A link: any, to the cursor's row (&.), or to a row holding the text.
+		c.kind, c.value = '&', strings.ToLower(w[1:])
 	case '@':
 		if rest, start := strings.CutPrefix(strings.ToLower(w), "@@"); start {
 			if day, ok := sigil.ParseDate(rest, today); ok || rest == "" {
@@ -252,6 +290,9 @@ func holds(r *outline.Row, l sigil.Line, c cond, today time.Time, next map[strin
 		return l.Start == c.value
 	case '*':
 		return l.Every != "" && (c.value == "" || l.Every == c.value)
+	case '&':
+		to := r.Fields[fieldLink]
+		return to != "" && (c.value == "" || c.rows[to])
 	case '~':
 		// When the state last changed, or for a row that never had one, when
 		// it was made.
@@ -319,7 +360,7 @@ func (m *Model) underSets(terms []term, today time.Time) map[string]uint64 {
 func (m *Model) refilter() {
 	m.at.hits, m.at.matched = nil, map[string]bool{}
 	today := m.today()
-	terms := parseQuery(m.at.query, today)
+	terms := m.terms(m.at.query, m.at.here, today)
 	if len(terms) == 0 {
 		return
 	}
@@ -434,17 +475,34 @@ func byDeadline(terms []term) bool {
 // change is what a stamp asks of each row it lands on.
 type change struct {
 	set        map[string]string
-	add, strip []string // tags
+	add, strip []string         // tags
+	shift      map[string]shift // days moved on from where each row has them
+}
+
+// shift is how far a stamp moves a day a row already has.
+type shift struct {
+	n    int
+	unit byte
 }
 
 // parseStamp reads a line of sigils. It returns the first word it cannot
 // read, in which case nothing is applied.
 func parseStamp(line string, today time.Time) (change, string) {
-	c := change{set: map[string]string{}}
+	c := change{set: map[string]string{}, shift: map[string]shift{}}
 	for _, w := range strings.Fields(line) {
 		neg := len(w) > 1 && w[0] == '-'
 		body := strings.TrimPrefix(w, "-")
 		ok := false
+		// @++1w and @--3d move the day the row has, not one counted from today.
+		field, rest := sigil.FieldDue, strings.TrimPrefix(body, "@")
+		if strings.HasPrefix(body, "@@") {
+			field, rest = sigil.FieldStart, body[2:]
+		}
+		if n, unit, moves := sigil.ParseShift(rest); moves && !neg && rest != body {
+			c.shift[field] = shift{n, unit}
+			delete(c.set, field)
+			continue
+		}
 		switch {
 		case body == "!":
 			c.set[sigil.FieldFlag], ok = "1", true
@@ -486,6 +544,12 @@ func (m *Model) stampOps(id string, c change) []outline.Op {
 	want := map[string]string{}
 	for k, v := range c.set {
 		want[k] = v
+	}
+	// A row with no such day has nothing to move and is left as it is.
+	for field, by := range c.shift {
+		if day := m.tree.Row(id).Fields[field]; day != "" {
+			want[field] = sigil.ShiftDate(day, by.n, by.unit)
+		}
 	}
 	if len(c.add)+len(c.strip) > 0 {
 		var tags []string

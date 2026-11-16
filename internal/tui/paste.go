@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/sglavoie/docket/internal/outline"
@@ -112,7 +114,7 @@ func (m *Model) paste(content string) {
 }
 
 // put reads the session register through the same parser and builder as paste.
-func (m *Model) put(before bool) {
+func (m *Model) put(register string, before bool) {
 	if m.sideFocus {
 		return
 	}
@@ -122,7 +124,7 @@ func (m *Model) put(before bool) {
 		}
 		return
 	}
-	lines := readPaste(m.register)
+	lines := readPaste(register)
 	if len(lines) == 0 {
 		m.msg = "nothing to put"
 		return
@@ -136,10 +138,17 @@ func (m *Model) put(before bool) {
 // anchorIsFirst, deeper lines become its children. With merge, the rows
 // join the undo step just recorded. It returns the number of pasted rows.
 func (m *Model) pasteRows(anchor string, anchorIsFirst bool, lines []pasted, merge, before bool) int {
-	parent0, after := m.at.root, anchor
+	parent0 := m.at.root
 	if anchor != "" {
 		parent0 = m.tree.Row(anchor).Parent
 	}
+	return m.pasteUnder(parent0, anchor, anchorIsFirst, lines, merge, before)
+}
+
+// pasteUnder is pasteRows with the parent named, which an anchor alone
+// cannot say when the parent has no rows yet.
+func (m *Model) pasteUnder(parent0, anchor string, anchorIsFirst bool, lines []pasted, merge, before bool) int {
+	after := anchor
 	var stack []string // the newest row at each level
 	if anchorIsFirst {
 		stack = []string{anchor}
@@ -244,4 +253,70 @@ func pastePrefix(text string) bool {
 		}
 	}
 	return false
+}
+
+// importFile reads a file of indented lines, as export writes and paste
+// reads, into rows after the cursor, as one undo step. In Projects, where an
+// export's lines are projects again, the rows under its Inbox line go back
+// to the Inbox.
+func (m *Model) importFile(path string) {
+	if path == "" {
+		m.msg = "name the file: import ~/docket.txt"
+		return
+	}
+	if rest, ok := strings.CutPrefix(path, "~/"); ok {
+		if home, err := os.UserHomeDir(); err == nil {
+			path = filepath.Join(home, rest)
+		}
+	}
+	if len(m.picked) > 0 || m.flat() {
+		m.msg = "import into an outline, with nothing selected"
+		return
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		m.msg = err.Error()
+		return
+	}
+	var rows, inbox []pasted
+	toInbox := false
+	for _, l := range readPaste(string(data)) {
+		if l.level == 0 {
+			if toInbox = m.at.root == "" && l.text == "Inbox"; toInbox {
+				continue
+			}
+		}
+		if toInbox {
+			l.level--
+			inbox = append(inbox, l)
+		} else {
+			rows = append(rows, l)
+		}
+	}
+	if len(rows)+len(inbox) == 0 {
+		m.msg = "nothing to import in " + path
+		return
+	}
+	cur := m.current()
+	m.undoGroup = []outline.Op{}
+	n := 0
+	if len(inbox) > 0 {
+		last := ""
+		if kids := m.tree.Children(inboxID); len(kids) > 0 {
+			last = kids[len(kids)-1]
+		}
+		n += m.pasteUnder(inboxID, last, false, inbox, false, false)
+		m.seek(cur)
+	}
+	if len(rows) > 0 {
+		n += m.pasteRows(cur, false, rows, false, false)
+	}
+	if len(m.undoGroup) > 0 {
+		m.undo = append(m.undo, m.undoGroup)
+		m.keepHistory()
+	}
+	m.undoGroup = nil
+	if n > 0 {
+		m.msg = fmt.Sprintf("imported %d rows from %s", n, path)
+	}
 }

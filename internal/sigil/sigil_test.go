@@ -218,3 +218,24 @@ func TestATagCarriesAValue(t *testing.T) {
 		t.Fatal("name and value")
 	}
 }
+
+func TestShiftMovesADayFromWhereItIs(t *testing.T) {
+	for _, c := range []struct{ day, by, want string }{
+		{"2026-11-20", "++1w", "2026-11-27"},
+		{"2026-11-20", "--3d", "2026-11-17"},
+		{"2026-01-31", "++1m", "2026-02-28"},
+		{"2026-03-31", "--1M", "2026-02-28"},
+		{"2024-02-29", "++1y", "2025-02-28"},
+		{"2026-12-15", "++2m", "2027-02-15"},
+	} {
+		n, unit, ok := ParseShift(c.by)
+		if got := ShiftDate(c.day, n, unit); !ok || got != c.want {
+			t.Errorf("%s %s = %q (%v), want %q", c.day, c.by, got, ok, c.want)
+		}
+	}
+	for _, bad := range []string{"+1w", "++w", "++0d", "++1h", "+-1d", "++-1d", "--", "1w"} {
+		if _, _, ok := ParseShift(bad); ok {
+			t.Errorf("%q was read as a shift", bad)
+		}
+	}
+}
