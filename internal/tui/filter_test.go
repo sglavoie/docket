@@ -264,7 +264,7 @@ func TestFilteringDropsTheSelection(t *testing.T) {
 
 func TestAListCanBeFiltered(t *testing.T) {
 	h := work(t)
-	h.press("$", `"w"`, "enter", "j", "j", "$", `"w"`, "enter", "p", `"waiting"`, "enter")
+	h.press("$", `"w"`, "enter", "j", "j", "$", `"w"`, "enter", "f", `"waiting"`, "enter")
 	h.want(
 		"▌ ◔ Fix cache #bug · 0d · Beta",
 		"  ◔ Fix login ! #bug · 0d · Alpha",
@@ -518,7 +518,7 @@ func TestDeadlineRangesHoldForOpenRowsSoonestFirst(t *testing.T) {
 
 func TestAListFilterKeepsTheListOrder(t *testing.T) {
 	h := deadlines(t)
-	h.press("k", "t", "g", "g", "j", "j", "t", "p", `"Today"`, "enter")
+	h.press("k", "t", "g", "g", "j", "j", "t", "f", `"Today"`, "enter")
 	if got := h.shown(); got != "Past, Soon" {
 		t.Fatalf("today = %q", got)
 	}
@@ -532,7 +532,7 @@ func TestASavedDeadlineFilterReopensSorted(t *testing.T) {
 	h := deadlines(t)
 	h.press("/", `"@>fri"`, "tab", "enter", ":", `"save ahead"`, "enter", "esc")
 	again := reopen(t, h)
-	again.press("p", `"/ahead"`, "enter")
+	again.press("f", `"/ahead"`, "enter")
 	if got := again.shown(); got != "Soon, Also fri, Week, Late" {
 		t.Errorf("reopened = %q", got)
 	}
@@ -636,7 +636,7 @@ func TestAllSelectsEveryRowThePaneShows(t *testing.T) {
 
 	t.Run("list", func(t *testing.T) {
 		h := work(t)
-		h.press("t", "j", "j", "t", "p", `"Today"`, "enter")
+		h.press("t", "j", "j", "t", "f", `"Today"`, "enter")
 		h.command("all")
 		if got := h.selected(); got != "Fix cache, Fix login" {
 			t.Fatalf("selected = %q", got)

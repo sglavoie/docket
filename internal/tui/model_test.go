@@ -389,7 +389,7 @@ func TestStructureKeysMoveASelectedBlock(t *testing.T) {
 			if place == "filter" {
 				h.press("/", `"o"`, "enter", "v")
 			} else {
-				h.press("t", "p", `"today"`, "enter", "v")
+				h.press("t", "f", `"today"`, "enter", "v")
 			}
 			before, steps := h.rows(), len(h.m.undo)
 			for _, key := range []string{">", "<", "J", "K"} {
@@ -748,7 +748,7 @@ func TestARowUnderATaskIsANote(t *testing.T) {
 			}
 		}
 		h := start(t)
-		h.press("a", `"Inbox task"`, "esc", "p", `"Inbox"`, "enter")
+		h.press("a", `"Inbox task"`, "esc", "f", `"Inbox"`, "enter")
 		h.want("▌ ○ Inbox task")
 	})
 
@@ -812,7 +812,7 @@ func TestARowUnderATaskIsANote(t *testing.T) {
 
 func TestCaptureUsesTheDestinationDefault(t *testing.T) {
 	h := start(t)
-	h.press("o", `"Task $open"`, "esc", "a", `"Detail %Task"`, "esc", "p", `"Task"`, "enter")
+	h.press("o", `"Task $open"`, "esc", "a", `"Detail %Task"`, "esc", "f", `"Task"`, "enter")
 	h.want("▌   Detail")
 	h.press("e")
 	if got := string(h.m.edit.buf); got != "Detail" {
@@ -832,7 +832,7 @@ func outlineToGather(t *testing.T) *harness {
 func TestMoveHereGathersTheSelection(t *testing.T) {
 	t.Run("scattered rows gather after the cursor", func(t *testing.T) {
 		h := outlineToGather(t)
-		h.press("p", `"alpha"`, "enter", "v", "j", "j", "v", "k", "k")
+		h.press("f", `"alpha"`, "enter", "v", "j", "j", "v", "k", "k")
 		h.want(
 			" ┃○ A1",
 			"  ○ A2",
@@ -870,7 +870,7 @@ func TestMoveHereGathersTheSelection(t *testing.T) {
 
 	t.Run("an open parent takes them as first children", func(t *testing.T) {
 		h := outlineToGather(t)
-		h.press("p", `"alpha"`, "enter", "v", "j", "j", "j", "v", "k", "k", "k", "m", "enter")
+		h.press("f", `"alpha"`, "enter", "v", "j", "j", "j", "v", "k", "k", "k", "m", "enter")
 		h.want(
 			"▌ ○ A2",
 			" ┃  ○ A1",
@@ -882,7 +882,7 @@ func TestMoveHereGathersTheSelection(t *testing.T) {
 
 	t.Run("a folded parent takes them after it", func(t *testing.T) {
 		h := outlineToGather(t)
-		h.press("p", `"alpha"`, "enter", "v", "j", "j", "j", "v", "k", "k", "k", "h", "m", "enter")
+		h.press("f", `"alpha"`, "enter", "v", "j", "j", "j", "v", "k", "k", "k", "h", "m", "enter")
 		h.want(
 			"▌ ○ A2 +1",
 			" ┃○ A1",
@@ -920,7 +920,7 @@ func TestMoveHereGathersTheSelection(t *testing.T) {
 
 	t.Run("not offered on or under the selection", func(t *testing.T) {
 		h := outlineToGather(t)
-		h.press("p", `"alpha"`, "enter", "j", "v", "m")
+		h.press("f", `"alpha"`, "enter", "j", "v", "m")
 		if got := h.status(); got != "Move to ›    Inbox · Beta · Alpha" {
 			t.Fatalf("under the selection: %q", got)
 		}
@@ -932,7 +932,7 @@ func TestMoveHereGathersTheSelection(t *testing.T) {
 
 	t.Run("not offered in a filter or a list, nor without a selection", func(t *testing.T) {
 		h := outlineToGather(t)
-		h.press("p", `"alpha"`, "enter", "m")
+		h.press("f", `"alpha"`, "enter", "m")
 		if got := h.status(); got != "Move to ›    Inbox · Beta · Alpha" {
 			t.Fatalf("no selection: %q", got)
 		}
@@ -940,7 +940,7 @@ func TestMoveHereGathersTheSelection(t *testing.T) {
 		if got := h.status(); got != "Move to ›    Inbox · Beta · Alpha" {
 			t.Fatalf("filter: %q", got)
 		}
-		h.press("esc", "esc", "esc", "t", "j", "t", "p", `"today"`, "enter", "v", "m")
+		h.press("esc", "esc", "esc", "t", "j", "t", "f", `"today"`, "enter", "v", "m")
 		if got := h.status(); got != "Move to ›    Inbox · Beta · Alpha" {
 			t.Fatalf("list: %q", got)
 		}
@@ -948,7 +948,7 @@ func TestMoveHereGathersTheSelection(t *testing.T) {
 
 	t.Run("typing a name still moves to it", func(t *testing.T) {
 		h := outlineToGather(t)
-		h.press("p", `"alpha"`, "enter", "v", "j", "m", `"beta"`)
+		h.press("f", `"alpha"`, "enter", "v", "j", "m", `"beta"`)
 		if got := h.status(); got != "Move to › beta   Beta" {
 			t.Fatalf("picker line = %q", got)
 		}

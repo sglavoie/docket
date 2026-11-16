@@ -258,18 +258,18 @@ The status line becomes a prompt for three acts, named at its left edge:
   will land. One matching nothing stays in the text. `Enter` keeps the line
   and asks for the next; a blank `Enter` or `Esc` closes, and `Esc` keeps
   what was typed.
-- `p` **Go to ›** opens a project, a heading, a list or a saved filter by
+- `f` **Go to ›** opens a project, a heading, a list or a saved filter by
   name. A heading opens inside its project: the sidebar stays on the
   project and `Esc` backs out to it. After a jump, a blank query offers
   `back` and the name of the place left first; typing a name drops the
   offer. Taking it restores that place's held rows, filter, zoom, sidebar
-  entry and cursor. It is itself a jump, so blank `p` `Enter` alternates
-  between two places. A jump is a picker destination opened with `p`
+  entry and cursor. It is itself a jump, so blank `f` `Enter` alternates
+  between two places. A jump is a picker destination opened with `f`
   `Enter`, or a sidebar visit ending in a different place; walking several
   sidebar entries counts once, from where `Tab` was pressed. `Enter`
   zooming, `Esc` backing out and `h` are not jumps. One place is remembered
   for this session only, and is not offered if its root row is no longer
-  live. Until a jump, blank `p` `Enter` opens the Inbox as before.
+  live. Until a jump, blank `f` `Enter` opens the Inbox as before.
 - `m` **Move to ›** makes the cursor's row or selection the last children of
   a project, the Inbox or a heading, in screen order. A heading is any live
   row ending in a colon under a project or the Inbox, at any depth; rows
@@ -397,7 +397,7 @@ and is deleted like any other.
 ### Saved filters and review
 
 `:save name` keeps the pane's filter, with the row it was made under and
-whether it was flat. It then appears in the `p` picker as `/name`.
+whether it was flat. It then appears in the `f` picker as `/name`.
 `:forget name` drops it. Saved filters are not in the sidebar. Each is a row
 under a hidden top-level row with the fixed identity `filters`, so saving
 and forgetting are undone, backed up and synced like any other change.
@@ -504,8 +504,8 @@ does. The act is one undo step; copy changes no rows. Counted `>` and `<`
 follow the Selection rule for a block. `5v` selects five rows as five
 presses of `v` would, stopping at the last row. With rows already selected,
 a count before an act on rows (including `v`) is refused and says so.
-Every other key, including `o`, `O`, `e`, `Enter`, `h`, `l`, `p`, `a`, `/`,
-`:` and `Tab`, drops the count and acts as usual.
+Every other key, including `o`, `O`, `e`, `Enter`, `h`, `l`, `f`, `p`, `P`,
+`a`, `/`, `:` and `Tab`, drops the count and acts as usual.
 
 | Keys | Act | Milestone |
 | --- | --- | --- |
@@ -516,11 +516,12 @@ Every other key, including `o`, `O`, `e`, `Enter`, `h`, `l`, `p`, `a`, `/`,
 | `o` `O` `e` | New row below, above; edit | 1 |
 | `>` `<` `J` `K` | Indent, outdent, reorder | 1 |
 | `d` `y` | Delete or copy: `dd` / `yy` take rows; a motion takes an inclusive range | 1, 7, 11 |
+| `p` `P` | Put the register after or before the row, as new rows | 11 |
 | `u` `Ctrl+R` | Undo, redo | 1 |
 | `.` | Repeat the last stamp or move | 10 |
 | `x` `!` | Done and back, flag | 2 |
 | `t` | Pick for Today, and unpick | 3 |
-| `Tab` `p` | Sidebar focus; go to a project, heading or list by name | 3 |
+| `Tab` `f` | Sidebar focus; go to a project, heading or list by name | 3 |
 | `a` `m` | Capture to the Inbox from anywhere; move to a project or heading | 3 |
 | `v` `V` | Pick a row; sweep with motions | 4, 11 |
 | `/` `:` | Filter, command | 4 |
@@ -556,7 +557,7 @@ before the operator and motion multiply. A motion with selected rows is
 refused; use `yy` (or `dd` to delete) on the selection. `dd` and `d` with a
 motion write the same subtree text before deleting, as one undo step. Undo
 restores the rows and leaves the register intact. The register lasts for the
-session only, is never stored, and has no reader yet.
+session only and is never stored.
 
 Copy and export write each line against its own parent's default. Pasting
 under the same kind of parent round-trips the text, state, row-grammar fields,
@@ -593,7 +594,20 @@ so checkboxes stay tasks wherever pasted. The appended state wins over any
 state sigil in the pasted text. The whole paste, with the row it was typed
 into, is one undo step. Rows cannot be pasted into a list, a
 filter, or over a selection. Pasted into a prompt, lines stay typed text and
-join into one. A new row left blank disappears.
+join into one. A new row left blank disappears. Newly pasted or put closed
+rows stay visible until the place is left, so the cursor can land on the
+last row even with `:closed` on.
+
+**Put.** `p` puts the session register after the cursor's row and `P` before
+it, as new rows at the cursor's level. Depth, states and fields are read as
+with terminal paste; the whole put is one undo step. The cursor lands on the
+last row put and the status says `put N rows`. Each put makes fresh rows and
+leaves the register unchanged: `yyp` duplicates a row with its subtree,
+`ddp` swaps a row with the one below, and `p` twice puts twice. An empty
+register says `nothing to put`; in an empty place either key adds children
+of that place. Lists, filters and selections refuse put; with sidebar focus
+both keys do nothing. A count before either key is dropped. Put does not
+keep a row's identity; `m`, `J` and `K` do.
 
 `o` on an open parent adds its first child; otherwise it adds the next
 sibling.
@@ -685,7 +699,7 @@ This is the only command; everything else is done in the outline.
 1. **Outline editor.** Rows on SQLite, in-place editing, indent, reorder,
    fold, zoom, undo. *Built.*
 2. **Tasks.** Sigil parsing, states, flag, deadline, row rendering. *Built.*
-3. **Sidebar.** The four lists, projects, parking, `t`, `a`, `m` and `p`.
+3. **Sidebar.** The four lists, projects, parking, `t`, `a`, `m` and `f`.
    *Built.*
 4. **Filter line.** `/`, stamping, selection, `:` commands. *Built.*
 
@@ -709,7 +723,7 @@ This is the only command; everything else is done in the outline.
 
 8. **Fluid.** `Up` and `Down` go on typing in the next row. A filter shows
    matches inside folded rows, reads alternatives (`$open|doing`) and when
-   a state changed (`~7d`). `p` reaches headings. `:archive` shelves closed
+   a state changed (`~7d`). `f` reaches headings. `:archive` shelves closed
    work under `Archive:`. Web addresses are links. `docket add` captures
    from a shell. *Built.*
 
@@ -720,7 +734,7 @@ This is the only command; everything else is done in the outline.
 
 10. **Repeat and reach.** `h` in a list or flat filter shows the cursor's
    row where it lives; `Esc` returns to the held list or filter on that row.
-   Blank `p` `Enter` returns to the place the last jump left, with its zoom
+   Blank `f` `Enter` returns to the place the last jump left, with its zoom
    and cursor; a sidebar visit counts as one jump. Filters read bare `#`
    and `$` as any tag and any state, and alternatives may mix sigils
    (`#home|!`, `$waiting|@overdue`, `milk|#food`). `^term` tests ancestors,
@@ -734,7 +748,9 @@ This is the only command; everything else is done in the outline.
    shown rows for an act; each counted act is one undo step. `V` sweeps a
    selection with motions, preserving earlier picks. `d` and `y` take doubled
    keys or counted motions and fill the session register and clipboard;
-   each delete is one undo step. *In progress.*
+   each delete is one undo step. `p` and `P` put the register after or before
+   the cursor as new rows in one undo step; Go to moved from `p` to `f`.
+   *In progress.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add`.

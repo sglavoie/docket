@@ -95,7 +95,7 @@ func TestSidebarFocusShowsEachDestination(t *testing.T) {
 
 func TestAListHasNoStructure(t *testing.T) {
 	h := two(t)
-	h.press("p", `"wait"`, "enter")
+	h.press("f", `"wait"`, "enter")
 	h.want("▌ ◔ Two · 0d · Alpha")
 	for _, k := range []string{"o", "J", ">"} {
 		h.press(k)
@@ -125,7 +125,7 @@ func TestTodayIsPickedAndLapsesOvernight(t *testing.T) {
 		"Beta ∅",
 		"Alpha !",
 	)
-	h.press("p", `"tod"`, "enter")
+	h.press("f", `"tod"`, "enter")
 	h.want(
 		"▌ ○ One @tomorrow · Alpha",
 		"  ✓ Two · Alpha",
@@ -178,7 +178,7 @@ func TestTodayIsReordered(t *testing.T) {
 			h.press("o", `"Scheduled @@today"`, "esc", "o", `"Later @@today"`, "esc")
 		}
 		// Pick Three, One, Two, against their outline order.
-		h.press("g", "g", "j", "j", "j", "t", "k", "k", "t", "j", "t", "p", `"today"`, "enter")
+		h.press("g", "g", "j", "j", "j", "t", "k", "k", "t", "j", "t", "f", `"today"`, "enter")
 		return h
 	}
 	t.Run("picks moves undo and restart", func(t *testing.T) {
@@ -201,14 +201,14 @@ func TestTodayIsReordered(t *testing.T) {
 		if len(h.m.undo) != steps {
 			t.Fatal("moving past the end made an undo step")
 		}
-		h.press("p", `"alpha"`, "enter")
+		h.press("f", `"alpha"`, "enter")
 		h.want("▌ ○ One", "  ○ Two", "  ○ Three")
 		for id, pos := range positions {
 			if row := h.m.tree.Row(id); row.Pos != pos || row.Parent != h.m.at.root {
 				t.Fatal("Today changed outline structure")
 			}
 		}
-		h.press("p", `"today"`, "enter")
+		h.press("f", `"today"`, "enter")
 		h.want("  ○ Three · Alpha", "  ○ Two · Alpha", "▌ ○ One · Alpha")
 		h.st.Close()
 		again := open(t, h.path).wide()
@@ -264,7 +264,7 @@ func TestTodayIsReordered(t *testing.T) {
 		}
 		// The next day overwrites old positions and assigns a group in screen order.
 		h.clock = h.clock.Add(24 * time.Hour)
-		h.press("p", `"alpha"`, "enter", "g", "g", "j", "t", "g", "g", "v", "j", "v", "t", "esc", "p", `"today"`, "enter")
+		h.press("f", `"alpha"`, "enter", "g", "g", "j", "t", "g", "g", "v", "j", "v", "t", "esc", "f", `"today"`, "enter")
 		h.want("▌ ○ Two · Alpha", "  ○ One · Alpha", "  ○ Three · Alpha")
 		if h.m.tree.Row(threeID).Fields[fieldTodayPos] == old {
 			t.Fatal("new day retained the old position")
@@ -306,7 +306,7 @@ func TestTodayIsReordered(t *testing.T) {
 		if h.m.msg != "clear the filter first (Esc)" || len(h.m.undo) != steps {
 			t.Fatal("filtered Today allowed reorder")
 		}
-		h.press("esc", "$", `"waiting"`, "enter", "p", `"waiting"`, "enter")
+		h.press("esc", "$", `"waiting"`, "enter", "f", `"waiting"`, "enter")
 		before, steps = h.rows(), len(h.m.undo)
 		for _, k := range []string{"J", "K"} {
 			h.press(k)
@@ -315,7 +315,7 @@ func TestTodayIsReordered(t *testing.T) {
 			}
 		}
 		h.clock = h.clock.Add(15 * 24 * time.Hour)
-		for _, keys := range [][]string{{"p", `"stale"`, "enter"}, {":", `"review"`, "enter"}} {
+		for _, keys := range [][]string{{"f", `"stale"`, "enter"}, {":", `"review"`, "enter"}} {
 			h.press(keys...)
 			before, steps = h.rows(), len(h.m.undo)
 			for _, k := range []string{"J", "K"} {
@@ -374,7 +374,7 @@ func TestCaptureFilesInTheInboxOrANamedProject(t *testing.T) {
 		"Beta ∅",
 		"Alpha !",
 	)
-	h.press("p", `"inb"`, "enter")
+	h.press("f", `"inb"`, "enter")
 	h.want(
 		"▌ ○ Buy milk",
 		"  ○ see %nowhere",
@@ -386,7 +386,7 @@ func TestCaptureFilesInTheInboxOrANamedProject(t *testing.T) {
 
 func TestMoveARowToAProject(t *testing.T) {
 	h := two(t)
-	h.press("a", `"Stray thought"`, "enter", "enter", "p", `"inbox"`, "enter")
+	h.press("a", `"Stray thought"`, "enter", "enter", "f", `"inbox"`, "enter")
 	h.want("▌ ○ Stray thought")
 	h.press("m", `"be"`)
 	if got := h.lines()[len(h.lines())-1]; got != "Move to › be   Beta" {
@@ -397,9 +397,9 @@ func TestMoveARowToAProject(t *testing.T) {
 		t.Fatalf("msg = %q", h.m.msg)
 	}
 	h.want("  The Inbox is empty. Press a to capture a thought.")
-	h.press("p", `"beta"`, "enter")
+	h.press("f", `"beta"`, "enter")
 	h.want("▌ ○ Stray thought")
-	h.press("u", "p", `"inbox"`, "enter")
+	h.press("u", "f", `"inbox"`, "enter")
 	h.want("▌ ○ Stray thought")
 
 	// A picker with no match acts on nothing, and Esc leaves it.
@@ -432,7 +432,7 @@ func TestParkedAndClosedProjectsLeaveTheSidebar(t *testing.T) {
 		"parked 1",
 	)
 	// It is still reachable by name.
-	h.press("p", `"alp"`, "enter")
+	h.press("f", `"alp"`, "enter")
 	if h.header() != "Alpha" {
 		t.Fatalf("header = %q", h.header())
 	}
@@ -505,7 +505,7 @@ func TestMoveReachesAHeading(t *testing.T) {
 		}
 		h.press("enter")
 		children(h, heading, "Existing", "Second")
-		h.press("u", "p", `"alpha"`, "enter", "g", "g")
+		h.press("u", "f", `"alpha"`, "enter", "g", "g")
 		h.press("j", "j", "v", "v")
 		h.press("m", `"stor"`, "enter")
 		children(h, heading, "Existing", "First", "Second")
@@ -547,7 +547,7 @@ func TestMoveReachesAHeading(t *testing.T) {
 		children(h, heading, "Existing")
 		// The jump picker reaches the heading, inside its project: the
 		// sidebar stays on the project and Esc backs out to it.
-		h.press("p", `"sidebar"`, "enter")
+		h.press("f", `"sidebar"`, "enter")
 		if h.header() != "Alpha › TUI: › Sidebar:" {
 			t.Fatalf("header = %q", h.header())
 		}
@@ -562,18 +562,18 @@ func TestMoveReachesAHeading(t *testing.T) {
 	})
 	t.Run("cycles fail without moving any selected row", func(t *testing.T) {
 		h := fixture(t)
-		h.press("p", `"alpha"`, "enter", "g", "g", "m", `"storage"`, "enter")
+		h.press("f", `"alpha"`, "enter", "g", "g", "m", `"storage"`, "enter")
 		if h.m.msg != "a row cannot move under itself" {
 			t.Fatalf("self move = %q", h.m.msg)
 		}
-		h.press("p", `"projects"`, "enter", "g", "g", "m", `"storage"`, "enter")
+		h.press("f", `"projects"`, "enter", "g", "g", "m", `"storage"`, "enter")
 		if h.m.msg != "a row cannot move under itself" {
 			t.Fatalf("descendant move = %q", h.m.msg)
 		}
 		// First move would succeed; the second would create a cycle.
 		h = start(t).wide()
 		h.pasteText("Alpha\n\tFirst\n\tStorage:\n\t\tNested:")
-		h.press("p", `"alpha"`, "enter", "g", "g", "v", "v", "m", `"nested"`, "enter")
+		h.press("f", `"alpha"`, "enter", "g", "g", "v", "v", "m", `"nested"`, "enter")
 		if h.m.msg != "a row cannot move under itself" {
 			t.Fatalf("selected move = %q", h.m.msg)
 		}
@@ -583,7 +583,7 @@ func TestMoveReachesAHeading(t *testing.T) {
 	t.Run("live headings in Inbox and at any depth", func(t *testing.T) {
 		h := start(t).wide()
 		h.pasteText("Alpha:\n\tTask\n\t\tDeep:\n\tGone:\n\t\tHidden:\n\tClosed: $done\n\tParked: $parked")
-		h.press("p", `"alpha"`, "enter", "g", "g", "j", "j", "d", "d")
+		h.press("f", `"alpha"`, "enter", "g", "g", "j", "j", "d", "d")
 		h.press("a", `"Inbox heading:"`, "enter", "enter")
 		var labels []string
 		for _, e := range h.m.headings {
@@ -609,7 +609,7 @@ func TestMoveReachesAHeading(t *testing.T) {
 		if got := h.status(); got != "Move to › cached   Cached heading" {
 			t.Fatalf("picker did not use cached headings: %q", got)
 		}
-		h.press("esc", "p", `"alpha"`, "enter", "g", "g", "e", "ctrl+u", `"Renamed:"`, "esc")
+		h.press("esc", "f", `"alpha"`, "enter", "g", "g", "e", "ctrl+u", `"Renamed:"`, "esc")
 		if h.m.headings[0].label != "Alpha › Renamed" {
 			t.Fatalf("edit did not refresh headings: %+v", h.m.headings)
 		}

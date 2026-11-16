@@ -53,7 +53,7 @@ func TestUpAndDownKeepTypingInTheNextRow(t *testing.T) {
 
 	// A list keeps its rows, so the arrows walk it too.
 	h.press("k", "enter", "o", `"Task"`, "enter", `"Other"`, "esc", "g", "g", "t", "j", "t")
-	h.press("p", `"today"`, "enter", "e", `"!"`, "down", `"?"`, "esc")
+	h.press("f", `"today"`, "enter", "e", `"!"`, "down", `"?"`, "esc")
 	h.want("  ○ Task! · Two", "▌ ○ Other? · Two")
 }
 
@@ -177,10 +177,10 @@ func TestArchiveMovesClosedWorkUnderAHeading(t *testing.T) {
 	if h.m.msg != "nothing closed to archive" {
 		t.Fatalf("inside the archive: msg = %q", h.m.msg)
 	}
-	h.press("p", `"alpha"`, "enter")
+	h.press("f", `"alpha"`, "enter")
 	h.want("▌ ▾ Build:", "    ✓ Shipped", "        A detail", "    ✓ Half", "      ○ Still open", "    ○ Live", "  ✕ Dropped")
 	for _, place := range []string{"inbox", "waiting"} {
-		h.press("p", `"`+place+`"`, "enter")
+		h.press("f", `"`+place+`"`, "enter")
 		gen := h.m.tree.Gen()
 		h.command("archive")
 		if h.m.tree.Gen() != gen || !strings.Contains(h.m.msg, "archive") {
@@ -233,7 +233,7 @@ func TestCaptureFromOutsideTheApp(t *testing.T) {
 	// The open window sees the rows at its next key.
 	h.press("g", "g")
 	h.want("▌ ▾ Alpha", "    ▾ TUI:", "      ○ Existing", "      ○ Polish !")
-	h.press("p", `"inbox"`, "enter")
+	h.press("f", `"inbox"`, "enter")
 	h.want("▌ ○ Buy milk @fri #home", "  ○ Stays %nowhere")
 
 	if said, err := Capture(tree, st, []string{"%tui"}); err == nil || len(said) != 0 {

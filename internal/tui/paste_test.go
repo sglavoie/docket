@@ -387,7 +387,7 @@ func TestCopyRoundTripsThroughPaste(t *testing.T) {
 	})
 	t.Run("list", func(t *testing.T) {
 		h := project(t)
-		h.press("t", "p", `"Today"`, "enter")
+		h.press("t", "f", `"Today"`, "enter")
 		before := h.rows()
 		copyThroughUpdate(t, h, "Second\n", 1)
 		if h.rows() != before {

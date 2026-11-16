@@ -101,20 +101,20 @@ func TestUndoAndRedoSurviveARestart(t *testing.T) {
 
 func TestAPlaceRemembersItsCursor(t *testing.T) {
 	h := work(t)
-	h.press("p", `"alp"`, "enter", "j", "j")
+	h.press("f", `"alp"`, "enter", "j", "j")
 	h.want(
 		"  ○ Fix login ! #bug",
 		"  ○ Write docs @fri #docs",
 		"▌ ○ Refactor auth #bug",
 	)
-	h.press("p", `"proj"`, "enter", "p", `"alp"`, "enter")
+	h.press("f", `"proj"`, "enter", "f", `"alp"`, "enter")
 	h.want(
 		"  ○ Fix login ! #bug",
 		"  ○ Write docs @fri #docs",
 		"▌ ○ Refactor auth #bug",
 	)
 	// Projects remembers its own.
-	h.press("p", `"proj"`, "enter")
+	h.press("f", `"proj"`, "enter")
 	h.want(
 		"  ▾ Beta",
 		"▌   ○ Fix cache #bug",
@@ -173,7 +173,7 @@ func TestEditingMovesByWord(t *testing.T) {
 
 func TestPickerArrowsWalkTheMatches(t *testing.T) {
 	h := work(t)
-	h.press("p")
+	h.press("f")
 	if h.bottom() != "Go to ›    Inbox · Today · Waiting · Stale · Projects · Beta · Alpha" {
 		t.Fatalf("picker = %q", h.bottom())
 	}
@@ -186,7 +186,7 @@ func TestPickerArrowsWalkTheMatches(t *testing.T) {
 		t.Fatalf("header = %q", h.header())
 	}
 	// Typing starts over from the best match, and the walk stops at the end.
-	h.press("p", "down", `"a"`, "down", "down", "down", "down", "down", "enter")
+	h.press("f", "down", `"a"`, "down", "down", "down", "down", "down", "enter")
 	if h.header() != "Beta" {
 		t.Fatalf("header = %q", h.header())
 	}
@@ -214,9 +214,9 @@ func TestClosedRowsCanBeLeftOut(t *testing.T) {
 		"▌   ○ Write docs @fri #docs",
 		"    ○ Refactor auth #bug",
 	)
-	h.press("p", `"beta"`, "enter")
+	h.press("f", `"beta"`, "enter")
 	h.want("  Nothing open here. :closed shows the closed rows.")
-	h.press("p", `"proj"`, "enter")
+	h.press("f", `"proj"`, "enter")
 	h.want(
 		"  ▾ Beta",
 		"  ▾ Alpha",
@@ -376,7 +376,7 @@ func TestFoldCommandsAndHalfPages(t *testing.T) {
 				for range 30 {
 					h.press("v")
 				}
-				h.press("t", "esc", "p", `"Today"`, "enter")
+				h.press("t", "esc", "f", `"Today"`, "enter")
 			case "filter", "flat filter":
 				h.press("/", `"Item"`)
 				if place == "flat filter" {

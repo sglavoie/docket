@@ -664,7 +664,7 @@ func (m *Model) keepFilter(save bool, name string) {
 	switch {
 	case !m.do(ops...):
 	case save:
-		m.msg = "saved: p then /" + name + " opens it"
+		m.msg = "saved: f then /" + name + " opens it"
 	default:
 		m.msg = "forgot /" + name
 	}

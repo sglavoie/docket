@@ -100,21 +100,42 @@ func (m *Model) paste(content string) {
 		e := m.edit
 		e.insert([]rune(lines[0].text))
 		if m.finishEdit() {
-			m.pasteRows(e.row, true, lines[1:], e.merge)
+			m.pasteRows(e.row, true, lines[1:], e.merge, false)
 		}
 	case m.sideFocus || len(m.picked) > 0 || m.flat():
 		if m.msg == "" {
 			m.msg = "paste into an outline, with nothing selected"
 		}
 	default:
-		m.pasteRows(m.current(), false, lines, false)
+		m.pasteRows(m.current(), false, lines, false, false)
 	}
 }
 
-// pasteRows adds lines as rows after anchor. When the anchor is the paste's
-// own first line, deeper lines become its children. With merge, the rows
-// join the undo step just recorded.
-func (m *Model) pasteRows(anchor string, anchorIsFirst bool, lines []pasted, merge bool) {
+// put reads the session register through the same parser and builder as paste.
+func (m *Model) put(before bool) {
+	if m.sideFocus {
+		return
+	}
+	if len(m.picked) > 0 || m.flat() {
+		if m.msg == "" {
+			m.msg = "put into an outline, with nothing selected"
+		}
+		return
+	}
+	lines := readPaste(m.register)
+	if len(lines) == 0 {
+		m.msg = "nothing to put"
+		return
+	}
+	if n := m.pasteRows(m.current(), false, lines, false, before); n > 0 {
+		m.msg = fmt.Sprintf("put %d rows", n)
+	}
+}
+
+// pasteRows adds lines beside anchor, before it when before is set. When
+// anchorIsFirst, deeper lines become its children. With merge, the rows
+// join the undo step just recorded. It returns the number of pasted rows.
+func (m *Model) pasteRows(anchor string, anchorIsFirst bool, lines []pasted, merge, before bool) int {
 	parent0, after := m.at.root, anchor
 	if anchor != "" {
 		parent0 = m.tree.Row(anchor).Parent
@@ -144,6 +165,8 @@ func (m *Model) pasteRows(anchor string, anchorIsFirst bool, lines []pasted, mer
 		case level > 0:
 			parent = stack[level-1]
 			pos = m.tree.PosLast(parent)
+		case before && after == anchor && anchor != "":
+			pos = m.tree.PosBefore(parent0, anchor)
 		case after == "":
 			pos = m.tree.PosLast(parent0)
 		default:
@@ -153,14 +176,14 @@ func (m *Model) pasteRows(anchor string, anchorIsFirst bool, lines []pasted, mer
 		undo, err := m.apply([]outline.Op{op})
 		if err != nil {
 			fail(err)
-			return
+			return 0
 		}
 		made = append(made, op.Row)
 		fields := m.setFields(op.Row, sigil.Parse(l.text, m.defaultsToNotes(parent), today).Fields())
 		more, err := m.apply(fields)
 		if err != nil {
 			fail(err)
-			return
+			return 0
 		}
 		ops = append(append(ops, op), fields...)
 		inv = append(append(more, undo...), inv...)
@@ -172,14 +195,14 @@ func (m *Model) pasteRows(anchor string, anchorIsFirst bool, lines []pasted, mer
 		}
 	}
 	if len(ops) == 0 {
-		return
+		return 0
 	}
 	if merge {
 		if !m.save(ops, inv) {
 			for _, id := range made {
 				m.tree.Forget(id)
 			}
-			return
+			return 0
 		}
 		last := len(m.undo) - 1
 		m.undo[last] = append(inv, m.undo[last]...)
@@ -188,7 +211,19 @@ func (m *Model) pasteRows(anchor string, anchorIsFirst bool, lines []pasted, mer
 		for _, id := range made {
 			m.tree.Forget(id)
 		}
-		return
+		return 0
+	}
+	// Newly made closed rows stay visible for this visit, so the cursor can
+	// land on the last row even when closed rows are normally hidden.
+	if m.hideClosed {
+		for _, id := range made {
+			if sigil.FromFields(m.tree.Row(id).Fields).Closed() {
+				if m.at.kept == nil {
+					m.at.kept = map[string]bool{}
+				}
+				m.at.kept[id] = true
+			}
+		}
 	}
 	m.rebuild()
 	m.seek(made[len(made)-1])
@@ -197,6 +232,7 @@ func (m *Model) pasteRows(anchor string, anchorIsFirst bool, lines []pasted, mer
 		n++
 	}
 	m.msg = fmt.Sprintf("pasted %d rows", n)
+	return n
 }
 
 // pastePrefix identifies line starts needing protection after sigil.Format.

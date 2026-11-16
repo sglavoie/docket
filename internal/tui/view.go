@@ -49,6 +49,12 @@ const helpText = `Docket
                  counts multiply: d3j = 3dj; Esc or another key cancels
                  both fill the session register and clipboard; y alone waits
                  copy keeps the cursor; one u restores a delete, keeping the register
+  p P            put the register after, before the row as new rows at its level
+                 keeps depth and fields like paste; one undo; lands on the last row
+                 put N rows; nothing to put when empty; counts are dropped
+                 no lists, filters or selection; sidebar ignores p P
+                 empty places receive children; each put keeps the register
+                 put makes new identities; m J K keep the row's identity
   v V            pick a row; sweep with motions (V ends, Esc clears)
                  x ! t dd yy m and stamps act on the selection
                  > < J K move adjacent selected siblings together
@@ -76,11 +82,11 @@ const helpText = `Docket
                  later keys break ties; no keys: text ignoring case
                  ties keep order; children travel; one undo; no lists or filters
                  review (projects, longest untouched first),
-                 save name (keep the filter; p then /name opens it), forget name,
+                 save name (keep the filter; f then /name opens it), forget name,
                  sync folder (share with other machines through a synced folder)
   a              capture to the Inbox; %name files in a project or heading
-  p              go to a project, heading, list or saved filter by name
-                 blank p Enter goes back to the place the last jump left
+  f              go to a project, heading, list or saved filter by name
+                 blank f Enter goes back to the place the last jump left
   Tab            the sidebar: j k choose, Enter work in it
                  gg G and the paging keys move through it too
   u  Ctrl+R      undo, redo

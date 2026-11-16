@@ -1597,7 +1597,7 @@ func (m *Model) sideKey(k string) {
 		}
 	case "tab", "enter", "esc", "l", "right":
 		m.leaveSidebar()
-	case "p":
+	case "f":
 		m.ask = &prompt{kind: askJump}
 	case "a":
 		m.ask = &prompt{kind: askCapture}
@@ -1824,7 +1824,9 @@ func (m *Model) normalAct(k string, count int) {
 	case "tab":
 		m.sideFrom = m.departure()
 		m.sideFocus = true
-	case "p":
+	case "p", "P":
+		m.put(k == "P")
+	case "f":
 		m.ask = &prompt{kind: askJump}
 	case "a":
 		m.ask = &prompt{kind: askCapture}

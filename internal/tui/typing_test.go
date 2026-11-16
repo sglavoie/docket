@@ -289,7 +289,7 @@ func TestEnterSplitsAndBackspaceJoins(t *testing.T) {
 			h := start(t)
 			h.press("o", `"First #match $waiting"`, "enter", `"Second #match $waiting"`, "esc")
 			if view == "list" {
-				h.press("p", `"Waiting"`, "enter")
+				h.press("f", `"Waiting"`, "enter")
 				if h.m.at.list == "" {
 					t.Fatal("fixture is not a list")
 				}

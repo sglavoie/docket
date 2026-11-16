@@ -165,7 +165,7 @@ func TestACountRepeatsOrTakesRows(t *testing.T) {
 
 	t.Run("today reorders in one undo step", func(t *testing.T) {
 		h := countOutline(t, 4)
-		h.press("4", "t", "p", `"Today"`, "enter", "3", "J")
+		h.press("4", "t", "f", `"Today"`, "enter", "3", "J")
 		if h.m.tree.Row(h.m.current()).Text() != "Task 00" || h.m.cursor != 3 {
 			t.Fatal("counted Today reorder lost the cursor")
 		}
@@ -390,13 +390,13 @@ func TestVSweepsASelection(t *testing.T) {
 
 	t.Run("lists flat filters and destination resets", func(t *testing.T) {
 		h := countOutline(t, 4)
-		h.press("4", "t", "p", `"Today"`, "enter", "V", "2", "j")
+		h.press("4", "t", "f", `"Today"`, "enter", "V", "2", "j")
 		picks(h, 0, 1, 2)
 		h.press("/", `"Task"`, "tab", "enter", "V", "j")
 		picks(h, 0, 1)
-		h.press("p", "enter", "j") // Back to the project.
+		h.press("f", "enter", "j") // Back to the project.
 		picks(h)
-		h.press("V", "p", `"Today"`, "enter", "j")
+		h.press("V", "f", `"Today"`, "enter", "j")
 		picks(h)
 		h.press("V", "/")
 		h.m.Update(tea.PasteMsg{Content: "Task"})
@@ -620,5 +620,150 @@ func TestDeleteAndCopyTakeMotions(t *testing.T) {
 		h.want("▌   Heading:")
 		h.press("u")
 		h.want("▌   First #hit", "  ▾ Heading:", "      Second #hit")
+	})
+}
+
+func TestPPutsTheRegister(t *testing.T) {
+	t.Run("delete move put and two undos", func(t *testing.T) {
+		h := countOutline(t, 4)
+		original, steps := h.m.current(), len(h.m.undo)
+		h.press("d", "d", "j", "p")
+		h.want("  ○ Task 01", "  ○ Task 02", "▌ ○ Task 00", "  ○ Task 03")
+		if h.m.current() == original || h.status() != "put 1 rows" || len(h.m.undo) != steps+2 {
+			t.Fatal("put must create a fresh row and its own undo step")
+		}
+		register := h.m.register
+		h.press("u")
+		h.want("  ○ Task 01", "  ○ Task 02", "▌ ○ Task 03")
+		h.press("u")
+		h.want("▌ ○ Task 00", "  ○ Task 01", "  ○ Task 02", "  ○ Task 03")
+		if h.m.current() != original || h.m.register != register {
+			t.Fatal("undo must restore the original identity and keep the register")
+		}
+	})
+	t.Run("ddp swaps neighbours", func(t *testing.T) {
+		h := countOutline(t, 3)
+		h.press("d", "d", "p")
+		h.want("  ○ Task 01", "▌ ○ Task 00", "  ○ Task 02")
+	})
+	t.Run("copy a subtree at its level with fields", func(t *testing.T) {
+		h := start(t).wide()
+		h.pasteText("Alpha\n\tHeading:\n\t\tTask ! #tag @2026-12-01\n\t\t\tDetail\n\tOther")
+		h.press("f", `"Alpha"`, "enter", "j", "y", "y")
+		original, register, steps := h.m.current(), h.m.register, len(h.m.undo)
+		h.press("p")
+		h.want("  ▾ Heading:", "    ○ Task ! @Dec 1 #tag", "        Detail", "    ○ Task ! @Dec 1 #tag", "▌       Detail", "  ○ Other")
+		copy := h.m.tree.Row(h.m.current()).Parent
+		if copy == original || h.m.tree.Row(copy).Parent != h.m.tree.Row(original).Parent ||
+			h.m.register != register || h.status() != "put 2 rows" || len(h.m.undo) != steps+1 {
+			t.Fatal("subtree put lost level, identity, register, status or undo grouping")
+		}
+		h.press("u")
+		h.want("  ▾ Heading:", "    ○ Task ! @Dec 1 #tag", "        Detail", "▌ ○ Other")
+	})
+	t.Run("before keeps multiple roots and children in order", func(t *testing.T) {
+		h := start(t).wide()
+		h.pasteText("Alpha\n\tFirst\n\t\tChild\n\tSecond\n\tTarget")
+		h.press("f", `"Alpha"`, "enter", "3", "y", "y", "G")
+		register, steps := h.m.register, len(h.m.undo)
+		h.press("P")
+		h.want("  ○ First", "      Child", "  ○ Second", "  ○ First", "      Child", "▌ ○ Second", "  ○ Target")
+		if h.status() != "put 3 rows" || h.m.register != register || len(h.m.undo) != steps+1 {
+			t.Fatal("P lost row count, register or undo grouping")
+		}
+		h.press("u")
+		h.want("  ○ First", "      Child", "  ○ Second", "▌ ○ Target")
+	})
+	t.Run("each put creates fresh rows and drops a count", func(t *testing.T) {
+		h := countOutline(t, 1)
+		h.press("y", "y")
+		register := h.m.register
+		h.press("3", "p", "2", "p", "4", "P")
+		h.want("  ○ Task 00", "  ○ Task 00", "▌ ○ Task 00", "  ○ Task 00")
+		if len(h.m.tree.Children(h.m.at.root)) != 4 || h.m.register != register || h.m.count != 0 {
+			t.Fatal("put did not create exactly one fresh row per press or retain the register")
+		}
+	})
+	t.Run("done task stays done", func(t *testing.T) {
+		h := countOutline(t, 1)
+		h.command("closed")
+		h.press("x", "y", "y", "p")
+		h.want("  ✓ Task 00", "▌ ✓ Task 00")
+	})
+	for _, put := range []string{"p", "P"} {
+		t.Run(put+" empty register", func(t *testing.T) {
+			h := start(t)
+			gen, steps := h.m.tree.Gen(), len(h.m.undo)
+			h.press(put)
+			if h.status() != "nothing to put" || h.m.ask != nil || h.m.tree.Gen() != gen || len(h.m.undo) != steps {
+				t.Fatal("empty register changed rows or opened a picker")
+			}
+		})
+		t.Run(put+" empty place", func(t *testing.T) {
+			h := countOutline(t, 1)
+			h.press("d", "d", put)
+			h.want("▌ ○ Task 00")
+			if h.m.tree.Row(h.m.current()).Parent != h.m.at.root || h.status() != "put 1 rows" {
+				t.Fatal("empty place did not receive a child")
+			}
+		})
+		for _, place := range []string{"Today", "filter", "flat filter", "selection", "sweep", "sidebar"} {
+			t.Run(put+" refused in "+place, func(t *testing.T) {
+				h := countOutline(t, 3).wide()
+				h.press("y", "y")
+				message := "nothing selected"
+				switch place {
+				case "Today":
+					h.press("t", "f", `"Today"`, "enter")
+					message = "a list has no order"
+				case "filter", "flat filter":
+					h.press("/", `"Task"`)
+					if place == "flat filter" {
+						h.press("tab")
+					}
+					h.press("enter")
+					message = "clear the filter first"
+				case "selection":
+					h.press("v")
+				case "sweep":
+					h.press("V", "j")
+				case "sidebar":
+					h.press("tab")
+					message = ""
+				}
+				before, gen, steps, register := h.rows(), h.m.tree.Gen(), len(h.m.undo), h.m.register
+				h.press(put)
+				if !strings.Contains(h.status(), message) || h.rows() != before || h.m.tree.Gen() != gen || len(h.m.undo) != steps || h.m.register != register || h.m.ask != nil {
+					t.Fatalf("put refusal changed state or had wrong message: %q", h.status())
+				}
+			})
+		}
+	}
+	t.Run("failed put keeps rows register and history", func(t *testing.T) {
+		h := countOutline(t, 2).wide()
+		h.press("2", "y", "y")
+		before, register, steps := h.rows(), h.m.register, len(h.m.undo)
+		h.m.backend = &failCountedMove{Backend: h.m.backend}
+		h.press("P")
+		if h.rows() != before || h.m.register != register || len(h.m.undo) != steps || h.m.msg != "not saved, nothing changed: disk full" {
+			t.Fatalf("failed put changed state or overwrote the error: %q", h.m.msg)
+		}
+	})
+	t.Run("f opens Go to and blank returns including sidebar", func(t *testing.T) {
+		h := countOutline(t, 3)
+		h.press("j")
+		before := h.rows()
+		h.press("f")
+		if h.m.ask == nil || h.m.ask.kind != askJump || !strings.HasPrefix(h.bottom(), "Go to ›") {
+			t.Fatal("f did not open Go to")
+		}
+		h.press(`"Inbox"`, "enter", "f", "enter")
+		if h.header() != "Project" || h.rows() != before {
+			t.Fatal("blank f Enter did not restore the previous place and cursor")
+		}
+		h.press("tab", "f", `"Inbox"`, "enter")
+		if h.m.sideFocus || h.header() != "Inbox" {
+			t.Fatal("sidebar f did not jump")
+		}
 	})
 }

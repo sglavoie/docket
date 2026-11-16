@@ -40,13 +40,13 @@ func TestAStartDateDimsARowUntilItsDayThenPutsItInToday(t *testing.T) {
 	if strings.Contains(h.m.View().Content, sgrDim+"Renew"+sgrReset) {
 		t.Fatal("the row is still dimmed on its start day")
 	}
-	h.press("p", `"today"`, "enter")
+	h.press("f", `"today"`, "enter")
 	h.want("▌ ○ Renew passport @@today · Project")
 
 	// Weeks on, the untouched rows are stale; the one still waiting for its
 	// day is not.
 	h.clock = h.clock.Add(20 * 24 * time.Hour)
-	h.press("p", `"stale"`, "enter")
+	h.press("f", `"stale"`, "enter")
 	h.want(
 		"▌ ○ First · 25d · Project",
 		"  ○ Second · 25d · Project",
@@ -111,10 +111,10 @@ func TestAFilterCanBeSavedAndReopened(t *testing.T) {
 		t.Fatalf("msg = %q", h.m.msg)
 	}
 	h.press("/", `"#bug -$done"`, "tab", "enter", ":", `"save open bugs"`, "enter")
-	if h.m.msg != "saved: p then /open bugs opens it" {
+	if h.m.msg != "saved: f then /open bugs opens it" {
 		t.Fatalf("msg = %q", h.m.msg)
 	}
-	h.press("esc", "x", "p", `"/op"`)
+	h.press("esc", "x", "f", `"/op"`)
 	if h.bottom() != "Go to › /op   /open bugs" {
 		t.Fatalf("picker = %q", h.bottom())
 	}
@@ -129,12 +129,12 @@ func TestAFilterCanBeSavedAndReopened(t *testing.T) {
 
 	// It outlives the session, and can be forgotten.
 	again := reopen(t, h)
-	again.press("p", `"/open"`, "enter")
+	again.press("f", `"/open"`, "enter")
 	again.want(
 		"▌ ○ Fix login ! #bug · Alpha",
 		"  ○ Refactor auth #bug · Alpha",
 	)
-	again.press(":", `"forget open bugs"`, "enter", "p", `"/open"`, "enter")
+	again.press(":", `"forget open bugs"`, "enter", "f", `"/open"`, "enter")
 	if again.m.msg != "nothing matches /open" {
 		t.Fatalf("msg = %q", again.m.msg)
 	}
