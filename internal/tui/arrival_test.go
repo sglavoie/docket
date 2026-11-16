@@ -50,6 +50,67 @@ func TestTutorReads(t *testing.T) {
 	}
 }
 
+func TestTutorStepsHold(t *testing.T) {
+	step := func(t *testing.T, prefix string) *harness {
+		t.Helper()
+		h := start(t).wide()
+		h.press(":", `"tutor"`, "enter")
+		for range readPaste(tutorText) {
+			if strings.HasPrefix(h.m.tree.Row(h.m.current()).Text(), prefix) {
+				return h
+			}
+			h.press("j")
+		}
+		t.Fatalf("tutorial step %q missing", prefix)
+		return nil
+	}
+	for _, tc := range []struct {
+		name, prefix, field, want string
+		keys                      []string
+	}{
+		{"repeat flag", "Press ! here, j then .", "flag", "1", []string{"!", "j", "."}},
+		{"sweep close", "Press V then j", "state", "done", []string{"V", "j", "x"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := step(t, tc.prefix)
+			first := h.m.current()
+			h.press(tc.keys...)
+			second := h.m.current()
+			a, b := h.m.tree.Row(first), h.m.tree.Row(second)
+			if first == second || a.Parent != b.Parent || b.Fields["state"] == "" || strings.HasSuffix(b.Text(), ":") {
+				t.Fatalf("step reached %q instead of a sibling task", b.Text())
+			}
+			for _, row := range []*outline.Row{a, b} {
+				if row.Fields[tc.field] != tc.want {
+					t.Errorf("%q: %s = %q, want %q", row.Text(), tc.field, row.Fields[tc.field], tc.want)
+				}
+			}
+			if !strings.Contains(h.rows(), tc.prefix) || !strings.Contains(h.rows(), b.Text()) {
+				t.Fatalf("exercise rows disappeared:\n%s", h.rows())
+			}
+		})
+	}
+	t.Run("split and join", func(t *testing.T) {
+		h := step(t, "Press o and type two words")
+		h.press("o", `"two words"`, "left", "enter", "backspace", "esc")
+		if got := h.m.tree.Row(h.m.current()).Text(); got != "two word s" {
+			t.Fatalf("join should insert a space at the split: %q", got)
+		}
+	})
+	t.Run("sidebar travel", func(t *testing.T) {
+		h := step(t, "Press Tab to focus the sidebar")
+		welcome, row := h.m.at.root, h.m.current()
+		h.press("tab", "k", "enter")
+		if h.m.sideFocus || h.m.at.root == welcome {
+			t.Fatal("k did not visit another place from Welcome")
+		}
+		h.press("ctrl+o")
+		if h.m.at.root != welcome || h.m.current() != row {
+			t.Fatal("Ctrl+O did not return to the tutorial step")
+		}
+	})
+}
+
 func TestTutorCommand(t *testing.T) {
 	for _, where := range []string{"projects", "project", "zoom", "inbox", "list", "filter", "selection", "sidebar"} {
 		t.Run(where, func(t *testing.T) {

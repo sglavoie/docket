@@ -564,7 +564,10 @@ first screen gives the essentials; `]` and `[` go to the next and previous
 heading. `j` and `k`, paging keys and `gg` and `G` scroll; any other key
 closes it. `:tutor` teaches on editable outline rows, read through the same
 reader as `:import`. `dd` on its `Welcome` project removes it; another
-`:tutor` makes a fresh copy with new row identities.
+`:tutor` makes a fresh copy with new row identities. Exercises that act on
+the next row have a sibling task to receive the action. The split-and-join
+exercise names the space inserted by a join; sidebar travel starts with
+`k` from Welcome's last entry.
 
 ### Archive
 
@@ -1179,6 +1182,8 @@ These are the only commands; everything else is done in the outline.
    terminal background; cursor and selection backgrounds span wrapped rows,
    and dates outside this year name their year. An empty interactive launch
    opens a Welcome tutorial; `:tutor` adds a fresh copy in one undo step.
+   Tutorial repeat and sweep steps include sibling tasks to act on, and
+   its join and sidebar instructions describe the keys' actual outcomes.
    Help has eight sections walked with `]` and `[`. *Built.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any

@@ -8,7 +8,7 @@ Welcome
 		Press o here, type a task of your own, then Esc to keep it; u takes it back.
 		Press A on this row, add a word, then Esc; I starts at the beginning and cc retypes the text.
 		Press w to step into this row; w and b move by word, cw changes a word, then Esc twice returns.
-		Press o and type two words; Left then Enter splits the line, and Backspace at its start joins it back.
+		Press o and type two words; Left then Enter splits the line, and Backspace at its start joins the pieces with a space.
 	States and sigils:
 		Press x to close this task and x again to reopen it; the heading counts your progress.
 		Press \! to flag this row, then t to pick it for Today; press each again to clear it.
@@ -23,10 +23,12 @@ Welcome
 		Press dd on this row, then u to restore it; d followed by j deletes this row and the next in one step.
 		Press >> on this row to indent it under the row above, then << to bring it back; J and K reorder it.
 		Press \! here, j then . to flag the next row too; u twice restores both.
+		This task receives the repeated flag from the row above.
 	Selection:
 		Press v here to pick this row and step down; press v again to pick the next.
 		Press \! to flag both selected rows in one step; u takes it back and Esc clears the selection.
 		Press V then j to sweep two rows, x to close both, u to undo, then Esc to clear.
+		This task closes together with the row above in the sweep.
 	Filter:
 		Press / then practice and Enter to keep a text filter; Esc shows the outline again. #practice
 		Type /#practice then Enter to find this tagged row; Tab while typing switches flat and context views. #practice
@@ -38,7 +40,7 @@ Welcome
 		Press a and type Try this %Welcome and press Enter then Esc to file a task in this project.
 		Press f, type Inbox and Enter to visit it; Ctrl+O returns here and Ctrl+I goes forward again.
 		Press m here, type Inbox and Enter to move this row there; u returns it to this heading.
-		Press Tab to focus the sidebar, j or k to visit a place, then Enter to work there; Ctrl+O returns.
+		Press Tab to focus the sidebar, k to visit a place, then Enter to work there; Ctrl+O returns.
 	Undo and commands:
 		Press dd on this row, u to undo, Ctrl+R to redo, and u once more to keep it.
 		Type :help and Enter for the reference; ] and [ walk its headings, and Esc returns here.
