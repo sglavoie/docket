@@ -237,6 +237,22 @@ func TestAKeystrokePaintsWithinAFrame(t *testing.T) {
 		t.Errorf("moving the cursor under $next took %v", d)
 	}
 
+	// Ancestor text matches all project descendants in one contextual walk.
+	frame(m, "/")
+	frame(m, "esc")
+	frame(m, "/")
+	filter("^project")
+	if len(m.at.matched) < 10000 {
+		t.Fatalf("ancestor timing needs at least 10000 descendants, have %d", len(m.at.matched))
+	}
+	if d := retype("t"); d > budget {
+		t.Errorf("typing an ancestor filter took %v", d)
+	}
+	frame(m, "enter")
+	if d := best("j"); d > budget {
+		t.Errorf("moving the cursor under an ancestor filter took %v", d)
+	}
+
 	// A deadline range, flat, so its matches are sorted soonest first.
 	frame(m, "/")
 	frame(m, "esc")

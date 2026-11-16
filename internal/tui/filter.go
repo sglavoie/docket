@@ -17,8 +17,9 @@ import (
 // leading minus turns a term into its opposite. A word may offer several
 // readings with a bar between them, and holds when any one does.
 type term struct {
-	neg bool
-	any []cond
+	neg   bool
+	above bool
+	any   []cond
 }
 
 // cond is one reading of a term.
@@ -35,6 +36,17 @@ func parseQuery(q string, today time.Time) []term {
 		var t term
 		if len(w) > 1 && w[0] == '-' {
 			t.neg, w = true, w[1:]
+		}
+		if w == "^" {
+			continue // still being typed
+		}
+		if strings.HasPrefix(w, "^^") {
+			t.any = []cond{parseCond(w, today)}
+			out = append(out, t)
+			continue
+		}
+		if strings.HasPrefix(w, "^") {
+			t.above, w = true, w[1:]
 		}
 		// A side without its own sigil inherits the first side's:
 		// $open|doing reads as $open or $doing, but #home|! keeps both sigils.
@@ -149,18 +161,27 @@ func sinceDay(s string, today time.Time) (string, bool) {
 
 // matches reads one row against a query. next is each project's next
 // action, as the last scan found it.
-func matches(r *outline.Row, terms []term, today time.Time, next map[string]bool) bool {
+func matches(r *outline.Row, terms []term, today time.Time, next map[string]bool, above []int) bool {
 	l := sigil.FromFields(r.Fields)
-	for _, t := range terms {
-		ok := false
-		for _, c := range t.any {
-			ok = ok || holds(r, l, c, today, next)
+	for i, t := range terms {
+		ok := above[i] != 0
+		if !t.above {
+			ok = holdsAny(r, l, t, today, next)
 		}
 		if ok == t.neg {
 			return false
 		}
 	}
 	return true
+}
+
+func holdsAny(r *outline.Row, l sigil.Line, t term, today time.Time, next map[string]bool) bool {
+	for _, c := range t.any {
+		if holds(r, l, c, today, next) {
+			return true
+		}
+	}
+	return false
 }
 
 func holds(r *outline.Row, l sigil.Line, c cond, today time.Time, next map[string]bool) bool {
@@ -224,24 +245,57 @@ func (m *Model) refilter() {
 		return
 	}
 	m.scan() // $next reads the scan's answer
+	// Each slot records the first matching ancestor's walk level. Restore
+	// slots at that level on return, so siblings never inherit one another.
+	above := make([]int, len(terms))
+	hasAbove := slices.ContainsFunc(terms, func(t term) bool { return t.above })
+	include := func(id string, level int) {
+		if !hasAbove || id == "" {
+			return
+		}
+		r := m.tree.Row(id)
+		l := sigil.FromFields(r.Fields)
+		for i, t := range terms {
+			if t.above && above[i] == 0 && holdsAny(r, l, t, today, m.next) {
+				above[i] = level
+			}
+		}
+	}
+	parents := func(id string) {
+		if hasAbove {
+			for id != "" {
+				include(id, 1)
+				id = m.tree.Row(id).Parent
+			}
+		}
+	}
 	if m.at.list != "" {
 		for _, id := range m.at.rows {
-			if m.live(id) && matches(m.tree.Row(id), terms, today, m.next) {
+			if !m.live(id) {
+				continue
+			}
+			clear(above)
+			parents(m.tree.Row(id).Parent)
+			if matches(m.tree.Row(id), terms, today, m.next, above) {
 				m.at.hits = append(m.at.hits, visRow{id, 0})
 				m.at.matched[id] = true
 			}
 		}
 		return
 	}
-	var walk func(parent string, depth int) bool
-	walk = func(parent string, depth int) bool {
+	if m.at.root != "" {
+		parents(m.tree.Row(m.at.root).Parent)
+	}
+	var walk func(parent string, depth, level int) bool
+	walk = func(parent string, depth, level int) bool {
+		include(parent, level)
 		any := false
 		for _, id := range m.tree.Children(parent) {
 			if hiddenTop(id) {
 				continue
 			}
 			at := len(m.at.hits)
-			ok := matches(m.tree.Row(id), terms, today, m.next)
+			ok := matches(m.tree.Row(id), terms, today, m.next, above)
 			if ok {
 				m.at.matched[id] = true
 			}
@@ -249,19 +303,24 @@ func (m *Model) refilter() {
 				if ok {
 					m.at.hits = append(m.at.hits, visRow{id, 0})
 				}
-				any = walk(id, 0) || ok || any
+				any = walk(id, 0, level+1) || ok || any
 				continue
 			}
 			m.at.hits = append(m.at.hits, visRow{id, depth})
-			below := walk(id, depth+1)
+			below := walk(id, depth+1, level+1)
 			if !ok && !below {
 				m.at.hits = m.at.hits[:at]
 			}
 			any = any || ok || below
 		}
+		for i := range above {
+			if above[i] == level {
+				above[i] = 0
+			}
+		}
 		return any
 	}
-	walk(m.at.root, 0)
+	walk(m.at.root, 0, 2)
 	if m.at.flat && byDeadline(terms) {
 		// Soonest first, ties and rows with no deadline in outline order.
 		slices.SortStableFunc(m.at.hits, func(a, b visRow) int {

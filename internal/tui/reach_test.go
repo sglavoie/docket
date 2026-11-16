@@ -380,3 +380,109 @@ func TestFilterReadsAnyTagAnyStateAndMixedAlternatives(t *testing.T) {
 		}
 	})
 }
+
+func TestAFilterTermReachesTheRowsAbove(t *testing.T) {
+	fixture := func(t *testing.T) *harness {
+		h := start(t).wide()
+		h.pasteText("Docket #office\n\tWork: #work\n\t\tFirst $open\n\t\tNested: #work $waiting\n\t\t\tDeep $open\n\tHome: #home\n\t\tSecond $open\n\tPlain $open\nElsewhere\n\tOther $open")
+		return h
+	}
+	t.Run("context keeps dim ancestors and all takes matches only", func(t *testing.T) {
+		h := fixture(t)
+		h.press("/", `"^#work"`, "enter")
+		h.want("▌ ▾ Docket #office", "    ▾ Work: #work", "      ○ First", "      ◔ Nested: #work", "        ○ Deep")
+		if !strings.Contains(h.m.View().Content, sgrDim+"Work:") {
+			t.Fatal("context heading is not dimmed")
+		}
+		h.command("all")
+		if got := h.selected(); got != "First, Nested:, Deep" {
+			t.Fatalf("selected %q", got)
+		}
+	})
+	t.Run("flat excludes the tagged heading itself and negates ancestry", func(t *testing.T) {
+		h := fixture(t)
+		h.press("/", `"^#work"`, "tab")
+		h.want("▌ ○ First · Docket", "  ◔ Nested: #work +1 · Docket", "  ○ Deep · Docket")
+		h.press("esc", "/", `"-^#work"`)
+		h.want("▌ ▾ Docket #office", "  ▾ Work: #work · Docket", "  ▾ Home: #home · Docket", "  ○ Second · Docket", "  ○ Plain · Docket", "  ▾ Elsewhere", "  ○ Other · Elsewhere")
+	})
+	t.Run("project name scopes next action from Projects", func(t *testing.T) {
+		h := fixture(t)
+		h.press("/", `"^docket $next"`, "tab")
+		h.want("▌ ○ First · Docket")
+	})
+	t.Run("project tag counts above the pane root", func(t *testing.T) {
+		h := fixture(t)
+		h.press("p", `"nested"`, "enter", "/", `"^#office ^#work"`)
+		h.want("▌ ○ Deep")
+		h.press("esc", "/", `"-^#office"`)
+		h.want("  Nothing matches.")
+	})
+	t.Run("Today tests parents of held rows", func(t *testing.T) {
+		h := fixture(t)
+		h.press("/", `"$open"`, "tab", "enter")
+		h.command("all")
+		h.press("t", "p", `"today"`, "enter", "/", `"^#work"`)
+		h.want("▌ ○ First · Docket", "  ○ Deep · Docket")
+		h.press("esc", "/", `"-^#work"`)
+		h.want("▌ ○ Second · Docket", "  ○ Plain · Docket", "  ○ Other · Elsewhere")
+	})
+	t.Run("ancestor grammar and independent terms", func(t *testing.T) {
+		for _, tc := range []struct{ query, names string }{
+			{"^#work|home", "First, Nested:, Deep, Second"},
+			{"-^#work|home", "Docket, Work:, Home:, Plain, Elsewhere, Other"},
+			{"^#home|$waiting", "Deep, Second"},
+			{"^#work ^$waiting", "Deep"},
+			{"^#work -^$waiting", "First, Nested:"},
+			{"^$", "Deep"},
+			{"^#", "Work:, First, Nested:, Deep, Home:, Second, Plain"},
+			{"^$note", "Work:, First, Nested:, Deep, Home:, Second, Plain, Other"},
+			{"^ $next", "First, Other"},
+			{"-^ $next", "First, Other"},
+		} {
+			t.Run(tc.query, func(t *testing.T) {
+				h := fixture(t)
+				h.press("/", `"`+tc.query+`"`, "tab", "enter")
+				h.command("all")
+				if got := h.selected(); got != tc.names {
+					t.Fatalf("selected %q, want %q", got, tc.names)
+				}
+			})
+		}
+	})
+	t.Run("doubled prefix and unreadable alternatives are literal", func(t *testing.T) {
+		h := start(t).wide()
+		h.pasteText("^^marker\nLiteral $open|@nope\n\tChild $open")
+		h.press("/", `"^^marker"`, "tab")
+		h.want("▌   ^^marker")
+		h.press("esc", "/", `"^$open|@nope"`)
+		h.want("▌ ○ Child · Literal $open|@nope")
+	})
+	t.Run("completion and colour follow the term after the prefix", func(t *testing.T) {
+		h := fixture(t)
+		for _, tc := range []struct{ typed, want string }{
+			{"^#wo", "^#work"}, {"-^#wo", "-^#work"},
+			{"^#work|ho", "^#work|home"}, {"^#work|$wa", "^#work|$waiting"},
+			{"^@@la", "^@@later"}, {"^^#wo", "^^#wo"},
+		} {
+			h.press("/", `"`+tc.typed+`"`, "right")
+			if h.m.at.query != tc.want {
+				t.Errorf("completed %q to %q, want %q", tc.typed, h.m.at.query, tc.want)
+			}
+			h.press("esc")
+		}
+		for _, tc := range []struct{ query, painted string }{
+			{"^#wo", sgrAccent + "^#wo" + sgrReset},
+			{"-^#work|$waiting", sgrAccent + "-^#work" + sgrReset + "|" + sgrAccent + "$waiting" + sgrReset},
+			{"^$nope", sgrWarn + "^$nope" + sgrReset},
+			{"^#work|@nope", sgrWarn + "^#work|@nope" + sgrReset},
+			{"^^#work", "^^#work"},
+		} {
+			h.press("/", `"`+tc.query+`"`)
+			if raw := h.m.View().Content; !strings.Contains(raw, tc.painted) {
+				t.Errorf("%q missing coloured spans %q", tc.query, tc.painted)
+			}
+			h.press("esc")
+		}
+	})
+}

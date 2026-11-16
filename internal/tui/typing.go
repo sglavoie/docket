@@ -81,6 +81,9 @@ func (m *Model) styler(surface string) func(string) []word {
 			// An unreadable sigil side makes the whole word literal text.
 			for _, part := range parts {
 				part = strings.TrimPrefix(part, "-")
+				if terms[0].above {
+					part = strings.TrimPrefix(part, "^")
+				}
 				if part != "" && strings.ContainsRune("!#$@*~", rune(part[0])) {
 					style = sgrWarn
 					break
@@ -104,6 +107,12 @@ func (m *Model) suggest(e *editor, surface string) string {
 	word := line[strings.LastIndexByte(line, ' ')+1:]
 	if surface == askStamp || surface == askFilter {
 		word = strings.TrimPrefix(word, "-")
+	}
+	if surface == askFilter {
+		if strings.HasPrefix(word, "^^") {
+			return ""
+		}
+		word = strings.TrimPrefix(word, "^")
 	}
 	if word == "" {
 		return ""

@@ -49,6 +49,9 @@ const helpText = `Docket
                  so $done ~7d is what was finished this week
                  $next: each project's first open or doing row not starting later
                  @<fri @>+1w: open rows due by or from a day; flat lists soonest first
+                 ^term tests ancestors, not this row, even above the pane root
+                 ^#work|home, ^name $next; -^#work means no ancestor has #work
+                 bare ^ waits for typing; ^^ is text; completion works after ^
                  a filter shows every match, folded or not
   :              q, export [file], closed (hide or show done and canceled rows),
                  all (select every row shown: /#old, :all, -#old #new retags),

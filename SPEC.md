@@ -298,14 +298,21 @@ Three more acts use the same line:
   sigil (`#home|!`, `$waiting|@overdue`, `milk|#food`); a side without one
   inherits the first side's sigil. If a side cannot be read as its own or
   inherited sigil, the whole word is text. Each side is coloured and
-  completed according to its sigil.
+  completed according to its sigil. A leading `^` tests the term on any
+  ancestor, from the parent up to the project, excluding the row itself:
+  `^#work` finds rows under a tagged row, `^docket $next` a project's next
+  action, and `^$waiting` rows under a waiting row. `-^#work` means no
+  ancestor has that tag; `^#work|home` accepts either tag. Write `^` once,
+  before the alternatives. Ancestors above the pane's root count too,
+  including in lists. A bare `^` is skipped while typing; `^^` starts
+  literal text. Colour and completion use the term after `^`.
   `$next` holds for each active project's next action: its first row, in
   outline order, that is open or doing, has no start day still ahead, and is
   not parked, under a parked row, or in a closed project, so the order of a
   project's rows is its priority. It is one row per project, not per
   heading; the Inbox has none.
   It combines like any state word (`$next #home`, `-$next`,
-  `$next|waiting`), each term tested on the row, so `/$next`, `Tab` and
+  `$next|waiting`), so `/$next`, `Tab` and
   `:save next` keep the daily list of what could be done. In an
   outline a match keeps its
   ancestors, dimmed, so it is read where it lives; `Tab` switches to a flat
@@ -628,7 +635,8 @@ This is the only command; everything else is done in the outline.
    Blank `p` `Enter` returns to the place the last jump left, with its zoom
    and cursor; a sidebar visit counts as one jump. Filters read bare `#`
    and `$` as any tag and any state, and alternatives may mix sigils
-   (`#home|!`, `$waiting|@overdue`, `milk|#food`).
+   (`#home|!`, `$waiting|@overdue`, `milk|#food`). `^term` tests ancestors,
+   including above the pane root; `-^term` excludes such ancestry.
    *In progress.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
