@@ -11,11 +11,14 @@ a rule here changes this file first.
    instant; undo is the safety net.
 2. **Rows never move by themselves.** Changing a row's state leaves it where
    it is. Only the user reorders.
-3. **One way to do each thing.** No menu or palette repeats a key.
-4. **Thirty-two keys at most** in the outline. A new key evicts an old one. The
-   five characters that open the stamp line (`#` `@` `$` `*` `-`) are the
-   row grammar typed on a row, and are not counted. Nor are the navigation
-   aliases: the arrows, `Ctrl+F` `Ctrl+B`, `PgDn` `PgUp` and `Home` `End`.
+3. **One way to do each thing.** No menu or palette repeats a key. Reaching
+   the same rows by a count, a selection or a motion is the grammar, not a
+   second route.
+4. **Keys follow a grammar.** A key in the outline is a motion, an operator,
+   or an act on rows; a count goes before any of them. A key that is none
+   of these is not added. The five characters that open the stamp line
+   (`#` `@` `$` `*` `-`) are the row grammar typed on a row. The navigation
+   aliases are the arrows, `Ctrl+F` `Ctrl+B`, `PgDn` `PgUp` and `Home` `End`.
 5. **Every keystroke paints within one frame.** The tree lives in memory;
    SQLite is written when a change is committed, never while typing. What
    the sidebar states is derived again only when a row has changed or the
@@ -457,10 +460,34 @@ including lists and filters; with sidebar focus it does nothing.
 
 ## Keys
 
+**Grammar.** Motions are `j` `k` `gg` `G` `Ctrl+D` `Ctrl+U` `Ctrl+F`
+`Ctrl+B`; `h` and `l` are fold keys, not motions. In the outline, digits
+`1` to `9` start a count and `0` continues it; `0` alone does nothing.
+The status line shows the pending count. `Esc` drops it without clearing
+a selection, filter or zoom. Counts do not apply in the sidebar, help,
+prompts or while typing.
+
+A count repeats `j`, `k`, the paging motions and their arrow and page
+aliases, stopping at either end. `gg`, `G`, `Home` and `End` drop it.
+It also repeats `J`, `K`, `u` and `Ctrl+R`: `3J` is one undo step, while
+`3u` undoes three steps. `J` and `K` stop when the row can go no further
+and keep the moves already made, including in Today.
+
+Before `x`, `!`, `t`, `dd`, `y`, `m`, `>`, `<`, `.`, or a stamp character
+(`#` `@` `$` `*` `-`), a count takes that many shown rows from the cursor
+down, or as many as remain, without changing the selection. In a filter
+in context it passes over dimmed ancestors, taking matches only, as `:all`
+does. The act is one undo step; copy changes no rows. Counted `>` and `<`
+follow the Selection rule for a block. `5v` selects five rows as five
+presses of `v` would, stopping at the last row. With rows already selected,
+a count before an act on rows (including `v`) is refused and says so.
+Every other key, including `o`, `O`, `e`, `Enter`, `h`, `l`, `p`, `a`, `/`,
+`:` and `Tab`, drops the count and acts as usual.
+
 | Keys | Act | Milestone |
 | --- | --- | --- |
-| `j` `k` `gg` `G` | Move; `Home` `End` as `gg` `G` (not counted) | 1, 10 |
-| `Ctrl+D` `Ctrl+U` | Move half a pane down, up; `Ctrl+F` `Ctrl+B` `PgDn` `PgUp` a whole pane (not counted) | 7, 10 |
+| `j` `k` `gg` `G` | Move; `Home` `End` as `gg` `G` | 1, 10 |
+| `Ctrl+D` `Ctrl+U` | Move half a pane down, up; `Ctrl+F` `Ctrl+B` `PgDn` `PgUp` a whole pane | 7, 10 |
 | `h` `l` | Fold, unfold; step to parent, first child; in lists and flat filters, `h` shows the row where it lives (`Esc` returns), `l` does nothing | 1, 10 |
 | `Enter` `Esc` | Zoom in, back out | 1 |
 | `o` `O` `e` | New row below, above; edit | 1 |
@@ -475,7 +502,7 @@ including lists and filters; with sidebar focus it does nothing.
 | `v` | Select | 4 |
 | `y` | Copy rows with their subtrees | 7 |
 | `/` `:` | Filter, command | 4 |
-| `#` `@` `$` `*` `-` | Stamp sigils on rows (not counted) | 4 |
+| `#` `@` `$` `*` `-` | Stamp sigils on rows | 4 |
 
 While typing: `Enter` inside a line splits it literally at the caret,
 sigils included, and keeps typing at the start of the new row. It goes
@@ -673,6 +700,9 @@ This is the only command; everything else is done in the outline.
    flag, state, or text, within its span and in one undo step.
    `.` repeats the last stamp or named move; `:help` opens help.
    *Built.*
+
+11. **Grammar.** Counts repeat motions, reorder, undo and redo, or take
+   shown rows for an act; each counted act is one undo step. *In progress.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add`.

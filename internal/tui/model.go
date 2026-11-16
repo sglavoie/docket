@@ -124,6 +124,8 @@ type Model struct {
 
 	repeat     repeatAct
 	undo, redo [][]outline.Op
+	count      int               // pending outline count; zero means absent
+	undoGroup  []outline.Op      // inverses collected by a counted reorder
 	prefix     string            // a pending g or d
 	picked     map[string]bool   // the selection
 	last       map[string]string // each place's cursor row, for coming back
@@ -621,6 +623,11 @@ func (m *Model) save(ops, inv []outline.Op) bool {
 func (m *Model) record(ops, inv []outline.Op) bool {
 	if !m.save(ops, inv) {
 		return false
+	}
+	if m.undoGroup != nil {
+		m.undoGroup = append(inv, m.undoGroup...)
+		m.redo = nil
+		return true
 	}
 	m.undo = append(m.undo, inv)
 	m.redo = nil
@@ -1180,6 +1187,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.syncQuit()
 			return m, tea.Quit
 		}
+		outlineKey := !m.help && m.edit == nil && m.ask == nil && !m.sideFocus
+		tree, gen := m.tree, m.tree.Gen()
 		switch {
 		case m.help:
 			m.helpKey(msg.String())
@@ -1192,8 +1201,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		default:
 			m.normalKey(msg.String())
 		}
-		// Every key may have changed what the sidebar counts.
-		m.rebuild()
+		// Outline navigation and pending grammar use the existing visible rows.
+		// Place and fold changes rebuild explicitly in their handlers.
+		if !outlineKey || m.tree != tree || m.tree.Gen() != gen {
+			m.rebuild()
+		} else {
+			// The sidebar still follows a minute turning over between keys.
+			m.scan()
+		}
 		if m.quit {
 			m.syncQuit()
 			return m, tea.Quit
@@ -1584,42 +1599,111 @@ func (m *Model) sideKey(k string) {
 }
 
 func (m *Model) normalKey(k string) {
-	if m.prefix != "" {
-		seq := m.prefix + k
-		m.prefix = ""
-		switch seq {
-		case "gg":
-			m.cursor = 0
-		case "dd":
-			var ops []outline.Op
-			for _, id := range m.acting() {
-				ops = append(ops, outline.Op{Kind: outline.Set, Row: id, Field: outline.FieldDeleted, Value: "1"})
-			}
-			if len(ops) > 0 && m.do(ops...) {
-				m.rebuild()
-			}
+	if k == "esc" && m.count > 0 {
+		m.count, m.prefix = 0, ""
+		return
+	}
+	if m.prefix == "" && len(k) == 1 && k[0] >= '0' && k[0] <= '9' {
+		// Saturate rather than overflow; every consumer stops at its boundary.
+		digit, limit := int(k[0]-'0'), int(^uint(0)>>1)
+		if m.count > (limit-digit)/10 {
+			m.count = limit
+		} else {
+			m.count = m.count*10 + digit
 		}
 		return
 	}
+	if m.prefix != "" {
+		k, m.prefix = m.prefix+k, ""
+	} else if k == "g" || k == "d" {
+		m.prefix = k
+		return
+	}
+	count := m.count
+	m.count = 0
+	if count > 0 {
+		switch k {
+		case "x", "!", "t", "dd", "y", "m", ">", "<", ".", "#", "@", "$", "*", "-", "v":
+			if len(m.picked) > 0 {
+				m.msg = "a count cannot act on a selection"
+				return
+			}
+		}
+		switch k {
+		case "J", "K":
+			m.undoGroup = []outline.Op{}
+			for range count {
+				before := len(m.undoGroup)
+				m.normalAct(k, 0)
+				if len(m.undoGroup) == before {
+					break
+				}
+			}
+			if len(m.undoGroup) > 0 {
+				m.undo = append(m.undo, m.undoGroup)
+				m.keepHistory()
+			}
+			m.undoGroup = nil
+			return
+		case "u", "ctrl+r":
+			for range count {
+				before := len(m.undo)
+				if k == "ctrl+r" {
+					before = len(m.redo)
+				}
+				m.normalAct(k, 0)
+				after := len(m.undo)
+				if k == "ctrl+r" {
+					after = len(m.redo)
+				}
+				if after == before {
+					break
+				}
+			}
+			return
+		case "v":
+			for range min(count, len(m.vis)-m.cursor) {
+				m.normalAct(k, 0)
+			}
+			return
+		}
+	}
+	m.normalAct(k, count)
+}
 
+// normalAct dispatches a completed key, with an optional row or motion count.
+func (m *Model) normalAct(k string, count int) {
 	cur := m.current()
 	switch k {
-	case "g", "d":
-		m.prefix = k
+	case "gg":
+		m.cursor = 0
+	case "dd":
+		var ops []outline.Op
+		for _, id := range m.countedRows(count) {
+			ops = append(ops, outline.Op{Kind: outline.Set, Row: id, Field: outline.FieldDeleted, Value: "1"})
+		}
+		if len(ops) > 0 && m.do(ops...) {
+			m.rebuild()
+		}
+		return
 	case "j", "down":
-		m.cursor = min(m.cursor+1, max(len(m.vis)-1, 0))
+		m.cursor += min(max(count, 1), max(len(m.vis)-1-m.cursor, 0))
 	case "k", "up":
-		m.cursor = max(m.cursor-1, 0)
+		m.cursor -= min(max(count, 1), m.cursor)
 	case "ctrl+d", "ctrl+u", "ctrl+f", "ctrl+b", "pgdown", "pgup":
 		_, height := m.size()
 		step := max(height-2, 1) // exclude the header and status line
 		if k == "ctrl+d" || k == "ctrl+u" {
 			step = max(step/2, 1)
 		}
+		// Bound before multiplying so arbitrarily long counts cannot overflow.
+		repeats := min(max(count, 1), len(m.vis)/step+1)
+		step *= repeats
 		if k == "ctrl+u" || k == "ctrl+b" || k == "pgup" {
-			step = -step
+			m.cursor -= min(step, m.cursor)
+		} else {
+			m.cursor += min(step, max(len(m.vis)-1-m.cursor, 0))
 		}
-		m.cursor = max(0, min(m.cursor+step, len(m.vis)-1))
 	case "G", "end":
 		m.cursor = max(len(m.vis)-1, 0)
 	case "home":
@@ -1640,9 +1724,9 @@ func (m *Model) normalKey(k string) {
 	case ".":
 		switch {
 		case m.repeat.line != "":
-			m.applyStamp(m.acting(), m.repeat.line)
+			m.applyStamp(m.countedRows(count), m.repeat.line)
 		case m.repeat.to.kind != "":
-			m.moveTo(m.acting(), m.repeat.to)
+			m.moveTo(m.countedRows(count), m.repeat.to)
 		default:
 			m.msg = "nothing to repeat"
 		}
@@ -1684,7 +1768,7 @@ func (m *Model) normalKey(k string) {
 		return
 	}
 
-	ids := m.acting()
+	ids := m.countedRows(count)
 	switch k {
 	case "y":
 		text, n := m.writeRows(m.selectedRoots(ids))
@@ -1785,7 +1869,7 @@ func (m *Model) normalKey(k string) {
 	case "m":
 		m.ask = &prompt{kind: askMove, rows: ids}
 	case ">", "<":
-		if len(m.picked) > 0 {
+		if count > 0 || len(m.picked) > 0 {
 			m.moveBlock(ids, k)
 		} else {
 			m.shift(cur, k == ">")

@@ -24,6 +24,7 @@ const (
 
 const helpText = `Docket
 
+  2 3 …          count: repeat a motion or take rows; Esc drops the count
   j k  gg G      move; Home End as gg G
   Ctrl+D Ctrl+U  move half a pane down, up (outlines, lists and filters)
   Ctrl+F Ctrl+B  move a whole pane down, up; PgDn PgUp too
@@ -427,6 +428,9 @@ func (m *Model) statusLine(w int) (string, int) {
 	}
 	if n := len(m.picked); n > 0 {
 		right = strconv.Itoa(n) + " selected · Esc clears"
+	}
+	if m.count > 0 {
+		left = "count " + strconv.Itoa(m.count)
 	}
 	if m.edit != nil {
 		right = ""

@@ -424,6 +424,41 @@ func (m *Model) stampOps(id string, c change) []outline.Op {
 	return m.setFields(id, want)
 }
 
+// shownRange returns the inclusive visible range, in screen order, leaving
+// out the dimmed ancestors of contextual filter matches. It never walks the tree.
+func (m *Model) shownRange(first, last int) []string {
+	if first > last {
+		first, last = last, first
+	}
+	var ids []string
+	for i := max(first, 0); i <= last && i < len(m.vis); i++ {
+		id := m.vis[i].id
+		if m.at.query == "" || m.at.matched[id] {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+// countedRows takes matches from the cursor down without changing selection.
+// A zero count preserves the ordinary cursor/selection targeting rules.
+func (m *Model) countedRows(count int) []string {
+	if count == 0 {
+		return m.acting()
+	}
+	last, taken := m.cursor-1, 0
+	for last+1 < len(m.vis) && taken < count {
+		last++
+		if m.at.query == "" || m.at.matched[m.vis[last].id] {
+			taken++
+		}
+	}
+	if taken == 0 {
+		return nil
+	}
+	return m.shownRange(m.cursor, last)
+}
+
 // acting is the rows an act lands on: the selection, else the cursor's row.
 func (m *Model) acting() []string {
 	if len(m.picked) == 0 {
