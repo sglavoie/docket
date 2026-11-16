@@ -571,7 +571,7 @@ func (m *Model) statusLine(w int) (string, int) {
 	}
 	left = ansi.Truncate(left, max(w-pw-1-ansi.StringWidth(tail), 0), "…")
 	gap := max(w-ansi.StringWidth(left)-pw-ansi.StringWidth(tail), 0)
-	return left + strings.Repeat(" ", gap) + pend + tail, -1
+	return left + strings.Repeat(" ", gap) + sgrBold + pend + sgrReset + tail, -1
 }
 
 // pending is the keys typed so far that wait for more: a count, an operator,
