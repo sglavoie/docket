@@ -597,7 +597,7 @@ func TestAWrappedRowKeepsItsStyleOnEveryLine(t *testing.T) {
 	h.press("o", `"alpha beta gamma delta epsilon zeta"`, "esc", "x", "k")
 	lines := strings.Split(h.m.View().Content, "\n")
 	for _, n := range []int{4, 5} {
-		if !strings.Contains(lines[n], sgrDim+"alpha") && !strings.Contains(lines[n], sgrDim+"delta") {
+		if !strings.Contains(lines[n], darkPalette.dim+"alpha") && !strings.Contains(lines[n], darkPalette.dim+"delta") {
 			t.Fatalf("line %d of a done row is not dimmed: %q", n, lines[n])
 		}
 	}
@@ -715,12 +715,12 @@ func TestOverdueAndTodayAreColouredUntilTheRowCloses(t *testing.T) {
 	h := project(t)
 	h.press("o", `"Late @2026-11-10"`, "enter", `"Now @today"`, "esc")
 	raw := h.m.View().Content
-	if !strings.Contains(raw, sgrAlert+"@Nov 10") || !strings.Contains(raw, sgrWarn+"@today") {
+	if !strings.Contains(raw, darkPalette.alert+"@Nov 10") || !strings.Contains(raw, darkPalette.warn+"@today") {
 		t.Fatalf("deadlines are not coloured:\n%q", raw)
 	}
 	h.press("x", "k", "x")
 	raw = h.m.View().Content
-	if strings.Contains(raw, sgrAlert) || strings.Contains(raw, sgrWarn) {
+	if strings.Contains(raw, darkPalette.alert) || strings.Contains(raw, darkPalette.warn) {
 		t.Fatalf("a closed row still raises an alarm:\n%q", raw)
 	}
 }

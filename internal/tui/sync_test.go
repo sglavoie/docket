@@ -130,7 +130,7 @@ func TestAFailedSyncIsSaidAndWorkGoesOn(t *testing.T) {
 		"Alpha !",
 		"sync failed",
 	)
-	if !strings.Contains(h.m.View().Content, sgrAlert+"sync failed") {
+	if !strings.Contains(h.m.View().Content, darkPalette.alert+"sync failed") {
 		t.Fatal("a failed sync is not shown as an alarm")
 	}
 }

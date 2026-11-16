@@ -192,6 +192,19 @@ its held rows and a filter its held matches, excluding context ancestors.
 Zero tasks says nothing. These totals and heading progress are derived in
 the existing scan, never stored.
 
+The screen uses named text, dim, accent, warning and alert roles in two
+built-in true-colour palettes. At launch it asks the terminal for its
+background: light selects the light palette, dark selects dark, and dark
+is used until an answer arrives or if none does. Bubble Tea steps colours
+down to the terminal's colour profile and removes them for `NO_COLOR`.
+There is no theme command or configuration file.
+
+The focused cursor row keeps its `▌` mark and has a background across the
+pane's full width, on every wrapped line. Selected rows keep `┃` and use
+a distinct selection background, including when the cursor is on one.
+With sidebar focus its entry is shaded instead; the pane cursor loses its
+tint, while selections remain shaded. Indentation stays blank.
+
 ### Sidebar
 
 Drawn from 72 columns up; narrower, it takes the pane only while focused.
@@ -206,7 +219,8 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
   keys.
 - **Active projects** follow, in the order of the top-level rows: the order
   is the user's, so it never shuffles as work happens. Each says `!` in
-  yellow for a deadline within a week or red for one overdue, then `∅` when
+  the warning colour for a deadline within a week or the alert colour for
+  one overdue, then `∅` when
   it holds no task to do, else the whole days since anything inside changed.
 - **Parked** projects are a count. Done and canceled projects are not listed.
 
@@ -986,7 +1000,10 @@ dimmed `done/total` after its text when it has tasks beneath it, at any depth,
 folded or not. Canceled and parked rows are left out of the total.
 Fields follow the text, each in
 the sigil that writes it, and then `→` with the row a link points at; the deadline reads `@today`, `@tomorrow`, `@fri`,
-`@Nov 20`. An overdue deadline is red and today's is yellow until the row is
+`@Nov 20`. A deadline or start day outside the current year names the year,
+as `@Jan 5 2027` or `@@Jan 5 2027`, even across a nearby year boundary.
+`A` still opens the canonical `@2027-01-05` or `@@2027-01-05` for editing.
+An overdue deadline takes the alert colour and today's the warning colour until the row is
 done or canceled, which dims the whole row. A word starting `http://` or
 `https://` is written as a terminal hyperlink, without the punctuation a
 sentence leaves after it; every piece of an address broken across lines
@@ -1143,7 +1160,9 @@ These are the only commands; everything else is done in the outline.
    the first web address on a row with no row link. The header counts tasks
    left to do and sums their `#est` values; headings show done/total across
    all descendants. Filters read quoted phrases and `$first`, the first
-   workable sibling under each parent. *In progress.*
+   workable sibling under each parent. Dark and light palettes follow the
+   terminal background; cursor and selection backgrounds span wrapped rows,
+   and dates outside this year name their year. *In progress.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add` and `docket ls`, macros (`.`,

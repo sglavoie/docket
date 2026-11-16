@@ -132,6 +132,7 @@ type Model struct {
 	newID   func() string
 	openURL func(string) error
 
+	lightPalette  bool // dark until the terminal answers the background query
 	width, height int
 	at            place
 	zoom          []place  // where Esc returns to
@@ -259,7 +260,7 @@ func newModel(tree *outline.Tree, backend Backend, folds map[string]bool, now fu
 	return m
 }
 
-func (m *Model) Init() tea.Cmd { return tea.Batch(tick(), m.syncCmd()) }
+func (m *Model) Init() tea.Cmd { return tea.Batch(tick(), m.syncCmd(), tea.RequestBackgroundColor) }
 
 // history is the undo and redo stacks as they are kept between sessions.
 // They belong to this machine: each step undoes a change made here.
@@ -1417,6 +1418,9 @@ func (m *Model) retype(act repeatAct, rows []string) {
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.BackgroundColorMsg:
+		m.lightPalette = !msg.IsDark()
+		return m, nil
 	case tickMsg:
 		m.backup()
 		m.refresh()

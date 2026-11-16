@@ -386,15 +386,15 @@ func TestFilterReadsAnyTagAnyStateAndMixedAlternatives(t *testing.T) {
 	t.Run("colour follows each side and unreadable words stay literal", func(t *testing.T) {
 		h := fixture(t)
 		for _, tc := range []struct{ query, painted string }{
-			{"#", sgrAccent + "#" + sgrReset},
-			{"-$", sgrAccent + "-$" + sgrReset},
-			{"milk|#food", "milk|" + sgrAccent + "#food" + sgrReset},
-			{"牛奶|#食品", "牛奶|" + sgrAccent + "#食品" + sgrReset},
-			{"-#home|!", sgrAccent + "-#home" + sgrReset + "|" + sgrAccent + "!" + sgrReset},
-			{"$open|doing", sgrAccent + "$open" + sgrReset + "|" + sgrAccent + "doing" + sgrReset},
-			{"#home|@@later", sgrAccent + "#home" + sgrReset + "|" + sgrAccent + "@@later" + sgrReset},
-			{"milk|#123", sgrWarn + "milk|#123" + sgrReset},
-			{"#home|@nope", sgrWarn + "#home|@nope" + sgrReset},
+			{"#", darkPalette.accent + "#" + sgrReset},
+			{"-$", darkPalette.accent + "-$" + sgrReset},
+			{"milk|#food", "milk|" + darkPalette.accent + "#food" + sgrReset},
+			{"牛奶|#食品", "牛奶|" + darkPalette.accent + "#食品" + sgrReset},
+			{"-#home|!", darkPalette.accent + "-#home" + sgrReset + darkPalette.text + "|" + darkPalette.accent + "!" + sgrReset},
+			{"$open|doing", darkPalette.accent + "$open" + sgrReset + darkPalette.text + "|" + darkPalette.accent + "doing" + sgrReset},
+			{"#home|@@later", darkPalette.accent + "#home" + sgrReset + darkPalette.text + "|" + darkPalette.accent + "@@later" + sgrReset},
+			{"milk|#123", darkPalette.warn + "milk|#123" + sgrReset},
+			{"#home|@nope", darkPalette.warn + "#home|@nope" + sgrReset},
 		} {
 			h.press("/", `"`+tc.query+`"`)
 			if raw := h.m.View().Content; !strings.Contains(raw, tc.painted) {
@@ -415,7 +415,7 @@ func TestAFilterTermReachesTheRowsAbove(t *testing.T) {
 		h := fixture(t)
 		h.press("/", `"^#work"`, "enter")
 		h.want("▌ ▾ Docket #office", "    ▾ Work: 0/3 #work", "      ○ First", "      ◔ Nested: 0/1 #work", "        ○ Deep")
-		if !strings.Contains(h.m.View().Content, sgrDim+"Work:") {
+		if !strings.Contains(h.m.View().Content, darkPalette.dim+"Work:") {
 			t.Fatal("context heading is not dimmed")
 		}
 		h.command("all")
@@ -496,10 +496,10 @@ func TestAFilterTermReachesTheRowsAbove(t *testing.T) {
 			h.press("esc")
 		}
 		for _, tc := range []struct{ query, painted string }{
-			{"^#wo", sgrAccent + "^#wo" + sgrReset},
-			{"-^#work|$waiting", sgrAccent + "-^#work" + sgrReset + "|" + sgrAccent + "$waiting" + sgrReset},
-			{"^$nope", sgrWarn + "^$nope" + sgrReset},
-			{"^#work|@nope", sgrWarn + "^#work|@nope" + sgrReset},
+			{"^#wo", darkPalette.accent + "^#wo" + sgrReset},
+			{"-^#work|$waiting", darkPalette.accent + "-^#work" + sgrReset + darkPalette.text + "|" + darkPalette.accent + "$waiting" + sgrReset},
+			{"^$nope", darkPalette.warn + "^$nope" + sgrReset},
+			{"^#work|@nope", darkPalette.warn + "^#work|@nope" + sgrReset},
 			{"^^#work", "^^#work"},
 		} {
 			h.press("/", `"`+tc.query+`"`)

@@ -43,7 +43,7 @@ func TestFilterGroupsWithBarsAndBrackets(t *testing.T) {
 	})
 	// The marks are coloured as part of the grammar.
 	h.press("/", `"( #bug | ! )"`)
-	if !strings.Contains(h.m.View().Content, sgrAccent+"("+sgrReset) || !strings.Contains(h.m.View().Content, sgrAccent+"|"+sgrReset) {
+	if !strings.Contains(h.m.View().Content, darkPalette.accent+"("+sgrReset) || !strings.Contains(h.m.View().Content, darkPalette.accent+"|"+sgrReset) {
 		t.Fatal("a bracket or a bar standing alone is not drawn as grammar")
 	}
 }

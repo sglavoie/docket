@@ -856,24 +856,24 @@ func (m *Model) sideLines(w, h int) []string {
 		switch {
 		case e.kind == kindProject:
 			if e.due == 2 {
-				info = sgrAlert + "!" + sgrReset + " "
+				info = m.colors().alert + "!" + sgrReset + " "
 			} else if e.due == 1 {
-				info = sgrWarn + "!" + sgrReset + " "
+				info = m.colors().warn + "!" + sgrReset + " "
 			}
 			if e.idle {
-				info += sgrDim + "∅" + sgrReset
+				info += m.colors().dim + "∅" + sgrReset
 			} else if e.age > 0 {
-				info += sgrDim + strconv.Itoa(e.age) + "d" + sgrReset
+				info += m.colors().dim + strconv.Itoa(e.age) + "d" + sgrReset
 			}
 			info = strings.TrimRight(info, " ")
 		case e.count > 0:
-			info = sgrDim + strconv.Itoa(e.count) + sgrReset
+			info = m.colors().dim + strconv.Itoa(e.count) + sgrReset
 		}
 		gutter := " "
 		if sel {
-			gutter = sgrDim + "▌" + sgrReset
+			gutter = m.colors().dim + "▌" + sgrReset
 			if m.sideFocus {
-				gutter = sgrAccent + "▌" + sgrReset
+				gutter = m.colors().accent + "▌" + sgrReset
 			}
 		}
 		room := w - 2 - ansi.StringWidth(info)
@@ -885,16 +885,20 @@ func (m *Model) sideLines(w, h int) []string {
 		if sel {
 			label = sgrBold + label + sgrReset
 		}
-		lines = append(lines, line{gutter + " " + label + pad + info, sel})
+		text := gutter + " " + label + pad + info
+		if sel && m.sideFocus {
+			text = m.tint(text, w, m.colors().cursor)
+		}
+		lines = append(lines, line{text, sel})
 	}
 	if m.parked > 0 {
-		text := "  " + sgrDim + "parked " + strconv.Itoa(m.parked) + sgrReset
+		text := "  " + m.colors().dim + "parked " + strconv.Itoa(m.parked) + sgrReset
 		lines = append(lines, line{}, line{text: text})
 	}
 	if m.syncNote != "" {
-		style := sgrDim
+		style := m.colors().dim
 		if m.syncFailed {
-			style = sgrAlert
+			style = m.colors().alert
 		}
 		lines = append(lines, line{}, line{text: "  " + style + ansi.Truncate(m.syncNote, w-2, "…") + sgrReset})
 	}

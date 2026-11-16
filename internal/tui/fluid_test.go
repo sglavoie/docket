@@ -190,7 +190,7 @@ func TestArchiveMovesClosedWorkUnderAHeading(t *testing.T) {
 }
 
 func TestAWebAddressIsALink(t *testing.T) {
-	lines := wrap([]word{{"", "see"}, {sgrDim, "https://example.com/abcdef."}, {"", "http"}}, 12)
+	lines := wrap([]word{{"", "see"}, {darkPalette.dim, "https://example.com/abcdef."}, {"", "http"}}, 12)
 	if len(lines) != 3 {
 		t.Fatalf("lines = %q", lines)
 	}

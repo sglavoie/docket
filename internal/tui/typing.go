@@ -30,9 +30,9 @@ func (m *Model) styler(surface string) func(string) []word {
 	row := func(w string) string {
 		switch {
 		case sigil.IsSigil(w, today):
-			return sgrAccent
+			return m.colors().accent
 		case looksLikeSigil(w):
-			return sgrWarn
+			return m.colors().warn
 		}
 		return ""
 	}
@@ -44,22 +44,22 @@ func (m *Model) styler(surface string) func(string) []word {
 		case askCapture:
 			style = row(w)
 			if name, ok := strings.CutPrefix(w, "%"); ok && name != "" {
-				style = sgrWarn
+				style = m.colors().warn
 				if len(match(name, 2, m.targets(false))) > 0 {
-					style = sgrAccent
+					style = m.colors().accent
 				}
 			}
 		case askStamp:
 			if w != "-" {
-				style = sgrAccent
+				style = m.colors().accent
 				if _, bad := parseStamp(w, today); bad != "" {
-					style = sgrWarn
+					style = m.colors().warn
 				}
 			}
 		case askFilter:
 			// A bar or a bracket standing alone joins or groups terms.
 			if w == "|" || w == "(" || w == ")" || w == "-(" {
-				style = sgrAccent
+				style = m.colors().accent
 				break
 			}
 			terms := parseQuery(w, today)
@@ -75,7 +75,7 @@ func (m *Model) styler(surface string) func(string) []word {
 					}
 					style = ""
 					if c.kind != 't' {
-						style = sgrAccent
+						style = m.colors().accent
 					}
 					spans = append(spans, word{style, parts[i]})
 				}
@@ -99,7 +99,7 @@ func (m *Model) styler(surface string) func(string) []word {
 					part = strings.TrimPrefix(part, ">")
 				}
 				if part != "" && strings.ContainsRune(sigilStarts, rune(part[0])) {
-					style = sgrWarn
+					style = m.colors().warn
 					break
 				}
 			}
@@ -249,12 +249,12 @@ func (e *editor) window(avail int, style func(string) []word) (string, int) {
 }
 
 // ghost is the suggestion drawn after the typed text, cut to the room left.
-func ghost(text, rest string, avail int) string {
+func (m *Model) ghost(text, rest string, avail int) string {
 	room := avail - ansi.StringWidth(text) - 1
 	if rest == "" || room < 1 {
 		return ""
 	}
-	return sgrDim + ansi.Truncate(rest, room, "") + sgrReset
+	return m.colors().dim + ansi.Truncate(rest, room, "") + sgrReset
 }
 
 type textPoint struct{ x, y int }

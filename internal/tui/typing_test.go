@@ -17,19 +17,19 @@ func TestSigilsAreColouredAsTheyAreTyped(t *testing.T) {
 	h.press("o", `"Ship @fri #v2 $doing ! @firday #123 \#lit plain"`)
 	raw := h.m.View().Content
 	for _, w := range []string{"@fri", "#v2", "$doing", "!"} {
-		if !strings.Contains(raw, sgrAccent+w+sgrReset) {
+		if !strings.Contains(raw, darkPalette.accent+w+sgrReset) {
 			t.Errorf("%s is not shown as a sigil:\n%q", w, raw)
 		}
 	}
 	// A word that starts like a sigil and cannot be read is flagged: it
 	// will stay in the text.
 	for _, w := range []string{"@firday", "#123"} {
-		if !strings.Contains(raw, sgrWarn+w+sgrReset) {
+		if !strings.Contains(raw, darkPalette.warn+w+sgrReset) {
 			t.Errorf("%s is not flagged as unread:\n%q", w, raw)
 		}
 	}
 	for _, w := range []string{`\#lit`, "plain", "Ship"} {
-		if strings.Contains(raw, sgrAccent+w) || strings.Contains(raw, sgrWarn+w) {
+		if strings.Contains(raw, darkPalette.accent+w) || strings.Contains(raw, darkPalette.warn+w) {
 			t.Errorf("%s is coloured:\n%q", w, raw)
 		}
 	}
@@ -85,7 +85,7 @@ func TestPromptsColourAndCompleteInTheirOwnGrammar(t *testing.T) {
 	// Stamp: the line is sigils only, so a plain word is flagged too.
 	h.press("#", `"d"`, "right", `" oops -#b"`)
 	raw := h.m.View().Content
-	if !strings.Contains(raw, sgrAccent+"#docs"+sgrReset) || !strings.Contains(raw, sgrWarn+"oops"+sgrReset) {
+	if !strings.Contains(raw, darkPalette.accent+"#docs"+sgrReset) || !strings.Contains(raw, darkPalette.warn+"oops"+sgrReset) {
 		t.Fatalf("stamp line is not coloured:\n%q", raw)
 	}
 	if !strings.HasPrefix(h.bottom(), "Stamp › #docs oops -#bug ") {
@@ -102,18 +102,18 @@ func TestPromptsColourAndCompleteInTheirOwnGrammar(t *testing.T) {
 	h.want("▌ ○ Write docs @fri #docs · Alpha")
 	h.press("esc", "/", `"@ov"`, "right", `" @nope"`)
 	raw = h.m.View().Content
-	if !strings.Contains(raw, sgrAccent+"@overdue"+sgrReset) || !strings.Contains(raw, sgrWarn+"@nope"+sgrReset) {
+	if !strings.Contains(raw, darkPalette.accent+"@overdue"+sgrReset) || !strings.Contains(raw, darkPalette.warn+"@nope"+sgrReset) {
 		t.Fatalf("filter line is not coloured:\n%q", raw)
 	}
 	h.press("esc")
 
 	// Capture: a %name is seen to resolve, or not, before Enter.
 	h.press("a", `"Call back %alp"`)
-	if !strings.HasSuffix(h.bottom(), "files in Alpha") || !strings.Contains(h.m.View().Content, sgrAccent+"%alp"+sgrReset) {
+	if !strings.HasSuffix(h.bottom(), "files in Alpha") || !strings.Contains(h.m.View().Content, darkPalette.accent+"%alp"+sgrReset) {
 		t.Fatalf("capture line = %q", h.bottom())
 	}
 	h.press(`"x"`)
-	if !strings.HasSuffix(h.bottom(), "files in Inbox") || !strings.Contains(h.m.View().Content, sgrWarn+"%alpx"+sgrReset) {
+	if !strings.HasSuffix(h.bottom(), "files in Inbox") || !strings.Contains(h.m.View().Content, darkPalette.warn+"%alpx"+sgrReset) {
 		t.Fatalf("capture line = %q", h.bottom())
 	}
 	h.press("backspace", "backspace", "backspace", "backspace", "backspace", "esc")

@@ -2,14 +2,20 @@ package tui
 
 import (
 	"errors"
+	"image/color"
 	"maps"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+	uv "github.com/charmbracelet/ultraviolet"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/sglavoie/docket/internal/outline"
+	"github.com/sglavoie/docket/internal/sigil"
 )
 
 func TestFilterPhrase(t *testing.T) {
@@ -87,7 +93,7 @@ func TestFilterFirst(t *testing.T) {
 		t.Fatalf("completion = %q", h.bottom())
 	}
 	h.press("right")
-	if !strings.Contains(h.m.View().Content, sgrAccent+"$first"+sgrReset) {
+	if !strings.Contains(h.m.View().Content, darkPalette.accent+"$first"+sgrReset) {
 		t.Fatal("$first is not coloured as a filter word")
 	}
 	h.press("enter", ":", `"save first"`, "enter", "esc", "g", "g", "n")
@@ -426,7 +432,7 @@ func TestHeadingProgress(t *testing.T) {
 		}
 	}
 	wantProgress("1/3", "1/2")
-	if !strings.Contains(h.m.View().Content, sgrDim+"1/3"+sgrReset) {
+	if !strings.Contains(h.m.View().Content, darkPalette.dim+"1/3"+sgrReset) {
 		t.Fatal("heading progress must be dimmed")
 	}
 	h.press("j", "x")
@@ -441,4 +447,118 @@ func TestHeadingProgress(t *testing.T) {
 	}
 	h.press("l")
 	wantProgress("2/3", "1/2")
+}
+
+func TestCursorRowTint(t *testing.T) {
+	for _, light := range []bool{false, true} {
+		t.Run(strconv.FormatBool(light), func(t *testing.T) {
+			h := start(t).wide()
+			if light {
+				h.m.Update(tea.BackgroundColorMsg{Color: color.White})
+			}
+			h.pasteText("Project\n\tA long task with styled fields and enough words to wrap across several drawn lines ! #work @today $doing\n\tOther $open")
+			h.press("g", "g", "enter")
+			h.m.Update(tea.WindowSizeMsg{Width: 80, Height: 16})
+			width := 80 - sidebarCols - 3
+			check := func(want string) int {
+				t.Helper()
+				lines, _ := h.m.paneLines(width, 15)
+				var background color.Color
+				if want != "" {
+					background = uv.NewStyledString(want + " ").Lines(ansi.WcWidth)[0][0].Style.Bg
+				}
+				count := 0
+				for _, line := range lines {
+					if !strings.Contains(line, "▌") {
+						if strings.Contains(line, h.m.colors().cursor) || strings.Contains(line, h.m.colors().selection) {
+							t.Fatal("background leaked to another row")
+						}
+						continue
+					}
+					count++
+					cells := uv.NewStyledString(line).Lines(ansi.WcWidth)[0]
+					if want != "" && len(cells) != width {
+						t.Fatalf("tinted line width = %d, want %d", len(cells), width)
+					}
+					for x, cell := range cells {
+						if !reflect.DeepEqual(cell.Style.Bg, background) {
+							t.Fatalf("line %d column %d background = %v, want %v", count, x, cell.Style.Bg, background)
+						}
+					}
+				}
+				return count
+			}
+			if n := check(h.m.colors().cursor); n < 2 {
+				t.Fatalf("expected wrapped cursor row, got %d lines", n)
+			}
+			h.press("v", "k")
+			check(h.m.colors().selection)
+			if !strings.Contains(h.rows(), "┃") {
+				t.Fatal("selection lost its mark")
+			}
+			h.press("esc", "tab")
+			check("")
+			for _, line := range h.m.sideLines(sidebarCols, 15) {
+				if strings.Contains(line, "▌") {
+					cells := uv.NewStyledString(line).Lines(ansi.WcWidth)[0]
+					for _, cell := range cells {
+						if cell.Style.Bg == nil {
+							t.Fatal("focused sidebar background has a gap")
+						}
+					}
+				}
+			}
+			h.press("tab", "A")
+			check(h.m.colors().cursor) // Canonical fields and text selection reset styles too.
+		})
+	}
+}
+
+func TestFarDeadlineNamesYear(t *testing.T) {
+	h := start(t).wide()
+	h.pasteText("Future @2027-01-05 @@2027-01-02 $open\nPast @2025-12-31 $open")
+	h.press("g", "g")
+	for _, want := range []string{"@Jan 5 2027", "@@Jan 2 2027", "@Dec 31 2025"} {
+		if !strings.Contains(h.rows(), want) {
+			t.Fatalf("missing %q in %s", want, h.rows())
+		}
+	}
+	h.press("A")
+	if got := string(h.m.edit.buf); !strings.Contains(got, "@2027-01-05") || !strings.Contains(got, "@@2027-01-02") {
+		t.Fatalf("canonical editing date = %q", got)
+	}
+	if got, _ := sigil.DueLabel("2027-01-01", time.Date(2026, 12, 31, 12, 0, 0, 0, time.UTC)); got != "@Jan 1 2027" {
+		t.Fatalf("year boundary = %q", got)
+	}
+}
+
+func TestPaletteFollowsBackground(t *testing.T) {
+	h := start(t)
+	h.pasteText("Work ! @today $doing")
+	if h.m.colors() != darkPalette {
+		t.Fatal("no terminal answer must use dark")
+	}
+	requested := false
+	for _, cmd := range h.m.Init()().(tea.BatchMsg) {
+		if reflect.ValueOf(cmd).Pointer() == reflect.ValueOf(tea.RequestBackgroundColor).Pointer() {
+			requested = true
+		}
+	}
+	if !requested {
+		t.Fatal("launch did not request the terminal background")
+	}
+	for _, tc := range []struct {
+		background color.Color
+		want       palette
+	}{{color.White, lightPalette}, {color.Black, darkPalette}, {color.RGBA{245, 240, 230, 255}, lightPalette}} {
+		before := ansi.Strip(h.m.View().Content)
+		h.m.Update(tea.BackgroundColorMsg{Color: tc.background})
+		view := h.m.View().Content
+		if h.m.colors() != tc.want || !strings.Contains(view, tc.want.accent+"●") || !strings.Contains(view, tc.want.alert+sgrBold+"!") {
+			t.Fatalf("background %v did not paint its palette", tc.background)
+		}
+		if ansi.Strip(view) != before {
+			t.Fatal("palette changed layout")
+		}
+	}
 }

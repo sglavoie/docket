@@ -346,6 +346,8 @@ func DueLabel(due string, today time.Time) (string, int) {
 	day := civil(today)
 	days := int(t.Sub(day).Hours() / 24)
 	switch {
+	case t.Year() != day.Year():
+		return fmt.Sprintf("@%s %d %d", t.Month().String()[:3], t.Day(), t.Year()), days
 	case days == 0:
 		return "@today", days
 	case days == 1:

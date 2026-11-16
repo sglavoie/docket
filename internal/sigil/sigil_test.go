@@ -124,7 +124,7 @@ func TestDueLabel(t *testing.T) {
 		{"2026-11-20", "@fri", 5},
 		{"2026-11-22", "@Nov 22", 7},
 		{"2026-11-12", "@Nov 12", -3},
-		{"2027-01-05", "@2027-01-05", 51},
+		{"2027-01-05", "@Jan 5 2027", 51},
 	}
 	for _, c := range cases {
 		if label, days := DueLabel(c.due, today); label != c.label || days != c.days {

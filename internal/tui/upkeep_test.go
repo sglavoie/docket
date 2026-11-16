@@ -62,7 +62,7 @@ func TestAStuckSyncFileIsNamed(t *testing.T) {
 	if !strings.HasPrefix(lap.m.msg, "sync stuck: line ") || !strings.Contains(lap.m.msg, " of "+name+" cannot be read") {
 		t.Fatalf("msg = %q", lap.m.msg)
 	}
-	if !strings.Contains(lap.m.View().Content, sgrAlert+"sync stuck") {
+	if !strings.Contains(lap.m.View().Content, darkPalette.alert+"sync stuck") {
 		t.Fatal("a stuck sync is not shown as an alarm")
 	}
 	// What came before the damage is here, and work goes on.

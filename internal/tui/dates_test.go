@@ -14,15 +14,15 @@ func TestAStartDateDimsARowUntilItsDayThenPutsItInToday(t *testing.T) {
 		"    ○ First",
 		"    ○ Second",
 		"    ○ Renew passport @@fri",
-		"▌   ○ Far off @@2027-01-14",
+		"▌   ○ Far off @@Jan 14 2027",
 	)
-	if !strings.Contains(h.m.View().Content, sgrDim+"Renew"+sgrReset) {
+	if !strings.Contains(h.m.View().Content, darkPalette.dim+"Renew"+sgrReset) {
 		t.Fatal("a row that cannot start yet is not dimmed")
 	}
 	h.press("/", `"@@later"`, "tab")
 	h.want(
 		"▌ ○ Renew passport @@fri · Project",
-		"  ○ Far off @@2027-01-14 · Project",
+		"  ○ Far off @@Jan 14 2027 · Project",
 	)
 	h.press("esc")
 
@@ -37,7 +37,7 @@ func TestAStartDateDimsARowUntilItsDayThenPutsItInToday(t *testing.T) {
 		"▌ Projects",
 		"Project 5d",
 	)
-	if strings.Contains(h.m.View().Content, sgrDim+"Renew"+sgrReset) {
+	if strings.Contains(h.m.View().Content, darkPalette.dim+"Renew"+sgrReset) {
 		t.Fatal("the row is still dimmed on its start day")
 	}
 	h.press("f", `"today"`, "enter")
@@ -83,7 +83,7 @@ func TestARepeatingRowIsMovedOnNotClosed(t *testing.T) {
 		"    ○ First",
 		"    ○ Second",
 		"▌   ○ Water plants @@wed *3d",
-		"    ○ Pay rent @2027-01-01 @@Dec 28 *1m",
+		"    ○ Pay rent @Jan 1 2027 @@Dec 28 *1m",
 		"    ○ Backup @@Nov 22 *1w",
 	)
 	h.press("u", "u", "u")

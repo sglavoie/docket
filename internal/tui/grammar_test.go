@@ -1046,6 +1046,7 @@ func TestTheTypedRowWraps(t *testing.T) {
 					t.Helper()
 					lines, _ := h.m.paneLines(12, 7)
 					for i, expected := range want {
+						expected += strings.Repeat(" ", max(12-ansi.StringWidth(expected), 0))
 						if got := ansi.Strip(lines[i+1]); got != expected {
 							t.Fatalf("line %d = %q, want %q", i, got, expected)
 						}
@@ -1073,7 +1074,7 @@ func TestTheTypedRowWraps(t *testing.T) {
 		h.press("o", `"abcdefghijklmnopqrstuvwxyz #tag @to"`)
 		h.want("▌   abcdefghijklmnopqrst", "▌   uvwxyz #tag @today")
 		v := h.m.View()
-		if !strings.Contains(v.Content, sgrAccent+"#tag"+sgrReset) || !strings.Contains(v.Content, sgrWarn+"@to"+sgrReset) || !strings.Contains(v.Content, sgrDim+"day"+sgrReset) {
+		if !strings.Contains(v.Content, darkPalette.accent+"#tag"+sgrReset) || !strings.Contains(v.Content, darkPalette.warn+"@to"+sgrReset) || !strings.Contains(v.Content, darkPalette.dim+"day"+sgrReset) {
 			t.Fatalf("missing sigil or completion styles: %q", v.Content)
 		}
 		h.press("right")
@@ -1081,7 +1082,7 @@ func TestTheTypedRowWraps(t *testing.T) {
 			t.Fatal("right arrow did not accept completion")
 		}
 		h.press("left")
-		if strings.Contains(h.m.View().Content, sgrDim+"day") {
+		if strings.Contains(h.m.View().Content, darkPalette.dim+"day") {
 			t.Fatal("completion shown away from the end")
 		}
 	})

@@ -13,16 +13,6 @@ import (
 	"github.com/sglavoie/docket/internal/sigil"
 )
 
-const (
-	sgrReset   = "\x1b[0m"
-	sgrBold    = "\x1b[1m"
-	sgrDim     = "\x1b[2m"
-	sgrReverse = "\x1b[7m"
-	sgrAccent  = "\x1b[36m"
-	sgrWarn    = "\x1b[33m"
-	sgrAlert   = "\x1b[31m"
-)
-
 const helpText = `Docket
 
   2 3 …          count: repeat a motion or take rows; Esc drops the count
@@ -200,11 +190,15 @@ Sigils, typed anywhere in a row
   A row is a note at top-level, under a task, or when it ends in a colon.
   Other rows default to tasks; $open under a task makes a subtask.
   \#tag keeps a sigil as plain text.
-  As you type, a sigil the line reads turns cyan and one it cannot turns
-  yellow. The right arrow takes the dim suggestion at the end of the line.
+  As you type, a sigil the line reads takes the accent colour and one it
+  cannot takes the warning colour. The right arrow takes the dim suggestion at the end of the line.
 
 Pasting several lines adds them as rows, indentation as depth.
 Copy and export spell otherwise empty rows as $open, $note or their state.
+
+The palette follows the terminal background (dark until it answers).
+The focused row and selected rows are shaded across their whole width.
+Dates outside this year name the year; A still opens the canonical date.
 
 A web address in a row is a link the terminal can open.
 From a shell, docket add "Buy milk %home @fri" captures without opening
@@ -239,28 +233,28 @@ func (m *Model) numberCols() int {
 // stateGlyph is the one column that says what a row is. A note shows its
 // fold, or nothing; a task shows its state, and a folded task counts its
 // children after its text instead.
-func stateGlyph(state string, kids int, folded bool) string {
+func (m *Model) stateGlyph(state string, kids int, folded bool) string {
 	switch state {
 	case sigil.Open:
 		return "○"
 	case sigil.Doing:
-		return sgrAccent + "●" + sgrReset
+		return m.colors().accent + "●" + sgrReset
 	case sigil.Waiting:
-		return sgrWarn + "◔" + sgrReset
+		return m.colors().warn + "◔" + sgrReset
 	case sigil.Done:
-		return sgrDim + "✓" + sgrReset
+		return m.colors().dim + "✓" + sgrReset
 	case sigil.Canceled:
-		return sgrDim + "✕" + sgrReset
+		return m.colors().dim + "✕" + sgrReset
 	case sigil.Parked:
-		return sgrDim + "◌" + sgrReset
+		return m.colors().dim + "◌" + sgrReset
 	}
 	switch {
 	case kids == 0:
 		return " "
 	case folded:
-		return sgrDim + "▸" + sgrReset
+		return m.colors().dim + "▸" + sgrReset
 	}
-	return sgrDim + "▾" + sgrReset
+	return m.colors().dim + "▾" + sgrReset
 }
 
 // isFolded reports a row drawn folded. A filter shows every match, so
@@ -282,7 +276,7 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 	quiet := l.Closed() || l.State == sigil.Parked || l.Later(m.today())
 	paint := func(style string) string {
 		if quiet {
-			return sgrDim
+			return m.colors().dim
 		}
 		return style
 	}
@@ -296,32 +290,32 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 		out = append(out, word{paint(body), w})
 	}
 	if total := m.totals[r.ID].under; strings.HasSuffix(l.Text, ":") && total.total > 0 {
-		out = append(out, word{sgrDim, fmt.Sprintf("%d/%d", total.done, total.total)})
+		out = append(out, word{m.colors().dim, fmt.Sprintf("%d/%d", total.done, total.total)})
 	}
 	if l.Flag {
-		out = append(out, word{paint(sgrAlert + sgrBold), "!"})
+		out = append(out, word{paint(m.colors().alert + sgrBold), "!"})
 	}
 	if l.Due != "" {
 		label, days := sigil.DueLabel(l.Due, m.today())
-		style := sgrDim
+		style := m.colors().dim
 		switch {
 		case days < 0:
-			style = sgrAlert
+			style = m.colors().alert
 		case days == 0:
-			style = sgrWarn
+			style = m.colors().warn
 		}
 		// A label such as "@Nov 20" stays in one piece.
 		out = append(out, word{paint(style), label})
 	}
 	if l.Start != "" {
 		label, _ := sigil.DueLabel(l.Start, m.today())
-		out = append(out, word{sgrDim, "@" + label})
+		out = append(out, word{m.colors().dim, "@" + label})
 	}
 	if l.Every != "" {
-		out = append(out, word{sgrDim, "*" + l.Every})
+		out = append(out, word{m.colors().dim, "*" + l.Every})
 	}
 	for _, tag := range l.Tags {
-		out = append(out, word{sgrDim, "#" + tag})
+		out = append(out, word{m.colors().dim, "#" + tag})
 	}
 	if to := r.Fields[fieldLink]; to != "" {
 		// A link names the row it points at as that row reads now.
@@ -329,21 +323,21 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 		if m.live(to) {
 			name = ansi.Truncate(m.tree.Row(to).Text(), 28, "…")
 		}
-		out = append(out, word{sgrDim, "→ " + name})
+		out = append(out, word{m.colors().dim, "→ " + name})
 	}
 
 	// A task's glyph is its state, so the children it hides are counted
 	// after it: when folded, and always in a flat view.
 	kids := len(m.tree.Children(r.ID))
 	if hides := m.isFolded(r.ID) || flat; kids > 0 && hides && l.State != "" {
-		out = append(out, word{sgrDim, "+" + strconv.Itoa(kids)})
+		out = append(out, word{m.colors().dim, "+" + strconv.Itoa(kids)})
 	}
 	if flat {
 		switch m.at.list {
 		case kindWaiting:
-			out = append(out, word{sgrDim, "·"}, word{sgrDim, days(m.now() - m.changedAt(r.ID))})
+			out = append(out, word{m.colors().dim, "·"}, word{m.colors().dim, days(m.now() - m.changedAt(r.ID))})
 		case kindStale:
-			out = append(out, word{sgrDim, "·"}, word{sgrDim, days(m.now() - r.Modified)})
+			out = append(out, word{m.colors().dim, "·"}, word{m.colors().dim, days(m.now() - r.Modified)})
 		case kindReview:
 			// A project parked or closed during the review has no line left.
 			if st, active := m.stats[r.ID]; active {
@@ -351,17 +345,17 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 				if st.idle {
 					todo = "∅"
 				}
-				out = append(out, word{sgrDim, "·"}, word{sgrDim, strconv.Itoa(st.age) + "d"}, word{sgrDim, "·"}, word{sgrDim, todo})
+				out = append(out, word{m.colors().dim, "·"}, word{m.colors().dim, strconv.Itoa(st.age) + "d"}, word{m.colors().dim, "·"}, word{m.colors().dim, todo})
 			}
 		}
 		if p := m.projectOf(r.ID); p != nil && p.ID != r.ID {
-			out = append(out, word{sgrDim, "·"}, word{sgrDim, p.Text()})
+			out = append(out, word{m.colors().dim, "·"}, word{m.colors().dim, p.Text()})
 		}
 	}
 	if m.at.query != "" && !m.at.matched[r.ID] {
 		// An ancestor kept only to place a match.
 		for i := range out {
-			out[i].style = sgrDim
+			out[i].style = m.colors().dim
 		}
 	}
 	return out
@@ -493,8 +487,8 @@ func (m *Model) statusLine(w int) (string, int) {
 		label := askLabels[a.kind]
 		lw := ansi.StringWidth(label)
 		text, col := a.ed.window(max(w-lw, 1), m.styler(a.kind))
-		text += ghost(text, m.suggest(&a.ed, a.kind), w-lw)
-		line := sgrAccent + label + sgrReset + text
+		text += m.ghost(text, m.suggest(&a.ed, a.kind), w-lw)
+		line := m.colors().accent + label + sgrReset + text
 		room := w - lw - ansi.StringWidth(text) - 3
 		switch {
 		case room <= 3:
@@ -502,23 +496,23 @@ func (m *Model) statusLine(w int) (string, int) {
 		case a.kind == askCapture:
 			// Where the line will land, so a %name is seen to have worked.
 			to, _ := m.route(string(a.ed.buf))
-			line += "   " + sgrDim + ansi.Truncate("files in "+to.label, room, "…") + sgrReset
+			line += "   " + m.colors().dim + ansi.Truncate("files in "+to.label, room, "…") + sgrReset
 		case a.kind == askFilter:
 			shape := "in context"
 			if m.at.flat {
 				shape = "flat"
 			}
 			note := strconv.Itoa(len(m.at.matched)) + " match · " + shape + " · Tab switches"
-			line += "   " + sgrDim + ansi.Truncate(note, room, "…") + sgrReset
+			line += "   " + m.colors().dim + ansi.Truncate(note, room, "…") + sgrReset
 		case a.kind == askStamp:
 			note := strconv.Itoa(len(a.rows)) + " row"
 			if len(a.rows) != 1 {
 				note += "s"
 			}
-			line += "   " + sgrDim + ansi.Truncate(note+" · -#tag and -@ remove", room, "…") + sgrReset
+			line += "   " + m.colors().dim + ansi.Truncate(note+" · -#tag and -@ remove", room, "…") + sgrReset
 		case picker(a.kind):
 			// The first name is the one Enter takes.
-			offer := sgrDim + "nothing matches" + sgrReset
+			offer := m.colors().dim + "nothing matches" + sgrReset
 			hits := m.offers(a, strings.TrimSpace(string(a.ed.buf)))
 			from := max(0, min(a.choice, len(hits)-1))
 			for i, e := range hits[from:] {
@@ -528,11 +522,11 @@ func (m *Model) statusLine(w int) (string, int) {
 					where = " (" + e.hint + ")"
 				}
 				if i == 0 && from > 0 {
-					offer = sgrDim + "‹ " + sgrReset + sgrBold + e.label + sgrReset + sgrDim + where + sgrReset
+					offer = m.colors().dim + "‹ " + sgrReset + sgrBold + e.label + sgrReset + m.colors().dim + where + sgrReset
 				} else if i == 0 {
-					offer = sgrBold + e.label + sgrReset + sgrDim + where + sgrReset
+					offer = sgrBold + e.label + sgrReset + m.colors().dim + where + sgrReset
 				} else {
-					offer += sgrDim + " · " + e.label + where + sgrReset
+					offer += m.colors().dim + " · " + e.label + where + sgrReset
 				}
 				if ansi.StringWidth(offer) > room {
 					break // the rest would not fit
@@ -574,12 +568,12 @@ func (m *Model) statusLine(w int) (string, int) {
 		if gap < 1 {
 			return left, -1
 		}
-		return left + strings.Repeat(" ", gap) + sgrDim + right + sgrReset, -1
+		return left + strings.Repeat(" ", gap) + m.colors().dim + right + sgrReset, -1
 	}
 	pw := ansi.StringWidth(pend)
 	tail := ""
 	if right != "" && ansi.StringWidth(left)+1+pw+2+ansi.StringWidth(right) <= w {
-		tail = "  " + sgrDim + right + sgrReset
+		tail = "  " + m.colors().dim + right + sgrReset
 	}
 	left = ansi.Truncate(left, max(w-pw-1-ansi.StringWidth(tail), 0), "…")
 	gap := max(w-ansi.StringWidth(left)-pw-ansi.StringWidth(tail), 0)
@@ -622,7 +616,7 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 	if m.edit != nil {
 		editing = m.edit.wrapped(max(w-prefix(m.cursor), 1), m.styler(surfaceRow))
 		last := len(editing.lines) - 1
-		editing.lines[last] += ghost(editing.lines[last], m.suggest(m.edit, surfaceRow), max(w-prefix(m.cursor), 1))
+		editing.lines[last] += m.ghost(editing.lines[last], m.suggest(m.edit, surfaceRow), max(w-prefix(m.cursor), 1))
 		p := editing.pos[m.edit.caret]
 		m.edit.top = max(0, min(m.edit.top, len(editing.lines)-listH))
 		m.edit.top = max(0, min(m.edit.top, p.y))
@@ -689,23 +683,23 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 	} else if m.hideClosed && m.at.list == "" {
 		header += "  · closed hidden"
 	}
-	lines = append(lines, sgrDim+ansi.Truncate(header, w, "…")+sgrReset)
+	lines = append(lines, m.colors().dim+ansi.Truncate(header, w, "…")+sgrReset)
 
 	var caret *tea.Cursor
 	for i := m.top; i < len(m.vis) && len(lines) < h; i++ {
 		v := m.vis[i]
 		r := m.tree.Row(v.id)
-		glyph := stateGlyph(r.Fields[sigil.FieldState], len(m.tree.Children(v.id)), m.isFolded(v.id))
+		glyph := m.stateGlyph(r.Fields[sigil.FieldState], len(m.tree.Children(v.id)), m.isFolded(v.id))
 		gutter := " "
 		if i == m.cursor {
-			gutter = sgrAccent + "▌" + sgrReset
+			gutter = m.colors().accent + "▌" + sgrReset
 			if m.sideFocus {
-				gutter = sgrDim + "▌" + sgrReset
+				gutter = m.colors().dim + "▌" + sgrReset
 			}
 		}
 		mark := " "
 		if m.picked[v.id] {
-			mark = sgrAccent + "┃" + sgrReset
+			mark = m.colors().accent + "┃" + sgrReset
 		}
 		indent := strings.Repeat("  ", v.depth)
 		// With :numbers, each row says how far it is from the cursor, so a
@@ -718,7 +712,7 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 				if d < 0 {
 					d = -d
 				}
-				number = sgrDim + fmt.Sprintf("%*d ", numberCols-1, d) + sgrReset
+				number = m.colors().dim + fmt.Sprintf("%*d ", numberCols-1, d) + sgrReset
 			}
 		}
 
@@ -737,19 +731,25 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 					caret.Shape = tea.CursorBlock
 				}
 			}
+			line := blank + gutter + mark + indent + "  " + text
 			if n == 0 {
-				lines = append(lines, number+gutter+mark+indent+glyph+" "+text)
-			} else {
-				// The cursor and selection marks run the height of the row.
-				lines = append(lines, blank+gutter+mark+indent+"  "+text)
+				line = number + gutter + mark + indent + glyph + " " + text
 			}
+			// Selection wins over the cursor; only the focused pane is live.
+			background := ""
+			if m.picked[v.id] {
+				background = m.colors().selection
+			} else if i == m.cursor && !m.sideFocus {
+				background = m.colors().cursor
+			}
+			lines = append(lines, m.tint(line, w, background))
 		}
 	}
 	for len(lines) < h {
 		lines = append(lines, "")
 	}
 	if len(m.vis) == 0 {
-		lines[1] = sgrDim + "  " + ansi.Truncate(m.emptyText(), max(w-2, 1), "…") + sgrReset
+		lines[1] = m.colors().dim + "  " + ansi.Truncate(m.emptyText(), max(w-2, 1), "…") + sgrReset
 	}
 	return lines, caret
 }
@@ -763,10 +763,10 @@ func (m *Model) View() tea.View {
 		out := all
 		if len(all) > page {
 			out = append(append([]string{}, all[m.helpTop:min(m.helpTop+page, len(all))]...),
-				sgrDim+fmt.Sprintf("  j/k scroll · gg/G ends · %d-%d of %d · any other key closes",
+				m.colors().dim+fmt.Sprintf("  j/k scroll · gg/G ends · %d-%d of %d · any other key closes",
 					m.helpTop+1, min(m.helpTop+page, len(all)), len(all))+sgrReset+"  "+m.pending())
 		}
-		v := tea.NewView(strings.Join(out, "\n"))
+		v := tea.NewView(m.paintText(strings.Join(out, "\n")))
 		v.AltScreen = true
 		return v
 	}
@@ -779,7 +779,7 @@ func (m *Model) View() tea.View {
 		side := m.sideLines(sidebarCols, bodyH)
 		pane, c := m.paneLines(w-sidebarCols-3, bodyH)
 		for i := range pane {
-			lines = append(lines, side[i]+sgrDim+" │ "+sgrReset+pane[i])
+			lines = append(lines, side[i]+m.colors().dim+" │ "+sgrReset+pane[i])
 		}
 		if c != nil {
 			c.X += sidebarCols + 3
@@ -799,7 +799,7 @@ func (m *Model) View() tea.View {
 	}
 	lines = append(lines, status)
 
-	v := tea.NewView(strings.Join(lines, "\n"))
+	v := tea.NewView(m.paintText(strings.Join(lines, "\n")))
 	v.AltScreen = true
 	v.Cursor = caret
 	return v

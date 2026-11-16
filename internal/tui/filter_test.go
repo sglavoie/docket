@@ -542,10 +542,10 @@ func TestDeadlineRangesAreColouredOnTheFilterLine(t *testing.T) {
 	h := deadlines(t)
 	h.press("/", `"@<+30d @<firday"`)
 	raw := h.m.View().Content
-	if !strings.Contains(raw, sgrAccent+"@<+30d"+sgrReset) {
+	if !strings.Contains(raw, darkPalette.accent+"@<+30d"+sgrReset) {
 		t.Errorf("@<+30d is not shown as a sigil:\n%q", raw)
 	}
-	if !strings.Contains(raw, sgrWarn+"@<firday"+sgrReset) {
+	if !strings.Contains(raw, darkPalette.warn+"@<firday"+sgrReset) {
 		t.Errorf("@<firday is not flagged:\n%q", raw)
 	}
 }
