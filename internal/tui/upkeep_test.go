@@ -191,6 +191,14 @@ func TestAKeystrokePaintsWithinAFrame(t *testing.T) {
 	if d := best("j"); d > budget {
 		t.Errorf("moving the cursor took %v", d)
 	}
+	// n with no match further on reads every shown row, ancestors included.
+	m.find = "^nowhere $open"
+	if d := best("n"); d > budget {
+		t.Errorf("finding the next match took %v", d)
+	}
+	if d := best("}"); d > budget {
+		t.Errorf("moving to a sibling took %v", d)
+	}
 	frame(m, "o")
 	if d := best("a"); d > budget {
 		t.Errorf("typing a letter took %v", d)

@@ -472,17 +472,43 @@ including lists and filters; with sidebar focus it does nothing.
 ## Keys
 
 **Grammar.** Motions are `j` `k` `gg` `G` `Ctrl+D` `Ctrl+U` `Ctrl+F`
-`Ctrl+B`; `h` and `l` are fold keys, not motions. In the outline, digits
+`Ctrl+B`, the structural motions `}` `{` `)` `(` `H` `]` `[` and the find
+motions `n` `N`; `h` and `l` are fold keys, not motions. In the outline, digits
 `1` to `9` start a count and `0` continues it; `0` alone does nothing.
 The status line shows the pending count, then any pending operator. `Esc`
 drops it without clearing a selection, filter or zoom. Counts do not apply
 in the sidebar, help, prompts or while typing.
 
 A count repeats `j`, `k`, the paging motions and their arrow and page
-aliases, stopping at either end. `gg`, `G`, `Home` and `End` drop it.
+aliases, and `}`, `{`, `H`, `]`, `[`, `n` and `N`, stopping at either end.
+`gg`, `G`, `Home`, `End`, `)` and `(` drop it.
 It also repeats `J`, `K`, `u` and `Ctrl+R`: `3J` is one undo step, while
 `3u` undoes three steps. `J` and `K` stop when the row can go no further
 and keep the moves already made, including in Today.
+
+**Structural motions** read the shown rows by depth and change no fold.
+`}` and `{` go to the next and previous sibling, passing over the rows under
+each; `)` and `(` go to the last and first sibling. `H` goes to the parent,
+and a count climbs that many levels, stopping at the pane's top level. `]`
+and `[` go to the next and previous shown row ending in a colon, at any
+depth. A motion with nowhere to go stays put. In a list or a flat filter
+every row is at one level, so `}` and `{` step as `j` and `k`, `)` and `(`
+reach the ends and `H` stays. Like every motion they take a count, sweep
+with `V` and complete `d` and `y`: `d}` deletes this branch and the next,
+`y)` copies through the last sibling, `VH` selects up to the parent.
+
+**Find motions.** `n` and `N` go to the next and previous shown row matching
+a filter, stopping at the last and saying so; they do not wrap. While a
+filter is on screen that is its matches, so in context they pass over the
+dimmed ancestors. Otherwise it is the filter last kept with `Enter` or
+dropped from the rows with `Esc`, read again against today and the whole
+grammar of `/`, ancestors included: `/milk` `Enter` `Esc` leaves the cursor
+on the first match in the full outline, and `n` walks the rest. A filter
+dropped while still being typed is not remembered. The query lasts for the
+session and is one for every place; with none, `n` says there is nothing to
+find. A row inside a fold is not shown and so not found. `/` narrows the
+pane and `n` moves within it, so neither is a second route to the other
+(rule 3).
 
 `d` and `y` wait for a doubled key or a motion. `dd` and `yy` act on the
 selection, else the cursor's row; a count takes shown rows down from there.
@@ -511,6 +537,9 @@ Every other key, including `o`, `O`, `A`, `I`, `cc`, `Enter`, `h`, `l`, `f`,
 | --- | --- | --- |
 | `j` `k` `gg` `G` | Move; `Home` `End` as `gg` `G` | 1, 10 |
 | `Ctrl+D` `Ctrl+U` | Move half a pane down, up; `Ctrl+F` `Ctrl+B` `PgDn` `PgUp` a whole pane | 7, 10 |
+| `}` `{` `)` `(` | Next, previous sibling; last, first sibling | 12 |
+| `H` `]` `[` | Parent; next, previous heading | 12 |
+| `n` `N` | Next, previous match of the last filter | 12 |
 | `h` `l` | Fold, unfold; step to parent, first child; in lists and flat filters, `h` shows the row where it lives (`Esc` returns), `l` does nothing | 1, 10 |
 | `Enter` `Esc` | Zoom in, back out | 1 |
 | `o` `O` `A` `I` `cc` | New row below, above; type at end, at start; retype keeping fields | 1, 11 |
@@ -767,6 +796,12 @@ This is the only command; everything else is done in the outline.
    keeping fields, as one undo step. The typed row wraps, preserving spaces
    and sigil colours; arrows move by drawn line and scrolling follows the caret.
    *Built.*
+
+12. **Motions.** `}` `{` `)` `(` move among siblings, `H` to the parent and
+   `]` `[` between headings, by the shown rows and without folding. `n` and
+   `N` find the next and previous match of the filter on screen or the one
+   last kept or dropped. All take counts, sweep with `V` and complete `d`
+   and `y`. *Built.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add`.

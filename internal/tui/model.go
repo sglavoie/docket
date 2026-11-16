@@ -133,6 +133,7 @@ type Model struct {
 	operator   string            // pending d, y or c (cc only)
 	opCount    int               // count before the operator
 	register   string            // session-local serialized rows
+	find       string            // the last filter kept or dropped, for n and N
 	picked     map[string]bool   // the selection
 	sweep      string            // anchor row of a live sweep
 	sweepBase  map[string]bool   // picks made before the sweep
@@ -1287,6 +1288,9 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 		switch k {
 		case "enter":
 			m.ask = nil
+			if text != "" {
+				m.find = text
+			}
 		case "esc":
 			m.ask = nil
 			m.at.query = ""
@@ -1676,10 +1680,9 @@ func (m *Model) normalKey(k string) {
 		}
 		return
 	}
-	switch k {
-	case "j", "k", "down", "up", "gg", "G", "home", "end", "ctrl+d", "ctrl+u", "ctrl+f", "ctrl+b", "pgdown", "pgup":
+	if isMotion(k) {
 		defer m.updateSweep()
-	default:
+	} else {
 		m.endSweep()
 	}
 	count := m.count
@@ -1734,10 +1737,112 @@ func (m *Model) normalKey(k string) {
 	m.normalAct(k, count)
 }
 
+// isMotion names the keys motionTarget reads.
+func isMotion(k string) bool {
+	switch k {
+	case "j", "k", "down", "up", "gg", "G", "home", "end", "ctrl+d", "ctrl+u", "ctrl+f", "ctrl+b", "pgdown", "pgup",
+		"}", "{", ")", "(", "H", "]", "[", "n", "N":
+		return true
+	}
+	return false
+}
+
+// sibling is the shown row at i's depth next in that direction, before any
+// shallower row; i itself when there is none.
+func (m *Model) sibling(i, step int) int {
+	for j := i + step; j >= 0 && j < len(m.vis) && m.vis[j].depth >= m.vis[i].depth; j += step {
+		if m.vis[j].depth == m.vis[i].depth {
+			return j
+		}
+	}
+	return i
+}
+
+// finder reads a row against the filter on screen, else the one last kept
+// or dropped, for n and N. It is nil when there is none.
+func (m *Model) finder() func(id string) bool {
+	if m.at.query != "" {
+		return func(id string) bool { return m.at.matched[id] }
+	}
+	today := m.today()
+	terms := parseQuery(m.find, today)
+	if len(terms) == 0 {
+		return nil
+	}
+	m.scan() // $next reads the scan's answer
+	hasAbove := slices.ContainsFunc(terms, func(t term) bool { return t.above })
+	above := make([]int, len(terms))
+	return func(id string) bool {
+		r := m.tree.Row(id)
+		clear(above)
+		for p := r.Parent; hasAbove && p != ""; {
+			pr := m.tree.Row(p)
+			l := sigil.FromFields(pr.Fields)
+			for i, t := range terms {
+				if t.above && above[i] == 0 && holdsAny(pr, l, t, today, m.next) {
+					above[i] = 1
+				}
+			}
+			p = pr.Parent
+		}
+		return matches(r, terms, today, m.next, above)
+	}
+}
+
 // motionTarget reads only the visible rows; operators use it without moving.
 func (m *Model) motionTarget(k string, count int) (int, bool) {
 	target := m.cursor
+	if len(m.vis) == 0 {
+		return target, isMotion(k)
+	}
+	step := 1
 	switch k {
+	case "{", "(", "[", "N":
+		step = -1
+	}
+	switch k {
+	case "}", "{":
+		// The next or previous sibling, passing over what is under each.
+		for range max(count, 1) {
+			next := m.sibling(target, step)
+			if next == target {
+				break
+			}
+			target = next
+		}
+	case ")", "(":
+		for next := m.sibling(target, step); next != target; next = m.sibling(target, step) {
+			target = next
+		}
+	case "H":
+		// The parent, without folding anything; a count climbs that many.
+		for range max(count, 1) {
+			up := target - 1
+			for up >= 0 && m.vis[up].depth >= m.vis[target].depth {
+				up--
+			}
+			if up < 0 {
+				break
+			}
+			target = up
+		}
+	case "]", "[", "n", "N":
+		hit := func(id string) bool { return strings.HasSuffix(m.tree.Row(id).Text(), ":") }
+		if k == "n" || k == "N" {
+			if hit = m.finder(); hit == nil {
+				m.msg = "nothing to find: keep a filter with / and Enter first"
+				return target, true
+			}
+		}
+		left := max(count, 1)
+		for i := target + step; i >= 0 && i < len(m.vis) && left > 0; i += step {
+			if hit(m.vis[i].id) {
+				target, left = i, left-1
+			}
+		}
+		if target == m.cursor && (k == "n" || k == "N") {
+			m.msg = "no match further on"
+		}
 	case "gg", "home":
 		target = 0
 	case "G", "end":
@@ -1866,7 +1971,7 @@ func (m *Model) normalAct(k string, count int) {
 		if len(m.picked) > 0 {
 			m.clearSelection()
 		} else if m.at.query != "" {
-			m.at.query = ""
+			m.find, m.at.query = m.at.query, ""
 			m.refilter()
 			m.vis = nil
 			m.rebuild()

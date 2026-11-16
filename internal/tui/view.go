@@ -28,6 +28,12 @@ const helpText = `Docket
   j k  gg G      move; Home End as gg G
   Ctrl+D Ctrl+U  move half a pane down, up (outlines, lists and filters)
   Ctrl+F Ctrl+B  move a whole pane down, up; PgDn PgUp too
+  } {  ) (       next, previous sibling, passing over its rows; last, first
+  H              the parent, folding nothing; 2H climbs two
+  ] [            next, previous heading (a row ending in a colon)
+  n N            next, previous match of the filter on screen, else of the one
+                 last kept with Enter or dropped with Esc; this session only
+                 all are motions: 3}, d}, y), VH and dn work; lists step by row
   h l            fold, unfold; step to parent, first child
                  in lists and flat filters, h shows the row where it lives;
                  Esc returns to the held rows; l does nothing
