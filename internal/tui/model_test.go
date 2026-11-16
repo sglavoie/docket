@@ -196,6 +196,15 @@ func (h *harness) wide() *harness {
 	return h
 }
 
+// act presses a key that acts on rows, doubling the operators > and <.
+func (h *harness) act(k string) {
+	h.t.Helper()
+	if k == ">" || k == "<" {
+		h.press(k)
+	}
+	h.press(k)
+}
+
 func (h *harness) want(rows ...string) {
 	h.t.Helper()
 	if got, want := h.rows(), strings.Join(rows, "\n"); got != want {
@@ -245,19 +254,19 @@ func TestIndentWhileTypingAndStructureKeys(t *testing.T) {
 		"▌   ○ Second",
 		"    ○ First",
 	)
-	h.press("<")
+	h.press("<", "<")
 	h.want(
 		"  ▾ Project",
 		"    ○ First",
 		"▌ ○ Second",
 	)
-	h.press(">")
+	h.press(">", ">")
 	h.want(
 		"  ▾ Project",
 		"    ○ First",
 		"▌   ○ Second",
 	)
-	h.press("<", "<")
+	h.press("<", "<", "<", "<")
 	if h.m.msg != "already at the top level" {
 		t.Fatalf("msg = %q", h.m.msg)
 	}
@@ -284,11 +293,11 @@ func TestStructureKeysMoveASelectedBlock(t *testing.T) {
 		t.Run(tc.key, func(t *testing.T) {
 			h := block(t)
 			if tc.key == "<" {
-				h.press(">")
+				h.press(">", ">")
 			}
 			before, cur, steps := h.rows(), h.m.current(), len(h.m.undo)
 			ids := h.m.acting()
-			h.press(tc.key)
+			h.act(tc.key)
 			h.want(tc.want...)
 			if h.m.current() != cur || len(h.m.picked) != 3 || len(h.m.undo) != steps+1 {
 				t.Fatal("move lost the cursor or selection, or was not one undo step")
@@ -322,7 +331,7 @@ func TestStructureKeysMoveASelectedBlock(t *testing.T) {
 		h.want(" ┃  One", "▌┃  Two", " ┃  Three", "  ▸ Before", "    After", "    Tail")
 		before, steps = h.rows(), len(h.m.undo)
 		for _, key := range []string{"K", ">", "<"} {
-			h.press(key)
+			h.act(key)
 			if h.rows() != before || len(h.m.undo) != steps {
 				t.Fatalf("%s moved beyond the first sibling or top level", key)
 			}
@@ -338,7 +347,7 @@ func TestStructureKeysMoveASelectedBlock(t *testing.T) {
 			}
 			before, steps := h.rows(), len(h.m.undo)
 			for _, key := range []string{">", "<", "J", "K"} {
-				h.press(key)
+				h.act(key)
 				if h.m.msg != "select rows that sit together to move them" || h.rows() != before || len(h.m.undo) != steps {
 					t.Fatalf("%s did not refuse the selection unchanged: %q\n%s", key, h.m.msg, h.rows())
 				}
@@ -352,10 +361,10 @@ func TestStructureKeysMoveASelectedBlock(t *testing.T) {
 			"g", "g", "j", "v", "v", "k")
 		for _, key := range []string{">", "<", "J", "K"} {
 			if key == "<" {
-				h.press(">")
+				h.press(">", ">")
 			}
 			before, cur, steps := h.rows(), h.m.current(), len(h.m.undo)
-			h.press(key)
+			h.act(key)
 			if len(h.m.undo) != steps+1 || len(h.m.undo[steps]) != 1 || len(h.m.picked) != 2 || h.m.current() != cur {
 				t.Fatalf("%s did not move the parent exactly once with the cursor on its child", key)
 			}
@@ -375,7 +384,7 @@ func TestStructureKeysMoveASelectedBlock(t *testing.T) {
 		// Later was created last, but now sits before Existing.
 		h.press("v", "v", "g", "g", "h")
 		cur := h.m.current() // The unselected folded parent stays under the cursor.
-		h.press("<")
+		h.press("<", "<")
 		h.want("▌   Before", " ┃○ Later", " ┃○ Existing", "    One", "    Two", "    Three", "    After", "    Tail")
 		if h.m.current() != cur {
 			t.Fatal("moving hidden rows changed the cursor's row")
@@ -393,7 +402,7 @@ func TestStructureKeysMoveASelectedBlock(t *testing.T) {
 			}
 			before, steps := h.rows(), len(h.m.undo)
 			for _, key := range []string{">", "<", "J", "K"} {
-				h.press(key)
+				h.act(key)
 				if h.m.msg == "" || h.rows() != before || len(h.m.undo) != steps {
 					t.Fatalf("%s was not refused in a %s", key, place)
 				}
@@ -406,7 +415,7 @@ func TestStructureKeysMoveASelectedBlock(t *testing.T) {
 		h.m.backend = &flaky{Backend: h.m.backend, fail: true}
 		before, steps := h.rows(), len(h.m.undo)
 		for _, key := range []string{">", "J", "K"} {
-			h.press(key)
+			h.act(key)
 			if !strings.Contains(h.m.msg, "disk full") || h.rows() != before || len(h.m.undo) != steps {
 				t.Fatalf("%s left a failed block move behind: %q", key, h.m.msg)
 			}
@@ -692,7 +701,7 @@ func TestHeadingsNotesAndFoldedTasks(t *testing.T) {
 		"▌       a plain remark",
 	)
 	// A folded task keeps its state glyph and counts what it hides.
-	h.press(">", "h", "h")
+	h.press(">", ">", "h", "h")
 	h.want(
 		"  ▾ Project",
 		"    ○ First",
@@ -763,7 +772,7 @@ func TestARowUnderATaskIsANote(t *testing.T) {
 		if got := string(h.m.edit.buf); got != "Second $open" {
 			t.Fatalf("stored task after restart = %q", got)
 		}
-		h.press("esc", "<", ">")
+		h.press("esc", "<", "<", ">", ">")
 		h.want("  ▾ Project", "    ○ First", "▌     ○ Second")
 		h = project(t) // The restart harness reuses fixture IDs; create new rows in a new database.
 		h.press("o", "tab", `"Note"`, "esc", "A", "shift+tab", "esc", "A")

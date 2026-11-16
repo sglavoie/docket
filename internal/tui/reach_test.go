@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func TestABlankGoToGoesBack(t *testing.T) {
+func TestCtrlOGoesBackAlongTheTrailOfJumps(t *testing.T) {
 	fixture := func(t *testing.T) *harness {
 		h := start(t).wide()
 		h.pasteText("Alpha\n\tFirst\n\tSecond\nBeta\n\tOther\n\tLast")
@@ -21,21 +21,22 @@ func TestABlankGoToGoesBack(t *testing.T) {
 		alpha, alphaSide := h.rows(), h.m.sel
 		h.press("f", `"beta"`, "enter", "j")
 		beta, betaSide := h.rows(), h.m.sel
+		// The picker repeats no key: back is Ctrl+O alone (rule 3).
 		h.press("f")
-		if !strings.Contains(h.status(), "back Alpha") {
-			t.Fatalf("back offer = %q", h.status())
-		}
-		h.press(`"alpha"`)
 		if strings.Contains(h.status(), "back ") {
-			t.Fatalf("typed name still offers back: %q", h.status())
+			t.Fatalf("the picker offers back: %q", h.status())
 		}
-		h.press("esc", "f", "enter")
+		h.press("esc", "ctrl+o")
 		if h.header() != "Alpha" || h.rows() != alpha || !h.m.sel.same(alphaSide) {
 			t.Fatalf("first return = %q\n%s", h.header(), h.rows())
 		}
-		h.press("f", "enter")
+		h.press("ctrl+i")
 		if h.header() != "Beta" || h.rows() != beta || !h.m.sel.same(betaSide) {
 			t.Fatalf("second return = %q\n%s", h.header(), h.rows())
+		}
+		h.press("ctrl+i")
+		if h.header() != "Beta" || h.status() != "no newer place" {
+			t.Fatalf("past the newest = %q, %q", h.header(), h.status())
 		}
 	})
 
@@ -45,7 +46,7 @@ func TestABlankGoToGoesBack(t *testing.T) {
 		today := h.rows() // Unpicked One must remain in this held list.
 		h.press("h", "enter", "o", `"Detail"`, "esc")
 		zoomed, heading, side := h.rows(), h.header(), h.m.sel
-		h.press("f", `"beta"`, "enter", "f", "enter")
+		h.press("f", `"beta"`, "enter", "ctrl+o")
 		if h.header() != heading || h.rows() != zoomed || !h.m.sel.same(side) {
 			t.Fatalf("zoom return = %q\n%s", h.header(), h.rows())
 		}
@@ -54,7 +55,7 @@ func TestABlankGoToGoesBack(t *testing.T) {
 		if h.header() != "Today" || h.rows() != strings.Replace(today, "@tomorrow", "@tomorrow +1", 1) {
 			t.Fatalf("Esc lost the held list or its cursor: %q\n%s", h.header(), h.rows())
 		}
-		h.press("f", "enter")
+		h.press("ctrl+i")
 		if h.header() != "Beta" {
 			t.Fatalf("Esc replaced the jump: %q", h.header())
 		}
@@ -67,18 +68,18 @@ func TestABlankGoToGoesBack(t *testing.T) {
 		pair, heading := h.rows(), h.header()
 		h.press("f", `"alpha"`, "enter", "/", `"First"`, "tab", "enter")
 		first, firstHeading := h.rows(), h.header()
-		h.press("f", "enter")
+		h.press("ctrl+o")
 		if h.rows() != pair || h.header() != heading {
 			t.Fatalf("first filter = %q\n%s", h.header(), h.rows())
 		}
-		h.press("f", "enter")
+		h.press("ctrl+i")
 		if h.rows() != first || h.header() != firstHeading {
 			t.Fatalf("second filter = %q\n%s", h.header(), h.rows())
 		}
 		// Saved filters also leave a restorable place and sidebar entry.
 		h.press("f", `"/pair"`, "enter", "j")
 		side := h.m.sel
-		h.press("f", `"beta"`, "enter", "f", "enter")
+		h.press("f", `"beta"`, "enter", "ctrl+o")
 		if h.rows() != pair || h.header() != heading || !h.m.sel.same(side) {
 			t.Fatalf("saved filter return = %q\n%s", h.header(), h.rows())
 		}
@@ -88,7 +89,7 @@ func TestABlankGoToGoesBack(t *testing.T) {
 		h := work(t)
 		h.press("/", `"#bug"`, "tab", "enter", "j", "-", `"#bug"`, "enter")
 		before, heading := h.rows(), h.header()
-		h.press("f", `"beta"`, "enter", "f", "enter")
+		h.press("f", `"beta"`, "enter", "ctrl+o")
 		if h.rows() != before || h.header() != heading {
 			t.Fatalf("return recomputed held matches: %q\n%s", h.header(), h.rows())
 		}
@@ -100,7 +101,7 @@ func TestABlankGoToGoesBack(t *testing.T) {
 		h.command("closed")
 		h.press("/", `"$done"`, "tab", "enter", "h")
 		before := h.rows()
-		h.press("f", `"beta"`, "enter", "f", "enter")
+		h.press("f", `"beta"`, "enter", "ctrl+o")
 		if h.rows() != before {
 			t.Fatalf("return hid the closed arrival: %s", h.rows())
 		}
@@ -122,11 +123,11 @@ func TestABlankGoToGoesBack(t *testing.T) {
 				h.press(exit)
 			}
 			destination := h.header()
-			h.press("f", "enter")
+			h.press("ctrl+o")
 			if h.header() != "Alpha" || h.rows() != before || !h.m.sel.same(side) {
 				t.Fatalf("sidebar origin = %q\n%s", h.header(), h.rows())
 			}
-			h.press("f", "enter")
+			h.press("ctrl+i")
 			if h.header() != destination {
 				t.Fatalf("sidebar destination = %q, want %q", h.header(), destination)
 			}
@@ -136,44 +137,64 @@ func TestABlankGoToGoesBack(t *testing.T) {
 	t.Run("sidebar returning to its origin does not replace back", func(t *testing.T) {
 		h := fixture(t)
 		h.press("f", `"beta"`, "enter", "f", `"alpha"`, "enter")
-		h.press("tab", "k", "j", "enter", "tab", "esc", "f", "enter")
+		h.press("tab", "k", "j", "enter", "tab", "esc", "ctrl+o")
 		if h.header() != "Beta" {
 			t.Fatalf("unchanged sidebar visit replaced back: %q", h.header())
 		}
 	})
 
-	t.Run("before any jump blank picker still opens Inbox", func(t *testing.T) {
+	t.Run("zooming is no jump, and the trail lasts for the session", func(t *testing.T) {
 		h := fixture(t)
-		h.press("enter", "esc", "tab", "esc", "f")
-		if strings.Contains(h.status(), "back ") {
-			t.Fatalf("non-jumps offered back: %q", h.status())
-		}
-		h.press("enter")
-		if h.header() != "Inbox" {
-			t.Fatalf("first blank jump = %q", h.header())
+		h.press("enter", "esc", "tab", "esc", "ctrl+o")
+		if h.header() != "Projects" || !strings.HasPrefix(h.status(), "no older place") {
+			t.Fatalf("non-jumps left a trail: %q, %q", h.header(), h.status())
 		}
 		h.press("f", "enter")
+		if h.header() != "Inbox" {
+			t.Fatalf("blank jump = %q", h.header())
+		}
+		h.press("ctrl+o")
 		if h.header() != "Projects" {
 			t.Fatalf("rootless return = %q", h.header())
 		}
 		h = open(t, h.path).wide()
-		h.press("f")
-		if strings.Contains(h.status(), "back ") {
-			t.Fatalf("back persisted across launches: %q", h.status())
+		h.press("ctrl+o")
+		if !strings.HasPrefix(h.status(), "no older place") {
+			t.Fatalf("the trail persisted across launches: %q", h.status())
+		}
+	})
+
+	t.Run("a count walks that far and a new jump drops what was newer", func(t *testing.T) {
+		h := fixture(t)
+		h.press("f", `"alpha"`, "enter", "f", `"beta"`, "enter", "f", `"inbox"`, "enter", "3", "ctrl+o")
+		if h.header() != "Projects" {
+			t.Fatalf("3 Ctrl+O = %q", h.header())
+		}
+		h.press("2", "ctrl+i")
+		if h.header() != "Beta" {
+			t.Fatalf("2 Ctrl+I = %q", h.header())
+		}
+		h.press("f", `"alpha"`, "enter", "ctrl+i")
+		if h.header() != "Alpha" || h.status() != "no newer place" {
+			t.Fatalf("a jump kept newer places: %q, %q", h.header(), h.status())
+		}
+		h.press("ctrl+o")
+		if h.header() != "Beta" {
+			t.Fatalf("back after a new jump = %q", h.header())
 		}
 	})
 
 	for _, target := range []string{"alpha", "heading"} {
-		t.Run("deleted root or ancestor is not offered/"+target, func(t *testing.T) {
+		t.Run("deleted root or ancestor is passed over/"+target, func(t *testing.T) {
 			h := start(t).wide()
 			h.pasteText("Alpha\n\tHeading:\n\t\tTask\nBeta")
-			h.press("f", `"`+target+`"`, "enter", "f", `"projects"`, "enter", "g", "g", "d", "d", "f")
-			if strings.Contains(h.status(), "back ") {
-				t.Fatalf("deleted place offered: %q", h.status())
+			h.press("f", `"`+target+`"`, "enter", "f", `"projects"`, "enter", "g", "g", "d", "d", "ctrl+o")
+			if h.header() != "Projects" || h.status() != "" {
+				t.Fatalf("deleted place taken: %q, %q", h.header(), h.status())
 			}
-			h.press("enter")
-			if h.header() != "Inbox" {
-				t.Fatalf("deleted place taken: %q", h.header())
+			h.press("ctrl+o")
+			if !strings.HasPrefix(h.status(), "no older place") {
+				t.Fatalf("past the oldest = %q", h.status())
 			}
 		})
 	}
@@ -710,10 +731,13 @@ func TestDotRepeatsTheLastStampOrMove(t *testing.T) {
 		t.Run("refuse deleted "+remove, func(t *testing.T) {
 			h := fixture(t)
 			h.press("m", `"storage"`, "enter")
+			// A delete made here would be what the dot key repeats, so
+			// the destination goes in another window on the database.
+			other := open(t, h.path).wide()
 			if remove == "destination" {
-				h.press("f", `"beta"`, "enter", "g", "g", "d", "d")
+				other.press("f", `"beta"`, "enter", "g", "g", "d", "d")
 			} else {
-				h.press("f", `"projects"`, "enter", "G", "h", "h", "d", "d")
+				other.press("f", `"projects"`, "enter", "G", "h", "h", "d", "d")
 			}
 			h.press("f", `"alpha"`, "enter")
 			before, undo := h.rows(), len(h.m.undo)
@@ -738,6 +762,11 @@ func TestDotRepeatsTheLastStampOrMove(t *testing.T) {
 		for _, act := range []string{"stamp", "move"} {
 			t.Run(act+" in "+view, func(t *testing.T) {
 				h := fixture(t)
+				if view == "list" {
+					// Picked first: the last change is what is repeated.
+					h.command("all")
+					h.press("t", "esc")
+				}
 				if act == "stamp" {
 					h.press("#", `"work"`, "enter")
 				} else {
@@ -745,8 +774,7 @@ func TestDotRepeatsTheLastStampOrMove(t *testing.T) {
 				}
 				h.press("u")
 				if view == "list" {
-					h.command("all")
-					h.press("t", "esc", "f", `"today"`, "enter")
+					h.press("f", `"today"`, "enter")
 				} else {
 					h.press("/", `"First|Second|Third"`)
 					if view == "flat filter" {

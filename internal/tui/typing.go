@@ -45,7 +45,7 @@ func (m *Model) styler(surface string) func(string) []word {
 			style = row(w)
 			if name, ok := strings.CutPrefix(w, "%"); ok && name != "" {
 				style = sgrWarn
-				if len(match(m.targets(false), name, 2)) > 0 {
+				if len(match(name, 2, m.targets(false))) > 0 {
 					style = sgrAccent
 				}
 			}
@@ -84,6 +84,9 @@ func (m *Model) styler(surface string) func(string) []word {
 				if terms[0].above {
 					part = strings.TrimPrefix(part, "^")
 				}
+				if terms[0].below {
+					part = strings.TrimPrefix(part, "_")
+				}
 				if part != "" && strings.ContainsRune("!#$@*~", rune(part[0])) {
 					style = sgrWarn
 					break
@@ -109,10 +112,14 @@ func (m *Model) suggest(e *editor, surface string) string {
 		word = strings.TrimPrefix(word, "-")
 	}
 	if surface == askFilter {
-		if strings.HasPrefix(word, "^^") {
+		if strings.HasPrefix(word, "^^") || strings.HasPrefix(word, "__") {
 			return ""
 		}
-		word = strings.TrimPrefix(word, "^")
+		if rest, ok := strings.CutPrefix(word, "^"); ok {
+			word = rest
+		} else {
+			word = strings.TrimPrefix(word, "_")
+		}
 	}
 	if word == "" {
 		return ""
@@ -331,7 +338,7 @@ func (m *Model) editWidth() int {
 	if w >= sidebarFrom {
 		w -= sidebarCols + 3
 	}
-	return max(w-4-2*m.vis[m.cursor].depth, 1)
+	return max(w-m.numberCols()-4-2*m.vis[m.cursor].depth, 1)
 }
 
 func (m *Model) editVertical(by int) {

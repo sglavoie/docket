@@ -19,14 +19,16 @@ import (
 // readings with a bar between them, and holds when any one does.
 type term struct {
 	neg   bool
-	above bool
+	above bool // tested on the row's ancestors
+	below bool // tested on the rows under it
 	any   []cond
 }
 
 // cond is one reading of a term.
 type cond struct {
-	kind  byte // t text, ! flag, # tag, $ state, S any state, n next action, @ deadline, < > deadline range, s start, * repeat, ~ changed
+	kind  byte // t text, ! flag, # tag, l g tag value range, $ state, S any state, n next action, @ deadline, < > deadline range, s start, * repeat, ~ changed
 	value string
+	arg   string // the value a tag range compares with
 }
 
 // parseQuery reads a filter in the grammar rows are written in. A word that
@@ -38,16 +40,18 @@ func parseQuery(q string, today time.Time) []term {
 		if len(w) > 1 && w[0] == '-' {
 			t.neg, w = true, w[1:]
 		}
-		if w == "^" {
+		if w == "^" || w == "_" {
 			continue // still being typed
 		}
-		if strings.HasPrefix(w, "^^") {
+		if strings.HasPrefix(w, "^^") || strings.HasPrefix(w, "__") {
 			t.any = []cond{parseCond(w, today)}
 			out = append(out, t)
 			continue
 		}
 		if strings.HasPrefix(w, "^") {
 			t.above, w = true, w[1:]
+		} else if strings.HasPrefix(w, "_") {
+			t.below, w = true, w[1:]
 		}
 		// A side without its own sigil inherits the first side's:
 		// $open|doing reads as $open or $doing, but #home|! keeps both sigils.
@@ -84,6 +88,14 @@ func parseCond(w string, today time.Time) cond {
 	case '#':
 		if tag, ok := sigil.ParseTag(w[1:]); ok || w == "#" {
 			c.kind, c.value = '#', tag
+		} else if i := strings.IndexAny(w, "<>"); i > 1 && i < len(w)-1 {
+			// A range over a tag's value: at most, or at least.
+			if name, ok := sigil.ParseTag(w[1:i]); ok && !strings.Contains(name, "=") {
+				c.kind, c.value, c.arg = 'l', name, w[i+1:]
+				if w[i] == '>' {
+					c.kind = 'g'
+				}
+			}
 		}
 	case '$':
 		// $next is read before the states: it is a filter word, not a state.
@@ -162,11 +174,16 @@ func sinceDay(s string, today time.Time) (string, bool) {
 
 // matches reads one row against a query. next is each project's next
 // action, as the last scan found it.
-func matches(r *outline.Row, terms []term, today time.Time, next map[string]bool, above []int) bool {
+func matches(r *outline.Row, terms []term, today time.Time, next map[string]bool, above []int, under map[string]uint64) bool {
 	l := sigil.FromFields(r.Fields)
 	for i, t := range terms {
-		ok := above[i] != 0
-		if !t.above {
+		var ok bool
+		switch {
+		case t.above:
+			ok = above[i] != 0
+		case t.below:
+			ok = under[r.ID]&(1<<min(i, 63)) != 0
+		default:
 			ok = holdsAny(r, l, t, today, next)
 		}
 		if ok == t.neg {
@@ -192,7 +209,18 @@ func holds(r *outline.Row, l sigil.Line, c cond, today time.Time, next map[strin
 	case '!':
 		return l.Flag
 	case '#':
-		return len(l.Tags) > 0 && (c.value == "" || slices.Contains(l.Tags, c.value))
+		// A bare name holds whatever value the tag carries.
+		return len(l.Tags) > 0 && (c.value == "" || slices.ContainsFunc(l.Tags, func(tag string) bool {
+			return tag == c.value || sigil.TagName(tag) == c.value
+		}))
+	case 'l', 'g':
+		for _, tag := range l.Tags {
+			if v := sigil.TagValue(tag); v != "" && sigil.TagName(tag) == c.value {
+				order := compareValues(v, c.arg)
+				return (c.kind == 'l' && order <= 0) || (c.kind == 'g' && order >= 0)
+			}
+		}
+		return false
 	case '$':
 		return l.State == c.value
 	case 'S':
@@ -236,6 +264,56 @@ func holds(r *outline.Row, l sigil.Line, c cond, today time.Time, next map[strin
 	return false
 }
 
+// compareValues orders two tag values: as numbers when both are, else as
+// text ignoring case.
+func compareValues(a, b string) int {
+	x, errA := strconv.ParseFloat(a, 64)
+	y, errB := strconv.ParseFloat(b, 64)
+	if errA == nil && errB == nil {
+		switch {
+		case x < y:
+			return -1
+		case x > y:
+			return 1
+		}
+		return 0
+	}
+	return strings.Compare(strings.ToLower(a), strings.ToLower(b))
+}
+
+// underSets answers a query's below terms for every row at once: for each
+// row, which of them some row under it holds. It is one walk of the outline,
+// made only when the query has such a term.
+func (m *Model) underSets(terms []term, today time.Time) map[string]uint64 {
+	if !slices.ContainsFunc(terms, func(t term) bool { return t.below }) {
+		return nil
+	}
+	under := map[string]uint64{}
+	var walk func(id string) uint64
+	walk = func(id string) uint64 {
+		var below uint64
+		for _, kid := range m.tree.Children(id) {
+			below |= walk(kid)
+		}
+		if id == "" {
+			return 0
+		}
+		if below != 0 {
+			under[id] = below
+		}
+		r := m.tree.Row(id)
+		l := sigil.FromFields(r.Fields)
+		for i, t := range terms {
+			if t.below && holdsAny(r, l, t, today, m.next) {
+				below |= 1 << min(i, 63)
+			}
+		}
+		return below
+	}
+	walk("")
+	return under
+}
+
 // refilter reads the place's query against its rows. In an outline a match
 // keeps its ancestors, so it is read where it lives; flat drops them.
 func (m *Model) refilter() {
@@ -249,6 +327,7 @@ func (m *Model) refilter() {
 	// Each slot records the first matching ancestor's walk level. Restore
 	// slots at that level on return, so siblings never inherit one another.
 	above := make([]int, len(terms))
+	under := m.underSets(terms, today)
 	hasAbove := slices.ContainsFunc(terms, func(t term) bool { return t.above })
 	include := func(id string, level int) {
 		if !hasAbove || id == "" {
@@ -277,7 +356,7 @@ func (m *Model) refilter() {
 			}
 			clear(above)
 			parents(m.tree.Row(id).Parent)
-			if matches(m.tree.Row(id), terms, today, m.next, above) {
+			if matches(m.tree.Row(id), terms, today, m.next, above, under) {
 				m.at.hits = append(m.at.hits, visRow{id, 0})
 				m.at.matched[id] = true
 			}
@@ -296,7 +375,7 @@ func (m *Model) refilter() {
 				continue
 			}
 			at := len(m.at.hits)
-			ok := matches(m.tree.Row(id), terms, today, m.next, above)
+			ok := matches(m.tree.Row(id), terms, today, m.next, above, under)
 			if ok {
 				m.at.matched[id] = true
 			}
@@ -410,15 +489,15 @@ func (m *Model) stampOps(id string, c change) []outline.Op {
 	}
 	if len(c.add)+len(c.strip) > 0 {
 		var tags []string
+		// -#name takes the tag off whatever its value; -#name=value only
+		// that one.
 		for _, tag := range strings.Fields(m.tree.Row(id).Fields[sigil.FieldTags]) {
-			if !slices.Contains(c.strip, tag) {
+			if !slices.Contains(c.strip, tag) && !slices.Contains(c.strip, sigil.TagName(tag)) {
 				tags = append(tags, tag)
 			}
 		}
 		for _, tag := range c.add {
-			if !slices.Contains(tags, tag) {
-				tags = append(tags, tag)
-			}
+			tags = sigil.PutTag(tags, tag)
 		}
 		want[sigil.FieldTags] = strings.Join(tags, " ")
 	}

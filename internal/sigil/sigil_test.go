@@ -192,3 +192,29 @@ func TestLiteralBackslashesBeforeSigils(t *testing.T) {
 		}
 	}
 }
+
+func TestATagCarriesAValue(t *testing.T) {
+	today := time.Date(2026, 11, 15, 12, 0, 0, 0, time.UTC)
+	for word, want := range map[string]string{
+		"est=2h": "est=2h", "Who=Ann": "who=Ann", "url=a=b": "url=a=b", "est": "est",
+		"est=": "", "=2": "", "1=2": "", "a b=1": "",
+	} {
+		if got, ok := ParseTag(word); got != want || ok != (want != "") {
+			t.Errorf("ParseTag(%q) = %q, %v", word, got, ok)
+		}
+	}
+	// A name is held once: the last value wins, where the first one sat.
+	l := Parse("Fix #est=2h #who=Ann #est=3h #est= #5=1", false, today)
+	if strings.Join(l.Tags, " ") != "est=3h who=Ann" || l.Text != "Fix #est= #5=1" {
+		t.Fatalf("parsed %+v", l)
+	}
+	if line := Format(l, false, today); line != "Fix #est= #5=1 #est=3h #who=Ann" {
+		t.Fatalf("formatted %q", line)
+	}
+	if got := PutTag([]string{"a", "est=1"}, "est"); strings.Join(got, " ") != "a est" {
+		t.Fatalf("a bare tag did not replace a valued one: %v", got)
+	}
+	if TagName("est=2h") != "est" || TagValue("est=2h") != "2h" || TagValue("est") != "" {
+		t.Fatal("name and value")
+	}
+}

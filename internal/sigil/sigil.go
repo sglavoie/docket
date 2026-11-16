@@ -5,7 +5,6 @@ package sigil
 
 import (
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -94,9 +93,12 @@ func ParseState(s string) (string, bool) {
 	return found, true
 }
 
-// ParseTag accepts a word starting with a letter, so #123 stays prose.
+// ParseTag accepts a word starting with a letter, so #123 stays prose. A tag
+// may carry a value after an equals sign, as in est=2h: the name is stored
+// lowercase and the value as typed.
 func ParseTag(s string) (string, bool) {
-	for i, r := range s {
+	name, value, valued := strings.Cut(s, "=")
+	for i, r := range name {
 		switch {
 		case unicode.IsLetter(r):
 		case i > 0 && (unicode.IsDigit(r) || r == '-' || r == '_'):
@@ -104,7 +106,37 @@ func ParseTag(s string) (string, bool) {
 			return "", false
 		}
 	}
-	return strings.ToLower(s), s != ""
+	if name == "" || (valued && value == "") {
+		return "", false
+	}
+	if valued {
+		return strings.ToLower(name) + "=" + value, true
+	}
+	return strings.ToLower(name), true
+}
+
+// TagName is a tag without its value.
+func TagName(tag string) string {
+	name, _, _ := strings.Cut(tag, "=")
+	return name
+}
+
+// TagValue is the value a tag carries, or nothing.
+func TagValue(tag string) string {
+	_, value, _ := strings.Cut(tag, "=")
+	return value
+}
+
+// PutTag adds a tag to a list. A name is held once: a tag already there
+// under the same name is replaced where it sits, so its value changes.
+func PutTag(tags []string, tag string) []string {
+	for i, have := range tags {
+		if TagName(have) == TagName(tag) {
+			tags[i] = tag
+			return tags
+		}
+	}
+	return append(tags, tag)
 }
 
 // IsSigil reports a word the row grammar reads as a sigil.
@@ -153,9 +185,8 @@ func Parse(s string, notes bool, today time.Time) Line {
 		case '!':
 			l.Flag = true
 		case '#':
-			if tag, _ := ParseTag(w[1:]); !slices.Contains(l.Tags, tag) {
-				l.Tags = append(l.Tags, tag)
-			}
+			tag, _ := ParseTag(w[1:])
+			l.Tags = PutTag(l.Tags, tag)
 		case '*':
 			l.Every, _ = ParseRepeat(w[1:])
 		case '@':

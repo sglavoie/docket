@@ -40,7 +40,10 @@ const (
 	kindReview   = "review" // active projects, longest untouched first
 	kindFilter   = "filter" // a saved filter
 	kindHere     = "here"   // a move's destination: where o would open a row
-	kindBack     = "back"   // the place the last jump left
+	kindRow      = "row"    // any other row, shown where it lives
+	kindNone     = "none"   // a link's destination: no row, which takes the link off
+	fieldLink    = "link"   // the row this one points at
+	trailDepth   = 100      // how many places Ctrl+O can go back through
 )
 
 const (
@@ -93,10 +96,49 @@ func (m *Model) departure() *visit {
 	return v
 }
 
+// leaveTrail remembers a place a jump left, for Ctrl+O. A new jump drops
+// the places Ctrl+I would have gone on to.
+func (m *Model) leaveTrail(v *visit) {
+	m.older = append(m.older, v)
+	if n := len(m.older); n > trailDepth {
+		m.older = m.older[n-trailDepth:]
+	}
+	m.newer = nil
+}
+
+// travel goes one place back along the trail of jumps, or forward again. It
+// passes over a place whose row is gone, and reports whether it moved.
+func (m *Model) travel(back bool) bool {
+	from, to := &m.older, &m.newer
+	if !back {
+		from, to = to, from
+	}
+	for len(*from) > 0 {
+		v := (*from)[len(*from)-1]
+		*from = (*from)[:len(*from)-1]
+		if !m.live(v.at.root) {
+			continue
+		}
+		*to = append(*to, m.departure())
+		m.leave()
+		m.at, m.zoom, m.sel = v.at, v.zoom, v.sel
+		m.clearSelection()
+		m.cursor, m.top = 0, 0
+		m.rebuild()
+		m.seek(v.row)
+		return true
+	}
+	m.msg = "no newer place"
+	if back {
+		m.msg = "no older place: a jump with f, the sidebar or a link leaves one"
+	}
+	return false
+}
+
 func (m *Model) leaveSidebar() {
 	if v := m.sideFrom; v != nil {
 		if placeKey(v.at) != placeKey(m.at) || v.at.query != m.at.query || v.at.flat != m.at.flat {
-			m.back = v
+			m.leaveTrail(v)
 		}
 	}
 	m.sideFrom = nil
@@ -111,28 +153,19 @@ func (m *Model) jump(e entry) {
 	}
 	m.sideFrom = nil
 	m.sideFocus = false
-	if e.kind == kindBack {
-		to := m.back
-		m.leave()
-		m.at, m.zoom, m.sel = to.at, to.zoom, to.sel
-		m.clearSelection()
-		m.cursor, m.top = 0, 0
-		m.rebuild()
-		m.seek(to.row)
-	} else {
-		m.open(e)
-	}
-	m.back = from
+	m.open(e)
+	m.leaveTrail(from)
 }
 
 // entry is one line of the sidebar, and one destination.
 type entry struct {
 	kind, id, label string
-	count           int  // lists: rows that still need something
-	open            int  // projects: tasks to do
-	age             int  // projects: whole days since anything inside changed
-	due             int  // projects: 1 a deadline within a week, 2 one overdue
-	idle            bool // projects: no task left to do
+	hint            string // rows: where the row lives
+	count           int    // lists: rows that still need something
+	open            int    // projects: tasks to do
+	age             int    // projects: whole days since anything inside changed
+	due             int    // projects: 1 a deadline within a week, 2 one overdue
+	idle            bool   // projects: no task left to do
 }
 
 func (e entry) same(o entry) bool { return e.kind == o.kind && e.id == o.id }
@@ -212,6 +245,7 @@ func (m *Model) scan() {
 	picked := 0
 	m.parked = 0
 	m.headings = m.headings[:0]
+	m.rowNames = m.rowNames[:0]
 	m.outlineOrder = map[string]int{}
 	m.next = map[string]bool{}
 	found := false // the project being visited has its next action
@@ -225,10 +259,12 @@ func (m *Model) scan() {
 		if r.Parent == "" {
 			path = label
 		} else {
-			path += " › " + label
 			if strings.HasSuffix(l.Text, ":") {
-				m.headings = append(m.headings, entry{kind: kindHeading, id: id, label: path})
+				m.headings = append(m.headings, entry{kind: kindHeading, id: id, label: path + " › " + label})
+			} else if l.Text != "" {
+				m.rowNames = append(m.rowNames, entry{kind: kindRow, id: id, label: l.Text, hint: path})
 			}
+			path += " › " + label
 		}
 		*touch = max(*touch, r.Modified)
 		for _, tag := range l.Tags {
@@ -361,6 +397,23 @@ func (m *Model) open(e entry) {
 				m.sel = entry{kind: kindInbox}
 			}
 		}
+	case kindRow:
+		// Any other row is shown among its siblings, inside its project.
+		r := m.tree.Row(e.id)
+		m.at = place{root: r.Parent}
+		m.sel = entry{kind: kindProjects}
+		if top := m.projectOf(e.id); top != nil && r.Parent != "" {
+			if top.ID != r.Parent {
+				m.zoom = []place{{root: top.ID}}
+			}
+			m.sel = entry{kind: kindProject, id: top.ID}
+			if top.ID == inboxID {
+				m.sel = entry{kind: kindInbox}
+			}
+		}
+		if m.hideClosed && sigil.FromFields(r.Fields).Closed() {
+			m.at.kept = map[string]bool{e.id: true}
+		}
 	case kindFilter:
 		m.at = place{}
 		for _, f := range m.filters {
@@ -376,6 +429,9 @@ func (m *Model) open(e entry) {
 		m.at = place{list: e.kind, rows: slices.Clone(m.lists[e.kind])}
 	}
 	m.arrive()
+	if e.kind == kindRow {
+		m.seek(e.id)
+	}
 }
 
 // sortToday keeps placed rows first, with outline order for unplaced rows
@@ -490,18 +546,74 @@ func (m *Model) targets(jump bool) []entry {
 // offers are the destinations a picker shows for what is typed: its matches,
 // with here for a blank move or back for a blank jump before them.
 func (m *Model) offers(a *prompt, text string) []entry {
-	hits := match(m.targets(a.kind == askJump), text, 3)
+	places := m.targets(a.kind == askJump)
+	if a.kind == askLink {
+		places = places[1:] // a link points at a row, and the Inbox is a place
+	}
+	// A jump and a link reach every row by its text once something is typed;
+	// a row must hold the words, where a place may answer to its letters.
+	var hits []entry
+	if a.kind != askMove && text != "" {
+		hits = match(text, 3, places, m.rowNames)
+	} else {
+		hits = match(text, 3, places)
+	}
 	if a.kind == askMove && text == "" && m.canMoveHere() {
 		hits = append([]entry{{kind: kindHere, label: "here"}}, hits...)
 	}
-	if a.kind == askJump && text == "" && m.back != nil && m.live(m.back.at.root) {
-		label := "back " + m.placeName(m.back.at)
-		if m.back.at.query != "" {
-			label += " / " + m.back.at.query
-		}
-		hits = append([]entry{{kind: kindBack, label: label}}, hits...)
+	if a.kind == askLink && text == "" && slices.ContainsFunc(a.rows, func(id string) bool {
+		return m.tree.Row(id).Fields[fieldLink] != ""
+	}) {
+		hits = append([]entry{{kind: kindNone, label: "none"}}, hits...)
 	}
 	return hits
+}
+
+// picker reports a prompt that lists matches to choose from.
+func picker(kind string) bool { return kind == askJump || kind == askMove || kind == askLink }
+
+// linkTo points rows at a row, or at none, as one undo step.
+func (m *Model) linkTo(rows []string, to entry) {
+	dest := to.rowID()
+	if to.kind == kindNone {
+		dest = ""
+	} else if !m.live(dest) {
+		m.msg = "that row is no longer live: " + to.label
+		return
+	}
+	var ops []outline.Op
+	for _, id := range rows {
+		if m.live(id) && id != dest && m.tree.Row(id).Fields[fieldLink] != dest {
+			ops = append(ops, outline.Op{Kind: outline.Set, Row: id, Field: fieldLink, Value: dest})
+		}
+	}
+	switch {
+	case len(ops) == 0 && len(rows) == 1 && rows[0] == dest:
+		m.msg = "a row cannot link to itself"
+	case len(ops) == 0 || !m.do(ops...):
+	case dest == "":
+		m.msg = "link removed"
+		m.repeat = repeatAct{link: to}
+	default:
+		m.msg = "linked to " + to.label + ": gl follows it"
+		m.repeat = repeatAct{link: to}
+	}
+}
+
+// follow jumps to the row the cursor's row points at.
+func (m *Model) follow() {
+	cur := m.current()
+	if cur == "" {
+		return
+	}
+	switch dest := m.tree.Row(cur).Fields[fieldLink]; {
+	case dest == "":
+		m.msg = "this row has no link: L makes one"
+	case !m.live(dest):
+		m.msg = "the linked row is gone"
+	default:
+		m.jump(entry{kind: kindRow, id: dest})
+	}
 }
 
 // canMoveHere reports whether the selection can land at the cursor: an
@@ -543,15 +655,19 @@ func rank(name, query string) (int, bool) {
 }
 
 // match returns the entries answering query, best first, ties in list order.
-func match(entries []entry, query string, worst int) []entry {
+// A row among them must hold the query whole: its letters in order would
+// offer half the outline.
+func match(query string, worst int, lists ...[]entry) []entry {
 	type scored struct {
 		e entry
 		s int
 	}
 	var hits []scored
-	for _, e := range entries {
-		if s, ok := rank(e.label, query); ok && s <= worst {
-			hits = append(hits, scored{e, s})
+	for _, entries := range lists {
+		for _, e := range entries {
+			if s, ok := rank(e.label, query); ok && s <= worst && (s < 3 || e.kind != kindRow) {
+				hits = append(hits, scored{e, s})
+			}
 		}
 	}
 	sort.SliceStable(hits, func(i, j int) bool { return hits[i].s < hits[j].s })
@@ -599,7 +715,7 @@ func (m *Model) route(line string) (entry, []string) {
 	var words []string
 	for _, w := range strings.Fields(line) {
 		if name, ok := strings.CutPrefix(w, "%"); ok && name != "" {
-			if hits := match(m.targets(false), name, 2); len(hits) > 0 {
+			if hits := match(name, 2, m.targets(false)); len(hits) > 0 {
 				target = hits[0]
 				continue
 			}

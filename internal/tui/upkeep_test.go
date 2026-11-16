@@ -232,6 +232,34 @@ func TestAKeystrokePaintsWithinAFrame(t *testing.T) {
 	}
 	frame(m, "esc")
 
+	// The jump picker reads every row's text against each letter, and here
+	// nearly every row holds it.
+	frame(m, "f")
+	if len(m.rowNames) < 9000 {
+		t.Fatalf("jump picker timing needs every row offered, have %d", len(m.rowNames))
+	}
+	if d := best("s"); d > budget {
+		t.Errorf("typing a jump-picker letter took %v", d)
+	}
+	if hits := m.offers(m.ask, "s"); len(hits) < 9000 {
+		t.Fatalf("the timed letter matched only %d rows", len(hits))
+	}
+	frame(m, "esc")
+
+	// Inside a row, a motion and a change each wrap and draw the line.
+	frame(m, "w")
+	if m.edit == nil || !m.edit.normal {
+		t.Fatal("w did not step into the row")
+	}
+	if d := best("w"); d > budget {
+		t.Errorf("a word motion inside a row took %v", d)
+	}
+	if d := best("~"); d > budget {
+		t.Errorf("a change inside a row took %v", d)
+	}
+	frame(m, "esc")
+	frame(m, "u")
+
 	// A filter reads the whole outline again on each letter of its query.
 	// retype times the query's last letter, put back after each sample.
 	retype := func(last string) time.Duration {
@@ -296,6 +324,19 @@ func TestAKeystrokePaintsWithinAFrame(t *testing.T) {
 	if d := best("j"); d > budget {
 		t.Errorf("moving the cursor in a sorted flat filter took %v", d)
 	}
+
+	// A term on the rows below walks the outline once more for its answer.
+	frame(m, "/")
+	frame(m, "esc")
+	frame(m, "/")
+	filter("_#alpha")
+	if len(m.at.matched) != 40 {
+		t.Fatalf("below timing needs every project to match, have %d", len(m.at.matched))
+	}
+	if d := retype("a"); d > budget {
+		t.Errorf("typing a filter on the rows below took %v", d)
+	}
+	frame(m, "esc")
 }
 
 func BenchmarkKeys(b *testing.B) {

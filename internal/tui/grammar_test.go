@@ -104,7 +104,7 @@ func TestACountRepeatsOrTakesRows(t *testing.T) {
 		if !strings.Contains(h.status(), "2 selected") {
 			t.Fatal(h.status())
 		}
-		for _, act := range []string{"x", "!", "t", "dd", "yy", "m", ">", "<", ".", "#", "@", "$", "*", "-", "v"} {
+		for _, act := range []string{"x", "!", "t", "dd", "yy", "m", ">>", "<<", ".", "#", "@", "$", "*", "-", "v"} {
 			gen, undos := h.m.tree.Gen(), len(h.m.undo)
 			h.press("2", `"`+act+`"`)
 			if !strings.Contains(h.status(), "a count cannot act on a selection") || h.m.tree.Gen() != gen || len(h.m.undo) != undos || len(h.m.picked) != 2 || h.m.ask != nil {
@@ -147,7 +147,7 @@ func TestACountRepeatsOrTakesRows(t *testing.T) {
 
 	t.Run("filter skips contextual ancestors", func(t *testing.T) {
 		h := start(t)
-		h.press("o", `"First #hit"`, "esc", "o", `"Heading:"`, "esc", "o", `"Second #hit"`, "esc", ">")
+		h.press("o", `"First #hit"`, "esc", "o", `"Heading:"`, "esc", "o", `"Second #hit"`, "esc", ">", ">")
 		h.press("/", `"#hit"`, "enter", "2", "d", "d")
 		h.press("esc")
 		h.want("▌   Heading:")
@@ -157,9 +157,9 @@ func TestACountRepeatsOrTakesRows(t *testing.T) {
 
 	t.Run("counted block indent and outdent", func(t *testing.T) {
 		h := countOutline(t, 4)
-		h.press("j", "3", ">")
+		h.press("j", "3", ">", ">")
 		h.want("  ○ Task 00", "▌   ○ Task 01", "    ○ Task 02", "    ○ Task 03")
-		h.press("3", "<")
+		h.press("3", "<", "<")
 		h.want("  ○ Task 00", "▌ ○ Task 01", "  ○ Task 02", "  ○ Task 03")
 		h.press("2", "u")
 		h.want("  ○ Task 00", "▌ ○ Task 01", "  ○ Task 02", "  ○ Task 03")
@@ -379,7 +379,7 @@ func TestVSweepsASelection(t *testing.T) {
 
 	t.Run("filter leaves dimmed ancestors unselected", func(t *testing.T) {
 		h := start(t)
-		h.press("o", `"First #hit"`, "esc", "o", `"Heading:"`, "esc", "o", `"Second #hit"`, "esc", ">")
+		h.press("o", `"First #hit"`, "esc", "o", `"Heading:"`, "esc", "o", `"Second #hit"`, "esc", ">", ">")
 		h.press("/", `"#hit"`, "enter", "V", "G")
 		picks(h, 0, 2)
 		h.press("k")
@@ -456,7 +456,7 @@ func TestDeleteAndCopyTakeMotions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := countOutline(t, 4)
 			if tc.child {
-				h.press("j", ">", "g", "g")
+				h.press("j", ">", ">", "g", "g")
 			}
 			ids := []string{h.m.vis[0].id, h.m.vis[1].id}
 			before, undo := h.rows(), len(h.m.undo)
@@ -613,7 +613,7 @@ func TestDeleteAndCopyTakeMotions(t *testing.T) {
 
 	t.Run("filter leaves dimmed ancestors out", func(t *testing.T) {
 		h := start(t)
-		h.press("o", `"First #hit"`, "esc", "o", `"Heading:"`, "esc", "o", `"Second #hit"`, "esc", ">")
+		h.press("o", `"First #hit"`, "esc", "o", `"Heading:"`, "esc", "o", `"Second #hit"`, "esc", ">", ">")
 		h.press("/", `"#hit"`, "enter", "d", "G")
 		if h.m.register != "First #hit\nSecond #hit $note\n" {
 			t.Fatal(h.m.register)
@@ -751,7 +751,7 @@ func TestPPutsTheRegister(t *testing.T) {
 			t.Fatalf("failed put changed state or overwrote the error: %q", h.m.msg)
 		}
 	})
-	t.Run("f opens Go to and blank returns including sidebar", func(t *testing.T) {
+	t.Run("f opens Go to, Ctrl+O returns, and the sidebar jumps too", func(t *testing.T) {
 		h := countOutline(t, 3)
 		h.press("j")
 		before := h.rows()
@@ -759,9 +759,9 @@ func TestPPutsTheRegister(t *testing.T) {
 		if h.m.ask == nil || h.m.ask.kind != askJump || !strings.HasPrefix(h.bottom(), "Go to ›") {
 			t.Fatal("f did not open Go to")
 		}
-		h.press(`"Inbox"`, "enter", "f", "enter")
+		h.press(`"Inbox"`, "enter", "ctrl+o")
 		if h.header() != "Project" || h.rows() != before {
-			t.Fatal("blank f Enter did not restore the previous place and cursor")
+			t.Fatal("Ctrl+O did not restore the previous place and cursor")
 		}
 		h.press("tab", "f", `"Inbox"`, "enter")
 		if h.m.sideFocus || h.header() != "Inbox" {
@@ -850,7 +850,7 @@ func TestIAndAOpenTypingAndCcRetypes(t *testing.T) {
 		}
 	})
 
-	t.Run("c cancels without dispatch and e does nothing", func(t *testing.T) {
+	t.Run("c cancels without dispatch and e only steps into the text", func(t *testing.T) {
 		h := countOutline(t, 3)
 		for _, k := range []string{"esc", "j", "g", "G", "d", "y", "A", "I", "2", "0", "f", "!", "v"} {
 			gen, undos, cur, root := h.m.tree.Gen(), len(h.m.undo), h.m.current(), h.m.at.root
@@ -859,10 +859,15 @@ func TestIAndAOpenTypingAndCcRetypes(t *testing.T) {
 				t.Fatalf("c %s did not cancel without acting", k)
 			}
 		}
+		// e is a word motion now: it steps into the text and types nothing.
 		gen, undos := h.m.tree.Gen(), len(h.m.undo)
 		h.press("e")
+		if h.m.edit == nil || !h.m.edit.normal || h.m.edit.caret != 3 {
+			t.Fatal("e did not step into the text at the end of the first word")
+		}
+		h.press("esc")
 		if h.m.edit != nil || h.m.tree.Gen() != gen || len(h.m.undo) != undos {
-			t.Fatal("e still edits")
+			t.Fatal("stepping in and out changed the row")
 		}
 		h.want("▌ ○ Task 00", "  ○ Task 01", "  ○ Task 02")
 	})

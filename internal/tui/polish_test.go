@@ -37,7 +37,7 @@ func TestAFailedSaveChangesNothing(t *testing.T) {
 		{"o", `"Lost"`, "esc"},
 		{"A", `" more"`, "esc"},
 		{"d", "d"},
-		{"<"},
+		{"<", "<"},
 		{"a", `"Lost too"`, "enter", "enter"},
 		{"u"},
 	} {

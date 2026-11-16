@@ -98,7 +98,7 @@ func TestAListHasNoStructure(t *testing.T) {
 	h.press("f", `"wait"`, "enter")
 	h.want("▌ ◔ Two · 0d · Alpha")
 	for _, k := range []string{"o", "J", ">"} {
-		h.press(k)
+		h.act(k)
 		if h.status() == "" {
 			t.Fatalf("%s was not refused", k)
 		}
@@ -290,7 +290,7 @@ func TestTodayIsReordered(t *testing.T) {
 		h := three(t, false)
 		before, steps := h.rows(), len(h.m.undo)
 		for _, k := range []string{"o", "O", ">", "<"} {
-			h.press(k)
+			h.act(k)
 			if h.m.msg == "" || h.rows() != before || len(h.m.undo) != steps {
 				t.Fatalf("Today did not refuse %s", k)
 			}
@@ -447,7 +447,7 @@ func TestTheInboxRowIsNeverASibling(t *testing.T) {
 		"    ○ One @tomorrow",
 		"    ◔ Two",
 	)
-	h.press(">")
+	h.press(">", ">")
 	if h.m.msg != "no row above to indent under" {
 		t.Fatalf("msg = %q", h.m.msg)
 	}
@@ -516,7 +516,7 @@ func TestMoveReachesAHeading(t *testing.T) {
 	t.Run("equal ranks prefer project then Down reaches heading", func(t *testing.T) {
 		h := start(t).wide()
 		h.pasteText("Cold Storage\nAlpha\n\tStorage:\n\tStray")
-		hits := match(h.m.targets(false), "storage", 3)
+		hits := match("storage", 3, h.m.targets(false))
 		if len(hits) != 2 || hits[0].kind != kindProject || hits[1].kind != kindHeading {
 			t.Fatalf("matches = %+v", hits)
 		}

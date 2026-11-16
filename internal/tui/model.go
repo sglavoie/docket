@@ -40,6 +40,7 @@ const (
 	metaHideClosed = "hide_closed" // whether outlines leave closed rows out
 	metaFilters    = "filters"     // saved filters from before they were rows
 	metaSyncDir    = "sync_dir"    // the folder shared with other machines
+	metaNumbers    = "numbers"     // whether rows say how far they are from the cursor
 	undoDepth      = 200
 )
 
@@ -69,18 +70,52 @@ type editor struct {
 	top        int // first drawn line of a tall editing row
 	column     int // preferred column during consecutive vertical moves
 	vertical   bool
-	fresh      bool   // the row was created by this edit
-	merge      bool   // continue the undo step recorded by a split
-	notes      bool   // the default the line was rendered against
-	back       string // where the cursor returns if a fresh row is abandoned
+	normal     bool   // the caret is on a character: keys are a grammar, not text
+	pend       string // inside the row: a pending operator, and what it waits for
+	count      int    // inside the row: a pending count
+	opCount    int    // inside the row: the count before the operator
+	past       []snapshot
+	ahead      []snapshot
+	cmd        []tea.KeyPressMsg // inside the row: the keys of the change being made
+	how        string            // the key that opened the typing, while . can repeat it
+	start      []rune            // the line as the typing found it
+	at         int               // where in it the typing began
+	fresh      bool              // the row was created by this edit
+	merge      bool              // continue the undo step recorded by a split
+	notes      bool              // the default the line was rendered against
+	back       string            // where the cursor returns if a fresh row is abandoned
 	ops, inv   []outline.Op
 }
 
-// repeatAct holds only the last successfully applied stamp or named move.
-// It is view state and is never saved with undo history.
+// repeatAct holds the last change made to rows, for the dot key: a stamp, a
+// named move, a link, a key with its count, an operator with what completed
+// it, or text typed into a row. It is view state and is never saved with
+// undo history.
 type repeatAct struct {
-	line string
-	to   entry
+	line   string
+	to     entry
+	link   entry
+	key    string // an act on rows, or an operator
+	motion string // what completed the operator: itself doubled, or a motion
+	count  int
+	how    string // the key that opened typing: o O A I cc
+	typed  string // what was typed there
+}
+
+// mark notes how typing began, so that what it adds can be repeated.
+func (e *editor) mark(how string) {
+	e.how, e.start, e.at = how, slices.Clone(e.buf), e.caret
+}
+
+// inserted is what the typing added where it began, and whether adding
+// there is all it did.
+func (e *editor) inserted() (string, bool) {
+	tail := len(e.start) - e.at
+	if e.how == "" || len(e.buf) < len(e.start) || !slices.Equal(e.buf[:e.at], e.start[:e.at]) ||
+		!slices.Equal(e.buf[len(e.buf)-tail:], e.start[e.at:]) {
+		return "", false
+	}
+	return string(e.buf[e.at : len(e.buf)-tail]), true
 }
 
 type Model struct {
@@ -91,9 +126,9 @@ type Model struct {
 
 	width, height int
 	at            place
-	zoom          []place // where Esc returns to
-	back          *visit  // the place the last jump left
-	sideFrom      *visit  // where this sidebar visit began
+	zoom          []place  // where Esc returns to
+	older, newer  []*visit // the places jumps left, for Ctrl+O and Ctrl+I
+	sideFrom      *visit   // where this sidebar visit began
 	folded        map[string]bool
 	vis           []visRow
 	cursor, top   int
@@ -120,33 +155,39 @@ type Model struct {
 	scanned   scanKey
 	tags      []string // tags in use, most used first
 	headings  []entry  // live heading destinations, in tree order
+	rowNames  []entry  // every other live row with text, for the pickers
 	parked    int
 	next      map[string]bool // each active project's next action, derived in scan
 
 	outlineOrder map[string]int // traversal ranks, derived in scan for Today ties
 
-	repeat     repeatAct
-	undo, redo [][]outline.Op
-	count      int               // pending outline count; zero means absent
-	undoGroup  []outline.Op      // inverses collected by a counted reorder
-	prefix     string            // a pending g
-	operator   string            // pending d, y or c (cc only)
-	opCount    int               // count before the operator
-	register   string            // session-local serialized rows
-	find       string            // the last filter kept or dropped, for n and N
-	picked     map[string]bool   // the selection
-	sweep      string            // anchor row of a live sweep
-	sweepBase  map[string]bool   // picks made before the sweep
-	last       map[string]string // each place's cursor row, for coming back
-	hideClosed bool
-	quit       bool
-	edit       *editor
-	ask        *prompt
-	help       bool
-	helpTop    int  // first visible help line
-	helpG      bool // a pending g in help
-	msg        string
-	pendingCmd tea.Cmd // command produced by normalKey for Update to deliver
+	repeat       repeatAct
+	undo, redo   [][]outline.Op
+	count        int               // pending outline count; zero means absent
+	undoGroup    []outline.Op      // inverses collected by a counted reorder
+	prefix       string            // a pending g
+	operator     string            // pending d, y, > or <, or c (cc only)
+	replaying    bool              // the dot key is typing: what it types is not remembered again
+	textRepeat   textAct           // the last change made inside a row
+	textRegister string            // what y, d, c and x inside a row last took
+	charFind     charFind          // the last f, F, t or T inside a row
+	opCount      int               // count before the operator
+	register     string            // session-local serialized rows
+	find         string            // the last filter kept or dropped, for n and N
+	picked       map[string]bool   // the selection
+	sweep        string            // anchor row of a live sweep
+	sweepBase    map[string]bool   // picks made before the sweep
+	last         map[string]string // each place's cursor row, for coming back
+	hideClosed   bool
+	numbers      bool // rows say how far they are from the cursor
+	quit         bool
+	edit         *editor
+	ask          *prompt
+	help         bool
+	helpTop      int  // first visible help line
+	helpG        bool // a pending g in help
+	msg          string
+	pendingCmd   tea.Cmd // command produced by normalKey for Update to deliver
 }
 
 func New(tree *outline.Tree, backend Backend, folds map[string]bool) *Model {
@@ -168,6 +209,9 @@ func newModel(tree *outline.Tree, backend Backend, folds map[string]bool, now fu
 	}
 	if v, err := backend.Meta(metaHideClosed); err == nil {
 		m.hideClosed = v == "1"
+	}
+	if v, err := backend.Meta(metaNumbers); err == nil {
+		m.numbers = v == "1"
 	}
 	if v, err := backend.Meta(metaHistory); err == nil && v != "" {
 		var h history
@@ -1048,6 +1092,10 @@ func (m *Model) newRowAt(above bool, cur string) {
 	m.rebuild()
 	m.seek(op.Row)
 	m.edit = &editor{row: op.Row, fresh: true, back: cur, ops: []outline.Op{op}, inv: inv}
+	m.edit.mark("o")
+	if above {
+		m.edit.mark("O")
+	}
 }
 
 func (m *Model) today() time.Time { return time.UnixMilli(m.now()).Local() }
@@ -1176,9 +1224,57 @@ func (m *Model) finishEdit() bool {
 		}
 		e.merge = true
 	}
+	switch typed, only := e.inserted(); {
+	case !only || m.replaying:
+	case e.how == "text":
+		// Typing opened inside the row completes the change made there.
+		m.textRepeat = textAct{keys: e.cmd, typed: typed}
+	case strings.TrimSpace(typed) != "":
+		m.repeat = repeatAct{how: e.how, typed: typed}
+	}
 	m.rebuild()
 	m.seek(e.row)
 	return true
+}
+
+// retype types the remembered text again: into a new row for o and O, else
+// into each row given where the key would have put the caret. It is one
+// undo step.
+func (m *Model) retype(act repeatAct, rows []string) {
+	m.replaying = true
+	defer func() { m.replaying = false }()
+	if act.how == "o" || act.how == "O" {
+		if !m.single() {
+			return
+		}
+		if m.newRowAt(act.how == "O", m.current()); m.edit != nil {
+			m.edit.insert([]rune(act.typed))
+			m.finishEdit()
+		}
+		return
+	}
+	cur := m.current()
+	m.undoGroup = []outline.Op{}
+	for _, id := range rows {
+		if !m.live(id) {
+			continue
+		}
+		if act.how == "cc" {
+			m.retypeRow(id)
+		} else if m.editRow(id); act.how == "I" {
+			m.edit.caret = 0
+		}
+		m.edit.insert([]rune(act.typed))
+		if !m.finishEdit() {
+			break
+		}
+	}
+	if len(m.undoGroup) > 0 {
+		m.undo = append(m.undo, m.undoGroup)
+		m.keepHistory()
+	}
+	m.undoGroup = nil
+	m.seek(cur)
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -1260,6 +1356,7 @@ const (
 	askCapture = "capture" // a line for the Inbox
 	askJump    = "jump"    // a project or list to go to
 	askMove    = "move"    // a project, Inbox or heading to move rows into
+	askLink    = "link"    // a row for rows to point at
 	askFilter  = "filter"  // a query narrowing the pane, live
 	askStamp   = "stamp"   // sigils to set on rows
 	askCommand = "command"
@@ -1269,6 +1366,7 @@ var askLabels = map[string]string{
 	askCapture: "Inbox › ",
 	askJump:    "Go to › ",
 	askMove:    "Move to › ",
+	askLink:    "Link to › ",
 	askFilter:  "Filter › ",
 	askStamp:   "Stamp › ",
 	askCommand: ": ",
@@ -1345,15 +1443,18 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 				m.jump(hit)
 				return
 			}
-			if hit.kind == kindHere {
+			switch {
+			case a.kind == askLink:
+				m.linkTo(a.rows, hit)
+			case hit.kind == kindHere:
 				m.moveHere(a.rows)
-				return
+			default:
+				m.moveTo(a.rows, hit)
 			}
-			m.moveTo(a.rows, hit)
 		}
 	case "down", "ctrl+n", "up", "ctrl+p":
 		// A picker's arrows walk its matches.
-		if a.kind == askJump || a.kind == askMove {
+		if picker(a.kind) {
 			n := len(m.offers(a, text))
 			if k == "down" || k == "ctrl+n" {
 				a.choice++
@@ -1472,6 +1573,17 @@ func (m *Model) command(line string) {
 		m.archive()
 	case "save", "forget":
 		m.keepFilter(words[0] == "save", strings.Join(words[1:], " "))
+	case "numbers":
+		// Each row says how many rows it is from the cursor, or stops.
+		m.numbers = !m.numbers
+		value, said := "", "row numbers hidden"
+		if m.numbers {
+			value, said = "1", "row numbers shown: each is a count from the cursor"
+		}
+		if err := m.backend.SetMeta(metaNumbers, value); err != nil {
+			said = "not saved: " + err.Error()
+		}
+		m.msg = said
 	case "closed":
 		// Outlines leave done and canceled rows out, or show them again.
 		m.hideClosed = !m.hideClosed
@@ -1485,7 +1597,7 @@ func (m *Model) command(line string) {
 		m.vis, m.at.kept = nil, nil
 		m.msg = said
 	default:
-		m.msg = "commands: q, help, export [file], closed, all, archive, fold [level], unfold, sort [keys], review, save name, forget name, sync [folder|off]"
+		m.msg = "commands: q, help, export [file], closed, numbers, all, archive, fold [level], unfold, sort [keys], review, save name, forget name, sync [folder|off]"
 	}
 }
 
@@ -1660,7 +1772,7 @@ func (m *Model) normalKey(k string) {
 	}
 	if m.prefix != "" {
 		k, m.prefix = m.prefix+k, ""
-	} else if k == "d" || k == "y" || k == "c" {
+	} else if k == "d" || k == "y" || k == "c" || k == ">" || k == "<" {
 		m.endSweep()
 		m.operator, m.opCount, m.count = k, m.count, 0
 		if k == "c" {
@@ -1687,9 +1799,24 @@ func (m *Model) normalKey(k string) {
 	}
 	count := m.count
 	m.count = 0
+	m.act(k, count)
+}
+
+// act runs a completed key with its count. A key that changed rows is what
+// the dot key repeats next.
+func (m *Model) act(k string, count int) {
+	tree, gen := m.tree, m.tree.Gen()
+	defer func() {
+		switch k {
+		case "x", "!", "t", "J", "K", "p", "P":
+			if m.tree == tree && m.tree.Gen() != gen {
+				m.repeat = repeatAct{key: k, count: count}
+			}
+		}
+	}()
 	if count > 0 {
 		switch k {
-		case "x", "!", "t", "dd", "yy", "m", ">", "<", ".", "#", "@", "$", "*", "-", "v":
+		case "x", "!", "t", "m", "L", ".", "#", "@", "$", "*", "-", "v":
 			if len(m.picked) > 0 {
 				m.msg = "a count cannot act on a selection"
 				return
@@ -1772,6 +1899,7 @@ func (m *Model) finder() func(id string) bool {
 	m.scan() // $next reads the scan's answer
 	hasAbove := slices.ContainsFunc(terms, func(t term) bool { return t.above })
 	above := make([]int, len(terms))
+	under := m.underSets(terms, today)
 	return func(id string) bool {
 		r := m.tree.Row(id)
 		clear(above)
@@ -1785,7 +1913,7 @@ func (m *Model) finder() func(id string) bool {
 			}
 			p = pr.Parent
 		}
-		return matches(r, terms, today, m.next, above)
+		return matches(r, terms, today, m.next, above, under)
 	}
 }
 
@@ -1885,6 +2013,14 @@ func (m *Model) operatorKey(k string) {
 		}
 	}
 	m.operator, m.opCount, m.count = "", 0, 0
+	m.operate(op, k, count)
+}
+
+// operate completes an operator: doubled it takes rows, with a motion the
+// rows from the cursor to where the motion goes. A change is what the dot
+// key repeats next.
+func (m *Model) operate(op, k string, count int) {
+	tree, gen := m.tree, m.tree.Gen()
 	if k == op {
 		if count > 0 && len(m.picked) > 0 {
 			m.msg = "a count cannot act on a selection"
@@ -1893,16 +2029,23 @@ func (m *Model) operatorKey(k string) {
 		m.takeRows(op, m.countedRows(count))
 	} else if target, ok := m.motionTarget(k, count); ok {
 		if len(m.picked) > 0 {
-			m.msg = "a motion cannot act on a selection: use dd or yy"
+			m.msg = "a motion cannot act on a selection: double the key instead, as in " + op + op
 			return
 		}
 		m.takeRows(op, m.shownRange(m.cursor, target))
+	}
+	if m.tree == tree && m.tree.Gen() != gen {
+		m.repeat = repeatAct{key: op, motion: k, count: count}
 	}
 }
 
 // Capture live subtrees before deletion, using the same format as export.
 func (m *Model) takeRows(op string, ids []string) {
 	if len(ids) == 0 {
+		return
+	}
+	if op == ">" || op == "<" {
+		m.moveBlock(ids, op)
 		return
 	}
 	text, n := m.writeRows(m.selectedRoots(ids))
@@ -1943,11 +2086,25 @@ func (m *Model) normalAct(k string, count int) {
 	case ":":
 		m.ask = &prompt{kind: askCommand}
 	case ".":
+		// A count given now replaces the one the act was made with; rows
+		// selected now are what it lands on.
+		act, n := m.repeat, count
+		if n == 0 && len(m.picked) == 0 {
+			n = act.count
+		}
 		switch {
-		case m.repeat.line != "":
-			m.applyStamp(m.countedRows(count), m.repeat.line)
-		case m.repeat.to.kind != "":
-			m.moveTo(m.countedRows(count), m.repeat.to)
+		case act.line != "":
+			m.applyStamp(m.countedRows(count), act.line)
+		case act.to.kind != "":
+			m.moveTo(m.countedRows(count), act.to)
+		case act.link.kind != "":
+			m.linkTo(m.countedRows(count), act.link)
+		case act.motion != "":
+			m.operate(act.key, act.motion, n)
+		case act.key != "":
+			m.act(act.key, n)
+		case act.how != "":
+			m.retype(act, m.countedRows(count))
 		default:
 			m.msg = "nothing to repeat"
 		}
@@ -1963,6 +2120,14 @@ func (m *Model) normalAct(k string, count int) {
 		m.put(k == "P")
 	case "f":
 		m.ask = &prompt{kind: askJump}
+	case "ctrl+o", "ctrl+i":
+		// Back along the trail of jumps, and forward again.
+		for range max(count, 1) {
+			if !m.travel(k == "ctrl+o") {
+				break
+			}
+		}
+		return
 	case "a":
 		m.ask = &prompt{kind: askCapture}
 	case "esc":
@@ -2003,6 +2168,12 @@ func (m *Model) normalAct(k string, count int) {
 					m.edit.caret = 0
 				}
 			}
+			m.edit.mark(k)
+		}
+	case "w", "b", "e", "W", "B", "E":
+		// A word motion steps into the row's text.
+		if m.single() {
+			m.enterText(cur, k, count)
 		}
 	case "enter":
 		if m.single() {
@@ -2094,11 +2265,11 @@ func (m *Model) normalAct(k string, count int) {
 		m.toggle(ids, sigil.FieldToday, m.today().Format("2006-01-02"))
 	case "m":
 		m.ask = &prompt{kind: askMove, rows: ids}
-	case ">", "<":
-		if count > 0 || len(m.picked) > 0 {
-			m.moveBlock(ids, k)
-		} else {
-			m.shift(cur, k == ">")
+	case "L":
+		m.ask = &prompt{kind: askLink, rows: ids}
+	case "gl":
+		if m.single() {
+			m.follow()
 		}
 	case "J", "K":
 		if m.at.list == kindToday {
@@ -2125,6 +2296,10 @@ func (m *Model) complete(e *editor, surface string, k string) bool {
 
 func (m *Model) editKey(msg tea.KeyPressMsg) {
 	e := m.edit
+	if e.normal {
+		m.textKey(msg)
+		return
+	}
 	if msg.String() != "up" && msg.String() != "down" {
 		e.vertical = false
 	}
@@ -2135,12 +2310,13 @@ func (m *Model) editKey(msg tea.KeyPressMsg) {
 	case "enter":
 		if e.caret > 0 && e.caret < len(e.buf) && m.at.list == "" && m.at.query == "" {
 			tail := append([]rune(nil), e.buf[e.caret:]...)
-			e.buf = e.buf[:e.caret]
+			e.buf, e.how = e.buf[:e.caret], ""
 			if m.finishEdit() {
 				m.newRowAt(false, e.row)
 				if m.edit != nil {
 					m.edit.buf = tail
 					m.edit.merge = e.merge
+					m.edit.mark("") // a split is not text to type again
 				}
 			}
 			return
