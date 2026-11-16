@@ -1653,7 +1653,7 @@ func (m *Model) command(line string) {
 		return
 	}
 	switch words[0] {
-	case "help":
+	case "help", "h":
 		m.openHelp()
 	case "q", "quit":
 		m.quit = true

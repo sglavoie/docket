@@ -1049,7 +1049,7 @@ These are the only commands; everything else is done in the outline.
    including above the pane root; `-^term` excludes such ancestry.
    `:sort [keys]` stably orders siblings or a selected block by deadline,
    flag, state, or text, within its span and in one undo step.
-   `.` repeats the last stamp or named move; `:help` opens help.
+   `.` repeats the last stamp or named move; `:help` (or `:h`) opens help.
    *Built.*
 
 11. **Grammar.** Counts repeat motions, reorder, undo and redo, or take
