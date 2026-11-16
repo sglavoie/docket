@@ -3,6 +3,8 @@ package tui
 import (
 	"errors"
 	"maps"
+	"os/exec"
+	"runtime"
 	"slices"
 	"sort"
 	"strconv"
@@ -607,7 +609,22 @@ func (m *Model) linkTo(rows []string, to entry) {
 	}
 }
 
-// follow jumps to the row the cursor's row points at.
+// openURL starts the system opener without holding up the next key.
+func openURL(address string) error {
+	opener := "xdg-open"
+	if runtime.GOOS == "darwin" {
+		opener = "open"
+	}
+	cmd := exec.Command(opener, address)
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	// Reap the process off the keys' path once it finishes.
+	go func() { _ = cmd.Wait() }()
+	return nil
+}
+
+// follow jumps to the linked row, or opens the first address in its text.
 func (m *Model) follow() {
 	cur := m.current()
 	if cur == "" {
@@ -615,6 +632,16 @@ func (m *Model) follow() {
 	}
 	switch dest := m.tree.Row(cur).Fields[fieldLink]; {
 	case dest == "":
+		for _, word := range strings.Fields(m.tree.Row(cur).Fields[sigil.FieldText]) {
+			if address := linkOf(word); address != "" {
+				if err := m.openURL(address); err != nil {
+					m.msg = err.Error()
+				} else {
+					m.msg = "opened " + address
+				}
+				return
+			}
+		}
 		m.msg = "this row has no link: L makes one"
 	case !m.live(dest):
 		m.msg = "the linked row is gone"

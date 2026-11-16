@@ -130,6 +130,7 @@ type Model struct {
 	backend Backend
 	now     func() int64
 	newID   func() string
+	openURL func(string) error
 
 	width, height int
 	at            place
@@ -219,6 +220,7 @@ func newModel(tree *outline.Tree, backend Backend, folds map[string]bool, now fu
 		last:    map[string]string{},
 		now:     now,
 		newID:   store.NewID,
+		openURL: openURL,
 	}
 	if v, err := backend.Meta(metaHideClosed); err == nil {
 		m.hideClosed = v == "1"

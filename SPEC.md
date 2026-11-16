@@ -341,6 +341,15 @@ The link is the field `link`, so it is undone, backed up and synced like any
 other change; copy and export do not carry it, since a pasted row is a new
 row.
 
+With no row link, `gl` opens the first web address in the row's text,
+dropping trailing sentence punctuation as the drawn hyperlink does. It
+starts the system opener (`open` on macOS, `xdg-open` elsewhere) without
+waiting; the status line says `opened <address>` or the error starting the
+opener. This changes no row, makes no undo step or log entry, leaves `.`
+unchanged and is not a jump. It works in lists and filters; a selection
+refuses it. A row link wins even when its destination is gone. With neither
+a link nor an address, the status line says `this row has no link: L makes one`.
+
 Three more acts use the same line:
 
 - `/` **Filter ›** narrows the pane as the query is typed. Words match a
@@ -731,7 +740,7 @@ the pane stays there until a motion has to scroll it.
 | `Tab` `f` | Sidebar focus; go to a project, heading, list or row by name | 3, 13 |
 | `Ctrl+O` `Ctrl+I` | Back along the places jumps left, and forward | 13 |
 | `a` `m` | Capture to the Inbox from anywhere; move to a project or heading | 3 |
-| `L` `gl` | Link the row to another; follow the link | 13 |
+| `L` `gl` | Link the row to another; follow the link, else open its first web address | 13, 16 |
 | `v` `V` | Pick a row; sweep with motions | 4, 11 |
 | `/` `:` | Filter, command | 4 |
 | `#` `@` `$` `*` `-` | Stamp sigils on rows | 4 |
@@ -955,7 +964,8 @@ the sigil that writes it, and then `→` with the row a link points at; the dead
 done or canceled, which dims the whole row. A word starting `http://` or
 `https://` is written as a terminal hyperlink, without the punctuation a
 sentence leaves after it; every piece of an address broken across lines
-carries the whole of it, so it opens wherever it is clicked.
+carries the whole of it, so it opens wherever it is clicked. `gl` opens the
+first address from the keyboard when the row has no row link.
 
 **Parked** is "not now" for any row: a project leaves the active list, and a
 parked row and everything under it is in no computed list however long it
@@ -1101,7 +1111,8 @@ These are the only commands; everything else is done in the outline.
    answers a filter from a shell. *Built.*
 
 16. **Arrival.** Closing a repeating row reopens every done row under it,
-   at any depth, preserving their dates and undoing together. *In progress.*
+   at any depth, preserving their dates and undoing together. `gl` opens
+   the first web address on a row with no row link. *In progress.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add` and `docket ls`, macros (`.`,

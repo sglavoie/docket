@@ -1,12 +1,120 @@
 package tui
 
 import (
+	"errors"
 	"maps"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/sglavoie/docket/internal/outline"
 )
+
+// observeCommits makes the absence of a log write observable without
+// reaching into SQLite; every stored operation passes through Commit.
+type observeCommits struct {
+	Backend
+	calls int
+}
+
+func (b *observeCommits) Commit(ops []outline.Op, now int64) error {
+	b.calls++
+	return b.Backend.Commit(ops, now)
+}
+
+func TestGlOpensAddress(t *testing.T) {
+	const address = "https://example.com/first"
+	fixture := func(t *testing.T) (*harness, *[]string) {
+		t.Helper()
+		h := start(t).wide()
+		h.pasteText("Project\n\tRead " + address + ".,;:!?) http://example.org/second $open\n\tDestination $open")
+		h.press("g", "g", "j")
+		opened := []string{}
+		h.m.openURL = func(url string) error {
+			opened = append(opened, url)
+			return nil
+		}
+		return h, &opened
+	}
+	for _, place := range []string{"outline", "list", "filter"} {
+		t.Run(place, func(t *testing.T) {
+			h, opened := fixture(t)
+			switch place {
+			case "list":
+				h.press("t", "f", `"Today"`, "enter")
+			case "filter":
+				h.press("/", `"Read"`, "tab", "enter")
+			}
+			// Leave both a remembered change and redo history to preserve.
+			h.press("!", "u")
+			rows, header := h.rows(), h.header()
+			gen, undo, redo := h.m.tree.Gen(), len(h.m.undo), len(h.m.redo)
+			older, newer, repeat := slices.Clone(h.m.older), slices.Clone(h.m.newer), h.m.repeat
+			backend := &observeCommits{Backend: h.m.backend}
+			h.m.backend = backend
+			h.press("g", "l")
+			if !slices.Equal(*opened, []string{address}) || h.status() != "opened "+address {
+				t.Fatalf("opened = %v, status = %q", *opened, h.status())
+			}
+			if h.rows() != rows || h.header() != header || h.m.tree.Gen() != gen ||
+				len(h.m.undo) != undo || len(h.m.redo) != redo || backend.calls != 0 ||
+				!slices.Equal(h.m.older, older) || !slices.Equal(h.m.newer, newer) || h.m.repeat != repeat {
+				t.Fatal("opening an address changed rows, history, the log, the place or dot repeat")
+			}
+			h.press(".")
+			if len(*opened) != 1 || h.m.tree.Row(h.m.current()).Fields["flag"] != "1" {
+				t.Fatal("dot did not retain the earlier flag change")
+			}
+		})
+	}
+	t.Run("opener error", func(t *testing.T) {
+		h, opened := fixture(t)
+		h.m.openURL = func(url string) error {
+			*opened = append(*opened, url)
+			return errors.New("opener unavailable")
+		}
+		rows, steps, gen := h.rows(), len(h.m.undo), h.m.tree.Gen()
+		h.press("g", "l")
+		if !slices.Equal(*opened, []string{address}) || h.status() != "opener unavailable" ||
+			h.rows() != rows || len(h.m.undo) != steps || h.m.tree.Gen() != gen {
+			t.Fatalf("failed opener changed rows or lost its error: %q", h.status())
+		}
+	})
+	t.Run("row link wins even when gone", func(t *testing.T) {
+		h, opened := fixture(t)
+		h.press("L", `"Destination"`, "enter")
+		rows, steps := h.rows(), len(h.m.undo)
+		h.press("g", "l")
+		h.want("  ○ Read "+address+".,;:!?) http://example.org/second", "    → Destination", "▌ ○ Destination")
+		if len(*opened) != 0 || len(h.m.undo) != steps {
+			t.Fatal("following a row link opened an address or made an undo step")
+		}
+		h.press("ctrl+o")
+		if h.rows() != rows {
+			t.Fatal("the row link did not leave a jump back")
+		}
+		h.press("g", "l", "d", "d", "ctrl+o", "g", "l")
+		if len(*opened) != 0 || h.status() != "the linked row is gone" {
+			t.Fatalf("gone link fell through to the address: %q", h.status())
+		}
+	})
+	t.Run("selection and no address", func(t *testing.T) {
+		h, opened := fixture(t)
+		h.press("v")
+		rows, steps := h.rows(), len(h.m.undo)
+		h.press("g", "l")
+		if !strings.HasPrefix(h.status(), "that works on one row: press Esc to clear the selection") ||
+			h.rows() != rows || len(h.m.undo) != steps || len(*opened) != 0 {
+			t.Fatalf("selection was not refused: %q", h.status())
+		}
+		h.press("esc", "j", "g", "l")
+		if h.status() != "this row has no link: L makes one" || len(*opened) != 0 {
+			t.Fatalf("row without a link or address = %q", h.status())
+		}
+	})
+}
 
 func TestRepeatReopensRowsUnder(t *testing.T) {
 	for _, route := range []struct {

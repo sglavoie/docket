@@ -60,6 +60,7 @@ const helpText = `Docket
   m              move to a project, Inbox or heading
                  with a selection, m Enter moves it here, where o would open a row
   L  gl          link the row to another, found by name; gl follows the link
+                 with no row link, gl opens the first web address in the text
                  a row shows → and the row it points at; blank L Enter is none
   .              repeat the last change to rows on the row or selection:
                  a stamp, a move, a link, :s, x ! t J K p P, d > < with what
@@ -138,7 +139,7 @@ const helpText = `Docket
   f              go to a project, heading, list or saved filter by name,
                  or to any row by words of its text, shown where it lives
   Ctrl+O Ctrl+I  back along the places jumps left, and forward again
-                 a jump is f, a sidebar visit or gl; this session only
+                 a jump is f, a sidebar visit or gl to a row; this session only
                  a terminal that cannot tell Ctrl+I from Tab gives Tab
   Tab            the sidebar: j k choose, Enter work in it
                  gg G and the paging keys move through it too
