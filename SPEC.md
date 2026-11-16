@@ -474,9 +474,9 @@ including lists and filters; with sidebar focus it does nothing.
 **Grammar.** Motions are `j` `k` `gg` `G` `Ctrl+D` `Ctrl+U` `Ctrl+F`
 `Ctrl+B`; `h` and `l` are fold keys, not motions. In the outline, digits
 `1` to `9` start a count and `0` continues it; `0` alone does nothing.
-The status line shows the pending count. `Esc` drops it without clearing
-a selection, filter or zoom. Counts do not apply in the sidebar, help,
-prompts or while typing.
+The status line shows the pending count, then any pending operator. `Esc`
+drops it without clearing a selection, filter or zoom. Counts do not apply
+in the sidebar, help, prompts or while typing.
 
 A count repeats `j`, `k`, the paging motions and their arrow and page
 aliases, stopping at either end. `gg`, `G`, `Home` and `End` drop it.
@@ -484,7 +484,19 @@ It also repeats `J`, `K`, `u` and `Ctrl+R`: `3J` is one undo step, while
 `3u` undoes three steps. `J` and `K` stop when the row can go no further
 and keep the moves already made, including in Today.
 
-Before `x`, `!`, `t`, `dd`, `y`, `m`, `>`, `<`, `.`, or a stamp character
+`d` and `y` wait for a doubled key or a motion. `dd` and `yy` act on the
+selection, else the cursor's row; a count takes shown rows down from there.
+With a motion they take every shown row from the cursor to its destination,
+both included, leaving dimmed ancestors out. Counts before the operator
+and before the motion multiply: `d3j` and `3dj` both delete four rows.
+An operator with a motion is refused while rows are selected: use `dd` or
+`yy` instead. `Esc` or any other key cancels the pending operator and does
+nothing. `y` alone waits; a completed copy keeps the cursor where it was.
+Every copy and delete writes whole subtrees to the session's text register
+and system clipboard; delete writes before deleting and is one undo step.
+`u` restores the deleted rows without changing the register.
+
+Before `x`, `!`, `t`, `dd`, `yy`, `m`, `>`, `<`, `.`, or a stamp character
 (`#` `@` `$` `*` `-`), a count takes that many shown rows from the cursor
 down, or as many as remain, without changing the selection. In a filter
 in context it passes over dimmed ancestors, taking matches only, as `:all`
@@ -503,7 +515,7 @@ Every other key, including `o`, `O`, `e`, `Enter`, `h`, `l`, `p`, `a`, `/`,
 | `Enter` `Esc` | Zoom in, back out | 1 |
 | `o` `O` `e` | New row below, above; edit | 1 |
 | `>` `<` `J` `K` | Indent, outdent, reorder | 1 |
-| `dd` | Delete | 1 |
+| `d` `y` | Delete or copy: `dd` / `yy` take rows; a motion takes an inclusive range | 1, 7, 11 |
 | `u` `Ctrl+R` | Undo, redo | 1 |
 | `.` | Repeat the last stamp or move | 10 |
 | `x` `!` | Done and back, flag | 2 |
@@ -511,7 +523,6 @@ Every other key, including `o`, `O`, `e`, `Enter`, `h`, `l`, `p`, `a`, `/`,
 | `Tab` `p` | Sidebar focus; go to a project, heading or list by name | 3 |
 | `a` `m` | Capture to the Inbox from anywhere; move to a project or heading | 3 |
 | `v` `V` | Pick a row; sweep with motions | 4, 11 |
-| `y` | Copy rows with their subtrees | 7 |
 | `/` `:` | Filter, command | 4 |
 | `#` `@` `$` `*` `-` | Stamp sigils on rows | 4 |
 
@@ -533,12 +544,19 @@ work in lists and filters too.
 cancel: `u` restores the line. `Alt+Left`, `Alt+Right` and `Alt+Backspace`
 work by word.
 
-**Copy.** `y` puts the cursor's row or selection, with whole subtrees, on the
-system clipboard as tab-indented row-grammar lines. Depth is relative to the
-copied roots; selected descendants are not written twice. Deleted rows are
-omitted; folded and hidden closed descendants are included. The status says
+**Copy.** `yy` puts the cursor's row or selection, with whole subtrees, on the
+system clipboard and one unnamed register as tab-indented row-grammar lines.
+Depth is relative to the copied roots; selected descendants are not written
+twice. Deleted rows are omitted; folded and hidden closed descendants are included. The status says
 `copied N rows`. Copy works in lists and filters, using the chosen rows
-without adding dimmed ancestors. It keeps the selection and makes no undo step.
+without adding dimmed ancestors. It keeps the selection and cursor and makes
+no undo step. `y` with a motion copies the inclusive shown range, excluding
+dimmed ancestors, with the same message; `y` alone waits, and `Esc` or an unrelated key cancels it. Counts
+before the operator and motion multiply. A motion with selected rows is
+refused; use `yy` (or `dd` to delete) on the selection. `dd` and `d` with a
+motion write the same subtree text before deleting, as one undo step. Undo
+restores the rows and leaves the register intact. The register lasts for the
+session only, is never stored, and has no reader yet.
 
 Copy and export write each line against its own parent's default. Pasting
 under the same kind of parent round-trips the text, state, row-grammar fields,
@@ -681,7 +699,7 @@ This is the only command; everything else is done in the outline.
 
 7. **Outliner.** Indent, outdent and reorder a selected block of adjacent
    siblings in one undo step. Rows under tasks default to notes; pasted
-   checkboxes explicitly keep their task state. `y` copies rows and their
+   checkboxes explicitly keep their task state. `yy` copies rows and their
    subtrees for lossless paste under the same kind of parent. `m` and capture
    `%name` file rows under headings as well as projects. While typing,
    `Enter` splits a line and `Backspace` at its start joins it into the row
@@ -714,7 +732,9 @@ This is the only command; everything else is done in the outline.
 
 11. **Grammar.** Counts repeat motions, reorder, undo and redo, or take
    shown rows for an act; each counted act is one undo step. `V` sweeps a
-   selection with motions, preserving earlier picks. *In progress.*
+   selection with motions, preserving earlier picks. `d` and `y` take doubled
+   keys or counted motions and fill the session register and clipboard;
+   each delete is one undo step. *In progress.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add`.

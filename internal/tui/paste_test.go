@@ -201,17 +201,9 @@ func copyFixture(t *testing.T, parentState string, rows []copyRow) (*harness, []
 	return h, ids, dest
 }
 
-func copyThroughUpdate(t *testing.T, h *harness, expected string, count int) {
+// clipboardMessages executes nested batches and rejects every unexpected message.
+func clipboardMessages(t *testing.T, cmd tea.Cmd, expected string) int {
 	t.Helper()
-	if h.m.syncIO != nil || h.m.syncDir != "" {
-		t.Fatal("clipboard fixture must have sync inactive")
-	}
-	gen, undo, redo := h.m.tree.Gen(), len(h.m.undo), len(h.m.redo)
-	picked := fmt.Sprint(h.m.picked)
-	_, cmd := h.m.Update(key("y"))
-	if cmd == nil {
-		t.Fatal("Update dropped the clipboard command")
-	}
 	want := tea.SetClipboard(expected)()
 	matches := 0
 	var inspect func(tea.Cmd)
@@ -231,7 +223,25 @@ func copyThroughUpdate(t *testing.T, h *harness, expected string, count int) {
 		}
 	}
 	inspect(cmd)
-	if matches != 1 {
+	return matches
+}
+
+func copyThroughUpdate(t *testing.T, h *harness, expected string, count int) {
+	t.Helper()
+	if h.m.syncIO != nil || h.m.syncDir != "" {
+		t.Fatal("clipboard fixture must have sync inactive")
+	}
+	gen, undo, redo := h.m.tree.Gen(), len(h.m.undo), len(h.m.redo)
+	picked := fmt.Sprint(h.m.picked)
+	_, pending := h.m.Update(key("y"))
+	if clipboardMessages(t, pending, expected) != 0 {
+		t.Fatal("pending y copied rows")
+	}
+	_, cmd := h.m.Update(key("y"))
+	if cmd == nil {
+		t.Fatal("Update dropped the clipboard command")
+	}
+	if matches := clipboardMessages(t, cmd, expected); matches != 1 {
 		t.Fatalf("got %d matching clipboard messages, want exactly one", matches)
 	}
 	if h.m.msg != fmt.Sprintf("copied %d rows", count) {

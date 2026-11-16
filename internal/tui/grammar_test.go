@@ -102,7 +102,7 @@ func TestACountRepeatsOrTakesRows(t *testing.T) {
 		if !strings.Contains(h.status(), "2 selected") {
 			t.Fatal(h.status())
 		}
-		for _, act := range []string{"x", "!", "t", "dd", "y", "m", ">", "<", ".", "#", "@", "$", "*", "-", "v"} {
+		for _, act := range []string{"x", "!", "t", "dd", "yy", "m", ">", "<", ".", "#", "@", "$", "*", "-", "v"} {
 			gen, undos := h.m.tree.Gen(), len(h.m.undo)
 			h.press("2", `"`+act+`"`)
 			if !strings.Contains(h.status(), "a count cannot act on a selection") || h.m.tree.Gen() != gen || len(h.m.undo) != undos || len(h.m.picked) != 2 || h.m.ask != nil {
@@ -177,7 +177,7 @@ func TestACountRepeatsOrTakesRows(t *testing.T) {
 
 	t.Run("remaining row acts take a range", func(t *testing.T) {
 		h := countOutline(t, 4)
-		h.press("2", "!", "2", "y")
+		h.press("2", "!", "2", "y", "y")
 		if !strings.Contains(h.status(), "copied 2 rows") {
 			t.Fatal(h.status())
 		}
@@ -439,5 +439,186 @@ func TestVSweepsASelection(t *testing.T) {
 				t.Fatalf("%s rebuilt the outline or changed history", tok)
 			}
 		}
+	})
+}
+
+func TestDeleteAndCopyTakeMotions(t *testing.T) {
+	for _, tc := range []struct {
+		name, finish, text string
+		child              bool
+		remaining          int
+	}{
+		{"dd captures subtree before deleting", "d", "Task 00\n\tTask 01 $open\n", true, 2},
+		{"dj captures range before deleting", "j", "Task 00\nTask 01\n", false, 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := countOutline(t, 4)
+			if tc.child {
+				h.press("j", ">", "g", "g")
+			}
+			ids := []string{h.m.vis[0].id, h.m.vis[1].id}
+			before, undo := h.rows(), len(h.m.undo)
+			for i, tok := range []string{"d", tc.finish} {
+				_, cmd := h.m.Update(key(tok))
+				if got := clipboardMessages(t, cmd, tc.text); got != i {
+					t.Fatalf("key %d (%s) emitted %d clipboard messages, want %d", i, tok, got, i)
+				}
+				if i == 0 && (h.m.register != "" || h.rows() != before || len(h.m.undo) != undo) {
+					t.Fatal("pending d changed rows, history or register")
+				}
+			}
+			if h.m.register != tc.text || len(h.m.undo) != undo+1 || len(h.m.vis) != tc.remaining {
+				t.Fatalf("delete: register %q, history %d, visible %d", h.m.register, len(h.m.undo), len(h.m.vis))
+			}
+			for _, id := range ids {
+				if h.m.live(id) {
+					t.Fatalf("deleted row %s is still live", id)
+				}
+			}
+			h.want("▌ ○ Task 02", "  ○ Task 03")
+			_, cmd := h.m.Update(tea.WindowSizeMsg{Width: h.m.width, Height: h.m.height})
+			if clipboardMessages(t, cmd, tc.text) != 0 {
+				t.Fatal("resize delivered a duplicate clipboard command")
+			}
+			_, cmd = h.m.Update(key("u"))
+			if clipboardMessages(t, cmd, tc.text) != 0 || h.rows() != before || h.m.register != tc.text || len(h.m.undo) != undo {
+				t.Fatal("one undo did not restore both rows while keeping the register")
+			}
+		})
+	}
+
+	for _, tc := range []struct {
+		keys               string
+		start, first, last int
+	}{
+		{"dG", 2, 2, 6}, {"dgg", 3, 0, 3}, {"d2j", 0, 0, 2},
+		{"2dj", 0, 0, 2}, {"2d2j", 0, 0, 4}, {"3dd", 0, 0, 2},
+		{"d3j", 0, 0, 3}, {"3dj", 0, 0, 3}, {"2d2k", 5, 1, 5},
+	} {
+		t.Run(tc.keys, func(t *testing.T) {
+			h := countOutline(t, 7)
+			h.m.cursor = tc.start
+			before := len(h.m.undo)
+			var expected strings.Builder
+			for i := tc.first; i <= tc.last; i++ {
+				fmt.Fprintf(&expected, "Task %02d\n", i)
+			}
+			h.press(`"` + tc.keys + `"`)
+			if len(h.m.vis) != 7-(tc.last-tc.first+1) || h.m.register != expected.String() || len(h.m.undo) != before+1 {
+				t.Fatalf("wrong delete range: %s, register %q", h.rows(), h.m.register)
+			}
+			h.press("u")
+			if len(h.m.vis) != 7 || h.m.register != expected.String() {
+				t.Fatal("undo did not restore range and retain register")
+			}
+		})
+	}
+
+	t.Run("copy waits keeps cursor and has no undo", func(t *testing.T) {
+		h := countOutline(t, 4)
+		copyThroughUpdate(t, h, "Task 00\n", 1)
+		before, undo := h.rows(), len(h.m.undo)
+		for i, tok := range []string{"y", "j"} {
+			_, cmd := h.m.Update(key(tok))
+			if clipboardMessages(t, cmd, "Task 00\nTask 01\n") != i {
+				t.Fatal("yj clipboard delivery")
+			}
+		}
+		if h.m.msg != "copied 2 rows" || h.rows() != before || len(h.m.undo) != undo || h.m.register != "Task 00\nTask 01\n" {
+			t.Fatal("yj changed rows/cursor/history or failed to copy")
+		}
+		for _, cancel := range []string{"esc", "x", "tab", "d", "h", "V"} {
+			for _, tok := range []string{"y", cancel} {
+				_, cmd := h.m.Update(key(tok))
+				if clipboardMessages(t, cmd, "") != 0 {
+					t.Fatal("cancelled copy emitted a command")
+				}
+			}
+			if h.rows() != before || len(h.m.undo) != undo || h.m.register != "Task 00\nTask 01\n" || h.m.operator != "" || h.m.sideFocus || h.m.sweep != "" {
+				t.Fatalf("%s did not cancel only the operator", cancel)
+			}
+		}
+	})
+
+	t.Run("selection refuses motions and accepts doubled operators", func(t *testing.T) {
+		h := countOutline(t, 4)
+		h.press("V", "j")
+		before, undo := h.rows(), len(h.m.undo)
+		for _, op := range []string{"d", "y"} {
+			for _, tok := range []string{op, "j"} {
+				_, cmd := h.m.Update(key(tok))
+				if clipboardMessages(t, cmd, "") != 0 {
+					t.Fatal("refused operator copied")
+				}
+			}
+			if !strings.Contains(h.m.msg, "a motion cannot act on a selection") || h.rows() != before || len(h.m.undo) != undo || h.m.sweep != "" {
+				t.Fatal("operator motion was not refused or sweep stayed live")
+			}
+		}
+		copyThroughUpdate(t, h, "Task 00\nTask 01\n", 2)
+		h.press("d", "d", "u")
+		if len(h.m.vis) != 4 || h.m.register != "Task 00\nTask 01\n" {
+			t.Fatal("selection delete/undo")
+		}
+	})
+
+	t.Run("motion aliases and counted copy", func(t *testing.T) {
+		for _, tc := range []struct {
+			motion      string
+			code        rune
+			first, last int
+		}{
+			{"down", 0, 6, 7}, {"up", 0, 5, 6},
+			{"ctrl+d", 0, 6, 11}, {"ctrl+u", 0, 1, 6},
+			{"ctrl+f", 0, 6, 11}, {"ctrl+b", 0, 0, 6},
+			{"", tea.KeyPgDown, 6, 11}, {"", tea.KeyPgUp, 0, 6},
+			{"", tea.KeyHome, 0, 6}, {"", tea.KeyEnd, 6, 11},
+		} {
+			h := countOutline(t, 12)
+			h.m.cursor = 6
+			h.press("y")
+			msg := tea.KeyPressMsg{Code: tc.code}
+			if tc.motion != "" {
+				msg = key(tc.motion)
+			}
+			_, cmd := h.m.Update(msg)
+			var expected strings.Builder
+			for i := tc.first; i <= tc.last; i++ {
+				fmt.Fprintf(&expected, "Task %02d\n", i)
+			}
+			if clipboardMessages(t, cmd, expected.String()) != 1 || h.m.cursor != 6 || h.m.register != expected.String() {
+				t.Fatalf("motion %s/%d failed", tc.motion, tc.code)
+			}
+		}
+		h := countOutline(t, 7)
+		h.press("3", "y", "y")
+		if h.m.msg != "copied 3 rows" {
+			t.Fatal(h.m.msg)
+		}
+		h.press("2", "y")
+		if !strings.Contains(h.status(), "count 2 y") {
+			t.Fatal(h.status())
+		}
+		h.press("2", "j")
+		if h.m.msg != "copied 5 rows" || h.m.cursor != 0 {
+			t.Fatal(h.m.msg)
+		}
+		h.press(`"999999999999999999999d999999999999999999999j"`)
+		if len(h.m.vis) != 0 {
+			t.Fatal("multiplied count overflowed")
+		}
+	})
+
+	t.Run("filter leaves dimmed ancestors out", func(t *testing.T) {
+		h := start(t)
+		h.press("o", `"First #hit"`, "esc", "o", `"Heading:"`, "esc", "o", `"Second #hit"`, "esc", ">")
+		h.press("/", `"#hit"`, "enter", "d", "G")
+		if h.m.register != "First #hit\nSecond #hit $note\n" {
+			t.Fatal(h.m.register)
+		}
+		h.press("esc")
+		h.want("▌   Heading:")
+		h.press("u")
+		h.want("▌   First #hit", "  ▾ Heading:", "      Second #hit")
 	})
 }

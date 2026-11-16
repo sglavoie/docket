@@ -44,9 +44,13 @@ const helpText = `Docket
                  here, unreadable stamps and undo leave it remembered
                  nothing remembered or a deleted destination says so
                  remembered only this session; sidebar ignores .
-  y              copy the row or selection, including subtrees
+  d y            delete or copy: dd yy take the row or selection with subtrees
+                 a motion takes the inclusive range; no selection with motions
+                 counts multiply: d3j = 3dj; Esc or another key cancels
+                 both fill the session register and clipboard; y alone waits
+                 copy keeps the cursor; one u restores a delete, keeping the register
   v V            pick a row; sweep with motions (V ends, Esc clears)
-                 x ! t dd m and stamps act on the selection
+                 x ! t dd yy m and stamps act on the selection
                  > < J K move adjacent selected siblings together
   # @ $ * -      stamp: type sigils, Enter sets them (-#tag, -@, -@@, -* remove)
   /              filter by text and sigils; -word excludes; Tab flat or in context
@@ -79,7 +83,6 @@ const helpText = `Docket
                  blank p Enter goes back to the place the last jump left
   Tab            the sidebar: j k choose, Enter work in it
                  gg G and the paging keys move through it too
-  dd             delete
   u  Ctrl+R      undo, redo
   Ctrl+C         quit
 
@@ -432,6 +435,16 @@ func (m *Model) statusLine(w int) (string, int) {
 	}
 	if m.count > 0 {
 		left = "count " + strconv.Itoa(m.count)
+	}
+	if m.operator != "" {
+		left = m.operator
+		if m.opCount > 0 {
+			left = "count " + strconv.Itoa(m.opCount) + " " + left
+		}
+		if m.count > 0 {
+			left += strconv.Itoa(m.count)
+		}
+		left += m.prefix
 	}
 	if m.edit != nil {
 		right = ""

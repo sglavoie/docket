@@ -126,7 +126,10 @@ type Model struct {
 	undo, redo [][]outline.Op
 	count      int               // pending outline count; zero means absent
 	undoGroup  []outline.Op      // inverses collected by a counted reorder
-	prefix     string            // a pending g or d
+	prefix     string            // a pending g
+	operator   string            // pending d or y
+	opCount    int               // count before the operator
+	register   string            // session-local serialized rows
 	picked     map[string]bool   // the selection
 	sweep      string            // anchor row of a live sweep
 	sweepBase  map[string]bool   // picks made before the sweep
@@ -1602,9 +1605,9 @@ func (m *Model) sideKey(k string) {
 }
 
 func (m *Model) normalKey(k string) {
-	if k == "esc" && m.count > 0 {
+	if k == "esc" && (m.count > 0 || m.operator != "") {
 		m.endSweep()
-		m.count, m.prefix = 0, ""
+		m.count, m.prefix, m.operator, m.opCount = 0, "", "", 0
 		return
 	}
 	if m.prefix == "" && len(k) == 1 && k[0] >= '0' && k[0] <= '9' {
@@ -1617,15 +1620,20 @@ func (m *Model) normalKey(k string) {
 		}
 		return
 	}
+	if m.operator != "" {
+		m.operatorKey(k)
+		return
+	}
 	if k == "esc" && m.sweep != "" {
 		m.prefix = ""
 	}
 	if m.prefix != "" {
 		k, m.prefix = m.prefix+k, ""
-	} else if k == "g" || k == "d" {
-		if k == "d" {
-			m.endSweep()
-		}
+	} else if k == "d" || k == "y" {
+		m.endSweep()
+		m.operator, m.opCount, m.count = k, m.count, 0
+		return
+	} else if k == "g" {
 		m.prefix = k
 		return
 	}
@@ -1648,7 +1656,7 @@ func (m *Model) normalKey(k string) {
 	m.count = 0
 	if count > 0 {
 		switch k {
-		case "x", "!", "t", "dd", "y", "m", ">", "<", ".", "#", "@", "$", "*", "-", "v":
+		case "x", "!", "t", "dd", "yy", "m", ">", "<", ".", "#", "@", "$", "*", "-", "v":
 			if len(m.picked) > 0 {
 				m.msg = "a count cannot act on a selection"
 				return
@@ -1696,49 +1704,96 @@ func (m *Model) normalKey(k string) {
 	m.normalAct(k, count)
 }
 
-// normalAct dispatches a completed key, with an optional row or motion count.
-func (m *Model) normalAct(k string, count int) {
-	cur := m.current()
+// motionTarget reads only the visible rows; operators use it without moving.
+func (m *Model) motionTarget(k string, count int) (int, bool) {
+	target := m.cursor
 	switch k {
-	case "gg":
-		m.cursor = 0
-		return
-	case "dd":
-		var ops []outline.Op
-		for _, id := range m.countedRows(count) {
-			ops = append(ops, outline.Op{Kind: outline.Set, Row: id, Field: outline.FieldDeleted, Value: "1"})
-		}
-		if len(ops) > 0 && m.do(ops...) {
-			m.rebuild()
-		}
-		return
+	case "gg", "home":
+		target = 0
+	case "G", "end":
+		target = max(len(m.vis)-1, 0)
 	case "j", "down":
-		m.cursor += min(max(count, 1), max(len(m.vis)-1-m.cursor, 0))
-		return
+		target += min(max(count, 1), max(len(m.vis)-1-target, 0))
 	case "k", "up":
-		m.cursor -= min(max(count, 1), m.cursor)
-		return
+		target -= min(max(count, 1), target)
 	case "ctrl+d", "ctrl+u", "ctrl+f", "ctrl+b", "pgdown", "pgup":
 		_, height := m.size()
-		step := max(height-2, 1) // exclude the header and status line
+		step := max(height-2, 1)
 		if k == "ctrl+d" || k == "ctrl+u" {
 			step = max(step/2, 1)
 		}
-		// Bound before multiplying so arbitrarily long counts cannot overflow.
-		repeats := min(max(count, 1), len(m.vis)/step+1)
-		step *= repeats
+		step *= min(max(count, 1), len(m.vis)/step+1)
 		if k == "ctrl+u" || k == "ctrl+b" || k == "pgup" {
-			m.cursor -= min(step, m.cursor)
+			target -= min(step, target)
 		} else {
-			m.cursor += min(step, max(len(m.vis)-1-m.cursor, 0))
+			target += min(step, max(len(m.vis)-1-target, 0))
 		}
+	default:
+		return target, false
+	}
+	return target, true
+}
+
+func (m *Model) operatorKey(k string) {
+	if m.prefix != "" {
+		k, m.prefix = m.prefix+k, ""
+	} else if k == "g" {
+		m.prefix = k
 		return
-	case "G", "end":
-		m.cursor = max(len(m.vis)-1, 0)
+	}
+	op, count := m.operator, 0
+	if m.opCount > 0 || m.count > 0 {
+		a, b, limit := max(m.opCount, 1), max(m.count, 1), int(^uint(0)>>1)
+		count = limit
+		if a <= limit/b {
+			count = a * b
+		}
+	}
+	m.operator, m.opCount, m.count = "", 0, 0
+	if k == op {
+		if count > 0 && len(m.picked) > 0 {
+			m.msg = "a count cannot act on a selection"
+			return
+		}
+		m.takeRows(op, m.countedRows(count))
+	} else if target, ok := m.motionTarget(k, count); ok {
+		if len(m.picked) > 0 {
+			m.msg = "a motion cannot act on a selection: use dd or yy"
+			return
+		}
+		m.takeRows(op, m.shownRange(m.cursor, target))
+	}
+}
+
+// Capture live subtrees before deletion, using the same format as export.
+func (m *Model) takeRows(op string, ids []string) {
+	if len(ids) == 0 {
 		return
-	case "home":
-		m.cursor = 0
+	}
+	text, n := m.writeRows(m.selectedRoots(ids))
+	m.register = text
+	m.pendingCmd = tea.SetClipboard(text)
+	if op == "y" {
+		m.msg = fmt.Sprintf("copied %d rows", n)
 		return
+	}
+	var ops []outline.Op
+	for _, id := range ids {
+		ops = append(ops, outline.Op{Kind: outline.Set, Row: id, Field: outline.FieldDeleted, Value: "1"})
+	}
+	if m.do(ops...) {
+		m.rebuild()
+	}
+}
+
+// normalAct dispatches a completed key, with an optional row or motion count.
+func (m *Model) normalAct(k string, count int) {
+	if target, ok := m.motionTarget(k, count); ok {
+		m.cursor = target
+		return
+	}
+	cur := m.current()
+	switch k {
 	case "o":
 		if m.single() {
 			m.newRow(false)
@@ -1801,10 +1856,6 @@ func (m *Model) normalAct(k string, count int) {
 
 	ids := m.countedRows(count)
 	switch k {
-	case "y":
-		text, n := m.writeRows(m.selectedRoots(ids))
-		m.pendingCmd = tea.SetClipboard(text)
-		m.msg = fmt.Sprintf("copied %d rows", n)
 	case "e":
 		if m.single() {
 			m.editRow(cur)
