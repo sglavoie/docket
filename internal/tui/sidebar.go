@@ -101,6 +101,7 @@ func (m *Model) leaveSidebar() {
 	}
 	m.sideFrom = nil
 	m.sideFocus = false
+	m.prefix = ""
 }
 
 func (m *Model) jump(e entry) {

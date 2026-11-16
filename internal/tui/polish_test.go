@@ -423,6 +423,14 @@ func TestFoldCommandsAndHalfPages(t *testing.T) {
 			h.press("g", "g", "j")
 			check("ctrl+u", 0)
 			check("ctrl+u", 0)
+			check("ctrl+f", 10)
+			check("pgdown", 20)
+			check("ctrl+f", 29)
+			check("ctrl+b", 19)
+			check("pgup", 9)
+			check("ctrl+b", 0)
+			check("end", 29)
+			check("home", 0)
 		})
 	}
 	t.Run("typing retains controls", func(t *testing.T) {

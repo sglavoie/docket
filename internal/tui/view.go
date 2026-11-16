@@ -24,8 +24,9 @@ const (
 
 const helpText = `Docket
 
-  j k  gg G      move
+  j k  gg G      move; Home End as gg G
   Ctrl+D Ctrl+U  move half a pane down, up (outlines, lists and filters)
+  Ctrl+F Ctrl+B  move a whole pane down, up; PgDn PgUp too
   h l            fold, unfold; step to parent, first child
                  in lists and flat filters, h shows the row where it lives;
                  Esc returns to the held rows; l does nothing
@@ -75,6 +76,7 @@ const helpText = `Docket
   p              go to a project, heading, list or saved filter by name
                  blank p Enter goes back to the place the last jump left
   Tab            the sidebar: j k choose, Enter work in it
+                 gg G and the paging keys move through it too
   dd             delete
   u  Ctrl+R      undo, redo
   Ctrl+C         quit

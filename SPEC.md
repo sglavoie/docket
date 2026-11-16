@@ -14,7 +14,8 @@ a rule here changes this file first.
 3. **One way to do each thing.** No menu or palette repeats a key.
 4. **Thirty-two keys at most** in the outline. A new key evicts an old one. The
    five characters that open the stamp line (`#` `@` `$` `*` `-`) are the
-   row grammar typed on a row, and are not counted.
+   row grammar typed on a row, and are not counted. Nor are the navigation
+   aliases: the arrows, `Ctrl+F` `Ctrl+B`, `PgDn` `PgUp` and `Home` `End`.
 5. **Every keystroke paints within one frame.** The tree lives in memory;
    SQLite is written when a change is committed, never while typing. What
    the sidebar states is derived again only when a row has changed or the
@@ -192,7 +193,10 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
 - **Parked** projects are a count. Done and canceled projects are not listed.
 
 `Tab` gives the sidebar focus. `j` and `k` then show each destination at
-once; `Enter`, `Tab` or `Esc` returns to the pane.
+once, as do `gg` and `G` or `Home` and `End` (first, last), `Ctrl+D` and
+`Ctrl+U` (half a page) and `Ctrl+F`, `Ctrl+B`, `PgDn` and `PgUp` (a page),
+where a page is the pane's usable row height in entries, stopping at either
+end. `Enter`, `Tab` or `Esc` returns to the pane.
 
 ### Pane
 
@@ -368,7 +372,8 @@ key is named and nothing changes. Rule 2 holds: nothing stays sorted;
 sorting only happens when the command is given.
 
 `Ctrl+D` and `Ctrl+U` move down and up by half the pane's usable row height
-(excluding header and status), at least one row, stopping at either end.
+(excluding header and status), at least one row, stopping at either end;
+`Ctrl+F` and `Ctrl+B`, or `PgDn` and `PgUp`, move by the whole of it.
 They work in outlines, lists and filters and keep the cursor visible. While
 typing they retain their existing behavior (`Ctrl+U` cuts before the caret);
 in help they retain half-page scrolling.
@@ -454,8 +459,8 @@ including lists and filters; with sidebar focus it does nothing.
 
 | Keys | Act | Milestone |
 | --- | --- | --- |
-| `j` `k` `gg` `G` | Move | 1 |
-| `Ctrl+D` `Ctrl+U` | Move half a pane down, up | 7 |
+| `j` `k` `gg` `G` | Move; `Home` `End` as `gg` `G` (not counted) | 1, 10 |
+| `Ctrl+D` `Ctrl+U` | Move half a pane down, up; `Ctrl+F` `Ctrl+B` `PgDn` `PgUp` a whole pane (not counted) | 7, 10 |
 | `h` `l` | Fold, unfold; step to parent, first child; in lists and flat filters, `h` shows the row where it lives (`Esc` returns), `l` does nothing | 1, 10 |
 | `Enter` `Esc` | Zoom in, back out | 1 |
 | `o` `O` `e` | New row below, above; edit | 1 |

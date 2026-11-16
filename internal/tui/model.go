@@ -1547,11 +1547,33 @@ func (m *Model) archive() {
 // sideKey handles the sidebar while it has focus. Moving shows each
 // destination at once, so leaving is the only other act.
 func (m *Model) sideKey(k string) {
+	g := m.prefix == "g"
+	m.prefix = ""
+	_, height := m.size()
+	page := max(height-2, 1) // exclude the header and status line
 	switch k {
 	case "j", "down":
 		m.sideStep(1)
 	case "k", "up":
 		m.sideStep(-1)
+	case "ctrl+d":
+		m.sideStep(max(page/2, 1))
+	case "ctrl+u":
+		m.sideStep(-max(page/2, 1))
+	case "ctrl+f", "pgdown":
+		m.sideStep(page)
+	case "ctrl+b", "pgup":
+		m.sideStep(-page)
+	case "G", "end":
+		m.sideStep(len(m.side))
+	case "home":
+		m.sideStep(-len(m.side))
+	case "g":
+		if g {
+			m.sideStep(-len(m.side))
+		} else {
+			m.prefix = "g"
+		}
 	case "tab", "enter", "esc", "l", "right":
 		m.leaveSidebar()
 	case "p":
@@ -1588,15 +1610,20 @@ func (m *Model) normalKey(k string) {
 		m.cursor = min(m.cursor+1, max(len(m.vis)-1, 0))
 	case "k", "up":
 		m.cursor = max(m.cursor-1, 0)
-	case "ctrl+d", "ctrl+u":
+	case "ctrl+d", "ctrl+u", "ctrl+f", "ctrl+b", "pgdown", "pgup":
 		_, height := m.size()
-		step := max((height-2)/2, 1) // exclude the header and status line
-		if k == "ctrl+u" {
+		step := max(height-2, 1) // exclude the header and status line
+		if k == "ctrl+d" || k == "ctrl+u" {
+			step = max(step/2, 1)
+		}
+		if k == "ctrl+u" || k == "ctrl+b" || k == "pgup" {
 			step = -step
 		}
 		m.cursor = max(0, min(m.cursor+step, len(m.vis)-1))
-	case "G":
+	case "G", "end":
 		m.cursor = max(len(m.vis)-1, 0)
+	case "home":
+		m.cursor = 0
 	case "o":
 		if m.single() {
 			m.newRow(false)

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -613,4 +614,39 @@ func TestMoveReachesAHeading(t *testing.T) {
 			t.Fatalf("edit did not refresh headings: %+v", h.m.headings)
 		}
 	})
+}
+
+func TestSidebarPagesLikeThePane(t *testing.T) {
+	h := start(t).wide() // 16 rows: a page is 14 entries, half is 7
+	keys := []string{"o"}
+	for i := 1; i <= 20; i++ {
+		if i > 1 {
+			keys = append(keys, "enter")
+		}
+		keys = append(keys, fmt.Sprintf(`"P%02d"`, i))
+	}
+	h.press(append(keys, "esc")...)
+
+	// Entries: Inbox, Today, Waiting, Stale, Projects, then P01 to P20.
+	h.press("tab")
+	for _, step := range []struct{ key, header string }{
+		{"ctrl+d", "P07"},
+		{"ctrl+f", "P20"},
+		{"ctrl+u", "P13"},
+		{"ctrl+b", "Stale"},
+		{"G", "P20"},
+		{"g", "P20"},
+		{"g", "Inbox"},
+		{"pgdown", "P10"},
+		{"pgup", "Inbox"},
+		{"g", "Inbox"},
+		{"j", "Today"},
+		{"end", "P20"},
+		{"home", "Inbox"},
+	} {
+		h.press(step.key)
+		if got := h.header(); got != step.header {
+			t.Fatalf("after %s, header = %q, want %q", step.key, got, step.header)
+		}
+	}
 }
