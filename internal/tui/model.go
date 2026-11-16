@@ -3,6 +3,7 @@
 package tui
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -819,6 +820,97 @@ func (m *Model) moveBlock(ids []string, key string) {
 	}
 }
 
+// sortRows reorders siblings once, leaving their descendants attached.
+func (m *Model) sortRows(keys []string) {
+	for _, key := range keys {
+		if key != "@" && key != "!" && key != "$" {
+			m.msg = "unknown sort key: " + key
+			return
+		}
+	}
+	if m.flat() {
+		return
+	}
+	cur := m.current()
+	var block []string
+	if len(m.picked) > 0 {
+		block = m.selectedBlock(m.acting())
+		if len(block) == 0 {
+			return
+		}
+	} else if cur != "" {
+		for _, id := range m.tree.Children(m.tree.Row(cur).Parent) {
+			if !hiddenTop(id) {
+				block = append(block, id)
+			}
+		}
+	}
+	if len(block) == 0 {
+		m.msg = "nothing to sort"
+		return
+	}
+	states := []string{sigil.Doing, sigil.Open, sigil.Waiting, "", sigil.Parked, sigil.Done, sigil.Canceled}
+	ordered := slices.Clone(block)
+	slices.SortStableFunc(ordered, func(a, b string) int {
+		x, y := m.tree.Row(a).Fields, m.tree.Row(b).Fields
+		if len(keys) == 0 {
+			return strings.Compare(strings.ToLower(x[sigil.FieldText]), strings.ToLower(y[sigil.FieldText]))
+		}
+		for _, key := range keys {
+			var order int
+			switch key {
+			case "@":
+				xd, yd := x[sigil.FieldDue], y[sigil.FieldDue]
+				switch {
+				case xd == yd:
+				case xd == "":
+					order = 1
+				case yd == "":
+					order = -1
+				default:
+					order = strings.Compare(xd, yd)
+				}
+			case "!":
+				xf, yf := x[sigil.FieldFlag] != "", y[sigil.FieldFlag] != ""
+				if xf != yf {
+					order = 1
+					if xf {
+						order = -1
+					}
+				}
+			case "$":
+				order = cmp.Compare(slices.Index(states, x[sigil.FieldState]), slices.Index(states, y[sigil.FieldState]))
+			}
+			if order != 0 {
+				return order
+			}
+		}
+		return 0
+	})
+	if slices.Equal(block, ordered) {
+		m.msg = "already in order"
+		return
+	}
+	parent := m.tree.Row(block[0]).Parent
+	var left, right string
+	if prev := m.tree.PrevSibling(block[0]); prev != "" {
+		left = m.tree.Row(prev).Pos
+	}
+	if next := m.tree.NextSibling(block[len(block)-1]); next != "" {
+		right = m.tree.Row(next).Pos
+	}
+	var ops []outline.Op
+	for _, id := range ordered {
+		left = outline.Between(left, right)
+		ops = append(ops, outline.Op{Kind: outline.Move, Row: id, Parent: parent, Pos: left})
+	}
+	if m.do(ops...) {
+		m.rebuild()
+		m.seek(cur)
+		m.msg = fmt.Sprintf("sorted %d rows", len(block))
+	}
+}
+
 func (m *Model) reorder(id string, down bool) {
 	if m.flat() {
 		return
@@ -1260,6 +1352,8 @@ func (m *Model) command(line string) {
 		m.quit = true
 	case "fold", "unfold":
 		m.foldOutline(words[0] == "fold", words[1:])
+	case "sort":
+		m.sortRows(words[1:])
 	case "export":
 		m.export(strings.Join(words[1:], " "))
 	case "sync":
@@ -1319,7 +1413,7 @@ func (m *Model) command(line string) {
 		m.vis, m.at.kept = nil, nil
 		m.msg = said
 	default:
-		m.msg = "commands: q, export [file], closed, all, archive, fold [level], unfold, review, save name, forget name, sync [folder|off]"
+		m.msg = "commands: q, export [file], closed, all, archive, fold [level], unfold, sort [keys], review, save name, forget name, sync [folder|off]"
 	}
 }
 

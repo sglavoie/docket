@@ -57,6 +57,11 @@ const helpText = `Docket
                  all (select every row shown: /#old, :all, -#old #new retags),
                  archive (move closed rows under the project's Archive: heading),
                  fold [level] (all, or show N levels), unfold (all),
+                 sort [keys] (siblings or adjacent selected siblings, once),
+                 @ soonest deadline (missing last), ! flagged first,
+                 $ doing, open, waiting, notes, parked, done, canceled;
+                 later keys break ties; no keys: text ignoring case
+                 ties keep order; children travel; one undo; no lists or filters
                  review (projects, longest untouched first),
                  save name (keep the filter; p then /name opens it), forget name,
                  sync folder (share with other machines through a synced folder)

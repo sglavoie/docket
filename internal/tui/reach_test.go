@@ -1,6 +1,9 @@
 package tui
 
 import (
+	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -483,6 +486,131 @@ func TestAFilterTermReachesTheRowsAbove(t *testing.T) {
 				t.Errorf("%q missing coloured spans %q", tc.query, tc.painted)
 			}
 			h.press("esc")
+		}
+	})
+}
+
+func TestSortPutsSiblingsInOrder(t *testing.T) {
+	fixture := func(t *testing.T, rows string) *harness {
+		h := start(t).wide()
+		h.pasteText("Project\n\t" + strings.ReplaceAll(rows, "\n", "\n\t"))
+		h.press("g", "g", "enter", "g", "g")
+		return h
+	}
+	for _, tc := range []struct {
+		name, rows, command string
+		want                []string
+	}{
+		{"deadline and children", "Late @+3d\n\tZ child\n\tA child\nUndated\nSoon @today\nTie @today\nAlso undated", "sort @", []string{
+			"  ○ Soon @today", "  ○ Tie @today", "▌ ○ Late @wed", "      Z child", "      A child", "  ○ Undated", "  ○ Also undated",
+		}},
+		{"flag then deadline", "Plain late @+3d\nFlag late ! @+3d\nPlain early @today\nFlag missing !\nFlag early ! @today\nPlain missing", "sort ! @", []string{
+			"  ○ Flag early ! @today", "  ○ Flag late ! @wed", "  ○ Flag missing !", "  ○ Plain early @today", "▌ ○ Plain late @wed", "  ○ Plain missing",
+		}},
+		{"state", "Canceled $canceled\nDone $done\nParked $parked\nNote $note\nWaiting $waiting\nOpen\nDoing $doing\nDoing again $doing", "sort $", []string{
+			"  ● Doing", "  ● Doing again", "  ○ Open", "  ◔ Waiting", "    Note", "  ◌ Parked", "  ✓ Done", "▌ ✕ Canceled",
+		}},
+		{"text and case ties", "zebra\nBeta\nalpha\nALPHA\nbeta", "sort", []string{
+			"  ○ alpha", "  ○ ALPHA", "  ○ Beta", "  ○ beta", "▌ ○ zebra",
+		}},
+		{"three keys", "Open ! @today\nDoing ! @today $doing\nEarlier @2026-11-14\nLater ! @+3d $doing", "sort ! @ $", []string{
+			"  ● Doing ! @today", "▌ ○ Open ! @today", "  ● Later ! @wed", "  ○ Earlier @Nov 14",
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := fixture(t, tc.rows)
+			parent, cur, steps := h.m.at.root, h.m.current(), len(h.m.undo)
+			before := slices.Clone(h.m.tree.Children(parent))
+			h.command(tc.command)
+			h.want(tc.want...)
+			if h.m.current() != cur || len(h.m.undo) != steps+1 || h.m.msg != "sorted "+fmt.Sprint(len(before))+" rows" {
+				t.Fatalf("sort lost cursor, undo grouping or count: %q", h.m.msg)
+			}
+			ordered, gen := h.rows(), h.m.tree.Gen()
+			h.command(tc.command)
+			if h.rows() != ordered || h.m.tree.Gen() != gen || len(h.m.undo) != steps+1 || h.m.msg != "already in order" {
+				t.Fatal("sorting an ordered span changed rows or recorded an undo step")
+			}
+			h.press("u")
+			if !slices.Equal(h.m.tree.Children(parent), before) || len(h.m.undo) != steps {
+				t.Fatal("one undo did not restore sibling order")
+			}
+		})
+	}
+
+	t.Run("selected span with selected descendants", func(t *testing.T) {
+		h := fixture(t, "Before\nZulu\n\tZ child\n\tA child\nAlpha\nAfter")
+		h.press("j", "v", "v", "v", "v", "k", "k", "k")
+		cur, picked, steps := h.m.current(), maps.Clone(h.m.picked), len(h.m.undo)
+		kids := slices.Clone(h.m.tree.Children(h.m.at.root))
+		left, right := *h.m.tree.Row(kids[0]), *h.m.tree.Row(kids[len(kids)-1])
+		h.command("sort")
+		h.want("  ○ Before", " ┃○ Alpha", " ┃○ Zulu", "▌┃    Z child", " ┃    A child", "  ○ After")
+		if h.m.current() != cur || !maps.Equal(h.m.picked, picked) || len(h.m.undo) != steps+1 || len(h.m.undo[steps]) != 2 || h.m.msg != "sorted 2 rows" {
+			t.Fatal("sort lost cursor/selection or moved descendants separately")
+		}
+		if h.m.tree.Row(left.ID).Pos != left.Pos || h.m.tree.Row(right.ID).Pos != right.Pos {
+			t.Fatal("sort moved a row outside the selected span")
+		}
+		if h.m.tree.Row(kids[2]).Pos <= left.Pos || h.m.tree.Row(kids[1]).Pos >= right.Pos {
+			t.Fatal("sort escaped the original span")
+		}
+		h.press("u")
+		if !slices.Equal(h.m.tree.Children(h.m.at.root), kids) {
+			t.Fatal("undo did not restore selected span")
+		}
+	})
+
+	for _, place := range []string{"gap", "different parents", "list", "filter", "flat filter", "unknown key"} {
+		t.Run("refuses "+place, func(t *testing.T) {
+			h := fixture(t, "Zulu\n\tChild\nBeta\nAlpha")
+			command, message := "sort", "select rows that sit together to move them"
+			switch place {
+			case "gap":
+				h.press("v", "j", "j", "v")
+			case "different parents":
+				h.press("j", "v", "v")
+			case "list":
+				h.press("t", "p", `"today"`, "enter")
+				message = "a list has no order"
+			case "filter", "flat filter":
+				h.press("/", `"a"`)
+				if place == "flat filter" {
+					h.press("tab")
+				}
+				h.press("enter")
+				message = "clear the filter first"
+			case "unknown key":
+				command, message = "sort @ ! bogus", "unknown sort key: bogus"
+			}
+			before, gen, steps, picked := h.rows(), h.m.tree.Gen(), len(h.m.undo), maps.Clone(h.m.picked)
+			h.command(command)
+			if !strings.Contains(h.status(), message) || h.rows() != before || h.m.tree.Gen() != gen || len(h.m.undo) != steps || !maps.Equal(picked, h.m.picked) {
+				t.Fatalf("refusal changed rows or had wrong message: %q\n%s", h.status(), h.rows())
+			}
+		})
+	}
+
+	t.Run("Projects keeps reserved roots in place", func(t *testing.T) {
+		h := start(t).wide()
+		h.pasteText("Zulu\nAlpha\nBeta")
+		h.press("/", `"a"`, "enter")
+		h.command("save letters") // Ensure the reserved filters row exists too.
+		h.press("esc", "g", "g")
+		inbox, filters := *h.m.tree.Row(inboxID), *h.m.tree.Row(filtersID)
+		h.command("sort")
+		h.want("    Alpha", "    Beta", "▌   Zulu")
+		if h.m.tree.Row(inboxID).Pos != inbox.Pos || h.m.tree.Row(filtersID).Pos != filters.Pos || h.m.msg != "sorted 3 rows" {
+			t.Fatal("sort included a reserved root")
+		}
+	})
+
+	t.Run("empty outline", func(t *testing.T) {
+		h := start(t)
+		gen, steps := h.m.tree.Gen(), len(h.m.undo)
+		h.command("sort")
+		if h.m.msg != "nothing to sort" || h.m.tree.Gen() != gen || len(h.m.undo) != steps {
+			t.Fatal("sorting an empty pane changed it")
 		}
 	})
 }

@@ -340,6 +340,7 @@ Three more acts use the same line:
   row the pane shows, as described under Selection; `archive` moves
   closed rows under an `Archive:` heading, as described below; `review`
   opens the review list; `fold [level]` and `unfold` control folds as described below;
+  `sort [keys]` orders siblings once, as described below;
   `save name` and `forget name` keep and drop a filter; `sync
   folder` and `sync off` are described under Sync.
 
@@ -351,6 +352,20 @@ named on the status line and changes nothing. Lists and filters say
 there is nothing to fold. The cursor stays
 on its row, or moves to its nearest visible ancestor. Folds are saved together
 as this machine's view state, never logged or synced.
+
+`:sort [keys]` sorts the cursor's row and all its siblings, or a selected
+block of adjacent siblings under the Selection rule. Selected descendants
+travel with their selected ancestor. Children travel with their rows and
+are not sorted. Keys are space-separated: `@` puts soonest deadlines first
+and missing deadlines last; `!` puts flagged rows first; `$` orders doing,
+open, waiting, notes, parked, done, canceled. Each later key breaks ties;
+without keys, text is compared ignoring case. Ties keep their original
+order. Rows stay inside their original sibling span, in one undo step,
+with the cursor on its row and the selection kept. The status says how many
+rows were sorted, or that they are already in order (with no undo step).
+Lists, filters and incompatible selections refuse the command; an unknown
+key is named and nothing changes. Rule 2 holds: nothing stays sorted;
+sorting only happens when the command is given.
 
 `Ctrl+D` and `Ctrl+U` move down and up by half the pane's usable row height
 (excluding header and status), at least one row, stopping at either end.
@@ -637,6 +652,8 @@ This is the only command; everything else is done in the outline.
    and `$` as any tag and any state, and alternatives may mix sigils
    (`#home|!`, `$waiting|@overdue`, `milk|#food`). `^term` tests ancestors,
    including above the pane root; `-^term` excludes such ancestry.
+   `:sort [keys]` stably orders siblings or a selected block by deadline,
+   flag, state, or text, within its span and in one undo step.
    *In progress.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
