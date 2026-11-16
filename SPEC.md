@@ -380,7 +380,8 @@ Three more acts use the same line:
 - `/` **Filter ›** narrows the pane as the query is typed. Words match a
   row's text, ignoring case. Double quotes match a phrase, blanks included:
   `"per the spec"`. A quote not closed yet reads to the end of the line;
-  a quote inside a word (`5"`) stays part of that word. Phrases take the
+  a quote inside a word (`5"`) stays part of that word. Words inside an open
+  or closed phrase stay plain, without sigil colours or completions. Phrases take the
   same prefixes as words: `-"per the spec"` excludes, and `^`, `_`, `<`,
   `>` test the phrase on related rows. `!`, `#tag`, `$state` and `@date`
   match fields; a leading `-` excludes. `#name` holds whatever value the tag
@@ -1178,7 +1179,8 @@ These are the only commands; everything else is done in the outline.
    the first web address on a row with no row link. The header counts tasks
    left to do and sums their `#est` values; headings show done/total across
    all descendants. Filters read quoted phrases and `$first`, the first
-   workable sibling under each parent. Dark and light palettes follow the
+   workable sibling under each parent. Quoted filter phrases stay plain while
+   typing, without sigil colours or completions. Dark and light palettes follow the
    terminal background; cursor and selection backgrounds span wrapped rows,
    and dates outside this year name their year. An empty interactive launch
    opens a Welcome tutorial; `:tutor` adds a fresh copy in one undo step.

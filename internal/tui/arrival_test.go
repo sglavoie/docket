@@ -330,6 +330,71 @@ func TestFilterPhrase(t *testing.T) {
 	}
 }
 
+func TestFilterPhraseNotStyledAsSigils(t *testing.T) {
+	for _, tc := range []struct {
+		query, styled, rest string
+	}{
+		{query: `"costs $5 total`},
+		{query: `"costs $5 total"`},
+		{query: `"call $wa`},
+		{query: `"call $wa"`},
+		{query: `"call #do`},
+		{query: `"call @to`},
+		{query: `"call $open #docs @today ! ( ) | @nope"`},
+		{query: `-^"call $wa`},
+		{query: `_"call $wa"`},
+		{query: `<"call $wa`},
+		{query: `>"call $wa"`},
+		{query: `plain|"call $wa`},
+		{query: `"call |$wa`},
+		{query: `"call |$wa"`},
+		{query: `"call $wa"|"costs $5 total"`},
+		{query: `"café  $open   #docs"`},
+		{query: `"call $wa" $open`, styled: `"call $wa" ` + darkPalette.accent + "$open" + sgrReset},
+		{query: `"call $wa"|$open`, styled: `"call $wa"|` + darkPalette.accent + "$open" + sgrReset},
+		{query: `"call $wa" $wa`, styled: `"call $wa" ` + darkPalette.accent + "$wa" + sgrReset, rest: "iting"},
+		{query: `"call $wa"|$wa`, styled: `"call $wa"|` + darkPalette.accent + "$wa" + sgrReset, rest: "iting"},
+		{query: `"call $wa"|@nope`, styled: `"call $wa"|` + darkPalette.warn + "@nope" + sgrReset},
+		{query: `5" $wa`, styled: `5" ` + darkPalette.accent + "$wa" + sgrReset, rest: "iting"},
+	} {
+		// TempDir uses the test name; keep URI fragments out of SQLite paths.
+		t.Run(strings.ReplaceAll(tc.query, "#", "tag"), func(t *testing.T) {
+			h := work(t)
+			h.press("/")
+			for _, r := range tc.query {
+				h.press(string(r))
+			}
+			want := tc.styled
+			if want == "" {
+				want = tc.query
+			}
+			if tc.rest != "" {
+				want += darkPalette.dim + tc.rest + sgrReset
+			}
+			lines := strings.Split(h.m.View().Content, "\n")
+			if got := strings.ReplaceAll(lines[len(lines)-1], darkPalette.text, ""); !strings.HasPrefix(got, darkPalette.accent+"Filter › "+sgrReset+want+"   ") {
+				t.Errorf("filter line = %q; want typed text %q", got, want)
+			}
+			h.press("right")
+			if got := h.m.at.query; got != tc.query+tc.rest {
+				t.Errorf("right arrow produced %q; want %q", got, tc.query+tc.rest)
+			}
+		})
+	}
+	t.Run("phrase begins before visible window", func(t *testing.T) {
+		h := start(t)
+		h.press("/")
+		for _, r := range `"a very long phrase with a price of $5 and state $open` {
+			h.press(string(r))
+		}
+		line, _ := h.m.statusLine(28)
+		text := strings.TrimPrefix(line, darkPalette.accent+"Filter › "+sgrReset)
+		if !strings.Contains(text, "$open") || strings.Contains(text, darkPalette.accent) || strings.Contains(text, darkPalette.warn) {
+			t.Fatalf("scrolled phrase = %q", text)
+		}
+	})
+}
+
 func TestFilterFirst(t *testing.T) {
 	h := start(t).wide()
 	h.pasteText("Project\n\tLater @@9999-12-31 $open\n\tParked $parked\n\t\tHidden $open\n\tWaiting $waiting\n\tFirst #home $doing\n\t\tChild $open\n\t\tSecond child $open\n\tSecond #home $open\n\tHeading: $note\n\t\tFuture @@9999-12-31 $open\n\t\tFinished $done\n\t\tCanceled $canceled\n\t\tHeading first $open\n\t\tHeading second $doing\nOther\n\tOther first $open\nClosed $done\n\tClosed child $open\nCanceled project $canceled\n\tCanceled child $open\nParked project $parked\n\tParked child $open")

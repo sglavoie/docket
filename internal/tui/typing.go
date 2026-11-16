@@ -23,8 +23,8 @@ func looksLikeSigil(w string) bool {
 	return len(w) > 1 && strings.ContainsRune("#@$", rune(w[0]))
 }
 
-// styler returns styled spans for a word. Filter alternatives can carry
-// different styles; other surfaces read the word as a whole.
+// styler returns styled spans for a line. Filter phrases stay whole and
+// alternatives can carry different styles; other surfaces read each word.
 func (m *Model) styler(surface string) func(string) []word {
 	today := m.today()
 	row := func(w string) string {
@@ -36,7 +36,7 @@ func (m *Model) styler(surface string) func(string) []word {
 		}
 		return ""
 	}
-	return func(w string) []word {
+	styleWord := func(w string) []word {
 		style := ""
 		switch surface {
 		case surfaceRow:
@@ -66,7 +66,7 @@ func (m *Model) styler(surface string) func(string) []word {
 			if len(terms) == 0 {
 				break
 			}
-			parts := strings.Split(w, "|")
+			parts := filterParts(w, true)
 			if len(parts) == len(terms[0].any) {
 				var spans []word
 				for i, c := range terms[0].any {
@@ -84,7 +84,8 @@ func (m *Model) styler(surface string) func(string) []word {
 				}
 			}
 			// An unreadable sigil side makes the whole word literal text.
-			for _, part := range parts {
+			quoted := make([]bool, len(parts))
+			for i, part := range parts {
 				part = strings.TrimPrefix(part, "-")
 				if terms[0].above {
 					part = strings.TrimPrefix(part, "^")
@@ -98,13 +99,50 @@ func (m *Model) styler(surface string) func(string) []word {
 				if terms[0].child {
 					part = strings.TrimPrefix(part, ">")
 				}
+				quoted[i] = strings.HasPrefix(part, `"`)
 				if part != "" && strings.ContainsRune(sigilStarts, rune(part[0])) {
 					style = m.colors().warn
-					break
 				}
+			}
+			// Even when another side is unreadable, phrases stay plain.
+			if style != "" && slices.Contains(quoted, true) {
+				var spans []word
+				for i, part := range parts {
+					if i > 0 {
+						spans = append(spans, word{"", "|"})
+					}
+					partStyle := style
+					if quoted[i] {
+						partStyle = ""
+					}
+					spans = append(spans, word{partStyle, part})
+				}
+				return spans
 			}
 		}
 		return []word{{style, w}}
+	}
+	return func(line string) []word {
+		parts := strings.Split(line, " ")
+		if surface == askFilter {
+			parts = filterParts(line, false)
+		}
+		var spans []word
+		for _, part := range parts {
+			if part == "" {
+				continue
+			}
+			i := strings.Index(line, part)
+			if i > 0 {
+				spans = append(spans, word{"", line[:i]})
+			}
+			spans = append(spans, styleWord(part)...)
+			line = line[i+len(part):]
+		}
+		if line != "" {
+			spans = append(spans, word{"", line})
+		}
+		return spans
 	}
 }
 
@@ -119,6 +157,13 @@ func (m *Model) suggest(e *editor, surface string) string {
 	}
 	line := string(e.buf)
 	word := line[strings.LastIndexByte(line, ' ')+1:]
+	if surface == askFilter {
+		parts := filterParts(line, false)
+		if len(parts) == 0 || !strings.HasSuffix(line, parts[len(parts)-1]) {
+			return ""
+		}
+		word = parts[len(parts)-1]
+	}
 	if surface == askStamp || surface == askFilter {
 		word = strings.TrimPrefix(word, "-")
 	}
@@ -136,9 +181,9 @@ func (m *Model) suggest(e *editor, surface string) string {
 	if word == "" {
 		return ""
 	}
-	if i := strings.LastIndexByte(word, '|'); surface == askFilter && i >= 0 {
+	if parts := filterParts(word, true); surface == askFilter && len(parts) > 1 {
 		sig := word[:len(word)-len(strings.TrimLeft(word, sigilStarts))]
-		word = word[i+1:]
+		word = parts[len(parts)-1]
 		if word == "" || !strings.ContainsRune(sigilStarts, rune(word[0])) {
 			word = sig + word
 		}
@@ -205,23 +250,12 @@ func (e *editor) window(avail int, style func(string) []word) (string, int) {
 
 	styles := make([]string, len(e.buf))
 	if style != nil {
-		for i := 0; i < len(e.buf); {
-			if e.buf[i] == ' ' {
-				i++
-				continue
+		k := 0
+		for _, span := range style(string(e.buf)) {
+			for range []rune(span.text) {
+				styles[k] = span.style
+				k++
 			}
-			j := i
-			for j < len(e.buf) && e.buf[j] != ' ' {
-				j++
-			}
-			k := i
-			for _, span := range style(string(e.buf[i:j])) {
-				for range []rune(span.text) {
-					styles[k] = span.style
-					k++
-				}
-			}
-			i = j
 		}
 	}
 
