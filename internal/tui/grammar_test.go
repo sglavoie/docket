@@ -128,7 +128,7 @@ func TestACountRepeatsOrTakesRows(t *testing.T) {
 			t.Fatal("zero started a count")
 		}
 		h.press("3")
-		if !strings.Contains(h.status(), "count 3") {
+		if h.status() != "3" {
 			t.Fatal(h.status())
 		}
 		h.press("esc", "j")
@@ -598,7 +598,7 @@ func TestDeleteAndCopyTakeMotions(t *testing.T) {
 			t.Fatal(h.m.msg)
 		}
 		h.press("2", "y")
-		if !strings.Contains(h.status(), "count 2 y") {
+		if h.status() != "2y" {
 			t.Fatal(h.status())
 		}
 		h.press("2", "j")
@@ -1083,6 +1083,96 @@ func TestTheTypedRowWraps(t *testing.T) {
 		h.press("left")
 		if strings.Contains(h.m.View().Content, sgrDim+"day") {
 			t.Fatal("completion shown away from the end")
+		}
+	})
+}
+
+func TestTheStatusLineShowsWhatIsPending(t *testing.T) {
+	last := func(h *harness) string {
+		lines := h.lines()
+		return lines[len(lines)-1]
+	}
+	t.Run("keys show as typed until they complete", func(t *testing.T) {
+		h := countOutline(t, 6)
+		for _, c := range []struct {
+			keys []string
+			want string
+		}{
+			{[]string{"g"}, "g"},
+			{[]string{"z"}, "z"},
+			{[]string{"1", "2"}, "12"},
+			{[]string{"3", "g"}, "3g"},
+			{[]string{"d"}, "d"},
+			{[]string{"2", "d", "3"}, "2d3"},
+			{[]string{"y", "g"}, "yg"},
+			{[]string{"d", "i"}, "di"},
+			{[]string{"c"}, "c"},
+		} {
+			h.press(c.keys...)
+			if got := h.status(); got != c.want {
+				t.Fatalf("%v: status = %q, want %q", c.keys, got, c.want)
+			}
+			if !strings.HasSuffix(last(h), c.want+"  :help") {
+				t.Fatalf("%v: not at the right: %q", c.keys, last(h))
+			}
+			h.press("esc")
+			if got := h.status(); got != "" {
+				t.Fatalf("%v: Esc left %q", c.keys, got)
+			}
+		}
+		h.press("g", "g")
+		if h.status() != "" || h.m.cursor != 0 {
+			t.Fatalf("a completed gg left %q", h.status())
+		}
+	})
+	t.Run("beside the selection and what the line already says", func(t *testing.T) {
+		h := countOutline(t, 4)
+		h.press("v", "2")
+		if !strings.HasSuffix(last(h), "2  1 selected · Esc clears") {
+			t.Fatal(last(h))
+		}
+		h.press("esc", "esc", "tab", "g")
+		if got := strings.TrimSpace(last(h)); !strings.HasPrefix(got, "j k choose") || !strings.HasSuffix(got, "g  :help") {
+			t.Fatalf("sidebar: %q", got)
+		}
+		h.press("g")
+		if strings.Contains(last(h), "g  :help") {
+			t.Fatalf("a completed gg stayed: %q", last(h))
+		}
+	})
+	t.Run("inside a row", func(t *testing.T) {
+		h := textRow(t, "Buy oat milk today")
+		h.press("w", "2", "d", "3")
+		if got := last(h); !strings.HasPrefix(got, "in the row") || !strings.HasSuffix(got, "2d3") {
+			t.Fatalf("status = %q", got)
+		}
+		h.press("esc", "d", "f")
+		if !strings.HasSuffix(last(h), "df") {
+			t.Fatal(last(h))
+		}
+		h.press("esc", "i", "3")
+		if strings.HasSuffix(last(h), "3") {
+			t.Fatalf("typed text shown as pending: %q", last(h))
+		}
+	})
+	t.Run("a narrow line gives up everything else first", func(t *testing.T) {
+		h := countOutline(t, 3)
+		h.press("tab")
+		h.m.Update(tea.WindowSizeMsg{Width: 14, Height: 12})
+		h.press("g")
+		if got := last(h); ansi.StringWidth(got) != 14 || !strings.HasSuffix(got, "… g") {
+			t.Fatalf("status = %q", got)
+		}
+	})
+	t.Run("in help", func(t *testing.T) {
+		h := countOutline(t, 1)
+		h.press(":", `"help"`, "enter", "j", "g")
+		if !strings.HasSuffix(last(h), "closes  g") {
+			t.Fatal(last(h))
+		}
+		h.press("g")
+		if strings.HasSuffix(last(h), "g") || h.m.helpTop != 0 {
+			t.Fatal(last(h))
 		}
 	})
 }

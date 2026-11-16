@@ -624,7 +624,11 @@ Inside a row.
 motions `n` `N`; `h` and `l` are fold keys, not motions. The operators are
 `d`, `y`, `>` and `<`. In the outline, digits
 `1` to `9` start a count and `0` continues it; `0` alone does nothing.
-The status line shows the pending count, then any pending operator. `Esc`
+The status line shows, at its right and as typed, the keys that wait for
+more: a count, an operator, a `g`, `z` or `i`, so `2d3` and `3g` read as
+they were pressed. It does so in the outline, the sidebar, inside a row and
+in help, beside whatever the line already says, and a line too narrow for
+both keeps the pending keys. `Esc`
 drops it without clearing a selection, filter or zoom. Counts do not apply
 in the sidebar, help, prompts or while typing.
 

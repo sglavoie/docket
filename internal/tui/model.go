@@ -173,7 +173,7 @@ type Model struct {
 	undo, redo   [][]outline.Op
 	count        int                 // pending outline count; zero means absent
 	undoGroup    []outline.Op        // inverses collected by a counted reorder
-	prefix       string              // a pending g
+	prefix       string              // a pending g or z, or i after an operator
 	operator     string              // pending d, y, > or <, or c (cc only)
 	replaying    bool                // the dot key is typing: what it types is not remembered again
 	textRepeat   textAct             // the last change made inside a row

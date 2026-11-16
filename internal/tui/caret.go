@@ -682,19 +682,8 @@ func (m *Model) textAgain(e *editor) int {
 
 // textStatus is the status line while the caret is inside a row.
 func (e *editor) textStatus() string {
-	if e.pend == "" && e.count == 0 && e.opCount == 0 {
-		if e.sel {
-			return "selecting: motions extend · d c y x ~ act · v or Esc ends"
-		}
-		return "in the row: w b e f move · i a c d x change · v select · Esc done"
+	if e.sel {
+		return "selecting: motions extend · d c y x ~ act · v or Esc ends"
 	}
-	left := ""
-	if e.opCount > 0 {
-		left = strconv.Itoa(e.opCount)
-	}
-	left += e.pend
-	if e.count > 0 {
-		left += strconv.Itoa(e.count)
-	}
-	return left
+	return "in the row: w b e f move · i a c d x change · v select · Esc done"
 }

@@ -26,6 +26,8 @@ const (
 const helpText = `Docket
 
   2 3 …          count: repeat a motion or take rows; Esc drops the count
+                 a count, operator, g or z that waits shows at the right
+                 of the status line
   j k  gg G      move; Home End as gg G
   Ctrl+D Ctrl+U  move half a pane down, up (outlines, lists and filters)
   Ctrl+F Ctrl+B  move a whole pane down, up; PgDn PgUp too
@@ -548,28 +550,54 @@ func (m *Model) statusLine(w int) (string, int) {
 	if n := len(m.picked); n > 0 {
 		right = strconv.Itoa(n) + " selected · Esc clears"
 	}
-	if m.count > 0 {
-		left = "count " + strconv.Itoa(m.count)
-	}
-	if m.operator != "" {
-		left = m.operator
-		if m.opCount > 0 {
-			left = "count " + strconv.Itoa(m.opCount) + " " + left
-		}
-		if m.count > 0 {
-			left += strconv.Itoa(m.count)
-		}
-		left += m.prefix
-	}
 	if m.edit != nil {
 		right = ""
 	}
-	left = ansi.Truncate(left, w, "…")
-	gap := w - ansi.StringWidth(left) - ansi.StringWidth(right)
-	if gap < 1 {
-		return left, -1
+	// What is typed and not yet complete sits at the right, as typed, and
+	// is the last thing a narrow line gives up.
+	pend := ansi.Truncate(m.pending(), w, "…")
+	if pend == "" {
+		left = ansi.Truncate(left, w, "…")
+		gap := w - ansi.StringWidth(left) - ansi.StringWidth(right)
+		if gap < 1 {
+			return left, -1
+		}
+		return left + strings.Repeat(" ", gap) + sgrDim + right + sgrReset, -1
 	}
-	return left + strings.Repeat(" ", gap) + sgrDim + right + sgrReset, -1
+	pw := ansi.StringWidth(pend)
+	tail := ""
+	if right != "" && ansi.StringWidth(left)+1+pw+2+ansi.StringWidth(right) <= w {
+		tail = "  " + sgrDim + right + sgrReset
+	}
+	left = ansi.Truncate(left, max(w-pw-1-ansi.StringWidth(tail), 0), "…")
+	gap := max(w-ansi.StringWidth(left)-pw-ansi.StringWidth(tail), 0)
+	return left + strings.Repeat(" ", gap) + pend + tail, -1
+}
+
+// pending is the keys typed so far that wait for more: a count, an operator,
+// a g or z, in the order they were typed. Empty when nothing waits.
+func (m *Model) pending() string {
+	num := func(n int) string {
+		if n > 0 {
+			return strconv.Itoa(n)
+		}
+		return ""
+	}
+	switch {
+	case m.help:
+		if m.helpG {
+			return "g"
+		}
+		return ""
+	case m.ask != nil:
+		return ""
+	case m.edit != nil:
+		if e := m.edit; e.normal {
+			return num(e.opCount) + e.pend + num(e.count)
+		}
+		return ""
+	}
+	return num(m.opCount) + m.operator + num(m.count) + m.prefix
 }
 
 // paneLines draws the outline pane: a header and the rows, h lines in all.
@@ -721,7 +749,7 @@ func (m *Model) View() tea.View {
 		if len(all) > page {
 			out = append(append([]string{}, all[m.helpTop:min(m.helpTop+page, len(all))]...),
 				sgrDim+fmt.Sprintf("  j/k scroll · gg/G ends · %d-%d of %d · any other key closes",
-					m.helpTop+1, min(m.helpTop+page, len(all)), len(all))+sgrReset)
+					m.helpTop+1, min(m.helpTop+page, len(all)), len(all))+sgrReset+"  "+m.pending())
 		}
 		v := tea.NewView(strings.Join(out, "\n"))
 		v.AltScreen = true
