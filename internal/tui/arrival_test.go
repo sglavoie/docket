@@ -18,6 +18,200 @@ import (
 	"github.com/sglavoie/docket/internal/sigil"
 )
 
+func TestTutorReads(t *testing.T) {
+	h := start(t).wide()
+	lines := readPaste(tutorText)
+	if len(lines) < 35 || len(lines) > 50 || len(lines) != strings.Count(tutorText, "\n") {
+		t.Fatalf("tutorial has %d parsed rows for %d lines", len(lines), strings.Count(tutorText, "\n"))
+	}
+	for i, line := range lines {
+		if i == 0 {
+			if line.level != 0 || line.text != "Welcome" {
+				t.Fatalf("tutorial root = %+v", line)
+			}
+		} else if line.level < 1 || line.level > 2 {
+			t.Fatalf("stray tutorial line %d: %+v", i+1, line)
+		}
+		for _, word := range strings.Fields(line.text) {
+			for _, span := range h.m.styler(surfaceRow)(word) {
+				if span.style == h.m.colors().warn {
+					t.Errorf("tutorial line %d warns on %q", i+1, word)
+				}
+			}
+		}
+	}
+	h.press(":", `"tutor"`, "enter")
+	text, n := h.m.writeRows([]string{h.m.at.root})
+	if n != len(lines) || text != tutorText {
+		t.Fatalf("tutorial does not round-trip through import/export (%d rows):\n%s", n, text)
+	}
+	if got := h.m.tree.Row(h.m.current()).Text(); got != "Move, fold and zoom:" || !strings.Contains(h.rows(), "Press j and k") {
+		t.Fatalf("tutorial did not open its first exercises: %s", h.rows())
+	}
+}
+
+func TestTutorCommand(t *testing.T) {
+	for _, where := range []string{"projects", "project", "zoom", "inbox", "list", "filter", "selection", "sidebar"} {
+		t.Run(where, func(t *testing.T) {
+			h := start(t).wide()
+			h.pasteText("Existing\n\tHeading:\n\t\tTask\nLast")
+			h.press("g", "g")
+			switch where {
+			case "project":
+				h.press("enter")
+			case "zoom":
+				h.press("enter", "enter")
+			case "inbox":
+				h.press("f", "enter")
+			case "list":
+				h.press("f", `"Today"`, "enter")
+			case "filter":
+				h.press("/", `"Task"`, "tab", "enter")
+			case "selection":
+				h.press("v")
+			case "sidebar":
+				h.press("tab")
+			}
+			before, count := h.m.writeRows(h.m.tree.Children(""))
+			steps := len(h.m.undo)
+			h.press(":", `"tutor"`, "enter")
+			root := h.m.at.root
+			roots := h.m.tree.Children("")
+			if root != roots[len(roots)-1] || h.m.tree.Row(root).Text() != "Welcome" || h.m.tree.Row(h.m.current()).Parent != root {
+				t.Fatalf("tutorial not opened as last project: root=%q current=%q", root, h.m.current())
+			}
+			if h.m.sideFocus || h.m.at.query != "" || h.m.at.list != "" || len(h.m.picked) != 0 || len(h.m.zoom) != 0 {
+				t.Fatal("tutorial retained the previous place or selection")
+			}
+			if len(h.m.undo) != steps+1 {
+				t.Fatalf("tutorial added %d undo steps", len(h.m.undo)-steps)
+			}
+			h.press("u")
+			if got, n := h.m.writeRows(h.m.tree.Children("")); got != before || n != count {
+				t.Fatalf("one undo did not restore the outline:\n%s", got)
+			}
+			h.press("ctrl+r", ":", `"tutor"`, "enter")
+			if h.m.at.root == root || !h.m.live(root) || len(h.m.undo) != steps+2 {
+				t.Fatal("a second tutorial was not a fresh independent copy")
+			}
+		})
+	}
+	t.Run("save failure", func(t *testing.T) {
+		h := start(t).wide()
+		before, _ := h.m.writeRows(h.m.tree.Children(""))
+		h.m.backend = &flaky{Backend: h.st, fail: true}
+		h.press(":", `"tutor"`, "enter")
+		after, _ := h.m.writeRows(h.m.tree.Children(""))
+		if after != before || len(h.m.undo) != 0 || !strings.Contains(h.bottom(), "disk full") {
+			t.Fatal("failed tutorial import was not rolled back")
+		}
+	})
+}
+
+func TestFirstLaunchSeedsTutor(t *testing.T) {
+	launch := func(h *harness) {
+		t.Helper()
+		tree, err := h.st.Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		h.m = Launch(tree, h.st, nil)
+		h.wide()
+	}
+	t.Run("empty and restart", func(t *testing.T) {
+		h := start(t).wide()
+		if h.shown() != "" {
+			t.Fatal("New seeded the model")
+		}
+		launch(h)
+		if h.m.tree.Row(h.m.at.root).Text() != "Welcome" || len(h.m.undo) != 1 || !strings.Contains(h.rows(), "Press j and k") {
+			t.Fatal("first launch did not open the tutorial in one undo step")
+		}
+		before, n := h.m.writeRows(h.m.tree.Children(""))
+		h = reopen(t, h)
+		launch(h)
+		if got, count := h.m.writeRows(h.m.tree.Children("")); got != before || count != n || len(h.m.undo) != 1 {
+			t.Fatal("restart seeded a second tutorial")
+		}
+		h.press("u")
+		if got := h.shown(); got != "" {
+			t.Fatalf("seed undo was not kept across restart: %s", got)
+		}
+	})
+	for _, fixture := range []string{"project", "closed project", "inbox"} {
+		t.Run(fixture, func(t *testing.T) {
+			h := start(t).wide()
+			switch fixture {
+			case "project":
+				h.pasteText("Existing")
+			case "closed project":
+				h.pasteText("Existing $done")
+			case "inbox":
+				h.press("a", `"Captured"`, "enter", "esc")
+			}
+			before, _ := h.m.writeRows(h.m.tree.Children(""))
+			steps := len(h.m.undo)
+			launch(h)
+			if got, _ := h.m.writeRows(h.m.tree.Children("")); got != before || len(h.m.undo) != steps {
+				t.Fatal("launch changed an occupied database")
+			}
+		})
+	}
+	t.Run("shell commands", func(t *testing.T) {
+		h := start(t)
+		List(h.m.tree, h.st, "")
+		if got := h.m.tree.Children(""); len(got) != 2 {
+			t.Fatalf("List added projects: %v", got)
+		}
+		if _, err := Capture(h.m.tree, h.st, []string{"Captured"}); err != nil {
+			t.Fatal(err)
+		}
+		if len(h.m.tree.Children("")) != 2 || len(h.m.tree.Children(inboxID)) != 1 {
+			t.Fatal("Capture added a tutorial")
+		}
+	})
+}
+
+func TestHelpSections(t *testing.T) {
+	want := []string{"Essentials — move, fold and zoom", "Add and type", "States and sigils", "Counts and operators", "Selection", "Filter", "Capture and travel", "Undo and commands"}
+	for _, height := range []int{12, 24, 60} {
+		h := start(t).wide()
+		h.m.Update(tea.WindowSizeMsg{Width: 100, Height: height})
+		h.press(":", `"help"`, "enter")
+		first := ansi.Strip(h.m.View().Content)
+		for _, key := range []string{"j k", "o O", "x  !  t", "/", "u  Ctrl+R", "Ctrl+C", ":tutor"} {
+			if !strings.Contains(first, key) {
+				t.Errorf("first help screen omits %q", key)
+			}
+		}
+		check := func(heading string) {
+			t.Helper()
+			view := ansi.Strip(h.m.View().Content)
+			if !h.m.help || strings.Split(view, "\n")[0] != heading || !strings.Contains(view, "]/[ sections") {
+				t.Fatalf("height %d: expected %q and navigation footer:\n%s", height, heading, view)
+			}
+		}
+		h.press("[")
+		check(want[0])
+		for _, heading := range want[1:] {
+			h.press("]")
+			check(heading)
+		}
+		h.press("]")
+		check(want[len(want)-1])
+		for i := len(want) - 2; i >= 0; i-- {
+			h.press("[")
+			check(want[i])
+		}
+		h.press("j", "[")
+		check(want[0])
+		h.press("esc")
+		if h.m.help {
+			t.Fatal("Esc did not close help")
+		}
+	}
+}
+
 func TestFilterPhrase(t *testing.T) {
 	h := start(t).wide()
 	h.pasteText("Project\n\tPer the spec: $note\n\t\tBuild it $open\n\tWork PER THE SPEC today $open\n\tThe spec per review $open\n\tCut 5\" board $open\n\tRead a|b ( c ) $open")

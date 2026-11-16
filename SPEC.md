@@ -228,7 +228,8 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
 once, as do `gg` and `G` or `Home` and `End` (first, last), `Ctrl+D` and
 `Ctrl+U` (half a page) and `Ctrl+F`, `Ctrl+B`, `PgDn` and `PgUp` (a page),
 where a page is the pane's usable row height in entries, stopping at either
-end. `Enter`, `Tab` or `Esc` returns to the pane.
+end. `Enter`, `Tab` or `Esc` returns to the pane. `:` returns focus to
+the pane and opens its command line, so `:tutor` works from the sidebar too.
 
 ### Pane
 
@@ -251,7 +252,10 @@ The pane shows the rows under one row, or a list.
   row. In review, a top-level row opens Projects. The row stays visible
   even with `:closed` on. `h` refuses a selection, and `l` does nothing;
   neither changes a fold.
-- **Launch** opens Today when something is picked for the day, else Projects.
+- **Launch** on a database with no project and no Inbox row adds and opens
+  a `Welcome` tutorial in one undo step. Otherwise it opens Today when
+  something is picked for the day, else Projects. `docket add` and `docket ls`
+  never add the tutorial.
 - **A row wraps** under its own text at the pane's width, each word keeping
   its colour, so nothing is cut; a word wider than the pane breaks across
   lines. The cursor and selection marks run the row's height, and scrolling
@@ -482,7 +486,9 @@ Three more acts use the same line:
   rows each slips from its own date, and `.` slips them again. These two
   forms are read on the stamp line only. `Enter` applies them to the selection, else to the cursor's row, as
   one undo step. A word it cannot read is named and nothing is applied.
-- `:` runs a command: `q` quits; `help` opens help; `export [file]` writes
+- `:` runs a command: `q` quits; `help` opens help; `tutor` adds a fresh
+  `Welcome` tutorial as the last project and opens it, from any place, in
+  one undo step; `export [file]` writes
   the whole outline as tab-indented lines in the row grammar, to `~/docket-YYYY-MM-DD.txt` unless
   a file is named; `import file` reads such a file back, as described below;
   `closed` hides or shows closed rows; `numbers` shows or
@@ -550,6 +556,15 @@ cannot be read is said and nothing changes.
 They work in outlines, lists and filters and keep the cursor visible. While
 typing they retain their existing behavior (`Ctrl+U` cuts before the caret);
 in help they retain half-page scrolling.
+
+### Help
+
+`:help` opens a reference in eight sections, in the tutorial's order. The
+first screen gives the essentials; `]` and `[` go to the next and previous
+heading. `j` and `k`, paging keys and `gg` and `G` scroll; any other key
+closes it. `:tutor` teaches on editable outline rows, read through the same
+reader as `:import`. `dd` on its `Welcome` project removes it; another
+`:tutor` makes a fresh copy with new row identities.
 
 ### Archive
 
@@ -1162,7 +1177,9 @@ These are the only commands; everything else is done in the outline.
    all descendants. Filters read quoted phrases and `$first`, the first
    workable sibling under each parent. Dark and light palettes follow the
    terminal background; cursor and selection backgrounds span wrapped rows,
-   and dates outside this year name their year. *In progress.*
+   and dates outside this year name their year. An empty interactive launch
+   opens a Welcome tutorial; `:tutor` adds a fresh copy in one undo step.
+   Help has eight sections walked with `]` and `[`. *Built.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add` and `docket ls`, macros (`.`,

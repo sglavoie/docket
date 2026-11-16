@@ -94,7 +94,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	m := tui.New(tree, st, folds)
+	m := tui.Launch(tree, st, folds)
 	if st.Renamed() {
 		m.Notice("this database was copied from another place: it now syncs under a name of its own")
 	}

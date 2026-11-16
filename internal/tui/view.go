@@ -13,201 +13,136 @@ import (
 	"github.com/sglavoie/docket/internal/sigil"
 )
 
-const helpText = `Docket
-
-  2 3 …          count: repeat a motion or take rows; Esc drops the count
-                 a count, operator, g or z that waits shows at the right
-                 of the status line
-  j k  gg G      move; Home End as gg G
-  Ctrl+D Ctrl+U  move half a pane down, up (outlines, lists and filters)
-  Ctrl+F Ctrl+B  move a whole pane down, up; PgDn PgUp too
-  } {  ) (       next, previous sibling, passing over its rows; last, first
-  H              the parent, folding nothing; 2H climbs two
-  ] [            next, previous heading (a row ending in a colon)
-  n N            next, previous match of the filter on screen, else of the one
-                 last kept with Enter or dropped with Esc; this session only
-                 all are motions: 3}, d}, y), VH and dn work; lists step by row
-                 a row reached from afar (n N, a jump, the trail, a place
-                 come back to) is shown mid-pane; one on screen stays put
+const helpText = `Essentials — move, fold and zoom
+  j k  gg G      move; Home End reach the ends
+  o O  A I       add below, above; type at the end, start
+  x  !  t        close and reopen, flag, pick for Today
+  /              filter; Enter keeps, Esc clears
+  u  Ctrl+R      undo, redo; nothing asks for confirmation
+  Ctrl+C  :q     quit
+  :tutor         open a fresh Welcome tutorial; dd on its project removes it
   h l            fold, unfold; step to parent, first child
-                 in lists and flat filters, h shows the row where it lives;
-                 Esc returns to the held rows; l does nothing
-  zc zo          fold, unfold the row's whole branch, every level under it;
-                 the selection or a count of rows too
-  zt zz zb       draw the cursor's row at the top, middle, bottom of the pane
-  Enter  Esc     zoom into a row; Esc clears the selection, the filter, the zoom
-  o O            new row below, above
-  A I            type at the end, start of the row
-  cc             retype text, keeping fields; one undo (Esc keeps even blank text)
-                 c waits only for c; any other key cancels
-                 A I cc drop counts; no selection; lists and filters too
-  w b e  W B E   step into the row's text: 3w lands on the third word, b on the
-                 last; see Inside a row below
-  >> <<          indent, outdent; > and < are operators like d and y:
-                 >j takes this row and the next, 3>> three rows, <) to the last
-  J K            move the row down, up (also in Today; no selection there)
-  x  !  t        done and back, flag, pick for Today in pick order
-  m              move to a project, Inbox or heading
-                 with a selection, m Enter moves it here, where o would open a row
-  L  gl          link the row to another, found by name; gl follows the link
-                 with no row link, gl opens the first web address in the text
-                 a row shows → and the row it points at; blank L Enter is none
-  .              repeat the last change to rows on the row or selection:
-                 a stamp, a move, a link, :s, x ! t J K p P, d > < with what
-                 completed them, and text typed after o O A I cc
-                 the count it was made with is used again unless one is given
-                 stamps read dates again today; one undo; lists and filters too
-                 here, copies, motions and undo leave it remembered
-                 nothing remembered or a deleted destination says so
-                 remembered only this session; sidebar ignores .
-  d y            delete or copy: dd yy take the row or selection with subtrees
-                 a motion takes the inclusive range; no selection with motions
-                 counts multiply: d3j = 3dj; Esc or another key cancels
-                 ic is: row objects, for d y > < alike: ic the rows under
-                 this row, is the row and all its siblings, each with what
-                 is under it: dic empties a row, <ic dissolves a group,
-                 yis copies a level; outlines only, no selection
-                 both fill the session register and clipboard; y alone waits
-                 copy keeps the cursor; one u restores a delete, keeping the register
-  p P            put the register after, before the row as new rows at its level
-                 keeps depth and fields like paste; one undo; lands on the last row
-                 put N rows; nothing to put when empty; counts are dropped
-                 no lists, filters or selection; sidebar ignores p P
-                 empty places receive children; each put keeps the register
-                 put makes new identities; m J K keep the row's identity
-  gp gP          put the last copy instead: what y took, even after a delete
-  v V            pick a row; sweep with motions (V ends, Esc clears)
-                 x ! t dd yy m and stamps act on the selection
-                 >> << J K move adjacent selected siblings together
-  # @ $ * -      stamp: type sigils, Enter sets them (-#tag, -@, -@@, -* remove)
-                 @++1w @--3d move the deadline from the day the row has, not
-                 from today (d w m y); @@++1w the start day; no day, no change
-  /              filter by text and sigils; -word excludes; Tab flat or in context
-                 "per the spec" matches a phrase, ignoring case; -"…" excludes
-                 ^ _ < > also take phrases; an unclosed quote reads to the end
-                 a quote inside a word (5") stays text
-                 # any tag, $ any task; -# untagged, -$ notes
-                 a|b is either: $open|doing, #home|!, milk|#food
-                 each side uses its own sigil or the first side's; unreadable is text
-                 | ( ) -( standing alone, a blank each side, group terms:
-                 #home $open | #work !    fix ( #docs | cache )    -( a | b )
-                 ~7d ~2w ~today: state changed (or row made) since then,
-                 so $done ~7d is what was finished this week
-                 $next: each project's first open or doing row not starting later
-                 $first: first open or doing sibling per parent, not starting later;
-                 skips parked branches and closed projects; includes Inbox
-                 $first -<$: next action under each heading and project
-                 $today: a row in Today
-                 @<fri @>+1w: open rows due by or from a day; flat lists soonest first
-                 ^term tests ancestors, not this row, even above the pane root
-                 ^#work|home, ^name $next; -^#work means no ancestor has #work
-                 bare ^ waits for typing; ^^ is text; completion works after ^
-                 _term tests the rows under this one, at any depth: _@overdue,
-                 -_$open|doing (nothing left to do under it); __ is text
-                 <term tests the parent only, >term the rows directly under:
-                 <#work, >$waiting, ->$ (no task of its own); << >> are text
-                 #est any value, #est=2h that one, #est<3 #est>3 at most, at least
-                 & a row that links to another; &word to a row holding word;
-                 &. to the row the cursor was on: the rows that point here
-                 a filter shows every match, folded or not
-  Up Down        on the / : and stamp lines, recall the lines kept there
-                 before, those beginning with what is typed; kept across
-                 restarts on this machine
-  :              q, help (open this page), export [file],
-                 import file (read such a file back as rows after the cursor;
-                 in Projects its Inbox line is the Inbox again; one undo),
-                 closed (hide or show done and canceled rows),
-                 numbers (each row says how far it is from the cursor: a count),
-                 all (select every row shown: /#old, :all, -#old #new retags),
-                 s/old/new (change text in the row or selection, every place,
-                 capitals as typed; one undo; any mark for the slash: s,a/b,c),
-                 archive (move closed rows under the project's Archive: heading),
-                 fold [level] (all, or show N levels), unfold (all),
-                 sort [keys] (siblings or adjacent selected siblings, once),
-                 @ soonest deadline (missing last), ! flagged first,
-                 $ doing, open, waiting, notes, parked, done, canceled;
-                 later keys break ties; no keys: text ignoring case
-                 ties keep order; children travel; one undo; no lists or filters
-                 review (projects, longest untouched first),
-                 save name (keep the filter; f then /name opens it), forget name,
-                 sync folder (share with other machines through a synced folder)
-  a              capture to the Inbox; %name files in a project or heading
-  f              go to a project, heading, list or saved filter by name,
-                 or to any row by words of its text, shown where it lives
-  Ctrl+O Ctrl+I  back along the places jumps left, and forward again
-                 a jump is f, a sidebar visit or gl to a row; this session only
-                 a terminal that cannot tell Ctrl+I from Tab gives Tab
-  Tab            the sidebar: j k choose, Enter work in it
-                 gg G and the paging keys move through it too
-  u  Ctrl+R      undo, redo
-  Ctrl+C         quit
+  Enter  Esc     zoom in; clear selection, filter, then zoom back out
+  ] [  H         next, previous heading; parent
+  } {  ) (       next, previous sibling; last, first sibling
+  Ctrl+D Ctrl+U  half a pane; Ctrl+F Ctrl+B or PgDn PgUp a whole pane
+  zc zo          fold, unfold the whole branch; a count or selection too
+  zt zz zb       draw the cursor's row at the top, middle, bottom
+  h in a list    show the row where it lives; Esc returns; l does nothing
 
-While typing
-  Enter          split inside a line; at ends, keep it (fresh rows chain)
+Add and type
+  o O            new row below, above; o on an open parent adds a first child
+  A I  cc        type at end, start; retype text, keeping fields
+  Enter          split inside a line; at its ends keep it (fresh rows chain)
   Backspace      at the start, join into the row above (no children)
-                 blank fresh rows disappear; lists and filters never join
-                 or split; each split or join is one undo step
-  Up Down        move by wrapped line; at its ends, type in the next row
-  Home Ctrl+A    start of the whole typed row
-  End Ctrl+E     end of the whole typed row
-  Ctrl+U         cut before the caret
-  Esc            keep the row
-  Tab Shift+Tab  indent, outdent
-  Alt+Left Alt+Right Alt+Backspace    by word
+  Up Down        by wrapped line, then go on typing in the next row
+  Home Ctrl+A    start of the typed row; End Ctrl+E its end
+  Ctrl+U         cut before the caret; Alt+Left/Right/Backspace by word
+  Tab Shift+Tab  indent, outdent while typing; Esc keeps the row
+  w b e  W B E   step into text by word; capitals count nonblank words
+  Inside a row:  h l move by character; 0 ^ $ reach line ends; j k wrap
+                 f F t T find a character; ; , repeat, reverse
+                 i a I A type at, after the caret, at the start, at the end
+                 d c y take motions or objects: dw, c2e, d$, yiw, ci"
+                 iw aw iW aW words; i" a" quotes; i( a( ib i[ i{ i< brackets
+                 x X D C s delete, change; r replaces; ~ switches case
+                 p P put text after, before; v selects with motions or objects
+                 * filters by the word at the caret; n N walk matches
+                 u Ctrl+R undo, redo inside this visit; . repeats a text change
+                 Esc ends typing, then keeps the visit as one outline undo
+  Paste          several lines become rows, indentation as depth; one undo
 
-Inside a row (after w b e W B E; the caret is a block)
-  h l  0 ^ $     by character; start, end of the line
-  w b e  W B E   by word; capitals count anything but a blank as one word
-  f F t T  ; ,   to a character, or before it; again, and the other way
-  j k            by drawn line of a wrapped row; the row is never left
-  i a I A        type at the caret, after it, at the start, at the end;
-                 Esc ends the typing with the caret back on a character
-  d c y          take a motion or a text object: dw, c2e, d$, yiw, ct,
-                 iw aw iW aW a word; i" a" i' quotes and backticks;
-                 i( a( ib i[ i{ i< brackets
-  x X D C s      delete a character, the one before, to the end; change those
-  r ~            replace a character; switch case
-  p P            put what d c y x last took after, before the caret
-  v              select from the caret: motions and iw a" stretch it,
-                 d x c s y ~ act on it; v or Esc ends it
-  *              filter the pane by the word under the caret, a sigil whole,
-                 as / and Enter would; n N walk the matches
-  u Ctrl+R       undo, redo changes made in this row before leaving it
-  .              repeat the last change made inside a row, with what was typed
-  2 3 …          count: 3w, d2w, 2fx, 3x
-  Esc            drop what is pending, else keep the row and return
-                 everything done on one visit is one undo step
+States and sigils
+  # @ $ * -      open the stamp line; Enter sets sigils on the row or selection
+  !              flag; -! removes it on the stamp line
+  @fri @+3d      deadline; @@mon not before that day (in Today on that day)
+  *2w *monthly   repeat: closing moves the date and reopens done descendants
+  #tag #est=2h   tag or value; header sums estimates, headings show done/total
+  $open $doing $waiting $done $canceled $parked $note    state
+  -#tag -@ -@@ -*    remove fields on the stamp line
+  @++1w @--3d    shift the row's deadline; @@++1w its start (stamp line only)
+  Defaults       notes at top level, under tasks, or ending in a colon
+                 other rows are tasks; $open makes a subtask; \#tag stays text
+  While typing   readable sigils take accent colour, unreadable ones warning
+                 Right accepts a dim suggestion; dates edit as YYYY-MM-DD
 
-Sigils, typed anywhere in a row
-  !              flag
-  @fri @+3d @11-20 @today    deadline
-  @@mon          not before that day: dimmed until then, and in Today on the day
-  *2w *monthly   repeats: closing it moves it to its next day, still open
-                 done rows under it reopen too, at every depth; u undoes all
-  #tag           tag; #est=2h a tag with a value, one value to a name
-                 header: tasks to do and #est sum; headings: done/total
-  $doing $waiting $done $canceled $parked $open $note    state
-  A row is a note at top-level, under a task, or when it ends in a colon.
-  Other rows default to tasks; $open under a task makes a subtask.
-  \#tag keeps a sigil as plain text.
-  As you type, a sigil the line reads takes the accent colour and one it
-  cannot takes the warning colour. The right arrow takes the dim suggestion at the end of the line.
+Counts and operators
+  2 3 …          repeat motions or take rows for an act; Esc drops a count
+  :numbers       show each row's distance from the cursor
+  d y > <        delete, copy, indent, outdent; doubled keys take rows
+                 a motion takes an inclusive range: d3j = 3dj, >j, y)
+                 ic takes children, is the row and its siblings: dic, yis
+                 row objects include folded subtrees; no lists or selections
+  J K            reorder down, up; Today too (one row there)
+  p P            put the register after, before, with fresh identities
+  gp gP          put the last copy, even after a delete replaced the register
+  .              repeat the last row change, including stamps and typed text
+                 keeps its count unless given another; one undo step
+  Copy/delete    include whole subtrees; write the register and clipboard
+                 u restores deleted rows; the register stays
 
-Pasting several lines adds them as rows, indentation as depth.
-Copy and export spell otherwise empty rows as $open, $note or their state.
+Selection
+  v              pick a row and step down; again on a picked row clears it
+  V              sweep with motions; V ends the sweep, Esc clears selections
+  x ! t dd yy m L and stamps    act on the selection in one step
+  >> << J K      move adjacent selected siblings together
+  m Enter        with a blank query, move selected rows here, where o would add
+  :all           select every shown row (matches only under a filter)
+  /#old :all -#old #new    filter, select, retag with one stamp
 
-The palette follows the terminal background (dark until it answers).
-The focused row and selected rows are shaded across their whole width.
-Dates outside this year name the year; A still opens the canonical date.
+Filter
+  /              text and sigils; Enter keeps, Esc clears; Tab flat or context
+  "a phrase"     match words together, ignoring case; -"a phrase" excludes
+  n N            next, previous match; after Esc, use the last filter
+  # $ @          any tag, task, deadline; -# untagged, -$ notes
+  $next          each project's first workable task; excludes Inbox
+  $first         first workable sibling per parent; includes Inbox
+  $first -<$     next action under each heading and project
+  $today         picked or starting today
+  @overdue @week @<fri @>+1w    deadlines; flat results soonest first
+  @@later ~7d    starts later; state changed (or row made) in the last week
+  a|b            either: $open|doing, #home|!, milk|#food
+  | ( ) -(       groups, with blanks: fix ( #docs | cache ), -( a | b )
+  ^term _term    tests ancestors, descendants: ^#work, _@overdue
+  <term >term    tests parent, direct children: <#work, >$waiting
+  #est #est=2h #est<3 #est>3    any value, exact, at most, at least
+  & &word &.     a row link, one to matching text, one to the cursor's row
+  Held rows      edits never remove matches; change the query to read again
+  :save name     keep a filter; f then /name opens it; :forget name drops it
 
-A web address in a row is a link the terminal can open.
-From a shell, docket add "Buy milk %home @fri" captures without opening
-the app; with no words it reads one row a line from standard input.
-docket ls '$next #home' prints the rows a filter matches, one a line with
-a tab and where each lives; with no filter, the whole outline as :export.
+Capture and travel
+  a              capture to Inbox; %name files in a project or heading
+                 Enter keeps and offers another; blank Enter or Esc ends
+  f              go to a project, heading, list, saved filter or row by name
+                 blank Enter opens Inbox; Up Down choose, Esc leaves
+  m              move rows to a project, Inbox or heading by name
+  Tab            sidebar focus; j k and paging keys visit; Enter works there
+  L gl           link to a row, follow it; blank L Enter removes the link
+                 with no row link, gl opens the first web address in the text
+  Ctrl+O Ctrl+I  back, forward along jumps (f, sidebar visits, row links)
+                 a terminal unable to distinguish Ctrl+I from Tab gives Tab
+  docket add     capture from the shell; no arguments reads one row per line
+  docket ls      print a filter's matches; no filter prints the whole outline
 
-Nothing asks for confirmation: undo takes anything back.
-Press any key to return.`
+Undo and commands
+  u Ctrl+R       undo, redo across restarts; a count repeats the key
+  Up Down        recall /, stamp and : lines beginning with what is typed
+  :help          this reference; ] [ go to next, previous section
+  :export [file] write the whole outline; default ~/docket-YYYY-MM-DD.txt
+  :import file   read indented rows after the cursor; one undo step
+                 in Projects, an Inbox line routes its children to Inbox
+  :closed        hide or show done and canceled rows
+  :s/old/new     replace text in row or selection; any separator, as s,a/b,c
+  :archive       move closed work under the project's Archive: heading
+  :fold [level]  fold all, or show N levels; :unfold opens all
+  :sort [keys]   siblings once: @ deadline, ! flag, $ state; ties stay ordered
+                 later keys break ties; no keys sorts by text
+  :review        projects, longest untouched first
+  :sync folder   share through a synced folder; :sync off stops
+  Display        palette follows terminal background; focused rows are shaded
+                 dates outside this year name the year
+  More detail    SPEC.md describes the grammar; :tutor teaches it on live rows
+  Return         Esc or any key other than a help motion closes this page`
 
 func (m *Model) size() (int, int) {
 	w, h := m.width, m.height
@@ -760,12 +695,13 @@ func (m *Model) View() tea.View {
 		all := strings.Split(helpText, "\n")
 		page := m.helpPage()
 		m.clampHelp()
-		out := all
-		if len(all) > page {
-			out = append(append([]string{}, all[m.helpTop:min(m.helpTop+page, len(all))]...),
-				m.colors().dim+fmt.Sprintf("  j/k scroll · gg/G ends · %d-%d of %d · any other key closes",
-					m.helpTop+1, min(m.helpTop+page, len(all)), len(all))+sgrReset+"  "+m.pending())
+		end := min(m.helpTop+page, len(all))
+		out := append([]string{}, all[m.helpTop:end]...)
+		for len(out) < page {
+			out = append(out, "")
 		}
+		out = append(out, m.colors().dim+fmt.Sprintf("  j/k scroll · ]/[ sections · gg/G ends · %d-%d of %d · any other key closes",
+			m.helpTop+1, end, len(all))+sgrReset+"  "+m.pending())
 		v := tea.NewView(m.paintText(strings.Join(out, "\n")))
 		v.AltScreen = true
 		return v

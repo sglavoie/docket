@@ -782,6 +782,21 @@ func (m *Model) capture(line string) {
 	}
 }
 
+// Launch opens the interactive outline, adding a tutorial only when there
+// are no projects and no Inbox rows. New, Capture and List never seed it.
+func Launch(tree *outline.Tree, backend Backend, folds map[string]bool) *Model {
+	m := New(tree, backend, folds)
+	for _, id := range tree.Children("") {
+		if !hiddenTop(id) {
+			return m
+		}
+	}
+	if len(tree.Children(inboxID)) == 0 {
+		m.tutor()
+	}
+	return m
+}
+
 // Capture files lines from outside the app, each as the capture line would,
 // and says where each went. It is what the docket add command runs: one
 // short-lived window on the database, which syncs once before it closes.

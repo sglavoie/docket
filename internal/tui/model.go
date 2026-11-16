@@ -1686,6 +1686,8 @@ func (m *Model) command(line string) {
 	switch words[0] {
 	case "help", "h":
 		m.openHelp()
+	case "tutor":
+		m.tutor()
 	case "q", "quit":
 		m.quit = true
 	case "fold", "unfold":
@@ -1912,7 +1914,7 @@ func (m *Model) archive() {
 }
 
 // sideKey handles the sidebar while it has focus. Moving shows each
-// destination at once, so leaving is the only other act.
+// destination at once; prompts can capture, jump or run a command.
 func (m *Model) sideKey(k string) {
 	g := m.prefix == "g"
 	m.prefix = ""
@@ -1943,6 +1945,9 @@ func (m *Model) sideKey(k string) {
 		}
 	case "tab", "enter", "esc", "l", "right":
 		m.leaveSidebar()
+	case ":":
+		m.leaveSidebar()
+		m.ask = &prompt{kind: askCommand}
 	case "f":
 		m.ask = &prompt{kind: askJump}
 	case "a":
@@ -2757,6 +2762,18 @@ func (m *Model) helpKey(k string) {
 	m.helpG = false
 	page := m.helpPage()
 	switch k {
+	case "]", "[":
+		lines := strings.Split(helpText, "\n")
+		step := 1
+		if k == "[" {
+			step = -1
+		}
+		for i := m.helpTop + step; i >= 0 && i < len(lines); i += step {
+			if lines[i] != "" && !strings.HasPrefix(lines[i], " ") {
+				m.helpTop = i
+				break
+			}
+		}
 	case "j", "down", "ctrl+n":
 		m.helpTop++
 	case "k", "up", "ctrl+p":
@@ -2786,6 +2803,14 @@ func (m *Model) helpKey(k string) {
 }
 
 func (m *Model) clampHelp() {
-	n := strings.Count(helpText, "\n") + 1
-	m.helpTop = max(min(m.helpTop, n-m.helpPage()), 0)
+	lines := strings.Split(helpText, "\n")
+	lastHeading := 0
+	for i, line := range lines {
+		if line != "" && !strings.HasPrefix(line, " ") {
+			lastHeading = i
+		}
+	}
+	// Keep the final heading reachable even when its section is shorter
+	// than a page. The view pads the remaining space above its footer.
+	m.helpTop = max(min(m.helpTop, max(lastHeading, len(lines)-m.helpPage())), 0)
 }
