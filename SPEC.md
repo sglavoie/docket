@@ -266,7 +266,11 @@ Three more acts use the same line:
 - `/` **Filter ›** narrows the pane as the query is typed. Words match a
   row's text; `!`, `#tag`, `$state` and `@date` match its fields; a leading
   `-` excludes. `@` alone is any deadline, and `@overdue` and `@week` read
-  the calendar. `~7d`, `~2w`, `~1m`, `~1y` and `~today` match a row whose
+  the calendar. `@<date` holds for an open row due on or before that day and
+  `@>date` for one due on or after it, in any form `@date` takes
+  (`@<+30d`, `@<fri`, `@>12-31`); like `@overdue` they leave out done and
+  canceled rows, so `-@<+30d` is everything else, rows with no deadline
+  included. `~7d`, `~2w`, `~1m`, `~1y` and `~today` match a row whose
   state last changed that recently, or which was made that recently if it
   never had one, so `$done ~7d` is what was finished this week and
   `$waiting -~2w` what has waited longer than two. Every term must hold. A
@@ -283,7 +287,11 @@ Three more acts use the same line:
   `:save next` keep the daily list of what could be done. In an
   outline a match keeps its
   ancestors, dimmed, so it is read where it lives; `Tab` switches to a flat
-  list of matches and back. `Enter` keeps the filter and returns to the rows,
+  list of matches and back. When the query has an un-negated deadline term
+  (`@`, `@date`, `@overdue`, `@week`, `@<`, `@>`), the flat list reads
+  soonest deadline first, ties in outline order; in context, and in Today,
+  Waiting and Stale, the order is the outline's or the list's. The order is
+  set when the query is read, and nothing in the outline moves. `Enter` keeps the filter and returns to the rows,
   where the header names it; `Esc` drops it. Like a list, a filter holds the
   rows it found until the query changes, and refuses the keys that
   restructure the tree. Changing the filter clears the selection. A filter
@@ -567,7 +575,9 @@ This is the only command; everything else is done in the outline.
    work under `Archive:`. Web addresses are links. `docket add` captures
    from a shell. *Built.*
 
-9. **Queries.** `$next` filters each project's next action. *In progress.*
+9. **Queries.** `$next` filters each project's next action; `@<date` and
+   `@>date` filter deadline ranges, and a flat deadline filter reads soonest
+   first. *In progress.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add`.

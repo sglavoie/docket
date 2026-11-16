@@ -23,7 +23,7 @@ type term struct {
 
 // cond is one reading of a term.
 type cond struct {
-	kind  byte // t text, ! flag, # tag, $ state, n next action, @ deadline, s start, * repeat, ~ changed
+	kind  byte // t text, ! flag, # tag, $ state, n next action, @ deadline, < > deadline range, s start, * repeat, ~ changed
 	value string
 }
 
@@ -96,9 +96,14 @@ func parseCond(w string, today time.Time) cond {
 			}
 			break
 		}
-		switch name := strings.ToLower(w[1:]); name {
-		case "", "overdue", "week":
+		switch name := strings.ToLower(w[1:]); {
+		case name == "" || name == "overdue" || name == "week":
 			c.kind, c.value = '@', name
+		case name[0] == '<' || name[0] == '>':
+			// A range: due on or before, or on or after, the day.
+			if day, ok := sigil.ParseDate(name[1:], today); ok {
+				c.kind, c.value = name[0], day
+			}
 		default:
 			if day, ok := sigil.ParseDate(name, today); ok {
 				c.kind, c.value = '@', day
@@ -179,6 +184,10 @@ func holds(r *outline.Row, l sigil.Line, c cond, today time.Time, next map[strin
 			return l.Due != "" && days <= dueSoonDays && !l.Closed()
 		}
 		return l.Due == c.value
+	case '<':
+		return l.Due != "" && l.Due <= c.value && !l.Closed()
+	case '>':
+		return l.Due != "" && l.Due >= c.value && !l.Closed()
 	case 's':
 		switch c.value {
 		case "":
@@ -249,6 +258,34 @@ func (m *Model) refilter() {
 		return any
 	}
 	walk(m.at.root, 0)
+	if m.at.flat && byDeadline(terms) {
+		// Soonest first, ties and rows with no deadline in outline order.
+		slices.SortStableFunc(m.at.hits, func(a, b visRow) int {
+			da, db := m.tree.Row(a.id).Fields[sigil.FieldDue], m.tree.Row(b.id).Fields[sigil.FieldDue]
+			switch {
+			case da == db:
+				return 0
+			case da == "":
+				return 1
+			case db == "":
+				return -1
+			}
+			return strings.Compare(da, db)
+		})
+	}
+}
+
+// byDeadline reports whether a query asks about deadlines, so a flat list of
+// its matches reads soonest first.
+func byDeadline(terms []term) bool {
+	for _, t := range terms {
+		for _, c := range t.any {
+			if !t.neg && (c.kind == '@' || c.kind == '<' || c.kind == '>') {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // change is what a stamp asks of each row it lands on.

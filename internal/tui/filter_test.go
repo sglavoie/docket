@@ -435,3 +435,117 @@ func TestNextIsOfferedOnTheFilterLineOnly(t *testing.T) {
 		t.Fatalf("a row offers $next")
 	}
 }
+
+// deadlines is two projects whose rows are due on either side of Friday.
+// The clock reads Sunday 2026-11-15, so fri is 2026-11-20.
+func deadlines(t *testing.T) *harness {
+	h := start(t)
+	h.m.Update(tea.WindowSizeMsg{Width: 100, Height: 24})
+	h.press("o", `"Alpha"`, "enter", "tab",
+		`"Late @12-31"`, "enter",
+		`"Soon @fri"`, "enter",
+		`"None"`, "enter",
+		`"Now @today"`, "enter",
+		`"Shut @tom $done"`, "enter",
+		`"Also fri @11-20"`, "enter", "shift+tab",
+		`"Beta"`, "enter", "tab",
+		`"Past @2026-11-01"`, "enter",
+		`"Week @+1w"`, "esc")
+	return h
+}
+
+func (h *harness) shown() string {
+	var got []string
+	for _, v := range h.m.vis {
+		got = append(got, h.m.tree.Row(v.id).Text())
+	}
+	return strings.Join(got, ", ")
+}
+
+func TestDeadlineRangesHoldForOpenRowsSoonestFirst(t *testing.T) {
+	h := deadlines(t)
+	h.press("/", "tab", "esc") // flat from here
+	byFri := "Past, Now, Soon, Also fri"
+	cases := map[string]string{
+		"@<fri":           byFri,
+		"@<11-20":         byFri,
+		"@<2026-11-20":    byFri,
+		"@<+5d":           byFri,
+		"@<+0w":           "Past, Now", // the boundary day is included
+		"@<today":         "Past, Now",
+		"@<tom":           "Past, Now", // a closed row is left out
+		"@>fri":           "Soon, Also fri, Week, Late",
+		"@>+1w":           "Week, Late",
+		"@>TOM":           "Soon, Also fri, Week, Late",
+		"@<fri|overdue":   byFri,
+		"-@<fri":          "Alpha, Late, None, Shut, Beta, Week", // no deadline included, outline order
+		"@<fri -@overdue": "Now, Soon, Also fri",
+		"@fri":            "Soon, Also fri",
+		"@ -$done":        "Past, Now, Soon, Also fri, Week, Late",
+		"$open -@<fri":    "Late, None, Week", // negated: outline order
+		"@<firday":        "",
+		"@<":              "",
+	}
+	for query, want := range cases {
+		h.press("/", `"`+query+`"`)
+		if got := h.shown(); got != want {
+			t.Errorf("filter %q = %q, want %q", query, got, want)
+		}
+		h.press("esc")
+	}
+
+	// In context the order is the outline's, ancestors kept.
+	h.press("/", `"@<fri"`, "tab")
+	if got := h.shown(); got != "Alpha, Soon, Now, Also fri, Beta, Past" {
+		t.Errorf("in context = %q", got)
+	}
+	h.press("esc")
+
+	// Nothing in the outline moves.
+	h.want(
+		"▌ ▾ Alpha",
+		"    ○ Late @Dec 31",
+		"    ○ Soon @fri",
+		"    ○ None",
+		"    ○ Now @today",
+		"    ✓ Shut @tomorrow",
+		"    ○ Also fri @fri",
+		"  ▾ Beta",
+		"    ○ Past @Nov 1",
+		"    ○ Week @Nov 22",
+	)
+}
+
+func TestAListFilterKeepsTheListOrder(t *testing.T) {
+	h := deadlines(t)
+	h.press("k", "t", "g", "g", "j", "j", "t", "p", `"Today"`, "enter")
+	if got := h.shown(); got != "Past, Soon" {
+		t.Fatalf("today = %q", got)
+	}
+	h.press("/", `"@<fri"`)
+	if got := h.shown(); got != "Past, Soon" {
+		t.Errorf("filtered today = %q", got)
+	}
+}
+
+func TestASavedDeadlineFilterReopensSorted(t *testing.T) {
+	h := deadlines(t)
+	h.press("/", `"@>fri"`, "tab", "enter", ":", `"save ahead"`, "enter", "esc")
+	again := reopen(t, h)
+	again.press("p", `"/ahead"`, "enter")
+	if got := again.shown(); got != "Soon, Also fri, Week, Late" {
+		t.Errorf("reopened = %q", got)
+	}
+}
+
+func TestDeadlineRangesAreColouredOnTheFilterLine(t *testing.T) {
+	h := deadlines(t)
+	h.press("/", `"@<+30d @<firday"`)
+	raw := h.m.View().Content
+	if !strings.Contains(raw, sgrAccent+"@<+30d"+sgrReset) {
+		t.Errorf("@<+30d is not shown as a sigil:\n%q", raw)
+	}
+	if !strings.Contains(raw, sgrWarn+"@<firday"+sgrReset) {
+		t.Errorf("@<firday is not flagged:\n%q", raw)
+	}
+}
