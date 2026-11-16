@@ -166,6 +166,7 @@ type Model struct {
 	rowNames  []entry  // every other live row with text, for the pickers
 	parked    int
 	next      map[string]bool // each active project's next action, derived in scan
+	first     map[string]bool // each parent's first workable child, derived in scan
 	inToday   map[string]bool // the rows in Today, derived in scan
 
 	totals    map[string]rowTotals // own and descendant counts, derived in scan
@@ -2103,7 +2104,7 @@ func (m *Model) finder() func(id string) bool {
 	if len(terms) == 0 {
 		return nil
 	}
-	m.scan() // $next reads the scan's answer
+	m.scan() // computed filter words read the scan's answers
 	hasAbove := slices.ContainsFunc(terms, func(t term) bool { return t.above })
 	above := make([]int, len(terms))
 	under := m.underSets(terms, today)

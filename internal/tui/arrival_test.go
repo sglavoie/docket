@@ -12,6 +12,116 @@ import (
 	"github.com/sglavoie/docket/internal/outline"
 )
 
+func TestFilterPhrase(t *testing.T) {
+	h := start(t).wide()
+	h.pasteText("Project\n\tPer the spec: $note\n\t\tBuild it $open\n\tWork PER THE SPEC today $open\n\tThe spec per review $open\n\tCut 5\" board $open\n\tRead a|b ( c ) $open")
+	filter := func(query string) {
+		h.press("/")
+		// Send quotes as keys: the harness's quoted tokens trim edge quotes.
+		for _, r := range query {
+			h.press(string(r))
+		}
+	}
+	h.press("/", "tab", "esc")
+	for query, want := range map[string]string{
+		`"per the spec"`:                        "Per the spec:, Work PER THE SPEC today",
+		`"PER THE SPEC"`:                        "Per the spec:, Work PER THE SPEC today",
+		`$ -"per the spec"`:                     `Build it, The spec per review, Cut 5" board, Read a|b ( c )`,
+		`"per the spec`:                         "Per the spec:, Work PER THE SPEC today",
+		`^"per the spec"`:                       "Build it",
+		`<"per the spec"`:                       "Build it",
+		`_"build it"`:                           "Project, Per the spec:",
+		`>"build it"`:                           "Per the spec:",
+		`"per the spec" $open`:                  "Work PER THE SPEC today",
+		`"per the spec"|"build it"`:             "Per the spec:, Build it, Work PER THE SPEC today",
+		`"a|b ( c )"`:                           "Read a|b ( c )",
+		`5" board`:                              `Cut 5" board`,
+		`"per  the spec"`:                       "",
+		`( "per the spec" | "build it" ) $open`: "Build it, Work PER THE SPEC today",
+	} {
+		filter(query)
+		if got := h.shown(); got != want {
+			t.Errorf("filter %q = %q, want %q", query, got, want)
+		}
+		h.press("esc")
+	}
+	// Keep, recall, and find with the same phrase, including after restart.
+	filter(`"per the spec"`)
+	h.press("enter", ":", `"save phrase"`, "enter", "esc", "g", "g", "n")
+	if got := h.m.tree.Row(h.m.current()).Text(); got != "Per the spec:" {
+		t.Fatalf("n found %q", got)
+	}
+	h.press("n")
+	if got := h.m.tree.Row(h.m.current()).Text(); got != "Work PER THE SPEC today" {
+		t.Fatalf("second n found %q", got)
+	}
+	h.press("N")
+	if got := h.m.tree.Row(h.m.current()).Text(); got != "Per the spec:" {
+		t.Fatalf("N found %q", got)
+	}
+	again := reopen(t, h)
+	again.press("f", `"/phrase"`, "enter")
+	if got := again.shown(); got != "Per the spec:, Work PER THE SPEC today" {
+		t.Fatalf("saved phrase = %q", got)
+	}
+	if got := strings.Join(List(h.m.tree, h.st, `"per the spec" $open`), "|"); got != "Work PER THE SPEC today $open\tProject" {
+		t.Fatalf("List phrase = %q", got)
+	}
+}
+
+func TestFilterFirst(t *testing.T) {
+	h := start(t).wide()
+	h.pasteText("Project\n\tLater @@9999-12-31 $open\n\tParked $parked\n\t\tHidden $open\n\tWaiting $waiting\n\tFirst #home $doing\n\t\tChild $open\n\t\tSecond child $open\n\tSecond #home $open\n\tHeading: $note\n\t\tFuture @@9999-12-31 $open\n\t\tFinished $done\n\t\tCanceled $canceled\n\t\tHeading first $open\n\t\tHeading second $doing\nOther\n\tOther first $open\nClosed $done\n\tClosed child $open\nCanceled project $canceled\n\tCanceled child $open\nParked project $parked\n\tParked child $open")
+	h.press("a", `"Inbox first"`, "enter", `"Inbox second"`, "enter", "esc")
+	h.filters(map[string]string{
+		"$first":         "First, Child, Heading first, Other first",
+		"$FIRST":         "First, Child, Heading first, Other first",
+		"$first -<$":     "First, Heading first, Other first",
+		"$first #home":   "First",
+		"-$first #home":  "Second",
+		"$first|waiting": "Waiting, First, Child, Heading first, Other first",
+		"$next":          "First, Other first",
+	})
+	h.press("/", `"$fir"`)
+	if !strings.Contains(h.bottom(), "$first") {
+		t.Fatalf("completion = %q", h.bottom())
+	}
+	h.press("right")
+	if !strings.Contains(h.m.View().Content, sgrAccent+"$first"+sgrReset) {
+		t.Fatal("$first is not coloured as a filter word")
+	}
+	h.press("enter", ":", `"save first"`, "enter", "esc", "g", "g", "n")
+	if got := h.m.tree.Row(h.m.current()).Text(); got != "First" {
+		t.Fatalf("n found %q", got)
+	}
+	h.press("n", "N")
+	if got := h.m.tree.Row(h.m.current()).Text(); got != "First" {
+		t.Fatalf("N found %q", got)
+	}
+	again := reopen(t, h)
+	again.press("f", `"/first"`, "enter")
+	if got := again.shown(); got != "First, Child, Heading first, Other first" {
+		t.Fatalf("saved first = %q", got)
+	}
+	want := "Inbox first $open\tInbox|First #home $doing\tProject|Heading first $open\tProject › Heading|Other first $open\tOther"
+	if got := strings.Join(List(h.m.tree, h.st, "$first -<$"), "|"); got != want {
+		t.Fatalf("List first = %q, want %q", got, want)
+	}
+	// A held filter keeps its rows; rereading it advances each parent's pick.
+	again.press("g", "g", "x")
+	if got := again.shown(); got != "First, Child, Heading first, Other first" {
+		t.Fatalf("held first = %q", got)
+	}
+	again.press("/", "backspace", `"t"`, "enter")
+	if got := again.shown(); got != "Child, Second, Heading first, Other first" {
+		t.Fatalf("reread first = %q", got)
+	}
+	// Filter words remain text on the row and stamp surfaces.
+	if _, bad := parseStamp("$first", h.m.today()); bad != "$first" {
+		t.Fatal("$first became a stamp state")
+	}
+}
+
 // observeCommits makes the absence of a log write observable without
 // reaching into SQLite; every stored operation passes through Commit.
 type observeCommits struct {

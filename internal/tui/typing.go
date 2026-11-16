@@ -162,7 +162,7 @@ func (m *Model) suggest(e *editor, surface string) string {
 	case '$':
 		offers = sigil.StateNames
 		if surface == askFilter {
-			offers = append(slices.Clone(offers), "next", "today")
+			offers = append(slices.Clone(offers), "next", "today", "first")
 		}
 	case '@':
 		offers = dateWords

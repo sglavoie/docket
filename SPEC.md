@@ -360,9 +360,13 @@ a link nor an address, the status line says `this row has no link: L makes one`.
 Three more acts use the same line:
 
 - `/` **Filter ›** narrows the pane as the query is typed. Words match a
-  row's text; `!`, `#tag`, `$state` and `@date` match its fields; a leading
-  `-` excludes. `#name` holds whatever value the tag carries and
-  `#name=value` only that one; `#name<value` holds for a value at most that
+  row's text, ignoring case. Double quotes match a phrase, blanks included:
+  `"per the spec"`. A quote not closed yet reads to the end of the line;
+  a quote inside a word (`5"`) stays part of that word. Phrases take the
+  same prefixes as words: `-"per the spec"` excludes, and `^`, `_`, `<`,
+  `>` test the phrase on related rows. `!`, `#tag`, `$state` and `@date`
+  match fields; a leading `-` excludes. `#name` holds whatever value the tag
+  carries and `#name=value` only that one; `#name<value` holds for a value at most that
   and `#name>value` for one at least that, compared as numbers when both
   are and else as text ignoring case, so `#est<3` and `#who>m` both read.
   `#` alone is any tag, `$` alone is any state (a task),
@@ -421,6 +425,13 @@ Three more acts use the same line:
   It combines like any state word (`$next #home`, `-$next`,
   `$next|waiting`), so `/$next`, `Tab` and
   `:save next` keep the daily list of what could be done.
+  `$first` holds for the first workable sibling under each parent: open
+  or doing, no start day still ahead, not parked or under a parked row,
+  and not in a closed project. It includes the Inbox and combines like
+  any state word (`$first #home`, `$first|waiting`). `$first -<$` gives
+  the next action under each heading and project, leaving out children
+  of tasks. Both phrases and `$first` work in saved filters and with `n`
+  and `N`, just as they do on the filter line.
   `$today` holds for a row in Today, picked or starting on the day, and is
   read like `$next`: a filter word, not a state.
   `&` holds for a row that links to another (see Links): `&` alone for any
@@ -934,7 +945,7 @@ grammar cannot read also stays prose (`@alice`, `#123`, `$5`). `\#tag` keeps a r
 | `@date` | `due` | `today`, `tomorrow`, a weekday (the next one, never today), `+3d`, `+2w`, `MM-DD` (the next such day), `YYYY-MM-DD` |
 | `@@date` | `start` | The same forms as `@date` |
 | `*interval` | `repeat` | A count and `d`, `w`, `m` or `y` (`*3d`, `*2w`), or `daily`, `weekly`, `monthly`, `yearly` |
-| `$state` | `state` | `open`, `doing`, `waiting`, `done`, `canceled`, `parked`, `note`, or an unambiguous prefix (`$w`, `$c`, `$p`; `$d` is not one). `$next` and `$today` are read by the filter only: they are not states |
+| `$state` | `state` | `open`, `doing`, `waiting`, `done`, `canceled`, `parked`, `note`, or an unambiguous prefix (`$w`, `$c`, `$p`; `$d` is not one). `$next`, `$first` and `$today` are read by the filter only: they are not states |
 | `%name` | | On the capture line only: the project or heading to file the row in |
 
 `#est` values are numbers with `m`, `h` or `d` (a day is 8 hours); a bare
@@ -1027,6 +1038,8 @@ deadline first when the filter asks about deadlines. `&.` has no cursor to
 read and matches nothing. With no filter it prints the whole outline as
 `:export` writes it, tab-indented, which `:import` and paste read back. It
 changes nothing, prints nothing when nothing matches, and does not sync.
+For example, `docket ls '"per the spec"'` finds a phrase, and
+`docket ls '$first -<$'` prints the next action under each heading and project.
 
 These are the only commands; everything else is done in the outline.
 
@@ -1129,7 +1142,8 @@ These are the only commands; everything else is done in the outline.
    at any depth, preserving their dates and undoing together. `gl` opens
    the first web address on a row with no row link. The header counts tasks
    left to do and sums their `#est` values; headings show done/total across
-   all descendants. *In progress.*
+   all descendants. Filters read quoted phrases and `$first`, the first
+   workable sibling under each parent. *In progress.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add` and `docket ls`, macros (`.`,

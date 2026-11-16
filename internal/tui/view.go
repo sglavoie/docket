@@ -93,6 +93,9 @@ const helpText = `Docket
                  @++1w @--3d move the deadline from the day the row has, not
                  from today (d w m y); @@++1w the start day; no day, no change
   /              filter by text and sigils; -word excludes; Tab flat or in context
+                 "per the spec" matches a phrase, ignoring case; -"…" excludes
+                 ^ _ < > also take phrases; an unclosed quote reads to the end
+                 a quote inside a word (5") stays text
                  # any tag, $ any task; -# untagged, -$ notes
                  a|b is either: $open|doing, #home|!, milk|#food
                  each side uses its own sigil or the first side's; unreadable is text
@@ -101,6 +104,9 @@ const helpText = `Docket
                  ~7d ~2w ~today: state changed (or row made) since then,
                  so $done ~7d is what was finished this week
                  $next: each project's first open or doing row not starting later
+                 $first: first open or doing sibling per parent, not starting later;
+                 skips parked branches and closed projects; includes Inbox
+                 $first -<$: next action under each heading and project
                  $today: a row in Today
                  @<fri @>+1w: open rows due by or from a day; flat lists soonest first
                  ^term tests ancestors, not this row, even above the pane root

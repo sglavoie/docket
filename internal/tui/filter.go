@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/sglavoie/docket/internal/outline"
 	"github.com/sglavoie/docket/internal/sigil"
@@ -64,7 +65,7 @@ func (g *group) holds(leaf func(int) bool) bool {
 
 // cond is one reading of a term.
 type cond struct {
-	kind  byte // t text, ! flag, # tag, l g tag value range, $ state, S any state, n next action, T in Today, @ deadline, < > deadline range, s start, * repeat, ~ changed, & link
+	kind  byte // t text, ! flag, # tag, l g tag value range, $ state, S any state, n next action, f first sibling, T in Today, @ deadline, < > deadline range, s start, * repeat, ~ changed, & link
 	value string
 	arg   string          // the value a tag range compares with
 	rows  map[string]bool // the rows a link term asks for, read by terms
@@ -107,13 +108,50 @@ func (m *Model) query(q string, here string, today time.Time) query {
 // parseQuery reads the terms of a filter, in the order written.
 func parseQuery(q string, today time.Time) []term { return parseFilter(q, today).terms }
 
+// filterParts splits on blanks, or on alternative bars, outside phrases.
+// Quotes open only at a term's start (after its optional prefixes), so an
+// inch mark in 5" stays literal. An unfinished phrase runs to the end.
+func filterParts(s string, bars bool) []string {
+	var parts []string
+	start, side := 0, 0
+	quoted := false
+	for i, r := range s {
+		if r == '"' {
+			if quoted {
+				quoted = false
+			} else {
+				prefix := strings.TrimPrefix(s[side:i], "-")
+				if prefix == "" || prefix == "^" || prefix == "_" || prefix == "<" || prefix == ">" {
+					quoted = true
+				}
+			}
+		}
+		if quoted {
+			continue
+		}
+		if (bars && r == '|') || (!bars && unicode.IsSpace(r)) {
+			if bars || i > start {
+				parts = append(parts, s[start:i])
+			}
+			start = i + len(string(r))
+			side = start
+		} else if r == '|' {
+			side = i + 1
+		}
+	}
+	if bars || start < len(s) {
+		parts = append(parts, s[start:])
+	}
+	return parts
+}
+
 // parseFilter reads a filter in the grammar rows are written in. Terms side
 // by side must all hold. A bar standing alone splits what is around it into
 // alternatives, and brackets standing alone set a part off as one term, with
 // -( for its opposite. A part left empty or open while typing is passed over.
 func parseFilter(q string, today time.Time) query {
 	var out query
-	words := strings.Fields(q)
+	words := filterParts(q, false)
 	i := 0
 	var read func(depth int) [][]group
 	read = func(depth int) [][]group {
@@ -180,7 +218,7 @@ func parseTerm(w string, today time.Time) (term, bool) {
 	// A side without its own sigil inherits the first side's:
 	// $open|doing reads as $open or $doing, but #home|! keeps both sigils.
 	sig := w[:len(w)-len(strings.TrimLeft(w, sigilStarts))]
-	if parts := strings.Split(w, "|"); len(parts) > 1 && !slices.Contains(parts, "") {
+	if parts := filterParts(w, true); len(parts) > 1 && !slices.Contains(parts, "") {
 		for _, part := range parts {
 			if !strings.ContainsRune(sigilStarts, rune(part[0])) {
 				part = sig + part
@@ -203,6 +241,8 @@ func parseTerm(w string, today time.Time) (term, bool) {
 func parseCond(w string, today time.Time) cond {
 	var c cond
 	switch w[0] {
+	case '"':
+		c.kind, c.value = 't', strings.ToLower(strings.TrimSuffix(w[1:], "\""))
 	case '!':
 		if w == "!" {
 			c.kind = '!'
@@ -220,11 +260,13 @@ func parseCond(w string, today time.Time) cond {
 			}
 		}
 	case '$':
-		// $next is read before the states: it is a filter word, not a state.
+		// These computed filter words are read before the states.
 		if w == "$" {
 			c.kind = 'S'
 		} else if strings.ToLower(w) == "$next" {
 			c.kind = 'n'
+		} else if strings.ToLower(w) == "$first" {
+			c.kind = 'f'
 		} else if strings.ToLower(w) == "$today" {
 			c.kind = 'T'
 		} else if state, ok := sigil.ParseState(w[1:]); ok {
@@ -374,6 +416,8 @@ func (m *Model) holds(r *outline.Row, l sigil.Line, c cond, today time.Time) boo
 		return l.State != ""
 	case 'n':
 		return m.next[r.ID]
+	case 'f':
+		return m.first[r.ID]
 	case 'T':
 		return m.inToday[r.ID]
 	case '@':
@@ -476,7 +520,7 @@ func (m *Model) refilter() {
 	if len(terms) == 0 {
 		return
 	}
-	m.scan() // $next reads the scan's answer
+	m.scan() // computed filter words read the scan's answers
 	// Each slot records the first matching ancestor's walk level. Restore
 	// slots at that level on return, so siblings never inherit one another.
 	above := make([]int, len(terms))

@@ -252,6 +252,8 @@ func (m *Model) scan() {
 	m.rowNames = m.rowNames[:0]
 	m.outlineOrder = map[string]int{}
 	m.next = map[string]bool{}
+	m.first = map[string]bool{}
+	firstFound := map[string]bool{}
 	m.totals = map[string]rowTotals{}
 	found := false // the project being visited has its next action
 
@@ -298,8 +300,13 @@ func (m *Model) scan() {
 			// A project's next action is its first row, in outline order,
 			// that can be worked on now: so the order of its rows is its
 			// priority.
-			if stat != nil && !found && (l.State == sigil.Open || l.State == sigil.Doing) && !l.Later(today) {
-				m.next[id], found = true, true
+			if (l.State == sigil.Open || l.State == sigil.Doing) && !l.Later(today) {
+				if stat != nil && !found {
+					m.next[id], found = true, true
+				}
+				if !firstFound[r.Parent] {
+					m.first[id], firstFound[r.Parent] = true, true
+				}
 			}
 			if stat != nil && (l.State == sigil.Open || l.State == sigil.Doing || l.State == sigil.Waiting) {
 				stat.idle = false
