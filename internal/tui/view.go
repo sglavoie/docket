@@ -100,7 +100,9 @@ While typing
   Backspace      at the start, join into the row above (no children)
                  blank fresh rows disappear; lists and filters never join
                  or split; each split or join is one undo step
-  Up Down        keep the row and type in the one above, below
+  Up Down        move by wrapped line; at its ends, type in the next row
+  Home Ctrl+A    start of the whole typed row
+  End Ctrl+E     end of the whole typed row
   Ctrl+U         cut before the caret
   Esc            keep the row
   Tab Shift+Tab  indent, outdent
@@ -472,12 +474,23 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 	flat := m.at.list != "" || (m.at.query != "" && m.at.flat)
 	prefix := func(i int) int { return 2 + 2*m.vis[i].depth + 2 }
 
-	// rowLines is a row as drawn: wrapped to the pane, or the one line
-	// being typed.
+	var editing editLayout
+	if m.edit != nil {
+		editing = m.edit.wrapped(max(w-prefix(m.cursor), 1), m.styler(surfaceRow))
+		last := len(editing.lines) - 1
+		editing.lines[last] += ghost(editing.lines[last], m.suggest(m.edit, surfaceRow), max(w-prefix(m.cursor), 1))
+		p := editing.pos[m.edit.caret]
+		m.edit.top = max(0, min(m.edit.top, len(editing.lines)-listH))
+		m.edit.top = max(0, min(m.edit.top, p.y))
+		if p.y >= m.edit.top+listH {
+			m.edit.top = p.y - listH + 1
+		}
+	}
+	// Reuse the editing layout for height accounting and drawing.
 	rowLines := func(i int) []string {
 		v := m.vis[i]
 		if m.edit != nil && m.edit.row == v.id {
-			return []string{""}
+			return editing.lines
 		}
 		return wrap(m.rowWords(m.tree.Row(v.id), i == m.cursor, flat), max(w-prefix(i), 1))
 	}
@@ -528,18 +541,17 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 		}
 		indent := strings.Repeat("  ", v.depth)
 
-		if m.edit != nil && m.edit.row == v.id {
-			avail := max(w-prefix(i), 1)
-			text, col := m.edit.window(avail, m.styler(surfaceRow))
-			text += ghost(text, m.suggest(m.edit, surfaceRow), avail)
-			caret = tea.NewCursor(prefix(i)+col, len(lines))
-			caret.Shape = tea.CursorBar
-			lines = append(lines, gutter+mark+indent+glyph+" "+text)
-			continue
-		}
+		isEdit := m.edit != nil && m.edit.row == v.id
 		for n, text := range rowLines(i) {
+			if isEdit && n < m.edit.top {
+				continue
+			}
 			if len(lines) == h {
 				break
+			}
+			if isEdit && n == editing.pos[m.edit.caret].y {
+				caret = tea.NewCursor(prefix(i)+editing.pos[m.edit.caret].x, len(lines))
+				caret.Shape = tea.CursorBar
 			}
 			if n == 0 {
 				lines = append(lines, gutter+mark+indent+glyph+" "+text)

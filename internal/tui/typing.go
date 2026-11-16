@@ -237,3 +237,124 @@ func ghost(text, rest string, avail int) string {
 	}
 	return sgrDim + ansi.Truncate(rest, room, "") + sgrReset
 }
+
+type textPoint struct{ x, y int }
+
+// A position for every rune boundary keeps wrapping, arrows and the terminal
+// caret in agreement. Spaces are cells too, including at the end of a line.
+type editLayout struct {
+	lines []string
+	pos   []textPoint
+}
+
+func (e *editor) wrapped(width int, style func(string) []word) editLayout {
+	width = max(width, 1)
+	l := editLayout{pos: make([]textPoint, len(e.buf)+1)}
+	widths := make([]int, len(e.buf))
+	for i, r := range e.buf {
+		widths[i] = ansi.StringWidth(string(r))
+	}
+	var line strings.Builder
+	currentStyle := ""
+	setStyle := func(style string) {
+		if style == currentStyle {
+			return
+		}
+		if currentStyle != "" {
+			line.WriteString(sgrReset)
+		}
+		line.WriteString(style)
+		currentStyle = style
+	}
+	x, y := 0, 0
+	next := func() {
+		setStyle("")
+		l.lines = append(l.lines, line.String())
+		line = strings.Builder{}
+		x, y = 0, y+1
+	}
+	for i := 0; i < len(e.buf); {
+		end, wordWidth := i+1, widths[i]
+		if e.buf[i] != ' ' {
+			for end < len(e.buf) && e.buf[end] != ' ' {
+				wordWidth += widths[end]
+				end++
+			}
+			if wordWidth <= width && x > 0 && x+wordWidth > width {
+				next()
+			}
+		}
+		spans := []word{{text: string(e.buf[i:end])}}
+		if style != nil && e.buf[i] != ' ' {
+			spans = style(spans[0].text)
+		}
+		for _, span := range spans {
+			for _, r := range span.text {
+				if x > 0 && x+widths[i] > width {
+					next()
+				}
+				l.pos[i] = textPoint{x, y}
+				setStyle(span.style)
+				line.WriteRune(r)
+				x += widths[i]
+				i++
+			}
+		}
+	}
+	// A terminal caret needs a cell even after an exactly full final line.
+	if x >= width {
+		next()
+	}
+	l.pos[len(e.buf)] = textPoint{x, y}
+	setStyle("")
+	l.lines = append(l.lines, line.String())
+	return l
+}
+
+func (l editLayout) at(line, column int) int {
+	best := 0
+	for i, p := range l.pos {
+		if p.y == line {
+			if p.x > column {
+				return best
+			}
+			best = i
+		} else if p.y > line {
+			break
+		}
+	}
+	return best
+}
+
+func (m *Model) editWidth() int {
+	w, _ := m.size()
+	if w >= sidebarFrom {
+		w -= sidebarCols + 3
+	}
+	return max(w-4-2*m.vis[m.cursor].depth, 1)
+}
+
+func (m *Model) editVertical(by int) {
+	e := m.edit
+	l := e.wrapped(m.editWidth(), nil)
+	p := l.pos[e.caret]
+	if !e.vertical {
+		e.column = p.x
+	}
+	e.vertical = true
+	line := p.y + by
+	if line >= 0 && line < len(l.lines) {
+		e.caret = l.at(line, e.column)
+		return
+	}
+	m.editNext(by)
+	if m.edit != e && m.edit != nil {
+		l = m.edit.wrapped(m.editWidth(), nil)
+		line = 0
+		if by < 0 {
+			line = len(l.lines) - 1
+		}
+		m.edit.caret = l.at(line, e.column)
+		m.edit.column, m.edit.vertical = e.column, true
+	}
+}

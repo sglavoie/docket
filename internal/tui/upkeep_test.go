@@ -195,6 +195,25 @@ func TestAKeystrokePaintsWithinAFrame(t *testing.T) {
 	if d := best("a"); d > budget {
 		t.Errorf("typing a letter took %v", d)
 	}
+	// Preloading is outside the sample; every timed key still wraps and draws
+	// the entire long buffer and scrolls its caret within the editing row.
+	long := strings.Repeat("ordinary words and spaces ", 180)
+	m.edit.buf = []rune(long)
+	m.edit.caret = len(m.edit.buf)
+	_, height := m.size()
+	if len(m.edit.buf) < 4096 || len(m.edit.wrapped(m.editWidth(), nil).lines) <= height-2 {
+		t.Fatal("long typing fixture must exceed both 4096 characters and the pane height")
+	}
+	if d := best("z"); d > budget {
+		t.Errorf("typing in a long wrapped buffer took %v", d)
+	}
+	if string(m.edit.buf) != long+strings.Repeat("z", 20) {
+		t.Fatal("timed letters were not inserted into the long buffer")
+	}
+	v := m.View()
+	if v.Cursor == nil || v.Cursor.Y < 1 || v.Cursor.Y >= height-1 || v.Cursor.X < sideCols+4 || v.Cursor.X >= m.width {
+		t.Fatalf("long typing caret is outside the visible pane: %+v", v.Cursor)
+	}
 	frame(m, "esc")
 	frame(m, "m")
 	if len(m.headings) == 0 {

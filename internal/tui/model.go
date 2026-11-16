@@ -66,6 +66,9 @@ type editor struct {
 	row        string
 	buf        []rune
 	caret, off int
+	top        int // first drawn line of a tall editing row
+	column     int // preferred column during consecutive vertical moves
+	vertical   bool
 	fresh      bool   // the row was created by this edit
 	merge      bool   // continue the undo step recorded by a split
 	notes      bool   // the default the line was rendered against
@@ -2017,6 +2020,9 @@ func (m *Model) complete(e *editor, surface string, k string) bool {
 
 func (m *Model) editKey(msg tea.KeyPressMsg) {
 	e := m.edit
+	if msg.String() != "up" && msg.String() != "down" {
+		e.vertical = false
+	}
 	if m.complete(e, surfaceRow, msg.String()) {
 		return
 	}
@@ -2042,9 +2048,9 @@ func (m *Model) editKey(msg tea.KeyPressMsg) {
 	case "esc":
 		m.finishEdit()
 	case "up":
-		m.editNext(-1)
+		m.editVertical(-1)
 	case "down":
-		m.editNext(1)
+		m.editVertical(1)
 	case "tab":
 		m.shift(e.row, true)
 	case "shift+tab":

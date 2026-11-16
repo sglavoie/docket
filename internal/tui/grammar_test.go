@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/docket/internal/outline"
 	"github.com/sglavoie/docket/internal/sigil"
@@ -902,6 +903,181 @@ func TestIAndAOpenTypingAndCcRetypes(t *testing.T) {
 					t.Fatalf("retype in %s lost the row", place)
 				}
 			})
+		}
+	})
+}
+
+func TestTheTypedRowWraps(t *testing.T) {
+	const prose = "alpha beta gamma delta epsilon"
+	caret := func(t *testing.T, h *harness, x, y int) {
+		t.Helper()
+		v := h.m.View()
+		if v.Cursor == nil || v.Cursor.X != x || v.Cursor.Y != y {
+			t.Fatalf("caret = %+v, want (%d,%d) in\n%s", v.Cursor, x, y, ansi.Strip(v.Content))
+		}
+	}
+	t.Run("prose and up across rows", func(t *testing.T) {
+		h := start(t)
+		h.m.Update(tea.WindowSizeMsg{Width: 24, Height: 8})
+		h.press("o", `"above row with room"`, "enter", `"`+prose+`"`)
+		id := h.m.edit.row
+		h.want("    above row with room", "▌   alpha beta gamma", "▌   delta epsilon")
+		caret(t, h, 17, 3)
+		before := h.rows()
+		h.press("esc")
+		if h.rows() != before {
+			t.Fatalf("kept prose wraps differently: %q / %q", before, h.rows())
+		}
+		h.press("A", "up")
+		caret(t, h, 17, 2)
+		h.press("X")
+		if h.m.edit.row != id || string(h.m.edit.buf) != "alpha beta gaXmma delta epsilon" {
+			t.Fatalf("Up inserted in wrong position: %+v", h.m.edit)
+		}
+		h.press("up", "Y")
+		if h.m.edit.row == id || string(h.m.edit.buf) != "above row withY room" {
+			t.Fatalf("Up did not continue in previous row: %+v", h.m.edit)
+		}
+	})
+	t.Run("down within and across rows", func(t *testing.T) {
+		h := start(t)
+		h.m.Update(tea.WindowSizeMsg{Width: 24, Height: 8})
+		h.press("o", `"`+prose+`"`, "enter", `"below row with room"`, "esc")
+		next := h.m.current()
+		h.press("k", "I")
+		id := h.m.edit.row
+		for range 8 {
+			h.press("right")
+		}
+		h.press("down")
+		caret(t, h, 12, 2)
+		h.press("Z")
+		if h.m.edit.row != id || string(h.m.edit.buf) != "alpha beta gamma delta epZsilon" {
+			t.Fatalf("Down inserted in wrong position: %+v", h.m.edit)
+		}
+		h.press("down", "Q")
+		if h.m.edit.row != next || string(h.m.edit.buf) != "below rowQ with room" {
+			t.Fatalf("Down did not continue in next row: %+v", h.m.edit)
+		}
+		if h.m.tree.Row(id).Fields[sigil.FieldText] != "alpha beta gamma delta epZsilon" {
+			t.Fatal("leaving the row did not keep the edit")
+		}
+	})
+	t.Run("child indentation and row marks", func(t *testing.T) {
+		h := start(t)
+		h.m.Update(tea.WindowSizeMsg{Width: 24, Height: 8})
+		h.press("o", `"Parent"`, "enter", `"`+prose+`"`, "tab", "esc", "A")
+		h.m.picked[h.m.edit.row] = true
+		h.want("  ▾ Parent", "▌┃  ○ alpha beta gamma", "▌┃    delta epsilon")
+		caret(t, h, 19, 3)
+		before := h.rows()
+		h.press("esc")
+		if h.rows() != before {
+			t.Fatalf("child changed its wrapping after Esc: %q / %q", before, h.rows())
+		}
+	})
+	t.Run("scroll inside tall row and keep fitting row whole", func(t *testing.T) {
+		h := start(t)
+		h.m.Update(tea.WindowSizeMsg{Width: 16, Height: 5})
+		text := "FIRST " + strings.Repeat("middle ", 12) + "LAST tail"
+		h.press("o", `"before"`, "enter", `"`+text+`"`)
+		check := func(want string, offset int) {
+			t.Helper()
+			v := h.m.View()
+			if v.Cursor == nil || v.Cursor.X < 4 || v.Cursor.X >= 16 || v.Cursor.Y < 1 || v.Cursor.Y >= 4 {
+				t.Fatalf("caret outside content: %+v", v.Cursor)
+			}
+			line := []rune(strings.Split(ansi.Strip(v.Content), "\n")[v.Cursor.Y])
+			x := v.Cursor.X + offset
+			if x < 4 || x+len([]rune(want)) > len(line) || string(line[x:x+len([]rune(want))]) != want {
+				t.Fatalf("caret is not at %q (offset %d): %+v, %q", want, offset, v.Cursor, string(line))
+			}
+		}
+		h.press("ctrl+a")
+		check("FIRST", 0)
+		if h.m.edit.caret != 0 || h.m.edit.top != 0 {
+			t.Fatal("Ctrl+A did not return to the whole buffer start")
+		}
+		h.press("ctrl+e")
+		check("tail", -4)
+		if h.m.edit.caret != len([]rune(text)) || h.m.edit.top == 0 || strings.Contains(h.rows(), "FIRST") {
+			t.Fatal("Ctrl+E did not scroll to the whole buffer end")
+		}
+		for range 4 {
+			h.press("left")
+		}
+		check("tail", 0)
+		h.press("ctrl+a")
+		check("FIRST", 0)
+		// Home and End have the same whole-buffer meaning as readline keys.
+		h.m.Update(tea.KeyPressMsg{Code: tea.KeyEnd})
+		check("tail", -4)
+		h.m.Update(tea.KeyPressMsg{Code: tea.KeyHome})
+		check("FIRST", 0)
+
+		// Once the row fits, every one of its drawn lines stays visible.
+		h.press("ctrl+k", `"alpha beta gamma"`)
+		h.want("    before", "▌   alpha beta", "▌   gamma")
+		caret(t, h, 9, 3)
+		h.press("ctrl+a")
+		h.want("    before", "▌   alpha beta", "▌   gamma")
+		caret(t, h, 4, 2)
+	})
+	t.Run("every space is a cell", func(t *testing.T) {
+		for _, tc := range []struct {
+			text  string
+			lines []string
+			x, y  int
+		}{
+			{"ab  cd   ef  ", []string{"▌   ab  cd  ", "▌    ef  "}, 9, 2},
+			{"ab      ", []string{"▌   ab      ", "▌   "}, 4, 2},
+			{"ab       ", []string{"▌   ab      ", "▌    "}, 5, 2},
+		} {
+			t.Run(fmt.Sprintf("%q", tc.text), func(t *testing.T) {
+				h := start(t)
+				h.m.Update(tea.WindowSizeMsg{Width: 12, Height: 8})
+				h.press("o", `"`+tc.text+`"`)
+				assertLines := func(want []string) {
+					t.Helper()
+					lines, _ := h.m.paneLines(12, 7)
+					for i, expected := range want {
+						if got := ansi.Strip(lines[i+1]); got != expected {
+							t.Fatalf("line %d = %q, want %q", i, got, expected)
+						}
+					}
+				}
+				if string(h.m.edit.buf) != tc.text {
+					t.Fatalf("buffer = %q, want %q", string(h.m.edit.buf), tc.text)
+				}
+				assertLines(tc.lines)
+				caret(t, h, tc.x, tc.y)
+				h.press("Z")
+				if string(h.m.edit.buf) != tc.text+"Z" {
+					t.Fatal("trailing spaces lost before marker")
+				}
+				want := slices.Clone(tc.lines)
+				want[len(want)-1] += "Z"
+				assertLines(want)
+				caret(t, h, tc.x+1, tc.y)
+			})
+		}
+	})
+	t.Run("wide word sigil colours and completion", func(t *testing.T) {
+		h := start(t)
+		h.m.Update(tea.WindowSizeMsg{Width: 24, Height: 8})
+		h.press("o", `"abcdefghijklmnopqrstuvwxyz #tag @to"`)
+		h.want("▌   abcdefghijklmnopqrst", "▌   uvwxyz #tag @today")
+		v := h.m.View()
+		if !strings.Contains(v.Content, sgrAccent+"#tag"+sgrReset) || !strings.Contains(v.Content, sgrWarn+"@to"+sgrReset) || !strings.Contains(v.Content, sgrDim+"day"+sgrReset) {
+			t.Fatalf("missing sigil or completion styles: %q", v.Content)
+		}
+		h.press("right")
+		if string(h.m.edit.buf) != "abcdefghijklmnopqrstuvwxyz #tag @today" {
+			t.Fatal("right arrow did not accept completion")
+		}
+		h.press("left")
+		if strings.Contains(h.m.View().Content, sgrDim+"day") {
+			t.Fatal("completion shown away from the end")
 		}
 	})
 }

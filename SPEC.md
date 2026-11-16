@@ -226,8 +226,8 @@ The pane shows the rows under one row, or a list.
 - **A row wraps** under its own text at the pane's width, each word keeping
   its colour, so nothing is cut; a word wider than the pane breaks across
   lines. The cursor and selection marks run the row's height, and scrolling
-  keeps the cursor's row whole. The row being typed is the exception: it
-  stays on one line and scrolls sideways.
+  keeps the cursor's row whole when it fits. A row wraps as it is typed;
+  when it is taller than the pane, scrolling keeps the caret's line visible.
 - **Each place remembers its cursor** for the session, so coming back to a
   project lands on the row you left.
 - **Closed rows can be left out.** `:closed` hides done and canceled rows,
@@ -545,11 +545,14 @@ between their lines and the caret at the seam; a row with children or no
 row above is left alone. A blank fresh row still disappears instead.
 Each split or join is one undo step after typing ends. In lists and filters,
 `Enter` only keeps the row and `Backspace` at the start does nothing.
-`Up` and `Down` keep the row and go on typing in the row drawn above or
-below, the caret in the same column, so a run of rows is revised without
-leaving the text; each row is its own undo step, a fresh row left blank
-disappears on the way, and at either end the line stays as it is. They
-work in lists and filters too.
+`Up` and `Down` move one drawn line within the typed row, keeping the
+column. From its first line `Up` keeps the row and goes on typing in the row
+above; from its last line `Down` does the same in the row below, so a run of
+rows is revised without leaving the text. Each row is its own undo step;
+a fresh row left blank disappears on the way, and at either end the line
+stays as it is. They
+work in lists and filters too. `Home`, `End`, `Ctrl+A` and `Ctrl+E` still
+mean the start or end of the whole typed row, not the drawn line.
 `Esc` keeps the row; `Tab` and `Shift+Tab` indent and outdent. There is no
 cancel: `u` restores the line. `Alt+Left`, `Alt+Right` and `Alt+Backspace`
 work by word.
@@ -761,8 +764,9 @@ This is the only command; everything else is done in the outline.
    each delete is one undo step. `p` and `P` put the register after or before
    the cursor as new rows in one undo step; Go to moved from `p` to `f`.
    `A` and `I` open typing at the end and start; `cc` retypes text while
-   keeping fields, as one undo step.
-   *In progress.*
+   keeping fields, as one undo step. The typed row wraps, preserving spaces
+   and sigil colours; arrows move by drawn line and scrolling follows the caret.
+   *Built.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add`.

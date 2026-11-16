@@ -512,16 +512,16 @@ func TestEverythingSurvivesARestart(t *testing.T) {
 	)
 }
 
-func TestLongRowScrollsWhileTypingAndWrapsWhenRead(t *testing.T) {
+func TestLongRowWrapsWhileTypingAndWhenRead(t *testing.T) {
 	h := start(t)
 	long := strings.Repeat("word ", 12) + "end"
 	h.press("o", `"`+long+`"`)
 	v := h.m.View()
-	if v.Cursor == nil || v.Cursor.X != 39 {
-		t.Fatalf("caret = %+v, want column 39", v.Cursor)
+	if v.Cursor == nil || v.Cursor.X != 32 || v.Cursor.Y != 2 {
+		t.Fatalf("caret = %+v, want column 32 on line 2", v.Cursor)
 	}
 	if !strings.HasSuffix(h.rows(), "end") {
-		t.Fatalf("typing window does not follow the caret:\n%s", h.rows())
+		t.Fatalf("typed row does not follow the caret:\n%s", h.rows())
 	}
 	// Read back, nothing is cut: the row wraps under its own text, and the
 	// cursor mark runs its height.
