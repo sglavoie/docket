@@ -614,3 +614,192 @@ func TestSortPutsSiblingsInOrder(t *testing.T) {
 		}
 	})
 }
+
+func TestDotRepeatsTheLastStampOrMove(t *testing.T) {
+	fixture := func(t *testing.T) *harness {
+		h := start(t).wide()
+		h.pasteText("Alpha\n\tFirst\n\tSecond\n\tThird\nBeta\n\tStorage:")
+		h.press("p", `"alpha"`, "enter", "g", "g")
+		return h
+	}
+	t.Run("stamp row and selection each undo once", func(t *testing.T) {
+		h := fixture(t)
+		h.press("#", `"work @+3d"`, "enter", "j", ".")
+		h.want("  ○ First @wed #work", "▌ ○ Second @wed #work", "  ○ Third")
+		h.press("u")
+		h.want("  ○ First @wed #work", "▌ ○ Second", "  ○ Third")
+		h.press("v", "v", ".")
+		h.want("  ○ First @wed #work", " ┃○ Second @wed #work", "▌┃○ Third @wed #work")
+		h.press("u", "esc")
+		h.want("  ○ First @wed #work", "▌ ○ Second", "  ○ Third")
+		// Undo and other keys retain the exact line, with dates read anew.
+		h.clock = h.clock.Add(24 * time.Hour)
+		h.press(".")
+		if got := h.m.tree.Row(h.m.current()).Fields["due"]; got != "2026-11-19" {
+			t.Fatalf("repeated date = %q", got)
+		}
+		h = open(t, h.path).wide()
+		h.press(".")
+		if h.status() != "nothing to repeat" {
+			t.Fatalf("repeat survived restart: %q", h.status())
+		}
+	})
+	t.Run("Inbox filing and undo retain named destination", func(t *testing.T) {
+		h := fixture(t)
+		h.press("a", `"One"`, "enter", `"Two"`, "enter", `"Three"`, "enter", "enter")
+		h.press("p", `"inbox"`, "enter", "m", `"beta"`, "enter")
+		for _, want := range []string{"▌ ○ Two\n  ○ Three", "▌ ○ Three", "  The Inbox is empty. Press a to capture a thought."} {
+			if h.status() != "moved to Beta" || h.rows() != want {
+				t.Fatalf("filing = %q\n%s, want\n%s", h.status(), h.rows(), want)
+			}
+			if len(h.m.tree.Children(inboxID)) != 0 {
+				h.press(".")
+			}
+		}
+		h.press("u")
+		h.want("▌ ○ Three")
+		h.press(".")
+		if h.status() != "moved to Beta" || len(h.m.tree.Children(inboxID)) != 0 {
+			t.Fatalf("repeat after undo = %q\n%s", h.status(), h.rows())
+		}
+		h.press("p", `"beta"`, "enter")
+		h.want("▌   Storage:", "  ○ One", "  ○ Two", "  ○ Three")
+	})
+	for _, kind := range []string{"stamp", "move"} {
+		t.Run("here and unreadable stamp retain "+kind, func(t *testing.T) {
+			h := fixture(t)
+			if kind == "stamp" {
+				h.press("#", `"kept"`, "enter")
+			} else {
+				h.press("m", `"beta"`, "enter", "u")
+			}
+			h.press("g", "g", "v", "m", "enter", "esc") // Move First here, after Second.
+			h.press("@", `"nonsense"`, "enter")
+			if h.status() == "" || h.m.ask == nil {
+				t.Fatal("unreadable stamp must leave its prompt open")
+			}
+			h.press("esc", "g", "g", ".")
+			if kind == "stamp" {
+				h.want("▌ ○ Second #kept", "  ○ First #kept", "  ○ Third")
+			} else {
+				if h.status() != "moved to Beta" {
+					t.Fatalf("lost destination: %q", h.status())
+				}
+				h.want("▌ ○ First", "  ○ Third")
+			}
+		})
+	}
+	for _, target := range []string{"inbox", "storage"} {
+		t.Run("selection appends to "+target, func(t *testing.T) {
+			h := fixture(t)
+			h.press("m", `"`+target+`"`, "enter", "v", "v", ".")
+			label := "Inbox"
+			if target == "storage" {
+				label = "Beta › Storage"
+			}
+			if !strings.HasPrefix(h.status(), "moved to "+label+" ") {
+				t.Fatalf("message = %q", h.status())
+			}
+			h.press("u", "esc")
+			h.want("▌ ○ Second", "  ○ Third")
+			h.press("p", `"`+target+`"`, "enter")
+			h.want("▌ ○ First")
+		})
+	}
+	for _, remove := range []string{"destination", "ancestor"} {
+		t.Run("refuse deleted "+remove, func(t *testing.T) {
+			h := fixture(t)
+			h.press("m", `"storage"`, "enter")
+			if remove == "destination" {
+				h.press("p", `"beta"`, "enter", "g", "g", "d", "d")
+			} else {
+				h.press("p", `"projects"`, "enter", "G", "h", "h", "d", "d")
+			}
+			h.press("p", `"alpha"`, "enter")
+			before, undo := h.rows(), len(h.m.undo)
+			h.press(".")
+			if h.status() != "destination is no longer live: Beta › Storage" || h.rows() != before || len(h.m.undo) != undo {
+				t.Fatalf("deleted destination repeat = %q\n%s", h.status(), h.rows())
+			}
+		})
+	}
+	t.Run("cycles roll back the whole selection", func(t *testing.T) {
+		h := start(t).wide()
+		h.pasteText("Alpha\n\tFirst\n\tStorage:\n\t\tNested:")
+		h.press("p", `"alpha"`, "enter", "g", "g", "m", `"nested"`, "enter", "u")
+		h.press("g", "g", "v", "v")
+		before, undo := h.rows(), len(h.m.undo)
+		h.press(".")
+		if !strings.HasPrefix(h.status(), "a row cannot move under itself ") || h.rows() != before || len(h.m.undo) != undo {
+			t.Fatalf("cycle = %q\n%s", h.status(), h.rows())
+		}
+	})
+	for _, view := range []string{"list", "context filter", "flat filter"} {
+		for _, act := range []string{"stamp", "move"} {
+			t.Run(act+" in "+view, func(t *testing.T) {
+				h := fixture(t)
+				if act == "stamp" {
+					h.press("#", `"work"`, "enter")
+				} else {
+					h.press("m", `"beta"`, "enter")
+				}
+				h.press("u")
+				if view == "list" {
+					h.command("all")
+					h.press("t", "esc", "p", `"today"`, "enter")
+				} else {
+					h.press("/", `"First|Second|Third"`)
+					if view == "flat filter" {
+						h.press("tab")
+					}
+					h.press("enter")
+				}
+				h.command("all")
+				ids := h.m.acting()
+				before, undo := h.rows(), len(h.m.undo)
+				h.press(".")
+				if len(h.m.undo) != undo+1 || len(ids) != 3 {
+					t.Fatal("repeat must apply to all three rows as one undo step")
+				}
+				for _, id := range ids {
+					r := h.m.tree.Row(id)
+					if act == "stamp" && r.Fields["tags"] != "work" || act == "move" && h.m.tree.Row(r.Parent).Text() != "Beta" {
+						t.Fatalf("repeat missed row: %+v", r)
+					}
+				}
+				h.press("u")
+				if h.rows() != before {
+					t.Fatalf("undo =\n%s\nwant\n%s", h.rows(), before)
+				}
+			})
+		}
+	}
+	t.Run("empty repeat sidebar and help bindings", func(t *testing.T) {
+		h := start(t).wide()
+		h.press(".")
+		if h.status() != "nothing to repeat" {
+			t.Fatalf("empty repeat = %q", h.status())
+		}
+		h.press("?")
+		if h.m.help {
+			t.Fatal("question mark opened help")
+		}
+		h.command("help")
+		if !h.m.help || !strings.Contains(strings.Join(h.lines(), "\n"), "Docket") {
+			t.Fatal(":help did not open help")
+		}
+		h.press("?") // Any previously closing key still closes help.
+		if h.m.help {
+			t.Fatal("question mark did not close help")
+		}
+		h = fixture(t)
+		h.press("#", `"work"`, "enter", "u", "tab")
+		before, undo := h.rows(), len(h.m.undo)
+		h.press(".", "?")
+		if h.m.help || h.rows() != before || len(h.m.undo) != undo || h.status() == "nothing to repeat" {
+			t.Fatal("sidebar acted on dot or question mark")
+		}
+		h.press("tab", ".")
+		h.want("▌ ○ First #work", "  ○ Second", "  ○ Third")
+	})
+}

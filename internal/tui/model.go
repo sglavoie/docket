@@ -73,6 +73,13 @@ type editor struct {
 	ops, inv   []outline.Op
 }
 
+// repeatAct holds only the last successfully applied stamp or named move.
+// It is view state and is never saved with undo history.
+type repeatAct struct {
+	line string
+	to   entry
+}
+
 type Model struct {
 	tree    *outline.Tree
 	backend Backend
@@ -115,6 +122,7 @@ type Model struct {
 
 	outlineOrder map[string]int // traversal ranks, derived in scan for Today ties
 
+	repeat     repeatAct
 	undo, redo [][]outline.Op
 	prefix     string            // a pending g or d
 	picked     map[string]bool   // the selection
@@ -1274,20 +1282,8 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 				m.ask = nil
 			}
 		case askStamp:
-			c, bad := parseStamp(text, m.today())
-			if bad != "" {
-				m.msg = "cannot read " + bad
-				return
-			}
-			m.ask = nil
-			var ops []outline.Op
-			for _, id := range a.rows {
-				if m.live(id) {
-					ops = append(ops, m.stampOps(id, c)...)
-				}
-			}
-			if len(ops) > 0 {
-				m.do(ops...)
+			if m.applyStamp(a.rows, string(a.ed.buf)) {
+				m.ask = nil
 			}
 		case askCommand:
 			m.ask = nil
@@ -1308,21 +1304,7 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 				m.moveHere(a.rows)
 				return
 			}
-			to := hit.rowID()
-			var ops []outline.Op
-			for _, id := range a.rows {
-				if m.live(id) {
-					// Each row is placed after the one before it.
-					pos := m.tree.PosLast(to)
-					if n := len(ops); n > 0 {
-						pos = outline.Between(ops[n-1].Pos, "")
-					}
-					ops = append(ops, outline.Op{Kind: outline.Move, Row: id, Parent: to, Pos: pos})
-				}
-			}
-			if len(ops) > 0 && m.do(ops...) {
-				m.msg = "moved to " + hit.label
-			}
+			m.moveTo(a.rows, hit)
 		}
 	case "down", "ctrl+n", "up", "ctrl+p":
 		// A picker's arrows walk its matches.
@@ -1341,6 +1323,49 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 	}
 }
 
+// applyStamp reports whether the line was readable, so an unreadable prompt
+// stays open. Only a successfully applied change replaces the remembered act.
+func (m *Model) applyStamp(rows []string, line string) bool {
+	c, bad := parseStamp(line, m.today())
+	if bad != "" {
+		m.msg = "cannot read " + bad
+		return false
+	}
+	var ops []outline.Op
+	for _, id := range rows {
+		if m.live(id) {
+			ops = append(ops, m.stampOps(id, c)...)
+		}
+	}
+	if len(ops) > 0 && m.do(ops...) {
+		m.repeat = repeatAct{line: line}
+	}
+	return true
+}
+
+func (m *Model) moveTo(rows []string, to entry) {
+	dest := to.rowID()
+	if !m.live(dest) {
+		m.msg = "destination is no longer live: " + to.label
+		return
+	}
+	var ops []outline.Op
+	for _, id := range rows {
+		if m.live(id) {
+			// Each row is placed after the one before it.
+			pos := m.tree.PosLast(dest)
+			if n := len(ops); n > 0 {
+				pos = outline.Between(ops[n-1].Pos, "")
+			}
+			ops = append(ops, outline.Op{Kind: outline.Move, Row: id, Parent: dest, Pos: pos})
+		}
+	}
+	if len(ops) > 0 && m.do(ops...) {
+		m.msg = "moved to " + to.label
+		m.repeat = repeatAct{to: to}
+	}
+}
+
 // command runs a line typed after a colon.
 func (m *Model) command(line string) {
 	words := strings.Fields(line)
@@ -1348,6 +1373,8 @@ func (m *Model) command(line string) {
 		return
 	}
 	switch words[0] {
+	case "help":
+		m.openHelp()
 	case "q", "quit":
 		m.quit = true
 	case "fold", "unfold":
@@ -1413,7 +1440,7 @@ func (m *Model) command(line string) {
 		m.vis, m.at.kept = nil, nil
 		m.msg = said
 	default:
-		m.msg = "commands: q, export [file], closed, all, archive, fold [level], unfold, sort [keys], review, save name, forget name, sync [folder|off]"
+		m.msg = "commands: q, help, export [file], closed, all, archive, fold [level], unfold, sort [keys], review, save name, forget name, sync [folder|off]"
 	}
 }
 
@@ -1531,8 +1558,6 @@ func (m *Model) sideKey(k string) {
 		m.ask = &prompt{kind: askJump}
 	case "a":
 		m.ask = &prompt{kind: askCapture}
-	case "?":
-		m.openHelp()
 	}
 }
 
@@ -1585,12 +1610,20 @@ func (m *Model) normalKey(k string) {
 		m.ask = &prompt{kind: askFilter, ed: editor{buf: buf, caret: len(buf)}}
 	case ":":
 		m.ask = &prompt{kind: askCommand}
+	case ".":
+		switch {
+		case m.repeat.line != "":
+			m.applyStamp(m.acting(), m.repeat.line)
+		case m.repeat.to.kind != "":
+			m.moveTo(m.acting(), m.repeat.to)
+		default:
+			m.msg = "nothing to repeat"
+		}
+		return
 	case "u":
 		m.replay(&m.undo, &m.redo, "nothing to undo")
 	case "ctrl+r":
 		m.replay(&m.redo, &m.undo, "nothing to redo")
-	case "?":
-		m.openHelp()
 	case "tab":
 		m.sideFrom = m.departure()
 		m.sideFocus = true

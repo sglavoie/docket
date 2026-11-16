@@ -188,7 +188,7 @@ func (h *harness) header() string {
 
 func (h *harness) status() string {
 	lines := h.lines()
-	return strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(lines[len(lines)-1]), "? help"))
+	return strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(lines[len(lines)-1]), ":help"))
 }
 
 func (h *harness) wide() *harness {

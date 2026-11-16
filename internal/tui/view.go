@@ -37,6 +37,11 @@ const helpText = `Docket
   x  !  t        done and back, flag, pick for Today in pick order
   m              move to a project, Inbox or heading
                  with a selection, m Enter moves it here, where o would open a row
+  .              repeat the last stamp or named move on the row or selection
+                 stamps read dates again today; one undo; lists and filters too
+                 here, unreadable stamps and undo leave it remembered
+                 nothing remembered or a deleted destination says so
+                 remembered only this session; sidebar ignores .
   y              copy the row or selection, including subtrees
   v              select the row; x ! t dd m and stamps act on the selection
                  > < J K move adjacent selected siblings together
@@ -53,7 +58,8 @@ const helpText = `Docket
                  ^#work|home, ^name $next; -^#work means no ancestor has #work
                  bare ^ waits for typing; ^^ is text; completion works after ^
                  a filter shows every match, folded or not
-  :              q, export [file], closed (hide or show done and canceled rows),
+  :              q, help (open this page), export [file],
+                 closed (hide or show done and canceled rows),
                  all (select every row shown: /#old, :all, -#old #new retags),
                  archive (move closed rows under the project's Archive: heading),
                  fold [level] (all, or show N levels), unfold (all),
@@ -406,7 +412,7 @@ func (m *Model) statusLine(w int) (string, int) {
 		return line, lw + col
 	}
 
-	left, right := m.msg, "? help"
+	left, right := m.msg, ":help"
 	switch {
 	case left != "":
 	case m.edit != nil:

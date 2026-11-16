@@ -334,8 +334,8 @@ Three more acts use the same line:
   sigils only: `#tag`, `@date`, `@@date`, `*interval`, `$state` and `!` set;
   `-#tag`, `-@`, `-@@`, `-*` and `-!` remove. `Enter` applies them to the selection, else to the cursor's row, as
   one undo step. A word it cannot read is named and nothing is applied.
-- `:` runs a command: `q` quits; `export [file]` writes the whole outline as
-  tab-indented lines in the row grammar, to `~/docket-YYYY-MM-DD.txt` unless
+- `:` runs a command: `q` quits; `help` opens help; `export [file]` writes
+  the whole outline as tab-indented lines in the row grammar, to `~/docket-YYYY-MM-DD.txt` unless
   a file is named; `closed` hides or shows closed rows; `all` selects every
   row the pane shows, as described under Selection; `archive` moves
   closed rows under an `Archive:` heading, as described below; `review`
@@ -438,6 +438,18 @@ filters still refuse these keys.
 `Esc` undoes the most recent narrowing: the selection, then the filter, then
 the zoom.
 
+**Repeat.** `.` applies the last stamp or named move to the selection, else
+to the cursor's row, as one undo step. The stamp line is remembered as typed
+and read again against today (`@+3d` counts from the day it is repeated).
+A move remembers the destination row and its label: a project, Inbox or
+heading, and appends the rows as its last children, saying `moved to <label>`.
+An unreadable stamp, a move to `here`, every other key and `u` leave the
+remembered act unchanged. It lasts only for this session. A destination
+that is no longer live is named on the status line and nothing changes;
+moving a row under itself is refused as with `m`. With nothing remembered,
+`.` says `nothing to repeat`. It works wherever the remembered act works,
+including lists and filters; with sidebar focus it does nothing.
+
 ## Keys
 
 | Keys | Act | Milestone |
@@ -450,7 +462,7 @@ the zoom.
 | `>` `<` `J` `K` | Indent, outdent, reorder | 1 |
 | `dd` | Delete | 1 |
 | `u` `Ctrl+R` | Undo, redo | 1 |
-| `?` | Help | 1 |
+| `.` | Repeat the last stamp or move | 10 |
 | `x` `!` | Done and back, flag | 2 |
 | `t` | Pick for Today, and unpick | 3 |
 | `Tab` `p` | Sidebar focus; go to a project, heading or list by name | 3 |
@@ -654,7 +666,8 @@ This is the only command; everything else is done in the outline.
    including above the pane root; `-^term` excludes such ancestry.
    `:sort [keys]` stably orders siblings or a selected block by deadline,
    flag, state, or text, within its span and in one undo step.
-   *In progress.*
+   `.` repeats the last stamp or named move; `:help` opens help.
+   *Built.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add`.
