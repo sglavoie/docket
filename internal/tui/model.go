@@ -1231,6 +1231,20 @@ func (m *Model) command(line string) {
 		if m.syncDir != "" {
 			m.syncStart(true)
 		}
+	case "all":
+		// The pane's rows become the selection: v picks one, this the pane.
+		// A filter in context dims ancestors it did not match; they stay out.
+		picked := map[string]bool{}
+		for _, v := range m.vis {
+			if m.at.query == "" || m.at.matched[v.id] {
+				picked[v.id] = true
+			}
+		}
+		if len(picked) == 0 {
+			m.msg = "nothing to select"
+			return
+		}
+		m.picked = picked
 	case "review":
 		m.open(entry{kind: kindReview})
 	case "archive":
@@ -1250,7 +1264,7 @@ func (m *Model) command(line string) {
 		m.vis, m.at.kept = nil, nil
 		m.msg = said
 	default:
-		m.msg = "commands: q, export [file], closed, archive, fold [level], unfold, review, save name, forget name, sync [folder|off]"
+		m.msg = "commands: q, export [file], closed, all, archive, fold [level], unfold, review, save name, forget name, sync [folder|off]"
 	}
 }
 

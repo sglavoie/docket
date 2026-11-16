@@ -46,6 +46,7 @@ const helpText = `Docket
                  @<fri @>+1w: open rows due by or from a day; flat lists soonest first
                  a filter shows every match, folded or not
   :              q, export [file], closed (hide or show done and canceled rows),
+                 all (select every row shown: /#old, :all, -#old #new retags),
                  archive (move closed rows under the project's Archive: heading),
                  fold [level] (all, or show N levels), unfold (all),
                  review (projects, longest untouched first),

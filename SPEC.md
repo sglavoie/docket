@@ -304,7 +304,8 @@ Three more acts use the same line:
   one undo step. A word it cannot read is named and nothing is applied.
 - `:` runs a command: `q` quits; `export [file]` writes the whole outline as
   tab-indented lines in the row grammar, to `~/docket-YYYY-MM-DD.txt` unless
-  a file is named; `closed` hides or shows closed rows; `archive` moves
+  a file is named; `closed` hides or shows closed rows; `all` selects every
+  row the pane shows, as described under Selection; `archive` moves
   closed rows under an `Archive:` heading, as described below; `review`
   opens the review list; `fold [level]` and `unfold` control folds as described below;
   `save name` and `forget name` keep and drop a filter; `sync
@@ -360,6 +361,13 @@ deselects. While rows are selected, `x`, `!`, `t`, `dd`, `m`, `>`, `<`, `J`,
 their value on every row unless all already hold it, in which case they
 clear it. The keys that work on one row (`e`, `o`, `O`, `Enter`) are refused
 and say so. The status line counts the selection, and `Esc` clears it.
+
+`:all` replaces the selection with every row the pane shows. Under a filter
+in context it takes the matches only, never the dimmed ancestors; rows inside
+a fold are not shown and so not selected. An empty pane says there is
+nothing to select. It is not a second route to `v` (rule 3): `v` selects one
+row, `:all` the pane. Filter, `:all`, then one stamp or key acts on every
+match: `/#old`, `:all`, `-#old #new` retags.
 
 For `>`, `<`, `J` and `K`, a selected row with a selected ancestor travels
 with that ancestor. The remaining rows must be adjacent children of one
@@ -577,7 +585,7 @@ This is the only command; everything else is done in the outline.
 
 9. **Queries.** `$next` filters each project's next action; `@<date` and
    `@>date` filter deadline ranges, and a flat deadline filter reads soonest
-   first. *In progress.*
+   first. `:all` selects every row the pane shows. *In progress.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add`.

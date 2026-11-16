@@ -294,7 +294,7 @@ func TestCommands(t *testing.T) {
 		t.Fatalf("export:\n%s\nwant:\n%s", got, want)
 	}
 	h.press(":", `"nonsense"`, "enter")
-	if h.m.msg != "commands: q, export [file], closed, archive, fold [level], unfold, review, save name, forget name, sync [folder|off]" {
+	if h.m.msg != "commands: q, export [file], closed, all, archive, fold [level], unfold, review, save name, forget name, sync [folder|off]" {
 		t.Fatalf("msg = %q", h.m.msg)
 	}
 	h.press(":", `"q"`, "enter")
@@ -548,4 +548,107 @@ func TestDeadlineRangesAreColouredOnTheFilterLine(t *testing.T) {
 	if !strings.Contains(raw, sgrWarn+"@<firday"+sgrReset) {
 		t.Errorf("@<firday is not flagged:\n%q", raw)
 	}
+}
+
+// selected names the selected rows in the order the pane shows them.
+func (h *harness) selected() string {
+	var got []string
+	for _, v := range h.m.vis {
+		if h.m.picked[v.id] {
+			got = append(got, h.m.tree.Row(v.id).Text())
+		}
+	}
+	if len(got) != len(h.m.picked) {
+		h.t.Fatalf("%d selected, %d of them shown", len(h.m.picked), len(got))
+	}
+	return strings.Join(got, ", ")
+}
+
+func TestAllSelectsEveryRowThePaneShows(t *testing.T) {
+	t.Run("outline leaves folded rows out", func(t *testing.T) {
+		h := work(t)
+		h.press("g", "g", "h")
+		h.command("all")
+		if got := h.selected(); got != "Beta, Alpha, Fix login, Write docs, Refactor auth" {
+			t.Fatalf("selected = %q", got)
+		}
+		if !strings.HasSuffix(h.bottom(), "5 selected · Esc clears") {
+			t.Fatalf("status = %q", h.bottom())
+		}
+		h.press("esc")
+		if len(h.m.picked) != 0 {
+			t.Fatal("Esc left the selection")
+		}
+	})
+
+	t.Run("filter in context leaves ancestors out", func(t *testing.T) {
+		h := work(t)
+		h.press("/", `"#bug"`, "enter")
+		h.command("all")
+		if got := h.selected(); got != "Fix cache, Fix login, Refactor auth" {
+			t.Fatalf("selected = %q", got)
+		}
+		// Retagging is the selection and one stamp, in one undo step.
+		steps := len(h.m.undo)
+		h.press("-", `"#bug #auth"`, "enter")
+		if len(h.m.undo) != steps+1 {
+			t.Fatalf("%d undo steps for one stamp", len(h.m.undo)-steps)
+		}
+		h.press("esc", "esc")
+		h.want(
+			"▌ ▾ Beta",
+			"    ○ Fix cache #auth",
+			"  ▾ Alpha",
+			"    ○ Fix login ! #auth",
+			"    ○ Write docs @fri #docs",
+			"    ○ Refactor auth #auth",
+		)
+		h.press("u")
+		h.want(
+			"  ▾ Beta",
+			"▌   ○ Fix cache #bug",
+			"  ▾ Alpha",
+			"    ○ Fix login ! #bug",
+			"    ○ Write docs @fri #docs",
+			"    ○ Refactor auth #bug",
+		)
+	})
+
+	t.Run("flat filter replaces an earlier selection", func(t *testing.T) {
+		h := work(t)
+		h.press("j", "j", "j", "v") // Write docs
+		h.press("/", `"#bug"`, "tab", "enter")
+		h.command("all")
+		if got := h.selected(); got != "Fix cache, Fix login, Refactor auth" {
+			t.Fatalf("selected = %q", got)
+		}
+		steps := len(h.m.undo)
+		h.press("x")
+		if len(h.m.undo) != steps+1 {
+			t.Fatalf("%d undo steps for x", len(h.m.undo)-steps)
+		}
+		h.want(
+			"▌┃✓ Fix cache #bug · Beta",
+			" ┃✓ Fix login ! #bug · Alpha",
+			" ┃✓ Refactor auth #bug · Alpha",
+		)
+	})
+
+	t.Run("list", func(t *testing.T) {
+		h := work(t)
+		h.press("t", "j", "j", "t", "p", `"Today"`, "enter")
+		h.command("all")
+		if got := h.selected(); got != "Fix cache, Fix login" {
+			t.Fatalf("selected = %q", got)
+		}
+	})
+
+	t.Run("empty pane", func(t *testing.T) {
+		h := work(t)
+		h.press("/", `"nothing"`, "enter")
+		h.command("all")
+		if h.m.msg != "nothing to select" || len(h.m.picked) != 0 {
+			t.Fatalf("msg = %q, %d selected", h.m.msg, len(h.m.picked))
+		}
+	})
 }
