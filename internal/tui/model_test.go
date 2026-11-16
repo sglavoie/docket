@@ -476,7 +476,7 @@ func TestDeleteUndoRedo(t *testing.T) {
 	)
 	// An edit is one undo step, text and indent together, and indenting a
 	// note while typing leaves it a note.
-	h.press("u", "e", `" two"`, "tab", "esc")
+	h.press("u", "A", `" two"`, "tab", "esc")
 	h.want(
 		"  ▾ Alpha",
 		"▌     Beta two",
@@ -606,7 +606,7 @@ func TestSigilsBecomeFieldsAndTheLineRoundTrips(t *testing.T) {
 	)
 	// Editing shows the canonical line: a fixed date, since a weekday would
 	// drift, and the state because it is not the default.
-	h.press("e")
+	h.press("A")
 	h.want(
 		"  ▾ Project",
 		"    ○ First",
@@ -640,7 +640,7 @@ func TestProseThatLooksLikeSigilsStaysProse(t *testing.T) {
 		"    ○ Second",
 		"▌   ○ Fix #123 for @alice in R&D #api",
 	)
-	h.press("e")
+	h.press("A")
 	h.want(
 		"  ▾ Project",
 		"    ○ First",
@@ -724,11 +724,11 @@ func TestARowUnderATaskIsANote(t *testing.T) {
 			if got := h.rows(); !strings.Contains(got, "▌       Detail") {
 				t.Fatalf("child should draw without a state glyph:\n%s", got)
 			}
-			h.press("e")
+			h.press("A")
 			if got := string(h.m.edit.buf); got != "Detail" {
 				t.Fatalf("note edit line = %q", got)
 			}
-			h.press(`" $open"`, "esc", "e")
+			h.press(`" $open"`, "esc", "A")
 			if got := string(h.m.edit.buf); got != "Detail $open" {
 				t.Fatalf("subtask edit line = %q", got)
 			}
@@ -755,18 +755,18 @@ func TestARowUnderATaskIsANote(t *testing.T) {
 	t.Run("existing state survives moves edits and restart", func(t *testing.T) {
 		h := project(t)
 		id := h.m.current()
-		h.press("e", "tab", "esc") // Rendered as a task before moving under First.
+		h.press("A", "tab", "esc") // Rendered as a task before moving under First.
 		h.want("  ▾ Project", "    ○ First", "▌     ○ Second")
 		h = open(t, h.path)
 		h.m.seek(id)
-		h.press("e")
+		h.press("A")
 		if got := string(h.m.edit.buf); got != "Second $open" {
 			t.Fatalf("stored task after restart = %q", got)
 		}
 		h.press("esc", "<", ">")
 		h.want("  ▾ Project", "    ○ First", "▌     ○ Second")
 		h = project(t) // The restart harness reuses fixture IDs; create new rows in a new database.
-		h.press("o", "tab", `"Note"`, "esc", "e", "shift+tab", "esc", "e")
+		h.press("o", "tab", `"Note"`, "esc", "A", "shift+tab", "esc", "A")
 		if got := string(h.m.edit.buf); got != "Note $note" {
 			t.Fatalf("existing note changed when outdented during editing: %q", got)
 		}
@@ -801,7 +801,7 @@ func TestARowUnderATaskIsANote(t *testing.T) {
 
 	t.Run("ordinary insertion keeps spaces at the caret", func(t *testing.T) {
 		h := project(t)
-		h.press("e", "ctrl+a", "right")
+		h.press("A", "ctrl+a", "right")
 		h.m.Update(tea.PasteMsg{Content: "  plain   text  "})
 		if got := string(h.m.edit.buf); got != "S  plain   text  econd" {
 			t.Fatalf("ordinary paste buffer = %q", got)
@@ -814,7 +814,7 @@ func TestCaptureUsesTheDestinationDefault(t *testing.T) {
 	h := start(t)
 	h.press("o", `"Task $open"`, "esc", "a", `"Detail %Task"`, "esc", "f", `"Task"`, "enter")
 	h.want("▌   Detail")
-	h.press("e")
+	h.press("A")
 	if got := string(h.m.edit.buf); got != "Detail" {
 		t.Fatalf("captured child of task = %q", got)
 	}

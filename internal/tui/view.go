@@ -33,7 +33,10 @@ const helpText = `Docket
                  Esc returns to the held rows; l does nothing
   Enter  Esc     zoom into a row; Esc clears the selection, the filter, the zoom
   o O            new row below, above
-  e              edit the row
+  A I            type at the end, start of the row
+  cc             retype text, keeping fields; one undo (Esc keeps even blank text)
+                 c waits only for c; any other key cancels
+                 A I cc drop counts; no selection; lists and filters too
   > <            indent, outdent
   J K            move the row down, up (also in Today; no selection there)
   x  !  t        done and back, flag, pick for Today in pick order

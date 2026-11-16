@@ -127,7 +127,7 @@ type Model struct {
 	count      int               // pending outline count; zero means absent
 	undoGroup  []outline.Op      // inverses collected by a counted reorder
 	prefix     string            // a pending g
-	operator   string            // pending d or y
+	operator   string            // pending d, y or c (cc only)
 	opCount    int               // count before the operator
 	register   string            // session-local serialized rows
 	picked     map[string]bool   // the selection
@@ -1061,6 +1061,23 @@ func (m *Model) editRow(id string) {
 	m.edit = &editor{row: id, buf: buf, caret: len(buf), notes: notes}
 }
 
+func (m *Model) retypeRow(id string) {
+	m.editRow(id)
+	line := sigil.FromFields(m.tree.Row(id).Fields)
+	line.Text = ""
+	text := sigil.Format(line, m.edit.notes, m.today())
+	// Spell even an implicit state: the replacement text may gain or lose
+	// a trailing colon, but cc keeps the row's fields in either direction.
+	if line.State == sigil.DefaultState(m.edit.notes, "") {
+		state := line.State
+		if state == "" {
+			state = "note"
+		}
+		text = strings.TrimSpace(text + " $" + state)
+	}
+	m.edit.buf, m.edit.caret = []rune(" "+text), 0
+}
+
 // setFields returns the operations that bring a row to want, skipping the
 // fields that already agree. A change of state also restarts its clock.
 func (m *Model) setFields(id string, want map[string]string) []outline.Op {
@@ -1610,6 +1627,13 @@ func (m *Model) normalKey(k string) {
 		m.count, m.prefix, m.operator, m.opCount = 0, "", "", 0
 		return
 	}
+	if m.operator == "c" {
+		m.operator, m.opCount, m.count = "", 0, 0
+		if k == "c" {
+			m.normalAct("cc", 0)
+		}
+		return
+	}
 	if m.prefix == "" && len(k) == 1 && k[0] >= '0' && k[0] <= '9' {
 		// Saturate rather than overflow; every consumer stops at its boundary.
 		digit, limit := int(k[0]-'0'), int(^uint(0)>>1)
@@ -1629,9 +1653,12 @@ func (m *Model) normalKey(k string) {
 	}
 	if m.prefix != "" {
 		k, m.prefix = m.prefix+k, ""
-	} else if k == "d" || k == "y" {
+	} else if k == "d" || k == "y" || k == "c" {
 		m.endSweep()
 		m.operator, m.opCount, m.count = k, m.count, 0
+		if k == "c" {
+			m.opCount = 0
+		}
 		return
 	} else if k == "g" {
 		m.prefix = k
@@ -1858,9 +1885,16 @@ func (m *Model) normalAct(k string, count int) {
 
 	ids := m.countedRows(count)
 	switch k {
-	case "e":
+	case "A", "I", "cc":
 		if m.single() {
-			m.editRow(cur)
+			if k == "cc" {
+				m.retypeRow(cur)
+			} else {
+				m.editRow(cur)
+				if k == "I" {
+					m.edit.caret = 0
+				}
+			}
 		}
 	case "enter":
 		if m.single() {

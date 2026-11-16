@@ -87,7 +87,7 @@ func TestPastingAListOnARowAddsItBelow(t *testing.T) {
 
 func TestPastingOneLineOrIntoAPromptIsTyping(t *testing.T) {
 	h := project(t)
-	h.press("e", "ctrl+a")
+	h.press("A", "ctrl+a")
 	h.pasteText("Very ")
 	h.press("esc")
 	h.want(
@@ -138,7 +138,7 @@ func TestCheckboxPasteNormalization(t *testing.T) {
 	}
 
 	h := project(t)
-	h.press("e", "ctrl+a")
+	h.press("A", "ctrl+a")
 	h.pasteText("[ ] prefix ")
 	if got := string(h.m.edit.buf); got != "prefix $openSecond" {
 		t.Fatalf("checkbox text should insert at the caret: %q", got)
@@ -328,7 +328,7 @@ func roundTripCopy(t *testing.T, parentState string, rows []copyRow, expected st
 			}
 			// Re-editing exercises the same grammar without the transport layer.
 			h.m.seek(pasted[0])
-			h.press("e", "esc")
+			h.press("A", "esc")
 			assertCopiedRows(t, h, dest, rows)
 			h.press("u")
 			if len(h.m.tree.Children(dest)) != 0 || len(h.m.undo) != steps {
@@ -342,7 +342,7 @@ func TestCopyKeepsABlankTask(t *testing.T) {
 	h := project(t)
 	source := h.m.current()
 	parent := h.m.tree.Row(source).Parent
-	h.press("e", "ctrl+u", "esc")
+	h.press("A", "ctrl+u", "esc")
 	row := h.m.tree.Row(source)
 	if row.Fields[sigil.FieldText] != "" || row.Fields[sigil.FieldState] != sigil.Open {
 		t.Fatalf("clearing an existing task changed its state: %+v", row.Fields)

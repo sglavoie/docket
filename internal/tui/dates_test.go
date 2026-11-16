@@ -52,7 +52,7 @@ func TestAStartDateDimsARowUntilItsDayThenPutsItInToday(t *testing.T) {
 		"  ○ Second · 25d · Project",
 		"  ○ Renew passport @@Nov 20 · 25d · Project",
 	)
-	h.press("-", `"@@"`, "enter", "e")
+	h.press("-", `"@@"`, "enter", "A")
 	h.want(
 		"▌ ○ First",
 		"  ○ Second · 25d · Project",
@@ -143,7 +143,7 @@ func TestAFilterCanBeSavedAndReopened(t *testing.T) {
 func TestReviewListsProjectsLongestUntouchedFirst(t *testing.T) {
 	h := two(t)
 	h.clock = h.clock.Add(10 * 24 * time.Hour)
-	h.press("e", `" v2"`, "esc") // Beta is touched; Alpha is not
+	h.press("A", `" v2"`, "esc") // Beta is touched; Alpha is not
 	h.clock = h.clock.Add(2 * 24 * time.Hour)
 	h.press(":", `"review"`, "enter")
 	if h.header() != "Review" {

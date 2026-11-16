@@ -413,7 +413,7 @@ func TestMoveARowToAProject(t *testing.T) {
 
 func TestParkedAndClosedProjectsLeaveTheSidebar(t *testing.T) {
 	h := two(t)
-	h.press("j", "e", `" $parked"`, "esc", "k", "e", `" $done"`, "esc")
+	h.press("j", "A", `" $parked"`, "esc", "k", "A", `" $done"`, "esc")
 	h.want(
 		"▌ ✓ Beta",
 		"  ◌ Alpha",
@@ -609,7 +609,7 @@ func TestMoveReachesAHeading(t *testing.T) {
 		if got := h.status(); got != "Move to › cached   Cached heading" {
 			t.Fatalf("picker did not use cached headings: %q", got)
 		}
-		h.press("esc", "f", `"alpha"`, "enter", "g", "g", "e", "ctrl+u", `"Renamed:"`, "esc")
+		h.press("esc", "f", `"alpha"`, "enter", "g", "g", "A", "ctrl+u", `"Renamed:"`, "esc")
 		if h.m.headings[0].label != "Alpha › Renamed" {
 			t.Fatalf("edit did not refresh headings: %+v", h.m.headings)
 		}

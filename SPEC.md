@@ -414,8 +414,8 @@ it.
 deselects. While rows are selected, `x`, `!`, `t`, `dd`, `m`, `>`, `<`, `J`,
 `K` and a stamp act on the selection, in one undo step. `x`, `!` and `t` set
 their value on every row unless all already hold it, in which case they
-clear it. The keys that work on one row (`e`, `o`, `O`, `Enter`) are refused
-and say so. The status line counts the selection, and `Esc` clears it.
+clear it. The keys that work on one row (`A`, `I`, `cc`, `o`, `O`, `Enter`)
+are refused and say so. The status line counts the selection, and `Esc` clears it.
 
 `V` starts a sweep at the cursor's row. Each motion, with or without a
 count, selects the shown span from that anchor to the cursor, both included;
@@ -504,8 +504,8 @@ does. The act is one undo step; copy changes no rows. Counted `>` and `<`
 follow the Selection rule for a block. `5v` selects five rows as five
 presses of `v` would, stopping at the last row. With rows already selected,
 a count before an act on rows (including `v`) is refused and says so.
-Every other key, including `o`, `O`, `e`, `Enter`, `h`, `l`, `f`, `p`, `P`,
-`a`, `/`, `:` and `Tab`, drops the count and acts as usual.
+Every other key, including `o`, `O`, `A`, `I`, `cc`, `Enter`, `h`, `l`, `f`,
+`p`, `P`, `a`, `/`, `:` and `Tab`, drops the count and acts as usual.
 
 | Keys | Act | Milestone |
 | --- | --- | --- |
@@ -513,7 +513,7 @@ Every other key, including `o`, `O`, `e`, `Enter`, `h`, `l`, `f`, `p`, `P`,
 | `Ctrl+D` `Ctrl+U` | Move half a pane down, up; `Ctrl+F` `Ctrl+B` `PgDn` `PgUp` a whole pane | 7, 10 |
 | `h` `l` | Fold, unfold; step to parent, first child; in lists and flat filters, `h` shows the row where it lives (`Esc` returns), `l` does nothing | 1, 10 |
 | `Enter` `Esc` | Zoom in, back out | 1 |
-| `o` `O` `e` | New row below, above; edit | 1 |
+| `o` `O` `A` `I` `cc` | New row below, above; type at end, at start; retype keeping fields | 1, 11 |
 | `>` `<` `J` `K` | Indent, outdent, reorder | 1 |
 | `d` `y` | Delete or copy: `dd` / `yy` take rows; a motion takes an inclusive range | 1, 7, 11 |
 | `p` `P` | Put the register after or before the row, as new rows | 11 |
@@ -526,6 +526,15 @@ Every other key, including `o`, `O`, `e`, `Enter`, `h`, `l`, `f`, `p`, `P`,
 | `v` `V` | Pick a row; sweep with motions | 4, 11 |
 | `/` `:` | Filter, command | 4 |
 | `#` `@` `$` `*` `-` | Stamp sigils on rows | 4 |
+
+`A` opens the cursor's row for typing at the end of its canonical line; `I`
+opens it at the start. `cc` removes its text and keeps its fields as sigils,
+with a space before them and the caret at the start. Its state is explicit
+so replacement text cannot change it by gaining or losing a trailing colon.
+Keeping the line saves the new text in one undo step; leaving it blank keeps
+the existing row with no text. All three drop counts, refuse a selection,
+and work in lists and filters. `c` waits only for another `c`; `Esc` or any
+other key drops it and does nothing. `e` does nothing in the outline.
 
 While typing: `Enter` inside a line splits it literally at the caret,
 sigils included, and keeps typing at the start of the new row. It goes
@@ -628,7 +637,7 @@ grammar cannot read also stays prose (`@alice`, `#123`, `$5`). `\#tag` keeps a r
 | `%name` | | On the capture line only: the project or heading to file the row in |
 
 Typed in a row, sigils become fields when the edit ends and may sit anywhere
-in the line; a repeated `@` or `$` takes the last. Editing a row shows its
+in the line; a repeated `@` or `$` takes the last. `A` opens a row showing its
 canonical line: text, `!`, `@YYYY-MM-DD`, tags, state. Deleting a sigil from
 that line clears its field. Typed on a row outside an edit, they open the
 stamp line.
@@ -645,8 +654,9 @@ the row will land.
 **Default state.** A row whose line names no state is a note when it is
 top-level, its text ends in a colon, or its parent has any state (is a task).
 Otherwise it is an open task: children of a project, the Inbox, a heading or
-another note default to tasks. The line spells `$state` only where the row
-differs from that default, so a subtask needs `$open`. Stored fields remain
+another note default to tasks. With `A` or `I`, the line spells `$state` only
+where the row differs from that default, so a subtask needs `$open`; `cc`
+always spells it to preserve the state while replacing text. Stored fields remain
 the truth; existing rows keep their states without migration. A row keeps
 its state when it moves, including while editing. A fresh row takes the
 default of where it ends up when the edit is kept.
@@ -750,6 +760,8 @@ This is the only command; everything else is done in the outline.
    keys or counted motions and fill the session register and clipboard;
    each delete is one undo step. `p` and `P` put the register after or before
    the cursor as new rows in one undo step; Go to moved from `p` to `f`.
+   `A` and `I` open typing at the end and start; `cc` retypes text while
+   keeping fields, as one undo step.
    *In progress.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any

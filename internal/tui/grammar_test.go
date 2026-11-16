@@ -3,6 +3,7 @@ package tui
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"testing"
@@ -137,7 +138,7 @@ func TestACountRepeatsOrTakesRows(t *testing.T) {
 		if h.m.cursor != 2 || len(h.m.vis) != 4 {
 			t.Fatal("Esc failed to cancel counted dd")
 		}
-		h.press("3", "e", `" !"`, "esc")
+		h.press("3", "A", `" !"`, "esc")
 		if h.m.count != 0 || h.m.tree.Row(h.m.current()).Fields[sigil.FieldFlag] != "1" {
 			t.Fatal("edit did not drop the count and act normally")
 		}
@@ -408,7 +409,7 @@ func TestVSweepsASelection(t *testing.T) {
 	})
 
 	t.Run("non motions end sweep and count cancellation keeps picks", func(t *testing.T) {
-		for _, k := range []string{"h", "l", "z", "e", "tab", "#"} {
+		for _, k := range []string{"h", "l", "z", "A", "tab", "#"} {
 			h := countOutline(t, 4)
 			h.press("V", "j", k)
 			if h.m.sweep != "" {
@@ -764,6 +765,143 @@ func TestPPutsTheRegister(t *testing.T) {
 		h.press("tab", "f", `"Inbox"`, "enter")
 		if h.m.sideFocus || h.header() != "Inbox" {
 			t.Fatal("sidebar f did not jump")
+		}
+	})
+}
+
+func TestIAndAOpenTypingAndCcRetypes(t *testing.T) {
+	t.Run("append and insert drop counts", func(t *testing.T) {
+		h := countOutline(t, 2)
+		h.press("3", "A", `" café"`, "esc")
+		h.want("▌ ○ Task 00 café", "  ○ Task 01")
+		h.press("2", "I", `"New "`, "esc")
+		h.want("▌ ○ New Task 00 café", "  ○ Task 01")
+		h.press("j")
+		if h.m.cursor != 1 || h.m.count != 0 {
+			t.Fatal("typing entry leaked a count")
+		}
+	})
+
+	t.Run("retype preserves all fields and undoes once", func(t *testing.T) {
+		h := countOutline(t, 1)
+		h.m.Update(tea.WindowSizeMsg{Width: 100, Height: 12})
+		h.press("A", "ctrl+u", `"Old ! @2026-11-20 @@2026-11-14 #release $done"`, "esc", "t")
+		id := h.m.current()
+		before := maps.Clone(h.m.tree.Row(id).Fields)
+		undos := len(h.m.undo)
+		h.press("5", "c")
+		if h.m.edit != nil || !strings.Contains(h.status(), "c") || h.m.count != 0 || h.m.opCount != 0 {
+			t.Fatal("c did not wait and drop its count")
+		}
+		h.press("c")
+		if got := string(h.m.edit.buf); got != " ! @2026-11-20 @@2026-11-14 #release $done" || h.m.edit.caret != 0 {
+			t.Fatalf("cc opened %q at %d", got, h.m.edit.caret)
+		}
+		if !maps.Equal(before, h.m.tree.Row(id).Fields) || len(h.m.undo) != undos {
+			t.Fatal("cc wrote before typing ended")
+		}
+		h.press(`"New"`, "esc")
+		h.want("▌ ✓ New ! @fri @@Nov 14 #release")
+		want := maps.Clone(before)
+		want[sigil.FieldText] = "New"
+		if !maps.Equal(want, h.m.tree.Row(id).Fields) || len(h.m.undo) != undos+1 {
+			t.Fatalf("retype changed fields or history: %v", h.m.tree.Row(id).Fields)
+		}
+		h.press("u")
+		if !maps.Equal(before, h.m.tree.Row(id).Fields) || len(h.m.undo) != undos {
+			t.Fatal("one undo did not restore all fields")
+		}
+		h.want("▌ ✓ Old ! @fri @@Nov 14 #release")
+		h.press("c", "c", "esc")
+		delete(want, sigil.FieldText)
+		if !maps.Equal(want, h.m.tree.Row(id).Fields) || h.m.current() != id {
+			t.Fatal("blank retype lost the row or its fields")
+		}
+		h.press("u")
+		if !maps.Equal(before, h.m.tree.Row(id).Fields) {
+			t.Fatal("undo did not restore blank retype")
+		}
+	})
+
+	t.Run("state survives a changed text default", func(t *testing.T) {
+		for _, tc := range []struct{ old, text, state string }{
+			{"Heading:", "Plain", ""},
+			{"Task", "Heading:", sigil.Open},
+			{"Note $note", "Plain", ""},
+			{"Task *2w @@2026-11-20", "Heading:", sigil.Open},
+		} {
+			t.Run(tc.old, func(t *testing.T) {
+				h := countOutline(t, 1)
+				h.press("A", "ctrl+u", `"`+tc.old+`"`, "esc")
+				id := h.m.current()
+				before := maps.Clone(h.m.tree.Row(id).Fields)
+				h.press("c", "c", `"`+tc.text+`"`, "esc")
+				want := maps.Clone(before)
+				want[sigil.FieldText] = tc.text
+				if got := h.m.tree.Row(id).Fields; !maps.Equal(want, got) || got[sigil.FieldState] != tc.state {
+					t.Fatalf("retype changed fields: %v", got)
+				}
+				h.press("u")
+				if !maps.Equal(before, h.m.tree.Row(id).Fields) {
+					t.Fatal("undo did not restore original fields")
+				}
+			})
+		}
+	})
+
+	t.Run("c cancels without dispatch and e does nothing", func(t *testing.T) {
+		h := countOutline(t, 3)
+		for _, k := range []string{"esc", "j", "g", "G", "d", "y", "A", "I", "2", "0", "f", "!", "v"} {
+			gen, undos, cur, root := h.m.tree.Gen(), len(h.m.undo), h.m.current(), h.m.at.root
+			h.press("c", k)
+			if h.m.edit != nil || h.m.ask != nil || h.m.operator != "" || h.m.prefix != "" || h.m.count != 0 || h.m.tree.Gen() != gen || len(h.m.undo) != undos || h.m.current() != cur || h.m.at.root != root || len(h.m.picked) != 0 {
+				t.Fatalf("c %s did not cancel without acting", k)
+			}
+		}
+		gen, undos := h.m.tree.Gen(), len(h.m.undo)
+		h.press("e")
+		if h.m.edit != nil || h.m.tree.Gen() != gen || len(h.m.undo) != undos {
+			t.Fatal("e still edits")
+		}
+		h.want("▌ ○ Task 00", "  ○ Task 01", "  ○ Task 02")
+	})
+
+	t.Run("all entries refuse selection and end sweeps", func(t *testing.T) {
+		for _, entry := range [][]string{{"A"}, {"I"}, {"c", "c"}} {
+			h := countOutline(t, 3)
+			h.m.Update(tea.WindowSizeMsg{Width: 120, Height: 12})
+			h.press("V", "j", "4")
+			gen, undos := h.m.tree.Gen(), len(h.m.undo)
+			h.press(entry...)
+			if h.m.edit != nil || h.m.tree.Gen() != gen || len(h.m.undo) != undos || len(h.m.picked) != 2 || h.m.sweep != "" || h.m.count != 0 || !strings.Contains(h.status(), "that works on one row") {
+				t.Fatalf("%v did not refuse selection: %s", entry, h.status())
+			}
+		}
+	})
+
+	t.Run("lists and filters", func(t *testing.T) {
+		for _, place := range []string{"Today", "filter", "flat filter"} {
+			t.Run(place, func(t *testing.T) {
+				h := countOutline(t, 1)
+				if place == "Today" {
+					h.press("t", "f", `"Today"`, "enter")
+				} else {
+					h.press("/", `"Task"`)
+					if place == "flat filter" {
+						h.press("tab")
+					}
+					h.press("enter")
+				}
+				id := h.m.current()
+				h.press("A", `" end"`, "esc", "I", `"Start "`, "esc")
+				if got := h.m.tree.Row(id).Text(); got != "Start Task 00 end" {
+					t.Fatalf("typing in %s: %q", place, got)
+				}
+				h.press("c", "c", `"Replacement"`, "esc")
+				if h.m.tree.Row(id).Text() != "Replacement" || h.m.current() != id {
+					t.Fatalf("retype in %s lost the row", place)
+				}
+			})
 		}
 	})
 }

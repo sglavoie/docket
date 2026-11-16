@@ -35,7 +35,7 @@ func TestAFailedSaveChangesNothing(t *testing.T) {
 	for _, keys := range [][]string{
 		{"x"},
 		{"o", `"Lost"`, "esc"},
-		{"e", `" more"`, "esc"},
+		{"A", `" more"`, "esc"},
 		{"d", "d"},
 		{"<"},
 		{"a", `"Lost too"`, "enter", "enter"},
@@ -435,7 +435,7 @@ func TestFoldCommandsAndHalfPages(t *testing.T) {
 	}
 	t.Run("typing retains controls", func(t *testing.T) {
 		h := fixture(t)
-		h.press("g", "g", "e", "ctrl+a", "right", "ctrl+u")
+		h.press("g", "g", "A", "ctrl+a", "right", "ctrl+u")
 		if string(h.m.edit.buf) != "lpha:" || h.m.edit.caret != 0 {
 			t.Fatal("Ctrl+U stopped cutting the line")
 		}

@@ -42,7 +42,7 @@ func TestTwoMachinesShareAnOutline(t *testing.T) {
 	// Each machine changes a different field of the same row, and the lap
 	// adds a row; neither has seen the other's change.
 	lap.press("j", "x", "o", `"Announce"`, "esc")
-	desk.press("k", "e", `" v2"`, "esc")
+	desk.press("k", "A", `" v2"`, "esc")
 	lap.tick()
 	desk.tick()
 	lap.tick()

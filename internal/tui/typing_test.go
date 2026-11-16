@@ -66,8 +66,8 @@ func TestTheRightArrowCompletesASigil(t *testing.T) {
 	)
 
 	// With nothing to offer, or the caret inside the line, the arrow moves.
-	h.press("e", "right", "left", "left", "right", `"X"`, "esc", "u")
-	h.press("e", `" #zz"`, "right", "esc")
+	h.press("A", "right", "left", "left", "right", `"X"`, "esc", "u")
+	h.press("A", `" #zz"`, "right", "esc")
 	h.want(
 		"  ▾ Beta",
 		"    ○ Fix cache #bug",
@@ -150,7 +150,7 @@ func TestEnterSplitsAndBackspaceJoins(t *testing.T) {
 		h.press("o", `"Café Ship #bug $doing !"`, "esc")
 		id := h.m.current()
 		before, steps := snapshot(h), len(h.m.undo)
-		h.press("e", "ctrl+a", "right", "right", "right", "right", "right", "enter")
+		h.press("A", "ctrl+a", "right", "right", "right", "right", "right", "enter")
 		e := h.m.edit
 		if e == nil || e.caret != 0 || string(e.buf) != "Ship ! #bug $doing" || h.m.tree.Row(id).Text() != "Café" {
 			t.Fatalf("split: editor=%+v, original=%+v", e, h.m.tree.Row(id))
@@ -169,7 +169,7 @@ func TestEnterSplitsAndBackspaceJoins(t *testing.T) {
 		h := start(t)
 		h.press("o", `"First Second"`, "esc")
 		before := snapshot(h)
-		h.press("e", "ctrl+a")
+		h.press("A", "ctrl+a")
 		for range 6 {
 			h.press("right")
 		}
@@ -190,7 +190,7 @@ func TestEnterSplitsAndBackspaceJoins(t *testing.T) {
 		second := h.m.current()
 		first := h.m.vis[h.m.cursor-1].id
 		before, steps := snapshot(h), len(h.m.undo)
-		h.press("e", "ctrl+a", "backspace")
+		h.press("A", "ctrl+a", "backspace")
 		if h.m.edit.row != first || h.m.edit.caret != len([]rune("First $open #old")) || !h.m.tree.Row(second).Deleted() {
 			t.Fatalf("join editor = %+v", h.m.edit)
 		}
@@ -230,7 +230,7 @@ func TestEnterSplitsAndBackspaceJoins(t *testing.T) {
 		h := start(t)
 		h.press("o", `"Parent"`, "enter", "tab", `"Child"`, "enter", "shift+tab", `"Next"`, "esc")
 		before := snapshot(h)
-		h.press("e", "ctrl+a", "backspace", "esc")
+		h.press("A", "ctrl+a", "backspace", "esc")
 		h.want("  ▾ Parent", "▌   ○ Child Next")
 		h.press("u")
 		restored(t, h, before)
@@ -243,7 +243,7 @@ func TestEnterSplitsAndBackspaceJoins(t *testing.T) {
 			if folded {
 				h.press("h")
 			}
-			h.press("e", "ctrl+a")
+			h.press("A", "ctrl+a")
 			for range 6 {
 				h.press("right")
 			}
@@ -264,7 +264,7 @@ func TestEnterSplitsAndBackspaceJoins(t *testing.T) {
 			if first {
 				h.press("esc", "g", "g")
 			}
-			h.press("e", "ctrl+a")
+			h.press("A", "ctrl+a")
 			before, steps, ed := snapshot(h), len(h.m.undo), *h.m.edit
 			h.press("backspace")
 			restored(t, h, before)
@@ -304,12 +304,12 @@ func TestEnterSplitsAndBackspaceJoins(t *testing.T) {
 				t.Fatal("fixture has no visible predecessor")
 			}
 			before, steps := snapshot(h), len(h.m.undo)
-			h.press("e", "ctrl+a", "right", "enter")
+			h.press("A", "ctrl+a", "right", "enter")
 			restored(t, h, before)
 			if h.m.edit != nil || len(h.m.undo) != steps {
 				t.Fatal("Enter split or failed to keep row")
 			}
-			h.press("e", "ctrl+a")
+			h.press("A", "ctrl+a")
 			ed, drawn := *h.m.edit, h.rows()
 			h.press("backspace")
 			restored(t, h, before)
@@ -322,7 +322,7 @@ func TestEnterSplitsAndBackspaceJoins(t *testing.T) {
 		h := start(t)
 		h.press("o", `"First"`, "esc")
 		before := snapshot(h)
-		h.press("e", "ctrl+a", "enter", "e", "enter")
+		h.press("A", "ctrl+a", "enter", "A", "enter")
 		restored(t, h, before)
 		if h.m.edit != nil {
 			t.Fatal("existing endpoint created a row")
@@ -353,7 +353,7 @@ func TestEnterSplitsAndBackspaceJoins(t *testing.T) {
 	})
 	t.Run("first leaf has no predecessor", func(t *testing.T) {
 		h := start(t)
-		h.press("o", `"Only"`, "esc", "e", "ctrl+a")
+		h.press("o", `"Only"`, "esc", "A", "ctrl+a")
 		before, steps, ed := snapshot(h), len(h.m.undo), *h.m.edit
 		h.press("backspace")
 		restored(t, h, before)
@@ -365,7 +365,7 @@ func TestEnterSplitsAndBackspaceJoins(t *testing.T) {
 		h := project(t)
 		before, steps := snapshot(h), len(h.m.undo)
 		h.m.backend = &flaky{Backend: h.m.backend, fail: true}
-		h.press("e", "ctrl+a", "backspace", "esc")
+		h.press("A", "ctrl+a", "backspace", "esc")
 		restored(t, h, before)
 		if len(h.m.undo) != steps || !strings.Contains(h.m.msg, "disk full") {
 			t.Fatal("failed join changed history or hid error")
@@ -375,7 +375,7 @@ func TestEnterSplitsAndBackspaceJoins(t *testing.T) {
 		h := start(t)
 		h.press("o", `"First Second"`, "esc")
 		before, steps := snapshot(h), len(h.m.undo)
-		h.press("e", "ctrl+a")
+		h.press("A", "ctrl+a")
 		for range 6 {
 			h.press("right")
 		}

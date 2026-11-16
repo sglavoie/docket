@@ -170,7 +170,7 @@ func TestSelectionActsOnEveryRowAndStampsSigils(t *testing.T) {
 	h.press("x")
 
 	// What works on one row is refused, not quietly aimed at the cursor.
-	for _, k := range []string{"e", "o", "O", "enter"} {
+	for _, k := range []string{"A", "o", "O", "enter"} {
 		h.press(k)
 		if !strings.Contains(h.m.msg, "clear the selection") {
 			t.Fatalf("%s: msg = %q", k, h.m.msg)

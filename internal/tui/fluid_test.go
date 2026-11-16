@@ -18,7 +18,7 @@ func TestUpAndDownKeepTypingInTheNextRow(t *testing.T) {
 	steps := len(h.m.undo)
 
 	// Each arrow keeps the row and opens its neighbour at the same column.
-	h.press("e", `"X"`, "up", `"Y"`, "up", "left", "left", `"Z"`)
+	h.press("A", `"X"`, "up", `"Y"`, "up", "left", "left", `"Z"`)
 	if h.m.edit == nil || string(h.m.edit.buf) != "OZne" {
 		t.Fatalf("edit = %+v", h.m.edit)
 	}
@@ -53,7 +53,7 @@ func TestUpAndDownKeepTypingInTheNextRow(t *testing.T) {
 
 	// A list keeps its rows, so the arrows walk it too.
 	h.press("k", "enter", "o", `"Task"`, "enter", `"Other"`, "esc", "g", "g", "t", "j", "t")
-	h.press("f", `"today"`, "enter", "e", `"!"`, "down", `"?"`, "esc")
+	h.press("f", `"today"`, "enter", "A", `"!"`, "down", `"?"`, "esc")
 	h.want("  ○ Task! · Two", "▌ ○ Other? · Two")
 }
 
