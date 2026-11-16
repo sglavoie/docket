@@ -124,6 +124,7 @@ func crowd(tb testing.TB, n int) *Model {
 		ops = append(ops, outline.Op{Kind: outline.Set, Row: id, Field: field, Value: value})
 	}
 	top := ""
+	today := time.Now()
 	for p := 0; p < 40; p++ {
 		project := fmt.Sprintf("p%02d", p)
 		top = outline.Between(top, "")
@@ -141,7 +142,9 @@ func crowd(tb testing.TB, n int) *Model {
 			set(id, "text", title)
 			set(id, "state", "open")
 			set(id, "tags", "alpha beta")
-			set(id, "due", "2026-12-01")
+			// Deadlines spread around today, so a range filter keeps most
+			// rows and has an order to sort into.
+			set(id, "due", today.AddDate(0, 0, (i*7)%60-10).Format("2006-01-02"))
 		}
 	}
 	if err := st.Commit(ops, time.Now().UnixMilli()); err != nil {
@@ -199,6 +202,56 @@ func TestAKeystrokePaintsWithinAFrame(t *testing.T) {
 	}
 	if d := best("s"); d > budget {
 		t.Errorf("typing a move-picker letter took %v", d)
+	}
+	frame(m, "esc")
+
+	// A filter reads the whole outline again on each letter of its query.
+	// retype times the query's last letter, put back after each sample.
+	retype := func(last string) time.Duration {
+		least := time.Hour
+		for i := 0; i < 20; i++ {
+			frame(m, "backspace")
+			at := time.Now()
+			frame(m, last)
+			least = min(least, time.Since(at))
+		}
+		return least
+	}
+	filter := func(query string) {
+		for _, r := range query {
+			frame(m, string(r))
+		}
+	}
+
+	// $next in context: each project's next action, under its project.
+	frame(m, "/")
+	filter("$next")
+	if len(m.at.hits) == 0 {
+		t.Fatal("$next timing needs next actions on screen")
+	}
+	if d := retype("t"); d > budget {
+		t.Errorf("typing a $next filter took %v", d)
+	}
+	frame(m, "enter")
+	if d := best("j"); d > budget {
+		t.Errorf("moving the cursor under $next took %v", d)
+	}
+
+	// A deadline range, flat, so its matches are sorted soonest first.
+	frame(m, "/")
+	frame(m, "esc")
+	frame(m, "/")
+	frame(m, "tab")
+	filter("@<+30d")
+	if !m.at.flat || len(m.at.hits) < 1000 {
+		t.Fatalf("sorted flat timing needs a flat list of many matches, have %d (flat %v)", len(m.at.hits), m.at.flat)
+	}
+	if d := retype("d"); d > budget {
+		t.Errorf("typing a sorted flat filter took %v", d)
+	}
+	frame(m, "enter")
+	if d := best("j"); d > budget {
+		t.Errorf("moving the cursor in a sorted flat filter took %v", d)
 	}
 }
 
