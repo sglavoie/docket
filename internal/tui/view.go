@@ -42,7 +42,9 @@ const helpText = `Docket
                  > < J K move adjacent selected siblings together
   # @ $ * -      stamp: type sigils, Enter sets them (-#tag, -@, -@@, -* remove)
   /              filter by text and sigils; -word excludes; Tab flat or in context
-                 a|b is either: $open|doing, #home|errands, milk|eggs
+                 # any tag, $ any task; -# untagged, -$ notes
+                 a|b is either: $open|doing, #home|!, milk|#food
+                 each side uses its own sigil or the first side's; unreadable is text
                  ~7d ~2w ~today: state changed (or row made) since then,
                  so $done ~7d is what was finished this week
                  $next: each project's first open or doing row not starting later

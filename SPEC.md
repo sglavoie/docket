@@ -282,9 +282,11 @@ Three more acts use the same line:
 
 - `/` **Filter ›** narrows the pane as the query is typed. Words match a
   row's text; `!`, `#tag`, `$state` and `@date` match its fields; a leading
-  `-` excludes. `@` alone is any deadline, and `@overdue` and `@week` read
-  the calendar. `@<date` holds for an open row due on or before that day and
-  `@>date` for one due on or after it, in any form `@date` takes
+  `-` excludes. `#` alone is any tag, `$` alone is any state (a task),
+  and `@` alone is any deadline; `-#` is untagged and `-$` is notes or
+  headings. `@overdue` and `@week` read the calendar. `@<date` holds for an
+  open row due on or before that day and `@>date` for one due on or after it,
+  in any form `@date` takes
   (`@<+30d`, `@<fri`, `@>12-31`); like `@overdue` they leave out done and
   canceled rows, so `-@<+30d` is everything else, rows with no deadline
   included. `~7d`, `~2w`, `~1m`, `~1y` and `~today` match a row whose
@@ -292,8 +294,11 @@ Three more acts use the same line:
   never had one, so `$done ~7d` is what was finished this week and
   `$waiting -~2w` what has waited longer than two. Every term must hold. A
   bar inside a word offers alternatives, and the word holds when any does:
-  `$open|doing`, `#home|errands`, `milk|eggs`. The sigil is written once;
-  if one alternative cannot be read as it, the whole word is text.
+  `$open|doing`, `#home|errands`, `milk|eggs`. Each side may carry its own
+  sigil (`#home|!`, `$waiting|@overdue`, `milk|#food`); a side without one
+  inherits the first side's sigil. If a side cannot be read as its own or
+  inherited sigil, the whole word is text. Each side is coloured and
+  completed according to its sigil.
   `$next` holds for each active project's next action: its first row, in
   outline order, that is open or doing, has no start day still ahead, and is
   not parked, under a parked row, or in a closed project, so the order of a
@@ -621,7 +626,9 @@ This is the only command; everything else is done in the outline.
 10. **Repeat and reach.** `h` in a list or flat filter shows the cursor's
    row where it lives; `Esc` returns to the held list or filter on that row.
    Blank `p` `Enter` returns to the place the last jump left, with its zoom
-   and cursor; a sidebar visit counts as one jump.
+   and cursor; a sidebar visit counts as one jump. Filters read bare `#`
+   and `$` as any tag and any state, and alternatives may mix sigils
+   (`#home|!`, `$waiting|@overdue`, `milk|#food`).
    *In progress.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any

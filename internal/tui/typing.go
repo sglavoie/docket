@@ -23,9 +23,9 @@ func looksLikeSigil(w string) bool {
 	return len(w) > 1 && strings.ContainsRune("#@$", rune(w[0]))
 }
 
-// styler returns how a surface colours a word as it is typed: accent for a
-// sigil it reads, warning for one it does not, nothing for prose.
-func (m *Model) styler(surface string) func(string) string {
+// styler returns styled spans for a word. Filter alternatives can carry
+// different styles; other surfaces read the word as a whole.
+func (m *Model) styler(surface string) func(string) []word {
 	today := m.today()
 	row := func(w string) string {
 		switch {
@@ -36,44 +36,59 @@ func (m *Model) styler(surface string) func(string) string {
 		}
 		return ""
 	}
-	switch surface {
-	case surfaceRow:
-		return row
-	case askCapture:
-		return func(w string) string {
+	return func(w string) []word {
+		style := ""
+		switch surface {
+		case surfaceRow:
+			style = row(w)
+		case askCapture:
+			style = row(w)
 			if name, ok := strings.CutPrefix(w, "%"); ok && name != "" {
+				style = sgrWarn
 				if len(match(m.targets(false), name, 2)) > 0 {
-					return sgrAccent
+					style = sgrAccent
 				}
-				return sgrWarn
 			}
-			return row(w)
-		}
-	case askStamp:
-		return func(w string) string {
-			if w == "-" {
-				return ""
+		case askStamp:
+			if w != "-" {
+				style = sgrAccent
+				if _, bad := parseStamp(w, today); bad != "" {
+					style = sgrWarn
+				}
 			}
-			if _, bad := parseStamp(w, today); bad != "" {
-				return sgrWarn
-			}
-			return sgrAccent
-		}
-	case askFilter:
-		return func(w string) string {
+		case askFilter:
 			terms := parseQuery(w, today)
-			switch {
-			case len(terms) == 0:
-				return ""
-			case terms[0].any[0].kind != 't':
-				return sgrAccent
-			case looksLikeSigil(strings.TrimPrefix(w, "-")):
-				return sgrWarn
+			if len(terms) == 0 {
+				break
 			}
-			return ""
+			parts := strings.Split(w, "|")
+			if len(parts) == len(terms[0].any) {
+				var spans []word
+				for i, c := range terms[0].any {
+					if i > 0 {
+						spans = append(spans, word{"", "|"})
+					}
+					style = ""
+					if c.kind != 't' {
+						style = sgrAccent
+					}
+					spans = append(spans, word{style, parts[i]})
+				}
+				if len(parts) > 1 || terms[0].any[0].kind != 't' {
+					return spans
+				}
+			}
+			// An unreadable sigil side makes the whole word literal text.
+			for _, part := range parts {
+				part = strings.TrimPrefix(part, "-")
+				if part != "" && strings.ContainsRune("!#$@*~", rune(part[0])) {
+					style = sgrWarn
+					break
+				}
+			}
 		}
+		return []word{{style, w}}
 	}
-	return nil
 }
 
 // suggest returns the rest of the sigil being typed at the end of the line:
@@ -93,6 +108,16 @@ func (m *Model) suggest(e *editor, surface string) string {
 	if word == "" {
 		return ""
 	}
+	if i := strings.LastIndexByte(word, '|'); surface == askFilter && i >= 0 {
+		sig := word[:len(word)-len(strings.TrimLeft(word, "!#$@*~"))]
+		word = word[i+1:]
+		if word == "" || !strings.ContainsRune("!#$@*~", rune(word[0])) {
+			word = sig + word
+		}
+		if word == "" {
+			return ""
+		}
+	}
 	typed := strings.ToLower(word[1:])
 	var offers []string
 	if rest, start := strings.CutPrefix(typed, "@"); start && word[0] == '@' {
@@ -102,9 +127,6 @@ func (m *Model) suggest(e *editor, surface string) string {
 		if surface == askFilter {
 			offers = append([]string{"later"}, dateWords...)
 		}
-	}
-	if i := strings.LastIndexByte(typed, '|'); surface == askFilter && i >= 0 {
-		typed = typed[i+1:] // the alternative being typed is completed like the first
 	}
 	switch word[0] {
 	case '#':
@@ -145,7 +167,7 @@ func tagsByUse(count map[string]int) []string {
 
 // window returns the part of the buffer that fits in avail columns with the
 // caret inside it, coloured word by word, and the caret's column within it.
-func (e *editor) window(avail int, style func(string) string) (string, int) {
+func (e *editor) window(avail int, style func(string) []word) (string, int) {
 	if e.caret < e.off {
 		e.off = e.caret
 	}
@@ -164,9 +186,12 @@ func (e *editor) window(avail int, style func(string) string) (string, int) {
 			for j < len(e.buf) && e.buf[j] != ' ' {
 				j++
 			}
-			s := style(string(e.buf[i:j]))
-			for k := i; k < j; k++ {
-				styles[k] = s
+			k := i
+			for _, span := range style(string(e.buf[i:j])) {
+				for range []rune(span.text) {
+					styles[k] = span.style
+					k++
+				}
 			}
 			i = j
 		}

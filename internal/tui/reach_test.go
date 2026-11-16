@@ -293,3 +293,90 @@ func TestHShowsAListsRowWhereItLives(t *testing.T) {
 		})
 	}
 }
+
+func TestFilterReadsAnyTagAnyStateAndMixedAlternatives(t *testing.T) {
+	fixture := func(t *testing.T) *harness {
+		h := start(t).wide()
+		h.pasteText("Home #home $open\nFlagged ! $doing\nWaiting $waiting\nOverdue @2026-11-14 $open\nMilk $note\nFood #food $note\nDone $done\nCanceled $canceled\nParked $parked\nLiteral $open|@nope $note\nLiteral milk|#123 $note\nLiteral $open|zzz $note\nLiteral #home| $note")
+		return h
+	}
+	t.Run("filter rows", func(t *testing.T) {
+		cases := []struct {
+			query string
+			rows  []string
+		}{
+			{"#", []string{"▌ ○ Home #home", "    Food #food"}},
+			{"-#", []string{"▌ ● Flagged !", "  ◔ Waiting", "  ○ Overdue @Nov 14", "    Milk", "  ✓ Done", "  ✕ Canceled", "  ◌ Parked", "    Literal $open|@nope", "    Literal milk|#123", "    Literal $open|zzz", "    Literal #home|"}},
+			{"$", []string{"▌ ○ Home #home", "  ● Flagged !", "  ◔ Waiting", "  ○ Overdue @Nov 14", "  ✓ Done", "  ✕ Canceled", "  ◌ Parked"}},
+			{"-$", []string{"▌   Milk", "    Food #food", "    Literal $open|@nope", "    Literal milk|#123", "    Literal $open|zzz", "    Literal #home|"}},
+			{"$note", []string{"▌   Milk", "    Food #food", "    Literal $open|@nope", "    Literal milk|#123", "    Literal $open|zzz", "    Literal #home|"}},
+			{"#home|!", []string{"▌ ○ Home #home", "  ● Flagged !"}},
+			{"!|#home", []string{"▌ ○ Home #home", "  ● Flagged !"}},
+			{"$open|doing", []string{"▌ ○ Home #home", "  ● Flagged !", "  ○ Overdue @Nov 14"}},
+			{"#home|food", []string{"▌ ○ Home #home", "    Food #food"}},
+			{"$waiting|@overdue", []string{"▌ ○ Overdue @Nov 14", "  ◔ Waiting"}},
+			{"milk|#food", []string{"▌   Milk", "    Food #food", "    Literal milk|#123"}},
+			{"#|$note", []string{"▌ ○ Home #home", "    Milk", "    Food #food", "    Literal $open|@nope", "    Literal milk|#123", "    Literal $open|zzz", "    Literal #home|"}},
+			{"-$|#", []string{"▌   Milk", "    Literal $open|@nope", "    Literal milk|#123", "    Literal $open|zzz", "    Literal #home|"}},
+			{"$open|@nope", []string{"▌   Literal $open|@nope"}},
+			{"milk|#123", []string{"▌   Literal milk|#123"}},
+			{"$open|zzz", []string{"▌   Literal $open|zzz"}},
+			{"#home|", []string{"▌   Literal #home|"}},
+			{"#home|$waiting|food", []string{"▌ ○ Home #home", "  ◔ Waiting", "    Food #food"}},
+		}
+		for _, tc := range cases {
+			t.Run(tc.query, func(t *testing.T) {
+				h := fixture(t)
+				h.press("/", `"`+tc.query+`"`)
+				if !h.m.at.flat {
+					h.press("tab")
+				}
+				h.want(tc.rows...)
+				h.press("esc")
+			})
+		}
+	})
+	t.Run("completion follows the active side", func(t *testing.T) {
+		h := fixture(t)
+		for _, tc := range []struct{ typed, want string }{
+			{"#home|$wa", "#home|$waiting"},
+			{"$waiting|@ov", "$waiting|@overdue"},
+			{"milk|#fo", "milk|#food"},
+			{"#home|fo", "#home|food"},
+			{"$open|do", "$open|doing"},
+			{"@@later|to", "@@later|today"},
+			{"#home|@@la", "#home|@@later"},
+			{"@overdue|$ne", "@overdue|$next"},
+			{"$open|#food|do", "$open|#food|doing"},
+			{"milk|#food|mi", "milk|#food|mi"},
+			{"#home|!", "#home|!"},
+			{"milk|", "milk|"},
+		} {
+			h.press("/", `"`+tc.typed+`"`, "right")
+			if h.m.at.query != tc.want {
+				t.Errorf("completed %q to %q, want %q", tc.typed, h.m.at.query, tc.want)
+			}
+			h.press("esc")
+		}
+	})
+	t.Run("colour follows each side and unreadable words stay literal", func(t *testing.T) {
+		h := fixture(t)
+		for _, tc := range []struct{ query, painted string }{
+			{"#", sgrAccent + "#" + sgrReset},
+			{"-$", sgrAccent + "-$" + sgrReset},
+			{"milk|#food", "milk|" + sgrAccent + "#food" + sgrReset},
+			{"牛奶|#食品", "牛奶|" + sgrAccent + "#食品" + sgrReset},
+			{"-#home|!", sgrAccent + "-#home" + sgrReset + "|" + sgrAccent + "!" + sgrReset},
+			{"$open|doing", sgrAccent + "$open" + sgrReset + "|" + sgrAccent + "doing" + sgrReset},
+			{"#home|@@later", sgrAccent + "#home" + sgrReset + "|" + sgrAccent + "@@later" + sgrReset},
+			{"milk|#123", sgrWarn + "milk|#123" + sgrReset},
+			{"#home|@nope", sgrWarn + "#home|@nope" + sgrReset},
+		} {
+			h.press("/", `"`+tc.query+`"`)
+			if raw := h.m.View().Content; !strings.Contains(raw, tc.painted) {
+				t.Errorf("%q missing coloured spans %q: %q", tc.query, tc.painted, raw)
+			}
+			h.press("esc")
+		}
+	})
+}

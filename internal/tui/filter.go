@@ -23,7 +23,7 @@ type term struct {
 
 // cond is one reading of a term.
 type cond struct {
-	kind  byte // t text, ! flag, # tag, $ state, n next action, @ deadline, < > deadline range, s start, * repeat, ~ changed
+	kind  byte // t text, ! flag, # tag, $ state, S any state, n next action, @ deadline, < > deadline range, s start, * repeat, ~ changed
 	value string
 }
 
@@ -36,16 +36,16 @@ func parseQuery(q string, today time.Time) []term {
 		if len(w) > 1 && w[0] == '-' {
 			t.neg, w = true, w[1:]
 		}
-		if w == "#" || w == "$" {
-			continue // a sigil still being typed
-		}
-		// The sigil is written once and stands for every alternative:
-		// $open|doing reads as $open or $doing.
-		sig := w[:len(w)-len(strings.TrimLeft(w, "#$@*~"))]
-		if parts := strings.Split(w[len(sig):], "|"); len(parts) > 1 && !slices.Contains(parts, "") {
+		// A side without its own sigil inherits the first side's:
+		// $open|doing reads as $open or $doing, but #home|! keeps both sigils.
+		sig := w[:len(w)-len(strings.TrimLeft(w, "!#$@*~"))]
+		if parts := strings.Split(w, "|"); len(parts) > 1 && !slices.Contains(parts, "") {
 			for _, part := range parts {
-				c := parseCond(sig+part, today)
-				if sig != "" && c.kind == 't' {
+				if !strings.ContainsRune("!#$@*~", rune(part[0])) {
+					part = sig + part
+				}
+				c := parseCond(part, today)
+				if strings.ContainsRune("!#$@*~", rune(part[0])) && c.kind == 't' {
 					t.any = nil // one alternative cannot be read: the word is text
 					break
 				}
@@ -69,12 +69,14 @@ func parseCond(w string, today time.Time) cond {
 			c.kind = '!'
 		}
 	case '#':
-		if tag, ok := sigil.ParseTag(w[1:]); ok {
+		if tag, ok := sigil.ParseTag(w[1:]); ok || w == "#" {
 			c.kind, c.value = '#', tag
 		}
 	case '$':
 		// $next is read before the states: it is a filter word, not a state.
-		if strings.ToLower(w) == "$next" {
+		if w == "$" {
+			c.kind = 'S'
+		} else if strings.ToLower(w) == "$next" {
 			c.kind = 'n'
 		} else if state, ok := sigil.ParseState(w[1:]); ok {
 			c.kind, c.value = '$', state
@@ -168,9 +170,11 @@ func holds(r *outline.Row, l sigil.Line, c cond, today time.Time, next map[strin
 	case '!':
 		return l.Flag
 	case '#':
-		return slices.Contains(l.Tags, c.value)
+		return len(l.Tags) > 0 && (c.value == "" || slices.Contains(l.Tags, c.value))
 	case '$':
 		return l.State == c.value
+	case 'S':
+		return l.State != ""
 	case 'n':
 		return next[r.ID]
 	case '@':
