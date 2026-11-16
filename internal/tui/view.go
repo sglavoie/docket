@@ -27,6 +27,8 @@ const helpText = `Docket
   j k  gg G      move
   Ctrl+D Ctrl+U  move half a pane down, up (outlines, lists and filters)
   h l            fold, unfold; step to parent, first child
+                 in lists and flat filters, h shows the row where it lives;
+                 Esc returns to the held rows; l does nothing
   Enter  Esc     zoom into a row; Esc clears the selection, the filter, the zoom
   o O            new row below, above
   e              edit the row

@@ -1515,6 +1515,9 @@ func (m *Model) normalKey(k string) {
 			m.seek(cur)
 		} else if n := len(m.zoom); n > 0 {
 			was := m.at.root
+			if m.at.returnRow != "" {
+				was = m.at.returnRow
+			}
 			m.leave()
 			m.at, m.zoom = m.zoom[n-1], m.zoom[:n-1]
 			m.rebuild()
@@ -1553,7 +1556,19 @@ func (m *Model) normalKey(k string) {
 		// A sigil typed on the rows opens the stamp line already holding it.
 		m.ask = &prompt{kind: askStamp, ed: editor{buf: []rune(k), caret: 1}, rows: ids}
 	case "h", "left":
-		if m.at.query != "" {
+		if m.at.list != "" || (m.at.query != "" && m.at.flat) {
+			if !m.single() {
+				break
+			}
+			m.leave()
+			m.zoom = append(m.zoom, m.at)
+			m.at = place{root: m.tree.Row(cur).Parent, returnRow: cur}
+			if m.hideClosed && sigil.FromFields(m.tree.Row(cur).Fields).Closed() {
+				m.at.kept = map[string]bool{cur: true}
+			}
+			m.arrive()
+			m.seek(cur)
+		} else if m.at.query != "" {
 			// A filter has no folds: the keys only step.
 			for i := m.cursor - 1; i >= 0; i-- {
 				if m.vis[i].depth < m.vis[m.cursor].depth {
@@ -1568,7 +1583,9 @@ func (m *Model) normalKey(k string) {
 			m.seek(p)
 		}
 	case "l", "right":
-		if m.at.query != "" {
+		if m.at.list != "" || (m.at.query != "" && m.at.flat) {
+			break
+		} else if m.at.query != "" {
 			if next := m.cursor + 1; next < len(m.vis) && m.vis[next].depth > m.vis[m.cursor].depth {
 				m.cursor = next
 			}

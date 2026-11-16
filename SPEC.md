@@ -210,7 +210,11 @@ The pane shows the rows under one row, or a list.
   keeping the cursor on it without moving it in the outline. They refuse
   selections; Waiting, Stale and review refuse both keys. `o`, `O`, `>` and
   `<` are refused in every list. `Enter` works inside a row, from which
-  `Esc` returns to the same list.
+  `Esc` returns to the same list. `h` opens the cursor's row among its
+  siblings in its parent's outline; `Esc` returns to the held list on that
+  row. In review, a top-level row opens Projects. The row stays visible
+  even with `:closed` on. `h` refuses a selection, and `l` does nothing;
+  neither changes a fold.
 - **Launch** opens Today when something is picked for the day, else Projects.
 - **A row wraps** under its own text at the pane's width, each word keeping
   its colour, so nothing is cut; a word wider than the pane breaks across
@@ -299,9 +303,12 @@ Three more acts use the same line:
   where the header names it; `Esc` drops it. Like a list, a filter holds the
   rows it found until the query changes, and refuses the keys that
   restructure the tree. Changing the filter clears the selection. A filter
-  shows every match: a fold never hides one. While it is on, `h` and `l`
-  only step to the parent and the first child, and the folds are as they
-  were once it is dropped.
+  shows every match: a fold never hides one. In context, `h` and `l` only
+  step to the parent and the first child. In a flat filter, `h` opens the
+  cursor's row among its siblings in its parent's outline, keeping it
+  visible even with `:closed` on; `Esc` returns to the held filter with
+  its query and cursor intact. `h` refuses a selection and `l` does
+  nothing there. Neither changes a fold.
 - `#` `@` `$` `*` `-` **Stamp ›** opens holding that character. The line is
   sigils only: `#tag`, `@date`, `@@date`, `*interval`, `$state` and `!` set;
   `-#tag`, `-@`, `-@@`, `-*` and `-!` remove. `Enter` applies them to the selection, else to the cursor's row, as
@@ -401,7 +408,7 @@ the zoom.
 | --- | --- | --- |
 | `j` `k` `gg` `G` | Move | 1 |
 | `Ctrl+D` `Ctrl+U` | Move half a pane down, up | 7 |
-| `h` `l` | Fold, unfold; step to parent, first child | 1 |
+| `h` `l` | Fold, unfold; step to parent, first child; in lists and flat filters, `h` shows the row where it lives (`Esc` returns), `l` does nothing | 1, 10 |
 | `Enter` `Esc` | Zoom in, back out | 1 |
 | `o` `O` `e` | New row below, above; edit | 1 |
 | `>` `<` `J` `K` | Indent, outdent, reorder | 1 |
@@ -601,6 +608,10 @@ This is the only command; everything else is done in the outline.
    `@>date` filter deadline ranges, and a flat deadline filter reads soonest
    first. `:all` selects every row the pane shows. `m` `Enter` moves the selection
    `here`, where `o` would open a row. *In progress.*
+
+10. **Repeat and reach.** `h` in a list or flat filter shows the cursor's
+   row where it lives; `Esc` returns to the held list or filter on that row.
+   *In progress.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add`.

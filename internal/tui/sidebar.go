@@ -52,10 +52,11 @@ const (
 // whose rows were fixed when it was opened. A list never drops a row because
 // its state changed under the cursor; it is read again when reopened.
 type place struct {
-	root string
-	list string
-	rows []string
-	kept map[string]bool // closed rows still shown because they closed here
+	root      string
+	list      string
+	rows      []string
+	kept      map[string]bool // closed rows still shown because they closed here
+	returnRow string          // row to seek in the previous place when Esc leaves this zoom
 
 	// A filter narrows the place to the rows answering query. Like a list,
 	// it holds the rows it found until the query changes.
