@@ -848,7 +848,7 @@ func (m *Model) replay(from, to *[][]outline.Op, verb string) {
 	m.keepHistory()
 	m.rebuild()
 	m.seek(group[len(group)-1].Row)
-	m.msg = verb + ": " + describe(group)
+	m.msg = verb + ": " + describe(group, m.under)
 	if m.at.list == kindToday {
 		for _, op := range group {
 			if op.Field == fieldTodayPos {
@@ -2311,6 +2311,17 @@ func (m *Model) rowObject(k string) []string {
 	return ids
 }
 
+// under lists the rows beneath a row that go and come back with it.
+func (m *Model) under(id string) []string {
+	var out []string
+	for _, kid := range m.tree.Children(id) {
+		if r := m.tree.Row(kid); r != nil && !r.Deleted() {
+			out = append(append(out, kid), m.under(kid)...)
+		}
+	}
+	return out
+}
+
 // Capture live subtrees before deletion, using the same format as export.
 func (m *Model) takeRows(op string, ids []string) {
 	if len(ids) == 0 {
@@ -2334,6 +2345,9 @@ func (m *Model) takeRows(op string, ids []string) {
 	}
 	if m.do(ops...) {
 		m.rebuild()
+		// Delete asks nothing, so it says what went: a folded row takes
+		// rows with it that were never on screen.
+		m.msg = "deleted " + rowCount(n)
 	}
 }
 

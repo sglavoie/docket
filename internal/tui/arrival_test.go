@@ -791,7 +791,7 @@ func TestHeaderCountsAndSums(t *testing.T) {
 		t.Fatalf("folded outline =\n%s", h.rows())
 	}
 	h.press("enter")
-	wantHeader("Project › Storage:  · 5 to do · 20h")
+	wantHeader("Project › Storage  · 5 to do · 20h")
 	h.press("g", "g", "t", "j", "t", "f", `"Today"`, "enter")
 	wantHeader("Today  · 2 to do · 2h")
 	h.press("g", "g", "x")

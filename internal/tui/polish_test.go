@@ -660,3 +660,94 @@ func TestAFinishedHeadingGivesUpItsColour(t *testing.T) {
 		t.Fatalf("a finished heading keeps its colour:\n%q", raw)
 	}
 }
+
+// Delete asks nothing, so it says how many rows went, those inside a fold
+// included, and undo says they are back.
+func TestDeleteSaysHowManyRowsWent(t *testing.T) {
+	h := work(t)
+	h.press("g", "g", "h", "d", "d")
+	h.want(
+		"▌ ▾ Alpha",
+		"    ○ Fix login ! #bug",
+		"    ○ Write docs @fri #docs",
+		"    ○ Refactor auth #bug",
+	)
+	if h.m.msg != "deleted 2 rows" {
+		t.Fatalf("msg = %q", h.m.msg)
+	}
+	h.press("u")
+	if h.m.msg != "undo: 2 rows back" {
+		t.Fatalf("msg = %q", h.m.msg)
+	}
+	h.press("j", "j", "d", "d")
+	if h.m.msg != "deleted 1 row" {
+		t.Fatalf("msg = %q", h.m.msg)
+	}
+}
+
+// What was not written is drawn in the alert colour, so it does not pass
+// for a confirmation; an ordinary message stays in the text colour.
+func TestAFailedSaveIsDrawnAsAnAlarm(t *testing.T) {
+	h := work(t)
+	disk := &flaky{Backend: h.m.backend, fail: true}
+	h.m.backend = disk
+	h.press("x")
+	c := h.m.colors()
+	if raw := h.m.View().Content; !strings.Contains(raw, c.alert+"not saved, nothing changed: disk full") {
+		t.Fatalf("a failed save is not in the alert colour:\n%q", raw)
+	}
+	disk.fail = false
+	h.press("y", "y")
+	if raw := h.m.View().Content; strings.Contains(raw, c.alert+"copied") || !strings.Contains(raw, "copied 1 row") {
+		t.Fatalf("a confirmation is drawn as an alarm:\n%q", raw)
+	}
+}
+
+// A sidebar that takes a narrow pane keeps each count beside its name, and
+// does not send it to the far edge.
+func TestANarrowSidebarKeepsCountsBesideNames(t *testing.T) {
+	h := work(t)
+	h.press("a", `"Thought"`, "enter", "esc")
+	h.m.Update(tea.WindowSizeMsg{Width: 70, Height: 12})
+	h.press("tab")
+	lines := h.lines()
+	if got, want := strings.TrimRight(lines[0], " "), "  Inbox"+strings.Repeat(" ", sidebarAlone-8)+"1"; got != want {
+		t.Fatalf("sidebar = %q, want %q", got, want)
+	}
+	h.m.Update(tea.WindowSizeMsg{Width: 30, Height: 12})
+	if got, want := strings.TrimRight(h.lines()[0], " "), "  Inbox"+strings.Repeat(" ", 22)+"1"; got != want {
+		t.Fatalf("sidebar = %q, want %q", got, want)
+	}
+}
+
+// A header too narrow for its whole path gives up the rows above the place,
+// from the project down, and keeps the place; a heading drops its colon
+// there as it does in the pickers.
+func TestANarrowHeaderKeepsThePlace(t *testing.T) {
+	h := start(t)
+	h.press("o", `"Project"`, "enter", "tab", `"Storage:"`, "enter", "tab",
+		`"Decide op-log format"`, "enter", "tab", `"per field"`, "esc", "k", "enter")
+	for width, want := range map[int]string{
+		60: "Project › Storage › Decide op-log format",
+		36: "… › Storage › Decide op-log format",
+		30: "… › Decide op-log format",
+		20: "… › Decide op-log f…",
+	} {
+		h.m.Update(tea.WindowSizeMsg{Width: width, Height: 12})
+		if h.header() != want {
+			t.Fatalf("at %d columns header = %q, want %q", width, h.header(), want)
+		}
+	}
+}
+
+// The filter line counts its matches as a sentence would.
+func TestTheFilterLineCountsAsASentence(t *testing.T) {
+	h := work(t)
+	for query, want := range map[string]string{"cache": "1 match · ", "fix": "2 matches · ", "zebra": "no match · "} {
+		h.press("/", `"`+query+`"`)
+		if !strings.HasPrefix(h.bottom(), "Filter › "+query+"   "+want) {
+			t.Fatalf("prompt = %q", h.bottom())
+		}
+		h.press("esc")
+	}
+}

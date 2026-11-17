@@ -299,16 +299,21 @@ func (m *Model) whereFlat(r *outline.Row) string {
 	return ""
 }
 
-func (m *Model) breadcrumb() string {
-	return m.placeName(m.at)
+// placeName is a place as one line: a list by its name, a row under the rows
+// above it.
+func (m *Model) placeName(p place) string {
+	return strings.Join(m.placeParts(p), " › ")
 }
 
-func (m *Model) placeName(p place) string {
+// placeParts names a place from the project down. A heading drops its
+// colon, as it does wherever else a path is written: the mark between two
+// names already says one holds the other.
+func (m *Model) placeParts(p place) []string {
 	switch {
 	case p.list != "":
-		return strings.ToUpper(p.list[:1]) + p.list[1:]
+		return []string{strings.ToUpper(p.list[:1]) + p.list[1:]}
 	case p.root == "":
-		return "Projects"
+		return []string{"Projects"}
 	}
 	var parts []string
 	for id := p.root; id != ""; {
@@ -316,23 +321,24 @@ func (m *Model) placeName(p place) string {
 		if r == nil {
 			break
 		}
-		parts = append([]string{r.Text()}, parts...)
+		name := r.Text()
+		if short := strings.TrimSuffix(name, ":"); short != "" {
+			name = short
+		}
+		parts = append([]string{name}, parts...)
 		id = r.Parent
 	}
-	return strings.Join(parts, " › ")
+	return parts
 }
 
 // paneHeader says where the pane is: the place in the text colour under its
 // dimmed ancestors, what it holds dimmed after it, a held filter in the
-// accent colour since it hides rows, and the ruler at the right edge.
+// accent colour since it hides rows, and the ruler at the right edge. A
+// line too narrow for all of it gives up the ruler, then the rows above the
+// place from the project down, since the place is what the pane shows.
 func (m *Model) paneHeader(w int, ruler string) string {
 	c := m.colors()
-	name := m.breadcrumb()
-	header := name
-	if i := strings.LastIndex(name, " › "); i >= 0 {
-		i += len(" › ")
-		header = c.dim + name[:i] + sgrReset + name[i:]
-	}
+	parts := m.placeParts(m.at)
 	summary := m.paneTotal.summary()
 	if p := m.projectOf(m.at.root); p != nil && m.at.list == "" {
 		// A project out of the sidebar says why, since nothing there marks it.
@@ -352,22 +358,40 @@ func (m *Model) paneHeader(w int, ruler string) string {
 			summary += " · " + strconv.Itoa(done) + " done"
 		}
 	}
+	tail := ""
 	if summary != "" {
-		header += c.dim + "  · " + summary + sgrReset
+		tail += c.dim + "  · " + summary + sgrReset
 	}
 	if m.at.query != "" {
-		header += "  " + c.accent + "/ " + m.at.query + sgrReset
+		tail += "  " + c.accent + "/ " + m.at.query + sgrReset
 		if m.at.flat {
-			header += c.dim + "  (flat)" + sgrReset
+			tail += c.dim + "  (flat)" + sgrReset
 		}
 	} else if m.hideClosed && m.at.list == "" {
-		header += c.dim + "  · closed hidden" + sgrReset
+		tail += c.dim + "  · closed hidden" + sgrReset
 	}
-	gap := w - ansi.StringWidth(header) - ansi.StringWidth(ruler)
-	if ruler == "" || gap < 2 {
-		return ansi.Truncate(header, w, "…") + sgrReset
+	// The header with the first cut rows above the place left out.
+	line := func(cut int) string {
+		above := ""
+		if cut > 0 {
+			above = "… › "
+		}
+		for _, name := range parts[cut : len(parts)-1] {
+			above += name + " › "
+		}
+		if above != "" {
+			above = c.dim + above + sgrReset
+		}
+		return above + parts[len(parts)-1] + tail
 	}
-	return header + strings.Repeat(" ", gap) + c.dim + ruler + sgrReset
+	header := line(0)
+	if gap := w - ansi.StringWidth(header) - ansi.StringWidth(ruler); ruler != "" && gap >= 2 {
+		return header + strings.Repeat(" ", gap) + c.dim + ruler + sgrReset
+	}
+	for cut := 1; cut < len(parts) && ansi.StringWidth(header) > w; cut++ {
+		header = line(cut)
+	}
+	return ansi.Truncate(header, w, "…") + sgrReset
 }
 
 // ruler is where the pane is among its rows, as Vim's ruler says it, given
@@ -446,11 +470,12 @@ func (m *Model) statusLine(w int) (string, int) {
 				shape = "flat"
 			}
 			// The line read back in words, so its marks need not be remembered.
-			note := strconv.Itoa(len(m.at.matched)) + " match · " + shape + " · Tab switches"
+			found := matchCount(len(m.at.matched))
+			note := found + " · " + shape + " · Tab switches"
 			if tags != "" {
-				note = strconv.Itoa(len(m.at.matched)) + " match · " + tags
+				note = found + " · " + tags
 			} else if reads := readBack(string(a.ed.buf), m.today()); reads != "" {
-				note = strconv.Itoa(len(m.at.matched)) + " match · " + shape + " · " + reads
+				note = found + " · " + shape + " · " + reads
 			}
 			line += "   " + m.colors().dim + ansi.Truncate(note, room, "…") + sgrReset
 		case a.kind == askStamp:
@@ -494,6 +519,10 @@ func (m *Model) statusLine(w int) (string, int) {
 
 	left, right := m.msg, ":help"
 	switch {
+	case failing(left):
+		// What did not reach the disk or the sync folder is the one message
+		// that must not pass for a confirmation.
+		left = m.colors().alert + left + sgrReset
 	case left != "":
 	case m.nextKeys() != "":
 		left = m.colors().dim + m.nextKeys() + sgrReset
@@ -752,8 +781,9 @@ func (m *Model) View() tea.View {
 			caret = c
 		}
 	case m.sideFocus:
-		// Too narrow for both: the sidebar takes the pane while it has focus.
-		lines = m.sideLines(w, bodyH)
+		// Too narrow for both: the sidebar takes the pane while it has focus,
+		// no wider than keeps each count beside the name it counts.
+		lines = m.sideLines(min(w, sidebarAlone), bodyH)
 	default:
 		lines, caret = m.paneLines(w, bodyH)
 	}

@@ -49,10 +49,11 @@ const (
 )
 
 const (
-	staleAfter  = 14 * 24 * time.Hour
-	dueSoonDays = 7
-	sidebarCols = 24
-	sidebarFrom = 72 // the terminal width from which the sidebar is always drawn
+	staleAfter   = 14 * 24 * time.Hour
+	dueSoonDays  = 7
+	sidebarCols  = 24
+	sidebarFrom  = 72 // the terminal width from which the sidebar is always drawn
+	sidebarAlone = 40 // the widest the sidebar is drawn when it takes a narrow pane
 )
 
 // place is what the outline pane shows: the rows under root, or a flat list

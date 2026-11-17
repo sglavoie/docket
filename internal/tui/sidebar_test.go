@@ -557,7 +557,7 @@ func TestMoveReachesAHeading(t *testing.T) {
 		// The jump picker reaches the heading, inside its project: the
 		// sidebar stays on the project and Esc backs out to it.
 		h.press("f", `"sidebar"`, "enter")
-		if h.header() != "Alpha › TUI: › Sidebar:  · 1 to do" {
+		if h.header() != "Alpha › TUI › Sidebar  · 1 to do" {
 			t.Fatalf("header = %q", h.header())
 		}
 		h.want("▌ ○ Existing")

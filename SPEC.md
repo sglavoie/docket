@@ -213,10 +213,16 @@ header says which before its totals, as `tax-2026 · parked · 50 to do`. A held
 filter is in the accent colour, since it hides rows. When the rows overflow
 the pane, the header's right edge says where the pane is among them, as
 `Top`, `40%` or `Bot`; it says nothing while every row is on screen, and
-gives way to the place when the line is too narrow for both.
+gives way to the place when the line is too narrow for both. A line still
+too narrow gives up the rows above the place, from the project down, behind
+a `…`, as `… › Sidebar  · 3 to do`: the place is what the pane shows, so it
+is the last thing cut. A heading in the header drops its colon, as it does
+in the pickers and after a flat row.
 
 On the status line a message is in the text colour and a standing hint
-about keys is dim, so a message is seen to be one.
+about keys is dim, so a message is seen to be one. A message that something
+was not written (a save, a backup, a sync pass) is in the alert colour, so
+it does not pass for a confirmation.
 
 The screen uses named text, dim, accent, warning and alert roles in two
 built-in true-colour palettes. At launch it asks the terminal for its
@@ -233,7 +239,8 @@ tint, while selections remain shaded. Indentation stays blank.
 
 ### Sidebar
 
-Drawn from 72 columns up; narrower, it takes the pane only while focused.
+Drawn from 72 columns up; narrower, it takes the pane only while focused,
+and is then no wider than 40 columns, so each count stays beside its name.
 Everything in it is derived by one pass over the tree. Nothing is stored.
 
 - **Four lists, and they stay four.** Inbox counts its rows; Today counts
@@ -525,7 +532,8 @@ Three more acts use the same line:
   tag the query names, in the accent colour and underlined. A term that
   excludes, one read on other rows (`^ _ < >`) and one inside `-(` mark
   nothing. While the line is typed the status line reads it back in words,
-  after the count of matches, so its marks need not be remembered:
+  after the count of matches (`no match`, `1 match`, `12 matches`), so its
+  marks need not be remembered:
   `-_$open|doing` says `no row under it: open or doing`, `$done ~7d` says
   `done and changed since Nov 8`, and a bar or brackets standing alone read
   as `, or` and brackets. A tag being typed names the tags in use instead.
@@ -812,7 +820,8 @@ move it elsewhere.
 `u` and `Ctrl+R` say on the status line what they took back or made
 again, since undo is the only safety net (rule 1): rows that came back,
 rows gone, rows moved, and which fields changed on how many rows, as
-`undo: 3 rows back` or `redo: text and tags changed on 2 rows`. A counted
+`undo: 3 rows back` or `redo: text and tags changed on 2 rows`. A row that came back or went is
+counted with the rows under it, as a delete counts them. A counted
 undo says how many steps it took, as `undo: 3 steps`.
 
 **Structural motions** read the shown rows by depth and change no fold.
@@ -1044,7 +1053,9 @@ no undo step. `y` with a motion copies the inclusive shown range, excluding
 dimmed ancestors, with the same message; `y` alone waits, and `Esc` or an unrelated key cancels it. Counts
 before the operator and motion multiply. A motion with selected rows is
 refused; use `yy` (or `dd` to delete) on the selection. `dd` and `d` with a
-motion write the same subtree text before deleting, as one undo step. Undo
+motion write the same subtree text before deleting, as one undo step, and
+say `deleted N rows`, counting the rows under each as copy does: delete
+asks nothing (rule 1), so a folded row says how much went with it. Undo
 restores the rows and leaves the register intact. The register lasts for the
 session only and is never stored.
 

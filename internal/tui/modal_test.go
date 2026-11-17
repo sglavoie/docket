@@ -392,7 +392,7 @@ func TestGoToReachesAnyRow(t *testing.T) {
 	}
 	h.press("enter")
 	h.want("▌ ○ Buy milk", "  ○ Sell milk")
-	if h.header() != "Alpha › Heading:  · 2 to do" || h.m.sel.kind != kindProject {
+	if h.header() != "Alpha › Heading  · 2 to do" || h.m.sel.kind != kindProject {
 		t.Fatalf("the row did not open inside its project: %q", h.header())
 	}
 	h.press("esc")
@@ -452,7 +452,7 @@ func TestARowLinksToAnother(t *testing.T) {
 	h.want("▌ ○ Buy bread → Buy milk", "  ○ Eggs → Buy milk")
 	h.press("g", "l")
 	h.want("▌ ○ Buy milk", "  ○ Sell milk")
-	if h.header() != "Alpha › Heading:  · 2 to do" {
+	if h.header() != "Alpha › Heading  · 2 to do" {
 		t.Fatalf("header = %q", h.header())
 	}
 	// The link reads as the row reads now, and following it was a jump.
@@ -522,7 +522,7 @@ func TestAFilterTestsTheRowsBelow(t *testing.T) {
 	}
 	// A bare underscore waits for typing and a doubled one is text.
 	h.press("/", `"_"`)
-	if !strings.Contains(h.bottom(), "0 match") {
+	if !strings.Contains(h.bottom(), "no match") {
 		t.Fatalf("bare underscore = %q", h.bottom())
 	}
 	h.press(`"#bug"`)
@@ -530,7 +530,7 @@ func TestAFilterTestsTheRowsBelow(t *testing.T) {
 		t.Fatalf("typed underscore term = %q", h.bottom())
 	}
 	h.press("esc", "/", `"__x"`)
-	if !strings.Contains(h.bottom(), "0 match") {
+	if !strings.Contains(h.bottom(), "no match") {
 		t.Fatalf("doubled underscore = %q", h.bottom())
 	}
 }

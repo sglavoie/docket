@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"unicode"
@@ -40,11 +41,34 @@ func rowCount(n int) string {
 	return fmt.Sprintf("%d rows", n)
 }
 
+// matchCount says how many rows a filter holds, as a sentence would.
+func matchCount(n int) string {
+	switch n {
+	case 0:
+		return "no match"
+	case 1:
+		return "1 match"
+	}
+	return fmt.Sprintf("%d matches", n)
+}
+
+// failing reports a message saying that something was not written: a save,
+// a backup or a sync pass. The status line draws it in the alert colour.
+func failing(msg string) bool {
+	for _, start := range []string{"not saved", "no backup", "sync failed", "sync stuck"} {
+		if strings.HasPrefix(msg, start) {
+			return true
+		}
+	}
+	return false
+}
+
 // describe says what a group of operations did to rows, for the status
 // line after undo and redo: rows that came back or went, rows moved, and
 // which fields changed on how many rows. A row that came back or went is
-// not also counted as moved or changed.
-func describe(group []outline.Op) string {
+// not also counted as moved or changed, and takes the rows under it along,
+// as the count a delete gives does.
+func describe(group []outline.Op, under func(id string) []string) string {
 	restored, removed := map[string]bool{}, map[string]bool{}
 	moved := map[string]bool{}
 	changed := map[string]map[string]bool{}
@@ -63,6 +87,13 @@ func describe(group []outline.Op) string {
 				changed[op.Field] = map[string]bool{}
 			}
 			changed[op.Field][op.Row] = true
+		}
+	}
+	for _, set := range []map[string]bool{restored, removed} {
+		for _, id := range slices.Collect(maps.Keys(set)) {
+			for _, kid := range under(id) {
+				set[kid] = true
+			}
 		}
 	}
 	gone := func(id string) bool { return restored[id] || removed[id] }

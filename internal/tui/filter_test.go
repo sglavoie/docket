@@ -42,7 +42,7 @@ func TestFilterNarrowsAsItIsTypedAndKeepsContext(t *testing.T) {
 		"    ○ Fix login ! #bug",
 		"    ○ Refactor auth #bug",
 	)
-	if h.bottom() != "Filter › #bug   3 match · #bug 3" {
+	if h.bottom() != "Filter › #bug   3 matches · #bug 3" {
 		t.Fatalf("prompt = %q", h.bottom())
 	}
 	h.press("tab")
