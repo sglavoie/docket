@@ -942,6 +942,63 @@ func (m *Model) list(filter string) []string {
 }
 
 // sideLines draws the sidebar at exactly w columns and h rows.
+// sideInfo is what an entry says at its right edge: a count, a finished
+// day, or a project's deadline mark and age.
+func (m *Model) sideInfo(e entry) string {
+	switch {
+	case e.kind == kindProject:
+		info := ""
+		if e.due == 2 {
+			// Bold as well, so overdue is not told by colour alone.
+			info = m.colors().alert + sgrBold + "@" + sgrReset + " "
+		} else if e.due == 1 {
+			info = m.colors().warn + "@" + sgrReset + " "
+		}
+		if e.idle {
+			info += m.colors().dim + "∅" + sgrReset
+		} else if e.age > 0 {
+			info += ageStyle(m.colors(), e.age) + strconv.Itoa(e.age) + "d" + sgrReset
+		}
+		return strings.TrimRight(info, " ")
+	case e.count > 0:
+		return m.colors().dim + strconv.Itoa(e.count) + sgrReset
+	case e.done:
+		// A finished day is told from one with nothing picked.
+		return m.colors().dim + "✓" + sgrReset
+	}
+	return ""
+}
+
+// ageStyle draws a project's age dim, and in the text colour once it passes
+// the Stale rule, so the project left alone is the one the eye finds.
+func ageStyle(c palette, days int) string {
+	if days >= int(staleAfter/(24*time.Hour)) {
+		return c.text
+	}
+	return c.dim
+}
+
+// sideFit is the width the sidebar needs when it takes a narrow pane alone:
+// its widest entry, so each count stays beside the name it counts, and no
+// narrower than it is drawn beside the pane.
+func (m *Model) sideFit() int {
+	w := sidebarCols
+	for _, e := range m.side {
+		need := 2 + ansi.StringWidth(e.label)
+		if info := ansi.StringWidth(m.sideInfo(e)); info > 0 {
+			need += 1 + info
+		}
+		w = max(w, need)
+	}
+	if m.parked > 0 {
+		w = max(w, 2+len("parked ")+len(strconv.Itoa(m.parked)))
+	}
+	if m.syncNote != "" {
+		w = max(w, 2+ansi.StringWidth(m.syncNote))
+	}
+	return min(w, sidebarAlone)
+}
+
 func (m *Model) sideLines(w, h int) []string {
 	type line struct {
 		text  string
@@ -956,33 +1013,7 @@ func (m *Model) sideLines(w, h int) []string {
 			lines = append(lines, line{})
 		}
 		sel := e.same(m.sel)
-		info := ""
-		switch {
-		case e.kind == kindProject:
-			if e.due == 2 {
-				// Bold as well, so overdue is not told by colour alone.
-				info = m.colors().alert + sgrBold + "@" + sgrReset + " "
-			} else if e.due == 1 {
-				info = m.colors().warn + "@" + sgrReset + " "
-			}
-			if e.idle {
-				info += m.colors().dim + "∅" + sgrReset
-			} else if e.age > 0 {
-				// An age past the Stale rule is in the text colour, so the
-				// project left alone is the one the eye finds.
-				style := m.colors().dim
-				if e.age >= int(staleAfter/(24*time.Hour)) {
-					style = m.colors().text
-				}
-				info += style + strconv.Itoa(e.age) + "d" + sgrReset
-			}
-			info = strings.TrimRight(info, " ")
-		case e.count > 0:
-			info = m.colors().dim + strconv.Itoa(e.count) + sgrReset
-		case e.done:
-			// A finished day is told from one with nothing picked.
-			info = m.colors().dim + "✓" + sgrReset
-		}
+		info := m.sideInfo(e)
 		gutter := " "
 		if sel {
 			gutter = m.colors().dim + "▌" + sgrReset

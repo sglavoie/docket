@@ -710,8 +710,18 @@ func TestANarrowSidebarKeepsCountsBesideNames(t *testing.T) {
 	h.press("a", `"Thought"`, "enter", "esc")
 	h.m.Update(tea.WindowSizeMsg{Width: 70, Height: 12})
 	h.press("tab")
+	// Short names: as wide as it is drawn beside the pane, not wider.
 	lines := h.lines()
-	if got, want := strings.TrimRight(lines[0], " "), "  Inbox"+strings.Repeat(" ", sidebarAlone-8)+"1"; got != want {
+	if got, want := strings.TrimRight(lines[0], " "), "  Inbox"+strings.Repeat(" ", sidebarCols-8)+"1"; got != want {
+		t.Fatalf("sidebar = %q, want %q", got, want)
+	}
+	// A longer name widens it to fit, so it is not cut, up to 40 columns.
+	h.press("esc", "g", "g", "c", "c", `"A project with a longer name"`, "esc", "tab")
+	if got, want := strings.TrimRight(h.lines()[0], " "), "  Inbox"+strings.Repeat(" ", 30-8)+"1"; got != want {
+		t.Fatalf("sidebar = %q, want %q", got, want)
+	}
+	h.press("esc", "c", "c", `"A project with a name far too long for any sidebar"`, "esc", "tab")
+	if got, want := strings.TrimRight(h.lines()[0], " "), "  Inbox"+strings.Repeat(" ", sidebarAlone-8)+"1"; got != want {
 		t.Fatalf("sidebar = %q, want %q", got, want)
 	}
 	h.m.Update(tea.WindowSizeMsg{Width: 30, Height: 12})
@@ -1029,5 +1039,33 @@ func TestAPromptSaysWhatItsEnterDid(t *testing.T) {
 	h.press(`"x"`)
 	if got := h.bottom(); got != "Inbox › x   files in Inbox" {
 		t.Fatalf("capture typing = %q", got)
+	}
+}
+
+// A command name typed with Shift or Caps Lock held is still the command,
+// on the line as it is typed and on Enter; what follows the name is kept
+// as typed.
+func TestACommandNameReadsInAnyCase(t *testing.T) {
+	h := work(t).wide()
+	last := func() string { l := h.lines(); return strings.TrimSpace(l[len(l)-1]) }
+	h.press(":", `"Q"`)
+	if got := last(); !strings.Contains(got, "q: quit") {
+		t.Fatalf(":Q says %q", got)
+	}
+	h.press("ctrl+u", `"WQ"`)
+	if got := last(); !strings.Contains(got, "every change is saved as it is made") {
+		t.Fatalf(":WQ says %q", got)
+	}
+	h.press("ctrl+u", `"NUMBERS"`, "enter")
+	if !h.m.numbers {
+		t.Fatalf(":NUMBERS did not show numbers: %q", h.status())
+	}
+	h.press(":", `"Clo"`, "tab")
+	if got := string(h.m.ask.ed.buf); got != "closed" {
+		t.Fatalf("Tab wrote %q", got)
+	}
+	h.press("esc", ":", `"Help"`, "enter")
+	if !h.m.help {
+		t.Fatal(":Help did not open help")
 	}
 }

@@ -201,7 +201,11 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 		case kindReview:
 			// A project parked or closed during the review has no line left.
 			if st, active := m.stats[r.ID]; active {
-				also(strconv.Itoa(st.age) + "d")
+				// The age reads as the sidebar draws it: none for a project
+				// touched today, and seen once it passes the Stale rule.
+				if st.age > 0 {
+					out = append(out, word{ageStyle(m.colors(), st.age), "· " + strconv.Itoa(st.age) + "d"})
+				}
 				if st.idle {
 					also("∅")
 				} else {
@@ -854,8 +858,9 @@ func (m *Model) View() tea.View {
 		}
 	case m.sideFocus:
 		// Too narrow for both: the sidebar takes the pane while it has focus,
-		// no wider than keeps each count beside the name it counts.
-		lines = m.sideLines(min(w, sidebarAlone), bodyH)
+		// no wider than its widest entry, so each count stays beside the
+		// name it counts.
+		lines = m.sideLines(min(w, m.sideFit()), bodyH)
 	default:
 		lines, caret = m.paneLines(w, bodyH)
 	}

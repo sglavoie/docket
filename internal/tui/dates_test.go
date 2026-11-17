@@ -174,3 +174,25 @@ func TestReviewListsProjectsLongestUntouchedFirst(t *testing.T) {
 		"parked 1",
 	)
 }
+
+// Review reads a project's age as the sidebar draws it: nothing for one
+// touched today, dim while it is young, and in the text colour past the
+// Stale rule, so the project left alone is the one the eye finds.
+func TestReviewDrawsAgesAsTheSidebarDoes(t *testing.T) {
+	h := two(t)
+	h.clock = h.clock.Add(15 * 24 * time.Hour)
+	h.press("A", `" v2"`, "esc") // Beta is touched today; Alpha is not
+	h.press(":", `"review"`, "enter")
+	h.want(
+		"▌ · Alpha · 15d · 2 to do",
+		"  · Beta v2 · ∅",
+	)
+	if raw := h.m.View().Content; !strings.Contains(raw, darkPalette.text+"· 15d") {
+		t.Fatalf("a stale age is not in the text colour:\n%q", raw)
+	}
+	h.clock = h.clock.Add(3 * 24 * time.Hour)
+	h.press(":", `"review"`, "enter")
+	if raw := h.m.View().Content; !strings.Contains(raw, darkPalette.dim+"· 3d") {
+		t.Fatalf("a recent age is not dim:\n%q", raw)
+	}
+}

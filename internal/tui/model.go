@@ -1801,6 +1801,8 @@ func (m *Model) command(line string) {
 		m.swapText(m.acting(), old, new)
 		return
 	}
+	name := commandName(words[0])
+	words[0] = name + words[0][len(name):]
 	if uses, _ := commandMatches(line); len(words) == 1 && len(uses) == 1 {
 		// A name the line has narrowed to one command is that command.
 		words[0] = commandName(uses[0])

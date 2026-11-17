@@ -244,7 +244,8 @@ tint, while selections remain shaded. Indentation stays blank.
 ### Sidebar
 
 Drawn from 72 columns up; narrower, it takes the pane only while focused,
-and is then no wider than 40 columns, so each count stays beside its name.
+and is then as wide as its widest entry needs, from the 24 columns it has
+beside the pane up to 40, so each count stays beside its name.
 Everything in it is derived by one pass over the tree. Nothing is stored.
 
 - **Four lists, and they stay four.** Inbox counts its rows not yet done or
@@ -582,7 +583,10 @@ Three more acts use the same line:
   · - excludes`:
   `-_$open|doing` says `no row under it: open or doing`, `$done ~7d` says
   `done and changed since Nov 8`, and a bar or brackets standing alone read
-  as `, or` and brackets. A tag being typed names the tags in use instead.
+  as `, or` and brackets. A word that starts like a sigil and cannot be
+  read is looked for as text, and says so with what a word of its kind
+  reads as, as the stamp line does: `"@tomorow" as text: a day reads as
+  @fri, @+3d, @dec4 or @2026-12-04`. A tag being typed names the tags in use instead.
   When the query has an un-negated `~` term on the row itself, each match
   says the day its state last changed, or it was made, as `~today` or
   `~Nov 12`, after its fields; a flat list of such matches reads newest
@@ -628,7 +632,8 @@ Three more acts use the same line:
   sooner, those that start as typed with what each takes after that, and
   the one that is left with what it does, as `sort [keys]: order siblings
   once: @ deadline, ! flag, $ state, else text`; a line that starts none
-  says `no such command`. `Enter` on a name that only one command starts, as
+  says `no such command`. A name is read in any case, so `:Q` is `:q` when
+Shift or Caps Lock was held. `Enter` on a name that only one command starts, as
   `hel`, runs that command; one given anyway is named with the list. While
   the line holds no more than a name, `Tab` writes the first command it
   could become and `Tab` again the next, each with the space or slash that
@@ -768,7 +773,9 @@ under a hidden top-level row with the fixed identity `filters`, so saving
 and forgetting are undone, backed up and synced like any other change.
 
 `:review` is a list of the active projects, the longest untouched first,
-each with its age and how many tasks are left to do, or `∅`. It is a list
+each with its age and how many tasks are left to do, or `∅`. The age is
+drawn as the sidebar draws it: none for a project touched today, dim, and
+in the text colour from 14 days. It is a list
 like the others, so the ordinary keys do the review: moving on keeps a
 project, `Enter` looks inside, and a stamp parks (`$p`) or closes (`$done`)
 it.

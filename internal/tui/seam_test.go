@@ -209,3 +209,26 @@ func TestImportReadsOtherOutliners(t *testing.T) {
 		t.Fatalf("undo left:\n%s", h.rows())
 	}
 }
+
+// A word that starts like a sigil and cannot be read is looked for as text.
+// It is drawn in the warning colour while typed; read back, it says so and
+// how a word of its kind is written, as the stamp line does.
+func TestAFilterSaysWhenASigilIsReadAsText(t *testing.T) {
+	today := time.Date(2026, 11, 15, 12, 0, 0, 0, time.UTC)
+	for q, want := range map[string]string{
+		"@tomorow":     `"@tomorow" as text: a day reads as @fri, @+3d, @dec4 or @2026-12-04`,
+		"$wating #bug": `"$wating" as text: a state is $open, $doing, $waiting, $done, $canceled, $parked or $note and #bug`,
+		"-~7x":         `not "~7x" as text: a time reads as ~today, ~7d, ~2w, ~1m or ~1y`,
+		`"@home"`:      `"@home"`,
+		"milk":         `"milk"`,
+	} {
+		if got := readBack(q, today); got != want {
+			t.Errorf("%q reads %q, want %q", q, got, want)
+		}
+	}
+	h := work(t)
+	h.press("/", `"@tomorow"`)
+	if got := h.status(); !strings.Contains(got, `no match · in context · "@tomorow" as text: a day reads as`) {
+		t.Fatalf("status = %q", got)
+	}
+}

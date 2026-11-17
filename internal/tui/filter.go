@@ -69,6 +69,7 @@ type cond struct {
 	value string
 	arg   string          // the value a tag range compares with
 	rows  map[string]bool // the rows a link term asks for, read by terms
+	loose bool            // text that starts like a sigil the filter cannot read
 }
 
 // sigilStarts are the characters a filter word's sigil begins with.
@@ -311,6 +312,7 @@ func parseCond(w string, today time.Time) cond {
 	}
 	if c.kind == 0 {
 		c.kind, c.value = 't', strings.ToLower(w)
+		c.loose = len(w) > 1 && strings.ContainsRune(sigilStarts, rune(w[0]))
 	}
 	return c
 }

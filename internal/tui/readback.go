@@ -21,6 +21,11 @@ func dayWords(day string, today time.Time) string {
 func (c cond) words(today time.Time) string {
 	switch c.kind {
 	case 't':
+		if c.loose {
+			// Drawn in the warning colour as it is typed; read back, it says
+			// why it finds what it does and how the sigil is written.
+			return `"` + c.value + `" as text: ` + sigilForm(c.value)
+		}
 		return `"` + c.value + `"`
 	case '!':
 		return "flagged"

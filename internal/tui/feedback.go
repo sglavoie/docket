@@ -310,7 +310,7 @@ func commandOffers(line string) string {
 	}
 	switch len(uses) {
 	case 0:
-		if hint, ok := strayCommands[strings.TrimSpace(line)]; ok {
+		if hint, ok := strayCommands[strings.ToLower(strings.TrimSpace(line))]; ok {
 			return hint
 		}
 		return "no such command"
@@ -338,14 +338,16 @@ func commandMatches(line string) (uses []string, does string) {
 	return uses, does
 }
 
-// commandName is the run of letters a command line starts with.
+// commandName is the run of letters a command line starts with, read in
+// small letters, so a name typed with Shift or Caps Lock held is still the
+// command.
 func commandName(s string) string {
 	for i, r := range s {
-		if r < 'a' || r > 'z' {
-			return s[:i]
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') {
+			return strings.ToLower(s[:i])
 		}
 	}
-	return s
+	return strings.ToLower(s)
 }
 
 // tagWord is the tag being typed at the end of a line, without its #, or
@@ -618,14 +620,28 @@ func unreadStamp(w string) string {
 		way = "a state is set, not taken off, as $open or $note"
 	case w != body && (strings.HasPrefix(body, "@") || strings.HasPrefix(body, "*")):
 		way = "-@, -@@ and -* take the whole field off"
-	case strings.HasPrefix(body, "@"):
-		way = "a day reads as @fri, @+3d, @dec4 or @2026-12-04"
-	case strings.HasPrefix(body, "$"):
-		way = "a state is $open, $doing, $waiting, $done, $canceled, $parked or $note"
-	case strings.HasPrefix(body, "*"):
-		way = "an interval reads as *3d, *2w or *monthly"
-	case strings.HasPrefix(body, "#"):
-		way = "a tag starts with a letter"
+	case sigilForm(body) != "":
+		way = sigilForm(body)
 	}
 	return "cannot read " + w + ": " + way
+}
+
+// sigilForm says what a word of a sigil's kind reads as, for a word that
+// starts like one and could not be read.
+func sigilForm(w string) string {
+	switch {
+	case strings.HasPrefix(w, "@"):
+		return "a day reads as @fri, @+3d, @dec4 or @2026-12-04"
+	case strings.HasPrefix(w, "$"):
+		return "a state is $open, $doing, $waiting, $done, $canceled, $parked or $note"
+	case strings.HasPrefix(w, "*"):
+		return "an interval reads as *3d, *2w or *monthly"
+	case strings.HasPrefix(w, "#"):
+		return "a tag starts with a letter"
+	case strings.HasPrefix(w, "~"):
+		return "a time reads as ~today, ~7d, ~2w, ~1m or ~1y"
+	case strings.HasPrefix(w, "!"):
+		return "the flag is ! alone"
+	}
+	return ""
 }
