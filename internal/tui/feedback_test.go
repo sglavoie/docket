@@ -269,3 +269,28 @@ func TestARefusalNamesTheWayThatWorks(t *testing.T) {
 	h.press("y", "y")
 	h.wantStatus("copied 1 row")
 }
+
+// Enter on a name that only one command starts runs that command; a name
+// several start, or one given with words after it, is still refused.
+func TestCommandEnterTakesTheOneLeft(t *testing.T) {
+	h := start(t)
+	h.command("hel")
+	if !h.m.help {
+		t.Fatal(":hel did not open help")
+	}
+	h = start(t)
+	h.command("num")
+	if !h.m.numbers {
+		t.Fatal(":num did not show row numbers")
+	}
+	h = start(t)
+	h.command("s")
+	if !strings.HasPrefix(h.m.msg, "no command s: ") {
+		t.Fatalf(":s msg = %q", h.m.msg)
+	}
+	h = start(t)
+	h.command("hel x")
+	if h.m.help || !strings.HasPrefix(h.m.msg, "no command hel: ") {
+		t.Fatalf(":hel x help=%v msg = %q", h.m.help, h.m.msg)
+	}
+}

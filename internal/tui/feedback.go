@@ -289,29 +289,8 @@ var commandUses = []struct{ use, does string }{
 // they are read off the line and not remembered: all of them on a blank
 // line, fewer with each letter, and the last one left with what it does.
 func commandOffers(line string) string {
-	letters := func(s string) string {
-		for i, r := range s {
-			if r < 'a' || r > 'z' {
-				return s[:i]
-			}
-		}
-		return s
-	}
-	line = strings.TrimLeft(line, " ")
-	name := letters(line)
-	whole := len(line) > len(name) // the name is finished: only it answers
-	var uses []string
-	does := ""
-	for _, c := range commandUses {
-		is := letters(c.use)
-		if is == "q" && name != "" && strings.HasPrefix("quit", name) || is == "help" && name == "h" {
-			is = name
-		}
-		if is == name || !whole && strings.HasPrefix(is, name) {
-			uses, does = append(uses, c.use), c.does
-		}
-	}
-	if line == "" {
+	uses, does := commandMatches(line)
+	if strings.TrimLeft(line, " ") == "" {
 		// Seventeen commands are scanned by name; what each takes is said
 		// once a letter has narrowed them.
 		for i, use := range uses {
@@ -325,6 +304,34 @@ func commandOffers(line string) string {
 		return uses[0] + ": " + does
 	}
 	return strings.Join(uses, " · ")
+}
+
+// commandMatches are the commands, as written, that the line could become,
+// with what the last of them does.
+func commandMatches(line string) (uses []string, does string) {
+	line = strings.TrimLeft(line, " ")
+	name := commandName(line)
+	whole := len(line) > len(name) // the name is finished: only it answers
+	for _, c := range commandUses {
+		is := commandName(c.use)
+		if is == "q" && name != "" && strings.HasPrefix("quit", name) || is == "help" && name == "h" {
+			is = name
+		}
+		if is == name || !whole && strings.HasPrefix(is, name) {
+			uses, does = append(uses, c.use), c.does
+		}
+	}
+	return uses, does
+}
+
+// commandName is the run of letters a command line starts with.
+func commandName(s string) string {
+	for i, r := range s {
+		if r < 'a' || r > 'z' {
+			return s[:i]
+		}
+	}
+	return s
 }
 
 // tagWord is the tag being typed at the end of a line, without its #, or

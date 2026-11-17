@@ -582,7 +582,8 @@ Three more acts use the same line:
   sooner, those that start as typed with what each takes after that, and
   the one that is left with what it does, as `sort [keys]: order siblings
   once: @ deadline, ! flag, $ state, else text`; a line that starts none
-  says `no such command`. One given anyway is named with the list. `q` quits; `help` opens help; `tutor` adds a fresh
+  says `no such command`. `Enter` on a name that only one command starts, as
+  `hel`, runs that command; one given anyway is named with the list. `q` quits; `help` opens help; `tutor` adds a fresh
   `Welcome` tutorial as the last project and opens it, from any place, in
   one undo step; `export [file]` writes
   the whole outline as tab-indented lines in the row grammar, to `~/docket-YYYY-MM-DD.txt` unless
