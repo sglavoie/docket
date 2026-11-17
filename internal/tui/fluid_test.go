@@ -94,11 +94,11 @@ func TestFilterAlternativesAndChangedSince(t *testing.T) {
 	// Ten days on, another row is closed: ~ reads when the state changed.
 	h.clock = h.clock.Add(10 * 24 * time.Hour)
 	h.press("G", "x")
-	filter("$done ~7d", "▌ ✓ Refactor auth #bug · Alpha")
-	filter("$done ~today", "▌ ✓ Refactor auth #bug · Alpha")
+	filter("$done ~7d", "▌ ✓ Refactor auth #bug ~today · Alpha")
+	filter("$done ~today", "▌ ✓ Refactor auth #bug ~today · Alpha")
 	filter("$done -~1w", "▌ ✓ Fix cache #bug · Beta")
-	filter("$done ~2w", "▌ ✓ Fix cache #bug · Beta", "  ✓ Refactor auth #bug · Alpha")
-	filter("$done ~1m", "▌ ✓ Fix cache #bug · Beta", "  ✓ Refactor auth #bug · Alpha")
+	filter("$done ~2w", "▌ ✓ Refactor auth #bug ~today · Alpha", "  ✓ Fix cache #bug ~Nov 15 · Beta")
+	filter("$done ~1m", "▌ ✓ Refactor auth #bug ~today · Alpha", "  ✓ Fix cache #bug ~Nov 15 · Beta")
 
 	// The alternative being typed is completed like the first.
 	h.press("/", `"$open|do"`, "right")

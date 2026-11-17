@@ -244,20 +244,29 @@ func TestWordMotionsStepIntoTheRow(t *testing.T) {
 		}
 	})
 
-	t.Run("j and k move by drawn line and never leave the row", func(t *testing.T) {
+	t.Run("j and k move by drawn line, then into the next row", func(t *testing.T) {
 		h := start(t)
 		h.press("o", `"Project"`, "esc", "enter", "o", `"`+strings.Repeat("word ", 12)+`"`, "esc", "o", `"Below"`, "esc", "k")
 		h.press("w", "j")
 		if _, at := h.typing(); at == 0 {
 			t.Fatal("j did not move down a drawn line")
 		}
-		h.press("9", "j", "j", "j")
-		if h.m.tree.Row(h.m.edit.row).Text() == "Below" {
-			t.Fatal("j left the row")
+		h.press("9", "j")
+		if !h.m.edit.normal || h.m.tree.Row(h.m.edit.row).Text() != "Below" {
+			t.Fatal("j did not go on into the row below")
 		}
-		h.press("k", "k", "k", "k")
-		if _, at := h.typing(); at > 30 {
-			t.Fatalf("k did not climb back: %d", at)
+		h.press("j", "k")
+		if line, at := h.typing(); !strings.HasPrefix(line, "word") || at < 30 {
+			t.Fatalf("k did not come back to the last line of the row above: %q %d", line, at)
+		}
+		h.press("9", "k")
+		if line, at := h.typing(); !strings.HasPrefix(line, "word") || at > 30 {
+			t.Fatalf("k did not climb to the first line and stop: %q %d", line, at)
+		}
+		// A selection stays in its row.
+		h.press("$", "v", "9", "j")
+		if h.m.tree.Row(h.m.edit.row).Text() == "Below" {
+			t.Fatal("a selection left the row")
 		}
 	})
 }

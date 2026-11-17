@@ -73,6 +73,7 @@ type place struct {
 	hits    []visRow
 	matched map[string]bool
 	marks   []cond // the text and tags the query looks for, drawn on its matches
+	since   bool   // the query asks when rows changed, so each match says when
 }
 
 // visit keeps a departure independent of later list sorting, filtering and
@@ -393,8 +394,12 @@ func (m *Model) scan() {
 		{kind: kindToday, label: "Today", count: picked},
 		{kind: kindWaiting, label: "Waiting", count: len(lists[kindWaiting])},
 		{kind: kindStale, label: "Stale", count: len(lists[kindStale])},
-		{kind: kindProjects, label: "Projects"},
-	}, projects...)
+	}, nil...)
+	// The saved filters follow the four lists, in the order they were saved.
+	for _, f := range m.filters {
+		m.side = append(m.side, entry{kind: kindFilter, id: f.Name, label: "/" + f.Name})
+	}
+	m.side = append(append(m.side, entry{kind: kindProjects, label: "Projects"}), projects...)
 }
 
 // open shows a sidebar destination in the outline pane.

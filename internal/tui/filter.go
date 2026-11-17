@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"cmp"
 	"maps"
 	"os"
 	"path/filepath"
@@ -520,6 +521,7 @@ func (m *Model) refilter() {
 	q := m.query(m.at.query, m.at.here, today)
 	terms := q.terms
 	m.at.marks = q.marks()
+	m.at.since = asks(terms, "~")
 	if len(terms) == 0 {
 		return
 	}
@@ -601,6 +603,12 @@ func (m *Model) refilter() {
 		return any
 	}
 	walk(m.at.root, 0, 2)
+	if m.at.flat && m.at.since && !byDeadline(terms) {
+		// Newest change first, ties in the order found.
+		slices.SortStableFunc(m.at.hits, func(a, b visRow) int {
+			return cmp.Compare(m.changedAt(b.id), m.changedAt(a.id))
+		})
+	}
 	if m.at.flat && byDeadline(terms) {
 		// Soonest first, ties and rows with no deadline in outline order.
 		slices.SortStableFunc(m.at.hits, func(a, b visRow) int {
@@ -620,10 +628,17 @@ func (m *Model) refilter() {
 
 // byDeadline reports whether a query asks about deadlines, so a flat list of
 // its matches reads soonest first.
-func byDeadline(terms []term) bool {
+func byDeadline(terms []term) bool { return asks(terms, "@<>") }
+
+// asks reports whether a query has a term of one of these kinds that the
+// row itself must hold.
+func asks(terms []term, kinds string) bool {
 	for _, t := range terms {
+		if t.neg || t.above || t.below || t.parent || t.child {
+			continue
+		}
 		for _, c := range t.any {
-			if !t.neg && (c.kind == '@' || c.kind == '<' || c.kind == '>') {
+			if strings.IndexByte(kinds, c.kind) >= 0 {
 				return true
 			}
 		}
@@ -966,7 +981,7 @@ func (m *Model) keepFilter(save bool, name string) {
 	switch {
 	case !m.do(ops...):
 	case save:
-		m.msg = "saved: f then /" + name + " opens it"
+		m.msg = "saved: /" + name + " is in the sidebar, and f opens it by name"
 	default:
 		m.msg = "forgot /" + name
 	}

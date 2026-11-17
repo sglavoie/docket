@@ -225,7 +225,7 @@ func (m *Model) nextKeys() string {
 	case op != "":
 		return op + op + " the row · " + op + "j } ) H ] n G… through a motion · " + op + "ic " + op + "is objects"
 	case m.prefix == "g":
-		return "gg top · gl follow link · gp gP put the copy · g; g, last changes"
+		return "gg top · gl follow link · gn gN into the match · gp gP put the copy · g; g, last changes"
 	case m.prefix == "z":
 		return "zc zo shut, open the branch · zt zz zb draw at top, middle, bottom"
 	}

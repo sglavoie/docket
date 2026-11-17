@@ -40,14 +40,16 @@ Add and type
   Ctrl+U         cut before the caret; Alt+Left/Right/Backspace by word
   Tab Shift+Tab  indent, outdent while typing; Esc keeps the row
   w b e  W B E   step into text by word; capitals count nonblank words
-  Inside a row:  h l move by character; 0 ^ $ reach line ends; j k wrap
+  Inside a row:  h l move by character; 0 ^ $ reach line ends
+                 j k by drawn line, then on into the row below, above
                  f F t T find a character; ; , repeat, reverse
                  i a I A type at, after the caret, at the start, at the end
                  d c y take motions or objects: dw, c2e, d$, yiw, ci"
                  iw aw iW aW words; i" a" quotes; i( a( ib i[ i{ i< brackets
                  x X D C s delete, change; r replaces; ~ switches case
                  p P put text after, before; v selects with motions or objects
-                 * filters by the word at the caret; n N walk matches
+                 * filters by the word at the caret
+                 n N to the filter's next, previous word or tag, row to row
                  u Ctrl+R undo, redo inside this visit; . repeats a text change
                  Esc ends typing, then keeps the visit as one outline undo
   Paste          several lines become rows, indentation as depth; one undo
@@ -94,6 +96,8 @@ Filter
   /              text and sigils; Enter keeps, Esc clears; Tab flat or context
   "a phrase"     match words together, ignoring case; -"a phrase" excludes
   n N            next, previous match; after Esc, use the last filter
+  gn gN          step into the text on what the filter found: gn cw new Esc n .
+                 the status line reads the filter back in words as it is typed
   # $ @          any tag, task, deadline; -# untagged, -$ notes
   $next          each project's first workable task; excludes Inbox
   $first         first workable sibling per parent; includes Inbox
@@ -101,6 +105,7 @@ Filter
   $today         picked or starting today
   @overdue @week @<fri @>+1w    deadlines; flat results soonest first
   @@later ~7d    starts later; state changed (or row made) in the last week
+                 a ~ filter says when on each match; flat, newest first
   a|b            either: $open|doing, #home|!, milk|#food
   | ( ) -(       groups, with blanks: fix ( #docs | cache ), -( a | b )
   ^term _term    tests ancestors, descendants: ^#work, _@overdue
@@ -108,7 +113,7 @@ Filter
   #est #est=2h #est<3 #est>3    any value, exact, at most, at least
   & &word &.     a row link, one to matching text, one to the cursor's row
   Held rows      edits never remove matches; change the query to read again
-  :save name     keep a filter; f then /name opens it; :forget name drops it
+  :save name     keep a filter in the sidebar and under f; :forget name drops it
 
 Capture and travel
   a              capture to Inbox; %name files in a project or heading
@@ -132,6 +137,7 @@ Undo and commands
   :export [file] write the whole outline; default ~/docket-YYYY-MM-DD.txt
   :import file   read indented rows after the cursor; one undo step
                  in Projects, an Inbox line routes its children to Inbox
+                 .taskpaper, .opml and .bike files are read as what they are
   :closed        hide or show done and canceled rows
   :s/old/new     replace text in row or selection; any separator, as s,a/b,c
   :archive       move closed work under the project's Archive: heading
@@ -272,6 +278,11 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 			continue
 		}
 		out = append(out, word{m.colors().dim, "#" + tag})
+	}
+	if m.at.since && m.at.matched[r.ID] {
+		// A filter that asks when rows changed says when each one did.
+		day := time.UnixMilli(m.changedAt(r.ID)).In(m.today().Location()).Format("2006-01-02")
+		out = append(out, word{m.colors().dim, "~" + dayWords(day, m.today())})
 	}
 	if to := r.Fields[fieldLink]; to != "" {
 		// A link names the row it points at as that row reads now.
@@ -467,9 +478,12 @@ func (m *Model) statusLine(w int) (string, int) {
 			if m.at.flat {
 				shape = "flat"
 			}
+			// The line read back in words, so its marks need not be remembered.
 			note := strconv.Itoa(len(m.at.matched)) + " match · " + shape + " · Tab switches"
 			if tags != "" {
 				note = strconv.Itoa(len(m.at.matched)) + " match · " + tags
+			} else if reads := readBack(string(a.ed.buf), m.today()); reads != "" {
+				note = strconv.Itoa(len(m.at.matched)) + " match · " + shape + " · " + reads
 			}
 			line += "   " + m.colors().dim + ansi.Truncate(note, room, "…") + sgrReset
 		case a.kind == askStamp:

@@ -111,7 +111,7 @@ func TestAFilterCanBeSavedAndReopened(t *testing.T) {
 		t.Fatalf("msg = %q", h.m.msg)
 	}
 	h.press("/", `"#bug -$done"`, "tab", "enter", ":", `"save open bugs"`, "enter")
-	if h.m.msg != "saved: f then /open bugs opens it" {
+	if h.m.msg != "saved: /open bugs is in the sidebar, and f opens it by name" {
 		t.Fatalf("msg = %q", h.m.msg)
 	}
 	h.press("esc", "x", "f", `"/op"`)

@@ -2565,6 +2565,10 @@ func (m *Model) normalAct(k string, count int) {
 		if m.single() {
 			m.follow()
 		}
+	case "gn", "gN":
+		if m.single() {
+			m.enterMatch(k == "gn")
+		}
 	case "zc", "zo":
 		m.foldBranches(ids, k == "zc")
 	case "J", "K":

@@ -86,7 +86,7 @@ func TestWaitingKeysSayWhatMayFollow(t *testing.T) {
 	h := project(t).wide()
 	h.m.Update(tea.WindowSizeMsg{Width: 200, Height: 16})
 	for _, c := range []struct{ keys, want string }{
-		{"g", "gg top · gl follow link · gp gP put the copy · g; g, last changes"},
+		{"g", "gg top · gl follow link · gn gN into the match · gp gP put the copy · g; g, last changes"},
 		{"z", "zc zo shut, open the branch · zt zz zb draw at top, middle, bottom"},
 		{"d", "dd the row · dj } ) H ] n G… through a motion · dic dis objects"},
 		{"2y", "yy the row · yj } ) H ] n G… through a motion · yic yis objects"},

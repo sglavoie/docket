@@ -21,7 +21,8 @@ a rule here changes this file first.
    of these is not added. The five characters that open the stamp line
    (`#` `@` `$` `*` `-`) are the row grammar typed on a row. The word
    motions `w` `b` `e` step into a row's text, where the same grammar reads
-   characters instead of rows. The navigation aliases are the arrows,
+   characters instead of rows; `gn` and `gN` step in on what the last
+   filter found. The navigation aliases are the arrows,
    `Ctrl+F` `Ctrl+B`, `PgDn` `PgUp` and `Home` `End`. `zt` `zz` `zb` say
    where in the pane the cursor's row is drawn and change nothing else.
 5. **Every keystroke paints within one frame.** The tree lives in memory;
@@ -225,6 +226,8 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
   picks not yet closed; Waiting counts rows in that state; Stale counts open
   and doing rows untouched for 14 days, leaving out rows whose start day is
   still ahead.
+- **Saved filters** follow the four lists, each as `/name`, in the order
+  they were saved. They carry no count, so the scan stays one pass.
 - **Projects** shows every top-level row as one outline. It is where a
   project is added, renamed, reordered, parked or closed, with the ordinary
   keys.
@@ -493,7 +496,16 @@ Three more acts use the same line:
   each word of its text that a looked-for word or phrase touches, and each
   tag the query names, in the accent colour and underlined. A term that
   excludes, one read on other rows (`^ _ < >`) and one inside `-(` mark
-  nothing. When the query has an un-negated deadline term
+  nothing. While the line is typed the status line reads it back in words,
+  after the count of matches, so its marks need not be remembered:
+  `-_$open|doing` says `no row under it: open or doing`, `$done ~7d` says
+  `done and changed since Nov 8`, and a bar or brackets standing alone read
+  as `, or` and brackets. A tag being typed names the tags in use instead.
+  When the query has an un-negated `~` term on the row itself, each match
+  says the day its state last changed, or it was made, as `~today` or
+  `~Nov 12`, after its fields; a flat list of such matches reads newest
+  first, ties in outline order, unless a deadline term orders it.
+  When the query has an un-negated deadline term
   (`@`, `@date`, `@overdue`, `@week`, `@<`, `@>`), the flat list reads
   soonest deadline first, ties in outline order; in context, and in Today,
   Waiting and Stale, the order is the outline's or the list's. The order is
@@ -582,6 +594,20 @@ row. The rows are new: importing twice adds them twice, and links are not
 carried, as with copy. Lists, filters and selections refuse it; a file that
 cannot be read is said and nothing changes.
 
+A file from another outliner is read as what its name says it is, and then
+as above. A `.taskpaper` file: a line starting with a dash is a task, one
+ending in a colon a heading, any other a note, at the depth of its tabs;
+`@done` and `@cancelled` close the row, `@flagged` flags it, `@due(day)`
+and `@start(day)` or `@defer(day)` set its days, and every other `@name` or
+`@name(value)` becomes `#name` or `#name=value`, blanks in a value written
+as dashes. A name that cannot be a tag stays in the text. An `.opml` file:
+each row is a note, or a task where the file says checked or not, and a
+row's note becomes rows under it. A `.bike` file: a task is a task, done
+when it says so, a heading gains the colon a heading is read by, and every
+other kind of row is a note, its inline formatting dropped. Every state is
+spelled, so the rows read the same wherever they land. Nothing is written
+in these formats: `:export` stays the row grammar.
+
 `Ctrl+D` and `Ctrl+U` move down and up by half the pane's usable row height
 (excluding header and status), at least one row, stopping at either end;
 `Ctrl+F` and `Ctrl+B`, or `PgDn` and `PgUp`, move by the whole of it.
@@ -618,7 +644,9 @@ and is deleted like any other.
 
 `:save name` keeps the pane's filter, with the row it was made under and
 whether it was flat. It then appears in the `f` picker as `/name`.
-`:forget name` drops it. Saved filters are not in the sidebar. Each is a row
+`:forget name` drops it. It is also an entry in the sidebar, after the four
+lists, reached with the sidebar's ordinary keys: a place, as a list is, and
+not a second route to a key (rule 3). Each is a row
 under a hidden top-level row with the fixed identity `filters`, so saving
 and forgetting are undone, backed up and synced like any other change.
 
@@ -635,7 +663,7 @@ deselects. While rows are selected, `x`, `!`, `t`, `dd`, `m`, `L`, `>>`, `<<`,
 `J`, `K` and a stamp act on the selection, in one undo step. `x`, `!` and `t` set
 their value on every row unless all already hold it, in which case they
 clear it. The keys that work on one row (`A`, `I`, `cc`, `o`, `O`, `Enter`,
-`gl` and the word motions that step into a row) are refused and say so. The status line counts the selection, and `Esc` clears it.
+`gl`, `gn`, `gN` and the word motions that step into a row) are refused and say so. The status line counts the selection, and `Esc` clears it.
 
 `V` starts a sweep at the cursor's row. Each motion, with or without a
 count, selects the shown span from that anchor to the cursor, both included;
@@ -753,6 +781,20 @@ reach the ends and `H` stays. Like every motion they take a count, sweep
 with `V` and complete an operator: `d}` deletes this branch and the next,
 `y)` copies through the last sibling, `VH` selects up to the parent.
 
+**Into the match.** `gn` steps into the text of the cursor's row with the
+caret on the first place the filter's words stand, and `gN` on the last; a
+row that holds none hands over to the next or previous shown match that
+does. The places are those a match is drawn with: each looked-for word or
+phrase, ignoring case, and each tag the query names, in the line `A` opens.
+Inside the row `n` and `N` go on to the next and previous place, keeping
+the row and stepping into the next shown match when this one has no more,
+so `/old` `Enter` `Esc` `gn` `cw` `new` `Esc` `n` `.` changes a word across
+rows without leaving the text. Each row is its own undo step. After an
+operator `n` and `N` stay in the row (`dn` deletes up to the next place).
+A filter that names no word or tag says so and names `w`; with no filter
+kept, both say there is nothing to find. `gn` and `gN` drop a count and
+refuse a selection.
+
 **Find motions.** `n` and `N` go to the next and previous shown row matching
 a filter, stopping at the last and saying so; they do not wrap. While a
 filter is on screen that is its matches, so in context they pass over the
@@ -802,7 +844,7 @@ presses of `v` would, stopping at the last row. With rows already selected,
 a count before an act on rows (including `v`) is refused and says so.
 The word motions that step into a row take the count as theirs, and
 `Ctrl+O` and `Ctrl+I` go that many places. Every other key, including `o`,
-`O`, `A`, `I`, `cc`, `Enter`, `h`, `l`, `f`, `gl`, `p`, `P`, `gp`, `gP`,
+`O`, `A`, `I`, `cc`, `Enter`, `h`, `l`, `f`, `gl`, `gn`, `gN`, `p`, `P`, `gp`, `gP`,
 `zt`, `zz`, `zb`, `a`, `/`, `:` and `Tab`, drops the count and acts as usual.
 
 **Placing the row.** `zt` draws the cursor's row at the top of the pane,
@@ -817,6 +859,7 @@ the pane stays there until a motion has to scroll it.
 | `}` `{` `)` `(` | Next, previous sibling; last, first sibling | 12 |
 | `H` `]` `[` | Parent; next, previous heading | 12 |
 | `n` `N` | Next, previous match of the last filter | 12 |
+| `gn` `gN` | Step into the text on what the filter found, first or last place | 18 |
 | `h` `l` | Fold, unfold; step to parent, first child; in lists and flat filters, `h` shows the row where it lives (`Esc` returns), `l` does nothing | 1, 10 |
 | `zc` `zo` | Fold, unfold the row's whole branch | 15 |
 | `zt` `zz` `zb` | Draw the cursor's row at the top, middle, bottom of the pane | 15 |
@@ -869,9 +912,13 @@ key of the outline:
 
 - **Motions.** `h` `l` by character and `0` `^` `$` to the ends; `w` `b` `e`
   and `W` `B` `E` by word; `f` `F` to a character and `t` `T` to just before
-  it, with `;` again and `,` the other way; `j` `k` by drawn line of a
-  wrapped row, never out of the row. `Left`, `Right`, `Home` and `End` are
-  aliases.
+  it, with `;` again and `,` the other way; `n` `N` to the next and
+  previous place the filter's words stand, as described under Into the
+  match; `j` `k` by drawn line of a wrapped row, and from its last or first
+  line on into the row drawn below or above, keeping this one and the
+  column, as `Down` and `Up` do while typing. Each row left is its own undo
+  step; a selection stays in its row, and at either end of the pane the
+  caret stays put. `Left`, `Right`, `Home` and `End` are aliases.
 - **Operators.** `d`, `c` and `y` take a motion or a text object: `dw`,
   `c2e`, `d$`, `ct,`, `yiw`. The objects are a word (`iw`, `aw` with the
   blank beside it, `iW`, `aW`), what is between quotes or backticks (`i"`
@@ -1257,6 +1304,14 @@ These are the only commands; everything else is done in the outline.
    `/week` and `/done`. `g;` and `g,` walk back through the rows changed
    this session. A Vim key the outline does not bind names what does, and
    every refusal names the way that works. *Built.*
+
+18. **Seam.** `gn` and `gN` step into a row's text on what the filter
+   found, and `n` and `N` inside a row go on to the next place, row to
+   row. `j` and `k` inside a row go on into the row below and above. The
+   status line reads a filter back in words as it is typed. A filter with
+   a `~` term says when each match changed and reads newest first when
+   flat. Saved filters follow the four lists in the sidebar. `:import`
+   reads TaskPaper, OPML and Bike files. *Built.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add` and `docket ls`, macros (`.`,

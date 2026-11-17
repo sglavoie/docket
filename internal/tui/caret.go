@@ -7,6 +7,8 @@ import (
 	"unicode"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/docket/internal/sigil"
 )
 
 // Inside a row the caret sits on a character and the keys are a grammar over
@@ -122,6 +124,182 @@ func (m *Model) enterText(id, k string, count int) {
 	e.caret = max(0, min(pos, len(e.buf)-1))
 }
 
+// findMarks are the words, phrases and tags n looks for: those of the filter
+// on screen, else of the one last kept or dropped.
+func (m *Model) findMarks() []cond {
+	q, here := m.at.query, m.at.here
+	if q == "" {
+		q, here = m.find, m.findHere
+	}
+	return m.query(q, here, m.today()).marks()
+}
+
+// rowLine is a row's line as stepping into it shows it.
+func (m *Model) rowLine(id string) []rune {
+	row := m.tree.Row(id)
+	return []rune(sigil.Format(sigil.FromFields(row.Fields), m.defaultsToNotes(row.Parent), m.today()))
+}
+
+// textHits is where in a line the marks are found, in order: the start of
+// each place a looked-for word or phrase stands, ignoring case, and of each
+// tag the filter names.
+func textHits(buf []rune, marks []cond) []int {
+	lower := make([]rune, len(buf))
+	for i, r := range buf {
+		lower[i] = unicode.ToLower(r)
+	}
+	var hits []int
+	for _, c := range marks {
+		want := []rune(c.value)
+		if c.kind == '#' {
+			want = []rune("#" + c.value)
+		}
+		for i := 0; len(want) > 0 && i+len(want) <= len(lower); i++ {
+			if !slices.Equal(lower[i:i+len(want)], want) {
+				continue
+			}
+			if c.kind == '#' {
+				// A tag is a whole word, with or without a value.
+				end := i + len(want)
+				if (i > 0 && lower[i-1] != ' ') || (end < len(lower) && lower[end] != ' ' && lower[end] != '=') {
+					continue
+				}
+			}
+			hits = append(hits, i)
+		}
+	}
+	slices.Sort(hits)
+	return slices.Compact(hits)
+}
+
+// hitFrom is the first hit after the caret, or the last one before it.
+func hitFrom(hits []int, caret int, forward bool) (int, bool) {
+	if forward {
+		for _, h := range hits {
+			if h > caret {
+				return h, true
+			}
+		}
+		return 0, false
+	}
+	for i := len(hits) - 1; i >= 0; i-- {
+		if hits[i] < caret {
+			return hits[i], true
+		}
+	}
+	return 0, false
+}
+
+// textMove keeps the row the caret is in and puts the caret inside another
+// shown row. Each row is its own undo step.
+func (m *Model) textMove(target string) bool {
+	if !m.finishEdit() {
+		return false
+	}
+	m.seek(target)
+	if m.current() != target {
+		return false
+	}
+	m.editRow(target)
+	m.edit.normal = true
+	m.edit.caret = 0
+	return true
+}
+
+// matchRow is the nearest shown row from the cursor's, in a direction, that
+// the filter matches and that holds what it looks for in its line.
+func (m *Model) matchRow(marks []cond, forward, self bool) (string, []int) {
+	hit := m.finder()
+	if hit == nil {
+		return "", nil
+	}
+	step, i := 1, m.cursor
+	if !forward {
+		step = -1
+	}
+	if !self {
+		i += step
+	}
+	for ; i >= 0 && i < len(m.vis); i += step {
+		if id := m.vis[i].id; hit(id) {
+			if hits := textHits(m.rowLine(id), marks); len(hits) > 0 {
+				return id, hits
+			}
+		}
+	}
+	return "", nil
+}
+
+// noMarks says why n has no text to land on.
+func (m *Model) noMarks() string {
+	if m.at.query == "" && m.find == "" {
+		return "nothing to find: keep a filter with / and Enter first"
+	}
+	return "the filter names no word or tag to land on: w steps into the text"
+}
+
+// enterMatch steps into a row's text with the caret on what the filter
+// found: in the cursor's row, else in the next shown row that holds it.
+func (m *Model) enterMatch(forward bool) {
+	marks := m.findMarks()
+	if len(marks) == 0 {
+		m.msg = m.noMarks()
+		return
+	}
+	id, hits := m.matchRow(marks, forward, true)
+	if id == "" {
+		m.msg = "no match further on"
+		return
+	}
+	if id != m.current() {
+		m.seek(id)
+		m.land()
+	}
+	m.editRow(id)
+	m.edit.normal = true
+	m.edit.caret = hits[0]
+	if !forward {
+		m.edit.caret = hits[len(hits)-1]
+	}
+}
+
+// textSeek moves the caret to the next or previous place the filter's words
+// stand, going on into the next shown row that holds one.
+func (m *Model) textSeek(e *editor, forward bool, n int) int {
+	marks := m.findMarks()
+	if len(marks) == 0 {
+		m.msg = m.noMarks()
+		return textMoved
+	}
+	for range n {
+		cur := m.edit
+		if at, ok := hitFrom(textHits(cur.buf, marks), cur.caret, forward); ok {
+			cur.caret = at
+			continue
+		}
+		id, hits := "", []int(nil)
+		if !cur.sel {
+			id, hits = m.matchRow(marks, forward, false)
+		}
+		if id == "" {
+			m.msg = "no match further on"
+			break
+		}
+		if !m.textMove(id) {
+			return textLeft
+		}
+		m.land()
+		m.edit.caret = hits[0]
+		if !forward {
+			m.edit.caret = hits[len(hits)-1]
+		}
+	}
+	if m.edit != e {
+		return textLeft
+	}
+	return textMoved
+}
+
 // textCount is the pending count inside the row: the one before an operator
 // times the one before its motion.
 func (e *editor) textCount() int {
@@ -178,6 +356,16 @@ func (m *Model) textMotion(e *editor, k string, arg rune, count int) (target int
 	case "f", "F", "t", "T":
 		m.charFind = charFind{k, arg}
 		return m.textFind(e, m.charFind, n)
+	case "n", "N":
+		// For an operator: the nth match in this row, and no further.
+		for range n {
+			next, ok := hitFrom(textHits(e.buf, m.findMarks()), at, k == "n")
+			if !ok {
+				return e.caret, false, false
+			}
+			at = next
+		}
+		return at, false, true
 	}
 	return at, false, false
 }
@@ -510,18 +698,40 @@ func (m *Model) textStep(e *editor, msg tea.KeyPressMsg) int {
 		e.pend = k
 		return textPending
 	case "j", "down", "k", "up":
-		// By drawn line within the row; the row itself is not left.
+		// By drawn line. Past the row's first or last line the caret goes on
+		// into the row drawn above or below, keeping this one, as Up and
+		// Down do while typing. A selection stays in its row.
 		by := 1
 		if k == "k" || k == "up" {
 			by = -1
 		}
-		l := e.wrapped(m.editWidth(), nil)
-		p := l.pos[e.caret]
-		if line := p.y + by; line >= 0 && line < len(l.lines) {
-			e.caret = l.at(line, p.x)
-			e.rest()
+		for range n {
+			cur := m.edit
+			l := cur.wrapped(m.editWidth(), nil)
+			p := l.pos[cur.caret]
+			if line := p.y + by; line >= 0 && line < len(l.lines) {
+				cur.caret = l.at(line, p.x)
+				cur.rest()
+				continue
+			}
+			next := m.cursor + by
+			if cur.sel || next < 0 || next >= len(m.vis) || !m.textMove(m.vis[next].id) {
+				break
+			}
+			l = m.edit.wrapped(m.editWidth(), nil)
+			line := 0
+			if by < 0 {
+				line = len(l.lines) - 1
+			}
+			m.edit.caret = l.at(line, p.x)
+			m.edit.rest()
+		}
+		if m.edit != e {
+			return textLeft
 		}
 		return textMoved
+	case "n", "N":
+		return m.textSeek(e, k == "n", n)
 	case "x", "delete":
 		return m.textOperate(e, "d", e.caret, min(e.caret+n, len(e.buf)))
 	case "X":
@@ -685,5 +895,5 @@ func (e *editor) textStatus() string {
 	if e.sel {
 		return "selecting: motions extend · d c y x ~ act · v or Esc ends"
 	}
-	return "in the row: w b e f move · i a c d x change · v select · Esc done"
+	return "in the row: w b e f n move · i a c d x change · v select · Esc done"
 }

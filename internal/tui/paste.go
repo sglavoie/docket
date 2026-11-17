@@ -278,9 +278,14 @@ func (m *Model) importFile(path string) {
 		m.msg = err.Error()
 		return
 	}
+	text, err := readForeign(path, data, m.today())
+	if err != nil {
+		m.msg = err.Error()
+		return
+	}
 	var rows, inbox []pasted
 	toInbox := false
-	for _, l := range readPaste(string(data)) {
+	for _, l := range readPaste(text) {
 		if l.level == 0 {
 			if toInbox = m.at.root == "" && l.text == "Inbox"; toInbox {
 				continue
