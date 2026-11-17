@@ -20,7 +20,7 @@ var dateWords = []string{"today", "tomorrow", "mon", "tue", "wed", "thu", "fri",
 // cannot read such a word it stays plain text, and the line says so in colour
 // while it is typed.
 func looksLikeSigil(w string) bool {
-	return len(w) > 1 && strings.ContainsRune("#@$~", rune(w[0]))
+	return len(w) > 1 && w != "##" && strings.ContainsRune("#@$~", rune(w[0]))
 }
 
 // styler returns styled spans for a line. Filter phrases stay whole and
@@ -151,7 +151,7 @@ func (m *Model) styler(surface string) func(string) []word {
 }
 
 // suggest returns the rest of the sigil being typed at the end of the line:
-// a tag already in use, a state, or a date word. The right arrow takes it.
+// a tag already in use, a context, a state, or a date word. The right arrow takes it.
 func (m *Model) suggest(e *editor, surface string) string {
 	typed, values := m.sigilValues(e, surface)
 	for _, v := range values {
@@ -217,6 +217,11 @@ func (m *Model) sigilValues(e *editor, surface string) (string, []string) {
 		if surface == askFilter {
 			offers = append([]string{"later"}, dateWords...)
 		}
+	}
+	if rest, ctx := strings.CutPrefix(typed, "#"); ctx && word[0] == '#' {
+		// ## is a context, which takes the contexts in use.
+		typed, word = rest, "="
+		offers = m.contexts
 	}
 	switch word[0] {
 	case '#':

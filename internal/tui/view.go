@@ -121,6 +121,15 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 		marked = markWords(l.Text, m.at.marks)
 	}
 	mark := m.colors().accent + sgrUnderline
+	// A context leads the text, so where the work is done is read first. It
+	// is told apart by colour as a tag is.
+	if l.Context != "" {
+		style := paint(m.tagColor(l.Context))
+		if marking && markContext(l.Context, m.at.marks) {
+			style = mark
+		}
+		out = append(out, word{style, "[" + l.Context + "]"})
+	}
 	for i, w := range strings.Fields(l.Text) {
 		if marked[i] {
 			out = append(out, word{mark + body, w})

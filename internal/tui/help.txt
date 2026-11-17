@@ -59,7 +59,7 @@ Esc	end typing, then keep the visit as one outline undo
 ## States and sigils
 # @ $ * - ~	open the stamp line; `Enter` sets sigils on the row or selection
 !	flag; `-!` removes it on the stamp line
--#tag -@ -@@ -*	remove fields on the stamp line; `-~` the colour
+-#tag -@ -@@ -*	remove fields on the stamp line; `-~` the colour, `-##` the context
 
 == Days
 @fri @+3d	deadline; `@dec4` `@jan5-2027` `@eom` by name
@@ -69,6 +69,7 @@ Esc	end typing, then keep the visit as one outline undo
 
 == Tags, states and colours
 #tag #est=2h	tag or value; the header sums estimates, headings show done/total
+##home	the row's one context, drawn as [home] before its text
 $state	`$open` `$doing` `$waiting` `$done` `$canceled` `$parked` `$note`
 ~teal ~#3fa7c4	a project's colour, by name or hex, in its entry, row and header
 

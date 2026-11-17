@@ -154,11 +154,14 @@ func textHits(buf []rune, marks []cond) []int {
 		if c.kind == '#' {
 			want = []rune("#" + c.value)
 		}
+		if c.kind == 'c' {
+			want = []rune("##" + c.value)
+		}
 		for i := 0; len(want) > 0 && i+len(want) <= len(lower); i++ {
 			if !slices.Equal(lower[i:i+len(want)], want) {
 				continue
 			}
-			if c.kind == '#' {
+			if c.kind == '#' || c.kind == 'c' {
 				// A tag is a whole word, with or without a value.
 				end := i + len(want)
 				if (i > 0 && lower[i-1] != ' ') || (end < len(lower) && lower[end] != ' ' && lower[end] != '=') {

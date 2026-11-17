@@ -1013,9 +1013,10 @@ func TestAPromptSaysWhatItsEnterDid(t *testing.T) {
 		"$d":      "a state is $open, $doing, $waiting, $done, $canceled, $parked or $note",
 		"*often":  "an interval reads as *3d, *2w or *monthly",
 		"#1":      "a tag starts with a letter",
+		"##1":     "a context is a word starting with a letter, as ##home",
 		"-$open":  "a state is set, not taken off, as $open or $note",
 		"-@fri":   "-@, -@@, -* and -~ take the whole field off",
-		"soon":    "the line reads #tag, @date, $state, *interval, ~colour and !",
+		"soon":    "the line reads #tag, ##context, @date, $state, *interval, ~colour and !",
 		"-*2w":    "-@, -@@, -* and -~ take the whole field off",
 		"@@never": "a day reads as @fri, @+3d, @dec4 or @2026-12-04",
 	} {

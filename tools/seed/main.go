@@ -107,6 +107,8 @@ var tags = []string{
 	"money", "health", "family", "waiting-on", "someday", "admin", "outside",
 }
 
+var contexts = []string{"home", "office", "phone", "town", "computer"}
+
 // row is a row to write: its insert at created, and later its state change.
 type row struct {
 	id, parent, pos string
@@ -212,6 +214,9 @@ func (g *gen) task(parent, pos string, after int64, depth int) {
 		}
 		sort.Strings(l.Tags)
 		l.Tags = compact(l.Tags)
+	}
+	if g.chance(0.2) {
+		l.Context = g.pick(contexts)
 	}
 	f := l.Fields()
 	f[sigil.FieldState] = ""

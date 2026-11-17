@@ -34,6 +34,11 @@ func (c cond) words(today time.Time) string {
 			return "tagged"
 		}
 		return "#" + c.value
+	case 'c':
+		if c.value == "" {
+			return "with a context"
+		}
+		return "##" + c.value
 	case 'l':
 		return "#" + c.value + " at most " + c.arg
 	case 'g':

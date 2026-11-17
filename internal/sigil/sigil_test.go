@@ -280,3 +280,34 @@ func TestAColourIsANameOrAHexValue(t *testing.T) {
 		t.Errorf("prose: %+v", got)
 	}
 }
+
+func TestAContextIsOneNameAfterTwoHashes(t *testing.T) {
+	today := time.Date(2026, 11, 15, 12, 0, 0, 0, time.UTC)
+	for word, want := range map[string]string{
+		"Home": "home", "deep-work": "deep-work", "a1": "a1",
+		"": "", "1a": "", "est=2h": "", "#home": "",
+	} {
+		if got, ok := ParseContext(word); got != want || ok != (want != "") {
+			t.Errorf("ParseContext(%q) = %q, %v", word, got, ok)
+		}
+	}
+	// One context: the last one typed is kept. ## alone and ##1 stay text.
+	l := Parse("##office Call Ann #phone ##Home ## ##1", false, today)
+	if l.Context != "home" || l.Text != "Call Ann ## ##1" || strings.Join(l.Tags, " ") != "phone" {
+		t.Fatalf("parsed %+v", l)
+	}
+	line := Format(l, false, today)
+	if line != "Call Ann ## ##1 #phone ##home" {
+		t.Fatalf("formatted %q", line)
+	}
+	if again := Parse(line, false, today); again.Context != "home" || again.Text != l.Text {
+		t.Fatalf("round trip %+v", again)
+	}
+	if FromFields(l.Fields()).Context != "home" || l.Fields()[FieldContext] != "home" {
+		t.Fatal("stored form")
+	}
+	// Kept literal, it stays text.
+	if l := Parse(`Read \##home`, false, today); l.Context != "" || l.Text != "Read ##home" {
+		t.Fatalf("escaped %+v", l)
+	}
+}

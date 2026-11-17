@@ -65,7 +65,7 @@ func (g *group) holds(leaf func(int) bool) bool {
 
 // cond is one reading of a term.
 type cond struct {
-	kind  byte // t text, ! flag, # tag, l g tag value range, $ state, S any state, n next action, f first sibling, T in Today, P project, @ deadline, < > deadline range, s start, * repeat, ~ changed, & link
+	kind  byte // t text, ! flag, # tag, c context, l g tag value range, $ state, S any state, n next action, f first sibling, T in Today, P project, @ deadline, < > deadline range, s start, * repeat, ~ changed, & link
 	value string
 	arg   string          // the value a tag range compares with
 	rows  map[string]bool // the rows a link term asks for, read by terms
@@ -252,6 +252,12 @@ func parseCond(w string, today time.Time) cond {
 			c.kind = '!'
 		}
 	case '#':
+		if rest, ctx := strings.CutPrefix(w, "##"); ctx {
+			if name, ok := sigil.ParseContext(rest); ok || rest == "" {
+				c.kind, c.value = 'c', name
+			}
+			break
+		}
 		if tag, ok := sigil.ParseTag(w[1:]); ok || w == "#" {
 			c.kind, c.value = '#', tag
 		} else if i := strings.IndexAny(w, "<>"); i > 1 && i < len(w)-1 {
@@ -411,6 +417,8 @@ func (m *Model) holds(r *outline.Row, l sigil.Line, c cond, today time.Time) boo
 		return len(l.Tags) > 0 && (c.value == "" || slices.ContainsFunc(l.Tags, func(tag string) bool {
 			return tag == c.value || sigil.TagName(tag) == c.value
 		}))
+	case 'c':
+		return l.Context != "" && (c.value == "" || l.Context == c.value)
 	case 'l', 'g':
 		for _, tag := range l.Tags {
 			if v := sigil.TagValue(tag); v != "" && sigil.TagName(tag) == c.value {
@@ -662,6 +670,7 @@ func asks(terms []term, kinds string) bool {
 type change struct {
 	set        map[string]string
 	add, strip []string         // tags
+	unctx      []string         // contexts -##name takes off; -## takes any
 	shift      map[string]shift // days moved on from where each row has them
 }
 
@@ -703,7 +712,16 @@ func parseStamp(line string, today time.Time) (change, string) {
 			c.set[sigil.FieldRepeat], ok = "", true
 		case body == "~" && neg:
 			c.set[sigil.FieldColor], ok = "", true
+		case body == "##" && neg:
+			c.set[sigil.FieldContext], ok = "", true
 		case len(body) < 2:
+		case strings.HasPrefix(body, "##"):
+			var name string
+			if name, ok = sigil.ParseContext(body[2:]); ok && neg {
+				c.unctx = append(c.unctx, name)
+			} else if ok {
+				c.set[sigil.FieldContext] = name
+			}
 		case body[0] == '#':
 			var tag string
 			if tag, ok = sigil.ParseTag(body[1:]); ok && neg {
@@ -739,6 +757,12 @@ func (m *Model) stampOps(id string, c change) []outline.Op {
 	for field, by := range c.shift {
 		if day := m.tree.Row(id).Fields[field]; day != "" {
 			want[field] = sigil.ShiftDate(day, by.n, by.unit)
+		}
+	}
+	// -##name takes the context off only the rows that have that one.
+	if ctx := m.tree.Row(id).Fields[sigil.FieldContext]; slices.Contains(c.unctx, ctx) {
+		if _, set := want[sigil.FieldContext]; !set {
+			want[sigil.FieldContext] = ""
 		}
 	}
 	if len(c.add)+len(c.strip) > 0 {

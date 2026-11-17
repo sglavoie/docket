@@ -15,23 +15,24 @@ import (
 // fieldWords names each stored field as the status line speaks of it.
 // A field not named here is bookkeeping and is not mentioned.
 var fieldWords = map[string]string{
-	sigil.FieldText:   "text",
-	sigil.FieldState:  "state",
-	sigil.FieldFlag:   "flag",
-	sigil.FieldDue:    "deadline",
-	sigil.FieldStart:  "start day",
-	sigil.FieldTags:   "tags",
-	sigil.FieldRepeat: "repeat",
-	sigil.FieldToday:  "Today pick",
-	fieldTodayPos:     "Today order",
-	fieldLink:         "link",
-	fieldQuery:        "saved filter",
+	sigil.FieldText:    "text",
+	sigil.FieldState:   "state",
+	sigil.FieldFlag:    "flag",
+	sigil.FieldDue:     "deadline",
+	sigil.FieldStart:   "start day",
+	sigil.FieldTags:    "tags",
+	sigil.FieldContext: "context",
+	sigil.FieldRepeat:  "repeat",
+	sigil.FieldToday:   "Today pick",
+	fieldTodayPos:      "Today order",
+	fieldLink:          "link",
+	fieldQuery:         "saved filter",
 }
 
 // fieldOrder is the order fields are named in, most telling first.
 var fieldOrder = []string{
 	sigil.FieldText, sigil.FieldState, sigil.FieldFlag, sigil.FieldDue,
-	sigil.FieldStart, sigil.FieldTags, sigil.FieldRepeat, sigil.FieldToday,
+	sigil.FieldStart, sigil.FieldTags, sigil.FieldContext, sigil.FieldRepeat, sigil.FieldToday,
 	fieldTodayPos, fieldLink, fieldQuery,
 }
 
@@ -143,7 +144,8 @@ func describe(group []outline.Op, under func(id string) []string) string {
 }
 
 // marks are the conditions a match is drawn with: the words and phrases a
-// query looks for in a row's own text, and the tags it asks the row for.
+// query looks for in a row's own text, and the tags and context it asks the
+// row for.
 // A term that excludes, or that reads other rows than the match, marks
 // nothing, nor does one inside a part that must not hold.
 func (q query) marks() []cond {
@@ -174,7 +176,7 @@ func (q query) marks() []cond {
 			continue
 		}
 		for _, c := range t.any {
-			if (c.kind == 't' || c.kind == '#') && c.value != "" {
+			if (c.kind == 't' || c.kind == '#' || c.kind == 'c') && c.value != "" {
 				out = append(out, c)
 			}
 		}
@@ -234,6 +236,16 @@ func markWords(text string, marks []cond) map[int]bool {
 func markTag(tag string, marks []cond) bool {
 	for _, c := range marks {
 		if c.kind == '#' && (tag == c.value || sigil.TagName(tag) == c.value) {
+			return true
+		}
+	}
+	return false
+}
+
+// markContext reports a context the query asks the row for.
+func markContext(ctx string, marks []cond) bool {
+	for _, c := range marks {
+		if c.kind == 'c' && c.value == ctx {
 			return true
 		}
 	}
@@ -361,13 +373,14 @@ func commandName(s string) string {
 }
 
 // tagWord is the tag being typed at the end of a line, without its #, or
-// false when the last word is no tag.
-func tagWord(e *editor, surface string) (string, bool) {
+// false when the last word is no tag. A ## word is a context: ctx says so,
+// and the word is given without its ##.
+func tagWord(e *editor, surface string) (w string, ctx, ok bool) {
 	if e.caret != len(e.buf) || len(e.buf) == 0 {
-		return "", false
+		return "", false, false
 	}
 	line := string(e.buf)
-	w := line[strings.LastIndexAny(line, " \t")+1:]
+	w = line[strings.LastIndexAny(line, " \t")+1:]
 	if surface == askStamp || surface == askFilter {
 		w = strings.TrimPrefix(w, "-")
 	}
@@ -375,36 +388,60 @@ func tagWord(e *editor, surface string) (string, bool) {
 		w = w[1:]
 	}
 	if !strings.HasPrefix(w, "#") {
-		return "", false
+		return "", false, false
 	}
 	if surface == askFilter {
 		if i := strings.LastIndexByte(w, '|'); i >= 0 {
-			w = w[i+1:]
-			if strings.HasPrefix(w, "#") {
-				w = w[1:]
-			} else if strings.ContainsAny(w[:min(len(w), 1)], sigilStarts) {
-				return "", false
+			// A side without its own sigil takes the first side's.
+			sig := "#"
+			if strings.HasPrefix(w, "##") {
+				sig = "##"
 			}
-			w = "#" + w
+			side := w[i+1:]
+			switch {
+			case strings.HasPrefix(side, "#"):
+				w = side
+			case strings.ContainsAny(side[:min(len(side), 1)], sigilStarts):
+				return "", false, false
+			default:
+				w = sig + side
+			}
 		}
 	}
-	w = strings.ToLower(w[1:])
-	if strings.ContainsAny(w, "=<>") {
-		return "", false
+	w, ctx = strings.CutPrefix(w, "##")
+	if !ctx {
+		w = w[1:]
 	}
-	return w, true
+	w = strings.ToLower(w)
+	if strings.ContainsAny(w, "=<>") || ctx && strings.HasPrefix(w, "#") {
+		return "", false, false
+	}
+	return w, ctx, true
 }
 
 // tagOffers names the tags in use that the tag being typed could become,
 // most used first, each with how many rows carry it, so the line shows
-// what tags there are without a list of its own.
+// what tags there are without a list of its own. A ##context names the
+// contexts in use the same way.
 func (m *Model) tagOffers(e *editor, surface string) string {
 	if colors := m.colorOffers(e, surface); colors != "" {
 		return colors
 	}
-	typed, ok := tagWord(e, surface)
+	typed, ctx, ok := tagWord(e, surface)
 	if !ok {
 		return ""
+	}
+	if ctx {
+		var parts []string
+		for _, name := range m.contexts {
+			if strings.HasPrefix(name, typed) {
+				parts = append(parts, fmt.Sprintf("##%s %d", name, m.contextUse[name]))
+			}
+		}
+		if len(parts) == 0 {
+			return "a new context"
+		}
+		return strings.Join(parts, " · ")
 	}
 	// A tag with values is one name: #est counts every #est=….
 	use := map[string]int{}
@@ -626,7 +663,7 @@ func (m *Model) walkChanges(older bool, count int) {
 // its kind reads as, so the line is put right without leaving it.
 func unreadStamp(w string) string {
 	body := strings.TrimPrefix(w, "-")
-	way := "the line reads #tag, @date, $state, *interval, ~colour and !"
+	way := "the line reads #tag, ##context, @date, $state, *interval, ~colour and !"
 	switch {
 	case w != body && strings.HasPrefix(body, "$"):
 		way = "a state is set, not taken off, as $open or $note"
@@ -651,6 +688,8 @@ func sigilForm(w string) string {
 		return "a state is $open, $doing, $waiting, $done, $canceled, $parked or $note"
 	case strings.HasPrefix(w, "*"):
 		return "an interval reads as *3d, *2w or *monthly"
+	case strings.HasPrefix(w, "##"):
+		return "a context is a word starting with a letter, as ##home"
 	case strings.HasPrefix(w, "#"):
 		return "a tag starts with a letter"
 	case strings.HasPrefix(w, "~"):

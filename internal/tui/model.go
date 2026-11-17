@@ -162,24 +162,26 @@ type Model struct {
 	// A pass works in the folder off the keys' path. syncIO is that work
 	// while a pass is under way; syncSent says the program has been handed
 	// it; syncHeld is a finished pass waiting for a line to be typed out.
-	syncIO    func() tea.Msg
-	syncSent  bool
-	syncHeld  *syncDoneMsg
-	syncLoud  bool   // the pass was asked for, so its outcome is said
-	syncWant  bool   // another pass was asked for while one was under way
-	syncAgain bool   // this pass is the one retry a missing file is owed
-	backedUp  string // the day of the newest snapshot
-	scanned   scanKey
-	tags      []string       // tags in use, most used first
-	tagUse    map[string]int // how many live rows carry each tag
-	headings  []entry        // live heading destinations, in tree order
-	rowNames  []entry        // every other live row with text, for the pickers
-	parked    int
-	next      map[string]bool     // each active project's next action, derived in scan
-	first     map[string]bool     // each parent's first workable child, derived in scan
-	inToday   map[string]bool     // the rows in Today, derived in scan
-	missed    map[string]bool     // picks from an earlier day still open, derived in scan
-	pointers  map[string][]string // the rows linking to each row, in outline order, derived in scan
+	syncIO     func() tea.Msg
+	syncSent   bool
+	syncHeld   *syncDoneMsg
+	syncLoud   bool   // the pass was asked for, so its outcome is said
+	syncWant   bool   // another pass was asked for while one was under way
+	syncAgain  bool   // this pass is the one retry a missing file is owed
+	backedUp   string // the day of the newest snapshot
+	scanned    scanKey
+	tags       []string       // tags in use, most used first
+	tagUse     map[string]int // how many live rows carry each tag
+	contexts   []string       // contexts in use, most used first
+	contextUse map[string]int // how many live rows carry each context
+	headings   []entry        // live heading destinations, in tree order
+	rowNames   []entry        // every other live row with text, for the pickers
+	parked     int
+	next       map[string]bool     // each active project's next action, derived in scan
+	first      map[string]bool     // each parent's first workable child, derived in scan
+	inToday    map[string]bool     // the rows in Today, derived in scan
+	missed     map[string]bool     // picks from an earlier day still open, derived in scan
+	pointers   map[string][]string // the rows linking to each row, in outline order, derived in scan
 
 	totals    map[string]rowTotals // own and descendant counts, derived in scan
 	paneTotal taskTotals           // held rows, refreshed in rebuild
@@ -1385,7 +1387,7 @@ func (m *Model) setFields(id string, want map[string]string) []outline.Op {
 		}
 		return have[name]
 	}
-	for _, name := range []string{sigil.FieldText, sigil.FieldState, sigil.FieldFlag, sigil.FieldDue, sigil.FieldStart, sigil.FieldRepeat, sigil.FieldTags, sigil.FieldColor} {
+	for _, name := range []string{sigil.FieldText, sigil.FieldState, sigil.FieldFlag, sigil.FieldDue, sigil.FieldStart, sigil.FieldRepeat, sigil.FieldTags, sigil.FieldContext, sigil.FieldColor} {
 		value, ok := want[name]
 		if !ok || value == have[name] {
 			continue

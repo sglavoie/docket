@@ -257,6 +257,7 @@ func (m *Model) scan() {
 	day := today.Format("2006-01-02")
 	lists := map[string][]string{}
 	tagUse := map[string]int{}
+	contextUse := map[string]int{}
 	picked := 0
 	m.parked = 0
 	m.headings = m.headings[:0]
@@ -289,6 +290,9 @@ func (m *Model) scan() {
 		*touch = max(*touch, r.Modified)
 		for _, tag := range l.Tags {
 			tagUse[tag]++
+		}
+		if l.Context != "" {
+			contextUse[l.Context]++
 		}
 		// Today holds what was picked, and what was set to start today.
 		if isPicked(r.Fields, l, day) || (l.Start == day && l.State != "") {
@@ -408,6 +412,7 @@ func (m *Model) scan() {
 
 	m.lists = lists
 	m.tags, m.tagUse = tagsByUse(tagUse), tagUse
+	m.contexts, m.contextUse = tagsByUse(contextUse), contextUse
 	// The Inbox counts what is left to file or finish, so it empties as the
 	// header's count does.
 	inbox := 0

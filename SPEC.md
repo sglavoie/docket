@@ -66,6 +66,7 @@ a rule here changes this file first.
 | `repeat` | 5 | An interval, as in `2w`: the row comes back after it is closed |
 | `link` | 13 | The row this one points at |
 | `color` | 19 | A project's colour: a name, or a hex value as `#rrggbb` |
+| `context` | 20 | Where the work is done: one name, normalised as a tag without a value |
 
 ## Storage
 
@@ -561,6 +562,8 @@ Three more acts use the same line:
   carries and `#name=value` only that one; `#name<value` holds for a value at most that
   and `#name>value` for one at least that, compared as numbers when both
   are and else as text ignoring case, so `#est<3` and `#who>m` both read.
+  `##name` holds a row with that context, `##` alone any context, and `-##`
+  a row with none; `##home|town` reads either.
   `#` alone is any tag, `$` alone is any state (a task),
   and `@` alone is any deadline; `-#` is untagged and `-$` is notes or
   headings. `@overdue` and `@week` read the calendar. `@<date` holds for an
@@ -695,8 +698,9 @@ Three more acts use the same line:
   dropped, and nothing when there is none.
 - `#` `@` `$` `*` `-` `~` **Stamp ›** opens holding that character, so `~`
   opens it on the colour list. The line is
-  sigils only: `#tag`, `@date`, `@@date`, `*interval`, `$state`, `~colour` and `!`
-  set; `-#tag`, `-@`, `-@@`, `-*`, `-~` and `-!` remove. `#name=value` sets the value,
+  sigils only: `#tag`, `##context`, `@date`, `@@date`, `*interval`, `$state`, `~colour` and `!`
+  set; `-#tag`, `-##`, `-@`, `-@@`, `-*`, `-~` and `-!` remove; `-##name`
+  takes the context off only the rows that have that one. `#name=value` sets the value,
   replacing any the name had; `-#name` takes the tag off whatever its value
   and `-#name=value` only that one. `@++1w` and `@--3d` move a deadline on
   or back from the day the row has, not from today, by a count of `d`, `w`,
@@ -1303,6 +1307,7 @@ grammar cannot read also stays prose (`@alice`, `#123`, `$5`). `\#tag` keeps a r
 | `@@date` | `start` | The same forms as `@date` |
 | `*interval` | `repeat` | A count and `d`, `w`, `m` or `y` (`*3d`, `*2w`), or `daily`, `weekly`, `monthly`, `yearly` |
 | `$state` | `state` | `open`, `doing`, `waiting`, `done`, `canceled`, `parked`, `note`, or an unambiguous prefix (`$w`, `$c`, `$p`; `$d` is not one). `$next`, `$first`, `$today`, `$missed` and `$project` are read by the filter only: they are not states |
+| `##context` | `context` | A tag's name, without a value: `##home`, `##phone`. A row has one; a later one replaces it. `##` alone and `##1` stay prose |
 | `~colour` | `color` | A colour name: `red`, `orange`, `yellow`, `lime`, `green`, `teal`, `cyan`, `blue`, `indigo`, `purple`, `magenta`, `pink`, `brown`, `gray` (also `grey`, `violet`); or a hex value, `#rgb` or `#rrggbb`, stored as `#rrggbb`. Read on any row, drawn on projects only. The filter reads `~` as a time instead |
 | `%name` | | On the capture line only: the project or heading to file the row in |
 
@@ -1313,7 +1318,7 @@ days, rounded to the nearest minute after adding.
 
 Typed in a row, sigils become fields when the edit ends and may sit anywhere
 in the line; a repeated `@` or `$` takes the last. `A` opens a row showing its
-canonical line: text, `!`, `@YYYY-MM-DD`, tags, state. Deleting a sigil from
+canonical line: text, `!`, `@YYYY-MM-DD`, tags, context, state. Deleting a sigil from
 that line clears its field. Typed on a row outside an edit, they open the
 stamp line.
 
@@ -1323,8 +1328,8 @@ accent colour, and a word that starts like one and cannot be read in the
 warning colour, so a mistyped `@firday` is seen before `Enter`. A
 `~colour` is drawn in the colour it names instead, so it is seen before
 it is kept. At the end of
-the line a sigil being typed is completed in dim text: a `#tag` already in
-use, most used first; a `$state`; a date word; a colour name. The right arrow takes the
+the line a sigil being typed is completed in dim text: a `#tag` or a
+`##context` already in use, most used first; a `$state`; a date word; a colour name. The right arrow takes the
 suggestion and types nothing otherwise. The capture line also names where
 the row will land. The row being typed shows the glyph of what its line
 makes it so far: `○` under a heading, `·` once its text ends in a colon,
@@ -1335,7 +1340,9 @@ line, the status line names every tag in use that it could become, most
 used first, each with how many rows carry it: `#home 42 · #house 3`. A tag
 with values counts as its name. `#` alone lists them all, so the tags there
 are can be read without a list of their own (rule 6); one that starts no
-tag in use says `a new tag`. On the prompts the list follows the count of
+tag in use says `a new tag`. A `##context` names the contexts in use the
+same way, `##phone 4 · ##town 2`, and one that starts none says `a new
+context`; on the filter `Tab` walks them as it walks tags. On the prompts the list follows the count of
 matches or rows, in place of the hint about keys. A `~colour` typed there,
 except on the filter, lists the colour names it could become in the same
 place, each drawn in itself, as `~teal`; a `~#` asks for a hex value.
@@ -1380,7 +1387,9 @@ or not yet started, it is dimmed as any row.
 Fields follow the text, each in
 the sigil that writes it, and then `→` with the row a link points at. Each
 `#tag` is drawn in its own colour; a closed or parked row dims its tags
-with the rest. A row
+with the rest. A context leads the text in brackets, `[phone] Call Ann`,
+so where the work is done is read first, in the colour its name hashes
+to as a tag's does; a filter that asks for it marks it as it marks a tag. A row
 picked for Today shows `★` in the accent colour after its text and flag,
 wherever it is drawn but in Today: `t` toggles the pick, so the row says
 which way the key will go. The deadline reads `@today`, `@tomorrow`, `@fri`,
@@ -1592,6 +1601,11 @@ is `docket add`, and the overdue count it shows is `docket ls '@overdue'`.
    unpicked, below a rule that sets the day's own rows apart, and
    `$missed` finds those picks. Tags are told apart by colour, and `~colour` gives a
    project its own, by name or hex. *Built.*
+
+20. **Context.** `##context` gives a row one context, drawn in brackets
+   before its text in the colour its name hashes to. Typed, it is
+   completed and listed as a tag is; the filter reads `##name`, `##` and
+   `-##`, and the stamp line sets and takes it off. *Built.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add`, `docket ls` and `--version`, macros (`.`,
