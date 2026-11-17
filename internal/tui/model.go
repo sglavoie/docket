@@ -210,6 +210,7 @@ type Model struct {
 	helpG        bool // a pending g in help
 	msg          string
 	pendingCmd   tea.Cmd // command produced by normalKey for Update to deliver
+	recorded     bool    // a key made an undo step, so its outcome is the user's
 }
 
 func New(tree *outline.Tree, backend Backend, folds map[string]bool) *Model {
@@ -578,6 +579,29 @@ func (m *Model) arrive() {
 	m.land()
 }
 
+// picksLeft is Today's sidebar count: its picks not yet closed.
+func (m *Model) picksLeft() int {
+	for _, e := range m.side {
+		if e.kind == kindToday {
+			return e.count
+		}
+	}
+	return 0
+}
+
+// sayDayDone marks the end of a day's work: when a change the user made
+// closes the last open pick, the status line says so, once. An undo, a sync
+// pass or the day turning over says nothing, and nor does a key that has
+// something of its own to say.
+func (m *Model) sayDayDone(left int) {
+	if !m.recorded || left == 0 || m.picksLeft() > 0 || m.msg != "" {
+		return
+	}
+	if len(m.lists[kindToday]) > 0 {
+		m.msg = "today is done: every pick is closed"
+	}
+}
+
 // Notice shows a message on the status line until the next key.
 func (m *Model) Notice(msg string) { m.msg = msg }
 
@@ -875,6 +899,7 @@ func (m *Model) record(ops, inv []outline.Op) bool {
 	if !m.save(ops, inv) {
 		return false
 	}
+	m.recorded = true
 	m.noteChange(ops)
 	if m.undoGroup != nil {
 		m.undoGroup = append(inv, m.undoGroup...)
@@ -1532,6 +1557,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		outlineKey := !m.help && m.edit == nil && m.ask == nil && !m.sideFocus
 		tree, gen := m.tree, m.tree.Gen()
+		left := m.picksLeft()
+		m.recorded = false
 		switch {
 		case m.help:
 			m.helpKey(msg.String())
@@ -1552,6 +1579,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// The sidebar still follows a minute turning over between keys.
 			m.scan()
 		}
+		m.sayDayDone(left)
 		if m.quit {
 			m.syncQuit()
 			return m, tea.Quit

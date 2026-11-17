@@ -13,6 +13,7 @@ import (
 // only the held rows for a list or filter, without counting their children.
 type taskTotals struct {
 	todo, done, total int
+	waiting           int
 	minutes           float64
 	estimated         bool
 }
@@ -25,6 +26,7 @@ func (t *taskTotals) add(other taskTotals) {
 	t.todo += other.todo
 	t.done += other.done
 	t.total += other.total
+	t.waiting += other.waiting
 	t.minutes += other.minutes
 	t.estimated = t.estimated || other.estimated
 }
@@ -36,6 +38,9 @@ func countTask(l sigil.Line) taskTotals {
 		t.done, t.total = 1, 1
 	case sigil.Open, sigil.Doing, sigil.Waiting:
 		t.todo, t.total = 1, 1
+		if l.State == sigil.Waiting {
+			t.waiting = 1
+		}
 		for _, tag := range l.Tags {
 			if sigil.TagName(tag) == "est" {
 				t.minutes, t.estimated = estimateMinutes(sigil.TagValue(tag))
@@ -66,11 +71,14 @@ func estimateMinutes(value string) (float64, bool) {
 	return minutes, true
 }
 
-func (t taskTotals) summary() string {
-	if t.todo == 0 {
+func (t taskTotals) summary() string { return t.said(t.todo, "to do") }
+
+// said counts n rows as what they are, then the estimate left to do.
+func (t taskTotals) said(n int, what string) string {
+	if n == 0 {
 		return ""
 	}
-	s := fmt.Sprintf("%d to do", t.todo)
+	s := fmt.Sprintf("%d %s", n, what)
 	if t.estimated {
 		minutes := math.Round(t.minutes)
 		hours, remainder := math.Floor(minutes/60), math.Mod(minutes, 60)

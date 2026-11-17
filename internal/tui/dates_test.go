@@ -26,7 +26,8 @@ func TestAStartDateDimsARowUntilItsDayThenPutsItInToday(t *testing.T) {
 	)
 	h.press("esc")
 
-	// On the day, with no key pressed, it is in Today and reads as live.
+	// On the day, with no key pressed, it is in Today and reads as live. Today
+	// names the day already, so the row does not say it again.
 	h.clock = h.clock.Add(5 * 24 * time.Hour)
 	h.tick()
 	h.wantSide(
@@ -41,7 +42,7 @@ func TestAStartDateDimsARowUntilItsDayThenPutsItInToday(t *testing.T) {
 		t.Fatal("the row is still dimmed on its start day")
 	}
 	h.press("f", `"today"`, "enter")
-	h.want("▌ ○ Renew passport @@today · Project")
+	h.want("▌ ○ Renew passport · Project")
 
 	// Weeks on, the untouched rows are stale; the one still waiting for its
 	// day is not.

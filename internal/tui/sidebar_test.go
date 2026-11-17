@@ -71,7 +71,7 @@ func TestSidebarFocusShowsEachDestination(t *testing.T) {
 		"  ◔ Two",
 	)
 	h.press("k", "k", "k", "k")
-	if h.header() != "Waiting  · 1 to do" {
+	if h.header() != "Waiting  · 1 waiting" {
 		t.Fatalf("header = %q", h.header())
 	}
 	h.want("▌ ◔ Two · 0d · Alpha")
@@ -220,14 +220,14 @@ func TestTodayIsReordered(t *testing.T) {
 	})
 	t.Run("start day rows initialize in one undo step", func(t *testing.T) {
 		h := three(t, true)
-		h.want("▌ ○ Three · Alpha", "  ○ One · Alpha", "  ○ Two · Alpha", "  ○ Scheduled @@today · Alpha", "  ○ Later @@today · Alpha")
+		h.want("▌ ○ Three · Alpha", "  ○ One · Alpha", "  ○ Two · Alpha", "  ○ Scheduled · Alpha", "  ○ Later · Alpha")
 		before := map[string]string{}
 		for _, id := range h.m.at.rows {
 			before[id] = h.m.tree.Row(id).Fields[fieldTodayPos]
 		}
 		steps := len(h.m.undo)
 		h.press("G", "K")
-		h.want("  ○ Three · Alpha", "  ○ One · Alpha", "  ○ Two · Alpha", "▌ ○ Later @@today · Alpha", "  ○ Scheduled @@today · Alpha")
+		h.want("  ○ Three · Alpha", "  ○ One · Alpha", "  ○ Two · Alpha", "▌ ○ Later · Alpha", "  ○ Scheduled · Alpha")
 		if len(h.m.undo) != steps+1 {
 			t.Fatal("initializing and moving did not form one undo step")
 		}
@@ -237,14 +237,14 @@ func TestTodayIsReordered(t *testing.T) {
 			}
 		}
 		h.press("u")
-		h.want("  ○ Three · Alpha", "  ○ One · Alpha", "  ○ Two · Alpha", "  ○ Scheduled @@today · Alpha", "▌ ○ Later @@today · Alpha")
+		h.want("  ○ Three · Alpha", "  ○ One · Alpha", "  ○ Two · Alpha", "  ○ Scheduled · Alpha", "▌ ○ Later · Alpha")
 		for id, pos := range before {
 			if h.m.tree.Row(id).Fields[fieldTodayPos] != pos {
 				t.Fatal("undo did not restore the original place")
 			}
 		}
 		h.press("ctrl+r", "J")
-		h.want("  ○ Three · Alpha", "  ○ One · Alpha", "  ○ Two · Alpha", "  ○ Scheduled @@today · Alpha", "▌ ○ Later @@today · Alpha")
+		h.want("  ○ Three · Alpha", "  ○ One · Alpha", "  ○ Two · Alpha", "  ○ Scheduled · Alpha", "▌ ○ Later · Alpha")
 	})
 	t.Run("group toggle retains earlier picks and replaces stale positions", func(t *testing.T) {
 		h := three(t, false)

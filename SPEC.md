@@ -203,7 +203,8 @@ An outline counts every such row under its root, folded or not; a list counts
 its held rows and a filter its held matches, excluding context ancestors.
 Zero tasks says nothing. Today is the list that gets finished, so it alone
 goes on to count its done rows, as `3 to do · 2 done`, and says `all 5 done`
-when nothing is left. The review list holds projects, not tasks, so it
+when nothing is left. None of Waiting is the user's to do, so it counts its
+rows still waiting instead, as `270 waiting`. The review list holds projects, not tasks, so it
 counts those, as `Review · 43 projects`. These totals and heading progress are derived in
 the existing scan, never stored.
 
@@ -246,9 +247,14 @@ Drawn from 72 columns up; narrower, it takes the pane only while focused,
 and is then no wider than 40 columns, so each count stays beside its name.
 Everything in it is derived by one pass over the tree. Nothing is stored.
 
-- **Four lists, and they stay four.** Inbox counts its rows; Today counts
+- **Four lists, and they stay four.** Inbox counts its rows not yet done or
+  canceled, so it empties as they are filed or finished; Today counts
   picks not yet closed, and shows a dimmed `✓` once every pick is closed,
-  so a finished day is told from one with nothing picked; Waiting counts
+  so a finished day is told from one with nothing picked. A change the
+  user makes that closes the last open pick says so on the status line,
+  once, as `today is done: every pick is closed`, unless the key has
+  something of its own to say; an undo, a sync pass or the day turning
+  over says nothing. Waiting counts
   rows in that state; Stale counts open
   and doing rows untouched for 14 days, leaving out rows whose start day is
   still ahead.
@@ -359,7 +365,8 @@ The pane shows the rows under one row, or a list.
 Today is hand-picked and rebuilt daily: a row is in Today when its `today`
 field is the current day, so yesterday's picks drop out without a write. A
 task whose start day is today is in Today too, which is how a row is made to
-come back on a date. Picks are kept in the order made: `t` assigns a fresh
+come back on a date. Today names that day already, so a start day of today
+is not drawn there, as the pick's `★` is not. Picks are kept in the order made: `t` assigns a fresh
 `todaypos` after the last placed row, overwriting any earlier day's place
 in the same undo step. Unpicking leaves that place stored. Rows with a place
 come first, sorted by it; rows without one follow in outline order. Before

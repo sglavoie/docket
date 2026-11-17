@@ -149,7 +149,8 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 		// A label such as "@Nov 20" stays in one piece.
 		out = append(out, word{paint(style), label})
 	}
-	if l.Start != "" {
+	// Today names the day a row starts on already, as it names the pick.
+	if l.Start != "" && (l.Start != day || m.at.list != kindToday) {
 		label, _ := sigil.DueLabel(l.Start, m.today())
 		out = append(out, word{m.colors().dim, "@" + label})
 	}
@@ -355,6 +356,10 @@ func (m *Model) paneHeader(w int, ruler string) string {
 	c := m.colors()
 	parts := m.placeParts(m.at)
 	summary := m.paneTotal.summary()
+	if m.at.list == kindWaiting {
+		// None of Waiting is the user's to do: it is waited on.
+		summary = m.paneTotal.said(m.paneTotal.waiting, "waiting")
+	}
 	if p := m.projectOf(m.at.root); p != nil && m.at.list == "" {
 		// A project out of the sidebar says why, since nothing there marks it.
 		switch state := p.Fields[sigil.FieldState]; state {

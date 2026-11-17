@@ -394,8 +394,16 @@ func (m *Model) scan() {
 
 	m.lists = lists
 	m.tags, m.tagUse = tagsByUse(tagUse), tagUse
+	// The Inbox counts what is left to file or finish, so it empties as the
+	// header's count does.
+	inbox := 0
+	for _, id := range m.tree.Children(inboxID) {
+		if !sigil.FromFields(m.tree.Row(id).Fields).Closed() {
+			inbox++
+		}
+	}
 	m.side = append([]entry{
-		{kind: kindInbox, label: "Inbox", count: len(m.tree.Children(inboxID))},
+		{kind: kindInbox, label: "Inbox", count: inbox},
 		{kind: kindToday, label: "Today", count: picked, done: picked == 0 && len(lists[kindToday]) > 0},
 		{kind: kindWaiting, label: "Waiting", count: len(lists[kindWaiting])},
 		{kind: kindStale, label: "Stale", count: len(lists[kindStale])},
