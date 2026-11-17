@@ -9,6 +9,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/docket/internal/outline"
 	"github.com/sglavoie/docket/internal/store"
@@ -1068,5 +1069,59 @@ func TestACommandNameReadsInAnyCase(t *testing.T) {
 	h.press("esc", ":", `"Help"`, "enter")
 	if !h.m.help {
 		t.Fatal(":Help did not open help")
+	}
+}
+
+func init() { flashFor = 0 }
+
+// A copy lights what it took for a moment, rows beneath included, over the
+// selection, and only its own timer puts the light out.
+func TestACopyFlashesWhatItTook(t *testing.T) {
+	h := work(t)
+	c := h.m.colors()
+	lit := func() []string {
+		var out []string
+		for _, l := range strings.Split(h.m.View().Content, "\n") {
+			if strings.Contains(l, c.flash) {
+				out = append(out, strings.TrimSpace(ansi.Strip(l)))
+			}
+		}
+		return out
+	}
+	h.press("k", "y", "y")
+	if got := lit(); len(got) != 2 || !strings.Contains(got[0], "Beta") || !strings.Contains(got[1], "Fix cache") {
+		t.Fatalf("lit after yy on Beta = %q", got)
+	}
+	stale := h.m.flashGen
+	h.press("j", "j", "j", "y", "j")
+	if got := lit(); len(got) != 2 || !strings.Contains(got[0], "Fix login") || !strings.Contains(got[1], "Write docs") {
+		t.Fatalf("lit after yj = %q", got)
+	}
+	h.m.Update(flashMsg{stale})
+	if len(lit()) != 2 {
+		t.Fatal("an earlier copy's timer put out a later copy's light")
+	}
+	h.m.Update(flashMsg{h.m.flashGen})
+	if got := lit(); len(got) != 0 {
+		t.Fatalf("still lit after its timer = %q", got)
+	}
+	if !strings.Contains(h.m.View().Content, c.cursor) {
+		t.Fatal("the cursor is not drawn once the light is out")
+	}
+}
+
+// A copy inside a row lights the characters it took.
+func TestACopyInsideARowFlashesItsSpan(t *testing.T) {
+	h := textRow(t, `Call Ann now`)
+	h.press("w", "w", "y", "i", "w")
+	if h.m.edit.flash != [2]int{5, 8} {
+		t.Fatalf("flash = %v", h.m.edit.flash)
+	}
+	if got := h.m.View().Content; !strings.Contains(got, sgrReverse+"Ann") {
+		t.Fatalf("the copied word is not lit:\n%q", got)
+	}
+	h.m.Update(flashMsg{h.m.flashGen})
+	if h.m.edit.flash != [2]int{} || strings.Contains(h.m.View().Content, sgrReverse) {
+		t.Fatal("the word is still lit after its timer")
 	}
 }

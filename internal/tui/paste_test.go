@@ -201,7 +201,8 @@ func copyFixture(t *testing.T, parentState string, rows []copyRow) (*harness, []
 	return h, ids, dest
 }
 
-// clipboardMessages executes nested batches and rejects every unexpected message.
+// clipboardMessages executes nested batches and rejects every unexpected message;
+// the flash a copy starts is expected beside it.
 func clipboardMessages(t *testing.T, cmd tea.Cmd, expected string) int {
 	t.Helper()
 	want := tea.SetClipboard(expected)()
@@ -216,6 +217,8 @@ func clipboardMessages(t *testing.T, cmd tea.Cmd, expected string) int {
 			for _, child := range batch {
 				inspect(child)
 			}
+		} else if _, ok := msg.(flashMsg); ok {
+			// A copy lights what it took; the light is not a clipboard write.
 		} else if reflect.DeepEqual(msg, want) {
 			matches++
 		} else {

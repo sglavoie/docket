@@ -48,6 +48,13 @@ const (
 
 type tickMsg struct{}
 
+// flashMsg ends the flash of copy number gen, unless a later copy has its own.
+type flashMsg struct{ gen int }
+
+// flashFor is how long a copy lights what it took. Tests set it to nothing,
+// so a copy's timer does not hold them up.
+var flashFor = 200 * time.Millisecond
+
 // syncDoneMsg is a pass's work in the folder, finished and ready to apply.
 type syncDoneMsg struct{ read *store.SyncRead }
 
@@ -91,6 +98,7 @@ type editor struct {
 	back       string            // where the cursor returns if a fresh row is abandoned
 	side       bool              // a project's name typed in its sidebar entry: the line stays in its row
 	sideC      bool              // opened by c in the sidebar: the typing it opens ends at Esc
+	flash      [2]int            // the span y last took from the line, lit while it flashes
 	// A walk through the colours a ~word could become: which is written,
 	// zero being the word as typed, which walkDraft holds meanwhile.
 	walk      int
@@ -201,6 +209,8 @@ type Model struct {
 	opCount      int                 // count before the operator
 	register     string              // session-local serialized rows
 	copied       string              // what y last took, which a delete does not replace
+	flashed      map[string]bool     // the rows y last took, lit while they flash
+	flashGen     int                 // which copy is flashing
 	past         map[string][]string // lines kept on each recalling prompt, oldest first
 	centre       bool                // the cursor has landed somewhere: show it mid-pane if off screen
 	scroll       byte                // zt zz zb: draw the cursor's row at the top, middle or bottom
@@ -1565,6 +1575,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.syncStart(false)
 		m.rebuild()
 		return m, tea.Batch(tick(), m.syncCmd(), tea.RequestBackgroundColor)
+	case flashMsg:
+		if msg.gen == m.flashGen {
+			m.unflash()
+		}
+		return m, nil
 	case syncDoneMsg:
 		m.syncHeld = &msg
 		m.syncSettle()
@@ -2524,6 +2539,17 @@ func (m *Model) takeRows(op string, ids []string) {
 	if op == "y" {
 		m.copied = text
 		m.msg = "copied " + rowCount(n)
+		// What went is lit for a moment, its rows beneath included, so the
+		// copy can be checked against the screen.
+		lit := map[string]bool{}
+		for _, id := range ids {
+			lit[id] = true
+			for _, kid := range m.under(id) {
+				lit[kid] = true
+			}
+		}
+		m.flashed = lit
+		m.pendingCmd = tea.Batch(m.pendingCmd, m.startFlash())
 		return
 	}
 	var ops []outline.Op
@@ -3007,4 +3033,23 @@ func (e *editor) insert(text []rune) {
 	buf = append(buf, text...)
 	e.buf = append(buf, e.buf[e.caret:]...)
 	e.caret += len(text)
+}
+
+// startFlash lights a copy until its own timer ends it; a copy made sooner
+// takes the light over.
+func (m *Model) startFlash() tea.Cmd {
+	m.flashGen++
+	gen := m.flashGen
+	return tea.Tick(flashFor, func(time.Time) tea.Msg { return flashMsg{gen} })
+}
+
+// unflash puts out whatever a copy lit, in the outline and on the line.
+func (m *Model) unflash() {
+	m.flashed = nil
+	if m.edit != nil {
+		m.edit.flash = [2]int{}
+	}
+	if m.ask != nil {
+		m.ask.ed.flash = [2]int{}
+	}
 }

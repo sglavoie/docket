@@ -1161,7 +1161,7 @@ di" di( objects`):
   replaces it with the next key; `~` switches its case. `p` and `P` put
   what `d`, `c`, `y` or `x` last took after or before the caret: that is a
   text register of its own, kept for the session, and `y` also writes the
-  system clipboard.
+  system clipboard and draws what it took in reverse for a moment.
 - **Typing.** `i` and `a` type at the caret and after it, `I` and `A` at the
   start and the end, and `c`, `C` and `s` type where they cut. `Esc` ends
   the typing and puts the caret back on a character, the last one typed,
@@ -1223,7 +1223,10 @@ work by word.
 system clipboard and one unnamed register as tab-indented row-grammar lines.
 Depth is relative to the copied roots; selected descendants are not written
 twice. Deleted rows are omitted; folded and hidden closed descendants are included. The status says
-`copied N rows`. Copy works in lists and filters, using the chosen rows
+`copied N rows`. The rows it took, those beneath them included, are lit for a
+moment (200 ms) in a colour of their own, over the selection and the
+cursor, so the copy can be checked against the screen; a copy made sooner
+takes the light over. Copy works in lists and filters, using the chosen rows
 without adding dimmed ancestors. It keeps the selection and cursor and makes
 no undo step. `y` with a motion copies the inclusive shown range, excluding
 dimmed ancestors, with the same message; `y` alone waits, and `Esc` or an unrelated key cancels it. Counts

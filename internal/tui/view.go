@@ -904,9 +904,11 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 			if n == 0 {
 				line = number + gutter + mark + indent + glyph + " " + text
 			}
-			// Selection wins over the cursor; only the focused pane is live.
+			// A copy's flash wins over the selection, which wins over the cursor; only the focused pane is live.
 			background := ""
-			if m.picked[v.id] {
+			if m.flashed[v.id] {
+				background = m.colors().flash
+			} else if m.picked[v.id] {
 				background = m.colors().selection
 			} else if i == m.cursor && !m.sideFocus {
 				background = m.colors().cursor

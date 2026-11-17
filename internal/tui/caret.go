@@ -853,7 +853,8 @@ func (m *Model) textOperate(e *editor, op string, from, to int) int {
 	}
 	if op == "y" {
 		m.textRegister = string(e.buf[from:to])
-		m.pendingCmd = tea.SetClipboard(m.textRegister)
+		e.flash = [2]int{from, to}
+		m.pendingCmd = tea.Batch(tea.SetClipboard(m.textRegister), m.startFlash())
 		e.caret = from
 		e.rest()
 		return textMoved

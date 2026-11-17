@@ -418,7 +418,7 @@ func (e *editor) wrapped(width int, style func(string) []word) editLayout {
 					next()
 				}
 				l.pos[i] = textPoint{x, y}
-				if e.sel && i >= min(e.anchor, e.caret) && i <= max(e.anchor, e.caret) {
+				if e.sel && i >= min(e.anchor, e.caret) && i <= max(e.anchor, e.caret) || i >= e.flash[0] && i < e.flash[1] {
 					setStyle(span.style + sgrReverse)
 				} else {
 					setStyle(span.style)
