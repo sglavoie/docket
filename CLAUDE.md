@@ -13,6 +13,7 @@ just test
 just check   # fmt, vet, test
 just run     # against ./dev.db, never the real database; seeds it if absent
 just seed    # replace ./dev.db with ~6,000 tasks in 48 projects
+just mac-install  # build Docket.app and put it in /Applications
 ```
 
 ## Layers
@@ -23,6 +24,9 @@ just seed    # replace ./dev.db with ~6,000 tasks in 48 projects
   transaction.
 - `internal/tui`: view state and keys. It changes the tree only through
   operations, so everything it does is undoable and logged.
+- `macos/`: Docket.app, which runs `docket` in an embedded Ghostty terminal.
+  It reaches the outline only through `docket`, `docket add` and `docket ls`;
+  [`macos/README.md`](macos/README.md) is its contract.
 
 ## Rules for changes
 

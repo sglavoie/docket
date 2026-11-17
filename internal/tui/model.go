@@ -1532,13 +1532,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.BackgroundColorMsg:
 		m.lightPalette = !msg.IsDark()
 		return m, nil
+	case tea.FocusMsg:
+		// The terminal may have changed its colours while away, as Docket.app
+		// does when macOS turns dark or light.
+		return m, tea.RequestBackgroundColor
 	case tickMsg:
 		m.backup()
 		m.refresh()
 		m.syncSettle()
 		m.syncStart(false)
 		m.rebuild()
-		return m, tea.Batch(tick(), m.syncCmd())
+		return m, tea.Batch(tick(), m.syncCmd(), tea.RequestBackgroundColor)
 	case syncDoneMsg:
 		m.syncHeld = &msg
 		m.syncSettle()

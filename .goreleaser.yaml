@@ -1,0 +1,43 @@
+# Builds release binaries when a v* tag is pushed (.github/workflows/release.yml).
+# Check locally with `goreleaser check` and `goreleaser release --snapshot --clean`.
+version: 2
+
+project_name: docket
+
+before:
+  hooks:
+    - go mod tidy -diff
+
+builds:
+  - binary: docket
+    env:
+      - CGO_ENABLED=0
+    # Windows is not supported.
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      # `docket --version` reads these; the tag keeps its v.
+      - -X main.Version={{ .Tag }}
+      - -X main.Commit={{ .ShortCommit }}
+      - -X main.BuildTime={{ .Date }}
+
+archives:
+  - formats: [tar.gz]
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs(\\(.*\\))?:"
+      - "^test(\\(.*\\))?:"
+      - "^chore(\\(.*\\))?:"
+
+# No homebrew_casks: the cask installs the notarized Docket.app, which only a
+# macOS runner can build, so release.yml's macos-app job writes it to
+# sglavoie/homebrew-tap (scripts/homebrew_cask.sh) once the app is attached.

@@ -958,6 +958,14 @@ func TestPaletteFollowsBackground(t *testing.T) {
 	if !requested {
 		t.Fatal("launch did not request the terminal background")
 	}
+	// Focus coming back asks again, since the terminal may have changed its
+	// colours meanwhile, and the view asks the terminal to report it.
+	if _, cmd := h.m.Update(tea.FocusMsg{}); cmd == nil || reflect.ValueOf(cmd).Pointer() != reflect.ValueOf(tea.RequestBackgroundColor).Pointer() {
+		t.Fatal("regained focus did not request the terminal background")
+	}
+	if !h.m.View().ReportFocus {
+		t.Fatal("the view does not ask for focus reports")
+	}
 	for _, tc := range []struct {
 		background color.Color
 		want       palette

@@ -227,9 +227,11 @@ was not written (a save, a backup, a sync pass) is in the alert colour, so
 it does not pass for a confirmation.
 
 The screen uses named text, dim, accent, warning and alert roles in two
-built-in true-colour palettes. At launch it asks the terminal for its
-background: light selects the light palette, dark selects dark, and dark
-is used until an answer arrives or if none does. Bubble Tea steps colours
+built-in true-colour palettes. It asks the terminal for its background at
+launch, when the window has focus again, and once a minute, so a terminal
+that changes its colours (Docket.app does, with macOS's appearance) is
+followed: light selects the light palette, dark selects dark, and dark is
+used until an answer arrives or if none does. Bubble Tea steps colours
 down to the terminal's colour profile and removes them for `NO_COLOR`.
 There is no theme command or configuration file.
 
@@ -1360,7 +1362,18 @@ changes nothing, prints nothing when nothing matches, and does not sync.
 For example, `docket ls '"per the spec"'` finds a phrase, and
 `docket ls '$first -<$'` prints the next action under each heading and project.
 
+`docket --version` prints `docket version V (commit: C, built: T)`, the
+parentheses left out of a plain `go build`.
+
 These are the only commands; everything else is done in the outline.
+
+### Docket.app
+
+`macos/` builds Docket.app: its own window, Dock and menu-bar icons, and a
+global shortcut that shows or hides it. It runs the ordinary `docket` on a
+pty inside an embedded Ghostty terminal and changes nothing in the outline
+by itself; [`macos/README.md`](macos/README.md) is its contract. Quick capture
+is `docket add`, and the overdue count it shows is `docket ls '@overdue'`.
 
 ## Milestones
 
@@ -1490,7 +1503,7 @@ These are the only commands; everything else is done in the outline.
    reads TaskPaper, OPML and Bike files. *Built.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
-command-line interface beyond `docket add` and `docket ls`, macros (`.`,
+command-line interface beyond `docket add`, `docket ls` and `--version`, macros (`.`,
 `:all` and `:s` repeat what a recording would), marks (the trail, the change list, links and each
 place's remembered cursor reach the same rows), inline formatting.
 

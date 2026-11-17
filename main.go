@@ -15,6 +15,30 @@ import (
 	"github.com/sglavoie/docket/internal/tui"
 )
 
+// Set by the release build's ldflags; a plain `go build` leaves them so.
+var (
+	Version   = "dev"
+	Commit    = ""
+	BuildTime = ""
+)
+
+// versionLine is what `docket --version` prints. Docket.app reads it to
+// say which docket it runs.
+func versionLine() string {
+	line := "docket version " + Version
+	var detail []string
+	if Commit != "" {
+		detail = append(detail, "commit: "+Commit)
+	}
+	if BuildTime != "" {
+		detail = append(detail, "built: "+BuildTime)
+	}
+	if len(detail) > 0 {
+		line += " (" + strings.Join(detail, ", ") + ")"
+	}
+	return line
+}
+
 func dbPath() (string, error) {
 	if p := os.Getenv("DOCKET_DB"); p != "" {
 		return p, nil
@@ -33,12 +57,17 @@ const usage = `usage: docket              open the outline
        docket ls FILTER...  print the rows a filter matches, as / reads it, one
                             a line with a tab and where each lives:
                             docket ls '$next #home'
-       docket ls            print the whole outline, as :export writes it`
+       docket ls            print the whole outline, as :export writes it
+       docket --version     print the version`
 
 func run() error {
 	args := os.Args[1:]
 	if len(args) > 0 && (args[0] == "-h" || args[0] == "--help" || args[0] == "help") {
 		fmt.Println(usage)
+		return nil
+	}
+	if len(args) > 0 && args[0] == "--version" {
+		fmt.Println(versionLine())
 		return nil
 	}
 	if len(args) > 0 && args[0] != "add" && args[0] != "ls" {

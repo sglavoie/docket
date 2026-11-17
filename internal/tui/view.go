@@ -893,6 +893,7 @@ func (m *Model) View() tea.View {
 	if m.help {
 		v := tea.NewView(m.paintText(m.helpView()))
 		v.AltScreen = true
+		v.ReportFocus = true
 		v.Cursor = m.helpCaret()
 		return v
 	}
@@ -934,6 +935,7 @@ func (m *Model) View() tea.View {
 
 	v := tea.NewView(m.paintText(strings.Join(lines, "\n")))
 	v.AltScreen = true
+	v.ReportFocus = true
 	v.Cursor = caret
 	return v
 }
