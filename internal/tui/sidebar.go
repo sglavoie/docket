@@ -171,6 +171,38 @@ func (m *Model) jump(e entry) {
 	m.leaveTrail(from)
 }
 
+// goProject opens the whole project a row is filed in, or the Inbox, with
+// the cursor on the row and the rows above it unfolded. It is a jump, so
+// Ctrl+O comes back.
+func (m *Model) goProject(id string) {
+	r, top := m.tree.Row(id), m.projectOf(id)
+	if r == nil || top == nil {
+		return
+	}
+	e, name := entry{kind: kindProject, id: top.ID}, sigil.FromFields(top.Fields).Text
+	if top.ID == inboxID {
+		e, name = entry{kind: kindInbox}, "Inbox"
+	}
+	if r.Parent == "" {
+		m.msg = name + " is a project: gf goes from a row inside one"
+		return
+	}
+	if m.at.list == "" && m.at.query == "" && m.at.root == top.ID {
+		m.msg = "already in " + name
+		return
+	}
+	for p := r.Parent; p != top.ID; p = m.tree.Row(p).Parent {
+		m.setFold(p, false)
+	}
+	m.jump(e)
+	if m.hideClosed && sigil.FromFields(r.Fields).Closed() {
+		m.at.kept = map[string]bool{id: true}
+		m.rebuild()
+	}
+	m.seek(id)
+	m.land()
+}
+
 // entry is one line of the sidebar, and one destination.
 type entry struct {
 	kind, id, label string

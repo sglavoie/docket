@@ -2865,6 +2865,10 @@ func (m *Model) normalAct(k string, count int) {
 		if m.single() {
 			m.follow()
 		}
+	case "gf":
+		if m.single() {
+			m.goProject(cur)
+		}
 	case "gn", "gN":
 		if m.single() {
 			m.enterMatch(k == "gn")

@@ -165,7 +165,8 @@ Tab	sidebar focus; `j` `k` and paging keys visit; `Enter` works there
 L gl	link to a row, follow it; blank `L` `Enter` removes the link
 	with no row link, `gl` opens the first web address in the text,
 	else goes back to the row that links here (`←`)
-Ctrl+O Ctrl+I	back, forward along jumps (`f`, sidebar visits, row links)
+gf	go to the whole project the row is filed in, cursor on the row
+Ctrl+O Ctrl+I	back, forward along jumps (`f`, `gf`, sidebar visits, row links)
 	a terminal unable to distinguish `Ctrl+I` from `Tab` gives `Tab`
 g; g,	back, forward through the rows changed this session
 

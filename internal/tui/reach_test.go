@@ -318,6 +318,65 @@ func TestHShowsAListsRowWhereItLives(t *testing.T) {
 	}
 }
 
+func TestGfGoesToTheRowsProject(t *testing.T) {
+	// Deep is picked and lives under TUI:, which is folded.
+	deep := func(t *testing.T) *harness {
+		h := two(t)
+		h.press("G", "o", `"TUI:"`, "enter", "tab", `"Deep @tom"`, "esc", "t", "k", "h")
+		h.want("  · Beta", "  ▾ Alpha", "    ○ One @tomorrow", "    ◔ Two", "▌   ▸ TUI: 0/1")
+		return h
+	}
+	project := []string{"  ○ One @tomorrow", "  ◔ Two", "  ▾ TUI: 0/1", "▌   ○ Deep ★ @tomorrow"}
+
+	t.Run("from Today, as a jump", func(t *testing.T) {
+		h := deep(t)
+		h.press("f", `"today"`, "enter")
+		before := h.rows()
+		h.press("g", "f")
+		if h.header() != "Alpha  · 3 to do" {
+			t.Fatalf("header = %q", h.header())
+		}
+		h.want(project...)
+		if !strings.Contains(h.side(), "▌ Alpha") {
+			t.Fatalf("sidebar is not on Alpha:\n%s", h.side())
+		}
+		h.press("g", "f")
+		h.wantStatus("already in Alpha")
+		h.press("ctrl+o")
+		if h.header() != "Today  · 1 to do" || h.rows() != before {
+			t.Fatalf("back = %q\n%s", h.header(), h.rows())
+		}
+	})
+
+	t.Run("from a heading, widening to the project", func(t *testing.T) {
+		h := deep(t)
+		h.press("l", "enter", "j", "g", "f")
+		h.want(project...)
+	})
+
+	t.Run("a closed row stays shown", func(t *testing.T) {
+		h := deep(t)
+		h.press("l", "j", "x")
+		h.command("closed")
+		h.press("/", `"deep"`, "tab", "enter", "g", "f")
+		h.want("  ○ One @tomorrow", "  ◔ Two", "  ▾ TUI: 1/1", "▌   ✓ Deep ★ @tomorrow")
+	})
+
+	t.Run("a project row says so", func(t *testing.T) {
+		h := deep(t)
+		h.press("k", "k", "k", "g", "f")
+		h.wantStatus("Alpha is a project: gf goes from a row inside one")
+	})
+
+	t.Run("one row at a time", func(t *testing.T) {
+		h := deep(t)
+		h.press("k", "v", "v", "g", "f")
+		if !strings.Contains(h.status(), "one row") {
+			t.Fatalf("selection was not refused: %q", h.status())
+		}
+	})
+}
+
 func TestFilterReadsAnyTagAnyStateAndMixedAlternatives(t *testing.T) {
 	fixture := func(t *testing.T) *harness {
 		h := start(t).wide()

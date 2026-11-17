@@ -472,6 +472,15 @@ The status line becomes a prompt for three acts, named at its left edge:
   `Enter` moves the selection where `o` would open a row, as described under
   Selection. Typing a name drops the offer.
 
+**Home.** `gf` opens the whole project the cursor's row is filed in, or the
+Inbox, from a list, a filter or a zoom inside the project. The cursor lands
+on the row: the rows above it are unfolded, and a closed row is shown even
+when `:closed` is on. The sidebar moves to the project, and it is a jump, so
+`Ctrl+O` comes back. On a project's own row, or already in the whole
+project, it says so and stays. It is not a second route to `h` (rule 3):
+`h` looks at the row among its siblings and `Esc` returns, while `gf`
+travels.
+
 **The change list.** `g;` goes back to the row the last change was made on,
 and `g,` forward again; a count goes that many changes. Each saved change
 notes its row, a run of changes to one row once, up to 100, for this session
@@ -485,7 +494,8 @@ neither repeats the other (rule 3), and marks are still not needed.
 
 **The trail.** `Ctrl+O` goes back to the place the last jump left, and
 `Ctrl+I` forward again; a count goes that many places. A jump is a picker
-destination opened with `f` `Enter`, a link followed with `gl`, a change
+destination opened with `f` `Enter`, a project reached with `gf`, a link
+followed with `gl`, a change
 reached with `g;` or `g,` in another place, or a sidebar
 visit ending in a different place; walking several sidebar entries counts
 once, from where `Tab` was pressed. `Enter` zooming, `Esc` backing out, `h`
@@ -912,7 +922,7 @@ deselects. While rows are selected, `x`, `!`, `^`, `t`, `dd`, `m`, `L`, `>>`, `<
 `J`, `K` and a stamp act on the selection, in one undo step. `x`, `!`, `^` and `t` set
 their value on every row unless all already hold it, in which case they
 clear it. The keys that work on one row (`A`, `I`, `cc`, `o`, `O`, `Enter`,
-`gl`, `gn`, `gN` and the word motions that step into a row) are refused and say so. The status line counts the selection, in the accent colour its
+`gf`, `gl`, `gn`, `gN` and the word motions that step into a row) are refused and say so. The status line counts the selection, in the accent colour its
 marks are drawn in since the keys now act on those rows, and `Esc` clears it.
 
 `V` starts a sweep at the cursor's row. Each motion, with or without a
@@ -1001,7 +1011,7 @@ they were pressed. It does so in the outline, the sidebar, inside a row and
 in help, beside whatever the line already says, and a line too narrow for
 both keeps the pending keys. In the outline, a waiting `g`, `z`, operator
 or operator with `g` or `i` also says at the line's left, dimmed, what may
-follow it (`gg top · gl follow link · …`, `dd the row · dj } ) H ] n G…
+follow it (`gg top · gf project · gl follow link · …`, `dd the row · dj } ) H ] n G…
 through a motion · dic dis objects`), so the grammar teaches itself; a
 count alone says nothing. While rows are selected an operator offers only
 what it can take, as `dd the 3 selected rows · no motion or object while
@@ -1099,7 +1109,7 @@ presses of `v` would, stopping at the last row. With rows already selected,
 a count before an act on rows (including `v`) is refused and says so.
 The word motions that step into a row take the count as theirs, and
 `Ctrl+O` and `Ctrl+I` go that many places. Every other key, including `o`,
-`O`, `A`, `I`, `cc`, `Enter`, `h`, `l`, `f`, `gl`, `gn`, `gN`, `p`, `P`, `gp`, `gP`,
+`O`, `A`, `I`, `cc`, `Enter`, `h`, `l`, `f`, `gf`, `gl`, `gn`, `gN`, `p`, `P`, `gp`, `gP`,
 `zt`, `zz`, `zb`, `a`, `/`, `:` and `Tab`, drops the count and acts as usual.
 
 **Placing the row.** `zt` draws the cursor's row at the top of the pane,
@@ -1134,6 +1144,7 @@ the pane stays there until a motion has to scroll it.
 | `Ctrl+O` `Ctrl+I` | Back along the places jumps left, and forward | 13 |
 | `g;` `g,` | Back to the rows changed this session, and on again | 17 |
 | `a` `m` | Capture to the Inbox from anywhere; move to a project or heading | 3 |
+| `gf` | Go to the whole project the row is filed in, the cursor on the row; a jump | 22 |
 | `L` `gl` | Link the row to another; follow the link, else open its first web address, else go back to the row linking here | 13, 16, 19 |
 | `v` `V` | Pick a row; sweep with motions | 4, 11 |
 | `/` `:` | Filter, command | 4 |
@@ -1653,6 +1664,11 @@ is `docket add`, and the overdue count it shows is `docket ls '@overdue'`.
    siblings, and unpinning puts it back where it was. `J` and `K` keep to
    their group, `:sort` sorts each group, new rows take the pin of where
    they open, and the filter reads `$pinned`. *Built.*
+
+22. **Home.** `gf` goes from any row to the whole project it is filed in,
+   or the Inbox, with the cursor on the row, the rows above it unfolded and
+   the sidebar on the project. It is a jump, so `Ctrl+O` returns to Today
+   or wherever it was pressed. *Built.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add`, `docket ls` and `--version`, macros (`.`,
