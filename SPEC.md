@@ -22,7 +22,8 @@ a rule here changes this file first.
    (`#` `@` `$` `*` `-` `~`) are the row grammar typed on a row. The word
    motions `w` `b` `e` step into a row's text, where the same grammar reads
    characters instead of rows; `gn` and `gN` step in on what the last
-   filter found. The navigation aliases are the arrows,
+   filter found, and `k` on the first row steps into the body of the row
+   the pane opens, where it reads lines as well. The navigation aliases are the arrows,
    `Ctrl+F` `Ctrl+B`, `PgDn` `PgUp` and `Home` `End`. `zt` `zz` `zb` say
    where in the pane the cursor's row is drawn and change nothing else.
 5. **Every keystroke paints within one frame.** The tree lives in memory;
@@ -36,7 +37,8 @@ a rule here changes this file first.
 
 - One kind of row, in a tree. The root is the empty ID; top-level rows are
   projects. A row with a state is a task; a row without one is a note or a
-  heading.
+  heading. Any row may carry a body: free text, read and written at the top
+  of the pane when the row is opened (see Body).
 - A row is `id`, `parent`, `pos`, and a set of named string fields. Fields are
   the truth; the sigil line on screen is rendered from them and parsed back
   into them.
@@ -68,6 +70,7 @@ a rule here changes this file first.
 | `color` | 19 | A project's colour: a name, or a hex value as `#rrggbb` |
 | `context` | 20 | Where the work is done: one name, normalised as a tag without a value |
 | `pin` | 21 | The row is drawn before its unpinned siblings |
+| `body` | 23 | Free text under the row's line, lines and blanks kept as typed; never read for sigils |
 
 ## Storage
 
@@ -385,6 +388,11 @@ The pane shows the rows under one row, or a list.
   lines. The cursor and selection marks run the row's height, and scrolling
   keeps the cursor's row whole when it fits. A row wraps as it is typed;
   when it is taller than the pane, scrolling keeps the caret's line visible.
+- **A row's body heads the pane that opens it.** When the pane shows the
+  rows under one row, a project, the Inbox or a zoom, with no filter on,
+  that row's body is drawn first, at the pane's width, with a dimmed rule between it and the
+  rows when there are any. Projects and the lists have no row of their own,
+  so no body. See Body.
 - **Each place remembers its cursor** for the session, so coming back to a
   project lands on the row you left.
 - **A row reached from afar is read in context.** When `n` or `N`, a jump,
@@ -564,7 +572,14 @@ With none of these, it says `this row has no link: L makes one`.
 Three more acts use the same line:
 
 - `/` **Filter ›** narrows the pane as the query is typed. Words match a
-  row's text, ignoring case. Double quotes match a phrase, blanks included:
+  row's text or its body, ignoring case. A leading `=` holds a word or
+  phrase to the row's own line, body left out: `=milk` is the rows whose
+  line says milk, `=milk $` the tasks among them, and `milk -=milk` the
+  rows whose body alone does. It goes after `-` and any of `^` `_` `<` `>`
+  and before the word, and is read back as `"milk" on the row's line`; a
+  bare `=` is skipped while typing and `==` starts literal text. A match
+  found only in the body draws its `≡` in the accent colour, underlined.
+  Double quotes match a phrase, blanks included:
   `"per the spec"`. A quote not closed yet reads to the end of the line;
   a quote inside a word (`5"`) stays part of that word. A bare quote or empty
   phrase is passed over, including with prefixes or inside alternatives,
@@ -1119,7 +1134,7 @@ the pane stays there until a motion has to scroll it.
 
 | Keys | Act | Milestone |
 | --- | --- | --- |
-| `j` `k` `gg` `G` | Move; `Home` `End` as `gg` `G` | 1, 10 |
+| `j` `k` `gg` `G` | Move; `Home` `End` as `gg` `G`; `k` on the first row steps into the body | 1, 10, 23 |
 | `Ctrl+D` `Ctrl+U` | Move half a pane down, up; `Ctrl+F` `Ctrl+B` `PgDn` `PgUp` a whole pane | 7, 10 |
 | `}` `{` `)` `(` | Next, previous sibling; last, first sibling | 12 |
 | `H` `]` `[` | Parent; next, previous heading | 12 |
@@ -1296,8 +1311,8 @@ backslash to any text token with zero or more backslashes before a recognized
 sigil, anywhere in a line. The sigil parser removes exactly one and keeps the
 rest literal; unescaped sigils remain metadata, and backslashes before
 non-sigils stay unchanged. Second, copy/export prefix one backslash to a
-formatted line beginning with `- `, `* `, `+ `, `• `, `[ ] `, `[x] `, `[X] ` or
-a backslash. After reading indentation, paste removes this protective
+formatted line beginning with `- `, `* `, `+ `, `• `, `[ ] `, `[x] `, `[X] `,
+`>` or a backslash, since a line starting `>` is a body line (see Body). After reading indentation, paste removes this protective
 backslash only before one of those prefixes or another backslash, then skips
 bullet/checkbox normalization, including in a single-line row editor.
 Transport encoding follows sigil formatting; transport decoding precedes
@@ -1340,6 +1355,69 @@ the two registers hold the same rows.
 
 `o` on an open parent adds its first child; otherwise it adds the next
 sibling.
+
+### Body
+
+A row's body is the text that does not fit on its line: notes, a draft,
+what was agreed. It is read where the row is opened, at the head of the
+pane, so it has the pane's whole width and nothing beside it (rule 6).
+
+**Drawn.** Plain text in the text colour, each line wrapped at the pane's
+width as a row wraps, blank lines kept, a tab drawn to the next stop of
+four. Nothing in it is coloured: no sigil, no address, no formatting. A
+dimmed rule sets it apart from the rows below when there are any. A body
+taller than the pane scrolls with the rows, as one more thing in the pane.
+In the outline, lists and filters its row shows `≡` (see On the row).
+
+**Reached.** `k` on the first row of the pane, or in a pane with no rows,
+steps into the body, on its last line, and the status line says `in the
+body`. An empty body takes no lines; `k` still reaches it, drawn as one
+dimmed line, `no body · A writes one`, while the caret is there. The cursor
+never lands in a body by itself: a place opens on its rows, and a body
+taller than the room above the cursor's row gives up its first lines, so
+the cursor is always seen. `j` from the body's last line, and `Esc`, return
+to the first row. A selection refuses the step and says so. Nothing on screen shows
+the way in, so while the cursor is on the first row, with nothing pending
+or selected, the status line says `k writes its body`, or `k edits its
+body` when there is one.
+
+**Edited.** Inside the body the keys are the in-row grammar, over lines as
+well as characters, and none of them is a key of the outline:
+
+- **Motions.** Every motion of a row; `j` `k` by drawn line, staying in the
+  body; `}` `{` to the next and previous blank line, `)` `(` to the next and
+  previous sentence; `gg` and `G` to the first and last line.
+- **Operators.** `d`, `c` and `y` take those motions and the row's objects,
+  and `ip` and `ap` for a paragraph, without or with the blank lines after
+  it. Doubled, as `dd`, `cc` and `yy`, they take whole lines here, since
+  the body has no rows to give them to.
+- **Acts and typing.** Those of a row, by the caret's line where a row
+  goes to its end: `0` `^` `$`, `I` `A`, `D` `C`, `x` and `X` keep to the
+  line. `o` and `O` open a line below and above, `J` joins the next line on
+  with one blank, and `p` and `P` put lines that `dd` or `yy` took below
+  and above the caret's line. What a body gives a row joins into one line. While
+  typing, `Enter` is a newline, `Tab` types a tab, and `Up` and `Down` stay
+  in the body. A paste is typed text, every line and blank kept, with no
+  bullets or checkboxes read: a body never makes rows.
+- `u`, `Ctrl+R` and `.` work as in a row. Everything done between stepping
+  in and leaving is one undo step; nothing is written when nothing changed.
+
+**Found.** The filter reads the body (see Filter), and the row it found
+there draws its `≡` as a match. Inside the body, `n` and `N` step through
+the places the filter's words stand in it and stay in it; `*` filters
+nothing there and says so. `:s/old/new` changes the row's line only.
+
+**Carried.** The body travels with its row: a move, archive, delete, copy
+and put take it, and undo brings it back. Copy, `:export` and `docket ls`
+with no filter write each line of it under the row, one tab deeper, after `>` and a space,
+or `>` alone for a blank line. Paste and `:import` read such lines as the
+body of the row line above them, and a `>` line with no row above stays
+text. `docket ls` with a filter keeps one line per row and leaves bodies
+out, so a script reads what it read before. The body is one field, so when two machines change it, the later
+change wins whole.
+
+**Fast.** Only the lines on screen are wrapped and drawn, so a body of
+5,000 lines keeps typing in it within rule 5's 16 ms.
 
 ## Sigils
 
@@ -1426,6 +1504,9 @@ counts the rows it hides after its text (`+3`): a task, which keeps its
 state glyph, and a note, unless it is a heading that says its progress. A row ending in a colon shows
 dimmed `done/total` after its text when it has tasks beneath it, at any depth,
 folded or not. Canceled and parked rows are left out of the total.
+A row with a body shows a dimmed `≡` right after its text, before any count
+or progress, in the outline, lists and filters alike; how long the body is
+is not said.
 The outline's shape is read at a glance: a row ending in a colon is drawn
 bold in the accent colour, a top-level row bold, unless it is closed,
 parked or not yet started, which dims it as any row. A heading with every
@@ -1670,7 +1751,17 @@ is `docket add`, and the overdue count it shows is `docket ls '@overdue'`.
    the sidebar on the project. It is a jump, so `Ctrl+O` returns to Today
    or wherever it was pressed. *Built.*
 
-Not planned: reminders, attachments, a details panel, import from v1, any
+23. **Body.** A row carries a `body` of plain text, marked `≡` after its
+   text and drawn at the head of the pane that opens it. `k` from the
+   first row steps into it, where the in-row grammar edits lines, with
+   paragraphs, sentences, line operators and `o` `O` `J`; `Enter` there is
+   a newline and nothing in it is read as a sigil. The filter reads
+   bodies, and `=` holds a word to the row's own line. Copy, export,
+   paste, `:import` and `docket ls` carry the body as `>` lines under its
+   row. *Built.*
+
+Not planned: reminders, attachments, a details panel (a body is read in the
+pane, not beside it), import from v1, any
 command-line interface beyond `docket add`, `docket ls` and `--version`, macros (`.`,
 `:all` and `:s` repeat what a recording would), marks (the trail, the change list, links and each
 place's remembered cursor reach the same rows), inline formatting.

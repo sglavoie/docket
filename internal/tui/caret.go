@@ -48,7 +48,7 @@ const (
 // A big word, as W B E read it, is anything not blank.
 func wordClass(r rune, big bool) int {
 	switch {
-	case r == ' ':
+	case isBlank(r):
 		return 0
 	case big || unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_':
 		return 1
@@ -64,7 +64,7 @@ func wordNext(buf []rune, pos int, big bool) int {
 			i++
 		}
 	}
-	for i < len(buf) && buf[i] == ' ' {
+	for i < len(buf) && isBlank(buf[i]) {
 		i++
 	}
 	return i
@@ -73,7 +73,7 @@ func wordNext(buf []rune, pos int, big bool) int {
 // wordPrev is where the word before pos starts.
 func wordPrev(buf []rune, pos int, big bool) int {
 	i := min(pos, len(buf)) - 1
-	for i >= 0 && buf[i] == ' ' {
+	for i >= 0 && isBlank(buf[i]) {
 		i--
 	}
 	if i < 0 {
@@ -88,7 +88,7 @@ func wordPrev(buf []rune, pos int, big bool) int {
 // wordEnd is the last character of the first word ending after pos.
 func wordEnd(buf []rune, pos int, big bool) int {
 	i := pos + 1
-	for i < len(buf) && buf[i] == ' ' {
+	for i < len(buf) && isBlank(buf[i]) {
 		i++
 	}
 	if i >= len(buf) {
@@ -281,7 +281,7 @@ func (m *Model) textSeek(e *editor, forward bool, n int) int {
 			continue
 		}
 		id, hits := "", []int(nil)
-		if !cur.sel && !cur.side {
+		if !cur.sel && !cur.side && !cur.body {
 			id, hits = m.matchRow(marks, forward, false)
 		}
 		if id == "" {
@@ -321,6 +321,11 @@ func (e *editor) textCount() int {
 // t or T looks for.
 func (m *Model) textMotion(e *editor, k string, arg rune, count int) (target int, inclusive, ok bool) {
 	n, at := max(count, 1), e.caret
+	if e.body {
+		if target, inclusive, done := bodyMotion(e, k, n); done {
+			return target, inclusive, true
+		}
+	}
 	big := k == "W" || k == "B" || k == "E"
 	switch k {
 	case "h", "left", "backspace":
@@ -409,6 +414,10 @@ func textObject(e *editor, k string, inner bool) (from, to int, ok bool) {
 		return 0, 0, false
 	}
 	at := min(e.caret, len(e.buf)-1)
+	if k == "p" && e.body {
+		from, to = paragraph(e.buf, at, inner)
+		return from, to, true
+	}
 	switch k {
 	case "w", "W":
 		big := k == "W"
@@ -424,12 +433,12 @@ func textObject(e *editor, k string, inner bool) (from, to int, ok bool) {
 			return from, to, true
 		}
 		// The blanks after the word go with it, else the ones before.
-		if to < len(e.buf) && e.buf[to] == ' ' {
-			for to < len(e.buf) && e.buf[to] == ' ' {
+		if to < len(e.buf) && isBlank(e.buf[to]) {
+			for to < len(e.buf) && isBlank(e.buf[to]) {
 				to++
 			}
 		} else {
-			for from > 0 && e.buf[from-1] == ' ' {
+			for from > 0 && isBlank(e.buf[from-1]) {
 				from--
 			}
 		}
@@ -504,6 +513,10 @@ func (e *editor) cut(from, to int) string {
 // rest puts the caret back on a character once a change is done.
 func (e *editor) rest() {
 	e.caret = max(0, min(e.caret, len(e.buf)-1))
+	// In a body the caret stays off the newline that ends a line with text.
+	if e.body && e.caret < len(e.buf) && e.buf[e.caret] == '\n' && e.caret > lineStart(e.buf, e.caret) {
+		e.caret--
+	}
 }
 
 // typeAt opens typing at a place in the line. What is typed joins the change
@@ -527,7 +540,9 @@ func (m *Model) textBack(e *editor) {
 		e.past = e.past[:n-1]
 	}
 	e.normal, e.inside, e.how, e.cmd, e.vertical = true, false, "", nil, false
-	e.caret--
+	if !e.body || e.caret > lineStart(e.buf, e.caret) {
+		e.caret--
+	}
 	e.rest()
 }
 
@@ -548,7 +563,7 @@ func (m *Model) textFilter(e *editor) int {
 		return textMoved
 	}
 	from, to, ok := textObject(e, "W", true)
-	if !ok || e.buf[min(e.caret, len(e.buf)-1)] == ' ' {
+	if !ok || isBlank(e.buf[min(e.caret, len(e.buf)-1)]) {
 		m.msg = "no word under the caret to filter by"
 		return textMoved
 	}
@@ -635,8 +650,28 @@ func (m *Model) textStep(e *editor, msg tea.KeyPressMsg) int {
 		return textPending
 	}
 
+	// In a body g waits for another g, alone or after an operator.
+	if e.body && strings.HasSuffix(e.pend, "g") {
+		e.pend = strings.TrimSuffix(e.pend, "g")
+		if k != "g" {
+			return textMoved
+		}
+		return m.textGo(e, "gg", 0)
+	}
+
 	// An operator is waiting for a motion or a text object.
 	if e.pend != "" {
+		if e.body && len(e.pend) == 1 && strings.Contains("dcy", e.pend) {
+			// Doubled, an operator takes whole lines, since a body has no
+			// rows to give it to.
+			if k == e.pend {
+				return m.bodyLines(e, k, e.caret, linesDown(e.buf, e.caret, max(e.textCount(), 1)))
+			}
+			if k == "g" {
+				e.pend += k
+				return textPending
+			}
+		}
 		if len(e.pend) == 2 {
 			from, to, ok := textObject(e, k, e.pend[1] == 'i')
 			if !ok {
@@ -675,6 +710,12 @@ func (m *Model) textStep(e *editor, msg tea.KeyPressMsg) int {
 			e.sel = false
 			return m.textOperate(e, "y", from, to)
 		case "d", "x", "c", "s", "~":
+			if e.body && k != "~" {
+				// A body's selection may run over lines, which a count of
+				// characters on one line cannot say again.
+				e.sel = false
+				return m.textOperate(e, map[string]string{"d": "d", "x": "d", "c": "c", "s": "c"}[k], from, to)
+			}
 			// Remembered as so many characters from the caret, which is what
 			// the dot key makes again.
 			if k == "d" {
@@ -690,6 +731,11 @@ func (m *Model) textStep(e *editor, msg tea.KeyPressMsg) int {
 	}
 
 	n := max(e.textCount(), 1)
+	if e.body {
+		if r, ok := m.bodyStep(e, k, n); ok {
+			return r
+		}
+	}
 	switch k {
 	case "v":
 		if len(e.buf) > 0 {
@@ -787,7 +833,12 @@ func (m *Model) textStep(e *editor, msg tea.KeyPressMsg) int {
 			at++
 		}
 		e.caret = at
-		e.insert([]rune(strings.Repeat(m.textRegister, n)))
+		// Lines taken from a body join into one when put in a row.
+		put := m.textRegister
+		if strings.ContainsAny(put, "\n\t") {
+			put = strings.Join(strings.Fields(put), " ")
+		}
+		e.insert([]rune(strings.Repeat(put, n)))
 		e.caret--
 		return textChanged
 	case "u":
@@ -824,8 +875,22 @@ func (m *Model) textGo(e *editor, k string, arg rune) int {
 		op = ""
 	}
 	// Changing a word leaves the blank after it, as ce does.
-	if op == "c" && (k == "w" || k == "W") && e.caret < len(e.buf) && e.buf[e.caret] != ' ' {
+	if op == "c" && (k == "w" || k == "W") && e.caret < len(e.buf) && !isBlank(e.buf[e.caret]) {
 		k = map[string]string{"w": "e", "W": "E"}[k]
+	}
+	if e.body && op != "" {
+		// Up and down, and to either end, an operator takes whole lines.
+		n := max(e.textCount(), 1)
+		switch k {
+		case "j", "down":
+			return m.bodyLines(e, op, e.caret, linesDown(e.buf, e.caret, n+1))
+		case "k", "up":
+			return m.bodyLines(e, op, e.caret, linesUp(e.buf, e.caret, n))
+		case "gg":
+			return m.bodyLines(e, op, e.caret, 0)
+		case "G":
+			return m.bodyLines(e, op, e.caret, len(e.buf))
+		}
 	}
 	target, inclusive, ok := m.textMotion(e, k, arg, e.textCount())
 	if !ok {
@@ -860,6 +925,9 @@ func (m *Model) textOperate(e *editor, op string, from, to int) int {
 		return textMoved
 	}
 	e.keep()
+	if op == "c" && e.body && to > from && e.buf[to-1] == '\n' {
+		to-- // a changed paragraph keeps the line it is typed on
+	}
 	if from < to {
 		m.textRegister = e.cut(from, to)
 	}
@@ -900,6 +968,9 @@ func (m *Model) textAgain(e *editor) int {
 
 // textStatus is the status line while the caret is inside a row.
 func (e *editor) textStatus() string {
+	if e.body && !e.sel && e.pend == "" {
+		return "in the body: j k { } ( ) move · i a o c d change · v select · Esc done"
+	}
 	if e.sel {
 		return "selecting: motions extend · d c y x ~ act · v or Esc ends"
 	}

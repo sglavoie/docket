@@ -70,6 +70,7 @@ type cond struct {
 	arg   string          // the value a tag range compares with
 	rows  map[string]bool // the rows a link term asks for, read by terms
 	loose bool            // text that starts like a sigil the filter cannot read
+	line  bool            // text looked for on the row's line only, its body left out
 }
 
 // sigilStarts are the characters a filter word's sigil begins with.
@@ -121,7 +122,7 @@ func filterParts(s string, bars bool) []string {
 			if quoted {
 				quoted = false
 			} else {
-				prefix := strings.TrimPrefix(s[side:i], "-")
+				prefix := strings.TrimSuffix(strings.TrimPrefix(s[side:i], "-"), "=")
 				if prefix == "" || prefix == "^" || prefix == "_" || prefix == "<" || prefix == ">" {
 					quoted = true
 				}
@@ -216,6 +217,18 @@ func parseTerm(w string, today time.Time) (term, bool) {
 	case '>':
 		t.child, w = true, w[1:]
 	}
+	// = holds a word to the row's own line; == starts literal text.
+	line := false
+	switch {
+	case w == "=":
+		return t, false // still being typed
+	case strings.HasPrefix(w, "=="):
+		t.any = []cond{parseCond(w, today)}
+		return t, true
+	case strings.HasPrefix(w, "="):
+		line, w = true, w[1:]
+	}
+
 	// A side without its own sigil inherits the first side's:
 	// $open|doing reads as $open or $doing, but #home|! keeps both sigils.
 	sig := w[:len(w)-len(strings.TrimLeft(w, sigilStarts))]
@@ -238,6 +251,9 @@ func parseTerm(w string, today time.Time) (term, bool) {
 	// A bare quote or an empty phrase is still waiting for text, including
 	// in alternatives. It must not match everything (or exclude everything).
 	t.any = slices.DeleteFunc(t.any, func(c cond) bool { return c.kind == 't' && c.value == "" })
+	for i := range t.any {
+		t.any[i].line = line && t.any[i].kind == 't'
+	}
 	return t, len(t.any) > 0
 }
 
@@ -411,7 +427,11 @@ func (m *Model) holdsAny(r *outline.Row, l sigil.Line, t term, today time.Time) 
 func (m *Model) holds(r *outline.Row, l sigil.Line, c cond, today time.Time) bool {
 	switch c.kind {
 	case 't':
-		return strings.Contains(strings.ToLower(l.Text), c.value)
+		if strings.Contains(strings.ToLower(l.Text), c.value) {
+			return true
+		}
+		body := r.Fields[fieldBody]
+		return !c.line && body != "" && strings.Contains(strings.ToLower(body), c.value)
 	case '!':
 		return l.Flag
 	case '#':
@@ -989,6 +1009,12 @@ func (m *Model) writeRows(roots []string) (string, int) {
 			text = `\` + text
 		}
 		b.WriteString(strings.Repeat("\t", depth) + text + "\n")
+		if body := row.Fields[fieldBody]; body != "" {
+			// The body follows its row, one tab deeper, each line after >.
+			for _, line := range strings.Split(body, "\n") {
+				b.WriteString(strings.Repeat("\t", depth+1) + strings.TrimRight("> "+line, " ") + "\n")
+			}
+		}
 		n++
 		for _, child := range m.tree.Children(id) {
 			walk(child, depth+1)

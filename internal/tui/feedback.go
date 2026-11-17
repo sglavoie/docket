@@ -16,6 +16,7 @@ import (
 // A field not named here is bookkeeping and is not mentioned.
 var fieldWords = map[string]string{
 	sigil.FieldText:    "text",
+	fieldBody:          "body",
 	sigil.FieldState:   "state",
 	sigil.FieldFlag:    "flag",
 	sigil.FieldPin:     "pin",
@@ -32,7 +33,7 @@ var fieldWords = map[string]string{
 
 // fieldOrder is the order fields are named in, most telling first.
 var fieldOrder = []string{
-	sigil.FieldText, sigil.FieldState, sigil.FieldFlag, sigil.FieldPin, sigil.FieldDue,
+	sigil.FieldText, fieldBody, sigil.FieldState, sigil.FieldFlag, sigil.FieldPin, sigil.FieldDue,
 	sigil.FieldStart, sigil.FieldTags, sigil.FieldContext, sigil.FieldRepeat, sigil.FieldToday,
 	fieldTodayPos, fieldLink, fieldQuery,
 }
@@ -231,6 +232,17 @@ func markWords(text string, marks []cond) map[int]bool {
 		end(len(lower))
 	}
 	return out
+}
+
+// markBody reports a looked-for word or phrase in a body.
+func markBody(body string, marks []cond) bool {
+	lower := strings.ToLower(body)
+	for _, c := range marks {
+		if c.kind == 't' && !c.line && strings.Contains(lower, c.value) {
+			return true
+		}
+	}
+	return false
 }
 
 // markTag reports a tag the query asks the row for.

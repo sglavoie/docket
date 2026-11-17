@@ -26,6 +26,9 @@ func (c cond) words(today time.Time) string {
 			// why it finds what it does and how the sigil is written.
 			return `"` + c.value + `" as text: ` + sigilForm(c.value)
 		}
+		if c.line {
+			return `"` + c.value + `" on the row's line`
+		}
 		return `"` + c.value + `"`
 	case '!':
 		return "flagged"

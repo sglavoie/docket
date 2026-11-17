@@ -1117,12 +1117,13 @@ func TestTheStatusLineShowsWhatIsPending(t *testing.T) {
 				t.Fatalf("%v: not at the right: %q", c.keys, last(h))
 			}
 			h.press("esc")
-			if got := h.status(); got != "" {
+			// What stays is the standing hint about the body, not the keys.
+			if got := h.status(); got != "" && got != "k writes its body" {
 				t.Fatalf("%v: Esc left %q", c.keys, got)
 			}
 		}
 		h.press("g", "g")
-		if h.status() != "" || h.m.cursor != 0 {
+		if h.m.pending() != "" || h.m.cursor != 0 {
 			t.Fatalf("a completed gg left %q", h.status())
 		}
 	})

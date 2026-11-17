@@ -361,3 +361,54 @@ func BenchmarkKeys(b *testing.B) {
 		})
 	}
 }
+
+// Rule 5 holds in a body of thousands of lines: typing in it, moving in it,
+// and moving among the rows below it while it is drawn.
+func TestALongBodyPaintsWithinAFrame(t *testing.T) {
+	if testing.Short() {
+		t.Skip("timing")
+	}
+	const budget = 16 * time.Millisecond
+	m := crowd(t, 10000)
+	frame(m, "gg")
+	frame(m, "enter")
+	if m.bodyRow() == "" || len(m.vis) == 0 {
+		t.Fatal("long body timing needs a project open on its rows")
+	}
+	lines := make([]string, 5000)
+	for i := range lines {
+		lines[i] = fmt.Sprintf("line %d of the notes, ordinary words and spaces to wrap", i)
+	}
+	if _, err := m.tree.Apply(outline.Op{Kind: outline.Set, Row: m.bodyRow(), Field: fieldBody, Value: strings.Join(lines, "\n")}, time.Now().UnixMilli()); err != nil {
+		t.Fatal(err)
+	}
+	best := func(k string) time.Duration {
+		least := time.Hour
+		for i := 0; i < 20; i++ {
+			at := time.Now()
+			frame(m, k)
+			least = min(least, time.Since(at))
+		}
+		return least
+	}
+	if d := best("j"); d > budget {
+		t.Errorf("moving among the rows under a long body took %v", d)
+	}
+	frame(m, "gg")
+	frame(m, "k")
+	if m.edit == nil || !m.edit.body {
+		t.Fatal("k did not step into the body")
+	}
+	if d := best("k"); d > budget {
+		t.Errorf("moving in a long body took %v", d)
+	}
+	frame(m, "A")
+	if d := best("a"); d > budget {
+		t.Errorf("typing in a long body took %v", d)
+	}
+	frame(m, "esc")
+	frame(m, "esc")
+	if !strings.Contains(m.tree.Row(m.at.root).Fields[fieldBody], lines[4979]+strings.Repeat("a", 20)+"\n"+lines[4980]) {
+		t.Fatal("the timed letters were not kept in the body")
+	}
+}

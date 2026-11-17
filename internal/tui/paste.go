@@ -14,8 +14,9 @@ import (
 type pasted struct {
 	level     int
 	text      string
-	checkbox  bool // normalize this line even when pasted into a single-line editor
-	protected bool // transport-decoded; never normalize its literal prefixes
+	checkbox  bool     // normalize this line even when pasted into a single-line editor
+	protected bool     // transport-decoded; never normalize its literal prefixes
+	body      []string // the > lines under it: its body, a line each
 }
 
 // readPaste reads pasted text as an outline. Depth follows indentation,
@@ -26,6 +27,11 @@ func readPaste(content string) []pasted {
 	for _, raw := range strings.Split(strings.ReplaceAll(content, "\r", ""), "\n") {
 		text := strings.TrimLeft(raw, " \t")
 		if strings.TrimSpace(text) == "" {
+			continue
+		}
+		// A line after > is a line of the body of the row above it.
+		if n := len(out); n > 0 && (text == ">" || strings.HasPrefix(text, "> ")) {
+			out[n-1].body = append(out[n-1].body, strings.TrimPrefix(strings.TrimPrefix(text, ">"), " "))
 			continue
 		}
 		indent := 0
@@ -82,6 +88,17 @@ func (m *Model) paste(content string) {
 	}
 	switch {
 	case len(lines) == 0:
+	case m.edit != nil && m.edit.body:
+		// A body takes a paste as typed text, every line and blank kept.
+		e := m.edit
+		if e.normal {
+			e.keep()
+		}
+		e.insert([]rune(strings.ReplaceAll(content, "\r", "")))
+		if e.normal {
+			e.caret--
+			e.rest()
+		}
 	case m.ask != nil:
 		m.ask.ed.insert(oneLine())
 		if m.ask.kind == askFilter {
@@ -90,7 +107,7 @@ func (m *Model) paste(content string) {
 			m.cursor, m.top = 0, 0
 			m.clearSelection()
 		}
-	case m.edit != nil && (len(lines) == 1 || m.edit.side):
+	case m.edit != nil && (len(lines) == 1 && lines[0].body == nil || m.edit.side):
 		// A project's name typed in the sidebar is one row, so a paste of
 		// several lines joins them.
 		if len(lines) == 1 && lines[0].checkbox || lines[0].protected {
@@ -194,7 +211,11 @@ func (m *Model) pasteUnder(parent0, anchor string, anchorIsFirst bool, lines []p
 			return 0
 		}
 		made = append(made, op.Row)
-		fields := m.setFields(op.Row, line.Fields())
+		want := line.Fields()
+		if l.body != nil {
+			want[fieldBody] = strings.TrimRight(strings.Join(l.body, "\n"), " \t\n")
+		}
+		fields := m.setFields(op.Row, want)
 		more, err := m.apply(fields)
 		if err != nil {
 			fail(err)
@@ -254,7 +275,7 @@ func (m *Model) pasteUnder(parent0, anchor string, anchorIsFirst bool, lines []p
 // pastePrefix identifies line starts needing protection after sigil.Format.
 // Decoding this transport layer must leave sigil escapes for sigil.Parse.
 func pastePrefix(text string) bool {
-	for _, prefix := range []string{"- ", "* ", "+ ", "• ", "[ ] ", "[x] ", "[X] ", `\`} {
+	for _, prefix := range []string{"- ", "* ", "+ ", "• ", "[ ] ", "[x] ", "[X] ", ">", `\`} {
 		if strings.HasPrefix(text, prefix) {
 			return true
 		}

@@ -20,8 +20,8 @@ func (h *harness) pasteText(s string) *harness {
 func TestReadPaste(t *testing.T) {
 	got := readPaste("  First\r\n\r\n      Child   a\n\t\tDeep\n      Child b\nSecond\n- [x] ticked\n* [ ] open\n   - nested\n")
 	want := []pasted{
-		{0, "First", false, false}, {1, "Child a", false, false}, {2, "Deep", false, false}, {1, "Child b", false, false},
-		{0, "Second", false, false}, {0, "ticked $done", true, false}, {0, "open $open", true, false}, {1, "nested", false, false},
+		{0, "First", false, false, nil}, {1, "Child a", false, false, nil}, {2, "Deep", false, false, nil}, {1, "Child b", false, false, nil},
+		{0, "Second", false, false, nil}, {0, "ticked $done", true, false, nil}, {0, "open $open", true, false, nil}, {1, "nested", false, false, nil},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %+v", got)

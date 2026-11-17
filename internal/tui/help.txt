@@ -56,6 +56,15 @@ u Ctrl+R	undo, redo inside this visit
 .	repeat a text change
 Esc	end typing, then keep the visit as one outline undo
 
+== Body
+k	on the first row, step into the body of the row the pane opens
+≡	after a row's text: it has a body; `Enter` opens the row to read it
+j k  { } ( )	by drawn line, paragraph, sentence; `gg` `G` first, last line
+dd cc yy  ip ap	whole lines; a paragraph, without or with the blank lines after
+o O  J	open a line below, above; join the next line on
+Enter Tab	while typing, a new line, a tab; sigils are text here
+Esc  j	back to the rows, from anywhere or past the last line; one undo
+
 ## States and sigils
 # @ $ * - ~	open the stamp line; `Enter` sets sigils on the row or selection
 !	flag; `-!` removes it on the stamp line
@@ -121,6 +130,7 @@ m Enter	with a blank query, move selected rows here, where `o` would add
 	the values are listed above the line while `Tab` walks them
 	the status line reads the filter back in words as it is typed
 "a phrase"	match words together, ignoring case; `-"a phrase"` excludes
+=word	only on the row's own line; words match bodies too otherwise
 n N	next, previous match; after `Esc`, use the last filter
 gn gN	step into the text on what the filter found: `gn cw new Esc n .`
 :save name	keep a filter in the sidebar and under `f`; `:forget name` drops it

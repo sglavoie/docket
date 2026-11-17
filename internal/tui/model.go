@@ -96,6 +96,7 @@ type editor struct {
 	merge      bool              // continue the undo step recorded by a split
 	notes      bool              // the default the line was rendered against
 	back       string            // where the cursor returns if a fresh row is abandoned
+	body       bool              // the body of the row the pane opens, edited by lines
 	side       bool              // a project's name typed in its sidebar entry: the line stays in its row
 	sideC      bool              // opened by c in the sidebar: the typing it opens ends at Esc
 	flash      [2]int            // the span y last took from the line, lit while it flashes
@@ -235,8 +236,9 @@ type Model struct {
 	helpQuery    string  // what help is searched for; n and N step through it
 	helpHit      int     // the help line of the match stood on
 	msg          string
-	pendingCmd   tea.Cmd // command produced by normalKey for Update to deliver
-	recorded     bool    // a key made an undo step, so its outcome is the user's
+	bodyDrawn    bodyCache // the body last drawn, wrapped
+	pendingCmd   tea.Cmd   // command produced by normalKey for Update to deliver
+	recorded     bool      // a key made an undo step, so its outcome is the user's
 }
 
 func New(tree *outline.Tree, backend Backend, folds map[string]bool) *Model {
@@ -1460,7 +1462,7 @@ func (m *Model) setFields(id string, want map[string]string) []outline.Op {
 		}
 		return have[name]
 	}
-	for _, name := range []string{sigil.FieldText, sigil.FieldState, sigil.FieldFlag, sigil.FieldPin, sigil.FieldDue, sigil.FieldStart, sigil.FieldRepeat, sigil.FieldTags, sigil.FieldContext, sigil.FieldColor} {
+	for _, name := range []string{sigil.FieldText, fieldBody, sigil.FieldState, sigil.FieldFlag, sigil.FieldPin, sigil.FieldDue, sigil.FieldStart, sigil.FieldRepeat, sigil.FieldTags, sigil.FieldContext, sigil.FieldColor} {
 		value, ok := want[name]
 		if !ok || value == have[name] {
 			continue
@@ -1517,6 +1519,9 @@ func (m *Model) setFields(id string, want map[string]string) []outline.Op {
 func (m *Model) finishEdit() bool {
 	e := m.edit
 	m.edit = nil
+	if e.body {
+		return m.finishBody(e)
+	}
 	if e.side {
 		// A project typed out of the sidebar's list, by $parked or $done,
 		// gives the selection to the entry now in its place.
@@ -2284,6 +2289,15 @@ func (m *Model) normalKey(k string) {
 		}
 		return
 	}
+	if (k == "k" || k == "up") && m.cursor == 0 && m.count == 0 && m.sweep == "" && m.bodyRow() != "" {
+		// Above the first row is the body of the row the pane opens.
+		if len(m.picked) > 0 {
+			m.msg = "a selection stays among the rows: Esc clears it, then k reaches the body"
+			return
+		}
+		m.enterBody()
+		return
+	}
 	if isMotion(k) {
 		defer m.updateSweep()
 	} else if k != "zz" && k != "zt" && k != "zb" {
@@ -2909,6 +2923,10 @@ func (m *Model) editKey(msg tea.KeyPressMsg) {
 		if e.sideC && m.edit == e && !e.normal {
 			e.inside = false
 		}
+		return
+	}
+	if e.body {
+		m.bodyType(msg)
 		return
 	}
 	if msg.String() != "up" && msg.String() != "down" {

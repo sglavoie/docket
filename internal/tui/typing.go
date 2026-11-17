@@ -376,7 +376,11 @@ func (e *editor) wrapped(width int, style func(string) []word) editLayout {
 	l := editLayout{pos: make([]textPoint, len(e.buf)+1)}
 	widths := make([]int, len(e.buf))
 	for i, r := range e.buf {
-		widths[i] = ansi.StringWidth(string(r))
+		if r >= ' ' && r < 0x7f {
+			widths[i] = 1
+		} else {
+			widths[i] = ansi.StringWidth(string(r))
+		}
 	}
 	var line strings.Builder
 	currentStyle := ""
@@ -398,9 +402,30 @@ func (e *editor) wrapped(width int, style func(string) []word) editLayout {
 		x, y = 0, y+1
 	}
 	for i := 0; i < len(e.buf); {
+		// A body breaks its lines where they were broken, and draws a tab to
+		// the next stop of four.
+		switch e.buf[i] {
+		case '\n':
+			l.pos[i] = textPoint{x, y}
+			next()
+			i++
+			continue
+		case '\t':
+			tab := 4 - x%4
+			if x > 0 && x+tab > width {
+				next()
+				tab = 4
+			}
+			l.pos[i] = textPoint{x, y}
+			setStyle("")
+			line.WriteString(strings.Repeat(" ", min(tab, width)))
+			x += min(tab, width)
+			i++
+			continue
+		}
 		end, wordWidth := i+1, widths[i]
 		if e.buf[i] != ' ' {
-			for end < len(e.buf) && e.buf[end] != ' ' {
+			for end < len(e.buf) && !isBlank(e.buf[end]) {
 				wordWidth += widths[end]
 				end++
 			}
@@ -455,6 +480,13 @@ func (l editLayout) at(line, column int) int {
 }
 
 func (m *Model) editWidth() int {
+	if m.edit != nil && m.edit.body {
+		w, _ := m.size()
+		if w >= sidebarFrom {
+			w -= sidebarCols + 3
+		}
+		return m.bodyWidth(w)
+	}
 	if m.edit != nil && m.edit.side {
 		return max(m.sideWidth()-2, 1) // after the gutter and its space
 	}
@@ -496,7 +528,7 @@ func (m *Model) editVertical(by int) {
 // On the filter Tab lists them instead, and ~ is a time there. A hex value, a removal that
 // takes no value and a finished value list nothing.
 func (m *Model) valueList(e *editor, surface string) (names []string, from int, at int) {
-	if surface != surfaceRow && surface != askCapture && surface != askStamp || e.normal {
+	if surface != surfaceRow && surface != askCapture && surface != askStamp || e.normal || e.body {
 		return nil, 0, 0
 	}
 	line := string(e.buf)

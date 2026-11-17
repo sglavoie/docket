@@ -64,6 +64,9 @@ func (m *Model) stateGlyph(state string, kids int, folded bool) string {
 // todayMark follows a row picked for Today wherever it is drawn but there.
 const todayMark = "★"
 
+// bodyMark follows the text of a row with a body.
+const bodyMark = "≡"
+
 // isFolded reports a row drawn folded. A filter shows every match, so
 // nothing is folded while one is on.
 func (m *Model) isFolded(id string) bool { return m.folded[id] && m.at.query == "" }
@@ -136,6 +139,14 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 			continue
 		}
 		out = append(out, word{paint(body), w})
+	}
+	if text := r.Fields[fieldBody]; text != "" {
+		// A row with a body says so; a match found only there is drawn on it.
+		style := m.colors().dim
+		if marking && len(marked) == 0 && markBody(text, m.at.marks) {
+			style = mark
+		}
+		out = append(out, word{style, bodyMark})
 	}
 	if strings.HasSuffix(l.Text, ":") && under.total > 0 {
 		out = append(out, word{m.colors().dim, fmt.Sprintf("%d/%d", under.done, under.total)})
@@ -652,6 +663,8 @@ func (m *Model) statusLine(w int) (string, int) {
 		left = m.colors().dim + m.nextKeys() + sgrReset
 	case m.edit != nil && m.edit.normal:
 		left = m.edit.textStatus()
+	case m.edit != nil && m.edit.body:
+		left = "Esc back to the caret · Enter a new line · Tab a tab"
 	case m.edit != nil:
 		left = "Enter next row · Esc done · Tab indent"
 		if m.edit.inside {
@@ -672,6 +685,12 @@ func (m *Model) statusLine(w int) (string, int) {
 			if m.suggest(m.edit, surfaceRow) != "" {
 				left += " · → completes"
 			}
+		}
+	case !m.sideFocus && m.ask == nil && m.cursor == 0 && len(m.picked) == 0 && m.sweep == "" && m.pending() == "" && m.bodyRow() != "":
+		// The body is reached from the first row, which nothing else shows.
+		left = "k writes its body"
+		if m.tree.Row(m.bodyRow()).Fields[fieldBody] != "" {
+			left = "k edits its body"
 		}
 	case m.sideFocus:
 		left = "j k choose · Enter work in it"
@@ -759,6 +778,33 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 	if edit != nil && edit.side {
 		edit = nil
 	}
+	// The body of the row the pane opens is drawn first, with a rule between
+	// it and the rows. While it is edited it scrolls by its caret and the
+	// rows follow it; otherwise it scrolls with them, as part of the first.
+	var body []string
+	bodyEdit := edit != nil && edit.body
+	var bodyLayout editLayout
+	if bodyEdit {
+		edit = nil
+	}
+	if id := m.bodyRow(); id != "" {
+		bw := m.bodyWidth(w)
+		switch {
+		case bodyEdit && len(m.edit.buf) == 0 && m.edit.normal:
+			body = []string{m.colors().dim + ansi.Truncate("no body · A writes one", bw, "…") + sgrReset}
+			bodyLayout = editLayout{lines: body, pos: []textPoint{{0, 0}}}
+		case bodyEdit:
+			bodyLayout = m.edit.wrapped(bw, nil)
+			body = bodyLayout.lines
+		case m.tree.Row(id).Fields[fieldBody] != "":
+			body = m.bodyWrapped(m.tree.Row(id).Fields[fieldBody], bw)
+		}
+	}
+	ruleAfter := len(body) > 0 && len(m.vis) > 0
+	bodyH := len(body)
+	if ruleAfter {
+		bodyH++
+	}
 	var editing editLayout
 	if edit != nil {
 		editing = edit.wrapped(max(w-prefix(m.cursor), 1), m.styler(surfaceRow))
@@ -794,10 +840,14 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 		return m.at.list == kindToday && m.at.query == "" && i > 0 && c[m.vis[i].id] && !c[m.vis[i-1].id]
 	}
 	height := func(i int) int {
+		n := len(rowLines(i))
 		if ruled(i) {
-			return len(rowLines(i)) + 1
+			n++
 		}
-		return len(rowLines(i))
+		if i == 0 && !bodyEdit {
+			n += bodyH
+		}
+		return n
 	}
 	span := func(from, to int) int {
 		used := 0
@@ -841,6 +891,41 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 	lines = append(lines, "") // the header, once the rows say how far they reach
 
 	var caret *tea.Cursor
+	bodyX := m.numberCols() + 4
+	switch {
+	case bodyEdit:
+		// The rows wait below the body while it is edited.
+		e := m.edit
+		m.top = 0
+		p := bodyLayout.pos[min(e.caret, len(bodyLayout.pos)-1)]
+		e.top = max(0, min(e.top, len(body)-listH, p.y))
+		if p.y >= e.top+listH {
+			e.top = p.y - listH + 1
+		}
+		for n := e.top; n < len(body) && len(lines) < h; n++ {
+			if n == p.y {
+				caret = tea.NewCursor(bodyX+p.x, len(lines))
+				caret.Shape = tea.CursorBar
+				if e.normal {
+					caret.Shape = tea.CursorBlock
+				}
+			}
+			lines = append(lines, strings.Repeat(" ", bodyX)+body[n])
+		}
+	case m.top == 0 && len(body) > 0:
+		// A body taller than the room above the cursor's row gives up its
+		// first lines, so the cursor is always seen.
+		skip := 0
+		if len(m.vis) > 0 {
+			skip = min(len(body), max(0, span(0, m.cursor)-listH))
+		}
+		for n := skip; n < len(body) && len(lines) < h; n++ {
+			lines = append(lines, strings.Repeat(" ", bodyX)+body[n])
+		}
+	}
+	if ruleAfter && (bodyEdit || m.top == 0) && len(lines) < h {
+		lines = append(lines, m.colors().dim+strings.Repeat(" ", bodyX)+strings.Repeat("─", max(w-bodyX-2, 1))+sgrReset)
+	}
 	drawn, whole := 0, true // the rows on screen, and whether the last is all there
 	for i := m.top; i < len(m.vis) && len(lines) < h; i++ {
 		v := m.vis[i]
@@ -929,8 +1014,8 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 	for len(lines) < h {
 		lines = append(lines, "")
 	}
-	if len(m.vis) == 0 {
-		lines[1] = m.colors().dim + "  " + ansi.Truncate(m.emptyText(), max(w-2, 1), "…") + sgrReset
+	if len(m.vis) == 0 && 1+len(body) < h {
+		lines[1+len(body)] = m.colors().dim + "  " + ansi.Truncate(m.emptyText(), max(w-2, 1), "…") + sgrReset
 	}
 	return lines, caret
 }
