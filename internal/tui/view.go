@@ -110,6 +110,10 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 	case r.Parent == "" || onCursor:
 		body = sgrBold
 	}
+	// A project is drawn in its own colour, so it is known wherever it is.
+	if color := m.projectColor(r); color != "" && !strings.HasSuffix(l.Text, ":") {
+		body = color + sgrBold
+	}
 	// A match is drawn with what the filter found in it.
 	var marked map[int]bool
 	marking := m.at.matched[r.ID] && len(m.at.marks) > 0
@@ -164,7 +168,7 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 			out = append(out, word{mark, "#" + tag})
 			continue
 		}
-		out = append(out, word{m.colors().dim, "#" + tag})
+		out = append(out, word{paint(m.tagColor(tag)), "#" + tag})
 	}
 	if m.at.since && m.at.matched[r.ID] {
 		// A filter that asks when rows changed says when each one did.
@@ -228,7 +232,11 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 				}
 			}
 		}
-		if where := m.whereFlat(r); where != "" {
+		if where, project := m.whereFlat(r); where != "" {
+			// A project is named in its colour; the dot stays dim.
+			if color := m.projectColor(project); color != "" && !quiet {
+				where = color + where
+			}
 			also(where)
 		}
 	}
@@ -314,14 +322,14 @@ func linkOf(w string) string {
 
 // whereFlat is where a row in a flat view lives: its project, or, when the
 // pane is inside that project and the header already names it, the nearest
-// heading over the row there.
-func (m *Model) whereFlat(r *outline.Row) string {
+// heading over the row there. The project is given when it is the one named.
+func (m *Model) whereFlat(r *outline.Row) (string, *outline.Row) {
 	p := m.projectOf(r.ID)
 	if p == nil || p.ID == r.ID {
-		return ""
+		return "", nil
 	}
 	if here := m.projectOf(m.at.root); m.at.root == "" || here == nil || here.ID != p.ID {
-		return p.Text()
+		return p.Text(), p
 	}
 	for id := r.Parent; id != "" && id != m.at.root; {
 		up := m.tree.Row(id)
@@ -329,11 +337,11 @@ func (m *Model) whereFlat(r *outline.Row) string {
 			break
 		}
 		if name, heading := strings.CutSuffix(up.Text(), ":"); heading {
-			return name
+			return name, nil
 		}
 		id = up.Parent
 	}
-	return ""
+	return "", nil
 }
 
 // placeName is a place as one line: a list by its name, a row under the rows
@@ -418,19 +426,31 @@ func (m *Model) paneHeader(w int, ruler string) string {
 	} else if m.hideClosed && m.at.list == "" {
 		tail += c.dim + "  · closed hidden" + sgrReset
 	}
+	// The project, first of the parts, is named in its colour.
+	color := ""
+	if m.at.list == "" {
+		color = m.projectColor(m.projectOf(m.at.root))
+	}
 	// The header with the first cut rows above the place left out.
 	line := func(cut int) string {
 		above := ""
 		if cut > 0 {
 			above = "… › "
 		}
-		for _, name := range parts[cut : len(parts)-1] {
+		for i, name := range parts[cut : len(parts)-1] {
+			if cut+i == 0 && color != "" {
+				name = color + name + sgrReset + c.dim
+			}
 			above += name + " › "
 		}
 		if above != "" {
 			above = c.dim + above + sgrReset
 		}
-		return above + parts[len(parts)-1] + tail
+		place := parts[len(parts)-1]
+		if len(parts) == 1 && color != "" {
+			place = color + place + sgrReset
+		}
+		return above + place + tail
 	}
 	header := line(0)
 	if gap := w - ansi.StringWidth(header) - ansi.StringWidth(ruler); ruler != "" && gap >= 2 {
@@ -903,9 +923,14 @@ const listDepth = 10
 // just above the bottom line and the one written on the line in reverse, over
 // the rows at column x, so every value can be read before Tab reaches it.
 func (m *Model) listOver(lines, items []string, at, x, w int) {
-	n := len(items)
 	// The header stays, so the list never hides what the pane is.
-	depth := min(n, listDepth, len(lines)-1)
+	depth := min(len(items), listDepth, len(lines)-1)
+	m.listAt(lines, items, at, x, w, len(lines)-depth, depth)
+}
+
+// listAt draws a list of depth rows from row first down, at column x.
+func (m *Model) listAt(lines, items []string, at, x, w, first, depth int) {
+	n := len(items)
 	if depth <= 0 {
 		return
 	}
@@ -940,7 +965,7 @@ func (m *Model) listOver(lines, items []string, at, x, w int) {
 				cell += c.cursor + " " + sgrReset
 			}
 		}
-		row := len(lines) - depth + r
+		row := first + r
 		left := ansi.Truncate(lines[row], x, "")
 		left += strings.Repeat(" ", x-ansi.StringWidth(left))
 		lines[row] = left + sgrReset + cell + ansi.TruncateLeft(lines[row], x+inner+bar, "")
@@ -992,6 +1017,24 @@ func (m *Model) View() tea.View {
 		// The list starts under the first letter it completes.
 		from := min(a.menuAt, len(a.ed.buf))
 		m.listOver(lines, a.menu, a.choice-1, col-ansi.StringWidth(string(a.ed.buf[from:])), w)
+	} else if a != nil && col >= 0 {
+		// The colours a ~word could become, over the rows above the line.
+		if names, from, at := m.colorList(&a.ed, a.kind); len(names) > 0 {
+			m.listOver(lines, m.colorItems(names), at, col-ansi.StringWidth(string(a.ed.buf[min(from, len(a.ed.buf)):])), w)
+		}
+	} else if e := m.edit; e != nil && caret != nil {
+		// On a row, in the pane or the sidebar, they hang under the word,
+		// or over it when there is more room above.
+		if names, from, at := m.colorList(e, surfaceRow); len(names) > 0 {
+			y := caret.Y
+			below, above := len(lines)-y-1, y-1 // the header stays
+			depth, first := min(len(names), listDepth, below), y+1
+			if depth < min(len(names), listDepth) && above > below {
+				depth = min(len(names), listDepth, above)
+				first = y - depth
+			}
+			m.listAt(lines, m.colorItems(names), at, caret.X-ansi.StringWidth(string(e.buf[min(from, len(e.buf)):])), w, first, depth)
+		}
 	}
 	lines = append(lines, status)
 

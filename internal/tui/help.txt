@@ -59,7 +59,7 @@ Esc	end typing, then keep the visit as one outline undo
 ## States and sigils
 # @ $ * -	open the stamp line; `Enter` sets sigils on the row or selection
 !	flag; `-!` removes it on the stamp line
--#tag -@ -@@ -*	remove fields on the stamp line
+-#tag -@ -@@ -*	remove fields on the stamp line; `-~` the colour
 
 == Days
 @fri @+3d	deadline; `@dec4` `@jan5-2027` `@eom` by name
@@ -67,9 +67,10 @@ Esc	end typing, then keep the visit as one outline undo
 @++1w @--3d	shift the row's deadline; `@@++1w` its start (stamp line only)
 *2w *monthly	repeat: closing moves the date and reopens done descendants
 
-== Tags and states
+== Tags, states and colours
 #tag #est=2h	tag or value; the header sums estimates, headings show done/total
 $state	`$open` `$doing` `$waiting` `$done` `$canceled` `$parked` `$note`
+~teal ~#3fa7c4	a project's colour, by name or hex, in its entry, row and header
 
 == Defaults
 Notes	rows at the top level, under tasks, or ending in a colon
@@ -78,6 +79,7 @@ Tasks	every other row; `$open` makes a subtask; `\#tag` stays text
 == While typing
 Colour	readable sigils take the accent colour, unreadable ones warning
 Right	accept a dim suggestion
+~ Tab Down	after `~`, walk the colour names listed under it; `Shift+Tab` `Up` back
 Dates	edit as YYYY-MM-DD
 
 ## Counts and operators

@@ -5,6 +5,7 @@ package sigil
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +23,7 @@ const (
 	FieldToday   = "today"   // the day the row was picked for Today
 	FieldStart   = "start"   // not before this day
 	FieldRepeat  = "repeat"  // the interval a closed row comes back after
+	FieldColor   = "color"   // a project's colour: a name or #rrggbb
 )
 
 // States. The empty state is a note or a heading.
@@ -42,6 +44,7 @@ type Line struct {
 	Due   string // YYYY-MM-DD, a hard deadline
 	Start string // YYYY-MM-DD, not before this day
 	Every string // a count and a unit, as in 2w: the row repeats
+	Color string // a colour name, or #rrggbb in small letters
 	Tags  []string
 }
 
@@ -161,6 +164,8 @@ func IsSigil(w string, today time.Time) bool {
 		_, ok = ParseDate(w[1:], today)
 	case '$':
 		_, ok = ParseState(w[1:])
+	case '~':
+		_, ok = ParseColor(w[1:])
 	}
 	return ok
 }
@@ -198,6 +203,8 @@ func Parse(s string, notes bool, today time.Time) Line {
 		case '$':
 			state, _ = ParseState(w[1:])
 			named = true
+		case '~':
+			l.Color, _ = ParseColor(w[1:])
 		}
 	}
 	l.Text = strings.Join(words, " ")
@@ -233,6 +240,9 @@ func Format(l Line, notes bool, today time.Time) string {
 	for _, tag := range l.Tags {
 		words = append(words, "#"+tag)
 	}
+	if l.Color != "" {
+		words = append(words, "~"+l.Color)
+	}
 	if l.State != DefaultState(notes, l.Text) {
 		if l.State == "" {
 			words = append(words, "$note")
@@ -252,6 +262,7 @@ func FromFields(f map[string]string) Line {
 		Due:   f[FieldDue],
 		Start: f[FieldStart],
 		Every: f[FieldRepeat],
+		Color: f[FieldColor],
 		Tags:  strings.Fields(f[FieldTags]),
 	}
 }
@@ -269,6 +280,7 @@ func (l Line) Fields() map[string]string {
 		FieldDue:    l.Due,
 		FieldStart:  l.Start,
 		FieldRepeat: l.Every,
+		FieldColor:  l.Color,
 		FieldTags:   strings.Join(l.Tags, " "),
 	}
 }
@@ -386,6 +398,41 @@ func ParseRepeat(s string) (string, bool) {
 		return "", false
 	}
 	return strconv.Itoa(n) + s[len(s)-1:], true
+}
+
+// ColorNames are the words a ~ sigil accepts, in the order they are offered.
+// Each is drawn in a shade of its own in either palette, so a name reads on
+// a dark and a light background alike; a hex value is drawn as it is.
+var ColorNames = []string{
+	"red", "orange", "yellow", "lime", "green", "teal", "cyan",
+	"blue", "indigo", "purple", "magenta", "pink", "brown", "gray",
+}
+
+var colorAliases = map[string]string{"grey": "gray", "violet": "purple"}
+
+// ParseColor reads a colour: one of ColorNames or an alias, or a hex value
+// as #rgb or #rrggbb, kept as #rrggbb in small letters.
+func ParseColor(s string) (string, bool) {
+	s = strings.ToLower(s)
+	if a, ok := colorAliases[s]; ok {
+		return a, true
+	}
+	if slices.Contains(ColorNames, s) {
+		return s, true
+	}
+	hex, ok := strings.CutPrefix(s, "#")
+	if !ok || (len(hex) != 3 && len(hex) != 6) {
+		return "", false
+	}
+	for _, r := range hex {
+		if !strings.ContainsRune("0123456789abcdef", r) {
+			return "", false
+		}
+	}
+	if len(hex) == 3 {
+		hex = string([]byte{hex[0], hex[0], hex[1], hex[1], hex[2], hex[2]})
+	}
+	return "#" + hex, true
 }
 
 // NextDate is the first day after today reached by stepping from a day by

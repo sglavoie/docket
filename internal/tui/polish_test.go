@@ -1014,9 +1014,9 @@ func TestAPromptSaysWhatItsEnterDid(t *testing.T) {
 		"*often":  "an interval reads as *3d, *2w or *monthly",
 		"#1":      "a tag starts with a letter",
 		"-$open":  "a state is set, not taken off, as $open or $note",
-		"-@fri":   "-@, -@@ and -* take the whole field off",
-		"soon":    "the line reads #tag, @date, $state, *interval and !",
-		"-*2w":    "-@, -@@ and -* take the whole field off",
+		"-@fri":   "-@, -@@, -* and -~ take the whole field off",
+		"soon":    "the line reads #tag, @date, $state, *interval, ~colour and !",
+		"-*2w":    "-@, -@@, -* and -~ take the whole field off",
 		"@@never": "a day reads as @fri, @+3d, @dec4 or @2026-12-04",
 	} {
 		if got := unreadStamp(word); got != "cannot read "+word+": "+way {

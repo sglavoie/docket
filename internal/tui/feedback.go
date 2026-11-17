@@ -399,6 +399,9 @@ func tagWord(e *editor, surface string) (string, bool) {
 // most used first, each with how many rows carry it, so the line shows
 // what tags there are without a list of its own.
 func (m *Model) tagOffers(e *editor, surface string) string {
+	if colors := m.colorOffers(e, surface); colors != "" {
+		return colors
+	}
 	typed, ok := tagWord(e, surface)
 	if !ok {
 		return ""
@@ -624,12 +627,15 @@ func (m *Model) walkChanges(older bool, count int) {
 // its kind reads as, so the line is put right without leaving it.
 func unreadStamp(w string) string {
 	body := strings.TrimPrefix(w, "-")
-	way := "the line reads #tag, @date, $state, *interval and !"
+	way := "the line reads #tag, @date, $state, *interval, ~colour and !"
 	switch {
 	case w != body && strings.HasPrefix(body, "$"):
 		way = "a state is set, not taken off, as $open or $note"
-	case w != body && (strings.HasPrefix(body, "@") || strings.HasPrefix(body, "*")):
-		way = "-@, -@@ and -* take the whole field off"
+	case w != body && (strings.HasPrefix(body, "@") || strings.HasPrefix(body, "*") || strings.HasPrefix(body, "~")):
+		way = "-@, -@@, -* and -~ take the whole field off"
+	case strings.HasPrefix(body, "~"):
+		// On the stamp line ~ is a colour, not the filter's time.
+		way = colourForm
 	case sigilForm(body) != "":
 		way = sigilForm(body)
 	}
@@ -654,4 +660,36 @@ func sigilForm(w string) string {
 		return "the flag is ! alone"
 	}
 	return ""
+}
+
+// colourForm says what a colour reads as.
+const colourForm = "a colour is a name, as ~teal or ~orange, or a hex value, as ~#3fa7c4"
+
+// colorOffers names, while a ~colour is typed at the end of a row, the
+// capture or the stamp line, every colour it could become, each drawn in
+// itself, so the names there are can be read off the line. On the filter ~
+// is a time, and it says nothing.
+func (m *Model) colorOffers(e *editor, surface string) string {
+	if surface == askFilter || e.caret != len(e.buf) || len(e.buf) == 0 {
+		return ""
+	}
+	line := string(e.buf)
+	typed, ok := strings.CutPrefix(line[strings.LastIndexAny(line, " \t")+1:], "~")
+	if !ok {
+		return ""
+	}
+	typed = strings.ToLower(typed)
+	if strings.HasPrefix(typed, "#") {
+		return "a hex colour, as ~#3fa7c4"
+	}
+	var parts []string
+	for _, name := range sigil.ColorNames {
+		if strings.HasPrefix(name, typed) {
+			parts = append(parts, m.colorOf(name)+"~"+name+sgrReset+m.colors().dim)
+		}
+	}
+	if len(parts) == 0 {
+		return colourForm
+	}
+	return strings.Join(parts, " · ")
 }

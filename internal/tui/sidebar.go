@@ -1193,8 +1193,15 @@ func (m *Model) sideView(w, h int) ([]string, *tea.Cursor) {
 		}
 		label := ansi.Truncate(e.label, max(room, 1), "…")
 		pad := strings.Repeat(" ", max(w-2-ansi.StringWidth(label)-ansi.StringWidth(info), 0))
-		if sel {
-			label = sgrBold + label + sgrReset
+		color := ""
+		if e.kind == kindProject {
+			color = m.projectColor(m.tree.Row(e.id))
+		}
+		switch {
+		case sel:
+			label = color + sgrBold + label + sgrReset
+		case color != "":
+			label = color + label + sgrReset
 		}
 		text := gutter + " " + label + pad + info
 		if sel && m.sideFocus {

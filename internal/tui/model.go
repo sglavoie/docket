@@ -91,7 +91,11 @@ type editor struct {
 	back       string            // where the cursor returns if a fresh row is abandoned
 	side       bool              // a project's name typed in its sidebar entry: the line stays in its row
 	sideC      bool              // opened by c in the sidebar: the typing it opens ends at Esc
-	ops, inv   []outline.Op
+	// A walk through the colours a ~word could become: which is written,
+	// zero being the word as typed, which walkDraft holds meanwhile.
+	walk      int
+	walkDraft string
+	ops, inv  []outline.Op
 }
 
 // repeatAct holds the last change made to rows, for the dot key: a stamp, a
@@ -1381,7 +1385,7 @@ func (m *Model) setFields(id string, want map[string]string) []outline.Op {
 		}
 		return have[name]
 	}
-	for _, name := range []string{sigil.FieldText, sigil.FieldState, sigil.FieldFlag, sigil.FieldDue, sigil.FieldStart, sigil.FieldRepeat, sigil.FieldTags} {
+	for _, name := range []string{sigil.FieldText, sigil.FieldState, sigil.FieldFlag, sigil.FieldDue, sigil.FieldStart, sigil.FieldRepeat, sigil.FieldTags, sigil.FieldColor} {
 		value, ok := want[name]
 		if !ok || value == have[name] {
 			continue
@@ -1661,6 +1665,10 @@ var askLabels = map[string]string{
 func (m *Model) askKey(msg tea.KeyPressMsg) {
 	a := m.ask
 	k := msg.String()
+	if m.walkColors(&a.ed, a.kind, k) {
+		a.recalled = 0
+		return
+	}
 	if m.complete(&a.ed, a.kind, k) {
 		k = "" // the line changed; a filter reads it again below
 	}
@@ -2804,6 +2812,9 @@ func (m *Model) editKey(msg tea.KeyPressMsg) {
 	}
 	if msg.String() != "up" && msg.String() != "down" {
 		e.vertical = false
+	}
+	if m.walkColors(e, surfaceRow, msg.String()) {
+		return
 	}
 	if m.complete(e, surfaceRow, msg.String()) {
 		return

@@ -69,7 +69,7 @@ func TestAStampMovesADayFromWhereItIs(t *testing.T) {
 		t.Fatalf("start = %q", got)
 	}
 	h.press("-", `"@++1w"`, "enter")
-	if h.m.msg != "cannot read -@++1w: -@, -@@ and -* take the whole field off" {
+	if h.m.msg != "cannot read -@++1w: -@, -@@, -* and -~ take the whole field off" {
 		t.Fatalf("msg = %q", h.m.msg)
 	}
 }

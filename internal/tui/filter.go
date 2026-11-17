@@ -701,6 +701,8 @@ func parseStamp(line string, today time.Time) (change, string) {
 			c.set[sigil.FieldStart], ok = "", true
 		case body == "*" && neg:
 			c.set[sigil.FieldRepeat], ok = "", true
+		case body == "~" && neg:
+			c.set[sigil.FieldColor], ok = "", true
 		case len(body) < 2:
 		case body[0] == '#':
 			var tag string
@@ -715,6 +717,8 @@ func parseStamp(line string, today time.Time) (change, string) {
 			c.set[sigil.FieldDue], ok = sigil.ParseDate(body[1:], today)
 		case body[0] == '*' && !neg:
 			c.set[sigil.FieldRepeat], ok = sigil.ParseRepeat(body[1:])
+		case body[0] == '~' && !neg:
+			c.set[sigil.FieldColor], ok = sigil.ParseColor(body[1:])
 		case body[0] == '$' && !neg:
 			c.set[sigil.FieldState], ok = sigil.ParseState(body[1:])
 		}

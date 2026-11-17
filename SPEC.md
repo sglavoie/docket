@@ -65,6 +65,7 @@ a rule here changes this file first.
 | `start` | 5 | Not before this day, a calendar day |
 | `repeat` | 5 | An interval, as in `2w`: the row comes back after it is closed |
 | `link` | 13 | The row this one points at |
+| `color` | 19 | A project's colour: a name, or a hex value as `#rrggbb` |
 
 ## Storage
 
@@ -210,6 +211,7 @@ the existing scan, never stored.
 
 The header reads in three weights. The place is in the text colour, and the
 rows above it in a breadcrumb are dim, as is everything said about it. A
+project with a colour is named in it, as the place or above it. A
 project that is parked, done or canceled has no entry in the sidebar, so the
 header says which before its totals, as `tax-2026 · parked · 50 to do`. A held
 filter is in the accent colour, since it hides rows. When the rows overflow
@@ -234,6 +236,14 @@ followed: light selects the light palette, dark selects dark, and dark is
 used until an answer arrives or if none does. Bubble Tea steps colours
 down to the terminal's colour profile and removes them for `NO_COLOR`.
 There is no theme command or configuration file.
+
+Beside the five roles, each palette holds a shade of every colour name
+`~colour` reads, lighter on dark and deeper on light so each stays
+readable; a hex colour is drawn as it is, whichever palette is in use. Tags
+are told apart by a ramp of eight colours, kept clear of the alert and
+warning colours. A tag's colour is fixed by its name, without its value,
+hashed by FNV-1a, so a tag keeps it on every machine and a tag added later
+repaints none of the others; two tags sharing a colour is expected.
 
 The focused cursor row keeps its `▌` mark and has a background across the
 pane's full width, on every wrapped line. Selected rows keep `┃` and use
@@ -274,7 +284,8 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
   project is added, renamed, reordered, parked or closed, with the ordinary
   keys.
 - **Active projects** follow, in the order of the top-level rows: the order
-  is the user's, so it never shuffles as work happens. Each says `@`, the
+  is the user's, so it never shuffles as work happens. A project with a
+  colour is named in it. Each says `@`, the
   sigil a deadline is written with, in
   the warning colour for a deadline within a week or the alert colour and
   bold for one overdue, so the two are not told apart by colour alone, then
@@ -683,8 +694,8 @@ Three more acts use the same line:
   names already, it names the nearest heading over the row instead, colon
   dropped, and nothing when there is none.
 - `#` `@` `$` `*` `-` **Stamp ›** opens holding that character. The line is
-  sigils only: `#tag`, `@date`, `@@date`, `*interval`, `$state` and `!` set;
-  `-#tag`, `-@`, `-@@`, `-*` and `-!` remove. `#name=value` sets the value,
+  sigils only: `#tag`, `@date`, `@@date`, `*interval`, `$state`, `~colour` and `!`
+  set; `-#tag`, `-@`, `-@@`, `-*`, `-~` and `-!` remove. `#name=value` sets the value,
   replacing any the name had; `-#name` takes the tag off whatever its value
   and `-#name=value` only that one. `@++1w` and `@--3d` move a deadline on
   or back from the day the row has, not from today, by a count of `d`, `w`,
@@ -1291,6 +1302,7 @@ grammar cannot read also stays prose (`@alice`, `#123`, `$5`). `\#tag` keeps a r
 | `@@date` | `start` | The same forms as `@date` |
 | `*interval` | `repeat` | A count and `d`, `w`, `m` or `y` (`*3d`, `*2w`), or `daily`, `weekly`, `monthly`, `yearly` |
 | `$state` | `state` | `open`, `doing`, `waiting`, `done`, `canceled`, `parked`, `note`, or an unambiguous prefix (`$w`, `$c`, `$p`; `$d` is not one). `$next`, `$first`, `$today`, `$missed` and `$project` are read by the filter only: they are not states |
+| `~colour` | `color` | A colour name: `red`, `orange`, `yellow`, `lime`, `green`, `teal`, `cyan`, `blue`, `indigo`, `purple`, `magenta`, `pink`, `brown`, `gray` (also `grey`, `violet`); or a hex value, `#rgb` or `#rrggbb`, stored as `#rrggbb`. Read on any row, drawn on projects only. The filter reads `~` as a time instead |
 | `%name` | | On the capture line only: the project or heading to file the row in |
 
 `#est` values are numbers with `m`, `h` or `d` (a day is 8 hours); a bare
@@ -1307,9 +1319,11 @@ stamp line.
 **While typing.** On every line that reads sigils (a row, the capture line,
 the stamp line, the filter) a word the line reads as a sigil is drawn in the
 accent colour, and a word that starts like one and cannot be read in the
-warning colour, so a mistyped `@firday` is seen before `Enter`. At the end of
+warning colour, so a mistyped `@firday` is seen before `Enter`. A
+`~colour` is drawn in the colour it names instead, so it is seen before
+it is kept. At the end of
 the line a sigil being typed is completed in dim text: a `#tag` already in
-use, most used first; a `$state`; a date word. The right arrow takes the
+use, most used first; a `$state`; a date word; a colour name. The right arrow takes the
 suggestion and types nothing otherwise. The capture line also names where
 the row will land. The row being typed shows the glyph of what its line
 makes it so far: `○` under a heading, `·` once its text ends in a colon,
@@ -1321,7 +1335,20 @@ used first, each with how many rows carry it: `#home 42 · #house 3`. A tag
 with values counts as its name. `#` alone lists them all, so the tags there
 are can be read without a list of their own (rule 6); one that starts no
 tag in use says `a new tag`. On the prompts the list follows the count of
-matches or rows, in place of the hint about keys.
+matches or rows, in place of the hint about keys. A `~colour` typed there,
+except on the filter, lists the colour names it could become in the same
+place, each drawn in itself, as `~teal`; a `~#` asks for a hex value.
+
+The same names are listed one above another as the filter lists its
+values, each drawn in itself, from the moment a `~` ends the line on a
+row, in the pane or a sidebar entry, or on the capture or stamp line: under
+the word on a row, or over it when there is more room above, and above the
+line on a prompt. `Tab`, `Down` and `Ctrl+N` write the next name, `Shift+Tab`,
+`Up` and `Ctrl+P` the one before, and past either end the word is as it was
+typed; the one written is reversed. While the list is shown those keys walk
+it, so `Tab` does not indent and `Down` does not go on into the next row;
+any other key ends the walk and keeps what is written. A name typed in full,
+or a hex value, lists nothing.
 
 **Default state.** A row whose line names no state is a note when it is
 top-level, its text ends in a colon, or its parent has any state (is a task).
@@ -1345,8 +1372,14 @@ bold in the accent colour, a top-level row bold, unless it is closed,
 parked or not yet started, which dims it as any row. A heading with every
 task under it done stays bold and is dimmed, so what is finished does not
 ask to be read.
+A project with a colour is drawn bold in it, in its row, its sidebar entry,
+the header and the project named after a row in a flat view; the colour is
+not written out after the text, since the colour says it. Closed, parked
+or not yet started, it is dimmed as any row.
 Fields follow the text, each in
-the sigil that writes it, and then `→` with the row a link points at. A row
+the sigil that writes it, and then `→` with the row a link points at. Each
+`#tag` is drawn in its own colour; a closed or parked row dims its tags
+with the rest. A row
 picked for Today shows `★` in the accent colour after its text and flag,
 wherever it is drawn but in Today: `t` toggles the pick, so the row says
 which way the key will go. The deadline reads `@today`, `@tomorrow`, `@fri`,
@@ -1556,7 +1589,8 @@ is `docket add`, and the overdue count it shows is `docket ls '@overdue'`.
    `gl` takes it when the row has no link or address of its own. A pick
    left undone stays in Today, saying since when, until it is closed or
    unpicked, below a rule that sets the day's own rows apart, and
-   `$missed` finds those picks. *Built.*
+   `$missed` finds those picks. Tags are told apart by colour, and `~colour` gives a
+   project its own, by name or hex. *Built.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add`, `docket ls` and `--version`, macros (`.`,

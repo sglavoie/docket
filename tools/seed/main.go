@@ -47,6 +47,11 @@ var projectNames = []string{
 	"mentoring", "grant-application", "research-paper", "game-jam",
 }
 
+// projectColors are given to every fifth project, in turn.
+var projectColors = []string{
+	"teal", "orange", "purple", "green", "pink", "#3fa7c4", "yellow", "red", "blue", "brown",
+}
+
 var headings = []string{
 	"Backlog:", "Next up:", "Design:", "Research:", "Admin:", "Errands:",
 	"Ideas:", "Bugs:", "Writing:", "Purchases:", "Follow-ups:", "Someday:",
@@ -277,6 +282,11 @@ func (g *gen) build(projects, target int) {
 			p.state, p.changed = sigil.Done, g.between(created)
 		case i%17 == 11:
 			p.state, p.changed = sigil.Canceled, g.between(created)
+		}
+		// Every fifth project has a colour, a hex value among the names. It
+		// draws on no randomness, so the rest of the outline is unchanged.
+		if i%5 == 0 {
+			p.fields[sigil.FieldColor] = projectColors[i/5%len(projectColors)]
 		}
 		if g.chance(0.1) {
 			p.fields[sigil.FieldDue] = g.dayOffset(g.r.IntN(30) - 5)

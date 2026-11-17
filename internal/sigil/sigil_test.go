@@ -248,3 +248,35 @@ func TestShiftMovesADayFromWhereItIs(t *testing.T) {
 		}
 	}
 }
+
+func TestAColourIsANameOrAHexValue(t *testing.T) {
+	cases := map[string]string{
+		"teal": "teal", "Teal": "teal", "grey": "gray", "violet": "purple",
+		"#3FA7C4": "#3fa7c4", "#abc": "#aabbcc",
+	}
+	for in, want := range cases {
+		if got, ok := ParseColor(in); !ok || got != want {
+			t.Errorf("ParseColor(%q) = %q, %v; want %q", in, got, ok, want)
+		}
+	}
+	for _, in := range []string{"", "tael", "3fa7c4", "#3fa7c", "#ggg", "#"} {
+		if got, ok := ParseColor(in); ok {
+			t.Errorf("ParseColor(%q) = %q; want it unread", in, got)
+		}
+	}
+	l := Parse("Docket ~Teal #personal", true, today)
+	want := Line{Text: "Docket", Color: "teal", Tags: []string{"personal"}}
+	if !reflect.DeepEqual(l, want) {
+		t.Fatalf("Parse got %+v, want %+v", l, want)
+	}
+	if got := Format(l, true, today); got != "Docket #personal ~teal" {
+		t.Errorf("Format = %q", got)
+	}
+	if got := FromFields(l.Fields()); !reflect.DeepEqual(got, l) {
+		t.Errorf("fields round trip: %+v", got)
+	}
+	// What cannot be read stays prose, as about ~5 minutes.
+	if got := Parse("about ~5 minutes ~tael", true, today); got.Text != "about ~5 minutes ~tael" || got.Color != "" {
+		t.Errorf("prose: %+v", got)
+	}
+}

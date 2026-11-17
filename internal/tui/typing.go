@@ -20,7 +20,7 @@ var dateWords = []string{"today", "tomorrow", "mon", "tue", "wed", "thu", "fri",
 // cannot read such a word it stays plain text, and the line says so in colour
 // while it is typed.
 func looksLikeSigil(w string) bool {
-	return len(w) > 1 && strings.ContainsRune("#@$", rune(w[0]))
+	return len(w) > 1 && strings.ContainsRune("#@$~", rune(w[0]))
 }
 
 // styler returns styled spans for a line. Filter phrases stay whole and
@@ -29,6 +29,10 @@ func (m *Model) styler(surface string) func(string) []word {
 	today := m.today()
 	row := func(w string) string {
 		switch {
+		case w[0] == '~' && sigil.IsSigil(w, today):
+			// A colour is drawn in itself, so it is seen before it is kept.
+			c, _ := sigil.ParseColor(w[1:])
+			return m.colorOf(c)
 		case sigil.IsSigil(w, today):
 			return m.colors().accent
 		case looksLikeSigil(w):
@@ -226,6 +230,11 @@ func (m *Model) sigilValues(e *editor, surface string) (string, []string) {
 		offers = dateWords
 		if surface == askFilter {
 			offers = append([]string{"overdue", "week"}, dateWords...)
+		}
+	case '~':
+		// On the filter, ~ asks when a row changed, which is no colour.
+		if surface != askFilter {
+			offers = sigil.ColorNames
 		}
 	}
 	var values []string
@@ -474,4 +483,65 @@ func (m *Model) editVertical(by int) {
 		m.edit.caret = l.at(line, e.column)
 		m.edit.column, m.edit.vertical = e.column, true
 	}
+}
+
+// colorList is what the colour popup lists while a ~word ends the line on a
+// row, the capture or the stamp line: the names the word could become, the
+// rune of the line the name is written from, and which one is written. On the filter ~ is
+// a time; a hex value and a finished name list nothing.
+func (m *Model) colorList(e *editor, surface string) (names []string, from int, at int) {
+	if surface != surfaceRow && surface != askCapture && surface != askStamp || e.normal {
+		return nil, 0, 0
+	}
+	line := string(e.buf)
+	if e.walk > 0 {
+		line = e.walkDraft
+	}
+	if !strings.HasPrefix(line[strings.LastIndexByte(line, ' ')+1:], "~") {
+		return nil, 0, 0
+	}
+	stem, values := m.sigilValues(&editor{buf: []rune(line), caret: len([]rune(line))}, surface)
+	if len(values) == 0 || len(values) == 1 && values[0] == stem && e.walk == 0 {
+		return nil, 0, 0
+	}
+	return values, len([]rune(line)) - len([]rune(stem)), e.walk - 1
+}
+
+// walkColors walks the colour popup: Tab, Down and Ctrl+N write the next
+// name, Shift+Tab, Up and Ctrl+P the one before, and past either end the
+// word is as it was typed. Any other key ends the walk where it stands. It
+// reports whether the key was the walk's.
+func (m *Model) walkColors(e *editor, surface, k string) bool {
+	by := 0
+	switch k {
+	case "tab", "down", "ctrl+n":
+		by = 1
+	case "shift+tab", "up", "ctrl+p":
+		by = -1
+	}
+	names, from, _ := m.colorList(e, surface)
+	if by == 0 || len(names) == 0 {
+		e.walk, e.walkDraft = 0, ""
+		return false
+	}
+	if e.walk == 0 {
+		e.walkDraft = string(e.buf)
+	}
+	n := len(names)
+	e.walk = (e.walk + by + n + 1) % (n + 1)
+	line := e.walkDraft
+	if e.walk > 0 {
+		line = string([]rune(e.walkDraft)[:from]) + names[e.walk-1]
+	}
+	e.buf, e.caret = []rune(line), len([]rune(line))
+	return true
+}
+
+// colorItems are the names as the popup draws them, each in its colour.
+func (m *Model) colorItems(names []string) []string {
+	items := make([]string, len(names))
+	for i, name := range names {
+		items[i] = m.colorOf(name) + name
+	}
+	return items
 }
