@@ -260,6 +260,8 @@ func (m *Model) scan() {
 	m.outlineOrder = map[string]int{}
 	m.next = map[string]bool{}
 	m.first = map[string]bool{}
+	m.missed = map[string]bool{}
+	m.pointers = map[string][]string{}
 	firstFound := map[string]bool{}
 	m.totals = map[string]rowTotals{}
 	found := false // the project being visited has its next action
@@ -290,6 +292,14 @@ func (m *Model) scan() {
 			if !l.Closed() {
 				picked++
 			}
+		} else if pick := r.Fields[sigil.FieldToday]; pick != "" && pick < day &&
+			(l.State == sigil.Open || l.State == sigil.Doing || l.State == sigil.Waiting) {
+			// A pick lapses without a write, so what an earlier day left
+			// undone is found here and not by the row moving anywhere.
+			m.missed[id] = true
+		}
+		if to := r.Fields[fieldLink]; to != "" {
+			m.pointers[to] = append(m.pointers[to], id)
 		}
 		// Parked work, and everything under it, is out of every computed
 		// list. Today is a pick, so it is the one list that still shows it.
@@ -742,7 +752,17 @@ func (m *Model) follow() {
 				return
 			}
 		}
-		m.msg = "this row has no link: L makes one"
+		// The way back: a row with no way out of its own goes to the row
+		// that links to it.
+		m.scan()
+		switch from := m.pointers[cur]; len(from) {
+		case 0:
+			m.msg = "this row has no link: L makes one"
+		case 1:
+			m.jump(entry{kind: kindRow, id: from[0]})
+		default:
+			m.msg = strconv.Itoa(len(from)) + " rows link here: /&. lists them"
+		}
 	case !m.live(dest):
 		m.msg = "the linked row is gone"
 	default:

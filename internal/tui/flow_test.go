@@ -3,6 +3,7 @@ package tui
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 // filters reads each query flat against the pane and compares the rows.
@@ -84,6 +85,25 @@ func TestFilterReadsToday(t *testing.T) {
 	h.press("/", `"$to"`)
 	if !strings.Contains(h.bottom(), "$today") {
 		t.Fatalf("$today is not offered: %q", h.bottom())
+	}
+}
+
+func TestFilterReadsMissedPicks(t *testing.T) {
+	h := work(t)
+	h.press("t", "j", "j", "t", "j", "t", "j", "t")
+	h.press("k", "x") // Write docs is closed on the day it was picked
+	h.clock = h.clock.Add(24 * time.Hour)
+	// Fix login is picked again on the new day, so it was not missed.
+	h.press("k", "t")
+	h.filters(map[string]string{
+		"$missed":       "Fix cache, Refactor auth",
+		"$missed #bug":  "Fix cache, Refactor auth",
+		"-$missed $":    "Fix login, Write docs",
+		"$missed|today": "Fix cache, Fix login, Refactor auth",
+	})
+	h.press("/", `"$mi"`)
+	if !strings.Contains(h.bottom(), "$missed") {
+		t.Fatalf("$missed is not offered: %q", h.bottom())
 	}
 }
 

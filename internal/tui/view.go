@@ -179,6 +179,15 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 		}
 		out = append(out, word{m.colors().dim, "→ " + name})
 	}
+	// A row others link to says so, so the way back is seen from it: the
+	// one row by name, or how many.
+	switch from := m.pointers[r.ID]; len(from) {
+	case 0:
+	case 1:
+		out = append(out, word{m.colors().dim, "← " + ansi.Truncate(m.tree.Row(from[0]).Text(), 28, "…")})
+	default:
+		out = append(out, word{m.colors().dim, "← " + strconv.Itoa(len(from))})
+	}
 
 	// A row that hides the rows under it counts them after its text: when
 	// folded, and always in a flat view, where nothing folds. A note that

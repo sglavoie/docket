@@ -1,0 +1,105 @@
+# Docket
+
+A keyboard-only terminal outliner for one person with dozens of projects.
+Every row is edited in place, metadata is typed as sigils, and a sidebar shows
+which projects need attention.
+
+```
+  Inbox                1 │ docket-rewrite  · 3 to do
+  Today                3 │   ▾ Storage: 1/3
+  Waiting              2 │ ▌   ○ Decide op-log format ! @fri
+  Stale                9 │       · per-field, clock-stamped
+                         │     ● Prototype row parser
+▌ Projects               │     ✓ Audit grammar reuse
+  docket-rewrite         │   ▾ TUI:
+  blog               12d │     ○ Sidebar counts
+  tax-2026         @ 3d  │
+  homelab              ∅ │
+                         │
+  31 parked projects     │
+Inbox › Buy milk %home
+```
+
+## Install
+
+On macOS or Linux, with Homebrew:
+
+```bash
+brew install --cask sglavoie/tap/docket
+```
+
+The cask installs `docket` and its short alias `dkt`. On macOS it also
+installs [Docket.app](macos/README.md), which runs `docket` in its own window
+with a global shortcut and quick capture.
+
+From a clone, with Go 1.26 or newer and [`just`](https://github.com/casey/just):
+
+```bash
+just install   # puts docket in ~/.local/bin, linked as dkt
+```
+
+## Start
+
+Run `docket`. An empty database opens a `Welcome` tutorial that teaches the
+keys by having you use them; `:tutor` brings a fresh copy back, and `:help`
+lists every key.
+
+The outline lives in one SQLite file, by default
+`~/.local/share/docket-v2/docket.db`; set `DOCKET_DB` to use another. Keep it
+out of any folder a file sync tool copies: `:sync folder` shares the outline
+between machines through such a folder instead, without putting the database
+in it. The first launch of each day keeps a backup beside the database, and
+the newest 14 are kept.
+
+## How it works
+
+Six rules shape everything, and [`SPEC.md`](SPEC.md) holds them in full:
+
+1. **Nothing asks a question.** Delete is instant; undo is the safety net.
+2. **Rows never move by themselves.** Only you reorder.
+3. **One way to do each thing.** No menu or palette repeats a key.
+4. **Keys follow a grammar.** Motions, operators and acts on rows, with
+   counts, as in Vim: `d3j`, `>}`, `5x`.
+5. **Every keystroke paints within one frame**, even on 10,000 rows.
+6. **Chrome is the sidebar, one header line and one status line.**
+
+There is one kind of row. A row with a state is a task; one without is a note
+or, ending in a colon, a heading. Top-level rows are projects. Metadata is
+typed into the row as sigils:
+
+| Sigil | Means |
+| --- | --- |
+| `$doing` `$waiting` `$done` … | State |
+| `!` | Flag |
+| `@fri` `@dec4` `@+2w` | Deadline |
+| `@@mon` | Not before |
+| `*2w` `*monthly` | Repeats once closed |
+| `#home` `#est=2h` | Tags, with an optional value |
+| `%project` | On capture: where the row goes |
+
+The same sigils filter the outline with `/`, as `/#home $next`, `/@week` or
+`/$missed`, and `:save name` keeps a filter in the sidebar.
+
+## From a shell
+
+```bash
+docket add "Buy milk %home @fri"   # capture without opening the outline
+docket ls '$next #home'            # print the rows a filter matches
+docket ls                          # print the whole outline as text
+docket --version
+```
+
+These are the only commands; everything else is done in the outline.
+
+## Development
+
+```bash
+just check   # fmt, vet, test
+just run     # against ./dev.db, never the real database
+```
+
+See [`CLAUDE.md`](CLAUDE.md) for the layers and the rules for changes.
+
+## License
+
+[MIT](LICENSE)

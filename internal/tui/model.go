@@ -167,9 +167,11 @@ type Model struct {
 	headings  []entry        // live heading destinations, in tree order
 	rowNames  []entry        // every other live row with text, for the pickers
 	parked    int
-	next      map[string]bool // each active project's next action, derived in scan
-	first     map[string]bool // each parent's first workable child, derived in scan
-	inToday   map[string]bool // the rows in Today, derived in scan
+	next      map[string]bool     // each active project's next action, derived in scan
+	first     map[string]bool     // each parent's first workable child, derived in scan
+	inToday   map[string]bool     // the rows in Today, derived in scan
+	missed    map[string]bool     // picks from an earlier day still open, derived in scan
+	pointers  map[string][]string // the rows linking to each row, in outline order, derived in scan
 
 	totals    map[string]rowTotals // own and descendant counts, derived in scan
 	paneTotal taskTotals           // held rows, refreshed in rebuild

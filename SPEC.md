@@ -337,9 +337,10 @@ The pane shows the rows under one row, or a list.
   even with `:closed` on. `h` refuses a selection, and `l` does nothing;
   neither changes a fold.
 - **Launch** on a database with no project and no Inbox row adds and opens
-  a `Welcome` tutorial in one undo step, with three saved filters when none
-  is saved yet: `/next` (`$next`), `/week` (`@week`) and `/done`
-  (`$done ~7d`), each flat over Projects. Otherwise it opens Today when
+  a `Welcome` tutorial in one undo step, with four saved filters when none
+  is saved yet: `/next` (`$next`), `/week` (`@week`), `/missed`
+  (`$missed`) and `/done` (`$done ~7d`), each flat over Projects.
+  Otherwise it opens Today when
   something is picked for the day, else Projects. `docket add` and `docket ls`
   never add the tutorial.
 - **A row wraps** under its own text at the pane's width, each word keeping
@@ -485,8 +486,14 @@ starts the system opener (`open` on macOS, `xdg-open` elsewhere) without
 waiting; the status line says `opened <address>` or the error starting the
 opener. This changes no row, makes no undo step or log entry, leaves `.`
 unchanged and is not a jump. It works in lists and filters; a selection
-refuses it. A row link wins even when its destination is gone. With neither
-a link nor an address, the status line says `this row has no link: L makes one`.
+refuses it. A row link wins even when its destination is gone.
+
+A row that live rows link to shows `←` and the row that links to it, as
+that row reads now, or how many do, as `← 3`; the answer comes from the
+scan, so drawing it walks nothing. With neither a link nor an address,
+`gl` on such a row goes back to the one row that links to it, as a jump.
+When several do, the status line says `3 rows link here: /&. lists them`.
+With none of these, it says `this row has no link: L makes one`.
 
 Three more acts use the same line:
 
@@ -568,6 +575,11 @@ Three more acts use the same line:
   and `N`, just as they do on the filter line.
   `$today` holds for a row in Today, picked or starting on the day, and is
   read like `$next`: a filter word, not a state.
+  `$missed` holds for a task still open, doing or waiting that was picked
+  for Today on an earlier day and is not in Today now. A pick lapses
+  without a write, so this is where what an earlier day left undone is
+  found; the row itself never moves. `t` picks it again for today, a
+  second `t` lets it go, and closing it ends it. It is read like `$next`.
   `$project` holds for a project, a top-level row other than the Inbox,
   and is read like `$next`, so `$parked $project` is the parked projects
   the sidebar counts. `$p` still reads as `parked`, since only a state
@@ -1035,7 +1047,7 @@ the pane stays there until a motion has to scroll it.
 | `Ctrl+O` `Ctrl+I` | Back along the places jumps left, and forward | 13 |
 | `g;` `g,` | Back to the rows changed this session, and on again | 17 |
 | `a` `m` | Capture to the Inbox from anywhere; move to a project or heading | 3 |
-| `L` `gl` | Link the row to another; follow the link, else open its first web address | 13, 16 |
+| `L` `gl` | Link the row to another; follow the link, else open its first web address, else go back to the row linking here | 13, 16, 19 |
 | `v` `V` | Pick a row; sweep with motions | 4, 11 |
 | `/` `:` | Filter, command | 4 |
 | `#` `@` `$` `*` `-` | Stamp sigils on rows | 4 |
@@ -1240,7 +1252,7 @@ grammar cannot read also stays prose (`@alice`, `#123`, `$5`). `\#tag` keeps a r
 | `@date` | `due` | `today`, `tomorrow`, a weekday (the next one, never today), `+3d`, `+2w`, `MM-DD` or a month named as the row shows it, `dec4` or `dec-4` (the next such day), `jan5-2027`, `YYYY-MM-DD`, and `eom`, the last day of this month |
 | `@@date` | `start` | The same forms as `@date` |
 | `*interval` | `repeat` | A count and `d`, `w`, `m` or `y` (`*3d`, `*2w`), or `daily`, `weekly`, `monthly`, `yearly` |
-| `$state` | `state` | `open`, `doing`, `waiting`, `done`, `canceled`, `parked`, `note`, or an unambiguous prefix (`$w`, `$c`, `$p`; `$d` is not one). `$next`, `$first`, `$today` and `$project` are read by the filter only: they are not states |
+| `$state` | `state` | `open`, `doing`, `waiting`, `done`, `canceled`, `parked`, `note`, or an unambiguous prefix (`$w`, `$c`, `$p`; `$d` is not one). `$next`, `$first`, `$today`, `$missed` and `$project` are read by the filter only: they are not states |
 | `%name` | | On the capture line only: the project or heading to file the row in |
 
 `#est` values are numbers with `m`, `h` or `d` (a day is 8 hours); a bare
@@ -1501,6 +1513,11 @@ is `docket add`, and the overdue count it shows is `docket ls '@overdue'`.
    a `~` term says when each match changed and reads newest first when
    flat. Saved filters follow the four lists in the sidebar. `:import`
    reads TaskPaper, OPML and Bike files. *Built.*
+
+19. **Return.** A row that others link to shows `←` and the way back, and
+   `gl` takes it when the row has no link or address of its own.
+   `$missed` finds what an earlier day's picks left undone, and a new
+   outline saves it as `/missed`. *Built.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add`, `docket ls` and `--version`, macros (`.`,

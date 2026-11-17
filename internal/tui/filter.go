@@ -275,6 +275,8 @@ func parseCond(w string, today time.Time) cond {
 			c.kind = 'T'
 		} else if strings.ToLower(w) == "$project" {
 			c.kind = 'P'
+		} else if strings.ToLower(w) == "$missed" {
+			c.kind = 'M'
 		} else if state, ok := sigil.ParseState(w[1:]); ok {
 			c.kind, c.value = '$', state
 		}
@@ -427,6 +429,8 @@ func (m *Model) holds(r *outline.Row, l sigil.Line, c cond, today time.Time) boo
 		return m.first[r.ID]
 	case 'T':
 		return m.inToday[r.ID]
+	case 'M':
+		return m.missed[r.ID]
 	case 'P':
 		// A project is a top-level row: neither the Inbox nor the row
 		// that holds the saved filters is one.

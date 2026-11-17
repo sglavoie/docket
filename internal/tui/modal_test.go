@@ -451,9 +451,14 @@ func TestARowLinksToAnother(t *testing.T) {
 	h.press("j", ".", "k")
 	h.want("▌ ○ Buy bread → Buy milk", "  ○ Eggs → Buy milk")
 	h.press("g", "l")
-	h.want("▌ ○ Buy milk", "  ○ Sell milk")
+	h.want("▌ ○ Buy milk ← 2", "  ○ Sell milk")
 	if h.header() != "Alpha › Heading  · 2 to do" {
 		t.Fatalf("header = %q", h.header())
+	}
+	// Two rows link here, so gl names the filter that lists them.
+	h.press("g", "l")
+	if h.status() != "2 rows link here: /&. lists them" {
+		t.Fatalf("status = %q", h.status())
 	}
 	// The link reads as the row reads now, and following it was a jump.
 	h.press("A", `" today"`, "esc", "ctrl+o")
@@ -478,6 +483,37 @@ func TestARowLinksToAnother(t *testing.T) {
 	}
 	h.press("u")
 	h.want("▌ ○ Buy bread → Buy milk today", "  ○ Eggs")
+}
+
+func TestALinkedRowLeadsBack(t *testing.T) {
+	h := places(t)
+	h.press("f", `"bread"`, "enter", "L", `"buy m"`, "enter")
+	h.press("f", `"call"`, "enter")
+	// The row linked to names the one row that links to it.
+	h.press("f", `"buy m"`, "enter")
+	h.want("▌ ○ Buy milk ← Buy bread", "  ○ Sell milk")
+	steps := len(h.m.undo)
+	h.press("g", "l")
+	h.want("▌ ○ Buy bread → Buy milk")
+	if len(h.m.undo) != steps {
+		t.Fatal("going back made an undo step")
+	}
+	// Going back was a jump.
+	h.press("ctrl+o")
+	h.want("▌ ○ Buy milk ← Buy bread", "  ○ Sell milk")
+	// A row's own link wins over the way back.
+	h.press("L", `"call"`, "enter", "g", "l")
+	if h.header() != "Alpha  · 3 to do" {
+		t.Fatalf("header = %q", h.header())
+	}
+	// Once the link is gone, so is the way back.
+	h.press("ctrl+o", "L", "enter", "f", `"bread"`, "enter", "L", "enter")
+	h.press("f", `"buy m"`, "enter")
+	h.want("▌ ○ Buy milk", "  ○ Sell milk")
+	h.press("g", "l")
+	if h.status() != "this row has no link: L makes one" {
+		t.Fatalf("status = %q", h.status())
+	}
 }
 
 func TestNumbersCountFromTheCursor(t *testing.T) {

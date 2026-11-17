@@ -614,7 +614,7 @@ func TestGlOpensAddress(t *testing.T) {
 		h.press("L", `"Destination"`, "enter")
 		rows, steps := h.rows(), len(h.m.undo)
 		h.press("g", "l")
-		h.want("  ○ Read "+address+".,;:!?) http://example.org/second", "    → Destination", "▌ ○ Destination")
+		h.want("  ○ Read "+address+".,;:!?) http://example.org/second", "    → Destination", "▌ ○ Destination ← Read https://example.com/fi…")
 		if len(*opened) != 0 || len(h.m.undo) != steps {
 			t.Fatal("following a row link opened an address or made an undo step")
 		}
