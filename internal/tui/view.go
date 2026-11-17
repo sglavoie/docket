@@ -208,10 +208,17 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 			if pick := r.Fields[sigil.FieldToday]; picked && pick != day {
 				also("since " + dayWords(pick, m.today()))
 			}
-		case kindWaiting:
-			also(days(m.now() - m.changedAt(r.ID)))
-		case kindStale:
-			also(days(m.now() - r.Modified))
+		case kindWaiting, kindStale:
+			// The age reads as the sidebar draws it: dim while it is young,
+			// and in the text colour past the Stale rule, so the row left
+			// alone longest is the one the eye finds.
+			since := m.changedAt(r.ID)
+			if m.at.list == kindStale {
+				since = r.Modified
+			}
+			age := m.now() - since
+			style := ageStyle(m.colors(), int(age/(24*time.Hour).Milliseconds()))
+			out = append(out, word{paint(style), "· " + days(age)})
 		case kindReview:
 			// A project parked or closed during the review has no line left.
 			if st, active := m.stats[r.ID]; active {

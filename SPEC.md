@@ -321,7 +321,9 @@ The pane shows the rows under one row, or a list.
 - **Today, Waiting and Stale** are flat. A list is read when it is opened and
   holds those rows until it is opened again, so closing or rescheduling a row
   never pulls it from under the cursor. Each row names its project; Waiting
-  and Stale lead with the longest wait and say how many days. Each thing
+  and Stale lead with the longest wait and say how many days,
+  drawn as the sidebar draws an age: dim, and in the text colour from 14
+  days, the Stale rule, so a long wait stands out. Each thing
   said after a row is led by a dot that stays with it when the row wraps.
   Nothing folds in a flat view, so a note there shows `·` whatever it holds
   and counts the rows under it (`+3`) as a task does, unless it is a heading
