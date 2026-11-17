@@ -879,7 +879,7 @@ func TestCursorRowTint(t *testing.T) {
 					background = uv.NewStyledString(want + " ").Lines(ansi.WcWidth)[0][0].Style.Bg
 				}
 				count := 0
-				for _, line := range lines {
+				for _, line := range lines[1:] { // the header is TestFocusedPaneShadesItsHeader's
 					if !strings.Contains(line, "▌") {
 						if strings.Contains(line, h.m.colors().cursor) || strings.Contains(line, h.m.colors().selection) {
 							t.Fatal("background leaked to another row")
@@ -1075,5 +1075,30 @@ func TestFilterProject(t *testing.T) {
 	}
 	if _, bad := parseStamp("$project", h.m.today()); bad != "$project" {
 		t.Fatal("$project became a stamp state")
+	}
+}
+
+// The focused pane shades its header, so focus shows in a pane with no rows.
+func TestFocusedPaneShadesItsHeader(t *testing.T) {
+	h := start(t).wide()
+	h.pasteText("Empty")
+	h.press("g", "g", "enter")
+	if len(h.m.vis) != 0 {
+		t.Fatalf("rows = %q", h.rows())
+	}
+	shaded := func() bool {
+		lines, _ := h.m.paneLines(60, 10)
+		return strings.HasPrefix(lines[0], h.m.colors().text+h.m.colors().header)
+	}
+	if !shaded() {
+		t.Fatal("the focused pane's header is not shaded")
+	}
+	h.press("tab")
+	if shaded() {
+		t.Fatal("the header is shaded while the sidebar has focus")
+	}
+	h.press("tab")
+	if !shaded() {
+		t.Fatal("the header is not shaded once focus returns")
 	}
 }

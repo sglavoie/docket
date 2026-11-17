@@ -917,6 +917,11 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 		}
 	}
 	lines[0] = m.paneHeader(w, m.ruler(drawn, whole))
+	if !m.sideFocus && (m.edit == nil || !m.edit.side) {
+		// The focused pane shades its header in a hue of its own, so focus
+		// shows even with no rows, and the shade is not taken for the cursor.
+		lines[0] = m.tint(lines[0], w, m.colors().header)
+	}
 	for len(lines) < h {
 		lines = append(lines, "")
 	}

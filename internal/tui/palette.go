@@ -21,6 +21,9 @@ const (
 type palette struct {
 	text, dim, accent, warn, alert string
 	cursor, selection              string
+	// header is the background the focused pane's header is shaded with: a hue
+	// of its own, so it is not taken for the cursor on the first row.
+	header string
 	// flash is the background a copy lights what it took with, for a moment.
 	flash string
 	// dimSelected is dim on the selection background, which is lighter in the
@@ -39,6 +42,7 @@ var darkPalette = palette{
 	alert:  "\x1b[38;2;239;135;135m",
 	cursor: "\x1b[48;2;38;51;63m", selection: "\x1b[48;2;43;65;76m",
 	flash:       "\x1b[48;2;46;92;104m",
+	header:      "\x1b[48;2;50;42;74m",
 	dimSelected: "\x1b[38;2;160;172;187m",
 	ages:        [5][3]float64{{220, 225, 231}, {214, 203, 150}, {232, 196, 84}, {240, 146, 66}, {242, 86, 78}},
 }
@@ -49,6 +53,7 @@ var lightPalette = palette{
 	alert:  "\x1b[38;2;177;49;54m",
 	cursor: "\x1b[48;2;229;237;243m", selection: "\x1b[48;2;207;227;235m",
 	flash:       "\x1b[48;2;170;214;224m",
+	header:      "\x1b[48;2;236;230;248m",
 	dimSelected: "\x1b[38;2;85;99;113m",
 	ages:        [5][3]float64{{35, 45, 56}, {105, 92, 40}, {130, 94, 0}, {166, 74, 0}, {180, 38, 38}},
 }

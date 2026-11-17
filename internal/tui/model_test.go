@@ -455,7 +455,7 @@ func TestFoldZoomAndBackOut(t *testing.T) {
 	)
 	h.press("k", "enter")
 	h.want("▌ ○ Child")
-	if got := ansi.Strip(strings.SplitN(h.m.View().Content, "\n", 2)[0]); got != "Project  · 1 to do" {
+	if got := strings.TrimRight(ansi.Strip(strings.SplitN(h.m.View().Content, "\n", 2)[0]), " "); got != "Project  · 1 to do" {
 		t.Fatalf("breadcrumb = %q", got)
 	}
 	h.press("esc")

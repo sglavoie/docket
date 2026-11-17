@@ -184,43 +184,43 @@ whichever was written last.
 ## Screen
 
 ```
-  Inbox                1 │ docket-rewrite  · 3 to do
-  Today                3 │   ▾ Storage: 1/3
-  Waiting              2 │ ▌   ○ Decide op-log format ! @fri
-  Stale                9 │       · per-field, clock-stamped
-                         │     ● Prototype row parser
-▌ Projects               │     ✓ Audit grammar reuse
-  docket-rewrite         │   ▾ TUI:
-  blog               12d │     ○ Sidebar counts
-  tax-2026         @ 3d  │
-  homelab              ∅ │
-                         │
-  31 parked projects     │
-Inbox › Buy milk %home
+  Inbox                1 â docket-rewrite  Â· 3 to do
+  Today                3 â   â¾ Storage: 1/3
+  Waiting              2 â â   â Decide op-log format ! @fri
+  Stale                9 â       Â· per-field, clock-stamped
+                         â     â Prototype row parser
+â Projects               â     â Audit grammar reuse
+  docket-rewrite         â   â¾ TUI:
+  blog               12d â     â Sidebar counts
+  tax-2026         @ 3d  â
+  homelab              â â
+                         â
+  31 parked projects     â
+Inbox âº Buy milk %home
 ```
 
-After the place’s name, the header states the open, doing and waiting tasks
-as `14 to do`, followed by their readable `#est` sum, as `14 to do · 6h30m`.
+After the placeâs name, the header states the open, doing and waiting tasks
+as `14 to do`, followed by their readable `#est` sum, as `14 to do Â· 6h30m`.
 An outline counts every such row under its root, folded or not; a list counts
 its held rows and a filter its held matches, excluding context ancestors.
 Zero tasks says nothing. Today is the list that gets finished, so it alone
-goes on to count its done rows, as `3 to do · 2 done`, and says `all 5 done`
+goes on to count its done rows, as `3 to do Â· 2 done`, and says `all 5 done`
 when nothing is left. None of Waiting is the user's to do, so it counts its
 rows still waiting instead, as `270 waiting`. The review list holds projects, not tasks, so it
-counts those, as `Review · 43 projects`. These totals and heading progress are derived in
+counts those, as `Review Â· 43 projects`. These totals and heading progress are derived in
 the existing scan, never stored.
 
 The header reads in three weights. The place is in the text colour, and the
 rows above it in a breadcrumb are dim, as is everything said about it. A
 project with a colour is named in it, as the place or above it. A
 project that is parked, done or canceled has no entry in the sidebar, so the
-header says which before its totals, as `tax-2026 · parked · 50 to do`. A held
+header says which before its totals, as `tax-2026 Â· parked Â· 50 to do`. A held
 filter is in the accent colour, since it hides rows. When the rows overflow
 the pane, the header's right edge says where the pane is among them, as
 `Top`, `40%` or `Bot`; it says nothing while every row is on screen, and
 gives way to the place when the line is too narrow for both. A line still
 too narrow gives up the rows above the place, from the project down, behind
-a `…`, as `… › Sidebar  · 3 to do`: the place is what the pane shows, so it
+a `â¦`, as `â¦ âº Sidebar  Â· 3 to do`: the place is what the pane shows, so it
 is the last thing cut. A heading in the header drops its colon, as it does
 in the pickers and after a flat row.
 
@@ -246,8 +246,8 @@ warning colours. A tag's colour is fixed by its name, without its value,
 hashed by FNV-1a, so a tag keeps it on every machine and a tag added later
 repaints none of the others; two tags sharing a colour is expected.
 
-The focused cursor row keeps its `▌` mark and has a background across the
-pane's full width, on every wrapped line. Selected rows keep `┃` and use
+The focused cursor row keeps its `â` mark and has a background across the
+pane's full width, on every wrapped line. Selected rows keep `â` and use
 a distinct selection background, including when the cursor is on one. On
 that background dim text is drawn a step nearer the text colour, so it
 keeps a contrast of 4.5 to 1 there in both palettes.
@@ -256,8 +256,11 @@ text colour for one just begun, warming through pale yellow, yellow and
 orange to red for the oldest, so however young the oldest is, it is red.
 The sidebar and review draw a project's age against the oldest active
 project; Waiting and Stale draw a row's against the oldest row shown.
-With sidebar focus its entry is shaded instead; the pane cursor loses its
-tint, while selections remain shaded. Indentation stays blank.
+The focused pane shades its header in a muted indigo of its own, so focus
+is plain even in a pane with no rows and the shade is not taken for the
+cursor on the first row; dim text keeps 4.5 to 1 on it in both palettes.
+With sidebar focus its entry is shaded instead; the pane’s header and
+cursor lose their tint, while selections remain shaded. Indentation stays blank.
 
 ### Sidebar
 
@@ -268,7 +271,7 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
 
 - **Four lists, and they stay four.** Inbox counts its rows not yet done or
   canceled, so it empties as they are filed or finished; Today counts
-  picks not yet closed, and shows a dimmed `✓` once every pick is closed,
+  picks not yet closed, and shows a dimmed `â` once every pick is closed,
   so a finished day is told from one with nothing picked. A change the
   user makes that closes the last open pick says so on the status line,
   once, as `today is done: every pick is closed`, unless the key has
@@ -290,7 +293,7 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
   sigil a deadline is written with, in
   the warning colour for a deadline within a week or the alert colour and
   bold for one overdue, so the two are not told apart by colour alone, then
-  `∅` when
+  `â` when
   it holds no task to do, else the whole days since anything inside changed:
   dim, and in the text colour from 14 days, the Stale rule, so the project
   left alone is the one the eye finds.
@@ -301,16 +304,16 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
   it is still not a destination. `/$parked $project` in Projects
   lists the projects it counts.
 - **A sidebar taller than its pane** scrolls to keep its selection in view,
-  and counts the destinations scrolled out at each edge, dimmed, as `↑ 6`
-  on its first row and `↓ 13` on its last. A count is never drawn over the
+  and counts the destinations scrolled out at each edge, dimmed, as `â 6`
+  on its first row and `â 13` on its last. A count is never drawn over the
   selection. The sync line does not scroll with them: from 8 rows up it
   stays at the sidebar's foot, since a pass that failed is an alarm and an
   alarm out of sight is none.
 
 `Tab` gives the sidebar focus, and the status line then says, before its
 keys, what the marks on the chosen entry stand for, each led by the mark as
-it is drawn: `@ a deadline is overdue · 97d since anything changed`,
-`∅ nothing left to do`, `✓ every pick is closed`, and for Stale the rule
+it is drawn: `@ a deadline is overdue Â· 97d since anything changed`,
+`â nothing left to do`, `â every pick is closed`, and for Stale the rule
 that fills it. `j` and `k` show each destination at
 once, as do `gg` and `G` or `Home` and `End` (first, last), `Ctrl+D` and
 `Ctrl+U` (half a page) and `Ctrl+F`, `Ctrl+B`, `PgDn` and `PgUp` (a page),
@@ -338,7 +341,7 @@ one row, so nothing carries the typing out of it: `Tab` does not indent,
 step, with the focus kept; a name typed out of the list, by `$parked` or
 `$done`, gives the selection to the entry now in its place. On any other
 entry the keys change nothing and say what works. The status line offers
-`A I cc rename it · dd delete it` on a project's entry. No other operator,
+`A I cc rename it Â· dd delete it` on a project's entry. No other operator,
 and no count, acts in the sidebar.
 
 ### Pane
@@ -356,7 +359,7 @@ The pane shows the rows under one row, or a list.
   drawn as the sidebar draws an age against the oldest row shown, so a
   long wait stands out. Each thing
   said after a row is led by a dot that stays with it when the row wraps.
-  Nothing folds in a flat view, so a note there shows `·` whatever it holds
+  Nothing folds in a flat view, so a note there shows `Â·` whatever it holds
   and counts the rows under it (`+3`) as a task does, unless it is a heading
   that says its progress. A row unpicked in Today stays, as a held row
   does, and is dimmed, so the pick is seen to be gone. Today alone
@@ -409,7 +412,7 @@ The pane shows the rows under one row, or a list.
 Today is hand-picked, and a pick stays until it is dealt with: a row is in
 Today when its `today` field is the current day, or an earlier day while the
 row is still open, doing or waiting. So what a day left undone is still in
-Today the next morning, saying when it was picked as `· since Nov 15`, and
+Today the next morning, saying when it was picked as `Â· since Nov 15`, and
 nothing goes out of sight by itself (rule 2); the sidebar counts it, so a
 day with leftovers is never shown as finished. A pick from an earlier day
 leaves when it is closed or when `t` unpicks it; one closed on an earlier
@@ -418,7 +421,7 @@ selection it keeps that pick's day and place and adds the others after it.
 Nothing is written when the day turns. A
 task whose start day is today is in Today too, which is how a row is made to
 come back on a date. Today names that day already, so a start day of today
-is not drawn there, as the pick's `★` is not. Picks are kept in the order made: `t` assigns a fresh
+is not drawn there, as the pick's `â` is not. Picks are kept in the order made: `t` assigns a fresh
 `todaypos` after the last placed row, overwriting any earlier day's place
 in the same undo step. Unpicking leaves that place stored. Rows with a place
 come first, sorted by it; rows without one follow in outline order. Before
@@ -440,13 +443,13 @@ as `carried picks stay below the line: t t picks it for today`.
 
 The status line becomes a prompt for three acts, named at its left edge:
 
-- `a` **Inbox ›** files a typed line in the Inbox. A `%name` word files it in
+- `a` **Inbox âº** files a typed line in the Inbox. A `%name` word files it in
   the project or heading that name matches instead; the line names where it
   will land, and a blank line names `%name`, the one word no other line
   reads. One matching nothing stays in the text. `Enter` keeps the line
-  and asks for the next, saying where that one went, as `added to Alpha ›
+  and asks for the next, saying where that one went, as `added to Alpha âº
   TUI`; a blank `Enter` or `Esc` closes, and `Esc` keeps what was typed.
-- `f` **Go to ›** opens a project, a heading, a list or a saved filter by
+- `f` **Go to âº** opens a project, a heading, a list or a saved filter by
   name. A heading opens inside its project: the sidebar stays on the
   project and `Esc` backs out to it. Once something is typed it reaches
   every other row too, by words of its text: the row is named with where
@@ -455,13 +458,13 @@ The status line becomes a prompt for three acts, named at its left edge:
   on. A row must hold what is typed, at its start, at the start of a word or
   inside; only a place answers to its letters in order. Places come before
   rows on equal match ranks. A blank `f` `Enter` opens the Inbox.
-- `L` **Link to ›** points the cursor's row or selection at a row found the
+- `L` **Link to âº** points the cursor's row or selection at a row found the
   same way, as described under Links.
-- `m` **Move to ›** makes the cursor's row or selection the last children of
+- `m` **Move to âº** makes the cursor's row or selection the last children of
   a project, the Inbox or a heading, in screen order. A heading is any live
   row ending in a colon under a project or the Inbox, at any depth; rows
   under a deleted row are excluded. Headings are labelled by their path,
-  with colons dropped: `project › TUI › Sidebar`. Projects precede headings
+  with colons dropped: `project âº TUI âº Sidebar`. Projects precede headings
   on equal match ranks. Moving under oneself or a descendant is refused.
   With rows selected and the cursor on a row that is neither selected nor
   under a selected row, a blank query offers `here` at the front, so `m`
@@ -524,8 +527,8 @@ nothing: there the arrows walk the matches.
 A row can point at one other row. `L` asks for it by name, as `f` does but
 without the lists, the Inbox and the saved filters, and sets it on the
 cursor's row, a count of rows or the selection as one undo step. The row
-then shows `→` and the text of the row it points at, as that row reads now,
-or `→ gone` once that row is deleted. `gl` follows the link: it is a jump,
+then shows `â` and the text of the row it points at, as that row reads now,
+or `â gone` once that row is deleted. `gl` follows the link: it is a jump,
 so `Ctrl+O` comes back. On a row that has a link, a blank query offers
 `none` at the front, which takes the link off. A row cannot point at itself.
 The link is the field `link`, so it is undone, backed up and synced like any
@@ -540,8 +543,8 @@ opener. This changes no row, makes no undo step or log entry, leaves `.`
 unchanged and is not a jump. It works in lists and filters; a selection
 refuses it. A row link wins even when its destination is gone.
 
-A row that live rows link to shows `←` and the row that links to it, as
-that row reads now, or how many do, as `← 3`; the answer comes from the
+A row that live rows link to shows `â` and the row that links to it, as
+that row reads now, or how many do, as `â 3`; the answer comes from the
 scan, so drawing it walks nothing. With neither a link nor an address,
 `gl` on such a row goes back to the one row that links to it, as a jump.
 When several do, the status line says `3 rows link here: /&. lists them`.
@@ -549,7 +552,7 @@ With none of these, it says `this row has no link: L makes one`.
 
 Three more acts use the same line:
 
-- `/` **Filter ›** narrows the pane as the query is typed. Words match a
+- `/` **Filter âº** narrows the pane as the query is typed. Words match a
   row's text, ignoring case. Double quotes match a phrase, blanks included:
   `"per the spec"`. A quote not closed yet reads to the end of the line;
   a quote inside a word (`5"`) stays part of that word. A bare quote or empty
@@ -663,7 +666,7 @@ Three more acts use the same line:
   after the count of matches (`no match`, `1 match`, `12 matches`), so its
   marks need not be remembered. A blank line hides nothing, so it counts
   nothing and names what the line reads, as `words, #tag, $state, @date, !
-  · - excludes`:
+  Â· - excludes`:
   `-_$open|doing` says `no row under it: open or doing`, `$done ~7d` says
   `done and changed since Nov 8`, and a bar or brackets standing alone read
   as `, or` and brackets. A word that starts like a sigil and cannot be
@@ -683,7 +686,7 @@ Three more acts use the same line:
   it are only there to place it, and no key is meant for them. `Enter`
   keeps the filter and returns to the rows, where the header names it, and
   the status line says what is held and the keys that are new while it is,
-  as `12 matches kept · n N step through them · Esc drops the filter`,
+  as `12 matches kept Â· n N step through them Â· Esc drops the filter`,
   since the count leaves with the line; `Esc` drops it. Like a list, a filter holds the
   rows it found until the query changes, and refuses the keys that
   restructure the tree. Changing the filter clears the selection. A filter
@@ -696,7 +699,7 @@ Three more acts use the same line:
   a list's does; when the pane is inside that project, which the header
   names already, it names the nearest heading over the row instead, colon
   dropped, and nothing when there is none.
-- `#` `@` `$` `*` `-` `~` **Stamp ›** opens holding that character, and lists
+- `#` `@` `$` `*` `-` `~` **Stamp âº** opens holding that character, and lists
   what that sigil could become. The line is
   sigils only: `#tag`, `##context`, `@date`, `@@date`, `*interval`, `$state`, `~colour` and `!`
   set; `-#tag`, `-##`, `-@`, `-@@`, `-*`, `-~` and `-!` remove; `-##name`
@@ -818,7 +821,7 @@ in help they retain half-page scrolling.
 `:help` opens a reference in eight sections, in the tutorial's order. The
 first screen gives the essentials; `]` and `[` go to the next and previous
 heading. `j` and `k`, paging keys and `gg` and `G` scroll; any other key
-closes it. `/` opens a `Search ›` line on the status row: the page goes, as
+closes it. `/` opens a `Search âº` line on the status row: the page goes, as
 each key is typed, to the first line at or below where it stood that holds
 the text, read without case, with every match on screen reversed and the
 line stood on tinted; the line counts the matches. `Enter` keeps the
@@ -866,7 +869,7 @@ under a hidden top-level row with the fixed identity `filters`, so saving
 and forgetting are undone, backed up and synced like any other change.
 
 `:review` is a list of the active projects, the longest untouched first,
-each with its age and how many tasks are left to do, or `∅`. The age is
+each with its age and how many tasks are left to do, or `â`. The age is
 drawn as the sidebar draws it: none for a project touched today, and
 otherwise against the oldest active project. It is a list
 like the others, so the ordinary keys do the review: moving on keeps a
@@ -886,8 +889,8 @@ marks are drawn in since the keys now act on those rows, and `Esc` clears it.
 `V` starts a sweep at the cursor's row. Each motion, with or without a
 count, selects the shown span from that anchor to the cursor, both included;
 moving back gives rows up again. Picks made before the sweep stay selected.
-While it lasts the status line says so beside the count, as `3 selected ·
-V keeps · Esc clears`.
+While it lasts the status line says so beside the count, as `3 selected Â·
+V keeps Â· Esc clears`.
 `V` ends the sweep and keeps the rows; `v` ends it, then toggles the cursor's
 row and steps down as usual. `zt`, `zz` and `zb` leave it as it is. Any
 other non-motion key ends the sweep before acting: `VGdd` deletes through the end in one undo step, and `V2jx` closes
@@ -969,10 +972,10 @@ they were pressed. It does so in the outline, the sidebar, inside a row and
 in help, beside whatever the line already says, and a line too narrow for
 both keeps the pending keys. In the outline, a waiting `g`, `z`, operator
 or operator with `g` or `i` also says at the line's left, dimmed, what may
-follow it (`gg top · gl follow link · …`, `dd the row · dj } ) H ] n G…
-through a motion · dic dis objects`), so the grammar teaches itself; a
+follow it (`gg top Â· gl follow link Â· â¦`, `dd the row Â· dj } ) H ] n Gâ¦
+through a motion Â· dic dis objects`), so the grammar teaches itself; a
 count alone says nothing. While rows are selected an operator offers only
-what it can take, as `dd the 3 selected rows · no motion or object while
+what it can take, as `dd the 3 selected rows Â· no motion or object while
 rows are selected`, and `c` says it retypes one row. `Esc`
 drops it without clearing a selection, filter or zoom. Counts do not apply
 in the sidebar, help, prompts or while typing.
@@ -1137,7 +1140,7 @@ included; the caret is a block on a character, and the status line says
 
 There the keys are the same grammar over characters, and none of them is a
 key of the outline. A waiting `d`, `c` or `y` says what may follow it, as
-an operator on the outline does (`dw de d$ dt, dn through a motion · diw
+an operator on the outline does (`dw de d$ dt, dn through a motion Â· diw
 di" di( objects`):
 
 - **Motions.** `h` `l` by character and `0` `^` `$` to the ends; `w` `b` `e`
@@ -1252,7 +1255,7 @@ backslash to any text token with zero or more backslashes before a recognized
 sigil, anywhere in a line. The sigil parser removes exactly one and keeps the
 rest literal; unescaped sigils remain metadata, and backslashes before
 non-sigils stay unchanged. Second, copy/export prefix one backslash to a
-formatted line beginning with `- `, `* `, `+ `, `• `, `[ ] `, `[x] `, `[X] ` or
+formatted line beginning with `- `, `* `, `+ `, `â¢ `, `[ ] `, `[x] `, `[X] ` or
 a backslash. After reading indentation, paste removes this protective
 backslash only before one of those prefixes or another backslash, then skips
 bullet/checkbox normalization, including in a single-line row editor.
@@ -1268,7 +1271,7 @@ is inserted at the caret with `$open` for `[ ]` or `$done` for `[x]`, and editin
 continues. Several lines become rows: the first joins the row being typed
 and the rest follow it. When nothing is being typed, all pasted lines become
 rows after the cursor. Indentation of any unit is depth; `-`, `*`,
-`+` and `•` bullets are dropped; `[ ]` adds `$open` and `[x]` adds `$done`,
+`+` and `â¢` bullets are dropped; `[ ]` adds `$open` and `[x]` adds `$done`,
 so checkboxes stay tasks wherever pasted. The appended state wins over any
 state sigil in the pasted text. The whole paste, with the row it was typed
 into, is one undo step. Rows cannot be pasted into a list, a
@@ -1335,16 +1338,16 @@ the line a sigil being typed is completed in dim text: a `#tag` or a
 `##context` already in use, most used first; a `$state`; a date word; a colour name. The right arrow takes the
 suggestion and types nothing otherwise. The capture line also names where
 the row will land. The row being typed shows the glyph of what its line
-makes it so far: `○` under a heading, `·` once its text ends in a colon,
-`◔` when `$w` is typed, so what `Enter` keeps is seen first.
+makes it so far: `â` under a heading, `Â·` once its text ends in a colon,
+`â` when `$w` is typed, so what `Enter` keeps is seen first.
 
 While a `#tag` is typed at the end of a row, the capture, stamp or filter
 line, the status line names every tag in use that it could become, most
-used first, each with how many rows carry it: `#home 42 · #house 3`. A tag
+used first, each with how many rows carry it: `#home 42 Â· #house 3`. A tag
 with values counts as its name. `#` alone lists them all, so the tags there
 are can be read without a list of their own (rule 6); one that starts no
 tag in use says `a new tag`. A `##context` names the contexts in use the
-same way, `##phone 4 · ##town 2`, and one that starts none says `a new
+same way, `##phone 4 Â· ##town 2`, and one that starts none says `a new
 context`; on the filter `Tab` walks them as it walks tags. On the prompts the list follows the count of
 matches or rows, in place of the hint about keys. A `~colour` typed there,
 except on the filter, lists the colour names it could become in the same
@@ -1374,9 +1377,9 @@ the truth; existing rows keep their states without migration. A row keeps
 its state when it moves, including while editing. A fresh row takes the
 default of where it ends up when the edit is kept.
 
-**On the row.** One glyph column says what the row is: `○` open, `●` doing,
-`◔` waiting, `✓` done, `✕` canceled, `◌` parked; a note shows `▾` or `▸` when it has
-children and a dimmed `·` otherwise, so its depth is read off the same column. A folded row
+**On the row.** One glyph column says what the row is: `â` open, `â` doing,
+`â` waiting, `â` done, `â` canceled, `â` parked; a note shows `â¾` or `â¸` when it has
+children and a dimmed `Â·` otherwise, so its depth is read off the same column. A folded row
 counts the rows it hides after its text (`+3`): a task, which keeps its
 state glyph, and a note, unless it is a heading that says its progress. A row ending in a colon shows
 dimmed `done/total` after its text when it has tasks beneath it, at any depth,
@@ -1391,12 +1394,12 @@ the header and the project named after a row in a flat view; the colour is
 not written out after the text, since the colour says it. Closed, parked
 or not yet started, it is dimmed as any row.
 Fields follow the text, each in
-the sigil that writes it, and then `→` with the row a link points at. Each
+the sigil that writes it, and then `â` with the row a link points at. Each
 `#tag` is drawn in its own colour; a closed or parked row dims its tags
 with the rest. A context leads the text in brackets, `[phone] Call Ann`,
 so where the work is done is read first, in the colour its name hashes
 to as a tag's does; a filter that asks for it marks it as it marks a tag. A row
-picked for Today shows `★` in the accent colour after its text and flag,
+picked for Today shows `â` in the accent colour after its text and flag,
 wherever it is drawn but in Today: `t` toggles the pick, so the row says
 which way the key will go. The deadline reads `@today`, `@tomorrow`, `@fri`,
 `@Nov 20`. A deadline or start day outside the current year names the year,
@@ -1452,7 +1455,7 @@ window sees the row at its next key, and a sync pass runs before it ends.
 across every project and the Inbox, so the outline answers a script, a
 status bar or a pipe. Each row is one line: the row in the row grammar, a
 task always spelling its state since no outline is there to read a default
-from, then a tab and where the row lives (`Alpha › TUI`). The Inbox's rows
+from, then a tab and where the row lives (`Alpha âº TUI`). The Inbox's rows
 come first, and the order is a flat filter's: the outline's, or soonest
 deadline first when the filter asks about deadlines. `&.` has no cursor to
 read and matches nothing. With no filter it prints the whole outline as
@@ -1601,7 +1604,7 @@ is `docket add`, and the overdue count it shows is `docket ls '@overdue'`.
    flat. Saved filters follow the four lists in the sidebar. `:import`
    reads TaskPaper, OPML and Bike files. *Built.*
 
-19. **Return.** A row that others link to shows `←` and the way back, and
+19. **Return.** A row that others link to shows `â` and the way back, and
    `gl` takes it when the row has no link or address of its own. A pick
    left undone stays in Today, saying since when, until it is closed or
    unpicked, below a rule that sets the day's own rows apart, and

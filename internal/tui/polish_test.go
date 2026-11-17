@@ -472,7 +472,7 @@ func TestHeaderRulesTheOverflowingPane(t *testing.T) {
 	}
 	// Too narrow for both, the place keeps the line.
 	h.m.Update(tea.WindowSizeMsg{Width: 20, Height: 5})
-	if got := h.lines()[0]; got != "Projects  · 4 to do" {
+	if got := strings.TrimRight(h.lines()[0], " "); got != "Projects  · 4 to do" {
 		t.Fatalf("narrow header = %q", got)
 	}
 }
@@ -1105,7 +1105,7 @@ func TestACopyFlashesWhatItTook(t *testing.T) {
 	if got := lit(); len(got) != 0 {
 		t.Fatalf("still lit after its timer = %q", got)
 	}
-	if !strings.Contains(h.m.View().Content, c.cursor) {
+	if rows := strings.SplitN(h.m.View().Content, "\n", 2)[1]; !strings.Contains(rows, c.cursor) {
 		t.Fatal("the cursor is not drawn once the light is out")
 	}
 }
