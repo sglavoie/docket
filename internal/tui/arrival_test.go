@@ -380,10 +380,11 @@ func TestFilterPhraseEmptyPassedOver(t *testing.T) {
 		}
 	}
 	for _, flat := range []bool{false, true} {
-		filter("$")
+		h.press("/")
 		if flat {
 			h.press("tab")
 		}
+		h.press("$")
 		want := h.rows()
 		h.press("esc")
 		for _, prefix := range []string{"", "-", "^", "-^", "_", "-_", "<", "-<", ">", "->"} {
@@ -800,7 +801,7 @@ func TestHeaderCountsAndSums(t *testing.T) {
 	wantHeader("Today  · all 2 done") // Held closed rows add no estimate; Today counts them as done.
 	h.press("f", `"Projects"`, "enter", "/", `"#est"`, "enter")
 	wantHeader("Projects  · 3 to do · 18h  / #est")
-	h.press("/", "tab", "enter")
+	h.press("/", `" "`, "tab", "enter") // after a space Tab completes nothing
 	wantHeader("Projects  · 3 to do · 18h  / #est  (flat)")
 	h.press("esc", "/", `"Unreadable"`, "enter")
 	wantHeader("Projects  · 1 to do  / Unreadable  (flat)")

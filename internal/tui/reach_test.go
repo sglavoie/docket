@@ -351,10 +351,11 @@ func TestFilterReadsAnyTagAnyStateAndMixedAlternatives(t *testing.T) {
 		for _, tc := range cases {
 			t.Run(tc.query, func(t *testing.T) {
 				h := fixture(t)
-				h.press("/", `"`+tc.query+`"`)
+				h.press("/")
 				if !h.m.at.flat {
 					h.press("tab")
 				}
+				h.press(`"` + tc.query + `"`)
 				h.want(tc.rows...)
 				h.press("esc")
 			})
@@ -466,7 +467,7 @@ func TestAFilterTermReachesTheRowsAbove(t *testing.T) {
 		} {
 			t.Run(tc.query, func(t *testing.T) {
 				h := fixture(t)
-				h.press("/", `"`+tc.query+`"`, "tab", "enter")
+				h.press("/", "tab", `"`+tc.query+`"`, "enter")
 				h.command("all")
 				if got := h.selected(); got != tc.names {
 					t.Fatalf("selected %q, want %q", got, tc.names)

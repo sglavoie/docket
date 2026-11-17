@@ -149,18 +149,31 @@ func (m *Model) styler(surface string) func(string) []word {
 // suggest returns the rest of the sigil being typed at the end of the line:
 // a tag already in use, a state, or a date word. The right arrow takes it.
 func (m *Model) suggest(e *editor, surface string) string {
+	typed, values := m.sigilValues(e, surface)
+	for _, v := range values {
+		if len(v) > len(typed) {
+			return v[len(typed):]
+		}
+	}
+	return ""
+}
+
+// sigilValues returns what is typed of the sigil at the end of the line,
+// after its mark and in small letters, and every value it could become, in
+// the order suggest offers them. The typed part is always the line's tail.
+func (m *Model) sigilValues(e *editor, surface string) (string, []string) {
 	if surface != surfaceRow && surface != askCapture && surface != askStamp && surface != askFilter {
-		return ""
+		return "", nil
 	}
 	if e.caret != len(e.buf) || len(e.buf) == 0 || e.buf[len(e.buf)-1] == ' ' {
-		return ""
+		return "", nil
 	}
 	line := string(e.buf)
 	word := line[strings.LastIndexByte(line, ' ')+1:]
 	if surface == askFilter {
 		parts := filterParts(line, false)
 		if len(parts) == 0 || !strings.HasSuffix(line, parts[len(parts)-1]) {
-			return ""
+			return "", nil
 		}
 		word = parts[len(parts)-1]
 	}
@@ -170,7 +183,7 @@ func (m *Model) suggest(e *editor, surface string) string {
 	if surface == askFilter {
 		for _, twice := range []string{"^^", "__", "<<", ">>"} {
 			if strings.HasPrefix(word, twice) {
-				return ""
+				return "", nil
 			}
 		}
 		// One mark of where the term is read: above, below, parent or child.
@@ -179,7 +192,7 @@ func (m *Model) suggest(e *editor, surface string) string {
 		}
 	}
 	if word == "" {
-		return ""
+		return "", nil
 	}
 	if parts := filterParts(word, true); surface == askFilter && len(parts) > 1 {
 		sig := word[:len(word)-len(strings.TrimLeft(word, sigilStarts))]
@@ -188,7 +201,7 @@ func (m *Model) suggest(e *editor, surface string) string {
 			word = sig + word
 		}
 		if word == "" {
-			return ""
+			return "", nil
 		}
 	}
 	typed := strings.ToLower(word[1:])
@@ -215,12 +228,53 @@ func (m *Model) suggest(e *editor, surface string) string {
 			offers = append([]string{"overdue", "week"}, dateWords...)
 		}
 	}
+	var values []string
 	for _, o := range offers {
-		if len(o) > len(typed) && strings.HasPrefix(o, typed) {
-			return o[len(typed):]
+		if strings.HasPrefix(o, typed) {
+			values = append(values, o)
 		}
 	}
-	return ""
+	return typed, values
+}
+
+// completeFilter walks the values the sigil at the end of the filter line
+// could become: Tab writes the first and again the next, Shift+Tab walks
+// back, and past either end the line is as it was typed. A sigil only one
+// value finishes is finished at once. It reports false when there is nothing
+// to complete, where Tab switches between flat and in context instead.
+func (m *Model) completeFilter(a *prompt, k string) bool {
+	by := 1
+	switch k {
+	case "tab":
+	case "shift+tab":
+		by = -1
+	default:
+		a.choice = 0
+		return false
+	}
+	typed := string(a.ed.buf)
+	if a.choice > 0 {
+		typed = a.draft
+	}
+	stem, values := m.sigilValues(&editor{buf: []rune(typed), caret: len([]rune(typed))}, askFilter)
+	if a.choice == 0 && !slices.ContainsFunc(values, func(v string) bool { return len(v) > len(stem) }) {
+		return false
+	}
+	base := typed[:len(typed)-len(stem)]
+	line := base + values[0]
+	if n := len(values); n > 1 {
+		if a.choice == 0 {
+			a.draft = typed
+		}
+		a.choice = (a.choice + by + n + 1) % (n + 1)
+		line = a.draft
+		if a.choice > 0 {
+			line = base + values[a.choice-1]
+		}
+	}
+	a.ed = editor{buf: []rune(line), caret: len([]rune(line))}
+	a.recalled = 0
+	return true
 }
 
 // tagsByUse orders the tags in use, most used first.

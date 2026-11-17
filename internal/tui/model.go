@@ -1639,6 +1639,9 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 	if a.kind == askCommand && m.walkCommands(a, k) {
 		return
 	}
+	if a.kind == askFilter && m.completeFilter(a, k) {
+		k = "" // the line changed; the filter reads it again below
+	}
 	text := strings.TrimSpace(string(a.ed.buf))
 
 	if a.kind == askFilter {

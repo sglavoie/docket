@@ -572,7 +572,13 @@ Three more acts use the same line:
   row when the filter was opened. In an
   outline a match keeps its
   ancestors, dimmed, so it is read where it lives; `Tab` switches to a flat
-  list of matches and back. A match is drawn with what was found in it:
+  list of matches and back. While the line ends in a sigil that has values
+  to take (`$`, `$d`, `#ho`, `@to`, `$next|w`), `Tab` completes it instead:
+  it writes the first value the suggestion offers, again the next, and past
+  the last the sigil as typed; `Shift+Tab` walks back. A sigil only one
+  value finishes is finished at once, and then `Tab` switches the shape
+  again. Any other key ends the walk. The status line says `Tab completes`
+  or `Tab switches`, whichever `Tab` will do. A match is drawn with what was found in it:
   each word of its text that a looked-for word or phrase touches, and each
   tag the query names, in the accent colour and underlined. A term that
   excludes, one read on other rows (`^ _ < >`) and one inside `-(` mark

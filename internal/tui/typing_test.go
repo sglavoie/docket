@@ -95,9 +95,36 @@ func TestPromptsColourAndCompleteInTheirOwnGrammar(t *testing.T) {
 
 	// Filter: completing a term narrows the pane at once.
 	h.press("/", `"$"`, "tab", `" -#d"`, "right")
-	if h.m.at.query != "$ -#docs" {
+	if h.m.at.query != "$open -#docs" {
 		t.Fatalf("query = %q", h.m.at.query)
 	}
+	h.press("esc")
+
+	// Tab walks the values a sigil could become, and back to what was typed;
+	// with nothing to complete it switches the shape, as on a blank line.
+	walk := func(keys []string, want string, switched bool) {
+		t.Helper()
+		was := h.m.at.flat
+		h.press("/")
+		h.press(keys...)
+		if h.m.at.query != want || h.m.at.flat != (was != switched) {
+			t.Fatalf("after %q: query %q, shape switched %t; want %q, %t", keys, h.m.at.query, h.m.at.flat != was, want, switched)
+		}
+		h.press("esc")
+	}
+	walk([]string{`"$d"`, "tab"}, "$doing", false)
+	walk([]string{`"$d"`, "tab", "tab"}, "$done", false)
+	walk([]string{`"$d"`, "tab", "tab", "tab"}, "$d", false)
+	walk([]string{`"$d"`, "shift+tab"}, "$done", false)
+	walk([]string{`"$next|w"`, "tab"}, "$next|waiting", false) // the only value, finished at once
+	walk([]string{`"$next|w"`, "tab", "tab"}, "$next|waiting", true)
+	walk([]string{`"$d"`, "tab", "backspace", "tab"}, "$doing", false) // typing ends the walk
+	walk([]string{"tab", `"word"`, "tab"}, "word", false)
+	h.press("/", `"@to"`)
+	if !strings.Contains(h.bottom(), "Tab completes") {
+		t.Fatalf("hint = %q", h.bottom())
+	}
+	h.press("esc")
 	h.press("esc", "/", `"#do"`, "right")
 	h.want("▌ ○ Write docs @fri #docs · Alpha")
 	h.press("esc", "/", `"@ov"`, "right", `" @nope"`)
