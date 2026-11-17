@@ -279,7 +279,8 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
   projects only, never the parked rows inside an active one. Done and
   canceled projects are not listed. While the pane is inside a parked
   project the count carries the dimmed selection mark, since no entry can;
-  it is still not a destination.
+  it is still not a destination. `/$parked $project` in Projects
+  lists the projects it counts.
 - **A sidebar taller than its pane** scrolls to keep its selection in view,
   and counts the destinations scrolled out at each edge, dimmed, as `↑ 6`
   on its first row and `↓ 13` on its last. A count is never drawn over the
@@ -565,6 +566,10 @@ Three more acts use the same line:
   and `N`, just as they do on the filter line.
   `$today` holds for a row in Today, picked or starting on the day, and is
   read like `$next`: a filter word, not a state.
+  `$project` holds for a project, a top-level row other than the Inbox,
+  and is read like `$next`, so `$parked $project` is the parked projects
+  the sidebar counts. `$p` still reads as `parked`, since only a state
+  is read from a prefix; `Tab` after it offers both.
   `&` holds for a row that links to another (see Links): `&` alone for any
   link, `&word` for a link to a row whose text holds the word, and `&.` for
   a link to the row the cursor was on when the filter was opened, which is
@@ -1233,7 +1238,7 @@ grammar cannot read also stays prose (`@alice`, `#123`, `$5`). `\#tag` keeps a r
 | `@date` | `due` | `today`, `tomorrow`, a weekday (the next one, never today), `+3d`, `+2w`, `MM-DD` or a month named as the row shows it, `dec4` or `dec-4` (the next such day), `jan5-2027`, `YYYY-MM-DD`, and `eom`, the last day of this month |
 | `@@date` | `start` | The same forms as `@date` |
 | `*interval` | `repeat` | A count and `d`, `w`, `m` or `y` (`*3d`, `*2w`), or `daily`, `weekly`, `monthly`, `yearly` |
-| `$state` | `state` | `open`, `doing`, `waiting`, `done`, `canceled`, `parked`, `note`, or an unambiguous prefix (`$w`, `$c`, `$p`; `$d` is not one). `$next`, `$first` and `$today` are read by the filter only: they are not states |
+| `$state` | `state` | `open`, `doing`, `waiting`, `done`, `canceled`, `parked`, `note`, or an unambiguous prefix (`$w`, `$c`, `$p`; `$d` is not one). `$next`, `$first`, `$today` and `$project` are read by the filter only: they are not states |
 | `%name` | | On the capture line only: the project or heading to file the row in |
 
 `#est` values are numbers with `m`, `h` or `d` (a day is 8 hours); a bare

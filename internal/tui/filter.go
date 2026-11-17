@@ -65,7 +65,7 @@ func (g *group) holds(leaf func(int) bool) bool {
 
 // cond is one reading of a term.
 type cond struct {
-	kind  byte // t text, ! flag, # tag, l g tag value range, $ state, S any state, n next action, f first sibling, T in Today, @ deadline, < > deadline range, s start, * repeat, ~ changed, & link
+	kind  byte // t text, ! flag, # tag, l g tag value range, $ state, S any state, n next action, f first sibling, T in Today, P project, @ deadline, < > deadline range, s start, * repeat, ~ changed, & link
 	value string
 	arg   string          // the value a tag range compares with
 	rows  map[string]bool // the rows a link term asks for, read by terms
@@ -273,6 +273,8 @@ func parseCond(w string, today time.Time) cond {
 			c.kind = 'f'
 		} else if strings.ToLower(w) == "$today" {
 			c.kind = 'T'
+		} else if strings.ToLower(w) == "$project" {
+			c.kind = 'P'
 		} else if state, ok := sigil.ParseState(w[1:]); ok {
 			c.kind, c.value = '$', state
 		}
@@ -425,6 +427,10 @@ func (m *Model) holds(r *outline.Row, l sigil.Line, c cond, today time.Time) boo
 		return m.first[r.ID]
 	case 'T':
 		return m.inToday[r.ID]
+	case 'P':
+		// A project is a top-level row: neither the Inbox nor the row
+		// that holds the saved filters is one.
+		return r.Parent == "" && r.ID != inboxID && r.ID != filtersID
 	case '@':
 		_, days := sigil.DueLabel(l.Due, today)
 		switch c.value {

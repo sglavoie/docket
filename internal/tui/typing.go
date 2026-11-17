@@ -220,7 +220,7 @@ func (m *Model) sigilValues(e *editor, surface string) (string, []string) {
 	case '$':
 		offers = sigil.StateNames
 		if surface == askFilter {
-			offers = append(slices.Clone(offers), "next", "today", "first")
+			offers = append(slices.Clone(offers), "next", "today", "first", "project")
 		}
 	case '@':
 		offers = dateWords

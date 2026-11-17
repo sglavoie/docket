@@ -1036,3 +1036,36 @@ func TestHelpMarkKeepsStyles(t *testing.T) {
 		t.Fatalf("%q", got)
 	}
 }
+
+// $project holds for the top-level rows, so the parked projects the sidebar
+// counts can be listed by name.
+func TestFilterProject(t *testing.T) {
+	h := start(t).wide()
+	h.pasteText("Alpha\n\tTask $open\n\tShelved $parked\nBeta $parked\n\tInside $open\nGamma $done")
+	h.press("a", `"Inbox row"`, "enter", "esc")
+	h.press("f", `"Projects"`, "enter")
+	h.filters(map[string]string{
+		"$project":         "Alpha, Beta, Gamma",
+		"$PROJECT":         "Alpha, Beta, Gamma",
+		"$parked $project": "Beta",
+		"$parked":          "Shelved, Beta",
+		"-$project $open":  "Task, Inside",
+		"$project|done":    "Alpha, Beta, Gamma",
+		"$p":               "Shelved, Beta", // still a state's prefix
+	})
+	h.press("/", `"$parked $project"`)
+	if !strings.Contains(h.bottom(), "a project") {
+		t.Fatalf("read back = %q", h.bottom())
+	}
+	h.press("esc", "/", `"$pr"`)
+	if !strings.Contains(h.bottom(), "$project") {
+		t.Fatalf("completion = %q", h.bottom())
+	}
+	h.press("esc")
+	if got := strings.Join(List(h.m.tree, h.st, "$parked $project"), "|"); got != "Beta $parked\t" {
+		t.Fatalf("List = %q", got)
+	}
+	if _, bad := parseStamp("$project", h.m.today()); bad != "$project" {
+		t.Fatal("$project became a stamp state")
+	}
+}

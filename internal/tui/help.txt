@@ -130,6 +130,7 @@ Held rows	edits never remove matches; change the query to read again
 ~7d	state changed (or row made) in the last week
 	a `~` filter says when on each match; flat, newest first
 & &word &.	a row link, one to matching text, one to the cursor's row
+$project	a top-level row: `$parked $project` lists parked projects
 
 == Next actions
 $next	each project's first workable task; excludes Inbox
