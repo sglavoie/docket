@@ -251,11 +251,11 @@ func (m *Model) helpView() string {
 			at = i
 		}
 	}
-	header := "Help › " + p.titles[at]
+	header := c.dim + "Help › " + sgrReset + p.titles[at]
 	if !rail {
-		header += "  · " + strconv.Itoa(at+1) + " of " + strconv.Itoa(len(p.titles))
+		header += c.dim + "  · " + strconv.Itoa(at+1) + " of " + strconv.Itoa(len(p.titles)) + sgrReset
 	}
-	pane := []string{c.dim + ansi.Truncate(header, paneW, "…") + sgrReset}
+	pane := []string{ansi.Truncate(header, paneW, "…") + sgrReset}
 	end := min(m.helpTop+rows, len(p.lines))
 	pane = append(pane, p.lines[m.helpTop:end]...)
 	for len(pane) < rows+1 {

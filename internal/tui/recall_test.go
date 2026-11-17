@@ -168,15 +168,15 @@ func TestTheLastCopyOutlivesADelete(t *testing.T) {
 		t.Fatalf("status = %q", h.status())
 	}
 	h.press("y", "y", "k", "d", "d")
-	h.want("    Alpha", "▌   Gamma")
+	h.want("  · Alpha", "▌ · Gamma")
 	h.press("g", "p")
-	h.want("    Alpha", "    Gamma", "▌   Gamma")
+	h.want("  · Alpha", "  · Gamma", "▌ · Gamma")
 	h.press("p")
-	h.want("    Alpha", "    Gamma", "    Gamma", "▌   Beta")
+	h.want("  · Alpha", "  · Gamma", "  · Gamma", "▌ · Beta")
 	h.press("g", "g", "g", "P")
-	h.want("▌   Gamma", "    Alpha", "    Gamma", "    Gamma", "    Beta")
+	h.want("▌ · Gamma", "  · Alpha", "  · Gamma", "  · Gamma", "  · Beta")
 	h.press("G", ".")
-	h.want("    Gamma", "    Alpha", "    Gamma", "    Gamma", "▌   Gamma", "    Beta")
+	h.want("  · Gamma", "  · Alpha", "  · Gamma", "  · Gamma", "▌ · Gamma", "  · Beta")
 }
 
 func TestOperatorsTakeRowObjects(t *testing.T) {
@@ -191,15 +191,15 @@ func TestOperatorsTakeRowObjects(t *testing.T) {
 	}
 	h.press("u", "g", "g", "<", "i", "c")
 	h.want(
-		"▌   Alpha:",
+		"▌ · Alpha:",
 		"  ○ a1",
 		"  ○ a2",
-		"      deep",
+		"    · deep",
 		"  ○ a3",
 		"  ▾ Beta: 0/1",
 		"    ○ b1 milk",
 		"  ○ Gamma",
-		"    Delta milk:",
+		"  · Delta milk:",
 	)
 	h.press("u", "g", "g", "j", "y", "i", "s")
 	if h.status() != "copied 4 rows" {

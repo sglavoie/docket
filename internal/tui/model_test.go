@@ -216,9 +216,9 @@ func outlineOfThree(t *testing.T) *harness {
 	h := start(t)
 	h.press("o", `"Alpha"`, "enter", `"Beta"`, "enter", `"Gamma"`, "esc")
 	h.want(
-		"    Alpha",
-		"    Beta",
-		"▌   Gamma",
+		"  · Alpha",
+		"  · Beta",
+		"▌ · Gamma",
 	)
 	return h
 }
@@ -240,9 +240,9 @@ func TestTypingAListChainsRows(t *testing.T) {
 	// A fresh row left blank disappears and the cursor returns.
 	h.press("o", "esc")
 	h.want(
-		"    Alpha",
-		"    Beta",
-		"▌   Gamma",
+		"  · Alpha",
+		"  · Beta",
+		"▌ · Gamma",
 	)
 }
 
@@ -278,17 +278,17 @@ func TestStructureKeysMoveASelectedBlock(t *testing.T) {
 		h.press("o", `"Before"`, "enter", "tab", `"Existing"`, "enter", "shift+tab",
 			`"One"`, "enter", `"Two"`, "enter", `"Three"`, "enter", `"After"`, "enter", `"Tail"`, "esc",
 			"g", "g", "h", "j", "v", "v", "v", "k", "k")
-		h.want("  ▸ Before", " ┃  One", "▌┃  Two", " ┃  Three", "    After", "    Tail")
+		h.want("  ▸ Before", " ┃· One", "▌┃· Two", " ┃· Three", "  · After", "  · Tail")
 		return h
 	}
 	for _, tc := range []struct {
 		key  string
 		want []string
 	}{
-		{">", []string{"  ▾ Before", "    ○ Existing", " ┃    One", "▌┃    Two", " ┃    Three", "    After", "    Tail"}},
-		{"<", []string{"  ▾ Before", "    ○ Existing", " ┃  One", "▌┃  Two", " ┃  Three", "    After", "    Tail"}},
-		{"J", []string{"  ▸ Before", "    After", " ┃  One", "▌┃  Two", " ┃  Three", "    Tail"}},
-		{"K", []string{" ┃  One", "▌┃  Two", " ┃  Three", "  ▸ Before", "    After", "    Tail"}},
+		{">", []string{"  ▾ Before", "    ○ Existing", " ┃  · One", "▌┃  · Two", " ┃  · Three", "  · After", "  · Tail"}},
+		{"<", []string{"  ▾ Before", "    ○ Existing", " ┃· One", "▌┃· Two", " ┃· Three", "  · After", "  · Tail"}},
+		{"J", []string{"  ▸ Before", "  · After", " ┃· One", "▌┃· Two", " ┃· Three", "  · Tail"}},
+		{"K", []string{" ┃· One", "▌┃· Two", " ┃· Three", "  ▸ Before", "  · After", "  · Tail"}},
 	} {
 		t.Run(tc.key, func(t *testing.T) {
 			h := block(t)
@@ -321,14 +321,14 @@ func TestStructureKeysMoveASelectedBlock(t *testing.T) {
 	t.Run("repeat and edges", func(t *testing.T) {
 		h := block(t)
 		h.press("J", "J")
-		h.want("  ▸ Before", "    After", "    Tail", " ┃  One", "▌┃  Two", " ┃  Three")
+		h.want("  ▸ Before", "  · After", "  · Tail", " ┃· One", "▌┃· Two", " ┃· Three")
 		before, steps := h.rows(), len(h.m.undo)
 		h.press("J")
 		if h.rows() != before || len(h.m.undo) != steps {
 			t.Fatal("moved beyond the last sibling")
 		}
 		h.press("K", "K", "K")
-		h.want(" ┃  One", "▌┃  Two", " ┃  Three", "  ▸ Before", "    After", "    Tail")
+		h.want(" ┃· One", "▌┃· Two", " ┃· Three", "  ▸ Before", "  · After", "  · Tail")
 		before, steps = h.rows(), len(h.m.undo)
 		for _, key := range []string{"K", ">", "<"} {
 			h.act(key)
@@ -385,7 +385,7 @@ func TestStructureKeysMoveASelectedBlock(t *testing.T) {
 		h.press("v", "v", "g", "g", "h")
 		cur := h.m.current() // The unselected folded parent stays under the cursor.
 		h.press("<", "<")
-		h.want("▌   Before", " ┃○ Later", " ┃○ Existing", "    One", "    Two", "    Three", "    After", "    Tail")
+		h.want("▌ · Before", " ┃○ Later", " ┃○ Existing", "  · One", "  · Two", "  · Three", "  · After", "  · Tail")
 		if h.m.current() != cur {
 			t.Fatal("moving hidden rows changed the cursor's row")
 		}
@@ -434,7 +434,7 @@ func TestNewRowUnderAnOpenParentIsItsFirstChild(t *testing.T) {
 	h.press("k", "h", "o", `"Sibling"`, "esc")
 	h.want(
 		"  ▸ Project",
-		"▌   Sibling",
+		"▌ · Sibling",
 	)
 }
 
@@ -469,33 +469,33 @@ func TestDeleteUndoRedo(t *testing.T) {
 	h := outlineOfThree(t)
 	h.press("k", "d", "d")
 	h.want(
-		"    Alpha",
-		"▌   Gamma",
+		"  · Alpha",
+		"▌ · Gamma",
 	)
 	h.press("u")
 	h.want(
-		"    Alpha",
-		"▌   Beta",
-		"    Gamma",
+		"  · Alpha",
+		"▌ · Beta",
+		"  · Gamma",
 	)
 	h.press("ctrl+r")
 	h.want(
-		"    Alpha",
-		"▌   Gamma",
+		"  · Alpha",
+		"▌ · Gamma",
 	)
 	// An edit is one undo step, text and indent together, and indenting a
 	// note while typing leaves it a note.
 	h.press("u", "A", `" two"`, "tab", "esc")
 	h.want(
 		"  ▾ Alpha",
-		"▌     Beta two",
-		"    Gamma",
+		"▌   · Beta two",
+		"  · Gamma",
 	)
 	h.press("u")
 	h.want(
-		"    Alpha",
-		"▌   Beta",
-		"    Gamma",
+		"  · Alpha",
+		"▌ · Beta",
+		"  · Gamma",
 	)
 }
 
@@ -504,7 +504,7 @@ func TestEverythingSurvivesARestart(t *testing.T) {
 	h.press("o", `"Project"`, "enter", "tab", `"Child ! @fri #api $doing"`, "enter", `"Gone"`, "esc", "d", "d")
 	h.press("g", "g", "o", "esc", "O", `"Above"`, "esc", "j", "h")
 	want := []string{
-		"    Above",
+		"  · Above",
 		"▌ ▸ Project",
 	}
 	h.want(want...)
@@ -515,7 +515,7 @@ func TestEverythingSurvivesARestart(t *testing.T) {
 	again.want(want...)
 	again.press("l")
 	again.want(
-		"    Above",
+		"  · Above",
 		"▌ ▾ Project",
 		"    ● Child ! @fri #api",
 	)
@@ -536,15 +536,15 @@ func TestLongRowWrapsWhileTypingAndWhenRead(t *testing.T) {
 	// cursor mark runs its height.
 	h.press("enter", `"next"`, "esc")
 	h.want(
-		"    word word word word word word word",
+		"  · word word word word word word word",
 		"    word word word word word end",
-		"▌   next",
+		"▌ · next",
 	)
 	h.press("k")
 	h.want(
-		"▌   word word word word word word word",
+		"▌ · word word word word word word word",
 		"▌   word word word word word end",
-		"    next",
+		"  · next",
 	)
 	for _, line := range h.lines() {
 		if ansi.StringWidth(line) > 40 {
@@ -558,7 +558,7 @@ func TestAWordWiderThanThePaneIsCutAcrossLines(t *testing.T) {
 	h.m.Update(tea.WindowSizeMsg{Width: 24, Height: 12})
 	h.press("o", `"see https://example.com/a/very/long/path/indeed ok #x"`, "esc")
 	h.want(
-		"▌   see https://example.",
+		"▌ · see https://example.",
 		"▌   com/a/very/long/path",
 		"▌   /indeed ok #x",
 	)
@@ -570,24 +570,24 @@ func TestScrollingKeepsTheCursorRowWhole(t *testing.T) {
 	long := "alpha beta gamma delta epsilon zeta"
 	h.press("o", `"one"`, "enter", `"two"`, "enter", `"`+long+`"`, "enter", `"four"`, "esc", "k")
 	h.want(
-		"    two",
-		"▌   alpha beta gamma",
+		"  · two",
+		"▌ · alpha beta gamma",
 		"▌   delta epsilon zeta",
-		"    four",
+		"  · four",
 	)
 	h.press("g", "g")
 	h.want(
-		"▌   one",
-		"    two",
-		"    alpha beta gamma",
+		"▌ · one",
+		"  · two",
+		"  · alpha beta gamma",
 		"    delta epsilon zeta",
 	)
 	h.press("G")
 	h.want(
-		"    two",
-		"    alpha beta gamma",
+		"  · two",
+		"  · alpha beta gamma",
 		"    delta epsilon zeta",
-		"▌   four",
+		"▌ · four",
 	)
 }
 
@@ -698,7 +698,7 @@ func TestHeadingsNotesAndFoldedTasks(t *testing.T) {
 		"    ○ Second",
 		"    ▾ Later: 0/1",
 		"      ○ Idea",
-		"▌       a plain remark",
+		"▌     · a plain remark",
 	)
 	// A folded task keeps its state glyph and counts what it hides.
 	h.press(">", ">", "h", "h")
@@ -730,7 +730,7 @@ func TestARowUnderATaskIsANote(t *testing.T) {
 		t.Run("parent "+state, func(t *testing.T) {
 			h := project(t)
 			h.press("$", `"`+state+`"`, "enter", "o", `"Detail"`, "tab", "esc")
-			if got := h.rows(); !strings.Contains(got, "▌       Detail") {
+			if got := h.rows(); !strings.Contains(got, "▌     · Detail") {
 				t.Fatalf("child should draw without a state glyph:\n%s", got)
 			}
 			h.press("A")
@@ -822,7 +822,7 @@ func TestARowUnderATaskIsANote(t *testing.T) {
 func TestCaptureUsesTheDestinationDefault(t *testing.T) {
 	h := start(t)
 	h.press("o", `"Task $open"`, "esc", "a", `"Detail %Task"`, "esc", "f", `"Task"`, "enter")
-	h.want("▌   Detail")
+	h.want("▌ · Detail")
 	h.press("A")
 	if got := string(h.m.edit.buf); got != "Detail" {
 		t.Fatalf("captured child of task = %q", got)

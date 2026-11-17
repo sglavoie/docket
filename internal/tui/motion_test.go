@@ -62,7 +62,7 @@ func TestStructuralMotionsComposeWithOperatorsAndSweeps(t *testing.T) {
 	t.Run("d with a sibling motion takes both branches", func(t *testing.T) {
 		h := branches(t)
 		h.press("d", "}")
-		h.want("▌ ○ Gamma", "    Delta milk:")
+		h.want("▌ ○ Gamma", "  · Delta milk:")
 		if h.m.register != "Alpha:\n\ta1\n\ta2\n\t\tdeep\n\ta3\nBeta:\n\tb1 milk\n" {
 			t.Fatalf("register = %q", h.m.register)
 		}
@@ -78,7 +78,7 @@ func TestStructuralMotionsComposeWithOperatorsAndSweeps(t *testing.T) {
 			t.Fatalf("register = %q, status = %q", h.m.register, h.status())
 		}
 		h.press("d", "H")
-		h.want("  ▾ Beta: 0/1", "▌   ○ b1 milk", "  ○ Gamma", "    Delta milk:")
+		h.want("  ▾ Beta: 0/1", "▌   ○ b1 milk", "  ○ Gamma", "  · Delta milk:")
 	})
 	t.Run("a sweep follows the motions", func(t *testing.T) {
 		h := branches(t)
@@ -96,8 +96,8 @@ func TestStructuralMotionsComposeWithOperatorsAndSweeps(t *testing.T) {
 		}
 		h.press("]", "x", "esc")
 		h.want(
-			"  ▾ Alpha: 3/3", "    ✓ a1", "    ✓ a2", "        deep", "    ✓ a3",
-			"▌ ▾ Beta: 0/1", "    ○ b1 milk", "  ○ Gamma", "    Delta milk:",
+			"  ▾ Alpha: 3/3", "    ✓ a1", "    ✓ a2", "      · deep", "    ✓ a3",
+			"▌ ▾ Beta: 0/1", "    ○ b1 milk", "  ○ Gamma", "  · Delta milk:",
 		)
 	})
 	t.Run("lists step row by row and an empty place does nothing", func(t *testing.T) {
@@ -132,7 +132,7 @@ func TestFindMotions(t *testing.T) {
 	t.Run("a kept filter is found again in the whole outline", func(t *testing.T) {
 		h := branches(t)
 		h.press("/", `"milk"`, "enter")
-		h.want("▌ ▾ Beta: 0/1", "    ○ b1 milk", "    Delta milk:")
+		h.want("▌ ▾ Beta: 0/1", "    ○ b1 milk", "  · Delta milk:")
 		// Under the filter n passes over the dimmed ancestor.
 		h.press("n")
 		if h.on() != "b1 milk" {
@@ -183,6 +183,6 @@ func TestFindMotions(t *testing.T) {
 		}
 		h.press("g", "g", "j", "V", "n", "n", "!")
 		h.press("esc", "g", "g", "j", "d", "n")
-		h.want("  ▾ Alpha: 0/1", "▌   ○ a3 !", "  ▾ Beta: 0/1", "    ○ b1 milk", "  ○ Gamma", "    Delta milk:")
+		h.want("  ▾ Alpha: 0/1", "▌   ○ a3 !", "  ▾ Beta: 0/1", "    ○ b1 milk", "  ○ Gamma", "  · Delta milk:")
 	})
 }

@@ -42,7 +42,7 @@ func TestTheRightArrowCompletesASigil(t *testing.T) {
 	h.want(
 		"  ▾ Beta",
 		"    ○ Fix cache #bug",
-		"▌     Tidy #bug",
+		"▌   · Tidy #bug",
 		"  ▾ Alpha",
 		"    ○ Fix login ! #bug",
 		"    ○ Write docs @fri #docs",
@@ -156,14 +156,14 @@ func TestEnterSplitsAndBackspaceJoins(t *testing.T) {
 			t.Fatalf("split: editor=%+v, original=%+v", e, h.m.tree.Row(id))
 		}
 		h.press("esc")
-		h.want("    Café", "▌ ● Ship ! #bug")
+		h.want("  · Café", "▌ ● Ship ! #bug")
 		if len(h.m.undo) != steps+1 {
 			t.Fatal("split was not one undo step")
 		}
 		h.press("u")
 		restored(t, h, before)
 		h.press("ctrl+r")
-		h.want("    Café", "▌ ● Ship ! #bug")
+		h.want("  · Café", "▌ ● Ship ! #bug")
 	})
 	t.Run("split then backspace", func(t *testing.T) {
 		h := start(t)
@@ -249,7 +249,7 @@ func TestEnterSplitsAndBackspaceJoins(t *testing.T) {
 			}
 			h.press("enter", "esc")
 			if folded {
-				h.want("  ▸ First", "▌   Second")
+				h.want("  ▸ First", "▌ · Second")
 			} else {
 				h.want("  ▾ First", "▌   ○ Second", "    ○ Child")
 			}
@@ -344,7 +344,7 @@ func TestEnterSplitsAndBackspaceJoins(t *testing.T) {
 			h.press("right")
 		}
 		h.press("enter", "esc")
-		h.want("    One", "    Two", "▌   Three")
+		h.want("  · One", "  · Two", "▌ · Three")
 		if len(h.m.undo) != steps+1 {
 			t.Fatal("fresh splits made multiple undo steps")
 		}

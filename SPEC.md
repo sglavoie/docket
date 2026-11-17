@@ -185,12 +185,12 @@ whichever was written last.
   Inbox                1 │ docket-rewrite  · 3 to do
   Today                3 │   ▾ Storage: 1/3
   Waiting              2 │ ▌   ○ Decide op-log format ! @fri
-  Stale                9 │         per-field, clock-stamped
+  Stale                9 │       · per-field, clock-stamped
                          │     ● Prototype row parser
 ▌ Projects               │     ✓ Audit grammar reuse
   docket-rewrite         │   ▾ TUI:
   blog               12d │     ○ Sidebar counts
-  tax-2026         ! 3d  │
+  tax-2026         @ 3d  │
   homelab              ∅ │
                          │
   parked 31              │
@@ -203,6 +203,16 @@ An outline counts every such row under its root, folded or not; a list counts
 its held rows and a filter its held matches, excluding context ancestors.
 Zero tasks says nothing. These totals and heading progress are derived in
 the existing scan, never stored.
+
+The header reads in three weights. The place is in the text colour, and the
+rows above it in a breadcrumb are dim, as is everything said about it. A held
+filter is in the accent colour, since it hides rows. When the rows overflow
+the pane, the header's right edge says where the pane is among them, as
+`Top`, `40%` or `Bot`; it says nothing while every row is on screen, and
+gives way to the place when the line is too narrow for both.
+
+On the status line a message is in the text colour and a standing hint
+about keys is dim, so a message is seen to be one.
 
 The screen uses named text, dim, accent, warning and alert roles in two
 built-in true-colour palettes. At launch it asks the terminal for its
@@ -232,11 +242,16 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
   project is added, renamed, reordered, parked or closed, with the ordinary
   keys.
 - **Active projects** follow, in the order of the top-level rows: the order
-  is the user's, so it never shuffles as work happens. Each says `!` in
+  is the user's, so it never shuffles as work happens. Each says `@`, the
+  sigil a deadline is written with, in
   the warning colour for a deadline within a week or the alert colour for
   one overdue, then `∅` when
   it holds no task to do, else the whole days since anything inside changed.
 - **Parked** projects are a count. Done and canceled projects are not listed.
+- **A sidebar taller than its pane** scrolls to keep its selection in view,
+  and counts the destinations scrolled out at each edge, dimmed, as `↑ 6`
+  on its first row and `↓ 13` on its last. A count is never drawn over the
+  selection.
 
 `Tab` gives the sidebar focus. `j` and `k` then show each destination at
 once, as do `gg` and `G` or `Home` and `End` (first, last), `Ctrl+D` and
@@ -1125,7 +1140,7 @@ default of where it ends up when the edit is kept.
 
 **On the row.** One glyph column says what the row is: `○` open, `●` doing,
 `◔` waiting, `✓` done, `✕` canceled, `◌` parked; a note shows `▾` or `▸` when it has
-children and nothing otherwise. A folded task keeps its state glyph and
+children and a dimmed `·` otherwise, so its depth is read off the same column. A folded task keeps its state glyph and
 counts its children after its text (`+3`). A row ending in a colon shows
 dimmed `done/total` after its text when it has tasks beneath it, at any depth,
 folded or not. Canceled and parked rows are left out of the total.

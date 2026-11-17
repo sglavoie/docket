@@ -67,7 +67,7 @@ func TestAStuckSyncFileIsNamed(t *testing.T) {
 	}
 	// What came before the damage is here, and work goes on.
 	lap.press("g", "g")
-	lap.want("▌   Alpha")
+	lap.want("▌ · Alpha")
 }
 
 func TestASyncThatEndsWhileTypingWaitsForTheRow(t *testing.T) {
@@ -95,8 +95,8 @@ func TestASyncThatEndsWhileTypingWaitsForTheRow(t *testing.T) {
 		t.Fatal("the pass interrupted typing")
 	}
 	lap.want(
-		"    Alpha",
-		"▌   typed meanwhile",
+		"  · Alpha",
+		"▌ · typed meanwhile",
 	)
 	// No second pass starts while the first is waiting.
 	lap.m.Update(tickMsg{})
@@ -105,9 +105,9 @@ func TestASyncThatEndsWhileTypingWaitsForTheRow(t *testing.T) {
 	}
 	lap.press("esc")
 	lap.want(
-		"    Alpha",
-		"    Beta",
-		"▌   typed meanwhile",
+		"  · Alpha",
+		"  · Beta",
+		"▌ · typed meanwhile",
 	)
 }
 

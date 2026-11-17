@@ -865,8 +865,9 @@ func (m *Model) list(filter string) []string {
 // sideLines draws the sidebar at exactly w columns and h rows.
 func (m *Model) sideLines(w, h int) []string {
 	type line struct {
-		text string
-		sel  bool
+		text  string
+		sel   bool
+		entry bool // a destination, which a marker counts when it is hidden
 	}
 	var lines []line
 	for _, e := range m.side {
@@ -878,9 +879,9 @@ func (m *Model) sideLines(w, h int) []string {
 		switch {
 		case e.kind == kindProject:
 			if e.due == 2 {
-				info = m.colors().alert + "!" + sgrReset + " "
+				info = m.colors().alert + "@" + sgrReset + " "
 			} else if e.due == 1 {
-				info = m.colors().warn + "!" + sgrReset + " "
+				info = m.colors().warn + "@" + sgrReset + " "
 			}
 			if e.idle {
 				info += m.colors().dim + "∅" + sgrReset
@@ -911,7 +912,7 @@ func (m *Model) sideLines(w, h int) []string {
 		if sel && m.sideFocus {
 			text = m.tint(text, w, m.colors().cursor)
 		}
-		lines = append(lines, line{text, sel})
+		lines = append(lines, line{text, sel, true})
 	}
 	if m.parked > 0 {
 		text := "  " + m.colors().dim + "parked " + strconv.Itoa(m.parked) + sgrReset
@@ -925,12 +926,29 @@ func (m *Model) sideLines(w, h int) []string {
 		lines = append(lines, line{}, line{text: "  " + style + ansi.Truncate(m.syncNote, w-2, "…") + sgrReset})
 	}
 
-	// Keep the selection in view when the list is taller than the pane.
+	// Keep the selection in view when the list is taller than the pane, and
+	// off the last row while more follows, which a marker takes.
 	off := 0
 	for i, l := range lines {
-		if l.sel && i >= h {
-			off = min(i-h/2, len(lines)-h)
+		if l.sel && len(lines) > h && i >= h-1 {
+			off = max(min(i-h/2, len(lines)-h), 0)
 		}
+	}
+	// What is scrolled out of sight is counted at the edge it left by.
+	hidden := func(from, to int) string {
+		n := 0
+		for _, l := range lines[from:to] {
+			if l.entry {
+				n++
+			}
+		}
+		return strconv.Itoa(n)
+	}
+	if h >= 3 && off > 0 {
+		lines[off] = line{text: "  " + m.colors().dim + "↑ " + hidden(0, off+1) + sgrReset}
+	}
+	if last := off + h - 1; h >= 3 && last < len(lines)-1 {
+		lines[last] = line{text: "  " + m.colors().dim + "↓ " + hidden(last, len(lines)) + sgrReset}
 	}
 	out := make([]string, h)
 	for i := range out {

@@ -282,7 +282,7 @@ func TestHShowsAListsRowWhereItLives(t *testing.T) {
 				if folded {
 					h.want("  ○ One @tomorrow", "▌ ◔ Two +1")
 				} else {
-					h.want("  ○ One @tomorrow", "▌ ◔ Two", "      Detail")
+					h.want("  ○ One @tomorrow", "▌ ◔ Two", "    · Detail")
 				}
 				h.press("esc")
 				if h.rows() != before {
@@ -329,24 +329,24 @@ func TestFilterReadsAnyTagAnyStateAndMixedAlternatives(t *testing.T) {
 			query string
 			rows  []string
 		}{
-			{"#", []string{"▌ ○ Home #home", "    Food #food"}},
-			{"-#", []string{"▌ ● Flagged !", "  ◔ Waiting", "  ○ Overdue @Nov 14", "    Milk", "  ✓ Done", "  ✕ Canceled", "  ◌ Parked", "    Literal $open|@nope", "    Literal milk|#123", "    Literal $open|zzz", "    Literal #home|"}},
+			{"#", []string{"▌ ○ Home #home", "  · Food #food"}},
+			{"-#", []string{"▌ ● Flagged !", "  ◔ Waiting", "  ○ Overdue @Nov 14", "  · Milk", "  ✓ Done", "  ✕ Canceled", "  ◌ Parked", "  · Literal $open|@nope", "  · Literal milk|#123", "  · Literal $open|zzz", "  · Literal #home|"}},
 			{"$", []string{"▌ ○ Home #home", "  ● Flagged !", "  ◔ Waiting", "  ○ Overdue @Nov 14", "  ✓ Done", "  ✕ Canceled", "  ◌ Parked"}},
-			{"-$", []string{"▌   Milk", "    Food #food", "    Literal $open|@nope", "    Literal milk|#123", "    Literal $open|zzz", "    Literal #home|"}},
-			{"$note", []string{"▌   Milk", "    Food #food", "    Literal $open|@nope", "    Literal milk|#123", "    Literal $open|zzz", "    Literal #home|"}},
+			{"-$", []string{"▌ · Milk", "  · Food #food", "  · Literal $open|@nope", "  · Literal milk|#123", "  · Literal $open|zzz", "  · Literal #home|"}},
+			{"$note", []string{"▌ · Milk", "  · Food #food", "  · Literal $open|@nope", "  · Literal milk|#123", "  · Literal $open|zzz", "  · Literal #home|"}},
 			{"#home|!", []string{"▌ ○ Home #home", "  ● Flagged !"}},
 			{"!|#home", []string{"▌ ○ Home #home", "  ● Flagged !"}},
 			{"$open|doing", []string{"▌ ○ Home #home", "  ● Flagged !", "  ○ Overdue @Nov 14"}},
-			{"#home|food", []string{"▌ ○ Home #home", "    Food #food"}},
+			{"#home|food", []string{"▌ ○ Home #home", "  · Food #food"}},
 			{"$waiting|@overdue", []string{"▌ ○ Overdue @Nov 14", "  ◔ Waiting"}},
-			{"milk|#food", []string{"▌   Milk", "    Food #food", "    Literal milk|#123"}},
-			{"#|$note", []string{"▌ ○ Home #home", "    Milk", "    Food #food", "    Literal $open|@nope", "    Literal milk|#123", "    Literal $open|zzz", "    Literal #home|"}},
-			{"-$|#", []string{"▌   Milk", "    Literal $open|@nope", "    Literal milk|#123", "    Literal $open|zzz", "    Literal #home|"}},
-			{"$open|@nope", []string{"▌   Literal $open|@nope"}},
-			{"milk|#123", []string{"▌   Literal milk|#123"}},
-			{"$open|zzz", []string{"▌   Literal $open|zzz"}},
-			{"#home|", []string{"▌   Literal #home|"}},
-			{"#home|$waiting|food", []string{"▌ ○ Home #home", "  ◔ Waiting", "    Food #food"}},
+			{"milk|#food", []string{"▌ · Milk", "  · Food #food", "  · Literal milk|#123"}},
+			{"#|$note", []string{"▌ ○ Home #home", "  · Milk", "  · Food #food", "  · Literal $open|@nope", "  · Literal milk|#123", "  · Literal $open|zzz", "  · Literal #home|"}},
+			{"-$|#", []string{"▌ · Milk", "  · Literal $open|@nope", "  · Literal milk|#123", "  · Literal $open|zzz", "  · Literal #home|"}},
+			{"$open|@nope", []string{"▌ · Literal $open|@nope"}},
+			{"milk|#123", []string{"▌ · Literal milk|#123"}},
+			{"$open|zzz", []string{"▌ · Literal $open|zzz"}},
+			{"#home|", []string{"▌ · Literal #home|"}},
+			{"#home|$waiting|food", []string{"▌ ○ Home #home", "  ◔ Waiting", "  · Food #food"}},
 		}
 		for _, tc := range cases {
 			t.Run(tc.query, func(t *testing.T) {
@@ -478,7 +478,7 @@ func TestAFilterTermReachesTheRowsAbove(t *testing.T) {
 		h := start(t).wide()
 		h.pasteText("^^marker\nLiteral $open|@nope\n\tChild $open")
 		h.press("/", `"^^marker"`, "tab")
-		h.want("▌   ^^marker")
+		h.want("▌ · ^^marker")
 		h.press("esc", "/", `"^$open|@nope"`)
 		h.want("▌ ○ Child · Literal $open|@nope")
 	})
@@ -523,13 +523,13 @@ func TestSortPutsSiblingsInOrder(t *testing.T) {
 		want                []string
 	}{
 		{"deadline and children", "Late @+3d\n\tZ child\n\tA child\nUndated\nSoon @today\nTie @today\nAlso undated", "sort @", []string{
-			"  ○ Soon @today", "  ○ Tie @today", "▌ ○ Late @wed", "      Z child", "      A child", "  ○ Undated", "  ○ Also undated",
+			"  ○ Soon @today", "  ○ Tie @today", "▌ ○ Late @wed", "    · Z child", "    · A child", "  ○ Undated", "  ○ Also undated",
 		}},
 		{"flag then deadline", "Plain late @+3d\nFlag late ! @+3d\nPlain early @today\nFlag missing !\nFlag early ! @today\nPlain missing", "sort ! @", []string{
 			"  ○ Flag early ! @today", "  ○ Flag late ! @wed", "  ○ Flag missing !", "  ○ Plain early @today", "▌ ○ Plain late @wed", "  ○ Plain missing",
 		}},
 		{"state", "Canceled $canceled\nDone $done\nParked $parked\nNote $note\nWaiting $waiting\nOpen\nDoing $doing\nDoing again $doing", "sort $", []string{
-			"  ● Doing", "  ● Doing again", "  ○ Open", "  ◔ Waiting", "    Note", "  ◌ Parked", "  ✓ Done", "▌ ✕ Canceled",
+			"  ● Doing", "  ● Doing again", "  ○ Open", "  ◔ Waiting", "  · Note", "  ◌ Parked", "  ✓ Done", "▌ ✕ Canceled",
 		}},
 		{"text and case ties", "zebra\nBeta\nalpha\nALPHA\nbeta", "sort", []string{
 			"  ○ alpha", "  ○ ALPHA", "  ○ Beta", "  ○ beta", "▌ ○ zebra",
@@ -566,7 +566,7 @@ func TestSortPutsSiblingsInOrder(t *testing.T) {
 		kids := slices.Clone(h.m.tree.Children(h.m.at.root))
 		left, right := *h.m.tree.Row(kids[0]), *h.m.tree.Row(kids[len(kids)-1])
 		h.command("sort")
-		h.want("  ○ Before", " ┃○ Alpha", " ┃○ Zulu", "▌┃    Z child", " ┃    A child", "  ○ After")
+		h.want("  ○ Before", " ┃○ Alpha", " ┃○ Zulu", "▌┃  · Z child", " ┃  · A child", "  ○ After")
 		if h.m.current() != cur || !maps.Equal(h.m.picked, picked) || len(h.m.undo) != steps+1 || len(h.m.undo[steps]) != 2 || h.m.msg != "sorted 2 rows" {
 			t.Fatal("sort lost cursor/selection or moved descendants separately")
 		}
@@ -620,7 +620,7 @@ func TestSortPutsSiblingsInOrder(t *testing.T) {
 		h.press("esc", "g", "g")
 		inbox, filters := *h.m.tree.Row(inboxID), *h.m.tree.Row(filtersID)
 		h.command("sort")
-		h.want("    Alpha", "    Beta", "▌   Zulu")
+		h.want("  · Alpha", "  · Beta", "▌ · Zulu")
 		if h.m.tree.Row(inboxID).Pos != inbox.Pos || h.m.tree.Row(filtersID).Pos != filters.Pos || h.m.msg != "sorted 3 rows" {
 			t.Fatal("sort included a reserved root")
 		}
@@ -684,7 +684,7 @@ func TestDotRepeatsTheLastStampOrMove(t *testing.T) {
 			t.Fatalf("repeat after undo = %q\n%s", h.status(), h.rows())
 		}
 		h.press("f", `"beta"`, "enter")
-		h.want("▌   Storage:", "  ○ One", "  ○ Two", "  ○ Three")
+		h.want("▌ · Storage:", "  ○ One", "  ○ Two", "  ○ Three")
 	})
 	for _, kind := range []string{"stamp", "move"} {
 		t.Run("here and unreadable stamp retain "+kind, func(t *testing.T) {

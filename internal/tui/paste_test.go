@@ -42,7 +42,7 @@ func TestPastingLinesWhileTypingAddsRows(t *testing.T) {
 		"    ○ Plan: the release",
 		"      ○ Write notes #docs",
 		"      ○ Tag it @fri",
-		"          after CI",
+		"        · after CI",
 		"▌   ○ Announce",
 	)
 	// The typed row and everything pasted under it are one undo step.
@@ -60,7 +60,7 @@ func TestPastingLinesWhileTypingAddsRows(t *testing.T) {
 		"    ○ Plan: the release",
 		"      ○ Write notes #docs",
 		"      ○ Tag it @fri",
-		"          after CI",
+		"        · after CI",
 		"▌   ○ Announce",
 	)
 }
@@ -74,7 +74,7 @@ func TestPastingAListOnARowAddsItBelow(t *testing.T) {
 		"    ○ First",
 		"    ✓ shipped",
 		"    ○ pending",
-		"▌       detail",
+		"▌     · detail",
 		"    ○ Second",
 	)
 	h.press("u")
@@ -374,10 +374,10 @@ func TestCopyRoundTripsThroughPaste(t *testing.T) {
 		text := "Task ! #work\n\tSubtask @2026-11-15 $open\n\tNote\n"
 		h, _, dest := copyFixture(t, "", rows)
 		copyThroughUpdate(t, h, text, 3)
-		h.want("▌ ○ Task ! #work", "    ○ Subtask @today", "      Note")
+		h.want("▌ ○ Task ! #work", "    ○ Subtask @today", "    · Note")
 		h.m.open(entry{kind: kindProject, id: dest})
 		h.pasteText(text)
-		h.want("  ○ Task ! #work", "    ○ Subtask @today", "▌     Note")
+		h.want("  ○ Task ! #work", "    ○ Subtask @today", "▌   · Note")
 		assertCopiedRows(t, h, dest, rows)
 	})
 	t.Run("selection", func(t *testing.T) {

@@ -150,9 +150,9 @@ func TestACountRepeatsOrTakesRows(t *testing.T) {
 		h.press("o", `"First #hit"`, "esc", "o", `"Heading:"`, "esc", "o", `"Second #hit"`, "esc", ">", ">")
 		h.press("/", `"#hit"`, "enter", "2", "d", "d")
 		h.press("esc")
-		h.want("▌   Heading:")
+		h.want("▌ · Heading:")
 		h.press("u")
-		h.want("▌   First #hit", "  ▾ Heading:", "      Second #hit")
+		h.want("▌ · First #hit", "  ▾ Heading:", "    · Second #hit")
 	})
 
 	t.Run("counted block indent and outdent", func(t *testing.T) {
@@ -619,9 +619,9 @@ func TestDeleteAndCopyTakeMotions(t *testing.T) {
 			t.Fatal(h.m.register)
 		}
 		h.press("esc")
-		h.want("▌   Heading:")
+		h.want("▌ · Heading:")
 		h.press("u")
-		h.want("▌   First #hit", "  ▾ Heading:", "      Second #hit")
+		h.want("▌ · First #hit", "  ▾ Heading:", "    · Second #hit")
 	})
 }
 
@@ -654,14 +654,14 @@ func TestPPutsTheRegister(t *testing.T) {
 		h.press("f", `"Alpha"`, "enter", "j", "y", "y")
 		original, register, steps := h.m.current(), h.m.register, len(h.m.undo)
 		h.press("p")
-		h.want("  ▾ Heading: 0/2", "    ○ Task ! @Dec 1 #tag", "        Detail", "    ○ Task ! @Dec 1 #tag", "▌       Detail", "  ○ Other")
+		h.want("  ▾ Heading: 0/2", "    ○ Task ! @Dec 1 #tag", "      · Detail", "    ○ Task ! @Dec 1 #tag", "▌     · Detail", "  ○ Other")
 		copy := h.m.tree.Row(h.m.current()).Parent
 		if copy == original || h.m.tree.Row(copy).Parent != h.m.tree.Row(original).Parent ||
 			h.m.register != register || h.status() != "put 2 rows" || len(h.m.undo) != steps+1 {
 			t.Fatal("subtree put lost level, identity, register, status or undo grouping")
 		}
 		h.press("u")
-		h.want("  ▾ Heading: 0/1", "    ○ Task ! @Dec 1 #tag", "        Detail", "▌ ○ Other")
+		h.want("  ▾ Heading: 0/1", "    ○ Task ! @Dec 1 #tag", "      · Detail", "▌ ○ Other")
 	})
 	t.Run("before keeps multiple roots and children in order", func(t *testing.T) {
 		h := start(t).wide()
@@ -669,12 +669,12 @@ func TestPPutsTheRegister(t *testing.T) {
 		h.press("f", `"Alpha"`, "enter", "3", "y", "y", "G")
 		register, steps := h.m.register, len(h.m.undo)
 		h.press("P")
-		h.want("  ○ First", "      Child", "  ○ Second", "  ○ First", "      Child", "▌ ○ Second", "  ○ Target")
+		h.want("  ○ First", "    · Child", "  ○ Second", "  ○ First", "    · Child", "▌ ○ Second", "  ○ Target")
 		if h.status() != "put 3 rows" || h.m.register != register || len(h.m.undo) != steps+1 {
 			t.Fatal("P lost row count, register or undo grouping")
 		}
 		h.press("u")
-		h.want("  ○ First", "      Child", "  ○ Second", "▌ ○ Target")
+		h.want("  ○ First", "    · Child", "  ○ Second", "▌ ○ Target")
 	})
 	t.Run("each put creates fresh rows and drops a count", func(t *testing.T) {
 		h := countOutline(t, 1)
@@ -926,7 +926,7 @@ func TestTheTypedRowWraps(t *testing.T) {
 		h.m.Update(tea.WindowSizeMsg{Width: 24, Height: 8})
 		h.press("o", `"above row with room"`, "enter", `"`+prose+`"`)
 		id := h.m.edit.row
-		h.want("    above row with room", "▌   alpha beta gamma", "▌   delta epsilon")
+		h.want("  · above row with room", "▌ · alpha beta gamma", "▌   delta epsilon")
 		caret(t, h, 17, 3)
 		before := h.rows()
 		h.press("esc")
@@ -1022,10 +1022,10 @@ func TestTheTypedRowWraps(t *testing.T) {
 
 		// Once the row fits, every one of its drawn lines stays visible.
 		h.press("ctrl+k", `"alpha beta gamma"`)
-		h.want("    before", "▌   alpha beta", "▌   gamma")
+		h.want("  · before", "▌ · alpha beta", "▌   gamma")
 		caret(t, h, 9, 3)
 		h.press("ctrl+a")
-		h.want("    before", "▌   alpha beta", "▌   gamma")
+		h.want("  · before", "▌ · alpha beta", "▌   gamma")
 		caret(t, h, 4, 2)
 	})
 	t.Run("every space is a cell", func(t *testing.T) {
@@ -1034,9 +1034,9 @@ func TestTheTypedRowWraps(t *testing.T) {
 			lines []string
 			x, y  int
 		}{
-			{"ab  cd   ef  ", []string{"▌   ab  cd  ", "▌    ef  "}, 9, 2},
-			{"ab      ", []string{"▌   ab      ", "▌   "}, 4, 2},
-			{"ab       ", []string{"▌   ab      ", "▌    "}, 5, 2},
+			{"ab  cd   ef  ", []string{"▌ · ab  cd  ", "▌    ef  "}, 9, 2},
+			{"ab      ", []string{"▌ · ab      ", "▌   "}, 4, 2},
+			{"ab       ", []string{"▌ · ab      ", "▌    "}, 5, 2},
 		} {
 			t.Run(fmt.Sprintf("%q", tc.text), func(t *testing.T) {
 				h := start(t)
@@ -1072,7 +1072,7 @@ func TestTheTypedRowWraps(t *testing.T) {
 		h := start(t)
 		h.m.Update(tea.WindowSizeMsg{Width: 24, Height: 8})
 		h.press("o", `"abcdefghijklmnopqrstuvwxyz #tag @to"`)
-		h.want("▌   abcdefghijklmnopqrst", "▌   uvwxyz #tag @today")
+		h.want("▌ · abcdefghijklmnopqrst", "▌   uvwxyz #tag @today")
 		v := h.m.View()
 		if !strings.Contains(v.Content, darkPalette.accent+"#tag"+sgrReset) || !strings.Contains(v.Content, darkPalette.warn+"@to"+sgrReset) || !strings.Contains(v.Content, darkPalette.dim+"day"+sgrReset) {
 			t.Fatalf("missing sigil or completion styles: %q", v.Content)

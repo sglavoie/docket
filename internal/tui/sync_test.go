@@ -32,7 +32,7 @@ func TestTwoMachinesShareAnOutline(t *testing.T) {
 		"Waiting",
 		"Stale",
 		"▌ Projects",
-		"Alpha !",
+		"Alpha @",
 		lap.m.syncNote,
 	)
 	if !strings.HasPrefix(lap.m.syncNote, "synced ") || !strings.HasPrefix(lap.m.msg, "synced: ") {
@@ -127,7 +127,7 @@ func TestAFailedSyncIsSaidAndWorkGoesOn(t *testing.T) {
 		"Stale",
 		"▌ Projects",
 		"Beta ∅",
-		"Alpha !",
+		"Alpha @",
 		"sync failed",
 	)
 	if !strings.Contains(h.m.View().Content, darkPalette.alert+"sync failed") {

@@ -151,7 +151,7 @@ func TestReviewListsProjectsLongestUntouchedFirst(t *testing.T) {
 	}
 	h.want(
 		"▌ ▾ Alpha · 12d · 2 to do",
-		"    Beta v2 · 2d · ∅",
+		"  · Beta v2 · 2d · ∅",
 	)
 	// Keeping is moving on; parking and closing are stamps; Enter looks in.
 	h.press("enter")

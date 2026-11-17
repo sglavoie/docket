@@ -35,7 +35,7 @@ func (m *Model) numberCols() int {
 }
 
 // stateGlyph is the one column that says what a row is. A note shows its
-// fold, or nothing; a task shows its state, and a folded task counts its
+// fold, or a dot when it has none; a task shows its state, and a folded task counts its
 // children after its text instead.
 func (m *Model) stateGlyph(state string, kids int, folded bool) string {
 	switch state {
@@ -54,7 +54,7 @@ func (m *Model) stateGlyph(state string, kids int, folded bool) string {
 	}
 	switch {
 	case kids == 0:
-		return " "
+		return m.colors().dim + "·" + sgrReset
 	case folded:
 		return m.colors().dim + "▸" + sgrReset
 	}
@@ -284,6 +284,54 @@ func (m *Model) placeName(p place) string {
 	return strings.Join(parts, " › ")
 }
 
+// paneHeader says where the pane is: the place in the text colour under its
+// dimmed ancestors, what it holds dimmed after it, a held filter in the
+// accent colour since it hides rows, and the ruler at the right edge.
+func (m *Model) paneHeader(w int, ruler string) string {
+	c := m.colors()
+	name := m.breadcrumb()
+	header := name
+	if i := strings.LastIndex(name, " › "); i >= 0 {
+		i += len(" › ")
+		header = c.dim + name[:i] + sgrReset + name[i:]
+	}
+	if summary := m.paneTotal.summary(); summary != "" {
+		header += c.dim + "  · " + summary + sgrReset
+	}
+	if m.at.query != "" {
+		header += "  " + c.accent + "/ " + m.at.query + sgrReset
+		if m.at.flat {
+			header += c.dim + "  (flat)" + sgrReset
+		}
+	} else if m.hideClosed && m.at.list == "" {
+		header += c.dim + "  · closed hidden" + sgrReset
+	}
+	gap := w - ansi.StringWidth(header) - ansi.StringWidth(ruler)
+	if ruler == "" || gap < 2 {
+		return ansi.Truncate(header, w, "…") + sgrReset
+	}
+	return header + strings.Repeat(" ", gap) + c.dim + ruler + sgrReset
+}
+
+// ruler is where the pane is among its rows, as Vim's ruler says it, given
+// how many rows are drawn and whether the last of them is whole. It says
+// nothing when every row is on screen.
+func (m *Model) ruler(drawn int, whole bool) string {
+	end := m.top + drawn
+	if !whole {
+		end--
+	}
+	switch {
+	case m.top == 0 && end >= len(m.vis):
+		return ""
+	case m.top == 0:
+		return "Top"
+	case end >= len(m.vis):
+		return "Bot"
+	}
+	return strconv.Itoa(min(m.top*100/max(len(m.vis)-drawn, 1), 99)) + "%"
+}
+
 func (m *Model) emptyText() string {
 	switch {
 	case m.at.query != "":
@@ -409,6 +457,10 @@ func (m *Model) statusLine(w int) (string, int) {
 	case m.sideFocus:
 		left = "j k choose · Enter work in it"
 	}
+	if m.msg == "" && left != "" && m.nextKeys() == "" {
+		// A standing hint is dimmed, so a message is seen to be one.
+		left = m.colors().dim + left + sgrReset
+	}
 	if n := len(m.picked); n > 0 {
 		right = strconv.Itoa(n) + " selected · Esc clears"
 	}
@@ -527,23 +579,13 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 	}
 
 	lines := make([]string, 0, h)
-	header := m.breadcrumb()
-	if summary := m.paneTotal.summary(); summary != "" {
-		header += "  · " + summary
-	}
-	if m.at.query != "" {
-		header += "  / " + m.at.query
-		if m.at.flat {
-			header += "  (flat)"
-		}
-	} else if m.hideClosed && m.at.list == "" {
-		header += "  · closed hidden"
-	}
-	lines = append(lines, m.colors().dim+ansi.Truncate(header, w, "…")+sgrReset)
+	lines = append(lines, "") // the header, once the rows say how far they reach
 
 	var caret *tea.Cursor
+	drawn, whole := 0, true // the rows on screen, and whether the last is all there
 	for i := m.top; i < len(m.vis) && len(lines) < h; i++ {
 		v := m.vis[i]
+		drawn++
 		r := m.tree.Row(v.id)
 		glyph := m.stateGlyph(r.Fields[sigil.FieldState], len(m.tree.Children(v.id)), m.isFolded(v.id))
 		gutter := " "
@@ -578,6 +620,7 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 				continue
 			}
 			if len(lines) == h {
+				whole = false
 				break
 			}
 			if isEdit && n == editing.pos[m.edit.caret].y {
@@ -601,6 +644,7 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 			lines = append(lines, m.tint(line, w, background))
 		}
 	}
+	lines[0] = m.paneHeader(w, m.ruler(drawn, whole))
 	for len(lines) < h {
 		lines = append(lines, "")
 	}

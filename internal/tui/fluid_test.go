@@ -32,12 +32,12 @@ func TestUpAndDownKeepTypingInTheNextRow(t *testing.T) {
 		t.Fatalf("Down opened %q at %d", string(h.m.edit.buf), h.m.edit.caret)
 	}
 	h.press("esc")
-	h.want("    OZne", "▌   TwoY", "    ThreeX")
+	h.want("  · OZne", "▌ · TwoY", "  · ThreeX")
 	if len(h.m.undo) != steps+3 {
 		t.Fatalf("%d undo steps for three rows", len(h.m.undo)-steps)
 	}
 	h.press("u", "u", "u")
-	h.want("    One", "    Two", "▌   Three")
+	h.want("  · One", "  · Two", "▌ · Three")
 
 	// A fresh row left blank disappears on the way.
 	h.press("k", "o", "up")
@@ -49,7 +49,7 @@ func TestUpAndDownKeepTypingInTheNextRow(t *testing.T) {
 		t.Fatalf("edit = %+v", h.m.edit)
 	}
 	h.press("esc")
-	h.want("    One", "    Two", "▌   Three")
+	h.want("  · One", "  · Two", "▌ · Three")
 
 	// A list keeps its rows, so the arrows walk it too.
 	h.press("k", "enter", "o", `"Task"`, "enter", `"Other"`, "esc", "g", "g", "t", "j", "t")
@@ -124,7 +124,7 @@ func TestArchiveMovesClosedWorkUnderAHeading(t *testing.T) {
 		"      ○ Live",
 		"    ▾ Archive: 1/1",
 		"      ✓ Shipped",
-		"          A detail",
+		"        · A detail",
 		"      ✕ Dropped",
 		"  ▾ Beta",
 		"    ▾ Archive: 1/1",
@@ -146,7 +146,7 @@ func TestArchiveMovesClosedWorkUnderAHeading(t *testing.T) {
 		"      ○ Live",
 		"    ▾ Archive: 3/3",
 		"      ✓ Shipped",
-		"          A detail",
+		"        · A detail",
 		"      ✕ Dropped",
 		"      ✓ Half",
 		"▌       ✓ Still open",
@@ -159,7 +159,7 @@ func TestArchiveMovesClosedWorkUnderAHeading(t *testing.T) {
 		"▌ ▾ Alpha",
 		"    ▾ Build: 2/4",
 		"      ✓ Shipped",
-		"          A detail",
+		"        · A detail",
 		"      ✓ Half",
 		"        ○ Still open",
 		"      ○ Live",
@@ -178,7 +178,7 @@ func TestArchiveMovesClosedWorkUnderAHeading(t *testing.T) {
 		t.Fatalf("inside the archive: msg = %q", h.m.msg)
 	}
 	h.press("f", `"alpha"`, "enter")
-	h.want("▌ ▾ Build: 2/4", "    ✓ Shipped", "        A detail", "    ✓ Half", "      ○ Still open", "    ○ Live", "  ✕ Dropped")
+	h.want("▌ ▾ Build: 2/4", "    ✓ Shipped", "      · A detail", "    ✓ Half", "      ○ Still open", "    ○ Live", "  ✕ Dropped")
 	for _, place := range []string{"inbox", "waiting"} {
 		h.press("f", `"`+place+`"`, "enter")
 		gen := h.m.tree.Gen()

@@ -20,7 +20,7 @@ func two(t *testing.T) *harness {
 	h.press("o", `"Alpha"`, "enter", "tab", `"One @tom"`, "enter", `"Two $w"`, "esc")
 	h.press("g", "g", "O", `"Beta"`, "esc")
 	h.want(
-		"▌   Beta",
+		"▌ · Beta",
 		"  ▾ Alpha",
 		"    ○ One @tomorrow",
 		"    ◔ Two",
@@ -37,7 +37,7 @@ func TestSidebarStatesWhatNeedsAttention(t *testing.T) {
 		"Stale",
 		"▌ Projects",
 		"Beta ∅",
-		"Alpha !",
+		"Alpha @",
 	)
 	for _, l := range h.lines() {
 		if w := ansi.StringWidth(l); w > 100 {
@@ -56,7 +56,7 @@ func TestSidebarStatesWhatNeedsAttention(t *testing.T) {
 		"Stale 1",
 		"▌ Projects",
 		"Beta ∅",
-		"Alpha ! 15d",
+		"Alpha @ 15d",
 	)
 }
 
@@ -87,7 +87,7 @@ func TestSidebarFocusShowsEachDestination(t *testing.T) {
 		"Stale",
 		"Projects",
 		"Beta ∅",
-		"Alpha !",
+		"Alpha @",
 	)
 	h.press("tab", "j", "k", "tab")
 	h.want("  Nothing is waiting.")
@@ -123,7 +123,7 @@ func TestTodayIsPickedAndLapsesOvernight(t *testing.T) {
 		"Stale",
 		"▌ Projects",
 		"Beta ∅",
-		"Alpha !",
+		"Alpha @",
 	)
 	h.press("f", `"tod"`, "enter")
 	h.want(
@@ -138,7 +138,7 @@ func TestTodayIsPickedAndLapsesOvernight(t *testing.T) {
 		"Stale",
 		"Projects",
 		"Beta ∅",
-		"Alpha !",
+		"Alpha @",
 	)
 
 	// A launch with something picked opens on Today.
@@ -166,7 +166,7 @@ func TestTodayIsPickedAndLapsesOvernight(t *testing.T) {
 		"Stale",
 		"▌ Projects",
 		"Beta ∅",
-		"Alpha ! 1d",
+		"Alpha @ 1d",
 	)
 }
 
@@ -359,7 +359,7 @@ func TestCaptureFilesInTheInboxOrANamedProject(t *testing.T) {
 	}
 	h.press(`"see %nowhere"`, "esc")
 	h.want(
-		"▌   Beta",
+		"▌ · Beta",
 		"  ▾ Alpha",
 		"    ○ One @tomorrow",
 		"    ◔ Two",
@@ -372,7 +372,7 @@ func TestCaptureFilesInTheInboxOrANamedProject(t *testing.T) {
 		"Stale",
 		"▌ Projects",
 		"Beta ∅",
-		"Alpha !",
+		"Alpha @",
 	)
 	h.press("f", `"inb"`, "enter")
 	h.want(
@@ -442,7 +442,7 @@ func TestTheInboxRowIsNeverASibling(t *testing.T) {
 	h := two(t)
 	h.press("K")
 	h.want(
-		"▌   Beta",
+		"▌ · Beta",
 		"  ▾ Alpha",
 		"    ○ One @tomorrow",
 		"    ◔ Two",
@@ -453,8 +453,8 @@ func TestTheInboxRowIsNeverASibling(t *testing.T) {
 	}
 	h.press("O", `"First"`, "esc", "J")
 	h.want(
-		"    Beta",
-		"▌   First",
+		"  · Beta",
+		"▌ · First",
 		"  ▾ Alpha",
 		"    ○ One @tomorrow",
 		"    ◔ Two",
@@ -473,7 +473,7 @@ func TestANarrowTerminalShowsTheSidebarOnlyWhileFocused(t *testing.T) {
 	}
 	h.press("j", "k", "enter")
 	h.want(
-		"▌   Beta",
+		"▌ · Beta",
 		"  ▾ Alpha",
 		"    ○ One @tomorrow",
 		"    ◔ Two",
@@ -648,5 +648,30 @@ func TestSidebarPagesLikeThePane(t *testing.T) {
 		if got := h.header(); got != step.header {
 			t.Fatalf("after %s, header = %q, want %q", step.key, got, step.header)
 		}
+	}
+}
+
+// A sidebar taller than its pane counts what is scrolled out at each edge,
+// and never draws a count over the selection.
+func TestSidebarCountsWhatIsScrolledOut(t *testing.T) {
+	h := start(t).wide()
+	h.press("o")
+	for _, name := range []string{"A", "B", "C", "D", "E", "F", "G", "H"} {
+		h.press(`"`+name+`"`, "enter")
+	}
+	h.press("esc")
+	h.m.Update(tea.WindowSizeMsg{Width: 100, Height: 9})
+	side := func() []string { return strings.Split(h.side(), "\n") }
+	if got := side(); got[0] != "Inbox" || got[len(got)-1] != "↓ 7" {
+		t.Fatalf("at the top:\n%s", h.side())
+	}
+	h.press("tab", "G")
+	if got := side(); got[0] != "↑ 6" || got[len(got)-1] != "▌ H ∅" {
+		t.Fatalf("at the end:\n%s", h.side())
+	}
+	h.press("k", "k", "k", "k")
+	got := side()
+	if got[0] != "↑ 5" || got[len(got)-1] != "↓ 2" || !slices.Contains(got, "▌ D ∅") {
+		t.Fatalf("in the middle:\n%s", h.side())
 	}
 }

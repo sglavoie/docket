@@ -192,15 +192,15 @@ func TestImportReadsOtherOutliners(t *testing.T) {
 	h.press("g", "g")
 	h.command("import " + filepath.Join(dir, "plan.bike"))
 	h.want(
-		"    Here",
+		"  · Here",
 		"  ▾ Plan: 1/2",
 		"    ○ Write draft now",
 		"    ✓ Outline",
-		"▌     Just a thought",
+		"▌   · Just a thought",
 		"  ▾ Home: 1/3",
 		"    ○ Call Bob ! @Dec 1 #phone",
 		"    ✓ Paid rent",
-		"        a note about it",
+		"      · a note about it",
 		"    ○ Ask about #5 and a@b on(x) #priority=1 #waiting",
 	)
 	// One undo takes a whole file back.

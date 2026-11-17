@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/docket/internal/outline"
 	"github.com/sglavoie/docket/internal/store"
 )
@@ -138,10 +140,10 @@ func TestTheScreenFollowsTheClockWithoutAKey(t *testing.T) {
 		"Stale 1",
 		"▌ Projects",
 		"Beta ∅",
-		"Alpha ! 15d",
+		"Alpha @ 15d",
 	)
 	h.want(
-		"▌   Beta",
+		"▌ · Beta",
 		"  ▾ Alpha",
 		"    ○ One @Nov 16",
 		"    ◔ Two",
@@ -449,4 +451,57 @@ func TestFoldCommandsAndHalfPages(t *testing.T) {
 			t.Fatal("Ctrl+U stopped cutting the prompt")
 		}
 	})
+}
+
+// The header says where the pane is among its rows once they overflow it,
+// and nothing while every row is on screen.
+func TestHeaderRulesTheOverflowingPane(t *testing.T) {
+	h := work(t)
+	if h.header() != "Projects  · 4 to do" {
+		t.Fatalf("header = %q", h.header())
+	}
+	h.m.Update(tea.WindowSizeMsg{Width: 100, Height: 5})
+	for _, step := range []struct{ keys, want string }{
+		{"gg", "Top"}, {"j", "Top"}, {"jj", "33%"}, {"G", "Bot"},
+	} {
+		h.press(`"` + step.keys + `"`)
+		if got := h.header(); !strings.HasPrefix(got, "Projects  · 4 to do  ") || !strings.HasSuffix(got, " "+step.want) {
+			t.Fatalf("after %s header = %q, want it to end in %s", step.keys, got, step.want)
+		}
+	}
+	// Too narrow for both, the place keeps the line.
+	h.m.Update(tea.WindowSizeMsg{Width: 20, Height: 5})
+	if got := h.lines()[0]; got != "Projects  · 4 to do" {
+		t.Fatalf("narrow header = %q", got)
+	}
+}
+
+// The header reads in three weights: the place, what is said about it, and a
+// held filter, which hides rows. A standing hint is dimmer than a message.
+func TestHeaderAndHintsCarryTheirWeight(t *testing.T) {
+	h := work(t)
+	c := h.m.colors()
+	raw := func(n int) string {
+		lines := strings.Split(h.m.View().Content, "\n")
+		return lines[(n+len(lines))%len(lines)]
+	}
+	// The place is the last name; the way to it is dim.
+	at := h.m.at
+	h.m.at.root = h.m.vis[h.m.cursor].id
+	if got := h.m.paneHeader(80, ""); !strings.HasPrefix(got, c.dim+"Beta › "+sgrReset+"Fix cache") {
+		t.Fatalf("header = %q", got)
+	}
+	h.m.at = at
+	h.press("/", `"#bug"`, "enter")
+	if got := raw(0); !strings.Contains(got, c.accent+"/ #bug"+sgrReset) || !strings.Contains(got, c.dim+"  · 3 to do"+sgrReset) {
+		t.Fatalf("filtered header = %q", got)
+	}
+	h.press("esc", "A")
+	if got := raw(-1); !strings.Contains(got, c.dim+"Enter next row") {
+		t.Fatalf("hint = %q", got)
+	}
+	h.press("esc", "g", "p")
+	if got := raw(-1); h.m.msg == "" || strings.Contains(got, c.dim+h.m.msg) {
+		t.Fatalf("message = %q, drawn %q", h.m.msg, got)
+	}
 }
