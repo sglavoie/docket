@@ -203,7 +203,8 @@ An outline counts every such row under its root, folded or not; a list counts
 its held rows and a filter its held matches, excluding context ancestors.
 Zero tasks says nothing. Today is the list that gets finished, so it alone
 goes on to count its done rows, as `3 to do · 2 done`, and says `all 5 done`
-when nothing is left. These totals and heading progress are derived in
+when nothing is left. The review list holds projects, not tasks, so it
+counts those, as `Review · 43 projects`. These totals and heading progress are derived in
 the existing scan, never stored.
 
 The header reads in three weights. The place is in the text colour, and the
@@ -233,7 +234,9 @@ There is no theme command or configuration file.
 
 The focused cursor row keeps its `▌` mark and has a background across the
 pane's full width, on every wrapped line. Selected rows keep `┃` and use
-a distinct selection background, including when the cursor is on one.
+a distinct selection background, including when the cursor is on one. On
+that background dim text is drawn a step nearer the text colour, so it
+keeps a contrast of 4.5 to 1 there in both palettes.
 With sidebar focus its entry is shaded instead; the pane cursor loses its
 tint, while selections remain shaded. Indentation stays blank.
 

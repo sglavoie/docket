@@ -146,7 +146,7 @@ func TestReviewListsProjectsLongestUntouchedFirst(t *testing.T) {
 	h.press("A", `" v2"`, "esc") // Beta is touched; Alpha is not
 	h.clock = h.clock.Add(2 * 24 * time.Hour)
 	h.press(":", `"review"`, "enter")
-	if h.header() != "Review" {
+	if h.header() != "Review  · 2 projects" {
 		t.Fatalf("header = %q", h.header())
 	}
 	h.want(

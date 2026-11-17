@@ -373,6 +373,13 @@ func (m *Model) paneHeader(w int, ruler string) string {
 			summary += " · " + strconv.Itoa(done) + " done"
 		}
 	}
+	if m.at.list == kindReview && len(m.vis) > 0 {
+		// A review is walked project by project, so it says how many there are.
+		summary = strconv.Itoa(len(m.vis)) + " projects"
+		if len(m.vis) == 1 {
+			summary = "1 project"
+		}
+	}
 	tail := ""
 	if summary != "" {
 		tail += c.dim + "  · " + summary + sgrReset

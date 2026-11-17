@@ -931,3 +931,27 @@ func TestAnOperatorOverASelectionOffersNoMotion(t *testing.T) {
 		t.Fatalf("y = %q", got)
 	}
 }
+
+// Dim text on a selected row is drawn in the dim that can be read there,
+// and nowhere else.
+func TestDimTextStaysReadableOnASelection(t *testing.T) {
+	h := work(t)
+	c := h.m.colors()
+	h.press("x")
+	if got := h.m.View().Content; strings.Contains(got, c.dimSelected) {
+		t.Fatal("the selection's dim is drawn with nothing selected")
+	}
+	h.press("v")
+	for _, l := range strings.Split(h.m.View().Content, "\n") {
+		if !strings.Contains(l, "cache") {
+			continue
+		}
+		// The sidebar's rule, left of the selection, is still the ordinary dim.
+		_, row, selected := strings.Cut(l, c.selection)
+		if !selected || !strings.Contains(row, c.dimSelected) || strings.Contains(row, c.dim) {
+			t.Fatalf("selected done row = %q", l)
+		}
+		return
+	}
+	t.Fatal("the row is not drawn")
+}
