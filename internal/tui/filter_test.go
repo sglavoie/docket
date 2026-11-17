@@ -125,7 +125,7 @@ func TestFilterGrammar(t *testing.T) {
 		h.press("esc")
 	}
 	h.press("/", `"@overdue"`, "enter")
-	h.want("  Nothing matches.")
+	h.want("  Nothing matches. Esc drops the filter.")
 }
 
 func TestSelectionActsOnEveryRowAndStampsSigils(t *testing.T) {

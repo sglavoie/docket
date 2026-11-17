@@ -802,7 +802,7 @@ func TestIAndAOpenTypingAndCcRetypes(t *testing.T) {
 			t.Fatal("cc wrote before typing ended")
 		}
 		h.press(`"New"`, "esc")
-		h.want("▌ ✓ New ! @fri @@Nov 14 #release")
+		h.want("▌ ✓ New ! ★ @fri @@Nov 14 #release")
 		want := maps.Clone(before)
 		want[sigil.FieldText] = "New"
 		if !maps.Equal(want, h.m.tree.Row(id).Fields) || len(h.m.undo) != undos+1 {
@@ -812,7 +812,7 @@ func TestIAndAOpenTypingAndCcRetypes(t *testing.T) {
 		if !maps.Equal(before, h.m.tree.Row(id).Fields) || len(h.m.undo) != undos {
 			t.Fatal("one undo did not restore all fields")
 		}
-		h.want("▌ ✓ Old ! @fri @@Nov 14 #release")
+		h.want("▌ ✓ Old ! ★ @fri @@Nov 14 #release")
 		h.press("c", "c", "esc")
 		delete(want, sigil.FieldText)
 		if !maps.Equal(want, h.m.tree.Row(id).Fields) || h.m.current() != id {
@@ -1144,7 +1144,7 @@ func TestTheStatusLineShowsWhatIsPending(t *testing.T) {
 	t.Run("inside a row", func(t *testing.T) {
 		h := textRow(t, "Buy oat milk today")
 		h.press("w", "2", "d", "3")
-		if got := last(h); !strings.HasPrefix(got, "in the row") || !strings.HasSuffix(got, "2d3") {
+		if got := last(h); !strings.HasPrefix(got, "dw de d$") || !strings.HasSuffix(got, "2d3") {
 			t.Fatalf("status = %q", got)
 		}
 		h.press("esc", "d", "f")

@@ -751,3 +751,90 @@ func TestTheFilterLineCountsAsASentence(t *testing.T) {
 		h.press("esc")
 	}
 }
+
+// t toggles a pick, so the row says which way the key will go: a mark
+// wherever it is drawn but in Today, where an unpicked row recedes instead.
+func TestAPickForTodayIsSeenOnItsRow(t *testing.T) {
+	h := work(t)
+	c := h.m.colors()
+	h.press("t")
+	h.want(
+		"  ▾ Beta",
+		"▌   ○ Fix cache ★ #bug",
+		"  ▾ Alpha",
+		"    ○ Fix login ! #bug",
+		"    ○ Write docs @fri #docs",
+		"    ○ Refactor auth #bug",
+	)
+	if got := h.m.View().Content; !strings.Contains(got, c.accent+"★") {
+		t.Fatal("the mark is not in the accent colour")
+	}
+	h.press("f", `"today"`, "enter")
+	h.want("▌ ○ Fix cache #bug · Beta")
+	if strings.Contains(h.m.View().Content, c.dim+"Fix") {
+		t.Fatal("a picked row is dim in Today")
+	}
+	h.press("t")
+	h.want("▌ ○ Fix cache #bug · Beta")
+	if got := h.m.View().Content; !strings.Contains(got, c.dim+"Fix") {
+		t.Fatalf("an unpicked row did not recede: %q", got)
+	}
+	h.press("f", `"beta"`, "enter")
+	h.want("▌ ○ Fix cache #bug")
+}
+
+// A blank filter line hides nothing, so it counts nothing and names what it
+// reads; a blank capture line names the one word only it reads.
+func TestBlankPromptsNameWhatTheyRead(t *testing.T) {
+	h := work(t)
+	h.press("/")
+	if got, want := h.bottom(), "Filter ›    in context · Tab switches · words, #tag, $state, @date, ! · - excludes"; got != want {
+		t.Fatalf("filter = %q, want %q", got, want)
+	}
+	h.press("tab")
+	if !strings.HasPrefix(h.bottom(), "Filter ›    flat · ") {
+		t.Fatalf("flat = %q", h.bottom())
+	}
+	h.press("esc", "a")
+	if got, want := h.bottom(), "Inbox ›    %name files it in a project or heading"; got != want {
+		t.Fatalf("capture = %q, want %q", got, want)
+	}
+	h.press("esc", ":")
+	if !strings.Contains(h.bottom(), "s/old/new · sort · fold · unfold · archive") {
+		t.Fatalf("command = %q", h.bottom())
+	}
+}
+
+// A selection redirects the keys, so its count is drawn in the colour of
+// its marks and only the hint beside it is dim.
+func TestTheSelectionCountIsSeen(t *testing.T) {
+	h := work(t)
+	c := h.m.colors()
+	h.press("v", "v")
+	lines := strings.Split(h.m.View().Content, "\n")
+	if got := lines[len(lines)-1]; !strings.Contains(got, c.accent+"2 selected"+sgrReset) || !strings.Contains(got, c.dim+" · Esc clears") {
+		t.Fatalf("status = %q", got)
+	}
+}
+
+// An operator waiting inside a row says what may follow it, as one on the
+// outline does.
+func TestAnOperatorInTheRowSaysWhatFollows(t *testing.T) {
+	h := textRow(t, "Buy oat milk today")
+	h.press("w", "d")
+	if !strings.HasPrefix(h.bottom(), "dw de d$ dt, dn through a motion · diw di\" di( objects") {
+		t.Fatalf("d = %q", h.bottom())
+	}
+	h.press("i")
+	if !strings.HasPrefix(h.bottom(), "diw a word · di\" quotes · di( [ { < brackets") {
+		t.Fatalf("di = %q", h.bottom())
+	}
+	h.press("w")
+	if !strings.HasPrefix(h.bottom(), "in the row") {
+		t.Fatalf("after diw = %q", h.bottom())
+	}
+	h.press("y", "f")
+	if !strings.HasPrefix(h.bottom(), "in the row") {
+		t.Fatalf("yf = %q", h.bottom())
+	}
+}

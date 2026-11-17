@@ -291,7 +291,8 @@ The pane shows the rows under one row, or a list.
   said after a row is led by a dot that stays with it when the row wraps.
   Nothing folds in a flat view, so a note there shows `·` whatever it holds
   and counts the rows under it (`+3`) as a task does, unless it is a heading
-  that says its progress. Today alone
+  that says its progress. A row unpicked in Today stays, as a held row
+  does, and is dimmed, so the pick is seen to be gone. Today alone
   has an editable order: `J` and `K` move the cursor's row down and up,
   keeping the cursor on it without moving it in the outline. They refuse
   selections; Waiting, Stale and review refuse both keys. `o`, `O`, `>` and
@@ -324,6 +325,10 @@ The pane shows the rows under one row, or a list.
   is kept on this machine. A row closed while on screen stays until the
   place is left. Lists and filters name what they show, so they still show
   closed rows.
+- **An empty pane says why, and names the key that changes it**, dimmed
+  on its first line: `o` in an outline, `a` in the Inbox, `t` for Today,
+  `$waiting` for Waiting, `:closed` when only closed rows are hidden, and
+  `Esc` under a held filter that matches nothing.
 - **The screen follows the clock.** It is read again once a minute, so a day
   that turns over while the app is open updates Today, deadlines and ages
   without a key press.
@@ -349,7 +354,8 @@ The status line becomes a prompt for three acts, named at its left edge:
 
 - `a` **Inbox ›** files a typed line in the Inbox. A `%name` word files it in
   the project or heading that name matches instead; the line names where it
-  will land. One matching nothing stays in the text. `Enter` keeps the line
+  will land, and a blank line names `%name`, the one word no other line
+  reads. One matching nothing stays in the text. `Enter` keeps the line
   and asks for the next; a blank `Enter` or `Esc` closes, and `Esc` keeps
   what was typed.
 - `f` **Go to ›** opens a project, a heading, a list or a saved filter by
@@ -533,7 +539,9 @@ Three more acts use the same line:
   excludes, one read on other rows (`^ _ < >`) and one inside `-(` mark
   nothing. While the line is typed the status line reads it back in words,
   after the count of matches (`no match`, `1 match`, `12 matches`), so its
-  marks need not be remembered:
+  marks need not be remembered. A blank line hides nothing, so it counts
+  nothing and names what the line reads, as `words, #tag, $state, @date, !
+  · - excludes`:
   `-_$open|doing` says `no row under it: open or doing`, `$done ~7d` says
   `done and changed since Nov 8`, and a bar or brackets standing alone read
   as `, or` and brackets. A tag being typed names the tags in use instead.
@@ -570,7 +578,8 @@ Three more acts use the same line:
   forms are read on the stamp line only. `Enter` applies them to the selection, else to the cursor's row, as
   one undo step. A word it cannot read is named and nothing is applied.
 - `:` runs a command. The line names the commands it could become, dimmed:
-  all of them while it is blank, those that start as typed after that, and
+  all of them by name alone while it is blank, so more fit and are scanned
+  sooner, those that start as typed with what each takes after that, and
   the one that is left with what it does, as `sort [keys]: order siblings
   once: @ deadline, ! flag, $ state, else text`; a line that starts none
   says `no such command`. One given anyway is named with the list. `q` quits; `help` opens help; `tutor` adds a fresh
@@ -714,7 +723,8 @@ deselects. While rows are selected, `x`, `!`, `t`, `dd`, `m`, `L`, `>>`, `<<`,
 `J`, `K` and a stamp act on the selection, in one undo step. `x`, `!` and `t` set
 their value on every row unless all already hold it, in which case they
 clear it. The keys that work on one row (`A`, `I`, `cc`, `o`, `O`, `Enter`,
-`gl`, `gn`, `gN` and the word motions that step into a row) are refused and say so. The status line counts the selection, and `Esc` clears it.
+`gl`, `gn`, `gN` and the word motions that step into a row) are refused and say so. The status line counts the selection, in the accent colour its
+marks are drawn in since the keys now act on those rows, and `Esc` clears it.
 
 `V` starts a sweep at the cursor's row. Each motion, with or without a
 count, selects the shown span from that anchor to the cursor, both included;
@@ -962,7 +972,9 @@ included; the caret is a block on a character, and the status line says
 `in the row`. A selection refuses the keys; lists and filters do not.
 
 There the keys are the same grammar over characters, and none of them is a
-key of the outline:
+key of the outline. A waiting `d`, `c` or `y` says what may follow it, as
+an operator on the outline does (`dw de d$ dt, dn through a motion · diw
+di" di( objects`):
 
 - **Motions.** `h` `l` by character and `0` `^` `$` to the ends; `w` `b` `e`
   and `W` `B` `E` by word; `f` `F` to a character and `t` `T` to just before
@@ -1186,7 +1198,10 @@ parked or not yet started, which dims it as any row. A heading with every
 task under it done stays bold and is dimmed, so what is finished does not
 ask to be read.
 Fields follow the text, each in
-the sigil that writes it, and then `→` with the row a link points at; the deadline reads `@today`, `@tomorrow`, `@fri`,
+the sigil that writes it, and then `→` with the row a link points at. A row
+picked for Today shows `★` in the accent colour after its text and flag,
+wherever it is drawn but in Today: `t` toggles the pick, so the row says
+which way the key will go. The deadline reads `@today`, `@tomorrow`, `@fri`,
 `@Nov 20`. A deadline or start day outside the current year names the year,
 as `@Jan 5 2027` or `@@Jan 5 2027`, even across a nearby year boundary.
 `A` still opens the canonical `@2027-01-05` or `@@2027-01-05` for editing.

@@ -895,5 +895,15 @@ func (e *editor) textStatus() string {
 	if e.sel {
 		return "selecting: motions extend · d c y x ~ act · v or Esc ends"
 	}
+	if op := e.pend[:min(len(e.pend), 1)]; op == "d" || op == "c" || op == "y" {
+		// A waiting operator says what may follow it, as one does on the
+		// outline.
+		if len(e.pend) == 2 && strings.Contains("ia", e.pend[1:]) {
+			return e.pend + "w a word · " + e.pend + "\" quotes · " + e.pend + "( [ { < brackets"
+		}
+		if len(e.pend) == 1 {
+			return op + "w " + op + "e " + op + "$ " + op + "t, " + op + "n through a motion · " + op + "iw " + op + "i\" " + op + "i( objects"
+		}
+	}
 	return "in the row: w b e f n move · i a c d x change · v select · Esc done"
 }

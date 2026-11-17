@@ -90,7 +90,7 @@ func TestSidebarFocusShowsEachDestination(t *testing.T) {
 		"Alpha @",
 	)
 	h.press("tab", "j", "k", "tab")
-	h.want("  Nothing is waiting.")
+	h.want("  Nothing is waiting. Stamp a row $waiting to list it here.")
 }
 
 func TestAListHasNoStructure(t *testing.T) {
@@ -202,7 +202,7 @@ func TestTodayIsReordered(t *testing.T) {
 			t.Fatal("moving past the end made an undo step")
 		}
 		h.press("f", `"alpha"`, "enter")
-		h.want("▌ ○ One", "  ○ Two", "  ○ Three")
+		h.want("▌ ○ One ★", "  ○ Two ★", "  ○ Three ★")
 		for id, pos := range positions {
 			if row := h.m.tree.Row(id); row.Pos != pos || row.Parent != h.m.at.root {
 				t.Fatal("Today changed outline structure")
@@ -354,7 +354,7 @@ func TestCaptureFilesInTheInboxOrANamedProject(t *testing.T) {
 		t.Fatalf("caret = %+v", c)
 	}
 	h.press("enter", `"Fix the build ! %alp"`, "enter")
-	if h.status() != "Inbox ›" || h.m.msg != "added to Alpha" {
+	if h.status() != "Inbox ›    %name files it in a project or heading" || h.m.msg != "added to Alpha" {
 		t.Fatalf("status = %q, msg = %q", h.status(), h.m.msg)
 	}
 	h.press(`"see %nowhere"`, "esc")

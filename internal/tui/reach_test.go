@@ -209,7 +209,7 @@ func TestHShowsAListsRowWhereItLives(t *testing.T) {
 		if h.header() != "Alpha  · 2 to do" {
 			t.Fatalf("header = %q", h.header())
 		}
-		h.want("▌ ○ One @tomorrow", "  ◔ Two")
+		h.want("▌ ○ One @tomorrow", "  ◔ Two ★")
 		h.press("j", "esc")
 		if h.header() != "Today  · 2 to do" || h.rows() != before {
 			t.Fatalf("return = %q\n%s; want\n%s", h.header(), h.rows(), before)
@@ -280,9 +280,9 @@ func TestHShowsAListsRowWhereItLives(t *testing.T) {
 				}
 				h.press("esc", "left")
 				if folded {
-					h.want("  ○ One @tomorrow", "▌ ◔ Two +1")
+					h.want("  ○ One @tomorrow", "▌ ◔ Two ★ +1")
 				} else {
-					h.want("  ○ One @tomorrow", "▌ ◔ Two", "    · Detail")
+					h.want("  ○ One @tomorrow", "▌ ◔ Two ★", "    · Detail")
 				}
 				h.press("esc")
 				if h.rows() != before {

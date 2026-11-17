@@ -311,6 +311,13 @@ func commandOffers(line string) string {
 			uses, does = append(uses, c.use), c.does
 		}
 	}
+	if line == "" {
+		// Seventeen commands are scanned by name; what each takes is said
+		// once a letter has narrowed them.
+		for i, use := range uses {
+			uses[i], _, _ = strings.Cut(use, " ")
+		}
+	}
 	switch len(uses) {
 	case 0:
 		return "no such command"

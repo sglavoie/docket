@@ -2,7 +2,7 @@
 :: move, fold and zoom
 j k  gg G	move; `Home` `End` reach the ends
 o O  A I	add below, above; type at the end, start
-x  !  t	close and reopen, flag, pick for Today
+x  !  t	close and reopen, flag, pick for Today; a pick shows `★`
 /	filter; `Enter` keeps, `Esc` clears
 u  Ctrl+R	undo, redo; nothing asks for confirmation
 Ctrl+C  :q	quit

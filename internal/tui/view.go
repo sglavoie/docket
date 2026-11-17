@@ -61,6 +61,9 @@ func (m *Model) stateGlyph(state string, kids int, folded bool) string {
 	return m.colors().dim + "▾" + sgrReset
 }
 
+// todayMark follows a row picked for Today wherever it is drawn but there.
+const todayMark = "★"
+
 // isFolded reports a row drawn folded. A filter shows every match, so
 // nothing is folded while one is on.
 func (m *Model) isFolded(id string) bool { return m.folded[id] && m.at.query == "" }
@@ -78,6 +81,13 @@ type word struct {
 func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 	l := sigil.FromFields(r.Fields)
 	quiet := l.Closed() || l.State == sigil.Parked || l.Later(m.today())
+	day := m.today().Format("2006-01-02")
+	picked := r.Fields[sigil.FieldToday] == day
+	if m.at.list == kindToday && !picked && (l.Start != day || l.State == "") {
+		// Today holds its rows until it is opened again, so one unpicked
+		// there recedes where it sits.
+		quiet = true
+	}
 	paint := func(style string) string {
 		if quiet {
 			return m.colors().dim
@@ -119,6 +129,11 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 	}
 	if l.Flag {
 		out = append(out, word{paint(m.colors().alert + sgrBold), "!"})
+	}
+	if picked && m.at.list != kindToday {
+		// t toggles the pick, so the row says which way the key will go.
+		// Today itself holds nothing else, and says it of no row.
+		out = append(out, word{paint(m.colors().accent), todayMark})
 	}
 	if l.Due != "" {
 		label, days := sigil.DueLabel(l.Due, m.today())
@@ -415,12 +430,15 @@ func (m *Model) ruler(drawn int, whole bool) string {
 
 func (m *Model) emptyText() string {
 	switch {
+	case m.at.query != "" && m.ask == nil:
+		// A held filter is the one thing between the pane and its rows.
+		return "Nothing matches. Esc drops the filter."
 	case m.at.query != "":
 		return "Nothing matches."
 	case m.at.list == kindToday:
 		return "Nothing picked for today. Press t on a row to pick it."
 	case m.at.list == kindWaiting:
-		return "Nothing is waiting."
+		return "Nothing is waiting. Stamp a row $waiting to list it here."
 	case m.at.list == kindStale:
 		return "Nothing has gone stale."
 	case m.at.list == kindReview:
@@ -456,6 +474,8 @@ func (m *Model) statusLine(w int) (string, int) {
 		switch {
 		case room <= 3:
 		case a.kind == askCapture && len(a.ed.buf) == 0:
+			// The one word this line reads that no other does.
+			line += "   " + m.colors().dim + ansi.Truncate("%name files it in a project or heading", room, "…") + sgrReset
 		case a.kind == askCapture:
 			// Where the line will land, so a %name is seen to have worked.
 			to, _ := m.route(string(a.ed.buf))
@@ -472,7 +492,11 @@ func (m *Model) statusLine(w int) (string, int) {
 			// The line read back in words, so its marks need not be remembered.
 			found := matchCount(len(m.at.matched))
 			note := found + " · " + shape + " · Tab switches"
-			if tags != "" {
+			if strings.TrimSpace(string(a.ed.buf)) == "" {
+				// A blank line hides nothing, so it counts nothing and names
+				// what it reads instead.
+				note = shape + " · Tab switches · words, #tag, $state, @date, ! · - excludes"
+			} else if tags != "" {
 				note = found + " · " + tags
 			} else if reads := readBack(string(a.ed.buf), m.today()); reads != "" {
 				note = found + " · " + shape + " · " + reads
@@ -550,10 +574,13 @@ func (m *Model) statusLine(w int) (string, int) {
 		left = m.colors().dim + left + sgrReset
 	}
 	if n := len(m.picked); n > 0 {
-		right = strconv.Itoa(n) + " selected · Esc clears"
+		// The keys now act on these rows, so the count is in the colour
+		// their marks are drawn in and only the hint is dim.
+		count := m.colors().accent + strconv.Itoa(n) + " selected" + sgrReset + m.colors().dim
+		right = count + " · Esc clears"
 		if m.sweep != "" {
 			// A sweep is a mode, and a mode is said while it lasts.
-			right = strconv.Itoa(n) + " selected · V keeps · Esc clears"
+			right = count + " · V keeps · Esc clears"
 		}
 	}
 	if m.edit != nil {
