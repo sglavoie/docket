@@ -278,7 +278,7 @@ func TestStructureKeysMoveASelectedBlock(t *testing.T) {
 		h.press("o", `"Before"`, "enter", "tab", `"Existing"`, "enter", "shift+tab",
 			`"One"`, "enter", `"Two"`, "enter", `"Three"`, "enter", `"After"`, "enter", `"Tail"`, "esc",
 			"g", "g", "h", "j", "v", "v", "v", "k", "k")
-		h.want("  ▸ Before", " ┃· One", "▌┃· Two", " ┃· Three", "  · After", "  · Tail")
+		h.want("  ▸ Before +1", " ┃· One", "▌┃· Two", " ┃· Three", "  · After", "  · Tail")
 		return h
 	}
 	for _, tc := range []struct {
@@ -287,8 +287,8 @@ func TestStructureKeysMoveASelectedBlock(t *testing.T) {
 	}{
 		{">", []string{"  ▾ Before", "    ○ Existing", " ┃  · One", "▌┃  · Two", " ┃  · Three", "  · After", "  · Tail"}},
 		{"<", []string{"  ▾ Before", "    ○ Existing", " ┃· One", "▌┃· Two", " ┃· Three", "  · After", "  · Tail"}},
-		{"J", []string{"  ▸ Before", "  · After", " ┃· One", "▌┃· Two", " ┃· Three", "  · Tail"}},
-		{"K", []string{" ┃· One", "▌┃· Two", " ┃· Three", "  ▸ Before", "  · After", "  · Tail"}},
+		{"J", []string{"  ▸ Before +1", "  · After", " ┃· One", "▌┃· Two", " ┃· Three", "  · Tail"}},
+		{"K", []string{" ┃· One", "▌┃· Two", " ┃· Three", "  ▸ Before +1", "  · After", "  · Tail"}},
 	} {
 		t.Run(tc.key, func(t *testing.T) {
 			h := block(t)
@@ -321,14 +321,14 @@ func TestStructureKeysMoveASelectedBlock(t *testing.T) {
 	t.Run("repeat and edges", func(t *testing.T) {
 		h := block(t)
 		h.press("J", "J")
-		h.want("  ▸ Before", "  · After", "  · Tail", " ┃· One", "▌┃· Two", " ┃· Three")
+		h.want("  ▸ Before +1", "  · After", "  · Tail", " ┃· One", "▌┃· Two", " ┃· Three")
 		before, steps := h.rows(), len(h.m.undo)
 		h.press("J")
 		if h.rows() != before || len(h.m.undo) != steps {
 			t.Fatal("moved beyond the last sibling")
 		}
 		h.press("K", "K", "K")
-		h.want(" ┃· One", "▌┃· Two", " ┃· Three", "  ▸ Before", "  · After", "  · Tail")
+		h.want(" ┃· One", "▌┃· Two", " ┃· Three", "  ▸ Before +1", "  · After", "  · Tail")
 		before, steps = h.rows(), len(h.m.undo)
 		for _, key := range []string{"K", ">", "<"} {
 			h.act(key)
@@ -433,7 +433,7 @@ func TestNewRowUnderAnOpenParentIsItsFirstChild(t *testing.T) {
 	)
 	h.press("k", "h", "o", `"Sibling"`, "esc")
 	h.want(
-		"  ▸ Project",
+		"  ▸ Project +2",
 		"▌ · Sibling",
 	)
 }
@@ -447,7 +447,7 @@ func TestFoldZoomAndBackOut(t *testing.T) {
 		"    ○ Child",
 	)
 	h.press("h")
-	h.want("▌ ▸ Project")
+	h.want("▌ ▸ Project +1")
 	h.press("l", "l")
 	h.want(
 		"  ▾ Project",
@@ -505,7 +505,7 @@ func TestEverythingSurvivesARestart(t *testing.T) {
 	h.press("g", "g", "o", "esc", "O", `"Above"`, "esc", "j", "h")
 	want := []string{
 		"  · Above",
-		"▌ ▸ Project",
+		"▌ ▸ Project +1",
 	}
 	h.want(want...)
 	h.st.Close()
@@ -715,7 +715,7 @@ func TestOverdueAndTodayAreColouredUntilTheRowCloses(t *testing.T) {
 	h := project(t)
 	h.press("o", `"Late @2026-11-10"`, "enter", `"Now @today"`, "esc")
 	raw := h.m.View().Content
-	if !strings.Contains(raw, darkPalette.alert+"@Nov 10") || !strings.Contains(raw, darkPalette.warn+"@today") {
+	if !strings.Contains(raw, darkPalette.alert+sgrBold+"@Nov 10") || !strings.Contains(raw, darkPalette.warn+"@today") {
 		t.Fatalf("deadlines are not coloured:\n%q", raw)
 	}
 	h.press("x", "k", "x")

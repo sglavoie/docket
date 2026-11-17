@@ -172,6 +172,7 @@ type entry struct {
 	age             int    // projects: whole days since anything inside changed
 	due             int    // projects: 1 a deadline within a week, 2 one overdue
 	idle            bool   // projects: no task left to do
+	done            bool   // Today: every pick is closed
 }
 
 func (e entry) same(o entry) bool { return e.kind == o.kind && e.id == o.id }
@@ -391,7 +392,7 @@ func (m *Model) scan() {
 	m.tags, m.tagUse = tagsByUse(tagUse), tagUse
 	m.side = append([]entry{
 		{kind: kindInbox, label: "Inbox", count: len(m.tree.Children(inboxID))},
-		{kind: kindToday, label: "Today", count: picked},
+		{kind: kindToday, label: "Today", count: picked, done: picked == 0 && len(lists[kindToday]) > 0},
 		{kind: kindWaiting, label: "Waiting", count: len(lists[kindWaiting])},
 		{kind: kindStale, label: "Stale", count: len(lists[kindStale])},
 	}, nil...)
@@ -892,6 +893,9 @@ func (m *Model) sideLines(w, h int) []string {
 			info = strings.TrimRight(info, " ")
 		case e.count > 0:
 			info = m.colors().dim + strconv.Itoa(e.count) + sgrReset
+		case e.done:
+			// A finished day is told from one with nothing picked.
+			info = m.colors().dim + "✓" + sgrReset
 		}
 		gutter := " "
 		if sel {
@@ -916,8 +920,14 @@ func (m *Model) sideLines(w, h int) []string {
 		lines = append(lines, line{text, sel, true})
 	}
 	if m.parked > 0 {
-		text := "  " + m.colors().dim + "parked " + strconv.Itoa(m.parked) + sgrReset
-		lines = append(lines, line{}, line{text: text})
+		// A parked project has no entry, so the count stands for it while
+		// the pane is inside one.
+		gutter, here := " ", false
+		if r := m.tree.Row(m.sel.id); m.sel.kind == kindProject && r != nil && r.Fields[sigil.FieldState] == sigil.Parked {
+			gutter, here = m.colors().dim+"▌"+sgrReset, true
+		}
+		text := gutter + " " + m.colors().dim + "parked " + strconv.Itoa(m.parked) + sgrReset
+		lines = append(lines, line{}, line{text: text, sel: here})
 	}
 	if m.syncNote != "" {
 		style := m.colors().dim

@@ -60,7 +60,7 @@ func TestUpAndDownKeepTypingInTheNextRow(t *testing.T) {
 func TestAFilterShowsMatchesInsideFoldedRows(t *testing.T) {
 	h := work(t)
 	h.press("G", "h", "h", "h")
-	h.want("  ▾ Beta", "    ○ Fix cache #bug", "▌ ▸ Alpha")
+	h.want("  ▾ Beta", "    ○ Fix cache #bug", "▌ ▸ Alpha +3")
 	h.press("/", `"#docs"`, "enter")
 	h.want("▌ ▾ Alpha", "    ○ Write docs @fri #docs")
 	// The keys that fold only step, and the fold is kept for afterwards.
@@ -69,7 +69,7 @@ func TestAFilterShowsMatchesInsideFoldedRows(t *testing.T) {
 	h.press("h", "h")
 	h.want("▌ ▾ Alpha", "    ○ Write docs @fri #docs")
 	h.press("esc")
-	h.want("  ▾ Beta", "    ○ Fix cache #bug", "▌ ▸ Alpha")
+	h.want("  ▾ Beta", "    ○ Fix cache #bug", "▌ ▸ Alpha +3")
 }
 
 func TestFilterAlternativesAndChangedSince(t *testing.T) {

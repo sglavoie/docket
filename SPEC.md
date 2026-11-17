@@ -207,7 +207,9 @@ when nothing is left. These totals and heading progress are derived in
 the existing scan, never stored.
 
 The header reads in three weights. The place is in the text colour, and the
-rows above it in a breadcrumb are dim, as is everything said about it. A held
+rows above it in a breadcrumb are dim, as is everything said about it. A
+project that is parked, done or canceled has no entry in the sidebar, so the
+header says which before its totals, as `tax-2026 · parked · 50 to do`. A held
 filter is in the accent colour, since it hides rows. When the rows overflow
 the pane, the header's right edge says where the pane is among them, as
 `Top`, `40%` or `Bot`; it says nothing while every row is on screen, and
@@ -235,7 +237,9 @@ Drawn from 72 columns up; narrower, it takes the pane only while focused.
 Everything in it is derived by one pass over the tree. Nothing is stored.
 
 - **Four lists, and they stay four.** Inbox counts its rows; Today counts
-  picks not yet closed; Waiting counts rows in that state; Stale counts open
+  picks not yet closed, and shows a dimmed `✓` once every pick is closed,
+  so a finished day is told from one with nothing picked; Waiting counts
+  rows in that state; Stale counts open
   and doing rows untouched for 14 days, leaving out rows whose start day is
   still ahead.
 - **Saved filters** follow the four lists, each as `/name`, in the order
@@ -251,6 +255,8 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
   `∅` when
   it holds no task to do, else the whole days since anything inside changed.
 - **Parked** projects are a count. Done and canceled projects are not listed.
+  While the pane is inside a parked project the count carries the dimmed
+  selection mark, since no entry can; it is still not a destination.
 - **A sidebar taller than its pane** scrolls to keep its selection in view,
   and counts the destinations scrolled out at each edge, dimmed, as `↑ 6`
   on its first row and `↓ 13` on its last. A count is never drawn over the
@@ -1158,19 +1164,24 @@ default of where it ends up when the edit is kept.
 
 **On the row.** One glyph column says what the row is: `○` open, `●` doing,
 `◔` waiting, `✓` done, `✕` canceled, `◌` parked; a note shows `▾` or `▸` when it has
-children and a dimmed `·` otherwise, so its depth is read off the same column. A folded task keeps its state glyph and
-counts its children after its text (`+3`). A row ending in a colon shows
+children and a dimmed `·` otherwise, so its depth is read off the same column. A folded row
+counts the rows it hides after its text (`+3`): a task, which keeps its
+state glyph, and a note, unless it is a heading that says its progress. A row ending in a colon shows
 dimmed `done/total` after its text when it has tasks beneath it, at any depth,
 folded or not. Canceled and parked rows are left out of the total.
 The outline's shape is read at a glance: a row ending in a colon is drawn
 bold in the accent colour, a top-level row bold, unless it is closed,
-parked or not yet started, which dims it as any row.
+parked or not yet started, which dims it as any row. A heading with every
+task under it done stays bold and is dimmed, so what is finished does not
+ask to be read.
 Fields follow the text, each in
 the sigil that writes it, and then `→` with the row a link points at; the deadline reads `@today`, `@tomorrow`, `@fri`,
 `@Nov 20`. A deadline or start day outside the current year names the year,
 as `@Jan 5 2027` or `@@Jan 5 2027`, even across a nearby year boundary.
 `A` still opens the canonical `@2027-01-05` or `@@2027-01-05` for editing.
-An overdue deadline takes the alert colour and today's the warning colour until the row is
+An overdue deadline takes the alert colour and bold, and one within a week
+the warning colour, as the sidebar marks the row's project, so the row
+behind a mark is found; a later one is dim. They hold until the row is
 done or canceled, which dims the whole row. A word starting `http://` or
 `https://` is written as a terminal hyperlink, without the punctuation a
 sentence leaves after it; every piece of an address broken across lines

@@ -87,9 +87,14 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 
 	var out []word
 	// A heading and a project carry the outline's shape: a heading is drawn
-	// bold in the accent colour, a project bold.
+	// bold in the accent colour, a project bold. A heading with every task
+	// under it done has nothing left to say, so it keeps its weight and
+	// gives up its colour.
 	body := ""
+	under := m.totals[r.ID].under
 	switch {
+	case strings.HasSuffix(l.Text, ":") && under.total > 0 && under.done == under.total:
+		body = m.colors().dim + sgrBold
 	case strings.HasSuffix(l.Text, ":"):
 		body = m.colors().accent + sgrBold
 	case r.Parent == "" || onCursor:
@@ -109,8 +114,8 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 		}
 		out = append(out, word{paint(body), w})
 	}
-	if total := m.totals[r.ID].under; strings.HasSuffix(l.Text, ":") && total.total > 0 {
-		out = append(out, word{m.colors().dim, fmt.Sprintf("%d/%d", total.done, total.total)})
+	if strings.HasSuffix(l.Text, ":") && under.total > 0 {
+		out = append(out, word{m.colors().dim, fmt.Sprintf("%d/%d", under.done, under.total)})
 	}
 	if l.Flag {
 		out = append(out, word{paint(m.colors().alert + sgrBold), "!"})
@@ -118,10 +123,12 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 	if l.Due != "" {
 		label, days := sigil.DueLabel(l.Due, m.today())
 		style := m.colors().dim
+		// The colours the sidebar marks a project with, so the row behind
+		// its mark is found: overdue is bold too, not told by colour alone.
 		switch {
 		case days < 0:
-			style = m.colors().alert
-		case days == 0:
+			style = m.colors().alert + sgrBold
+		case days <= dueSoonDays:
 			style = m.colors().warn
 		}
 		// A label such as "@Nov 20" stays in one piece.
@@ -155,13 +162,13 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 		out = append(out, word{m.colors().dim, "→ " + name})
 	}
 
-	// A task's glyph is its state, so the children it hides are counted
-	// after it: when folded, and always in a flat view. No row has a fold to
-	// show there, so a note counts its own too, unless it already says what
-	// it holds: a heading its progress, a project under review its tasks.
+	// A row that hides the rows under it counts them after its text: when
+	// folded, and always in a flat view, where nothing folds. A note that
+	// already says what it holds does not: a heading its progress, a project
+	// under review its tasks.
 	kids := len(m.tree.Children(r.ID))
-	said := m.at.list == kindReview || strings.HasSuffix(l.Text, ":") && m.totals[r.ID].under.total > 0
-	if kids > 0 && (l.State != "" && (flat || m.isFolded(r.ID)) || l.State == "" && flat && !said) {
+	said := m.at.list == kindReview || strings.HasSuffix(l.Text, ":") && under.total > 0
+	if kids > 0 && (flat || m.isFolded(r.ID)) && (l.State != "" || !said) {
 		out = append(out, word{m.colors().dim, "+" + strconv.Itoa(kids)})
 	}
 	if flat {
@@ -327,6 +334,16 @@ func (m *Model) paneHeader(w int, ruler string) string {
 		header = c.dim + name[:i] + sgrReset + name[i:]
 	}
 	summary := m.paneTotal.summary()
+	if p := m.projectOf(m.at.root); p != nil && m.at.list == "" {
+		// A project out of the sidebar says why, since nothing there marks it.
+		switch state := p.Fields[sigil.FieldState]; state {
+		case sigil.Parked, sigil.Done, sigil.Canceled:
+			if summary != "" {
+				state += " · " + summary
+			}
+			summary = state
+		}
+	}
 	if done := m.paneTotal.done; m.at.list == kindToday && done > 0 {
 		// Today is the list that is finished, so it says how far along it is.
 		if summary == "" {

@@ -133,7 +133,7 @@ func TestTodayIsPickedAndLapsesOvernight(t *testing.T) {
 	h.press("t")
 	h.wantSide(
 		"Inbox",
-		"▌ Today",
+		"▌ Today ✓",
 		"Waiting",
 		"Stale",
 		"Projects",
@@ -433,9 +433,18 @@ func TestParkedAndClosedProjectsLeaveTheSidebar(t *testing.T) {
 	)
 	// It is still reachable by name.
 	h.press("f", `"alp"`, "enter")
-	if h.header() != "Alpha  · 2 to do" {
+	if h.header() != "Alpha  · parked · 2 to do" {
 		t.Fatalf("header = %q", h.header())
 	}
+	// The count stands for it in the sidebar, which has no entry to mark.
+	h.wantSide(
+		"Inbox",
+		"Today",
+		"Waiting",
+		"Stale",
+		"Projects",
+		"▌ parked 1",
+	)
 }
 
 func TestTheInboxRowIsNeverASibling(t *testing.T) {

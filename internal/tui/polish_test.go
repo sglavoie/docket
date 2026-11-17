@@ -623,3 +623,40 @@ func TestOverdueIsBoldAndTodayCountsWhatIsDone(t *testing.T) {
 		t.Fatalf("header = %q", h.header())
 	}
 }
+
+// A deadline within a week is in the colour the sidebar marks its project
+// with, so the row behind the mark is found; one further off stays quiet.
+func TestADeadlineThisWeekReadsAsTheSidebarMarksIt(t *testing.T) {
+	h := work(t)
+	h.press("o", `"Far @2026-12-25"`, "esc")
+	c := h.m.colors()
+	raw := h.m.View().Content
+	if !strings.Contains(raw, c.warn+"@"+sgrReset) || !strings.Contains(raw, c.warn+"@fri") {
+		t.Fatalf("the week's deadline is not marked on its row:\n%q", raw)
+	}
+	if !strings.Contains(raw, c.dim+"@Dec 25") {
+		t.Fatalf("a far deadline is not quiet:\n%q", raw)
+	}
+}
+
+// A heading with every task under it done keeps its weight and gives up its
+// colour, so the eye passes over what is finished.
+func TestAFinishedHeadingGivesUpItsColour(t *testing.T) {
+	h := project(t)
+	h.press("o", `"Later:"`, "enter", "tab", `"Idea"`, "esc")
+	c := h.m.colors()
+	if raw := h.m.View().Content; !strings.Contains(raw, c.accent+sgrBold+"Later:") {
+		t.Fatalf("a heading with work left is not in the accent colour:\n%q", raw)
+	}
+	h.press("x")
+	h.want(
+		"  ▾ Project",
+		"    ○ First",
+		"    ○ Second",
+		"    ▾ Later: 1/1",
+		"▌     ✓ Idea",
+	)
+	if raw := h.m.View().Content; strings.Contains(raw, c.accent+sgrBold+"Later:") || !strings.Contains(raw, c.dim+sgrBold+"Later:") {
+		t.Fatalf("a finished heading keeps its colour:\n%q", raw)
+	}
+}

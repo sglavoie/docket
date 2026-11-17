@@ -249,7 +249,7 @@ func TestEnterSplitsAndBackspaceJoins(t *testing.T) {
 			}
 			h.press("enter", "esc")
 			if folded {
-				h.want("  ▸ First", "▌ · Second")
+				h.want("  ▸ First +1", "▌ · Second")
 			} else {
 				h.want("  ▾ First", "▌   ○ Second", "    ○ Child")
 			}
