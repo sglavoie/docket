@@ -137,7 +137,7 @@ $next	each project's first workable task; excludes Inbox
 $first	first workable sibling per parent; includes Inbox
 $first -<$	next action under each heading and project
 $today	picked or starting today
-$missed	picked on an earlier day, still open
+$missed	carried into Today from an earlier day, still open
 
 == Combine
 a|b	either: `$open|doing` `#home|!` `milk|#food`

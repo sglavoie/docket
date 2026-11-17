@@ -850,6 +850,29 @@ func (m *Model) acting() []string {
 	return append(out, hidden...)
 }
 
+// pick puts every acting row in Today, or takes them all out when all are
+// picked. A pick carried from an earlier day is a pick: it is kept as it
+// is when others join it, and t takes it out.
+func (m *Model) pick(ids []string) {
+	day := m.today().Format("2006-01-02")
+	all := true
+	for _, id := range ids {
+		r := m.tree.Row(id)
+		all = all && isPicked(r.Fields, sigil.FromFields(r.Fields), day)
+	}
+	if all {
+		m.toggle(ids, sigil.FieldToday, "")
+		return
+	}
+	var fresh []string
+	for _, id := range ids {
+		if r := m.tree.Row(id); !isPicked(r.Fields, sigil.FromFields(r.Fields), day) {
+			fresh = append(fresh, id)
+		}
+	}
+	m.toggle(fresh, sigil.FieldToday, day)
+}
+
 // toggle sets a field on every acting row, or clears it when all hold it.
 func (m *Model) toggle(ids []string, field, value string) {
 	all := true

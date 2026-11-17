@@ -82,7 +82,7 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 	l := sigil.FromFields(r.Fields)
 	quiet := l.Closed() || l.State == sigil.Parked || l.Later(m.today())
 	day := m.today().Format("2006-01-02")
-	picked := r.Fields[sigil.FieldToday] == day
+	picked := isPicked(r.Fields, l, day)
 	if m.at.list == kindToday && !picked && (l.Start != day || l.State == "") {
 		// Today holds its rows until it is opened again, so one unpicked
 		// there recedes where it sits.
@@ -203,6 +203,11 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 		// leaves one hanging at the end of a line.
 		also := func(text string) { out = append(out, word{m.colors().dim, "· " + text}) }
 		switch m.at.list {
+		case kindToday:
+			// A pick an earlier day left undone says when it was made.
+			if pick := r.Fields[sigil.FieldToday]; picked && pick != day {
+				also("since " + dayWords(pick, m.today()))
+			}
 		case kindWaiting:
 			also(days(m.now() - m.changedAt(r.ID)))
 		case kindStale:

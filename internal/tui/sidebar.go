@@ -287,16 +287,14 @@ func (m *Model) scan() {
 			tagUse[tag]++
 		}
 		// Today holds what was picked, and what was set to start today.
-		if r.Fields[sigil.FieldToday] == day || (l.Start == day && l.State != "") {
+		if isPicked(r.Fields, l, day) || (l.Start == day && l.State != "") {
 			lists[kindToday] = append(lists[kindToday], id)
 			if !l.Closed() {
 				picked++
 			}
-		} else if pick := r.Fields[sigil.FieldToday]; pick != "" && pick < day &&
-			(l.State == sigil.Open || l.State == sigil.Doing || l.State == sigil.Waiting) {
-			// A pick lapses without a write, so what an earlier day left
-			// undone is found here and not by the row moving anywhere.
-			m.missed[id] = true
+			if carried(r.Fields, l, day) {
+				m.missed[id] = true
+			}
 		}
 		if to := r.Fields[fieldLink]; to != "" {
 			m.pointers[to] = append(m.pointers[to], id)
@@ -489,6 +487,20 @@ func (m *Model) open(e entry) {
 
 // sortToday keeps placed rows first, with outline order for unplaced rows
 // and equal keys (which independent picks on two machines can produce).
+// isPicked reports whether a row is in Today by its pick: picked on the
+// day, or picked on an earlier day and still to do, since a pick left
+// undone stays until it is closed or unpicked.
+func isPicked(fields map[string]string, l sigil.Line, day string) bool {
+	return fields[sigil.FieldToday] == day || carried(fields, l, day)
+}
+
+// carried reports a pick from an earlier day that is still to do.
+func carried(fields map[string]string, l sigil.Line, day string) bool {
+	pick := fields[sigil.FieldToday]
+	return pick != "" && pick < day &&
+		(l.State == sigil.Open || l.State == sigil.Doing || l.State == sigil.Waiting)
+}
+
 func (m *Model) sortToday(rows []string) {
 	sort.SliceStable(rows, func(i, j int) bool {
 		a, b := m.tree.Row(rows[i]), m.tree.Row(rows[j])

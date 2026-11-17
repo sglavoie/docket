@@ -48,6 +48,8 @@ func (c cond) words(today time.Time) string {
 		return "first workable row under its parent"
 	case 'T':
 		return "in Today"
+	case 'M':
+		return "carried into Today from an earlier day"
 	case 'P':
 		return "a project"
 	case '@':

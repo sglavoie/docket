@@ -2727,7 +2727,7 @@ func (m *Model) normalAct(k string, count int) {
 	case "t":
 		// Today is a pick that lapses by itself: the field holds the day it
 		// was made, and tomorrow that is no longer today.
-		m.toggle(ids, sigil.FieldToday, m.today().Format("2006-01-02"))
+		m.pick(ids)
 	case "m":
 		m.ask = &prompt{kind: askMove, rows: ids}
 	case "L":

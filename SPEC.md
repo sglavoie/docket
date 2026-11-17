@@ -337,9 +337,9 @@ The pane shows the rows under one row, or a list.
   even with `:closed` on. `h` refuses a selection, and `l` does nothing;
   neither changes a fold.
 - **Launch** on a database with no project and no Inbox row adds and opens
-  a `Welcome` tutorial in one undo step, with four saved filters when none
-  is saved yet: `/next` (`$next`), `/week` (`@week`), `/missed`
-  (`$missed`) and `/done` (`$done ~7d`), each flat over Projects.
+  a `Welcome` tutorial in one undo step, with three saved filters when none
+  is saved yet: `/next` (`$next`), `/week` (`@week`) and `/done`
+  (`$done ~7d`), each flat over Projects.
   Otherwise it opens Today when
   something is picked for the day, else Projects. `docket add` and `docket ls`
   never add the tutorial.
@@ -373,8 +373,16 @@ The pane shows the rows under one row, or a list.
   shows none. It works in outlines, lists and filters, and the setting is
   kept on this machine.
 
-Today is hand-picked and rebuilt daily: a row is in Today when its `today`
-field is the current day, so yesterday's picks drop out without a write. A
+Today is hand-picked, and a pick stays until it is dealt with: a row is in
+Today when its `today` field is the current day, or an earlier day while the
+row is still open, doing or waiting. So what a day left undone is still in
+Today the next morning, saying when it was picked as `· since Nov 15`, and
+nothing goes out of sight by itself (rule 2); the sidebar counts it, so a
+day with leftovers is never shown as finished. A pick from an earlier day
+leaves when it is closed or when `t` unpicks it; one closed on an earlier
+day has left already. `t` reads a carried pick as picked, so on a mixed
+selection it keeps that pick's day and place and adds the others after it.
+Nothing is written when the day turns. A
 task whose start day is today is in Today too, which is how a row is made to
 come back on a date. Today names that day already, so a start day of today
 is not drawn there, as the pick's `★` is not. Picks are kept in the order made: `t` assigns a fresh
@@ -575,11 +583,9 @@ Three more acts use the same line:
   and `N`, just as they do on the filter line.
   `$today` holds for a row in Today, picked or starting on the day, and is
   read like `$next`: a filter word, not a state.
-  `$missed` holds for a task still open, doing or waiting that was picked
-  for Today on an earlier day and is not in Today now. A pick lapses
-  without a write, so this is where what an earlier day left undone is
-  found; the row itself never moves. `t` picks it again for today, a
-  second `t` lets it go, and closing it ends it. It is read like `$next`.
+  `$missed` holds for a pick carried into Today from an earlier day, a
+  task still open, doing or waiting, so `$missed #work` is what the work
+  days left undone. It is read like `$next`.
   `$project` holds for a project, a top-level row other than the Inbox,
   and is read like `$next`, so `$parked $project` is the parked projects
   the sidebar counts. `$p` still reads as `parked`, since only a state
@@ -1042,7 +1048,7 @@ the pane stays there until a motion has to scroll it.
 | `u` `Ctrl+R` | Undo, redo | 1 |
 | `.` | Repeat the last change to rows | 10, 13 |
 | `x` `!` | Done and back, flag | 2 |
-| `t` | Pick for Today, and unpick | 3 |
+| `t` | Pick for Today, and unpick, a pick carried from an earlier day too | 3, 19 |
 | `Tab` `f` | Sidebar focus, where `dd` deletes the chosen project and `u` `Ctrl+R` undo and redo; go to a project, heading, list or row by name | 3, 13 |
 | `Ctrl+O` `Ctrl+I` | Back along the places jumps left, and forward | 13 |
 | `g;` `g,` | Back to the rows changed this session, and on again | 17 |
@@ -1515,9 +1521,9 @@ is `docket add`, and the overdue count it shows is `docket ls '@overdue'`.
    reads TaskPaper, OPML and Bike files. *Built.*
 
 19. **Return.** A row that others link to shows `←` and the way back, and
-   `gl` takes it when the row has no link or address of its own.
-   `$missed` finds what an earlier day's picks left undone, and a new
-   outline saves it as `/missed`. *Built.*
+   `gl` takes it when the row has no link or address of its own. A pick
+   left undone stays in Today, saying since when, until it is closed or
+   unpicked, and `$missed` finds those picks. *Built.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add`, `docket ls` and `--version`, macros (`.`,

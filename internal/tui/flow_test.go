@@ -93,14 +93,28 @@ func TestFilterReadsMissedPicks(t *testing.T) {
 	h.press("t", "j", "j", "t", "j", "t", "j", "t")
 	h.press("k", "x") // Write docs is closed on the day it was picked
 	h.clock = h.clock.Add(24 * time.Hour)
-	// Fix login is picked again on the new day, so it was not missed.
-	h.press("k", "t")
+	// What was left undone is carried into the new day; what was closed is not.
 	h.filters(map[string]string{
-		"$missed":       "Fix cache, Refactor auth",
-		"$missed #bug":  "Fix cache, Refactor auth",
-		"-$missed $":    "Fix login, Write docs",
-		"$missed|today": "Fix cache, Fix login, Refactor auth",
+		"$missed":      "Fix cache, Fix login, Refactor auth",
+		"$today":       "Fix cache, Fix login, Refactor auth",
+		"$missed #bug": "Fix cache, Fix login, Refactor auth",
+		"-$missed $":   "Write docs",
 	})
+	// t lets a carried pick go, and a row picked today was not carried.
+	for _, row := range []string{"fix login", "write docs", "refactor"} {
+		h.press("f", `"`+row+`"`, "enter", "t")
+	}
+	for query, want := range map[string]string{
+		// f zoomed into Alpha, so Beta is out of the pane.
+		"$missed": "",
+		"$today":  "Write docs",
+	} {
+		h.press("/", `"`+query+`"`, "tab")
+		if got := h.shown(); got != want {
+			t.Errorf("filter %q = %q, want %q", query, got, want)
+		}
+		h.press("esc")
+	}
 	h.press("/", `"$mi"`)
 	if !strings.Contains(h.bottom(), "$missed") {
 		t.Fatalf("$missed is not offered: %q", h.bottom())

@@ -163,7 +163,7 @@ func TestANewOutlineComesWithFiltersWorthKeeping(t *testing.T) {
 	for _, f := range h.m.filters {
 		names = append(names, f.Name+"="+f.Query)
 	}
-	if !slices.Equal(names, []string{"next=$next", "week=@week", "missed=$missed", "done=$done ~7d"}) || len(h.m.undo) != 1 {
+	if !slices.Equal(names, []string{"next=$next", "week=@week", "done=$done ~7d"}) || len(h.m.undo) != 1 {
 		t.Fatalf("filters %q, %d undo steps", names, len(h.m.undo))
 	}
 	h.press("f", `"/next"`, "enter")

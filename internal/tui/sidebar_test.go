@@ -113,7 +113,7 @@ func TestAListHasNoStructure(t *testing.T) {
 	h.want("▌ ◔ Two +1 · 0d · Alpha")
 }
 
-func TestTodayIsPickedAndLapsesOvernight(t *testing.T) {
+func TestTodayIsPickedAndKeepsWhatIsLeft(t *testing.T) {
 	h := two(t)
 	h.press("j", "j", "t", "j", "t", "x")
 	h.wantSide(
@@ -154,19 +154,36 @@ func TestTodayIsPickedAndLapsesOvernight(t *testing.T) {
 		t.Fatalf("launched on %q", again.header())
 	}
 
-	// The next morning nothing is picked, and nothing was written to say so.
+	// The next morning the pick left undone is still in Today and says
+	// since when; the one closed yesterday is not. Nothing was written.
 	next := resume(t, h.path, st, h.clock.Add(24*time.Hour)).wide()
-	if next.header() != "Projects  · 1 to do" {
+	if next.header() != "Today  · 1 to do" {
 		t.Fatalf("launched on %q", next.header())
+	}
+	next.want("▌ ○ One @today · since Nov 15 · Alpha")
+	next.wantSide(
+		"Inbox",
+		"▌ Today 1",
+		"Waiting",
+		"Stale",
+		"Projects",
+		"Beta ∅",
+		"Alpha @ 1d",
+	)
+	// One t lets it go, and Today is empty from then on.
+	next.press("t")
+	next.want("▌ ○ One @today · Alpha")
+	if next.m.tree.Row(next.m.current()).Fields["today"] != "" {
+		t.Fatal("t did not unpick the carried row")
 	}
 	next.wantSide(
 		"Inbox",
-		"Today",
+		"▌ Today",
 		"Waiting",
 		"Stale",
-		"▌ Projects",
+		"Projects",
 		"Beta ∅",
-		"Alpha @ 1d",
+		"Alpha @",
 	)
 }
 
@@ -262,10 +279,11 @@ func TestTodayIsReordered(t *testing.T) {
 		if h.m.tree.Row(threeID).Fields[fieldTodayPos] != old || h.m.tree.Row(threeID).Fields["today"] != "" {
 			t.Fatal("undo did not restore both pick fields")
 		}
-		// The next day overwrites old positions and assigns a group in screen order.
+		// The next day keeps the picks left undone, in their order, and a
+		// row picked again takes a fresh place after them.
 		h.clock = h.clock.Add(24 * time.Hour)
-		h.press("f", `"alpha"`, "enter", "g", "g", "j", "t", "g", "g", "v", "j", "v", "t", "esc", "f", `"today"`, "enter")
-		h.want("▌ ○ Two · Alpha", "  ○ One · Alpha", "  ○ Three · Alpha")
+		h.press("f", `"alpha"`, "enter", "g", "g", "j", "j", "t", "f", `"today"`, "enter")
+		h.want("  ○ One · since Nov 15 · Alpha", "▌ ○ Two · since Nov 15 · Alpha", "  ○ Three · Alpha")
 		if h.m.tree.Row(threeID).Fields[fieldTodayPos] == old {
 			t.Fatal("new day retained the old position")
 		}

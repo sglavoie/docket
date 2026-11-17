@@ -429,12 +429,10 @@ func (m *Model) tagOffers(e *editor, surface string) string {
 
 // starters are the filters a new outline is given, so the views worth
 // keeping are in the f picker from the first day: what could be done
-// next, what is due this week, what an earlier day's picks left undone, and
-// what was finished this week.
+// next, what is due this week, and what was finished this week.
 var starters = []savedFilter{
 	{Name: "next", Query: "$next", Flat: true},
 	{Name: "week", Query: "@week", Flat: true},
-	{Name: "missed", Query: "$missed", Flat: true},
 	{Name: "done", Query: "$done ~7d", Flat: true},
 }
 
