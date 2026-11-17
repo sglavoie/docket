@@ -163,6 +163,7 @@ docket ls	print a filter's matches; no filter prints the whole outline
 ## Undo and commands
 u Ctrl+R	undo, redo across restarts; a count repeats the key
 Up Down	recall `/`, stamp and `:` lines beginning with what is typed
+Tab	on `:`, complete the command name; again for the next, `Shift+Tab` back
 :help	this reference; `]` `[` go to the next, previous section
 
 == Rows

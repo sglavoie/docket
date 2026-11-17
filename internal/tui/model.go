@@ -331,6 +331,61 @@ func (m *Model) recall(a *prompt, older bool) {
 	a.ed = editor{buf: []rune(line), caret: len([]rune(line))}
 }
 
+// walkCommands completes the name on the command line: Tab and its aliases
+// write the next command the typed letters could become, the others the one
+// before, and past either end the line as it was typed. A name only one
+// command answers is finished at once. It reports false once the name is
+// done, where the same keys recall and edit as on any line.
+func (m *Model) walkCommands(a *prompt, k string) bool {
+	by := 0
+	switch k {
+	case "tab", "down", "ctrl+n", "ctrl+j":
+		by = 1
+	case "shift+tab", "up", "ctrl+p", "ctrl+k":
+		by = -1
+	default:
+		return false
+	}
+	typed := string(a.ed.buf)
+	if a.choice > 0 {
+		typed = a.draft
+	}
+	if t := strings.TrimLeft(typed, " "); len(t) > len(commandName(t)) {
+		return false
+	}
+	uses, _ := commandMatches(typed)
+	n := len(uses)
+	if n == 0 {
+		return true
+	}
+	line := commandFill(uses[0])
+	if n > 1 {
+		if a.choice == 0 {
+			a.draft = typed
+		}
+		a.choice = (a.choice + by + n + 1) % (n + 1)
+		line = a.draft
+		if a.choice > 0 {
+			line = commandFill(uses[a.choice-1])
+		}
+	}
+	a.ed = editor{buf: []rune(line), caret: len([]rune(line))}
+	return true
+}
+
+// commandFill is what completing a command writes: its name, and the space
+// or slash that what it takes is typed after.
+func commandFill(use string) string {
+	name := commandName(use)
+	if len(use) > len(name) {
+		if use[len(name)] == '/' {
+			return name + "/"
+		}
+		return name + " "
+	}
+	return name
+}
+
 // reload reads the outline again from the database, keeping the cursor on
 // its row.
 func (m *Model) reload() bool {
@@ -1531,6 +1586,9 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 	k := msg.String()
 	if m.complete(&a.ed, a.kind, k) {
 		k = "" // the line changed; a filter reads it again below
+	}
+	if a.kind == askCommand && m.walkCommands(a, k) {
+		return
 	}
 	text := strings.TrimSpace(string(a.ed.buf))
 

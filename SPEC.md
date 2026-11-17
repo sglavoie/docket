@@ -419,7 +419,9 @@ was typed come back, so `/#h` `Up` walks the filters that began that way.
 The filter narrows the pane to each line as it is shown. A line is kept
 when it is used: a filter with `Enter`, a stamp when it is applied, a
 command with `Enter`; one given twice is kept once, at the newest end.
-`Ctrl+P` and `Ctrl+N` are aliases. The pickers and the capture line keep
+`Ctrl+P` and `Ctrl+N` are aliases. The command line recalls once its name
+is finished, so `:sort ` `Up` walks the sorts given before; until then the
+same keys complete the name. The pickers and the capture line keep
 nothing: there the arrows walk the matches.
 
 ### Links
@@ -583,7 +585,15 @@ Three more acts use the same line:
   the one that is left with what it does, as `sort [keys]: order siblings
   once: @ deadline, ! flag, $ state, else text`; a line that starts none
   says `no such command`. `Enter` on a name that only one command starts, as
-  `hel`, runs that command; one given anyway is named with the list. `q` quits; `help` opens help; `tutor` adds a fresh
+  `hel`, runs that command; one given anyway is named with the list. While
+  the line holds no more than a name, `Tab` writes the first command it
+  could become and `Tab` again the next, each with the space or slash that
+  what it takes is typed after, and past the last the line as it was typed;
+  `Shift+Tab` walks back. The command written leads the list in bold. A
+  name only one command starts is finished at once. `Down`, `Ctrl+N` and
+  `Ctrl+J` are aliases of `Tab`, and `Up`, `Ctrl+P` and `Ctrl+K` of
+  `Shift+Tab`; once the name is finished the same keys do what they do on
+  any line. `q` quits; `help` opens help; `tutor` adds a fresh
   `Welcome` tutorial as the last project and opens it, from any place, in
   one undo step; `export [file]` writes
   the whole outline as tab-indented lines in the row grammar, to `~/docket-YYYY-MM-DD.txt` unless

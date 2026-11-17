@@ -512,6 +512,21 @@ func (m *Model) statusLine(w int) (string, int) {
 				hint = " · " + tags
 			}
 			line += "   " + m.colors().dim + ansi.Truncate(note+hint, room, "…") + sgrReset
+		case a.kind == askCommand && a.choice > 0:
+			// The command the walk stands on leads, as a picker's match does.
+			uses, _ := commandMatches(a.draft)
+			from := min(a.choice, len(uses)) - 1
+			offer := sgrBold + uses[from] + sgrReset
+			if from > 0 {
+				offer = m.colors().dim + "‹ " + sgrReset + offer
+			}
+			for _, use := range uses[from+1:] {
+				if ansi.StringWidth(offer) > room {
+					break // the rest would not fit
+				}
+				offer += m.colors().dim + " · " + use + sgrReset
+			}
+			line += "   " + ansi.Truncate(offer, room, "…") + sgrReset
 		case a.kind == askCommand:
 			line += "   " + m.colors().dim + ansi.Truncate(commandOffers(string(a.ed.buf)), room, "…") + sgrReset
 		case picker(a.kind):

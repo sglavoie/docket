@@ -103,8 +103,11 @@ func TestPromptsRecallWhatTheyWereGiven(t *testing.T) {
 
 	h.command("numbers")
 	h.command("numbers")
-	h.press(":", "up")
-	if typed() != "numbers" {
+	// A command line recalls once its name is finished; before that the
+	// same keys complete the name.
+	h.command("sort @")
+	h.press(":", `"sort "`, "up")
+	if typed() != "sort @" {
 		t.Fatalf("command up gave %q", typed())
 	}
 	h.press("esc", "#", `"home"`, "enter", "@", `"fri"`, "enter", "#", "up")

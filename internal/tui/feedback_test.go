@@ -294,3 +294,63 @@ func TestCommandEnterTakesTheOneLeft(t *testing.T) {
 		t.Fatalf(":hel x help=%v msg = %q", h.m.help, h.m.msg)
 	}
 }
+
+func TestTabCompletesACommandName(t *testing.T) {
+	h := start(t)
+	typed := func() string { return string(h.m.ask.ed.buf) }
+	step := func(key, want string) {
+		t.Helper()
+		h.press(key)
+		if typed() != want {
+			t.Fatalf("%s gave %q, want %q", key, typed(), want)
+		}
+	}
+
+	// Each key writes the next command the letters could become, and past
+	// the last the line as it was typed.
+	h.press(":", `"s"`)
+	step("tab", "s/")
+	if got, want := h.bottom(), ": s/   s/old/new · sort [keys] · save n…"; got != want {
+		t.Fatalf("walking shows %q, want %q", got, want)
+	}
+	step("down", "sort ")
+	if got, want := h.bottom(), ": sort    ‹ sort [keys] · save name · s…"; got != want {
+		t.Fatalf("walking shows %q, want %q", got, want)
+	}
+	step("ctrl+n", "save ")
+	step("ctrl+j", "sync ")
+	step("tab", "s")
+	step("shift+tab", "sync ")
+	step("up", "save ")
+	step("ctrl+p", "sort ")
+	step("ctrl+k", "s/")
+	step("ctrl+k", "s")
+
+	// Typing starts the walk again from the new line.
+	h.press("tab", "tab", `"@"`)
+	if typed() != "sort @" || h.m.ask.choice != 0 {
+		t.Fatalf("typed %q, choice %d", typed(), h.m.ask.choice)
+	}
+	h.press("esc")
+
+	// A name one command answers is finished at once, and runs.
+	h.press(":", `"hel"`)
+	step("tab", "help")
+	h.press("esc", ":", `"unf"`)
+	step("down", "unfold")
+	h.press("esc", ":", `"so"`)
+	step("tab", "sort ")
+	h.press("esc", ":", `"num"`, "tab", "enter")
+	if !h.m.numbers {
+		t.Fatal("the completed command did not run")
+	}
+
+	// A blank line walks every command; one that starts none stays put.
+	h.press(":")
+	step("tab", "q")
+	step("up", "")
+	step("up", "sync ")
+	h.press("esc", ":", `"zz"`)
+	step("tab", "zz")
+	h.press("esc")
+}
