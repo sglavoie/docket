@@ -957,13 +957,14 @@ func (e entry) rowID() string {
 // create adds a row from a typed line as the last child of parent, as one
 // undo step.
 func (m *Model) create(parent, line string) bool {
-	ops := []outline.Op{{Kind: outline.Insert, Row: m.newID(), Parent: parent, Pos: m.tree.PosLast(parent)}}
+	parsed := sigil.Parse(line, m.defaultsToNotes(parent), m.today())
+	ops := []outline.Op{{Kind: outline.Insert, Row: m.newID(), Parent: parent, Pos: m.tree.PosLast(parent, parsed.Pin)}}
 	inv, err := m.apply(ops)
 	if err != nil {
 		m.msg = err.Error()
 		return false
 	}
-	fields := m.setFields(ops[0].Row, sigil.Parse(line, m.defaultsToNotes(parent), m.today()).Fields())
+	fields := m.setFields(ops[0].Row, parsed.Fields())
 	more, err := m.apply(fields)
 	if err != nil {
 		m.tree.Forget(ops[0].Row)

@@ -171,16 +171,21 @@ func (m *Model) pasteUnder(parent0, anchor string, anchorIsFirst bool, lines []p
 		// Never deeper than one below the row above.
 		level := min(l.level, len(stack))
 		parent, pos := parent0, ""
+		if level > 0 {
+			parent = stack[level-1]
+		}
+		// A line says for itself whether it is pinned, and is placed in
+		// that group, as near the spot as the group allows.
+		line := sigil.Parse(l.text, m.defaultsToNotes(parent), today)
 		switch {
 		case level > 0:
-			parent = stack[level-1]
-			pos = m.tree.PosLast(parent)
+			pos = m.tree.PosLast(parent, line.Pin)
 		case before && after == anchor && anchor != "":
-			pos = m.tree.PosBefore(parent0, anchor)
+			pos = m.tree.PosBefore(parent0, anchor, line.Pin)
 		case after == "":
-			pos = m.tree.PosLast(parent0)
+			pos = m.tree.PosLast(parent0, line.Pin)
 		default:
-			pos = m.tree.PosAfter(parent0, after)
+			pos = m.tree.PosAfter(parent0, after, line.Pin)
 		}
 		op := outline.Op{Kind: outline.Insert, Row: m.newID(), Parent: parent, Pos: pos}
 		undo, err := m.apply([]outline.Op{op})
@@ -189,7 +194,7 @@ func (m *Model) pasteUnder(parent0, anchor string, anchorIsFirst bool, lines []p
 			return 0
 		}
 		made = append(made, op.Row)
-		fields := m.setFields(op.Row, sigil.Parse(l.text, m.defaultsToNotes(parent), today).Fields())
+		fields := m.setFields(op.Row, line.Fields())
 		more, err := m.apply(fields)
 		if err != nil {
 			fail(err)

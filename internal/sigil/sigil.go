@@ -17,6 +17,7 @@ const (
 	FieldText    = "text"
 	FieldState   = "state"
 	FieldFlag    = "flag"
+	FieldPin     = "pin" // drawn before its unpinned siblings
 	FieldDue     = "due"
 	FieldTags    = "tags"
 	FieldChanged = "changed" // when the state last changed, unix milliseconds
@@ -42,6 +43,7 @@ type Line struct {
 	Text    string
 	State   string
 	Flag    bool
+	Pin     bool
 	Due     string // YYYY-MM-DD, a hard deadline
 	Start   string // YYYY-MM-DD, not before this day
 	Every   string // a count and a unit, as in 2w: the row repeats
@@ -155,7 +157,7 @@ func PutTag(tags []string, tag string) []string {
 
 // IsSigil reports a word the row grammar reads as a sigil.
 func IsSigil(w string, today time.Time) bool {
-	if w == "!" {
+	if w == "!" || w == "^" {
 		return true
 	}
 	if len(w) < 2 {
@@ -204,6 +206,8 @@ func Parse(s string, notes bool, today time.Time) Line {
 		switch w[0] {
 		case '!':
 			l.Flag = true
+		case '^':
+			l.Pin = true
 		case '#':
 			if rest, ctx := strings.CutPrefix(w, "##"); ctx {
 				l.Context, _ = ParseContext(rest)
@@ -247,6 +251,9 @@ func Format(l Line, notes bool, today time.Time) string {
 	if l.Flag {
 		words = append(words, "!")
 	}
+	if l.Pin {
+		words = append(words, "^")
+	}
 	if l.Due != "" {
 		words = append(words, "@"+l.Due)
 	}
@@ -281,6 +288,7 @@ func FromFields(f map[string]string) Line {
 		Text:    f[FieldText],
 		State:   f[FieldState],
 		Flag:    f[FieldFlag] != "",
+		Pin:     f[FieldPin] != "",
 		Due:     f[FieldDue],
 		Start:   f[FieldStart],
 		Every:   f[FieldRepeat],
@@ -292,14 +300,18 @@ func FromFields(f map[string]string) Line {
 
 // Fields is the stored form, with the empty string for every unset field.
 func (l Line) Fields() map[string]string {
-	flag := ""
+	flag, pin := "", ""
 	if l.Flag {
 		flag = "1"
+	}
+	if l.Pin {
+		pin = "1"
 	}
 	return map[string]string{
 		FieldText:    l.Text,
 		FieldState:   l.State,
 		FieldFlag:    flag,
+		FieldPin:     pin,
 		FieldDue:     l.Due,
 		FieldStart:   l.Start,
 		FieldRepeat:  l.Every,

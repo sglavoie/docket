@@ -12,6 +12,7 @@ import (
 const (
 	FieldText    = "text"
 	FieldDeleted = "deleted"
+	FieldPin     = "pin" // a pinned row is drawn before its unpinned siblings
 )
 
 // Row is one line of the outline. The root of the tree is the empty ID.
@@ -26,6 +27,7 @@ type Row struct {
 
 func (r *Row) Text() string  { return r.Fields[FieldText] }
 func (r *Row) Deleted() bool { return r.Fields[FieldDeleted] != "" }
+func (r *Row) Pinned() bool  { return r.Fields[FieldPin] != "" }
 
 type Kind string
 
@@ -53,7 +55,9 @@ var (
 )
 
 // Tree is the in-memory outline. Children lists hold live rows only, in
-// sibling order.
+// sibling order: the pinned rows first, then the rest, each group by pos.
+// A pos is only ever compared within its group, so pinning and unpinning
+// never move another row, and an unpinned row goes back where it was.
 type Tree struct {
 	rows map[string]*Row
 	kids map[string][]string
@@ -84,6 +88,9 @@ func NewTree(rows []*Row) *Tree {
 }
 
 func (t *Tree) less(a, b *Row) bool {
+	if a.Pinned() != b.Pinned() {
+		return a.Pinned()
+	}
 	if a.Pos != b.Pos {
 		return a.Pos < b.Pos
 	}
@@ -228,30 +235,56 @@ func (t *Tree) NextSibling(id string) string {
 	return ""
 }
 
-func (t *Tree) posAt(parent string, i int) string {
-	k := t.kids[parent]
-	if i < 0 || i >= len(k) {
-		return ""
+// Gap is the pair of keys a row of one group, pinned or not, goes between
+// to land directly after sibling, or as near after it as the group allows:
+// first among the unpinned when sibling is pinned, last among the pinned
+// when it is not. An empty sibling means first in the group. Rows in moving
+// are passed over, since they are the ones being placed.
+func (t *Tree) Gap(parent, sibling string, pinned bool, moving map[string]bool) (left, right string) {
+	seen := sibling == ""
+	for _, id := range t.kids[parent] {
+		r := t.rows[id]
+		if !moving[id] && r.Pinned() == pinned {
+			if !seen {
+				left = r.Pos
+			} else {
+				return left, r.Pos
+			}
+		}
+		if id == sibling {
+			seen = true
+		}
 	}
-	return t.rows[k[i]].Pos
+	// The group ends after sibling, or sibling is not there: its end.
+	return left, ""
 }
 
-// PosAfter is a position directly after sibling, or first when sibling is "".
-func (t *Tree) PosAfter(parent, sibling string) string {
-	i := t.index(parent, sibling)
-	return Between(t.posAt(parent, i), t.posAt(parent, i+1))
+// PosAfter is a position for a row of the group directly after sibling, or
+// first in the group when sibling is "".
+func (t *Tree) PosAfter(parent, sibling string, pinned bool) string {
+	return Between(t.Gap(parent, sibling, pinned, nil))
 }
 
-// PosBefore is a position directly before sibling.
-func (t *Tree) PosBefore(parent, sibling string) string {
+// PosBefore is a position for a row of the group directly before sibling.
+func (t *Tree) PosBefore(parent, sibling string, pinned bool) string {
 	i := t.index(parent, sibling)
 	if i < 0 {
-		return t.PosLast(parent)
+		return t.PosLast(parent, pinned)
 	}
-	return Between(t.posAt(parent, i-1), t.posAt(parent, i))
+	prev := ""
+	if i > 0 {
+		prev = t.kids[parent][i-1]
+	}
+	return t.PosAfter(parent, prev, pinned)
 }
 
-// PosLast is a position after every child of parent.
-func (t *Tree) PosLast(parent string) string {
-	return Between(t.posAt(parent, len(t.kids[parent])-1), "")
+// PosLast is a position after every child of parent in the group.
+func (t *Tree) PosLast(parent string, pinned bool) string {
+	left := ""
+	for _, id := range t.kids[parent] {
+		if r := t.rows[id]; r.Pinned() == pinned {
+			left = r.Pos
+		}
+	}
+	return Between(left, "")
 }

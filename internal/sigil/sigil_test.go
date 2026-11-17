@@ -40,6 +40,8 @@ func TestParse(t *testing.T) {
 			Line{Text: "Document the #tag and @fri sigils !", State: Open}},
 		{`a \plain backslash`, false, Line{Text: `a \plain backslash`, State: Open}},
 		{"later wins @mon @tue $done $open", false, Line{Text: "later wins", State: Open, Due: "2026-11-17"}},
+		{"Ship first ^ !", false, Line{Text: "Ship first", State: Open, Flag: true, Pin: true}},
+		{`x^2 and a \^ caret`, false, Line{Text: "x^2 and a ^ caret", State: Open}},
 	}
 	for _, c := range cases {
 		if got := Parse(c.line, c.notes, today); !reflect.DeepEqual(got, c.want) {
@@ -67,6 +69,8 @@ func TestFormatRoundTrips(t *testing.T) {
 		{Line{Text: "Water plants", State: Open, Start: "2026-11-20", Every: "3d", Tags: []string{"home"}}, false,
 			"Water plants @@2026-11-20 *3d #home"},
 		{Line{Text: "do it *2w or @@fri", State: Open}, false, `do it \*2w or \@@fri`},
+		{Line{Text: "Ship", State: Open, Flag: true, Pin: true, Due: "2026-11-20"}, false, "Ship ! ^ @2026-11-20"},
+		{Line{Text: "a ^ caret", State: Open}, false, `a \^ caret`},
 	}
 	for _, c := range cases {
 		got := Format(c.line, c.notes, today)

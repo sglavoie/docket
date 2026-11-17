@@ -59,6 +59,7 @@ Esc	end typing, then keep the visit as one outline undo
 ## States and sigils
 # @ $ * - ~	open the stamp line; `Enter` sets sigils on the row or selection
 !	flag; `-!` removes it on the stamp line
+^	pin rows first among their siblings, and unpin; `-^` on the stamp line
 -#tag -@ -@@ -*	remove fields on the stamp line; `-~` the colour, `-##` the context
 
 == Days
@@ -134,6 +135,7 @@ Held rows	edits never remove matches; change the query to read again
 	a `~` filter says when on each match; flat, newest first
 & &word &.	a row link, one to matching text, one to the cursor's row
 $project	a top-level row: `$parked $project` lists parked projects
+$pinned	a row pinned with `^`
 
 == Next actions
 $next	each project's first workable task; excludes Inbox

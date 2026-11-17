@@ -18,6 +18,7 @@ var fieldWords = map[string]string{
 	sigil.FieldText:    "text",
 	sigil.FieldState:   "state",
 	sigil.FieldFlag:    "flag",
+	sigil.FieldPin:     "pin",
 	sigil.FieldDue:     "deadline",
 	sigil.FieldStart:   "start day",
 	sigil.FieldTags:    "tags",
@@ -31,7 +32,7 @@ var fieldWords = map[string]string{
 
 // fieldOrder is the order fields are named in, most telling first.
 var fieldOrder = []string{
-	sigil.FieldText, sigil.FieldState, sigil.FieldFlag, sigil.FieldDue,
+	sigil.FieldText, sigil.FieldState, sigil.FieldFlag, sigil.FieldPin, sigil.FieldDue,
 	sigil.FieldStart, sigil.FieldTags, sigil.FieldContext, sigil.FieldRepeat, sigil.FieldToday,
 	fieldTodayPos, fieldLink, fieldQuery,
 }
@@ -490,7 +491,7 @@ func (m *Model) starterFilters() {
 			flat = "1"
 		}
 		group := []outline.Op{
-			{Kind: outline.Insert, Row: id, Parent: filtersID, Pos: m.tree.PosLast(filtersID)},
+			{Kind: outline.Insert, Row: id, Parent: filtersID, Pos: m.tree.PosLast(filtersID, false)},
 			{Kind: outline.Set, Row: id, Field: sigil.FieldText, Value: f.Name},
 			{Kind: outline.Set, Row: id, Field: fieldQuery, Value: f.Query},
 			{Kind: outline.Set, Row: id, Field: fieldFlat, Value: flat},

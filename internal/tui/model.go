@@ -462,7 +462,7 @@ func (m *Model) adoptOldFilters() {
 		}
 		id := m.newID()
 		ops := []outline.Op{
-			{Kind: outline.Insert, Row: id, Parent: filtersID, Pos: m.tree.PosLast(filtersID)},
+			{Kind: outline.Insert, Row: id, Parent: filtersID, Pos: m.tree.PosLast(filtersID, false)},
 			{Kind: outline.Set, Row: id, Field: sigil.FieldText, Value: f.Name},
 			{Kind: outline.Set, Row: id, Field: fieldQuery, Value: f.Query},
 			{Kind: outline.Set, Row: id, Field: fieldFlat, Value: flat},
@@ -990,7 +990,7 @@ func (m *Model) indentOp(id string) (outline.Op, bool) {
 		m.msg = "no row above to indent under"
 		return outline.Op{}, false
 	}
-	return outline.Op{Kind: outline.Move, Row: id, Parent: prev, Pos: m.tree.PosLast(prev)}, true
+	return outline.Op{Kind: outline.Move, Row: id, Parent: prev, Pos: m.tree.PosLast(prev, m.pinned(id))}, true
 }
 
 func (m *Model) outdentOp(id string) (outline.Op, bool) {
@@ -1000,7 +1000,67 @@ func (m *Model) outdentOp(id string) (outline.Op, bool) {
 		return outline.Op{}, false
 	}
 	p := m.tree.Row(r.Parent)
-	return outline.Op{Kind: outline.Move, Row: id, Parent: p.Parent, Pos: m.tree.PosAfter(p.Parent, p.ID)}, true
+	return outline.Op{Kind: outline.Move, Row: id, Parent: p.Parent, Pos: m.tree.PosAfter(p.Parent, p.ID, m.pinned(id))}, true
+}
+
+func (m *Model) pinned(id string) bool { return m.tree.Row(id).Pinned() }
+
+// placeOps moves rows under parent to land directly after the sibling named,
+// or first when it is "", keeping their order. Each keeps its pin, so it
+// lands as near there as its group allows; the rows themselves are passed
+// over as neighbours.
+func (m *Model) placeOps(rows []string, parent, after string) []outline.Op {
+	moving := make(map[string]bool, len(rows))
+	for _, id := range rows {
+		moving[id] = true
+	}
+	gaps := map[bool]*[2]string{}
+	var ops []outline.Op
+	for _, id := range rows {
+		g := m.pinned(id)
+		gap := gaps[g]
+		if gap == nil {
+			left, right := m.tree.Gap(parent, after, g, moving)
+			gap = &[2]string{left, right}
+			gaps[g] = gap
+		}
+		gap[0] = outline.Between(gap[0], gap[1])
+		ops = append(ops, outline.Op{Kind: outline.Move, Row: id, Parent: parent, Pos: gap[0]})
+	}
+	return ops
+}
+
+// appendOps moves rows to be the last children of parent, in order, each
+// after the last of its own group.
+func (m *Model) appendOps(rows []string, parent string) []outline.Op {
+	last := map[bool]string{}
+	var ops []outline.Op
+	for _, id := range rows {
+		g := m.pinned(id)
+		pos, ok := last[g]
+		if ok {
+			pos = outline.Between(pos, "")
+		} else {
+			pos = m.tree.PosLast(parent, g)
+		}
+		last[g] = pos
+		ops = append(ops, outline.Op{Kind: outline.Move, Row: id, Parent: parent, Pos: pos})
+	}
+	return ops
+}
+
+// pinWall says why a row cannot be reordered past next: pinned rows stay
+// above the rest. It is empty when the two are in one group.
+func (m *Model) pinWall(rows []string, next string) string {
+	for _, id := range rows {
+		if m.pinned(id) != m.pinned(next) {
+			if m.pinned(id) {
+				return "pinned rows stay above the rest: ^ unpins it"
+			}
+			return "pinned rows stay above the rest: ^ pins it"
+		}
+	}
+	return ""
 }
 
 // shift indents or outdents id, inside the open edit when there is one.
@@ -1095,43 +1155,42 @@ func (m *Model) moveBlock(ids []string, key string) {
 	}
 	first, last := block[0], block[len(block)-1]
 	parent := m.tree.Row(first).Parent
-	var pos, right string
+	var ops []outline.Op
 	switch key {
 	case ">", "<":
-		var op outline.Op
-		var ok bool
+		op, ok := m.outdentOp(first)
 		if key == ">" {
 			op, ok = m.indentOp(first)
-		} else {
-			op, ok = m.outdentOp(first)
-			if next := m.tree.NextSibling(parent); next != "" {
-				right = m.tree.Row(next).Pos
-			}
 		}
 		if !ok {
 			return
 		}
-		parent, pos = op.Parent, op.Pos
+		parent = op.Parent
+		if key == ">" {
+			ops = m.appendOps(block, parent)
+		} else {
+			ops = m.placeOps(block, parent, m.tree.Row(first).Parent)
+		}
 	case "J":
 		next := m.tree.NextSibling(last)
 		if next == "" {
 			return
 		}
-		pos = m.tree.PosAfter(parent, next)
-		if after := m.tree.NextSibling(next); after != "" {
-			right = m.tree.Row(after).Pos
+		if wall := m.pinWall(block, next); wall != "" {
+			m.msg = wall
+			return
 		}
+		ops = m.placeOps(block, parent, next)
 	case "K":
 		prev := m.prevSibling(first)
 		if prev == "" {
 			return
 		}
-		pos, right = m.tree.PosBefore(parent, prev), m.tree.Row(prev).Pos
-	}
-	var ops []outline.Op
-	for _, id := range block {
-		ops = append(ops, outline.Op{Kind: outline.Move, Row: id, Parent: parent, Pos: pos})
-		pos = outline.Between(pos, right)
+		if wall := m.pinWall(block, prev); wall != "" {
+			m.msg = wall
+			return
+		}
+		ops = m.placeOps(block, parent, m.tree.PrevSibling(prev))
 	}
 	cur := m.current()
 	if m.do(ops...) {
@@ -1176,6 +1235,13 @@ func (m *Model) sortRows(keys []string) {
 	ordered := slices.Clone(block)
 	slices.SortStableFunc(ordered, func(a, b string) int {
 		x, y := m.tree.Row(a).Fields, m.tree.Row(b).Fields
+		// Each group is sorted on its own: pinned rows stay first.
+		if xp, yp := m.pinned(a), m.pinned(b); xp != yp {
+			if xp {
+				return -1
+			}
+			return 1
+		}
 		if len(keys) == 0 {
 			return strings.Compare(strings.ToLower(x[sigil.FieldText]), strings.ToLower(y[sigil.FieldText]))
 		}
@@ -1215,18 +1281,7 @@ func (m *Model) sortRows(keys []string) {
 		return
 	}
 	parent := m.tree.Row(block[0]).Parent
-	var left, right string
-	if prev := m.tree.PrevSibling(block[0]); prev != "" {
-		left = m.tree.Row(prev).Pos
-	}
-	if next := m.tree.NextSibling(block[len(block)-1]); next != "" {
-		right = m.tree.Row(next).Pos
-	}
-	var ops []outline.Op
-	for _, id := range ordered {
-		left = outline.Between(left, right)
-		ops = append(ops, outline.Op{Kind: outline.Move, Row: id, Parent: parent, Pos: left})
-	}
+	ops := m.placeOps(ordered, parent, m.tree.PrevSibling(block[0]))
 	if m.do(ops...) {
 		m.rebuild()
 		m.seek(cur)
@@ -1246,14 +1301,22 @@ func (m *Model) reorder(id string, down bool) {
 			m.msg = "already the last of its siblings: >> or m moves it elsewhere"
 			return
 		}
-		pos = m.tree.PosAfter(r.Parent, next)
+		if wall := m.pinWall([]string{id}, next); wall != "" {
+			m.msg = wall
+			return
+		}
+		pos = m.tree.PosAfter(r.Parent, next, r.Pinned())
 	} else {
 		prev := m.prevSibling(id)
 		if prev == "" {
 			m.msg = "already the first of its siblings: << or m moves it elsewhere"
 			return
 		}
-		pos = m.tree.PosBefore(r.Parent, prev)
+		if wall := m.pinWall([]string{id}, prev); wall != "" {
+			m.msg = wall
+			return
+		}
+		pos = m.tree.PosBefore(r.Parent, prev, r.Pinned())
 	}
 	if m.do(outline.Op{Kind: outline.Move, Row: id, Parent: r.Parent, Pos: pos}) {
 		m.rebuild()
@@ -1295,26 +1358,13 @@ func (m *Model) moveHere(ids []string) {
 		moving[id] = true
 	}
 	parent, after := m.openSpot(cur)
-	left, right := "", ""
-	if after != "" {
-		left = m.tree.Row(after).Pos
-	}
-	// The rows land before the first sibling that is not one of them.
-	kids := m.tree.Children(parent)
-	i := slices.Index(kids, after) + 1
-	for ; i < len(kids); i++ {
-		if !moving[kids[i]] {
-			right = m.tree.Row(kids[i]).Pos
-			break
-		}
-	}
-	var ops []outline.Op
+	var live []string
 	for _, id := range roots {
 		if m.live(id) {
-			left = outline.Between(left, right)
-			ops = append(ops, outline.Op{Kind: outline.Move, Row: id, Parent: parent, Pos: left})
+			live = append(live, id)
 		}
 	}
+	ops := m.placeOps(live, parent, after)
 	if len(ops) > 0 && m.do(ops...) {
 		m.rebuild()
 		m.seek(cur)
@@ -1330,24 +1380,37 @@ func (m *Model) newRowAt(above bool, cur string) {
 	if m.flat() {
 		return
 	}
+	// The new row takes the pin of the sibling it opens beside, so it is
+	// drawn where it was opened.
 	var parent, pos string
+	var pin bool
 	if above && cur != "" {
 		parent = m.tree.Row(cur).Parent
-		pos = m.tree.PosBefore(parent, cur)
+		pin = m.pinned(cur)
+		pos = m.tree.PosBefore(parent, cur, pin)
 	} else {
 		var after string
 		parent, after = m.openSpot(cur)
-		pos = m.tree.PosAfter(parent, after)
+		if after != "" {
+			pin = m.pinned(after)
+		} else if kids := m.tree.Children(parent); len(kids) > 0 {
+			pin = m.pinned(kids[0])
+		}
+		pos = m.tree.PosAfter(parent, after, pin)
 	}
-	op := outline.Op{Kind: outline.Insert, Row: m.newID(), Parent: parent, Pos: pos}
-	inv, err := m.apply([]outline.Op{op})
+	ops := []outline.Op{{Kind: outline.Insert, Row: m.newID(), Parent: parent, Pos: pos}}
+	if pin {
+		ops = append(ops, outline.Op{Kind: outline.Set, Row: ops[0].Row, Field: sigil.FieldPin, Value: "1"})
+	}
+	op := ops[0]
+	inv, err := m.apply(ops)
 	if err != nil {
 		m.msg = err.Error()
 		return
 	}
 	m.rebuild()
 	m.seek(op.Row)
-	m.edit = &editor{row: op.Row, fresh: true, back: cur, ops: []outline.Op{op}, inv: inv}
+	m.edit = &editor{row: op.Row, fresh: true, back: cur, ops: ops, inv: inv}
 	m.edit.mark("o")
 	if above {
 		m.edit.mark("O")
@@ -1397,7 +1460,7 @@ func (m *Model) setFields(id string, want map[string]string) []outline.Op {
 		}
 		return have[name]
 	}
-	for _, name := range []string{sigil.FieldText, sigil.FieldState, sigil.FieldFlag, sigil.FieldDue, sigil.FieldStart, sigil.FieldRepeat, sigil.FieldTags, sigil.FieldContext, sigil.FieldColor} {
+	for _, name := range []string{sigil.FieldText, sigil.FieldState, sigil.FieldFlag, sigil.FieldPin, sigil.FieldDue, sigil.FieldStart, sigil.FieldRepeat, sigil.FieldTags, sigil.FieldContext, sigil.FieldColor} {
 		value, ok := want[name]
 		if !ok || value == have[name] {
 			continue
@@ -1478,7 +1541,12 @@ func (m *Model) finishEdit() bool {
 	if e.fresh {
 		notes = m.defaultsToNotes(m.tree.Row(e.row).Parent)
 	}
-	ops := m.setFields(e.row, sigil.Parse(typed, notes, m.today()).Fields())
+	want := sigil.Parse(typed, notes, m.today()).Fields()
+	if e.fresh && m.pinned(e.row) {
+		// A fresh row was pinned by where it was opened, not by its line.
+		want[sigil.FieldPin] = "1"
+	}
+	ops := m.setFields(e.row, want)
 	if inv, err := m.apply(ops); err == nil {
 		e.ops = append(e.ops, ops...)
 		e.inv = append(inv, e.inv...)
@@ -1817,7 +1885,11 @@ func (m *Model) applyStamp(rows []string, line string) bool {
 			ops = append(ops, m.stampOps(id, c)...)
 		}
 	}
+	cur := m.current()
 	if len(ops) > 0 && m.do(ops...) {
+		// A pin moves the row, and the cursor goes with it.
+		m.rebuild()
+		m.seek(cur)
 		m.repeat = repeatAct{line: line}
 		m.remember(askStamp, line)
 	} else if len(ops) == 0 && len(c.shift) > 0 && len(c.set)+len(c.add)+len(c.strip) == 0 {
@@ -1832,17 +1904,14 @@ func (m *Model) moveTo(rows []string, to entry) {
 		m.msg = "destination is no longer live: " + to.label
 		return
 	}
-	var ops []outline.Op
+	var live []string
 	for _, id := range rows {
 		if m.live(id) {
-			// Each row is placed after the one before it.
-			pos := m.tree.PosLast(dest)
-			if n := len(ops); n > 0 {
-				pos = outline.Between(ops[n-1].Pos, "")
-			}
-			ops = append(ops, outline.Op{Kind: outline.Move, Row: id, Parent: dest, Pos: pos})
+			live = append(live, id)
 		}
 	}
+	// Each row is placed after the one before it.
+	ops := m.appendOps(live, dest)
 	if len(ops) > 0 && m.do(ops...) {
 		m.msg = "moved to " + to.label
 		m.repeat = repeatAct{to: to}
@@ -2059,25 +2128,19 @@ func (m *Model) archive() {
 		if len(found) == 0 {
 			return
 		}
-		pos := ""
 		if shelf == "" {
 			shelf = m.newID()
-			last := m.tree.PosLast(project)
+			last := m.tree.PosLast(project, false)
 			if n := len(ops); n > 0 && ops[n-1].Parent == project {
 				last = outline.Between(ops[n-1].Pos, "")
 			}
 			ops = append(ops,
 				outline.Op{Kind: outline.Insert, Row: shelf, Parent: project, Pos: last},
 				outline.Op{Kind: outline.Set, Row: shelf, Field: sigil.FieldText, Value: archiveText})
-			pos = outline.Between("", "")
-		} else {
-			pos = m.tree.PosLast(shelf)
 		}
-		for _, id := range found {
-			ops = append(ops, outline.Op{Kind: outline.Move, Row: id, Parent: shelf, Pos: pos})
-			pos = outline.Between(pos, "")
-			moved++
-		}
+		// A shelf made just now has no rows yet, so each group starts afresh.
+		ops = append(ops, m.appendOps(found, shelf)...)
+		moved += len(found)
 	}
 	if m.at.root == "" {
 		for _, top := range m.tree.Children("") {
@@ -2238,7 +2301,7 @@ func (m *Model) act(k string, count int) {
 	tree, gen := m.tree, m.tree.Gen()
 	defer func() {
 		switch k {
-		case "x", "!", "t", "J", "K", "p", "P", "gp", "gP":
+		case "x", "!", "^", "t", "J", "K", "p", "P", "gp", "gP":
 			if m.tree == tree && m.tree.Gen() != gen {
 				m.repeat = repeatAct{key: k, count: count}
 			}
@@ -2246,7 +2309,7 @@ func (m *Model) act(k string, count int) {
 	}()
 	if count > 0 {
 		switch k {
-		case "x", "!", "t", "m", "L", ".", "#", "@", "$", "*", "-", "~", "v", "zc", "zo":
+		case "x", "!", "^", "t", "m", "L", ".", "#", "@", "$", "*", "-", "~", "v", "zc", "zo":
 			if len(m.picked) > 0 {
 				m.msg = "a count cannot act on a selection: act without one, or Esc clears the selection"
 				return
@@ -2784,6 +2847,12 @@ func (m *Model) normalAct(k string, count int) {
 		}
 	case "!":
 		m.toggle(ids, sigil.FieldFlag, "1")
+	case "^":
+		// A pin is an order the user asks for: the row is drawn first among
+		// its siblings, and the cursor goes with it.
+		m.toggle(ids, sigil.FieldPin, "1")
+		m.rebuild()
+		m.seek(cur)
 	case "t":
 		// Today is a pick that lapses by itself: the field holds the day it
 		// was made, and tomorrow that is no longer today.

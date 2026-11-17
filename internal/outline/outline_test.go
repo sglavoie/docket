@@ -120,10 +120,71 @@ func TestPositionsLandBetweenSiblings(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	apply(Op{Kind: Insert, Row: "mid", Pos: tr.PosAfter("", "a")})
-	apply(Op{Kind: Insert, Row: "first", Pos: tr.PosBefore("", "a")})
-	apply(Op{Kind: Insert, Row: "last", Pos: tr.PosLast("")})
+	apply(Op{Kind: Insert, Row: "mid", Pos: tr.PosAfter("", "a", false)})
+	apply(Op{Kind: Insert, Row: "first", Pos: tr.PosBefore("", "a", false)})
+	apply(Op{Kind: Insert, Row: "last", Pos: tr.PosLast("", false)})
 	if got := strings.Join(tr.Children(""), ","); got != "first,a,mid,b,last" {
 		t.Fatalf("order = %s", got)
+	}
+}
+
+// A pinned row is drawn before its unpinned siblings, and unpinning it puts
+// it back where it was among them, since no other row moved.
+func TestPinnedRowsComeFirst(t *testing.T) {
+	tr := NewTree([]*Row{
+		{ID: "a", Pos: "a"}, {ID: "b", Pos: "b"}, {ID: "c", Pos: "c"}, {ID: "d", Pos: "d"},
+	})
+	set := func(id, v string) {
+		t.Helper()
+		if _, err := tr.Apply(Op{Kind: Set, Row: id, Field: FieldPin, Value: v}, 2); err != nil {
+			t.Fatal(err)
+		}
+	}
+	order := func(want string) {
+		t.Helper()
+		if got := strings.Join(tr.Children(""), ","); got != want {
+			t.Fatalf("order = %s, want %s", got, want)
+		}
+	}
+	set("c", "1")
+	order("c,a,b,d")
+	set("d", "1")
+	order("c,d,a,b")
+	set("c", "")
+	order("d,a,b,c")
+}
+
+// A position is found inside the group the row will belong to, whatever
+// group the sibling it is placed beside is in.
+func TestPositionsStayInTheirGroup(t *testing.T) {
+	tr := NewTree([]*Row{
+		{ID: "a", Pos: "a"}, {ID: "b", Pos: "b"},
+		{ID: "x", Pos: "x", Fields: map[string]string{FieldPin: "1"}},
+		{ID: "y", Pos: "y", Fields: map[string]string{FieldPin: "1"}},
+	})
+	order := func(want string) {
+		t.Helper()
+		if got := strings.Join(tr.Children(""), ","); got != want {
+			t.Fatalf("order = %s, want %s", got, want)
+		}
+	}
+	order("x,y,a,b")
+	insert := func(id, pos string, pinned bool) {
+		t.Helper()
+		if _, err := tr.Apply(Op{Kind: Insert, Row: id, Pos: pos}, 2); err != nil {
+			t.Fatal(err)
+		}
+		if pinned {
+			tr.Apply(Op{Kind: Set, Row: id, Field: FieldPin, Value: "1"}, 2)
+		}
+	}
+	insert("u1", tr.PosAfter("", "y", false), false) // first of the unpinned
+	insert("p1", tr.PosAfter("", "b", true), true)   // last of the pinned
+	insert("p0", tr.PosBefore("", "x", true), true)
+	insert("u2", tr.PosLast("", false), false)
+	insert("p2", tr.PosLast("", true), true)
+	order("p0,x,y,p1,p2,u1,a,b,u2")
+	if l, r := tr.Gap("", "y", true, map[string]bool{"p1": true}); l != tr.Row("y").Pos || r != tr.Row("p2").Pos {
+		t.Fatalf("gap after y passing over p1 = %q %q", l, r)
 	}
 }

@@ -57,6 +57,8 @@ func (c cond) words(today time.Time) string {
 		return "carried into Today from an earlier day"
 	case 'P':
 		return "a project"
+	case '^':
+		return "pinned"
 	case '@':
 		switch c.value {
 		case "":

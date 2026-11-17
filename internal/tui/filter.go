@@ -283,6 +283,8 @@ func parseCond(w string, today time.Time) cond {
 			c.kind = 'P'
 		} else if strings.ToLower(w) == "$missed" {
 			c.kind = 'M'
+		} else if strings.ToLower(w) == "$pinned" {
+			c.kind = '^'
 		} else if state, ok := sigil.ParseState(w[1:]); ok {
 			c.kind, c.value = '$', state
 		}
@@ -431,6 +433,8 @@ func (m *Model) holds(r *outline.Row, l sigil.Line, c cond, today time.Time) boo
 		return l.State == c.value
 	case 'S':
 		return l.State != ""
+	case '^':
+		return l.Pin
 	case 'n':
 		return m.next[r.ID]
 	case 'f':
@@ -703,6 +707,11 @@ func parseStamp(line string, today time.Time) (change, string) {
 			c.set[sigil.FieldFlag], ok = "1", true
 			if neg {
 				c.set[sigil.FieldFlag] = ""
+			}
+		case body == "^":
+			c.set[sigil.FieldPin], ok = "1", true
+			if neg {
+				c.set[sigil.FieldPin] = ""
 			}
 		case body == "@" && neg:
 			c.set[sigil.FieldDue], ok = "", true
@@ -1032,7 +1041,7 @@ func (m *Model) keepFilter(save bool, name string) {
 	default:
 		if id == "" {
 			id = m.newID()
-			ops = append(ops, outline.Op{Kind: outline.Insert, Row: id, Parent: filtersID, Pos: m.tree.PosLast(filtersID)})
+			ops = append(ops, outline.Op{Kind: outline.Insert, Row: id, Parent: filtersID, Pos: m.tree.PosLast(filtersID, false)})
 			set(sigil.FieldText, name)
 		}
 		flat := ""

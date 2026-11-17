@@ -145,6 +145,10 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 		// list of flags never reads as one. Bold keeps it seen.
 		out = append(out, word{paint(m.colors().warn + sgrBold), "!"})
 	}
+	if l.Pin {
+		// ^ toggles the pin, so the row says which way the key will go.
+		out = append(out, word{paint(m.colors().accent), "^"})
+	}
 	if picked && m.at.list != kindToday {
 		// t toggles the pick, so the row says which way the key will go.
 		// Today itself holds nothing else, and says it of no row.
