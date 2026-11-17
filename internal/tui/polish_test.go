@@ -259,7 +259,7 @@ func TestHelpScrolls(t *testing.T) {
 		t.Fatalf("j: top=%d", m.helpTop)
 	}
 	m.helpKey("ctrl+d")
-	if m.helpTop != 1+m.helpPage()/2 {
+	if m.helpTop != 1+m.helpRows()/2 {
 		t.Fatalf("ctrl+d: top=%d", m.helpTop)
 	}
 	m.helpKey("G")

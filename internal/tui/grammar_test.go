@@ -1168,11 +1168,16 @@ func TestTheStatusLineShowsWhatIsPending(t *testing.T) {
 	t.Run("in help", func(t *testing.T) {
 		h := countOutline(t, 1)
 		h.press(":", `"help"`, "enter", "j", "g")
-		if !strings.HasSuffix(last(h), "closes  g") {
+		// The waiting g sits before the ruler at the right.
+		waits := func() bool {
+			f := strings.Fields(last(h))
+			return len(f) > 1 && f[len(f)-2] == "g"
+		}
+		if !waits() {
 			t.Fatal(last(h))
 		}
 		h.press("g")
-		if strings.HasSuffix(last(h), "g") || h.m.helpTop != 0 {
+		if waits() || h.m.helpTop != 0 {
 			t.Fatal(last(h))
 		}
 	})

@@ -234,22 +234,37 @@ func TestFirstLaunchSeedsTutor(t *testing.T) {
 }
 
 func TestHelpSections(t *testing.T) {
-	want := []string{"Essentials — move, fold and zoom", "Add and type", "States and sigils", "Counts and operators", "Selection", "Filter", "Capture and travel", "Undo and commands"}
-	for _, height := range []int{12, 24, 60} {
-		h := start(t).wide()
-		h.m.Update(tea.WindowSizeMsg{Width: 100, Height: height})
+	want := []string{"Essentials", "Add and type", "States and sigils", "Counts and operators", "Selection", "Filter", "Capture and travel", "Undo and commands"}
+	for _, size := range [][2]int{{100, 12}, {100, 24}, {100, 60}, {60, 24}, {30, 12}} {
+		width, height := size[0], size[1]
+		h := start(t)
+		h.m.Update(tea.WindowSizeMsg{Width: width, Height: height})
 		h.press(":", `"help"`, "enter")
 		first := ansi.Strip(h.m.View().Content)
 		for _, key := range []string{"j k", "o O", "x  !  t", "/", "u  Ctrl+R", "Ctrl+C", ":tutor"} {
-			if !strings.Contains(first, key) {
-				t.Errorf("first help screen omits %q", key)
+			if width >= 60 && !strings.Contains(first, key) {
+				t.Errorf("%dx%d: first help screen omits %q", width, height, key)
 			}
 		}
 		check := func(heading string) {
 			t.Helper()
-			view := ansi.Strip(h.m.View().Content)
-			if !h.m.help || strings.Split(view, "\n")[0] != heading || !strings.Contains(view, "]/[ sections") {
-				t.Fatalf("height %d: expected %q and navigation footer:\n%s", height, heading, view)
+			lines := strings.Split(ansi.Strip(h.m.View().Content), "\n")
+			// The header names the section, its title is the first line
+			// under it, and the rail marks it when there is one.
+			ok := h.m.help && len(lines) == height &&
+				strings.Contains(lines[0], "Help › "+heading) &&
+				strings.Contains(lines[1], heading) &&
+				strings.Contains(lines[len(lines)-1], "] [ section")
+			if width >= sidebarFrom {
+				ok = ok && strings.Contains(strings.Join(lines, "\n"), "▌ "+heading)
+			}
+			if !ok {
+				t.Fatalf("%dx%d: expected %q and navigation footer:\n%s", width, height, heading, strings.Join(lines, "\n"))
+			}
+			for _, line := range lines {
+				if ansi.StringWidth(line) > width {
+					t.Fatalf("%dx%d: line wider than the screen: %q", width, height, line)
+				}
 			}
 		}
 		h.press("[")
@@ -269,6 +284,32 @@ func TestHelpSections(t *testing.T) {
 		h.press("esc")
 		if h.m.help {
 			t.Fatal("Esc did not close help")
+		}
+	}
+}
+
+// Every line of the reference is keys and what they do, a note, or a
+// heading, and no key is left wider than its column without a reason.
+func TestHelpSource(t *testing.T) {
+	sections := 0
+	for _, e := range helpDoc {
+		switch {
+		case e.kind == helpSection:
+			sections++
+		case e.kind == helpItem && e.text == "":
+			t.Errorf("%q says nothing", e.keys)
+		case e.kind == helpItem && strings.Count(e.text, "`")%2 != 0:
+			t.Errorf("%q leaves a key open: %s", e.keys, e.text)
+		case e.kind == helpItem && ansi.StringWidth(e.keys) > helpKeyCols:
+			t.Errorf("%q is wider than the key column", e.keys)
+		}
+	}
+	if sections != 8 {
+		t.Fatalf("%d sections", sections)
+	}
+	for _, line := range strings.Split(helpSource, "\n") {
+		if line != "" && !strings.Contains(line, "\t") && !strings.HasPrefix(line, "## ") && !strings.HasPrefix(line, ":: ") && !strings.HasPrefix(line, "== ") {
+			t.Errorf("line is neither keys nor a heading: %q", line)
 		}
 	}
 }

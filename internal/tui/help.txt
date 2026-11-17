@@ -1,0 +1,187 @@
+## Essentials
+:: move, fold and zoom
+j k  gg G	move; `Home` `End` reach the ends
+o O  A I	add below, above; type at the end, start
+x  !  t	close and reopen, flag, pick for Today
+/	filter; `Enter` keeps, `Esc` clears
+u  Ctrl+R	undo, redo; nothing asks for confirmation
+Ctrl+C  :q	quit
+:tutor	a fresh Welcome tutorial; `dd` on its project removes it
+
+== Fold and zoom
+h l	fold, unfold; step to parent, first child
+zc zo	fold, unfold the whole branch; a count or selection too
+Enter	zoom in
+Esc	clear the selection, then the filter, then zoom back out
+
+== Move further
+] [  H	next, previous heading; parent
+} {  ) (	next, previous sibling; last, first sibling
+Ctrl+D Ctrl+U	half a pane; `Ctrl+F` `Ctrl+B` or `PgDn` `PgUp` a whole pane
+zt zz zb	draw the cursor's row at the top, middle, bottom
+h in a list	show the row where it lives; `Esc` returns; `l` does nothing
+
+## Add and type
+o O	new row below, above; `o` on an open parent adds a first child
+A I  cc	type at the end, start; retype the text, keeping fields
+Paste	several lines become rows, indentation as depth; one undo
+
+== While typing
+Enter	split inside a line; at its ends keep it (fresh rows chain)
+Backspace	at the start, join into the row above (no children)
+Up Down	by wrapped line, then go on typing in the next row
+Home Ctrl+A	start of the typed row; `End` `Ctrl+E` its end
+Ctrl+U	cut before the caret
+Alt+Left/Right	by word; `Alt+Backspace` deletes one
+Tab Shift+Tab	indent, outdent
+Esc	keep the row
+
+== Inside a row
+w b e  W B E	step into the text by word; capitals count nonblank words
+h l  0 ^ $	by character; to the ends of the line
+j k	by drawn line, then on into the row below, above
+f F t T	find a character; `;` `,` repeat, reverse
+n N	the filter's next, previous word or tag, row to row
+i a  I A	type at, after the caret; at the start, the end
+d c y	take a motion or an object: `dw` `c2e` `d$` `yiw` `ci"`
+iw aw iW aW	a word, with its blank, counting nonblank words
+i" a"	what is between quotes
+i( i[ i{ i<	what is between brackets; `a(` with them; `ib` `iB` as `i(` `i{`
+x X  D C  s	delete, change characters
+r  ~	replace the character; switch its case
+p P	put text after, before
+v	select with motions or objects
+*	filter by the word at the caret
+u Ctrl+R	undo, redo inside this visit
+.	repeat a text change
+Esc	end typing, then keep the visit as one outline undo
+
+## States and sigils
+# @ $ * -	open the stamp line; `Enter` sets sigils on the row or selection
+!	flag; `-!` removes it on the stamp line
+-#tag -@ -@@ -*	remove fields on the stamp line
+
+== Days
+@fri @+3d	deadline; `@dec4` `@jan5-2027` `@eom` by name
+@@mon	not before that day
+@++1w @--3d	shift the row's deadline; `@@++1w` its start (stamp line only)
+*2w *monthly	repeat: closing moves the date and reopens done descendants
+
+== Tags and states
+#tag #est=2h	tag or value; the header sums estimates, headings show done/total
+$state	`$open` `$doing` `$waiting` `$done` `$canceled` `$parked` `$note`
+
+== Defaults
+Notes	rows at the top level, under tasks, or ending in a colon
+Tasks	every other row; `$open` makes a subtask; `\#tag` stays text
+
+== While typing
+Colour	readable sigils take the accent colour, unreadable ones warning
+Right	accept a dim suggestion
+Dates	edit as YYYY-MM-DD
+
+## Counts and operators
+2 3 …	repeat motions or take rows for an act; `Esc` drops a count
+:numbers	show each row's distance from the cursor
+.	repeat the last row change, including stamps and typed text
+	it keeps its count unless given another; one undo step
+
+== Operators
+d y > <	delete, copy, indent, outdent
+dd yy >> <<	doubled, they take rows
+d3j >j y)	a motion takes an inclusive range; `d3j` is `3dj`
+dic yis	`ic` takes children, `is` the row and its siblings
+	row objects include folded subtrees; no lists or selections
+
+== Reorder and put
+J K	reorder down, up; Today too (one row there)
+p P	put the register after, before, with fresh identities
+gp gP	put the last copy, even after a delete replaced the register
+	copy and delete include whole subtrees; they write the register and clipboard
+	`u` restores deleted rows; the register stays
+
+## Selection
+v	pick a row and step down; again on a picked row clears it
+V	sweep with motions; `V` ends the sweep, `Esc` clears selections
+:all	select every shown row (matches only under a filter)
+
+== Act on it
+x ! t dd yy m L	and stamps act on the selection in one step
+>> << J K	move adjacent selected siblings together
+m Enter	with a blank query, move selected rows here, where `o` would add
+	`/#old` `:all` `-#old #new` filters, selects and retags with one stamp
+
+## Filter
+/	text and sigils; `Enter` keeps, `Esc` clears; `Tab` flat or context
+	the status line reads the filter back in words as it is typed
+"a phrase"	match words together, ignoring case; `-"a phrase"` excludes
+n N	next, previous match; after `Esc`, use the last filter
+gn gN	step into the text on what the filter found: `gn cw new Esc n .`
+:save name	keep a filter in the sidebar and under `f`; `:forget name` drops it
+Held rows	edits never remove matches; change the query to read again
+
+== Fields
+# $ @	any tag, task, deadline; `-#` untagged, `-$` notes
+#est #est=2h	any value, exact; `#est<3` `#est>3` at most, at least
+@overdue @week	deadlines, as `@<fri` `@>+1w`; flat results soonest first
+@@later	starts later
+~7d	state changed (or row made) in the last week
+	a `~` filter says when on each match; flat, newest first
+& &word &.	a row link, one to matching text, one to the cursor's row
+
+== Next actions
+$next	each project's first workable task; excludes Inbox
+$first	first workable sibling per parent; includes Inbox
+$first -<$	next action under each heading and project
+$today	picked or starting today
+
+== Combine
+a|b	either: `$open|doing` `#home|!` `milk|#food`
+| ( ) -(	groups, with blanks: `fix ( #docs | cache )` `-( a | b )`
+^term _term	test ancestors, descendants: `^#work` `_@overdue`
+<term >term	test the parent, direct children: `<#work` `>$waiting`
+
+## Capture and travel
+a	capture to Inbox; `%name` files in a project or heading
+	`Enter` keeps and offers another; blank `Enter` or `Esc` ends
+f	go to a project, heading, list, saved filter or row by name
+	blank `Enter` opens Inbox; `Up` `Down` choose, `Esc` leaves
+m	move rows to a project, Inbox or heading by name
+Tab	sidebar focus; `j` `k` and paging keys visit; `Enter` works there
+
+== Links and trails
+L gl	link to a row, follow it; blank `L` `Enter` removes the link
+	with no row link, `gl` opens the first web address in the text
+Ctrl+O Ctrl+I	back, forward along jumps (`f`, sidebar visits, row links)
+	a terminal unable to distinguish `Ctrl+I` from `Tab` gives `Tab`
+g; g,	back, forward through the rows changed this session
+
+== From the shell
+docket add	capture; no arguments reads one row per line
+docket ls	print a filter's matches; no filter prints the whole outline
+
+## Undo and commands
+u Ctrl+R	undo, redo across restarts; a count repeats the key
+Up Down	recall `/`, stamp and `:` lines beginning with what is typed
+:help	this reference; `]` `[` go to the next, previous section
+
+== Rows
+:closed	hide or show done and canceled rows
+:fold [level]	fold all, or show N levels; `:unfold` opens all
+:sort [keys]	siblings once: `@` deadline, `!` flag, `$` state
+	later keys break ties; ties stay ordered; no keys sorts by text
+:s/old/new	replace text in the row or selection; any separator, as `s,a/b,c`
+:archive	move closed work under the project's `Archive:` heading
+:review	projects, longest untouched first
+
+== Files and machines
+:export [file]	write the whole outline; default `~/docket-YYYY-MM-DD.txt`
+:import file	read indented rows after the cursor; one undo step
+	in Projects, an Inbox line routes its children to Inbox
+	`.taskpaper`, `.opml` and `.bike` files are read as what they are
+:sync folder	share through a synced folder; `:sync off` stops
+
+== Good to know
+Display	the palette follows the terminal background; focused rows are shaded
+	dates outside this year name the year
+More detail	`SPEC.md` describes the grammar; `:tutor` teaches it on live rows

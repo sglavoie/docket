@@ -813,7 +813,7 @@ func TestDotRepeatsTheLastStampOrMove(t *testing.T) {
 			t.Fatal("question mark opened help")
 		}
 		h.command("help")
-		if !h.m.help || !strings.Contains(strings.Join(h.lines(), "\n"), "Essentials — move, fold and zoom") {
+		if !h.m.help || !strings.Contains(strings.Join(h.lines(), "\n"), "Essentials  move, fold and zoom") {
 			t.Fatal(":help did not open help")
 		}
 		h.press("?") // Any previously closing key still closes help.
