@@ -42,7 +42,7 @@ func TestFilterNarrowsAsItIsTypedAndKeepsContext(t *testing.T) {
 		"    ○ Fix login ! #bug",
 		"    ○ Refactor auth #bug",
 	)
-	if h.bottom() != "Filter › #bug   3 match · in context · Tab switches" {
+	if h.bottom() != "Filter › #bug   3 match · #bug 3" {
 		t.Fatalf("prompt = %q", h.bottom())
 	}
 	h.press("tab")
@@ -145,7 +145,7 @@ func TestSelectionActsOnEveryRowAndStampsSigils(t *testing.T) {
 
 	h.press("#")
 	// The bare sigil already offers the most used tag.
-	if h.bottom() != "Stamp › #bug   2 rows · -#tag and -@ remove" {
+	if h.bottom() != "Stamp › #bug   2 rows · #bug 3 · #docs 1" {
 		t.Fatalf("prompt = %q", h.bottom())
 	}
 	h.press(`"urgent @tom $w"`, "enter", "-", `"#bug -@ -#docs"`, "enter", "!")

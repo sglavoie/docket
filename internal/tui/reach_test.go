@@ -35,7 +35,7 @@ func TestCtrlOGoesBackAlongTheTrailOfJumps(t *testing.T) {
 			t.Fatalf("second return = %q\n%s", h.header(), h.rows())
 		}
 		h.press("ctrl+i")
-		if h.header() != "Beta  · 2 to do" || h.status() != "no newer place" {
+		if h.header() != "Beta  · 2 to do" || h.m.msg != "no newer place: Ctrl+O goes back" {
 			t.Fatalf("past the newest = %q, %q", h.header(), h.status())
 		}
 	})
@@ -175,7 +175,7 @@ func TestCtrlOGoesBackAlongTheTrailOfJumps(t *testing.T) {
 			t.Fatalf("2 Ctrl+I = %q", h.header())
 		}
 		h.press("f", `"alpha"`, "enter", "ctrl+i")
-		if h.header() != "Alpha  · 2 to do" || h.status() != "no newer place" {
+		if h.header() != "Alpha  · 2 to do" || h.m.msg != "no newer place: Ctrl+O goes back" {
 			t.Fatalf("a jump kept newer places: %q, %q", h.header(), h.status())
 		}
 		h.press("ctrl+o")

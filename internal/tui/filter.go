@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
@@ -520,6 +519,7 @@ func (m *Model) refilter() {
 	today := m.today()
 	q := m.query(m.at.query, m.at.here, today)
 	terms := q.terms
+	m.at.marks = q.marks()
 	if len(terms) == 0 {
 		return
 	}
@@ -874,7 +874,7 @@ func (m *Model) export(path string) {
 		m.msg = err.Error()
 		return
 	}
-	m.msg = fmt.Sprintf("exported %d rows to %s", n, path)
+	m.msg = "exported " + rowCount(n) + " to " + path
 }
 
 // writeRows is the shared copy/export writer. Each root starts at depth zero;

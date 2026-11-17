@@ -8,7 +8,9 @@ a rule here changes this file first.
 ## Rules
 
 1. **Nothing asks a question.** No confirmations and no dialogs. Delete is
-   instant; undo is the safety net.
+   instant; undo is the safety net. A key that cannot act says so on the
+   status line and names the way that works, as `this row has no link: L
+   makes one`.
 2. **Rows never move by themselves.** Changing a row's state leaves it where
    it is. Only the user reorders.
 3. **One way to do each thing.** No menu or palette repeats a key. Reaching
@@ -77,6 +79,15 @@ sync tool copies.
 - `folds` and `meta` are this machine's view state and settings. They are
   not logged.
 - Adding a field needs no schema change.
+
+**Not a text file, by choice.** TaskPaper keeps the outline in a plain file
+any editor, `grep` or `git` can read. Docket does not: a row needs an
+identity that survives an edit for undo across restarts, per-field sync,
+links and Today's order, and a text file loses it whenever someone else's
+editor saves. The text stays one command away instead: `:export` and
+`docket ls` write the row grammar, `:import`, paste and `docket add` read it
+back, and the daily backups are whole copies. Editing the outline in an
+outside editor and reconciling it back is not planned.
 
 **A save that fails changes nothing.** If a change cannot be written, it is
 taken back out of memory and the status line says so; the screen never shows
@@ -253,7 +264,9 @@ The pane shows the rows under one row, or a list.
   even with `:closed` on. `h` refuses a selection, and `l` does nothing;
   neither changes a fold.
 - **Launch** on a database with no project and no Inbox row adds and opens
-  a `Welcome` tutorial in one undo step. Otherwise it opens Today when
+  a `Welcome` tutorial in one undo step, with three saved filters when none
+  is saved yet: `/next` (`$next`), `/week` (`@week`) and `/done`
+  (`$done ~7d`), each flat over Projects. Otherwise it opens Today when
   something is picked for the day, else Projects. `docket add` and `docket ls`
   never add the tutorial.
 - **A row wraps** under its own text at the pane's width, each word keeping
@@ -323,9 +336,21 @@ The status line becomes a prompt for three acts, named at its left edge:
   `Enter` moves the selection where `o` would open a row, as described under
   Selection. Typing a name drops the offer.
 
+**The change list.** `g;` goes back to the row the last change was made on,
+and `g,` forward again; a count goes that many changes. Each saved change
+notes its row, a run of changes to one row once, up to 100, for this session
+only; a saved filter is not one. A change on the cursor's row is passed over,
+so `g;` always moves. A row since deleted stands for its nearest live
+ancestor. A row on screen is reached as a motion is; elsewhere it opens where
+it lives, as `f` opens a row, and that is a jump, so `Ctrl+O` comes back.
+The status line says `change 4 of 9`, or that the walk is at either end.
+The trail goes where jumps left and the change list where work was done, so
+neither repeats the other (rule 3), and marks are still not needed.
+
 **The trail.** `Ctrl+O` goes back to the place the last jump left, and
 `Ctrl+I` forward again; a count goes that many places. A jump is a picker
-destination opened with `f` `Enter`, a link followed with `gl`, or a sidebar
+destination opened with `f` `Enter`, a link followed with `gl`, a change
+reached with `g;` or `g,` in another place, or a sidebar
 visit ending in a different place; walking several sidebar entries counts
 once, from where `Tab` was pressed. `Enter` zooming, `Esc` backing out, `h`
 and the trail keys themselves are not jumps. Going back restores the place's
@@ -464,7 +489,11 @@ Three more acts use the same line:
   row when the filter was opened. In an
   outline a match keeps its
   ancestors, dimmed, so it is read where it lives; `Tab` switches to a flat
-  list of matches and back. When the query has an un-negated deadline term
+  list of matches and back. A match is drawn with what was found in it:
+  each word of its text that a looked-for word or phrase touches, and each
+  tag the query names, in the accent colour and underlined. A term that
+  excludes, one read on other rows (`^ _ < >`) and one inside `-(` mark
+  nothing. When the query has an un-negated deadline term
   (`@`, `@date`, `@overdue`, `@week`, `@<`, `@>`), the flat list reads
   soonest deadline first, ties in outline order; in context, and in Today,
   Waiting and Stale, the order is the outline's or the list's. The order is
@@ -690,7 +719,11 @@ The status line shows, at its right and as typed, the keys that wait for
 more: a count, an operator, a `g`, `z` or `i`, so `2d3` and `3g` read as
 they were pressed. It does so in the outline, the sidebar, inside a row and
 in help, beside whatever the line already says, and a line too narrow for
-both keeps the pending keys. `Esc`
+both keeps the pending keys. In the outline, a waiting `g`, `z`, operator
+or operator with `g` or `i` also says at the line's left, dimmed, what may
+follow it (`gg top · gl follow link · …`, `dd the row · dj } ) H ] n G…
+through a motion · dic dis objects`), so the grammar teaches itself; a
+count alone says nothing. `Esc`
 drops it without clearing a selection, filter or zoom. Counts do not apply
 in the sidebar, help, prompts or while typing.
 
@@ -699,7 +732,15 @@ aliases, and `}`, `{`, `H`, `]`, `[`, `n` and `N`, stopping at either end.
 `gg`, `G`, `Home`, `End`, `)` and `(` drop it.
 It also repeats `J`, `K`, `u` and `Ctrl+R`: `3J` is one undo step, while
 `3u` undoes three steps. `J` and `K` stop when the row can go no further
-and keep the moves already made, including in Today.
+and keep the moves already made, including in Today; at the end they say
+the row is already first or last of its siblings, and that `<<`, `>>` or `m`
+move it elsewhere.
+
+`u` and `Ctrl+R` say on the status line what they took back or made
+again, since undo is the only safety net (rule 1): rows that came back,
+rows gone, rows moved, and which fields changed on how many rows, as
+`undo: 3 rows back` or `redo: text and tags changed on 2 rows`. A counted
+undo says how many steps it took, as `undo: 3 steps`.
 
 **Structural motions** read the shown rows by depth and change no fold.
 `}` and `{` go to the next and previous sibling, passing over the rows under
@@ -792,11 +833,17 @@ the pane stays there until a motion has to scroll it.
 | `t` | Pick for Today, and unpick | 3 |
 | `Tab` `f` | Sidebar focus; go to a project, heading, list or row by name | 3, 13 |
 | `Ctrl+O` `Ctrl+I` | Back along the places jumps left, and forward | 13 |
+| `g;` `g,` | Back to the rows changed this session, and on again | 17 |
 | `a` `m` | Capture to the Inbox from anywhere; move to a project or heading | 3 |
 | `L` `gl` | Link the row to another; follow the link, else open its first web address | 13, 16 |
 | `v` `V` | Pick a row; sweep with motions | 4, 11 |
 | `/` `:` | Filter, command | 4 |
 | `#` `@` `$` `*` `-` | Stamp sigils on rows | 4 |
+
+A Vim key the outline does not bind (`i`, `s`, `S`, `C`, `r`, `R`, `X`,
+`D`, `Y`, `U`, `q`, `~`) changes nothing and names the outline's way to do
+what it means, as `i` says `I types at the start, A at the end; w steps
+into the text`. It is a pointer, not a second route (rule 3).
 
 `A` opens the cursor's row for typing at the end of its canonical line; `I`
 opens it at the start. `cc` removes its text and keeps its fields as sigils,
@@ -977,7 +1024,7 @@ grammar cannot read also stays prose (`@alice`, `#123`, `$5`). `\#tag` keeps a r
 | --- | --- | --- |
 | `!` | `flag` | The word `!` alone |
 | `#tag` | `tags` | A word starting with a letter; stored lowercase, once. `#name=value` carries a value, kept as typed: a name is held once, so a later value replaces the earlier where it sits |
-| `@date` | `due` | `today`, `tomorrow`, a weekday (the next one, never today), `+3d`, `+2w`, `MM-DD` (the next such day), `YYYY-MM-DD` |
+| `@date` | `due` | `today`, `tomorrow`, a weekday (the next one, never today), `+3d`, `+2w`, `MM-DD` or a month named as the row shows it, `dec4` or `dec-4` (the next such day), `jan5-2027`, `YYYY-MM-DD`, and `eom`, the last day of this month |
 | `@@date` | `start` | The same forms as `@date` |
 | `*interval` | `repeat` | A count and `d`, `w`, `m` or `y` (`*3d`, `*2w`), or `daily`, `weekly`, `monthly`, `yearly` |
 | `$state` | `state` | `open`, `doing`, `waiting`, `done`, `canceled`, `parked`, `note`, or an unambiguous prefix (`$w`, `$c`, `$p`; `$d` is not one). `$next`, `$first` and `$today` are read by the filter only: they are not states |
@@ -1003,6 +1050,14 @@ use, most used first; a `$state`; a date word. The right arrow takes the
 suggestion and types nothing otherwise. The capture line also names where
 the row will land.
 
+While a `#tag` is typed at the end of a row, the capture, stamp or filter
+line, the status line names every tag in use that it could become, most
+used first, each with how many rows carry it: `#home 42 · #house 3`. A tag
+with values counts as its name. `#` alone lists them all, so the tags there
+are can be read without a list of their own (rule 6); one that starts no
+tag in use says `a new tag`. On the prompts the list follows the count of
+matches or rows, in place of the hint about keys.
+
 **Default state.** A row whose line names no state is a note when it is
 top-level, its text ends in a colon, or its parent has any state (is a task).
 Otherwise it is an open task: children of a project, the Inbox, a heading or
@@ -1019,6 +1074,9 @@ children and nothing otherwise. A folded task keeps its state glyph and
 counts its children after its text (`+3`). A row ending in a colon shows
 dimmed `done/total` after its text when it has tasks beneath it, at any depth,
 folded or not. Canceled and parked rows are left out of the total.
+The outline's shape is read at a glance: a row ending in a colon is drawn
+bold in the accent colour, a top-level row bold, unless it is closed,
+parked or not yet started, which dims it as any row.
 Fields follow the text, each in
 the sigil that writes it, and then `→` with the row a link points at; the deadline reads `@today`, `@tomorrow`, `@fri`,
 `@Nov 20`. A deadline or start day outside the current year names the year,
@@ -1191,9 +1249,18 @@ These are the only commands; everything else is done in the outline.
    its join and sidebar instructions describe the keys' actual outcomes.
    Help has eight sections walked with `]` and `[`. *Built.*
 
+17. **Feedback.** `u` and `Ctrl+R` say what they took back. A filter draws
+   what it found on its matches. A waiting prefix or operator says what may
+   follow it. Headings and projects are drawn with weight. Dates are typed
+   as they read (`@dec4`, `@jan5-2027`, `@eom`). Typing a `#tag` names
+   the tags in use with their counts. A new outline comes with `/next`,
+   `/week` and `/done`. `g;` and `g,` walk back through the rows changed
+   this session. A Vim key the outline does not bind names what does, and
+   every refusal names the way that works. *Built.*
+
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add` and `docket ls`, macros (`.`,
-`:all` and `:s` repeat what a recording would), marks (the trail, links and each
+`:all` and `:s` repeat what a recording would), marks (the trail, the change list, links and each
 place's remembered cursor reach the same rows), inline formatting.
 
 ## Tests

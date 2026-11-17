@@ -338,8 +338,8 @@ func TestDotRepeatsEveryChangeToRows(t *testing.T) {
 func TestIndentAndOutdentAreOperators(t *testing.T) {
 	h := countOutline(t, 5)
 	h.press("j", ">")
-	if h.status() != ">" {
-		t.Fatalf("pending operator = %q", h.status())
+	if h.m.pending() != ">" {
+		t.Fatalf("pending operator = %q", h.m.pending())
 	}
 	h.press("j")
 	h.want("  ○ Task 00", "▌   ○ Task 01", "    ○ Task 02", "  ○ Task 03", "  ○ Task 04")

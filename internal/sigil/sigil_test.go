@@ -100,13 +100,22 @@ func TestParseDate(t *testing.T) {
 		"11-14":      "2027-11-14",
 		"02-29":      "2028-02-29",
 		"2027-01-05": "2027-01-05",
+		"nov20":      "2026-11-20",
+		"Nov-15":     "2026-11-15",
+		"nov14":      "2027-11-14",
+		"dec4":       "2026-12-04",
+		"december31": "2026-12-31",
+		"sept9":      "2027-09-09",
+		"feb29":      "2028-02-29",
+		"jan5-2027":  "2027-01-05",
+		"eom":        "2026-11-30",
 	}
 	for in, want := range cases {
 		if got, ok := ParseDate(in, today); !ok || got != want {
 			t.Errorf("ParseDate(%q) = %q, %v; want %q", in, got, ok, want)
 		}
 	}
-	for _, in := range []string{"", "alice", "+3", "+d", "+3m", "13-40", "2026-02-30", "5"} {
+	for _, in := range []string{"", "alice", "+3", "+d", "+3m", "13-40", "2026-02-30", "5", "dec", "dec32", "decx4", "feb30-2027", "dec4-27", "mayday", "nov-"} {
 		if got, ok := ParseDate(in, today); ok {
 			t.Errorf("ParseDate(%q) = %q, want a refusal", in, got)
 		}

@@ -1,0 +1,271 @@
+package tui
+
+import (
+	"slices"
+	"strings"
+	"testing"
+
+	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
+)
+
+func (h *harness) wantStatus(want string) {
+	h.t.Helper()
+	if got := h.status(); got != want {
+		h.t.Fatalf("status: %q, want %q", got, want)
+	}
+}
+
+func TestUndoAndRedoSayWhatTheyReversed(t *testing.T) {
+	h := project(t)
+	h.press("x")
+	h.press("u")
+	h.wantStatus("undo: state changed on 1 row")
+	h.press("ctrl+r")
+	h.wantStatus("redo: state changed on 1 row")
+
+	h.press("k", "d", "d")
+	h.press("u")
+	h.wantStatus("undo: 1 row back")
+	h.press("ctrl+r")
+	h.wantStatus("redo: 1 row gone")
+	h.press("u")
+
+	h.press("J")
+	h.press("u")
+	h.wantStatus("undo: 1 row moved")
+
+	h.press("#", `"home"`, "enter", "!")
+	h.press("2", "u")
+	h.wantStatus("undo: 2 steps")
+	h.press("u", "u", "u", "u", "u", "u", "u", "u")
+	h.wantStatus("nothing to undo")
+}
+
+// marked lists the words of the pane drawn as a filter's find.
+func (h *harness) marked() []string {
+	h.t.Helper()
+	var out []string
+	for _, part := range strings.Split(h.m.View().Content, sgrUnderline)[1:] {
+		end := strings.Index(part, sgrReset)
+		out = append(out, ansi.Strip(part[:end]))
+	}
+	return out
+}
+
+func TestAFilterDrawsWhatItFoundOnItsMatches(t *testing.T) {
+	h := start(t)
+	h.press("o", `"Plan"`, "enter", "tab", `"Ask about the grant budget #money"`, "enter",
+		`"Grant writing workshop"`, "enter", `"Pay rent -- per the spec"`, "esc")
+	h.press("/", `"grant"`)
+	if got := h.marked(); !slices.Equal(got, []string{"grant", "Grant"}) {
+		t.Fatalf("marked %q", got)
+	}
+	// A phrase marks every word it covers, and a tag the tag it names.
+	h.press("esc", "/", `"`, `"per the"`, `"`, `" spec | #money"`)
+	if got := h.marked(); !slices.Equal(got, []string{"#money", "per", "the", "spec"}) {
+		t.Fatalf("marked %q", got)
+	}
+	// What a term excludes, or finds on other rows, is not drawn.
+	h.press("esc", "/", `"-grant ^plan rent"`)
+	if got := h.marked(); !slices.Equal(got, []string{"rent"}) {
+		t.Fatalf("marked %q", got)
+	}
+	h.press("esc", "/", `"budget -( rent | workshop )"`)
+	if got := h.marked(); !slices.Equal(got, []string{"budget"}) {
+		t.Fatalf("marked %q", got)
+	}
+	// Without a filter nothing is marked.
+	h.press("esc", "esc")
+	if got := h.marked(); len(got) != 0 {
+		t.Fatalf("marked %q", got)
+	}
+}
+
+func TestWaitingKeysSayWhatMayFollow(t *testing.T) {
+	h := project(t).wide()
+	h.m.Update(tea.WindowSizeMsg{Width: 200, Height: 16})
+	for _, c := range []struct{ keys, want string }{
+		{"g", "gg top · gl follow link · gp gP put the copy · g; g, last changes"},
+		{"z", "zc zo shut, open the branch · zt zz zb draw at top, middle, bottom"},
+		{"d", "dd the row · dj } ) H ] n G… through a motion · dic dis objects"},
+		{"2y", "yy the row · yj } ) H ] n G… through a motion · yic yis objects"},
+		{"di", "dic the rows under it · dis the row and its siblings"},
+		{">g", ">gg takes through the first row"},
+		{"c", "cc retypes the text, keeping its fields"},
+	} {
+		h.press(strings.Split(c.keys, "")...)
+		if got := h.status(); !strings.HasPrefix(got, c.want) {
+			t.Fatalf("after %s: %q, want %q", c.keys, got, c.want)
+		}
+		h.press("esc")
+		if strings.Contains(h.status(), c.want) {
+			t.Fatalf("after %s esc: %q", c.keys, h.status())
+		}
+	}
+}
+
+func TestHeadingsAndProjectsCarryWeight(t *testing.T) {
+	h := start(t)
+	h.press("o", `"Project"`, "enter", "tab", `"Storage:"`, "enter", "tab", `"Task"`, "esc")
+	view := h.m.View().Content
+	for _, want := range []string{
+		darkPalette.accent + sgrBold + "Storage:",
+		sgrBold + "Project",
+	} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("no %q in %q", want, view)
+		}
+	}
+	// Closed, a heading is dimmed like any closed row.
+	h.press("k", "$", `"done"`, "enter")
+	if strings.Contains(h.m.View().Content, darkPalette.accent+sgrBold+"Storage:") {
+		t.Fatal("a closed heading keeps its weight")
+	}
+}
+
+func TestTypingATagNamesTheTagsInUse(t *testing.T) {
+	h := start(t)
+	h.m.Update(tea.WindowSizeMsg{Width: 120, Height: 16})
+	h.press("o", `"Plan #home #est=2h"`, "enter", `"Shop #home #est=1h"`, "enter", `"Call #work"`, "esc")
+	h.press("/", `"#"`)
+	if got := h.status(); !strings.HasSuffix(got, "#home 2 · #est 2 · #work 1") {
+		t.Fatalf("filter: %q", got)
+	}
+	h.press(`"h"`)
+	if got := h.status(); !strings.HasSuffix(got, "#home 2") {
+		t.Fatalf("filter: %q", got)
+	}
+	h.press("esc", "esc", "#")
+	h.press(`"w"`)
+	if got := h.status(); !strings.HasSuffix(got, "#work 1") {
+		t.Fatalf("stamp: %q", got)
+	}
+	h.press(`"x"`)
+	if got := h.status(); !strings.HasSuffix(got, "a new tag") {
+		t.Fatalf("stamp: %q", got)
+	}
+	h.press("esc", "A", `" #e"`)
+	if got := h.status(); got != "#est 2 · → completes" {
+		t.Fatalf("typing: %q", got)
+	}
+}
+
+func TestANewOutlineComesWithFiltersWorthKeeping(t *testing.T) {
+	h := start(t)
+	tree, err := h.st.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.m = Launch(tree, h.st, nil)
+	h.wide()
+	var names []string
+	for _, f := range h.m.filters {
+		names = append(names, f.Name+"="+f.Query)
+	}
+	if !slices.Equal(names, []string{"next=$next", "week=@week", "done=$done ~7d"}) || len(h.m.undo) != 1 {
+		t.Fatalf("filters %q, %d undo steps", names, len(h.m.undo))
+	}
+	h.press("f", `"/next"`, "enter")
+	if h.m.at.query != "$next" || !h.m.at.flat {
+		t.Fatalf("opened %q", h.m.at.query)
+	}
+	// They are made with the tutorial and go with it.
+	h.press("esc", "u")
+	if len(h.m.filters) != 0 {
+		t.Fatalf("undo kept %d filters", len(h.m.filters))
+	}
+	// An outline that has saved a filter already is given none.
+	h.m.filters = []savedFilter{{Name: "mine"}}
+	h.m.undo = append(h.m.undo, nil)
+	h.m.starterFilters()
+	if len(h.m.filters) != 1 {
+		t.Fatal("starters added beside a saved filter")
+	}
+}
+
+func TestAVimKeyTheOutlineDoesNotBindSaysWhatDoes(t *testing.T) {
+	h := project(t).wide()
+	before := h.rows()
+	for k, want := range strayKeys {
+		h.press(k)
+		if h.status() != want || h.rows() != before {
+			t.Fatalf("%s: %q, rows\n%s", k, h.status(), h.rows())
+		}
+	}
+	h.press("Z")
+	if h.status() != "" {
+		t.Fatalf("Z: %q", h.status())
+	}
+}
+
+func TestGSemicolonWalksBackThroughChanges(t *testing.T) {
+	h := project(t).wide()
+	h.press("k", "x", "j", "!")
+	// The change the cursor is on is passed over.
+	h.press("g", ";")
+	if h.on() != "First" || h.status() != "change 4 of 5" {
+		t.Fatalf("g; on %q, %q", h.on(), h.status())
+	}
+	h.press("2", "g", ";")
+	if h.on() != "First" || h.status() != "change 2 of 5" {
+		t.Fatalf("2g; on %q, %q", h.on(), h.status())
+	}
+	h.press("g", ",")
+	if h.on() != "Second" || h.status() != "change 3 of 5" {
+		t.Fatalf("g, on %q, %q", h.on(), h.status())
+	}
+	h.press("9", "g", ",")
+	if h.on() != "Second" || h.status() != "change 5 of 5" {
+		t.Fatalf("9g, on %q, %q", h.on(), h.status())
+	}
+	h.press("g", ",")
+	if h.status() != "at the newest change" {
+		t.Fatalf("g, at the end: %q", h.status())
+	}
+
+	// A change in another place opens it there, as a jump.
+	h.press("f", `"Projects"`, "enter", "gg", "O", `"Other"`, "enter", "tab", `"Elsewhere"`, "esc")
+	h.press("G", "H", "enter")
+	if h.header() != "Project  · 1 to do" {
+		t.Fatalf("zoomed into %q", h.header())
+	}
+	h.press("g", ";")
+	if h.on() != "Elsewhere" {
+		t.Fatalf("g; across places on %q", h.on())
+	}
+	h.press("ctrl+o")
+	if h.header() != "Project  · 1 to do" {
+		t.Fatalf("Ctrl+O came back to %q", h.header())
+	}
+
+	// A deleted row stands for its nearest live ancestor.
+	h.press("g", ";")
+	if h.on() != "Other" {
+		t.Fatalf("g; again on %q", h.on())
+	}
+	h.press("j", "d", "d", "ctrl+o", "g", ";")
+	if h.on() != "Other" {
+		t.Fatalf("g; to a deleted row on %q", h.on())
+	}
+}
+
+func TestGSemicolonWithNothingChanged(t *testing.T) {
+	h := start(t)
+	h.press("g", ";")
+	h.wantStatus("no change made yet this session")
+}
+
+func TestARefusalNamesTheWayThatWorks(t *testing.T) {
+	h := project(t).wide()
+	h.press("J")
+	h.wantStatus("already the last of its siblings: >> or m moves it elsewhere")
+	h.press("k", "K")
+	h.wantStatus("already the first of its siblings: << or m moves it elsewhere")
+	h.press(":", `"fold x"`, "enter")
+	h.wantStatus("invalid fold level: x: fold 2 shows two levels")
+	h.press(":", `"sort ?"`, "enter")
+	h.wantStatus("unknown sort key: ?: the keys are @ ! $, or none for text")
+	h.press("y", "y")
+	h.wantStatus("copied 1 row")
+}

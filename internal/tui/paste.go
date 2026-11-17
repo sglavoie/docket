@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -126,11 +125,11 @@ func (m *Model) put(register string, before bool) {
 	}
 	lines := readPaste(register)
 	if len(lines) == 0 {
-		m.msg = "nothing to put"
+		m.msg = "nothing to put: yy copies rows, dd deletes them into the register"
 		return
 	}
 	if n := m.pasteRows(m.current(), false, lines, false, before); n > 0 {
-		m.msg = fmt.Sprintf("put %d rows", n)
+		m.msg = "put " + rowCount(n)
 	}
 }
 
@@ -213,6 +212,7 @@ func (m *Model) pasteUnder(parent0, anchor string, anchorIsFirst bool, lines []p
 			}
 			return 0
 		}
+		m.noteChange(ops)
 		last := len(m.undo) - 1
 		m.undo[last] = append(inv, m.undo[last]...)
 		m.keepHistory()
@@ -240,7 +240,7 @@ func (m *Model) pasteUnder(parent0, anchor string, anchorIsFirst bool, lines []p
 	if anchorIsFirst {
 		n++
 	}
-	m.msg = fmt.Sprintf("pasted %d rows", n)
+	m.msg = "pasted " + rowCount(n)
 	return n
 }
 
@@ -317,6 +317,6 @@ func (m *Model) importFile(path string) {
 	}
 	m.undoGroup = nil
 	if n > 0 {
-		m.msg = fmt.Sprintf("imported %d rows from %s", n, path)
+		m.msg = "imported " + rowCount(n) + " from " + path
 	}
 }

@@ -55,7 +55,7 @@ Add and type
 States and sigils
   # @ $ * -      open the stamp line; Enter sets sigils on the row or selection
   !              flag; -! removes it on the stamp line
-  @fri @+3d      deadline; @@mon not before that day (in Today on that day)
+  @fri @+3d      deadline; @dec4 @jan5-2027 @eom by name; @@mon not before that day
   *2w *monthly   repeat: closing moves the date and reopens done descendants
   #tag #est=2h   tag or value; header sums estimates, headings show done/total
   $open $doing $waiting $done $canceled $parked $note    state
@@ -121,6 +121,7 @@ Capture and travel
                  with no row link, gl opens the first web address in the text
   Ctrl+O Ctrl+I  back, forward along jumps (f, sidebar visits, row links)
                  a terminal unable to distinguish Ctrl+I from Tab gives Tab
+  g; g,         back, forward through the rows changed this session
   docket add     capture from the shell; no arguments reads one row per line
   docket ls      print a filter's matches; no filter prints the whole outline
 
@@ -217,11 +218,27 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 	}
 
 	var out []word
+	// A heading and a project carry the outline's shape: a heading is drawn
+	// bold in the accent colour, a project bold.
 	body := ""
-	if onCursor {
+	switch {
+	case strings.HasSuffix(l.Text, ":"):
+		body = m.colors().accent + sgrBold
+	case r.Parent == "" || onCursor:
 		body = sgrBold
 	}
-	for _, w := range strings.Fields(l.Text) {
+	// A match is drawn with what the filter found in it.
+	var marked map[int]bool
+	marking := m.at.matched[r.ID] && len(m.at.marks) > 0
+	if marking {
+		marked = markWords(l.Text, m.at.marks)
+	}
+	mark := m.colors().accent + sgrUnderline
+	for i, w := range strings.Fields(l.Text) {
+		if marked[i] {
+			out = append(out, word{mark + body, w})
+			continue
+		}
 		out = append(out, word{paint(body), w})
 	}
 	if total := m.totals[r.ID].under; strings.HasSuffix(l.Text, ":") && total.total > 0 {
@@ -250,6 +267,10 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 		out = append(out, word{m.colors().dim, "*" + l.Every})
 	}
 	for _, tag := range l.Tags {
+		if marking && markTag(tag, m.at.marks) {
+			out = append(out, word{mark, "#" + tag})
+			continue
+		}
 		out = append(out, word{m.colors().dim, "#" + tag})
 	}
 	if to := r.Fields[fieldLink]; to != "" {
@@ -425,26 +446,42 @@ func (m *Model) statusLine(w int) (string, int) {
 		text += m.ghost(text, m.suggest(&a.ed, a.kind), w-lw)
 		line := m.colors().accent + label + sgrReset + text
 		room := w - lw - ansi.StringWidth(text) - 3
+		// The tags there are, while one is typed.
+		tags := ""
+		if a.kind == askCapture || a.kind == askFilter || a.kind == askStamp {
+			tags = m.tagOffers(&a.ed, a.kind)
+		}
 		switch {
 		case room <= 3:
 		case a.kind == askCapture && len(a.ed.buf) == 0:
 		case a.kind == askCapture:
 			// Where the line will land, so a %name is seen to have worked.
 			to, _ := m.route(string(a.ed.buf))
-			line += "   " + m.colors().dim + ansi.Truncate("files in "+to.label, room, "…") + sgrReset
+			note := "files in " + to.label
+			if tags != "" {
+				note += " · " + tags
+			}
+			line += "   " + m.colors().dim + ansi.Truncate(note, room, "…") + sgrReset
 		case a.kind == askFilter:
 			shape := "in context"
 			if m.at.flat {
 				shape = "flat"
 			}
 			note := strconv.Itoa(len(m.at.matched)) + " match · " + shape + " · Tab switches"
+			if tags != "" {
+				note = strconv.Itoa(len(m.at.matched)) + " match · " + tags
+			}
 			line += "   " + m.colors().dim + ansi.Truncate(note, room, "…") + sgrReset
 		case a.kind == askStamp:
 			note := strconv.Itoa(len(a.rows)) + " row"
 			if len(a.rows) != 1 {
 				note += "s"
 			}
-			line += "   " + m.colors().dim + ansi.Truncate(note+" · -#tag and -@ remove", room, "…") + sgrReset
+			hint := " · -#tag and -@ remove"
+			if tags != "" {
+				hint = " · " + tags
+			}
+			line += "   " + m.colors().dim + ansi.Truncate(note+hint, room, "…") + sgrReset
 		case picker(a.kind):
 			// The first name is the one Enter takes.
 			offer := m.colors().dim + "nothing matches" + sgrReset
@@ -475,6 +512,8 @@ func (m *Model) statusLine(w int) (string, int) {
 	left, right := m.msg, ":help"
 	switch {
 	case left != "":
+	case m.nextKeys() != "":
+		left = m.colors().dim + m.nextKeys() + sgrReset
 	case m.edit != nil && m.edit.normal:
 		left = m.edit.textStatus()
 	case m.edit != nil:
@@ -484,6 +523,12 @@ func (m *Model) statusLine(w int) (string, int) {
 		}
 		if m.suggest(m.edit, surfaceRow) != "" {
 			left += " · → completes"
+		}
+		if tags := m.tagOffers(m.edit, surfaceRow); tags != "" {
+			left = tags
+			if m.suggest(m.edit, surfaceRow) != "" {
+				left += " · → completes"
+			}
 		}
 	case m.sideFocus:
 		left = "j k choose · Enter work in it"

@@ -244,7 +244,7 @@ func copyThroughUpdate(t *testing.T, h *harness, expected string, count int) {
 	if matches := clipboardMessages(t, cmd, expected); matches != 1 {
 		t.Fatalf("got %d matching clipboard messages, want exactly one", matches)
 	}
-	if h.m.msg != fmt.Sprintf("copied %d rows", count) {
+	if h.m.msg != "copied "+rowCount(count) {
 		t.Fatalf("copy status: %q", h.m.msg)
 	}
 	if h.m.tree.Gen() != gen || len(h.m.undo) != undo || len(h.m.redo) != redo || fmt.Sprint(h.m.picked) != picked {
@@ -319,7 +319,7 @@ func roundTripCopy(t *testing.T, parentState string, rows []copyRow, expected st
 					t.Fatalf("empty note token lost: %q", h.m.edit.buf)
 				}
 				h.press("esc")
-			} else if h.m.msg != fmt.Sprintf("pasted %d rows", len(rows)) {
+			} else if h.m.msg != "pasted "+rowCount(len(rows)) {
 				t.Fatalf("paste status: %q", h.m.msg)
 			}
 			pasted := assertCopiedRows(t, h, dest, rows)

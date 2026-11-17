@@ -14,7 +14,7 @@ import (
 // its own answer to what a word means.
 const surfaceRow = "row"
 
-var dateWords = []string{"today", "tomorrow", "mon", "tue", "wed", "thu", "fri", "sat", "sun"}
+var dateWords = []string{"today", "tomorrow", "mon", "tue", "wed", "thu", "fri", "sat", "sun", "eom"}
 
 // looksLikeSigil reports a word that starts like a sigil. When the grammar
 // cannot read such a word it stays plain text, and the line says so in colour

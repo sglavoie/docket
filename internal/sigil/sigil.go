@@ -292,7 +292,9 @@ func civil(today time.Time) time.Time {
 }
 
 // ParseDate reads a deadline: today, tomorrow, a weekday (the next one, never
-// today), +3d, +2w, MM-DD (the next such day), or YYYY-MM-DD.
+// today), +3d, +2w, MM-DD (the next such day), or YYYY-MM-DD. It also reads a
+// day as the row shows it, by the month's name: dec4 or dec-4 (the next
+// such day), jan5-2027 in a named year, and eom, the last day of this month.
 func ParseDate(s string, today time.Time) (string, bool) {
 	s = strings.ToLower(s)
 	day := civil(today)
@@ -321,6 +323,13 @@ func ParseDate(s string, today time.Time) (string, bool) {
 			return day.AddDate(0, 0, 7*n).Format(isoDay), true
 		}
 		return "", false
+	}
+	if s == "eom" {
+		// The last day of this month.
+		return time.Date(day.Year(), day.Month()+1, 0, 0, 0, 0, 0, time.UTC).Format(isoDay), true
+	}
+	if d, ok := monthDay(s, day); ok {
+		return d, true
 	}
 	if t, err := time.Parse(isoDay, s); err == nil {
 		return t.Format(isoDay), true
@@ -450,4 +459,60 @@ func ShiftDate(day string, n int, unit byte) string {
 	first := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC).AddDate(0, n, 0)
 	last := first.AddDate(0, 1, -1).Day()
 	return first.AddDate(0, 0, min(t.Day(), last)-1).Format(isoDay)
+}
+
+var months = map[string]time.Month{
+	"jan": time.January, "january": time.January,
+	"feb": time.February, "february": time.February,
+	"mar": time.March, "march": time.March,
+	"apr": time.April, "april": time.April,
+	"may": time.May,
+	"jun": time.June, "june": time.June,
+	"jul": time.July, "july": time.July,
+	"aug": time.August, "august": time.August,
+	"sep": time.September, "sept": time.September, "september": time.September,
+	"oct": time.October, "october": time.October,
+	"nov": time.November, "november": time.November,
+	"dec": time.December, "december": time.December,
+}
+
+// monthDay reads a month's name and a day, as dec4 or dec-4, which is the
+// next such day from today, or with a year after it, as jan5-2027.
+func monthDay(s string, day time.Time) (string, bool) {
+	i := strings.IndexFunc(s, func(r rune) bool { return r < 'a' || r > 'z' })
+	if i <= 0 {
+		return "", false
+	}
+	month, ok := months[s[:i]]
+	if !ok {
+		return "", false
+	}
+	rest := strings.TrimPrefix(s[i:], "-")
+	year := 0
+	if d, y, found := strings.Cut(rest, "-"); found {
+		n, err := strconv.Atoi(y)
+		if err != nil || len(y) != 4 {
+			return "", false
+		}
+		rest, year = d, n
+	}
+	n, err := strconv.Atoi(rest)
+	if err != nil || n < 1 || n > 31 || len(rest) > 2 {
+		return "", false
+	}
+	if year != 0 {
+		d := time.Date(year, month, n, 0, 0, 0, 0, time.UTC)
+		if d.Month() != month {
+			return "", false
+		}
+		return d.Format(isoDay), true
+	}
+	// The next such day; a leap day waits for a leap year.
+	for y := day.Year(); y < day.Year()+9; y++ {
+		d := time.Date(y, month, n, 0, 0, 0, 0, time.UTC)
+		if d.Month() == month && !d.Before(day) {
+			return d.Format(isoDay), true
+		}
+	}
+	return "", false
 }

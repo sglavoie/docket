@@ -220,8 +220,8 @@ func TestOperatorsTakeRowObjects(t *testing.T) {
 	}
 	// A pending i says so, and anything but an object cancels.
 	h.press("d", "i")
-	if h.status() != "di" {
-		t.Fatalf("pending = %q", h.status())
+	if h.m.pending() != "di" {
+		t.Fatalf("pending = %q", h.m.pending())
 	}
 	h.press("x")
 	if got := h.shown(); got != "Alpha:, Beta:, Gamma, Delta milk:" || h.m.operator != "" {

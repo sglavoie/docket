@@ -7,9 +7,10 @@ import (
 )
 
 const (
-	sgrReset   = "\x1b[0m"
-	sgrBold    = "\x1b[1m"
-	sgrReverse = "\x1b[7m"
+	sgrReset     = "\x1b[0m"
+	sgrBold      = "\x1b[1m"
+	sgrReverse   = "\x1b[7m"
+	sgrUnderline = "\x1b[4m"
 )
 
 type palette struct {

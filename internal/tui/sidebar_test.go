@@ -310,7 +310,7 @@ func TestTodayIsReordered(t *testing.T) {
 		before, steps = h.rows(), len(h.m.undo)
 		for _, k := range []string{"J", "K"} {
 			h.press(k)
-			if h.m.msg != "a list has no order: press Enter on a row to work inside it" || h.rows() != before || len(h.m.undo) != steps {
+			if h.m.msg != "a list has no order: h shows the row where it lives, Enter works inside it" || h.rows() != before || len(h.m.undo) != steps {
 				t.Fatalf("Waiting did not refuse %s", k)
 			}
 		}
@@ -320,7 +320,7 @@ func TestTodayIsReordered(t *testing.T) {
 			before, steps = h.rows(), len(h.m.undo)
 			for _, k := range []string{"J", "K"} {
 				h.press(k)
-				if h.m.msg != "a list has no order: press Enter on a row to work inside it" || h.rows() != before || len(h.m.undo) != steps {
+				if h.m.msg != "a list has no order: h shows the row where it lives, Enter works inside it" || h.rows() != before || len(h.m.undo) != steps {
 					t.Fatalf("%s did not refuse %s", h.header(), k)
 				}
 			}

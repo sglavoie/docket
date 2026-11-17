@@ -72,6 +72,7 @@ type place struct {
 	here    string // the row &. stands for: the cursor's when the filter was opened
 	hits    []visRow
 	matched map[string]bool
+	marks   []cond // the text and tags the query looks for, drawn on its matches
 }
 
 // visit keeps a departure independent of later list sorting, filtering and
@@ -132,7 +133,7 @@ func (m *Model) travel(back bool) bool {
 		m.land()
 		return true
 	}
-	m.msg = "no newer place"
+	m.msg = "no newer place: Ctrl+O goes back"
 	if back {
 		m.msg = "no older place: a jump with f, the sidebar or a link leaves one"
 	}
@@ -386,7 +387,7 @@ func (m *Model) scan() {
 	}
 
 	m.lists = lists
-	m.tags = tagsByUse(tagUse)
+	m.tags, m.tagUse = tagsByUse(tagUse), tagUse
 	m.side = append([]entry{
 		{kind: kindInbox, label: "Inbox", count: len(m.tree.Children(inboxID))},
 		{kind: kindToday, label: "Today", count: picked},
@@ -793,6 +794,7 @@ func Launch(tree *outline.Tree, backend Backend, folds map[string]bool) *Model {
 	}
 	if len(tree.Children(inboxID)) == 0 {
 		m.tutor()
+		m.starterFilters()
 	}
 	return m
 }

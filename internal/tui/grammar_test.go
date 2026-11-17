@@ -598,8 +598,8 @@ func TestDeleteAndCopyTakeMotions(t *testing.T) {
 			t.Fatal(h.m.msg)
 		}
 		h.press("2", "y")
-		if h.status() != "2y" {
-			t.Fatal(h.status())
+		if h.m.pending() != "2y" {
+			t.Fatal(h.m.pending())
 		}
 		h.press("2", "j")
 		if h.m.msg != "copied 5 rows" || h.m.cursor != 0 {
@@ -631,7 +631,7 @@ func TestPPutsTheRegister(t *testing.T) {
 		original, steps := h.m.current(), len(h.m.undo)
 		h.press("d", "d", "j", "p")
 		h.want("  ○ Task 01", "  ○ Task 02", "▌ ○ Task 00", "  ○ Task 03")
-		if h.m.current() == original || h.status() != "put 1 rows" || len(h.m.undo) != steps+2 {
+		if h.m.current() == original || h.status() != "put 1 row" || len(h.m.undo) != steps+2 {
 			t.Fatal("put must create a fresh row and its own undo step")
 		}
 		register := h.m.register
@@ -697,7 +697,7 @@ func TestPPutsTheRegister(t *testing.T) {
 			h := start(t)
 			gen, steps := h.m.tree.Gen(), len(h.m.undo)
 			h.press(put)
-			if h.status() != "nothing to put" || h.m.ask != nil || h.m.tree.Gen() != gen || len(h.m.undo) != steps {
+			if h.m.msg != "nothing to put: yy copies rows, dd deletes them into the register" || h.m.ask != nil || h.m.tree.Gen() != gen || len(h.m.undo) != steps {
 				t.Fatal("empty register changed rows or opened a picker")
 			}
 		})
@@ -705,7 +705,7 @@ func TestPPutsTheRegister(t *testing.T) {
 			h := countOutline(t, 1)
 			h.press("d", "d", put)
 			h.want("▌ ○ Task 00")
-			if h.m.tree.Row(h.m.current()).Parent != h.m.at.root || h.status() != "put 1 rows" {
+			if h.m.tree.Row(h.m.current()).Parent != h.m.at.root || h.status() != "put 1 row" {
 				t.Fatal("empty place did not receive a child")
 			}
 		})
@@ -1110,10 +1110,10 @@ func TestTheStatusLineShowsWhatIsPending(t *testing.T) {
 			{[]string{"c"}, "c"},
 		} {
 			h.press(c.keys...)
-			if got := h.status(); got != c.want {
+			if got := h.m.pending(); got != c.want {
 				t.Fatalf("%v: status = %q, want %q", c.keys, got, c.want)
 			}
-			if !strings.HasSuffix(last(h), c.want+"  :help") {
+			if l := strings.TrimSuffix(last(h), "  :help"); !strings.HasSuffix(l, " "+c.want) {
 				t.Fatalf("%v: not at the right: %q", c.keys, last(h))
 			}
 			h.press("esc")

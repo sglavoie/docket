@@ -162,9 +162,10 @@ type Model struct {
 	syncAgain bool   // this pass is the one retry a missing file is owed
 	backedUp  string // the day of the newest snapshot
 	scanned   scanKey
-	tags      []string // tags in use, most used first
-	headings  []entry  // live heading destinations, in tree order
-	rowNames  []entry  // every other live row with text, for the pickers
+	tags      []string       // tags in use, most used first
+	tagUse    map[string]int // how many live rows carry each tag
+	headings  []entry        // live heading destinations, in tree order
+	rowNames  []entry        // every other live row with text, for the pickers
 	parked    int
 	next      map[string]bool // each active project's next action, derived in scan
 	first     map[string]bool // each parent's first workable child, derived in scan
@@ -192,6 +193,8 @@ type Model struct {
 	centre       bool                // the cursor has landed somewhere: show it mid-pane if off screen
 	scroll       byte                // zt zz zb: draw the cursor's row at the top, middle or bottom
 	find         string              // the last filter kept or dropped, for n and N
+	changes      []string            // the rows changed this session, oldest first, for g; and g,
+	changeAt     int                 // where g; and g, stand in changes
 	findHere     string              // the row that filter's &. stands for
 	picked       map[string]bool     // the selection
 	sweep        string              // anchor row of a live sweep
@@ -601,7 +604,7 @@ func (m *Model) flat() bool {
 	case m.at.query != "":
 		m.msg = "clear the filter first (Esc)"
 	case m.at.list != "":
-		m.msg = "a list has no order: press Enter on a row to work inside it"
+		m.msg = "a list has no order: h shows the row where it lives, Enter works inside it"
 	default:
 		return false
 	}
@@ -667,7 +670,7 @@ func (m *Model) foldOutline(fold bool, args []string) {
 	for i, word := range args {
 		n, err := strconv.Atoi(word)
 		if err != nil || n <= 0 || i > 0 || !fold {
-			m.msg = "invalid fold level: " + word
+			m.msg = "invalid fold level: " + word + ": fold 2 shows two levels"
 			return
 		}
 		level = n
@@ -802,6 +805,7 @@ func (m *Model) record(ops, inv []outline.Op) bool {
 	if !m.save(ops, inv) {
 		return false
 	}
+	m.noteChange(ops)
 	if m.undoGroup != nil {
 		m.undoGroup = append(inv, m.undoGroup...)
 		m.redo = nil
@@ -823,9 +827,9 @@ func (m *Model) do(ops ...outline.Op) bool {
 }
 
 // replay moves one step between the undo and redo stacks.
-func (m *Model) replay(from, to *[][]outline.Op, empty string) {
+func (m *Model) replay(from, to *[][]outline.Op, verb string) {
 	if len(*from) == 0 {
-		m.msg = empty
+		m.msg = "nothing to " + verb
 		return
 	}
 	cur := m.current()
@@ -844,6 +848,7 @@ func (m *Model) replay(from, to *[][]outline.Op, empty string) {
 	m.keepHistory()
 	m.rebuild()
 	m.seek(group[len(group)-1].Row)
+	m.msg = verb + ": " + describe(group)
 	if m.at.list == kindToday {
 		for _, op := range group {
 			if op.Field == fieldTodayPos {
@@ -1017,7 +1022,7 @@ func (m *Model) moveBlock(ids []string, key string) {
 func (m *Model) sortRows(keys []string) {
 	for _, key := range keys {
 		if key != "@" && key != "!" && key != "$" {
-			m.msg = "unknown sort key: " + key
+			m.msg = "unknown sort key: " + key + ": the keys are @ ! $, or none for text"
 			return
 		}
 	}
@@ -1100,7 +1105,7 @@ func (m *Model) sortRows(keys []string) {
 	if m.do(ops...) {
 		m.rebuild()
 		m.seek(cur)
-		m.msg = fmt.Sprintf("sorted %d rows", len(block))
+		m.msg = "sorted " + rowCount(len(block))
 	}
 }
 
@@ -1113,12 +1118,14 @@ func (m *Model) reorder(id string, down bool) {
 	if down {
 		next := m.tree.NextSibling(id)
 		if next == "" {
+			m.msg = "already the last of its siblings: >> or m moves it elsewhere"
 			return
 		}
 		pos = m.tree.PosAfter(r.Parent, next)
 	} else {
 		prev := m.prevSibling(id)
 		if prev == "" {
+			m.msg = "already the first of its siblings: << or m moves it elsewhere"
 			return
 		}
 		pos = m.tree.PosBefore(r.Parent, prev)
@@ -1346,6 +1353,7 @@ func (m *Model) finishEdit() bool {
 		if e.merge {
 			saved = m.save(e.ops, e.inv)
 			if saved {
+				m.noteChange(e.ops)
 				last := len(m.undo) - 1
 				m.undo[last] = append(e.inv, m.undo[last]...)
 				m.keepHistory()
@@ -1806,7 +1814,7 @@ func (m *Model) swapText(rows []string, old, new string) {
 	}
 	if m.do(ops...) {
 		m.repeat = repeatAct{old: old, new: new}
-		m.msg = fmt.Sprintf("changed %d rows", len(ops))
+		m.msg = "changed " + rowCount(len(ops))
 		if len(ops) == 1 {
 			m.msg = "changed 1 row"
 		}
@@ -1906,7 +1914,7 @@ func (m *Model) archive() {
 		m.vis, m.at.kept = nil, nil
 		m.rebuild()
 		m.seek(cur)
-		m.msg = fmt.Sprintf("archived %d rows under %s", moved, archiveText)
+		m.msg = "archived " + rowCount(moved) + " under " + archiveText
 		if moved == 1 {
 			m.msg = "archived 1 row under " + archiveText
 		}
@@ -2034,7 +2042,7 @@ func (m *Model) act(k string, count int) {
 		switch k {
 		case "x", "!", "t", "m", "L", ".", "#", "@", "$", "*", "-", "v", "zc", "zo":
 			if len(m.picked) > 0 {
-				m.msg = "a count cannot act on a selection"
+				m.msg = "a count cannot act on a selection: act without one, or Esc clears the selection"
 				return
 			}
 		}
@@ -2055,6 +2063,7 @@ func (m *Model) act(k string, count int) {
 			m.undoGroup = nil
 			return
 		case "u", "ctrl+r":
+			steps := 0
 			for range count {
 				before := len(m.undo)
 				if k == "ctrl+r" {
@@ -2068,6 +2077,14 @@ func (m *Model) act(k string, count int) {
 				if after == before {
 					break
 				}
+				steps++
+			}
+			if steps > 1 {
+				verb := "undo"
+				if k == "ctrl+r" {
+					verb = "redo"
+				}
+				m.msg = fmt.Sprintf("%s: %d steps", verb, steps)
 			}
 			return
 		case "v":
@@ -2241,7 +2258,7 @@ func (m *Model) operate(op, k string, count int) {
 	tree, gen := m.tree, m.tree.Gen()
 	if k == op {
 		if count > 0 && len(m.picked) > 0 {
-			m.msg = "a count cannot act on a selection"
+			m.msg = "a count cannot act on a selection: act without one, or Esc clears the selection"
 			return
 		}
 		m.takeRows(op, m.countedRows(count))
@@ -2304,7 +2321,7 @@ func (m *Model) takeRows(op string, ids []string) {
 	m.pendingCmd = tea.SetClipboard(text)
 	if op == "y" {
 		m.copied = text
-		m.msg = fmt.Sprintf("copied %d rows", n)
+		m.msg = "copied " + rowCount(n)
 		return
 	}
 	var ops []outline.Op
@@ -2371,9 +2388,9 @@ func (m *Model) normalAct(k string, count int) {
 		}
 		return
 	case "u":
-		m.replay(&m.undo, &m.redo, "nothing to undo")
+		m.replay(&m.undo, &m.redo, "undo")
 	case "ctrl+r":
-		m.replay(&m.redo, &m.undo, "nothing to redo")
+		m.replay(&m.redo, &m.undo, "redo")
 	case "tab":
 		m.sideFrom = m.departure()
 		m.sideFocus = true
@@ -2388,6 +2405,9 @@ func (m *Model) normalAct(k string, count int) {
 		}
 	case "f":
 		m.ask = &prompt{kind: askJump}
+	case "g;", "g,":
+		m.walkChanges(k == "g;", count)
+		return
 	case "ctrl+o", "ctrl+i":
 		// Back along the trail of jumps, and forward again.
 		for range max(count, 1) {
@@ -2556,6 +2576,10 @@ func (m *Model) normalAct(k string, count int) {
 			m.moveBlock(ids, k)
 		} else {
 			m.reorder(cur, k == "J")
+		}
+	default:
+		if hint, ok := strayKeys[k]; ok {
+			m.msg = hint
 		}
 	}
 }
