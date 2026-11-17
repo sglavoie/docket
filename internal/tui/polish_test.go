@@ -230,8 +230,8 @@ func TestClosedRowsCanBeLeftOut(t *testing.T) {
 	// the setting outlives the session.
 	h.press("/", `"fix"`, "enter")
 	h.want(
-		"▌ ▾ Beta",
-		"    ✓ Fix cache #bug",
+		"  ▾ Beta",
+		"▌   ✓ Fix cache #bug",
 		"  ▾ Alpha",
 		"    ✓ Fix login ! #bug",
 	)
@@ -496,7 +496,7 @@ func TestHeaderAndHintsCarryTheirWeight(t *testing.T) {
 	if got := raw(0); !strings.Contains(got, c.accent+"/ #bug"+sgrReset) || !strings.Contains(got, c.dim+"  · 3 to do"+sgrReset) {
 		t.Fatalf("filtered header = %q", got)
 	}
-	h.press("esc", "A")
+	h.press("esc", "g", "g", "A")
 	if got := raw(-1); !strings.Contains(got, c.dim+"Enter next row") {
 		t.Fatalf("hint = %q", got)
 	}
@@ -954,4 +954,80 @@ func TestDimTextStaysReadableOnASelection(t *testing.T) {
 		return
 	}
 	t.Fatal("the row is not drawn")
+}
+
+// A filter puts the cursor on what it found: in context the rows above a
+// match are only there to place it, and no key was meant for them.
+func TestAFilterLandsOnWhatItFound(t *testing.T) {
+	h := work(t)
+	h.press("g", "g", "/", `"#docs"`)
+	h.want("  ▾ Alpha", "▌   ○ Write docs @fri #docs")
+	// Keeping it says how much is held and the keys that are new meanwhile.
+	h.press("enter")
+	h.wantStatus("1 match kept · Esc drops the filter")
+	h.press("esc", "/", `"#bug"`, "enter")
+	h.wantStatus("3 matches kept · n N step through them · Esc drops the filter")
+	h.want(
+		"  ▾ Beta",
+		"▌   ○ Fix cache #bug",
+		"  ▾ Alpha",
+		"    ○ Fix login ! #bug",
+		"    ○ Refactor auth #bug",
+	)
+	// A filter that finds nothing leaves the empty pane to say so.
+	h.press("esc", "/", `"zzz"`, "enter")
+	h.wantStatus("")
+
+	// A saved filter opens on its first match too.
+	h.press("esc", "/", `"#docs"`, "enter")
+	h.command("save docs")
+	h.press("esc", "g", "g", "f", `"/docs"`, "enter")
+	h.want("  ▾ Alpha", "▌   ○ Write docs @fri #docs")
+}
+
+// A line that stays open after Enter says what the key did, or why it did
+// nothing, on the line itself: the status line is the prompt meanwhile.
+func TestAPromptSaysWhatItsEnterDid(t *testing.T) {
+	h := work(t)
+	h.press("@", `"firday"`, "enter")
+	if got := h.bottom(); got != "Stamp › @firday   cannot read @firday: a day reads as @fri, @+3d, @dec4 or @2026-12-04" {
+		t.Fatalf("stamp = %q", got)
+	}
+	// The next key takes the message away and the hint comes back.
+	h.press("backspace")
+	if got := h.bottom(); got != "Stamp › @firda   1 row · -#tag and -@ remove" {
+		t.Fatalf("stamp after a key = %q", got)
+	}
+	h.press("esc")
+	for word, way := range map[string]string{
+		"$d":      "a state is $open, $doing, $waiting, $done, $canceled, $parked or $note",
+		"*often":  "an interval reads as *3d, *2w or *monthly",
+		"#1":      "a tag starts with a letter",
+		"-$open":  "a state is set, not taken off, as $open or $note",
+		"-@fri":   "-@, -@@ and -* take the whole field off",
+		"soon":    "the line reads #tag, @date, $state, *interval and !",
+		"-*2w":    "-@, -@@ and -* take the whole field off",
+		"@@never": "a day reads as @fri, @+3d, @dec4 or @2026-12-04",
+	} {
+		if got := unreadStamp(word); got != "cannot read "+word+": "+way {
+			t.Errorf("%s: %q", word, got)
+		}
+	}
+
+	h.press("m", `"zzz"`, "enter")
+	if got := h.bottom(); got != "Move to › zzz   nothing matches zzz" {
+		t.Fatalf("picker = %q", got)
+	}
+	h.press("esc")
+
+	// The capture line stays open for the next thought and says where the
+	// last one went, which a %name makes worth knowing.
+	h.press("a", `"Ring the bank %alp"`, "enter")
+	if got := h.bottom(); got != "Inbox ›    added to Alpha" {
+		t.Fatalf("capture = %q", got)
+	}
+	h.press(`"x"`)
+	if got := h.bottom(); got != "Inbox › x   files in Inbox" {
+		t.Fatalf("capture typing = %q", got)
+	}
 }

@@ -35,9 +35,10 @@ func (h *harness) bottom() string {
 func TestFilterNarrowsAsItIsTypedAndKeepsContext(t *testing.T) {
 	h := work(t)
 	h.press("/", `"#bug"`)
+	// The cursor is on what was found, not on the row kept above it.
 	h.want(
-		"▌ ▾ Beta",
-		"    ○ Fix cache #bug",
+		"  ▾ Beta",
+		"▌   ○ Fix cache #bug",
 		"  ▾ Alpha",
 		"    ○ Fix login ! #bug",
 		"    ○ Refactor auth #bug",
@@ -199,7 +200,7 @@ func TestSelectionActsOnEveryRowAndStampsSigils(t *testing.T) {
 func TestAStampThatCannotBeReadChangesNothing(t *testing.T) {
 	h := work(t)
 	h.press("@", `"fri #ok @nonsense"`, "enter")
-	if h.m.msg != "cannot read @nonsense" || h.m.ask == nil {
+	if h.m.msg != "cannot read @nonsense: a day reads as @fri, @+3d, @dec4 or @2026-12-04" || h.m.ask == nil {
 		t.Fatalf("msg = %q", h.m.msg)
 	}
 	h.press("esc")
@@ -376,8 +377,8 @@ func TestNextIsTheFirstWorkableRowOfEachProject(t *testing.T) {
 	h := projectsWithNext(t)
 	h.press("/", `"$next"`)
 	h.want(
-		"▌ ▾ Alpha",
-		"    ● Fix login #home",
+		"  ▾ Alpha",
+		"▌   ● Fix login #home",
 		"  ▾ Beta",
 		"    ▾ Spec: 0/1",
 		"      ○ Draft spec",
@@ -596,8 +597,8 @@ func TestAllSelectsEveryRowThePaneShows(t *testing.T) {
 		}
 		h.press("esc", "esc")
 		h.want(
-			"▌ ▾ Beta",
-			"    ○ Fix cache #auth",
+			"  ▾ Beta",
+			"▌   ○ Fix cache #auth",
 			"  ▾ Alpha",
 			"    ○ Fix login ! #auth",
 			"    ○ Write docs @fri #docs",

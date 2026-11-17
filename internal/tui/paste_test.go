@@ -113,8 +113,8 @@ func TestPastingOneLineOrIntoAPromptIsTyping(t *testing.T) {
 		t.Fatalf("msg = %q", h.m.msg)
 	}
 	h.want(
-		"▌ ▾ Project",
-		"    ○ Very Second",
+		"  ▾ Project",
+		"▌   ○ Very Second",
 	)
 }
 

@@ -374,8 +374,8 @@ The status line becomes a prompt for three acts, named at its left edge:
   the project or heading that name matches instead; the line names where it
   will land, and a blank line names `%name`, the one word no other line
   reads. One matching nothing stays in the text. `Enter` keeps the line
-  and asks for the next; a blank `Enter` or `Esc` closes, and `Esc` keeps
-  what was typed.
+  and asks for the next, saying where that one went, as `added to Alpha ›
+  TUI`; a blank `Enter` or `Esc` closes, and `Esc` keeps what was typed.
 - `f` **Go to ›** opens a project, a heading, a list or a saved filter by
   name. A heading opens inside its project: the sidebar stays on the
   project and `Esc` backs out to it. Once something is typed it reaches
@@ -425,6 +425,13 @@ the app asks every terminal for, which Kitty, Ghostty, WezTerm, foot,
 Alacritty, iTerm2 and xterm answer, and tmux passes on with `extended-keys
 on`. A terminal that answers nothing sends `Tab` for both, so there `Ctrl+I`
 gives the sidebar focus and the trail only goes back.
+
+**A line that stays open says why.** While the bottom line is a prompt it
+is the only place left to say anything, so what an `Enter` did or could not
+do is said there, after what was typed and in place of the hint, until the
+next key: where a captured line went, the word a stamp cannot read, that a
+picker matches nothing. One saying that something was not written is in the
+alert colour, as on the status line.
 
 The pickers list their matches as you type, best first. `Down` and `Up`
 walk them, and `Enter` takes the one at the front. A name matches by its start, the start of a word, anywhere
@@ -573,8 +580,13 @@ Three more acts use the same line:
   (`@`, `@date`, `@overdue`, `@week`, `@<`, `@>`), the flat list reads
   soonest deadline first, ties in outline order; in context, and in Today,
   Waiting and Stale, the order is the outline's or the list's. The order is
-  set when the query is read, and nothing in the outline moves. `Enter` keeps the filter and returns to the rows,
-  where the header names it; `Esc` drops it. Like a list, a filter holds the
+  set when the query is read, and nothing in the outline moves. The cursor
+  goes to the first match as the line is typed: in context the rows above
+  it are only there to place it, and no key is meant for them. `Enter`
+  keeps the filter and returns to the rows, where the header names it, and
+  the status line says what is held and the keys that are new while it is,
+  as `12 matches kept · n N step through them · Esc drops the filter`,
+  since the count leaves with the line; `Esc` drops it. Like a list, a filter holds the
   rows it found until the query changes, and refuses the keys that
   restructure the tree. Changing the filter clears the selection. A filter
   shows every match: a fold never hides one. In context, `h` and `l` only
@@ -596,7 +608,10 @@ Three more acts use the same line:
   start day. A row with no such day is left as it is, so a selection of
   rows each slips from its own date, and `.` slips them again. These two
   forms are read on the stamp line only. `Enter` applies them to the selection, else to the cursor's row, as
-  one undo step. A word it cannot read is named and nothing is applied.
+  one undo step. A word it cannot read is named on the line, with what a
+  word of its kind reads as (`cannot read @firday: a day reads as @fri,
+  @+3d, @dec4 or @2026-12-04`); nothing is applied and the line stays open
+  to be put right.
 - `:` runs a command. The line names the commands it could become, dimmed:
   all of them by name alone while it is blank, so more fit and are scanned
   sooner, those that start as typed with what each takes after that, and
@@ -732,7 +747,9 @@ and is deleted like any other.
 ### Saved filters and review
 
 `:save name` keeps the pane's filter, with the row it was made under and
-whether it was flat. It then appears in the `f` picker as `/name`.
+whether it was flat. It then appears in the `f` picker as `/name`, and
+opens with the cursor on its first match unless the place remembers a row
+the filter still shows.
 `:forget name` drops it. It is also an entry in the sidebar, after the four
 lists, reached with the sidebar's ordinary keys: a place, as a list is, and
 not a second route to a key (rule 3). Each is a row

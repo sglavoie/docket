@@ -480,6 +480,14 @@ func (m *Model) statusLine(w int) (string, int) {
 		}
 		switch {
 		case room <= 3:
+		case m.msg != "":
+			// A line that stays open says what its Enter did, or why it did
+			// nothing, where the hint was: nowhere else is left to say it.
+			said := ansi.Truncate(m.msg, room, "…")
+			if failing(m.msg) {
+				said = m.colors().alert + said
+			}
+			line += "   " + said + sgrReset
 		case a.kind == askCapture && len(a.ed.buf) == 0:
 			// The one word this line reads that no other does.
 			line += "   " + m.colors().dim + ansi.Truncate("%name files it in a project or heading", room, "…") + sgrReset

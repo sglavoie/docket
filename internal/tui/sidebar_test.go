@@ -354,7 +354,7 @@ func TestCaptureFilesInTheInboxOrANamedProject(t *testing.T) {
 		t.Fatalf("caret = %+v", c)
 	}
 	h.press("enter", `"Fix the build ! %alp"`, "enter")
-	if h.status() != "Inbox ›    %name files it in a project or heading" || h.m.msg != "added to Alpha" {
+	if h.status() != "Inbox ›    added to Alpha" {
 		t.Fatalf("status = %q, msg = %q", h.status(), h.m.msg)
 	}
 	h.press(`"see %nowhere"`, "esc")

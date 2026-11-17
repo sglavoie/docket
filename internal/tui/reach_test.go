@@ -414,7 +414,7 @@ func TestAFilterTermReachesTheRowsAbove(t *testing.T) {
 	t.Run("context keeps dim ancestors and all takes matches only", func(t *testing.T) {
 		h := fixture(t)
 		h.press("/", `"^#work"`, "enter")
-		h.want("▌ ▾ Docket #office", "    ▾ Work: 0/3 #work", "      ○ First", "      ◔ Nested: 0/1 #work", "        ○ Deep")
+		h.want("  ▾ Docket #office", "    ▾ Work: 0/3 #work", "▌     ○ First", "      ◔ Nested: 0/1 #work", "        ○ Deep")
 		if !strings.Contains(h.m.View().Content, darkPalette.dim+"Work:") {
 			t.Fatal("context heading is not dimmed")
 		}

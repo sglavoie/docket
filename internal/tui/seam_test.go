@@ -97,8 +97,8 @@ func TestAChangedFilterSaysWhenAndReadsNewestFirst(t *testing.T) {
 	// In context the order is the outline's, and each match still says when.
 	h.press("tab")
 	h.want(
-		"▌ ▾ Beta",
-		"    ✓ Fix cache #bug ~Nov 15",
+		"  ▾ Beta",
+		"▌   ✓ Fix cache #bug ~Nov 15",
 		"  ▾ Alpha",
 		"    ✓ Refactor auth #bug ~today",
 	)

@@ -132,9 +132,9 @@ func TestFindMotions(t *testing.T) {
 	t.Run("a kept filter is found again in the whole outline", func(t *testing.T) {
 		h := branches(t)
 		h.press("/", `"milk"`, "enter")
-		h.want("▌ ▾ Beta: 0/1", "    ○ b1 milk", "  · Delta milk:")
+		h.want("  ▾ Beta: 0/1", "▌   ○ b1 milk", "  · Delta milk:")
 		// Under the filter n passes over the dimmed ancestor.
-		h.press("n")
+		h.press("k", "n")
 		if h.on() != "b1 milk" {
 			t.Fatalf("n under a filter landed on %q", h.on())
 		}

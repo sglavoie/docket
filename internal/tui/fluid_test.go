@@ -62,8 +62,10 @@ func TestAFilterShowsMatchesInsideFoldedRows(t *testing.T) {
 	h.press("G", "h", "h", "h")
 	h.want("  ▾ Beta", "    ○ Fix cache #bug", "▌ ▸ Alpha +3")
 	h.press("/", `"#docs"`, "enter")
-	h.want("▌ ▾ Alpha", "    ○ Write docs @fri #docs")
+	h.want("  ▾ Alpha", "▌   ○ Write docs @fri #docs")
 	// The keys that fold only step, and the fold is kept for afterwards.
+	h.press("h")
+	h.want("▌ ▾ Alpha", "    ○ Write docs @fri #docs")
 	h.press("l")
 	h.want("  ▾ Alpha", "▌   ○ Write docs @fri #docs")
 	h.press("h", "h")

@@ -607,3 +607,25 @@ func (m *Model) walkChanges(older bool, count int) {
 	m.jump(entry{kind: kindRow, id: target})
 	m.msg = fmt.Sprintf("change %d of %d", found+1, len(m.changes))
 }
+
+// unreadStamp says why the stamp line stopped at a word, and what a word of
+// its kind reads as, so the line is put right without leaving it.
+func unreadStamp(w string) string {
+	body := strings.TrimPrefix(w, "-")
+	way := "the line reads #tag, @date, $state, *interval and !"
+	switch {
+	case w != body && strings.HasPrefix(body, "$"):
+		way = "a state is set, not taken off, as $open or $note"
+	case w != body && (strings.HasPrefix(body, "@") || strings.HasPrefix(body, "*")):
+		way = "-@, -@@ and -* take the whole field off"
+	case strings.HasPrefix(body, "@"):
+		way = "a day reads as @fri, @+3d, @dec4 or @2026-12-04"
+	case strings.HasPrefix(body, "$"):
+		way = "a state is $open, $doing, $waiting, $done, $canceled, $parked or $note"
+	case strings.HasPrefix(body, "*"):
+		way = "an interval reads as *3d, *2w or *monthly"
+	case strings.HasPrefix(body, "#"):
+		way = "a tag starts with a letter"
+	}
+	return "cannot read " + w + ": " + way
+}

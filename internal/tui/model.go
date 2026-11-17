@@ -571,6 +571,9 @@ func (m *Model) leave() {
 // arrive puts the cursor back where it was the last time this place showed.
 func (m *Model) arrive() {
 	m.rebuild()
+	if m.at.query != "" {
+		m.cursor = m.firstMatch()
+	}
 	m.seek(m.last[placeKey(m.at)])
 	m.land()
 }
@@ -693,6 +696,18 @@ func (m *Model) current() string {
 // land asks for the cursor's row to be shown mid-pane when the pane was not
 // showing it, so a row reached from afar is read with what is around it.
 func (m *Model) land() { m.centre = true }
+
+// firstMatch is where the first row a filter found is drawn, since in
+// context the rows above it are only there to place it. With no filter it
+// is the first row.
+func (m *Model) firstMatch() int {
+	for i, v := range m.at.hits {
+		if m.at.matched[v.id] {
+			return i
+		}
+	}
+	return 0
+}
 
 // seek puts the cursor on id when it is visible.
 func (m *Model) seek(id string) {
@@ -1618,10 +1633,19 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 			m.at.query = strings.TrimSpace(string(a.ed.buf))
 		}
 		m.refilter()
-		m.cursor, m.top = 0, 0
+		// The cursor goes to what was found, not to a row kept above it.
+		m.cursor, m.top = m.firstMatch(), 0
 		// A selection made before the rows changed could act on rows no
 		// longer on screen.
 		m.clearSelection()
+		if k == "enter" && len(m.at.matched) > 0 {
+			// The count leaves with the line, so keeping it says what is
+			// held and the two keys that are new while it is.
+			m.msg = matchCount(len(m.at.matched)) + " kept · Esc drops the filter"
+			if len(m.at.matched) > 1 {
+				m.msg = matchCount(len(m.at.matched)) + " kept · n N step through them · Esc drops the filter"
+			}
+		}
 		return
 	}
 
@@ -1694,7 +1718,7 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 func (m *Model) applyStamp(rows []string, line string) bool {
 	c, bad := parseStamp(line, m.today())
 	if bad != "" {
-		m.msg = "cannot read " + bad
+		m.msg = unreadStamp(bad)
 		return false
 	}
 	var ops []outline.Op
