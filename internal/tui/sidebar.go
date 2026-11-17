@@ -54,6 +54,9 @@ const (
 	sidebarCols  = 24
 	sidebarFrom  = 72 // the terminal width from which the sidebar is always drawn
 	sidebarAlone = 40 // the widest the sidebar is drawn when it takes a narrow pane
+	// sidebarFootFrom is the height from which a scrolled sidebar keeps the
+	// sync line at its foot.
+	sidebarFootFrom = 8
 )
 
 // place is what the outline pane shows: the rows under root, or a flat list
@@ -930,13 +933,22 @@ func (m *Model) sideLines(w, h int) []string {
 		text := gutter + " " + m.colors().dim + "parked " + strconv.Itoa(m.parked) + sgrReset
 		lines = append(lines, line{}, line{text: text, sel: here})
 	}
+	// The last word on sync is the sidebar's last line whatever is scrolled:
+	// a pass that failed is an alarm, and an alarm out of sight is none.
+	var foot []line
 	if m.syncNote != "" {
 		style := m.colors().dim
 		if m.syncFailed {
 			style = m.colors().alert
 		}
-		lines = append(lines, line{}, line{text: "  " + style + ansi.Truncate(m.syncNote, w-2, "…") + sgrReset})
+		foot = []line{{}, {text: "  " + style + ansi.Truncate(m.syncNote, w-2, "…") + sgrReset}}
 	}
+	if len(lines)+len(foot) <= h || h < sidebarFootFrom {
+		// Everything fits, or the sidebar is too short to give two rows up.
+		lines, foot = append(lines, foot...), nil
+	}
+	whole := h
+	h -= len(foot)
 
 	// Keep the selection in view when the list is taller than the pane, and
 	// off the last row while more follows, which a marker takes.
@@ -962,10 +974,12 @@ func (m *Model) sideLines(w, h int) []string {
 	if last := off + h - 1; h >= 3 && last < len(lines)-1 {
 		lines[last] = line{text: "  " + m.colors().dim + "↓ " + hidden(last, len(lines)) + sgrReset}
 	}
-	out := make([]string, h)
+	out := make([]string, whole)
 	for i := range out {
 		text := ""
-		if off+i < len(lines) {
+		if i >= h {
+			text = foot[i-h].text
+		} else if off+i < len(lines) {
 			text = lines[off+i].text
 		}
 		out[i] = text + strings.Repeat(" ", max(w-ansi.StringWidth(text), 0))

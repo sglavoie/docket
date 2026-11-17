@@ -583,6 +583,11 @@ func (m *Model) statusLine(w int) (string, int) {
 		}
 	case m.sideFocus:
 		left = "j k choose · Enter work in it"
+		if says := m.sideSays(); says != "" {
+			// What the entry's marks stand for leads, since the keys are
+			// learned once and the marks change with every entry.
+			left = says + " · " + left
+		}
 	}
 	if m.msg == "" && left != "" && m.nextKeys() == "" {
 		// A standing hint is dimmed, so a message is seen to be one.

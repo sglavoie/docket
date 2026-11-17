@@ -148,6 +148,7 @@ f	go to a project, heading, list, saved filter or row by name
 	blank `Enter` opens Inbox; `Up` `Down` choose, `Esc` leaves
 m	move rows to a project, Inbox or heading by name
 Tab	sidebar focus; `j` `k` and paging keys visit; `Enter` works there
+	a project says `@` for a deadline near or overdue, `∅` with nothing to do, else days untouched
 
 == Links and trails
 L gl	link to a row, follow it; blank `L` `Enter` removes the link

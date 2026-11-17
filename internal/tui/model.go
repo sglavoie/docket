@@ -1836,6 +1836,10 @@ func (m *Model) command(line string) {
 		m.vis, m.at.kept = nil, nil
 		m.msg = said
 	default:
+		if hint, ok := strayCommands[words[0]]; ok && len(words) == 1 {
+			m.msg = hint
+			return
+		}
 		var uses []string
 		for _, c := range commandUses {
 			uses = append(uses, c.use)

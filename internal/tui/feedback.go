@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -247,8 +248,18 @@ func (m *Model) nextKeys() string {
 	}
 	op := m.operator
 	switch {
+	case op == "c" && len(m.picked) > 0:
+		return "cc retypes one row, not a selection"
 	case op == "c":
 		return "cc retypes the text, keeping its fields"
+	case op != "" && len(m.picked) > 0:
+		// Doubled, the key takes the selection; anything else is refused, so
+		// the line does not offer it.
+		rows := "the selected row"
+		if n := len(m.picked); n > 1 {
+			rows = fmt.Sprintf("the %d selected rows", n)
+		}
+		return op + op + " " + rows + " · no motion or object while rows are selected"
 	case op != "" && m.prefix == "g":
 		return op + "gg takes through the first row"
 	case op != "" && m.prefix == "i":
@@ -299,6 +310,9 @@ func commandOffers(line string) string {
 	}
 	switch len(uses) {
 	case 0:
+		if hint, ok := strayCommands[strings.TrimSpace(line)]; ok {
+			return hint
+		}
 		return "no such command"
 	case 1:
 		return uses[0] + ": " + does
@@ -460,6 +474,52 @@ var strayKeys = map[string]string{
 	"U": "u undoes and Ctrl+R redoes, a step at a time",
 	"q": ":q quits; . repeats the last change, so there are no macros",
 	"~": "w steps into the text, where ~ switches case",
+	// And the keys other programs taught: help, save and quit, marks, a tick.
+	"?":     ":help lists every key; / filters",
+	"Z":     saved,
+	"'":     noMarks,
+	"`":     noMarks,
+	"space": "x closes the row, v selects it, t picks it for Today",
+}
+
+const (
+	saved   = "every change is saved as it is made; :q quits"
+	noMarks = "Ctrl+O goes back along jumps and g; to the last change, so there are no marks"
+)
+
+// strayCommands are the commands the same hand types to save. Nothing is
+// ever unsaved, so each says so and none acts.
+var strayCommands = map[string]string{"w": saved, "write": saved, "wq": saved, "x": saved}
+
+// sideSays spells out the marks on the sidebar's selected entry, which are
+// too short to explain themselves: it is said where the eye already is,
+// while the entry is the one being chosen.
+func (m *Model) sideSays() string {
+	var says []string
+	for _, e := range m.side {
+		if !e.same(m.sel) {
+			continue
+		}
+		switch {
+		case e.kind == kindStale:
+			says = append(says, fmt.Sprintf("open and doing rows untouched for %d days", int(staleAfter.Hours()/24)))
+		case e.kind == kindToday && e.done && e.count == 0:
+			says = append(says, "✓ every pick is closed")
+		case e.kind == kindProject:
+			switch e.due {
+			case 2:
+				says = append(says, "@ a deadline is overdue")
+			case 1:
+				says = append(says, "@ a deadline within a week")
+			}
+			if e.idle {
+				says = append(says, "∅ nothing left to do")
+			} else if e.age > 0 {
+				says = append(says, strconv.Itoa(e.age)+"d since anything changed")
+			}
+		}
+	}
+	return strings.Join(says, " · ")
 }
 
 // changeCap is how many changed rows g; and g, can walk back through.

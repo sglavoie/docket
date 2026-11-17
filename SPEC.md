@@ -267,9 +267,15 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
 - **A sidebar taller than its pane** scrolls to keep its selection in view,
   and counts the destinations scrolled out at each edge, dimmed, as `↑ 6`
   on its first row and `↓ 13` on its last. A count is never drawn over the
-  selection.
+  selection. The sync line does not scroll with them: from 8 rows up it
+  stays at the sidebar's foot, since a pass that failed is an alarm and an
+  alarm out of sight is none.
 
-`Tab` gives the sidebar focus. `j` and `k` then show each destination at
+`Tab` gives the sidebar focus, and the status line then says, before its
+keys, what the marks on the chosen entry stand for, each led by the mark as
+it is drawn: `@ a deadline is overdue · 97d since anything changed`,
+`∅ nothing left to do`, `✓ every pick is closed`, and for Stale the rule
+that fills it. `j` and `k` show each destination at
 once, as do `gg` and `G` or `Home` and `End` (first, last), `Ctrl+D` and
 `Ctrl+U` (half a page) and `Ctrl+F`, `Ctrl+B`, `PgDn` and `PgUp` (a page),
 where a page is the pane's usable row height in entries, stopping at either
@@ -825,7 +831,9 @@ both keeps the pending keys. In the outline, a waiting `g`, `z`, operator
 or operator with `g` or `i` also says at the line's left, dimmed, what may
 follow it (`gg top · gl follow link · …`, `dd the row · dj } ) H ] n G…
 through a motion · dic dis objects`), so the grammar teaches itself; a
-count alone says nothing. `Esc`
+count alone says nothing. While rows are selected an operator offers only
+what it can take, as `dd the 3 selected rows · no motion or object while
+rows are selected`, and `c` says it retypes one row. `Esc`
 drops it without clearing a selection, filter or zoom. Counts do not apply
 in the sidebar, help, prompts or while typing.
 
@@ -961,7 +969,12 @@ the pane stays there until a motion has to scroll it.
 A Vim key the outline does not bind (`i`, `s`, `S`, `C`, `r`, `R`, `X`,
 `D`, `Y`, `U`, `q`, `~`) changes nothing and names the outline's way to do
 what it means, as `i` says `I types at the start, A at the end; w steps
-into the text`. It is a pointer, not a second route (rule 3).
+into the text`. So do the keys other programs taught: `?` names `:help`,
+`Z` says every change is saved as it is made and that `:q` quits, `'` and
+`` ` `` name the trail and the change list that stand in for marks, and
+`Space` names `x`, `v` and `t`. `:w`, `:write`, `:wq` and `:x` answer as `Z`
+does, while typed and on `Enter`, and do not quit. Each is a pointer, not a
+second route (rule 3).
 
 `A` opens the cursor's row for typing at the end of its canonical line; `I`
 opens it at the start. `cc` removes its text and keeps its fields as sigils,

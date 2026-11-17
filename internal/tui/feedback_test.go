@@ -193,9 +193,9 @@ func TestAVimKeyTheOutlineDoesNotBindSaysWhatDoes(t *testing.T) {
 			t.Fatalf("%s: %q, rows\n%s", k, h.status(), h.rows())
 		}
 	}
-	h.press("Z")
+	h.press("M")
 	if h.status() != "" {
-		t.Fatalf("Z: %q", h.status())
+		t.Fatalf("M: %q", h.status())
 	}
 }
 

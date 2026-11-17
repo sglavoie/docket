@@ -838,3 +838,96 @@ func TestAnOperatorInTheRowSaysWhatFollows(t *testing.T) {
 		t.Fatalf("yf = %q", h.bottom())
 	}
 }
+
+// The last word on sync stays at the sidebar's foot when the projects
+// scroll, so a pass that failed is never out of sight.
+func TestAScrolledSidebarKeepsTheSyncLine(t *testing.T) {
+	h := start(t).wide()
+	h.press("o")
+	for _, name := range []string{"A", "B", "C", "D", "E", "F", "G", "H"} {
+		h.press(`"`+name+`"`, "enter")
+	}
+	h.press("esc")
+	h.m.syncNote, h.m.syncFailed = "sync failed", true
+	h.m.Update(tea.WindowSizeMsg{Width: 100, Height: 11})
+	side := func() []string { return strings.Split(h.side(), "\n") }
+	if got := side(); got[0] != "Inbox" || got[len(got)-2] != "↓ 7" || got[len(got)-1] != "sync failed" {
+		t.Fatalf("at the top:\n%s", h.side())
+	}
+	if !strings.Contains(h.m.View().Content, darkPalette.alert+"sync failed") {
+		t.Fatal("the alarm lost its colour")
+	}
+	h.press("tab", "G")
+	if got := side(); got[len(got)-2] != "▌ H ∅" || got[len(got)-1] != "sync failed" {
+		t.Fatalf("at the end:\n%s", h.side())
+	}
+	// A sidebar too short to give the rows up scrolls it as before.
+	h.m.Update(tea.WindowSizeMsg{Width: 100, Height: 6})
+	if got := side(); got[len(got)-1] != "sync failed" || got[len(got)-2] != "▌ H ∅" {
+		t.Fatalf("short:\n%s", h.side())
+	}
+}
+
+// A project's marks are three characters at most, so the sidebar says what
+// they stand for on the entry being chosen.
+func TestTheSidebarSaysWhatItsMarksMean(t *testing.T) {
+	h := work(t)
+	h.press("x", "tab", "j")
+	if got := h.status(); got != "∅ nothing left to do · j k choose · Enter work in it" {
+		t.Fatalf("idle = %q", got)
+	}
+	h.press("j")
+	if got := h.status(); got != "@ a deadline within a week · j k choose · Enter work in it" {
+		t.Fatalf("due = %q", got)
+	}
+	h.press("k", "k")
+	if got := h.status(); got != "j k choose · Enter work in it" {
+		t.Fatalf("Projects = %q", got)
+	}
+	h.press("k")
+	if got := h.status(); got != "open and doing rows untouched for 14 days · j k choose · Enter work in it" {
+		t.Fatalf("Stale = %q", got)
+	}
+}
+
+// The keys and commands other programs taught name the outline's way, and
+// change nothing.
+func TestHabitsFromElsewhereAreAnswered(t *testing.T) {
+	h := project(t).wide()
+	before := h.rows()
+	for _, name := range []string{"w", "wq", "x", "write"} {
+		h.press(":", `"`+name+`"`)
+		if got := h.bottom(); !strings.HasSuffix(got, saved) {
+			t.Fatalf("typing :%s = %q", name, got)
+		}
+		h.press("enter")
+		if h.status() != saved || h.rows() != before {
+			t.Fatalf(":%s = %q, rows\n%s", name, h.status(), h.rows())
+		}
+	}
+	h.command("w now")
+	if !strings.HasPrefix(h.status(), "no command w: ") {
+		t.Fatalf(":w now = %q", h.status())
+	}
+	h.m.Update(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
+	if h.status() != strayKeys["space"] || h.rows() != before {
+		t.Fatalf("space = %q", h.status())
+	}
+}
+
+// A waiting operator offers only what a selection lets it take.
+func TestAnOperatorOverASelectionOffersNoMotion(t *testing.T) {
+	h := work(t)
+	h.press("v", "v", "d")
+	if got := h.bottom(); !strings.HasPrefix(got, "dd the 2 selected rows · no motion or object while rows are selected") {
+		t.Fatalf("d = %q", got)
+	}
+	h.press("esc", "c")
+	if got := h.bottom(); !strings.HasPrefix(got, "cc retypes one row, not a selection") {
+		t.Fatalf("c = %q", got)
+	}
+	h.press("esc", "esc", "v", "k", "y")
+	if got := h.bottom(); !strings.HasPrefix(got, "yy the selected row · ") {
+		t.Fatalf("y = %q", got)
+	}
+}
