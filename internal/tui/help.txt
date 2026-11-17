@@ -57,7 +57,7 @@ u Ctrl+R	undo, redo inside this visit
 Esc	end typing, then keep the visit as one outline undo
 
 ## States and sigils
-# @ $ * -	open the stamp line; `Enter` sets sigils on the row or selection
+# @ $ * - ~	open the stamp line; `Enter` sets sigils on the row or selection
 !	flag; `-!` removes it on the stamp line
 -#tag -@ -@@ -*	remove fields on the stamp line; `-~` the colour
 

@@ -488,7 +488,6 @@ var strayKeys = map[string]string{
 	"Y": "yy copies the row with what is under it",
 	"U": "u undoes and Ctrl+R redoes, a step at a time",
 	"q": ":q quits; . repeats the last change, so there are no macros",
-	"~": "w steps into the text, where ~ switches case",
 	// And the keys other programs taught: help, save and quit, marks, a tick.
 	"?":     ":help lists every key; / filters",
 	"Z":     saved,

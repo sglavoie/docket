@@ -230,3 +230,31 @@ func TestAColourIsPickedFromAList(t *testing.T) {
 		}
 	})
 }
+
+func TestTildeColoursEverySelectedRowAtOnce(t *testing.T) {
+	h := two(t)
+	// v picks Beta and Alpha; ~ opens the stamp line holding it, with every
+	// colour listed.
+	h.press("v", "v", "~")
+	if got := h.popup(); len(got) != min(listDepth, len(sigil.ColorNames)) {
+		t.Fatalf("listed %q", got)
+	}
+	h.press(`"te"`, "tab", "enter")
+	for _, name := range []string{"Beta", "Alpha"} {
+		if got := h.color(name); got != "teal" {
+			t.Fatalf("%s color = %q", name, got)
+		}
+	}
+	// One undo step takes both back.
+	h.press("u")
+	for _, name := range []string{"Beta", "Alpha"} {
+		if got := h.color(name); got != "" {
+			t.Fatalf("%s color = %q after undo", name, got)
+		}
+	}
+	// A count takes that many rows from the cursor instead.
+	h.press("esc", "g", "g", "2", "~", `"#abc"`, "enter")
+	if h.color("Beta") != "#aabbcc" || h.color("Alpha") != "#aabbcc" {
+		t.Fatalf("colors = %q %q", h.color("Beta"), h.color("Alpha"))
+	}
+}

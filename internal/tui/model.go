@@ -2229,7 +2229,7 @@ func (m *Model) act(k string, count int) {
 	}()
 	if count > 0 {
 		switch k {
-		case "x", "!", "t", "m", "L", ".", "#", "@", "$", "*", "-", "v", "zc", "zo":
+		case "x", "!", "t", "m", "L", ".", "#", "@", "$", "*", "-", "~", "v", "zc", "zo":
 			if len(m.picked) > 0 {
 				m.msg = "a count cannot act on a selection: act without one, or Esc clears the selection"
 				return
@@ -2686,7 +2686,7 @@ func (m *Model) normalAct(k string, count int) {
 			m.picked[cur] = true
 		}
 		m.cursor = min(m.cursor+1, len(m.vis)-1)
-	case "#", "@", "$", "-", "*":
+	case "#", "@", "$", "-", "*", "~":
 		// A sigil typed on the rows opens the stamp line already holding it.
 		m.ask = &prompt{kind: askStamp, ed: editor{buf: []rune(k), caret: 1}, rows: ids}
 	case "h", "left":

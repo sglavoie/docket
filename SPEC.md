@@ -18,8 +18,8 @@ a rule here changes this file first.
    second route.
 4. **Keys follow a grammar.** A key in the outline is a motion, an operator,
    or an act on rows; a count goes before any of them. A key that is none
-   of these is not added. The five characters that open the stamp line
-   (`#` `@` `$` `*` `-`) are the row grammar typed on a row. The word
+   of these is not added. The six characters that open the stamp line
+   (`#` `@` `$` `*` `-` `~`) are the row grammar typed on a row. The word
    motions `w` `b` `e` step into a row's text, where the same grammar reads
    characters instead of rows; `gn` and `gN` step in on what the last
    filter found. The navigation aliases are the arrows,
@@ -693,7 +693,8 @@ Three more acts use the same line:
   a list's does; when the pane is inside that project, which the header
   names already, it names the nearest heading over the row instead, colon
   dropped, and nothing when there is none.
-- `#` `@` `$` `*` `-` **Stamp ›** opens holding that character. The line is
+- `#` `@` `$` `*` `-` `~` **Stamp ›** opens holding that character, so `~`
+  opens it on the colour list. The line is
   sigils only: `#tag`, `@date`, `@@date`, `*interval`, `$state`, `~colour` and `!`
   set; `-#tag`, `-@`, `-@@`, `-*`, `-~` and `-!` remove. `#name=value` sets the value,
   replacing any the name had; `-#name` takes the tag off whatever its value
@@ -1052,7 +1053,7 @@ under it is the doubled key, and the siblings with their parent is `H`
 then the doubled key (rule 3).
 
 Before `x`, `!`, `t`, `dd`, `yy`, `>>`, `<<`, `m`, `L`, `.`, `zc`, `zo`, or a stamp character
-(`#` `@` `$` `*` `-`), a count takes that many shown rows from the cursor
+(`#` `@` `$` `*` `-` `~`), a count takes that many shown rows from the cursor
 down, or as many as remain, without changing the selection. In a filter
 in context it passes over dimmed ancestors, taking matches only, as `:all`
 does. The act is one undo step; copy changes no rows. `>` and `<`, counted
@@ -1099,10 +1100,10 @@ the pane stays there until a motion has to scroll it.
 | `L` `gl` | Link the row to another; follow the link, else open its first web address, else go back to the row linking here | 13, 16, 19 |
 | `v` `V` | Pick a row; sweep with motions | 4, 11 |
 | `/` `:` | Filter, command | 4 |
-| `#` `@` `$` `*` `-` | Stamp sigils on rows | 4 |
+| `#` `@` `$` `*` `-` `~` | Stamp sigils on rows; `~` a colour, so selected projects take one at once | 4, 19 |
 
 A Vim key the outline does not bind (`i`, `s`, `S`, `C`, `r`, `R`, `X`,
-`D`, `Y`, `U`, `q`, `~`) changes nothing and names the outline's way to do
+`D`, `Y`, `U`, `q`) changes nothing and names the outline's way to do
 what it means, as `i` says `I types at the start, A at the end; w steps
 into the text`. So do the keys other programs taught: `?` names `:help`,
 `Z` says every change is saved as it is made and that `:q` quits, `'` and
