@@ -258,3 +258,76 @@ func TestTildeColoursEverySelectedRowAtOnce(t *testing.T) {
 		t.Fatalf("colors = %q %q", h.color("Beta"), h.color("Alpha"))
 	}
 }
+
+func TestTheStampLineListsWhatEverySigilCouldBecome(t *testing.T) {
+	h := two(t)
+	h.press("j", "j", "#", `"home"`, "enter", "j", "#", `"house"`, "enter", "k")
+	// A state lists the states it could become, as ~ lists colours.
+	h.press("$")
+	h.wantList(sigil.StateNames[:min(listDepth, len(sigil.StateNames))], "")
+	h.press(`"d"`)
+	h.wantList([]string{"doing", "done"}, "")
+	h.press("tab")
+	h.wantList([]string{"doing", "done"}, "doing")
+	h.press("enter")
+	h.want(
+		"  · Beta",
+		"  ▾ Alpha",
+		"▌   ● One @tomorrow #home",
+		"    ◔ Two #house",
+	)
+	// A tag lists the tags in use, and so does one being taken off.
+	h.press("#", `"ho"`)
+	h.wantList([]string{"home", "house"}, "")
+	h.press("esc", "-", `"#house"`)
+	h.wantList(nil, "") // a finished name lists nothing
+	h.press("backspace", "backspace")
+	h.wantList([]string{"house"}, "")
+	h.press("esc")
+	// Taking off a date takes no value, so nothing is listed.
+	h.press("-", `"@"`)
+	h.wantList(nil, "")
+	h.press("esc", "@", `"to"`)
+	if len(h.m.ask.ed.buf) != 3 {
+		t.Fatalf("line %q", string(h.m.ask.ed.buf))
+	}
+	h.wantList([]string{"today", "tomorrow"}, "")
+}
+
+func TestARowAndTheCaptureListWhatASigilCouldBecome(t *testing.T) {
+	t.Run("on a row, under the word", func(t *testing.T) {
+		h := two(t)
+		h.press("j", "j", "A", `" $d"`)
+		names, _, _ := h.m.valueList(h.m.edit, surfaceRow)
+		if strings.Join(names, " ") != "doing done" {
+			t.Fatalf("listed %q", names)
+		}
+		c := h.m.View().Cursor
+		if l := h.lines()[c.Y+1]; !strings.Contains(l, "doing") {
+			t.Fatalf("row under the caret = %q", l)
+		}
+		// Down walks the list rather than going on to the next row.
+		h.press("down", "down")
+		if line, _ := h.typing(); line != "One @2026-11-16 $done" {
+			t.Fatalf("line = %q", line)
+		}
+		h.press("enter", "esc")
+		h.want(
+			"  · Beta",
+			"  ▾ Alpha",
+			"▌   ✓ One @tomorrow",
+			"    ◔ Two",
+		)
+	})
+
+	t.Run("on the capture line, above it", func(t *testing.T) {
+		h := two(t)
+		h.press("a", `"Call @to"`)
+		h.wantList([]string{"today", "tomorrow"}, "")
+		h.press("tab")
+		h.wantList([]string{"today", "tomorrow"}, "today")
+		if got := string(h.m.ask.ed.buf); got != "Call @today" {
+			t.Fatalf("line = %q", got)
+		}
+	})
+}

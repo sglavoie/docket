@@ -1072,7 +1072,7 @@ func TestTheTypedRowWraps(t *testing.T) {
 		h := start(t)
 		h.m.Update(tea.WindowSizeMsg{Width: 24, Height: 8})
 		h.press("o", `"abcdefghijklmnopqrstuvwxyz #tag @to"`)
-		h.want("▌ · abcdefghijklmnopqrst", "▌   uvwxyz #tag @today")
+		h.want("▌ · abcdefghijklmnopqrst", "▌   uvwxyz #tag @today", "               today", "               tomorrow")
 		v := h.m.View()
 		if !strings.Contains(v.Content, darkPalette.accent+"#tag"+sgrReset) || !strings.Contains(v.Content, darkPalette.warn+"@to"+sgrReset) || !strings.Contains(v.Content, darkPalette.dim+"day"+sgrReset) {
 			t.Fatalf("missing sigil or completion styles: %q", v.Content)

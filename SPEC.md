@@ -696,8 +696,8 @@ Three more acts use the same line:
   a list's does; when the pane is inside that project, which the header
   names already, it names the nearest heading over the row instead, colon
   dropped, and nothing when there is none.
-- `#` `@` `$` `*` `-` `~` **Stamp ›** opens holding that character, so `~`
-  opens it on the colour list. The line is
+- `#` `@` `$` `*` `-` `~` **Stamp ›** opens holding that character, and lists
+  what that sigil could become. The line is
   sigils only: `#tag`, `##context`, `@date`, `@@date`, `*interval`, `$state`, `~colour` and `!`
   set; `-#tag`, `-##`, `-@`, `-@@`, `-*`, `-~` and `-!` remove; `-##name`
   takes the context off only the rows that have that one. `#name=value` sets the value,
@@ -1350,16 +1350,19 @@ matches or rows, in place of the hint about keys. A `~colour` typed there,
 except on the filter, lists the colour names it could become in the same
 place, each drawn in itself, as `~teal`; a `~#` asks for a hex value.
 
-The same names are listed one above another as the filter lists its
-values, each drawn in itself, from the moment a `~` ends the line on a
-row, in the pane or a sidebar entry, or on the capture or stamp line: under
-the word on a row, or over it when there is more room above, and above the
-line on a prompt. `Tab`, `Down` and `Ctrl+N` write the next name, `Shift+Tab`,
+Every sigil with values to take lists them one above another as the filter
+lists its values, from the moment its mark ends the line on a row, in the
+pane or a sidebar entry, or on the capture or stamp line: under the word on
+a row, or over it when there is more room above, and above the line on a
+prompt. `#` lists the tags in use, each in its colour, `##` the contexts,
+`$` the states, `@` and `@@` the date words, and `~` the colour names, each
+drawn in itself. On the stamp line `-#` and `-##` list what could be taken
+off; a removal that takes no value lists nothing. `Tab`, `Down` and `Ctrl+N` write the next value, `Shift+Tab`,
 `Up` and `Ctrl+P` the one before, and past either end the word is as it was
 typed; the one written is reversed. While the list is shown those keys walk
 it, so `Tab` does not indent and `Down` does not go on into the next row;
-any other key ends the walk and keeps what is written. A name typed in full,
-or a hex value, lists nothing.
+any other key ends the walk and keeps what is written. A value typed in
+full, or a hex value, lists nothing.
 
 **Default state.** A row whose line names no state is a note when it is
 top-level, its text ends in a colon, or its parent has any state (is a task).

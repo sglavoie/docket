@@ -1682,7 +1682,7 @@ var askLabels = map[string]string{
 func (m *Model) askKey(msg tea.KeyPressMsg) {
 	a := m.ask
 	k := msg.String()
-	if m.walkColors(&a.ed, a.kind, k) {
+	if m.walkValues(&a.ed, a.kind, k) {
 		a.recalled = 0
 		return
 	}
@@ -2841,7 +2841,7 @@ func (m *Model) editKey(msg tea.KeyPressMsg) {
 	if msg.String() != "up" && msg.String() != "down" {
 		e.vertical = false
 	}
-	if m.walkColors(e, surfaceRow, msg.String()) {
+	if m.walkValues(e, surfaceRow, msg.String()) {
 		return
 	}
 	if m.complete(e, surfaceRow, msg.String()) {

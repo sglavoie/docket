@@ -490,11 +490,12 @@ func (m *Model) editVertical(by int) {
 	}
 }
 
-// colorList is what the colour popup lists while a ~word ends the line on a
-// row, the capture or the stamp line: the names the word could become, the
-// rune of the line the name is written from, and which one is written. On the filter ~ is
-// a time; a hex value and a finished name list nothing.
-func (m *Model) colorList(e *editor, surface string) (names []string, from int, at int) {
+// valueList is what the popup lists while a sigil ends the line: the
+// values the word could become, the rune of the line the value is written
+// from, and which one is written, on a row, the capture or the stamp line.
+// On the filter Tab lists them instead, and ~ is a time there. A hex value, a removal that
+// takes no value and a finished value list nothing.
+func (m *Model) valueList(e *editor, surface string) (names []string, from int, at int) {
 	if surface != surfaceRow && surface != askCapture && surface != askStamp || e.normal {
 		return nil, 0, 0
 	}
@@ -502,7 +503,9 @@ func (m *Model) colorList(e *editor, surface string) (names []string, from int, 
 	if e.walk > 0 {
 		line = e.walkDraft
 	}
-	if !strings.HasPrefix(line[strings.LastIndexByte(line, ' ')+1:], "~") {
+	word := line[strings.LastIndexByte(line, ' ')+1:]
+	if strings.HasPrefix(word, "-") && !strings.HasPrefix(word, "-#") {
+		// -#tag and -##context name what goes; -@, -$ and -~ take nothing.
 		return nil, 0, 0
 	}
 	stem, values := m.sigilValues(&editor{buf: []rune(line), caret: len([]rune(line))}, surface)
@@ -512,11 +515,11 @@ func (m *Model) colorList(e *editor, surface string) (names []string, from int, 
 	return values, len([]rune(line)) - len([]rune(stem)), e.walk - 1
 }
 
-// walkColors walks the colour popup: Tab, Down and Ctrl+N write the next
+// walkValues walks the popup: Tab, Down and Ctrl+N write the next
 // name, Shift+Tab, Up and Ctrl+P the one before, and past either end the
 // word is as it was typed. Any other key ends the walk where it stands. It
 // reports whether the key was the walk's.
-func (m *Model) walkColors(e *editor, surface, k string) bool {
+func (m *Model) walkValues(e *editor, surface, k string) bool {
 	by := 0
 	switch k {
 	case "tab", "down", "ctrl+n":
@@ -524,7 +527,7 @@ func (m *Model) walkColors(e *editor, surface, k string) bool {
 	case "shift+tab", "up", "ctrl+p":
 		by = -1
 	}
-	names, from, _ := m.colorList(e, surface)
+	names, from, _ := m.valueList(e, surface)
 	if by == 0 || len(names) == 0 {
 		e.walk, e.walkDraft = 0, ""
 		return false
@@ -542,11 +545,24 @@ func (m *Model) walkColors(e *editor, surface, k string) bool {
 	return true
 }
 
-// colorItems are the names as the popup draws them, each in its colour.
-func (m *Model) colorItems(names []string) []string {
+// valueItems are the values as the popup draws them: a colour in itself, a
+// tag in its own colour, anything else plain.
+func (m *Model) valueItems(e *editor, names []string) []string {
+	line := string(e.buf)
+	if e.walk > 0 {
+		line = e.walkDraft
+	}
+	word := strings.TrimPrefix(line[strings.LastIndexByte(line, ' ')+1:], "-")
 	items := make([]string, len(names))
 	for i, name := range names {
-		items[i] = m.colorOf(name) + name
+		switch {
+		case strings.HasPrefix(word, "~"):
+			items[i] = m.colorOf(name) + name
+		case strings.HasPrefix(word, "#") && !strings.HasPrefix(word, "##"):
+			items[i] = m.tagColor(name) + name
+		default:
+			items[i] = name
+		}
 	}
 	return items
 }

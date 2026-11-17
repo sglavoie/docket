@@ -1029,14 +1029,14 @@ func (m *Model) View() tea.View {
 		from := min(a.menuAt, len(a.ed.buf))
 		m.listOver(lines, a.menu, a.choice-1, col-ansi.StringWidth(string(a.ed.buf[from:])), w)
 	} else if a != nil && col >= 0 {
-		// The colours a ~word could become, over the rows above the line.
-		if names, from, at := m.colorList(&a.ed, a.kind); len(names) > 0 {
-			m.listOver(lines, m.colorItems(names), at, col-ansi.StringWidth(string(a.ed.buf[min(from, len(a.ed.buf)):])), w)
+		// The values a sigil could become, over the rows above the line.
+		if names, from, at := m.valueList(&a.ed, a.kind); len(names) > 0 {
+			m.listOver(lines, m.valueItems(&a.ed, names), at, col-ansi.StringWidth(string(a.ed.buf[min(from, len(a.ed.buf)):])), w)
 		}
 	} else if e := m.edit; e != nil && caret != nil {
 		// On a row, in the pane or the sidebar, they hang under the word,
 		// or over it when there is more room above.
-		if names, from, at := m.colorList(e, surfaceRow); len(names) > 0 {
+		if names, from, at := m.valueList(e, surfaceRow); len(names) > 0 {
 			y := caret.Y
 			below, above := len(lines)-y-1, y-1 // the header stays
 			depth, first := min(len(names), listDepth, below), y+1
@@ -1044,7 +1044,7 @@ func (m *Model) View() tea.View {
 				depth = min(len(names), listDepth, above)
 				first = y - depth
 			}
-			m.listAt(lines, m.colorItems(names), at, caret.X-ansi.StringWidth(string(e.buf[min(from, len(e.buf)):])), w, first, depth)
+			m.listAt(lines, m.valueItems(e, names), at, caret.X-ansi.StringWidth(string(e.buf[min(from, len(e.buf)):])), w, first, depth)
 		}
 	}
 	lines = append(lines, status)
