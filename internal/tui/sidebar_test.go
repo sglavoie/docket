@@ -741,19 +741,20 @@ func TestTheSidebarDeletesAProjectAndUndoesIt(t *testing.T) {
 	}
 }
 
-// The sidebar is there to show what needs attention, so an age past the
-// Stale rule is drawn in the text colour and a younger one stays dim.
+// The sidebar is there to show what needs attention, so the project left
+// alone longest is drawn red, however young, and the gradient that leads to
+// it is drawn against that age.
 func TestANeglectedProjectsAgeStandsOut(t *testing.T) {
 	h := two(t)
 	h.clock = h.clock.Add(3 * 24 * time.Hour)
 	h.press("j")
-	if raw := h.m.View().Content; !strings.Contains(raw, darkPalette.dim+"3d") {
-		t.Fatalf("a recent age is not dim:\n%q", raw)
+	if raw := h.m.View().Content; !strings.Contains(raw, ageStyle(darkPalette, 1, 1)+"3d") {
+		t.Fatalf("the oldest age is not red:\n%q", raw)
 	}
 	h.clock = h.clock.Add(12 * 24 * time.Hour)
 	h.press("k")
-	if raw := h.m.View().Content; !strings.Contains(raw, darkPalette.text+"15d") {
-		t.Fatalf("a stale age is not in the text colour:\n%q", raw)
+	if raw := h.m.View().Content; !strings.Contains(raw, ageStyle(darkPalette, 1, 1)+"15d") {
+		t.Fatalf("the oldest age is not red:\n%q", raw)
 	}
 }
 

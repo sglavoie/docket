@@ -240,6 +240,11 @@ pane's full width, on every wrapped line. Selected rows keep `┃` and use
 a distinct selection background, including when the cursor is on one. On
 that background dim text is drawn a step nearer the text colour, so it
 keeps a contrast of 4.5 to 1 there in both palettes.
+An age is drawn on a smooth gradient against the oldest beside it: the
+text colour for one just begun, warming through pale yellow, yellow and
+orange to red for the oldest, so however young the oldest is, it is red.
+The sidebar and review draw a project's age against the oldest active
+project; Waiting and Stale draw a row's against the oldest row shown.
 With sidebar focus its entry is shaded instead; the pane cursor loses its
 tint, while selections remain shaded. Indentation stays blank.
 
@@ -322,8 +327,8 @@ The pane shows the rows under one row, or a list.
   holds those rows until it is opened again, so closing or rescheduling a row
   never pulls it from under the cursor. Each row names its project; Waiting
   and Stale lead with the longest wait and say how many days,
-  drawn as the sidebar draws an age: dim, and in the text colour from 14
-  days, the Stale rule, so a long wait stands out. Each thing
+  drawn as the sidebar draws an age against the oldest row shown, so a
+  long wait stands out. Each thing
   said after a row is led by a dot that stays with it when the row wraps.
   Nothing folds in a flat view, so a note there shows `·` whatever it holds
   and counts the rows under it (`+3`) as a task does, unless it is a heading
@@ -832,8 +837,8 @@ and forgetting are undone, backed up and synced like any other change.
 
 `:review` is a list of the active projects, the longest untouched first,
 each with its age and how many tasks are left to do, or `∅`. The age is
-drawn as the sidebar draws it: none for a project touched today, dim, and
-in the text colour from 14 days. It is a list
+drawn as the sidebar draws it: none for a project touched today, and
+otherwise against the oldest active project. It is a list
 like the others, so the ordinary keys do the review: moving on keeps a
 project, `Enter` looks inside, and a stamp parks (`$p`) or closes (`$done`)
 it.

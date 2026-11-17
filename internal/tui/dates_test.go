@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -176,8 +177,8 @@ func TestReviewListsProjectsLongestUntouchedFirst(t *testing.T) {
 }
 
 // Review reads a project's age as the sidebar draws it: nothing for one
-// touched today, dim while it is young, and in the text colour past the
-// Stale rule, so the project left alone is the one the eye finds.
+// touched today, and otherwise on the gradient against the oldest project,
+// so the project left alone longest is the one drawn red.
 func TestReviewDrawsAgesAsTheSidebarDoes(t *testing.T) {
 	h := two(t)
 	h.clock = h.clock.Add(15 * 24 * time.Hour)
@@ -187,33 +188,66 @@ func TestReviewDrawsAgesAsTheSidebarDoes(t *testing.T) {
 		"▌ · Alpha · 15d · 2 to do",
 		"  · Beta v2 · ∅",
 	)
-	if raw := h.m.View().Content; !strings.Contains(raw, darkPalette.text+"· 15d") {
-		t.Fatalf("a stale age is not in the text colour:\n%q", raw)
+	if raw := h.m.View().Content; !strings.Contains(raw, ageStyle(darkPalette, 1, 1)+"· 15d") {
+		t.Fatalf("the oldest age is not red:\n%q", raw)
 	}
 	h.clock = h.clock.Add(3 * 24 * time.Hour)
 	h.press(":", `"review"`, "enter")
-	if raw := h.m.View().Content; !strings.Contains(raw, darkPalette.dim+"· 3d") {
-		t.Fatalf("a recent age is not dim:\n%q", raw)
+	raw := h.m.View().Content
+	if !strings.Contains(raw, ageStyle(darkPalette, 1, 1)+"· 18d") {
+		t.Fatalf("the oldest age is not red:\n%q", raw)
+	}
+	if !strings.Contains(raw, ageStyle(darkPalette, 3, 18)+"· 3d") {
+		t.Fatalf("a younger age is not drawn against the oldest:\n%q", raw)
 	}
 }
 
-// Waiting and Stale read a row's age by the same rule as review.
-func TestWaitingAndStaleDrawAgesAsTheSidebarDoes(t *testing.T) {
+// Waiting and Stale draw a row's age against the oldest row shown.
+func TestWaitingAndStaleDrawAgesAgainstTheOldest(t *testing.T) {
 	h := two(t) // Two is waiting
 	h.clock = h.clock.Add(3 * 24 * time.Hour)
 	h.press("f", `"waiting"`, "enter")
-	if raw := h.m.View().Content; !strings.Contains(raw, darkPalette.dim+"· 3d") {
-		t.Fatalf("a recent wait is not dim:\n%q", raw)
+	if raw := h.m.View().Content; !strings.Contains(raw, ageStyle(darkPalette, 1, 1)+"· 3d") {
+		t.Fatalf("the only wait, and so the longest, is not red:\n%q", raw)
 	}
 	h.clock = h.clock.Add(12 * 24 * time.Hour)
-	h.press("f", `"waiting"`, "enter")
-	if raw := h.m.View().Content; !strings.Contains(raw, darkPalette.text+"· 15d") {
-		t.Fatalf("a long wait is not in the text colour:\n%q", raw)
-	}
 	// One has sat open and untouched as long.
 	h.press("f", `"stale"`, "enter")
 	h.want("▌ ○ One @Nov 16 · 15d · Alpha")
-	if raw := h.m.View().Content; !strings.Contains(raw, darkPalette.text+"· 15d") {
-		t.Fatalf("a stale age is not in the text colour:\n%q", raw)
+	if raw := h.m.View().Content; !strings.Contains(raw, ageStyle(darkPalette, 1, 1)+"· 15d") {
+		t.Fatalf("the oldest stale age is not red:\n%q", raw)
+	}
+}
+
+// An age runs smoothly from the text colour, for one just begun, through
+// pale yellow, yellow and orange to red for the oldest, in both palettes.
+func TestAgeGradient(t *testing.T) {
+	rgb := func(c [3]float64) string {
+		return fmt.Sprintf("\x1b[38;2;%d;%d;%dm", int(c[0]), int(c[1]), int(c[2]))
+	}
+	for _, p := range []palette{darkPalette, lightPalette} {
+		if got := ageStyle(p, 0, 40); got != p.text {
+			t.Errorf("a new age is %q, not the text colour %q", got, p.text)
+		}
+		if got := ageStyle(p, 0, 0); got != p.text {
+			t.Errorf("with nothing old, an age is %q, not the text colour", got)
+		}
+		for i, c := range p.ages {
+			if got := ageStyle(p, int64(i*10), 40); got != rgb(c) {
+				t.Errorf("stop %d is %q, want %q", i, got, rgb(c))
+			}
+		}
+		// Between two stops it is between them, a step at a time.
+		var prev [3]int
+		for d := int64(0); d <= 400; d++ {
+			var c [3]int
+			fmt.Sscanf(ageStyle(p, d, 400), "\x1b[38;2;%d;%d;%dm", &c[0], &c[1], &c[2])
+			for k := range c {
+				if d > 0 && (c[k]-prev[k] > 3 || prev[k]-c[k] > 3) {
+					t.Fatalf("age %d/400 jumps from %v to %v", d, prev, c)
+				}
+			}
+			prev = c
+		}
 	}
 }

@@ -209,23 +209,17 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 				also("since " + dayWords(pick, m.today()))
 			}
 		case kindWaiting, kindStale:
-			// The age reads as the sidebar draws it: dim while it is young,
-			// and in the text colour past the Stale rule, so the row left
-			// alone longest is the one the eye finds.
-			since := m.changedAt(r.ID)
-			if m.at.list == kindStale {
-				since = r.Modified
-			}
-			age := m.now() - since
-			style := ageStyle(m.colors(), int(age/(24*time.Hour).Milliseconds()))
-			out = append(out, word{paint(style), "· " + days(age)})
+			// The age reads as the sidebar draws it, against the oldest row
+			// shown, so the row left alone longest is the one the eye finds.
+			age := m.listAge(r)
+			out = append(out, word{paint(ageStyle(m.colors(), age, m.oldestRow)), "· " + days(age)})
 		case kindReview:
 			// A project parked or closed during the review has no line left.
 			if st, active := m.stats[r.ID]; active {
 				// The age reads as the sidebar draws it: none for a project
-				// touched today, and seen once it passes the Stale rule.
+				// touched today, and against the oldest project otherwise.
 				if st.age > 0 {
-					out = append(out, word{ageStyle(m.colors(), st.age), "· " + strconv.Itoa(st.age) + "d"})
+					out = append(out, word{ageStyle(m.colors(), int64(st.age), int64(m.oldestProject)), "· " + strconv.Itoa(st.age) + "d"})
 				}
 				if st.idle {
 					also("∅")
@@ -492,6 +486,15 @@ func (m *Model) emptyText() string {
 	return "Nothing here yet. Press o to add a row."
 }
 
+// listAge is how long a row has waited, in Waiting, or sat untouched, in
+// Stale, in milliseconds.
+func (m *Model) listAge(r *outline.Row) int64 {
+	if m.at.list == kindStale {
+		return m.now() - r.Modified
+	}
+	return m.now() - m.changedAt(r.ID)
+}
+
 func days(ms int64) string {
 	return strconv.FormatInt(ms/(24*time.Hour).Milliseconds(), 10) + "d"
 }
@@ -721,6 +724,13 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 		m.edit.top = max(0, min(m.edit.top, p.y))
 		if p.y >= m.edit.top+listH {
 			m.edit.top = p.y - listH + 1
+		}
+	}
+	// Waiting and Stale draw each age against the oldest row shown.
+	m.oldestRow = 0
+	if m.at.list == kindWaiting || m.at.list == kindStale {
+		for _, v := range m.vis {
+			m.oldestRow = max(m.oldestRow, m.listAge(m.tree.Row(v.id)))
 		}
 	}
 	// Reuse the editing layout for height accounting and drawing.

@@ -19,6 +19,9 @@ type palette struct {
 	// dimSelected is dim on the selection background, which is lighter in the
 	// dark palette and darker in the light one than dim can be read on.
 	dimSelected string
+	// ages runs from an age just begun to the oldest: the text colour, pale
+	// yellow, yellow, orange and red, each readable on the pane's background.
+	ages [5][3]float64
 }
 
 // Bubble Tea's renderer converts these RGB roles to its detected color
@@ -29,6 +32,7 @@ var darkPalette = palette{
 	alert:  "\x1b[38;2;239;135;135m",
 	cursor: "\x1b[48;2;38;51;63m", selection: "\x1b[48;2;43;65;76m",
 	dimSelected: "\x1b[38;2;160;172;187m",
+	ages:        [5][3]float64{{220, 225, 231}, {214, 203, 150}, {232, 196, 84}, {240, 146, 66}, {242, 86, 78}},
 }
 
 var lightPalette = palette{
@@ -37,6 +41,7 @@ var lightPalette = palette{
 	alert:  "\x1b[38;2;177;49;54m",
 	cursor: "\x1b[48;2;229;237;243m", selection: "\x1b[48;2;207;227;235m",
 	dimSelected: "\x1b[38;2;85;99;113m",
+	ages:        [5][3]float64{{35, 45, 56}, {105, 92, 40}, {130, 94, 0}, {166, 74, 0}, {180, 38, 38}},
 }
 
 func (m *Model) colors() palette {

@@ -3,6 +3,7 @@ package tui
 import (
 	"errors"
 	"maps"
+	"math"
 	"os/exec"
 	"runtime"
 	"slices"
@@ -391,8 +392,10 @@ func (m *Model) scan() {
 	review := make([]entry, len(projects))
 	copy(review, projects)
 	sort.SliceStable(review, func(i, j int) bool { return review[i].age > review[j].age })
+	m.oldestProject = 0
 	for _, p := range review {
 		m.stats[p.id] = p
+		m.oldestProject = max(m.oldestProject, p.age)
 		lists[kindReview] = append(lists[kindReview], p.id)
 	}
 
@@ -1010,7 +1013,7 @@ func (m *Model) sideInfo(e entry) string {
 		if e.idle {
 			info += m.colors().dim + "∅" + sgrReset
 		} else if e.age > 0 {
-			info += ageStyle(m.colors(), e.age) + strconv.Itoa(e.age) + "d" + sgrReset
+			info += ageStyle(m.colors(), int64(e.age), int64(m.oldestProject)) + strconv.Itoa(e.age) + "d" + sgrReset
 		}
 		return strings.TrimRight(info, " ")
 	case e.count > 0:
@@ -1022,13 +1025,23 @@ func (m *Model) sideInfo(e entry) string {
 	return ""
 }
 
-// ageStyle draws a project's age dim, and in the text colour once it passes
-// the Stale rule, so the project left alone is the one the eye finds.
-func ageStyle(c palette, days int) string {
-	if days >= int(staleAfter/(24*time.Hour)) {
-		return c.text
+// ageStyle draws an age against the oldest beside it: the text colour for
+// one just begun, warming smoothly through pale yellow, yellow and orange
+// to red for the oldest, so the one left alone longest is the one the eye
+// finds. Both are in the same unit.
+func ageStyle(c palette, age, oldest int64) string {
+	t := 0.0
+	if oldest > 0 {
+		t = min(max(float64(age)/float64(oldest), 0), 1)
 	}
-	return c.dim
+	at := t * float64(len(c.ages)-1)
+	i := min(int(at), len(c.ages)-2)
+	f := at - float64(i)
+	from, to := c.ages[i], c.ages[i+1]
+	ch := func(k int) string {
+		return strconv.Itoa(int(math.Round(from[k] + (to[k]-from[k])*f)))
+	}
+	return "\x1b[38;2;" + ch(0) + ";" + ch(1) + ";" + ch(2) + "m"
 }
 
 // sideFit is the width the sidebar needs when it takes a narrow pane alone:

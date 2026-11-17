@@ -142,15 +142,17 @@ type Model struct {
 	vis           []visRow
 	cursor, top   int
 
-	side       []entry // the sidebar's destinations, top to bottom
-	sel        entry   // the one the outline pane was opened from
-	sideFocus  bool
-	lists      map[string][]string
-	stats      map[string]entry // each active project's sidebar line, by row
-	filters    []savedFilter
-	syncDir    string
-	syncNote   string // the sidebar's last word on sync
-	syncFailed bool
+	side          []entry // the sidebar's destinations, top to bottom
+	sel           entry   // the one the outline pane was opened from
+	sideFocus     bool
+	lists         map[string][]string
+	stats         map[string]entry // each active project's sidebar line, by row
+	oldestProject int              // the greatest age among them, which their ages are drawn against
+	oldestRow     int64            // the greatest age among the Waiting or Stale rows drawn, in ms
+	filters       []savedFilter
+	syncDir       string
+	syncNote      string // the sidebar's last word on sync
+	syncFailed    bool
 	// A pass works in the folder off the keys' path. syncIO is that work
 	// while a pass is under way; syncSent says the program has been handed
 	// it; syncHeld is a finished pass waiting for a line to be typed out.
