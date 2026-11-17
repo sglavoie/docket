@@ -171,7 +171,7 @@ func TestReviewListsProjectsLongestUntouchedFirst(t *testing.T) {
 		"Waiting",
 		"Stale",
 		"Projects",
-		"parked 1",
+		"1 parked project",
 	)
 }
 

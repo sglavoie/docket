@@ -193,7 +193,7 @@ whichever was written last.
   tax-2026         @ 3d  │
   homelab              ∅ │
                          │
-  parked 31              │
+  31 parked projects     │
 Inbox › Buy milk %home
 ```
 
@@ -275,9 +275,11 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
   it holds no task to do, else the whole days since anything inside changed:
   dim, and in the text colour from 14 days, the Stale rule, so the project
   left alone is the one the eye finds.
-- **Parked** projects are a count. Done and canceled projects are not listed.
-  While the pane is inside a parked project the count carries the dimmed
-  selection mark, since no entry can; it is still not a destination.
+- **Parked** projects are a count, as `31 parked projects`: it counts
+  projects only, never the parked rows inside an active one. Done and
+  canceled projects are not listed. While the pane is inside a parked
+  project the count carries the dimmed selection mark, since no entry can;
+  it is still not a destination.
 - **A sidebar taller than its pane** scrolls to keep its selection in view,
   and counts the destinations scrolled out at each edge, dimmed, as `↑ 6`
   on its first row and `↓ 13` on its last. A count is never drawn over the

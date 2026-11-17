@@ -429,7 +429,7 @@ func TestParkedAndClosedProjectsLeaveTheSidebar(t *testing.T) {
 		"Waiting",
 		"Stale",
 		"▌ Projects",
-		"parked 1",
+		"1 parked project",
 	)
 	// It is still reachable by name.
 	h.press("f", `"alp"`, "enter")
@@ -443,7 +443,7 @@ func TestParkedAndClosedProjectsLeaveTheSidebar(t *testing.T) {
 		"Waiting",
 		"Stale",
 		"Projects",
-		"▌ parked 1",
+		"▌ 1 parked project",
 	)
 }
 

@@ -991,7 +991,7 @@ func (m *Model) sideFit() int {
 		w = max(w, need)
 	}
 	if m.parked > 0 {
-		w = max(w, 2+len("parked ")+len(strconv.Itoa(m.parked)))
+		w = max(w, 2+len(parkedLabel(m.parked)))
 	}
 	if m.syncNote != "" {
 		w = max(w, 2+ansi.StringWidth(m.syncNote))
@@ -1043,7 +1043,7 @@ func (m *Model) sideLines(w, h int) []string {
 		if r := m.tree.Row(m.sel.id); m.sel.kind == kindProject && r != nil && r.Fields[sigil.FieldState] == sigil.Parked {
 			gutter, here = m.colors().dim+"▌"+sgrReset, true
 		}
-		text := gutter + " " + m.colors().dim + "parked " + strconv.Itoa(m.parked) + sgrReset
+		text := gutter + " " + m.colors().dim + parkedLabel(m.parked) + sgrReset
 		lines = append(lines, line{}, line{text: text, sel: here})
 	}
 	// The last word on sync is the sidebar's last line whatever is scrolled:
@@ -1098,4 +1098,13 @@ func (m *Model) sideLines(w, h int) []string {
 		out[i] = text + strings.Repeat(" ", max(w-ansi.StringWidth(text), 0))
 	}
 	return out
+}
+
+// parkedLabel says what the sidebar's last count counts: projects, since a
+// parked task inside an active project is not in it.
+func parkedLabel(n int) string {
+	if n == 1 {
+		return "1 parked project"
+	}
+	return strconv.Itoa(n) + " parked projects"
 }
