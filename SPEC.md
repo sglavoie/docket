@@ -732,7 +732,14 @@ in help they retain half-page scrolling.
 `:help` opens a reference in eight sections, in the tutorial's order. The
 first screen gives the essentials; `]` and `[` go to the next and previous
 heading. `j` and `k`, paging keys and `gg` and `G` scroll; any other key
-closes it. It is drawn as the app is (rule 6): the sections stand where the
+closes it. `/` opens a `Search ›` line on the status row: the page goes, as
+each key is typed, to the first line at or below where it stood that holds
+the text, read without case, with every match on screen reversed and the
+line stood on tinted; the line counts the matches. `Enter` keeps the
+search, `Esc` drops it and returns the page to where it stood. While one is
+kept, `n` and `N` go to the next and previous match, round past either end,
+the status line says which of how many is stood on, and `Esc` drops the
+search before it closes help. It is drawn as the app is (rule 6): the sections stand where the
 sidebar does, from 72 columns up, with the one being read marked; a header
 names that section; the status line gives the keys, a waiting `g` and where
 the page is, as `Top`, `40%` or `Bot`. Each line is keys in the accent

@@ -206,8 +206,12 @@ type Model struct {
 	edit         *editor
 	ask          *prompt
 	help         bool
-	helpTop      int  // first visible help line
-	helpG        bool // a pending g in help
+	helpTop      int     // first visible help line
+	helpG        bool    // a pending g in help
+	helpFind     *editor // the help's search line while it is typed
+	helpFrom     int     // where help stood when its search line opened
+	helpQuery    string  // what help is searched for; n and N step through it
+	helpHit      int     // the help line of the match stood on
 	msg          string
 	pendingCmd   tea.Cmd // command produced by normalKey for Update to deliver
 	recorded     bool    // a key made an undo step, so its outcome is the user's
@@ -1560,6 +1564,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		left := m.picksLeft()
 		m.recorded = false
 		switch {
+		case m.help && m.helpFind != nil:
+			m.helpFindKey(msg)
 		case m.help:
 			m.helpKey(msg.String())
 		case m.edit != nil:

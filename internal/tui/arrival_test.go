@@ -972,3 +972,66 @@ func TestPaletteFollowsBackground(t *testing.T) {
 		}
 	}
 }
+
+// / in help searches the reference as it is typed, and n and N walk what it
+// found.
+func TestHelpSearch(t *testing.T) {
+	h := start(t).wide()
+	h.press(":", `"help"`, "enter", "/", `"filter"`)
+	if h.m.helpFind == nil {
+		t.Fatal("/ did not open the search line")
+	}
+	p := h.m.helpLayout()
+	at := helpMatches(p, "filter")
+	if len(at) < 2 {
+		t.Fatalf("filter found on %d lines", len(at))
+	}
+	lines := strings.Split(ansi.Strip(h.m.View().Content), "\n")
+	if h.m.helpHit != at[0] || !strings.HasPrefix(lines[len(lines)-1], "Search › filter") ||
+		!strings.Contains(lines[len(lines)-1], "matches") {
+		t.Fatalf("hit %d, want %d; status %q", h.m.helpHit, at[0], lines[len(lines)-1])
+	}
+	if !strings.Contains(h.m.View().Content, sgrReverse) {
+		t.Fatal("the match is not drawn")
+	}
+	h.press("enter", "n")
+	if !h.m.help || h.m.helpHit != at[1] {
+		t.Fatalf("n: hit %d, want %d", h.m.helpHit, at[1])
+	}
+	h.press("N", "N")
+	if h.m.helpHit != at[len(at)-1] {
+		t.Fatalf("N past the first: hit %d, want %d", h.m.helpHit, at[len(at)-1])
+	}
+	h.press("esc")
+	if !h.m.help || h.m.helpQuery != "" {
+		t.Fatal("Esc should drop the search before closing help")
+	}
+	h.press("n")
+	if h.m.help {
+		t.Fatal("n without a search should close help as any other key")
+	}
+
+	// Esc while typing goes back to where the page stood.
+	h.press(":", `"help"`, "enter", "]", "]")
+	top := h.m.helpTop
+	h.press("/", `"undo"`)
+	if h.m.helpTop == top {
+		t.Fatal("the page did not follow the search")
+	}
+	h.press("esc")
+	if h.m.helpTop != top || h.m.helpFind != nil || !h.m.help {
+		t.Fatalf("Esc: top %d, want %d", h.m.helpTop, top)
+	}
+	h.press("/", `"zzzqqq"`)
+	if last := strings.Split(ansi.Strip(h.m.View().Content), "\n"); !strings.Contains(last[len(last)-1], "nothing matches") {
+		t.Fatalf("no match status: %q", last[len(last)-1])
+	}
+}
+
+func TestHelpMarkKeepsStyles(t *testing.T) {
+	line := "  \x1b[1mfoo\x1b[0m bar foo"
+	got := helpMark(line, "FOO")
+	if ansi.Strip(got) != ansi.Strip(line) || strings.Count(got, sgrReverse) != 2 {
+		t.Fatalf("%q", got)
+	}
+}

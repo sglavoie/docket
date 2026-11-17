@@ -839,6 +839,7 @@ func (m *Model) View() tea.View {
 	if m.help {
 		v := tea.NewView(m.paintText(m.helpView()))
 		v.AltScreen = true
+		v.Cursor = m.helpCaret()
 		return v
 	}
 

@@ -4,7 +4,10 @@ import (
 	_ "embed"
 	"strconv"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -170,6 +173,147 @@ func helpWrap(text string, width int, plain, strong string) []string {
 
 func (m *Model) openHelp() {
 	m.help, m.helpTop, m.helpG = true, 0, false
+	m.helpFind, m.helpQuery = nil, ""
+}
+
+// helpFolded is a line of the reference as it is searched: its text without
+// styling, one lower-case rune for each rune it shows.
+func helpFolded(line string) []rune {
+	r := []rune(ansi.Strip(line))
+	for i := range r {
+		r[i] = unicode.ToLower(r[i])
+	}
+	return r
+}
+
+// helpSpans are where q stands in a line, as rune offsets of its text.
+func helpSpans(line []rune, q []rune) [][2]int {
+	var out [][2]int
+	if len(q) == 0 {
+		return nil
+	}
+	for i := 0; i+len(q) <= len(line); i++ {
+		if string(line[i:i+len(q)]) == string(q) {
+			out = append(out, [2]int{i, i + len(q)})
+			i += len(q) - 1
+		}
+	}
+	return out
+}
+
+// helpMatches are the lines of a page that hold the search, in order.
+func helpMatches(p helpPage, q string) []int {
+	folded := []rune(strings.ToLower(q))
+	var at []int
+	for i, line := range p.lines {
+		if len(helpSpans(helpFolded(line), folded)) > 0 {
+			at = append(at, i)
+		}
+	}
+	return at
+}
+
+// helpMark draws a line with the search reversed wherever it stands, keeping
+// the styles around it.
+func helpMark(line string, q string) string {
+	spans := helpSpans(helpFolded(line), []rune(strings.ToLower(q)))
+	if len(spans) == 0 {
+		return line
+	}
+	var b strings.Builder
+	pos, span, in := 0, 0, false
+	for i := 0; i < len(line); {
+		if line[i] == '\x1b' {
+			end := i + 1
+			for end < len(line) && !(line[end] >= 0x40 && line[end] <= 0x7e && end > i+1) {
+				end++
+			}
+			end = min(end+1, len(line))
+			b.WriteString(line[i:end])
+			if in {
+				b.WriteString(sgrReverse) // a reset inside the match ends it too early
+			}
+			i = end
+			continue
+		}
+		if span < len(spans) && pos == spans[span][0] {
+			b.WriteString(sgrReverse)
+			in = true
+		}
+		_, size := utf8.DecodeRuneInString(line[i:])
+		b.WriteString(line[i : i+size])
+		i += size
+		pos++
+		if in && pos == spans[span][1] {
+			b.WriteString("\x1b[27m")
+			in = false
+			span++
+		}
+	}
+	return b.String()
+}
+
+// helpGo puts the page on a line of the search.
+func (m *Model) helpGo(line int) {
+	m.helpHit, m.helpTop = line, line
+}
+
+// helpFindKey reads the search line. The page follows what is typed from
+// where it stood; Enter keeps the search for n and N, Esc drops it and goes
+// back.
+func (m *Model) helpFindKey(msg tea.KeyPressMsg) {
+	p := m.helpLayout()
+	switch msg.String() {
+	case "enter":
+		m.helpQuery = strings.TrimSpace(string(m.helpFind.buf))
+		m.helpFind = nil
+		if len(helpMatches(p, m.helpQuery)) == 0 {
+			m.helpQuery = ""
+		}
+	case "esc":
+		m.helpFind, m.helpQuery = nil, ""
+		m.helpTop = m.helpFrom
+	default:
+		m.helpFind.key(msg)
+		m.helpQuery = strings.TrimSpace(string(m.helpFind.buf))
+		m.helpTop, m.helpHit = m.helpFrom, -1
+		at := helpMatches(p, m.helpQuery)
+		if m.helpQuery == "" || len(at) == 0 {
+			break
+		}
+		m.helpGo(at[0])
+		for _, line := range at {
+			if line >= m.helpFrom {
+				m.helpGo(line)
+				break
+			}
+		}
+	}
+	m.clampHelp(p)
+}
+
+// helpStep goes to the next match of the kept search after the one stood
+// on, or the one before it, round past either end.
+func (m *Model) helpStep(p helpPage, back bool) {
+	at := helpMatches(p, m.helpQuery)
+	if len(at) == 0 {
+		return
+	}
+	next := at[0]
+	if back {
+		next = at[len(at)-1]
+	}
+	for i := range at {
+		j := i
+		if back {
+			j = len(at) - 1 - i
+		}
+		if !back && at[j] > m.helpHit || back && at[j] < m.helpHit {
+			next = at[j]
+			break
+		}
+	}
+	m.helpGo(next)
 }
 
 // helpRows is the number of help lines visible at once, under the header.
@@ -184,6 +328,19 @@ func (m *Model) helpKey(k string) {
 	m.helpG = false
 	rows := m.helpRows()
 	p := m.helpLayout()
+	switch {
+	case k == "/":
+		m.helpFind, m.helpFrom, m.helpHit = &editor{}, m.helpTop, -1
+		return
+	case m.helpQuery != "" && (k == "n" || k == "N"):
+		m.helpStep(p, k == "N")
+		m.clampHelp(p)
+		return
+	case m.helpQuery != "" && k == "esc":
+		// As in the outline, Esc drops what was searched before it leaves.
+		m.helpQuery = ""
+		return
+	}
 	switch k {
 	case "]":
 		for _, head := range p.heads {
@@ -257,7 +414,16 @@ func (m *Model) helpView() string {
 	}
 	pane := []string{ansi.Truncate(header, paneW, "…") + sgrReset}
 	end := min(m.helpTop+rows, len(p.lines))
-	pane = append(pane, p.lines[m.helpTop:end]...)
+	for i := m.helpTop; i < end; i++ {
+		line := p.lines[i]
+		if m.helpQuery != "" {
+			line = helpMark(line, m.helpQuery)
+			if i == m.helpHit {
+				line = m.tint(line, paneW, c.cursor)
+			}
+		}
+		pane = append(pane, line)
+	}
 	for len(pane) < rows+1 {
 		pane = append(pane, "")
 	}
@@ -293,8 +459,61 @@ func (m *Model) helpView() string {
 	if pend := m.pending(); pend != "" {
 		right = sgrBold + pend + sgrReset + "  " + right
 	}
-	left := ansi.Truncate("j k scroll · ] [ section · any other key closes", max(w-ansi.StringWidth(right)-2, 0), "…")
+	found := helpMatches(p, m.helpQuery)
+	if m.helpQuery != "" {
+		// Which match is stood on, of how many, as a filter counts its rows.
+		of := 0
+		for i, line := range found {
+			if line == m.helpHit {
+				of = i + 1
+			}
+		}
+		count := strconv.Itoa(len(found))
+		if of > 0 {
+			count = strconv.Itoa(of) + "/" + count
+		}
+		right = c.dim + count + "  " + sgrReset + right
+	}
+	if f := m.helpFind; f != nil {
+		label := "Search › "
+		lw := ansi.StringWidth(label)
+		text, _ := f.window(max(w-lw, 1), nil)
+		note := "Enter keeps · Esc goes back"
+		switch {
+		case m.helpQuery == "":
+		case len(found) == 0:
+			note = "nothing matches"
+		case len(found) == 1:
+			note = "1 match · " + note
+		default:
+			note = strconv.Itoa(len(found)) + " matches · " + note
+		}
+		line := c.accent + label + sgrReset + text
+		if room := w - lw - ansi.StringWidth(text) - 3; room > 3 {
+			line += "   " + c.dim + ansi.Truncate(note, room, "…") + sgrReset
+		}
+		return strings.Join(append(out, line), "\n")
+	}
+	hint := "j k scroll · ] [ section · / search · any other key closes"
+	if m.helpQuery != "" {
+		hint = "n N next, previous match · Esc drops it · j k scroll · ] [ section"
+	}
+	left := ansi.Truncate(hint, max(w-ansi.StringWidth(right)-2, 0), "…")
 	gap := max(w-ansi.StringWidth(left)-ansi.StringWidth(right), 0)
 	out = append(out, c.dim+left+sgrReset+strings.Repeat(" ", gap)+right)
 	return strings.Join(out, "\n")
+}
+
+// helpCaret is where the caret stands while the help's search is typed.
+func (m *Model) helpCaret() *tea.Cursor {
+	f := m.helpFind
+	if f == nil {
+		return nil
+	}
+	w, h := m.size()
+	label := "Search › "
+	_, col := f.window(max(w-ansi.StringWidth(label), 1), nil)
+	caret := tea.NewCursor(ansi.StringWidth(label)+col, h-1)
+	caret.Shape = tea.CursorBar
+	return caret
 }
