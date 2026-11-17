@@ -279,11 +279,11 @@ func TestTodayIsReordered(t *testing.T) {
 		if h.m.tree.Row(threeID).Fields[fieldTodayPos] != old || h.m.tree.Row(threeID).Fields["today"] != "" {
 			t.Fatal("undo did not restore both pick fields")
 		}
-		// The next day keeps the picks left undone, in their order, and a
-		// row picked again takes a fresh place after them.
+		// The next day keeps the picks left undone, in their order, below
+		// the day's own picks.
 		h.clock = h.clock.Add(24 * time.Hour)
 		h.press("f", `"alpha"`, "enter", "g", "g", "j", "j", "t", "f", `"today"`, "enter")
-		h.want("  ○ One · since Nov 15 · Alpha", "▌ ○ Two · since Nov 15 · Alpha", "  ○ Three · Alpha")
+		h.want("  ○ Three · Alpha", todayRule(h), "  ○ One · since Nov 15 · Alpha", "▌ ○ Two · since Nov 15 · Alpha")
 		if h.m.tree.Row(threeID).Fields[fieldTodayPos] == old {
 			t.Fatal("new day retained the old position")
 		}
@@ -770,4 +770,72 @@ func TestSavedFiltersAreAGroupOfTheirOwn(t *testing.T) {
 	if got := side[:len(want)]; !slices.Equal(got, want) {
 		t.Fatalf("sidebar = %q\nwant %q", got, want)
 	}
+}
+
+// todayRule is the line Today draws between the day's own rows and the
+// picks carried from an earlier day, as wide as the pane allows.
+func todayRule(h *harness) string {
+	w := h.m.width
+	if w >= sidebarFrom {
+		w -= sidebarCols + 3
+	}
+	return "  " + strings.Repeat("─", w-4)
+}
+
+func TestTodayDrawsALineAboveWhatWasCarried(t *testing.T) {
+	h := start(t).wide()
+	h.press("o", `"Alpha"`, "enter", "tab", `"One"`, "enter", `"Two"`, "enter", `"Three"`, "enter", `"Four"`, "esc")
+	// One and Two are picked today; tomorrow they are carried.
+	h.press("g", "g", "j", "t", "j", "t")
+	h.clock = h.clock.Add(24 * time.Hour)
+	// The next day Three is picked, and Four starts on it.
+	h.press("j", "t", "j", "A", `" @@today"`, "esc", "f", `"today"`, "enter")
+	h.want(
+		"▌ ○ Three · Alpha",
+		"  ○ Four · Alpha",
+		todayRule(h),
+		"  ○ One · since Nov 15 · Alpha",
+		"  ○ Two · since Nov 15 · Alpha",
+	)
+	// J and K keep each row on its side of the line, and say why.
+	h.press("j", "J")
+	if h.status() != "today's rows stay above the line: J K order them there" {
+		t.Fatalf("status = %q", h.status())
+	}
+	h.press("j", "K")
+	if h.status() != "carried picks stay below the line: t t picks it for today" {
+		t.Fatalf("status = %q", h.status())
+	}
+	h.press("j", "K")
+	h.want(
+		"  ○ Three · Alpha",
+		"  ○ Four · Alpha",
+		todayRule(h),
+		"▌ ○ Two · since Nov 15 · Alpha",
+		"  ○ One · since Nov 15 · Alpha",
+	)
+	// Unpicked, a carried row keeps its place, dimmed; picked again for
+	// today it joins the day's own rows, after them.
+	h.press("t")
+	h.want(
+		"  ○ Three · Alpha",
+		"  ○ Four · Alpha",
+		todayRule(h),
+		"▌ ○ Two · Alpha",
+		"  ○ One · since Nov 15 · Alpha",
+	)
+	h.press("t")
+	h.want(
+		"  ○ Three · Alpha",
+		"  ○ Four · Alpha",
+		"▌ ○ Two · Alpha",
+		todayRule(h),
+		"  ○ One · since Nov 15 · Alpha",
+	)
+	// With nothing of the day's own, there is no line to draw.
+	h = start(t).wide()
+	h.press("o", `"Alpha"`, "enter", "tab", `"One"`, "esc", "t")
+	h.clock = h.clock.Add(24 * time.Hour)
+	h.press("f", `"today"`, "enter")
+	h.want("▌ ○ One · since Nov 15 · Alpha")
 }

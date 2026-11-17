@@ -724,10 +724,23 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 		}
 		return wrap(m.rowWords(m.tree.Row(v.id), i == m.cursor, flat), max(w-prefix(i), 1))
 	}
+	// In Today a rule sets the day's own rows apart from the picks carried
+	// from an earlier day. It takes a line of its own above the first
+	// carried row, and only when the day has rows of its own above it.
+	ruled := func(i int) bool {
+		c := m.at.carried
+		return m.at.list == kindToday && m.at.query == "" && i > 0 && c[m.vis[i].id] && !c[m.vis[i-1].id]
+	}
+	height := func(i int) int {
+		if ruled(i) {
+			return len(rowLines(i)) + 1
+		}
+		return len(rowLines(i))
+	}
 	span := func(from, to int) int {
 		used := 0
 		for i := from; i <= to && used <= listH; i++ {
-			used += len(rowLines(i))
+			used += height(i)
 		}
 		return used
 	}
@@ -737,7 +750,7 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 	afar := m.centre && m.cursor < len(m.vis) && (m.cursor < m.top || span(m.top, m.cursor) > listH)
 	if m.scroll != 0 && m.cursor < len(m.vis) || afar {
 		m.top = m.cursor
-		above := listH - len(rowLines(m.cursor))
+		above := listH - height(m.cursor)
 		switch m.scroll {
 		case 't':
 			above = 0
@@ -745,7 +758,7 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 			above /= 2
 		}
 		for m.top > 0 {
-			n := len(rowLines(m.top - 1))
+			n := height(m.top - 1)
 			if n > above {
 				break
 			}
@@ -810,6 +823,9 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 			}
 		}
 
+		if ruled(i) && len(lines) < h {
+			lines = append(lines, m.colors().dim+"  "+strings.Repeat("─", max(w-4, 1))+sgrReset)
+		}
 		isEdit := m.edit != nil && m.edit.row == v.id
 		for n, text := range rowLines(i) {
 			if isEdit && n < m.edit.top {

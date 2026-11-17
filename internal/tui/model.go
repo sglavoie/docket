@@ -621,7 +621,7 @@ func (m *Model) rebuild() {
 	cur := m.current()
 	m.scan()
 	if m.at.list == kindToday {
-		m.sortToday(m.at.rows)
+		m.sortToday(m.at.rows, m.at.carried)
 	}
 	// A closed row that was on screen stays until the place is left, so
 	// closing a row never pulls it from under the cursor.

@@ -868,6 +868,8 @@ func (m *Model) pick(ids []string) {
 	for _, id := range ids {
 		if r := m.tree.Row(id); !isPicked(r.Fields, sigil.FromFields(r.Fields), day) {
 			fresh = append(fresh, id)
+			// Picked for today, a row in Today joins the day's own rows.
+			delete(m.at.carried, id)
 		}
 	}
 	m.toggle(fresh, sigil.FieldToday, day)

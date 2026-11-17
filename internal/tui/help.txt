@@ -94,7 +94,7 @@ dic yis	`ic` takes children, `is` the row and its siblings
 	row objects include folded subtrees; no lists or selections
 
 == Reorder and put
-J K	reorder down, up; Today too (one row there)
+J K	reorder down, up; Today too (one row, on its side of the rule)
 p P	put the register after, before, with fresh identities
 gp gP	put the last copy, even after a delete replaced the register
 	copy and delete include whole subtrees; they write the register and clipboard

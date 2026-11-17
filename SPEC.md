@@ -392,6 +392,17 @@ come first, sorted by it; rows without one follow in outline order. Before
 `J` or `K` moves a row, any missing places are filled in the order shown,
 in the same undo step. Ordering is kept across reopening and restarting.
 
+Today reads in two parts. The day's own rows, picked today or starting
+today, come first, as if pinned; the picks carried from an earlier day
+follow, below a dim rule across the pane. The rule is a line of the pane,
+not a row: the cursor, counts and motions pass over it, and it is drawn
+only when the day has rows of its own above carried ones. Each part keeps
+its own order by the rule above. Which rows are carried is read when Today
+is opened, so a carried row unpicked there keeps its place, dimmed; `t`
+picking a row there for today moves it to the end of the day's own rows,
+since the act is the user's. `J` and `K` do not cross the rule and say so,
+as `carried picks stay below the line: t t picks it for today`.
+
 ### Bottom line
 
 The status line becomes a prompt for three acts, named at its left edge:
@@ -1523,7 +1534,8 @@ is `docket add`, and the overdue count it shows is `docket ls '@overdue'`.
 19. **Return.** A row that others link to shows `←` and the way back, and
    `gl` takes it when the row has no link or address of its own. A pick
    left undone stays in Today, saying since when, until it is closed or
-   unpicked, and `$missed` finds those picks. *Built.*
+   unpicked, below a rule that sets the day's own rows apart, and
+   `$missed` finds those picks. *Built.*
 
 Not planned: reminders, attachments, a details panel, import from v1, any
 command-line interface beyond `docket add`, `docket ls` and `--version`, macros (`.`,
