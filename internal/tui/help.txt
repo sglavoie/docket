@@ -114,6 +114,7 @@ m Enter	with a blank query, move selected rows here, where `o` would add
 ## Filter
 /	text and sigils; `Enter` keeps, `Esc` clears; `Tab` flat or context
 	after a sigil, `Tab` completes its values instead; `Shift+Tab` walks back
+	the values are listed above the line while `Tab` walks them
 	the status line reads the filter back in words as it is typed
 "a phrase"	match words together, ignoring case; `-"a phrase"` excludes
 n N	next, previous match; after `Esc`, use the last filter

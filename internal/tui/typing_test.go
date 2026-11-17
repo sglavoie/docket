@@ -125,6 +125,28 @@ func TestPromptsColourAndCompleteInTheirOwnGrammar(t *testing.T) {
 		t.Fatalf("hint = %q", h.bottom())
 	}
 	h.press("esc")
+
+	// The values walked are listed above the line, the one written reversed;
+	// while listed the arrows walk them too, and any other key closes it.
+	h.press("/", `"$d"`)
+	h.wantList(nil, "")
+	h.press("tab")
+	h.wantList([]string{"doing", "done"}, "doing")
+	h.press("down")
+	h.wantList([]string{"doing", "done"}, "done")
+	if h.m.at.query != "$done" {
+		t.Fatalf("query = %q", h.m.at.query)
+	}
+	h.press("ctrl+n")
+	h.wantList([]string{"doing", "done"}, "")
+	h.press("up")
+	h.wantList([]string{"doing", "done"}, "done")
+	h.press("backspace")
+	h.wantList(nil, "")
+	h.press("esc")
+	h.press("/", `"$next|w"`, "tab") // one value lists nothing
+	h.wantList(nil, "")
+	h.press("esc")
 	h.press("esc", "/", `"#do"`, "right")
 	h.want("▌ ○ Write docs @fri #docs · Alpha")
 	h.press("esc", "/", `"@ov"`, "right", `" @nope"`)
@@ -414,4 +436,43 @@ func TestEnterSplitsAndBackspaceJoins(t *testing.T) {
 		h.press("u")
 		restored(t, h, before)
 	})
+}
+
+// wantList checks the completions listed above the bottom line, top to
+// bottom, and which is reversed as the one written; none for an empty want.
+func (h *harness) wantList(items []string, chosen string) {
+	h.t.Helper()
+	lines := h.lines()
+	raw := strings.Split(h.m.View().Content, "\n")
+	if len(items) == 0 {
+		if strings.Contains(strings.Join(raw[:len(raw)-1], "\n"), sgrReverse+sgrBold) {
+			h.t.Fatalf("a list is shown:\n%s", strings.Join(lines, "\n"))
+		}
+		return
+	}
+	at := len(lines) - 1 - len(items)
+	for i, it := range items {
+		if !strings.Contains(lines[at+i], " "+it+" ") {
+			h.t.Fatalf("list row %d is %q, want %q:\n%s", i, lines[at+i], it, strings.Join(lines, "\n"))
+		}
+		if reversed := strings.Contains(raw[at+i], sgrReverse+sgrBold+" "+it+" "); reversed != (it == chosen) {
+			h.t.Fatalf("%q reversed %t, want %t", it, reversed, it == chosen)
+		}
+	}
+}
+
+func TestALongListScrollsToWhatIsWritten(t *testing.T) {
+	// A short pane shows as many as fit below its header.
+	h := start(t)
+	h.m.Update(tea.WindowSizeMsg{Width: 40, Height: 6})
+	h.press("/", `"$"`, "tab")
+	values := h.m.ask.menu
+	if len(values) < 6 {
+		t.Fatalf("only %d values", len(values))
+	}
+	h.wantList(values[:4], values[0])
+	h.press("tab", "tab", "tab", "tab")
+	h.wantList(values[1:5], values[4])
+	h.press("shift+tab", "shift+tab", "shift+tab", "shift+tab", "shift+tab", "shift+tab")
+	h.wantList(values[len(values)-4:], values[len(values)-1])
 }

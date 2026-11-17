@@ -577,7 +577,11 @@ Three more acts use the same line:
   it writes the first value the suggestion offers, again the next, and past
   the last the sigil as typed; `Shift+Tab` walks back. A sigil only one
   value finishes is finished at once, and then `Tab` switches the shape
-  again. Any other key ends the walk. The status line says `Tab completes`
+  again. While the walk lasts, every value is listed one above another over
+  the rows, under the letters it completes, with the one written reversed;
+  a list longer than ten, or than the pane, scrolls to keep it in view, and
+  `Down`, `Ctrl+N`, `Up` and `Ctrl+P` walk the list as `Tab` and
+  `Shift+Tab` do. Any other key ends the walk and closes the list. The status line says `Tab completes`
   or `Tab switches`, whichever `Tab` will do. A match is drawn with what was found in it:
   each word of its text that a looked-for word or phrase touches, and each
   tag the query names, in the accent colour and underlined. A term that
@@ -644,8 +648,9 @@ Shift or Caps Lock was held. `Enter` on a name that only one command starts, as
   the line holds no more than a name, `Tab` writes the first command it
   could become and `Tab` again the next, each with the space or slash that
   what it takes is typed after, and past the last the line as it was typed;
-  `Shift+Tab` walks back. The command written leads the list in bold. A
-  name only one command starts is finished at once. `Down`, `Ctrl+N` and
+  `Shift+Tab` walks back. The commands are listed one above another over the
+  rows, as a filter value is, with the one written reversed, and the status
+  line says what it does. A name only one command starts is finished at once. `Down`, `Ctrl+N` and
   `Ctrl+J` are aliases of `Tab`, and `Up`, `Ctrl+P` and `Ctrl+K` of
   `Shift+Tab`; once the name is finished the same keys do what they do on
   any line. `q` quits; `help` opens help; `tutor` adds a fresh

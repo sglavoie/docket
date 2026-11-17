@@ -546,21 +546,15 @@ func (m *Model) statusLine(w int) (string, int) {
 				hint = " · " + tags
 			}
 			line += "   " + m.colors().dim + ansi.Truncate(note+hint, room, "…") + sgrReset
-		case a.kind == askCommand && a.choice > 0:
-			// The command the walk stands on leads, as a picker's match does.
-			uses, _ := commandMatches(a.draft)
-			from := min(a.choice, len(uses)) - 1
-			offer := sgrBold + uses[from] + sgrReset
-			if from > 0 {
-				offer = m.colors().dim + "‹ " + sgrReset + offer
+		case a.kind == askCommand && len(a.menu) > 0:
+			// The commands are listed above; what the one written does is
+			// said here, as the last one left would be.
+			note := "Tab next · Shift+Tab back"
+			if a.choice > 0 {
+				use := a.menu[min(a.choice, len(a.menu))-1]
+				note = use + ": " + commandDoes(use)
 			}
-			for _, use := range uses[from+1:] {
-				if ansi.StringWidth(offer) > room {
-					break // the rest would not fit
-				}
-				offer += m.colors().dim + " · " + use + sgrReset
-			}
-			line += "   " + ansi.Truncate(offer, room, "…") + sgrReset
+			line += "   " + m.colors().dim + ansi.Truncate(note, room, "…") + sgrReset
 		case a.kind == askCommand:
 			line += "   " + m.colors().dim + ansi.Truncate(commandOffers(string(a.ed.buf)), room, "…") + sgrReset
 		case picker(a.kind):
@@ -842,6 +836,58 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 	return lines, caret
 }
 
+// listDepth is the most completions listed at once; the list scrolls to keep
+// the one written in view.
+const listDepth = 10
+
+// listOver draws the completions being walked one above another, the last
+// just above the bottom line and the one written on the line in reverse, over
+// the rows at column x, so every value can be read before Tab reaches it.
+func (m *Model) listOver(lines, items []string, at, x, w int) {
+	n := len(items)
+	// The header stays, so the list never hides what the pane is.
+	depth := min(n, listDepth, len(lines)-1)
+	if depth <= 0 {
+		return
+	}
+	x-- // the cell's padding goes before the letters, which line up
+	top := max(0, at-depth+1)
+	widest := 0
+	for _, it := range items {
+		widest = max(widest, ansi.StringWidth(it))
+	}
+	bar := 0
+	if n > depth {
+		bar = 1 // a column showing how far down the list stands
+	}
+	inner := min(widest+2, max(w-bar, 3))
+	x = max(0, min(x, w-inner-bar))
+	c := m.colors()
+	// The thumb's share of the bar is the share of the list in view.
+	thumb, thumbAt := max(1, depth*depth/n), top*depth/n
+	for r := range depth {
+		i := top + r
+		cell := " " + ansi.Truncate(items[i], inner-2, "…")
+		cell += strings.Repeat(" ", inner-ansi.StringWidth(cell))
+		if i == at {
+			cell = sgrReverse + sgrBold + cell + sgrReset
+		} else {
+			cell = c.selection + cell + sgrReset
+		}
+		if bar > 0 {
+			if r >= thumbAt && r < thumbAt+thumb {
+				cell += sgrReverse + " " + sgrReset
+			} else {
+				cell += c.cursor + " " + sgrReset
+			}
+		}
+		row := len(lines) - depth + r
+		left := ansi.Truncate(lines[row], x, "")
+		left += strings.Repeat(" ", x-ansi.StringWidth(left))
+		lines[row] = left + sgrReset + cell + ansi.TruncateLeft(lines[row], x+inner+bar, "")
+	}
+}
+
 func (m *Model) View() tea.View {
 	w, h := m.size()
 	if m.help {
@@ -878,6 +924,11 @@ func (m *Model) View() tea.View {
 	if col >= 0 {
 		caret = tea.NewCursor(col, len(lines))
 		caret.Shape = tea.CursorBar
+	}
+	if a := m.ask; a != nil && len(a.menu) > 0 && col >= 0 {
+		// The list starts under the first letter it completes.
+		from := min(a.menuAt, len(a.ed.buf))
+		m.listOver(lines, a.menu, a.choice-1, col-ansi.StringWidth(string(a.ed.buf[from:])), w)
 	}
 	lines = append(lines, status)
 

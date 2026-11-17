@@ -349,13 +349,16 @@ func (m *Model) walkCommands(a *prompt, k string) bool {
 	case "shift+tab", "up", "ctrl+p", "ctrl+k":
 		by = -1
 	default:
+		a.menu = nil
 		return false
 	}
 	typed := string(a.ed.buf)
 	if a.choice > 0 {
 		typed = a.draft
 	}
-	if t := strings.TrimLeft(typed, " "); len(t) > len(commandName(t)) {
+	t := strings.TrimLeft(typed, " ")
+	if len(t) > len(commandName(t)) {
+		a.menu = nil
 		return false
 	}
 	uses, _ := commandMatches(typed)
@@ -368,6 +371,7 @@ func (m *Model) walkCommands(a *prompt, k string) bool {
 		if a.choice == 0 {
 			a.draft = typed
 		}
+		a.menu, a.menuAt = uses, len(typed)-len(t)
 		a.choice = (a.choice + by + n + 1) % (n + 1)
 		line = a.draft
 		if a.choice > 0 {
@@ -1608,6 +1612,10 @@ type prompt struct {
 	// being the line as typed, which draft holds meanwhile.
 	recalled int
 	draft    string
+	// A walk through completions: what Tab steps through, listed above the
+	// line while the walk lasts, and the rune of the line they are written at.
+	menu   []string
+	menuAt int
 }
 
 const (

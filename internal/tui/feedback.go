@@ -338,6 +338,16 @@ func commandMatches(line string) (uses []string, does string) {
 	return uses, does
 }
 
+// commandDoes is what the command written as use does.
+func commandDoes(use string) string {
+	for _, c := range commandUses {
+		if c.use == use {
+			return c.does
+		}
+	}
+	return ""
+}
+
 // commandName is the run of letters a command line starts with, read in
 // small letters, so a name typed with Shift or Caps Lock held is still the
 // command.

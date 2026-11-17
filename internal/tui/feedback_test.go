@@ -310,13 +310,12 @@ func TestTabCompletesACommandName(t *testing.T) {
 	// the last the line as it was typed.
 	h.press(":", `"s"`)
 	step("tab", "s/")
-	if got, want := h.bottom(), ": s/   s/old/new · sort [keys] · save n…"; got != want {
+	h.wantList([]string{"s/old/new", "sort [keys]", "save name", "sync [folder|off]"}, "s/old/new")
+	if got, want := h.bottom(), ": s/   s/old/new: change text in the ro…"; got != want {
 		t.Fatalf("walking shows %q, want %q", got, want)
 	}
 	step("down", "sort ")
-	if got, want := h.bottom(), ": sort    ‹ sort [keys] · save name · s…"; got != want {
-		t.Fatalf("walking shows %q, want %q", got, want)
-	}
+	h.wantList([]string{"s/old/new", "sort [keys]", "save name", "sync [folder|off]"}, "sort [keys]")
 	step("ctrl+n", "save ")
 	step("ctrl+j", "sync ")
 	step("tab", "s")
@@ -325,12 +324,15 @@ func TestTabCompletesACommandName(t *testing.T) {
 	step("ctrl+p", "sort ")
 	step("ctrl+k", "s/")
 	step("ctrl+k", "s")
+	// Back at the typed line the list stays, with nothing written from it.
+	h.wantList([]string{"s/old/new", "sort [keys]", "save name", "sync [folder|off]"}, "")
 
 	// Typing starts the walk again from the new line.
 	h.press("tab", "tab", `"@"`)
 	if typed() != "sort @" || h.m.ask.choice != 0 {
 		t.Fatalf("typed %q, choice %d", typed(), h.m.ask.choice)
 	}
+	h.wantList(nil, "")
 	h.press("esc")
 
 	// A name one command answers is finished at once, and runs.

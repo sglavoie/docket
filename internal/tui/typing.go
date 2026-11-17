@@ -239,17 +239,19 @@ func (m *Model) sigilValues(e *editor, surface string) (string, []string) {
 
 // completeFilter walks the values the sigil at the end of the filter line
 // could become: Tab writes the first and again the next, Shift+Tab walks
-// back, and past either end the line is as it was typed. A sigil only one
-// value finishes is finished at once. It reports false when there is nothing
-// to complete, where Tab switches between flat and in context instead.
+// back, and past either end the line is as it was typed. While the values
+// are listed, the arrows walk them too. A sigil only one value finishes is
+// finished at once. It reports false when there is nothing to complete,
+// where Tab switches between flat and in context instead.
 func (m *Model) completeFilter(a *prompt, k string) bool {
 	by := 1
-	switch k {
-	case "tab":
-	case "shift+tab":
+	listed := len(a.menu) > 0
+	switch {
+	case k == "tab", listed && (k == "down" || k == "ctrl+n"):
+	case k == "shift+tab", listed && (k == "up" || k == "ctrl+p"):
 		by = -1
 	default:
-		a.choice = 0
+		a.choice, a.menu = 0, nil
 		return false
 	}
 	typed := string(a.ed.buf)
@@ -266,6 +268,7 @@ func (m *Model) completeFilter(a *prompt, k string) bool {
 		if a.choice == 0 {
 			a.draft = typed
 		}
+		a.menu, a.menuAt = values, len([]rune(base))
 		a.choice = (a.choice + by + n + 1) % (n + 1)
 		line = a.draft
 		if a.choice > 0 {
