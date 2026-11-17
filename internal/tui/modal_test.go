@@ -506,15 +506,15 @@ func TestNumbersCountFromTheCursor(t *testing.T) {
 func TestAFilterTestsTheRowsBelow(t *testing.T) {
 	h := work(t)
 	h.press("/", `"_#bug"`, "tab", "enter")
-	h.want("▌ ▾ Beta", "  ▾ Alpha")
+	h.want("▌ · Beta +1", "  · Alpha +3")
 	h.press("/", "ctrl+u", `"_@"`, "enter")
-	h.want("▌ ▾ Alpha")
+	h.want("▌ · Alpha +3")
 	h.press("/", "ctrl+u", `"-_#docs"`, "enter")
-	h.want("▌ ▾ Beta", "  ○ Fix cache #bug · Beta", "  ○ Fix login ! #bug · Alpha", "  ○ Write docs @fri #docs · Alpha", "  ○ Refactor auth #bug · Alpha")
+	h.want("▌ · Beta +1", "  ○ Fix cache #bug · Beta", "  ○ Fix login ! #bug · Alpha", "  ○ Write docs @fri #docs · Alpha", "  ○ Refactor auth #bug · Alpha")
 	// Rows below at any depth count, and every term must hold.
 	h.press("esc", "G", "o", `"Deep #docs"`, "tab", "esc")
 	h.press("/", `"_#docs|bug -_!"`, "enter")
-	h.want("▌ ▾ Beta", "  ○ Refactor auth #bug +1 · Alpha")
+	h.want("▌ · Beta +1", "  ○ Refactor auth #bug +1 · Alpha")
 	// In context a match keeps its ancestors, and n finds it afterwards.
 	h.press("/", "ctrl+u", `"_#docs alpha"`, "tab", "enter", "esc", "g", "g", "n")
 	if h.on() != "Alpha" {

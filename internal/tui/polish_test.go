@@ -505,3 +505,121 @@ func TestHeaderAndHintsCarryTheirWeight(t *testing.T) {
 		t.Fatalf("message = %q, drawn %q", h.m.msg, got)
 	}
 }
+
+// The command line names its commands as it is typed, so none has to be
+// remembered: all of them at first, then fewer, then the one with what it does.
+func TestTheCommandLineNamesItsCommands(t *testing.T) {
+	h := work(t).wide()
+	last := func() string { l := h.lines(); return strings.TrimSpace(l[len(l)-1]) }
+	h.press(":")
+	if got := last(); !strings.HasPrefix(got, ":    q · help · tutor · closed · ") {
+		t.Fatalf("blank line = %q", got)
+	}
+	for typed, want := range map[string]string{
+		"s":       "sort [keys] · save name · sync [folder|off]",
+		"so":      "sort [keys]: order siblings once",
+		"sort @":  "sort [keys]: order siblings once",
+		"s/a":     "s/old/new: change text",
+		"qui":     "q: quit",
+		"h":       "help: the keys",
+		"sorted":  "no such command",
+		"unfold ": "unfold: open every fold here",
+	} {
+		h.press("ctrl+u", `"`+typed+`"`)
+		if got := last(); !strings.Contains(got, want) {
+			t.Errorf(":%s says %q, want %q in it", typed, got, want)
+		}
+	}
+	h.press("ctrl+u", `"nonsense"`, "enter")
+	if !strings.HasPrefix(h.status(), "no command nonsense: q, help, tutor, closed, numbers, all, s/old/new, ") {
+		t.Fatalf("status = %q", h.status())
+	}
+}
+
+// A sweep is a mode, so the status line says it is on and which key ends it.
+func TestASweepIsSaidWhileItLasts(t *testing.T) {
+	h := work(t).wide()
+	last := func() string { l := h.lines(); return strings.TrimSpace(l[len(l)-1]) }
+	h.press("j", "V", "j")
+	if got := last(); got != "2 selected · V keeps · Esc clears" {
+		t.Fatalf("sweeping = %q", got)
+	}
+	h.press("V")
+	if got := last(); got != "2 selected · Esc clears" {
+		t.Fatalf("kept = %q", got)
+	}
+}
+
+// The row being typed shows the glyph of what its line makes it so far, so
+// what Enter will keep is seen before it is pressed.
+func TestTheTypedRowShowsWhatItWillBe(t *testing.T) {
+	h := work(t)
+	h.press("g", "g", "j", "o", `"Call"`)
+	h.want("  ▾ Beta", "    ○ Fix cache #bug", "▌   ○ Call", "  ▾ Alpha", "    ○ Fix login ! #bug", "    ○ Write docs @fri #docs", "    ○ Refactor auth #bug")
+	h.press(`" $w"`)
+	if got := strings.Split(h.rows(), "\n")[2]; got != "▌   ◔ Call $waiting" { // the rest is the completion offered
+		t.Fatalf("typed state = %q", got)
+	}
+	h.press("ctrl+u", `"Later:"`)
+	if got := strings.Split(h.rows(), "\n")[2]; got != "▌   · Later:" {
+		t.Fatalf("typed heading = %q", got)
+	}
+	h.press("esc")
+	if got := strings.Split(h.rows(), "\n")[2]; got != "▌   · Later:" {
+		t.Fatalf("kept heading = %q", got)
+	}
+	// Retyping an existing row previews it the same way.
+	h.press("k", "A", `" $done"`)
+	if got := strings.Split(h.rows(), "\n")[1]; got != "▌   ✓ Fix cache #bug $done" {
+		t.Fatalf("retyped = %q", got)
+	}
+}
+
+// A flat row says what the header does not: inside a project that is the
+// heading it lives under, and nothing folds, so no row offers to.
+func TestAFlatRowNamesWhatTheHeaderDoesNot(t *testing.T) {
+	h := work(t)
+	h.press("G", "o", `"Later:"`, "enter", "tab", `"Ship it"`, "esc")
+	h.press("/", `"$open"`, "tab", "enter")
+	h.want("▌ ○ Fix cache #bug · Beta", "  ○ Fix login ! #bug · Alpha", "  ○ Write docs @fri #docs · Alpha", "  ○ Refactor auth #bug · Alpha", "  ○ Ship it · Alpha")
+	h.press("esc", "g", "g", "}", "enter", "/", `"$open"`, "tab", "enter")
+	h.want("▌ ○ Fix login ! #bug", "  ○ Write docs @fri #docs", "  ○ Refactor auth #bug", "  ○ Ship it · Later")
+	h.press("/", "ctrl+u", `"-$"`, "enter")
+	h.want("▌ · Later: 0/1")
+}
+
+// What is said after a flat row keeps its dot when the row wraps.
+func TestAWrappedFlatRowKeepsItsDots(t *testing.T) {
+	h := work(t)
+	h.press("g", "g", "j", "$", `"w"`, "enter", "f", `"Waiting"`, "enter")
+	for width := 12; width < 40; width++ {
+		h.m.Update(tea.WindowSizeMsg{Width: width, Height: 12})
+		for _, l := range strings.Split(h.rows(), "\n") {
+			if strings.HasSuffix(l, "·") {
+				t.Fatalf("at %d columns a dot is left behind:\n%s", width, h.rows())
+			}
+		}
+	}
+}
+
+// An overdue project is told by weight as well as colour, and Today says
+// how much of it is done.
+func TestOverdueIsBoldAndTodayCountsWhatIsDone(t *testing.T) {
+	h := work(t).wide()
+	h.press("g", "g", "j", "@", `"2020-01-01"`, "enter", "t", "j", "j", "t")
+	if raw := h.m.View().Content; !strings.Contains(raw, darkPalette.alert+sgrBold+"@"+sgrReset) {
+		t.Fatalf("overdue mark is not bold:\n%q", raw)
+	}
+	h.press("f", `"Today"`, "enter")
+	if h.header() != "Today  · 2 to do" {
+		t.Fatalf("header = %q", h.header())
+	}
+	h.press("x")
+	if h.header() != "Today  · 1 to do · 1 done" {
+		t.Fatalf("header = %q", h.header())
+	}
+	h.press("j", "x")
+	if h.header() != "Today  · all 2 done" {
+		t.Fatalf("header = %q", h.header())
+	}
+}

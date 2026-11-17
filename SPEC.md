@@ -201,7 +201,9 @@ After the place’s name, the header states the open, doing and waiting tasks
 as `14 to do`, followed by their readable `#est` sum, as `14 to do · 6h30m`.
 An outline counts every such row under its root, folded or not; a list counts
 its held rows and a filter its held matches, excluding context ancestors.
-Zero tasks says nothing. These totals and heading progress are derived in
+Zero tasks says nothing. Today is the list that gets finished, so it alone
+goes on to count its done rows, as `3 to do · 2 done`, and says `all 5 done`
+when nothing is left. These totals and heading progress are derived in
 the existing scan, never stored.
 
 The header reads in three weights. The place is in the text colour, and the
@@ -244,8 +246,9 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
 - **Active projects** follow, in the order of the top-level rows: the order
   is the user's, so it never shuffles as work happens. Each says `@`, the
   sigil a deadline is written with, in
-  the warning colour for a deadline within a week or the alert colour for
-  one overdue, then `∅` when
+  the warning colour for a deadline within a week or the alert colour and
+  bold for one overdue, so the two are not told apart by colour alone, then
+  `∅` when
   it holds no task to do, else the whole days since anything inside changed.
 - **Parked** projects are a count. Done and canceled projects are not listed.
 - **A sidebar taller than its pane** scrolls to keep its selection in view,
@@ -271,7 +274,11 @@ The pane shows the rows under one row, or a list.
 - **Today, Waiting and Stale** are flat. A list is read when it is opened and
   holds those rows until it is opened again, so closing or rescheduling a row
   never pulls it from under the cursor. Each row names its project; Waiting
-  and Stale lead with the longest wait and say how many days. Today alone
+  and Stale lead with the longest wait and say how many days. Each thing
+  said after a row is led by a dot that stays with it when the row wraps.
+  Nothing folds in a flat view, so a note there shows `·` whatever it holds
+  and counts the rows under it (`+3`) as a task does, unless it is a heading
+  that says its progress. Today alone
   has an editable order: `J` and `K` move the cursor's row down and up,
   keeping the cursor on it without moving it in the outline. They refuse
   selections; Waiting, Stale and review refuse both keys. `o`, `O`, `>` and
@@ -533,7 +540,10 @@ Three more acts use the same line:
   cursor's row among its siblings in its parent's outline, keeping it
   visible even with `:closed` on; `Esc` returns to the held filter with
   its query and cursor intact. `h` refuses a selection and `l` does
-  nothing there. Neither changes a fold.
+  nothing there. Neither changes a fold. A flat row names its project, as
+  a list's does; when the pane is inside that project, which the header
+  names already, it names the nearest heading over the row instead, colon
+  dropped, and nothing when there is none.
 - `#` `@` `$` `*` `-` **Stamp ›** opens holding that character. The line is
   sigils only: `#tag`, `@date`, `@@date`, `*interval`, `$state` and `!` set;
   `-#tag`, `-@`, `-@@`, `-*` and `-!` remove. `#name=value` sets the value,
@@ -545,7 +555,11 @@ Three more acts use the same line:
   rows each slips from its own date, and `.` slips them again. These two
   forms are read on the stamp line only. `Enter` applies them to the selection, else to the cursor's row, as
   one undo step. A word it cannot read is named and nothing is applied.
-- `:` runs a command: `q` quits; `help` opens help; `tutor` adds a fresh
+- `:` runs a command. The line names the commands it could become, dimmed:
+  all of them while it is blank, those that start as typed after that, and
+  the one that is left with what it does, as `sort [keys]: order siblings
+  once: @ deadline, ! flag, $ state, else text`; a line that starts none
+  says `no such command`. One given anyway is named with the list. `q` quits; `help` opens help; `tutor` adds a fresh
   `Welcome` tutorial as the last project and opens it, from any place, in
   one undo step; `export [file]` writes
   the whole outline as tab-indented lines in the row grammar, to `~/docket-YYYY-MM-DD.txt` unless
@@ -691,6 +705,8 @@ clear it. The keys that work on one row (`A`, `I`, `cc`, `o`, `O`, `Enter`,
 `V` starts a sweep at the cursor's row. Each motion, with or without a
 count, selects the shown span from that anchor to the cursor, both included;
 moving back gives rows up again. Picks made before the sweep stay selected.
+While it lasts the status line says so beside the count, as `3 selected ·
+V keeps · Esc clears`.
 `V` ends the sweep and keeps the rows; `v` ends it, then toggles the cursor's
 row and steps down as usual. `zt`, `zz` and `zb` leave it as it is. Any
 other non-motion key ends the sweep before acting: `VGdd` deletes through the end in one undo step, and `V2jx` closes
@@ -1118,7 +1134,9 @@ warning colour, so a mistyped `@firday` is seen before `Enter`. At the end of
 the line a sigil being typed is completed in dim text: a `#tag` already in
 use, most used first; a `$state`; a date word. The right arrow takes the
 suggestion and types nothing otherwise. The capture line also names where
-the row will land.
+the row will land. The row being typed shows the glyph of what its line
+makes it so far: `○` under a heading, `·` once its text ends in a colon,
+`◔` when `$w` is typed, so what `Enter` keeps is seen first.
 
 While a `#tag` is typed at the end of a row, the capture, stamp or filter
 line, the status line names every tag in use that it could become, most

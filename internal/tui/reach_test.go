@@ -225,7 +225,7 @@ func TestHShowsAListsRowWhereItLives(t *testing.T) {
 		// Nest a second reach from a filter whose root is the same as the
 		// parent it opens. Each zoom must retain its own return row.
 		h.press("/", `"auth"`, "tab", "enter", "h", "enter", "esc", "k", "esc")
-		h.want("▌ ○ Refactor auth #bug · Alpha")
+		h.want("▌ ○ Refactor auth #bug")
 		h.press("esc", "g", "g", "esc")
 		if h.header() != header || h.rows() != before {
 			t.Fatalf("return = %q\n%s; want %q\n%s", h.header(), h.rows(), header, before)
@@ -428,7 +428,7 @@ func TestAFilterTermReachesTheRowsAbove(t *testing.T) {
 		h.press("/", `"^#work"`, "tab")
 		h.want("▌ ○ First · Docket", "  ◔ Nested: 0/1 #work +1 · Docket", "  ○ Deep · Docket")
 		h.press("esc", "/", `"-^#work"`)
-		h.want("▌ ▾ Docket #office", "  ▾ Work: 0/3 #work · Docket", "  ▾ Home: 0/1 #home · Docket", "  ○ Second · Docket", "  ○ Plain · Docket", "  ▾ Elsewhere", "  ○ Other · Elsewhere")
+		h.want("▌ · Docket #office +3", "  · Work: 0/3 #work · Docket", "  · Home: 0/1 #home · Docket", "  ○ Second · Docket", "  ○ Plain · Docket", "  · Elsewhere +1", "  ○ Other · Elsewhere")
 	})
 	t.Run("project name scopes next action from Projects", func(t *testing.T) {
 		h := fixture(t)

@@ -232,6 +232,63 @@ func (m *Model) nextKeys() string {
 	return ""
 }
 
+// commandUses are the commands as they are written, each with what it does,
+// in the order the command line names them.
+var commandUses = []struct{ use, does string }{
+	{"q", "quit"},
+	{"help", "the keys, in eight sections"},
+	{"tutor", "a fresh Welcome tutorial"},
+	{"closed", "hide or show done and canceled rows"},
+	{"numbers", "show or hide each row's count from the cursor"},
+	{"all", "select every row shown"},
+	{"s/old/new", "change text in the row or the selection"},
+	{"sort [keys]", "order siblings once: @ deadline, ! flag, $ state, else text"},
+	{"fold [level]", "fold all, or keep that many levels open"},
+	{"unfold", "open every fold here"},
+	{"archive", "move closed rows under Archive:"},
+	{"review", "active projects, longest untouched first"},
+	{"save name", "keep this filter as /name"},
+	{"forget name", "drop a saved filter"},
+	{"export [file]", "write the outline as text"},
+	{"import file", "read rows from a file"},
+	{"sync [folder|off]", "share through a folder, or stop"},
+}
+
+// commandOffers names the commands the line being typed could become, so
+// they are read off the line and not remembered: all of them on a blank
+// line, fewer with each letter, and the last one left with what it does.
+func commandOffers(line string) string {
+	letters := func(s string) string {
+		for i, r := range s {
+			if r < 'a' || r > 'z' {
+				return s[:i]
+			}
+		}
+		return s
+	}
+	line = strings.TrimLeft(line, " ")
+	name := letters(line)
+	whole := len(line) > len(name) // the name is finished: only it answers
+	var uses []string
+	does := ""
+	for _, c := range commandUses {
+		is := letters(c.use)
+		if is == "q" && name != "" && strings.HasPrefix("quit", name) || is == "help" && name == "h" {
+			is = name
+		}
+		if is == name || !whole && strings.HasPrefix(is, name) {
+			uses, does = append(uses, c.use), c.does
+		}
+	}
+	switch len(uses) {
+	case 0:
+		return "no such command"
+	case 1:
+		return uses[0] + ": " + does
+	}
+	return strings.Join(uses, " · ")
+}
+
 // tagWord is the tag being typed at the end of a line, without its #, or
 // false when the last word is no tag.
 func tagWord(e *editor, surface string) (string, bool) {

@@ -156,29 +156,36 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 	}
 
 	// A task's glyph is its state, so the children it hides are counted
-	// after it: when folded, and always in a flat view.
+	// after it: when folded, and always in a flat view. No row has a fold to
+	// show there, so a note counts its own too, unless it already says what
+	// it holds: a heading its progress, a project under review its tasks.
 	kids := len(m.tree.Children(r.ID))
-	if hides := m.isFolded(r.ID) || flat; kids > 0 && hides && l.State != "" {
+	said := m.at.list == kindReview || strings.HasSuffix(l.Text, ":") && m.totals[r.ID].under.total > 0
+	if kids > 0 && (l.State != "" && (flat || m.isFolded(r.ID)) || l.State == "" && flat && !said) {
 		out = append(out, word{m.colors().dim, "+" + strconv.Itoa(kids)})
 	}
 	if flat {
+		// Each thing said about a row keeps its dot, so a wrapped row never
+		// leaves one hanging at the end of a line.
+		also := func(text string) { out = append(out, word{m.colors().dim, "· " + text}) }
 		switch m.at.list {
 		case kindWaiting:
-			out = append(out, word{m.colors().dim, "·"}, word{m.colors().dim, days(m.now() - m.changedAt(r.ID))})
+			also(days(m.now() - m.changedAt(r.ID)))
 		case kindStale:
-			out = append(out, word{m.colors().dim, "·"}, word{m.colors().dim, days(m.now() - r.Modified)})
+			also(days(m.now() - r.Modified))
 		case kindReview:
 			// A project parked or closed during the review has no line left.
 			if st, active := m.stats[r.ID]; active {
-				todo := strconv.Itoa(st.open) + " to do"
+				also(strconv.Itoa(st.age) + "d")
 				if st.idle {
-					todo = "∅"
+					also("∅")
+				} else {
+					also(strconv.Itoa(st.open) + " to do")
 				}
-				out = append(out, word{m.colors().dim, "·"}, word{m.colors().dim, strconv.Itoa(st.age) + "d"}, word{m.colors().dim, "·"}, word{m.colors().dim, todo})
 			}
 		}
-		if p := m.projectOf(r.ID); p != nil && p.ID != r.ID {
-			out = append(out, word{m.colors().dim, "·"}, word{m.colors().dim, p.Text()})
+		if where := m.whereFlat(r); where != "" {
+			also(where)
 		}
 	}
 	if m.at.query != "" && !m.at.matched[r.ID] {
@@ -261,6 +268,30 @@ func linkOf(w string) string {
 	return strings.TrimRight(w, ".,;:!?)")
 }
 
+// whereFlat is where a row in a flat view lives: its project, or, when the
+// pane is inside that project and the header already names it, the nearest
+// heading over the row there.
+func (m *Model) whereFlat(r *outline.Row) string {
+	p := m.projectOf(r.ID)
+	if p == nil || p.ID == r.ID {
+		return ""
+	}
+	if here := m.projectOf(m.at.root); m.at.root == "" || here == nil || here.ID != p.ID {
+		return p.Text()
+	}
+	for id := r.Parent; id != "" && id != m.at.root; {
+		up := m.tree.Row(id)
+		if up == nil {
+			break
+		}
+		if name, heading := strings.CutSuffix(up.Text(), ":"); heading {
+			return name
+		}
+		id = up.Parent
+	}
+	return ""
+}
+
 func (m *Model) breadcrumb() string {
 	return m.placeName(m.at)
 }
@@ -295,7 +326,16 @@ func (m *Model) paneHeader(w int, ruler string) string {
 		i += len(" › ")
 		header = c.dim + name[:i] + sgrReset + name[i:]
 	}
-	if summary := m.paneTotal.summary(); summary != "" {
+	summary := m.paneTotal.summary()
+	if done := m.paneTotal.done; m.at.list == kindToday && done > 0 {
+		// Today is the list that is finished, so it says how far along it is.
+		if summary == "" {
+			summary = "all " + strconv.Itoa(done) + " done"
+		} else {
+			summary += " · " + strconv.Itoa(done) + " done"
+		}
+	}
+	if summary != "" {
 		header += c.dim + "  · " + summary + sgrReset
 	}
 	if m.at.query != "" {
@@ -406,6 +446,8 @@ func (m *Model) statusLine(w int) (string, int) {
 				hint = " · " + tags
 			}
 			line += "   " + m.colors().dim + ansi.Truncate(note+hint, room, "…") + sgrReset
+		case a.kind == askCommand:
+			line += "   " + m.colors().dim + ansi.Truncate(commandOffers(string(a.ed.buf)), room, "…") + sgrReset
 		case picker(a.kind):
 			// The first name is the one Enter takes.
 			offer := m.colors().dim + "nothing matches" + sgrReset
@@ -463,6 +505,10 @@ func (m *Model) statusLine(w int) (string, int) {
 	}
 	if n := len(m.picked); n > 0 {
 		right = strconv.Itoa(n) + " selected · Esc clears"
+		if m.sweep != "" {
+			// A sweep is a mode, and a mode is said while it lasts.
+			right = strconv.Itoa(n) + " selected · V keeps · Esc clears"
+		}
 	}
 	if m.edit != nil {
 		right = ""
@@ -587,7 +633,19 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 		v := m.vis[i]
 		drawn++
 		r := m.tree.Row(v.id)
-		glyph := m.stateGlyph(r.Fields[sigil.FieldState], len(m.tree.Children(v.id)), m.isFolded(v.id))
+		state, kids := r.Fields[sigil.FieldState], len(m.tree.Children(v.id))
+		if flat {
+			kids = 0 // nothing folds in a flat view, so no row offers to
+		}
+		if e := m.edit; e != nil && e.row == v.id {
+			// The row being typed shows what its line makes of it so far.
+			notes := e.notes
+			if e.fresh {
+				notes = m.defaultsToNotes(r.Parent)
+			}
+			state = sigil.Parse(string(e.buf), notes, m.today()).State
+		}
+		glyph := m.stateGlyph(state, kids, m.isFolded(v.id))
 		gutter := " "
 		if i == m.cursor {
 			gutter = m.colors().accent + "▌" + sgrReset

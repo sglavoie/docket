@@ -1774,7 +1774,11 @@ func (m *Model) command(line string) {
 		m.vis, m.at.kept = nil, nil
 		m.msg = said
 	default:
-		m.msg = "commands: q, help, export [file], import file, closed, numbers, all, archive, fold [level], unfold, sort [keys], s/old/new, review, save name, forget name, sync [folder|off]"
+		var uses []string
+		for _, c := range commandUses {
+			uses = append(uses, c.use)
+		}
+		m.msg = "no command " + words[0] + ": " + strings.Join(uses, ", ")
 	}
 }
 

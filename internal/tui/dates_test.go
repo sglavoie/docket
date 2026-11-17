@@ -150,7 +150,7 @@ func TestReviewListsProjectsLongestUntouchedFirst(t *testing.T) {
 		t.Fatalf("header = %q", h.header())
 	}
 	h.want(
-		"▌ ▾ Alpha · 12d · 2 to do",
+		"▌ · Alpha · 12d · 2 to do",
 		"  · Beta v2 · 2d · ∅",
 	)
 	// Keeping is moving on; parking and closing are stamps; Enter looks in.

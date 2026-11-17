@@ -795,9 +795,9 @@ func TestHeaderCountsAndSums(t *testing.T) {
 	h.press("g", "g", "t", "j", "t", "f", `"Today"`, "enter")
 	wantHeader("Today  · 2 to do · 2h")
 	h.press("g", "g", "x")
-	wantHeader("Today  · 1 to do · 30m")
+	wantHeader("Today  · 1 to do · 30m · 1 done")
 	h.press("j", "x")
-	wantHeader("Today") // Held closed rows contribute neither count nor estimate.
+	wantHeader("Today  · all 2 done") // Held closed rows add no estimate; Today counts them as done.
 	h.press("f", `"Projects"`, "enter", "/", `"#est"`, "enter")
 	wantHeader("Projects  · 3 to do · 18h  / #est")
 	h.press("/", "tab", "enter")

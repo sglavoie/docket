@@ -879,7 +879,8 @@ func (m *Model) sideLines(w, h int) []string {
 		switch {
 		case e.kind == kindProject:
 			if e.due == 2 {
-				info = m.colors().alert + "@" + sgrReset + " "
+				// Bold as well, so overdue is not told by colour alone.
+				info = m.colors().alert + sgrBold + "@" + sgrReset + " "
 			} else if e.due == 1 {
 				info = m.colors().warn + "@" + sgrReset + " "
 			}

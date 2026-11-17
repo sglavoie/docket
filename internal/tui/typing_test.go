@@ -42,7 +42,7 @@ func TestTheRightArrowCompletesASigil(t *testing.T) {
 	h.want(
 		"  ▾ Beta",
 		"    ○ Fix cache #bug",
-		"▌   · Tidy #bug",
+		"▌   ○ Tidy #bug",
 		"  ▾ Alpha",
 		"    ○ Fix login ! #bug",
 		"    ○ Write docs @fri #docs",

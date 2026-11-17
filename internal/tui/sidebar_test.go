@@ -150,7 +150,7 @@ func TestTodayIsPickedAndLapsesOvernight(t *testing.T) {
 	}
 	t.Cleanup(func() { st.Close() })
 	again := resume(t, h.path, st, h.clock).wide()
-	if again.header() != "Today  · 1 to do" {
+	if again.header() != "Today  · 1 to do · 1 done" {
 		t.Fatalf("launched on %q", again.header())
 	}
 
