@@ -44,4 +44,4 @@ Welcome
 	Undo and commands:
 		Press dd on this row, u to undo, Ctrl+R to redo, and u once more to keep it.
 		Type :help and Enter for the reference; ] and [ walk its headings, and Esc returns here.
-		Press f, type Projects and Enter; move to Welcome and press dd to remove this tutorial. :tutor brings a fresh one.
+		Press Tab to focus the sidebar, where Welcome is chosen, and dd to remove this tutorial; u brings it back. :tutor brings a fresh one.

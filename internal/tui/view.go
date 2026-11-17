@@ -590,6 +590,9 @@ func (m *Model) statusLine(w int) (string, int) {
 		}
 	case m.sideFocus:
 		left = "j k choose · Enter work in it"
+		if m.sel.kind == kindProject {
+			left += " · dd delete it"
+		}
 		if says := m.sideSays(); says != "" {
 			// What the entry's marks stand for leads, since the keys are
 			// learned once and the marks change with every entry.

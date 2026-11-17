@@ -285,6 +285,15 @@ where a page is the pane's usable row height in entries, stopping at either
 end. `Enter`, `Tab` or `Esc` returns to the pane. `:` returns focus to
 the pane and opens its command line, so `:tutor` works from the sidebar too.
 
+A project's entry is its top-level row, reached by the sidebar's `j` and
+`k`, so `dd` on it deletes the project with everything in it, as `dd` on
+that row in Projects does: one undo step, and the selection takes the entry
+now in its place. On any other entry `dd` changes nothing and names what
+works: `:forget name` for a saved filter, `Enter` and then `dd` for rows.
+`u` and `Ctrl+R` undo and redo with the focus kept, and a project that
+comes back is chosen again. The status line offers `dd delete it` on a
+project's entry. No other operator, and no count, acts in the sidebar.
+
 ### Pane
 
 The pane shows the rows under one row, or a list.
@@ -960,7 +969,7 @@ the pane stays there until a motion has to scroll it.
 | `.` | Repeat the last change to rows | 10, 13 |
 | `x` `!` | Done and back, flag | 2 |
 | `t` | Pick for Today, and unpick | 3 |
-| `Tab` `f` | Sidebar focus; go to a project, heading, list or row by name | 3, 13 |
+| `Tab` `f` | Sidebar focus, where `dd` deletes the chosen project and `u` `Ctrl+R` undo and redo; go to a project, heading, list or row by name | 3, 13 |
 | `Ctrl+O` `Ctrl+I` | Back along the places jumps left, and forward | 13 |
 | `g;` `g,` | Back to the rows changed this session, and on again | 17 |
 | `a` `m` | Capture to the Inbox from anywhere; move to a project or heading | 3 |

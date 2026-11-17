@@ -1994,11 +1994,21 @@ func (m *Model) archive() {
 // sideKey handles the sidebar while it has focus. Moving shows each
 // destination at once; prompts can capture, jump or run a command.
 func (m *Model) sideKey(k string) {
-	g := m.prefix == "g"
+	g, d := m.prefix == "g", m.prefix == "d"
 	m.prefix = ""
 	_, height := m.size()
 	page := max(height-2, 1) // exclude the header and status line
 	switch k {
+	case "d":
+		if d {
+			m.sideDelete()
+		} else {
+			m.prefix = "d"
+		}
+	case "u":
+		m.sideReplay(&m.undo, &m.redo, "undo")
+	case "ctrl+r":
+		m.sideReplay(&m.redo, &m.undo, "redo")
 	case "j", "down":
 		m.sideStep(1)
 	case "k", "up":

@@ -684,3 +684,41 @@ func TestSidebarCountsWhatIsScrolledOut(t *testing.T) {
 		t.Fatalf("in the middle:\n%s", h.side())
 	}
 }
+
+// A project's sidebar entry is its top-level row, so dd takes it there as it
+// does in Projects, and undo and redo keep the focus and follow the project.
+func TestTheSidebarDeletesAProjectAndUndoesIt(t *testing.T) {
+	h := start(t).wide()
+	h.press("o", `"Alpha"`, "enter", `"Beta"`, "esc")
+	h.press(":", `"tutor"`, "enter", "tab", "d")
+	if got := h.status(); !strings.HasPrefix(got, "j k choose · Enter work in it · dd delete it") || !strings.HasSuffix(got, " d") {
+		t.Fatalf("a waiting d is not shown: %q", got)
+	}
+	h.press("d")
+	if h.m.msg != "deleted 47 rows" || !h.m.sideFocus {
+		t.Fatalf("msg = %q, focus = %v", h.m.msg, h.m.sideFocus)
+	}
+	h.wantSide("Inbox", "Today", "Waiting", "Stale", "Projects", "Alpha ∅", "▌ Beta ∅")
+	h.press("u")
+	if h.m.msg != "undo: 47 rows back" {
+		t.Fatalf("msg = %q", h.m.msg)
+	}
+	h.wantSide("Inbox", "Today", "Waiting", "Stale", "Projects", "Alpha ∅", "Beta ∅", "▌ Welcome")
+	h.press("ctrl+r")
+	if h.m.msg != "redo: 47 rows gone" {
+		t.Fatalf("msg = %q", h.m.msg)
+	}
+	h.wantSide("Inbox", "Today", "Waiting", "Stale", "Projects", "Alpha ∅", "▌ Beta ∅")
+
+	// Anything else in the sidebar is not a row, and says what works.
+	h.press("k", "k", "d", "d")
+	if h.m.msg != "only a project is deleted here: Enter, then dd takes rows" {
+		t.Fatalf("msg = %q", h.m.msg)
+	}
+	h.press("d", "j", "d")
+	h.wantSide("Inbox", "Today", "Waiting", "Stale", "Projects", "▌ Alpha ∅", "Beta ∅")
+	h.press("enter", "/", `"x"`, "enter", ":", `"save x"`, "enter", "esc", "tab", "g", "g", "j", "j", "j", "j", "d", "d")
+	if h.m.msg != "a saved filter is not deleted here: :forget x drops it" {
+		t.Fatalf("msg = %q\n%s", h.m.msg, h.side())
+	}
+}

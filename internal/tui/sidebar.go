@@ -554,6 +554,72 @@ func (m *Model) sideStep(by int) {
 	}
 }
 
+// sideAt is where the selection sits among the entries, or -1.
+func (m *Model) sideAt() int {
+	for i, e := range m.side {
+		if e.same(m.sel) {
+			return i
+		}
+	}
+	return -1
+}
+
+// sideKeep opens the entry now at a position whose own entry has gone, so
+// the selection never rests on a project that is no longer listed.
+func (m *Model) sideKeep(at int) {
+	if m.sideAt() < 0 && len(m.side) > 0 {
+		m.open(m.side[max(0, min(at, len(m.side)-1))])
+	}
+}
+
+// sideDelete is dd on the chosen entry. A project's entry is its top-level
+// row, so the row goes as it does under the cursor in Projects, as one undo
+// step; any other entry is a list or a filter and says what removes it.
+func (m *Model) sideDelete() {
+	e := m.sel
+	switch e.kind {
+	case kindProject:
+	case kindFilter:
+		m.msg = "a saved filter is not deleted here: :forget " + e.id + " drops it"
+		return
+	default:
+		m.msg = "only a project is deleted here: Enter, then dd takes rows"
+		return
+	}
+	at := m.sideAt()
+	m.takeRows("d", []string{e.id})
+	if m.live(e.id) {
+		return
+	}
+	msg := m.msg
+	m.sideKeep(at)
+	m.msg = msg
+}
+
+// sideReplay is undo or redo with sidebar focus. A project the step brought
+// back is chosen again, and one it took away gives up the selection.
+func (m *Model) sideReplay(from, to *[][]outline.Op, verb string) {
+	n, at := len(*from), m.sideAt()
+	if n == 0 {
+		m.replay(from, to, verb)
+		return
+	}
+	group := (*from)[n-1]
+	row := group[len(group)-1].Row
+	m.replay(from, to, verb)
+	if len(*from) == n {
+		return
+	}
+	msg := m.msg
+	for _, e := range m.side {
+		if e.kind == kindProject && e.id == row && !e.same(m.sel) {
+			m.open(e)
+		}
+	}
+	m.sideKeep(at)
+	m.msg = msg
+}
+
 // targets are the destinations a picker offers: every top-level row, the
 // Inbox and the headings, and for a jump the lists and saved filters too.
 func (m *Model) targets(jump bool) []entry {
