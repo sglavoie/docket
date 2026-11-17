@@ -441,6 +441,9 @@ func (l editLayout) at(line, column int) int {
 }
 
 func (m *Model) editWidth() int {
+	if m.edit != nil && m.edit.side {
+		return max(m.sideWidth()-2, 1) // after the gutter and its space
+	}
 	w, _ := m.size()
 	if w >= sidebarFrom {
 		w -= sidebarCols + 3

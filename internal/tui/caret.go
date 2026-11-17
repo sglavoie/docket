@@ -278,7 +278,7 @@ func (m *Model) textSeek(e *editor, forward bool, n int) int {
 			continue
 		}
 		id, hits := "", []int(nil)
-		if !cur.sel {
+		if !cur.sel && !cur.side {
 			id, hits = m.matchRow(marks, forward, false)
 		}
 		if id == "" {
@@ -540,6 +540,10 @@ func textKeys(s string) []tea.KeyPressMsg {
 // textFilter leaves the row and narrows the pane to the word under the
 // caret, as if it had been typed after /: a sigil whole, else the word.
 func (m *Model) textFilter(e *editor) int {
+	if e.side {
+		m.msg = "a project's name filters nothing here: Enter, then / filters its rows"
+		return textMoved
+	}
 	from, to, ok := textObject(e, "W", true)
 	if !ok || e.buf[min(e.caret, len(e.buf)-1)] == ' ' {
 		m.msg = "no word under the caret to filter by"
@@ -715,7 +719,7 @@ func (m *Model) textStep(e *editor, msg tea.KeyPressMsg) int {
 				continue
 			}
 			next := m.cursor + by
-			if cur.sel || next < 0 || next >= len(m.vis) || !m.textMove(m.vis[next].id) {
+			if cur.sel || cur.side || next < 0 || next >= len(m.vis) || !m.textMove(m.vis[next].id) {
 				break
 			}
 			l = m.edit.wrapped(m.editWidth(), nil)

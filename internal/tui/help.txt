@@ -152,7 +152,8 @@ f	go to a project, heading, list, saved filter or row by name
 	blank `Enter` opens Inbox; `Up` `Down` choose, `Esc` leaves
 m	move rows to a project, Inbox or heading by name
 Tab	sidebar focus; `j` `k` and paging keys visit; `Enter` works there
-	`dd` deletes the chosen project; `u` `Ctrl+R` undo and redo there too
+	`A` `I` `cc` `cw` rename the chosen project in place, `dd` deletes it
+	`u` `Ctrl+R` undo and redo there too
 	a project says `@` for a deadline near or overdue, `∅` with nothing to do, else days untouched
 
 == Links and trails

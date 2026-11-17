@@ -90,8 +90,10 @@ func (m *Model) paste(content string) {
 			m.cursor, m.top = 0, 0
 			m.clearSelection()
 		}
-	case m.edit != nil && len(lines) == 1:
-		if lines[0].checkbox || lines[0].protected {
+	case m.edit != nil && (len(lines) == 1 || m.edit.side):
+		// A project's name typed in the sidebar is one row, so a paste of
+		// several lines joins them.
+		if len(lines) == 1 && lines[0].checkbox || lines[0].protected {
 			m.edit.insert([]rune(lines[0].text))
 		} else {
 			m.edit.insert(oneLine())

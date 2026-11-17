@@ -312,8 +312,22 @@ that row in Projects does: one undo step, and the selection takes the entry
 now in its place. On any other entry `dd` changes nothing and names what
 works: `:forget name` for a saved filter, `Enter` and then `dd` for rows.
 `u` and `Ctrl+R` undo and redo with the focus kept, and a project that
-comes back is chosen again. The status line offers `dd delete it` on a
-project's entry. No other operator, and no count, acts in the sidebar.
+comes back is chosen again.
+
+The same row is renamed in its entry. `A` and `I` type at the end and the
+start of its line, `cc` retypes it keeping its fields, `c` with a motion
+or a text object (`cw`, `ce`, `c$`, `ciw`) changes that much from its
+start, and `w` `b` `e` `W` `B` `E` step into its text, as each does on
+that row in Projects. The line takes the entry's place, wrapped to the
+sidebar's width, with the caret in it; the pane stays where it is. It is
+one row, so nothing carries the typing out of it: `Tab` does not indent,
+`Enter` does not split, `Backspace` at the start does not join, and `j`
+`k` `n` inside it stay in it. `Enter` or `Esc` ends the typing, as one undo
+step, with the focus kept; a name typed out of the list, by `$parked` or
+`$done`, gives the selection to the entry now in its place. On any other
+entry the keys change nothing and say what works. The status line offers
+`A I cc rename it · dd delete it` on a project's entry. No other operator,
+and no count, acts in the sidebar.
 
 ### Pane
 
@@ -1067,7 +1081,7 @@ the pane stays there until a motion has to scroll it.
 | `.` | Repeat the last change to rows | 10, 13 |
 | `x` `!` | Done and back, flag | 2 |
 | `t` | Pick for Today, and unpick, a pick carried from an earlier day too | 3, 19 |
-| `Tab` `f` | Sidebar focus, where `dd` deletes the chosen project and `u` `Ctrl+R` undo and redo; go to a project, heading, list or row by name | 3, 13 |
+| `Tab` `f` | Sidebar focus, where `A` `I` `cc` `cw` rename the chosen project, `dd` deletes it and `u` `Ctrl+R` undo and redo; go to a project, heading, list or row by name | 3, 13 |
 | `Ctrl+O` `Ctrl+I` | Back along the places jumps left, and forward | 13 |
 | `g;` `g,` | Back to the rows changed this session, and on again | 17 |
 | `a` `m` | Capture to the Inbox from anywhere; move to a project or heading | 3 |

@@ -709,7 +709,7 @@ func TestTheSidebarDeletesAProjectAndUndoesIt(t *testing.T) {
 	h := start(t).wide()
 	h.press("o", `"Alpha"`, "enter", `"Beta"`, "esc")
 	h.press(":", `"tutor"`, "enter", "tab", "d")
-	if got := h.status(); !strings.HasPrefix(got, "j k choose · Enter work in it · dd delete it") || !strings.HasSuffix(got, " d") {
+	if got := h.status(); !strings.HasPrefix(got, "j k choose · Enter work in it · A I cc rename it · dd delete it") || !strings.HasSuffix(got, " d") {
 		t.Fatalf("a waiting d is not shown: %q", got)
 	}
 	h.press("d")
@@ -839,4 +839,83 @@ func TestTodayDrawsALineAboveWhatWasCarried(t *testing.T) {
 	h.clock = h.clock.Add(24 * time.Hour)
 	h.press("f", `"today"`, "enter")
 	h.want("▌ ○ One · since Nov 15 · Alpha")
+}
+
+// A project's sidebar entry is its top-level row, so its name is typed in
+// the entry with the keys that type in that row in Projects, as one undo
+// step, and the focus stays in the sidebar.
+func TestTheSidebarRenamesAProject(t *testing.T) {
+	h := two(t)
+	h.press("tab", "j", "j", "A", `" Two"`)
+	if got := h.status(); got != "Enter or Esc done" {
+		t.Fatalf("status = %q", got)
+	}
+	h.wantSide("Inbox", "Today", "Waiting 1", "Stale", "Projects", "Beta ∅", "▌ Alpha Two")
+	if c := h.m.View().Cursor; c == nil || c.X != 2+len("Alpha Two") || c.Y != 7 {
+		t.Fatalf("caret = %+v", c)
+	}
+	// Nothing carries the typing out of the name: not Tab, not Enter.
+	h.press("tab", "enter")
+	if h.m.edit != nil || !h.m.sideFocus || h.m.tree.Row(h.m.sel.id).Text() != "Alpha Two" {
+		t.Fatalf("edit = %v, focus = %v, %q", h.m.edit, h.m.sideFocus, h.m.tree.Row(h.m.sel.id).Text())
+	}
+	h.wantSide("Inbox", "Today", "Waiting 1", "Stale", "Projects", "Beta ∅", "▌ Alpha Two @")
+	if !strings.HasPrefix(h.header(), "Alpha Two") {
+		t.Fatalf("header = %q", h.header())
+	}
+	h.press("u")
+	h.wantSide("Inbox", "Today", "Waiting 1", "Stale", "Projects", "Beta ∅", "▌ Alpha @")
+	h.press("ctrl+r")
+
+	// c with a motion changes the name from its start; cc retypes it all.
+	h.press("c", "w", `"Uno"`, "esc")
+	h.wantSide("Inbox", "Today", "Waiting 1", "Stale", "Projects", "Beta ∅", "▌ Uno Two @")
+	h.press("I", `"The "`, "esc")
+	h.wantSide("Inbox", "Today", "Waiting 1", "Stale", "Projects", "Beta ∅", "▌ The Uno Two @")
+
+	// A word motion steps into the name, and the grammar there stays in it.
+	h.press("w")
+	h.wantTyping("The Uno Two", 0)
+	h.press("w", "j", "k")
+	h.wantTyping("The Uno Two", 4)
+	h.press("d", "w", "esc")
+	h.wantSide("Inbox", "Today", "Waiting 1", "Stale", "Projects", "Beta ∅", "▌ The Two @")
+
+	h.press("c", "i", "w", `"One"`, "esc")
+	h.wantSide("Inbox", "Today", "Waiting 1", "Stale", "Projects", "Beta ∅", "▌ One Two @")
+	h.press("c", "i", "w", `"The"`, "esc")
+
+	// An empty project's name is typed as well, with nothing in the pane.
+	h.press("k", "c", "c", `"Gamma"`, "enter")
+	h.wantSide("Inbox", "Today", "Waiting 1", "Stale", "Projects", "▌ Gamma ∅", "The Two @")
+
+	// A name typed out of the list gives the selection to the entry in its
+	// place, as dd does.
+	h.press("A", `" $p"`, "enter")
+	h.wantSide("Inbox", "Today", "Waiting 1", "Stale", "Projects", "▌ The Two @", "1 parked project")
+
+	// Anything else in the sidebar has no name to type.
+	h.press("k", "A")
+	if h.m.edit != nil || h.m.msg != "only a project is renamed here: Enter, then A or I types in rows" {
+		t.Fatalf("edit = %v, msg = %q", h.m.edit, h.m.msg)
+	}
+}
+
+// Too narrow for both, the sidebar alone takes the name being typed, and
+// a long one wraps inside it.
+func TestANarrowSidebarRenamesAProject(t *testing.T) {
+	h := two(t)
+	h.m.Update(tea.WindowSizeMsg{Width: 40, Height: 16})
+	h.press("tab", "j", "A", `" is a project with a long name"`)
+	got := h.lines()
+	if got[6] != "▌ Beta is a project with" || got[7] != "▌  a long name          " {
+		t.Fatalf("sidebar:\n%s", strings.Join(got, "\n"))
+	}
+	if c := h.m.View().Cursor; c == nil || c.X != 2+len(" a long name") || c.Y != 7 {
+		t.Fatalf("caret = %+v", c)
+	}
+	h.press("enter")
+	if text := h.m.tree.Row(h.m.sel.id).Text(); text != "Beta is a project with a long name" || !h.m.sideFocus {
+		t.Fatalf("%q, focus = %v", text, h.m.sideFocus)
+	}
 }

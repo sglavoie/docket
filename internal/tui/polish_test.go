@@ -883,11 +883,11 @@ func TestAScrolledSidebarKeepsTheSyncLine(t *testing.T) {
 func TestTheSidebarSaysWhatItsMarksMean(t *testing.T) {
 	h := work(t)
 	h.press("x", "tab", "j")
-	if got := h.status(); got != "∅ nothing left to do · j k choose · Enter work in it · dd delete it" {
+	if got := h.status(); got != "∅ nothing left to do · j k choose · Enter work in it · A I cc rename it · dd delete it" {
 		t.Fatalf("idle = %q", got)
 	}
 	h.press("j")
-	if got := h.status(); got != "@ a deadline within a week · j k choose · Enter work in it · dd delete it" {
+	if got := h.status(); got != "@ a deadline within a week · j k choose · Enter work in it · A I cc rename it · dd delete it" {
 		t.Fatalf("due = %q", got)
 	}
 	h.press("k", "k")

@@ -624,6 +624,13 @@ func (m *Model) statusLine(w int) (string, int) {
 		if m.edit.inside {
 			left = "Esc back to the caret · Enter next row · Tab indent"
 		}
+		if m.edit.side {
+			// A project's name is one row, and nothing moves it from here.
+			left = "Enter or Esc done"
+			if m.edit.inside {
+				left = "Esc back to the caret · Enter done"
+			}
+		}
 		if m.suggest(m.edit, surfaceRow) != "" {
 			left += " · → completes"
 		}
@@ -636,7 +643,7 @@ func (m *Model) statusLine(w int) (string, int) {
 	case m.sideFocus:
 		left = "j k choose · Enter work in it"
 		if m.sel.kind == kindProject {
-			left += " · dd delete it"
+			left += " · A I cc rename it · dd delete it"
 		}
 		if says := m.sideSays(); says != "" {
 			// What the entry's marks stand for leads, since the keys are
@@ -714,16 +721,21 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 	flat := m.at.list != "" || (m.at.query != "" && m.at.flat)
 	prefix := func(i int) int { return m.numberCols() + 2 + 2*m.vis[i].depth + 2 }
 
+	// A project named in the sidebar is typed there, not in the pane.
+	edit := m.edit
+	if edit != nil && edit.side {
+		edit = nil
+	}
 	var editing editLayout
-	if m.edit != nil {
-		editing = m.edit.wrapped(max(w-prefix(m.cursor), 1), m.styler(surfaceRow))
+	if edit != nil {
+		editing = edit.wrapped(max(w-prefix(m.cursor), 1), m.styler(surfaceRow))
 		last := len(editing.lines) - 1
-		editing.lines[last] += m.ghost(editing.lines[last], m.suggest(m.edit, surfaceRow), max(w-prefix(m.cursor), 1))
-		p := editing.pos[m.edit.caret]
-		m.edit.top = max(0, min(m.edit.top, len(editing.lines)-listH))
-		m.edit.top = max(0, min(m.edit.top, p.y))
-		if p.y >= m.edit.top+listH {
-			m.edit.top = p.y - listH + 1
+		editing.lines[last] += m.ghost(editing.lines[last], m.suggest(edit, surfaceRow), max(w-prefix(m.cursor), 1))
+		p := editing.pos[edit.caret]
+		edit.top = max(0, min(edit.top, len(editing.lines)-listH))
+		edit.top = max(0, min(edit.top, p.y))
+		if p.y >= edit.top+listH {
+			edit.top = p.y - listH + 1
 		}
 	}
 	// Waiting and Stale draw each age against the oldest row shown.
@@ -736,7 +748,7 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 	// Reuse the editing layout for height accounting and drawing.
 	rowLines := func(i int) []string {
 		v := m.vis[i]
-		if m.edit != nil && m.edit.row == v.id {
+		if edit != nil && edit.row == v.id {
 			return editing.lines
 		}
 		return wrap(m.rowWords(m.tree.Row(v.id), i == m.cursor, flat), max(w-prefix(i), 1))
@@ -805,7 +817,7 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 		if flat {
 			kids = 0 // nothing folds in a flat view, so no row offers to
 		}
-		if e := m.edit; e != nil && e.row == v.id {
+		if e := edit; e != nil && e.row == v.id {
 			// The row being typed shows what its line makes of it so far.
 			notes := e.notes
 			if e.fresh {
@@ -843,19 +855,19 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 		if ruled(i) && len(lines) < h {
 			lines = append(lines, m.colors().dim+"  "+strings.Repeat("─", max(w-4, 1))+sgrReset)
 		}
-		isEdit := m.edit != nil && m.edit.row == v.id
+		isEdit := edit != nil && edit.row == v.id
 		for n, text := range rowLines(i) {
-			if isEdit && n < m.edit.top {
+			if isEdit && n < edit.top {
 				continue
 			}
 			if len(lines) == h {
 				whole = false
 				break
 			}
-			if isEdit && n == editing.pos[m.edit.caret].y {
-				caret = tea.NewCursor(prefix(i)+editing.pos[m.edit.caret].x, len(lines))
+			if isEdit && n == editing.pos[edit.caret].y {
+				caret = tea.NewCursor(prefix(i)+editing.pos[edit.caret].x, len(lines))
 				caret.Shape = tea.CursorBar
-				if m.edit.normal {
+				if edit.normal {
 					caret.Shape = tea.CursorBlock
 				}
 			}
@@ -950,7 +962,7 @@ func (m *Model) View() tea.View {
 	var caret *tea.Cursor
 	switch {
 	case w >= sidebarFrom:
-		side := m.sideLines(sidebarCols, bodyH)
+		side, sc := m.sideView(sidebarCols, bodyH)
 		pane, c := m.paneLines(w-sidebarCols-3, bodyH)
 		for i := range pane {
 			lines = append(lines, side[i]+m.colors().dim+" │ "+sgrReset+pane[i])
@@ -959,11 +971,14 @@ func (m *Model) View() tea.View {
 			c.X += sidebarCols + 3
 			caret = c
 		}
+		if sc != nil {
+			caret = sc
+		}
 	case m.sideFocus:
 		// Too narrow for both: the sidebar takes the pane while it has focus,
 		// no wider than its widest entry, so each count stays beside the
 		// name it counts.
-		lines = m.sideLines(min(w, m.sideFit()), bodyH)
+		lines, caret = m.sideView(min(w, m.sideFit()), bodyH)
 	default:
 		lines, caret = m.paneLines(w, bodyH)
 	}

@@ -13,6 +13,7 @@ import (
 	"time"
 	"unicode"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/docket/internal/outline"
@@ -650,6 +651,79 @@ func (m *Model) sideDelete() {
 	m.msg = msg
 }
 
+// sideTyped reports whether the chosen entry's name can be typed in, and
+// says what works when it cannot. A project's name is its top-level row.
+func (m *Model) sideTyped() bool {
+	switch m.sel.kind {
+	case kindProject:
+		return true
+	case kindFilter:
+		m.msg = "a saved filter keeps its name: :save it as another, then :forget " + m.sel.id
+	default:
+		m.msg = "only a project is renamed here: Enter, then A or I types in rows"
+	}
+	return false
+}
+
+// sideType opens the chosen project's row for typing in its own entry, as
+// the key would on that row in Projects: A and I type at the end and the
+// start, and a word motion steps into the text.
+func (m *Model) sideType(k string) {
+	if !m.sideTyped() {
+		return
+	}
+	id := m.sel.id
+	switch k {
+	case "A", "I":
+		m.editRow(id)
+		if k == "I" {
+			m.edit.caret = 0
+		}
+		m.edit.mark(k)
+	default:
+		m.enterText(id, k, 0)
+	}
+	m.edit.side = true
+}
+
+// sideChange completes c on the chosen project: cc retypes its name keeping
+// its fields, and c with a motion or a text object changes that much of the
+// name from its start, as the same keys do inside the row.
+func (m *Model) sideChange(k string) {
+	id := m.sel.id
+	if k == "c" {
+		m.retypeRow(id)
+		m.edit.mark("cc")
+		m.edit.side = true
+		return
+	}
+	if len([]rune(k)) != 1 {
+		return // Esc, or a key that is no motion, drops the c
+	}
+	m.editRow(id)
+	e := m.edit
+	e.side, e.sideC, e.normal, e.caret = true, true, true, 0
+	for _, key := range textKeys("c" + k) {
+		m.textKey(key)
+	}
+	switch {
+	case m.edit != e:
+	case !e.normal:
+		e.inside = false // Esc ends the change, as it would one opened by cc
+	case e.pend == "":
+		m.finishEdit() // the motion went nowhere: nothing was changed
+	}
+}
+
+// sideWidth is how wide the sidebar is drawn.
+func (m *Model) sideWidth() int {
+	w, _ := m.size()
+	if w >= sidebarFrom {
+		return sidebarCols
+	}
+	return min(w, m.sideFit())
+}
+
 // sideReplay is undo or redo with sidebar focus. A project the step brought
 // back is chosen again, and one it took away gives up the selection.
 func (m *Model) sideReplay(from, to *[][]outline.Op, verb string) {
@@ -1066,10 +1140,18 @@ func (m *Model) sideFit() int {
 }
 
 func (m *Model) sideLines(w, h int) []string {
+	lines, _ := m.sideView(w, h)
+	return lines
+}
+
+// sideView draws the sidebar at exactly w columns and h rows, and places
+// the caret when a project's name is being typed in its entry.
+func (m *Model) sideView(w, h int) ([]string, *tea.Cursor) {
 	type line struct {
 		text  string
 		sel   bool
 		entry bool // a destination, which a marker counts when it is hidden
+		caret int  // the caret's column plus one, on the line that holds it
 	}
 	var lines []line
 	for i, e := range m.side {
@@ -1079,6 +1161,24 @@ func (m *Model) sideLines(w, h int) []string {
 			lines = append(lines, line{})
 		}
 		sel := e.same(m.sel)
+		if ed := m.edit; ed != nil && ed.side && e.kind == kindProject && e.id == ed.row {
+			// The name being typed takes the entry's place, wrapped to the
+			// sidebar, with what the line makes of it so far in colour.
+			room := max(w-2, 1)
+			l := ed.wrapped(room, m.styler(surfaceRow))
+			last := len(l.lines) - 1
+			l.lines[last] += m.ghost(l.lines[last], m.suggest(ed, surfaceRow), room)
+			p := l.pos[ed.caret]
+			for n, text := range l.lines {
+				at := 0
+				if n == p.y {
+					at = 2 + p.x + 1
+				}
+				text = m.tint(m.colors().accent+"▌"+sgrReset+" "+text, w, m.colors().cursor)
+				lines = append(lines, line{text: text, sel: true, entry: n == 0, caret: at})
+			}
+			continue
+		}
 		info := m.sideInfo(e)
 		gutter := " "
 		if sel {
@@ -1100,7 +1200,7 @@ func (m *Model) sideLines(w, h int) []string {
 		if sel && m.sideFocus {
 			text = m.tint(text, w, m.colors().cursor)
 		}
-		lines = append(lines, line{text, sel, true})
+		lines = append(lines, line{text: text, sel: sel, entry: true})
 	}
 	if m.parked > 0 {
 		// A parked project has no entry, so the count stands for it while
@@ -1154,16 +1254,24 @@ func (m *Model) sideLines(w, h int) []string {
 		lines[last] = line{text: "  " + m.colors().dim + "↓ " + hidden(last, len(lines)) + sgrReset}
 	}
 	out := make([]string, whole)
+	var caret *tea.Cursor
 	for i := range out {
 		text := ""
 		if i >= h {
 			text = foot[i-h].text
 		} else if off+i < len(lines) {
 			text = lines[off+i].text
+			if at := lines[off+i].caret; at > 0 {
+				caret = tea.NewCursor(min(at-1, w-1), i)
+				caret.Shape = tea.CursorBar
+				if m.edit.normal {
+					caret.Shape = tea.CursorBlock
+				}
+			}
 		}
 		out[i] = text + strings.Repeat(" ", max(w-ansi.StringWidth(text), 0))
 	}
-	return out
+	return out, caret
 }
 
 // parkedLabel says what the sidebar's last count counts: projects, since a

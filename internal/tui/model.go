@@ -89,6 +89,8 @@ type editor struct {
 	merge      bool              // continue the undo step recorded by a split
 	notes      bool              // the default the line was rendered against
 	back       string            // where the cursor returns if a fresh row is abandoned
+	side       bool              // a project's name typed in its sidebar entry: the line stays in its row
+	sideC      bool              // opened by c in the sidebar: the typing it opens ends at Esc
 	ops, inv   []outline.Op
 }
 
@@ -1436,6 +1438,16 @@ func (m *Model) setFields(id string, want map[string]string) []outline.Op {
 func (m *Model) finishEdit() bool {
 	e := m.edit
 	m.edit = nil
+	if e.side {
+		// A project typed out of the sidebar's list, by $parked or $done,
+		// gives the selection to the entry now in its place.
+		at := m.sideAt()
+		defer func() {
+			msg := m.msg
+			m.sideKeep(at)
+			m.msg = msg
+		}()
+	}
 	typed := strings.TrimSpace(string(e.buf))
 	if e.fresh && typed == "" {
 		m.tree.Forget(e.row)
@@ -2073,11 +2085,21 @@ func (m *Model) archive() {
 // sideKey handles the sidebar while it has focus. Moving shows each
 // destination at once; prompts can capture, jump or run a command.
 func (m *Model) sideKey(k string) {
-	g, d := m.prefix == "g", m.prefix == "d"
+	g, d, c := m.prefix == "g", m.prefix == "d", m.prefix == "c"
 	m.prefix = ""
 	_, height := m.size()
 	page := max(height-2, 1) // exclude the header and status line
+	if c {
+		m.sideChange(k)
+		return
+	}
 	switch k {
+	case "A", "I", "w", "b", "e", "W", "B", "E":
+		m.sideType(k)
+	case "c":
+		if m.sideTyped() {
+			m.prefix = "c"
+		}
 	case "d":
 		if d {
 			m.sideDelete()
@@ -2775,12 +2797,39 @@ func (m *Model) editKey(msg tea.KeyPressMsg) {
 	e := m.edit
 	if e.normal {
 		m.textKey(msg)
+		if e.sideC && m.edit == e && !e.normal {
+			e.inside = false
+		}
 		return
 	}
 	if msg.String() != "up" && msg.String() != "down" {
 		e.vertical = false
 	}
 	if m.complete(e, surfaceRow, msg.String()) {
+		return
+	}
+	if e.side {
+		// A project's name is one row: nothing splits it, joins it, indents
+		// it or carries the typing on into another.
+		switch msg.String() {
+		case "enter", "esc":
+			if msg.String() == "esc" && e.inside {
+				m.textBack(e)
+			} else {
+				m.finishEdit()
+			}
+		case "up":
+			m.editVertical(-1)
+		case "down":
+			m.editVertical(1)
+		case "tab", "shift+tab":
+		case "backspace":
+			if e.caret > 0 {
+				e.key(msg)
+			}
+		default:
+			e.key(msg)
+		}
 		return
 	}
 	switch msg.String() {
@@ -2837,7 +2886,7 @@ func (m *Model) editKey(msg tea.KeyPressMsg) {
 func (m *Model) editNext(by int) {
 	e := m.edit
 	next := m.cursor + by
-	if next < 0 || next >= len(m.vis) {
+	if e.side || next < 0 || next >= len(m.vis) {
 		return
 	}
 	target := m.vis[next].id
