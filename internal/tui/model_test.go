@@ -725,6 +725,17 @@ func TestOverdueAndTodayAreColouredUntilTheRowCloses(t *testing.T) {
 	}
 }
 
+// The alert colour is kept for alarms, so a flag is bold in the warning
+// colour and a flagged row raises none.
+func TestAFlagIsNoAlarm(t *testing.T) {
+	h := project(t)
+	h.press("!")
+	raw := h.m.View().Content
+	if !strings.Contains(raw, darkPalette.warn+sgrBold+"!") || strings.Contains(raw, darkPalette.alert) {
+		t.Fatalf("a flag is drawn as an alarm:\n%q", raw)
+	}
+}
+
 func TestARowUnderATaskIsANote(t *testing.T) {
 	for _, state := range []string{"open", "doing", "waiting", "done", "canceled", "parked"} {
 		t.Run("parent "+state, func(t *testing.T) {

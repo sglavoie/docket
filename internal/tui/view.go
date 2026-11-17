@@ -128,7 +128,9 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 		out = append(out, word{m.colors().dim, fmt.Sprintf("%d/%d", under.done, under.total)})
 	}
 	if l.Flag {
-		out = append(out, word{paint(m.colors().alert + sgrBold), "!"})
+		// The alert colour is kept for alarms, overdue and not written, so a
+		// list of flags never reads as one. Bold keeps it seen.
+		out = append(out, word{paint(m.colors().warn + sgrBold), "!"})
 	}
 	if picked && m.at.list != kindToday {
 		// t toggles the pick, so the row says which way the key will go.

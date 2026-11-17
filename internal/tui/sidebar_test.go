@@ -722,3 +722,34 @@ func TestTheSidebarDeletesAProjectAndUndoesIt(t *testing.T) {
 		t.Fatalf("msg = %q\n%s", h.m.msg, h.side())
 	}
 }
+
+// The sidebar is there to show what needs attention, so an age past the
+// Stale rule is drawn in the text colour and a younger one stays dim.
+func TestANeglectedProjectsAgeStandsOut(t *testing.T) {
+	h := two(t)
+	h.clock = h.clock.Add(3 * 24 * time.Hour)
+	h.press("j")
+	if raw := h.m.View().Content; !strings.Contains(raw, darkPalette.dim+"3d") {
+		t.Fatalf("a recent age is not dim:\n%q", raw)
+	}
+	h.clock = h.clock.Add(12 * 24 * time.Hour)
+	h.press("k")
+	if raw := h.m.View().Content; !strings.Contains(raw, darkPalette.text+"15d") {
+		t.Fatalf("a stale age is not in the text colour:\n%q", raw)
+	}
+}
+
+// Saved filters are the user's own places, set apart from the four lists
+// by a blank line, as Projects is.
+func TestSavedFiltersAreAGroupOfTheirOwn(t *testing.T) {
+	h := two(t)
+	h.press("/", `"One"`, "enter", ":", `"save one"`, "enter", "esc")
+	var side []string
+	for _, l := range h.lines()[:9] {
+		side = append(side, strings.Join(strings.Fields(string([]rune(l)[:sidebarCols])), " "))
+	}
+	want := []string{"Inbox", "Today", "Waiting 1", "Stale", "", "/one", "", "▌ Projects"}
+	if got := side[:len(want)]; !slices.Equal(got, want) {
+		t.Fatalf("sidebar = %q\nwant %q", got, want)
+	}
+}

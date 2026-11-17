@@ -964,7 +964,7 @@ func TestPaletteFollowsBackground(t *testing.T) {
 		before := ansi.Strip(h.m.View().Content)
 		h.m.Update(tea.BackgroundColorMsg{Color: tc.background})
 		view := h.m.View().Content
-		if h.m.colors() != tc.want || !strings.Contains(view, tc.want.accent+"●") || !strings.Contains(view, tc.want.alert+sgrBold+"!") {
+		if h.m.colors() != tc.want || !strings.Contains(view, tc.want.accent+"●") || !strings.Contains(view, tc.want.warn+sgrBold+"!") {
 			t.Fatalf("background %v did not paint its palette", tc.background)
 		}
 		if ansi.Strip(view) != before {

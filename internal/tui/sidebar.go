@@ -949,8 +949,10 @@ func (m *Model) sideLines(w, h int) []string {
 		entry bool // a destination, which a marker counts when it is hidden
 	}
 	var lines []line
-	for _, e := range m.side {
-		if e.kind == kindProjects {
+	for i, e := range m.side {
+		// The filters the user saved are a group of their own, set apart
+		// from the four lists every outline has.
+		if e.kind == kindProjects || (e.kind == kindFilter && m.side[i-1].kind != kindFilter) {
 			lines = append(lines, line{})
 		}
 		sel := e.same(m.sel)
@@ -966,7 +968,13 @@ func (m *Model) sideLines(w, h int) []string {
 			if e.idle {
 				info += m.colors().dim + "∅" + sgrReset
 			} else if e.age > 0 {
-				info += m.colors().dim + strconv.Itoa(e.age) + "d" + sgrReset
+				// An age past the Stale rule is in the text colour, so the
+				// project left alone is the one the eye finds.
+				style := m.colors().dim
+				if e.age >= int(staleAfter/(24*time.Hour)) {
+					style = m.colors().text
+				}
+				info += style + strconv.Itoa(e.age) + "d" + sgrReset
 			}
 			info = strings.TrimRight(info, " ")
 		case e.count > 0:

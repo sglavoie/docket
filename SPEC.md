@@ -259,7 +259,9 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
   and doing rows untouched for 14 days, leaving out rows whose start day is
   still ahead.
 - **Saved filters** follow the four lists, each as `/name`, in the order
-  they were saved. They carry no count, so the scan stays one pass.
+  they were saved, set apart from the lists by a blank line, since they are
+  the user's places and the lists are every outline's. They carry no count,
+  so the scan stays one pass.
 - **Projects** shows every top-level row as one outline. It is where a
   project is added, renamed, reordered, parked or closed, with the ordinary
   keys.
@@ -269,7 +271,9 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
   the warning colour for a deadline within a week or the alert colour and
   bold for one overdue, so the two are not told apart by colour alone, then
   `∅` when
-  it holds no task to do, else the whole days since anything inside changed.
+  it holds no task to do, else the whole days since anything inside changed:
+  dim, and in the text colour from 14 days, the Stale rule, so the project
+  left alone is the one the eye finds.
 - **Parked** projects are a count. Done and canceled projects are not listed.
   While the pane is inside a parked project the count carries the dimmed
   selection mark, since no entry can; it is still not a destination.
@@ -1268,7 +1272,9 @@ as `@Jan 5 2027` or `@@Jan 5 2027`, even across a nearby year boundary.
 An overdue deadline takes the alert colour and bold, and one within a week
 the warning colour, as the sidebar marks the row's project, so the row
 behind a mark is found; a later one is dim. They hold until the row is
-done or canceled, which dims the whole row. A word starting `http://` or
+done or canceled, which dims the whole row. The flag `!` is bold in the
+warning colour: the alert colour is kept for an overdue deadline and what
+was not written, so a list of flagged rows raises no alarm. A word starting `http://` or
 `https://` is written as a terminal hyperlink, without the punctuation a
 sentence leaves after it; every piece of an address broken across lines
 carries the whole of it, so it opens wherever it is clicked. `gl` opens the
