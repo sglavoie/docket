@@ -92,7 +92,8 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 	quiet := l.Closed() || l.State == sigil.Parked || l.Later(m.today())
 	day := m.today().Format("2006-01-02")
 	picked := isPicked(r.Fields, l, day)
-	if m.at.list == kindToday && !picked && (l.Start != day || l.State == "") {
+	start := l.StartOn(m.today())
+	if m.at.list == kindToday && !picked && (start != day || l.State == "") {
 		// Today holds its rows until it is opened again, so one unpicked
 		// there recedes where it sits.
 		quiet = true
@@ -186,8 +187,8 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 		out = append(out, word{paint(style), label})
 	}
 	// Today names the day a row starts on already, as it names the pick.
-	if l.Start != "" && (l.Start != day || m.at.list != kindToday) {
-		label, _ := sigil.DueLabel(l.Start, m.today())
+	if start != "" && (start != day || m.at.list != kindToday) {
+		label, _ := sigil.DueLabel(start, m.today())
 		out = append(out, word{m.colors().dim, "@" + label})
 	}
 	if l.Every != "" {
@@ -430,13 +431,30 @@ func wrap(words []word, width int) []string {
 	return lines
 }
 
-// linkOf is the web address a word is, without the punctuation a sentence
+// linkSchemes are the addresses a row draws as links: the web, a Mail
+// message, and a file named by its URL.
+var linkSchemes = []string{"https://", "http://", "message://", "file://"}
+
+// linkOf is the address a word is, without the punctuation a sentence
 // leaves after it, or nothing.
 func linkOf(w string) string {
-	if !strings.HasPrefix(w, "https://") && !strings.HasPrefix(w, "http://") {
+	for _, scheme := range linkSchemes {
+		if strings.HasPrefix(w, scheme) {
+			return strings.TrimRight(w, ".,;:!?)")
+		}
+	}
+	return ""
+}
+
+// pathOf is the file a word names, as an absolute path or one from the home
+// folder, without the punctuation a sentence leaves after it, or nothing. It
+// reads no disk, so drawing never waits on one.
+func pathOf(w string) string {
+	w = strings.TrimRight(w, ".,;:!?)")
+	if len(w) < 2 || !(strings.HasPrefix(w, "/") || strings.HasPrefix(w, "~/")) {
 		return ""
 	}
-	return strings.TrimRight(w, ".,;:!?)")
+	return w
 }
 
 // whereFlat is where a row in a flat view lives: its project, or, when the
@@ -599,6 +617,17 @@ func (m *Model) ruler(drawn int, whole bool) string {
 	return strconv.Itoa(min(m.top*100/max(len(m.vis)-drawn, 1), 99)) + "%"
 }
 
+// savedFilter reports whether a filter is saved under the name.
+func (m *Model) savedFilter(name string) bool {
+	m.scan()
+	for _, f := range m.filters {
+		if f.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *Model) emptyText() string {
 	switch {
 	case m.at.query != "" && m.ask == nil:
@@ -606,6 +635,9 @@ func (m *Model) emptyText() string {
 		return "Nothing matches. Esc drops the filter."
 	case m.at.query != "":
 		return "Nothing matches."
+	case m.at.list == kindToday && m.savedFilter("next"):
+		// What could be done is where a day's picks come from.
+		return "Nothing picked for today. t picks a row; /next lists what can be done."
 	case m.at.list == kindToday:
 		return "Nothing picked for today. Press t on a row to pick it."
 	case m.at.list == kindWaiting:

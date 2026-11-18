@@ -165,6 +165,16 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
         present()
     }
 
+    /// Shows Docket on the row whose text this is, by Go to (see
+    /// `DocketGoTo`). With no Docket running, showing starts one and nothing
+    /// is typed, since keys sent now would reach it before it is drawn.
+    func show(row text: String) {
+        let running = surfaceView != nil && pendingStart == nil
+        show()
+        guard running, let surfaceView else { return }
+        surfaceView.type(DocketGoTo.steps(for: text))
+    }
+
     private func present() {
         NSApp.activate(ignoringOtherApps: true)
         restoreVisibleFrameIfNeeded()

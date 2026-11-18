@@ -82,6 +82,15 @@ final class PreferencesModel: ObservableObject {
         }
     }
 
+    /// Spotlight finds Docket's open rows.
+    @Published var spotlight: Bool {
+        didSet {
+            guard spotlight != oldValue else { return }
+            DocketSpotlightPreference.save(spotlight, to: defaults)
+            onSpotlightChange?(spotlight)
+        }
+    }
+
     /// The zoom Docket.app launches at; nil leaves it to the Ghostty config.
     @Published var defaultFontSize: Float? {
         didSet {
@@ -254,6 +263,7 @@ final class PreferencesModel: ObservableObject {
     var onTerminalThemeChange: (() -> Void)?
     var onTerminalFontChange: (() -> Void)?
     var onDockBadgeChange: ((Bool) -> Void)?
+    var onSpotlightChange: ((Bool) -> Void)?
     var onFollowAppearanceChange: ((Bool) -> Void)?
     /// True while the recorder listens, so the live shortcuts can step aside
     /// and be recorded like any other key.
@@ -274,6 +284,7 @@ final class PreferencesModel: ObservableObject {
         availableThemes = TerminalTheme.available()
         terminalFont = DocketTerminalFontPreference.load(from: defaults)
         dockBadge = DocketDockBadgePreference.load(from: defaults)
+        spotlight = DocketSpotlightPreference.load(from: defaults)
         followAppearance = DocketFollowAppearancePreference.load(from: defaults)
         binaryOverride = defaults.string(forKey: DocketBinaryResolver.overrideDefaultsKey) ?? ""
         environmentOverrides = DocketEnvironmentOverrides.load(from: defaults)
@@ -530,6 +541,12 @@ struct PreferencesView: View {
                        : "Show overdue count beside the menu-bar icon",
                        isOn: $model.dockBadge)
                 note("Open rows whose deadline has passed, as docket ls '@overdue' lists them, read once a minute.")
+            }
+
+            Section {
+                Toggle("Show rows in Spotlight", isOn: $model.spotlight)
+                note("Open, doing and waiting rows outside parked and closed projects, read with docket ls every "
+                    + "five minutes. Choosing one shows Docket on it, through Go to. Off removes them from Spotlight.")
             }
         }
     }

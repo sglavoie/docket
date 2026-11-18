@@ -235,6 +235,20 @@ enum DocketDockBadgePreference {
     }
 }
 
+/// Whether Spotlight finds Docket's open rows. Persisted in `UserDefaults`
+/// key `docketSpotlight`; absent reads as on. Off removes what was indexed.
+enum DocketSpotlightPreference {
+    static let defaultsKey = "docketSpotlight"
+
+    static func load(from defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: defaultsKey) as? Bool ?? true
+    }
+
+    static func save(_ enabled: Bool, to defaults: UserDefaults = .standard) {
+        defaults.set(enabled, forKey: defaultsKey)
+    }
+}
+
 /// Where the overdue count goes: the Dock icon when there is one, else beside
 /// the menu-bar icon; nowhere when turned off or when nothing is overdue.
 struct DocketBadgePlacement: Equatable {

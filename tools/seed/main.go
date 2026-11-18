@@ -5,7 +5,8 @@
 //
 //	go run ./tools/seed -db dev.db -tasks 6000
 //
-// It refuses a database that already holds rows. The same -seed gives the
+// The Inbox opens with a row for each kind of address `gl` opens, and one
+// linked to another. It refuses a database that already holds rows. The same -seed gives the
 // same outline, with dates relative to today.
 package main
 
@@ -14,6 +15,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -253,7 +255,9 @@ func compact(xs []string) []string {
 	return out
 }
 
-func (g *gen) build(projects, target int) {
+// build makes the outline. dir is the folder the database is in, which a
+// seeded link opens.
+func (g *gen) build(projects, target int, dir string) {
 	start := g.now.Add(-400 * day).UnixMilli()
 	g.start, g.end = start, g.now.UnixMilli()
 	g.add("", fixedPos, start, map[string]string{sigil.FieldText: "Inbox"})
@@ -329,13 +333,49 @@ func (g *gen) build(projects, target int) {
 
 	// The Inbox: recent captures, not yet filed.
 	g.end = g.now.UnixMilli()
-	ipos := ""
+	ipos, first := "", ""
 	for range 30 + g.r.IntN(20) {
 		ipos = outline.Between(ipos, "")
+		if first == "" {
+			first = ipos
+		}
 		g.task(inboxID, ipos, g.now.Add(-10*day).UnixMilli(), 2)
 	}
 
 	g.pickToday()
+	// After the picks, which read every row before them.
+	g.links(first, dir)
+}
+
+// links heads the Inbox with a row for each address `gl` opens: a web page,
+// a folder, a file at a line and one from the home folder, then a row linked
+// to another, which `gl` follows. A Mail link is left out: one made up names
+// no message, and Mail says it cannot open it. They draw on no randomness,
+// so the rest of the outline is unchanged.
+func (g *gen) links(before, dir string) {
+	texts := []string{
+		"Read the Go release notes https://go.dev/doc/devel/release",
+		"Tidy the folder this database is in " + dir,
+		"Fix the first rule in " + filepath.Join(dir, "SPEC.md") + ":10",
+		"Sort out ~/Downloads",
+	}
+	at := g.now.Add(-time.Hour).UnixMilli()
+	pos := ""
+	var target string
+	for i, text := range texts {
+		pos = outline.Between(pos, before)
+		r := g.add(inboxID, pos, at, map[string]string{sigil.FieldText: text})
+		r.state, r.changed = sigil.Open, at
+		if i == 0 {
+			target = r.id
+		}
+	}
+	pos = outline.Between(pos, before)
+	r := g.add(inboxID, pos, at, map[string]string{
+		sigil.FieldText: "Follow the link to the release notes task",
+		"link":          target,
+	})
+	r.state, r.changed = sigil.Open, at
 }
 
 // pickToday picks a dozen open tasks for today, in order.
@@ -425,7 +465,11 @@ func main() {
 	}
 
 	g := &gen{r: rand.New(rand.NewPCG(*seed, 0)), now: time.Now()}
-	g.build(*projects, *tasks)
+	abs, err := filepath.Abs(*path)
+	if err != nil {
+		fail(err)
+	}
+	g.build(*projects, *tasks, filepath.Dir(abs))
 	n, err := commit(st, g.rows)
 	if err != nil {
 		fail(err)

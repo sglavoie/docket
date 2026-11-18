@@ -621,3 +621,39 @@ extension Ghostty.SurfaceView: NSTextInputClient {
         return NSSize(width: Double(size.cell_width_px) / scale, height: Double(size.cell_height_px) / scale)
     }
 }
+
+// MARK: Typing for Docket.app
+
+extension Ghostty.SurfaceView {
+    /// Types `steps` into Docket as a person would: keys through `keyDown`, so
+    /// Ghostty encodes them as it encodes any key, and text as Ghostty takes
+    /// text it is handed, which Docket reads as typed into its prompt.
+    func type(_ steps: [DocketGoTo.Step]) {
+        guard let surface else { return }
+        for step in steps {
+            switch step {
+            case .escape:
+                press(characters: "\u{1b}", keyCode: 53)
+            case .enter:
+                press(characters: "\r", keyCode: 36)
+            case .key(let character):
+                press(characters: character, keyCode: Self.keyCodes[character] ?? 0)
+            case .text(let text):
+                let len = text.utf8CString.count
+                text.withCString { ptr in ghostty_surface_text(surface, ptr, UInt(len - 1)) }
+            }
+        }
+    }
+
+    /// The ANSI key codes of the letters Docket.app types.
+    private static let keyCodes: [String: UInt16] = ["f": 3]
+
+    private func press(characters: String, keyCode: UInt16) {
+        guard let event = NSEvent.keyEvent(
+            with: .keyDown, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+            windowNumber: window?.windowNumber ?? 0, context: nil, characters: characters,
+            charactersIgnoringModifiers: characters, isARepeat: false, keyCode: keyCode
+        ) else { return }
+        keyDown(with: event)
+    }
+}

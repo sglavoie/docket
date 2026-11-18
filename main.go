@@ -131,9 +131,14 @@ func run() error {
 	if backup != nil {
 		m.Notice("no backup today: " + backup.Error())
 	}
-	_, err = tea.NewProgram(m).Run()
+	final, err := tea.NewProgram(m).Run()
 	// The TUI turned on light and dark reports; a shell must not receive them.
 	fmt.Print(ansi.ResetModeLightDark)
+	if last, ok := final.(*tui.Model); ok && err == nil {
+		if line := last.Farewell(); line != "" {
+			fmt.Println("docket: " + line)
+		}
+	}
 	return err
 }
 

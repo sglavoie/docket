@@ -69,7 +69,7 @@ a rule here changes this file first.
 | `todaypos` | 7 | Fractional position in Today; read only while the row is in Today |
 
 | `start` | 5 | Not before this day, a calendar day |
-| `repeat` | 5 | An interval, as in `2w`: the row comes back after it is closed |
+| `repeat` | 5 | An interval, as in `2w`: the row comes back after it is closed; a waiting row with a start day and no deadline comes back while it waits instead (see Follow-up) |
 | `link` | 13 | The row this one points at |
 | `color` | 19 | A project's colour: a name, or a hex value as `#rrggbb` |
 | `context` | 20 | Where the work is done: one name, normalised as a tag without a value |
@@ -449,6 +449,8 @@ The pane shows the rows under one row, or a list.
   closed rows.
 - **An empty pane says why, and names the key that changes it**, dimmed
   on its first line: `o` in an outline, `a` in the Inbox, `t` for Today,
+  and `/next` beside it when a filter is saved under that name, since what
+  could be done is where a day's picks come from,
   `$waiting` for Waiting, `:closed` when only closed rows are hidden, and
   `Esc` under a held filter that matches nothing.
 - **The screen follows the clock.** It is read again once a minute, so a day
@@ -603,8 +605,14 @@ The link is the field `link`, so it is undone, backed up and synced like any
 other change; copy and export do not carry it, since a pasted row is a new
 row.
 
-With no row link, `gl` opens the first web address in the row's text,
-dropping trailing sentence punctuation as the drawn hyperlink does. It
+With no row link, `gl` opens the first address in the row's text,
+dropping trailing sentence punctuation as the drawn hyperlink does: a web
+address, a Mail message (`message://`, as quick capture's `⌘K` writes one),
+a file by its URL (`file://`), or a file by its path, absolute or from the
+home folder (`/tmp/a.pdf`, `~/notes.txt`). A path may end in `:line` or
+`:line:column`, as a compiler names a place, and opens the file. A path
+naming no file is passed over, and when nothing else answers the status line
+says `no file at /that/path`; only `gl` reads the disk, never drawing. It
 starts the system opener (`open` on macOS, `xdg-open` elsewhere) without
 waiting; the status line says `opened <address>` or the error starting the
 opener. This changes no row, makes no undo step or log entry, leaves `.`
@@ -1270,7 +1278,7 @@ otherwise.
 | `g;` `g,` | Back to the rows changed this session, and on again | 17 |
 | `a` `m` | Capture to the Inbox from anywhere; move to a project or heading | 3 |
 | `gf` | Go to the whole project the row is filed in, the cursor on the row; a jump | 22 |
-| `L` `gl` | Link the row to another; follow the link, else open its first web address, else go back to the row linking here | 13, 16, 19 |
+| `L` `gl` | Link the row to another; follow the link, else open its first web address, Mail link or file, else go back to the row linking here | 13, 16, 19 |
 | `v` `V` | Pick a row; sweep with motions; `o` while sweeping swaps its ends | 4, 11, 24 |
 | `gv` | Select again the rows last cleared | 24 |
 | `/` `:` | Filter, command | 4 |
@@ -1698,11 +1706,11 @@ the warning colour, as the sidebar marks the row's project, so the row
 behind a mark is found; a later one is dim. They hold until the row is
 done or canceled, which dims the whole row. The flag `!` is bold in the
 warning colour: the alert colour is kept for an overdue deadline and what
-was not written, so a list of flagged rows raises no alarm. A word starting `http://` or
-`https://` is written as a terminal hyperlink, without the punctuation a
+was not written, so a list of flagged rows raises no alarm. A word starting `http://`,
+`https://`, `message://` or `file://` is written as a terminal hyperlink, without the punctuation a
 sentence leaves after it; every piece of an address broken across lines
 carries the whole of it, so it opens wherever it is clicked. `gl` opens the
-first address from the keyboard when the row has no row link.
+first address, or file path, from the keyboard when the row has no row link.
 
 **Parked** is "not now" for any row: a project leaves the active list, and a
 parked row and everything under it is in no computed list however long it
@@ -1729,6 +1737,19 @@ the same undo step. Canceled, parked, waiting, doing and open rows and notes
 stay as they are, and no date under it changes. One `u` restores the parent's
 dates and every reopened row; `.` repeats the close.
 
+**Follow-up.** A waiting row that repeats, with a start day and no
+deadline, is a follow-up: `Chase Ann $waiting *3d @@mon` comes back to Today
+on Monday and every three days after while it waits, so a reply that does
+not come is chased without a reminder of its own. Its start day is read as
+it stands: from the day it names, stepped on by the interval to the first
+such day not before today. Today, `@@date` and the drawn `@@` read that
+day, so between follow-ups the row names the next one; `A` still opens the
+start as typed. Nothing is written as the days pass, so a follow-up missed
+is gone from Today until the next, as any start day is. Closing a follow-up
+closes it for good, since what it waited for has come: it does not move
+on. A waiting row with a deadline is not a follow-up but a repeating row
+that waits, and moves on when closed as any repeating row does.
+
 ## Outside the app
 
 `docket add LINE` captures without opening the outline. The line is read as
@@ -1752,6 +1773,12 @@ changes nothing, prints nothing when nothing matches, and does not sync.
 For example, `docket ls '"per the spec"'` finds a phrase, and
 `docket ls '$first -<$'` prints the next action under each heading and project.
 
+Quitting `docket` leaves one line in the shell, once the screen is gone:
+what the day finished and what Today still holds, as `docket: 4 done today
+· 2 still in Today`. Done counts rows closed as done on this day, wherever
+they are; Today counts its picks not yet closed, as the sidebar does. A day
+with neither leaves nothing, and a quit that failed leaves only its error.
+
 `docket --version` prints `docket version V (commit: C, built: T)`, the
 parentheses left out of a plain `go build`.
 
@@ -1764,6 +1791,10 @@ global shortcut that shows or hides it. It runs the ordinary `docket` on a
 pty inside an embedded Ghostty terminal and changes nothing in the outline
 by itself; [`macos/README.md`](macos/README.md) is its contract. Quick capture
 is `docket add`, and the overdue count it shows is `docket ls '@overdue'`.
+Its Today widget draws what `docket ls '$today'` and `docket ls '@overdue'`
+print, and Spotlight finds the open rows `docket ls` prints; choosing one
+types `Esc`, `f`, the row's text and `Enter`, so Go to shows it and nothing
+changes.
 A `docket://capture` link, the Services and Share menus, and `⌘K` in quick
 capture (the browser tab, Mail messages or Finder selection in front) only
 fill quick capture's line: Enter still sends it, so nothing from outside adds
@@ -1946,6 +1977,14 @@ a row unseen.
 26. **Settle.** Done and canceled rows sink below the open ones in Today
    and in a flat filter, read when the view is opened, so nothing moves
    under the cursor. Outlines keep their order. *Built.*
+
+27. **From v1.** `gl` opens a Mail link, a file URL or a file path as well
+   as a web address. A waiting row that repeats from a start day, with no
+   deadline, comes back to Today every interval while it waits, and closing
+   it closes it. Quitting leaves a line saying what the day finished and
+   what Today still holds. An empty Today names `/next` beside `t`.
+   Docket.app adds a Today widget and Spotlight results, read with `docket
+   ls`. *Built.*
 
 Not planned: reminders, attachments, a details panel (a body is read in the
 pane, not beside it), import from v1, any

@@ -1,4 +1,5 @@
 import AppKit
+import CoreSpotlight
 import GhosttyKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, StatusItemDelegate {
@@ -24,6 +25,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     private var captureReady = false
     /// Reads `docket ls '@overdue'` for the badge.
     let overdue = DocketOverdueMonitor()
+    /// Reads Today and what is overdue for the widget, while one is placed.
+    let agenda = DocketAgendaMonitor()
+    /// Gives Spotlight the open rows.
+    let spotlight = DocketSpotlightIndexer()
     /// Which Docket the next session runs, asked again before each one.
     private let sessionBinaries = DocketSessionBinaryStore()
     /// The running Docket's `--version` line, for About.
@@ -134,7 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         controller.onWillStartSession = { [weak self] ready in self?.prepareSession(then: ready) }
         controller.onSessionEnd = { [weak self, weak model] in
             model?.sessionEnvironment = nil
-            self?.overdue.refresh()
+            self?.refreshReadings()
         }
         controller.onHiddenFailure = { [weak self] summary in self?.announceHiddenFailure(summary) }
         terminal = controller
@@ -191,13 +196,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
 
     /// Leaving Docket is when its changes are likeliest to have moved the count.
     func applicationDidResignActive(_ notification: Notification) {
-        overdue.refresh()
+        refreshReadings()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         // Docket gets SIGHUP from the freed surface, like a closed terminal; it
         // has saved every change as it was made.
         overdue.stop()
+        agenda.stop()
         terminal?.teardown()
     }
 
@@ -318,7 +324,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             let model = self.preferencesModel
             model.sessionEnvironment = model.effectiveEnvironment?.commandEnvironment
             ready()
-            self.overdue.refresh()
+            self.refreshReadings()
             self.flushPendingDrafts()
         }
     }
@@ -335,6 +341,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         if preferences?.isVisible ?? false {
             preferencesModel.refreshBinaryStatus()
         }
+    }
+
+    /// Reads again what Docket.app shows of the outline: the badge, the
+    /// widget's agenda and Spotlight's rows. Each reads only when it is on.
+    private func refreshReadings() {
+        overdue.refresh()
+        agenda.refresh()
+        spotlight.refresh()
     }
 
     /// What `docket add` and `docket ls` run with: the session's Docket and the
@@ -360,9 +374,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         switch link {
         case .show:
             if let terminal { terminal.show() } else { showLaunchErrorAgain() }
+        case .find(let text):
+            if let terminal { terminal.show(row: text) } else { showLaunchErrorAgain() }
         case .capture(let text, let urls):
             presentCapture(text == nil && urls.isEmpty ? nil : DocketCaptureDraft.build(title: text, links: urls))
         }
+    }
+
+    /// A Spotlight result: Docket on the row it names.
+    func application(
+        _ application: NSApplication, continue userActivity: NSUserActivity,
+        restorationHandler: @escaping ([NSUserActivityRestoring]) -> Void
+    ) -> Bool {
+        guard userActivity.activityType == CSSearchableItemActionType,
+              let id = userActivity.userInfo?[CSSearchableItemActivityIdentifier] as? String,
+              let text = DocketSpotlightIndexer.text(fromIdentifier: id) else { return false }
+        open(DocketLink.find(text).url)
+        return true
     }
 
     /// Quick capture holding `draft`, or as it was when there is none. Never
@@ -460,7 +488,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             guard let self, self.sessionBinaries.current == nil, self.terminal?.hasSession != true else { return nil }
             return "Docket could not be found. Check Settings › Advanced."
         }
-        quickCapture.onCaptured = { [weak self] in self?.overdue.refresh() }
+        quickCapture.onCaptured = { [weak self] in self?.refreshReadings() }
         serviceProvider.present = { [weak self] draft in self?.presentCapture(draft) }
         NSApp.servicesProvider = serviceProvider
         NSUpdateDynamicServices()
@@ -469,6 +497,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         overdue.target = { [weak self] in self?.commandTarget }
         overdue.onChange = { [weak self] _ in self?.showBadge() }
         overdue.start()
+
+        agenda.target = { [weak self] in self?.commandTarget }
+        agenda.start()
+        spotlight.isEnabled = { [weak model] in model?.spotlight ?? false }
+        spotlight.target = { [weak self] in self?.commandTarget }
+        spotlight.start()
+        model.onSpotlightChange = { [weak self] _ in self?.spotlight.refresh() }
 
         syncStatusItem(to: model.activationPolicy)
         let hotKeys = HotKeyCenter()
@@ -617,7 +652,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         pending.cancel()
         pendingEnvironmentReload = nil
         ghostty?.reloadConfig()
-        overdue.refresh()
+        refreshReadings()
     }
 
     /// What Preferences shows while no default zoom is set. With one set the

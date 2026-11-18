@@ -1659,7 +1659,10 @@ func (m *Model) setFields(id string, want map[string]string) []outline.Op {
 		if !ok || value == have[name] {
 			continue
 		}
-		if every := field(sigil.FieldRepeat); name == sigil.FieldState && value == sigil.Done && every != "" {
+		// A follow-up is waited on, not repeated: once closed, what it waited
+		// for has come, so it closes for good.
+		followUp := have[sigil.FieldState] == sigil.Waiting && field(sigil.FieldStart) != "" && field(sigil.FieldDue) == ""
+		if every := field(sigil.FieldRepeat); name == sigil.FieldState && value == sigil.Done && every != "" && !followUp {
 			// A repeating row is never done: closing it moves it on to its
 			// next day and leaves it open. With a deadline, that is the
 			// next deadline; without one, the day it comes back.

@@ -63,8 +63,11 @@ targets:
       - sdk: IOSurface.framework
       - sdk: QuartzCore.framework
       - sdk: UniformTypeIdentifiers.framework
+      - sdk: WidgetKit.framework
+      - sdk: CoreSpotlight.framework
       # Embedded in Contents/PlugIns.
       - target: DocketShare
+      - target: DocketWidgets
     scheme:
       testTargets:
         - DocketAppTests
@@ -84,6 +87,25 @@ targets:
         # Sandboxed, and nothing else: it hands off through a docket:// link.
         CODE_SIGN_ENTITLEMENTS: DocketShare/DocketShare.entitlements
         SKIP_INSTALL: YES
+  DocketWidgets:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: DocketWidgets
+        excludes:
+          - DocketWidgets.entitlements
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_NAME: DocketWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.docket.widgets
+        INFOPLIST_FILE: DocketWidgets/Info.plist
+        # Sandboxed, as WidgetKit requires, with the app's App Group.
+        CODE_SIGN_ENTITLEMENTS: DocketWidgets/DocketWidgets.entitlements
+        SKIP_INSTALL: YES
+    dependencies:
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
   DocketAppTests:
     type: bundle.unit-test
     platform: macOS

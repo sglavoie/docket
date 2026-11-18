@@ -57,6 +57,26 @@ func (l Line) Later(today time.Time) bool {
 	return l.Start > civil(today).Format(isoDay) && !l.Closed()
 }
 
+// FollowsUp reports a follow-up: a waiting row that repeats, with a start
+// day and no deadline. Its start day steps on by the interval while it
+// waits, bringing it back to mind until what it waits for comes, and closing
+// it closes it for good.
+func (l Line) FollowsUp() bool {
+	return l.State == Waiting && l.Every != "" && l.Start != "" && l.Due == ""
+}
+
+// StartOn is the start day as it stands today. A follow-up's start, once
+// reached, steps on by its interval, so it is the first such day not before
+// today; every other row's start is the day it names. Nothing is written as
+// the days pass: the stored start stays the first.
+func (l Line) StartOn(today time.Time) string {
+	day := civil(today).Format(isoDay)
+	if !l.FollowsUp() || l.Start >= day {
+		return l.Start
+	}
+	return NextDate(l.Start, l.Every, civil(today).AddDate(0, 0, -1))
+}
+
 // Closed reports a state that needs nothing further.
 func (l Line) Closed() bool { return l.State == Done || l.State == Canceled }
 

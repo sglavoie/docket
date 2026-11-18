@@ -3,8 +3,8 @@
 A standalone macOS app that runs `docket` in an embedded Ghostty terminal: its own
 window, Dock icon, menu-bar icon, and global shortcuts. It spawns the ordinary
 `docket` binary on a pty. Nothing in it changes the outline itself: quick capture
-runs `docket add` and the overdue count runs `docket ls`, each one more window on
-the database under SPEC.md's Two windows. None of it runs under `just check`.
+runs `docket add`, and the overdue count, the widget and Spotlight run `docket
+ls`, each one more window on the database under SPEC.md's Two windows. None of it runs under `just check`.
 
 v2's Docket.app takes v1's place: the same name and bundle ID (`io.github.sglavoie.docket`), so
 installing it replaces v1's app and keeps the Settings both share. v1 settings with
@@ -187,19 +187,19 @@ or clear the shortcut in Settings › Shortcuts; it is stored as
 Each of these opens quick capture holding a line, and none of them sends it:
 the line is read, finished and sent with Enter, so nothing from outside adds a
 row unseen. A line typed and not yet sent is kept, and what arrives goes after
-it. Docket draws a web address in a row as a link that `gl` opens, so an address
-goes into the line as it is; with a title in front, the title is selected, so
+it. `gl` on a row opens its first web address, Mail link or file path, so an
+address goes into the line as it is; with a title in front, the title is selected, so
 typing replaces it.
 
 - **⌘K in quick capture** adds what the app in front shows: the Safari, Chrome,
   Brave or Edge tab (its title and address), the messages selected in Mail
   (the first subject and a `message://` link for each) or the items selected in
-  Finder (their paths). An empty line takes the title too; a typed one keeps
+  Finder (their paths, a path holding a blank as its `file://` URL so it
+  stays one word). An empty line takes the title too; a typed one keeps
   its words and gains the links. The hint names what ⌘K adds, and only when the
   app in front is one it reads. The first ⌘K per app asks macOS for permission
   to automate it; a refusal is named on the panel, and is changed in System
-  Settings › Privacy & Security › Automation. `gl` opens web addresses only, so a
-  Mail link or a path stays text to copy.
+  Settings › Privacy & Security › Automation.
 - **Services › Capture to Docket** takes the selected text in any app. A
   selection that is only a web address leaves the title to type.
 - **Share › Docket**, from Safari, Finder, Preview and any app with a Share
@@ -210,6 +210,8 @@ typing replaces it.
   `url` (repeatable). With neither it opens the panel as it was;
   `docket://show` shows Docket. A link that starts Docket.app waits for its
   first session to find Docket before the panel opens.
+- **`docket://find?text=…`** shows Docket on the row with that text, as a
+  Spotlight result and a widget row do (see Spotlight).
 
 ### Overdue count
 
@@ -220,6 +222,38 @@ goes on the Dock icon, or beside the menu-bar icon when there is no Dock icon,
 and nothing shows while none are overdue. Settings › General turns it off
 (`docketDockBadge`, on by default); off, nothing is run. A run that fails leaves
 the count blank rather than stale, and logs why.
+
+### Widget
+
+The Docket Today widget (desktop and Notification Center, small, medium or
+large) shows Today as Docket's header counts it, `3 to do · 2 done`, and how
+many rows are overdue; the medium and large sizes list the overdue rows, then
+Today's open ones, each with its project. While a Docket widget is placed,
+Docket.app runs `docket ls '$today'` and `docket ls '@overdue'` once a minute and
+whenever the overdue count is read again, writes what changed to `agenda.json`
+in the App Group container (`MH33GYKDAW.io.github.sglavoie.docket`), and asks
+the widget to redraw. The widget is sandboxed and runs nothing: it shows what
+Docket.app last read, and past midnight says to open Docket instead of showing
+a day that is over. Tapping the widget shows Docket; tapping a row shows Docket
+on that row.
+
+### Spotlight
+
+Spotlight finds Docket's open rows: those `docket ls '$open|doing|waiting
+-^$parked|done|canceled'` prints, so open, doing and waiting rows outside parked
+and closed projects. A result shows the row's text over where it lives, its
+state unless open and its deadline, and matches its text, project and tags.
+Docket.app reads them when it starts, every five minutes, and whenever the
+overdue count is read again, and rebuilds the index only when what it read
+changed. Settings › General › Show rows in Spotlight turns it off and removes
+them (`docketSpotlight`, on by default).
+
+Choosing a result shows Docket on that row by typing what you would: `Esc`,
+which ends whatever is open in Docket and keeps what was typed there, then `f`,
+the row's text into Go to, and `Enter`. Go to only moves, and is a jump, so
+`Ctrl+O` goes back. Rows that read alike are one result, and Go to opens the
+best match for the text. With no Docket running, choosing a result starts one
+and types nothing.
 
 ### Appearance
 
@@ -339,8 +373,10 @@ DocketApp/Shell/            window, status item, hotkeys, preferences, quick cap
                             Docket resolution, docket add / ls runs
 DocketApp/Resources/        Info.plist, entitlements, docket-launch, Assets.xcassets
 DocketShare/                Share extension: hands what was shared to quick capture
-Shared/                     docket:// links, capture lines, the share hand-off;
-                            compiled into the app and the extension
+DocketWidgets/              Today widget: draws the agenda Docket.app writes
+Shared/                     docket:// links, capture lines, the share hand-off,
+                            docket ls rows and the agenda; compiled into the app
+                            and the extensions
 DocketAppTests/             XCTest
 ```
 

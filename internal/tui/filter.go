@@ -489,7 +489,7 @@ func (m *Model) holds(r *outline.Row, l sigil.Line, c cond, today time.Time) boo
 		case "later":
 			return l.Later(today)
 		}
-		return l.Start == c.value
+		return l.StartOn(today) == c.value
 	case '*':
 		return l.Every != "" && (c.value == "" || l.Every == c.value)
 	case '&':

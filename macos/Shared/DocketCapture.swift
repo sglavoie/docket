@@ -12,8 +12,12 @@ import Foundation
 /// - `docket://` or `docket://show`: shows Docket.
 /// - `docket://capture?text=…&url=…`: opens quick capture holding the text,
 ///   each `url` (repeatable) after it; with neither, opens it as it was.
+/// - `docket://find?text=…`: shows Docket on the row with that text, by Go to,
+///   which only moves; with no text, shows Docket.
 enum DocketLink: Equatable {
     case show
+    /// A row's text, as Go to reads it.
+    case find(String)
     /// The text, and the `url` values in the order given.
     case capture(String?, urls: [String] = [])
 
@@ -28,6 +32,9 @@ enum DocketLink: Equatable {
         switch components.host?.lowercased() ?? "" {
         case "", "show", "open":
             self = .show
+        case "find":
+            let text = items.first { $0.name == "text" }?.value.map(DocketCaptureDraft.normalized) ?? ""
+            self = text.isEmpty ? .show : .find(text)
         case "capture":
             let text = items.first { $0.name == "text" }?.value.map(DocketCaptureDraft.normalized)
             let urls = items.filter { $0.name == "url" }.compactMap(\.value)
@@ -44,6 +51,11 @@ enum DocketLink: Equatable {
         switch self {
         case .show:
             components.host = "show"
+        case .find(let text):
+            components.host = "find"
+            components.percentEncodedQueryItems = [
+                URLQueryItem(name: "text", value: text.addingPercentEncoding(withAllowedCharacters: Self.valueAllowed)),
+            ]
         case .capture(let text, let urls):
             components.host = "capture"
             let items = (text.map { [URLQueryItem(name: "text", value: $0)] } ?? [])
@@ -90,7 +102,7 @@ struct DocketCaptureDraft: Equatable {
     /// as the line quick capture holds. Nil when there is nothing to hold.
     static func build(title rawTitle: String?, links rawLinks: [String] = []) -> Self? {
         let title = rawTitle.map(normalized) ?? ""
-        let links = rawLinks.map(normalized).filter { !$0.isEmpty }
+        let links = rawLinks.map(word).filter { !$0.isEmpty }
         if links.isEmpty {
             return title.isEmpty ? nil : Self(text: title)
         }
@@ -99,6 +111,17 @@ struct DocketCaptureDraft: Equatable {
             return Self(text: suffix, caret: 0)
         }
         return Self(text: title + suffix, caret: 0, selectionLength: (title as NSString).length)
+    }
+
+    /// A link as one word, since Docket reads a row's words apart: a file
+    /// path holding a blank becomes its `file://` URL, which `gl` opens as it
+    /// opens the path. Any other link is kept as it reads.
+    static func word(_ link: String) -> String {
+        let trimmed = link.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("/"), trimmed.contains(where: { $0.isWhitespace || $0.isNewline }) {
+            return URL(fileURLWithPath: trimmed).absoluteString
+        }
+        return normalized(trimmed)
     }
 
     /// An `http` or `https` address alone, which Docket reads as a link.

@@ -5,7 +5,9 @@ import (
 	"errors"
 	"maps"
 	"math"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"sort"
@@ -337,7 +339,7 @@ func (m *Model) scan() {
 			contextUse[l.Context]++
 		}
 		// Today holds what was picked, and what was set to start today.
-		if isPicked(r.Fields, l, day) || (l.Start == day && l.State != "") {
+		if isPicked(r.Fields, l, day) || (l.StartOn(today) == day && l.State != "") {
 			lists[kindToday] = append(lists[kindToday], id)
 			if !l.Closed() {
 				picked++
@@ -920,6 +922,55 @@ func openURL(address string) error {
 	return nil
 }
 
+// addressIn is the first address in a row's text that can be opened: a web,
+// Mail or file URL, or the path of a file that is there. A path may end in
+// `:line` or `:line:column`, as a compiler names a place, and opens the file.
+// A path naming nothing is passed over and given back as missing, the first
+// of them, so a row holding only that can say why nothing opened.
+func addressIn(text string) (address, missing string) {
+	for _, word := range strings.Fields(text) {
+		if address := linkOf(word); address != "" {
+			return address, missing
+		}
+		path := pathOf(word)
+		if path == "" {
+			continue
+		}
+		if file := existingFile(path); file != "" {
+			return file, missing
+		}
+		if missing == "" {
+			missing = path
+		}
+	}
+	return "", missing
+}
+
+// existingFile is the file a path names, with `~` read as the home folder and
+// a trailing `:line` or `:line:column` dropped when the path without it is
+// the one there, or nothing.
+func existingFile(path string) string {
+	full := path
+	if rest, ok := strings.CutPrefix(path, "~/"); ok {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return ""
+		}
+		full = filepath.Join(home, rest)
+	}
+	for try := 0; try < 3; try++ {
+		if _, err := os.Stat(full); err == nil {
+			return full
+		}
+		i := strings.LastIndexByte(full, ':')
+		if i < 0 || i == len(full)-1 || strings.Trim(full[i+1:], "0123456789") != "" {
+			return ""
+		}
+		full = full[:i]
+	}
+	return ""
+}
+
 // follow jumps to the linked row, or opens the first address in its text.
 func (m *Model) follow() {
 	cur := m.current()
@@ -928,23 +979,24 @@ func (m *Model) follow() {
 	}
 	switch dest := m.tree.Row(cur).Fields[fieldLink]; {
 	case dest == "":
-		for _, word := range strings.Fields(m.tree.Row(cur).Fields[sigil.FieldText]) {
-			if address := linkOf(word); address != "" {
-				if err := m.openURL(address); err != nil {
-					m.msg = err.Error()
-				} else {
-					m.msg = "opened " + address
-				}
-				return
+		address, missing := addressIn(m.tree.Row(cur).Fields[sigil.FieldText])
+		if address != "" {
+			if err := m.openURL(address); err != nil {
+				m.msg = err.Error()
+			} else {
+				m.msg = "opened " + address
 			}
+			return
 		}
 		// The way back: a row with no way out of its own goes to the row
 		// that links to it.
 		m.scan()
-		switch from := m.pointers[cur]; len(from) {
-		case 0:
+		switch from := m.pointers[cur]; {
+		case len(from) == 0 && missing != "":
+			m.msg = "no file at " + missing
+		case len(from) == 0:
 			m.msg = "this row has no link: L makes one"
-		case 1:
+		case len(from) == 1:
 			m.jump(entry{kind: kindRow, id: from[0]})
 		default:
 			m.msg = strconv.Itoa(len(from)) + " rows link here: /&. lists them"

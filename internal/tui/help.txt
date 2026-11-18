@@ -89,6 +89,7 @@ Esc  j	back to the rows, from anywhere or past the last line; one undo
 @++1w @--3d	shift the row's deadline; `@@++1w` its start (stamp line only)
 Ctrl+A Ctrl+X	a day later, earlier: the deadline, else the start; `7 Ctrl+A` a week
 *2w *monthly	repeat: closing moves the date and reopens done descendants
+*3d $waiting	a waiting row with a start and no deadline: back in Today every 3 days from it while it waits
 
 == Tags, states and colours
 #tag #est=2h	tag or value; the header sums estimates, headings show done/total
@@ -189,8 +190,8 @@ Tab	sidebar focus; `j` `k` and paging keys visit; `Enter` works there
 
 == Links and trails
 L gl	link to a row, follow it; blank `L` `Enter` removes the link
-	with no row link, `gl` opens the first web address in the text,
-	else goes back to the row that links here (`←`)
+	with no row link, `gl` opens the first web address, Mail link or
+	file path in the text, else goes back to the row that links here (`←`)
 gf	go to the whole project the row is filed in, cursor on the row
 Ctrl+O Ctrl+I	back, forward along jumps (`f`, `gf`, sidebar visits, row links)
 	a terminal unable to distinguish `Ctrl+I` from `Tab` gives `Tab`

@@ -46,6 +46,10 @@ final class CaptureRoutesTests: XCTestCase {
             DocketCaptureDraft.build(title: nil, links: ["https://a.example", "/tmp/b"]),
             DocketCaptureDraft(text: " https://a.example /tmp/b", caret: 0)
         )
+        XCTAssertEqual(
+            DocketCaptureDraft.build(title: nil, links: ["/Users/me/My File.pdf"]),
+            DocketCaptureDraft(text: " file:///Users/me/My%20File.pdf", caret: 0)
+        )
     }
 
     func testAServicesSelectionIsTextOrALink() {
