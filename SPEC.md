@@ -252,9 +252,12 @@ repaints none of the others; two tags sharing a colour is expected.
 
 The focused cursor row keeps its `▌` mark and has a background across the
 pane's full width, on every wrapped line. Selected rows keep `┃` and use
-a distinct selection background, including when the cursor is on one. On
-that background dim text is drawn a step nearer the text colour, so it
-keeps a contrast of 4.5 to 1 there in both palettes.
+a selection background of their own, a teal, including when the cursor is
+on one. It stands further from the cursor's background than that does from
+the pane, so a selected row is not taken for the cursor, and a copy's
+flash stands as far from it in turn. On that background dim text is drawn
+a step nearer the text colour, so it keeps a contrast of 4.5 to 1 there in
+both palettes.
 An age is drawn on a smooth gradient against the oldest beside it: the
 text colour for one just begun, warming through pale yellow, yellow and
 orange to red for the oldest, so however young the oldest is, it is red.

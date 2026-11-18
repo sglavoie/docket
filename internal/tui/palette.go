@@ -20,7 +20,9 @@ const (
 
 type palette struct {
 	text, dim, accent, warn, alert string
-	cursor, selection              string
+	// selection is a teal of its own, apart from the cursor by more than the
+	// cursor is from the pane, so a selected row is not taken for the cursor.
+	cursor, selection string
 	// header is the background the focused pane's header is shaded with: a hue
 	// of its own, so it is not taken for the cursor on the first row.
 	header string
@@ -40,10 +42,10 @@ var darkPalette = palette{
 	text: "\x1b[38;2;220;225;231m", dim: "\x1b[38;2;146;158;173m",
 	accent: "\x1b[38;2;105;199;211m", warn: "\x1b[38;2;230;188;100m",
 	alert:  "\x1b[38;2;239;135;135m",
-	cursor: "\x1b[48;2;38;51;63m", selection: "\x1b[48;2;43;65;76m",
-	flash:       "\x1b[48;2;46;92;104m",
+	cursor: "\x1b[48;2;38;51;63m", selection: "\x1b[48;2;28;74;86m",
+	flash:       "\x1b[48;2;50;104;116m",
 	header:      "\x1b[48;2;50;42;74m",
-	dimSelected: "\x1b[38;2;160;172;187m",
+	dimSelected: "\x1b[38;2;176;188;201m",
 	ages:        [5][3]float64{{220, 225, 231}, {214, 203, 150}, {232, 196, 84}, {240, 146, 66}, {242, 86, 78}},
 }
 
@@ -51,10 +53,10 @@ var lightPalette = palette{
 	text: "\x1b[38;2;35;45;56m", dim: "\x1b[38;2;91;105;119m",
 	accent: "\x1b[38;2;0;105;122m", warn: "\x1b[38;2;130;86;0m",
 	alert:  "\x1b[38;2;177;49;54m",
-	cursor: "\x1b[48;2;229;237;243m", selection: "\x1b[48;2;207;227;235m",
-	flash:       "\x1b[48;2;170;214;224m",
+	cursor: "\x1b[48;2;229;237;243m", selection: "\x1b[48;2;186;228;230m",
+	flash:       "\x1b[48;2;144;202;212m",
 	header:      "\x1b[48;2;236;230;248m",
-	dimSelected: "\x1b[38;2;85;99;113m",
+	dimSelected: "\x1b[38;2;75;89;103m",
 	ages:        [5][3]float64{{35, 45, 56}, {105, 92, 40}, {130, 94, 0}, {166, 74, 0}, {180, 38, 38}},
 }
 
