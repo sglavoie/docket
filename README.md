@@ -4,21 +4,7 @@ A keyboard-only terminal outliner for one person with dozens of projects.
 Every row is edited in place, metadata is typed as sigils, and a sidebar shows
 which projects need attention.
 
-```
-  Inbox                1 │ docket-rewrite  · 3 to do
-  Today                3 │   ▾ Storage: 1/3
-  Waiting              2 │ ▌   ○ Decide op-log format ! @fri
-  Stale                9 │       · per-field, clock-stamped
-                         │     ● Prototype row parser
-▌ Projects               │     ✓ Audit grammar reuse
-  docket-rewrite         │   ▾ TUI:
-  blog               12d │     ○ Sidebar counts
-  tax-2026         @ 3d  │
-  homelab              ∅ │
-                         │
-  31 parked projects     │
-Inbox › Buy milk %home
-```
+![Docket capturing "Draft the release notes %Launch ! #docs" into a heading, picking a task for Today, closing another, filtering by #ux, folding, visiting Today, Waiting and a project from the sidebar, jumping back by name, and undoing.](docs/images/demo.svg)
 
 ## Install
 
@@ -96,6 +82,7 @@ These are the only commands; everything else is done in the outline.
 ```bash
 just check   # fmt, vet, test
 just run     # against ./dev.db, never the real database
+just readme-media  # re-record docs/images/demo.svg from TestReadmeDemo; needs uv
 ```
 
 See [`CLAUDE.md`](CLAUDE.md) for the layers and the rules for changes.

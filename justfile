@@ -57,3 +57,11 @@ mac-install: (mac-app "Release")
 # Tag the next release from v2 and follow it (patch, minor, major, or vX.Y.Z)
 release version *flags:
     ./scripts/release.sh {{ version }} {{ flags }}
+
+# Re-record the README animation (docs/images/demo.svg) from TestReadmeDemo; needs uv
+readme-media:
+    ./scripts/readme_media.sh
+
+# Fail when docs/images/demo.svg no longer matches what the app draws
+readme-media-check:
+    ./scripts/readme_media.sh --check
