@@ -659,6 +659,29 @@ func (m *Model) textStep(e *editor, msg tea.KeyPressMsg) int {
 		return m.textGo(e, "gg", 0)
 	}
 
+	// In a body z folds it: zc to its first line, zo open above the rows,
+	// za the other way, as it shows once the caret leaves it.
+	if e.body && e.pend == "z" {
+		e.pend = ""
+		open := m.bodyOpen(e.row)
+		switch k {
+		case "o":
+			open = true
+		case "c":
+			open = false
+		case "a":
+			open = !open
+		default:
+			return textMoved
+		}
+		m.setFold(bodyOpenKey(e.row), open)
+		m.msg = "the body folds to its first line above the rows"
+		if open {
+			m.msg = "the body stays open above the rows"
+		}
+		return textMoved
+	}
+
 	// An operator is waiting for a motion or a text object.
 	if e.pend != "" {
 		if e.body && len(e.pend) == 1 && strings.Contains("dcy", e.pend) {
@@ -969,7 +992,7 @@ func (m *Model) textAgain(e *editor) int {
 // textStatus is the status line while the caret is inside a row.
 func (e *editor) textStatus() string {
 	if e.body && !e.sel && e.pend == "" {
-		return "in the body: j k { } ( ) move · i a o c d change · v select · Esc done"
+		return "in the body: j k { } move · i a o c d change · zo zc fold · Esc done"
 	}
 	if e.sel {
 		return "selecting: motions extend · d c y x ~ act · v or Esc ends"

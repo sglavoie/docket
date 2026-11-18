@@ -1,9 +1,11 @@
 package tui
 
 import (
+	"strconv"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/docket/internal/outline"
 )
@@ -410,6 +412,9 @@ func (m *Model) bodyStep(e *editor, k string, n int) (int, bool) {
 	case "g":
 		e.pend += "g"
 		return textPending, true
+	case "z":
+		e.pend = "z"
+		return textPending, true
 	case "j", "down", "k", "up":
 		// By drawn line, staying in the body; past its last line the caret
 		// goes back to the rows.
@@ -483,4 +488,28 @@ func (m *Model) bodyStep(e *editor, k string, n int) (int, bool) {
 		return textMoved, true
 	}
 	return 0, false
+}
+
+// bodyOpenKey is where this machine keeps that a row's body stays open above
+// its rows, beside the folds. A body is folded unless it was opened.
+func bodyOpenKey(id string) string { return id + "\x1fbody" }
+
+func (m *Model) bodyOpen(id string) bool { return m.folded[bodyOpenKey(id)] }
+
+// bodyFolded is a body folded to one line: its first line with text, and how
+// many lines more it holds.
+func (m *Model) bodyFolded(text string, width int) string {
+	lines := strings.Split(text, "\n")
+	first := ""
+	for _, l := range lines {
+		if first = strings.TrimSpace(strings.ReplaceAll(l, "\t", " ")); first != "" {
+			break
+		}
+	}
+	more := ""
+	if n := len(lines) - 1; n > 0 {
+		more = " +" + strconv.Itoa(n)
+	}
+	room := max(width-ansi.StringWidth(more), 1)
+	return ansi.Truncate(first, room, "…") + m.colors().dim + more + sgrReset
 }

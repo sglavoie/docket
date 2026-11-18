@@ -23,22 +23,29 @@ func (h *harness) body() string {
 	return h.m.tree.Row(h.m.at.root).Fields[fieldBody]
 }
 
-// k on the first row steps into the body of the row the pane opens. What is
-// written there heads the pane, nothing in it is read as a sigil, and the
-// row says it has a body. Keeping it is one undo step.
+// k on the first row steps into the body of the row the pane opens, which
+// then takes the whole pane. Nothing in it is read as a sigil. Left, it
+// heads the rows folded to its first line, and the row says it has a body.
+// Keeping it is one undo step.
 func TestABodyIsWrittenAboveTheRows(t *testing.T) {
 	h := inProject(t)
 	h.press("k")
 	h.want(
 		"    no body · A writes one",
-		"    ──────────────────────────────────",
-		"▌ ○ First",
-		"  ○ Second",
 	)
 	if !strings.HasPrefix(h.status(), "in the body") {
 		t.Fatalf("status says %q", h.status())
 	}
-	h.press("A", `"Move the reporting DB first."`, "enter", "enter", `"Ask @monday about #ops !"`, "esc", "esc")
+	h.press("A", `"Move the reporting DB first."`, "enter", "enter", `"Ask @monday about #ops !"`, "esc")
+	h.want(
+		"    Move the reporting DB first.",
+		"    Ask @monday about #ops !",
+	)
+	// The blank line between them is kept and drawn.
+	if lines := h.lines(); strings.TrimSpace(lines[2]) != "" {
+		t.Fatalf("the blank line is not drawn: %q", lines[1:4])
+	}
+	h.press("esc")
 	if got, want := h.body(), "Move the reporting DB first.\n\nAsk @monday about #ops !"; got != want {
 		t.Fatalf("body is %q, want %q", got, want)
 	}
@@ -46,16 +53,11 @@ func TestABodyIsWrittenAboveTheRows(t *testing.T) {
 		t.Fatalf("the body set fields: %q", r.Fields)
 	}
 	h.want(
-		"    Move the reporting DB first.",
-		"    Ask @monday about #ops !",
+		"    Move the reporting DB first. +2",
 		"    ──────────────────────────────────",
 		"▌ ○ First",
 		"  ○ Second",
 	)
-	// The blank line between them is kept and drawn.
-	if lines := h.lines(); strings.TrimSpace(lines[2]) != "" {
-		t.Fatalf("the blank line is not drawn: %q", lines[1:4])
-	}
 	h.press("esc")
 	h.want(
 		"▌ ▾ Project ≡",
@@ -120,9 +122,7 @@ func TestTheBodyIsEditedByLines(t *testing.T) {
 		t.Fatalf("the body kept is %q", h.body())
 	}
 	h.want(
-		"    one",
-		"    three",
-		"    two",
+		"    one +2",
 		"    ──────────────────────────────────",
 		"▌ ○ First",
 		"  ○ Second",
@@ -175,9 +175,56 @@ func TestAPasteIntoTheBodyIsText(t *testing.T) {
 	if got := h.body(); got != "- first\n\n  - [ ] second" {
 		t.Fatalf("body is %q", got)
 	}
+	h.press("k", `"zo"`, "esc")
 	h.want(
 		"    - first",
 		"      - [ ] second",
+		"    ──────────────────────────────────",
+		"▌ ○ First",
+		"  ○ Second",
+	)
+}
+
+// A body folds to its first line above the rows unless it was opened: zo
+// inside it keeps it open, zc folds it again, za turns it over. While the
+// caret is in it, it takes the whole pane.
+func TestABodyFoldsAboveTheRows(t *testing.T) {
+	h := inProject(t)
+	h.press("k", "A", `"Summary line"`, "enter", `"detail one"`, "enter", `"detail two"`, "esc")
+	h.want(
+		"    Summary line",
+		"    detail one",
+		"    detail two",
+	)
+	h.press(`"zo"`)
+	if h.status() != "the body stays open above the rows" {
+		t.Fatalf("zo says %q", h.status())
+	}
+	h.press("esc")
+	h.want(
+		"    Summary line",
+		"    detail one",
+		"    detail two",
+		"    ──────────────────────────────────",
+		"▌ ○ First",
+		"  ○ Second",
+	)
+	h.press("k", `"za"`, "esc")
+	h.want(
+		"    Summary line +2",
+		"    ──────────────────────────────────",
+		"▌ ○ First",
+		"  ○ Second",
+	)
+	// Opening it is kept on this machine, as folds are.
+	h.press("k", `"zo"`, "esc")
+	h.st.Close()
+	again := open(t, h.path)
+	again.press("gg", "enter")
+	again.want(
+		"    Summary line",
+		"    detail one",
+		"    detail two",
 		"    ──────────────────────────────────",
 		"▌ ○ First",
 		"  ○ Second",

@@ -390,9 +390,10 @@ The pane shows the rows under one row, or a list.
   when it is taller than the pane, scrolling keeps the caret's line visible.
 - **A row's body heads the pane that opens it.** When the pane shows the
   rows under one row, a project, the Inbox or a zoom, with no filter on,
-  that row's body is drawn first, at the pane's width, with a dimmed rule between it and the
-  rows when there are any. Projects and the lists have no row of their own,
-  so no body. See Body.
+  that row's body is drawn first, folded to its first line unless it was
+  opened, with a dimmed rule between it and the rows when there are any.
+  Stepped into, it takes the whole pane. Projects and the lists have no row
+  of their own, so no body. See Body.
 - **Each place remembers its cursor** for the session, so coming back to a
   project lands on the row you left.
 - **A row reached from afar is read in context.** When `n` or `N`, a jump,
@@ -1365,17 +1366,28 @@ pane, so it has the pane's whole width and nothing beside it (rule 6).
 **Drawn.** Plain text in the text colour, each line wrapped at the pane's
 width as a row wraps, blank lines kept, a tab drawn to the next stop of
 four. Nothing in it is coloured: no sigil, no address, no formatting. A
-dimmed rule sets it apart from the rows below when there are any. A body
-taller than the pane scrolls with the rows, as one more thing in the pane.
-In the outline, lists and filters its row shows `≡` (see On the row).
+dimmed rule sets it apart from the rows below when there are any. In the
+outline, lists and filters its row shows `≡` (see On the row).
+
+**Folded.** Above the rows a body is folded to one line, its first line
+with text and how many lines follow it, dimmed (`Plan the cutover +12`),
+so it never pushes the rows off the screen. Inside the body `zo` keeps it
+open above the rows, whole and wrapped, `zc` folds it again and `za` turns
+it over; the status line says which, and it shows once the caret leaves.
+Which bodies stay open is kept on this machine beside the folds, and is not
+logged. An open body taller than the room above the cursor's row gives up
+its first lines, so the cursor is always seen.
+
+**Focused.** While the caret is in the body, folded or open, it takes the
+whole pane: the rows wait below it, and it scrolls to keep the caret's line
+in view.
 
 **Reached.** `k` on the first row of the pane, or in a pane with no rows,
 steps into the body, on its last line, and the status line says `in the
 body`. An empty body takes no lines; `k` still reaches it, drawn as one
 dimmed line, `no body · A writes one`, while the caret is there. The cursor
-never lands in a body by itself: a place opens on its rows, and a body
-taller than the room above the cursor's row gives up its first lines, so
-the cursor is always seen. `j` from the body's last line, and `Esc`, return
+never lands in a body by itself: a place opens on its rows. `j` from the
+body's last line, and `Esc`, return
 to the first row. A selection refuses the step and says so. Nothing on screen shows
 the way in, so while the cursor is on the first row, with nothing pending
 or selected, the status line says `k writes its body`, or `k edits its
@@ -1752,8 +1764,9 @@ is `docket add`, and the overdue count it shows is `docket ls '@overdue'`.
    or wherever it was pressed. *Built.*
 
 23. **Body.** A row carries a `body` of plain text, marked `≡` after its
-   text and drawn at the head of the pane that opens it. `k` from the
-   first row steps into it, where the in-row grammar edits lines, with
+   text and drawn at the head of the pane that opens it, folded to its
+   first line unless `zo` opened it. `k` from the first row steps into it,
+   and it takes the whole pane, where the in-row grammar edits lines, with
    paragraphs, sentences, line operators and `o` `O` `J`; `Enter` there is
    a newline and nothing in it is read as a sigil. The filter reads
    bodies, and `=` holds a word to the row's own line. Copy, export,

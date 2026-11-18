@@ -57,11 +57,12 @@ u Ctrl+R	undo, redo inside this visit
 Esc	end typing, then keep the visit as one outline undo
 
 == Body
-k	on the first row, step into the body of the row the pane opens
+k	on the first row, step into the body of the row the pane opens; it fills the pane
 ≡	after a row's text: it has a body; `Enter` opens the row to read it
 j k  { } ( )	by drawn line, paragraph, sentence; `gg` `G` first, last line
 dd cc yy  ip ap	whole lines; a paragraph, without or with the blank lines after
 o O  J	open a line below, above; join the next line on
+zo zc za	keep it open above the rows, fold it to its first line, turn it over
 Enter Tab	while typing, a new line, a tab; sigils are text here
 Esc  j	back to the rows, from anywhere or past the last line; one undo
 

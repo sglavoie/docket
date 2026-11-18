@@ -779,8 +779,9 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 		edit = nil
 	}
 	// The body of the row the pane opens is drawn first, with a rule between
-	// it and the rows. While it is edited it scrolls by its caret and the
-	// rows follow it; otherwise it scrolls with them, as part of the first.
+	// it and the rows: folded to its first line unless it was opened, and
+	// scrolling with the rows as part of the first. Stepped into, it takes the
+	// whole pane and scrolls by its caret.
 	var body []string
 	bodyEdit := edit != nil && edit.body
 	var bodyLayout editLayout
@@ -796,11 +797,14 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 		case bodyEdit:
 			bodyLayout = m.edit.wrapped(bw, nil)
 			body = bodyLayout.lines
-		case m.tree.Row(id).Fields[fieldBody] != "":
+		case m.tree.Row(id).Fields[fieldBody] == "":
+		case m.bodyOpen(id):
 			body = m.bodyWrapped(m.tree.Row(id).Fields[fieldBody], bw)
+		default:
+			body = []string{m.bodyFolded(m.tree.Row(id).Fields[fieldBody], bw)}
 		}
 	}
-	ruleAfter := len(body) > 0 && len(m.vis) > 0
+	ruleAfter := len(body) > 0 && len(m.vis) > 0 && !bodyEdit
 	bodyH := len(body)
 	if ruleAfter {
 		bodyH++
@@ -894,7 +898,7 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 	bodyX := m.numberCols() + 4
 	switch {
 	case bodyEdit:
-		// The rows wait below the body while it is edited.
+		// The rows wait while the body is read or edited.
 		e := m.edit
 		m.top = 0
 		p := bodyLayout.pos[min(e.caret, len(bodyLayout.pos)-1)]
@@ -927,7 +931,7 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 		lines = append(lines, m.colors().dim+strings.Repeat(" ", bodyX)+strings.Repeat("─", max(w-bodyX-2, 1))+sgrReset)
 	}
 	drawn, whole := 0, true // the rows on screen, and whether the last is all there
-	for i := m.top; i < len(m.vis) && len(lines) < h; i++ {
+	for i := m.top; i < len(m.vis) && len(lines) < h && !bodyEdit; i++ {
 		v := m.vis[i]
 		drawn++
 		r := m.tree.Row(v.id)
@@ -1014,7 +1018,7 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 	for len(lines) < h {
 		lines = append(lines, "")
 	}
-	if len(m.vis) == 0 && 1+len(body) < h {
+	if len(m.vis) == 0 && 1+len(body) < h && !bodyEdit {
 		lines[1+len(body)] = m.colors().dim + "  " + ansi.Truncate(m.emptyText(), max(w-2, 1), "…") + sgrReset
 	}
 	return lines, caret
