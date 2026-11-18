@@ -142,18 +142,19 @@ func TestListedAgesStandInAColumnAtTheRightEdge(t *testing.T) {
 }
 
 // Review says each project's tasks left and its age in two columns at the
-// right edge. One parked during the review has no columns left.
+// right edge. Every row there is a project, so a note's dot is left out;
+// one parked during the review keeps its glyph and has no columns left.
 func TestReviewSaysTasksAndAgeInColumns(t *testing.T) {
 	h := two(t)
 	h.clock = h.clock.Add(15 * 24 * time.Hour)
 	h.press(":", `"review"`, "enter")
 	h.want(
-		h.edge("▌ · Beta", "∅  15d"),
-		h.edge("  · Alpha", "2 to do  15d"),
+		h.edge("▌   Beta", "∅  15d"),
+		h.edge("    Alpha", "2 to do  15d"),
 	)
 	h.press("$", `"parked"`, "enter")
 	h.want(
 		"▌ ◌ Beta",
-		h.edge("  · Alpha", "2 to do  15d"),
+		h.edge("    Alpha", "2 to do  15d"),
 	)
 }

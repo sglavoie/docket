@@ -152,8 +152,8 @@ func TestReviewListsProjectsLongestUntouchedFirst(t *testing.T) {
 		t.Fatalf("header = %q", h.header())
 	}
 	h.want(
-		h.edge("▌ · Alpha", "2 to do  12d"),
-		h.edge("  · Beta v2", "∅   2d"),
+		h.edge("▌   Alpha", "2 to do  12d"),
+		h.edge("    Beta v2", "∅   2d"),
 	)
 	// Keeping is moving on; parking and closing are stamps; Enter looks in.
 	h.press("enter")
@@ -185,8 +185,8 @@ func TestReviewDrawsAgesAsTheSidebarDoes(t *testing.T) {
 	h.press("A", `" v2"`, "esc") // Beta is touched today; Alpha is not
 	h.press(":", `"review"`, "enter")
 	h.want(
-		h.edge("▌ · Alpha", "2 to do  15d"),
-		strings.TrimRight(h.edge("  · Beta v2", "∅     "), " "),
+		h.edge("▌   Alpha", "2 to do  15d"),
+		strings.TrimRight(h.edge("    Beta v2", "∅     "), " "),
 	)
 	if raw := h.m.View().Content; !strings.Contains(raw, ageStyle(darkPalette, 1, 1)+"15d") {
 		t.Fatalf("the oldest age is not red:\n%q", raw)

@@ -942,8 +942,10 @@ each with how many tasks are left to do, or `∅`, and its age, in two
 columns at the pane's right edge as Waiting's ages stand, the age at the
 edge: `2 to do  12d`. The age is drawn as the sidebar draws it: none for a
 project touched today, its column left blank, and otherwise against the
-oldest active project. A project parked or closed during the review has
-no columns left. It is a list
+oldest active project. Every row there is a project, so the glyph column
+leaves out a note's `·`, which would say the same of every row; a project
+parked or closed during the review keeps its glyph and has no columns
+left. It is a list
 like the others, so the ordinary keys do the review: moving on keeps a
 project, `Enter` looks inside, and a stamp parks (`$p`) or closes (`$done`)
 it.
