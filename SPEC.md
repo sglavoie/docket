@@ -750,7 +750,7 @@ Three more acts use the same line:
   rows it found until the query changes, and refuses the keys that
   restructure the tree. Changing the filter clears the selection. A filter
   shows every match: the outline's folds never hide one. In context it
-  folds on its own instead: `h`, `l`, `zc`, `zo`, `:fold` and `:unfold`
+  folds on its own instead: `h`, `l`, `zc`, `zo`, `zM`, `zR` and `:fold`
   fold and unfold as in the outline, a folded row counts the rows the
   filter found under it (`+1`), and `h` on a folded row or one with nothing
   under it steps to the parent shown. These folds are held with the filter,
@@ -804,16 +804,18 @@ Shift or Caps Lock was held. `Enter` on a name that only one command starts, as
   row the pane shows, as described under Selection; `s/old/new` changes
   text across rows, as described below; `archive` moves
   closed rows under an `Archive:` heading, as described below; `review`
-  opens the review list; `fold [level]` and `unfold` control folds as described below;
+  opens the review list; `fold level` shows that many levels, as described below;
   `sort [keys]` orders siblings once, as described below;
   `save name` and `forget name` keep and drop a filter; `sync
   folder` and `sync off` are described under Sync.
 
-`:fold` folds every row with children under the pane's root. `:fold N`
+`zM` folds every row with children under the pane's root and `zR` unfolds
+them all, as in Vim; a count and the selection play no part. `:fold N`
 shows N levels: rows above level N are unfolded and rows at level N are
 folded, with the root's children at level 1. Deeper folds stay as they were.
-`:unfold` unfolds everything under the pane's root. An invalid level is
-named on the status line and changes nothing. A filter in context folds
+`:fold` takes a level, since folding all is `zM`; without one, or with an
+invalid one, it says so on the status line and changes nothing, and
+`:unfold` names `zR`. A filter in context folds
 its own rows, as described under Filter; lists and flat filters say there is
 nothing to fold. The cursor stays
 on its row, or moves to its nearest visible ancestor. Folds are saved together
@@ -823,8 +825,8 @@ as this machine's view state, never logged or synced.
 own, and `zo` unfolds them all, so a branch is shut or laid open whole
 where `h` and `l` take one level. They act on the selection, or with a
 count on that many shown rows, and a row with nothing under it says so.
-The commands work from the pane's root and these keys from a row, so
-neither repeats the other (rule 3).
+`zM`, `zR` and `:fold N` work from the pane's root and `zc`, `zo` from a
+row, so none repeats another (rule 3).
 
 `:s/old/new` puts `new` wherever `old` stands in the text of the cursor's
 row, or of every selected row, as one undo step: `/old`, `:all`,
@@ -1166,7 +1168,7 @@ a count before an act on rows (including `v`) is refused and says so.
 The word motions that step into a row take the count as theirs, and
 `Ctrl+O` and `Ctrl+I` go that many places. Every other key, including `o`,
 `O`, `A`, `I`, `cc`, `Enter`, `h`, `l`, `f`, `gf`, `gl`, `gn`, `gN`, `p`, `P`, `gp`, `gP`,
-`zt`, `zz`, `zb`, `a`, `/`, `:` and `Tab`, drops the count and acts as usual.
+`zt`, `zz`, `zb`, `a`, `/`, `:` and `Tab`, drops the count and acts as usual, as do `zM` and `zR`.
 
 **Placing the row.** `zt` draws the cursor's row at the top of the pane,
 `zz` in the middle and `zb` at the bottom, as far as the ends of the rows
@@ -1183,6 +1185,7 @@ the pane stays there until a motion has to scroll it.
 | `gn` `gN` | Step into the text on what the filter found, first or last place | 18 |
 | `h` `l` | Fold, unfold; step to parent, first child; in lists and flat filters, `h` shows the row where it lives (`Esc` returns), `l` does nothing | 1, 10 |
 | `zc` `zo` | Fold, unfold the row's whole branch | 15 |
+| `zM` `zR` | Fold, unfold every row in the pane | 15 |
 | `zt` `zz` `zb` | Draw the cursor's row at the top, middle, bottom of the pane | 15 |
 | `Enter` `Esc` | Zoom in, back out | 1 |
 | `o` `O` `A` `I` `cc` | New row below, above; type at end, at start; retype keeping fields | 1, 11 |

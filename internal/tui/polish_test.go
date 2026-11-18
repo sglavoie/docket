@@ -306,10 +306,9 @@ func TestFoldCommandsAndHalfPages(t *testing.T) {
 		h.want("  ▾ Alpha: 0/2", "▌   ▸ Branch: 0/1", "    ○ Other", "  ▾ Beta: 0/1", "    ○ Outside")
 		command(h, "fold 1")
 		h.want("▌ ▸ Alpha: 0/2", "  ▸ Beta: 0/1")
-		command(h, "unfold")
+		h.press("z", "R")
 		h.want("▌ ▾ Alpha: 0/2", "    ▾ Branch: 0/1", "      ○ Leaf #match", "    ○ Other", "  ▾ Beta: 0/1", "    ○ Outside")
-		h.press("j", "j")
-		command(h, "fold")
+		h.press("j", "j", "3", "z", "M")
 		h.want("▌ ▸ Alpha: 0/2", "  ▸ Beta: 0/1")
 		if len(h.m.folded) != 3 || len(h.m.undo) != steps || h.m.tree.Gen() != generation {
 			t.Fatal("fold-all must cover hidden descendants without changing tree or undo")
@@ -318,55 +317,67 @@ func TestFoldCommandsAndHalfPages(t *testing.T) {
 		again.want("▌ ▸ Alpha: 0/2", "  ▸ Beta: 0/1")
 		command(again, "fold 2")
 		again.want("▌ ▾ Alpha: 0/2", "    ▸ Branch: 0/1", "    ○ Other", "  ▾ Beta: 0/1", "    ○ Outside")
-		command(again, "unfold")
+		again.press("z", "R")
 		if len(again.m.folded) != 0 || len(again.m.vis) != 6 {
-			t.Fatal("unfold did not restore every level")
+			t.Fatal("zR did not restore every level")
 		}
 		again = reopen(t, again)
 		if len(again.m.folded) != 0 || len(again.m.vis) != 6 {
-			t.Fatal("unfold did not survive restart")
+			t.Fatal("zR did not survive restart")
 		}
 	})
 	t.Run("invalid and failed saves", func(t *testing.T) {
 		h := fixture(t)
 		before := h.rows()
-		for _, bad := range []string{"nope", "0", "-1", "1.5", "999999999999999999999999999"} {
+		for _, bad := range []string{"nope", "0", "-1", "1.5", "2 3", "999999999999999999999999999"} {
 			command(h, "fold "+bad)
 			if !strings.Contains(h.bottom(), bad) || h.rows() != before || len(h.m.folded) != 0 {
 				t.Fatalf("invalid level %q changed state or was not named: %s", bad, h.bottom())
 			}
 		}
-		h.m.backend = &flaky{Backend: h.m.backend, fail: true}
 		command(h, "fold")
+		if !strings.Contains(h.bottom(), "zM folds all") || len(h.m.folded) != 0 {
+			t.Fatalf("bare fold: %s", h.bottom())
+		}
+		command(h, "unfold")
+		if !strings.Contains(h.bottom(), "zR opens every fold") || len(h.m.folded) != 0 {
+			t.Fatalf("unfold: %s", h.bottom())
+		}
+		h.m.backend = &flaky{Backend: h.m.backend, fail: true}
+		h.press("z", "M")
 		if h.rows() != before || len(h.m.folded) != 0 || !strings.Contains(h.bottom(), "disk full") {
 			t.Fatal("failed batch changed view state")
 		}
 	})
 	t.Run("pane root and context filter", func(t *testing.T) {
 		h := fixture(t)
-		h.press("g", "g", "enter", "j")
-		command(h, "fold")
+		h.press("g", "g", "enter", "j", "v", "k")
+		if len(h.m.picked) == 0 {
+			t.Fatal("fixture: no selection")
+		}
+		// zM takes the whole pane, whatever is selected.
+		h.press("z", "M")
 		h.want("▌ ▸ Branch: 0/1", "  ○ Other")
 		if len(h.m.folded) != 1 {
-			t.Fatal("fold escaped the pane root")
+			t.Fatal("zM escaped the pane root")
 		}
-		command(h, "unfold")
+		h.press("esc", "z", "R")
 		// A filter in context takes folds of its own and saves none; a flat
 		// one has nothing to fold.
 		h.press("/", `"#match"`, "enter")
 		shown := len(h.m.vis)
-		command(h, "fold")
+		h.press("z", "M")
 		if len(h.m.vis) >= shown || len(h.m.folded) != 0 || len(h.m.at.folds) == 0 {
 			t.Fatalf("filter fold: %s", h.rows())
 		}
-		command(h, "unfold")
+		h.press("z", "R")
 		if len(h.m.vis) != shown || len(h.m.folded) != 0 || len(h.m.at.folds) != 0 {
 			t.Fatalf("filter unfold: %s", h.rows())
 		}
 		h.press("/", "tab", "enter")
 		before := h.rows()
-		for _, cmd := range []string{"fold", "fold 2", "unfold"} {
-			command(h, cmd)
+		for _, keys := range [][]string{{"z", "M"}, {":", `"fold 2"`, "enter"}, {"z", "R"}} {
+			h.press(keys...)
 			if !strings.Contains(h.bottom(), "nothing to fold") || h.rows() != before || len(h.m.folded) != 0 {
 				t.Fatal("flat filter accepted folds")
 			}
@@ -403,8 +414,8 @@ func TestFoldCommandsAndHalfPages(t *testing.T) {
 			before := append([]visRow(nil), h.m.vis...)
 			list := append([]string(nil), h.m.at.rows...)
 			if place == "list" {
-				for _, cmd := range []string{"fold", "fold 1", "unfold"} {
-					command(h, cmd)
+				for _, keys := range [][]string{{"z", "M"}, {":", `"fold 1"`, "enter"}, {"z", "R"}} {
+					h.press(keys...)
 					if !strings.Contains(h.bottom(), "nothing to fold") || len(h.m.folded) != 0 {
 						t.Fatal("list accepted folds")
 					}
@@ -526,14 +537,14 @@ func TestTheCommandLineNamesItsCommands(t *testing.T) {
 		t.Fatalf("blank line = %q", got)
 	}
 	for typed, want := range map[string]string{
-		"s":       "sort [keys] · save name · sync [folder|off]",
-		"so":      "sort [keys]: order siblings once",
-		"sort @":  "sort [keys]: order siblings once",
-		"s/a":     "s/old/new: change text",
-		"qui":     "q: quit",
-		"h":       "help: the keys",
-		"sorted":  "no such command",
-		"unfold ": "unfold: open every fold here",
+		"s":      "sort [keys] · save name · sync [folder|off]",
+		"so":     "sort [keys]: order siblings once",
+		"sort @": "sort [keys]: order siblings once",
+		"s/a":    "s/old/new: change text",
+		"qui":    "q: quit",
+		"h":      "help: the keys",
+		"sorted": "no such command",
+		"fold 2": "fold level: keep that many levels open",
 	} {
 		h.press("ctrl+u", `"`+typed+`"`)
 		if got := last(); !strings.Contains(got, want) {
@@ -820,7 +831,7 @@ func TestBlankPromptsNameWhatTheyRead(t *testing.T) {
 		t.Fatalf("capture = %q, want %q", got, want)
 	}
 	h.press("esc", ":")
-	if !strings.Contains(h.bottom(), "s/old/new · sort · fold · unfold · archive") {
+	if !strings.Contains(h.bottom(), "s/old/new · sort · fold · archive") {
 		t.Fatalf("command = %q", h.bottom())
 	}
 }

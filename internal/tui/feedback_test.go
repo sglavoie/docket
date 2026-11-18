@@ -87,7 +87,7 @@ func TestWaitingKeysSayWhatMayFollow(t *testing.T) {
 	h.m.Update(tea.WindowSizeMsg{Width: 200, Height: 16})
 	for _, c := range []struct{ keys, want string }{
 		{"g", "gg top · gf project · gl follow link · gn gN into the match · gp gP put the copy · g; g, last changes"},
-		{"z", "zc zo shut, open the branch · zt zz zb draw at top, middle, bottom"},
+		{"z", "zc zo shut, open the branch · zM zR shut, open all · zt zz zb draw at top, middle, bottom"},
 		{"d", "dd the row · dj } ) H ] n G… through a motion · dic dis objects"},
 		{"2y", "yy the row · yj } ) H ] n G… through a motion · yic yis objects"},
 		{"di", "dic the rows under it · dis the row and its siblings"},
@@ -354,8 +354,8 @@ func TestTabCompletesACommandName(t *testing.T) {
 	// A name one command answers is finished at once, and runs.
 	h.press(":", `"hel"`)
 	step("tab", "help")
-	h.press("esc", ":", `"unf"`)
-	step("down", "unfold")
+	h.press("esc", ":", `"arc"`)
+	step("down", "archive")
 	h.press("esc", ":", `"so"`)
 	step("tab", "sort ")
 	h.press("esc", ":", `"num"`, "tab", "enter")

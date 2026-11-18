@@ -807,16 +807,24 @@ func (m *Model) setFold(id string, folded bool) {
 
 // foldOutline changes only this pane's subtree, saving all local view state
 // together. Levels start at one for the rows immediately below the root.
-func (m *Model) foldOutline(fold bool, args []string) {
-	level := 0
-	for i, word := range args {
-		n, err := strconv.Atoi(word)
-		if err != nil || n <= 0 || i > 0 || !fold {
-			m.msg = "invalid fold level: " + word + ": fold 2 shows two levels"
-			return
-		}
-		level = n
+// foldLevels reads :fold N. Folding or opening everything is zM and zR,
+// so the command always takes a level.
+func (m *Model) foldLevels(args []string) {
+	if len(args) == 0 {
+		m.msg = "fold takes a level: fold 2 shows two levels · zM folds all, zR opens all"
+		return
 	}
+	n, err := strconv.Atoi(args[0])
+	if err != nil || n <= 0 || len(args) > 1 {
+		m.msg = "invalid fold level: " + strings.Join(args, " ") + ": fold 2 shows two levels"
+		return
+	}
+	m.foldOutline(true, n)
+}
+
+// foldOutline folds or opens the rows under the pane's root: level 0 takes
+// every row with children, as zM and zR do; level N shows N levels.
+func (m *Model) foldOutline(fold bool, level int) {
 	if m.noFolds() {
 		return
 	}
@@ -1985,8 +1993,8 @@ func (m *Model) command(line string) {
 		m.tutor()
 	case "q", "quit":
 		m.quit = true
-	case "fold", "unfold":
-		m.foldOutline(words[0] == "fold", words[1:])
+	case "fold":
+		m.foldLevels(words[1:])
 	case "sort":
 		m.sortRows(words[1:])
 	case "export":
@@ -2928,6 +2936,10 @@ func (m *Model) normalAct(k string, count int) {
 		}
 	case "zc", "zo":
 		m.foldBranches(ids, k == "zc")
+	case "zM", "zR":
+		// Every fold under the pane's root, as Vim's zM and zR; the count
+		// and the selection play no part.
+		m.foldOutline(k == "zM", 0)
 	case "J", "K":
 		if m.at.list == kindToday {
 			if m.single() {

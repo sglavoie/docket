@@ -294,7 +294,7 @@ func (m *Model) nextKeys() string {
 	case m.prefix == "g":
 		return "gg top · gf project · gl follow link · gn gN into the match · gp gP put the copy · g; g, last changes"
 	case m.prefix == "z":
-		return "zc zo shut, open the branch · zt zz zb draw at top, middle, bottom"
+		return "zc zo shut, open the branch · zM zR shut, open all · zt zz zb draw at top, middle, bottom"
 	}
 	return ""
 }
@@ -310,8 +310,7 @@ var commandUses = []struct{ use, does string }{
 	{"all", "select every row shown"},
 	{"s/old/new", "change text in the row or the selection"},
 	{"sort [keys]", "order siblings once: @ deadline, ! flag, $ state, else text"},
-	{"fold [level]", "fold all, or keep that many levels open"},
-	{"unfold", "open every fold here"},
+	{"fold level", "keep that many levels open; zM zR fold, open all"},
 	{"archive", "move closed rows under Archive:"},
 	{"review", "active projects, longest untouched first"},
 	{"save name", "keep this filter as /name"},
@@ -327,7 +326,7 @@ var commandUses = []struct{ use, does string }{
 func commandOffers(line string) string {
 	uses, does := commandMatches(line)
 	if strings.TrimLeft(line, " ") == "" {
-		// Seventeen commands are scanned by name; what each takes is said
+		// Sixteen commands are scanned by name; what each takes is said
 		// once a letter has narrowed them.
 		for i, use := range uses {
 			uses[i], _, _ = strings.Cut(use, " ")
@@ -562,7 +561,7 @@ const (
 
 // strayCommands are the commands the same hand types to save. Nothing is
 // ever unsaved, so each says so and none acts.
-var strayCommands = map[string]string{"w": saved, "write": saved, "wq": saved, "x": saved}
+var strayCommands = map[string]string{"w": saved, "write": saved, "wq": saved, "x": saved, "unfold": "zR opens every fold here, zM folds them all"}
 
 // sideSays spells out the marks on the sidebar's selected entry, which are
 // too short to explain themselves: it is said where the eye already is,

@@ -11,6 +11,7 @@ Ctrl+C  :q	quit
 == Fold and zoom
 h l	fold, unfold; step to parent, first child
 zc zo	fold, unfold the whole branch; a count or selection too
+zM zR	fold, unfold everything in the pane
 Enter	zoom in
 Esc	clear the selection, then the filter, then zoom back out
 
@@ -194,7 +195,7 @@ Tab	on `:`, complete the command name; again for the next, `Shift+Tab` back
 
 == Rows
 :closed	hide or show done and canceled rows
-:fold [level]	fold all, or show N levels; `:unfold` opens all
+:fold level	show N levels: rows at level N fold, those above open
 :sort [keys]	siblings once: `@` deadline, `!` flag, `$` state
 	later keys break ties; ties stay ordered; no keys sorts by text
 :s/old/new	replace text in the row or selection; any separator, as `s,a/b,c`
