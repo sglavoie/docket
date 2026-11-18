@@ -8,14 +8,14 @@ import (
 func TestClosingTheLastPickSaysTheDayIsDone(t *testing.T) {
 	h := two(t)
 	h.press("j", "j", "t", "j", "t")
-	// Closing a pick with another still open is an ordinary close.
+	// Closing a pick with another still open says what the day has done.
 	h.press("x")
-	if h.status() != "" {
+	if h.status() != "1 done today" {
 		t.Fatalf("status = %q", h.status())
 	}
 	// Closing the last one marks the end of the day, once.
 	h.press("k", "x")
-	if h.status() != "today is done: every pick is closed" {
+	if h.status() != "today is done: every pick is closed · 2 done today" {
 		t.Fatalf("status = %q", h.status())
 	}
 	h.press("j")
@@ -24,16 +24,16 @@ func TestClosingTheLastPickSaysTheDayIsDone(t *testing.T) {
 	}
 	// An undo says what it took back, and its redo what it made again.
 	h.press("u")
-	if h.status() == "today is done: every pick is closed" {
+	if strings.HasPrefix(h.status(), "today is done") || strings.Contains(h.status(), "done today") {
 		t.Fatal("an undo said the day was done")
 	}
 	h.press("ctrl+r")
-	if h.status() == "today is done: every pick is closed" {
+	if strings.HasPrefix(h.status(), "today is done") || strings.Contains(h.status(), "done today") {
 		t.Fatal("a redo said the day was done")
 	}
 	// Reopening and closing again ends the day again.
 	h.press("g", "g", "j", "j", "x", "x")
-	if h.status() != "today is done: every pick is closed" {
+	if h.status() != "today is done: every pick is closed · 2 done today" {
 		t.Fatalf("status = %q", h.status())
 	}
 }

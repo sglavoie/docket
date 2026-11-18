@@ -25,12 +25,13 @@ func TestFarewell(t *testing.T) {
 }
 
 // An empty Today names the saved /next as well as t, since what could be
-// done is where a day's picks come from; without /next saved it names t alone.
+// done is where a day's picks come from; without /next saved it names the
+// built-in /suggest.
 func TestEmptyTodayNamesNext(t *testing.T) {
 	h := start(t).wide()
 	h.pasteText("Project\n\tWrite $open")
 	h.press("f", `"Today"`, "enter")
-	h.want("  Nothing picked for today. Press t on a row to pick it.")
+	h.want("  Nothing picked for today. t picks a row; /suggest lists what could be.")
 	h.press("f", `"Project"`, "enter", "/", `"$next"`, "enter", ":", `"save next"`, "enter", "esc")
 	h.press("f", `"Today"`, "enter")
 	h.want("  Nothing picked for today. t picks a row; /next lists what can be done.")

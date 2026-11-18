@@ -15,7 +15,7 @@ import (
 // its own answer to what a word means.
 const surfaceRow = "row"
 
-var dateWords = []string{"today", "tomorrow", "mon", "tue", "wed", "thu", "fri", "sat", "sun", "eom"}
+var dateWords = []string{"today", "tomorrow", "mon", "tue", "wed", "thu", "fri", "sat", "sun", "eow", "eom"}
 
 // looksLikeSigil reports a word that starts like a sigil. When the grammar
 // cannot read such a word it stays plain text, and the line says so in colour
@@ -230,7 +230,7 @@ func (m *Model) sigilValues(e *editor, surface string) (string, []string) {
 	case '$':
 		offers = sigil.StateNames
 		if surface == askFilter {
-			offers = append(slices.Clone(offers), "next", "today", "first", "project", "missed", "pinned")
+			offers = append(slices.Clone(offers), "next", "today", "first", "project", "missed", "pinned", "blocked")
 		}
 	case '@':
 		offers = dateWords

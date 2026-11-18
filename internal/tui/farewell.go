@@ -4,8 +4,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/sglavoie/docket/internal/sigil"
 )
 
 // Farewell is the line left in the shell on quitting: what the day finished
@@ -14,25 +12,7 @@ import (
 // the chrome nothing (rule 6).
 func (m *Model) Farewell() string {
 	m.scan()
-	day := m.today().Format("2006-01-02")
-	done := 0
-	var walk func(id string)
-	walk = func(id string) {
-		for _, kid := range m.tree.Children(id) {
-			if kid == filtersID {
-				continue
-			}
-			r := m.tree.Row(kid)
-			if r == nil || r.Deleted() {
-				continue
-			}
-			if r.Fields[sigil.FieldState] == sigil.Done && m.dayOf(m.changedAt(kid)) == day {
-				done++
-			}
-			walk(kid)
-		}
-	}
-	walk("")
+	done := m.doneToday
 	var parts []string
 	if done > 0 {
 		parts = append(parts, strconv.Itoa(done)+" done today")

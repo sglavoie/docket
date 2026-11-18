@@ -205,6 +205,9 @@ type Model struct {
 	headings   []entry        // live heading destinations, in tree order
 	rowNames   []entry        // every other live row with text, for the pickers
 	parked     int
+	doneToday  int                 // rows closed as done today, derived in scan
+	resumed    string              // the left-off note of a row this key set doing, said once the key is done
+	overdue    int                 // tasks still to do past their deadline, out of parked work, derived in scan
 	next       map[string]bool     // each active project's next action, derived in scan
 	first      map[string]bool     // each parent's first workable child, derived in scan
 	inToday    map[string]bool     // the rows in Today, derived in scan
@@ -648,17 +651,27 @@ func (m *Model) picksLeft() int {
 	return 0
 }
 
-// sayDayDone marks the end of a day's work: when a change the user made
-// closes the last open pick, the status line says so, once. An undo, a sync
-// pass or the day turning over says nothing, and nor does a key that has
-// something of its own to say.
-func (m *Model) sayDayDone(left int) {
-	if !m.recorded || left == 0 || m.picksLeft() > 0 || m.msg != "" {
+// sayDayDone marks a day's work as it is done. A change the user made that
+// finishes rows says how many the day has finished, as `3 done today`; one
+// that closes the last open pick says so, once. An undo, a sync pass or the
+// day turning over says nothing, and nor does a key that has something of
+// its own to say.
+func (m *Model) sayDayDone(left, done int) {
+	if !m.recorded || m.msg != "" {
 		return
 	}
-	if len(m.lists[kindToday]) > 0 {
-		m.msg = "today is done: every pick is closed"
+	tally := ""
+	if m.doneToday > done {
+		tally = strconv.Itoa(m.doneToday) + " done today"
 	}
+	if left > 0 && m.picksLeft() == 0 && len(m.lists[kindToday]) > 0 {
+		m.msg = "today is done: every pick is closed"
+		if tally != "" {
+			m.msg += " · " + tally
+		}
+		return
+	}
+	m.msg = tally
 }
 
 // Notice shows a message on the status line until the next key.
@@ -1137,12 +1150,49 @@ func (m *Model) record(ops, inv []outline.Op) bool {
 }
 
 func (m *Model) do(ops ...outline.Op) bool {
+	// A row taken up again reads back where its work was left off.
+	note := ""
+	for _, op := range ops {
+		if r := m.tree.Row(op.Row); op.Kind == outline.Set && op.Field == sigil.FieldState && op.Value == sigil.Doing &&
+			r != nil && r.Fields[sigil.FieldState] != sigil.Doing && r.Fields[fieldResume] != "" {
+			note = r.Fields[fieldResume]
+		}
+	}
 	inv, err := m.apply(ops)
 	if err != nil {
 		m.msg = err.Error()
 		return false
 	}
-	return m.record(ops, inv)
+	if !m.record(ops, inv) {
+		return false
+	}
+	if note != "" {
+		m.resumed = note
+	}
+	return true
+}
+
+// writeResume keeps, changes or takes off the note of where a row's work
+// was left off, as one undo step.
+func (m *Model) writeResume(id, note string) {
+	if !m.live(id) {
+		return
+	}
+	note = strings.Join(strings.Fields(note), " ")
+	had := m.tree.Row(id).Fields[fieldResume]
+	if note == had {
+		return
+	}
+	if m.do(outline.Op{Kind: outline.Set, Row: id, Field: fieldResume, Value: note}) {
+		switch {
+		case note == "":
+			m.msg = "left-off note taken off"
+		case had == "":
+			m.msg = "noted where it was left off"
+		default:
+			m.msg = "left-off note changed"
+		}
+	}
 }
 
 // replay moves one step between the undo and redo stacks.
@@ -1398,11 +1448,16 @@ func (m *Model) moveBlock(ids []string, key string) {
 
 // sortRows reorders siblings once, leaving their descendants attached.
 func (m *Model) sortRows(keys []string) {
-	for _, key := range keys {
-		if key != "@" && key != "!" && key != "$" {
-			m.msg = "unknown sort key: " + key + ": the keys are @ ! $, or none for text"
-			return
+	for i, key := range keys {
+		if key == "@" || key == "!" || key == "$" || key == "~" || key == "~~" {
+			continue
 		}
+		if name, ok := sigil.ParseTag(strings.TrimPrefix(key, "#")); ok && key[0] == '#' && !strings.Contains(name, "=") {
+			keys[i] = "#" + name
+			continue
+		}
+		m.msg = "unknown sort key: " + key + ": the keys are @ ! $ ~ ~~ #tag, or none for text"
+		return
 	}
 	if m.flat() {
 		return
@@ -1463,6 +1518,12 @@ func (m *Model) sortRows(keys []string) {
 				}
 			case "$":
 				order = cmp.Compare(slices.Index(states, x[sigil.FieldState]), slices.Index(states, y[sigil.FieldState]))
+			case "~":
+				order = cmp.Compare(m.changedAt(b), m.changedAt(a))
+			case "~~":
+				order = cmp.Compare(m.tree.Row(b).Edited, m.tree.Row(a).Edited)
+			default:
+				order = byTagValue(x[sigil.FieldTags], y[sigil.FieldTags], key[1:])
 			}
 			if order != 0 {
 				return order
@@ -1481,6 +1542,29 @@ func (m *Model) sortRows(keys []string) {
 		m.seek(cur)
 		m.msg = "sorted " + rowCount(len(block))
 	}
+}
+
+// byTagValue orders two rows by the value a tag carries, lowest first, as
+// numbers when both are and else as text: a row with the tag and no value
+// follows those with one, and a row without the tag comes last.
+func byTagValue(x, y, name string) int {
+	rank := func(tags string) (int, string) {
+		for _, tag := range strings.Fields(tags) {
+			if sigil.TagName(tag) == name {
+				if v := sigil.TagValue(tag); v != "" {
+					return 0, v
+				}
+				return 1, ""
+			}
+		}
+		return 2, ""
+	}
+	rx, vx := rank(x)
+	ry, vy := rank(y)
+	if rx != ry || rx != 0 {
+		return cmp.Compare(rx, ry)
+	}
+	return compareValues(vx, vy)
 }
 
 func (m *Model) reorder(id string, down bool) {
@@ -1882,7 +1966,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		outlineKey := !m.help && m.edit == nil && m.ask == nil && !m.sideFocus
 		tree, gen := m.tree, m.tree.Gen()
-		left := m.picksLeft()
+		left, done := m.picksLeft(), m.doneToday
 		m.recorded = false
 		switch {
 		case m.help && m.helpFind != nil:
@@ -1906,7 +1990,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// The sidebar still follows a minute turning over between keys.
 			m.scan()
 		}
-		m.sayDayDone(left)
+		if m.resumed != "" {
+			if m.msg == "" {
+				m.msg = "left off: " + m.resumed
+			}
+			m.resumed = ""
+		}
+		m.sayDayDone(left, done)
 		if m.quit {
 			m.syncQuit()
 			return m, tea.Quit
@@ -1942,6 +2032,7 @@ const (
 	askLink    = "link"    // a row for rows to point at
 	askFilter  = "filter"  // a query narrowing the pane, live
 	askStamp   = "stamp"   // sigils to set on rows
+	askResume  = "resume"  // the note of where a row's work was left off
 	askCommand = "command"
 )
 
@@ -1952,6 +2043,7 @@ var askLabels = map[string]string{
 	askLink:    "Link to › ",
 	askFilter:  "Filter › ",
 	askStamp:   "Stamp › ",
+	askResume:  "Left off › ",
 	askCommand: ": ",
 }
 
@@ -2035,6 +2127,9 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 			if m.applyStamp(a.rows, string(a.ed.buf)) {
 				m.ask = nil
 			}
+		case askResume:
+			m.ask = nil
+			m.writeResume(a.rows[0], text)
 		case askCommand:
 			m.ask = nil
 			m.remember(askCommand, text)
@@ -3132,6 +3227,12 @@ func (m *Model) normalAct(k string, count int) {
 		m.ask = &prompt{kind: askMove, rows: ids}
 	case "L":
 		m.ask = &prompt{kind: askLink, rows: ids}
+	case "R":
+		// Where the row's work was left off, read back when it is taken up.
+		if m.single() {
+			note := []rune(m.tree.Row(cur).Fields[fieldResume])
+			m.ask = &prompt{kind: askResume, ed: editor{buf: note, caret: len(note)}, rows: []string{cur}}
+		}
 	case "gl":
 		if m.single() {
 			m.follow()

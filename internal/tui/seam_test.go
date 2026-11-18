@@ -218,7 +218,7 @@ func TestAFilterSaysWhenASigilIsReadAsText(t *testing.T) {
 	for q, want := range map[string]string{
 		"@tomorow":     `"@tomorow" as text: a day reads as @fri, @+3d, @dec4 or @2026-12-04`,
 		"$wating #bug": `"$wating" as text: a state is $open, $doing, $waiting, $done, $canceled, $parked or $note and #bug`,
-		"-~7x":         `not "~7x" as text: a time reads as ~today, ~7d, ~2w, ~1m or ~1y`,
+		"-~7x":         `not "~7x" as text: a time reads as ~today, ~7d, ~2w, ~1m or ~1y, and ~~7d for an edit`,
 		`"@home"`:      `"@home"`,
 		"milk":         `"milk"`,
 	} {

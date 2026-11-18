@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/sglavoie/docket/internal/outline"
@@ -29,13 +30,14 @@ var fieldWords = map[string]string{
 	fieldTodayPos:      "Today order",
 	fieldLink:          "link",
 	fieldQuery:         "saved filter",
+	fieldResume:        "left-off note",
 }
 
 // fieldOrder is the order fields are named in, most telling first.
 var fieldOrder = []string{
 	sigil.FieldText, fieldBody, sigil.FieldState, sigil.FieldFlag, sigil.FieldPin, sigil.FieldDue,
 	sigil.FieldStart, sigil.FieldTags, sigil.FieldContext, sigil.FieldRepeat, sigil.FieldToday,
-	fieldTodayPos, fieldLink, fieldQuery,
+	fieldTodayPos, fieldLink, fieldResume, fieldQuery,
 }
 
 func rowCount(n int) string {
@@ -311,7 +313,7 @@ var commandUses = []struct{ use, does string }{
 	{"numbers", "show or hide each row's count from the cursor, and the cursor's place"},
 	{"all", "select every row shown"},
 	{"s/old/new", "change text in the row or the selection"},
-	{"sort [keys]", "order siblings once: @ deadline, ! flag, $ state, else text"},
+	{"sort [keys]", "order siblings once: @ deadline, ! flag, $ state, ~ changed, ~~ edited, #tag value, else text"},
 	{"fold level", "keep that many levels open; zM zR fold, open all"},
 	{"archive", "move closed rows under Archive:"},
 	{"review", "active projects, longest untouched first"},
@@ -444,6 +446,9 @@ func (m *Model) tagOffers(e *editor, surface string) string {
 	if colors := m.colorOffers(e, surface); colors != "" {
 		return colors
 	}
+	if day := m.dateOffer(e, surface); day != "" {
+		return day
+	}
 	typed, ctx, ok := tagWord(e, surface)
 	if !ok {
 		return ""
@@ -502,7 +507,7 @@ var starters = []savedFilter{
 // starterFilters saves the starter filters as part of the undo step that
 // made the tutorial, when no filter has been saved yet.
 func (m *Model) starterFilters() {
-	if len(m.filters) > 0 || len(m.undo) == 0 {
+	if slices.ContainsFunc(m.filters, func(f savedFilter) bool { return !f.Builtin }) || len(m.undo) == 0 {
 		return
 	}
 	var ops, inv []outline.Op
@@ -542,7 +547,6 @@ var strayKeys = map[string]string{
 	"S": "cc retypes the row, keeping its fields",
 	"C": "cc retypes the row, keeping its fields; A types at the end",
 	"r": "w steps into the text, where r replaces a character",
-	"R": "cc retypes the row, keeping its fields",
 	"X": "dd deletes the row; x marks it done",
 	"D": "dd deletes the row with what is under it",
 	"Y": "yy copies the row with what is under it",
@@ -716,11 +720,58 @@ func sigilForm(w string) string {
 	case strings.HasPrefix(w, "#"):
 		return "a tag starts with a letter"
 	case strings.HasPrefix(w, "~"):
-		return "a time reads as ~today, ~7d, ~2w, ~1m or ~1y"
+		return "a time reads as ~today, ~7d, ~2w, ~1m or ~1y, and ~~7d for an edit"
 	case strings.HasPrefix(w, "!"):
 		return "the flag is ! alone"
 	}
 	return ""
+}
+
+// dateOffer names, while a day is typed at the end of a row, the capture or
+// the stamp line, the day it reads as, so @+10d or @dec4 is checked before
+// it is kept: `@+10d is Sat Nov 28 · in 10 days`. The filter reads its days
+// back in words already, so it says nothing here.
+func (m *Model) dateOffer(e *editor, surface string) string {
+	if surface == askFilter || e.caret != len(e.buf) || len(e.buf) == 0 {
+		return ""
+	}
+	line := string(e.buf)
+	w := line[strings.LastIndexAny(line, " \t")+1:]
+	rest, ok := strings.CutPrefix(w, "@")
+	if !ok {
+		return ""
+	}
+	rest = strings.TrimPrefix(rest, "@")
+	today := m.today()
+	day, ok := sigil.ParseDate(rest, today)
+	if !ok {
+		return ""
+	}
+	return w + " is " + dayName(day, today)
+}
+
+// dayName is a day written out in full, with how far away it is.
+func dayName(day string, today time.Time) string {
+	t, err := time.Parse("2006-01-02", day)
+	if err != nil {
+		return day
+	}
+	name := t.Format("Mon Jan 2")
+	_, days := sigil.DueLabel(day, today)
+	if t.Year() != today.Year() {
+		name += " " + strconv.Itoa(t.Year())
+	}
+	switch {
+	case days == 0:
+		return name + " · today"
+	case days == 1:
+		return name + " · tomorrow"
+	case days == -1:
+		return name + " · yesterday"
+	case days < 0:
+		return name + " · " + strconv.Itoa(-days) + " days ago"
+	}
+	return name + " · in " + strconv.Itoa(days) + " days"
 }
 
 // colourForm says what a colour reads as.

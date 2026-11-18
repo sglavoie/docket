@@ -62,6 +62,8 @@ func (c cond) words(today time.Time) string {
 		return "a project"
 	case '^':
 		return "pinned"
+	case 'B':
+		return "waiting on a linked task still to do"
 	case '@':
 		switch c.value {
 		case "":
@@ -91,6 +93,8 @@ func (c cond) words(today time.Time) string {
 		return "repeats every " + c.value
 	case '~':
 		return "changed since " + dayWords(c.value, today)
+	case 'e':
+		return "edited since " + dayWords(c.value, today)
 	case '&':
 		switch c.value {
 		case "":

@@ -188,3 +188,27 @@ func TestPositionsStayInTheirGroup(t *testing.T) {
 		t.Fatalf("gap after y passing over p1 = %q %q", l, r)
 	}
 }
+
+func TestAMoveIsNoEdit(t *testing.T) {
+	tr := NewTree(nil)
+	for _, op := range []Op{
+		{Kind: Insert, Row: "a", Pos: "a"},
+		{Kind: Insert, Row: "b", Pos: "b"},
+	} {
+		if _, err := tr.Apply(op, 10); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := tr.Apply(Op{Kind: Set, Row: "a", Field: FieldText, Value: "x"}, 20); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tr.Apply(Op{Kind: Move, Row: "a", Parent: "b", Pos: "a"}, 30); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tr.Apply(Op{Kind: Set, Row: "a", Field: "todaypos", Value: "m"}, 40); err != nil {
+		t.Fatal(err)
+	}
+	if r := tr.Row("a"); r.Edited != 20 || r.Modified != 40 {
+		t.Fatalf("edited %d, modified %d", r.Edited, r.Modified)
+	}
+}

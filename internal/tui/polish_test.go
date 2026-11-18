@@ -177,11 +177,11 @@ func TestEditingMovesByWord(t *testing.T) {
 func TestPickerArrowsWalkTheMatches(t *testing.T) {
 	h := work(t)
 	h.press("f")
-	if h.bottom() != "Go to ›    Inbox · Today · Waiting · Stale · Projects · Beta · Alpha" {
+	if !strings.HasPrefix(h.bottom(), "Go to ›    Inbox · Today · Waiting · Stale · Projects · Beta · Alpha · /suggest") {
 		t.Fatalf("picker = %q", h.bottom())
 	}
 	h.press("up", "down", "down")
-	if h.bottom() != "Go to ›    ‹ Waiting · Stale · Projects · Beta · Alpha" {
+	if !strings.HasPrefix(h.bottom(), "Go to ›    ‹ Waiting · Stale · Projects · Beta · Alpha · /suggest") {
 		t.Fatalf("picker = %q", h.bottom())
 	}
 	h.press("enter")

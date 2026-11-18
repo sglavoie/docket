@@ -356,8 +356,36 @@ func (s *Store) Load() (*outline.Tree, error) {
 	if err := fs.Err(); err != nil {
 		return nil, err
 	}
+	// When each row's fields were last written, read from their stamps.
+	es, err := s.db.Query(`SELECT row, name, stamp FROM fields`)
+	if err != nil {
+		return nil, err
+	}
+	defer es.Close()
+	for es.Next() {
+		var id, name, stamp string
+		if err := es.Scan(&id, &name, &stamp); err != nil {
+			return nil, err
+		}
+		if r := byID[id]; r != nil && !outline.Quiet[name] {
+			r.Edited = max(r.Edited, stampMillis(stamp))
+		}
+	}
+	if err := es.Err(); err != nil {
+		return nil, err
+	}
+	for _, r := range rows {
+		r.Edited = max(r.Edited, r.Created)
+	}
 	breakCycles(byID, moved)
 	return outline.NewTree(rows), nil
+}
+
+// stampMillis is the wall time a stamp was issued at.
+func stampMillis(stamp string) int64 {
+	ms, _, _ := strings.Cut(stamp, "-")
+	n, _ := strconv.ParseInt(ms, 10, 64)
+	return n
 }
 
 // Folds returns the rows folded on this machine. Folding is view state: it is

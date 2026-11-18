@@ -113,11 +113,16 @@ func TestParseDate(t *testing.T) {
 		"feb29":      "2028-02-29",
 		"jan5-2027":  "2027-01-05",
 		"eom":        "2026-11-30",
+		"eow":        "2026-11-15", // a Sunday ends its own week
 	}
 	for in, want := range cases {
 		if got, ok := ParseDate(in, today); !ok || got != want {
 			t.Errorf("ParseDate(%q) = %q, %v; want %q", in, got, ok, want)
 		}
+	}
+	// Midweek, the end of the week is the coming Sunday.
+	if got, _ := ParseDate("eow", today.AddDate(0, 0, 3)); got != "2026-11-22" {
+		t.Errorf("eow on a Wednesday = %q", got)
 	}
 	for _, in := range []string{"", "alice", "+3", "+d", "+3m", "13-40", "2026-02-30", "5", "dec", "dec32", "decx4", "feb30-2027", "dec4-27", "mayday", "nov-"} {
 		if got, ok := ParseDate(in, today); ok {

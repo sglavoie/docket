@@ -178,7 +178,9 @@ func TestANewOutlineComesWithFiltersWorthKeeping(t *testing.T) {
 	h.wide()
 	var names []string
 	for _, f := range h.m.filters {
-		names = append(names, f.Name+"="+f.Query)
+		if !f.Builtin {
+			names = append(names, f.Name+"="+f.Query)
+		}
 	}
 	if !slices.Equal(names, []string{"next=$next", "week=@week", "done=$done ~7d"}) || len(h.m.undo) != 1 {
 		t.Fatalf("filters %q, %d undo steps", names, len(h.m.undo))
@@ -189,8 +191,8 @@ func TestANewOutlineComesWithFiltersWorthKeeping(t *testing.T) {
 	}
 	// They are made with the tutorial and go with it.
 	h.press("esc", "u")
-	if len(h.m.filters) != 0 {
-		t.Fatalf("undo kept %d filters", len(h.m.filters))
+	if n := len(h.m.filters) - len(builtins); n != 0 {
+		t.Fatalf("undo kept %d filters", n)
 	}
 	// An outline that has saved a filter already is given none.
 	h.m.filters = []savedFilter{{Name: "mine"}}
@@ -282,7 +284,7 @@ func TestARefusalNamesTheWayThatWorks(t *testing.T) {
 	h.press(":", `"fold x"`, "enter")
 	h.wantStatus("invalid fold level: x: fold 2 shows two levels")
 	h.press(":", `"sort ?"`, "enter")
-	h.wantStatus("unknown sort key: ?: the keys are @ ! $, or none for text")
+	h.wantStatus("unknown sort key: ?: the keys are @ ! $ ~ ~~ #tag, or none for text")
 	h.press("y", "y")
 	h.wantStatus("copied 1 row")
 }

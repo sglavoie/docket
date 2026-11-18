@@ -53,6 +53,10 @@ a rule here changes this file first.
 - `pos` is a fractional string key, so a row is placed between two siblings
   without renumbering either.
 - A move under the row itself or one of its descendants is refused.
+- When a row was last edited is when any of its fields was last written,
+  read from the stamps `fields` keeps; a move is not an edit, and nor is
+  `todaypos`, Today's own order. `~~` filters on it and `:sort ~~` orders by
+  it, so sorting or archiving rows never makes them look freshly edited.
 
 ### Fields
 
@@ -75,6 +79,7 @@ a rule here changes this file first.
 | `context` | 20 | Where the work is done: one name, normalised as a tag without a value |
 | `pin` | 21 | The row is drawn before its unpinned siblings |
 | `body` | 23 | Free text under the row's line, lines and blanks kept as typed; never read for sigils |
+| `resume` | 28 | Where the row's work was left off: one line, written with `R` (see Left off) |
 
 ## Storage
 
@@ -287,6 +292,16 @@ cursor on the first row; dim text keeps 4.5 to 1 on it in both palettes.
 With sidebar focus its entry is shaded instead; the pane’s header and
 cursor lose their tint, while selections remain shaded. Indentation stays blank.
 
+**Behind other windows.** The terminal's title counts what waits, as
+`Docket · inbox 2 · today 3 · overdue 1`: the Inbox and Today as the
+sidebar counts them, and the tasks still to do past their deadline outside
+parked work; a count of none is left out, so a quiet day reads `Docket`.
+The terminal's progress bar (OSC 9;4) fills as Today's picks are closed, in
+the warning state while anything is overdue, and is cleared when nothing is
+picked. Both come from the sidebar's scan and are drawn outside the screen,
+so rule 6 holds; a terminal that knows neither shows neither. Docket.app
+puts the title on its window.
+
 ### Sidebar
 
 Drawn from 72 columns up; narrower, it takes the pane only while focused.
@@ -300,16 +315,18 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
   canceled, so it empties as they are filed or finished; Today counts
   picks not yet closed, and shows a dimmed `✓` once every pick is closed,
   so a finished day is told from one with nothing picked. A change the
-  user makes that closes the last open pick says so on the status line,
-  once, as `today is done: every pick is closed`, unless the key has
-  something of its own to say; an undo, a sync pass or the day turning
-  over says nothing. Waiting counts
+  user makes that finishes rows says how many the day has finished,
+  wherever they are, as `3 done today`; one that closes the last open
+  pick says so too, once, as `today is done: every pick is closed · 4
+  done today`. Neither is said when the key has something of its own to
+  say, and an undo, a sync pass or the day turning over says nothing. Waiting counts
   rows in that state; Stale counts open
   and doing rows untouched for 14 days, leaving out rows whose start day is
   still ahead.
 - **Saved filters** follow the four lists, each as `/name`, in the order
   they were saved, set apart from the lists by a blank line, since they are
-  the user's places and the lists are every outline's. They carry no count,
+  the user's places and the lists are every outline's. The built-in
+  filters follow them (see Saved filters and review). They carry no count,
   so the scan stays one pass.
 - **Projects** shows every top-level row as one outline. It is where a
   project is added, renamed, reordered, parked or closed, with the ordinary
@@ -449,8 +466,9 @@ The pane shows the rows under one row, or a list.
   closed rows.
 - **An empty pane says why, and names the key that changes it**, dimmed
   on its first line: `o` in an outline, `a` in the Inbox, `t` for Today,
-  and `/next` beside it when a filter is saved under that name, since what
-  could be done is where a day's picks come from,
+  and `/next` beside it when a filter is saved under that name, else the
+  built-in `/suggest`, since what could be done is where a day's picks
+  come from,
   `$waiting` for Waiting, `:closed` when only closed rows are hidden, and
   `Esc` under a held filter that matches nothing.
 - **The screen follows the clock.** It is read again once a minute, so a day
@@ -506,9 +524,14 @@ The status line becomes a prompt for three acts, named at its left edge:
 - `a` **Inbox ›** files a typed line in the Inbox. A `%name` word files it in
   the project or heading that name matches instead; the line names where it
   will land, and a blank line names `%name`, the one word no other line
-  reads. One matching nothing stays in the text. `Enter` keeps the line
+  reads. One matching nothing stays in the text. Opened from Today, the
+  line is a pick for the day as well, in the same undo step: the line says
+  `picked for Today` after where it lands, and the row joins the held list
+  after the day's own picks, as `t` would place it. It is the place
+  answering what the line is for, as `o` takes the pin of where it opens,
+  not a second route to `t`; `docket add` picks nothing. `Enter` keeps the line
   and asks for the next, saying where that one went, as `added to Alpha ›
-  TUI`; a blank `Enter` or `Esc` closes, and `Esc` keeps what was typed.
+  TUI`, or `added to Inbox · picked for Today`; a blank `Enter` or `Esc` closes, and `Esc` keeps what was typed.
 - `f` **Go to ›** opens a project, a heading, a list or a saved filter by
   name. A heading opens inside its project: the sidebar stays on the
   project and `Esc` backs out to it. Once something is typed it reaches
@@ -660,7 +683,11 @@ Three more acts use the same line:
   included. `~7d`, `~2w`, `~1m`, `~1y` and `~today` match a row whose
   state last changed that recently, or which was made that recently if it
   never had one, so `$done ~7d` is what was finished this week and
-  `$waiting -~2w` what has waited longer than two. Every term must hold. A
+  `$waiting -~2w` what has waited longer than two. `~~7d`, `~~today` and
+  the rest match a row last edited that recently instead (see Model): its
+  text, a tag, a date or any other field written, so `~~today` is what was
+  touched today and `-~~1m` what has been left alone for a month. Every
+  term must hold. A
   bar standing alone, with a blank on each side, splits the terms around it
   into alternatives, and brackets standing alone set a part off as one
   term: `#home $open | #work !` is the open rows at home or the flagged
@@ -718,6 +745,10 @@ Three more acts use the same line:
   `$missed` holds for a pick carried into Today from an earlier day, a
   task still open, doing or waiting, so `$missed #work` is what the work
   days left undone. It is read like `$next`.
+  `$blocked` holds for a task still to do, not parked, whose link points
+  at a task that is not done or canceled: work held up by other work. A
+  note that links to a task is a reference, not a wait, and is not
+  blocked. It is read like `$next`.
   `$project` holds for a project, a top-level row other than the Inbox,
   and is read like `$next`, so `$parked $project` is the parked projects
   the sidebar counts. `$pinned` holds for a row pinned with `^` (see Pins)
@@ -762,7 +793,9 @@ Three more acts use the same line:
   When the query has an un-negated `~` term on the row itself, each match
   says the day its state last changed, or it was made, as `~today` or
   `~Nov 12`, after its fields; a flat list of such matches reads newest
-  first, ties in outline order, unless a deadline term orders it.
+  first, ties in outline order, unless a deadline term orders it. A `~~`
+  term does the same with the day the row was last edited, as `~~Nov 12`;
+  a query with both reads the `~` one.
   When the query has an un-negated deadline term
   (`@`, `@date`, `@overdue`, `@week`, `@<`, `@>`), the flat list reads
   soonest deadline first, ties in outline order; in context, and in Today,
@@ -812,7 +845,8 @@ Three more acts use the same line:
   all of them by name alone while it is blank, so more fit and are scanned
   sooner, those that start as typed with what each takes after that, and
   the one that is left with what it does, as `sort [keys]: order siblings
-  once: @ deadline, ! flag, $ state, else text`; a line that starts none
+  once: @ deadline, ! flag, $ state, ~ changed, ~~ edited, #tag value, else
+  text`; a line that starts none
   says `no such command`. A name is read in any case, so `:Q` is `:q` when
 Shift or Caps Lock was held. `Enter` on a name that only one command starts, as
   `hel`, runs that command; one given anyway is named with the list. While
@@ -881,7 +915,14 @@ block of adjacent siblings under the Selection rule. Selected descendants
 travel with their selected ancestor. Children travel with their rows and
 are not sorted. Keys are space-separated: `@` puts soonest deadlines first
 and missing deadlines last; `!` puts flagged rows first; `$` orders doing,
-open, waiting, notes, parked, done, canceled. Each later key breaks ties;
+open, waiting, notes, parked, done, canceled; `~` puts the newest change
+of state first, as the filter's `~` reads it, and `~~` the newest edit;
+`#name` orders by the value the tag carries, lowest first, compared as
+numbers when both are and else as text ignoring case, as the filter's
+`#name<value` compares, then the rows carrying it with no value, then
+those without it, so `#p=1` and `:sort #p` stand in for priority levels.
+A sort moves rows and edits none, so `:sort ~~` given twice finds them in
+order. Each later key breaks ties;
 without keys, text is compared ignoring case. Ties keep their original
 order. Pinned rows stay first: each group is sorted on its own (see Pins).
 Rows stay inside their original sibling span, in one undo step,
@@ -986,6 +1027,25 @@ parent. Today, Waiting, Stale, review and a held filter keep their own
 orders: `^` sets the field there and nothing moves. `^` does nothing in the
 sidebar, and no rule is drawn under the pinned rows: the mark says it.
 
+### Left off
+
+`R` writes where the cursor's row was left off, a line such as `Next:
+reproduce it with an expired token`, so work put down mid-thought is taken
+up from there. It opens a `Left off ›` line on the status row holding the
+note as it stands; `Enter` keeps it as one undo step, a blank line takes it
+off, and `Esc` leaves it as it was. Blanks inside it are folded to one,
+and nothing in it is read as a sigil. It is the field `resume`, so it is
+undone, backed up and synced like any other; copy, export and `docket ls`
+do not carry it, since a pasted row has not been worked on. It works in
+lists and filters; a selection refuses it and a count is dropped.
+
+The note is read back, never drawn on the row (rule 6): whenever the
+cursor is on a row that has one and nothing else is to be said, the status
+line says it dimmed, as `left off: Next: reproduce it with an expired
+token`, and a change that sets a row `doing`, by a stamp or its line, says
+it once as the change's message. `R` is the only way to write it (rule 3);
+the body is for what the row is, the note for where its work stands.
+
 ### Saved filters and review
 
 `:save name` keeps the pane's filter, with the row it was made under and
@@ -997,6 +1057,20 @@ lists, reached with the sidebar's ordinary keys: a place, as a list is, and
 not a second route to a key (rule 3). Each is a row
 under a hidden top-level row with the fixed identity `filters`, so saving
 and forgetting are undone, backed up and synced like any other change.
+
+**Built-in filters.** Every outline also has four filters it never
+stores, for the passes a day and a week ask for, each flat over Projects:
+`/suggest` (`( $doing | @week | $next ) -$today`), what could be picked
+for Today; `/slipping` (`$missed | @overdue`), what the days are leaving
+behind; `/stuck` (`$doing -~7d | $waiting -~2w`), what has stalled; and
+`/blocked` (`$blocked`), what waits on other work. The `f` picker offers
+them after the saved filters; the sidebar does not list them, so it holds
+only the user's places. Each pass is then the ordinary keys: `n`, `t`, a
+stamp, `Ctrl+A`. `:save name` over one puts the user's own in its place,
+and in the sidebar, and `:forget name` brings the built-in one back; a
+built-in one cannot be forgotten and says so, naming `:save`. They are
+not rows, so a new outline's `/next`, `/week` and `/done` are still saved
+beside them.
 
 `:review` is a list of the active projects, the longest untouched first,
 each with how many tasks are left to do, or `∅`, and its age, in two
@@ -1017,7 +1091,7 @@ it.
 deselects. While rows are selected, `x`, `!`, `^`, `t`, `dd`, `m`, `L`, `>>`, `<<`,
 `J`, `K` and a stamp act on the selection, in one undo step. `x`, `!`, `^` and `t` set
 their value on every row unless all already hold it, in which case they
-clear it. The keys that work on one row (`A`, `I`, `cc`, `o`, `O`, `Enter`,
+clear it. The keys that work on one row (`A`, `I`, `cc`, `R`, `o`, `O`, `Enter`,
 `gf`, `gl`, `gn`, `gN` and the word motions that step into a row) are refused and say so. The status line counts the selection, in the accent colour its
 marks are drawn in since the keys now act on those rows, and `Esc` clears it.
 
@@ -1218,7 +1292,7 @@ presses of `v` would, stopping at the last row. With rows already selected,
 a count before an act on rows (including `v`) is refused and says so.
 The word motions that step into a row take the count as theirs, and
 `Ctrl+O` and `Ctrl+I` go that many places. Every other key, including `o`,
-`O`, `A`, `I`, `cc`, `Enter`, `h`, `l`, `f`, `gf`, `gl`, `gn`, `gN`, `p`, `P`, `gp`, `gP`,
+`O`, `A`, `I`, `cc`, `R`, `Enter`, `h`, `l`, `f`, `gf`, `gl`, `gn`, `gN`, `p`, `P`, `gp`, `gP`,
 `zt`, `zz`, `zb`, `a`, `/`, `:`, `gv`, `gi` and `Tab`, drops the count and acts as usual, as do `zM` and `zR`.
 `zm` and `zr` take the count as levels, and `Ctrl+A` and `Ctrl+X` as days.
 
@@ -1278,13 +1352,14 @@ otherwise.
 | `g;` `g,` | Back to the rows changed this session, and on again | 17 |
 | `a` `m` | Capture to the Inbox from anywhere; move to a project or heading | 3 |
 | `gf` | Go to the whole project the row is filed in, the cursor on the row; a jump | 22 |
+| `R` | Write where the row's work was left off, read back when it is taken up | 28 |
 | `L` `gl` | Link the row to another; follow the link, else open its first web address, Mail link or file, else go back to the row linking here | 13, 16, 19 |
 | `v` `V` | Pick a row; sweep with motions; `o` while sweeping swaps its ends | 4, 11, 24 |
 | `gv` | Select again the rows last cleared | 24 |
 | `/` `:` | Filter, command | 4 |
 | `#` `@` `$` `*` `-` `~` | Stamp sigils on rows; `~` a colour, so selected projects take one at once | 4, 19 |
 
-A Vim key the outline does not bind (`i`, `s`, `S`, `C`, `r`, `R`, `X`,
+A Vim key the outline does not bind (`i`, `s`, `S`, `C`, `r`, `X`,
 `D`, `Y`, `U`, `q`) changes nothing and names the outline's way to do
 what it means, as `i` says `I types at the start, A at the end; w steps
 into the text`. So do the keys other programs taught: `?` names `:help`,
@@ -1590,7 +1665,7 @@ grammar cannot read also stays prose (`@alice`, `#123`, `$5`). `\#tag` keeps a r
 | `!` | `flag` | The word `!` alone |
 | `^` | `pin` | The word `^` alone |
 | `#tag` | `tags` | A word starting with a letter; stored lowercase, once. `#name=value` carries a value, kept as typed: a name is held once, so a later value replaces the earlier where it sits |
-| `@date` | `due` | `today`, `tomorrow`, a weekday (the next one, never today), `+3d`, `+2w`, `MM-DD` or a month named as the row shows it, `dec4` or `dec-4` (the next such day), `jan5-2027`, `YYYY-MM-DD`, and `eom`, the last day of this month |
+| `@date` | `due` | `today`, `tomorrow`, a weekday (the next one, never today), `+3d`, `+2w`, `MM-DD` or a month named as the row shows it, `dec4` or `dec-4` (the next such day), `jan5-2027`, `YYYY-MM-DD`, `eow`, the end of this week (Sunday, today on a Sunday), and `eom`, the last day of this month |
 | `@@date` | `start` | The same forms as `@date` |
 | `*interval` | `repeat` | A count and `d`, `w`, `m` or `y` (`*3d`, `*2w`), or `daily`, `weekly`, `monthly`, `yearly` |
 | `$state` | `state` | `open`, `doing`, `waiting`, `done`, `canceled`, `parked`, `note`, or an unambiguous prefix (`$w`, `$c`, `$p`; `$d` is not one). `$next`, `$first`, `$today`, `$missed` and `$project` are read by the filter only: they are not states |
@@ -1612,7 +1687,13 @@ stamp line.
 **While typing.** On every line that reads sigils (a row, the capture line,
 the stamp line, the filter) a word the line reads as a sigil is drawn in the
 accent colour, and a word that starts like one and cannot be read in the
-warning colour, so a mistyped `@firday` is seen before `Enter`. A
+warning colour, so a mistyped `@firday` is seen before `Enter`. A day
+being typed at the end of a row, the capture or the stamp line, once it
+reads, is named in full on the status line with how far off it is, as
+`@+10d is Wed Nov 25 · in 10 days` or `@@eow is Sun Nov 22 · in 7 days`,
+so the day `Enter` keeps is seen first; while the date words are listed
+over the rows, the list names them instead. The filter reads its days
+back in words already, so it says nothing more. A
 `~colour` is drawn in the colour it names instead, so it is seen before
 it is kept. At the end of
 the line a sigil being typed is completed in dim text: a `#tag` or a
@@ -1985,6 +2066,17 @@ a row unseen.
    what Today still holds. An empty Today names `/next` beside `t`.
    Docket.app adds a Today widget and Spotlight results, read with `docket
    ls`. *Built.*
+
+28. **More from v1.** A day typed on a row, the capture or the stamp line
+   is named in full before it is kept, and `@eow` is the end of the week.
+   The terminal's title counts the Inbox, Today and what is overdue, and
+   its progress bar fills as Today's picks close. `R` notes where a row's
+   work was left off, read back when the cursor is on it or it is taken up
+   again. Finishing rows says how many the day has done. `/suggest`,
+   `/slipping`, `/stuck` and `/blocked` are built in. `~~` filters by the
+   last edit, and `:sort` orders by `~`, `~~` and a tag's value. A line
+   captured in Today is picked for it. `$blocked` finds work waiting on an
+   open link. *Built.*
 
 Not planned: reminders, attachments, a details panel (a body is read in the
 pane, not beside it), import from v1, any

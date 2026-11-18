@@ -201,10 +201,14 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 		}
 		out = append(out, word{paint(m.tagColor(tag)), "#" + tag})
 	}
-	if m.at.since && m.at.matched[r.ID] {
+	if m.at.since != 0 && m.at.matched[r.ID] {
 		// A filter that asks when rows changed says when each one did.
-		day := time.UnixMilli(m.changedAt(r.ID)).In(m.today().Location()).Format("2006-01-02")
-		out = append(out, word{m.colors().dim, "~" + dayWords(day, m.today())})
+		day := time.UnixMilli(m.sinceAt(r.ID)).In(m.today().Location()).Format("2006-01-02")
+		mark := "~"
+		if m.at.since == 'e' {
+			mark = "~~"
+		}
+		out = append(out, word{m.colors().dim, mark + dayWords(day, m.today())})
 	}
 	if to := r.Fields[fieldLink]; to != "" {
 		// A link names the row it points at as that row reads now.
@@ -617,7 +621,7 @@ func (m *Model) ruler(drawn int, whole bool) string {
 	return strconv.Itoa(min(m.top*100/max(len(m.vis)-drawn, 1), 99)) + "%"
 }
 
-// savedFilter reports whether a filter is saved under the name.
+// savedFilter reports whether a filter is saved under the name, or built in.
 func (m *Model) savedFilter(name string) bool {
 	m.scan()
 	for _, f := range m.filters {
@@ -638,6 +642,8 @@ func (m *Model) emptyText() string {
 	case m.at.list == kindToday && m.savedFilter("next"):
 		// What could be done is where a day's picks come from.
 		return "Nothing picked for today. t picks a row; /next lists what can be done."
+	case m.at.list == kindToday && m.savedFilter("suggest"):
+		return "Nothing picked for today. t picks a row; /suggest lists what could be."
 	case m.at.list == kindToday:
 		return "Nothing picked for today. Press t on a row to pick it."
 	case m.at.list == kindWaiting:
@@ -703,6 +709,10 @@ func (m *Model) statusLine(w int) (string, int) {
 			// Where the line will land, so a %name is seen to have worked.
 			to, _ := m.route(string(a.ed.buf))
 			note := "files in " + to.label
+			if m.at.list == kindToday {
+				// Typed in Today, the line is a pick for the day too.
+				note += " · picked for Today"
+			}
 			if tags != "" {
 				note += " · " + tags
 			}
@@ -743,6 +753,9 @@ func (m *Model) statusLine(w int) (string, int) {
 				hint = " · " + tags
 			}
 			line += "   " + m.colors().dim + ansi.Truncate(note+hint, room, "…") + sgrReset
+		case a.kind == askResume:
+			note := "Enter keeps it · a blank line takes it off · Esc leaves it"
+			line += "   " + m.colors().dim + ansi.Truncate(note, room, "…") + sgrReset
 		case a.kind == askCommand && len(a.menu) > 0:
 			// The commands are listed above; what the one written does is
 			// said here, as the last one left would be.
@@ -821,6 +834,9 @@ func (m *Model) statusLine(w int) (string, int) {
 		// A body is reached from the first row. Only one that is there is
 		// named: a hint on every first row would soon go unread.
 		left = "k edits its body"
+	case !m.sideFocus && len(m.picked) == 0 && m.sweep == "" && m.pending() == "" && m.resumeNote() != "":
+		// Where the row's work was left off, read whenever the cursor is on it.
+		left = "left off: " + m.resumeNote()
 	case m.sideFocus:
 		left = "j k choose · Enter work in it"
 		if m.sel.kind == kindProject {
@@ -868,6 +884,17 @@ func (m *Model) statusLine(w int) (string, int) {
 	left = ansi.Truncate(left, max(w-pw-1-ansi.StringWidth(tail), 0), "…")
 	gap := max(w-ansi.StringWidth(left)-pw-ansi.StringWidth(tail), 0)
 	return left + strings.Repeat(" ", gap) + sgrBold + pend + sgrReset + tail, -1
+}
+
+// resumeNote is the left-off note of the cursor's row, or nothing.
+func (m *Model) resumeNote() string {
+	if m.cursor < 0 || m.cursor >= len(m.vis) {
+		return ""
+	}
+	if r := m.tree.Row(m.vis[m.cursor].id); r != nil {
+		return r.Fields[fieldResume]
+	}
+	return ""
 }
 
 // pending is the keys typed so far that wait for more: a count, an operator,
@@ -1259,6 +1286,7 @@ func (m *Model) View() tea.View {
 		v.AltScreen = true
 		v.ReportFocus = true
 		v.Cursor = m.helpCaret()
+		v.WindowTitle, v.ProgressBar = m.pulse()
 		return v
 	}
 
@@ -1323,5 +1351,39 @@ func (m *Model) View() tea.View {
 	v.AltScreen = true
 	v.ReportFocus = true
 	v.Cursor = caret
+	v.WindowTitle, v.ProgressBar = m.pulse()
 	return v
+}
+
+// pulse is what the window says while Docket is behind other windows: its
+// title counts what waits, as `Docket · inbox 2 · today 3 · overdue 1`, and
+// the terminal's progress bar fills as Today's picks are closed, in the
+// warning colour while anything is overdue. Neither is the screen's chrome
+// (rule 6): the counts are the sidebar's, from the same scan.
+func (m *Model) pulse() (string, *tea.ProgressBar) {
+	title := "Docket"
+	inbox := 0
+	for _, e := range m.side {
+		if e.kind == kindInbox {
+			inbox = e.count
+		}
+	}
+	left := m.picksLeft()
+	for _, part := range []struct {
+		name string
+		n    int
+	}{{"inbox", inbox}, {"today", left}, {"overdue", m.overdue}} {
+		if part.n > 0 {
+			title += " · " + part.name + " " + strconv.Itoa(part.n)
+		}
+	}
+	picks := len(m.lists[kindToday])
+	if picks == 0 {
+		return title, tea.NewProgressBar(tea.ProgressBarNone, 0)
+	}
+	state := tea.ProgressBarDefault
+	if m.overdue > 0 {
+		state = tea.ProgressBarWarning
+	}
+	return title, tea.NewProgressBar(state, (picks-left)*100/picks)
 }

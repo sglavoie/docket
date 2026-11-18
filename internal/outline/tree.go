@@ -23,7 +23,12 @@ type Row struct {
 	Fields   map[string]string
 	Created  int64 // unix milliseconds
 	Modified int64
+	Edited   int64 // when a field was last written; a move leaves it
 }
+
+// Quiet fields are view state written on a row, such as its place in
+// Today: writing one is not an edit of the row.
+var Quiet = map[string]bool{"todaypos": true}
 
 func (r *Row) Text() string  { return r.Fields[FieldText] }
 func (r *Row) Deleted() bool { return r.Fields[FieldDeleted] != "" }
@@ -151,7 +156,7 @@ func (t *Tree) Apply(op Op, now int64) (Op, error) {
 		if op.Parent != "" && t.rows[op.Parent] == nil {
 			return Op{}, fmt.Errorf("insert under %s: %w", op.Parent, ErrUnknownRow)
 		}
-		r := &Row{ID: op.Row, Parent: op.Parent, Pos: op.Pos, Fields: map[string]string{}, Created: now, Modified: now}
+		r := &Row{ID: op.Row, Parent: op.Parent, Pos: op.Pos, Fields: map[string]string{}, Created: now, Modified: now, Edited: now}
 		t.rows[r.ID] = r
 		t.link(r)
 		return Op{Kind: Set, Row: r.ID, Field: FieldDeleted, Value: "1"}, nil
@@ -170,6 +175,9 @@ func (t *Tree) Apply(op Op, now int64) (Op, error) {
 		}
 		t.link(r)
 		r.Modified = now
+		if !Quiet[op.Field] {
+			r.Edited = now
+		}
 		return Op{Kind: Set, Row: r.ID, Field: op.Field, Value: prev}, nil
 
 	case Move:

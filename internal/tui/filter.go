@@ -65,7 +65,7 @@ func (g *group) holds(leaf func(int) bool) bool {
 
 // cond is one reading of a term.
 type cond struct {
-	kind  byte // t text, ! flag, # tag, c context, l g tag value range, $ state, S any state, n next action, f first sibling, T in Today, P project, @ deadline, < > deadline range, s start, * repeat, ~ changed, & link
+	kind  byte // t text, ! flag, # tag, c context, l g tag value range, $ state, S any state, n next action, f first sibling, T in Today, M missed, B blocked, P project, @ deadline, < > deadline range, s start, * repeat, ~ changed, e edited, & link
 	value string
 	arg   string          // the value a tag range compares with
 	rows  map[string]bool // the rows a link term asks for, read by terms
@@ -301,6 +301,8 @@ func parseCond(w string, today time.Time) cond {
 			c.kind = 'M'
 		} else if strings.ToLower(w) == "$pinned" {
 			c.kind = '^'
+		} else if strings.ToLower(w) == "$blocked" {
+			c.kind = 'B'
 		} else if state, ok := sigil.ParseState(w[1:]); ok {
 			c.kind, c.value = '$', state
 		}
@@ -309,7 +311,12 @@ func parseCond(w string, today time.Time) cond {
 			c.kind, c.value = '*', every
 		}
 	case '~':
-		if day, ok := sinceDay(strings.ToLower(w[1:]), today); ok {
+		// ~~ reads when the row was last edited, ~ when its state changed.
+		if rest, edit := strings.CutPrefix(w, "~~"); edit {
+			if day, ok := sinceDay(strings.ToLower(rest), today); ok {
+				c.kind, c.value = 'e', day
+			}
+		} else if day, ok := sinceDay(strings.ToLower(w[1:]), today); ok {
 			c.kind, c.value = '~', day
 		}
 	case '&':
@@ -463,6 +470,8 @@ func (m *Model) holds(r *outline.Row, l sigil.Line, c cond, today time.Time) boo
 		return m.inToday[r.ID]
 	case 'M':
 		return m.missed[r.ID]
+	case 'B':
+		return m.blocked(r, l)
 	case 'P':
 		// A project is a top-level row: neither the Inbox nor the row
 		// that holds the saved filters is one.
@@ -503,8 +512,25 @@ func (m *Model) holds(r *outline.Row, l sigil.Line, c cond, today time.Time) boo
 			at = n
 		}
 		return time.UnixMilli(at).In(today.Location()).Format("2006-01-02") >= c.value
+	case 'e':
+		// When a field of the row was last written; a move is not an edit.
+		return time.UnixMilli(r.Edited).In(today.Location()).Format("2006-01-02") >= c.value
 	}
 	return false
+}
+
+// blocked reports whether a row is a task still to do whose link points at
+// a task that is not finished: the work it waits on is still open.
+func (m *Model) blocked(r *outline.Row, l sigil.Line) bool {
+	if l.State == "" || l.Closed() || l.State == sigil.Parked {
+		return false
+	}
+	to := r.Fields[fieldLink]
+	if to == "" || !m.live(to) {
+		return false
+	}
+	t := sigil.FromFields(m.tree.Row(to).Fields)
+	return t.State != "" && !t.Closed()
 }
 
 // compareValues orders two tag values: as numbers when both are, else as
@@ -568,7 +594,12 @@ func (m *Model) refilter() {
 	q := m.query(m.at.query, m.at.here, today)
 	terms := q.terms
 	m.at.marks = q.marks()
-	m.at.since = asks(terms, "~")
+	m.at.since = 0
+	if asks(terms, "~") {
+		m.at.since = '~'
+	} else if asks(terms, "e") {
+		m.at.since = 'e'
+	}
 	if len(terms) == 0 {
 		return
 	}
@@ -650,10 +681,10 @@ func (m *Model) refilter() {
 		return any
 	}
 	walk(m.at.root, 0, 2)
-	if m.at.flat && m.at.since && !byDeadline(terms) {
+	if m.at.flat && m.at.since != 0 && !byDeadline(terms) {
 		// Newest change first, ties in the order found.
 		slices.SortStableFunc(m.at.hits, func(a, b visRow) int {
-			return cmp.Compare(m.changedAt(b.id), m.changedAt(a.id))
+			return cmp.Compare(m.sinceAt(b.id), m.sinceAt(a.id))
 		})
 	}
 	if m.at.flat && byDeadline(terms) {
@@ -678,6 +709,15 @@ func (m *Model) refilter() {
 			return cmp.Compare(m.closed(a.id), m.closed(b.id))
 		})
 	}
+}
+
+// sinceAt is when a row last changed in the sense the held filter asks
+// about: its state for ~, anything about it for ~~.
+func (m *Model) sinceAt(id string) int64 {
+	if m.at.since == 'e' {
+		return m.tree.Row(id).Edited
+	}
+	return m.changedAt(id)
 }
 
 // closed ranks a row for a flat list: 1 when done or canceled, else 0.
@@ -1053,6 +1093,19 @@ func (m *Model) writeRows(roots []string) (string, int) {
 type savedFilter struct {
 	ID, Name, Root, Query string
 	Flat                  bool
+	Builtin               bool `json:"-"` // one of builtins, kept in no row
+}
+
+// builtins are the filters every outline has, for the passes a day and a
+// week ask for: what could be picked for Today, what is slipping, what has
+// stalled, and what is held up by other work. They are not rows, so they
+// cannot be forgotten; a filter saved under one of their names is used in
+// its place, and forgetting that brings the built-in one back.
+var builtins = []savedFilter{
+	{Name: "suggest", Query: "( $doing | @week | $next ) -$today", Flat: true, Builtin: true},
+	{Name: "slipping", Query: "$missed | @overdue", Flat: true, Builtin: true},
+	{Name: "stuck", Query: "$doing -~7d | $waiting -~2w", Flat: true, Builtin: true},
+	{Name: "blocked", Query: "$blocked", Flat: true, Builtin: true},
 }
 
 const (
@@ -1079,6 +1132,9 @@ func (m *Model) keepFilter(save bool, name string) {
 		return
 	case save && (m.at.query == "" || m.at.list != ""):
 		m.msg = "filter an outline first (/), then save it"
+		return
+	case !save && id == "" && slices.ContainsFunc(builtins, func(f savedFilter) bool { return f.Name == name }):
+		m.msg = "/" + name + " is built in: :save " + name + " over it puts your own in its place"
 		return
 	case !save && id == "":
 		m.msg = "no saved filter is called " + name

@@ -81,10 +81,12 @@ Esc  j	back to the rows, from anywhere or past the last line; one undo
 # @ $ * - ~	open the stamp line; `Enter` sets sigils on the row or selection
 !	flag; `-!` removes it on the stamp line
 ^	pin rows first among their siblings, and unpin; `-^` on the stamp line
+R	note where the row's work was left off; read back on the row and on `$doing`
 -#tag -@ -@@ -*	remove fields on the stamp line; `-~` the colour, `-##` the context
 
 == Days
-@fri @+3d	deadline; `@dec4` `@jan5-2027` `@eom` by name
+@fri @+3d	deadline; `@dec4` `@jan5-2027` `@eow` `@eom` by name
+	while typed, the status line names the day it reads as
 @@mon	not before that day
 @++1w @--3d	shift the row's deadline; `@@++1w` its start (stamp line only)
 Ctrl+A Ctrl+X	a day later, earlier: the deadline, else the start; `7 Ctrl+A` a week
@@ -150,6 +152,10 @@ m Enter	with a blank query, move selected rows here, where `o` would add
 n N	next, previous match; after `Esc`, use the last filter
 gn gN	step into the text on what the filter found: `gn cw new Esc n .`
 :save name	keep a filter in the sidebar and under `f`; `:forget name` drops it
+/suggest	built in, under `f`: what could be picked for Today
+/slipping	built in: carried picks and overdue rows
+/stuck	built in: doing a week, waiting two; `:save` one to replace it
+/blocked	built in: tasks whose link points at a task still to do
 Held rows	edits never remove matches; change the query to read again
 Closed last	flat results and Today put done and canceled rows at the foot
 
@@ -159,7 +165,8 @@ Closed last	flat results and Today put done and canceled rows at the foot
 @overdue @week	deadlines, as `@<fri` `@>+1w`; flat results soonest first
 @@later	starts later
 ~7d	state changed (or row made) in the last week
-	a `~` filter says when on each match; flat, newest first
+~~7d	edited in the last week: any field written; a move is no edit
+	a `~` or `~~` filter says when on each match; flat, newest first
 & &word &.	a row link, one to matching text, one to the cursor's row
 $project	a top-level row: `$parked $project` lists parked projects
 $pinned	a row pinned with `^`
@@ -170,6 +177,7 @@ $first	first workable sibling per parent; includes Inbox
 $first -<$	next action under each heading and project
 $today	picked or starting today
 $missed	carried into Today from an earlier day, still open
+$blocked	a task still to do whose link points at a task still to do
 
 == Combine
 a|b	either: `$open|doing` `#home|!` `milk|#food`
@@ -179,6 +187,7 @@ a|b	either: `$open|doing` `#home|!` `milk|#food`
 
 ## Capture and travel
 a	capture to Inbox; `%name` files in a project or heading
+	typed in Today, the row is picked for Today as well
 	`Enter` keeps and offers another; blank `Enter` or `Esc` ends
 f	go to a project, heading, list, saved filter or row by name
 	blank `Enter` opens Inbox; `Up` `Down` choose, `Esc` leaves
@@ -212,6 +221,7 @@ Tab	on `:`, complete the command name; again for the next, `Shift+Tab` back
 :closed	hide or show done and canceled rows
 :fold level	show N levels: rows at level N fold, those above open
 :sort [keys]	siblings once: `@` deadline, `!` flag, `$` state
+	`~` newest change, `~~` newest edit, `#p` by the tag's value
 	later keys break ties; ties stay ordered; no keys sorts by text
 :s/old/new	replace text in the row or selection; any separator, as `s,a/b,c`
 :archive	move closed work under the project's `Archive:` heading

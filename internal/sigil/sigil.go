@@ -362,7 +362,8 @@ func civil(today time.Time) time.Time {
 // ParseDate reads a deadline: today, tomorrow, a weekday (the next one, never
 // today), +3d, +2w, MM-DD (the next such day), or YYYY-MM-DD. It also reads a
 // day as the row shows it, by the month's name: dec4 or dec-4 (the next
-// such day), jan5-2027 in a named year, and eom, the last day of this month.
+// such day), jan5-2027 in a named year, eow, the end of this week (Sunday), and eom,
+// the last day of this month.
 func ParseDate(s string, today time.Time) (string, bool) {
 	s = strings.ToLower(s)
 	day := civil(today)
@@ -391,6 +392,10 @@ func ParseDate(s string, today time.Time) (string, bool) {
 			return day.AddDate(0, 0, 7*n).Format(isoDay), true
 		}
 		return "", false
+	}
+	if s == "eow" {
+		// The end of this week: Sunday, today when it is one.
+		return day.AddDate(0, 0, (7-int(day.Weekday()))%7).Format(isoDay), true
 	}
 	if s == "eom" {
 		// The last day of this month.

@@ -6,7 +6,10 @@
 //	go run ./tools/seed -db dev.db -tasks 6000
 //
 // The Inbox opens with a row for each kind of address `gl` opens, and one
-// linked to another. It refuses a database that already holds rows. The same -seed gives the
+// linked to another. Recent use is laid over the outline: priorities and
+// estimates as tag values, edits that change no state, notes of where work
+// was left off, tasks held up by linked work, picks done today and picks
+// carried from earlier days. It refuses a database that already holds rows. The same -seed gives the
 // same outline, with dates relative to today.
 package main
 
@@ -16,6 +19,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -118,6 +122,13 @@ type row struct {
 	created         int64
 	state           string // written at changed, when set
 	changed         int64
+	edits           []edit // later writes that leave the state alone
+}
+
+// edit is one field written after the row was made.
+type edit struct {
+	at           int64
+	field, value string
 }
 
 type gen struct {
@@ -345,6 +356,128 @@ func (g *gen) build(projects, target int, dir string) {
 	g.pickToday()
 	// After the picks, which read every row before them.
 	g.links(first, dir)
+	g.lately()
+}
+
+var resumeLines = []string{
+	"Next: reproduce it with an expired token",
+	"Stopped at step 3 of the checklist",
+	"Waiting on the quote; then pick the cheaper one",
+	"Next: compare the two drafts side by side",
+	"Halfway through; the second half needs the receipts",
+	"Next: call back after 2pm",
+	"Left the notes in the shared folder",
+	"Next: run the benchmark again on the fast machine",
+}
+
+// lately adds what recent use leaves on an outline: priorities and
+// estimates, edits that change no state, notes of where work was left off,
+// work held up by other work, a few picks done today and a few carried from
+// earlier days. It draws on a randomness of its own, so the outline built
+// before it is the same as without it.
+func (g *gen) lately() {
+	r := rand.New(rand.NewPCG(g.r.Uint64(), 1))
+	chance := func(p float64) bool { return r.Float64() < p }
+	now := g.now.UnixMilli()
+	recent := func() int64 { return now - r.Int64N(14*day.Milliseconds()) }
+	byID := map[string]*row{}
+	for _, x := range g.rows {
+		byID[x.id] = x
+	}
+	project := func(x *row) string {
+		for x.parent != "" {
+			x = byID[x.parent]
+		}
+		return x.id
+	}
+	open := map[string][]*row{} // each project's tasks still to do, in the order made
+	var tasks []*row
+	for _, x := range g.rows {
+		if x.state == "" || x.parent == "" {
+			continue
+		}
+		tasks = append(tasks, x)
+		if x.state == sigil.Open || x.state == sigil.Doing || x.state == sigil.Waiting {
+			open[project(x)] = append(open[project(x)], x)
+		}
+	}
+	for _, x := range tasks {
+		tags := strings.Fields(x.fields[sigil.FieldTags])
+		if chance(0.08) {
+			// A priority as a tag value, which :sort #p orders by.
+			tags = append(tags, "p="+strconv.Itoa(1+r.IntN(3)))
+			x.fields[sigil.FieldTags] = strings.Join(tags, " ")
+		}
+		todo := x.state == sigil.Open || x.state == sigil.Doing || x.state == sigil.Waiting
+		if todo && chance(0.12) {
+			// An estimate added lately: an edit that changes no state.
+			est := append(slices.Clone(tags), "est="+strconv.Itoa(1+r.IntN(6))+"h")
+			x.edits = append(x.edits, edit{recent(), sigil.FieldTags, strings.Join(est, " ")})
+		}
+		if (x.state == sigil.Doing && chance(0.4)) || (todo && chance(0.05)) {
+			x.edits = append(x.edits, edit{recent(), "resume", resumeLines[r.IntN(len(resumeLines))]})
+		}
+	}
+	// Work held up by other work: a later task points at an earlier one in
+	// its project. Now and then the earlier one is finished already, or the
+	// pointer is a note's, and neither is held up.
+	links := 0
+	for _, x := range tasks {
+		mates := open[project(x)]
+		if links >= 80 || len(mates) < 2 || !chance(0.04) {
+			continue
+		}
+		to := mates[r.IntN(len(mates))]
+		if to == x || x.fields["link"] != "" {
+			continue
+		}
+		if chance(0.2) {
+			to = tasks[r.IntN(len(tasks))] // often finished work: not held up
+		}
+		x.fields["link"] = to.id
+		links++
+	}
+	// Closing times lean towards the present, so without this hundreds of
+	// rows would read as finished today. They are spread over the week
+	// before, leaving today's tally mostly to the picks below.
+	midnight := time.Date(g.now.Year(), g.now.Month(), g.now.Day(), 0, 0, 0, 0, g.now.Location()).UnixMilli()
+	parents := map[string]bool{}
+	for _, x := range g.rows {
+		parents[x.parent] = true
+	}
+	for _, x := range g.rows {
+		if (x.state != sigil.Done && x.state != sigil.Canceled) || x.changed < midnight {
+			continue
+		}
+		at := midnight - 1 - r.Int64N(7*day.Milliseconds())
+		if !parents[x.id] && x.parent != "" {
+			// With nothing under it, a row can be made earlier too, though
+			// never before the row it is under.
+			x.created = max(min(x.created, at), byID[x.parent].created)
+		}
+		x.changed = max(x.created, at)
+	}
+	// Today: the first picks are done already, and a few picks from earlier
+	// days are carried, still to do.
+	today := g.now.Format("2006-01-02")
+	var picks []*row
+	for _, x := range g.rows {
+		if x.fields[sigil.FieldToday] == today {
+			picks = append(picks, x)
+		}
+	}
+	sort.Slice(picks, func(i, j int) bool { return picks[i].fields["todaypos"] < picks[j].fields["todaypos"] })
+	for _, x := range picks[:min(3, len(picks))] {
+		x.state, x.changed = sigil.Done, now-r.Int64N(3*time.Hour.Milliseconds())
+	}
+	carried := 0
+	for _, x := range tasks {
+		if carried == 3 || x.state != sigil.Open || x.fields[sigil.FieldToday] != "" || !chance(0.01) {
+			continue
+		}
+		x.fields[sigil.FieldToday] = g.dayOffset(-1 - r.IntN(3))
+		carried++
+	}
 }
 
 // links heads the Inbox with a row for each address `gl` opens: a web page,
@@ -418,6 +551,9 @@ func commit(st *store.Store, rows []*row) (int, error) {
 			ops = append(ops, outline.Op{Kind: outline.Set, Row: r.id, Field: k, Value: r.fields[k]})
 		}
 		events = append(events, event{r.created, ops})
+		for _, e := range r.edits {
+			events = append(events, event{e.at, []outline.Op{{Kind: outline.Set, Row: r.id, Field: e.field, Value: e.value}}})
+		}
 		if r.state != "" {
 			events = append(events, event{r.changed, []outline.Op{
 				{Kind: outline.Set, Row: r.id, Field: sigil.FieldState, Value: r.state},

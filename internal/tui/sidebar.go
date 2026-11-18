@@ -31,6 +31,7 @@ const (
 	filtersID     = "filters" // holds the saved filters, one row each
 	fixedPos      = "0"
 	fieldTodayPos = "todaypos"
+	fieldResume   = "resume" // where the row's work was left off, written with R
 )
 
 // hiddenTop reports a top-level row that is never drawn among the projects.
@@ -84,7 +85,7 @@ type place struct {
 	hits    []visRow
 	matched map[string]bool
 	marks   []cond // the text and tags the query looks for, drawn on its matches
-	since   bool   // the query asks when rows changed, so each match says when
+	since   byte   // the query asks when rows changed (~) or were edited (e), so each match says when
 
 	// In context a filter folds on its own: folds names the rows folded
 	// while foldsFor was the query. They are never saved, and changing the
@@ -303,7 +304,7 @@ func (m *Model) scan() {
 	tagUse := map[string]int{}
 	contextUse := map[string]int{}
 	picked := 0
-	m.parked = 0
+	m.parked, m.doneToday, m.overdue = 0, 0, 0
 	m.headings = m.headings[:0]
 	m.rowNames = m.rowNames[:0]
 	m.outlineOrder = map[string]int{}
@@ -332,6 +333,9 @@ func (m *Model) scan() {
 			path += " › " + label
 		}
 		*touch = max(*touch, r.Modified)
+		if l.State == sigil.Done && m.dayOf(m.changedAt(id)) == day {
+			m.doneToday++
+		}
 		for _, tag := range l.Tags {
 			tagUse[tag]++
 		}
@@ -354,6 +358,9 @@ func (m *Model) scan() {
 		// Parked work, and everything under it, is out of every computed
 		// list. Today is a pick, so it is the one list that still shows it.
 		hidden = hidden || l.State == sigil.Parked
+		if !hidden && l.State != "" && !l.Closed() && l.Due != "" && l.Due < day {
+			m.overdue++
+		}
 		if !hidden {
 			switch l.State {
 			case sigil.Waiting:
@@ -451,7 +458,13 @@ func (m *Model) scan() {
 	m.filters = m.filters[:0]
 	for _, id := range m.tree.Children(filtersID) {
 		f := m.tree.Row(id).Fields
-		m.filters = append(m.filters, savedFilter{id, f[sigil.FieldText], f[fieldRoot], f[fieldQuery], f[fieldFlat] != ""})
+		m.filters = append(m.filters, savedFilter{ID: id, Name: f[sigil.FieldText], Root: f[fieldRoot], Query: f[fieldQuery], Flat: f[fieldFlat] != ""})
+	}
+	// The built-in filters follow, each unless one is saved under its name.
+	for _, b := range builtins {
+		if !slices.ContainsFunc(m.filters, func(f savedFilter) bool { return f.Name == b.Name }) {
+			m.filters = append(m.filters, b)
+		}
 	}
 
 	m.lists = lists
@@ -473,7 +486,11 @@ func (m *Model) scan() {
 	}, nil...)
 	// The saved filters follow the four lists, in the order they were saved.
 	for _, f := range m.filters {
-		m.side = append(m.side, entry{kind: kindFilter, id: f.Name, label: "/" + f.Name})
+		// The built-in ones are reached with f: saved under its own name,
+		// one becomes the user's and takes a place here.
+		if !f.Builtin {
+			m.side = append(m.side, entry{kind: kindFilter, id: f.Name, label: "/" + f.Name})
+		}
 	}
 	m.side = append(append(m.side, entry{kind: kindProjects, label: "Projects"}), projects...)
 }
@@ -711,6 +728,9 @@ func (m *Model) sideDelete() {
 	case kindProject:
 	case kindFilter:
 		m.msg = "a saved filter is not deleted here: :forget " + e.id + " drops it"
+		if m.builtin(e.id) {
+			m.msg = "/" + e.id + " is built in: :save " + e.id + " over it puts your own in its place"
+		}
 		return
 	default:
 		m.msg = "only a project is deleted here: Enter, then dd takes rows"
@@ -724,6 +744,11 @@ func (m *Model) sideDelete() {
 	msg := m.msg
 	m.sideKeep(at)
 	m.msg = msg
+}
+
+// builtin reports whether the filter by that name is a built-in one.
+func (m *Model) builtin(name string) bool {
+	return slices.ContainsFunc(m.filters, func(f savedFilter) bool { return f.Name == name && f.Builtin })
 }
 
 // sideTyped reports whether the chosen entry's name can be typed in, and
@@ -1079,26 +1104,29 @@ func (e entry) rowID() string {
 
 // create adds a row from a typed line as the last child of parent, as one
 // undo step.
-func (m *Model) create(parent, line string) bool {
+func (m *Model) create(parent, line string, extra map[string]string) string {
 	parsed := sigil.Parse(line, m.defaultsToNotes(parent), m.today())
 	ops := []outline.Op{{Kind: outline.Insert, Row: m.newID(), Parent: parent, Pos: m.tree.PosLast(parent, parsed.Pin)}}
 	inv, err := m.apply(ops)
 	if err != nil {
 		m.msg = err.Error()
-		return false
+		return ""
 	}
 	fields := m.setFields(ops[0].Row, parsed.Fields())
+	for name, value := range extra {
+		fields = append(fields, outline.Op{Kind: outline.Set, Row: ops[0].Row, Field: name, Value: value})
+	}
 	more, err := m.apply(fields)
 	if err != nil {
 		m.tree.Forget(ops[0].Row)
 		m.msg = err.Error()
-		return false
+		return ""
 	}
 	if !m.record(append(ops, fields...), append(more, inv...)) {
 		m.tree.Forget(ops[0].Row)
-		return false
+		return ""
 	}
-	return true
+	return ops[0].Row
 }
 
 // route reads where a captured line goes: the project or heading a %name
@@ -1118,11 +1146,34 @@ func (m *Model) route(line string) (entry, []string) {
 	return target, words
 }
 
-// capture files a typed line where route says.
+// capture files a typed line where route says. Opened from Today, the line
+// is a pick for the day as well, placed after the day's own picks, since
+// the place it was typed in says what it is for.
 func (m *Model) capture(line string) {
 	target, words := m.route(line)
-	if len(words) > 0 && m.create(target.rowID(), strings.Join(words, " ")) {
-		m.msg = "added to " + target.label
+	if len(words) == 0 {
+		return
+	}
+	var extra map[string]string
+	if m.at.list == kindToday {
+		m.scan()
+		last := ""
+		for _, id := range m.lists[kindToday] {
+			last = max(last, m.tree.Row(id).Fields[fieldTodayPos])
+		}
+		extra = map[string]string{
+			sigil.FieldToday: m.today().Format("2006-01-02"),
+			fieldTodayPos:    outline.Between(last, ""),
+		}
+	}
+	id := m.create(target.rowID(), strings.Join(words, " "), extra)
+	if id == "" {
+		return
+	}
+	m.msg = "added to " + target.label
+	if extra != nil {
+		m.at.rows = append(m.at.rows, id)
+		m.msg += " · picked for Today"
 	}
 }
 
@@ -1154,7 +1205,7 @@ func Capture(tree *outline.Tree, backend Backend, lines []string) ([]string, err
 		}
 		m.msg = ""
 		target, words := m.route(line)
-		if len(words) == 0 || !m.create(target.rowID(), strings.Join(words, " ")) {
+		if len(words) == 0 || m.create(target.rowID(), strings.Join(words, " "), nil) == "" {
 			if m.msg == "" {
 				m.msg = "nothing to add"
 			}
