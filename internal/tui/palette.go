@@ -2,6 +2,8 @@ package tui
 
 import (
 	"hash/fnv"
+	"image/color"
+	"math"
 	"strconv"
 	"strings"
 
@@ -34,6 +36,97 @@ type palette struct {
 	// ages runs from an age just begun to the oldest: the text colour, pale
 	// yellow, yellow, orange and red, each readable on the pane's background.
 	ages [5][3]float64
+	// ground is the background the palette is drawn for until the terminal
+	// names its own; Docket.app paints it when no theme is chosen.
+	ground [3]float64
+	// The four backgrounds above are mixed from the terminal's background,
+	// so they sit on any theme's: the cursor a step toward the text colour,
+	// the selection and a copy's flash toward the accent, the header toward
+	// an indigo.
+	cursorMix, selectionMix, flashMix, headerMix mix
+}
+
+// mix is how far a background is moved toward a colour.
+type mix struct {
+	toward [3]float64
+	by     float64
+}
+
+// over is the background mixed over ground, eased back toward ground until
+// each colour in keep reads on it at its ratio, though never below a third of
+// the way, so the shade still shows on a theme near the text colour. Where
+// the pane itself falls short of a ratio, the shade need only nearly match it.
+func (x mix) over(ground [3]float64, keep ...readable) string {
+	var c [3]float64
+	for by := x.by; ; by -= 0.01 {
+		for i := range c {
+			c[i] = math.Round(ground[i] + (x.toward[i]-ground[i])*by)
+		}
+		if by <= x.by/3 || allRead(c, ground, keep) {
+			break
+		}
+	}
+	return "\x1b[48;2;" + strconv.Itoa(int(c[0])) + ";" + strconv.Itoa(int(c[1])) + ";" + strconv.Itoa(int(c[2])) + "m"
+}
+
+// readable is a colour drawn on a background and the contrast it needs there.
+type readable struct {
+	color [3]float64
+	ratio float64
+}
+
+func allRead(bg, ground [3]float64, keep []readable) bool {
+	for _, k := range keep {
+		if contrastOf(k.color, bg) < min(k.ratio, 0.95*contrastOf(k.color, ground)) {
+			return false
+		}
+	}
+	return true
+}
+
+// contrastOf is the WCAG contrast ratio between two colours.
+func contrastOf(a, b [3]float64) float64 {
+	lum := func(c [3]float64) float64 {
+		var l [3]float64
+		for i, v := range c {
+			v /= 255
+			if v <= 0.03928 {
+				l[i] = v / 12.92
+			} else {
+				l[i] = math.Pow((v+0.055)/1.055, 2.4)
+			}
+		}
+		return 0.2126*l[0] + 0.7152*l[1] + 0.0722*l[2]
+	}
+	x, y := lum(a), lum(b)
+	return (max(x, y) + 0.05) / (min(x, y) + 0.05)
+}
+
+// rgbOfSGR reads the colour back out of a true-colour sequence.
+func rgbOfSGR(sgr string) [3]float64 {
+	parts := strings.Split(strings.TrimSuffix(strings.TrimPrefix(sgr, "\x1b["), "m"), ";")
+	var c [3]float64
+	if len(parts) == 5 {
+		for i := range c {
+			n, _ := strconv.Atoi(parts[i+2])
+			c[i] = float64(n)
+		}
+	}
+	return c
+}
+
+// on is the palette drawn over a terminal background. Text keeps 7 to 1 on
+// the cursor, the selection and the header, dim text 4.5 to 1 on the
+// selection and the header, and text 4.5 to 1 on a copy's flash, as far as
+// the theme's background allows.
+func (p palette) on(ground [3]float64) palette {
+	text, dim, dimSelected := rgbOfSGR(p.text), rgbOfSGR(p.dim), rgbOfSGR(p.dimSelected)
+	p.ground = ground
+	p.cursor = p.cursorMix.over(ground, readable{text, 7})
+	p.selection = p.selectionMix.over(ground, readable{text, 7}, readable{dimSelected, 4.5})
+	p.flash = p.flashMix.over(ground, readable{text, 4.5})
+	p.header = p.headerMix.over(ground, readable{text, 7}, readable{dim, 4.5})
+	return p
 }
 
 // Bubble Tea's renderer converts these RGB roles to its detected color
@@ -41,30 +134,46 @@ type palette struct {
 var darkPalette = palette{
 	text: "\x1b[38;2;220;225;231m", dim: "\x1b[38;2;146;158;173m",
 	accent: "\x1b[38;2;105;199;211m", warn: "\x1b[38;2;230;188;100m",
-	alert:  "\x1b[38;2;239;135;135m",
-	cursor: "\x1b[48;2;38;51;63m", selection: "\x1b[48;2;28;74;86m",
-	flash:       "\x1b[48;2;50;104;116m",
-	header:      "\x1b[48;2;50;42;74m",
-	dimSelected: "\x1b[38;2;176;188;201m",
-	ages:        [5][3]float64{{220, 225, 231}, {214, 203, 150}, {232, 196, 84}, {240, 146, 66}, {242, 86, 78}},
-}
+	alert:        "\x1b[38;2;239;135;135m",
+	dimSelected:  "\x1b[38;2;176;188;201m",
+	ages:         [5][3]float64{{220, 225, 231}, {214, 203, 150}, {232, 196, 84}, {240, 146, 66}, {242, 86, 78}},
+	cursorMix:    mix{[3]float64{220, 225, 231}, 0.07},
+	selectionMix: mix{[3]float64{105, 199, 211}, 0.28},
+	flashMix:     mix{[3]float64{105, 199, 211}, 0.45},
+	headerMix:    mix{[3]float64{140, 120, 240}, 0.25},
+}.on([3]float64{20, 26, 32})
 
 var lightPalette = palette{
 	text: "\x1b[38;2;35;45;56m", dim: "\x1b[38;2;91;105;119m",
 	accent: "\x1b[38;2;0;105;122m", warn: "\x1b[38;2;130;86;0m",
-	alert:  "\x1b[38;2;177;49;54m",
-	cursor: "\x1b[48;2;229;237;243m", selection: "\x1b[48;2;186;228;230m",
-	flash:       "\x1b[48;2;144;202;212m",
-	header:      "\x1b[48;2;236;230;248m",
-	dimSelected: "\x1b[38;2;75;89;103m",
-	ages:        [5][3]float64{{35, 45, 56}, {105, 92, 40}, {130, 94, 0}, {166, 74, 0}, {180, 38, 38}},
+	alert:        "\x1b[38;2;177;49;54m",
+	dimSelected:  "\x1b[38;2;75;89;103m",
+	ages:         [5][3]float64{{35, 45, 56}, {105, 92, 40}, {130, 94, 0}, {166, 74, 0}, {180, 38, 38}},
+	cursorMix:    mix{[3]float64{35, 45, 56}, 0.08},
+	selectionMix: mix{[3]float64{0, 105, 122}, 0.25},
+	flashMix:     mix{[3]float64{0, 105, 122}, 0.40},
+	headerMix:    mix{[3]float64{120, 80, 240}, 0.12},
+}.on([3]float64{251, 252, 253})
+
+// paint takes the terminal's background: light or dark picks the palette,
+// and its backgrounds are mixed from the colour itself.
+func (m *Model) paint(bg color.Color, dark bool) {
+	m.lightPalette = !dark
+	m.palette = darkPalette
+	if m.lightPalette {
+		m.palette = lightPalette
+	}
+	if bg != nil {
+		r, g, b, _ := bg.RGBA()
+		m.palette = m.palette.on([3]float64{float64(r >> 8), float64(g >> 8), float64(b >> 8)})
+	}
 }
 
 func (m *Model) colors() palette {
-	if m.lightPalette {
-		return lightPalette
+	if m.palette.text == "" {
+		return darkPalette
 	}
-	return darkPalette
+	return m.palette
 }
 
 // tint restores the background after every styled span, including the padding.

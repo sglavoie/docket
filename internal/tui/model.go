@@ -153,7 +153,8 @@ type Model struct {
 	newID   func() string
 	openURL func(string) error
 
-	lightPalette  bool // dark until the terminal answers the background query
+	lightPalette  bool    // dark until the terminal answers the background query
+	palette       palette // drawn over the terminal's background; zero until it answers
 	width, height int
 	at            place
 	zoom          []place  // where Esc returns to
@@ -1814,7 +1815,7 @@ func (m *Model) retype(act repeatAct, rows []string) {
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.BackgroundColorMsg:
-		m.lightPalette = !msg.IsDark()
+		m.paint(msg.Color, msg.IsDark())
 		return m, nil
 	case tea.FocusMsg:
 		// The terminal may have changed its colours while away, as Docket.app

@@ -158,3 +158,52 @@ func TestReviewSaysTasksAndAgeInColumns(t *testing.T) {
 		h.edge("    Alpha", "2 to do  15d"),
 	)
 }
+
+// The cursor, selection, flash and header backgrounds are mixed from the
+// terminal's own, so on a theme's background each still stands apart from
+// the pane and from the others, and the text on it stays readable.
+func TestTheBackgroundsSitOnAnyTheme(t *testing.T) {
+	themes := map[string]struct {
+		ground [3]float64
+		base   palette
+	}{
+		"warm light":      {[3]float64{232, 228, 224}, lightPalette},
+		"solarized light": {[3]float64{253, 246, 227}, lightPalette},
+		"gruvbox light":   {[3]float64{251, 241, 199}, lightPalette},
+		"solarized dark":  {[3]float64{0, 43, 54}, darkPalette},
+		"dracula":         {[3]float64{40, 42, 54}, darkPalette},
+		"black":           {[3]float64{0, 0, 0}, darkPalette},
+		"white":           {[3]float64{255, 255, 255}, lightPalette},
+	}
+	for name, th := range themes {
+		p := th.base.on(th.ground)
+		cursor, selection, flash, header := rgbOf(t, p.cursor), rgbOf(t, p.selection), rgbOf(t, p.flash), rgbOf(t, p.header)
+		for what, bg := range map[string][3]float64{"cursor": cursor, "header": header} {
+			if d := apart(bg, th.ground); d < 4 {
+				t.Errorf("%s: the %s is %.1f from the pane, want at least 4", name, what, d)
+			}
+		}
+		if d, step := apart(cursor, selection), apart(cursor, th.ground); d <= step {
+			t.Errorf("%s: the selection is %.1f from the cursor, no further than the cursor is from the pane", name, d)
+		}
+		if d, step := apart(selection, flash), apart(cursor, th.ground); d <= step {
+			t.Errorf("%s: a copy's flash is %.1f from the selection, no further than the cursor is from the pane", name, d)
+		}
+		// Each ratio holds as far as the pane itself allows it.
+		want := func(c [3]float64, ratio float64) float64 {
+			return min(ratio, 0.95*contrast(c, th.ground))
+		}
+		text, dim, dimSelected := rgbOf(t, p.text), rgbOf(t, p.dim), rgbOf(t, p.dimSelected)
+		for what, bg := range map[string][3]float64{"cursor": cursor, "selection": selection, "header": header} {
+			if c, w := contrast(text, bg), want(text, 7); c < w-0.01 {
+				t.Errorf("%s: text on the %s is %.2f to 1, want %.2f", name, what, c, w)
+			}
+		}
+		if c, w := contrast(dimSelected, selection), want(dimSelected, 4.5); c < w-0.01 {
+			t.Errorf("%s: dim on the selection is %.2f to 1, want %.2f", name, c, w)
+		}
+		if c, w := contrast(dim, header), want(dim, 4.5); c < w-0.01 {
+			t.Errorf("%s: dim on the header is %.2f to 1, want %.2f", name, c, w)
+		}
+	}
+}

@@ -987,7 +987,7 @@ func TestPaletteFollowsBackground(t *testing.T) {
 	for _, tc := range []struct {
 		background color.Color
 		want       palette
-	}{{color.White, lightPalette}, {color.Black, darkPalette}, {color.RGBA{245, 240, 230, 255}, lightPalette}} {
+	}{{color.White, lightPalette.on([3]float64{255, 255, 255})}, {color.Black, darkPalette.on([3]float64{0, 0, 0})}, {color.RGBA{245, 240, 230, 255}, lightPalette.on([3]float64{245, 240, 230})}} {
 		before := ansi.Strip(h.m.View().Content)
 		h.m.Update(tea.BackgroundColorMsg{Color: tc.background})
 		view := h.m.View().Content

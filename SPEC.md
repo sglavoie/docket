@@ -245,7 +245,13 @@ built-in true-colour palettes. It asks the terminal for its background at
 launch, when the window has focus again, and once a minute, so a terminal
 that changes its colours (Docket.app does, with macOS's appearance) is
 followed: light selects the light palette, dark selects dark, and dark is
-used until an answer arrives or if none does. Bubble Tea steps colours
+used until an answer arrives or if none does. The cursor, selection, flash
+and header backgrounds are mixed from the background the terminal names,
+so they sit on any theme's: the cursor a step toward the text colour, the
+selection and a copy's flash toward the accent, the header toward an
+indigo. Each is eased back toward the pane where the contrasts below would
+fail, as far as the pane itself allows them, and never past a third of its
+step. Bubble Tea steps colours
 down to the terminal's colour profile and removes them for `NO_COLOR`.
 There is no theme command or configuration file.
 
