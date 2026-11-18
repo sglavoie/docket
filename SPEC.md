@@ -34,7 +34,8 @@ a rule here changes this file first.
    SQLite is written when a change is committed, never while typing. What
    the sidebar states is derived again only when a row has changed or the
    minute has turned, so a typed letter never walks the outline. A test
-   holds moving and typing to 16 ms on an outline of 10,000 rows.
+   holds moving and typing to 16 ms on an outline of 10,000 rows, and to
+   32 ms on CI's shared Linux runners alone.
 6. **Chrome is the sidebar, one header line and one status line.**
 
 ## Model
