@@ -248,7 +248,17 @@ func TestFoldingABranchAllTheWayDown(t *testing.T) {
 	if folds, _ := h.st.Folds(); len(folds) != 2 {
 		t.Fatalf("stored folds = %v", folds)
 	}
-	h.press("/", `"a"`, "enter", "z", "c")
+	// A filter in context folds on its own, saving nothing; a flat one
+	// has nothing to fold.
+	h.press("/", `"a"`, "enter", "z", "o")
+	if folds, _ := h.st.Folds(); len(folds) != 2 || len(h.m.at.folds) != 0 {
+		t.Fatalf("stored folds = %v, filter folds = %v", folds, h.m.at.folds)
+	}
+	h.press("g", "g", "z", "c")
+	if folds, _ := h.st.Folds(); len(folds) != 2 || len(h.m.at.folds) == 0 {
+		t.Fatalf("stored folds = %v, filter folds = %v", folds, h.m.at.folds)
+	}
+	h.press("esc", "/", `"a"`, "tab", "enter", "z", "c")
 	if !strings.HasPrefix(h.status(), "nothing to fold") {
 		t.Fatalf("status = %q", h.status())
 	}

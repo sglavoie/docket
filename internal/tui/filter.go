@@ -561,6 +561,9 @@ func (m *Model) underSets(terms []term, today time.Time) map[string]uint64 {
 // keeps its ancestors, so it is read where it lives; flat drops them.
 func (m *Model) refilter() {
 	m.at.hits, m.at.matched = nil, map[string]bool{}
+	if m.at.foldsFor != m.at.query {
+		m.at.folds, m.at.foldsFor = nil, ""
+	}
 	today := m.today()
 	q := m.query(m.at.query, m.at.here, today)
 	terms := q.terms

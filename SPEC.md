@@ -749,8 +749,12 @@ Three more acts use the same line:
   since the count leaves with the line; `Esc` drops it. Like a list, a filter holds the
   rows it found until the query changes, and refuses the keys that
   restructure the tree. Changing the filter clears the selection. A filter
-  shows every match: a fold never hides one. In context, `h` and `l` only
-  step to the parent and the first child. In a flat filter, `h` opens the
+  shows every match: the outline's folds never hide one. In context it
+  folds on its own instead: `h`, `l`, `zc`, `zo`, `:fold` and `:unfold`
+  fold and unfold as in the outline, a folded row counts the rows the
+  filter found under it (`+1`), and `h` on a folded row or one with nothing
+  under it steps to the parent shown. These folds are held with the filter,
+  never saved, and dropped when the query changes. In a flat filter, `h` opens the
   cursor's row among its siblings in its parent's outline, keeping it
   visible even with `:closed` on; `Esc` returns to the held filter with
   its query and cursor intact. `h` refuses a selection and `l` does
@@ -809,8 +813,9 @@ Shift or Caps Lock was held. `Enter` on a name that only one command starts, as
 shows N levels: rows above level N are unfolded and rows at level N are
 folded, with the root's children at level 1. Deeper folds stay as they were.
 `:unfold` unfolds everything under the pane's root. An invalid level is
-named on the status line and changes nothing. Lists and filters say
-there is nothing to fold. The cursor stays
+named on the status line and changes nothing. A filter in context folds
+its own rows, as described under Filter; lists and flat filters say there is
+nothing to fold. The cursor stays
 on its row, or moves to its nearest visible ancestor. Folds are saved together
 as this machine's view state, never logged or synced.
 

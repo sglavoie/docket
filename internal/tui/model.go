@@ -195,6 +195,7 @@ type Model struct {
 
 	totals    map[string]rowTotals // own and descendant counts, derived in scan
 	paneTotal taskTotals           // held rows, refreshed in rebuild
+	hides     map[string]int       // in a filter, the rows each of its folds hides directly
 
 	outlineOrder map[string]int // traversal ranks, derived in scan for Today ties
 
@@ -668,13 +669,27 @@ func (m *Model) rebuild() {
 	m.vis = m.vis[:0]
 	m.paneTotal = taskTotals{}
 	if m.at.query != "" {
-		// A filter shows every row it found: a fold never hides a match.
+		// A filter shows every row it found but those under one of its own
+		// folds. It counts every match, folded or not, as an outline does.
+		m.hides = map[string]int{}
+		fold, under := "", -1 // the fold being skipped and its depth
 		for _, v := range m.at.hits {
-			if m.live(v.id) {
-				m.vis = append(m.vis, v)
-				if m.at.matched[v.id] {
-					m.paneTotal.add(m.totals[v.id].own)
+			if !m.live(v.id) {
+				continue
+			}
+			if m.at.matched[v.id] {
+				m.paneTotal.add(m.totals[v.id].own)
+			}
+			if under >= 0 && v.depth > under {
+				if v.depth == under+1 {
+					m.hides[fold]++
 				}
+				continue
+			}
+			fold, under = "", -1
+			m.vis = append(m.vis, v)
+			if m.isFolded(v.id) {
+				fold, under = v.id, v.depth
 			}
 		}
 	} else if m.at.list != "" {
@@ -802,8 +817,7 @@ func (m *Model) foldOutline(fold bool, args []string) {
 		}
 		level = n
 	}
-	if m.at.list != "" || m.at.query != "" {
-		m.msg = "nothing to fold in a list or filter: a filter shows every match"
+	if m.noFolds() {
 		return
 	}
 	changes := map[string]bool{}
@@ -816,7 +830,7 @@ func (m *Model) foldOutline(fold bool, args []string) {
 			if len(m.tree.Children(id)) > 0 {
 				if level == 0 || depth <= level {
 					want := fold && (level == 0 || depth == level)
-					if m.folded[id] != want {
+					if m.isFolded(id) != want {
 						changes[id] = want
 					}
 				}
@@ -831,8 +845,7 @@ func (m *Model) foldOutline(fold bool, args []string) {
 // foldBranches folds or unfolds rows all the way down: each row given and
 // every row under it that has rows of its own.
 func (m *Model) foldBranches(ids []string, fold bool) {
-	if m.at.list != "" || m.at.query != "" {
-		m.msg = "nothing to fold in a list or filter: a filter shows every match"
+	if m.noFolds() {
 		return
 	}
 	changes := map[string]bool{}
@@ -844,7 +857,7 @@ func (m *Model) foldBranches(ids []string, fold bool) {
 			return
 		}
 		parents++
-		if m.folded[id] != fold {
+		if m.isFolded(id) != fold {
 			changes[id] = fold
 		}
 		for _, kid := range kids {
@@ -860,22 +873,43 @@ func (m *Model) foldBranches(ids []string, fold bool) {
 	m.applyFolds(changes)
 }
 
+// noFolds refuses a fold where rows do not stand in their tree: a list or a
+// flat filter.
+func (m *Model) noFolds() bool {
+	switch {
+	case m.at.list != "":
+		m.msg = "nothing to fold in a list"
+	case m.at.query != "" && m.at.flat:
+		m.msg = "nothing to fold in a flat filter"
+	default:
+		return false
+	}
+	return true
+}
+
 // applyFolds saves a set of fold changes together and shows them, leaving
-// the cursor on its row or on the nearest row above it still shown.
+// the cursor on its row or on the nearest row above it still shown. In a
+// filter the folds are the filter's own, held with it and never saved.
 func (m *Model) applyFolds(changes map[string]bool) {
 	if len(changes) == 0 {
 		return
 	}
-	if err := m.backend.SetFolds(changes); err != nil {
+	folds := m.folded
+	if m.at.query != "" {
+		if m.at.folds == nil {
+			m.at.folds = map[string]bool{}
+		}
+		m.at.foldsFor, folds = m.at.query, m.at.folds
+	} else if err := m.backend.SetFolds(changes); err != nil {
 		m.msg = "not saved, nothing changed: " + err.Error()
 		return
 	}
 	cur := m.current()
 	for id, folded := range changes {
 		if folded {
-			m.folded[id] = true
+			folds[id] = true
 		} else {
-			delete(m.folded, id)
+			delete(folds, id)
 		}
 	}
 	m.rebuild()
@@ -2808,8 +2842,10 @@ func (m *Model) normalAct(k string, count int) {
 			}
 			m.arrive()
 			m.seek(cur)
+		} else if m.at.query != "" && len(m.tree.Children(cur)) > 0 && !m.isFolded(cur) {
+			m.applyFolds(map[string]bool{cur: true})
 		} else if m.at.query != "" {
-			// A filter has no folds: the keys only step.
+			// Folded or with nothing under it, h steps to the parent shown.
 			for i := m.cursor - 1; i >= 0; i-- {
 				if m.vis[i].depth < m.vis[m.cursor].depth {
 					m.cursor = i
@@ -2825,6 +2861,8 @@ func (m *Model) normalAct(k string, count int) {
 	case "l", "right":
 		if m.at.list != "" || (m.at.query != "" && m.at.flat) {
 			break
+		} else if m.at.query != "" && m.isFolded(cur) {
+			m.applyFolds(map[string]bool{cur: false})
 		} else if m.at.query != "" {
 			if next := m.cursor + 1; next < len(m.vis) && m.vis[next].depth > m.vis[m.cursor].depth {
 				m.cursor = next

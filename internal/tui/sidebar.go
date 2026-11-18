@@ -82,6 +82,12 @@ type place struct {
 	matched map[string]bool
 	marks   []cond // the text and tags the query looks for, drawn on its matches
 	since   bool   // the query asks when rows changed, so each match says when
+
+	// In context a filter folds on its own: folds names the rows folded
+	// while foldsFor was the query. They are never saved, and changing the
+	// query drops them, so the outline's folds never hide a match.
+	folds    map[string]bool
+	foldsFor string
 }
 
 // visit keeps a departure independent of later list sorting, filtering and
@@ -99,6 +105,7 @@ func clonePlace(p place) place {
 	p.kept = maps.Clone(p.kept)
 	p.carried = maps.Clone(p.carried)
 	p.matched = maps.Clone(p.matched)
+	p.folds = maps.Clone(p.folds)
 	return p
 }
 

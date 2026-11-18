@@ -67,9 +67,15 @@ const todayMark = "★"
 // bodyMark follows the text of a row with a body.
 const bodyMark = "≡"
 
-// isFolded reports a row drawn folded. A filter shows every match, so
-// nothing is folded while one is on.
-func (m *Model) isFolded(id string) bool { return m.folded[id] && m.at.query == "" }
+// isFolded reports a row drawn folded. A filter reads its own folds, not the
+// outline's, so a fold made outside it never hides a match; a flat filter
+// has none.
+func (m *Model) isFolded(id string) bool {
+	if m.at.query != "" {
+		return !m.at.flat && m.at.folds[id]
+	}
+	return m.folded[id]
+}
 
 // word is one styled word of a row. A row is drawn as words so that it can
 // wrap at any of them and keep each word's colour on every line.
@@ -223,6 +229,9 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 	// already says what it holds does not: a heading its progress, a project
 	// under review its tasks.
 	kids := len(m.tree.Children(r.ID))
+	if m.at.query != "" && m.isFolded(r.ID) {
+		kids = m.hides[r.ID] // a filter's fold hides only what the filter found
+	}
 	said := m.at.list == kindReview || strings.HasSuffix(l.Text, ":") && under.total > 0
 	if kids > 0 && (flat || m.isFolded(r.ID)) && (l.State != "" || !said) {
 		out = append(out, word{m.colors().dim, "+" + strconv.Itoa(kids)})

@@ -63,15 +63,28 @@ func TestAFilterShowsMatchesInsideFoldedRows(t *testing.T) {
 	h.want("  ▾ Beta", "    ○ Fix cache #bug", "▌ ▸ Alpha +3")
 	h.press("/", `"#docs"`, "enter")
 	h.want("  ▾ Alpha", "▌   ○ Write docs @fri #docs")
-	// The keys that fold only step, and the fold is kept for afterwards.
+	// The outline's fold never hides a match: h on a row with nothing
+	// under it steps to its parent.
 	h.press("h")
 	h.want("▌ ▾ Alpha", "    ○ Write docs @fri #docs")
 	h.press("l")
 	h.want("  ▾ Alpha", "▌   ○ Write docs @fri #docs")
 	h.press("h", "h")
+	// The filter folds on its own, counting the rows it found under the fold.
+	h.want("▌ ▸ Alpha +1")
+	h.press("l")
 	h.want("▌ ▾ Alpha", "    ○ Write docs @fri #docs")
+	h.press("h")
+	h.want("▌ ▸ Alpha +1")
+	// Its folds are never saved, and the outline's are kept for afterwards.
+	if folds, _ := h.st.Folds(); len(folds) != 1 {
+		t.Fatalf("stored folds = %v", folds)
+	}
 	h.press("esc")
 	h.want("  ▾ Beta", "    ○ Fix cache #bug", "▌ ▸ Alpha +3")
+	// A changed query starts with no folds of its own.
+	h.press("/", `"#docs"`, "enter")
+	h.want("  ▾ Alpha", "▌   ○ Write docs @fri #docs")
 }
 
 func TestFilterAlternativesAndChangedSince(t *testing.T) {

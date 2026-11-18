@@ -351,15 +351,24 @@ func TestFoldCommandsAndHalfPages(t *testing.T) {
 			t.Fatal("fold escaped the pane root")
 		}
 		command(h, "unfold")
-		// A filter shows every match, so neither shape of it takes folds.
-		for _, keys := range [][]string{{"/", `"#match"`, "enter"}, {"/", "tab", "enter"}} {
-			h.press(keys...)
-			before := h.rows()
-			for _, cmd := range []string{"fold", "fold 2", "unfold"} {
-				command(h, cmd)
-				if !strings.Contains(h.bottom(), "nothing to fold") || h.rows() != before || len(h.m.folded) != 0 {
-					t.Fatal("filter accepted folds")
-				}
+		// A filter in context takes folds of its own and saves none; a flat
+		// one has nothing to fold.
+		h.press("/", `"#match"`, "enter")
+		shown := len(h.m.vis)
+		command(h, "fold")
+		if len(h.m.vis) >= shown || len(h.m.folded) != 0 || len(h.m.at.folds) == 0 {
+			t.Fatalf("filter fold: %s", h.rows())
+		}
+		command(h, "unfold")
+		if len(h.m.vis) != shown || len(h.m.folded) != 0 || len(h.m.at.folds) != 0 {
+			t.Fatalf("filter unfold: %s", h.rows())
+		}
+		h.press("/", "tab", "enter")
+		before := h.rows()
+		for _, cmd := range []string{"fold", "fold 2", "unfold"} {
+			command(h, cmd)
+			if !strings.Contains(h.bottom(), "nothing to fold") || h.rows() != before || len(h.m.folded) != 0 {
+				t.Fatal("flat filter accepted folds")
 			}
 		}
 	})
