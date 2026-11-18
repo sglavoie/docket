@@ -143,10 +143,12 @@ func TestTypingATagNamesTheTagsInUse(t *testing.T) {
 	if got := h.status(); strings.Contains(got, "#home 2") || !strings.HasSuffix(got, "   2 matches · in context · "+readBack("#home", h.m.today())) {
 		t.Fatalf("filter: %q", got)
 	}
+	// The stamp line lists the values over the rows, each with its count,
+	// so the line itself does not repeat them.
 	h.press("esc", "esc", "#")
 	h.press(`"w"`)
-	if got := h.status(); !strings.HasSuffix(got, "#work 1") {
-		t.Fatalf("stamp: %q", got)
+	if got := h.status(); strings.Contains(got, "#work 1") || !strings.Contains(h.above(), "work  1") {
+		t.Fatalf("stamp: %q\n%s", got, h.above())
 	}
 	// The stamp line has no count of matches, so a tag typed in full
 	// still says how many rows carry it already.
@@ -160,8 +162,8 @@ func TestTypingATagNamesTheTagsInUse(t *testing.T) {
 		t.Fatalf("stamp: %q", got)
 	}
 	h.press("esc", "A", `" #e"`)
-	if got := h.status(); got != "#est 2 · → completes" {
-		t.Fatalf("typing: %q", got)
+	if got := h.status(); got != "Enter next row · Esc done · Tab indent · → completes" || !strings.Contains(h.above(), "est=1h  1") || !strings.Contains(h.above(), "est=2h  1") {
+		t.Fatalf("typing: %q\n%s", got, h.above())
 	}
 }
 
@@ -369,4 +371,22 @@ func TestTabCompletesACommandName(t *testing.T) {
 	h.press("esc", ":", `"zz"`)
 	step("tab", "zz")
 	h.press("esc")
+}
+
+// A prompt's list keeps to the pane: the line's caret stands under the
+// sidebar, and a list hung there would hide the names it is read beside.
+func TestAPromptsListLeavesTheSidebarWhole(t *testing.T) {
+	h := work(t).wide()
+	before := h.side()
+	h.press("#")
+	if !strings.Contains(h.above(), "bug   3") {
+		t.Fatalf("no list over the rows:\n%s", h.above())
+	}
+	if got := h.side(); got != before {
+		t.Fatalf("the list covers the sidebar:\n%s\n\nwas:\n%s", got, before)
+	}
+	h.press("esc", ":")
+	if got := h.side(); got != before {
+		t.Fatalf("the command list covers the sidebar:\n%s\n\nwas:\n%s", got, before)
+	}
 }

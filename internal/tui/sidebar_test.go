@@ -768,7 +768,7 @@ func TestTheSidebarsDeadlineMarksStandInOneColumn(t *testing.T) {
 	h.press("g", "g", "O", `"Gamma"`, "enter", "tab", `"Three @tom"`, "esc")
 	col := func(name string) (mark, end int) {
 		for _, l := range h.lines() {
-			side := []rune(l)[:sideCols]
+			side := []rune(l)[:h.m.sideWidth()+3]
 			if strings.HasPrefix(strings.TrimLeft(string(side), " ▌"), name+" ") {
 				s := strings.TrimRight(string(side[:len(side)-2]), " ")
 				return strings.IndexRune(string(side), '@'), ansi.StringWidth(s)
@@ -786,9 +786,21 @@ func TestTheSidebarsDeadlineMarksStandInOneColumn(t *testing.T) {
 	if alphaEnd != betaEnd {
 		t.Fatalf("Alpha's age ends at %d and Beta's ∅ at %d:\n%s", alphaEnd, betaEnd, h.side())
 	}
-	// The columns never cost a name: one they would cut packs its mark
-	// against the edge, as it did before they stood.
+	// A name the columns would cut widens the sidebar while the pane keeps
+	// its room, so the mark still stands in its column.
 	h.press("g", "g", "O", `"bike-maintenance-xy"`, "enter", "tab", `"Four @tom"`, "esc")
+	if w := h.m.sideWidth(); w <= sidebarCols {
+		t.Fatalf("the sidebar stayed %d wide for a long name:\n%s", w, h.side())
+	}
+	if longMark, _ := col("bike-maintenance-xy"); longMark != gammaMark+(h.m.sideWidth()-sidebarCols) {
+		t.Fatalf("@ stands at %d for the long name, apart from Gamma's at %d:\n%s", longMark, gammaMark, h.side())
+	}
+	// The columns never cost a name: where the pane has no room to give,
+	// one they would cut packs its mark against the edge.
+	h.m.Update(tea.WindowSizeMsg{Width: sidebarFrom, Height: 16})
+	if w := h.m.sideWidth(); w != sidebarCols {
+		t.Fatalf("the sidebar is %d wide at %d columns", w, sidebarFrom)
+	}
 	if !strings.Contains(h.side(), "bike-maintenance-xy @") {
 		t.Fatalf("a long name was cut:\n%s", h.side())
 	}
@@ -814,7 +826,7 @@ func TestSavedFiltersAreAGroupOfTheirOwn(t *testing.T) {
 func todayRule(h *harness) string {
 	w := h.m.width
 	if w >= sidebarFrom {
-		w -= sidebarCols + 3
+		w -= h.m.sideWidth() + 3
 	}
 	return "  " + strings.Repeat("─", w-4)
 }

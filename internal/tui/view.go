@@ -649,6 +649,9 @@ func (m *Model) statusLine(w int) (string, int) {
 		if a.kind == askCapture || a.kind == askFilter || a.kind == askStamp {
 			tags = m.tagOffers(&a.ed, a.kind)
 		}
+		if names, _, _ := m.valueList(&a.ed, a.kind); len(names) > 0 {
+			tags = "" // the list over the rows names them, with their counts
+		}
 		switch {
 		case room <= 3:
 		case m.msg != "":
@@ -772,7 +775,9 @@ func (m *Model) statusLine(w int) (string, int) {
 		if m.suggest(m.edit, surfaceRow) != "" {
 			left += " · → completes"
 		}
-		if tags := m.tagOffers(m.edit, surfaceRow); tags != "" {
+		if names, _, _ := m.valueList(m.edit, surfaceRow); len(names) > 0 {
+			// The list under the word names the values, with their counts.
+		} else if tags := m.tagOffers(m.edit, surfaceRow); tags != "" {
 			left = tags
 			if m.suggest(m.edit, surfaceRow) != "" {
 				left += " · → completes"
@@ -1136,7 +1141,11 @@ const listDepth = 10
 // just above the bottom line and the one written on the line in reverse, over
 // the rows at column x, so every value can be read before Tab reaches it.
 func (m *Model) listOver(lines, items []string, at, x, w int) {
-	// The header stays, so the list never hides what the pane is.
+	// The header stays, so the list never hides what the pane is, and the
+	// list keeps to the pane, so it never hides the sidebar's names.
+	if width, _ := m.size(); width >= sidebarFrom {
+		x = max(x, m.sideWidth()+4)
+	}
 	depth := min(len(items), listDepth, len(lines)-1)
 	m.listAt(lines, items, at, x, w, len(lines)-depth, depth)
 }
@@ -1167,9 +1176,9 @@ func (m *Model) listAt(lines, items []string, at, x, w, first, depth int) {
 		cell := " " + ansi.Truncate(items[i], inner-2, "…")
 		cell += strings.Repeat(" ", inner-ansi.StringWidth(cell))
 		if i == at {
-			cell = sgrReverse + sgrBold + cell + sgrReset
+			cell = sgrReverse + sgrBold + strings.ReplaceAll(cell, c.dim, "") + sgrReset
 		} else {
-			cell = c.selection + cell + sgrReset
+			cell = c.selection + strings.ReplaceAll(cell, c.dim, c.dimSelected) + sgrReset
 		}
 		if bar > 0 {
 			if r >= thumbAt && r < thumbAt+thumb {
@@ -1200,13 +1209,14 @@ func (m *Model) View() tea.View {
 	var caret *tea.Cursor
 	switch {
 	case w >= sidebarFrom:
-		side, sc := m.sideView(sidebarCols, bodyH)
-		pane, c := m.paneLines(w-sidebarCols-3, bodyH)
+		sw := m.sideWidth()
+		side, sc := m.sideView(sw, bodyH)
+		pane, c := m.paneLines(w-sw-3, bodyH)
 		for i := range pane {
 			lines = append(lines, side[i]+m.colors().dim+" │ "+sgrReset+pane[i])
 		}
 		if c != nil {
-			c.X += sidebarCols + 3
+			c.X += sw + 3
 			caret = c
 		}
 		if sc != nil {

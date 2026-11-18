@@ -753,11 +753,14 @@ func (m *Model) sideChange(k string) {
 	}
 }
 
-// sideWidth is how wide the sidebar is drawn.
+// sideWidth is how wide the sidebar is drawn. Beside the pane it is as wide
+// as its widest entry needs, as it is alone, so no name pushes its marks out
+// of their column; it widens only while the pane keeps the width it has at
+// sidebarFrom.
 func (m *Model) sideWidth() int {
 	w, _ := m.size()
 	if w >= sidebarFrom {
-		return sidebarCols
+		return min(m.sideFit(), w-3-(sidebarFrom-sidebarCols-3))
 	}
 	return min(w, m.sideFit())
 }
@@ -1224,9 +1227,8 @@ func ageStyle(c palette, age, oldest int64) string {
 	return "\x1b[38;2;" + ch(0) + ";" + ch(1) + ";" + ch(2) + "m"
 }
 
-// sideFit is the width the sidebar needs when it takes a narrow pane alone:
-// its widest entry, so each count stays beside the name it counts, and no
-// narrower than it is drawn beside the pane.
+// sideFit is the width the sidebar needs: its widest entry, so each count
+// stays beside the name it counts, and never narrower than sidebarCols.
 func (m *Model) sideFit() int {
 	w := sidebarCols
 	cols := m.projectColumns()

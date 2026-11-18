@@ -9,6 +9,13 @@ import (
 
 func (h *harness) raw() string { return h.m.View().Content }
 
+// above is the screen over the status line, unstyled, where the list of
+// values a sigil could become is drawn.
+func (h *harness) above() string {
+	lines := h.lines()
+	return strings.Join(lines[:len(lines)-1], "\n")
+}
+
 // color is the stored colour of the row that reads text, at any depth.
 func (h *harness) color(text string) string {
 	h.t.Helper()
@@ -36,14 +43,15 @@ func TestAProjectIsDrawnInTheColourItsSigilNames(t *testing.T) {
 	h := two(t)
 	teal := namedColors["teal"][0]
 
-	// Typed on the project's line, the colour is drawn in itself and offered
-	// by name before it is kept.
+	// Typed on the project's line, each colour it could become is listed
+	// under the word, drawn in itself, and the status line does not repeat
+	// the list.
 	h.press("j", "A", `" ~te"`)
-	if !strings.Contains(h.status(), "~teal") {
-		t.Fatalf("status = %q, want the colours ~te could become", h.status())
+	if !strings.Contains(h.above(), "teal") || strings.Contains(h.status(), "~teal") {
+		t.Fatalf("status = %q, want the colours ~te could become listed once:\n%s", h.status(), h.above())
 	}
-	if !strings.Contains(h.raw(), teal+"~te") {
-		t.Fatal("a colour being typed is not drawn in itself")
+	if !strings.Contains(h.raw(), teal+"teal") {
+		t.Fatal("a colour offered is not drawn in itself")
 	}
 	h.press("right", "esc")
 	if got := h.color("Alpha"); got != "teal" {

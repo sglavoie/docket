@@ -277,9 +277,11 @@ cursor lose their tint, while selections remain shaded. Indentation stays blank.
 
 ### Sidebar
 
-Drawn from 72 columns up; narrower, it takes the pane only while focused,
-and is then as wide as its widest entry needs, from the 24 columns it has
-beside the pane up to 40, so each count stays beside its name.
+Drawn from 72 columns up; narrower, it takes the pane only while focused.
+It is as wide as its widest entry needs, from 24 columns up to 40, so each
+count stays beside its name and each mark in its column. Beside the pane
+it widens only while the pane keeps the 45 columns it has at 72, so a
+wider window gives the room to a long name before the pane.
 Everything in it is derived by one pass over the tree. Nothing is stored.
 
 - **Four lists, and they stay four.** Inbox counts its rows not yet done or
@@ -314,8 +316,9 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
   any project carries one, left blank on the rest, and the age or `∅`
   right-aligned in the other, so a mark is read down one column whether or
   not an age follows it. The columns never cost a name: a name runs into
-  its own blank cells, and one they would still cut has its marks drawn
-  side by side against the edge instead.
+  its own blank cells, the sidebar widens for one they would still cut,
+  and where it cannot, that name has its marks drawn side by side against
+  the edge instead.
 - **Parked** projects are a count, as `31 parked projects`: it counts
   projects only, never the parked rows inside an active one. Done and
   canceled projects are not listed. While the pane is inside a parked
@@ -709,7 +712,8 @@ Three more acts use the same line:
   the last the sigil as typed; `Shift+Tab` walks back. A sigil only one
   value finishes is finished at once, and then `Tab` switches the shape
   again. While the walk lasts, every value is listed one above another over
-  the rows, under the letters it completes, with the one written reversed;
+  the rows, under the letters it completes or at the pane's left edge when
+  those stand under the sidebar, with the one written reversed;
   a list longer than ten, or than the pane, scrolls to keep it in view, and
   `Down`, `Ctrl+N`, `Up` and `Ctrl+P` walk the list as `Tab` and
   `Shift+Tab` do. Any other key ends the walk and closes the list. The status line says `Tab completes`
@@ -1520,14 +1524,21 @@ carrying it, beside the count of matches, would read as a contradiction
 (`1 match · #work 254`), so the line is read back in words instead. A `~colour` typed there,
 except on the filter, lists the colour names it could become in the same
 place, each drawn in itself, as `~teal`; a `~#` asks for a hex value.
+Where the values are listed over the rows, as below, that list is the one
+that names them and the status line does not repeat it: the row keeps its
+hint about keys and a prompt its hint after the count. A word with nothing
+listed, as one typed in full on the stamp line or one that starts no tag,
+is still named on the line.
 
 Every sigil with values to take lists them one above another as the filter
 lists its values, from the moment its mark ends the line on a row, in the
 pane or a sidebar entry, or on the capture or stamp line: under the word on
 a row, or over it when there is more room above, and above the line on a
-prompt. `#` lists the tags in use, each in its colour, `##` the contexts,
-`$` the states, `@` and `@@` the date words, and `~` the colour names, each
-drawn in itself. On the stamp line `-#` and `-##` list what could be taken
+prompt, keeping to the pane so it never covers the sidebar's names.
+`#` lists the tags in use, each in its colour, `##` the contexts, each
+with how many rows carry it, dim and right-aligned beside its name, and a
+tag with values one line for each value; `$` the states, `@` and `@@` the
+date words, and `~` the colour names, each drawn in itself. On the stamp line `-#` and `-##` list what could be taken
 off; a removal that takes no value lists nothing. `Tab`, `Down` and `Ctrl+N` write the next value, `Shift+Tab`,
 `Up` and `Ctrl+P` the one before, and past either end the word is as it was
 typed; the one written is reversed. While the list is shown those keys walk

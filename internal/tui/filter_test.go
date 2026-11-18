@@ -146,8 +146,8 @@ func TestSelectionActsOnEveryRowAndStampsSigils(t *testing.T) {
 
 	h.press("#")
 	// The bare sigil already offers the most used tag.
-	if h.bottom() != "Stamp › #bug   2 rows · #bug 3 · #docs 1" {
-		t.Fatalf("prompt = %q", h.bottom())
+	if h.bottom() != "Stamp › #bug   2 rows · -#tag and -@ remove" || !strings.Contains(h.above(), "bug   3") || !strings.Contains(h.above(), "docs  1") {
+		t.Fatalf("prompt = %q\n%s", h.bottom(), h.above())
 	}
 	h.press(`"urgent @tom $w"`, "enter", "-", `"#bug -@ -#docs"`, "enter", "!")
 	h.want(

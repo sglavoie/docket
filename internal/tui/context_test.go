@@ -11,8 +11,8 @@ func TestAContextLeadsTheTitleInItsColour(t *testing.T) {
 	h := start(t).wide()
 	h.press("o", `"Errands:"`, "enter", "tab", `"Call Ann ##phone #ann"`, "enter", `"Buy milk ##town"`, "enter", `"Plan ##ph"`)
 	// Typed, the contexts in use are named with their counts and offered.
-	if got := h.status(); !strings.HasPrefix(got, "##phone 1") {
-		t.Fatalf("typing: %q", got)
+	if got := h.above(); !strings.Contains(got, "phone  1") || strings.Contains(h.status(), "##phone") {
+		t.Fatalf("typing: %q\n%s", h.status(), got)
 	}
 	h.press("right", "esc")
 	if got := h.field("Plan", sigil.FieldContext); got != "phone" {

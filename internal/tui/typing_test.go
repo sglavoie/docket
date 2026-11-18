@@ -38,14 +38,15 @@ func TestSigilsAreColouredAsTheyAreTyped(t *testing.T) {
 func TestTheRightArrowCompletesASigil(t *testing.T) {
 	h := work(t)
 	// #bug is used three times and #docs once, so #bug is offered first.
-	// The tags it could become hang under the word, over the rows below.
+	// The tags it could become hang under the word, over the rows below,
+	// each with how many rows carry it.
 	h.press("o", `"Tidy #"`)
 	h.want(
 		"  ▾ Beta",
 		"    ○ Fix cache #bug",
 		"▌   ○ Tidy #bug",
-		"  ▾ Alpha   bug",
-		"    ○ Fix l docs  #bug",
+		"  ▾ Alpha   bug   3",
+		"    ○ Fix l docs  1 ug",
 		"    ○ Write docs @fri #docs",
 		"    ○ Refactor auth #bug",
 	)

@@ -143,7 +143,7 @@ func (h *harness) rows() string {
 	var out []string
 	for _, l := range lines[1 : len(lines)-1] {
 		if r := []rune(l); h.m.width >= sidebarFrom {
-			l = string(r[min(sideCols, len(r)):])
+			l = string(r[min(h.m.sideWidth()+3, len(r)):])
 		}
 		if l = strings.TrimRight(l, " "); l != "" {
 			out = append(out, l)
@@ -159,10 +159,10 @@ func (h *harness) side() string {
 	var out []string
 	for _, l := range lines[:len(lines)-1] {
 		if r := []rune(l); h.m.width >= sidebarFrom {
-			if len(r) < sideCols {
+			if len(r) < h.m.sideWidth()+3 {
 				h.t.Fatalf("line narrower than the sidebar: %q", l)
 			}
-			l = string(r[:sidebarCols])
+			l = string(r[:h.m.sideWidth()])
 		}
 		if l = strings.Join(strings.Fields(l), " "); l != "" {
 			out = append(out, l)
@@ -181,7 +181,7 @@ func (h *harness) wantSide(lines ...string) {
 func (h *harness) header() string {
 	l := h.lines()[0]
 	if r := []rune(l); h.m.width >= sidebarFrom {
-		l = string(r[min(sideCols, len(r)):])
+		l = string(r[min(h.m.sideWidth()+3, len(r)):])
 	}
 	return strings.TrimSpace(l)
 }
@@ -210,7 +210,7 @@ func (h *harness) act(k string) {
 func (h *harness) edge(text, columns string) string {
 	w := h.m.width
 	if w >= sidebarFrom {
-		w -= sideCols
+		w -= h.m.sideWidth() + 3
 	}
 	return text + strings.Repeat(" ", max(w-ansi.StringWidth(text)-ansi.StringWidth(columns), 0)) + columns
 }

@@ -3,6 +3,7 @@ package tui
 import (
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/x/ansi"
@@ -483,7 +484,7 @@ func (m *Model) editWidth() int {
 	if m.edit != nil && m.edit.body {
 		w, _ := m.size()
 		if w >= sidebarFrom {
-			w -= sidebarCols + 3
+			w -= m.sideWidth() + 3
 		}
 		return m.bodyWidth(w)
 	}
@@ -492,7 +493,7 @@ func (m *Model) editWidth() int {
 	}
 	w, _ := m.size()
 	if w >= sidebarFrom {
-		w -= sidebarCols + 3
+		w -= m.sideWidth() + 3
 	}
 	return max(w-m.numberCols()-4-2*m.vis[m.cursor].depth, 1)
 }
@@ -596,5 +597,42 @@ func (m *Model) valueItems(e *editor, names []string) []string {
 			items[i] = name
 		}
 	}
+	// A tag or a context says how many rows carry it, dim and right-aligned
+	// beside its name, so the one list reads both and the line need not.
+	var counts []string
+	switch {
+	case strings.HasPrefix(word, "##"):
+		for _, name := range names {
+			counts = append(counts, strconv.Itoa(m.contextUse[name]))
+		}
+	case strings.HasPrefix(word, "#"):
+		for _, name := range names {
+			counts = append(counts, strconv.Itoa(m.tagCount(name)))
+		}
+	default:
+		return items
+	}
+	nameW, countW := 0, 0
+	for i, name := range names {
+		nameW, countW = max(nameW, ansi.StringWidth(name)), max(countW, len(counts[i]))
+	}
+	for i, name := range names {
+		items[i] += strings.Repeat(" ", nameW-ansi.StringWidth(name)+2+countW-len(counts[i])) + m.colors().dim + counts[i]
+	}
 	return items
+}
+
+// tagCount is how many live rows carry a tag: a bare name counts every
+// value it carries, as #est counts each #est=…, and a name=value that one.
+func (m *Model) tagCount(name string) int {
+	if strings.Contains(name, "=") {
+		return m.tagUse[name]
+	}
+	n := 0
+	for tag, use := range m.tagUse {
+		if sigil.TagName(tag) == name {
+			n += use
+		}
+	}
+	return n
 }
