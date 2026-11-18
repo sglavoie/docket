@@ -435,7 +435,10 @@ func tagWord(e *editor, surface string) (w string, ctx, ok bool) {
 // tagOffers names the tags in use that the tag being typed could become,
 // most used first, each with how many rows carry it, so the line shows
 // what tags there are without a list of its own. A ##context names the
-// contexts in use the same way.
+// contexts in use the same way. On the filter a word that names the one
+// tag or context it could become offers nothing more: the count of rows
+// carrying it would stand beside the count of matches and read as one
+// contradicting the other, so the line is read back in words instead.
 func (m *Model) tagOffers(e *editor, surface string) string {
 	if colors := m.colorOffers(e, surface); colors != "" {
 		return colors
@@ -454,6 +457,9 @@ func (m *Model) tagOffers(e *editor, surface string) string {
 		if len(parts) == 0 {
 			return "a new context"
 		}
+		if surface == askFilter && len(parts) == 1 && slices.Contains(m.contexts, typed) {
+			return ""
+		}
 		return strings.Join(parts, " · ")
 	}
 	// A tag with values is one name: #est counts every #est=….
@@ -468,6 +474,9 @@ func (m *Model) tagOffers(e *editor, surface string) string {
 			names = append(names, name)
 		}
 		use[name] += m.tagUse[tag]
+	}
+	if surface == askFilter && len(names) == 1 && names[0] == typed {
+		return ""
 	}
 	slices.SortStableFunc(names, func(a, b string) int { return use[b] - use[a] })
 	var parts []string

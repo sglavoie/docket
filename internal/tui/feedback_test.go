@@ -136,11 +136,25 @@ func TestTypingATagNamesTheTagsInUse(t *testing.T) {
 	if got := h.status(); !strings.HasSuffix(got, "#home 2") {
 		t.Fatalf("filter: %q", got)
 	}
+	// Typed in full, the one tag it names offers nothing more: its count
+	// would stand beside the count of matches as if one contradicted the
+	// other, so the line is read back in words.
+	h.press(`"ome"`)
+	if got := h.status(); strings.Contains(got, "#home 2") || !strings.HasSuffix(got, "   2 matches · in context · "+readBack("#home", h.m.today())) {
+		t.Fatalf("filter: %q", got)
+	}
 	h.press("esc", "esc", "#")
 	h.press(`"w"`)
 	if got := h.status(); !strings.HasSuffix(got, "#work 1") {
 		t.Fatalf("stamp: %q", got)
 	}
+	// The stamp line has no count of matches, so a tag typed in full
+	// still says how many rows carry it already.
+	h.press(`"ork"`)
+	if got := h.status(); !strings.HasSuffix(got, "#work 1") {
+		t.Fatalf("stamp: %q", got)
+	}
+	h.press("backspace", "backspace", "backspace")
 	h.press(`"x"`)
 	if got := h.status(); !strings.HasSuffix(got, "a new tag") {
 		t.Fatalf("stamp: %q", got)

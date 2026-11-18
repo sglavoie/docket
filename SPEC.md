@@ -1489,7 +1489,10 @@ are can be read without a list of their own (rule 6); one that starts no
 tag in use says `a new tag`. A `##context` names the contexts in use the
 same way, `##phone 4 · ##town 2`, and one that starts none says `a new
 context`; on the filter `Tab` walks them as it walks tags. On the prompts the list follows the count of
-matches or rows, in place of the hint about keys. A `~colour` typed there,
+matches or rows, in place of the hint about keys. On the filter a word
+that names the one tag or context it could become lists nothing: the rows
+carrying it, beside the count of matches, would read as a contradiction
+(`1 match · #work 254`), so the line is read back in words instead. A `~colour` typed there,
 except on the filter, lists the colour names it could become in the same
 place, each drawn in itself, as `~teal`; a `~#` asks for a hex value.
 
