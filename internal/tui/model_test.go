@@ -205,6 +205,16 @@ func (h *harness) act(k string) {
 	h.press(k)
 }
 
+// edge is a listed row as drawn: its text, and what its columns say
+// ending at the pane's right edge.
+func (h *harness) edge(text, columns string) string {
+	w := h.m.width
+	if w >= sidebarFrom {
+		w -= sideCols
+	}
+	return text + strings.Repeat(" ", max(w-ansi.StringWidth(text)-ansi.StringWidth(columns), 0)) + columns
+}
+
 func (h *harness) want(rows ...string) {
 	h.t.Helper()
 	if got, want := h.rows(), strings.Join(rows, "\n"); got != want {

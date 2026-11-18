@@ -267,15 +267,15 @@ func TestAListCanBeFiltered(t *testing.T) {
 	h := work(t)
 	h.press("$", `"w"`, "enter", "j", "j", "$", `"w"`, "enter", "f", `"waiting"`, "enter")
 	h.want(
-		"▌ ◔ Fix cache #bug · 0d · Beta",
-		"  ◔ Fix login ! #bug · 0d · Alpha",
+		h.edge("▌ ◔ Fix cache #bug · Beta", "0d"),
+		h.edge("  ◔ Fix login ! #bug · Alpha", "0d"),
 	)
 	h.press("/", `"login"`, "enter")
-	h.want("▌ ◔ Fix login ! #bug · 0d · Alpha")
+	h.want(h.edge("▌ ◔ Fix login ! #bug · Alpha", "0d"))
 	h.press("esc")
 	h.want(
-		"  ◔ Fix cache #bug · 0d · Beta",
-		"▌ ◔ Fix login ! #bug · 0d · Alpha",
+		h.edge("  ◔ Fix cache #bug · Beta", "0d"),
+		h.edge("▌ ◔ Fix login ! #bug · Alpha", "0d"),
 	)
 }
 

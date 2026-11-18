@@ -50,15 +50,15 @@ func TestAStartDateDimsARowUntilItsDayThenPutsItInToday(t *testing.T) {
 	h.clock = h.clock.Add(20 * 24 * time.Hour)
 	h.press("f", `"stale"`, "enter")
 	h.want(
-		"▌ ○ First · 25d · Project",
-		"  ○ Second · 25d · Project",
-		"  ○ Renew passport @@Nov 20 · 25d · Project",
+		h.edge("▌ ○ First · Project", "25d"),
+		h.edge("  ○ Second · Project", "25d"),
+		h.edge("  ○ Renew passport @@Nov 20 · Project", "25d"),
 	)
 	h.press("-", `"@@"`, "enter", "A")
 	h.want(
 		"▌ ○ First",
-		"  ○ Second · 25d · Project",
-		"  ○ Renew passport @@Nov 20 · 25d · Project",
+		h.edge("  ○ Second · Project", "25d"),
+		h.edge("  ○ Renew passport @@Nov 20 · Project", "25d"),
 	)
 }
 
@@ -152,8 +152,8 @@ func TestReviewListsProjectsLongestUntouchedFirst(t *testing.T) {
 		t.Fatalf("header = %q", h.header())
 	}
 	h.want(
-		"▌ · Alpha · 12d · 2 to do",
-		"  · Beta v2 · 2d · ∅",
+		h.edge("▌ · Alpha", "2 to do  12d"),
+		h.edge("  · Beta v2", "∅   2d"),
 	)
 	// Keeping is moving on; parking and closing are stamps; Enter looks in.
 	h.press("enter")
@@ -185,19 +185,19 @@ func TestReviewDrawsAgesAsTheSidebarDoes(t *testing.T) {
 	h.press("A", `" v2"`, "esc") // Beta is touched today; Alpha is not
 	h.press(":", `"review"`, "enter")
 	h.want(
-		"▌ · Alpha · 15d · 2 to do",
-		"  · Beta v2 · ∅",
+		h.edge("▌ · Alpha", "2 to do  15d"),
+		strings.TrimRight(h.edge("  · Beta v2", "∅     "), " "),
 	)
-	if raw := h.m.View().Content; !strings.Contains(raw, ageStyle(darkPalette, 1, 1)+"· 15d") {
+	if raw := h.m.View().Content; !strings.Contains(raw, ageStyle(darkPalette, 1, 1)+"15d") {
 		t.Fatalf("the oldest age is not red:\n%q", raw)
 	}
 	h.clock = h.clock.Add(3 * 24 * time.Hour)
 	h.press(":", `"review"`, "enter")
 	raw := h.m.View().Content
-	if !strings.Contains(raw, ageStyle(darkPalette, 1, 1)+"· 18d") {
+	if !strings.Contains(raw, ageStyle(darkPalette, 1, 1)+"18d") {
 		t.Fatalf("the oldest age is not red:\n%q", raw)
 	}
-	if !strings.Contains(raw, ageStyle(darkPalette, 3, 18)+"· 3d") {
+	if !strings.Contains(raw, ageStyle(darkPalette, 3, 18)+"3d") {
 		t.Fatalf("a younger age is not drawn against the oldest:\n%q", raw)
 	}
 }
@@ -207,14 +207,14 @@ func TestWaitingAndStaleDrawAgesAgainstTheOldest(t *testing.T) {
 	h := two(t) // Two is waiting
 	h.clock = h.clock.Add(3 * 24 * time.Hour)
 	h.press("f", `"waiting"`, "enter")
-	if raw := h.m.View().Content; !strings.Contains(raw, ageStyle(darkPalette, 1, 1)+"· 3d") {
+	if raw := h.m.View().Content; !strings.Contains(raw, ageStyle(darkPalette, 1, 1)+"3d") {
 		t.Fatalf("the only wait, and so the longest, is not red:\n%q", raw)
 	}
 	h.clock = h.clock.Add(12 * 24 * time.Hour)
 	// One has sat open and untouched as long.
 	h.press("f", `"stale"`, "enter")
-	h.want("▌ ○ One @Nov 16 · 15d · Alpha")
-	if raw := h.m.View().Content; !strings.Contains(raw, ageStyle(darkPalette, 1, 1)+"· 15d") {
+	h.want(h.edge("▌ ○ One @Nov 16 · Alpha", "15d"))
+	if raw := h.m.View().Content; !strings.Contains(raw, ageStyle(darkPalette, 1, 1)+"15d") {
 		t.Fatalf("the oldest stale age is not red:\n%q", raw)
 	}
 }

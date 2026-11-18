@@ -164,6 +164,7 @@ type Model struct {
 	stats         map[string]entry // each active project's sidebar line, by row
 	oldestProject int              // the greatest age among them, which their ages are drawn against
 	oldestRow     int64            // the greatest age among the Waiting or Stale rows drawn, in ms
+	colW          []int            // how wide each column at a listed row's right edge is, or none
 	filters       []savedFilter
 	syncDir       string
 	syncNote      string // the sidebar's last word on sync

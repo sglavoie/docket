@@ -74,12 +74,12 @@ func TestSidebarFocusShowsEachDestination(t *testing.T) {
 	if h.header() != "Waiting  · 1 waiting" {
 		t.Fatalf("header = %q", h.header())
 	}
-	h.want("▌ ◔ Two · 0d · Alpha")
+	h.want(h.edge("▌ ◔ Two · Alpha", "0d"))
 
 	// Back in the pane, closing the row leaves it in the list it was found
 	// in; the list is read again when reopened.
 	h.press("enter", "x")
-	h.want("▌ ✓ Two · 0d · Alpha")
+	h.want(h.edge("▌ ✓ Two · Alpha", "0d"))
 	h.wantSide(
 		"Inbox",
 		"Today",
@@ -96,13 +96,13 @@ func TestSidebarFocusShowsEachDestination(t *testing.T) {
 func TestAListHasNoStructure(t *testing.T) {
 	h := two(t)
 	h.press("f", `"wait"`, "enter")
-	h.want("▌ ◔ Two · 0d · Alpha")
+	h.want(h.edge("▌ ◔ Two · Alpha", "0d"))
 	for _, k := range []string{"o", "J", ">"} {
 		h.act(k)
 		if h.status() == "" {
 			t.Fatalf("%s was not refused", k)
 		}
-		h.want("▌ ◔ Two · 0d · Alpha")
+		h.want(h.edge("▌ ◔ Two · Alpha", "0d"))
 	}
 	// Enter works inside the row, and Esc returns to the same list.
 	h.press("enter")
@@ -110,7 +110,7 @@ func TestAListHasNoStructure(t *testing.T) {
 		t.Fatalf("header = %q", h.header())
 	}
 	h.press("o", `"a detail $note"`, "esc", "esc")
-	h.want("▌ ◔ Two +1 · 0d · Alpha")
+	h.want(h.edge("▌ ◔ Two +1 · Alpha", "0d"))
 }
 
 func TestTodayIsPickedAndKeepsWhatIsLeft(t *testing.T) {

@@ -367,7 +367,15 @@ The pane shows the rows under one row, or a list.
   never pulls it from under the cursor. Each row names its project; Waiting
   and Stale lead with the longest wait and say how many days,
   drawn as the sidebar draws an age against the oldest row shown, so a
-  long wait stands out. Each thing
+  long wait stands out. The age stands in a column at the pane's right
+  edge, on the row's first line, right-aligned and as wide as the widest
+  age the list holds, as the sidebar's ages stand: a list sorted by age is
+  then read down one column, and an age is not taken for the project named
+  beside it. A row wraps short of the column, so the column stays clear on
+  every line and nothing is cut. A pane that would leave a row's text
+  fewer than 16 columns beside it says the age after the text instead,
+  led by its dot, and the row being typed gives up its column while it is.
+  Each thing
   said after a row is led by a dot that stays with it when the row wraps.
   Nothing folds in a flat view, so a note there shows `·` whatever it holds
   and counts the rows under it (`+3`) as a task does, unless it is a heading
@@ -930,9 +938,12 @@ under a hidden top-level row with the fixed identity `filters`, so saving
 and forgetting are undone, backed up and synced like any other change.
 
 `:review` is a list of the active projects, the longest untouched first,
-each with its age and how many tasks are left to do, or `∅`. The age is
-drawn as the sidebar draws it: none for a project touched today, and
-otherwise against the oldest active project. It is a list
+each with how many tasks are left to do, or `∅`, and its age, in two
+columns at the pane's right edge as Waiting's ages stand, the age at the
+edge: `2 to do  12d`. The age is drawn as the sidebar draws it: none for a
+project touched today, its column left blank, and otherwise against the
+oldest active project. A project parked or closed during the review has
+no columns left. It is a list
 like the others, so the ordinary keys do the review: moving on keeps a
 project, `Enter` looks inside, and a stamp parks (`$p`) or closes (`$done`)
 it.

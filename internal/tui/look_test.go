@@ -4,7 +4,12 @@ import (
 	"math"
 	"regexp"
 	"strconv"
+	"strings"
 	"testing"
+	"time"
+
+	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 var sgrRGB = regexp.MustCompile(`\x1b\[[34]8;2;(\d+);(\d+);(\d+)m`)
@@ -105,4 +110,50 @@ func TestNoColourNameReadsAsASignal(t *testing.T) {
 			}
 		}
 	}
+}
+
+// Waiting and Stale say each row's age in a column at the pane's right
+// edge, as wide as the widest age, so the ages are read down the list.
+// A long row wraps short of it, so the column stays clear on every line,
+// and a pane too narrow for both says the age after the text instead.
+func TestListedAgesStandInAColumnAtTheRightEdge(t *testing.T) {
+	h := two(t) // Two is waiting
+	h.clock = h.clock.Add(120 * 24 * time.Hour)
+	h.press("G", "o", `"Ask the landlord about the heater and the boiler and the spare keys and the meter $w"`, "esc")
+	h.clock = h.clock.Add(5 * 24 * time.Hour)
+	h.press("f", `"waiting"`, "enter")
+	pane := h.m.width - sideCols
+	lines := strings.Split(h.rows(), "\n")
+	if lines[0] != h.edge("▌ ◔ Two · Alpha", "125d") || len(lines) < 3 {
+		t.Fatalf("screen:\n%s", h.rows())
+	}
+	if !strings.HasPrefix(lines[1], "  ◔ Ask the landlord") || !strings.HasSuffix(lines[1], strings.Repeat(" ", 4)+"5d") || ansi.StringWidth(lines[1]) != pane {
+		t.Fatalf("a shorter age is not right-aligned in the column:\n%s", h.rows())
+	}
+	for _, l := range lines[2:] {
+		if ansi.StringWidth(l) > pane-len("  125d") {
+			t.Fatalf("a wrapped line runs into the column:\n%s", h.rows())
+		}
+	}
+	h.m.Update(tea.WindowSizeMsg{Width: 24, Height: 16})
+	if rows := h.rows(); !strings.Contains(rows, "Two · 125d · Alpha") {
+		t.Fatalf("too narrow for a column, the age follows the text:\n%s", rows)
+	}
+}
+
+// Review says each project's tasks left and its age in two columns at the
+// right edge. One parked during the review has no columns left.
+func TestReviewSaysTasksAndAgeInColumns(t *testing.T) {
+	h := two(t)
+	h.clock = h.clock.Add(15 * 24 * time.Hour)
+	h.press(":", `"review"`, "enter")
+	h.want(
+		h.edge("▌ · Beta", "∅  15d"),
+		h.edge("  · Alpha", "2 to do  15d"),
+	)
+	h.press("$", `"parked"`, "enter")
+	h.want(
+		"▌ ◌ Beta",
+		h.edge("  · Alpha", "2 to do  15d"),
+	)
 }

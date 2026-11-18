@@ -79,7 +79,8 @@ type word struct {
 
 // rowWords is a row's text followed by its fields, each spelled with the
 // sigil that writes it, then what the view adds: the children a task hides,
-// and in a flat view its age and project. A closed or parked row is dimmed
+// and in a flat view its project. What a list says of a row in columns at
+// the right edge follows it only when the pane has no room for them. A closed or parked row is dimmed
 // whole and raises no alarm.
 func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 	l := sigil.FromFields(r.Fields)
@@ -236,23 +237,12 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 			if pick := r.Fields[sigil.FieldToday]; picked && pick != day {
 				also("since " + dayWords(pick, m.today()))
 			}
-		case kindWaiting, kindStale:
-			// The age reads as the sidebar draws it, against the oldest row
-			// shown, so the row left alone longest is the one the eye finds.
-			age := m.listAge(r)
-			out = append(out, word{paint(ageStyle(m.colors(), age, m.oldestRow)), "· " + days(age)})
-		case kindReview:
-			// A project parked or closed during the review has no line left.
-			if st, active := m.stats[r.ID]; active {
-				// The age reads as the sidebar draws it: none for a project
-				// touched today, and against the oldest project otherwise.
-				if st.age > 0 {
-					out = append(out, word{ageStyle(m.colors(), int64(st.age), int64(m.oldestProject)), "· " + strconv.Itoa(st.age) + "d"})
-				}
-				if st.idle {
-					also("∅")
-				} else {
-					also(strconv.Itoa(st.open) + " to do")
+		}
+		if m.colW == nil {
+			// Too narrow for columns, what they say follows the text.
+			for _, c := range m.listCells(r, quiet) {
+				if c.text != "" {
+					out = append(out, word{c.style, "· " + c.text})
 				}
 			}
 		}
@@ -268,6 +258,100 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 		// An ancestor kept only to place a match.
 		for i := range out {
 			out[i].style = m.colors().dim
+		}
+	}
+	return out
+}
+
+// listCells is what Waiting, Stale and review say of a row in the columns
+// at the pane's right edge, so it is read down the list as the sidebar's
+// ages are: the age, and in review the tasks left before it. An empty cell
+// holds its column.
+func (m *Model) listCells(r *outline.Row, quiet bool) []word {
+	switch m.at.list {
+	case kindWaiting, kindStale:
+		// The age reads as the sidebar draws it, against the oldest row
+		// shown, so the row left alone longest is the one the eye finds.
+		style := ageStyle(m.colors(), m.listAge(r), m.oldestRow)
+		if quiet {
+			style = m.colors().dim
+		}
+		return []word{{style, days(m.listAge(r))}}
+	case kindReview:
+		// A project parked or closed during the review has no line left.
+		st, active := m.stats[r.ID]
+		if !active {
+			return nil
+		}
+		left := word{m.colors().dim, strconv.Itoa(st.open) + " to do"}
+		if st.idle {
+			left.text = "∅"
+		}
+		// The age reads as the sidebar draws it: none for a project touched
+		// today, and against the oldest project otherwise.
+		age := word{}
+		if st.age > 0 {
+			age = word{ageStyle(m.colors(), int64(st.age), int64(m.oldestProject)), strconv.Itoa(st.age) + "d"}
+		}
+		return []word{left, age}
+	}
+	return nil
+}
+
+// listColumns sets how wide each column at the pane's right edge is: as
+// wide as its widest cell among the rows the list holds. It leaves none
+// when the text would be left fewer than minText columns beside them.
+func (m *Model) listColumns(w int) {
+	m.colW = nil
+	var widths []int
+	for _, v := range m.vis {
+		for i, c := range m.listCells(m.tree.Row(v.id), false) {
+			if i == len(widths) {
+				widths = append(widths, 0)
+			}
+			widths[i] = max(widths[i], ansi.StringWidth(c.text))
+		}
+	}
+	if len(widths) == 0 {
+		return
+	}
+	widest := 0
+	for _, v := range m.vis {
+		widest = max(widest, v.depth)
+	}
+	if w-(m.numberCols()+4+2*widest)-columnsWidth(widths) >= minText {
+		m.colW = widths
+	}
+}
+
+// minText is the least room the text of a listed row keeps beside the
+// columns at the right edge.
+const minText = 16
+
+// columnsWidth is what the columns take from a line, with the gap that
+// keeps them off the text and apart from one another.
+func columnsWidth(widths []int) int {
+	if len(widths) == 0 {
+		return 0
+	}
+	n := 2 * len(widths)
+	for _, w := range widths {
+		n += w
+	}
+	return n
+}
+
+// columns draws a row's cells, each right-aligned in its column.
+func (m *Model) columns(cells []word) string {
+	out := ""
+	for i, w := range m.colW {
+		c := word{}
+		if i < len(cells) {
+			c = cells[i]
+		}
+		out += strings.Repeat(" ", 2+w-ansi.StringWidth(c.text))
+		if c.text != "" {
+			out += c.style + c.text + sgrReset
 		}
 	}
 	return out
@@ -826,13 +910,16 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 			m.oldestRow = max(m.oldestRow, m.listAge(m.tree.Row(v.id)))
 		}
 	}
-	// Reuse the editing layout for height accounting and drawing.
+	m.listColumns(w)
+	cols := columnsWidth(m.colW)
+	// Reuse the editing layout for height accounting and drawing. A listed
+	// row wraps short of its columns, so they stay clear on every line.
 	rowLines := func(i int) []string {
 		v := m.vis[i]
 		if edit != nil && edit.row == v.id {
 			return editing.lines
 		}
-		return wrap(m.rowWords(m.tree.Row(v.id), i == m.cursor, flat), max(w-prefix(i), 1))
+		return wrap(m.rowWords(m.tree.Row(v.id), i == m.cursor, flat), max(w-prefix(i)-cols, 1))
 	}
 	// In Today a rule sets the day's own rows apart from the picks carried
 	// from an earlier day. It takes a line of its own above the first
@@ -994,6 +1081,12 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 			line := blank + gutter + mark + indent + "  " + text
 			if n == 0 {
 				line = number + gutter + mark + indent + glyph + " " + text
+				if cols > 0 && !isEdit {
+					l := sigil.FromFields(r.Fields)
+					quiet := l.Closed() || l.State == sigil.Parked || l.Later(m.today())
+					cells := m.columns(m.listCells(r, quiet))
+					line += strings.Repeat(" ", max(w-ansi.StringWidth(line)-ansi.StringWidth(cells), 0)) + cells
+				}
 			}
 			// A copy's flash wins over the selection, which wins over the cursor; only the focused pane is live.
 			background := ""
