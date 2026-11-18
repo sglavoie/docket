@@ -686,12 +686,10 @@ func (m *Model) statusLine(w int) (string, int) {
 				left += " · → completes"
 			}
 		}
-	case !m.sideFocus && m.ask == nil && m.cursor == 0 && len(m.picked) == 0 && m.sweep == "" && m.pending() == "" && m.bodyRow() != "":
-		// The body is reached from the first row, which nothing else shows.
-		left = "k writes its body"
-		if m.tree.Row(m.bodyRow()).Fields[fieldBody] != "" {
-			left = "k edits its body"
-		}
+	case !m.sideFocus && m.ask == nil && m.cursor == 0 && len(m.picked) == 0 && m.sweep == "" && m.pending() == "" && m.bodyRow() != "" && m.tree.Row(m.bodyRow()).Fields[fieldBody] != "":
+		// A body is reached from the first row. Only one that is there is
+		// named: a hint on every first row would soon go unread.
+		left = "k edits its body"
 	case m.sideFocus:
 		left = "j k choose · Enter work in it"
 		if m.sel.kind == kindProject {

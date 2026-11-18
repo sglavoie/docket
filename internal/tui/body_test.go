@@ -362,11 +362,16 @@ func TestEscAndUndoInsideTheBody(t *testing.T) {
 }
 
 // On the first row of a row's pane the status line names the way into its
-// body, which nothing on screen shows otherwise.
+// body when there is one. A pane with no body says nothing, so the hint is
+// not on every first row, where it would soon go unread.
 func TestTheFirstRowNamesTheBody(t *testing.T) {
 	h := inProject(t)
-	if h.status() != "k writes its body" {
-		t.Fatalf("status says %q", h.status())
+	if h.status() != "" {
+		t.Fatalf("with no body, status says %q", h.status())
+	}
+	h.press("k", "A", `"notes"`, "esc", "esc")
+	if h.status() != "k edits its body" {
+		t.Fatalf("with a body, status says %q", h.status())
 	}
 	h.press("j")
 	if h.status() != "" {
@@ -376,10 +381,7 @@ func TestTheFirstRowNamesTheBody(t *testing.T) {
 	if h.status() != "3" {
 		t.Fatalf("a count hides the hint: %q", h.status())
 	}
-	h.press("esc", "k", "A", `"notes"`, "esc", "esc")
-	if h.status() != "k edits its body" {
-		t.Fatalf("with a body, status says %q", h.status())
-	}
+	h.press("esc")
 	// Projects opens no row, so it has no body to name.
 	h.press("esc", "gg")
 	if h.status() != "" {

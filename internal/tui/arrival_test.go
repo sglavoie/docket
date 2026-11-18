@@ -21,8 +21,10 @@ import (
 func TestTutorReads(t *testing.T) {
 	h := start(t).wide()
 	lines := readPaste(tutorText)
-	if len(lines) < 35 || len(lines) > 50 || len(lines) != strings.Count(tutorText, "\n") {
-		t.Fatalf("tutorial has %d parsed rows for %d lines", len(lines), strings.Count(tutorText, "\n"))
+	// A body line is written under its row after "> " and is no row.
+	rows := strings.Count(tutorText, "\n") - strings.Count(tutorText, "\t> ")
+	if len(lines) < 35 || len(lines) > 50 || len(lines) != rows {
+		t.Fatalf("tutorial has %d parsed rows for %d lines", len(lines), rows)
 	}
 	for i, line := range lines {
 		if i == 0 {
@@ -90,6 +92,22 @@ func TestTutorStepsHold(t *testing.T) {
 			}
 		})
 	}
+	t.Run("zoom shows a body", func(t *testing.T) {
+		h := step(t, "Press Enter on this row to zoom")
+		zoomed := h.m.current()
+		h.press("enter")
+		if h.status() != "k edits its body" {
+			t.Fatalf("zoomed in, status says %q", h.status())
+		}
+		h.press("k")
+		if !strings.Contains(h.status(), "in the body") {
+			t.Fatalf("k did not step into the body: %q", h.status())
+		}
+		h.press("esc", "esc")
+		if h.m.current() != zoomed {
+			t.Fatal("Esc twice did not return to the exercise")
+		}
+	})
 	t.Run("split and join", func(t *testing.T) {
 		h := step(t, "Press o and type two words")
 		h.press("o", `"two words"`, "left", "enter", "backspace", "esc")

@@ -2,7 +2,8 @@ Welcome
 	Move, fold and zoom:
 		Press j and k to move between these rows; gg returns to the first and G reaches the last.
 		Press H to reach this heading, h to fold it, then l to unfold it.
-		Press Enter on this row to zoom into it; Esc brings you back.
+		Press Enter on this row to zoom into it: its body heads the pane, and k steps into it. Esc twice brings you back.
+			> A body holds what does not fit on a row's line: notes, a draft, what was agreed.
 		Press ] for the next heading and [ to come back; then ] to continue.
 	Add and type:
 		Press o here, type a task of your own, then Esc to keep it; u takes it back.

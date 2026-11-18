@@ -1395,9 +1395,11 @@ dimmed line, `no body · A writes one`, while the caret is there. The cursor
 never lands in a body by itself: a place opens on its rows. `j` from the
 body's last line, and `Esc`, return
 to the first row. A selection refuses the step and says so. Nothing on screen shows
-the way in, so while the cursor is on the first row, with nothing pending
-or selected, the status line says `k writes its body`, or `k edits its
-body` when there is one.
+the way in, so while the cursor is on the first row of a pane whose row
+has a body, with nothing pending or selected, the status line says `k
+edits its body`. A pane with no body says nothing there: a hint on every
+first row would soon go unread. `:help` and the tutorial's zoom step,
+whose row has a body, teach the key.
 
 **Edited.** Inside the body the keys are the in-row grammar, over lines as
 well as characters, and none of them is a key of the outline:
