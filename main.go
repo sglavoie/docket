@@ -10,6 +10,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/docket/internal/store"
 	"github.com/sglavoie/docket/internal/tui"
@@ -131,6 +132,8 @@ func run() error {
 		m.Notice("no backup today: " + backup.Error())
 	}
 	_, err = tea.NewProgram(m).Run()
+	// The TUI turned on light and dark reports; a shell must not receive them.
+	fmt.Print(ansi.ResetModeLightDark)
 	return err
 }
 

@@ -967,14 +967,20 @@ func TestPaletteFollowsBackground(t *testing.T) {
 	if h.m.colors() != darkPalette {
 		t.Fatal("no terminal answer must use dark")
 	}
-	requested := false
+	requested, reports := false, false
 	for _, cmd := range h.m.Init()().(tea.BatchMsg) {
+		if raw, ok := cmd().(tea.RawMsg); ok && raw.Msg == ansi.SetModeLightDark {
+			reports = true
+		}
 		if reflect.ValueOf(cmd).Pointer() == reflect.ValueOf(tea.RequestBackgroundColor).Pointer() {
 			requested = true
 		}
 	}
 	if !requested {
 		t.Fatal("launch did not request the terminal background")
+	}
+	if !reports {
+		t.Fatal("launch did not turn on light and dark reports")
 	}
 	// Focus coming back asks again, since the terminal may have changed its
 	// colours meanwhile, and the view asks the terminal to report it.
@@ -983,6 +989,22 @@ func TestPaletteFollowsBackground(t *testing.T) {
 	}
 	if !h.m.View().ReportFocus {
 		t.Fatal("the view does not ask for focus reports")
+	}
+	// macOS turning light or dark is reported with or without focus; the
+	// background is asked for at once and again once the terminal has had a
+	// moment to apply its new colours.
+	isRequest := func(cmd tea.Cmd) bool {
+		return reflect.ValueOf(cmd).Pointer() == reflect.ValueOf(tea.RequestBackgroundColor).Pointer()
+	}
+	for _, report := range []tea.Msg{uv.DarkColorSchemeEvent{}, uv.LightColorSchemeEvent{}} {
+		_, cmd := h.m.Update(report)
+		batch, _ := cmd().(tea.BatchMsg)
+		if len(batch) != 2 || !isRequest(batch[0]) {
+			t.Fatalf("%T did not request the terminal background", report)
+		}
+		if _, again := h.m.Update(batch[1]()); !isRequest(again) {
+			t.Fatalf("%T did not request the background again", report)
+		}
 	}
 	for _, tc := range []struct {
 		background color.Color

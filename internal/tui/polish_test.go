@@ -1092,7 +1092,7 @@ func TestACommandNameReadsInAnyCase(t *testing.T) {
 	}
 }
 
-func init() { flashFor = 0 }
+func init() { flashFor, recolorAfter = 0, 0 }
 
 // A copy lights what it took for a moment, rows beneath included, over the
 // selection, and only its own timer puts the light out.

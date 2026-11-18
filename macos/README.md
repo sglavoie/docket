@@ -196,9 +196,11 @@ With Settings › General › Match macOS appearance on (`docketFollowAppearance
 the default) and no theme chosen in Settings › Terminal, the terminal takes a
 light or dark background and text colour to match macOS, and changes them when
 macOS does. Docket asks the terminal for its background at launch, whenever its
-window has focus again, and once a minute, and paints its light or dark palette
-to suit; Docket.app reports a focus change as soon as it recolours, so the open
-window follows at once. With a theme chosen, the theme's colours apply instead
+window has focus again, once a minute, and when the terminal reports that macOS
+turned light or dark (mode 2031, so with or without focus), and paints its light
+or dark palette to suit. That report can come before Docket.app has reloaded its
+colours, so Docket asks again 300 ms later; Docket.app also reports a focus
+change as soon as it recolours a focused window. With a theme chosen, the theme's colours apply instead
 (and a separate Dark Mode theme follows macOS through Ghostty itself); with
 following off, the Ghostty config's colours stand.
 

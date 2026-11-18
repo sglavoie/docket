@@ -242,9 +242,11 @@ it does not pass for a confirmation.
 
 The screen uses named text, dim, accent, warning and alert roles in two
 built-in true-colour palettes. It asks the terminal for its background at
-launch, when the window has focus again, and once a minute, so a terminal
-that changes its colours (Docket.app does, with macOS's appearance) is
-followed: light selects the light palette, dark selects dark, and dark is
+launch, when the window has focus again, once a minute, and when the
+terminal reports that the system turned light or dark (mode 2031, which it
+turns on at launch and off on exit), at once and again 300 ms later, so a
+terminal that changes its colours (Docket.app does, with macOS's
+appearance) is followed, focused or not: light selects the light palette, dark selects dark, and dark is
 used until an answer arrives or if none does. The cursor, selection, flash
 and header backgrounds are mixed from the background the terminal names,
 so they sit on any theme's: the cursor a step toward the text colour, the

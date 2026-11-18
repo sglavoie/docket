@@ -276,8 +276,10 @@ extension Ghostty {
         }
 
         /// Reports the system appearance so a `theme = light:…,dark:…` config
-        /// and color-scheme queries (mode 2031) follow it.
-        private func syncColorScheme() {
+        /// and color-scheme reports (mode 2031) follow it. The window's own
+        /// appearance is pinned to the terminal background for its title bar, so
+        /// the view hears of a system change only when the app delegate calls this.
+        func syncColorScheme() {
             guard let surface else { return }
             let scheme = Ghostty.colorScheme(for: NSApp.effectiveAppearance)
             guard scheme != appliedColorScheme else { return }

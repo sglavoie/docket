@@ -354,6 +354,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     /// macOS turned light or dark. A theme pair follows on its own through the
     /// surface's color scheme; the colors Docket.app names are reloaded.
     private func appearanceChanged() {
+        // The surface's scheme first: it swaps a theme pair and tells Docket.
+        terminal?.surfaceView?.syncColorScheme()
         let now = DocketAppearanceLaunch.scheme(
             terminalTheme: preferencesModel.terminalTheme, followAppearance: preferencesModel.followAppearance,
             appearance: DocketAppearanceScheme(NSApp.effectiveAppearance)

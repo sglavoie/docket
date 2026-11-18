@@ -14,6 +14,8 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	uv "github.com/charmbracelet/ultraviolet"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/docket/internal/outline"
 	"github.com/sglavoie/docket/internal/sigil"
@@ -47,6 +49,15 @@ const (
 )
 
 type tickMsg struct{}
+
+// recolorMsg asks the terminal for its background again, a moment after it
+// reported that the system turned light or dark.
+type recolorMsg struct{}
+
+// recolorAfter is how long after a light or dark report the background is
+// asked for again, for a terminal such as Docket.app that reports the change
+// before it has applied its new colours.
+var recolorAfter = 300 * time.Millisecond
 
 // flashMsg ends the flash of copy number gen, unless a later copy has its own.
 type flashMsg struct{ gen int }
@@ -304,7 +315,11 @@ func newModel(tree *outline.Tree, backend Backend, folds map[string]bool, now fu
 	return m
 }
 
-func (m *Model) Init() tea.Cmd { return tea.Batch(tick(), m.syncCmd(), tea.RequestBackgroundColor) }
+// Init asks for the background and turns on the terminal's light and dark
+// reports (mode 2031), which arrive whether or not the window has focus.
+func (m *Model) Init() tea.Cmd {
+	return tea.Batch(tick(), m.syncCmd(), tea.Raw(ansi.SetModeLightDark), tea.RequestBackgroundColor)
+}
 
 // history is the undo and redo stacks as they are kept between sessions.
 // They belong to this machine: each step undoes a change made here.
@@ -1820,6 +1835,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.FocusMsg:
 		// The terminal may have changed its colours while away, as Docket.app
 		// does when macOS turns dark or light.
+		return m, tea.RequestBackgroundColor
+	case uv.DarkColorSchemeEvent, uv.LightColorSchemeEvent:
+		return m, tea.Batch(tea.RequestBackgroundColor,
+			tea.Tick(recolorAfter, func(time.Time) tea.Msg { return recolorMsg{} }))
+	case recolorMsg:
 		return m, tea.RequestBackgroundColor
 	case tickMsg:
 		m.backup()
