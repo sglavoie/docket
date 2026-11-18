@@ -967,3 +967,39 @@ func TestANarrowSidebarRenamesAProject(t *testing.T) {
 		t.Fatalf("%q, focus = %v", text, h.m.sideFocus)
 	}
 }
+
+// A closed pick sinks below the open ones when Today is opened, never under
+// the cursor, and J and K keep each part on its side.
+func TestTodaySinksClosedPicks(t *testing.T) {
+	h := start(t).wide()
+	h.press("o", `"Alpha"`, "enter", "tab", `"One"`, "enter", `"Two"`, "enter", `"Three"`, "esc")
+	h.press("g", "g", "j", "t", "j", "t", "j", "t", "f", `"today"`, "enter")
+	h.press("x")
+	h.want(
+		"▌ ✓ One · Alpha",
+		"  ○ Two · Alpha",
+		"  ○ Three · Alpha",
+	)
+	h.press("f", `"alpha"`, "enter", "f", `"today"`, "enter")
+	h.want(
+		"  ○ Two · Alpha",
+		"  ○ Three · Alpha",
+		"▌ ✓ One · Alpha",
+	)
+	h.press("K")
+	if h.status() != "closed rows stay below the open ones: x reopens it" {
+		t.Fatalf("status = %q", h.status())
+	}
+	h.press("k", "J")
+	if h.status() != "open rows stay above the closed ones: J K order them there" {
+		t.Fatalf("status = %q", h.status())
+	}
+	h.press("j")
+	// Reopened, it rises when Today is next opened, back in its place.
+	h.press("x", "f", `"alpha"`, "enter", "f", `"today"`, "enter")
+	h.want(
+		"▌ ○ One · Alpha",
+		"  ○ Two · Alpha",
+		"  ○ Three · Alpha",
+	)
+}

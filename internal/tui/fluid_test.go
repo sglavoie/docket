@@ -101,7 +101,7 @@ func TestFilterAlternativesAndChangedSince(t *testing.T) {
 	h.press("x") // Fix cache is done today
 	filter("#docs|nothere", "▌ ○ Write docs @fri #docs · Alpha")
 	filter("$done|doing", "▌ ✓ Fix cache #bug · Beta")
-	filter("login|cache", "▌ ✓ Fix cache #bug · Beta", "  ○ Fix login ! #bug · Alpha")
+	filter("login|cache", "▌ ○ Fix login ! #bug · Alpha", "  ✓ Fix cache #bug · Beta")
 	filter("-login|cache #bug", "▌ ○ Refactor auth #bug · Alpha")
 	// An alternative the sigil cannot read leaves the word as text.
 	filter("$done|zzz", "  Nothing matches.")

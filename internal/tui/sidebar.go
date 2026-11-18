@@ -71,6 +71,7 @@ type place struct {
 	rows      []string
 	kept      map[string]bool // closed rows still shown because they closed here
 	carried   map[string]bool // in Today, the picks carried from an earlier day when it was opened
+	sunk      map[string]bool // in Today, the rows closed when it was opened, drawn last
 	returnRow string          // row to seek in the previous place when Esc leaves this zoom
 
 	// A filter narrows the place to the rows answering query. Like a list,
@@ -104,6 +105,7 @@ func clonePlace(p place) place {
 	p.hits = slices.Clone(p.hits)
 	p.kept = maps.Clone(p.kept)
 	p.carried = maps.Clone(p.carried)
+	p.sunk = maps.Clone(p.sunk)
 	p.matched = maps.Clone(p.matched)
 	p.folds = maps.Clone(p.folds)
 	return p
@@ -418,7 +420,7 @@ func (m *Model) scan() {
 	}
 
 	m.totals[""] = rowTotals{under: all}
-	m.sortToday(lists[kindToday], m.missed)
+	m.sortToday(lists[kindToday], m.missed, m.closedOf(lists[kindToday]))
 	m.inToday = make(map[string]bool, len(lists[kindToday]))
 	for _, id := range lists[kindToday] {
 		m.inToday[id] = true
@@ -531,12 +533,25 @@ func (m *Model) open(e entry) {
 		m.at = place{list: e.kind, rows: slices.Clone(m.lists[e.kind])}
 		if e.kind == kindToday {
 			m.at.carried = maps.Clone(m.missed)
+			m.at.sunk = m.closedOf(m.at.rows)
 		}
 	}
 	m.arrive()
 	if e.kind == kindRow {
 		m.seek(e.id)
 	}
+}
+
+// closedOf names the rows that are done or canceled, which a list draws
+// after the rest.
+func (m *Model) closedOf(rows []string) map[string]bool {
+	closed := map[string]bool{}
+	for _, id := range rows {
+		if r := m.tree.Row(id); r != nil && sigil.FromFields(r.Fields).Closed() {
+			closed[id] = true
+		}
+	}
+	return closed
 }
 
 // isPicked reports whether a row is in Today by its pick: picked on the
@@ -554,11 +569,12 @@ func carried(fields map[string]string, l sigil.Line, day string) bool {
 }
 
 // sortToday puts the day's own rows first and the picks carried from an
-// earlier day after them. Within each, placed rows come first, with outline
-// order for unplaced rows and equal keys (which independent picks on two
-// machines can produce). Which rows are carried is read when Today is
-// opened, so a row unpicked or closed there keeps its section.
-func (m *Model) sortToday(rows []string, carried map[string]bool) {
+// earlier day after them. Within each, the closed rows in sunk come last;
+// then placed rows come first, with outline order for unplaced rows and
+// equal keys (which independent picks on two machines can produce). Which
+// rows are carried or sunk is read when Today is opened, so a row unpicked
+// or closed there keeps its place until Today is opened again.
+func (m *Model) sortToday(rows []string, carried, sunk map[string]bool) {
 	sort.SliceStable(rows, func(i, j int) bool {
 		a, b := m.tree.Row(rows[i]), m.tree.Row(rows[j])
 		if a == nil || b == nil {
@@ -566,6 +582,9 @@ func (m *Model) sortToday(rows []string, carried map[string]bool) {
 		}
 		if carried[a.ID] != carried[b.ID] {
 			return !carried[a.ID]
+		}
+		if sunk[a.ID] != sunk[b.ID] {
+			return !sunk[a.ID]
 		}
 		ap, bp := a.Fields[fieldTodayPos], b.Fields[fieldTodayPos]
 		if ap == bp {
@@ -606,6 +625,15 @@ func (m *Model) reorderToday(id string, down bool) {
 			m.msg = "carried picks stay below the line: t t picks it for today"
 		} else {
 			m.msg = "today's rows stay above the line: J K order them there"
+		}
+		return
+	}
+	// Closed rows sit below the open ones, so J and K order each part.
+	if m.at.sunk[rows[at]] != m.at.sunk[rows[next]] {
+		if m.at.sunk[id] {
+			m.msg = "closed rows stay below the open ones: x reopens it"
+		} else {
+			m.msg = "open rows stay above the closed ones: J K order them there"
 		}
 		return
 	}

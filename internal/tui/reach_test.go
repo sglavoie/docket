@@ -389,8 +389,8 @@ func TestFilterReadsAnyTagAnyStateAndMixedAlternatives(t *testing.T) {
 			rows  []string
 		}{
 			{"#", []string{"▌ ○ Home #home", "  · Food #food"}},
-			{"-#", []string{"▌ ● Flagged !", "  ◔ Waiting", "  ○ Overdue @Nov 14", "  · Milk", "  ✓ Done", "  ✕ Canceled", "  ◌ Parked", "  · Literal $open|@nope", "  · Literal milk|#123", "  · Literal $open|zzz", "  · Literal #home|"}},
-			{"$", []string{"▌ ○ Home #home", "  ● Flagged !", "  ◔ Waiting", "  ○ Overdue @Nov 14", "  ✓ Done", "  ✕ Canceled", "  ◌ Parked"}},
+			{"-#", []string{"▌ ● Flagged !", "  ◔ Waiting", "  ○ Overdue @Nov 14", "  · Milk", "  ◌ Parked", "  · Literal $open|@nope", "  · Literal milk|#123", "  · Literal $open|zzz", "  · Literal #home|", "  ✓ Done", "  ✕ Canceled"}},
+			{"$", []string{"▌ ○ Home #home", "  ● Flagged !", "  ◔ Waiting", "  ○ Overdue @Nov 14", "  ◌ Parked", "  ✓ Done", "  ✕ Canceled"}},
 			{"-$", []string{"▌ · Milk", "  · Food #food", "  · Literal $open|@nope", "  · Literal milk|#123", "  · Literal $open|zzz", "  · Literal #home|"}},
 			{"$note", []string{"▌ · Milk", "  · Food #food", "  · Literal $open|@nope", "  · Literal milk|#123", "  · Literal $open|zzz", "  · Literal #home|"}},
 			{"#home|!", []string{"▌ ○ Home #home", "  ● Flagged !"}},

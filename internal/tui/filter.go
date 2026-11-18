@@ -671,6 +671,21 @@ func (m *Model) refilter() {
 			return strings.Compare(da, db)
 		})
 	}
+	if m.at.flat {
+		// Done and canceled rows go last, each part keeping its order. The
+		// order is read with the query, so a row closed here stays put.
+		slices.SortStableFunc(m.at.hits, func(a, b visRow) int {
+			return cmp.Compare(m.closed(a.id), m.closed(b.id))
+		})
+	}
+}
+
+// closed ranks a row for a flat list: 1 when done or canceled, else 0.
+func (m *Model) closed(id string) int {
+	if sigil.FromFields(m.tree.Row(id).Fields).Closed() {
+		return 1
+	}
+	return 0
 }
 
 // byDeadline reports whether a query asks about deadlines, so a flat list of

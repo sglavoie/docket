@@ -97,10 +97,10 @@ func TestFilterGrammar(t *testing.T) {
 	h := work(t)
 	h.press("x", "/", "tab", "esc") // Fix cache is done; filters are flat from here
 	cases := map[string][]string{
-		"fix":          {"Fix cache", "Fix login"},
+		"fix":          {"Fix login", "Fix cache"}, // a closed row goes last
 		"FIX -cache":   {"Fix login"},
 		"fix !":        {"Fix login"},
-		"-! #bug":      {"Fix cache", "Refactor auth"},
+		"-! #bug":      {"Refactor auth", "Fix cache"},
 		"#bug -$done":  {"Fix login", "Refactor auth"},
 		"$done":        {"Fix cache"},
 		"$note":        {"Beta", "Alpha"},
@@ -479,7 +479,7 @@ func TestDeadlineRangesHoldForOpenRowsSoonestFirst(t *testing.T) {
 		"@>+1w":           "Week, Late",
 		"@>TOM":           "Soon, Also fri, Week, Late",
 		"@<fri|overdue":   byFri,
-		"-@<fri":          "Alpha, Late, None, Shut, Beta, Week", // no deadline included, outline order
+		"-@<fri":          "Alpha, Late, None, Beta, Week, Shut", // no deadline included, outline order, closed last
 		"@<fri -@overdue": "Now, Soon, Also fri",
 		"@fri":            "Soon, Also fri",
 		"@ -$done":        "Past, Now, Soon, Also fri, Week, Late",
@@ -652,4 +652,28 @@ func TestAllSelectsEveryRowThePaneShows(t *testing.T) {
 			t.Fatalf("msg = %q, %d selected", h.m.msg, len(h.m.picked))
 		}
 	})
+}
+
+// A flat filter puts closed rows last when the query is read; a row closed
+// while it shows stays where it is until the query is read again.
+func TestAFlatFilterSinksClosedRows(t *testing.T) {
+	h := work(t)
+	h.press("/", "tab", `"#bug"`, "enter")
+	h.want(
+		"▌ ○ Fix cache #bug · Beta",
+		"  ○ Fix login ! #bug · Alpha",
+		"  ○ Refactor auth #bug · Alpha",
+	)
+	h.press("x")
+	h.want(
+		"▌ ✓ Fix cache #bug · Beta",
+		"  ○ Fix login ! #bug · Alpha",
+		"  ○ Refactor auth #bug · Alpha",
+	)
+	h.press("esc", "/", `"#bug"`, "enter")
+	h.want(
+		"▌ ○ Fix login ! #bug · Alpha",
+		"  ○ Refactor auth #bug · Alpha",
+		"  ✓ Fix cache #bug · Beta",
+	)
 }

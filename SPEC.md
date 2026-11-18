@@ -13,6 +13,8 @@ a rule here changes this file first.
    makes one`.
 2. **Rows never move by themselves.** Changing a row's state leaves it where
    it is. Only the user reorders: by moving a row, or by pinning it with `^`.
+   Today and a flat filter draw closed rows after the rest, but they read
+   that order only when opened, so a row closed there stays put until then.
 3. **One way to do each thing.** No menu or palette repeats a key. Reaching
    the same rows by a count, a selection or a motion is the grammar, not a
    second route.
@@ -470,6 +472,11 @@ in the same undo step. Unpicking leaves that place stored. Rows with a place
 come first, sorted by it; rows without one follow in outline order. Before
 `J` or `K` moves a row, any missing places are filled in the order shown,
 in the same undo step. Ordering is kept across reopening and restarting.
+Done and canceled rows come after the open ones, each part keeping that
+order. Which rows are closed is read when Today is opened, as which are
+carried is, so a row closed or reopened there stays put until Today is
+opened again. `J` and `K` keep a row with its part and say so, as at the
+rule.
 
 Today reads in two parts. The day's own rows, picked today or starting
 today, come first, as if pinned; the picks carried from an earlier day
@@ -743,8 +750,11 @@ Three more acts use the same line:
   When the query has an un-negated deadline term
   (`@`, `@date`, `@overdue`, `@week`, `@<`, `@>`), the flat list reads
   soonest deadline first, ties in outline order; in context, and in Today,
-  Waiting and Stale, the order is the outline's or the list's. The order is
-  set when the query is read, and nothing in the outline moves. The cursor
+  Waiting and Stale, the order is the outline's or the list's. A flat list
+  then puts its done and canceled rows last, each part keeping its order,
+  so what is left to do reads first. The order is
+  set when the query is read, and nothing in the outline moves: a row
+  closed while the filter shows stays where it is. The cursor
   goes to the first match as the line is typed: in context the rows above
   it are only there to place it, and no key is meant for them. `Enter`
   keeps the filter and returns to the rows, where the header names it, and
@@ -1727,7 +1737,7 @@ status bar or a pipe. Each row is one line: the row in the row grammar, a
 task always spelling its state since no outline is there to read a default
 from, then a tab and where the row lives (`Alpha › TUI`). The Inbox's rows
 come first, and the order is a flat filter's: the outline's, or soonest
-deadline first when the filter asks about deadlines. `&.` has no cursor to
+deadline first when the filter asks about deadlines, closed rows last. `&.` has no cursor to
 read and matches nothing. With no filter it prints the whole outline as
 `:export` writes it, tab-indented, which `:import` and paste read back. It
 changes nothing, prints nothing when nothing matches, and does not sync.
@@ -1920,6 +1930,10 @@ is `docket add`, and the overdue count it shows is `docket ls '@overdue'`.
    `Ctrl+E` and `Ctrl+Y` scroll the pane under the cursor. `:numbers`
    draws the cursor's own place, which a count before `G` or `gg` goes to.
    *Built.*
+
+26. **Settle.** Done and canceled rows sink below the open ones in Today
+   and in a flat filter, read when the view is opened, so nothing moves
+   under the cursor. Outlines keep their order. *Built.*
 
 Not planned: reminders, attachments, a details panel (a body is read in the
 pane, not beside it), import from v1, any
