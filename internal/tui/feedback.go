@@ -308,7 +308,7 @@ var commandUses = []struct{ use, does string }{
 	{"help", "the keys, in eight sections"},
 	{"tutor", "a fresh Welcome tutorial"},
 	{"closed", "hide or show done and canceled rows"},
-	{"numbers", "show or hide each row's count from the cursor"},
+	{"numbers", "show or hide each row's count from the cursor, and the cursor's place"},
 	{"all", "select every row shown"},
 	{"s/old/new", "change text in the row or the selection"},
 	{"sort [keys]", "order siblings once: @ deadline, ! flag, $ state, else text"},

@@ -622,6 +622,70 @@ func textObject(e *editor, k string, inner bool) (from, to int, ok bool) {
 	return 0, 0, false
 }
 
+// fieldSigils names the fields a field object reads, by the character that
+// starts them.
+var fieldSigils = map[string]string{
+	"@": "deadline or start",
+	"#": "tag or context",
+	"$": "state",
+	"~": "colour",
+	"*": "repeat",
+}
+
+// fieldObject is the span of a field in the row's line: the one the caret
+// is on, else the first after it, else the last before it. inner is its
+// value without the characters that start it (@ @@ # ## $ ~ *); the whole
+// field takes the blanks after it, else the ones before, as aw does. A word
+// the row grammar does not read as that field is text, and passed over.
+func (m *Model) fieldObject(e *editor, k string, inner bool) (from, to int, ok bool) {
+	today := m.today()
+	type span struct{ from, to int }
+	var fields []span
+	for i := 0; i < len(e.buf); {
+		if isBlank(e.buf[i]) {
+			i++
+			continue
+		}
+		j := i
+		for j < len(e.buf) && !isBlank(e.buf[j]) {
+			j++
+		}
+		if w := string(e.buf[i:j]); strings.HasPrefix(w, k) && sigil.IsSigil(w, today) {
+			fields = append(fields, span{i, j})
+		}
+		i = j
+	}
+	if len(fields) == 0 {
+		return 0, 0, false
+	}
+	at := min(e.caret, max(len(e.buf)-1, 0))
+	f := fields[len(fields)-1]
+	for _, s := range fields {
+		if s.to > at {
+			f = s
+			break
+		}
+	}
+	from, to = f.from, f.to
+	if inner {
+		from++
+		if (k == "@" || k == "#") && from < to && string(e.buf[from]) == k {
+			from++ // @@ a start, ## a context
+		}
+		return from, to, true
+	}
+	if to < len(e.buf) && isBlank(e.buf[to]) {
+		for to < len(e.buf) && isBlank(e.buf[to]) {
+			to++
+		}
+	} else {
+		for from > 0 && isBlank(e.buf[from-1]) {
+			from--
+		}
+	}
+	return from, to, true
+}
+
 // keep remembers the line before a change, for u inside the row.
 func (e *editor) keep() {
 	e.past = append(e.past, snapshot{slices.Clone(e.buf), e.caret})
@@ -841,6 +905,11 @@ func (m *Model) textStep(e *editor, msg tea.KeyPressMsg) int {
 		}
 		if len(e.pend) == 2 {
 			from, to, ok := textObject(e, k, e.pend[1] == 'i')
+			if fieldSigils[k] != "" && !e.body {
+				if from, to, ok = m.fieldObject(e, k, e.pend[1] == 'i'); !ok {
+					m.msg = "no " + fieldSigils[k] + " in this row: " + k + " on the stamp line sets one"
+				}
+			}
 			if !ok {
 				return textMoved
 			}
@@ -869,6 +938,11 @@ func (m *Model) textStep(e *editor, msg tea.KeyPressMsg) int {
 		switch k {
 		case "v":
 			e.sel = false
+			return textMoved
+		case "o":
+			// The caret goes to the other end, so that end can be moved,
+			// as o does while sweeping rows.
+			e.anchor, e.caret = e.caret, e.anchor
 			return textMoved
 		case "i", "a":
 			e.pend = "v" + k
@@ -1184,7 +1258,7 @@ func (e *editor) textStatus() string {
 		return "in the body: j k { } move · i a o c d change · zo zc fold · Esc done"
 	}
 	if e.sel {
-		return "selecting: motions extend · d c y x ~ act · v or Esc ends"
+		return "selecting: motions extend · o the other end · d c y x ~ act · v or Esc ends"
 	}
 	if e.pend == "g" {
 		says := "ge gE back to a word's end · gu gU g~ lower, upper, switch case"
@@ -1201,10 +1275,14 @@ func (e *editor) textStatus() string {
 		// A waiting operator says what may follow it, as one does on the
 		// outline.
 		if len(e.pend) == 2 && strings.Contains("ia", e.pend[1:]) {
-			return e.pend + "w a word · " + e.pend + "\" quotes · " + e.pend + "( [ { < brackets"
+			says := e.pend + "w a word · " + e.pend + "\" quotes · " + e.pend + "( [ { < brackets"
+			if !e.body {
+				says += " · " + e.pend + "@ # $ ~ * a field"
+			}
+			return says
 		}
 		if len(e.pend) == 1 {
-			return op + "w " + op + "e " + op + "$ " + op + "t, " + op + "n through a motion · " + op + "iw " + op + "i\" " + op + "i( objects"
+			return op + "w " + op + "e " + op + "$ " + op + "t, " + op + "n through a motion · " + op + "iw " + op + "i\" " + op + "i( " + op + "i@ objects"
 		}
 	}
 	return "in the row: w b e f n move · i a c d x change · v select · Esc done"

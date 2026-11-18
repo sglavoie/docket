@@ -25,7 +25,9 @@ a rule here changes this file first.
    filter found, and `k` on the first row steps into the body of the row
    the pane opens, where it reads lines as well. The navigation aliases are the arrows,
    `Ctrl+F` `Ctrl+B`, `PgDn` `PgUp` and `Home` `End`. `zt` `zz` `zb` say
-   where in the pane the cursor's row is drawn and change nothing else.
+   where in the pane the cursor's row is drawn and change nothing else;
+   `Ctrl+E` `Ctrl+Y` scroll the pane under the cursor, moving it only to
+   keep it on the pane.
 5. **Every keystroke paints within one frame.** The tree lives in memory;
    SQLite is written when a change is committed, never while typing. What
    the sidebar states is derived again only when a row has changed or the
@@ -445,7 +447,9 @@ The pane shows the rows under one row, or a list.
 - **Rows can say how far they are.** `:numbers` shows, before each row, how
   many shown rows it is from the cursor, so a count is read off the screen:
   the row marked 3 is `3j` away and `d3j` takes through it. The cursor's row
-  shows none. It works in outlines, lists and filters, and the setting is
+  shows its own place instead, counted from 1, as Vim's `number` and
+  `relativenumber` together do, so `12G` goes back to where 12 stood. The
+  column widens to the digits of the last row's place. It works in outlines, lists and filters, and the setting is
   kept on this machine.
 
 Today is hand-picked, and a pick stays until it is dealt with: a row is in
@@ -800,7 +804,7 @@ Shift or Caps Lock was held. `Enter` on a name that only one command starts, as
   the whole outline as tab-indented lines in the row grammar, to `~/docket-YYYY-MM-DD.txt` unless
   a file is named; `import file` reads such a file back, as described below;
   `closed` hides or shows closed rows; `numbers` shows or
-  hides each row's distance from the cursor; `all` selects every
+  hides each row's distance from the cursor, and the cursor's own place; `all` selects every
   row the pane shows, as described under Selection; `s/old/new` changes
   text across rows, as described below; `archive` moves
   closed rows under an `Archive:` heading, as described below; `review`
@@ -1095,7 +1099,10 @@ in the sidebar, help, prompts or while typing.
 
 A count repeats `j`, `k`, the paging motions and their arrow and page
 aliases, and `}`, `{`, `H`, `]`, `[`, `zj`, `zk`, `n` and `N`, stopping at either end.
-`gg`, `G`, `Home`, `End`, `)` and `(` drop it.
+`gg`, `G`, `Home` and `End` take it as the shown row to go to, counted
+from 1 as `:numbers` draws the cursor's, and stop at the last: `12G` goes to
+the twelfth row and `d3G` deletes through the third. `)` and `(` drop it.
+`Ctrl+E` and `Ctrl+Y` take it as rows to scroll.
 It also repeats `J`, `K`, `u` and `Ctrl+R`: `3J` is one undo step, while
 `3u` undoes three steps. `J` and `K` stop when the row can go no further
 and keep the moves already made, including in Today; at the end they say
@@ -1204,9 +1211,16 @@ years and setting a day outright.
 allow. The cursor stays on its row, nothing is selected or changed, and
 the pane stays there until a motion has to scroll it.
 
+**Scrolling the pane.** `Ctrl+E` scrolls the rows up a row, showing one
+more below, and `Ctrl+Y` down a row; a count scrolls that many, as far as
+the ends of the rows allow. The cursor stays on its row while the row is on
+the pane and otherwise moves to the nearest row still drawn, as in Vim. A
+sweep follows the cursor it moves; nothing is selected or changed
+otherwise.
+
 | Keys | Act | Milestone |
 | --- | --- | --- |
-| `j` `k` `gg` `G` | Move; `Home` `End` as `gg` `G`; `k` on the first row steps into the body | 1, 10, 23 |
+| `j` `k` `gg` `G` | Move; `Home` `End` as `gg` `G`; a count before `gg` `G` names the row; `k` on the first row steps into the body | 1, 10, 23, 25 |
 | `Ctrl+D` `Ctrl+U` | Move half a pane down, up; `Ctrl+F` `Ctrl+B` `PgDn` `PgUp` a whole pane | 7, 10 |
 | `}` `{` `)` `(` | Next, previous sibling; last, first sibling | 12 |
 | `H` `]` `[` | Parent; next, previous heading | 12 |
@@ -1218,6 +1232,7 @@ the pane stays there until a motion has to scroll it.
 | `zm` `zr` | Fold, unfold one level more of the pane | 24 |
 | `zj` `zk` | Next, previous row with rows under it | 24 |
 | `zt` `zz` `zb` | Draw the cursor's row at the top, middle, bottom of the pane | 15 |
+| `Ctrl+E` `Ctrl+Y` | Scroll the pane a row, or the count, under the cursor | 25 |
 | `Enter` `Esc` | Zoom in, back out | 1 |
 | `o` `O` `A` `I` `cc` | New row below, above; type at end, at start; retype keeping fields | 1, 11 |
 | `gi` | Type again where typing last ended, in that row | 24 |
@@ -1298,7 +1313,16 @@ di" di( objects`):
   `c2e`, `d$`, `ct,`, `yiw`. The objects are a word (`iw`, `aw` with the
   blank beside it, `iW`, `aW`), what is between quotes or backticks (`i"`
   `a"`), and what is between brackets (`i(` or `ib`, `i[`, `i{` or `iB`,
-  `i<`, and `a` for each with its brackets). `cw` on a word leaves the blank
+  `i<`, and `a` for each with its brackets), and a field: `i@` a deadline
+  or start, `i#` a tag or context, `i$` a state, `i~` a colour and `i*` a
+  repeat. A field object is the field the caret is on, else the first
+  after it, else the last before it, so `ci@` retypes the row's date from
+  anywhere in the line; `i` leaves out what starts it (`@`, `@@`, `#`,
+  `##`, `$`, `~`, `*`) and `a` takes the whole word with the blank after
+  it, else before, as `aw` does. A word that is not read as that field,
+  as `a@b` or `\#5`, is text and passed over, and a line with none says so
+  and names the stamp line. A body reads no sigils, so it has none.
+  `cw` on a word leaves the blank
   after it, as `ce` does. A doubled operator belongs to the outline, so
   here it cancels. `gu`, `gU` and `g~` lower, raise and switch the case of
   what a motion or an object names, as `gUiw`; doubled, as `guu`, `gUU`,
@@ -1326,7 +1350,8 @@ di" di( objects`):
   Motions and counts stretch it to wherever they go, both ends included,
   and `iw`, `a"` and the other text objects make it that object. `d` or
   `x` deletes it, `c` or `s` changes it, `y` copies it, `~` switches
-  its case and `u` and `U` lower and raise it; the key that acts ends the selection, as do `v` and `Esc`,
+  its case and `u` and `U` lower and raise it; `o` puts the caret at the
+  other end, so that end moves, as it does in a sweep; the key that acts ends the selection, as do `v` and `Esc`,
   which stay in the row. The other keys do nothing meanwhile. `.` after
   such a change takes as many characters again from the caret.
 - **Filtering.** `*` leaves the row, keeping it, and narrows the pane to
@@ -1888,6 +1913,13 @@ is `docket add`, and the overdue count it shows is `docket ls '@overdue'`.
    row's day off or bring it forward. Inside a row `ge` and `gE` go back to a
    word's end, `%` to the paired bracket, `gu` `gU` `g~` change case
    through a motion, and `Ctrl+A` and `Ctrl+X` add to a number. *Built.*
+
+25. **Fields in reach.** Inside a row `i@` `i#` `i$` `i~` `i*` and their
+   `a` forms name a field, so `ci@` retypes a date and `da#` drops a tag
+   from anywhere in the line, and `o` swaps the ends of a selection there.
+   `Ctrl+E` and `Ctrl+Y` scroll the pane under the cursor. `:numbers`
+   draws the cursor's own place, which a count before `G` or `gg` goes to.
+   *Built.*
 
 Not planned: reminders, attachments, a details panel (a body is read in the
 pane, not beside it), import from v1, any

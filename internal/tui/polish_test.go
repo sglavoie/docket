@@ -853,7 +853,7 @@ func TestTheSelectionCountIsSeen(t *testing.T) {
 func TestAnOperatorInTheRowSaysWhatFollows(t *testing.T) {
 	h := textRow(t, "Buy oat milk today")
 	h.press("w", "d")
-	if !strings.HasPrefix(h.bottom(), "dw de d$ dt, dn through a motion · diw di\" di( objects") {
+	if !strings.HasPrefix(h.bottom(), "dw de d$ dt, dn through a motion · diw di\" di( di@ objects") {
 		t.Fatalf("d = %q", h.bottom())
 	}
 	h.press("i")

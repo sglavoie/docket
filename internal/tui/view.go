@@ -24,14 +24,13 @@ func (m *Model) size() (int, int) {
 	return w, h
 }
 
-// numberCols is the width :numbers takes at the left of the pane.
-const numberCols = 3
-
+// numberCols is the width :numbers takes at the left of the pane: the
+// digits of the last row's place and a blank, and never under three.
 func (m *Model) numberCols() int {
-	if m.numbers {
-		return numberCols
+	if !m.numbers {
+		return 0
 	}
-	return 0
+	return max(len(strconv.Itoa(len(m.vis)))+1, 3)
 }
 
 // stateGlyph is the one column that says what a row is. A note shows its
@@ -989,6 +988,19 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 		}
 	}
 	m.centre, m.scroll = false, 0
+	if m.nudge != 0 && len(m.vis) > 0 {
+		// Ctrl+E and Ctrl+Y scroll the rows and keep the cursor on the pane,
+		// moving it only as far as it has to go.
+		m.top = max(0, min(m.top+m.nudge, len(m.vis)-1))
+		for m.top > 0 && span(m.top-1, len(m.vis)-1) <= listH {
+			m.top-- // no gap at the end
+		}
+		m.cursor = max(m.cursor, m.top)
+		for m.cursor > m.top && span(m.top, m.cursor) > listH {
+			m.cursor--
+		}
+	}
+	m.nudge = 0
 	// Keep the cursor's row whole on screen, and leave no gap at the end.
 	m.top = max(0, min(m.top, m.cursor))
 	for m.top < m.cursor && span(m.top, m.cursor) > listH {
@@ -1076,13 +1088,15 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 		// count is read off the screen and not guessed.
 		number, blank := "", strings.Repeat(" ", m.numberCols())
 		if m.numbers {
-			number = blank
-			if i != m.cursor {
-				d := i - m.cursor
-				if d < 0 {
-					d = -d
-				}
-				number = m.colors().dim + fmt.Sprintf("%*d ", numberCols-1, d) + sgrReset
+			// The cursor's own row says where it stands, from 1, which a
+			// count before G or gg goes back to.
+			d := i - m.cursor
+			if d < 0 {
+				d = -d
+			}
+			number = m.colors().dim + fmt.Sprintf("%*d ", m.numberCols()-1, d) + sgrReset
+			if i == m.cursor {
+				number = fmt.Sprintf("%-*d ", m.numberCols()-1, i+1)
 			}
 		}
 
@@ -1201,6 +1215,15 @@ func (m *Model) listAt(lines, items []string, at, x, w, first, depth int) {
 		left += strings.Repeat(" ", x-ansi.StringWidth(left))
 		lines[row] = left + sgrReset + cell + ansi.TruncateLeft(lines[row], x+inner+bar, "")
 	}
+}
+
+// paneSize is the width and height View gives the outline pane.
+func (m *Model) paneSize() (int, int) {
+	w, h := m.size()
+	if w >= sidebarFrom {
+		w -= m.sideWidth() + 3
+	}
+	return w, max(h-1, 2)
 }
 
 func (m *Model) View() tea.View {

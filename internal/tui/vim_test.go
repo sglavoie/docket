@@ -285,3 +285,136 @@ func TestMoveTheDayARowHas(t *testing.T) {
 		t.Fatalf("status = %q", h.status())
 	}
 }
+
+func TestFieldObjects(t *testing.T) {
+	line := "Fix sink @2030-12-04 @@2030-12-01 *2w #home ##house $doing"
+	t.Run("they name the field the caret is on or reaches", func(t *testing.T) {
+		h := textRow(t, "Fix sink @2030-12-04 @@2030-12-01 #home ##house $doing *2w")
+		got, _ := h.press("w").typing()
+		if got != line {
+			t.Fatalf("canonical line = %q, want %q", got, line)
+		}
+		// The first after the caret, else the last before it; inside leaves
+		// out what starts it, around takes the blank after.
+		for _, step := range []struct{ keys, line string }{
+			{"di@", "Fix sink @ @@2030-12-01 *2w #home ##house $doing"},
+			{"u$di@", "Fix sink @2030-12-04 @@ *2w #home ##house $doing"},
+			{"u0da#", "Fix sink @2030-12-04 @@2030-12-01 *2w ##house $doing"},
+			{"u$di#", "Fix sink @2030-12-04 @@2030-12-01 *2w #home ## $doing"},
+			{"u0da*", "Fix sink @2030-12-04 @@2030-12-01 #home ##house $doing"},
+			{"u$da$", "Fix sink @2030-12-04 @@2030-12-01 *2w #home ##house"},
+			{"uyi$0P", "doingFix sink @2030-12-04 @@2030-12-01 *2w #home ##house $doing"},
+		} {
+			for _, r := range step.keys {
+				h.press(string(r))
+			}
+			if got, _ := h.typing(); got != step.line {
+				t.Fatalf("%s: %q, want %q", step.keys, got, step.line)
+			}
+		}
+	})
+	t.Run("ci@ retypes the date and keeps it a field", func(t *testing.T) {
+		h := textRow(t, "Pay rent @2030-12-04 #home")
+		h.press("w", "c", "i", "@", `"2030-12-09"`, "esc")
+		h.wantTyping("Pay rent @2030-12-09 #home", 19)
+		h.press("esc")
+		if due := h.m.tree.Row(h.m.current()).Fields["due"]; due != "2030-12-09" {
+			t.Fatalf("due = %q", due)
+		}
+	})
+	t.Run("dot repeats it and v selects it", func(t *testing.T) {
+		h := textRow(t, "Two tags #a #b")
+		h.press("w", "d", "a", "#", ".")
+		h.wantTyping("Two tags", 7)
+		h.press("A", `" #long"`, "esc", "0", "v", "i", "#", "d")
+		h.wantTyping("Two tags #", 9)
+	})
+	t.Run("text that looks like a field is passed over", func(t *testing.T) {
+		h := textRow(t, `Email a@b about \#5`)
+		h.press("w", "d", "i", "@")
+		if got, _ := h.typing(); got != `Email a@b about \#5` {
+			t.Fatalf("line = %q", got)
+		}
+		if !strings.Contains(h.status(), "no deadline or start in this row") {
+			t.Fatalf("status = %q", h.status())
+		}
+		h.press("d", "i", "#")
+		if !strings.Contains(h.status(), "no tag or context in this row: # on the stamp line sets one") {
+			t.Fatalf("status = %q", h.status())
+		}
+	})
+	t.Run("a waiting object names them", func(t *testing.T) {
+		h := textRow(t, "Buy milk #food")
+		h.press("w", "c", "i")
+		if !strings.Contains(h.bottom(), "ci@ # $ ~ * a field") {
+			t.Fatalf("ci = %q", h.bottom())
+		}
+	})
+}
+
+func TestOSwapsTheEndsOfATextSelection(t *testing.T) {
+	h := textRow(t, "one two three")
+	h.press("w", "w", "v", "e", "o")
+	if e := h.m.edit; e.caret != 4 || e.anchor != 6 {
+		t.Fatalf("caret %d anchor %d, want 4 and 6", e.caret, e.anchor)
+	}
+	h.press("b", "d")
+	h.wantTyping(" three", 0)
+}
+
+func TestScrollThePaneUnderTheCursor(t *testing.T) {
+	h := countOutline(t, 40)
+	_, ph := h.m.paneSize()
+	rows := ph - 1
+	h.press("j")
+	h.press("ctrl+e")
+	if h.m.top != 1 || h.on() != "Task 01" {
+		t.Fatalf("Ctrl+E: top %d on %q", h.m.top, h.on())
+	}
+	// The cursor stays on its row until the row leaves the pane.
+	h.press("3", "ctrl+e")
+	if h.m.top != 4 || h.on() != "Task 04" {
+		t.Fatalf("3 Ctrl+E: top %d on %q", h.m.top, h.on())
+	}
+	h.press("2", "ctrl+y")
+	if h.m.top != 2 || h.on() != "Task 04" {
+		t.Fatalf("2 Ctrl+Y: top %d on %q", h.m.top, h.on())
+	}
+	h.press("G")
+	h.press("ctrl+y")
+	if last := h.m.top + rows - 1; h.m.cursor != last {
+		t.Fatalf("Ctrl+Y at the end: cursor %d, want the last row drawn, %d", h.m.cursor, last)
+	}
+	// Past the ends nothing moves further.
+	top := h.m.top
+	h.press("9", "9", "ctrl+e")
+	if h.m.top != top+1 || h.m.cursor != 38 {
+		t.Fatalf("99 Ctrl+E: top %d cursor %d", h.m.top, h.m.cursor)
+	}
+	h.press("9", "9", "ctrl+y")
+	if h.m.top != 0 || h.m.cursor != rows-1 {
+		t.Fatalf("99 Ctrl+Y: top %d cursor %d", h.m.top, h.m.cursor)
+	}
+	// A sweep follows the cursor it moves, and changes no rows.
+	steps := len(h.m.undo)
+	h.press("V", "ctrl+e")
+	if h.m.sweep == "" || len(h.m.picked) != 1 || len(h.m.undo) != steps {
+		t.Fatalf("sweep %q picked %d", h.m.sweep, len(h.m.picked))
+	}
+	h.press("esc")
+}
+
+func TestACountBeforeGNamesTheRow(t *testing.T) {
+	h := countOutline(t, 6)
+	h.press("4", "G")
+	if h.on() != "Task 03" {
+		t.Fatalf("4G on %q", h.on())
+	}
+	h.press("9", "g", "g")
+	if h.on() != "Task 05" {
+		t.Fatalf("9gg on %q", h.on())
+	}
+	// As a motion it takes the rows between.
+	h.press("d", "3", "G")
+	h.want("  ○ Task 00", "▌ ○ Task 01")
+}

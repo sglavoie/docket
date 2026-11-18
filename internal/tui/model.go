@@ -223,6 +223,7 @@ type Model struct {
 	past         map[string][]string // lines kept on each recalling prompt, oldest first
 	centre       bool                // the cursor has landed somewhere: show it mid-pane if off screen
 	scroll       byte                // zt zz zb: draw the cursor's row at the top, middle or bottom
+	nudge        int                 // Ctrl+E Ctrl+Y: rows to scroll the pane by, the cursor kept on it
 	find         string              // the last filter kept or dropped, for n and N
 	changes      []string            // the rows changed this session, oldest first, for g; and g,
 	changeAt     int                 // where g; and g, stand in changes
@@ -2487,7 +2488,7 @@ func (m *Model) normalKey(k string) {
 	}
 	if isMotion(k) {
 		defer m.updateSweep()
-	} else if k != "zz" && k != "zt" && k != "zb" {
+	} else if k != "zz" && k != "zt" && k != "zb" && k != "ctrl+e" && k != "ctrl+y" {
 		// Placing the row in the pane changes nothing a sweep reads.
 		m.endSweep()
 	}
@@ -2679,10 +2680,18 @@ func (m *Model) motionTarget(k string, count int) (int, bool) {
 		if target == m.cursor && (k == "n" || k == "N") {
 			m.msg = "no match further on"
 		}
-	case "gg", "home":
-		target = 0
-	case "G", "end":
-		target = max(len(m.vis)-1, 0)
+	case "gg", "home", "G", "end":
+		// A count names the shown row to go to, counted from 1 as :numbers
+		// draws the cursor's; without one they go to the first and last.
+		switch {
+		case count > 0:
+			target = min(count, len(m.vis)) - 1
+		case k == "gg" || k == "home":
+			target = 0
+		default:
+			target = len(m.vis) - 1
+		}
+		target = max(target, 0)
 	case "j", "down":
 		target += min(max(count, 1), max(len(m.vis)-1-target, 0))
 	case "k", "up":
@@ -2921,6 +2930,18 @@ func (m *Model) normalAct(k string, count int) {
 	case "zt", "zz", "zb":
 		// The cursor's row is drawn at the top, middle or bottom of the pane.
 		m.scroll = k[1]
+		return
+	case "ctrl+e", "ctrl+y":
+		// The pane scrolls a row, or the count, under a cursor that stays on
+		// its row until it would leave the pane, as in Vim.
+		m.nudge = max(count, 1)
+		if k == "ctrl+y" {
+			m.nudge = -m.nudge
+		}
+		m.paneLines(m.paneSize())
+		if m.sweep != "" {
+			m.updateSweep()
+		}
 		return
 	case "zm", "zr":
 		m.foldStep(k == "zm", count)

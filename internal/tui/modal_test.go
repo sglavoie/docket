@@ -519,22 +519,30 @@ func TestALinkedRowLeadsBack(t *testing.T) {
 func TestNumbersCountFromTheCursor(t *testing.T) {
 	h := countOutline(t, 4)
 	h.command("numbers")
-	h.want("   ▌ ○ Task 00", " 1   ○ Task 01", " 2   ○ Task 02", " 3   ○ Task 03")
+	h.want("1  ▌ ○ Task 00", " 1   ○ Task 01", " 2   ○ Task 02", " 3   ○ Task 03")
 	h.press("2", "j")
-	h.want(" 2   ○ Task 00", " 1   ○ Task 01", "   ▌ ○ Task 02", " 1   ○ Task 03")
+	h.want(" 2   ○ Task 00", " 1   ○ Task 01", "3  ▌ ○ Task 02", " 1   ○ Task 03")
+	// The cursor's own number is its place, which a count before G names.
+	h.press("1", "G")
+	h.want("1  ▌ ○ Task 00", " 1   ○ Task 01", " 2   ○ Task 02", " 3   ○ Task 03")
+	h.press("4", "g", "g")
+	h.want(" 3   ○ Task 00", " 2   ○ Task 01", " 1   ○ Task 02", "4  ▌ ○ Task 03")
+	h.press("2", "G")
+	h.want(" 1   ○ Task 00", "2  ▌ ○ Task 01", " 1   ○ Task 02", " 2   ○ Task 03")
+	h.press("j")
 	// The number is the count: d2k takes the cursor's row and two above.
 	h.press("d", "2", "k")
-	h.want("   ▌ ○ Task 03")
+	h.want("1  ▌ ○ Task 03")
 	h.press("u")
 	// Typing keeps its place beside the numbers.
 	h.press("A")
-	if c := h.m.View().Cursor; c == nil || c.X != numberCols+4+len("Task 00") {
+	if c := h.m.View().Cursor; c == nil || c.X != h.m.numberCols()+4+len("Task 00") {
 		t.Fatalf("caret = %+v", c)
 	}
 	h.press("esc")
 	h = open(t, h.path)
 	h.press("enter")
-	h.want("   ▌ ○ Task 00", " 1   ○ Task 01", " 2   ○ Task 02", " 3   ○ Task 03")
+	h.want("1  ▌ ○ Task 00", " 1   ○ Task 01", " 2   ○ Task 02", " 3   ○ Task 03")
 	h.command("numbers")
 	h.want("▌ ○ Task 00", "  ○ Task 01", "  ○ Task 02", "  ○ Task 03")
 }

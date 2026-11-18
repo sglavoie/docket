@@ -39,12 +39,15 @@ func TestACountRepeatsOrTakesRows(t *testing.T) {
 			{[]string{"9", "j"}, 11},
 			{[]string{"2", "up"}, 9},
 			{[]string{"3", "down"}, 11},
-			{[]string{"2", "g", "g"}, 0},
+			{[]string{"2", "g", "g"}, 1},
+			{[]string{"g", "g"}, 0},
 			{[]string{"2", "ctrl+d"}, 10},
 			{[]string{"2", "ctrl+u"}, 0},
 			{[]string{"2", "ctrl+f"}, 11},
 			{[]string{"2", "ctrl+b"}, 0},
-			{[]string{"2", "G"}, 11},
+			{[]string{"2", "G"}, 1},
+			{[]string{"G"}, 11},
+			{[]string{"9", "9", "G"}, 11},
 			{[]string{"9", "9", "9", "9", "9", "9", "9", "9", "9", "9", "9", "9", "9", "9", "9", "9", "9", "9", "9", "9", "9", "k"}, 0},
 		} {
 			h.press(step.keys...)
@@ -55,7 +58,7 @@ func TestACountRepeatsOrTakesRows(t *testing.T) {
 		for _, step := range []struct {
 			code rune
 			row  int
-		}{{tea.KeyPgDown, 11}, {tea.KeyPgUp, 0}, {tea.KeyEnd, 11}, {tea.KeyHome, 0}} {
+		}{{tea.KeyPgDown, 11}, {tea.KeyPgUp, 0}, {tea.KeyEnd, 1}, {tea.KeyHome, 1}} {
 			h.press("2")
 			h.m.Update(tea.KeyPressMsg{Code: step.code})
 			if h.m.cursor != step.row || h.m.count != 0 {
@@ -358,8 +361,9 @@ func TestVSweepsASelection(t *testing.T) {
 			{keys: []string{"ctrl+b"}, last: 1},
 			{keys: []string{"2", "down"}, last: 3},
 			{keys: []string{"up"}, last: 2},
-			{keys: []string{"2", "g", "g"}, last: 0},
-			{keys: []string{"2", "G"}, last: 11},
+			{keys: []string{"2", "g", "g"}, last: 1},
+			{keys: []string{"g", "g"}, last: 0},
+			{keys: []string{"G"}, last: 11},
 			{code: tea.KeyHome, last: 0},
 			{code: tea.KeyEnd, last: 11},
 			{code: tea.KeyPgUp, last: 1},

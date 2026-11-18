@@ -22,6 +22,8 @@ Esc	clear the selection, then the filter, then zoom back out
 zj zk	next, previous row with rows under it, folded or open
 Ctrl+D Ctrl+U	half a pane; `Ctrl+F` `Ctrl+B` or `PgDn` `PgUp` a whole pane
 zt zz zb	draw the cursor's row at the top, middle, bottom
+Ctrl+E Ctrl+Y	scroll the pane a row under the cursor; a count scrolls more
+5G 5gg	go to the fifth row, the place `:numbers` draws on the cursor's row
 h in a list	show the row where it lives; `Esc` returns; `l` does nothing
 
 ## Add and type
@@ -53,12 +55,13 @@ d c y	take a motion or an object: `dw` `c2e` `d$` `yiw` `ci"`
 iw aw iW aW	a word, with its blank, counting nonblank words
 i" a"	what is between quotes
 i( i[ i{ i<	what is between brackets; `a(` with them; `ib` `iB` as `i(` `i{`
+i@ i# i$ i~ i*	a field, on or after the caret: `ci@` retypes the date, `da#` drops the tag
 x X  D C  s	delete, change characters
 r  ~	replace the character; switch its case
 gu gU g~	lower, upper, switch case through a motion: `gUiw`; `gUU` the line
 Ctrl+A Ctrl+X	add to, take from the number at or after the caret: `5 Ctrl+X`
 p P	put text after, before
-v	select with motions or objects; `u` `U` lower, upper it
+v	select with motions or objects; `u` `U` lower, upper it; `o` the other end
 *	filter by the word at the caret
 u Ctrl+R	undo, redo inside this visit
 .	repeat a text change
@@ -105,7 +108,7 @@ Dates	edit as YYYY-MM-DD
 
 ## Counts and operators
 2 3 …	repeat motions or take rows for an act; `Esc` drops a count
-:numbers	show each row's distance from the cursor
+:numbers	show each row's distance from the cursor, and the cursor's own place
 .	repeat the last row change, including stamps and typed text
 	it keeps its count unless given another; one undo step
 
