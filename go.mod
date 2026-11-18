@@ -2,6 +2,9 @@ module github.com/sglavoie/docket
 
 go 1.26.0
 
+// govulncheck: encoding/xml before 1.26.6 has GO-2026-6088.
+toolchain go1.26.6
+
 require (
 	charm.land/bubbletea/v2 v2.1.1
 	github.com/charmbracelet/ultraviolet v0.0.0-20261008173134-6b8d4baf91b4
