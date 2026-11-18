@@ -821,12 +821,20 @@ nothing to fold. The cursor stays
 on its row, or moves to its nearest visible ancestor. Folds are saved together
 as this machine's view state, never logged or synced.
 
+`zm` folds one level more and `zr` opens one, as in Vim: `zm` folds the
+deepest shown rows whose rows are shown under them, and `zr` opens the
+shallowest folded rows shown. A count takes that many levels, `2zm` two,
+stopping when there is no level left; with none at all `zm` says every row
+is folded and `zr` that nothing is. The selection plays no part.
+
 `zc` folds the cursor's row and every row under it that has rows of its
 own, and `zo` unfolds them all, so a branch is shut or laid open whole
 where `h` and `l` take one level. They act on the selection, or with a
 count on that many shown rows, and a row with nothing under it says so.
-`zM`, `zR` and `:fold N` work from the pane's root and `zc`, `zo` from a
-row, so none repeats another (rule 3).
+`zM`, `zR` and `:fold N` work from the pane's root, `zm` and `zr` from
+the folds it already shows, and `zc`, `zo` from a row, so none repeats
+another (rule 3): `:fold N` names a level outright, `zm` and `zr` move from
+wherever the pane stands.
 
 `:s/old/new` puts `new` wherever `old` stands in the text of the cursor's
 row, or of every selected row, as one undo step: `/old`, `:all`,
@@ -989,12 +997,20 @@ moving back gives rows up again. Picks made before the sweep stay selected.
 While it lasts the status line says so beside the count, as `3 selected ·
 V keeps · Esc clears`.
 `V` ends the sweep and keeps the rows; `v` ends it, then toggles the cursor's
-row and steps down as usual. `zt`, `zz` and `zb` leave it as it is. Any
+row and steps down as usual. `o` swaps its ends, as in Vim: the cursor goes
+to the anchor's row and the row it left becomes the anchor, so the other
+end moves next; it opens no row. `zt`, `zz` and `zb` leave it as it is. Any
 other non-motion key ends the sweep before acting: `VGdd` deletes through the end in one undo step, and `V2jx` closes
 three rows. `Esc` ends the sweep and clears the selection (a pending count
 is still canceled first). Sweeps work in lists and filters, passing over
 dimmed ancestors in a contextual filter. Changing the filter, jumping or
 opening a place clears both the selection and the sweep.
+
+`gv` selects again the rows the selection held when it was last cleared,
+by `Esc`, a filter, a jump or a place opened, as Vim's `gv` does: those of
+them shown here, matches only in a filter in context. With a selection
+standing, the two change places, so `gv` again returns to it. With nothing
+cleared yet, or none of its rows shown, it says so. It drops a count.
 
 `m` then `Enter` on a blank query moves the selection `here`: where `o`
 would open a row at the cursor, as the first children of its row when that
@@ -1059,7 +1075,7 @@ Inside a row.
 ## Keys
 
 **Grammar.** Motions are `j` `k` `gg` `G` `Ctrl+D` `Ctrl+U` `Ctrl+F`
-`Ctrl+B`, the structural motions `}` `{` `)` `(` `H` `]` `[` and the find
+`Ctrl+B`, the structural motions `}` `{` `)` `(` `H` `]` `[` `zj` `zk` and the find
 motions `n` `N`; `h` and `l` are fold keys, not motions. The operators are
 `d`, `y`, `>` and `<`. In the outline, digits
 `1` to `9` start a count and `0` continues it; `0` alone does nothing.
@@ -1078,7 +1094,7 @@ drops it without clearing a selection, filter or zoom. Counts do not apply
 in the sidebar, help, prompts or while typing.
 
 A count repeats `j`, `k`, the paging motions and their arrow and page
-aliases, and `}`, `{`, `H`, `]`, `[`, `n` and `N`, stopping at either end.
+aliases, and `}`, `{`, `H`, `]`, `[`, `zj`, `zk`, `n` and `N`, stopping at either end.
 `gg`, `G`, `Home`, `End`, `)` and `(` drop it.
 It also repeats `J`, `K`, `u` and `Ctrl+R`: `3J` is one undo step, while
 `3u` undoes three steps. `J` and `K` stop when the row can go no further
@@ -1098,11 +1114,13 @@ undo says how many steps it took, as `undo: 3 steps`.
 each; `)` and `(` go to the last and first sibling. `H` goes to the parent,
 and a count climbs that many levels, stopping at the pane's top level. `]`
 and `[` go to the next and previous shown row ending in a colon, at any
-depth. A motion with nowhere to go stays put. In a list or a flat filter
+depth. `zj` and `zk` go to the next and previous shown row with rows under
+it, folded or open, at any depth, as Vim's go to the next fold. A motion with nowhere to go stays put. In a list or a flat filter
 every row is at one level, so `}` and `{` step as `j` and `k`, `)` and `(`
 reach the ends and `H` stays. Like every motion they take a count, sweep
 with `V` and complete an operator: `d}` deletes this branch and the next,
-`y)` copies through the last sibling, `VH` selects up to the parent.
+`y)` copies through the last sibling, `VH` selects up to the parent,
+`dzj` deletes through the next row with rows under it.
 
 **Into the match.** `gn` steps into the text of the cursor's row with the
 caret on the first place the filter's words stand, and `gN` on the last; a
@@ -1168,7 +1186,18 @@ a count before an act on rows (including `v`) is refused and says so.
 The word motions that step into a row take the count as theirs, and
 `Ctrl+O` and `Ctrl+I` go that many places. Every other key, including `o`,
 `O`, `A`, `I`, `cc`, `Enter`, `h`, `l`, `f`, `gf`, `gl`, `gn`, `gN`, `p`, `P`, `gp`, `gP`,
-`zt`, `zz`, `zb`, `a`, `/`, `:` and `Tab`, drops the count and acts as usual, as do `zM` and `zR`.
+`zt`, `zz`, `zb`, `a`, `/`, `:`, `gv`, `gi` and `Tab`, drops the count and acts as usual, as do `zM` and `zR`.
+`zm` and `zr` take the count as levels, and `Ctrl+A` and `Ctrl+X` as days.
+
+**Moving a day.** `Ctrl+A` moves the deadline of the cursor's row, or of
+each selected row, a day later and `Ctrl+X` a day earlier, as Vim adds to
+a number; a row with no deadline moves its start instead, and a row with
+neither is passed over. The count is days, not rows: `7 Ctrl+A` is a week.
+It is one undo step, says how far it moved, and `.` moves as far again,
+on the selection too. Rows with no day at all say `no day to move`. It is
+the stamp `@++Nd` or `@@++Nd` made a key, since putting a day off is the
+commonest change a list asks for; the stamp line keeps weeks, months and
+years and setting a day outright.
 
 **Placing the row.** `zt` draws the cursor's row at the top of the pane,
 `zz` in the middle and `zb` at the bottom, as far as the ends of the rows
@@ -1186,9 +1215,12 @@ the pane stays there until a motion has to scroll it.
 | `h` `l` | Fold, unfold; step to parent, first child; in lists and flat filters, `h` shows the row where it lives (`Esc` returns), `l` does nothing | 1, 10 |
 | `zc` `zo` | Fold, unfold the row's whole branch | 15 |
 | `zM` `zR` | Fold, unfold every row in the pane | 15 |
+| `zm` `zr` | Fold, unfold one level more of the pane | 24 |
+| `zj` `zk` | Next, previous row with rows under it | 24 |
 | `zt` `zz` `zb` | Draw the cursor's row at the top, middle, bottom of the pane | 15 |
 | `Enter` `Esc` | Zoom in, back out | 1 |
 | `o` `O` `A` `I` `cc` | New row below, above; type at end, at start; retype keeping fields | 1, 11 |
+| `gi` | Type again where typing last ended, in that row | 24 |
 | `w` `b` `e` `W` `B` `E` | Step into the row's text, on that word | 13 |
 | `J` `K` | Reorder | 1 |
 | `d` `y` `>` `<` | Delete, copy, indent, outdent: doubled they take rows; a motion takes an inclusive range; `ic` `is` take the rows under the row, the row and its siblings | 1, 7, 11, 13, 14 |
@@ -1197,6 +1229,7 @@ the pane stays there until a motion has to scroll it.
 | `u` `Ctrl+R` | Undo, redo | 1 |
 | `.` | Repeat the last change to rows | 10, 13 |
 | `x` `!` | Done and back, flag | 2 |
+| `Ctrl+A` `Ctrl+X` | Move the row's deadline, else its start, a day or the count later, earlier | 24 |
 | `^` | Pin, and unpin: drawn first among its siblings | 21 |
 | `t` | Pick for Today, and unpick, a pick carried from an earlier day too | 3, 19 |
 | `Tab` `f` | Sidebar focus, where `A` `I` `cc` `cw` rename the chosen project, `dd` deletes it and `u` `Ctrl+R` undo and redo; go to a project, heading, list or row by name | 3, 13 |
@@ -1205,7 +1238,8 @@ the pane stays there until a motion has to scroll it.
 | `a` `m` | Capture to the Inbox from anywhere; move to a project or heading | 3 |
 | `gf` | Go to the whole project the row is filed in, the cursor on the row; a jump | 22 |
 | `L` `gl` | Link the row to another; follow the link, else open its first web address, else go back to the row linking here | 13, 16, 19 |
-| `v` `V` | Pick a row; sweep with motions | 4, 11 |
+| `v` `V` | Pick a row; sweep with motions; `o` while sweeping swaps its ends | 4, 11, 24 |
+| `gv` | Select again the rows last cleared | 24 |
 | `/` `:` | Filter, command | 4 |
 | `#` `@` `$` `*` `-` `~` | Stamp sigils on rows; `~` a colour, so selected projects take one at once | 4, 19 |
 
@@ -1228,6 +1262,12 @@ the existing row with no text. All three drop counts, refuse a selection,
 and work in lists and filters. `c` waits only for another `c`; `Esc` or any
 other key drops it and does nothing.
 
+`gi` opens typing in the row where typing last ended this session, with the
+caret where it stood, as Vim's `gi`: the cursor goes to that row, and `Esc`
+keeps it and returns to the outline. A body and a project's name in the
+sidebar are not counted. A row since gone, or not shown here, says so and
+names `u` or `g;`. It drops a count and refuses a selection.
+
 ### Inside a row
 
 A word motion typed on a row steps into its text, as if a caret had been
@@ -1244,7 +1284,9 @@ an operator on the outline does (`dw de d$ dt, dn through a motion · diw
 di" di( objects`):
 
 - **Motions.** `h` `l` by character and `0` `^` `$` to the ends; `w` `b` `e`
-  and `W` `B` `E` by word; `f` `F` to a character and `t` `T` to just before
+  and `W` `B` `E` by word, and `ge` `gE` back to the end of the word
+  before; `%` to the bracket, `(` `[` or `{`, that pairs with the one at or
+  after the caret, across a body's lines; `f` `F` to a character and `t` `T` to just before
   it, with `;` again and `,` the other way; `n` `N` to the next and
   previous place the filter's words stand, as described under Into the
   match; `j` `k` by drawn line of a wrapped row, and from its last or first
@@ -1258,10 +1300,20 @@ di" di( objects`):
   `a"`), and what is between brackets (`i(` or `ib`, `i[`, `i{` or `iB`,
   `i<`, and `a` for each with its brackets). `cw` on a word leaves the blank
   after it, as `ce` does. A doubled operator belongs to the outline, so
-  here it cancels.
+  here it cancels. `gu`, `gU` and `g~` lower, raise and switch the case of
+  what a motion or an object names, as `gUiw`; doubled, as `guu`, `gUU`,
+  `g~~` or `gUgU`, they take the whole line, since no outline key is
+  theirs. A motion that takes the character it lands on, as `e`, `ge` and
+  `%` do, takes the caret's too when it goes back.
 - **Acts on characters.** `x` deletes the character and `X` the one before;
   `D` deletes and `C` changes to the end; `s` changes the character; `r`
-  replaces it with the next key; `~` switches its case. `p` and `P` put
+  replaces it with the next key; `~` switches its case. `Ctrl+A` adds one,
+  or the count, to the number at or after the caret, and `Ctrl+X` takes it
+  away, as in Vim: `#est=2h` becomes `#est=3h`. A minus is the number's
+  sign only where it starts a word, so `2026-11-09` holds three numbers, and
+  leading zeros keep their width: `08` becomes `09`, while `10` less one is `9`. A
+  line with no number from the caret on says so. Moving a row's dates by
+  their meaning is `@++1w` on the stamp line (rule 3). `p` and `P` put
   what `d`, `c`, `y` or `x` last took after or before the caret: that is a
   text register of its own, kept for the session, and `y` also writes the
   system clipboard and draws what it took in reverse for a moment.
@@ -1273,8 +1325,8 @@ di" di( objects`):
 - **Selecting.** `v` starts a selection at the caret, drawn in reverse.
   Motions and counts stretch it to wherever they go, both ends included,
   and `iw`, `a"` and the other text objects make it that object. `d` or
-  `x` deletes it, `c` or `s` changes it, `y` copies it and `~` switches
-  its case; the key that acts ends the selection, as do `v` and `Esc`,
+  `x` deletes it, `c` or `s` changes it, `y` copies it, `~` switches
+  its case and `u` and `U` lower and raise it; the key that acts ends the selection, as do `v` and `Esc`,
   which stay in the row. The other keys do nothing meanwhile. `.` after
   such a change takes as many characters again from the caret.
 - **Filtering.** `*` leaves the row, keeping it, and narrows the pane to
@@ -1447,7 +1499,8 @@ well as characters, and none of them is a key of the outline:
 - **Operators.** `d`, `c` and `y` take those motions and the row's objects,
   and `ip` and `ap` for a paragraph, without or with the blank lines after
   it. Doubled, as `dd`, `cc` and `yy`, they take whole lines here, since
-  the body has no rows to give them to.
+  the body has no rows to give them to; `gu`, `gU` and `g~` take lines
+  doubled and with `j` `k` as `d` does.
 - **Acts and typing.** Those of a row, by the caret's line where a row
   goes to its end: `0` `^` `$`, `I` `A`, `D` `C`, `x` and `X` keep to the
   line. `o` and `O` open a line below and above, `J` joins the next line on
@@ -1827,6 +1880,14 @@ is `docket add`, and the overdue count it shows is `docket ls '@overdue'`.
    bodies, and `=` holds a word to the row's own line. Copy, export,
    paste, `:import` and `docket ls` carry the body as `>` lines under its
    row. *Built.*
+
+24. **Reach.** `zj` and `zk` go to the next and previous row with rows
+   under it, and `zm` and `zr` fold and open a level at a time. `gv`
+   selects again the rows last cleared, `o` swaps a sweep's ends, and `gi`
+   types again where typing ended, and `Ctrl+A` and `Ctrl+X` put a
+   row's day off or bring it forward. Inside a row `ge` and `gE` go back to a
+   word's end, `%` to the paired bracket, `gu` `gU` `g~` change case
+   through a motion, and `Ctrl+A` and `Ctrl+X` add to a number. *Built.*
 
 Not planned: reminders, attachments, a details panel (a body is read in the
 pane, not beside it), import from v1, any

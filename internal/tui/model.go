@@ -124,6 +124,12 @@ type repeatAct struct {
 	new    string // and what it puts there
 }
 
+// typedSpot is the row typing last ended in and where its caret stood.
+type typedSpot struct {
+	row   string
+	caret int
+}
+
 // mark notes how typing began, so that what it adds can be repeated.
 func (e *editor) mark(how string) {
 	e.how, e.start, e.at = how, slices.Clone(e.buf), e.caret
@@ -224,6 +230,8 @@ type Model struct {
 	picked       map[string]bool     // the selection
 	sweep        string              // anchor row of a live sweep
 	sweepBase    map[string]bool     // picks made before the sweep
+	lastPicked   map[string]bool     // the selection last cleared, for gv
+	typedAt      typedSpot           // where typing in a row last ended, for gi
 	last         map[string]string   // each place's cursor row, for coming back
 	hideClosed   bool
 	numbers      bool // rows say how far they are from the cursor
@@ -879,6 +887,130 @@ func (m *Model) foldBranches(ids []string, fold bool) {
 		m.msg = "no rows under this one"
 	}
 	m.applyFolds(changes)
+}
+
+// foldStep folds or opens one level of the pane at a time, as Vim's zm and
+// zr: zm folds the deepest open rows shown, zr opens the shallowest folded
+// ones. A count takes that many levels.
+func (m *Model) foldStep(fold bool, count int) {
+	if m.noFolds() {
+		return
+	}
+	for step := range max(count, 1) {
+		level, changes := -1, map[string]bool{}
+		for i, v := range m.vis {
+			var takes bool
+			if fold {
+				takes = i+1 < len(m.vis) && m.vis[i+1].depth > v.depth
+			} else {
+				takes = m.isFolded(v.id) && len(m.tree.Children(v.id)) > 0
+			}
+			if !takes || (level >= 0 && (fold && v.depth < level || !fold && v.depth > level)) {
+				continue
+			}
+			if v.depth != level {
+				level, changes = v.depth, map[string]bool{}
+			}
+			changes[v.id] = fold
+		}
+		if len(changes) == 0 {
+			if step == 0 && fold {
+				m.msg = "every row here is folded: zr opens a level, zR all"
+			} else if step == 0 {
+				m.msg = "nothing is folded here: zm folds a level, zM all"
+			}
+			return
+		}
+		m.applyFolds(changes)
+	}
+}
+
+// reselect brings back the selection last cleared, the rows of it shown
+// here, as Vim's gv. A selection standing now becomes the one gv returns to.
+func (m *Model) reselect() {
+	if len(m.lastPicked) == 0 {
+		m.msg = "no selection to bring back: v selects a row, V sweeps"
+		return
+	}
+	shown := map[string]bool{}
+	for _, v := range m.vis {
+		if m.lastPicked[v.id] && (m.at.query == "" || m.at.matched[v.id]) {
+			shown[v.id] = true
+		}
+	}
+	if len(shown) == 0 {
+		m.msg = "none of the last selection's rows are shown here"
+		return
+	}
+	if len(m.picked) > 0 {
+		m.lastPicked = m.picked
+	}
+	m.picked = shown
+}
+
+// bumpDays moves the day each row already has, by a count of days: its
+// deadline, else its start. It is one undo step.
+func (m *Model) bumpDays(rows []string, later bool, count int) {
+	n, sign := max(count, 1), "++"
+	if !later {
+		sign = "--"
+	}
+	var ops []outline.Op
+	for _, id := range rows {
+		r := m.tree.Row(id)
+		if !m.live(id) {
+			continue
+		}
+		at := "@"
+		if r.Fields[sigil.FieldDue] == "" {
+			if r.Fields[sigil.FieldStart] == "" {
+				continue
+			}
+			at = "@@"
+		}
+		c, _ := parseStamp(at+sign+strconv.Itoa(n)+"d", m.today())
+		ops = append(ops, m.stampOps(id, c)...)
+	}
+	if len(ops) == 0 {
+		m.msg = "no day to move: @ sets a deadline, @@ a start"
+		return
+	}
+	cur := m.current()
+	if m.do(ops...) {
+		m.rebuild()
+		m.seek(cur)
+		way := "later"
+		if !later {
+			way = "earlier"
+		}
+		days := "1 day"
+		if n > 1 {
+			days = fmt.Sprintf("%d days", n)
+		}
+		m.msg = "moved " + days + " " + way
+	}
+}
+
+// typeAgain opens typing where it last ended, in the row it was in, as
+// Vim's gi.
+func (m *Model) typeAgain() {
+	at := m.typedAt
+	switch {
+	case at.row == "":
+		m.msg = "nothing typed yet: A types at the end of a row"
+		return
+	case !m.live(at.row):
+		m.msg = "the row last typed in is gone: u brings it back"
+		return
+	}
+	m.seek(at.row)
+	if m.current() != at.row {
+		m.msg = "the row last typed in is not shown here: g; goes to the last change"
+		return
+	}
+	m.editRow(at.row)
+	m.edit.caret = max(0, min(at.caret, len(m.edit.buf)))
+	m.edit.mark("")
 }
 
 // noFolds refuses a fold where rows do not stand in their tree: a list or a
@@ -1562,6 +1694,9 @@ func (m *Model) setFields(id string, want map[string]string) []outline.Op {
 func (m *Model) finishEdit() bool {
 	e := m.edit
 	m.edit = nil
+	if !e.normal && !e.body && !e.side {
+		m.typedAt = typedSpot{e.row, e.caret}
+	}
 	if e.body {
 		return m.finishBody(e)
 	}
@@ -2341,6 +2476,15 @@ func (m *Model) normalKey(k string) {
 		m.enterBody()
 		return
 	}
+	if k == "o" && m.sweep != "" {
+		// While sweeping, o swaps the anchor and the cursor, as in Vim, so
+		// the other end can be moved.
+		m.count = 0
+		if i := slices.IndexFunc(m.vis, func(v visRow) bool { return v.id == m.sweep }); i >= 0 {
+			m.sweep, m.cursor = m.current(), i
+		}
+		return
+	}
 	if isMotion(k) {
 		defer m.updateSweep()
 	} else if k != "zz" && k != "zt" && k != "zb" {
@@ -2358,7 +2502,7 @@ func (m *Model) act(k string, count int) {
 	tree, gen := m.tree, m.tree.Gen()
 	defer func() {
 		switch k {
-		case "x", "!", "^", "t", "J", "K", "p", "P", "gp", "gP":
+		case "x", "!", "^", "t", "J", "K", "p", "P", "gp", "gP", "ctrl+a", "ctrl+x":
 			if m.tree == tree && m.tree.Gen() != gen {
 				m.repeat = repeatAct{key: k, count: count}
 			}
@@ -2427,7 +2571,7 @@ func (m *Model) act(k string, count int) {
 func isMotion(k string) bool {
 	switch k {
 	case "j", "k", "down", "up", "gg", "G", "home", "end", "ctrl+d", "ctrl+u", "ctrl+f", "ctrl+b", "pgdown", "pgup",
-		"}", "{", ")", "(", "H", "]", "[", "n", "N":
+		"}", "{", ")", "(", "H", "]", "[", "n", "N", "zj", "zk":
 		return true
 	}
 	return false
@@ -2485,7 +2629,7 @@ func (m *Model) motionTarget(k string, count int) (int, bool) {
 	}
 	step := 1
 	switch k {
-	case "{", "(", "[", "N":
+	case "{", "(", "[", "N", "zk":
 		step = -1
 	}
 	switch k {
@@ -2514,8 +2658,12 @@ func (m *Model) motionTarget(k string, count int) (int, bool) {
 			}
 			target = up
 		}
-	case "]", "[", "n", "N":
+	case "]", "[", "n", "N", "zj", "zk":
 		hit := func(id string) bool { return strings.HasSuffix(m.tree.Row(id).Text(), ":") }
+		if k == "zj" || k == "zk" {
+			// The next or previous row with rows under it, folded or open.
+			hit = func(id string) bool { return len(m.tree.Children(id)) > 0 }
+		}
 		if k == "n" || k == "N" {
 			if hit = m.finder(); hit == nil {
 				m.msg = "nothing to find: keep a filter with / and Enter first"
@@ -2560,8 +2708,8 @@ func (m *Model) motionTarget(k string, count int) (int, bool) {
 func (m *Model) operatorKey(k string) {
 	if m.prefix != "" {
 		k, m.prefix = m.prefix+k, ""
-	} else if k == "g" || k == "i" {
-		// g begins a motion, i a row object: ic and is.
+	} else if k == "g" || k == "z" || k == "i" {
+		// g and z begin a motion, i a row object: ic and is.
 		m.prefix = k
 		return
 	}
@@ -2716,7 +2864,8 @@ func (m *Model) normalAct(k string, count int) {
 		// A count given now replaces the one the act was made with; rows
 		// selected now are what it lands on.
 		act, n := m.repeat, count
-		if n == 0 && len(m.picked) == 0 {
+		if n == 0 && (len(m.picked) == 0 || act.key == "ctrl+a" || act.key == "ctrl+x") {
+			// Ctrl+A and Ctrl+X count days, which a selection does not replace.
 			n = act.count
 		}
 		switch {
@@ -2773,6 +2922,17 @@ func (m *Model) normalAct(k string, count int) {
 		// The cursor's row is drawn at the top, middle or bottom of the pane.
 		m.scroll = k[1]
 		return
+	case "zm", "zr":
+		m.foldStep(k == "zm", count)
+		return
+	case "gv":
+		m.reselect()
+		return
+	case "gi":
+		if m.single() {
+			m.typeAgain()
+		}
+		return
 	case "esc":
 		// Esc undoes the most recent narrowing: the selection, then the
 		// filter, then the zoom.
@@ -2801,6 +2961,11 @@ func (m *Model) normalAct(k string, count int) {
 		return
 	}
 
+	if k == "ctrl+a" || k == "ctrl+x" {
+		// As in Vim the count is how much: days, not rows.
+		m.bumpDays(m.acting(), k == "ctrl+a", count)
+		return
+	}
 	ids := m.countedRows(count)
 	switch k {
 	case "A", "I", "cc":

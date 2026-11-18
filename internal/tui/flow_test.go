@@ -168,7 +168,7 @@ func TestSelectingInsideARow(t *testing.T) {
 		if h.m.edit.sel {
 			t.Fatal("Esc left the selection on")
 		}
-		h.press("v", "v", "v", "p", "u", "D")
+		h.press("v", "v", "v", "p", "ctrl+r", "D")
 		if !h.m.edit.sel {
 			t.Fatal("a key that is no part of selecting ended it")
 		}

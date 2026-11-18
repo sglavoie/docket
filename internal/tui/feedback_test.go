@@ -87,7 +87,8 @@ func TestWaitingKeysSayWhatMayFollow(t *testing.T) {
 	h.m.Update(tea.WindowSizeMsg{Width: 200, Height: 16})
 	for _, c := range []struct{ keys, want string }{
 		{"g", "gg top · gf project · gl follow link · gn gN into the match · gp gP put the copy · g; g, last changes"},
-		{"z", "zc zo shut, open the branch · zM zR shut, open all · zt zz zb draw at top, middle, bottom"},
+		{"z", "zc zo shut, open the branch · zm zr shut, open a level · zM zR shut, open all · zj zk next, previous parent · zt zz zb draw at top, middle, bottom"},
+		{"dz", "dzj dzk take through the next, previous row with rows under it"},
 		{"d", "dd the row · dj } ) H ] n G… through a motion · dic dis objects"},
 		{"2y", "yy the row · yj } ) H ] n G… through a motion · yic yis objects"},
 		{"di", "dic the rows under it · dis the row and its siblings"},

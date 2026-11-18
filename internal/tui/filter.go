@@ -845,6 +845,9 @@ func (m *Model) endSweep() {
 }
 
 func (m *Model) clearSelection() {
+	if len(m.picked) > 0 {
+		m.lastPicked = m.picked
+	}
 	m.endSweep()
 	m.picked = map[string]bool{}
 }

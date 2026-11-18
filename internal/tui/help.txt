@@ -11,6 +11,7 @@ Ctrl+C  :q	quit
 == Fold and zoom
 h l	fold, unfold; step to parent, first child
 zc zo	fold, unfold the whole branch; a count or selection too
+zm zr	fold, unfold one level more; a count takes that many
 zM zR	fold, unfold everything in the pane
 Enter	zoom in
 Esc	clear the selection, then the filter, then zoom back out
@@ -18,6 +19,7 @@ Esc	clear the selection, then the filter, then zoom back out
 == Move further
 ] [  H	next, previous heading; parent
 } {  ) (	next, previous sibling; last, first sibling
+zj zk	next, previous row with rows under it, folded or open
 Ctrl+D Ctrl+U	half a pane; `Ctrl+F` `Ctrl+B` or `PgDn` `PgUp` a whole pane
 zt zz zb	draw the cursor's row at the top, middle, bottom
 h in a list	show the row where it lives; `Esc` returns; `l` does nothing
@@ -25,6 +27,7 @@ h in a list	show the row where it lives; `Esc` returns; `l` does nothing
 ## Add and type
 o O	new row below, above; `o` on an open parent adds a first child
 A I  cc	type at the end, start; retype the text, keeping fields
+gi	type again where typing last ended, in that row
 Paste	several lines become rows, indentation as depth; one undo
 
 == While typing
@@ -39,6 +42,8 @@ Esc	keep the row
 
 == Inside a row
 w b e  W B E	step into the text by word; capitals count nonblank words
+ge gE	back to the end of the word before
+%	to the bracket that pairs with the next one
 h l  0 ^ $	by character; to the ends of the line
 j k	by drawn line, then on into the row below, above
 f F t T	find a character; `;` `,` repeat, reverse
@@ -50,8 +55,10 @@ i" a"	what is between quotes
 i( i[ i{ i<	what is between brackets; `a(` with them; `ib` `iB` as `i(` `i{`
 x X  D C  s	delete, change characters
 r  ~	replace the character; switch its case
+gu gU g~	lower, upper, switch case through a motion: `gUiw`; `gUU` the line
+Ctrl+A Ctrl+X	add to, take from the number at or after the caret: `5 Ctrl+X`
 p P	put text after, before
-v	select with motions or objects
+v	select with motions or objects; `u` `U` lower, upper it
 *	filter by the word at the caret
 u Ctrl+R	undo, redo inside this visit
 .	repeat a text change
@@ -77,6 +84,7 @@ Esc  j	back to the rows, from anywhere or past the last line; one undo
 @fri @+3d	deadline; `@dec4` `@jan5-2027` `@eom` by name
 @@mon	not before that day
 @++1w @--3d	shift the row's deadline; `@@++1w` its start (stamp line only)
+Ctrl+A Ctrl+X	a day later, earlier: the deadline, else the start; `7 Ctrl+A` a week
 *2w *monthly	repeat: closing moves the date and reopens done descendants
 
 == Tags, states and colours
@@ -118,6 +126,8 @@ gp gP	put the last copy, even after a delete replaced the register
 ## Selection
 v	pick a row and step down; again on a picked row clears it
 V	sweep with motions; `V` ends the sweep, `Esc` clears selections
+o	while sweeping, swap the ends to move the other one
+gv	select again the rows last cleared; swaps with a standing selection
 :all	select every shown row (matches only under a filter)
 
 == Act on it

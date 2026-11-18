@@ -256,6 +256,12 @@ func linesDown(buf []rune, at, n int) int {
 // there, and y copies them, newline and all, so p puts them as lines.
 func (m *Model) bodyLines(e *editor, op string, a, b int) int {
 	from, to := lineSpan(e.buf, a, b)
+	if isCaseOp(op) {
+		e.keep()
+		e.recase(op, from, to)
+		e.caret = firstChar(e.buf, lineStart(e.buf, min(a, b)))
+		return textChanged
+	}
 	if op == "y" {
 		text := string(e.buf[lineStart(e.buf, min(a, b)):lineEnd(e.buf, max(a, b))]) + "\n"
 		m.textRegister = text

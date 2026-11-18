@@ -100,6 +100,120 @@ func wordEnd(buf []rune, pos int, big bool) int {
 	return i
 }
 
+// wordEndBack is the last character of the word before the one at pos, as
+// Vim's ge reads it.
+func wordEndBack(buf []rune, pos int, big bool) int {
+	i := min(pos, len(buf)-1)
+	if i < 0 {
+		return 0
+	}
+	if c := wordClass(buf[i], big); c != 0 {
+		for i >= 0 && wordClass(buf[i], big) == c {
+			i--
+		}
+	}
+	for i >= 0 && isBlank(buf[i]) {
+		i--
+	}
+	return max(i, 0)
+}
+
+// bracketMatch is the bracket that pairs with the first one at or after at,
+// before end, as Vim's % finds it; ok is false when there is none.
+func bracketMatch(buf []rune, at, end int) (int, bool) {
+	pairs := map[rune]rune{'(': ')', '[': ']', '{': '}', ')': '(', ']': '[', '}': '{'}
+	i := at
+	for i < end && pairs[buf[i]] == 0 {
+		i++
+	}
+	if i >= end {
+		return at, false
+	}
+	open, shut := buf[i], pairs[buf[i]]
+	step := 1
+	if strings.ContainsRune(")]}", open) {
+		step = -1
+	}
+	for j, depth := i+step, 0; j >= 0 && j < len(buf); j += step {
+		switch buf[j] {
+		case open:
+			depth++
+		case shut:
+			if depth == 0 {
+				return j, true
+			}
+			depth--
+		}
+	}
+	return at, false
+}
+
+// isCaseOp names the operators that change case inside a row: gu, gU and
+// g~, held pending by their second key.
+func isCaseOp(op string) bool { return op == "u" || op == "U" || op == "~" }
+
+// recase changes the case of a span: u lowers it, U raises it, ~ switches it.
+func (e *editor) recase(op string, from, to int) {
+	for i := from; i < to && i < len(e.buf); i++ {
+		r := e.buf[i]
+		switch {
+		case op == "u" || (op == "~" && unicode.IsUpper(r)):
+			e.buf[i] = unicode.ToLower(r)
+		default:
+			e.buf[i] = unicode.ToUpper(r)
+		}
+	}
+}
+
+// bump adds by to the number at or after the caret, as Vim's Ctrl+A and
+// Ctrl+X. A minus is its sign only where it starts a word, so the parts of
+// 2026-11-09 count as three numbers; leading zeros keep their width.
+func (e *editor) bump(by int) bool {
+	buf, end := e.buf, len(e.buf)
+	if e.body {
+		end = lineEnd(buf, e.caret)
+	}
+	digit := func(i int) bool { return i >= 0 && i < len(buf) && buf[i] >= '0' && buf[i] <= '9' }
+	i := e.caret
+	if digit(i) {
+		for digit(i - 1) {
+			i--
+		}
+	} else {
+		for i < end && !digit(i) {
+			i++
+		}
+		if i >= end {
+			return false
+		}
+	}
+	j := i
+	for digit(j) {
+		j++
+	}
+	digits := string(buf[i:j])
+	n, err := strconv.ParseInt(digits, 10, 64)
+	if err != nil {
+		return false
+	}
+	start := i
+	if i > 0 && buf[i-1] == '-' && (i == 1 || wordClass(buf[i-2], false) != 1) {
+		start, n = i-1, -n
+	}
+	n += int64(by)
+	text := strconv.FormatInt(max(n, -n), 10)
+	if len(digits) > 1 && digits[0] == '0' && len(text) < len(digits) {
+		text = strings.Repeat("0", len(digits)-len(text)) + text
+	}
+	if n < 0 {
+		text = "-" + text
+	}
+	e.keep()
+	e.buf = append(append(slices.Clone(buf[:start]), []rune(text)...), buf[j:]...)
+	e.caret = start + len([]rune(text)) - 1
+	return true
+}
+
 // enterText steps into the cursor row's text with a word motion, as if the
 // caret had been waiting before the text, or after it for b.
 func (m *Model) enterText(id, k string, count int) {
@@ -326,10 +440,22 @@ func (m *Model) textMotion(e *editor, k string, arg rune, count int) (target int
 			return target, inclusive, true
 		}
 	}
-	big := k == "W" || k == "B" || k == "E"
+	big := k == "W" || k == "B" || k == "E" || k == "gE"
 	switch k {
 	case "h", "left", "backspace":
 		return max(at-n, 0), false, true
+	case "ge", "gE":
+		for range n {
+			at = wordEndBack(e.buf, at, big)
+		}
+		return at, true, true
+	case "%":
+		end := len(e.buf)
+		if e.body {
+			end = lineEnd(e.buf, at)
+		}
+		target, ok := bracketMatch(e.buf, at, end)
+		return target, true, ok
 	case "l", "right", "space":
 		return min(at+n, len(e.buf)), false, true
 	case "0", "home", "^":
@@ -532,6 +658,9 @@ func (e *editor) typeAt(at int) int {
 // textBack ends typing opened inside the row and puts the caret back on a
 // character, where the grammar goes on.
 func (m *Model) textBack(e *editor) {
+	if !e.body && !e.side {
+		m.typedAt = typedSpot{e.row, e.caret}
+	}
 	if typed, only := e.inserted(); only && !m.replaying {
 		m.textRepeat = textAct{keys: e.cmd, typed: typed}
 	}
@@ -650,13 +779,25 @@ func (m *Model) textStep(e *editor, msg tea.KeyPressMsg) int {
 		return textPending
 	}
 
-	// In a body g waits for another g, alone or after an operator.
-	if e.body && strings.HasSuffix(e.pend, "g") {
+	// A g waits for its second key, alone or after an operator: gg in a
+	// body, ge and gE back to a word's end, and gu gU g~ the case operators.
+	if strings.HasSuffix(e.pend, "g") {
 		e.pend = strings.TrimSuffix(e.pend, "g")
-		if k != "g" {
-			return textMoved
+		switch {
+		case k == "g" && e.body:
+			return m.textGo(e, "gg", 0)
+		case k == "e" || k == "E":
+			return m.textGo(e, "g"+k, 0)
+		case isCaseOp(e.pend) && k == e.pend:
+			// gUgU, as gUU, takes the whole line.
+			return m.caseLine(e)
+		case e.pend == "" && isCaseOp(k) && e.sel:
+			return m.caseSelection(e, k)
+		case e.pend == "" && isCaseOp(k):
+			e.pend, e.opCount, e.count = k, e.count, 0
+			return textPending
 		}
-		return m.textGo(e, "gg", 0)
+		return textMoved
 	}
 
 	// In a body z folds it: zc to its first line, zo open above the rows,
@@ -690,10 +831,13 @@ func (m *Model) textStep(e *editor, msg tea.KeyPressMsg) int {
 			if k == e.pend {
 				return m.bodyLines(e, k, e.caret, linesDown(e.buf, e.caret, max(e.textCount(), 1)))
 			}
-			if k == "g" {
-				e.pend += k
-				return textPending
-			}
+		}
+		if len(e.pend) == 1 && strings.Contains("dcyuU~", e.pend) && k == "g" {
+			e.pend += k
+			return textPending
+		}
+		if isCaseOp(e.pend) && k == e.pend {
+			return m.caseLine(e)
 		}
 		if len(e.pend) == 2 {
 			from, to, ok := textObject(e, k, e.pend[1] == 'i')
@@ -732,6 +876,8 @@ func (m *Model) textStep(e *editor, msg tea.KeyPressMsg) int {
 		case "y":
 			e.sel = false
 			return m.textOperate(e, "y", from, to)
+		case "u", "U":
+			return m.caseSelection(e, k)
 		case "d", "x", "c", "s", "~":
 			if e.body && k != "~" {
 				// A body's selection may run over lines, which a count of
@@ -748,7 +894,7 @@ func (m *Model) textStep(e *editor, msg tea.KeyPressMsg) int {
 			}
 			e.sel, e.caret, e.count, e.opCount = false, from, to-from, 0
 			e.cmd = textKeys(strconv.Itoa(to-from) + k)
-		case "D", "C", "X", "r", "I", "A", "p", "P", "u", "ctrl+r", ".", "*", "delete":
+		case "D", "C", "X", "r", "I", "A", "p", "P", "ctrl+r", ".", "*", "delete", "ctrl+a", "ctrl+x":
 			return textMoved
 		}
 	}
@@ -773,6 +919,19 @@ func (m *Model) textStep(e *editor, msg tea.KeyPressMsg) int {
 	case "f", "F", "t", "T", "r":
 		e.pend = k
 		return textPending
+	case "g":
+		e.pend = k
+		return textPending
+	case "ctrl+a", "ctrl+x":
+		by := n
+		if k == "ctrl+x" {
+			by = -n
+		}
+		if !e.bump(by) {
+			m.msg = "no number at or after the caret"
+			return textMoved
+		}
+		return textChanged
 	case "j", "down", "k", "up":
 		// By drawn line. Past the row's first or last line the caret goes on
 		// into the row drawn above or below, keeping this one, as Up and
@@ -894,7 +1053,7 @@ func (m *Model) textStep(e *editor, msg tea.KeyPressMsg) int {
 // operator the text from the caret to where the motion goes.
 func (m *Model) textGo(e *editor, k string, arg rune) int {
 	op := e.pend[:min(len(e.pend), 1)]
-	if !strings.Contains("dcy", op) {
+	if !strings.Contains("dcyuU~", op) {
 		op = ""
 	}
 	// Changing a word leaves the blank after it, as ce does.
@@ -927,7 +1086,10 @@ func (m *Model) textGo(e *editor, k string, arg rune) int {
 	from, to := e.caret, target
 	if from > to {
 		from, to = to, from
-	} else if inclusive {
+	}
+	if inclusive {
+		// A motion that takes the character it lands on takes the caret's
+		// too when it goes back, as ge and % can.
 		to++
 	}
 	return m.textOperate(e, op, from, min(to, len(e.buf)))
@@ -938,6 +1100,12 @@ func (m *Model) textGo(e *editor, k string, arg rune) int {
 func (m *Model) textOperate(e *editor, op string, from, to int) int {
 	if from >= to && op != "c" {
 		return textMoved
+	}
+	if isCaseOp(op) {
+		e.keep()
+		e.recase(op, from, to)
+		e.caret = from
+		return textChanged
 	}
 	if op == "y" {
 		m.textRegister = string(e.buf[from:to])
@@ -958,6 +1126,27 @@ func (m *Model) textOperate(e *editor, op string, from, to int) int {
 		return e.typeAt(from)
 	}
 	return textChanged
+}
+
+// caseLine changes the case of the whole line, or in a body of the caret's
+// lines, as gUU, guu and g~~ do.
+func (m *Model) caseLine(e *editor) int {
+	op := e.pend
+	if !e.body {
+		return m.textOperate(e, op, 0, len(e.buf))
+	}
+	return m.bodyLines(e, op, e.caret, linesDown(e.buf, e.caret, max(e.textCount(), 1)))
+}
+
+// caseSelection changes the case of what is selected, as u and U do on a
+// Vim selection. It is remembered as so many characters from the caret.
+func (m *Model) caseSelection(e *editor, op string) int {
+	from, to := min(e.anchor, e.caret), min(max(e.anchor, e.caret)+1, len(e.buf))
+	e.sel, e.caret = false, from
+	if !e.body {
+		e.cmd = textKeys("g" + op + strconv.Itoa(to-from) + "l")
+	}
+	return m.textOperate(e, op, from, to)
 }
 
 // textAgain makes the last change inside a row again, at the caret. When
@@ -996,6 +1185,17 @@ func (e *editor) textStatus() string {
 	}
 	if e.sel {
 		return "selecting: motions extend · d c y x ~ act · v or Esc ends"
+	}
+	if e.pend == "g" {
+		says := "ge gE back to a word's end · gu gU g~ lower, upper, switch case"
+		if e.body {
+			says = "gg the first line · " + says
+		}
+		return says
+	}
+	if isCaseOp(e.pend) {
+		op := "g" + e.pend
+		return op + "w " + op + "e " + op + "$ through a motion · " + op + "iw " + op + "i\" objects · " + op + e.pend + " the line"
 	}
 	if op := e.pend[:min(len(e.pend), 1)]; op == "d" || op == "c" || op == "y" {
 		// A waiting operator says what may follow it, as one does on the
