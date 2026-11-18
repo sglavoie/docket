@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   # scripts/release.sh verifies CI before pushing the tag unless --force is used.
-  # Release tags name v2 commits, so these jobs run as v2 defines them.
+  # Release tags name main commits, so these jobs run as main defines them.
   release:
     runs-on: ubuntu-latest
     permissions:

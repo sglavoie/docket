@@ -1,11 +1,11 @@
 #!/usr/bin/env sh
 #
-# Cut a release: tag the next version of the commit v2 is at and push the tag,
+# Cut a release: tag the next version of the commit main is at and push the tag,
 # which starts .github/workflows/release.yml (GoReleaser's CLI archives,
 # then the notarized Docket.app and the Homebrew cask). It then follows that run
 # and confirms the tap's cask moved to the new version.
 #
-# Refuses unless this is a clean v2 identical to origin/v2, the commit is
+# Refuses unless this is a clean main identical to origin/main, the commit is
 # new since the last release, and CI passed on it (unless --force is given).
 # The tag push skips the local pre-push checks, and the release workflow does
 # not rerun CI.
@@ -66,13 +66,13 @@ fail() {
 # --- Is this a commit that may be released? ---------------------------------------
 
 branch=$(git symbolic-ref --quiet --short HEAD || true)
-[ "$branch" = v2 ] || fail "releases are cut from v2, not ${branch:-a detached HEAD}"
+[ "$branch" = main ] || fail "releases are cut from main, not ${branch:-a detached HEAD}"
 [ -z "$(git status --porcelain)" ] || fail "the working tree has uncommitted or untracked changes"
 
-git fetch --quiet --tags origin v2
+git fetch --quiet --tags origin main
 head=$(git rev-parse HEAD)
-[ "$head" = "$(git rev-parse origin/v2)" ] ||
-	fail "v2 is not origin/v2: push or pull first, since the tag must name a commit CI has seen"
+[ "$head" = "$(git rev-parse origin/main)" ] ||
+	fail "main is not origin/main: push or pull first, since the tag must name a commit CI has seen"
 
 # Only origin's plain vX.Y.Z tags count. An interrupted push may leave a local
 # tag behind; it must not advance the next version. Prereleases do not either.

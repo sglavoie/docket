@@ -41,7 +41,7 @@ running, since replacing the bundle would end its session: quit it first.
 A release installs it with Homebrew: `brew install --cask sglavoie/tap/docket`
 puts the notarized, universal Docket.app in `/Applications` and links the
 `docket` it bundles as `docket` and `dkt`. `scripts/release.sh` (`just release`)
-tags a v2 commit; the Release workflow publishes the CLI archives with GoReleaser,
+tags a main commit; the Release workflow publishes the CLI archives with GoReleaser,
 then its `macos-app` job builds the app with `macos/scripts/package-release.sh`
 and writes the cask with `scripts/homebrew_cask.sh`.
 

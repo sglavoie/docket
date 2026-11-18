@@ -1,7 +1,8 @@
 # CLAUDE.md
 
-Docket v2 is a from-scratch rewrite on an unrelated history. Nothing here
-shares code or rules with the `main` branch.
+Docket v2 is a from-scratch rewrite on an unrelated history, now on `main`.
+v1 lives on the frozen `v1` branch: nothing here shares code or rules with it,
+and no release is ever tagged from it, since its workflow would rewrite the cask.
 
 [`SPEC.md`](SPEC.md) is the contract: the six rules, the model, the keys, and
 the milestone order. Read it before changing behaviour, and change it in the

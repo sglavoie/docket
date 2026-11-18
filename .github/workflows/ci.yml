@@ -2,14 +2,14 @@ name: CI
 
 on:
   push:
-    branches: [v2]
+    branches: [main]
   pull_request:
-    branches: [v2]
+    branches: [main]
 
 permissions:
   contents: read
 
-# A newer push to a pull request supersedes its running checks; v2 keeps
+# A newer push to a pull request supersedes its running checks; main keeps
 # every run.
 concurrency:
   group: ci-${{ github.ref }}

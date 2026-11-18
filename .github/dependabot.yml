@@ -1,10 +1,8 @@
 version: 2
 
-# v2 is not the default branch yet, so each update names it.
 updates:
   - package-ecosystem: gomod
     directory: /
-    target-branch: v2
     schedule:
       interval: weekly
     commit-message:
@@ -17,7 +15,6 @@ updates:
 
   - package-ecosystem: github-actions
     directory: /
-    target-branch: v2
     schedule:
       interval: weekly
     commit-message:

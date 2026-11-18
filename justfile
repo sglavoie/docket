@@ -67,7 +67,7 @@ mac-test:
 mac-install: (mac-app "Release")
     ./macos/scripts/install-app.sh
 
-# Tag the next release from v2 and follow it (patch, minor, major, or vX.Y.Z)
+# Tag the next release from main and follow it (patch, minor, major, or vX.Y.Z)
 release version *flags:
     ./scripts/release.sh {{ version }} {{ flags }}
 
