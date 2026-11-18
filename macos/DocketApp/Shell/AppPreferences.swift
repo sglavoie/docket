@@ -208,6 +208,18 @@ enum DocketAppearanceLaunch {
     }
 }
 
+/// The Ghostty `theme` value for the chosen theme. A light and dark pair follows
+/// macOS while following is on; with it off, the pair's theme for `pinned`, the
+/// appearance at launch or when following was turned off, stays.
+enum DocketThemeLaunch {
+    static func configValue(
+        terminalTheme: TerminalTheme?, followAppearance: Bool, pinned: DocketAppearanceScheme
+    ) -> String? {
+        guard let terminalTheme else { return nil }
+        return followAppearance ? terminalTheme.configValue : terminalTheme.name(for: pinned)
+    }
+}
+
 /// Whether Docket.app shows the overdue count: on the Dock icon, or beside the
 /// menu-bar icon when there is no Dock icon. Persisted in `UserDefaults` key
 /// `docketDockBadge`; absent reads as on.

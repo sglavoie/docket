@@ -221,6 +221,22 @@ final class GhosttyConfigTests: XCTestCase {
         XCTAssertNil(DocketAppearanceLaunch.scheme(terminalTheme: nil, followAppearance: false, appearance: .dark))
     }
 
+    /// A light and dark pair follows macOS while following is on; with it off,
+    /// the pair's theme for the pinned appearance stays. One theme is one theme.
+    func testThemeFollowsAppearanceOnlyWhileFollowing() throws {
+        let pair = try XCTUnwrap(TerminalTheme(configValue: "light:fern-light,dark:Zenwritten Dark"))
+        let one = try XCTUnwrap(TerminalTheme(configValue: "Catppuccin Latte"))
+        XCTAssertEqual(DocketThemeLaunch.configValue(terminalTheme: pair, followAppearance: true, pinned: .light),
+                       "light:fern-light,dark:Zenwritten Dark")
+        XCTAssertEqual(DocketThemeLaunch.configValue(terminalTheme: pair, followAppearance: false, pinned: .dark),
+                       "Zenwritten Dark")
+        XCTAssertEqual(DocketThemeLaunch.configValue(terminalTheme: pair, followAppearance: false, pinned: .light),
+                       "fern-light")
+        XCTAssertEqual(DocketThemeLaunch.configValue(terminalTheme: one, followAppearance: false, pinned: .dark),
+                       "Catppuccin Latte")
+        XCTAssertNil(DocketThemeLaunch.configValue(terminalTheme: nil, followAppearance: true, pinned: .dark))
+    }
+
     /// The built-in font is Ghostty's embedded fallback, reached by emptying
     /// every family list rather than by a name CoreText cannot resolve.
     func testBuiltInFontResetsEveryFamilyTheUserFileNames() throws {

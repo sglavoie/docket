@@ -25,6 +25,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     /// Watches macOS's appearance for the terminal's colors.
     private var appearanceObserver: NSKeyValueObservation?
     private var appliedAppearance: DocketAppearanceScheme?
+    /// The appearance whose theme of a pair stays while following is off: the
+    /// one at launch, or when following was turned off.
+    private var pinnedAppearance: DocketAppearanceScheme?
 
     /// A hosted test bundle launches this app too; it must not spawn Docket.
     private static var isRunningTests: Bool {
@@ -74,11 +77,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         let ghostty = Ghostty.App { [weak self] in
             var current = overrides
             current.fontSize = model.defaultFontSize
-            current.theme = model.terminalTheme?.configValue
+            let appearance = DocketAppearanceScheme(NSApp.effectiveAppearance)
+            if self?.pinnedAppearance == nil { self?.pinnedAppearance = appearance }
+            current.theme = DocketThemeLaunch.configValue(
+                terminalTheme: model.terminalTheme, followAppearance: model.followAppearance,
+                pinned: self?.pinnedAppearance ?? appearance
+            )
             current.font = model.terminalFont
             let scheme = DocketAppearanceLaunch.scheme(
                 terminalTheme: model.terminalTheme, followAppearance: model.followAppearance,
-                appearance: DocketAppearanceScheme(NSApp.effectiveAppearance)
+                appearance: appearance
             )
             self?.appliedAppearance = scheme
             current.background = scheme?.background
@@ -104,7 +112,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         model.onDefaultFontSizeChange = { [weak self] _ in self?.applyDefaultFontSize() }
         // A reload keeps the session's zoom.
         model.onTerminalThemeChange = { [weak self] in self?.applyColors() }
-        model.onFollowAppearanceChange = { [weak self] _ in self?.applyColors() }
+        model.onFollowAppearanceChange = { [weak self] following in
+            if !following { self?.pinnedAppearance = DocketAppearanceScheme(NSApp.effectiveAppearance) }
+            self?.applyColors()
+        }
         model.onTerminalFontChange = { [weak self] in self?.ghostty?.reloadConfig() }
         model.onEnvironmentChange = { [weak self] in self?.scheduleEnvironmentReload() }
         model.onRelaunch = { [weak self] in self?.relaunchTerminal() }

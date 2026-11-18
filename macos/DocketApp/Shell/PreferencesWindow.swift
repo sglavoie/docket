@@ -517,11 +517,11 @@ struct PreferencesView: View {
 
             Section {
                 Toggle("Match macOS appearance", isOn: $model.followAppearance)
-                    .disabled(model.terminalTheme != nil)
                 note(model.terminalTheme != nil
-                    ? "Off while Settings › Terminal names a theme: its own light and dark choice applies."
+                    ? "The theme in Settings › Terminal switches between its light and dark choice with the "
+                        + "system. Off, the choice for the appearance at launch stays."
                     : "The terminal turns light or dark with the system, and Docket paints the palette that "
-                        + "suits it the next time its window has focus.")
+                        + "suits it at once.")
             }
 
             Section {

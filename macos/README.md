@@ -200,9 +200,11 @@ window has focus again, once a minute, and when the terminal reports that macOS
 turned light or dark (mode 2031, so with or without focus), and paints its light
 or dark palette to suit. That report can come before Docket.app has reloaded its
 colours, so Docket asks again 300 ms later; Docket.app also reports a focus
-change as soon as it recolours a focused window. With a theme chosen, the theme's colours apply instead
-(and a separate Dark Mode theme follows macOS through Ghostty itself); with
-following off, the Ghostty config's colours stand.
+change as soon as it recolours a focused window. With a theme chosen, the theme's colours apply instead, and
+a separate Dark Mode theme follows macOS through Ghostty itself while following
+is on; with following off, the pair's theme for the appearance at launch, or
+when following was turned off, stays. With following off and no theme, the
+Ghostty config's colours stand.
 
 The title bar takes the terminal's background, with light or dark title text to
 match, so the window reads as one surface.
