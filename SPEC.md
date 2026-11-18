@@ -1872,6 +1872,8 @@ global shortcut that shows or hides it. It runs the ordinary `docket` on a
 pty inside an embedded Ghostty terminal and changes nothing in the outline
 by itself; [`macos/README.md`](macos/README.md) is its contract. Quick capture
 is `docket add`, and the overdue count it shows is `docket ls '@overdue'`.
+Quick capture completes a sigil being typed as the capture line does, and a
+`%name` with a top-level project, from what `docket ls` prints.
 Its Today widget draws what `docket ls '$today'` and `docket ls '@overdue'`
 print, and Spotlight finds the open rows `docket ls` prints; choosing one
 types `Esc`, `f`, the row's text and `Enter`, so Go to shows it and nothing

@@ -178,6 +178,18 @@ later. A line Docket refuses stays in the field with Docket's reason. Esc, or
 clicking elsewhere, puts the panel away and keeps the line for next time; an
 empty Enter closes it.
 
+A sigil being typed lists what it could become under the field, as the
+capture line completes it: the `#tags` and `##contexts` in use, most used
+first and with how many rows carry each; the `$states`; the date words after
+`@` or `@@`; the `~colour` names; and, after `%`, the top-level projects,
+each inserted as the one word Docket files the row under it by (headings and
+the Inbox are not offered, though a `%name` typed out still reaches them). `Up` and
+`Down` choose, `Tab` or a click takes one, `Enter` takes one unless the word
+already stands as typed (a `%name` that already files under the first project
+listed is sent as it is), and `Esc` closes the list before the panel. What it
+offers is read with `docket ls`, the whole outline, each time the panel opens
+and after each capture.
+
 An open Docket window sees the row at its next key, or within a minute. Change
 or clear the shortcut in Settings › Shortcuts; it is stored as
 `docketCaptureHotKey`, spelled like `docketHotKey`.

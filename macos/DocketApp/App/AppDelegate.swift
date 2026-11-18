@@ -489,6 +489,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             return "Docket could not be found. Check Settings › Advanced."
         }
         quickCapture.onCaptured = { [weak self] in self?.refreshReadings() }
+        quickCapture.readVocabulary = { [weak self] done in
+            guard let target = self?.commandTarget else { return done(nil) }
+            // The whole outline, as :export writes it: its tags, contexts and places.
+            DocketCommand.run(target, arguments: ["ls"], timeout: 20) { result in
+                done(result.succeeded ? DocketVocabulary(export: result.stdout) : nil)
+            }
+        }
         serviceProvider.present = { [weak self] draft in self?.presentCapture(draft) }
         NSApp.servicesProvider = serviceProvider
         NSUpdateDynamicServices()
