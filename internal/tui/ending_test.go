@@ -1,6 +1,9 @@
 package tui
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestClosingTheLastPickSaysTheDayIsDone(t *testing.T) {
 	h := two(t)
@@ -48,7 +51,7 @@ func TestTheInboxCountsWhatIsLeftInIt(t *testing.T) {
 		"Alpha @",
 	)
 	h.press("f", "enter", "x")
-	if h.header() != "Inbox  · 1 to do" {
+	if h.header() != "Inbox  · 1 to file" {
 		t.Fatalf("header = %q", h.header())
 	}
 	h.wantSide(
@@ -60,4 +63,12 @@ func TestTheInboxCountsWhatIsLeftInIt(t *testing.T) {
 		"Beta ∅",
 		"Alpha @",
 	)
+	// A note is left to file too, and the header says what the sidebar says.
+	h.press("G", "o", `"an idea $note"`, "esc")
+	if h.header() != "Inbox  · 2 to file" {
+		t.Fatalf("header = %q", h.header())
+	}
+	if side := h.side(); !strings.HasPrefix(side, "▌ Inbox 2\n") {
+		t.Fatalf("sidebar:\n%s", side)
+	}
 }

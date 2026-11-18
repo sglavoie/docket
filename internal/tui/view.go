@@ -247,8 +247,11 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 			}
 		}
 		if where, project := m.whereFlat(r); where != "" {
-			// A project is named in its colour; the dot stays dim.
-			if color := m.projectColor(project); color != "" && !quiet {
+			// A project is named in its colour; the dot stays dim. Waiting
+			// and Stale are read by the heat of their ages, so there the
+			// name stays dim and no hue competes with that column.
+			aged := m.at.list == kindWaiting || m.at.list == kindStale
+			if color := m.projectColor(project); color != "" && !quiet && !aged {
 				where = color + where
 			}
 			also(where)
@@ -496,6 +499,11 @@ func (m *Model) paneHeader(w int, ruler string) string {
 	if m.at.list == kindWaiting {
 		// None of Waiting is the user's to do: it is waited on.
 		summary = m.paneTotal.said(m.paneTotal.waiting, "waiting")
+	}
+	if m.at.root == inboxID && m.at.list == "" && m.at.query == "" {
+		// The Inbox is emptied by filing, so it counts what the sidebar
+		// counts beside it: every row in it not yet closed, notes too.
+		summary = m.paneTotal.said(m.inboxLeft(), "to file")
 	}
 	if p := m.projectOf(m.at.root); p != nil && m.at.list == "" {
 		// A project out of the sidebar says why, since nothing there marks it.

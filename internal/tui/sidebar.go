@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"cmp"
 	"errors"
 	"maps"
 	"math"
@@ -1109,25 +1110,92 @@ func (m *Model) list(filter string) []string {
 	return out
 }
 
-// sideLines draws the sidebar at exactly w columns and h rows.
+// inboxLeft is what the sidebar counts in the Inbox: its rows not yet done
+// or canceled, so the header there says the same number.
+func (m *Model) inboxLeft() int {
+	for _, e := range m.side {
+		if e.kind == kindInbox {
+			return e.count
+		}
+	}
+	return 0
+}
+
+// projectCols is how the projects' marks stand at the sidebar's right edge:
+// whether any carries a deadline mark, which then has a column of its own,
+// and how wide the widest age or ∅ is, which the ages are right-aligned in.
+// Packed, an entry gives its columns up and draws its marks side by side.
+type projectCols struct {
+	mark   bool
+	age    int
+	packed bool
+}
+
+// projectColumns measures the projects' columns, so a deadline mark stands in
+// one place whether or not an age follows it, and is read down the sidebar.
+func (m *Model) projectColumns() projectCols {
+	var c projectCols
+	for _, e := range m.side {
+		if e.kind != kindProject {
+			continue
+		}
+		c.mark = c.mark || e.due > 0
+		c.age = max(c.age, ansi.StringWidth(projectAge(e)))
+	}
+	return c
+}
+
+// projectAge is what a project's entry says of its age: ∅ when nothing is
+// left to do, else the whole days since anything inside changed, or nothing
+// for a project touched today.
+func projectAge(e entry) string {
+	switch {
+	case e.idle:
+		return "∅"
+	case e.age > 0:
+		return strconv.Itoa(e.age) + "d"
+	}
+	return ""
+}
+
 // sideInfo is what an entry says at its right edge: a count, a finished
-// day, or a project's deadline mark and age.
-func (m *Model) sideInfo(e entry) string {
+// day, or a project's deadline mark and age, each in its column. It starts
+// at its first mark: the blank cells before one are the label's to use, and
+// the line pads the info to the right edge, which keeps the columns.
+func (m *Model) sideInfo(e entry, cols projectCols) string {
 	switch {
 	case e.kind == kindProject:
-		info := ""
-		if e.due == 2 {
+		mark := ""
+		switch e.due {
+		case 2:
 			// Bold as well, so overdue is not told by colour alone.
-			info = m.colors().alert + sgrBold + "@" + sgrReset + " "
-		} else if e.due == 1 {
-			info = m.colors().warn + "@" + sgrReset + " "
+			mark = m.colors().alert + sgrBold + "@" + sgrReset
+		case 1:
+			mark = m.colors().warn + "@" + sgrReset
 		}
-		if e.idle {
-			info += m.colors().dim + "∅" + sgrReset
-		} else if e.age > 0 {
-			info += ageStyle(m.colors(), int64(e.age), int64(m.oldestProject)) + strconv.Itoa(e.age) + "d" + sgrReset
+		age := projectAge(e)
+		if age != "" {
+			style := ageStyle(m.colors(), int64(e.age), int64(m.oldestProject))
+			if e.idle {
+				style = m.colors().dim
+			}
+			age = style + age + sgrReset
 		}
-		return strings.TrimRight(info, " ")
+		if cols.packed {
+			if mark != "" && age != "" {
+				mark += " "
+			}
+			return mark + age
+		}
+		info := ""
+		if cols.mark {
+			info = cmp.Or(mark, " ")
+			if cols.age > 0 {
+				info += " "
+			}
+		}
+		info += strings.Repeat(" ", cols.age-ansi.StringWidth(age)) + age
+		return strings.TrimLeft(info, " ")
 	case e.count > 0:
 		return m.colors().dim + strconv.Itoa(e.count) + sgrReset
 	case e.done:
@@ -1161,9 +1229,10 @@ func ageStyle(c palette, age, oldest int64) string {
 // narrower than it is drawn beside the pane.
 func (m *Model) sideFit() int {
 	w := sidebarCols
+	cols := m.projectColumns()
 	for _, e := range m.side {
 		need := 2 + ansi.StringWidth(e.label)
-		if info := ansi.StringWidth(m.sideInfo(e)); info > 0 {
+		if info := ansi.StringWidth(m.sideInfo(e, cols)); info > 0 {
 			need += 1 + info
 		}
 		w = max(w, need)
@@ -1192,6 +1261,7 @@ func (m *Model) sideView(w, h int) ([]string, *tea.Cursor) {
 		caret int  // the caret's column plus one, on the line that holds it
 	}
 	var lines []line
+	cols := m.projectColumns()
 	for i, e := range m.side {
 		// The filters the user saved are a group of their own, set apart
 		// from the four lists every outline has.
@@ -1217,7 +1287,12 @@ func (m *Model) sideView(w, h int) ([]string, *tea.Cursor) {
 			}
 			continue
 		}
-		info := m.sideInfo(e)
+		info := m.sideInfo(e, cols)
+		if e.kind == kindProject && ansi.StringWidth(e.label) > w-3-ansi.StringWidth(info) {
+			// The columns never cost a name: one they would cut packs its
+			// marks to the right edge instead.
+			info = m.sideInfo(e, projectCols{packed: true})
+		}
 		gutter := " "
 		if sel {
 			gutter = m.colors().dim + "▌" + sgrReset

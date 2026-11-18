@@ -210,7 +210,10 @@ its held rows and a filter its held matches, excluding context ancestors.
 Zero tasks says nothing. Today is the list that gets finished, so it alone
 goes on to count its done rows, as `3 to do · 2 done`, and says `all 5 done`
 when nothing is left. None of Waiting is the user's to do, so it counts its
-rows still waiting instead, as `270 waiting`. The review list holds projects, not tasks, so it
+rows still waiting instead, as `270 waiting`. The Inbox is emptied by
+filing, so it counts what the sidebar counts beside it, every row in it not
+yet done or canceled, notes included, as `24 to file`; one number is never
+shown two ways side by side. The review list holds projects, not tasks, so it
 counts those, as `Review · 43 projects`. These totals and heading progress are derived in
 the existing scan, never stored.
 
@@ -306,7 +309,13 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
   `∅` when
   it holds no task to do, else the whole days since anything inside changed:
   dim, and in the text colour from 14 days, the Stale rule, so the project
-  left alone is the one the eye finds.
+  left alone is the one the eye finds. The two stand in columns at the
+  sidebar's right edge, as review's do: the mark in one of its own whenever
+  any project carries one, left blank on the rest, and the age or `∅`
+  right-aligned in the other, so a mark is read down one column whether or
+  not an age follows it. The columns never cost a name: a name runs into
+  its own blank cells, and one they would still cut has its marks drawn
+  side by side against the edge instead.
 - **Parked** projects are a count, as `31 parked projects`: it counts
   projects only, never the parked rows inside an active one. Done and
   canceled projects are not listed. While the pane is inside a parked
@@ -375,6 +384,9 @@ The pane shows the rows under one row, or a list.
   every line and nothing is cut. A pane that would leave a row's text
   fewer than 16 columns beside it says the age after the text instead,
   led by its dot, and the row being typed gives up its column while it is.
+  A list read by its ages names a project dim, whatever its colour, so no
+  hue beside a row competes with the heat of the column; Today, review and
+  a flat filter name it in its colour.
   Each thing
   said after a row is led by a dot that stays with it when the row wraps.
   Nothing folds in a flat view, so a note there shows `·` whatever it holds

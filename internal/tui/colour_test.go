@@ -70,10 +70,16 @@ func TestAProjectIsDrawnInTheColourItsSigilNames(t *testing.T) {
 	if lines := strings.Split(h.raw(), "\n"); !strings.Contains(lines[0], teal+"Alpha") {
 		t.Fatalf("header = %q", lines[0])
 	}
-	// In a flat list, the project a row lives in is named in its colour.
+	// Waiting is read by the heat of its ages, so the project a row lives
+	// in is named dim there, and no hue competes with them.
 	h.press("k", "k", "k", "k")
+	if raw := h.raw(); strings.Contains(raw, "· "+teal) || !strings.Contains(h.rows(), "· Alpha") {
+		t.Fatalf("Waiting names the project in its colour:\n%q", raw)
+	}
+	// In another flat list, the project is named in its colour.
+	h.press("enter", "t", "tab", "k")
 	if !strings.Contains(h.raw(), "· "+teal+"Alpha") {
-		t.Fatal("Waiting does not name the project in its colour")
+		t.Fatalf("Today does not name the project in its colour:\n%s", h.rows())
 	}
 }
 

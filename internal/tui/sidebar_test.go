@@ -758,6 +758,42 @@ func TestANeglectedProjectsAgeStandsOut(t *testing.T) {
 	}
 }
 
+// A deadline mark stands in a column of its own, so it is read down the
+// sidebar whether or not an age follows it, and the ages are right-aligned
+// in theirs.
+func TestTheSidebarsDeadlineMarksStandInOneColumn(t *testing.T) {
+	h := two(t)
+	h.clock = h.clock.Add(15 * 24 * time.Hour)
+	// Gamma is new today: a deadline and no age.
+	h.press("g", "g", "O", `"Gamma"`, "enter", "tab", `"Three @tom"`, "esc")
+	col := func(name string) (mark, end int) {
+		for _, l := range h.lines() {
+			side := []rune(l)[:sideCols]
+			if strings.HasPrefix(strings.TrimLeft(string(side), " ▌"), name+" ") {
+				s := strings.TrimRight(string(side[:len(side)-2]), " ")
+				return strings.IndexRune(string(side), '@'), ansi.StringWidth(s)
+			}
+		}
+		t.Fatalf("no entry for %s:\n%s", name, h.side())
+		return 0, 0
+	}
+	alphaMark, alphaEnd := col("Alpha")
+	gammaMark, _ := col("Gamma")
+	_, betaEnd := col("Beta")
+	if alphaMark != gammaMark {
+		t.Fatalf("@ stands at %d for Alpha and %d for Gamma:\n%s", alphaMark, gammaMark, h.side())
+	}
+	if alphaEnd != betaEnd {
+		t.Fatalf("Alpha's age ends at %d and Beta's ∅ at %d:\n%s", alphaEnd, betaEnd, h.side())
+	}
+	// The columns never cost a name: one they would cut packs its mark
+	// against the edge, as it did before they stood.
+	h.press("g", "g", "O", `"bike-maintenance-xy"`, "enter", "tab", `"Four @tom"`, "esc")
+	if !strings.Contains(h.side(), "bike-maintenance-xy @") {
+		t.Fatalf("a long name was cut:\n%s", h.side())
+	}
+}
+
 // Saved filters are the user's own places, set apart from the four lists
 // by a blank line, as Projects is.
 func TestSavedFiltersAreAGroupOfTheirOwn(t *testing.T) {

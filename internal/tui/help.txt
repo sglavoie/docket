@@ -1,5 +1,5 @@
 ## Essentials
-:: move, fold and zoom
+:: the keys of every day
 j k  gg G	move; `Home` `End` reach the ends
 o O  A I	add below, above; type at the end, start
 x  !  t	close and reopen, flag, pick for Today; a pick shows `★`
