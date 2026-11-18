@@ -86,3 +86,23 @@ func TestTheSelectionIsToldFromTheCursor(t *testing.T) {
 		}
 	}
 }
+
+// A project's colour never reads as a signal: no colour name stands near
+// the alert, the warning or a step of the age gradient, so a project named
+// in red is not taken for one overdue.
+func TestNoColourNameReadsAsASignal(t *testing.T) {
+	for i, p := range []palette{darkPalette, lightPalette} {
+		signals := map[string][3]float64{"alert": rgbOf(t, p.alert), "warning": rgbOf(t, p.warn)}
+		for step, age := range p.ages {
+			signals["age "+strconv.Itoa(step)] = age
+		}
+		for name, shades := range namedColors {
+			c := rgbOf(t, shades[i])
+			for what, s := range signals {
+				if d := apart(c, s); d < 14 {
+					t.Errorf("palette %d: %s is %.1f from the %s, want at least 14", i, name, d, what)
+				}
+			}
+		}
+	}
+}

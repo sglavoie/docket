@@ -244,7 +244,10 @@ There is no theme command or configuration file.
 
 Beside the five roles, each palette holds a shade of every colour name
 `~colour` reads, lighter on dark and deeper on light so each stays
-readable; a hex colour is drawn as it is, whichever palette is in use. Tags
+readable. None stands near the alert, the warning or a step of the age
+gradient, so a project named in red is not taken for one overdue: `red`
+is drawn as a crimson, `orange` an amber and `yellow` a gold. A hex colour
+is drawn as it is, whichever palette is in use. Tags
 are told apart by a ramp of eight colours, kept clear of the alert and
 warning colours. A tag's colour is fixed by its name, without its value,
 hashed by FNV-1a, so a tag keeps it on every machine and a tag added later

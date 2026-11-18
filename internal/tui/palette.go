@@ -96,9 +96,9 @@ func fg(r, g, b int) string {
 // the pane's background in its palette: lighter for dark, deeper for light.
 var namedColors = map[string][2]string{
 	//            dark                 light
-	"red":     {fg(240, 113, 113), fg(186, 40, 40)},
-	"orange":  {fg(242, 163, 92), fg(172, 82, 0)},
-	"yellow":  {fg(232, 208, 96), fg(130, 102, 0)},
+	"red":     {fg(234, 92, 132), fg(206, 30, 78)},
+	"orange":  {fg(234, 162, 96), fg(162, 90, 36)},
+	"yellow":  {fg(252, 228, 132), fg(126, 114, 12)},
 	"lime":    {fg(178, 216, 84), fg(88, 118, 0)},
 	"green":   {fg(122, 204, 120), fg(30, 122, 48)},
 	"teal":    {fg(78, 200, 178), fg(0, 118, 106)},
