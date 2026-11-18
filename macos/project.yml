@@ -24,6 +24,8 @@ targets:
         excludes:
           - Resources/docket-launch
           - Resources/Docket.entitlements
+      # Link routes and the Share hand-off, compiled into the extension too.
+      - path: Shared
       # The launcher Docket runs under, copied executable into Resources.
       - path: DocketApp/Resources/docket-launch
         buildPhase: resources
@@ -61,9 +63,27 @@ targets:
       - sdk: IOSurface.framework
       - sdk: QuartzCore.framework
       - sdk: UniformTypeIdentifiers.framework
+      # Embedded in Contents/PlugIns.
+      - target: DocketShare
     scheme:
       testTargets:
         - DocketAppTests
+  DocketShare:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: DocketShare
+        excludes:
+          - DocketShare.entitlements
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_NAME: DocketShare
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.sglavoie.docket.share
+        INFOPLIST_FILE: DocketShare/Info.plist
+        # Sandboxed, and nothing else: it hands off through a docket:// link.
+        CODE_SIGN_ENTITLEMENTS: DocketShare/DocketShare.entitlements
+        SKIP_INSTALL: YES
   DocketAppTests:
     type: bundle.unit-test
     platform: macOS

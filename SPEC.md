@@ -1764,6 +1764,10 @@ global shortcut that shows or hides it. It runs the ordinary `docket` on a
 pty inside an embedded Ghostty terminal and changes nothing in the outline
 by itself; [`macos/README.md`](macos/README.md) is its contract. Quick capture
 is `docket add`, and the overdue count it shows is `docket ls '@overdue'`.
+A `docket://capture` link, the Services and Share menus, and `⌘K` in quick
+capture (the browser tab, Mail messages or Finder selection in front) only
+fill quick capture's line: Enter still sends it, so nothing from outside adds
+a row unseen.
 
 ## Milestones
 

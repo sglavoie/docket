@@ -16,6 +16,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     private(set) var hotKeys: HotKeyCenter?
     private(set) var captureHotKeys: HotKeyCenter?
     let quickCapture = QuickCapturePanel()
+    /// Answers the Services menu's Capture to Docket.
+    let serviceProvider = DocketServiceProvider()
+    /// Lines a link or a Service brought before the shell was set up or the
+    /// first session resolved its Docket; shown once it has.
+    private var pendingDrafts: [DocketCaptureDraft?] = []
+    private var captureReady = false
     /// Reads `docket ls '@overdue'` for the badge.
     let overdue = DocketOverdueMonitor()
     /// Which Docket the next session runs, asked again before each one.
@@ -293,6 +299,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
                 self.showLaunchError(title: "Docket could not be found.", message: notFound?.message ?? "") { [weak self] in
                     self?.prepareSession(then: ready)
                 }
+                // The panel says why nothing can be sent, and keeps the line.
+                self.flushPendingDrafts()
                 return
             }
             if let stalled = self.stalledTerminal {
@@ -311,6 +319,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             model.sessionEnvironment = model.effectiveEnvironment?.commandEnvironment
             ready()
             self.overdue.refresh()
+            self.flushPendingDrafts()
         }
     }
 
@@ -337,6 +346,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     }
 
     // MARK: Quick capture
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls { open(url) }
+    }
+
+    /// Answers a `docket://` link (see `DocketLink`).
+    func open(_ url: URL) {
+        guard let link = DocketLink(url: url) else {
+            NSLog("Docket: cannot open %@", url.absoluteString)
+            return
+        }
+        switch link {
+        case .show:
+            if let terminal { terminal.show() } else { showLaunchErrorAgain() }
+        case .capture(let text, let urls):
+            presentCapture(text == nil && urls.isEmpty ? nil : DocketCaptureDraft.build(title: text, links: urls))
+        }
+    }
+
+    /// Quick capture holding `draft`, or as it was when there is none. Never
+    /// sends: the user reads the line and presses Enter. One arriving while
+    /// Docket.app is still starting waits for the first session to find its
+    /// Docket, so the panel does not open saying none was found, and opens a
+    /// turn after the terminal has come forward, so it keeps the keyboard.
+    func presentCapture(_ draft: DocketCaptureDraft?) {
+        guard captureReady else {
+            pendingDrafts.append(draft)
+            return
+        }
+        if let draft { quickCapture.present(draft) } else { quickCapture.show() }
+    }
+
+    private func flushPendingDrafts() {
+        guard !captureReady else { return }
+        captureReady = true
+        let waiting = pendingDrafts
+        pendingDrafts = []
+        DispatchQueue.main.async { [weak self] in
+            for draft in waiting { self?.presentCapture(draft) }
+        }
+    }
 
     private func capture(_ line: String, done: @escaping (Bool, String) -> Void) {
         guard let target = commandTarget else {
@@ -411,6 +461,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             return "Docket could not be found. Check Settings › Advanced."
         }
         quickCapture.onCaptured = { [weak self] in self?.overdue.refresh() }
+        serviceProvider.present = { [weak self] draft in self?.presentCapture(draft) }
+        NSApp.servicesProvider = serviceProvider
+        NSUpdateDynamicServices()
 
         overdue.isEnabled = { [weak model] in model?.dockBadge ?? false }
         overdue.target = { [weak self] in self?.commandTarget }

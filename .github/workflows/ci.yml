@@ -15,6 +15,10 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  GOLANGCI_LINT_VERSION: v2.14.0
+  GOVULNCHECK_VERSION: v1.10.0
+
 jobs:
   checks:
     name: Checks (${{ matrix.os }})
@@ -42,6 +46,60 @@ jobs:
 
       - name: Test
         run: go test ./...
+
+  # What `just lint` runs, and what no other check covers: the module files
+  # say exactly what the code imports, and nothing it calls has a known
+  # vulnerability. govulncheck is reachability-aware, and scans the standard
+  # library of the Go version go.mod declares.
+  lint:
+    name: Lint and vulnerabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install pinned tools
+        run: |
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@"$GOLANGCI_LINT_VERSION"
+          go install golang.org/x/vuln/cmd/govulncheck@"$GOVULNCHECK_VERSION"
+
+      - name: Lint
+        run: golangci-lint run ./...
+
+      - name: Module files are tidy
+        if: ${{ !cancelled() }}
+        run: go mod tidy -diff
+
+      - name: Known vulnerabilities
+        if: ${{ !cancelled() }}
+        run: govulncheck ./...
+
+  # The README animation is recorded from TestReadmeDemo, so a change to what
+  # the app draws must re-record it with `just readme-media`.
+  readme-media:
+    name: README animation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.2
+
+      - name: Check the committed animation is current
+        run: ./scripts/readme_media.sh --check
 
   macos-shell:
     name: macOS desktop shell

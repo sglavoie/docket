@@ -176,7 +176,7 @@ func (m *Model) pasteUnder(parent0, anchor string, anchorIsFirst bool, lines []p
 	fail := func(err error) {
 		now := m.now()
 		for _, u := range inv {
-			m.tree.Apply(u, now)
+			_, _ = m.tree.Apply(u, now)
 		}
 		for _, id := range made {
 			m.tree.Forget(id)

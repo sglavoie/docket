@@ -463,12 +463,6 @@ func (m *Model) whereFlat(r *outline.Row) (string, *outline.Row) {
 	return "", nil
 }
 
-// placeName is a place as one line: a list by its name, a row under the rows
-// above it.
-func (m *Model) placeName(p place) string {
-	return strings.Join(m.placeParts(p), " › ")
-}
-
 // placeParts names a place from the project down. A heading drops its
 // colon, as it does wherever else a path is written: the mark between two
 // names already says one holds the other.

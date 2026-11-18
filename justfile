@@ -22,6 +22,19 @@ check:
     go vet ./...
     go test ./...
 
+# golangci-lint, as configured in .golangci.yml, and tidy module files
+lint:
+    golangci-lint run ./...
+    go mod tidy -diff
+
+# The hooks path is relative, so each worktree runs the hook its own branch
+# carries, and v1's checkout keeps v1's.
+
+# Run scripts/hooks/pre-push (just check, just lint) before every push
+install-hooks:
+    git config core.hooksPath scripts/hooks
+    @echo "Git hooks run from each checkout's scripts/hooks"
+
 # Open ./dev.db, seeding it with a heavy outline the first time
 run: build
     test -e dev.db || go run ./tools/seed -db dev.db
@@ -61,6 +74,10 @@ release version *flags:
 # Re-record the README animation (docs/images/demo.svg) from TestReadmeDemo; needs uv
 readme-media:
     ./scripts/readme_media.sh
+
+# Screenshot the everyday screens into ./shots (or DIR) for a taste pass; needs vhs
+shots dir="shots" appearance="dark" size="wide":
+    ./scripts/shots.sh {{ dir }} {{ appearance }} {{ size }}
 
 # Fail when docs/images/demo.svg no longer matches what the app draws
 readme-media-check:

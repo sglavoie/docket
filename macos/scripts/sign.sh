@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 #
-# Sign Docket.app inside out: the bundled docket, then the app with its
-# entitlements file. By default with this
+# Sign Docket.app inside out: the bundled docket, then each extension and
+# the app, each with its entitlements file. By default with this
 # Mac's first Apple Development identity, else ad-hoc; either runs on this Mac
 # only. A certificate gives the app a designated requirement that survives a
 # rebuild, so privacy grants (Documents) are asked for once
@@ -68,6 +68,11 @@ bundled="$app/Contents/Resources/bin/docket"
 if [ -f "$bundled" ]; then
 	codesign "$@" --identifier io.github.sglavoie.docket.cli "$bundled"
 fi
+for extension in "$app"/Contents/PlugIns/*.appex; do
+	[ -d "$extension" ] || continue
+	name=$(basename "$extension" .appex)
+	codesign "$@" --entitlements "$macos_dir/$name/$name.entitlements" "$extension"
+done
 codesign "$@" --entitlements "$macos_dir/DocketApp/Resources/Docket.entitlements" "$app"
 codesign --verify --strict --verbose=1 "$app"
 

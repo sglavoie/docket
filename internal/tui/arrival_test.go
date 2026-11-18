@@ -927,7 +927,8 @@ func TestCursorRowTint(t *testing.T) {
 			}
 			h.press("esc", "tab")
 			check("")
-			for _, line := range h.m.sideLines(sidebarCols, 15) {
+			lines, _ := h.m.sideView(sidebarCols, 15)
+			for _, line := range lines {
 				if strings.Contains(line, "▌") {
 					cells := uv.NewStyledString(line).Lines(ansi.WcWidth)[0]
 					for _, cell := range cells {

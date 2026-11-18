@@ -10,3 +10,4 @@ macos/.cache/
 macos/build/
 macos/DerivedData/
 *.xcodeproj
+/shots/

@@ -116,7 +116,9 @@ just mac-app Release
 With a Developer ID, both binaries are signed with the hardened runtime and a
 secure timestamp, which notarization requires. With `DOCKET_NOTARY_PROFILE` too,
 the app is zipped, submitted with `notarytool --wait`, and the ticket stapled.
-The app needs no entitlements: it only spawns `docket`.
+Its one entitlement lets the hardened runtime send the Apple Events ⌘K in quick
+capture asks the app in front with; the Share extension is sandboxed and holds
+nothing else. `sign.sh` signs each extension with its own entitlements file.
 
 ## Using the app
 
@@ -179,6 +181,35 @@ empty Enter closes it.
 An open Docket window sees the row at its next key, or within a minute. Change
 or clear the shortcut in Settings › Shortcuts; it is stored as
 `docketCaptureHotKey`, spelled like `docketHotKey`.
+
+### Capture from other apps
+
+Each of these opens quick capture holding a line, and none of them sends it:
+the line is read, finished and sent with Enter, so nothing from outside adds a
+row unseen. A line typed and not yet sent is kept, and what arrives goes after
+it. Docket draws a web address in a row as a link that `gl` opens, so an address
+goes into the line as it is; with a title in front, the title is selected, so
+typing replaces it.
+
+- **⌘K in quick capture** adds what the app in front shows: the Safari, Chrome,
+  Brave or Edge tab (its title and address), the messages selected in Mail
+  (the first subject and a `message://` link for each) or the items selected in
+  Finder (their paths). An empty line takes the title too; a typed one keeps
+  its words and gains the links. The hint names what ⌘K adds, and only when the
+  app in front is one it reads. The first ⌘K per app asks macOS for permission
+  to automate it; a refusal is named on the panel, and is changed in System
+  Settings › Privacy & Security › Automation. `gl` opens web addresses only, so a
+  Mail link or a path stays text to copy.
+- **Services › Capture to Docket** takes the selected text in any app. A
+  selection that is only a web address leaves the title to type.
+- **Share › Docket**, from Safari, Finder, Preview and any app with a Share
+  menu, takes the page's title and address, the files' paths, or the text.
+  `DocketShare.appex` shows nothing itself: it opens a `docket://capture` link.
+- **`docket://capture?text=…&url=…`** from a script, a Shortcut or
+  `open "docket://capture?text=Call%20the%20bank%20@fri"`: the text, then each
+  `url` (repeatable). With neither it opens the panel as it was;
+  `docket://show` shows Docket. A link that starts Docket.app waits for its
+  first session to find Docket before the panel opens.
 
 ### Overdue count
 
@@ -307,6 +338,9 @@ DocketApp/Ghostty/          runtime glue, config, surface view (ported, trimmed)
 DocketApp/Shell/            window, status item, hotkeys, preferences, quick capture,
                             Docket resolution, docket add / ls runs
 DocketApp/Resources/        Info.plist, entitlements, docket-launch, Assets.xcassets
+DocketShare/                Share extension: hands what was shared to quick capture
+Shared/                     docket:// links, capture lines, the share hand-off;
+                            compiled into the app and the extension
 DocketAppTests/             XCTest
 ```
 

@@ -1,0 +1,29 @@
+version: 2
+
+# v2 is not the default branch yet, so each update names it.
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    target-branch: v2
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+    groups:
+      gomod-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: v2
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+    groups:
+      actions-minor-patch:
+        update-types:
+          - minor
+          - patch

@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+
+# Pre-push gate: what CI's checks and lint jobs hold, run before the push
+# leaves the machine. Read-only; it never rewrites a file.
+# Install with `just install-hooks`.
+
+set -eu
+
+cd "$(git rev-parse --show-toplevel)"
+
+just check
+if command -v golangci-lint >/dev/null 2>&1; then
+	just lint
+else
+	echo "pre-push: golangci-lint is not installed, so lint is left to CI" >&2
+fi

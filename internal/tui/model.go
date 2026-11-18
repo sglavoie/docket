@@ -296,7 +296,7 @@ func newModel(tree *outline.Tree, backend Backend, folds map[string]bool, now fu
 	}
 	m.past = map[string][]string{}
 	if v, err := backend.Meta(metaPrompts); err == nil && v != "" {
-		json.Unmarshal([]byte(v), &m.past)
+		_ = json.Unmarshal([]byte(v), &m.past)
 	}
 	m.syncDir, _ = backend.Meta(metaSyncDir)
 	m.ensureFixed(inboxID, "Inbox")
@@ -332,7 +332,7 @@ func (m *Model) keepHistory() {
 		m.undo = m.undo[n-undoDepth:]
 	}
 	if b, err := json.Marshal(history{m.undo, m.redo}); err == nil {
-		m.backend.SetMeta(metaHistory, string(b))
+		_ = m.backend.SetMeta(metaHistory, string(b))
 	}
 }
 
@@ -356,7 +356,7 @@ func (m *Model) remember(kind, line string) {
 	}
 	m.past[kind] = lines
 	if b, err := json.Marshal(m.past); err == nil {
-		m.backend.SetMeta(metaPrompts, string(b))
+		_ = m.backend.SetMeta(metaPrompts, string(b))
 	}
 }
 
@@ -501,7 +501,7 @@ func (m *Model) adoptOldFilters() {
 			return
 		}
 	}
-	m.backend.SetMeta(metaFilters, "")
+	_ = m.backend.SetMeta(metaFilters, "")
 }
 
 // syncStart begins exchanging operations with the other machines. What is
@@ -599,7 +599,7 @@ func (m *Model) syncSettle() {
 // syncQuit is the last pass, done whole before the program ends.
 func (m *Model) syncQuit() {
 	if m.syncDir != "" {
-		m.backend.Sync(m.syncDir)
+		_, _ = m.backend.Sync(m.syncDir)
 	}
 }
 
@@ -1092,7 +1092,7 @@ func (m *Model) apply(ops []outline.Op) ([]outline.Op, error) {
 		undo, err := m.tree.Apply(op, now)
 		if err != nil {
 			for _, u := range inv {
-				m.tree.Apply(u, now)
+				_, _ = m.tree.Apply(u, now)
 			}
 			return nil, err
 		}
@@ -1112,7 +1112,7 @@ func (m *Model) save(ops, inv []outline.Op) bool {
 	}
 	now := m.now()
 	for _, u := range inv {
-		m.tree.Apply(u, now)
+		_, _ = m.tree.Apply(u, now)
 	}
 	m.msg = "not saved, nothing changed: " + err.Error()
 	return false

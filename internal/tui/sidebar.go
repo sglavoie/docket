@@ -1283,11 +1283,6 @@ func (m *Model) sideFit() int {
 	return min(w, sidebarAlone)
 }
 
-func (m *Model) sideLines(w, h int) []string {
-	lines, _ := m.sideView(w, h)
-	return lines
-}
-
 // sideView draws the sidebar at exactly w columns and h rows, and places
 // the caret when a project's name is being typed in its entry.
 func (m *Model) sideView(w, h int) ([]string, *tea.Cursor) {
