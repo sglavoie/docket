@@ -85,6 +85,7 @@ These are the only commands; everything else is done in the outline.
 just check   # fmt, vet, test
 just run     # against ./dev.db, never the real database
 just lint    # golangci-lint and tidy module files
+just stats   # the last 28 days from the log, read-only: done, picks, carried, added
 just readme-media  # re-record docs/images/demo.svg from TestReadmeDemo; needs uv
 just shots   # screenshot the everyday screens for a taste pass; needs vhs
 just install-hooks # run just check and just lint before every push

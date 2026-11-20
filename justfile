@@ -45,6 +45,11 @@ seed tasks="6000" projects="48":
     rm -f dev.db dev.db-wal dev.db-shm
     go run ./tools/seed -db dev.db -tasks {{ tasks }} -projects {{ projects }}
 
+# Print the last 28 days from the log: done, picks, carried, added (read-only;
+# $DOCKET_DB, else the real database)
+stats:
+    go run ./tools/stats
+
 # Build and vendor the pinned GhosttyKit.xcframework for the macOS app
 mac-ghosttykit:
     ./macos/scripts/build-ghosttykit.sh
