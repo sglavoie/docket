@@ -134,7 +134,15 @@ func (m *Model) backupCommand(arg string) {
 		m.msg = "backup copies are off"
 		return
 	case arg != "":
-		dir := expandHome(arg)
+		dir, err := folderArg(arg)
+		if err != "" {
+			m.msg = "no backup copy: " + err
+			return
+		}
+		if info, err := os.Stat(filepath.Dir(dir)); err != nil || !info.IsDir() {
+			m.msg = "no backup copy: " + tilde(filepath.Dir(dir)) + " is not a folder; the copies' folder goes in one that exists"
+			return
+		}
 		if inside(dir, m.syncDir) {
 			m.msg = "no backup copy: " + tilde(dir) + " shares the sync folder, which the database never goes in"
 			return
@@ -155,6 +163,32 @@ func (m *Model) backupCommand(arg string) {
 		m.backupDir = m.backupHome
 	}
 	m.copyStart(true, true)
+}
+
+// folderArg reads a folder typed on the command line as a path. A shell's
+// escapes, as a path pasted from a terminal has them, are taken off, since
+// no shell reads the line, and a leading ~/ is the home folder. A folder
+// that is not then absolute is refused: Docket.app and a terminal start in
+// different folders, so a relative one would name two places.
+func folderArg(arg string) (string, string) {
+	dir := expandHome(unescape(arg))
+	if !filepath.IsAbs(dir) {
+		return "", arg + " is not a full path; write it from / or ~/"
+	}
+	return filepath.Clean(dir), ""
+}
+
+// unescape takes the backslash off each character a shell escapes, as
+// Mobile\ Documents or com\~apple\~CloudDocs.
+func unescape(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\\' && i+1 < len(s) {
+			i++
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
 }
 
 // expandHome reads a leading ~/ as the home folder.

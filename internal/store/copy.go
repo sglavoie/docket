@@ -83,8 +83,13 @@ func (j *CopyJob) run() error {
 	if _, err := j.s.db.Exec(`VACUUM INTO ?`, name); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(j.dir, 0o700); err != nil {
-		return err
+	// The folder is made if its parent is there, and the device's folder
+	// in it, but nothing further up: a folder misnamed, or a drive gone,
+	// fails here rather than becoming a local tree no one looks in.
+	for _, d := range []string{filepath.Dir(j.dir), j.dir} {
+		if err := os.Mkdir(d, 0o700); err != nil && !os.IsExist(err) {
+			return err
+		}
 	}
 	// Written beside its final name and renamed, so a copy that exists is
 	// always whole and a syncing tool never carries half of one.

@@ -2283,7 +2283,11 @@ func (m *Model) command(line string) {
 			m.syncDir, m.syncNote, m.syncFailed = "", "", false
 			m.msg = "sync is off"
 		case dir != "":
-			dir = expandHome(dir)
+			var bad string
+			if dir, bad = folderArg(dir); bad != "" {
+				m.msg = "sync failed: " + bad
+				return
+			}
 			if inside(dir, m.backupDir) {
 				m.msg = "sync failed: " + tilde(dir) + " shares the backup copies' folder, and the database never goes in a sync folder"
 				return

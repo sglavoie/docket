@@ -146,6 +146,14 @@ account, or two databases on one Mac, never write the same file.
 - `:backup` copies now and says where; `:backup folder` names the folder,
   kept on this machine, and copies to it; `:backup off` stops the copies
   until `:backup` turns them on again, at the default folder.
+- A folder named to `:backup` or `:sync` is read as a path, not by a shell:
+  a backslash before a character is dropped, so `Mobile\ Documents` pasted
+  from a terminal names `Mobile Documents`, and a leading `~/` is the home
+  folder. One that is not then a full path is refused, since Docket.app and
+  a terminal start in different folders. A backup folder whose parent does
+  not exist is refused, and a copy makes only the folder and the device's
+  folder in it, so a misnamed folder or a drive signed out fails on the
+  status line instead of becoming a local tree no one looks in.
 - The folder is never the sync folder, inside it, or around it, since the
   database never goes there: `:backup` and `:sync` each refuse the other's
   folder, and a default that falls inside the sync folder is said and not

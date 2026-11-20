@@ -103,3 +103,24 @@ func TestCopyGoesUnderTheDeviceAndSkipsWhatIsUnchanged(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestCopyMakesNoFolderAboveTheOneNamed(t *testing.T) {
+	dir := t.TempDir()
+	s, err := Open(filepath.Join(dir, "docket.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	// As iCloud Drive signed out: the folder named is gone with its parent.
+	gone := filepath.Join(dir, "drive", "Docket Backups")
+	job, err := s.CopyBegin(gone, "2026-11-20", 2, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CopyEnd(job.Run()); err == nil {
+		t.Fatal("a copy went into a folder whose parent is not there")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "drive")); err == nil {
+		t.Fatal("the missing parent was made")
+	}
+}

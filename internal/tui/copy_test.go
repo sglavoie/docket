@@ -185,3 +185,47 @@ func TestAFailedCopyIsSaidAndWorkGoesOn(t *testing.T) {
 	h.press("o", `"Still works"`, "esc")
 	h.want("▌ · Still works")
 }
+
+func TestBackupFolderIsReadAsAPathNotAShellWord(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, "Mobile Documents"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	h := start(t)
+	h.press("o", `"Alpha"`, "esc")
+
+	// A path pasted from a shell keeps its escapes off.
+	pasted := filepath.Join(root, `Mobile\ Documents`, `com\~apple\~CloudDocs`)
+	want := filepath.Join(root, "Mobile Documents", "com~apple~CloudDocs")
+	h.press(":", `"backup `+pasted+`"`, "enter")
+	h.settle()
+	if h.m.backupDir != want || !h.copied(want, "Alpha") {
+		t.Fatalf("folder = %q, msg = %q", h.m.backupDir, h.m.msg)
+	}
+	if _, err := os.Stat(filepath.Join(root, `Mobile\ Documents`)); err == nil {
+		t.Fatal("a folder was made with the escapes in its name")
+	}
+
+	// A relative folder names a different place from Docket.app and from a
+	// terminal, so it is refused, and the folder named before stays.
+	h.press(":", `"backup copies"`, "enter")
+	if !failing(h.m.msg) || h.m.backupDir != want {
+		t.Fatalf("msg = %q, folder = %q", h.m.msg, h.m.backupDir)
+	}
+
+	// A folder whose parent is not there is a typo, not a tree to make.
+	missing := filepath.Join(root, "Mobile Documentz", "Docket Backups")
+	h.press(":", `"backup `+missing+`"`, "enter")
+	if !failing(h.m.msg) || h.m.backupDir != want {
+		t.Fatalf("msg = %q, folder = %q", h.m.msg, h.m.backupDir)
+	}
+	if _, err := os.Stat(filepath.Dir(missing)); err == nil {
+		t.Fatal("a missing parent was made")
+	}
+
+	// :sync reads its folder the same way.
+	h.press(":", `"sync shared"`, "enter")
+	if !failing(h.m.msg) || h.m.syncDir != "" {
+		t.Fatalf("msg = %q, sync = %q", h.m.msg, h.m.syncDir)
+	}
+}
