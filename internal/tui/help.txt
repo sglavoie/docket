@@ -82,6 +82,7 @@ Esc  j	back to the rows, from anywhere or past the last line; one undo
 !	flag; `-!` removes it on the stamp line
 ^	pin rows first among their siblings, and unpin; `-^` on the stamp line
 R	note where the row's work was left off; read back on the row and on `$doing`
+$doing again	with another row already doing, says how many are: `/$doing` lists them
 -#tag -@ -@@ -*	remove fields on the stamp line; `-~` the colour, `-##` the context
 
 == Days
@@ -98,6 +99,8 @@ Ctrl+A Ctrl+X	a day later, earlier: the deadline, else the start; `7 Ctrl+A` a w
 ##home	the row's one context, drawn as [home] before its text
 $state	`$open` `$doing` `$waiting` `$done` `$canceled` `$parked` `$note`
 · 1h40m	after a doing row: how long since it went doing, warning past its #est; closing it says what it took
+usually 3 a day	in Today's header: the median done on the 28 days before, warning while more is left to do
+picked … ago	on a pick carried three days or more with no task under it: `Enter`, then `o` writes a smaller first step
 ~teal ~#3fa7c4	a project's colour, by name or hex, in its entry, row and header
 
 == Defaults

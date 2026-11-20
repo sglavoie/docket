@@ -217,6 +217,8 @@ type Model struct {
 	rowNames   []entry        // every other live row with text, for the pickers
 	parked     int
 	doneToday  int                 // rows closed as done today, derived in scan
+	usualDay   int                 // the median done on the days before today that did any, 0 with too few, derived in scan
+	doing      int                 // rows doing, derived in scan
 	closing    closing             // what this key closed as done, said once the key is done
 	resumed    string              // the left-off note of a row this key set doing, said once the key is done
 	overdue    int                 // tasks still to do past their deadline, out of parked work, derived in scan
@@ -686,13 +688,28 @@ func (m *Model) sayDayDone(left, done int) {
 	m.msg = strings.Join(said, " · ")
 }
 
+// sayDoing counts the rows in hand when a change sets one more doing, after
+// anything a left-off note said. It asks nothing and changes nothing.
+func (m *Model) sayDoing() {
+	if !m.closing.started || m.doing < 2 || failing(m.msg) {
+		return
+	}
+	said := strconv.Itoa(m.doing) + " rows doing: /$doing lists them"
+	if m.msg != "" {
+		said = m.msg + " · " + said
+	}
+	m.msg = said
+}
+
 // closing gathers the rows a key's recorded changes closed as done, and,
-// for a row that was doing, when it went doing.
+// for a row that was doing, when it went doing. It also notes a row set
+// doing that was not.
 type closing struct {
-	rows  map[string]bool
-	doing bool
-	since int64
-	line  sigil.Line
+	rows    map[string]bool
+	doing   bool
+	since   int64
+	line    sigil.Line
+	started bool
 }
 
 // note reads one recorded group: a row set done that was not done before.
@@ -710,6 +727,9 @@ func (c *closing) note(m *Model, ops, inv []outline.Op) {
 	}
 	for _, op := range ops {
 		state, ok := before[[2]string{op.Row, sigil.FieldState}]
+		if op.Kind == outline.Set && op.Field == sigil.FieldState && op.Value == sigil.Doing && ok && state != sigil.Doing {
+			c.started = true
+		}
 		if op.Kind != outline.Set || op.Field != sigil.FieldState || op.Value != sigil.Done || !ok || state == sigil.Done || c.rows[op.Row] {
 			continue
 		}
@@ -2058,6 +2078,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.resumed = ""
 		}
+		m.sayDoing()
 		m.sayDayDone(left, done)
 		if m.quit {
 			m.syncQuit()

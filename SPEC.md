@@ -255,7 +255,13 @@ An outline counts every such row under its root, folded or not; a list counts
 its held rows and a filter its held matches, excluding context ancestors.
 Zero tasks says nothing. Today is the list that gets finished, so it alone
 goes on to count its done rows, as `3 to do · 2 done`, and says `all 5 done`
-when nothing is left. None of Waiting is the user's to do, so it counts its
+when nothing is left. Beside that, Today names the usual day, read from the
+outline's own record: the median of the rows done on each of the 28 days
+before today that finished anything, by the day `changed` names, the lower
+of the middle two when there is an even number of them. It is said once
+five such days exist, as `7 to do · 2 done · usually 3 a day`, in the
+warning colour while the picks still to do exceed it and dim otherwise; it
+informs and refuses no pick. None of Waiting is the user's to do, so it counts its
 rows still waiting instead, as `270 waiting`. The Inbox is emptied by
 filing, so it counts what the sidebar counts beside it, every row in it not
 yet done or canceled, notes included, as `24 to file`; one number is never
@@ -557,6 +563,13 @@ is opened, so a carried row unpicked there keeps its place, dimmed; `t`
 picking a row there for today moves it to the end of the day's own rows,
 since the act is the user's. `J` and `K` do not cross the rule and say so,
 as `carried picks stay below the line: t t picks it for today`.
+
+A pick that will not start is most often a first step too big. While the
+cursor in Today is on a pick carried three days or more with no task under
+it, at any depth, and nothing else is to be said, the status line says it
+dimmed, as `picked 5 days ago: Enter, then o writes a smaller first step`;
+a row's left-off note is said before it. Nothing moves and nothing is
+stored.
 
 ### Bottom line
 
@@ -1085,7 +1098,9 @@ The note is read back, never drawn on the row (rule 6): whenever the
 cursor is on a row that has one and nothing else is to be said, the status
 line says it dimmed, as `left off: Next: reproduce it with an expired
 token`, and a change that sets a row `doing`, by a stamp or its line, says
-it once as the change's message. `R` is the only way to write it (rule 3);
+it once as the change's message. A change that sets a row `doing` while
+another is already doing says how many are, after any note, as `3 rows
+doing: /$doing lists them`; it asks nothing and changes nothing. `R` is the only way to write it (rule 3);
 the body is for what the row is, the note for where its work stands.
 
 ### Saved filters and review
@@ -2137,7 +2152,11 @@ a row unseen.
 30. **Cue.** The outline speaks first and makes time seen. A `doing` row
    says how long it has been doing, or since which day, in the warning
    colour once past its `#est`; closing one says what it took beside its
-   `#est`. Nothing is stored and no key is added. *In progress.*
+   `#est`. Today's header names the usual day, from the days before it,
+   in the warning colour while the day holds more; setting a second row
+   `doing` says how many are; a pick carried three days with no task under
+   it names the way to a smaller first step. Nothing is stored and no key
+   is added. *In progress.*
 
 Not planned: reminders, attachments, a details panel (a body is read in the
 pane, not beside it), import from v1, any

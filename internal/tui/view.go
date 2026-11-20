@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -566,6 +567,19 @@ func (m *Model) paneHeader(w int, ruler string) string {
 	if summary != "" {
 		tail += c.dim + "  · " + summary + sgrReset
 	}
+	if usual := m.usualDay; m.at.list == kindToday && usual > 0 {
+		// The day planned beside the day the outline's own record holds,
+		// warned of while what is left to do is more than that.
+		said, color := "usually "+strconv.Itoa(usual)+" a day", c.dim
+		if m.picksLeft() > usual {
+			color = c.warn
+		}
+		if summary != "" {
+			tail += c.dim + " · " + sgrReset + color + said + sgrReset
+		} else {
+			tail += c.dim + "  · " + sgrReset + color + said + sgrReset
+		}
+	}
 	if m.at.query != "" {
 		tail += "  " + c.accent + "/ " + m.at.query + sgrReset
 		if m.at.flat {
@@ -845,6 +859,10 @@ func (m *Model) statusLine(w int) (string, int) {
 	case !m.sideFocus && len(m.picked) == 0 && m.sweep == "" && m.pending() == "" && m.resumeNote() != "":
 		// Where the row's work was left off, read whenever the cursor is on it.
 		left = "left off: " + m.resumeNote()
+	case !m.sideFocus && len(m.picked) == 0 && m.sweep == "" && m.pending() == "" && m.stuckPick() > 0:
+		// A pick carried for days with nothing under it is most often a
+		// first step too big to take.
+		left = "picked " + strconv.Itoa(m.stuckPick()) + " days ago: Enter, then o writes a smaller first step"
 	case m.sideFocus:
 		left = "j k choose · Enter work in it"
 		if m.sel.kind == kindProject {
@@ -903,6 +921,41 @@ func (m *Model) resumeNote() string {
 		return r.Fields[fieldResume]
 	}
 	return ""
+}
+
+// stuckPick is how many days ago the cursor's row was picked, when Today
+// shows it, it was carried three days or more, and no task is under it;
+// 0 otherwise.
+func (m *Model) stuckPick() int {
+	if m.at.list != kindToday || m.cursor < 0 || m.cursor >= len(m.vis) {
+		return 0
+	}
+	id := m.vis[m.cursor].id
+	r := m.tree.Row(id)
+	if r == nil || !carried(r.Fields, sigil.FromFields(r.Fields), m.today().Format("2006-01-02")) {
+		return 0
+	}
+	t := m.today()
+	pick, err := time.ParseInLocation("2006-01-02", r.Fields[sigil.FieldToday], t.Location())
+	if err != nil {
+		return 0
+	}
+	midnight := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+	days := int(math.Round(midnight.Sub(pick).Hours() / 24))
+	if days < 3 || m.taskUnder(id) {
+		return 0
+	}
+	return days
+}
+
+// taskUnder reports whether any row under id, at any depth, is a task.
+func (m *Model) taskUnder(id string) bool {
+	for _, kid := range m.tree.Children(id) {
+		if m.tree.Row(kid).Fields[sigil.FieldState] != "" || m.taskUnder(kid) {
+			return true
+		}
+	}
+	return false
 }
 
 // pending is the keys typed so far that wait for more: a count, an operator,

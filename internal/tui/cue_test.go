@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -116,4 +117,132 @@ func TestClosingSaysWhatItTook(t *testing.T) {
 	// A row that was not doing says only the tally.
 	h.press("gg", "o", `"Fresh"`, "esc", "x")
 	h.wantStatus("2 done today")
+}
+
+// doneOn pastes n rows already done, as rows closed daysAgo days before
+// the harness's day: a pasted row's changed is when it was made.
+func (h *harness) doneOn(daysAgo, n int) {
+	h.t.Helper()
+	now := h.clock
+	h.clock = now.AddDate(0, 0, -daysAgo)
+	var rows []string
+	for i := range n {
+		rows = append(rows, fmt.Sprintf("Done %d-%d $done", daysAgo, i))
+	}
+	h.pasteText(strings.Join(rows, "\n"))
+	h.clock = now
+	h.tick()
+}
+
+func TestTodayNamesTheUsualDay(t *testing.T) {
+	h := start(t).wide()
+	h.pasteText("Pick 1 $open\nPick 2 $open\nPick 3 $open\nPick 4 $open\nPick 5 $open")
+	// Four days in the 28 before today did anything; a day before them
+	// is out of the reckoning, so nothing is said yet.
+	h.doneOn(29, 5)
+	h.doneOn(1, 2)
+	h.doneOn(2, 2)
+	h.doneOn(3, 4)
+	h.doneOn(4, 4)
+	h.press("gg", "t", "j", "t", "f", `"Today"`, "enter")
+	if got := h.header(); got != "Today  · 2 to do" {
+		t.Fatalf("too little history: %q", got)
+	}
+	// A fifth day: the median of 1, 2, 2, 4, 4.
+	h.press("f", `"Projects"`, "enter")
+	h.doneOn(28, 1)
+	h.press("f", `"Today"`, "enter")
+	if got := h.header(); got != "Today  · 2 to do · usually 2 a day" {
+		t.Fatalf("five days: %q", got)
+	}
+	if raw := h.raw(); !strings.Contains(raw, darkPalette.dim+"usually 2 a day") {
+		t.Fatalf("a day within the usual is not dim:\n%q", raw)
+	}
+	// More picked than a day usually holds is said in the warning colour.
+	h.press("f", `"Projects"`, "enter", "gg", "j", "j", "j", "t", "j", "t", "j", "t", "f", `"Today"`, "enter")
+	if got := h.header(); got != "Today  · 5 to do · usually 2 a day" {
+		t.Fatalf("over: %q", got)
+	}
+	if raw := h.raw(); !strings.Contains(raw, darkPalette.warn+"usually 2 a day") {
+		t.Fatalf("a day over the usual is not in the warning colour:\n%q", raw)
+	}
+	// Closing picks brings it back under.
+	h.press("gg", "x", "j", "x", "j", "x")
+	if got := h.header(); got != "Today  · 2 to do · 3 done · usually 2 a day" {
+		t.Fatalf("under again: %q", got)
+	}
+	if raw := h.raw(); !strings.Contains(raw, darkPalette.dim+"usually 2 a day") {
+		t.Fatalf("a day back under the usual is not dim:\n%q", raw)
+	}
+	// The day turning reads today's three in, and the oldest day out.
+	h.clock = h.clock.AddDate(0, 0, 1)
+	h.tick()
+	h.press("f", `"Today"`, "enter")
+	if got := h.header(); got != "Today  · 2 to do · usually 3 a day" {
+		t.Fatalf("the next day: %q", got)
+	}
+}
+
+func TestSecondDoingRowIsCounted(t *testing.T) {
+	h := project(t).wide()
+	h.press("o", `"Third"`, "esc")
+	// One row doing says nothing of it.
+	h.press("gg", "j", "$", `"doing"`, "enter")
+	if got := h.status(); strings.Contains(got, "rows doing") {
+		t.Fatalf("one row doing said %q", got)
+	}
+	// A second one says how many are.
+	h.press("j", "$", `"doing"`, "enter")
+	h.wantStatus("2 rows doing: /$doing lists them")
+	if got := h.rows(); !strings.Contains(got, "Second") || !strings.Contains(got, "Third") {
+		t.Fatalf("a row moved:\n%s", got)
+	}
+	// Undo says only what it undid.
+	h.press("u")
+	if got := h.status(); strings.Contains(got, "rows doing") {
+		t.Fatalf("undo said %q", got)
+	}
+	// After a left-off note, and from an edited line too.
+	h.press("R", `"Next: the tests"`, "enter", "$", `"doing"`, "enter")
+	h.wantStatus("left off: Next: the tests · 2 rows doing: /$doing lists them")
+	h.press("j", "A", `" $doing"`, "esc")
+	h.wantStatus("3 rows doing: /$doing lists them")
+	// A change that sets no row doing says nothing of the rows in hand.
+	h.press("k", "#", `"home"`, "enter")
+	if got := h.status(); strings.Contains(got, "rows doing") {
+		t.Fatalf("a tag said %q", got)
+	}
+}
+
+func TestCarriedPickNamesASmallerStep(t *testing.T) {
+	h := start(t).wide()
+	day := h.clock
+	h.clock = day.AddDate(0, 0, -3)
+	h.press("o", `"Project"`, "enter", "tab", `"Big"`, "enter", `"Split"`, "enter", "tab", `"A step $open"`, "esc")
+	h.press("gg", "j", "t", "j", "t")
+	// Carried two days, it says nothing.
+	h.clock = day.AddDate(0, 0, -1)
+	h.tick()
+	h.press("f", `"Today"`, "enter", "gg")
+	if h.on() != "Big" || h.status() != "" {
+		t.Fatalf("two days on %q said %q", h.on(), h.status())
+	}
+	// Three days, it names a smaller first step.
+	h.clock = day
+	h.tick()
+	h.press("f", `"Today"`, "enter", "gg")
+	h.wantStatus("picked 3 days ago: Enter, then o writes a smaller first step")
+	// A pick with a task under it has its first step.
+	h.press("j")
+	if h.on() != "Split" || h.status() != "" {
+		t.Fatalf("a pick with a task under it, %q, said %q", h.on(), h.status())
+	}
+	// Out of Today, it says nothing.
+	h.press("f", `"Projects"`, "enter", "gg", "j")
+	if h.on() != "Big" || h.status() != "" {
+		t.Fatalf("the outline's %q said %q", h.on(), h.status())
+	}
+	// Where its work was left off is said first.
+	h.press("R", `"Next: call them"`, "enter", "f", `"Today"`, "enter", "gg")
+	h.wantStatus("left off: Next: call them")
 }

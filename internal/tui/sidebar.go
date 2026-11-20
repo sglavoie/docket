@@ -278,6 +278,24 @@ func (m *Model) changedAt(id string) int64 {
 	return r.Created
 }
 
+// usualDays is how many days before today the usual day is read from, and
+// usualFrom how many of them must have finished something for it to be said.
+const (
+	usualDays = 28
+	usualFrom = 5
+)
+
+// usual is the median of the counts of the days that finished anything, the
+// lower of the middle two when there is an even number of them, or 0 when
+// fewer than usualFrom days did.
+func usual(doneOn map[string]int) int {
+	if len(doneOn) < usualFrom {
+		return 0
+	}
+	counts := slices.Sorted(maps.Values(doneOn))
+	return counts[(len(counts)-1)/2]
+}
+
 // scanKey is what a scan's answer depends on: the tree as it stood, and the
 // minute it was read in.
 type scanKey struct {
@@ -304,7 +322,14 @@ func (m *Model) scan() {
 	tagUse := map[string]int{}
 	contextUse := map[string]int{}
 	picked := 0
-	m.parked, m.doneToday, m.overdue = 0, 0, 0
+	m.parked, m.doneToday, m.overdue, m.doing = 0, 0, 0, 0
+	// The usual day is read from the days before today that finished
+	// anything, by the day each row's changed names.
+	before := make(map[string]int, usualDays)
+	for i := 1; i <= usualDays; i++ {
+		before[today.AddDate(0, 0, -i).Format("2006-01-02")] = 0
+	}
+	doneOn := make(map[string]int, usualDays)
 	m.headings = m.headings[:0]
 	m.rowNames = m.rowNames[:0]
 	m.outlineOrder = map[string]int{}
@@ -333,8 +358,15 @@ func (m *Model) scan() {
 			path += " › " + label
 		}
 		*touch = max(*touch, r.Modified)
-		if l.State == sigil.Done && m.dayOf(m.changedAt(id)) == day {
-			m.doneToday++
+		if l.State == sigil.Done {
+			if on := m.dayOf(m.changedAt(id)); on == day {
+				m.doneToday++
+			} else if _, ok := before[on]; ok {
+				doneOn[on]++
+			}
+		}
+		if l.State == sigil.Doing {
+			m.doing++
 		}
 		for _, tag := range l.Tags {
 			tagUse[tag]++
@@ -429,6 +461,7 @@ func (m *Model) scan() {
 	}
 
 	m.totals[""] = rowTotals{under: all}
+	m.usualDay = usual(doneOn)
 	m.sortToday(lists[kindToday], m.missed, m.closedOf(lists[kindToday]))
 	m.inToday = make(map[string]bool, len(lists[kindToday]))
 	for _, id := range lists[kindToday] {
