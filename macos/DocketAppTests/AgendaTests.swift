@@ -47,12 +47,15 @@ final class AgendaTests: XCTestCase {
         monitor.store = DocketAgendaStore(url: url)
         var redraws = 0
         monitor.reloadWidgets = { redraws += 1 }
-        let first = DocketAgendaSnapshot(today: [DocketRow(text: "A", place: "P")], overdue: [], readAt: Date())
+        // Noon on a fixed day: a minute later is the same day, wherever and
+        // whenever the test runs, so only the rows can ask for a redraw.
+        let noon = Date(timeIntervalSince1970: 43_200)
+        let first = DocketAgendaSnapshot(today: [DocketRow(text: "A", place: "P")], overdue: [], readAt: noon, calendar: Self.utc)
         monitor.publish(first)
-        monitor.publish(DocketAgendaSnapshot(today: first.today, overdue: [], readAt: Date().addingTimeInterval(60)))
+        monitor.publish(DocketAgendaSnapshot(today: first.today, overdue: [], readAt: noon.addingTimeInterval(60), calendar: Self.utc))
         XCTAssertEqual(redraws, 1)
         XCTAssertEqual(monitor.store?.read()?.today, first.today)
-        monitor.publish(DocketAgendaSnapshot(today: [], overdue: [], readAt: Date()))
+        monitor.publish(DocketAgendaSnapshot(today: [], overdue: [], readAt: noon, calendar: Self.utc))
         XCTAssertEqual(redraws, 2)
     }
 

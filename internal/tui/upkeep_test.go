@@ -125,7 +125,9 @@ func crowd(tb testing.TB, n int) *Model {
 		ops = append(ops, outline.Op{Kind: outline.Set, Row: id, Field: field, Value: value})
 	}
 	top := ""
-	today := time.Now()
+	// A day of its own, as the harness has, so no date sits across midnight
+	// or a month's end from the clock the rows are drawn on.
+	today := time.Date(2026, 11, 15, 12, 0, 0, 0, time.UTC)
 	for p := 0; p < 40; p++ {
 		project := fmt.Sprintf("p%02d", p)
 		top = outline.Between(top, "")
@@ -148,14 +150,14 @@ func crowd(tb testing.TB, n int) *Model {
 			set(id, "due", today.AddDate(0, 0, (i*7)%60-10).Format("2006-01-02"))
 		}
 	}
-	if err := st.Commit(ops, time.Now().UnixMilli()); err != nil {
+	if err := st.Commit(ops, today.UnixMilli()); err != nil {
 		tb.Fatal(err)
 	}
 	tree, err := st.Load()
 	if err != nil {
 		tb.Fatal(err)
 	}
-	m := New(tree, st, nil)
+	m := newModel(tree, st, nil, func() int64 { return today.UnixMilli() })
 	m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 	return m
 }
@@ -390,7 +392,7 @@ func TestALongBodyPaintsWithinAFrame(t *testing.T) {
 	for i := range lines {
 		lines[i] = fmt.Sprintf("line %d of the notes, ordinary words and spaces to wrap", i)
 	}
-	if _, err := m.tree.Apply(outline.Op{Kind: outline.Set, Row: m.bodyRow(), Field: fieldBody, Value: strings.Join(lines, "\n")}, time.Now().UnixMilli()); err != nil {
+	if _, err := m.tree.Apply(outline.Op{Kind: outline.Set, Row: m.bodyRow(), Field: fieldBody, Value: strings.Join(lines, "\n")}, m.now()); err != nil {
 		t.Fatal(err)
 	}
 	best := func(k string) time.Duration {

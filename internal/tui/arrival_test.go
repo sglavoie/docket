@@ -194,7 +194,7 @@ func TestFirstLaunchSeedsTutor(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		h.m = Launch(tree, h.st, nil)
+		h.m = Launch(tree, h.st, nil, h.now)
 		h.wide()
 	}
 	t.Run("empty and restart", func(t *testing.T) {
@@ -238,11 +238,11 @@ func TestFirstLaunchSeedsTutor(t *testing.T) {
 	}
 	t.Run("shell commands", func(t *testing.T) {
 		h := start(t)
-		List(h.m.tree, h.st, "")
+		List(h.m.tree, h.st, "", h.now)
 		if got := h.m.tree.Children(""); len(got) != 2 {
 			t.Fatalf("List added projects: %v", got)
 		}
-		if _, err := Capture(h.m.tree, h.st, []string{"Captured"}); err != nil {
+		if _, err := Capture(h.m.tree, h.st, []string{"Captured"}, h.now); err != nil {
 			t.Fatal(err)
 		}
 		if len(h.m.tree.Children("")) != 2 || len(h.m.tree.Children(inboxID)) != 1 {
@@ -384,7 +384,7 @@ func TestFilterPhrase(t *testing.T) {
 	if got := again.shown(); got != "Per the spec:, Work PER THE SPEC today" {
 		t.Fatalf("saved phrase = %q", got)
 	}
-	if got := strings.Join(List(h.m.tree, h.st, `"per the spec" $open`), "|"); got != "Work PER THE SPEC today $open\tProject" {
+	if got := strings.Join(List(h.m.tree, h.st, `"per the spec" $open`, h.now), "|"); got != "Work PER THE SPEC today $open\tProject" {
 		t.Fatalf("List phrase = %q", got)
 	}
 }
@@ -417,7 +417,7 @@ func TestFilterPhraseEmptyPassedOver(t *testing.T) {
 					t.Errorf("kept filter %q changed rows: %s", query, got)
 				}
 				h.press("esc")
-				if got, want := strings.Join(List(h.m.tree, h.st, query), "\n"), strings.Join(List(h.m.tree, h.st, "$"), "\n"); got != want {
+				if got, want := strings.Join(List(h.m.tree, h.st, query, h.now), "\n"), strings.Join(List(h.m.tree, h.st, "$", h.now), "\n"); got != want {
 					t.Errorf("List %q = %q, want %q", query, got, want)
 				}
 			}
@@ -539,7 +539,7 @@ func TestFilterFirst(t *testing.T) {
 		t.Fatalf("saved first = %q", got)
 	}
 	want := "Inbox first $open\tInbox|First #home $doing\tProject|Heading first $open\tProject › Heading|Other first $open\tOther"
-	if got := strings.Join(List(h.m.tree, h.st, "$first -<$"), "|"); got != want {
+	if got := strings.Join(List(h.m.tree, h.st, "$first -<$", h.now), "|"); got != want {
 		t.Fatalf("List first = %q, want %q", got, want)
 	}
 	// A held filter keeps its rows; rereading it advances each parent's pick.
@@ -1111,7 +1111,7 @@ func TestFilterProject(t *testing.T) {
 		t.Fatalf("completion = %q", h.bottom())
 	}
 	h.press("esc")
-	if got := strings.Join(List(h.m.tree, h.st, "$parked $project"), "|"); got != "Beta $parked\t" {
+	if got := strings.Join(List(h.m.tree, h.st, "$parked $project", h.now), "|"); got != "Beta $parked\t" {
 		t.Fatalf("List = %q", got)
 	}
 	if _, bad := parseStamp("$project", h.m.today()); bad != "$project" {

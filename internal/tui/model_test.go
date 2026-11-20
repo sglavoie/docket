@@ -44,7 +44,7 @@ func resume(t *testing.T, path string, st *store.Store, at time.Time) *harness {
 		t.Fatal(err)
 	}
 	h := &harness{t: t, path: path, st: st, clock: at}
-	m := newModel(tree, st, folds, func() int64 { return h.clock.UnixMilli() })
+	m := newModel(tree, st, folds, h.now)
 	n := 0
 	m.newID = func() string { n++; return fmt.Sprintf("%s-row%03d", filepath.Base(path), n) }
 	m.Update(tea.WindowSizeMsg{Width: 40, Height: 12})
@@ -52,6 +52,10 @@ func resume(t *testing.T, path string, st *store.Store, at time.Time) *harness {
 	h.settle()
 	return h
 }
+
+// now is the harness clock, for every model a test builds: the window's,
+// and those Launch, Capture and List make.
+func (h *harness) now() int64 { return h.clock.UnixMilli() }
 
 // settle does a sync pass's work in the folder, which the program does away
 // from the keys, and hands back what it found.

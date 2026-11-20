@@ -83,6 +83,8 @@ func run() error {
 		return fmt.Errorf("open %s: %w", path, err)
 	}
 	defer st.Close()
+	// The outline reads the day from this clock; tests hand it one of their own.
+	now := func() int64 { return time.Now().UnixMilli() }
 	// One snapshot a day, taken before anything in the outline is changed.
 	// A failure is said on screen and does not stop the work. A session
 	// left open takes the later days' itself.
@@ -93,7 +95,7 @@ func run() error {
 	}
 	if len(args) > 0 && args[0] == "ls" {
 		out := bufio.NewWriter(os.Stdout)
-		for _, line := range tui.List(tree, st, strings.Join(args[1:], " ")) {
+		for _, line := range tui.List(tree, st, strings.Join(args[1:], " "), now) {
 			fmt.Fprintln(out, line)
 		}
 		return out.Flush()
@@ -111,7 +113,7 @@ func run() error {
 				return err
 			}
 		}
-		said, err := tui.Capture(tree, st, lines)
+		said, err := tui.Capture(tree, st, lines, now)
 		for _, line := range said {
 			fmt.Println(line)
 		}
@@ -124,7 +126,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	m := tui.Launch(tree, st, folds)
+	m := tui.Launch(tree, st, folds, now)
 	if st.Renamed() {
 		m.Notice("this database was copied from another place: it now syncs under a name of its own")
 	}

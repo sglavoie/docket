@@ -241,7 +241,7 @@ func TestCaptureFromOutsideTheApp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	said, err := Capture(tree, st, []string{"Buy milk @fri #home", "", "Polish %tui !", "Stays %nowhere"})
+	said, err := Capture(tree, st, []string{"Buy milk @fri #home", "", "Polish %tui !", "Stays %nowhere"}, h.now)
 	if err != nil || strings.Join(said, "|") != "added to Inbox|added to Alpha › TUI|added to Inbox" {
 		t.Fatalf("said %q, err %v", said, err)
 	}
@@ -251,7 +251,29 @@ func TestCaptureFromOutsideTheApp(t *testing.T) {
 	h.press("f", `"inbox"`, "enter")
 	h.want("▌ ○ Buy milk @fri #home", "  ○ Stays %nowhere")
 
-	if said, err := Capture(tree, st, []string{"%tui"}); err == nil || len(said) != 0 {
+	if said, err := Capture(tree, st, []string{"%tui"}, h.now); err == nil || len(said) != 0 {
 		t.Fatalf("a line of nothing was added: %q", said)
+	}
+}
+
+// A weekday captured from a shell is read on the caller's day, the same day
+// the window draws it on: the next Friday, a week out when today is one.
+func TestCaptureOnTheDayItNames(t *testing.T) {
+	for _, c := range []struct {
+		day  time.Time
+		want string
+	}{
+		{time.Date(2026, 11, 20, 12, 0, 0, 0, time.UTC), "▌ ○ Buy milk @Nov 27"},   // a Friday
+		{time.Date(2026, 11, 19, 12, 0, 0, 0, time.UTC), "▌ ○ Buy milk @tomorrow"}, // a Thursday
+	} {
+		t.Run(c.day.Weekday().String(), func(t *testing.T) {
+			h := start(t).wide()
+			h.clock = c.day
+			if _, err := Capture(h.m.tree, h.st, []string{"Buy milk @fri"}, h.now); err != nil {
+				t.Fatal(err)
+			}
+			h.press("f", `"inbox"`, "enter")
+			h.want(c.want)
+		})
 	}
 }

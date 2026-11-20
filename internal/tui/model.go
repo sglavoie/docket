@@ -278,10 +278,6 @@ type Model struct {
 	recorded     bool      // a key made an undo step, so its outcome is the user's
 }
 
-func New(tree *outline.Tree, backend Backend, folds map[string]bool) *Model {
-	return newModel(tree, backend, folds, func() int64 { return time.Now().UnixMilli() })
-}
-
 func newModel(tree *outline.Tree, backend Backend, folds map[string]bool, now func() int64) *Model {
 	if folds == nil {
 		folds = map[string]bool{}

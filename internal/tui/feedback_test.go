@@ -174,7 +174,7 @@ func TestANewOutlineComesWithFiltersWorthKeeping(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h.m = Launch(tree, h.st, nil)
+	h.m = Launch(tree, h.st, nil, h.now)
 	h.wide()
 	var names []string
 	for _, f := range h.m.filters {

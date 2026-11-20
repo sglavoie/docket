@@ -1178,9 +1178,9 @@ func (m *Model) capture(line string) {
 }
 
 // Launch opens the interactive outline, adding a tutorial only when there
-// are no projects and no Inbox rows. New, Capture and List never seed it.
-func Launch(tree *outline.Tree, backend Backend, folds map[string]bool) *Model {
-	m := New(tree, backend, folds)
+// are no projects and no Inbox rows. Capture and List never seed it.
+func Launch(tree *outline.Tree, backend Backend, folds map[string]bool, now func() int64) *Model {
+	m := newModel(tree, backend, folds, now)
 	for _, id := range tree.Children("") {
 		if !hiddenTop(id) {
 			return m
@@ -1196,8 +1196,8 @@ func Launch(tree *outline.Tree, backend Backend, folds map[string]bool) *Model {
 // Capture files lines from outside the app, each as the capture line would,
 // and says where each went. It is what the docket add command runs: one
 // short-lived window on the database, which syncs once before it closes.
-func Capture(tree *outline.Tree, backend Backend, lines []string) ([]string, error) {
-	m := New(tree, backend, nil)
+func Capture(tree *outline.Tree, backend Backend, lines []string, now func() int64) ([]string, error) {
+	m := newModel(tree, backend, nil, now)
 	var said []string
 	for _, line := range lines {
 		if strings.TrimSpace(line) == "" {
@@ -1221,8 +1221,8 @@ func Capture(tree *outline.Tree, backend Backend, lines []string) ([]string, err
 // spelled in the row grammar with its state, then a tab and where the row
 // lives. With no filter it is the whole outline as export writes it. Nothing
 // is changed.
-func List(tree *outline.Tree, backend Backend, filter string) []string {
-	return New(tree, backend, nil).list(filter)
+func List(tree *outline.Tree, backend Backend, filter string, now func() int64) []string {
+	return newModel(tree, backend, nil, now).list(filter)
 }
 
 func (m *Model) list(filter string) []string {
