@@ -3,8 +3,8 @@
 A standalone macOS app that runs `docket` in an embedded Ghostty terminal: its own
 window, Dock icon, menu-bar icon, and global shortcuts. It spawns the ordinary
 `docket` binary on a pty. Nothing in it changes the outline itself: quick capture
-runs `docket add`, and the overdue count, the widget and Spotlight run `docket
-ls`, each one more window on the database under SPEC.md's Two windows. None of it runs under `just check`.
+runs `docket add`, and the overdue count, the widget, Spotlight and the notices
+run `docket ls`, each one more window on the database under SPEC.md's Two windows. None of it runs under `just check`.
 
 v2's Docket.app takes v1's place: the same name and bundle ID (`io.github.sglavoie.docket`), so
 installing it replaces v1's app and keeps the Settings both share. v1 settings with
@@ -267,6 +267,44 @@ the row's text into Go to, and `Enter`. Go to only moves, and is a jump, so
 best match for the text. With no Docket running, choosing a result starts one
 and types nothing.
 
+### Notices
+
+Docket.app says twice a day that it is time to look, through macOS
+notifications, each at most once a day and silent when it has nothing to say:
+
+- **Plan the day**, 09:00 by default, when nothing is picked for today, that is
+  when `docket ls '$today -$missed'` prints nothing (a task starting today is in
+  Today, so it counts as picked): `Nothing picked for Today`, then what applies
+  of `2 due today` (`docket ls '@today $open|doing|waiting -$today'`), `1
+  overdue` (`docket ls '@overdue -$today'`) and `4 carried` (`docket ls
+  '$missed'`). With a day already picked it says only what is due today or
+  overdue outside Today, as `1 due today · 2 overdue`, and is not posted when
+  nothing is.
+- **Check in**, 14:00 by default, while Today still holds open picks: `3 of 5
+  picks still open`, read from `docket ls '$today'`. With none open, it is not
+  posted.
+
+Once a minute Docket.app asks whether a notice is due: switched on, its time
+reached today, and not yet read today. Only then does it run the `docket ls`
+the notice needs, and the notice is spent for the day once that run succeeds,
+posted or not; a run that fails is tried the next minute. A time that passed
+while the Mac slept or Docket.app was not running is caught up at the next read
+that day, and never for a day that is over: a read that ends past midnight
+posts nothing. Notices while Docket.app is not running at all are left to Launch
+at Login.
+
+Choosing a notice shows Docket on Today, typed as a Spotlight result types its
+row: `Esc`, `f`, `today`, `Enter`. Nothing in the outline changes. With no
+Docket running, it starts one and types nothing, as Spotlight does.
+
+Settings › General has a switch and a time for each (`docketNoticePlan`,
+`docketNoticePlanTime`, `docketNoticeCheckIn`, `docketNoticeCheckInTime`, the
+times as `HH:mm`), both on by default; the day each last fired is kept in
+`docketNoticePlanFired` and `docketNoticeCheckInFired`. macOS is asked for
+permission the first time a notice has something to say, not at launch.
+Refused, the switches say so and name System Settings › Notifications. Off,
+nothing more is run than the badge already runs.
+
 ### Appearance
 
 With Settings › General › Match macOS appearance on (`docketFollowAppearance`,
@@ -436,6 +474,9 @@ Staying pinned is fine; upgrade deliberately:
      keeps the session; `q` follows the exit preference.
    - Each global shortcut fires once with Docket in front, and once from the open
      status menu, whose items show them.
+   - With Plan the day's time set a minute ahead and nothing picked, the notice
+     arrives once, macOS asking for permission first, and choosing it shows
+     Docket on Today; Check in arrives once while Today holds open picks.
 
 Desktop navigation refusals appear briefly beneath the terminal without taking
 keyboard focus. They explain what to close, save, or cancel before trying again.

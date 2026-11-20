@@ -1,8 +1,10 @@
 import AppKit
 import CoreSpotlight
 import GhosttyKit
+import UserNotifications
 
-final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, StatusItemDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, StatusItemDelegate,
+    UNUserNotificationCenterDelegate {
     /// The launch-error window, when Docket could not start.
     private(set) var launchErrorWindow: NSWindow?
     /// The terminal whose first session found no Docket, kept for Try Again; nil
@@ -29,6 +31,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
     let agenda = DocketAgendaMonitor()
     /// Gives Spotlight the open rows.
     let spotlight = DocketSpotlightIndexer()
+    /// Plan the day and Check in, each once a day.
+    let notices = DocketNoticeMonitor()
     /// Which Docket the next session runs, asked again before each one.
     private let sessionBinaries = DocketSessionBinaryStore()
     /// The running Docket's `--version` line, for About.
@@ -204,6 +208,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         // has saved every change as it was made.
         overdue.stop()
         agenda.stop()
+        notices.stop()
         terminal?.teardown()
     }
 
@@ -243,6 +248,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         let controller = preferencesController ?? PreferencesWindowController(model: preferencesModel)
         preferencesController = controller
         controller.show()
+        DocketNoticeCenter.permission { [weak self] in self?.preferencesModel.noticePermission = $0 }
     }
 
     @objc func showGuide(_ sender: Any?) {
@@ -349,6 +355,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         overdue.refresh()
         agenda.refresh()
         spotlight.refresh()
+        notices.refresh()
     }
 
     /// What `docket add` and `docket ls` run with: the session's Docket and the
@@ -378,6 +385,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             if let terminal { terminal.show(row: text) } else { showLaunchErrorAgain() }
         case .capture(let text, let urls):
             presentCapture(text == nil && urls.isEmpty ? nil : DocketCaptureDraft.build(title: text, links: urls))
+        }
+    }
+
+    // MARK: Notices
+
+    /// A notice is shown even while Docket.app is in front.
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter, willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .list, .sound])
+    }
+
+    /// Choosing a notice shows Docket on Today, typed as a Spotlight result
+    /// types its row; nothing in the outline changes.
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let chosen = DocketNotice(identifier: response.notification.request.identifier) != nil
+            && response.actionIdentifier == UNNotificationDefaultActionIdentifier
+        DispatchQueue.main.async { [weak self] in
+            if chosen {
+                self?.open(DocketLink.find(DocketNotice.place).url)
+            }
+            completionHandler()
         }
     }
 
@@ -511,6 +544,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
         spotlight.target = { [weak self] in self?.commandTarget }
         spotlight.start()
         model.onSpotlightChange = { [weak self] _ in self?.spotlight.refresh() }
+        UNUserNotificationCenter.current().delegate = self
+        notices.target = { [weak self] in self?.commandTarget }
+        notices.preference = { [weak model] notice in
+            model?.notice(notice) ?? DocketNoticePreference(enabled: false, time: notice.defaultTime)
+        }
+        notices.onPermission = { [weak model] in model?.noticePermission = $0 }
+        notices.start()
+        model.onNoticeChange = { [weak self] in self?.notices.refresh() }
 
         syncStatusItem(to: model.activationPolicy)
         let hotKeys = HotKeyCenter()

@@ -91,6 +91,31 @@ final class PreferencesModel: ObservableObject {
         }
     }
 
+    /// Plan the day: its switch and time.
+    @Published var noticePlan: DocketNoticePreference {
+        didSet {
+            guard noticePlan != oldValue else { return }
+            noticePlan.save(.plan, to: defaults)
+            onNoticeChange?()
+        }
+    }
+
+    /// Check in: its switch and time.
+    @Published var noticeCheckIn: DocketNoticePreference {
+        didSet {
+            guard noticeCheckIn != oldValue else { return }
+            noticeCheckIn.save(.checkIn, to: defaults)
+            onNoticeChange?()
+        }
+    }
+
+    /// What macOS last said about posting notices; refused, the switches say so.
+    @Published var noticePermission: DocketNoticePermission = .notAsked
+
+    func notice(_ notice: DocketNotice) -> DocketNoticePreference {
+        notice == .plan ? noticePlan : noticeCheckIn
+    }
+
     /// The zoom Docket.app launches at; nil leaves it to the Ghostty config.
     @Published var defaultFontSize: Float? {
         didSet {
@@ -264,6 +289,7 @@ final class PreferencesModel: ObservableObject {
     var onTerminalFontChange: (() -> Void)?
     var onDockBadgeChange: ((Bool) -> Void)?
     var onSpotlightChange: ((Bool) -> Void)?
+    var onNoticeChange: (() -> Void)?
     var onFollowAppearanceChange: ((Bool) -> Void)?
     /// True while the recorder listens, so the live shortcuts can step aside
     /// and be recorded like any other key.
@@ -285,6 +311,8 @@ final class PreferencesModel: ObservableObject {
         terminalFont = DocketTerminalFontPreference.load(from: defaults)
         dockBadge = DocketDockBadgePreference.load(from: defaults)
         spotlight = DocketSpotlightPreference.load(from: defaults)
+        noticePlan = DocketNoticePreference.load(.plan, from: defaults)
+        noticeCheckIn = DocketNoticePreference.load(.checkIn, from: defaults)
         followAppearance = DocketFollowAppearancePreference.load(from: defaults)
         binaryOverride = defaults.string(forKey: DocketBinaryResolver.overrideDefaultsKey) ?? ""
         environmentOverrides = DocketEnvironmentOverrides.load(from: defaults)
@@ -548,6 +576,21 @@ struct PreferencesView: View {
                 note("Open, doing and waiting rows outside parked and closed projects, read with docket ls every "
                     + "five minutes. Choosing one shows Docket on it, through Go to. Off removes them from Spotlight.")
             }
+
+            Section {
+                noticeRow(.plan, $model.noticePlan)
+                note("When nothing is picked for today, with what is due, overdue and carried. "
+                    + "With a day picked, only what is due or overdue outside Today, if anything.")
+                noticeRow(.checkIn, $model.noticeCheckIn)
+                note("While Today still holds open picks, as 3 of 5 picks still open.")
+                if model.noticePermission == .refused {
+                    note("macOS does not let Docket post notices. Allow them in System Settings › Notifications › Docket.",
+                         warning: true)
+                } else {
+                    note("Each at most once a day, at the first minute's read at or after its time; choosing one "
+                        + "shows Docket on Today. macOS asks to allow them the first time one has something to say.")
+                }
+            }
         }
     }
 
@@ -711,6 +754,21 @@ struct PreferencesView: View {
             .formStyle(.grouped)
             .frame(width: 520)
             .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// A notice's switch, then its time.
+    @ViewBuilder
+    private func noticeRow(_ notice: DocketNotice, _ preference: Binding<DocketNoticePreference>) -> some View {
+        Toggle(notice.title, isOn: preference.enabled)
+        DatePicker(
+            "At",
+            selection: Binding(
+                get: { preference.wrappedValue.time.date(on: Date()) },
+                set: { preference.wrappedValue.time = DocketNoticeTime($0) }
+            ),
+            displayedComponents: .hourAndMinute
+        )
+        .disabled(!preference.wrappedValue.enabled)
     }
 
     private func note(_ text: String, warning: Bool = false) -> some View {

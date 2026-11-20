@@ -1942,6 +1942,14 @@ Its Today widget draws what `docket ls '$today'` and `docket ls '@overdue'`
 print, and Spotlight finds the open rows `docket ls` prints; choosing one
 types `Esc`, `f`, the row's text and `Enter`, so Go to shows it and nothing
 changes.
+Two notices say it is time to look, each at most once a day at the first
+minute's read at or after its time, caught up later that day if the Mac slept,
+and silent with nothing to say: Plan the day, 09:00 by default, when `docket
+ls '$today -$missed'` prints nothing, as `Nothing picked for Today · 2 due
+today · 1 overdue · 4 carried` (with a day picked, only what is due or overdue
+outside Today, if anything); and Check in, 14:00 by default, while Today holds
+open picks, as `3 of 5 picks still open`. Each has its own switch and time in
+Docket.app's Settings, and choosing one types `Esc`, `f`, `today`, `Enter`.
 A `docket://capture` link, the Services and Share menus, and `⌘K` in quick
 capture (the browser tab, Mail messages or Finder selection in front) only
 fill quick capture's line: Enter still sends it, so nothing from outside adds
@@ -2155,10 +2163,11 @@ a row unseen.
    `#est`. Today's header names the usual day, from the days before it,
    in the warning colour while the day holds more; setting a second row
    `doing` says how many are; a pick carried three days with no task under
-   it names the way to a smaller first step. Nothing is stored and no key
-   is added. *In progress.*
+   it names the way to a smaller first step. Docket.app posts Plan the day
+   and Check in, each once a day at its time and silent with nothing to say.
+   Nothing is stored and no key is added. *In progress.*
 
-Not planned: reminders, attachments, a details panel (a body is read in the
+Not planned: a reminder for one row, or a time of day on one, attachments, a details panel (a body is read in the
 pane, not beside it), import from v1, any
 command-line interface beyond `docket add`, `docket ls` and `--version`, macros (`.`,
 `:all` and `:s` repeat what a recording would), marks (the trail, the change list, links and each
