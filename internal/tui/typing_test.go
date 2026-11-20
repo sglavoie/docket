@@ -33,6 +33,22 @@ func TestSigilsAreColouredAsTheyAreTyped(t *testing.T) {
 			t.Errorf("%s is coloured:\n%q", w, raw)
 		}
 	}
+	// The note mark is a sigil only where it leads the line.
+	for _, surface := range []string{surfaceRow, askCapture} {
+		spans := h.m.styler(surface)("// call Bob // later")
+		var marks []string
+		for _, s := range spans {
+			if s.text == sigil.NoteMark {
+				marks = append(marks, s.style)
+			}
+		}
+		if len(marks) != 2 || marks[0] != h.m.colors().accent || marks[1] != "" {
+			t.Errorf("%s: note marks styled %q", surface, marks)
+		}
+	}
+	if spans := h.m.styler(askFilter)("// x"); len(spans) > 0 && spans[0].style == h.m.colors().accent {
+		t.Error("a filter does not read the note mark")
+	}
 }
 
 func TestTheRightArrowCompletesASigil(t *testing.T) {

@@ -98,14 +98,15 @@ Ctrl+A Ctrl+X	a day later, earlier: the deadline, else the start; `7 Ctrl+A` a w
 #tag #est=2h	tag or value; the header sums estimates, headings show done/total
 ##home	the row's one context, drawn as [home] before its text
 $state	`$open` `$doing` `$waiting` `$done` `$canceled` `$parked` `$note`
+//	leading the line, makes the row a note wherever it is; `\//` stays text
 · 1h40m	after a doing row: how long since it went doing, warning past its #est; closing it says what it took
 usually 3 a day	in Today's header: the median done on the 28 days before, warning while more is left to do
 picked … ago	on a pick carried three days or more with no task under it: `Enter`, then `o` writes a smaller first step
 ~teal ~#3fa7c4	a project's colour, by name or hex, in its entry, row and header
 
 == Defaults
-Notes	rows at the top level, under tasks, or ending in a colon
-Tasks	every other row; `$open` makes a subtask; `\#tag` stays text
+Notes	rows at the top level, ending in a colon, or led by `// `
+Tasks	every other row, so `o` under a task makes a subtask; `\#tag` stays text
 
 == While typing
 Colour	readable sigils take the accent colour, unreadable ones warning

@@ -20,7 +20,7 @@ func branches(t *testing.T) *harness {
 	t.Helper()
 	h := start(t)
 	h.press("o", `"Project"`, "esc", "enter")
-	h.pasteText("Alpha:\n\ta1\n\ta2\n\t\tdeep\n\ta3\nBeta:\n\tb1 milk\nGamma\nDelta milk:\n")
+	h.pasteText("Alpha:\n\ta1\n\ta2\n\t\t// deep\n\ta3\nBeta:\n\tb1 milk\nGamma\nDelta milk:\n")
 	h.press("g", "g")
 	if len(h.m.vis) != 9 {
 		t.Fatalf("fixture has %d rows:\n%s", len(h.m.vis), h.rows())
@@ -63,7 +63,7 @@ func TestStructuralMotionsComposeWithOperatorsAndSweeps(t *testing.T) {
 		h := branches(t)
 		h.press("d", "}")
 		h.want("▌ ○ Gamma", "  · Delta milk:")
-		if h.m.register != "Alpha:\n\ta1\n\ta2\n\t\tdeep\n\ta3\nBeta:\n\tb1 milk\n" {
+		if h.m.register != "Alpha:\n\ta1\n\ta2\n\t\t// deep\n\ta3\nBeta:\n\tb1 milk\n" {
 			t.Fatalf("register = %q", h.m.register)
 		}
 		h.press("u")
@@ -74,7 +74,7 @@ func TestStructuralMotionsComposeWithOperatorsAndSweeps(t *testing.T) {
 	t.Run("y to the last sibling and d to the parent", func(t *testing.T) {
 		h := branches(t)
 		h.press("j", "y", ")")
-		if h.m.register != "a1\na2\n\tdeep\na3\n" || h.status() != "copied 4 rows" {
+		if h.m.register != "a1\na2\n\t// deep\na3\n" || h.status() != "copied 4 rows" {
 			t.Fatalf("register = %q, status = %q", h.m.register, h.status())
 		}
 		h.press("d", "H")

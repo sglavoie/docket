@@ -74,7 +74,7 @@ func TestPastingAListOnARowAddsItBelow(t *testing.T) {
 		"    ○ First",
 		"    ✓ shipped",
 		"    ○ pending",
-		"▌     · detail",
+		"▌     ○ detail",
 		"    ○ Second",
 	)
 	h.press("u")
@@ -156,9 +156,9 @@ func TestCheckboxPasteNormalization(t *testing.T) {
 
 func TestPastedRowsUseTheirParentsDefault(t *testing.T) {
 	h := project(t)
-	h.pasteText("[ ] Parent\n  Detail\n    Under note\n  [ ] Subtask $done\n  [x] Finished $open\nHeading:\n  Child")
-	h.want("  ▾ Project", "    ○ First", "    ○ Second", "    ○ Parent",
-		"      ▾ Detail", "        ○ Under note", "      ○ Subtask", "      ✓ Finished",
+	h.pasteText("[ ] Parent\n  Step\n  // Detail\n    Under note\n  [ ] Subtask $done\n  [x] Finished $open\nHeading:\n  Child")
+	h.want("    ○ First", "    ○ Second", "    ○ Parent",
+		"      ○ Step", "      ▾ Detail", "        ○ Under note", "      ○ Subtask", "      ✓ Finished",
 		"    ▾ Heading: 0/1", "▌     ○ Child")
 }
 
@@ -318,7 +318,7 @@ func roundTripCopy(t *testing.T, parentState string, rows []copyRow, expected st
 				if h.m.edit == nil {
 					t.Fatal("single-line paste must stay in the editor")
 				}
-				if rows[0].line.Text == "" && string(h.m.edit.buf) != "$note" {
+				if rows[0].line.Text == "" && string(h.m.edit.buf) != sigil.NoteMark {
 					t.Fatalf("empty note token lost: %q", h.m.edit.buf)
 				}
 				h.press("esc")
@@ -359,8 +359,8 @@ func TestCopyKeepsABlankTask(t *testing.T) {
 	}
 	// A blank note still has an explicit representation that paste retains.
 	h.press("$", `"note"`, "enter")
-	copyThroughUpdate(t, h, "$note\n", 1)
-	h.pasteText("$note\n")
+	copyThroughUpdate(t, h, "//\n", 1)
+	h.pasteText("//\n")
 	row = h.m.tree.Row(h.m.current())
 	if h.m.current() == pasted || row.Parent != parent || row.Fields[sigil.FieldText] != "" || row.Fields[sigil.FieldState] != "" {
 		t.Fatalf("pasted blank note lost its parent or state: %+v", row)
@@ -374,7 +374,7 @@ func TestCopyRoundTripsThroughPaste(t *testing.T) {
 			{0, sigil.Line{Text: "Subtask", State: sigil.Open, Due: "2026-11-15"}},
 			{0, sigil.Line{Text: "Note"}},
 		}
-		text := "Task ! #work\n\tSubtask @2026-11-15 $open\n\tNote\n"
+		text := "Task ! #work\n\tSubtask @2026-11-15\n\t// Note\n"
 		h, _, dest := copyFixture(t, "", rows)
 		copyThroughUpdate(t, h, text, 3)
 		h.want("▌ ○ Task ! #work", "    ○ Subtask @today", "    · Note")
@@ -416,18 +416,18 @@ func TestCopyRoundTripsThroughPaste(t *testing.T) {
 		}
 		h.m.picked[ids[0]], h.m.picked[ids[1]] = true, true
 		h.press(":", `"closed"`, "enter", "h")
-		copyThroughUpdate(t, h, "Task\n\tClosed $done\n\t\tHidden\n", 3)
+		copyThroughUpdate(t, h, "Task\n\tClosed $done\n\t\t// Hidden\n", 3)
 	})
 	t.Run("literal-prefixes", func(t *testing.T) {
 		for i, prefix := range []string{"- ", "* ", "+ ", "• ", "[ ] ", "[x] ", "[X] ", `\`, `\\`} {
 			t.Run(fmt.Sprintf("prefix-%d", i), func(t *testing.T) {
-				rows := []copyRow{{-1, sigil.Line{Text: prefix + "child"}}}
+				rows := []copyRow{{-1, sigil.Line{Text: prefix + "child", State: sigil.Open}}}
 				t.Run("single", func(t *testing.T) {
 					roundTripCopy(t, sigil.Open, rows, `\`+prefix+"child\n")
 				})
 				// Multiline insertion also preserves sibling order and hierarchy.
 				rows = append(rows, copyRow{0, sigil.Line{Text: "Grandchild", State: sigil.Open}},
-					copyRow{-1, sigil.Line{Text: "Following"}})
+					copyRow{-1, sigil.Line{Text: "Following", State: sigil.Open}})
 				t.Run("subtree", func(t *testing.T) {
 					roundTripCopy(t, sigil.Open, rows, `\`+prefix+"child\n\tGrandchild\nFollowing\n")
 				})
@@ -455,10 +455,10 @@ func TestCopyRoundTripsThroughPaste(t *testing.T) {
 			{0, sigil.Line{}}, {1, sigil.Line{Text: "Child", State: sigil.Open}},
 			{0, sigil.Line{Text: "Following"}}}
 		t.Run("subtree", func(t *testing.T) {
-			roundTripCopy(t, "", rows, "Task\n\t$note\n\t\tChild\n\tFollowing\n")
+			roundTripCopy(t, "", rows, "Task\n\t//\n\t\tChild\n\t// Following\n")
 		})
 		t.Run("alone", func(t *testing.T) {
-			roundTripCopy(t, sigil.Open, []copyRow{{-1, sigil.Line{}}}, "$note\n")
+			roundTripCopy(t, sigil.Open, []copyRow{{-1, sigil.Line{}}}, "//\n")
 		})
 	})
 	t.Run("backslash-before-sigil", func(t *testing.T) {
@@ -466,7 +466,7 @@ func TestCopyRoundTripsThroughPaste(t *testing.T) {
 			for n := 0; n <= 2; n++ {
 				for pi, prefix := range []string{"", "prefix "} {
 					t.Run(fmt.Sprintf("sigil-%d/backslashes-%d/position-%d", ti, n, pi), func(t *testing.T) {
-						line := sigil.Line{Text: prefix + strings.Repeat(`\`, n) + token}
+						line := sigil.Line{Text: prefix + strings.Repeat(`\`, n) + token, State: sigil.Open}
 						encoded := prefix + strings.Repeat(`\`, n+1) + token
 						if prefix == "" {
 							encoded = `\` + encoded
@@ -485,7 +485,7 @@ func TestCopyRoundTripsThroughPaste(t *testing.T) {
 		var text strings.Builder
 		text.WriteString("Task\n")
 		for i := 1; i <= 2001; i++ {
-			line := sigil.Line{Text: fmt.Sprintf("Child %d", i), Flag: true, Tags: []string{"large"}}
+			line := sigil.Line{Text: fmt.Sprintf("Child %d", i), State: sigil.Open, Flag: true, Tags: []string{"large"}}
 			rows = append(rows, copyRow{0, line})
 			fmt.Fprintf(&text, "\tChild %d ! #large\n", i)
 		}

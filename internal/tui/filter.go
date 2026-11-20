@@ -1060,11 +1060,10 @@ func (m *Model) writeRows(roots []string) (string, int) {
 		row := m.tree.Row(id)
 		text := sigil.Format(sigil.FromFields(row.Fields), m.defaultsToNotes(row.Parent), today)
 		if text == "" {
-			state := row.Fields[sigil.FieldState]
-			if state == "" {
-				state = "note"
+			text = sigil.NoteMark
+			if state := row.Fields[sigil.FieldState]; state != "" {
+				text = "$" + state
 			}
-			text = "$" + state
 		}
 		if pastePrefix(text) {
 			text = `\` + text

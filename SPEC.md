@@ -1579,7 +1579,7 @@ session only and is never stored.
 Copy and export write each line against its own parent's default. Pasting
 under the same kind of parent round-trips the text, state, row-grammar fields,
 sibling order and hierarchy. An otherwise empty row is written with its state
-sigil (`$open` for an open task, `$note` for a note), at its indentation, and
+sigil (`$open` for an open task, `//` for a note), at its indentation, and
 kept through editor insertion until parsing; it counts as a row and keeps
 its children. Whitespace-only external lines may still be ignored. There is
 no row-count limit; the entire paste is one undo step, including more than
@@ -1725,6 +1725,7 @@ grammar cannot read also stays prose (`@alice`, `#123`, `$5`). `\#tag` keeps a r
 | `@date` | `due` | `today`, `tomorrow`, a weekday (the next one, never today), `+3d`, `+2w`, `MM-DD` or a month named as the row shows it, `dec4` or `dec-4` (the next such day), `jan5-2027`, `YYYY-MM-DD`, `eow`, the end of this week (Sunday, today on a Sunday), and `eom`, the last day of this month |
 | `@@date` | `start` | The same forms as `@date` |
 | `*interval` | `repeat` | A count and `d`, `w`, `m` or `y` (`*3d`, `*2w`), or `daily`, `weekly`, `monthly`, `yearly` |
+| `//` | `state` | The word `//` leading the line: the row is a note (see Default state) |
 | `$state` | `state` | `open`, `doing`, `waiting`, `done`, `canceled`, `parked`, `note`, or an unambiguous prefix (`$w`, `$c`, `$p`; `$d` is not one). `$next`, `$first`, `$today`, `$missed` and `$project` are read by the filter only: they are not states |
 | `##context` | `context` | A tag's name, without a value: `##home`, `##phone`. A row has one; a later one replaces it. `##` alone and `##1` stay prose |
 | `~colour` | `color` | A colour name: `red`, `orange`, `yellow`, `lime`, `green`, `teal`, `cyan`, `blue`, `indigo`, `purple`, `magenta`, `pink`, `brown`, `gray` (also `grey`, `violet`); or a hex value, `#rgb` or `#rrggbb`, stored as `#rrggbb`. Read on any row, drawn on projects only. The filter reads `~` as a time instead |
@@ -1797,11 +1798,17 @@ any other key ends the walk and keeps what is written. A value typed in
 full, or a hex value, lists nothing.
 
 **Default state.** A row whose line names no state is a note when it is
-top-level, its text ends in a colon, or its parent has any state (is a task).
-Otherwise it is an open task: children of a project, the Inbox, a heading or
-another note default to tasks. With `A` or `I`, the line spells `$state` only
-where the row differs from that default, so a subtask needs `$open`; `cc`
-always spells it to preserve the state while replacing text. Stored fields remain
+top-level or its text ends in a colon. Otherwise it is an open task: children
+of a project, the Inbox, a heading, a note or a task default to tasks, so `o`
+builds a hierarchy of tasks at any depth. A line led by the word `//`, as
+`// call Bob`, is a note wherever it stands: the mark is read and dropped as a
+sigil is, never stored, and only as the line's first word, so `a//b`, `x // y`
+and `//x` stay prose and `\//` keeps a leading one literal; while typed it
+is coloured as a sigil only there. `$note` still reads, but a note is
+spelled `//`. With `A` or `I`, the line spells the state
+only where the row differs from that default, so a note under a task leads
+with `//`, and `I` types after the mark; `cc` always spells it to preserve the
+state while replacing text, and keeps typing after a note's mark. Stored fields remain
 the truth; existing rows keep their states without migration. A row keeps
 its state when it moves, including while editing. A fresh row takes the
 default of where it ends up when the edit is kept.

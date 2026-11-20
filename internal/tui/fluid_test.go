@@ -124,7 +124,7 @@ func TestFilterAlternativesAndChangedSince(t *testing.T) {
 
 func TestArchiveMovesClosedWorkUnderAHeading(t *testing.T) {
 	h := start(t).wide()
-	h.pasteText("Alpha\n\tBuild:\n\t\tShipped $done\n\t\t\tA detail\n\t\tHalf $done\n\t\t\tStill open $open\n\t\tLive\n\tDropped $canceled\nBeta\n\tOld $done")
+	h.pasteText("Alpha\n\tBuild:\n\t\tShipped $done\n\t\t\t// A detail\n\t\tHalf $done\n\t\t\tStill open $open\n\t\tLive\n\tDropped $canceled\nBeta\n\tOld $done")
 	h.press("g", "g")
 	steps := len(h.m.undo)
 	h.command("archive")

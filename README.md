@@ -59,6 +59,7 @@ typed into the row as sigils:
 | Sigil | Means |
 | --- | --- |
 | `$doing` `$waiting` `$done` … | State |
+| `//` leading the line | A note; any other row under a project is a task |
 | `!` | Flag |
 | `@fri` `@dec4` `@+2w` | Deadline |
 | `@@mon` | Not before |

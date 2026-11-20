@@ -754,25 +754,33 @@ func TestAFlagIsNoAlarm(t *testing.T) {
 	}
 }
 
-func TestARowUnderATaskIsANote(t *testing.T) {
+func TestARowUnderATaskIsATask(t *testing.T) {
 	for _, state := range []string{"open", "doing", "waiting", "done", "canceled", "parked"} {
 		t.Run("parent "+state, func(t *testing.T) {
 			h := project(t)
 			h.press("$", `"`+state+`"`, "enter", "o", `"Detail"`, "tab", "esc")
-			if got := h.rows(); !strings.Contains(got, "▌     · Detail") {
-				t.Fatalf("child should draw without a state glyph:\n%s", got)
+			if got := h.rows(); !strings.Contains(got, "▌     ○ Detail") {
+				t.Fatalf("child should draw as an open task:\n%s", got)
 			}
 			h.press("A")
 			if got := string(h.m.edit.buf); got != "Detail" {
-				t.Fatalf("note edit line = %q", got)
-			}
-			h.press(`" $open"`, "esc", "A")
-			if got := string(h.m.edit.buf); got != "Detail $open" {
 				t.Fatalf("subtask edit line = %q", got)
 			}
+			h.press("esc", "I", `"// "`, "esc", "A")
+			if got := string(h.m.edit.buf); got != "// Detail" {
+				t.Fatalf("note edit line = %q", got)
+			}
 			h.press("esc")
-			if got := h.rows(); !strings.Contains(got, "▌     ○ Detail") {
-				t.Fatalf("explicit subtask lacks task glyph:\n%s", got)
+			if got := h.rows(); !strings.Contains(got, "▌     · Detail") {
+				t.Fatalf("explicit note keeps a state glyph:\n%s", got)
+			}
+			h.press("I", `"Some "`, "esc")
+			if got := h.m.tree.Row(h.m.current()).Fields; got["text"] != "Some Detail" || got["state"] != "" {
+				t.Fatalf("I on a note should type after its mark: %v", got)
+			}
+			h.press("c", "c", `"Other"`, "esc")
+			if got := h.m.tree.Row(h.m.current()).Fields; got["text"] != "Other" || got["state"] != "" {
+				t.Fatalf("cc on a note should keep it a note: %v", got)
 			}
 		})
 	}
@@ -798,14 +806,14 @@ func TestARowUnderATaskIsANote(t *testing.T) {
 		h = open(t, h.path)
 		h.m.seek(id)
 		h.press("A")
-		if got := string(h.m.edit.buf); got != "Second $open" {
+		if got := string(h.m.edit.buf); got != "Second" {
 			t.Fatalf("stored task after restart = %q", got)
 		}
 		h.press("esc", "<", "<", ">", ">")
 		h.want("  ▾ Project", "    ○ First", "▌     ○ Second")
 		h = project(t) // The restart harness reuses fixture IDs; create new rows in a new database.
-		h.press("o", "tab", `"Note"`, "esc", "A", "shift+tab", "esc", "A")
-		if got := string(h.m.edit.buf); got != "Note $note" {
+		h.press("o", "tab", `"// Note"`, "esc", "A", "shift+tab", "esc", "A")
+		if got := string(h.m.edit.buf); got != "// Note" {
 			t.Fatalf("existing note changed when outdented during editing: %q", got)
 		}
 	})
@@ -851,11 +859,13 @@ func TestARowUnderATaskIsANote(t *testing.T) {
 func TestCaptureUsesTheDestinationDefault(t *testing.T) {
 	h := start(t)
 	h.press("o", `"Task $open"`, "esc", "a", `"Detail %Task"`, "esc", "f", `"Task"`, "enter")
-	h.want("▌ · Detail")
+	h.want("▌ ○ Detail")
 	h.press("A")
 	if got := string(h.m.edit.buf); got != "Detail" {
 		t.Fatalf("captured child of task = %q", got)
 	}
+	h.press("esc", "a", `"// Aside %Task"`, "esc")
+	h.want("▌ ○ Detail", "  · Aside")
 }
 
 // outlineToGather is a project of five rows, one holding a child, and a

@@ -306,14 +306,14 @@ func TestCommands(t *testing.T) {
 
 func TestExportSpellsStatesAgainstParentDefaults(t *testing.T) {
 	h := project(t)
-	h.press("o", "tab", `"Detail"`, "enter", `"Subtask $open"`, "esc")
+	h.press("o", "tab", `"// Detail"`, "enter", `"Subtask"`, "esc")
 	out := filepath.Join(t.TempDir(), "out.txt")
 	h.press(":", `"export `+out+`"`, "enter")
 	got, err := os.ReadFile(out)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "Inbox\nProject\n\tFirst\n\tSecond\n\t\tDetail\n\t\tSubtask $open\n"
+	want := "Inbox\nProject\n\tFirst\n\tSecond\n\t\t// Detail\n\t\tSubtask\n"
 	if string(got) != want {
 		t.Fatalf("export:\n%s\nwant:\n%s", got, want)
 	}
@@ -323,9 +323,10 @@ func TestExportPreservesEmptyNotesAndEscapes(t *testing.T) {
 	h, _, _ := copyFixture(t, sigil.Open, []copyRow{
 		{-1, sigil.Line{}},
 		{0, sigil.Line{Text: "Child", State: sigil.Open}},
-		{-1, sigil.Line{Text: `\#tag`}},
-		{-1, sigil.Line{Text: `prefix \#tag`}},
-		{-1, sigil.Line{Text: "[ ] literal"}},
+		{-1, sigil.Line{Text: `\#tag`, State: sigil.Open}},
+		{-1, sigil.Line{Text: `prefix \#tag`, State: sigil.Open}},
+		{-1, sigil.Line{Text: "[ ] literal", State: sigil.Open}},
+		{-1, sigil.Line{Text: "// literal", State: sigil.Open}},
 	})
 	path := filepath.Join(t.TempDir(), "outline.txt")
 	h.press(":", `"export `+path+`"`, "enter")
@@ -333,7 +334,7 @@ func TestExportPreservesEmptyNotesAndEscapes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "Inbox\nSource: $open\n\t$note\n\t\tChild\n\t" + `\\\#tag` + "\n\t" + `prefix \\#tag` + "\n\t" + `\[ ] literal` + "\nDestination: $open\n"
+	want := "Inbox\nSource: $open\n\t//\n\t\tChild\n\t" + `\\\#tag` + "\n\t" + `prefix \\#tag` + "\n\t" + `\[ ] literal` + "\n\t" + `\\// literal` + "\nDestination: $open\n"
 	if string(got) != want {
 		t.Fatalf("export = %q, want %q", got, want)
 	}

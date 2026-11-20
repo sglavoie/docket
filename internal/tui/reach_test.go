@@ -282,7 +282,7 @@ func TestHShowsAListsRowWhereItLives(t *testing.T) {
 				if folded {
 					h.want("  ○ One @tomorrow", "▌ ◔ Two ★ +1")
 				} else {
-					h.want("  ○ One @tomorrow", "▌ ◔ Two ★", "    · Detail")
+					h.want("  ○ One @tomorrow", "▌ ◔ Two ★", "    ○ Detail")
 				}
 				h.press("esc")
 				if h.rows() != before {
@@ -583,7 +583,7 @@ func TestSortPutsSiblingsInOrder(t *testing.T) {
 		want                []string
 	}{
 		{"deadline and children", "Late @+3d\n\tZ child\n\tA child\nUndated\nSoon @today\nTie @today\nAlso undated", "sort @", []string{
-			"  ○ Soon @today", "  ○ Tie @today", "▌ ○ Late @wed", "    · Z child", "    · A child", "  ○ Undated", "  ○ Also undated",
+			"  ○ Soon @today", "  ○ Tie @today", "▌ ○ Late @wed", "    ○ Z child", "    ○ A child", "  ○ Undated", "  ○ Also undated",
 		}},
 		{"flag then deadline", "Plain late @+3d\nFlag late ! @+3d\nPlain early @today\nFlag missing !\nFlag early ! @today\nPlain missing", "sort ! @", []string{
 			"  ○ Flag early ! @today", "  ○ Flag late ! @wed", "  ○ Flag missing !", "  ○ Plain early @today", "▌ ○ Plain late @wed", "  ○ Plain missing",
@@ -626,7 +626,7 @@ func TestSortPutsSiblingsInOrder(t *testing.T) {
 		kids := slices.Clone(h.m.tree.Children(h.m.at.root))
 		left, right := *h.m.tree.Row(kids[0]), *h.m.tree.Row(kids[len(kids)-1])
 		h.command("sort")
-		h.want("  ○ Before", " ┃○ Alpha", " ┃○ Zulu", "▌┃  · Z child", " ┃  · A child", "  ○ After")
+		h.want("  ○ Before", " ┃○ Alpha", " ┃○ Zulu", "▌┃  ○ Z child", " ┃  ○ A child", "  ○ After")
 		if h.m.current() != cur || !maps.Equal(h.m.picked, picked) || len(h.m.undo) != steps+1 || len(h.m.undo[steps]) != 2 || h.m.msg != "sorted 2 rows" {
 			t.Fatal("sort lost cursor/selection or moved descendants separately")
 		}

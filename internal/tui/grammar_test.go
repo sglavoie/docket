@@ -454,7 +454,7 @@ func TestDeleteAndCopyTakeMotions(t *testing.T) {
 		child              bool
 		remaining          int
 	}{
-		{"dd captures subtree before deleting", "d", "Task 00\n\tTask 01 $open\n", true, 2},
+		{"dd captures subtree before deleting", "d", "Task 00\n\tTask 01\n", true, 2},
 		{"dj captures range before deleting", "j", "Task 00\nTask 01\n", false, 2},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -619,7 +619,7 @@ func TestDeleteAndCopyTakeMotions(t *testing.T) {
 		h := start(t)
 		h.press("o", `"First #hit"`, "esc", "o", `"Heading:"`, "esc", "o", `"Second #hit"`, "esc", ">", ">")
 		h.press("/", `"#hit"`, "enter", "d", "G")
-		if h.m.register != "First #hit\nSecond #hit $note\n" {
+		if h.m.register != "First #hit\n// Second #hit\n" {
 			t.Fatal(h.m.register)
 		}
 		h.press("esc")
@@ -658,14 +658,14 @@ func TestPPutsTheRegister(t *testing.T) {
 		h.press("f", `"Alpha"`, "enter", "j", "y", "y")
 		original, register, steps := h.m.current(), h.m.register, len(h.m.undo)
 		h.press("p")
-		h.want("  ▾ Heading: 0/2", "    ○ Task ! @Dec 1 #tag", "      · Detail", "    ○ Task ! @Dec 1 #tag", "▌     · Detail", "  ○ Other")
+		h.want("  ▾ Heading: 0/4", "    ○ Task ! @Dec 1 #tag", "      ○ Detail", "    ○ Task ! @Dec 1 #tag", "▌     ○ Detail", "  ○ Other")
 		copy := h.m.tree.Row(h.m.current()).Parent
 		if copy == original || h.m.tree.Row(copy).Parent != h.m.tree.Row(original).Parent ||
 			h.m.register != register || h.status() != "put 2 rows" || len(h.m.undo) != steps+1 {
 			t.Fatal("subtree put lost level, identity, register, status or undo grouping")
 		}
 		h.press("u")
-		h.want("  ▾ Heading: 0/1", "    ○ Task ! @Dec 1 #tag", "      · Detail", "▌ ○ Other")
+		h.want("  ▾ Heading: 0/2", "    ○ Task ! @Dec 1 #tag", "      ○ Detail", "▌ ○ Other")
 	})
 	t.Run("before keeps multiple roots and children in order", func(t *testing.T) {
 		h := start(t).wide()
@@ -673,12 +673,12 @@ func TestPPutsTheRegister(t *testing.T) {
 		h.press("f", `"Alpha"`, "enter", "3", "y", "y", "G")
 		register, steps := h.m.register, len(h.m.undo)
 		h.press("P")
-		h.want("  ○ First", "    · Child", "  ○ Second", "  ○ First", "    · Child", "▌ ○ Second", "  ○ Target")
+		h.want("  ○ First", "    ○ Child", "  ○ Second", "  ○ First", "    ○ Child", "▌ ○ Second", "  ○ Target")
 		if h.status() != "put 3 rows" || h.m.register != register || len(h.m.undo) != steps+1 {
 			t.Fatal("P lost row count, register or undo grouping")
 		}
 		h.press("u")
-		h.want("  ○ First", "    · Child", "  ○ Second", "▌ ○ Target")
+		h.want("  ○ First", "    ○ Child", "  ○ Second", "▌ ○ Target")
 	})
 	t.Run("each put creates fresh rows and drops a count", func(t *testing.T) {
 		h := countOutline(t, 1)

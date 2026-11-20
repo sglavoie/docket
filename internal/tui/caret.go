@@ -1074,7 +1074,7 @@ func (m *Model) textStep(e *editor, msg tea.KeyPressMsg) int {
 		return e.typeAt(e.caret + 1)
 	case "I":
 		e.keep()
-		return e.typeAt(0)
+		return e.typeAt(textStart(e.buf))
 	case "A":
 		e.keep()
 		return e.typeAt(len(e.buf))

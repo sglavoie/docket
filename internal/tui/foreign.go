@@ -47,7 +47,7 @@ func readForeign(path string, data []byte, today time.Time) (string, error) {
 		// whatever they end up under.
 		text := sigil.Format(r.line, r.line.State != "", today)
 		if text == "" {
-			text = "$note"
+			text = sigil.NoteMark
 		}
 		if pastePrefix(text) {
 			text = `\` + text

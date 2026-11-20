@@ -133,6 +133,7 @@ func (m *Model) styler(surface string) func(string) []word {
 			parts = filterParts(line, false)
 		}
 		var spans []word
+		first := true
 		for _, part := range parts {
 			if part == "" {
 				continue
@@ -141,7 +142,14 @@ func (m *Model) styler(surface string) func(string) []word {
 			if i > 0 {
 				spans = append(spans, word{"", line[:i]})
 			}
-			spans = append(spans, styleWord(part)...)
+			if first && part == sigil.NoteMark && (surface == surfaceRow || surface == askCapture) {
+				// Only leading the line does the mark make a note, so only
+				// there is it drawn as a sigil.
+				spans = append(spans, word{m.colors().accent, part})
+			} else {
+				spans = append(spans, styleWord(part)...)
+			}
+			first = false
 			line = line[i+len(part):]
 		}
 		if line != "" {

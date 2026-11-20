@@ -1773,9 +1773,10 @@ func (m *Model) newRowAt(above bool, cur string) {
 
 func (m *Model) today() time.Time { return time.UnixMilli(m.now()).Local() }
 
-// defaultsToNotes reports whether children of parent default to notes.
+// defaultsToNotes reports whether children of parent default to notes: only
+// top-level rows do, so a row opened under a task is a task.
 func (m *Model) defaultsToNotes(parent string) bool {
-	return parent == "" || m.tree.Row(parent).Fields[sigil.FieldState] != ""
+	return parent == ""
 }
 
 func (m *Model) editRow(id string) {
@@ -1793,14 +1794,25 @@ func (m *Model) retypeRow(id string) {
 	text := sigil.Format(line, m.edit.notes, m.today())
 	// Spell even an implicit state: the replacement text may gain or lose
 	// a trailing colon, but cc keeps the row's fields in either direction.
-	if line.State == sigil.DefaultState(m.edit.notes, "") {
-		state := line.State
-		if state == "" {
-			state = "note"
-		}
-		text = strings.TrimSpace(text + " $" + state)
+	lead := ""
+	switch {
+	case line.State == "":
+		// A note is spelled where it leads the line, and typing starts after it.
+		line.State = sigil.DefaultState(m.edit.notes, "")
+		text, lead = sigil.Format(line, m.edit.notes, m.today()), sigil.NoteMark+" "
+	case line.State == sigil.DefaultState(m.edit.notes, ""):
+		text = strings.TrimSpace(text + " $" + line.State)
 	}
-	m.edit.buf, m.edit.caret = []rune(" "+text), 0
+	m.edit.buf, m.edit.caret = []rune(lead+" "+text), len([]rune(lead))
+}
+
+// textStart is where typing at the start of a line goes: after the mark that
+// makes it a note, so the mark keeps leading the line.
+func textStart(buf []rune) int {
+	if s := string(buf); s == sigil.NoteMark || strings.HasPrefix(s, sigil.NoteMark+" ") {
+		return min(len(buf), len(sigil.NoteMark)+1)
+	}
+	return 0
 }
 
 // setFields returns the operations that bring a row to want, skipping the
@@ -1975,7 +1987,7 @@ func (m *Model) retype(act repeatAct, rows []string) {
 		if act.how == "cc" {
 			m.retypeRow(id)
 		} else if m.editRow(id); act.how == "I" {
-			m.edit.caret = 0
+			m.edit.caret = textStart(m.edit.buf)
 		}
 		m.edit.insert([]rune(act.typed))
 		if !m.finishEdit() {
@@ -3205,7 +3217,7 @@ func (m *Model) normalAct(k string, count int) {
 			} else {
 				m.editRow(cur)
 				if k == "I" {
-					m.edit.caret = 0
+					m.edit.caret = textStart(m.edit.buf)
 				}
 			}
 			m.edit.mark(k)

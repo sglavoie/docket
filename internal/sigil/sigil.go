@@ -81,8 +81,8 @@ func (l Line) StartOn(today time.Time) string {
 func (l Line) Closed() bool { return l.State == Done || l.State == Canceled }
 
 // DefaultState is the state a row has when its line names none. A place that
-// defaults to notes (top-level or under a task), or text ending in a colon,
-// makes a note; every other row is an open task.
+// defaults to notes (top-level), or text ending in a colon, makes a note;
+// every other row is an open task.
 func DefaultState(notes bool, text string) string {
 	if notes || strings.HasSuffix(text, ":") {
 		return ""
@@ -207,14 +207,26 @@ func IsSigil(w string, today time.Time) bool {
 	return ok
 }
 
+// NoteMark is the word that, leading a line, makes the row a note.
+const NoteMark = "//"
+
 // Parse reads a typed line. A sigil is a whole word; one the grammar cannot
-// read stays in the text. Before a recognized sigil, a run of backslashes
-// keeps the token literal and loses exactly one backslash.
+// read stays in the text. A line led by NoteMark is a note. Before a
+// recognized sigil, or a leading NoteMark, a run of backslashes keeps the
+// token literal and loses exactly one backslash.
 func Parse(s string, notes bool, today time.Time) Line {
 	var l Line
 	var words []string
 	state, named := "", false
-	for _, w := range strings.Fields(s) {
+	for i, w := range strings.Fields(s) {
+		if i == 0 && w == NoteMark {
+			state, named = "", true
+			continue
+		}
+		if len(words) == 0 && strings.HasPrefix(w, `\`) && strings.TrimLeft(w, `\`) == NoteMark {
+			words = append(words, w[1:])
+			continue
+		}
 		if strings.HasPrefix(w, `\`) && IsSigil(strings.TrimLeft(w, `\`), today) {
 			words = append(words, w[1:])
 			continue
@@ -259,11 +271,12 @@ func Parse(s string, notes bool, today time.Time) Line {
 }
 
 // Format renders the line Parse reads back to the same value. The state is
-// spelled only where it differs from the row's default.
+// spelled only where it differs from the row's default, a note by leading
+// the line with NoteMark.
 func Format(l Line, notes bool, today time.Time) string {
 	var words []string
-	for _, w := range strings.Fields(l.Text) {
-		if IsSigil(strings.TrimLeft(w, `\`), today) {
+	for i, w := range strings.Fields(l.Text) {
+		if IsSigil(strings.TrimLeft(w, `\`), today) || i == 0 && strings.TrimLeft(w, `\`) == NoteMark {
 			w = `\` + w
 		}
 		words = append(words, w)
@@ -294,7 +307,7 @@ func Format(l Line, notes bool, today time.Time) string {
 	}
 	if l.State != DefaultState(notes, l.Text) {
 		if l.State == "" {
-			words = append(words, "$note")
+			words = append([]string{NoteMark}, words...)
 		} else {
 			words = append(words, "$"+l.State)
 		}

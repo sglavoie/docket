@@ -757,7 +757,7 @@ func TestANarrowSidebarKeepsCountsBesideNames(t *testing.T) {
 func TestANarrowHeaderKeepsThePlace(t *testing.T) {
 	h := start(t)
 	h.press("o", `"Project"`, "enter", "tab", `"Storage:"`, "enter", "tab",
-		`"Decide op-log format"`, "enter", "tab", `"per field"`, "esc", "k", "enter")
+		`"Decide op-log format"`, "enter", "tab", `"// per field"`, "esc", "k", "enter")
 	for width, want := range map[int]string{
 		60: "Project › Storage › Decide op-log format",
 		36: "… › Storage › Decide op-log format",

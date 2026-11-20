@@ -144,18 +144,18 @@ func TestImportReadsOtherOutliners(t *testing.T) {
 			"Home:\n" +
 				"\tCall Bob ! @2026-12-01 #phone $open\n" +
 				"\tPaid rent $done\n" +
-				"\t\ta note about it $note\n" +
+				"\t\t// a note about it\n" +
 				"\tAsk about #5 and a@b on(x) #priority=1 #waiting $open\n",
 		},
 		"trip.opml": {
 			`<?xml version="1.0"?><opml version="2.0"><head><title>x</title></head><body>` +
 				`<outline text="Trip &amp; plans" _note="first line&#10;second line">` +
 				`<outline text="Book flights" _status="checked"/><outline text="Pack #bag"/></outline></body></opml>`,
-			"Trip & plans $note\n" +
-				"\tfirst line $note\n" +
-				"\tsecond line $note\n" +
+			"// Trip & plans\n" +
+				"\t// first line\n" +
+				"\t// second line\n" +
 				"\tBook flights $done\n" +
-				"\tPack \\#bag $note\n",
+				"\t// Pack \\#bag\n",
 		},
 		"plan.bike": {
 			`<?xml version="1.0" encoding="UTF-8"?><html xmlns="http://www.w3.org/1999/xhtml"><head><meta charset="utf-8"/></head>` +
@@ -166,7 +166,7 @@ func TestImportReadsOtherOutliners(t *testing.T) {
 			"Plan:\n" +
 				"\tWrite draft now $open\n" +
 				"\tOutline $done\n" +
-				"\tJust a thought $note\n",
+				"\t// Just a thought\n",
 		},
 	}
 	dir := t.TempDir()
