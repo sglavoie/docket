@@ -355,7 +355,11 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
   user makes that finishes rows says how many the day has finished,
   wherever they are, as `3 done today`; one that closes the last open
   pick says so too, once, as `today is done: every pick is closed · 4
-  done today`. Neither is said when the key has something of its own to
+  done today`. A change that takes one row from `doing` to `done` first
+  says what it took, wall-clock time from when it went doing: `done in
+  1h40m`, or `done in 1h40m · est 30m` with a readable `#est`, and `done ·
+  doing since Nov 18` when it went doing on an earlier day; several rows
+  closed at once say only the rest. Neither is said when the key has something of its own to
   say, and an undo, a sync pass or the day turning over says nothing. Waiting counts
   rows in that state; Stale counts open
   and doing rows untouched for 14 days, leaving out rows whose start day is
@@ -1794,6 +1798,13 @@ counts the rows it hides after its text (`+3`): a task, which keeps its
 state glyph, and a note, unless it is a heading that says its progress. A row ending in a colon shows
 dimmed `done/total` after its text when it has tasks beneath it, at any depth,
 folded or not. Canceled and parked rows are left out of the total.
+A `doing` row says how long it has been doing after its fields, dimmed and
+led by a dot as an age is in a list: `· 1h40m` when it went doing today,
+from one minute up, and `· since Nov 18` when it went doing on an earlier
+day, so a row left overnight is not read as worked on for 19 hours. With a
+readable `#est`, a duration past it takes the warning colour. It is read
+from `changed` and the clock when drawn, redrawn each minute, and said in
+the outline, lists and filters; a row closed or parked says none.
 A row with a body shows a dimmed `≡` right after its text, before any count
 or progress, in the outline, lists and filters alike; how long the body is
 is not said.
@@ -2122,6 +2133,11 @@ a row unseen.
    launch and on quit to `Docket Backups` in iCloud Drive, or a folder it
    names, one file a day per database, the newest 14 kept, never in the
    sync folder. *Built.*
+
+30. **Cue.** The outline speaks first and makes time seen. A `doing` row
+   says how long it has been doing, or since which day, in the warning
+   colour once past its `#est`; closing one says what it took beside its
+   `#est`. Nothing is stored and no key is added. *In progress.*
 
 Not planned: reminders, attachments, a details panel (a body is read in the
 pane, not beside it), import from v1, any

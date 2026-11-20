@@ -201,6 +201,14 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 		}
 		out = append(out, word{paint(m.tagColor(tag)), "#" + tag})
 	}
+	if l.State == sigil.Doing {
+		// The row in hand says how long it has been in hand, as wall-clock
+		// time from when it went doing: a duration today, a day before.
+		if age, ok := m.doingAge(r.ID, l); ok {
+			age.style = paint(age.style)
+			out = append(out, age)
+		}
+	}
 	if m.at.since != 0 && m.at.matched[r.ID] {
 		// A filter that asks when rows changed says when each one did.
 		day := time.UnixMilli(m.sinceAt(r.ID)).In(m.today().Location()).Format("2006-01-02")

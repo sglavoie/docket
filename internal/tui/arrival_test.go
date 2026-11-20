@@ -717,6 +717,14 @@ func TestRepeatReopensRowsUnder(t *testing.T) {
 				for _, i := range []int{1, 3, 4, 6} {
 					after[i] = strings.Replace(after[i], "✓", "○", 1)
 				}
+				// An hour on, a row still doing says so, and so does a doing
+				// parent once undo puts it back.
+				after[9] += " · 1h"
+				back := append([]string(nil), before...)
+				back[9] += " · 1h"
+				if dated {
+					back[0] += " · 1h"
+				}
 
 				// Fields verify clocks and untouched dates that the drawn rows
 				// cannot fully show; the interaction itself stays on the keys.
@@ -754,7 +762,7 @@ func TestRepeatReopensRowsUnder(t *testing.T) {
 						}
 					}
 					h.press("u")
-					h.want(before...)
+					h.want(back...)
 					for id, want := range original {
 						if got := h.m.tree.Row(id).Fields; !maps.Equal(got, want) {
 							t.Fatalf("undo %s fields = %v, want %v", want["text"], got, want)

@@ -217,6 +217,7 @@ type Model struct {
 	rowNames   []entry        // every other live row with text, for the pickers
 	parked     int
 	doneToday  int                 // rows closed as done today, derived in scan
+	closing    closing             // what this key closed as done, said once the key is done
 	resumed    string              // the left-off note of a row this key set doing, said once the key is done
 	overdue    int                 // tasks still to do past their deadline, out of parked work, derived in scan
 	next       map[string]bool     // each active project's next action, derived in scan
@@ -671,14 +672,61 @@ func (m *Model) sayDayDone(left, done int) {
 	if m.doneToday > done {
 		tally = strconv.Itoa(m.doneToday) + " done today"
 	}
-	if left > 0 && m.picksLeft() == 0 && len(m.lists[kindToday]) > 0 {
-		m.msg = "today is done: every pick is closed"
-		if tally != "" {
-			m.msg += " · " + tally
-		}
-		return
+	var said []string
+	if c := m.closing; len(c.rows) == 1 && c.doing {
+		// One row taken from doing to done says what it took.
+		said = append(said, m.took(c.since, c.line))
 	}
-	m.msg = tally
+	if left > 0 && m.picksLeft() == 0 && len(m.lists[kindToday]) > 0 {
+		said = append(said, "today is done: every pick is closed")
+	}
+	if tally != "" {
+		said = append(said, tally)
+	}
+	m.msg = strings.Join(said, " · ")
+}
+
+// closing gathers the rows a key's recorded changes closed as done, and,
+// for a row that was doing, when it went doing.
+type closing struct {
+	rows  map[string]bool
+	doing bool
+	since int64
+	line  sigil.Line
+}
+
+// note reads one recorded group: a row set done that was not done before.
+// Its inverse holds what the row was, before its changed was restamped.
+func (c *closing) note(m *Model, ops, inv []outline.Op) {
+	before := map[[2]string]string{}
+	for i := len(inv) - 1; i >= 0; i-- {
+		// The first op on a field is undone last: its inverse holds the
+		// value the field had before the group.
+		if op := inv[i]; op.Kind == outline.Set {
+			if _, ok := before[[2]string{op.Row, op.Field}]; !ok {
+				before[[2]string{op.Row, op.Field}] = op.Value
+			}
+		}
+	}
+	for _, op := range ops {
+		state, ok := before[[2]string{op.Row, sigil.FieldState}]
+		if op.Kind != outline.Set || op.Field != sigil.FieldState || op.Value != sigil.Done || !ok || state == sigil.Done || c.rows[op.Row] {
+			continue
+		}
+		if c.rows == nil {
+			c.rows = map[string]bool{}
+		}
+		c.rows[op.Row] = true
+		r := m.tree.Row(op.Row)
+		c.doing = state == sigil.Doing && r != nil
+		if c.doing {
+			c.since = r.Created
+			if n, err := strconv.ParseInt(before[[2]string{op.Row, sigil.FieldChanged}], 10, 64); err == nil {
+				c.since = n
+			}
+			c.line = sigil.FromFields(r.Fields)
+		}
+	}
 }
 
 // Notice shows a message on the status line until the next key.
@@ -1144,6 +1192,7 @@ func (m *Model) record(ops, inv []outline.Op) bool {
 		return false
 	}
 	m.recorded = true
+	m.closing.note(m, ops, inv)
 	m.noteChange(ops)
 	if m.undoGroup != nil {
 		m.undoGroup = append(inv, m.undoGroup...)
@@ -1980,7 +2029,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		outlineKey := !m.help && m.edit == nil && m.ask == nil && !m.sideFocus
 		tree, gen := m.tree, m.tree.Gen()
 		left, done := m.picksLeft(), m.doneToday
-		m.recorded = false
+		m.recorded, m.closing = false, closing{}
 		switch {
 		case m.help && m.helpFind != nil:
 			m.helpFindKey(msg)
