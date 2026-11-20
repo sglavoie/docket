@@ -2165,7 +2165,7 @@ a row unseen.
    `doing` says how many are; a pick carried three days with no task under
    it names the way to a smaller first step. Docket.app posts Plan the day
    and Check in, each once a day at its time and silent with nothing to say.
-   Nothing is stored and no key is added. *In progress.*
+   Nothing is stored and no key is added. *Built.*
 
 Not planned: a reminder for one row, or a time of day on one, attachments, a details panel (a body is read in the
 pane, not beside it), import from v1, any

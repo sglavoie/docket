@@ -16,7 +16,8 @@ brew install --cask sglavoie/tap/docket
 
 The cask installs `docket` and its short alias `dkt`. On macOS it also
 installs [Docket.app](macos/README.md), which runs `docket` in its own window
-with a global shortcut, quick capture, a Today widget and Spotlight results.
+with a global shortcut, quick capture, a Today widget and Spotlight results,
+and two daily notices, Plan the day and Check in, that open Today when chosen.
 
 From a clone, with Go 1.26 or newer and [`just`](https://github.com/casey/just):
 
