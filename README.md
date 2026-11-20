@@ -35,7 +35,9 @@ The outline lives in one SQLite file, by default
 out of any folder a file sync tool copies: `:sync folder` shares the outline
 between machines through such a folder instead, without putting the database
 in it. The first launch of each day keeps a backup beside the database, and
-the newest 14 are kept.
+the newest 14 are kept. A copy also goes to `Docket Backups` in iCloud Drive,
+when there is one, every hour the outline has changed: `:backup` makes one
+now, `:backup folder` sends them elsewhere and `:backup off` stops them.
 
 ## How it works
 

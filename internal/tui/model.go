@@ -6,8 +6,6 @@ import (
 	"cmp"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -33,6 +31,9 @@ type Backend interface {
 	SyncBegin(dir string) (*store.SyncJob, error)
 	SyncEnd(read *store.SyncRead) (store.SyncReport, error)
 	DailyBackup(day string) error
+	CopyBegin(dir, day string, keep int, force bool) (*store.CopyJob, error)
+	CopyEnd(done *store.CopyDone) error
+	Copy(dir, day string, keep int) error
 	Stale() (bool, error)
 	Load() (*outline.Tree, error)
 }
@@ -44,6 +45,7 @@ const (
 	metaSyncDir    = "sync_dir"    // the folder shared with other machines
 	metaNumbers    = "numbers"     // whether rows say how far they are from the cursor
 	metaPrompts    = "prompts"     // lines kept on the filter, stamp and command prompts
+	metaBackupDir  = "backup_dir"  // where copies go off this machine: unset is the default, or off
 	undoDepth      = 200
 	promptDepth    = 50 // lines each prompt remembers
 )
@@ -190,13 +192,22 @@ type Model struct {
 	// A pass works in the folder off the keys' path. syncIO is that work
 	// while a pass is under way; syncSent says the program has been handed
 	// it; syncHeld is a finished pass waiting for a line to be typed out.
-	syncIO     func() tea.Msg
-	syncSent   bool
-	syncHeld   *syncDoneMsg
-	syncLoud   bool   // the pass was asked for, so its outcome is said
-	syncWant   bool   // another pass was asked for while one was under way
-	syncAgain  bool   // this pass is the one retry a missing file is owed
-	backedUp   string // the day of the newest snapshot
+	syncIO    func() tea.Msg
+	syncSent  bool
+	syncHeld  *syncDoneMsg
+	syncLoud  bool   // the pass was asked for, so its outcome is said
+	syncWant  bool   // another pass was asked for while one was under way
+	syncAgain bool   // this pass is the one retry a missing file is owed
+	backedUp  string // the day of the newest snapshot
+	// Copies of the database go to backupDir, off this machine, while one
+	// is set. copyIO is a copy under way, copySent says the program has it.
+	backupDir  string
+	backupHome string // the folder copies go to unless one is named
+	copyIO     func() tea.Msg
+	copySent   bool
+	copyLoud   bool  // the copy was asked for, so its outcome is said
+	copyWant   bool  // another copy was asked for while one was under way
+	copiedAt   int64 // when the last copy began, in ms
 	scanned    scanKey
 	tags       []string       // tags in use, most used first
 	tagUse     map[string]int // how many live rows carry each tag
@@ -321,7 +332,7 @@ func newModel(tree *outline.Tree, backend Backend, folds map[string]bool, now fu
 // Init asks for the background and turns on the terminal's light and dark
 // reports (mode 2031), which arrive whether or not the window has focus.
 func (m *Model) Init() tea.Cmd {
-	return tea.Batch(tick(), m.syncCmd(), tea.Raw(ansi.SetModeLightDark), tea.RequestBackgroundColor)
+	return tea.Batch(tick(), m.syncCmd(), m.copyCmd(), tea.Raw(ansi.SetModeLightDark), tea.RequestBackgroundColor)
 }
 
 // history is the undo and redo stacks as they are kept between sessions.
@@ -1930,16 +1941,21 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.RequestBackgroundColor
 	case tickMsg:
 		m.backup()
+		if m.now()-m.copiedAt >= copyEvery.Milliseconds() {
+			m.copyStart(false, false)
+		}
 		m.refresh()
 		m.syncSettle()
 		m.syncStart(false)
 		m.rebuild()
-		return m, tea.Batch(tick(), m.syncCmd(), tea.RequestBackgroundColor)
+		return m, tea.Batch(tick(), m.syncCmd(), m.copyCmd(), tea.RequestBackgroundColor)
 	case flashMsg:
 		if msg.gen == m.flashGen {
 			m.unflash()
 		}
 		return m, nil
+	case copyDoneMsg:
+		m.copyDone(msg.done)
 	case syncDoneMsg:
 		m.syncHeld = &msg
 		m.syncSettle()
@@ -1962,6 +1978,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.ask = nil
 			m.syncQuit()
+			m.copyQuit()
 			return m, tea.Quit
 		}
 		outlineKey := !m.help && m.edit == nil && m.ask == nil && !m.sideFocus
@@ -1999,11 +2016,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.sayDayDone(left, done)
 		if m.quit {
 			m.syncQuit()
+			m.copyQuit()
 			return m, tea.Quit
 		}
 		m.syncSettle()
 	}
-	cmd := tea.Batch(m.pendingCmd, m.syncCmd())
+	cmd := tea.Batch(m.pendingCmd, m.syncCmd(), m.copyCmd())
 	m.pendingCmd = nil
 	return m, cmd
 }
@@ -2256,6 +2274,8 @@ func (m *Model) command(line string) {
 		m.export(strings.Join(words[1:], " "))
 	case "import":
 		m.importFile(strings.Join(words[1:], " "))
+	case "backup":
+		m.backupCommand(strings.Join(words[1:], " "))
 	case "sync":
 		dir := strings.Join(words[1:], " ")
 		switch {
@@ -2263,10 +2283,10 @@ func (m *Model) command(line string) {
 			m.syncDir, m.syncNote, m.syncFailed = "", "", false
 			m.msg = "sync is off"
 		case dir != "":
-			if rest, ok := strings.CutPrefix(dir, "~/"); ok {
-				if home, err := os.UserHomeDir(); err == nil {
-					dir = filepath.Join(home, rest)
-				}
+			dir = expandHome(dir)
+			if inside(dir, m.backupDir) {
+				m.msg = "sync failed: " + tilde(dir) + " shares the backup copies' folder, and the database never goes in a sync folder"
+				return
 			}
 			m.syncDir = dir
 		case m.syncDir == "":

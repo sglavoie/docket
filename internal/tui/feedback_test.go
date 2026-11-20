@@ -370,7 +370,7 @@ func TestTabCompletesACommandName(t *testing.T) {
 	h.press(":")
 	step("tab", "q")
 	step("up", "")
-	step("up", "sync ")
+	step("up", "backup ")
 	h.press("esc", ":", `"zz"`)
 	step("tab", "zz")
 	h.press("esc")

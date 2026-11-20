@@ -131,6 +131,14 @@ func run() error {
 	if backup != nil {
 		m.Notice("no backup today: " + backup.Error())
 	}
+	// Copies go to iCloud Drive unless a folder was named or they were
+	// turned off. A database named by DOCKET_DB, as just run's dev.db, has
+	// no default, so a trial outline never reaches iCloud unasked.
+	home := ""
+	if os.Getenv("DOCKET_DB") == "" {
+		home = tui.ICloudBackups()
+	}
+	m.Backups(home)
 	final, err := tea.NewProgram(m).Run()
 	// The TUI turned on light and dark reports; a shell must not receive them.
 	fmt.Print(ansi.ResetModeLightDark)

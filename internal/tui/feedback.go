@@ -322,6 +322,7 @@ var commandUses = []struct{ use, does string }{
 	{"export [file]", "write the outline as text"},
 	{"import file", "read rows from a file"},
 	{"sync [folder|off]", "share through a folder, or stop"},
+	{"backup [folder|off]", "copy the database to a folder now, or stop the hourly copies"},
 }
 
 // commandOffers names the commands the line being typed could become, so
@@ -330,7 +331,7 @@ var commandUses = []struct{ use, does string }{
 func commandOffers(line string) string {
 	uses, does := commandMatches(line)
 	if strings.TrimLeft(line, " ") == "" {
-		// Sixteen commands are scanned by name; what each takes is said
+		// Seventeen commands are scanned by name; what each takes is said
 		// once a letter has narrowed them.
 		for i, use := range uses {
 			uses[i], _, _ = strings.Cut(use, " ")

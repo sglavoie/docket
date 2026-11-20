@@ -125,6 +125,34 @@ later day's copy when the day turns over. Restoring is copying one over the
 live file. A failed backup is said on the status line and does not stop the
 work.
 
+**Copies off this machine.** `:backup` keeps copies of the database in a
+folder another machine can reach, so a lost disk does not take the backups
+with it. By default the folder is `Docket Backups` in iCloud Drive, when the
+machine has iCloud Drive and the database is at its usual place; one named
+by `DOCKET_DB`, as `just run`'s `dev.db`, has no default, so a trial outline
+never reaches iCloud unasked. Each copy is a whole snapshot, as a backup is,
+written as `<device>/docket-YYYY-MM-DD.db` under the folder: the day's file
+is replaced by each later copy that day, each database keeps the newest 14
+of its own, and the device names one database, so two Macs on one iCloud
+account, or two databases on one Mac, never write the same file.
+
+- A copy is made at launch, every hour the session stays open, and on quit,
+  each only when the outline has changed since the last copy to that folder,
+  and on `:backup`, changed or not.
+- The snapshot is taken beside the database and then written to the folder
+  away from the keys, under a temporary name that is renamed once whole, so
+  a slow folder never holds up a keystroke and a syncing tool never carries
+  half a copy. Only the copy on quit is waited for.
+- `:backup` copies now and says where; `:backup folder` names the folder,
+  kept on this machine, and copies to it; `:backup off` stops the copies
+  until `:backup` turns them on again, at the default folder.
+- The folder is never the sync folder, inside it, or around it, since the
+  database never goes there: `:backup` and `:sync` each refuse the other's
+  folder, and a default that falls inside the sync folder is said and not
+  used.
+- A copy that fails is said on the status line and does not stop the work.
+  The local daily backups go on as they were.
+
 **A copy is another machine.** A database remembers the machine and the
 path it was named on. Opened anywhere else, as a file copied to a second
 machine or to a second place on this one, it takes a new sync name and says
@@ -872,7 +900,8 @@ Shift or Caps Lock was held. `Enter` on a name that only one command starts, as
   opens the review list; `fold level` shows that many levels, as described below;
   `sort [keys]` orders siblings once, as described below;
   `save name` and `forget name` keep and drop a filter; `sync
-  folder` and `sync off` are described under Sync.
+  folder` and `sync off` are described under Sync, and `backup [folder|off]`
+  under Copies off this machine.
 
 `zM` folds every row with children under the pane's root and `zR` unfolds
 them all, as in Vim; a count and the selection play no part. `:fold N`
@@ -2080,6 +2109,11 @@ a row unseen.
    last edit, and `:sort` orders by `~`, `~~` and a tag's value. A line
    captured in Today is picked for it. `$blocked` finds work waiting on an
    open link. *Built.*
+
+29. **Copies off this machine.** `:backup` copies the database hourly, at
+   launch and on quit to `Docket Backups` in iCloud Drive, or a folder it
+   names, one file a day per database, the newest 14 kept, never in the
+   sync folder. *Built.*
 
 Not planned: reminders, attachments, a details panel (a body is read in the
 pane, not beside it), import from v1, any

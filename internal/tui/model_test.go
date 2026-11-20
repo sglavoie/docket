@@ -59,6 +59,10 @@ func (h *harness) settle() {
 	for h.m.syncIO != nil && h.m.syncHeld == nil {
 		h.m.Update(h.m.syncIO())
 	}
+	// A copy off this machine is worked on away from the keys too.
+	for h.m.copyIO != nil {
+		h.m.Update(h.m.copyIO())
+	}
 }
 
 // tick is the minute passing.

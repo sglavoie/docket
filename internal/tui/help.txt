@@ -233,6 +233,8 @@ Tab	on `:`, complete the command name; again for the next, `Shift+Tab` back
 	in Projects, an Inbox line routes its children to Inbox
 	`.taskpaper`, `.opml` and `.bike` files are read as what they are
 :sync folder	share through a synced folder; `:sync off` stops
+:backup	copy the database off this machine now; hourly by itself
+	to `Docket Backups` in iCloud Drive, or `:backup folder`; `:backup off` stops
 
 == Good to know
 Display	the palette follows the terminal background; focused rows are shaded
