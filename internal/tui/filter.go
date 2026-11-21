@@ -314,11 +314,12 @@ func parseCond(w string, today time.Time) cond {
 		}
 	case '~':
 		// ~~ reads when the row was last edited, ~ when its state changed.
+		// Alone, either holds for any row and only orders the list.
 		if rest, edit := strings.CutPrefix(w, "~~"); edit {
-			if day, ok := sinceDay(strings.ToLower(rest), today); ok {
+			if day, ok := sinceDay(strings.ToLower(rest), today); ok || rest == "" {
 				c.kind, c.value = 'e', day
 			}
-		} else if day, ok := sinceDay(strings.ToLower(w[1:]), today); ok {
+		} else if day, ok := sinceDay(strings.ToLower(w[1:]), today); ok || w == "~" {
 			c.kind, c.value = '~', day
 		}
 	case '&':
@@ -1102,7 +1103,8 @@ type savedFilter struct {
 
 // builtins are the filters every outline has, for the passes a day and a
 // week ask for: what could be picked for Today, what is slipping, what has
-// stalled, and what is held up by other work. They are not rows, so they
+// stalled, what is held up by other work, what is due soon, and what is
+// still to do, newest first. They are not rows, so they
 // cannot be forgotten; a filter saved under one of their names is used in
 // its place, and forgetting that brings the built-in one back.
 var builtins = []savedFilter{
@@ -1111,6 +1113,7 @@ var builtins = []savedFilter{
 	{Name: "stuck", Query: "$doing -~7d | $waiting -~2w", Flat: true, Builtin: true},
 	{Name: "blocked", Query: "$blocked", Flat: true, Builtin: true},
 	{Name: "deliveries", Query: "$open|doing|waiting @<+3d", Flat: true, Builtin: true},
+	{Name: "recent", Query: "$open|doing|waiting ~", Flat: true, Builtin: true},
 }
 
 const (

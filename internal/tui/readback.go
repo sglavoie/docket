@@ -94,8 +94,14 @@ func (c cond) words(today time.Time) string {
 		}
 		return "repeats every " + c.value
 	case '~':
+		if c.value == "" {
+			return "newest change first"
+		}
 		return "changed since " + dayWords(c.value, today)
 	case 'e':
+		if c.value == "" {
+			return "newest edit first"
+		}
 		return "edited since " + dayWords(c.value, today)
 	case '&':
 		switch c.value {

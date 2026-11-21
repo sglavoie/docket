@@ -168,6 +168,7 @@ gn gN	step into the text on what the filter found: `gn cw new Esc n .`
 /stuck	built in: doing a week, waiting two; `:save` one to replace it
 /blocked	built in: tasks whose link points at a task still to do
 /deliveries	built in: tasks due within 3 days or overdue, soonest first
+/recent	built in: tasks left to do, newest first
 Held rows	edits never remove matches; change the query to read again
 Closed last	flat results and Today put done and canceled rows at the foot
 
@@ -178,6 +179,7 @@ Closed last	flat results and Today put done and canceled rows at the foot
 @@later	starts later
 ~7d	state changed (or row made) in the last week
 ~~7d	edited in the last week: any field written; a move is no edit
+~ ~~	alone, any row: they only order a flat list, newest first
 	a `~` or `~~` filter says when on each match; flat, newest first
 & &word &.	a row link, one to matching text, one to the cursor's row
 $project	a top-level row: `$parked $project` lists parked projects

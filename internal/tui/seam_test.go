@@ -107,6 +107,22 @@ func TestAChangedFilterSaysWhenAndReadsNewestFirst(t *testing.T) {
 	h.want("▌ ○ Write docs @fri #docs ~Nov 15 · Alpha")
 }
 
+func TestRecentListsWhatIsLeftNewestFirst(t *testing.T) {
+	h := work(t)
+	h.clock = h.clock.Add(2 * 24 * time.Hour)
+	h.press("x", "G", "o", `"Newest"`, "esc")
+	// A ~ alone holds for every row and only orders the list.
+	h.press("/", `"~"`)
+	h.wantStatus("Filter › ~   7 matches · in context · newest change first")
+	h.press("esc", "f", `"recent"`, "enter")
+	h.want(
+		"▌ ○ Newest ~today · Alpha",
+		"  ○ Fix login ! #bug ~Nov 15 · Alpha",
+		"  ○ Write docs @fri #docs ~Nov 15 · Alpha",
+		"  ○ Refactor auth #bug ~Nov 15 · Alpha",
+	)
+}
+
 func TestSavedFiltersFollowTheListsInTheSidebar(t *testing.T) {
 	h := work(t)
 	h.press("/", `"#bug"`, "enter")

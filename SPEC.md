@@ -752,7 +752,8 @@ Three more acts use the same line:
   `$waiting -~2w` what has waited longer than two. `~~7d`, `~~today` and
   the rest match a row last edited that recently instead (see Model): its
   text, a tag, a date or any other field written, so `~~today` is what was
-  touched today and `-~~1m` what has been left alone for a month. Every
+  touched today and `-~~1m` what has been left alone for a month. `~` and
+  `~~` alone hold for every row, so they only order the list. Every
   term must hold. A
   bar standing alone, with a blank on each side, splits the terms around it
   into alternatives, and brackets standing alone set a part off as one
@@ -1187,13 +1188,14 @@ not a second route to a key (rule 3). Each is a row
 under a hidden top-level row with the fixed identity `filters`, so saving
 and forgetting are undone, backed up and synced like any other change.
 
-**Built-in filters.** Every outline also has five filters it never
+**Built-in filters.** Every outline also has six filters it never
 stores, for the passes a day and a week ask for, each flat over Projects:
 `/suggest` (`( $doing | @week | $next ) -$today`), what could be picked
 for Today; `/slipping` (`$missed | @overdue`), what the days are leaving
 behind; `/stuck` (`$doing -~7d | $waiting -~2w`), what has stalled;
 `/blocked` (`$blocked`), what waits on other work; and `/deliveries`
-(`$open|doing|waiting @<+3d`), the near deliveries, soonest first. The `f` picker offers
+(`$open|doing|waiting @<+3d`), the near deliveries, soonest first; and
+`/recent` (`$open|doing|waiting ~`), what is left to do, newest first. The `f` picker offers
 them after the saved filters; the sidebar does not list them, so it holds
 only the user's places. Each pass is then the ordinary keys: `n`, `t`, a
 stamp, `Ctrl+A`. `:save name` over one puts the user's own in its place,
