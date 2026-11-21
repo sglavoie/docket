@@ -534,7 +534,7 @@ func TestASavedDeadlineFilterReopensSorted(t *testing.T) {
 	h := deadlines(t)
 	h.press("/", `"@>fri"`, "tab", "enter", ":", `"save ahead"`, "enter", "esc")
 	again := reopen(t, h)
-	again.press("f", `"/ahead"`, "enter")
+	again.press("F", `"/ahead"`, "enter")
 	if got := again.shown(); got != "Soon, Also fri, Week, Late" {
 		t.Errorf("reopened = %q", got)
 	}

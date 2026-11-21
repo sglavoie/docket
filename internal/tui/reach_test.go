@@ -77,7 +77,7 @@ func TestCtrlOGoesBackAlongTheTrailOfJumps(t *testing.T) {
 			t.Fatalf("second filter = %q\n%s", h.header(), h.rows())
 		}
 		// Saved filters also leave a restorable place and sidebar entry.
-		h.press("f", `"/pair"`, "enter", "j")
+		h.press("F", `"/pair"`, "enter", "j")
 		side := h.m.sel
 		h.press("f", `"beta"`, "enter", "ctrl+o")
 		if h.rows() != pair || h.header() != heading || !h.m.sel.same(side) {

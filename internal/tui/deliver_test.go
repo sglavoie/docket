@@ -144,7 +144,7 @@ func TestStampingADeadlineSaysWhatItLandsAmong(t *testing.T) {
 	h.press("o", `"Fourth @tom"`, "esc")
 	h.wantStatus("2 others due by Wed: /deliveries lists them")
 	// The built-in filter lists them, soonest first.
-	h.press("f", `"deliveries"`, "enter")
+	h.press("F", `"deliveries"`, "enter")
 	h.want(
 		"▌ ○ Fourth @tomorrow · Project",
 		"  ○ Slides @tue · Project",

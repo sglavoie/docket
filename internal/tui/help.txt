@@ -162,8 +162,10 @@ m Enter	with a blank query, move selected rows here, where `o` would add
 =word	only on the row's own line; words match bodies too otherwise
 n N	next, previous match; after `Esc`, use the last filter
 gn gN	step into the text on what the filter found: `gn cw new Esc n .`
-:save name	keep a filter in the sidebar and under `f`; `:forget name` drops it
-/suggest	built in, under `f`: what could be picked for Today
+:save name	keep a filter in the sidebar and under `F`; `:forget name` drops it
+F	open a saved or built-in filter by name; blank `Enter` the first
+/now	built in, under `F`: doing rows, with the steps still open under them
+/suggest	built in: what could be picked for Today
 /slipping	built in: carried picks and overdue rows
 /stuck	built in: doing a week, waiting two; `:save` one to replace it
 /blocked	built in: tasks whose link points at a task still to do
@@ -204,7 +206,7 @@ a|b	either: `$open|doing` `#home|!` `milk|#food`
 a	capture to Inbox; `%name` files in a project or heading
 	typed in Today, the row is picked for Today as well
 	`Enter` keeps and offers another; blank `Enter` or `Esc` ends
-f	go to a project, heading, list, saved filter or row by name
+f	go to a project, heading, list or row by name; `F` opens filters
 	blank `Enter` opens Inbox; `Up` `Down` choose, `Esc` leaves
 m	move rows to a project, Inbox or heading by name
 Tab	sidebar focus; `j` `k` and paging keys visit; `Enter` works there
@@ -217,7 +219,7 @@ L gl	link to a row, follow it; blank `L` `Enter` removes the link
 	with no row link, `gl` opens the first web address, Mail link or
 	file path in the text, else goes back to the row that links here (`←`)
 gf	go to the whole project the row is filed in, cursor on the row
-Ctrl+O Ctrl+I	back, forward along jumps (`f`, `gf`, sidebar visits, row links)
+Ctrl+O Ctrl+I	back, forward along jumps (`f`, `F`, `gf`, sidebar visits, row links)
 	a terminal unable to distinguish `Ctrl+I` from `Tab` gives `Tab`
 g; g,	back, forward through the rows changed this session
 

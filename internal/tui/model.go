@@ -2167,6 +2167,7 @@ type prompt struct {
 const (
 	askCapture = "capture" // a line for the Inbox
 	askJump    = "jump"    // a project or list to go to
+	askFilters = "filters" // a saved or built-in filter to open
 	askMove    = "move"    // a project, Inbox or heading to move rows into
 	askLink    = "link"    // a row for rows to point at
 	askFilter  = "filter"  // a query narrowing the pane, live
@@ -2179,6 +2180,7 @@ const (
 var askLabels = map[string]string{
 	askCapture: "Inbox › ",
 	askJump:    "Go to › ",
+	askFilters: "Filters › ",
 	askMove:    "Move to › ",
 	askLink:    "Link to › ",
 	askFilter:  "Filter › ",
@@ -2286,7 +2288,7 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 			}
 			hit := hits[min(a.choice, len(hits)-1)]
 			m.ask = nil
-			if a.kind == askJump {
+			if a.kind == askJump || a.kind == askFilters {
 				m.jump(hit)
 				return
 			}
@@ -2680,6 +2682,8 @@ func (m *Model) sideKey(k string) {
 		m.ask = &prompt{kind: askCommand}
 	case "f":
 		m.ask = &prompt{kind: askJump}
+	case "F":
+		m.ask = &prompt{kind: askFilters}
 	case "a":
 		m.ask = &prompt{kind: askCapture}
 	}
@@ -3191,6 +3195,8 @@ func (m *Model) normalAct(k string, count int) {
 		}
 	case "f":
 		m.ask = &prompt{kind: askJump}
+	case "F":
+		m.ask = &prompt{kind: askFilters}
 	case "g;", "g,":
 		m.walkChanges(k == "g;", count)
 		return

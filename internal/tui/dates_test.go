@@ -113,11 +113,11 @@ func TestAFilterCanBeSavedAndReopened(t *testing.T) {
 		t.Fatalf("msg = %q", h.m.msg)
 	}
 	h.press("/", `"#bug -$done"`, "tab", "enter", ":", `"save open bugs"`, "enter")
-	if h.m.msg != "saved: /open bugs is in the sidebar, and f opens it by name" {
+	if h.m.msg != "saved: /open bugs is in the sidebar, and F opens it by name" {
 		t.Fatalf("msg = %q", h.m.msg)
 	}
-	h.press("esc", "x", "f", `"/op"`)
-	if h.bottom() != "Go to › /op   /open bugs" {
+	h.press("esc", "x", "F", `"/op"`)
+	if h.bottom() != "Filters › /op   /open bugs" {
 		t.Fatalf("picker = %q", h.bottom())
 	}
 	h.press("enter")
@@ -131,12 +131,12 @@ func TestAFilterCanBeSavedAndReopened(t *testing.T) {
 
 	// It outlives the session, and can be forgotten.
 	again := reopen(t, h)
-	again.press("f", `"/open"`, "enter")
+	again.press("F", `"/open"`, "enter")
 	again.want(
 		"▌ ○ Fix login ! #bug · Alpha",
 		"  ○ Refactor auth #bug · Alpha",
 	)
-	again.press(":", `"forget open bugs"`, "enter", "f", `"/open"`, "enter")
+	again.press(":", `"forget open bugs"`, "enter", "F", `"/open"`, "enter")
 	if again.m.msg != "nothing matches /open" {
 		t.Fatalf("msg = %q", again.m.msg)
 	}

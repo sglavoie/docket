@@ -135,19 +135,19 @@ func TestClosingRowsSaysWhatTheDayHasDone(t *testing.T) {
 func TestBuiltInFiltersAreAlwaysThere(t *testing.T) {
 	h := start(t).wide()
 	h.pasteText("Alpha\n\tWrite $doing\n\tLate @2026-11-01\n\tLater\n\tChase Ann $waiting")
-	h.press("f", `"/suggest"`, "enter")
+	h.press("F", `"/suggest"`, "enter")
 	// Soonest deadline first, as a flat filter that asks about deadlines.
 	if got := h.shown(); got != "Late, Write" {
 		t.Fatalf("/suggest = %q", got)
 	}
-	h.press("esc", "f", `"/slipping"`, "enter")
+	h.press("esc", "F", `"/slipping"`, "enter")
 	if got := h.shown(); got != "Late" {
 		t.Fatalf("/slipping = %q", got)
 	}
 	// A week on, the doing row has stalled; the waiting one not yet.
 	h.clock = h.clock.AddDate(0, 0, 8)
 	h.tick()
-	h.press("esc", "f", `"/stuck"`, "enter")
+	h.press("esc", "F", `"/stuck"`, "enter")
 	if got := h.shown(); got != "Write" {
 		t.Fatalf("/stuck = %q", got)
 	}
@@ -158,15 +158,29 @@ func TestBuiltInFiltersAreAlwaysThere(t *testing.T) {
 	h.press("esc", ":", `"forget stuck"`, "enter")
 	h.wantStatus("/stuck is built in: :save stuck over it puts your own in its place")
 	// Saved under its name, one becomes the user's and takes a place there.
-	h.press("f", `"/stuck"`, "enter", ":", `"save stuck"`, "enter")
+	h.press("F", `"/stuck"`, "enter", ":", `"save stuck"`, "enter")
 	if !strings.Contains(h.side(), "/stuck") {
 		t.Fatalf("a saved built-in is not in the sidebar:\n%s", h.side())
 	}
 	h.press(":", `"forget stuck"`, "enter")
 	h.wantStatus("forgot /stuck")
-	h.press("f", `"/stuck"`, "enter")
+	h.press("F", `"/stuck"`, "enter")
 	if h.m.at.query != "$doing -~7d | $waiting -~2w" {
 		t.Fatalf("the built-in did not come back: %q", h.m.at.query)
+	}
+}
+
+// /now is the work in hand: each doing row where it lives, with the steps
+// still open under it, so the next one is read beside what it serves.
+func TestNowShowsTheWorkInHandWithItsOpenSteps(t *testing.T) {
+	h := start(t).wide()
+	h.pasteText("Alpha\n\tDraft $doing\n\t\tOutline $done\n\t\tWrite intro\n\t\tSend $waiting\n\tLater\nBeta\n\tFix $doing")
+	h.press("F", `"/now"`, "enter")
+	if got := h.shown(); got != "Alpha, Draft, Write intro, Beta, Fix" {
+		t.Fatalf("/now = %q", got)
+	}
+	if h.m.at.flat {
+		t.Fatal("/now is flat; it is read in context")
 	}
 }
 
@@ -175,7 +189,7 @@ func TestBlockedHoldsForWorkWaitingOnAnOpenLink(t *testing.T) {
 	h.pasteText("Alpha\n\tShip\n\tReview\n\tNotes:")
 	h.press("g", "g", "j", "L", `"Review"`, "enter")
 	h.press("j", "j", "L", `"Ship"`, "enter") // a note pointing at work is not blocked
-	h.press("f", `"/blocked"`, "enter")
+	h.press("F", `"/blocked"`, "enter")
 	if got := h.shown(); got != "Ship" {
 		t.Fatalf("/blocked = %q", got)
 	}
@@ -186,7 +200,7 @@ func TestBlockedHoldsForWorkWaitingOnAnOpenLink(t *testing.T) {
 	h.press("esc")
 	// Once the work it waits on is done, it is no longer blocked.
 	h.press("f", `"Review"`, "enter", "x")
-	h.press("f", `"/blocked"`, "enter")
+	h.press("F", `"/blocked"`, "enter")
 	if got := h.shown(); got != "" {
 		t.Fatalf("/blocked after review = %q", got)
 	}

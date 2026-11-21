@@ -89,7 +89,7 @@ func TestTwoMachinesShareAnOutline(t *testing.T) {
 	desk.press("/", `"#doc"`, "enter", ":", `"save docs"`, "enter", "esc")
 	desk.tick()
 	lap.tick()
-	lap.press("f", `"/docs"`, "enter")
+	lap.press("F", `"/docs"`, "enter")
 	lap.want(
 		"  ▾ Alpha",
 		"▌   ✓ Write the spec v2 ! #doc",

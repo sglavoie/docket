@@ -114,7 +114,7 @@ func TestRecentListsWhatIsLeftNewestFirst(t *testing.T) {
 	// A ~ alone holds for every row and only orders the list.
 	h.press("/", `"~"`)
 	h.wantStatus("Filter › ~   7 matches · in context · newest change first")
-	h.press("esc", "f", `"recent"`, "enter")
+	h.press("esc", "F", `"recent"`, "enter")
 	h.want(
 		"▌ ○ Newest ~today · Alpha",
 		"  ○ Fix login ! #bug ~Nov 15 · Alpha",

@@ -380,7 +380,7 @@ func TestFilterPhrase(t *testing.T) {
 		t.Fatalf("N found %q", got)
 	}
 	again := reopen(t, h)
-	again.press("f", `"/phrase"`, "enter")
+	again.press("F", `"/phrase"`, "enter")
 	if got := again.shown(); got != "Per the spec:, Work PER THE SPEC today" {
 		t.Fatalf("saved phrase = %q", got)
 	}
@@ -534,7 +534,7 @@ func TestFilterFirst(t *testing.T) {
 		t.Fatalf("N found %q", got)
 	}
 	again := reopen(t, h)
-	again.press("f", `"/first"`, "enter")
+	again.press("F", `"/first"`, "enter")
 	if got := again.shown(); got != "First, Child, Heading first, Other first" {
 		t.Fatalf("saved first = %q", got)
 	}

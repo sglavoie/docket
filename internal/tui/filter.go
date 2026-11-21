@@ -1102,12 +1102,14 @@ type savedFilter struct {
 }
 
 // builtins are the filters every outline has, for the passes a day and a
-// week ask for: what could be picked for Today, what is slipping, what has
-// stalled, what is held up by other work, what is due soon, and what is
-// still to do, newest first. They are not rows, so they
+// week ask for: what is being done, with the steps still open under it,
+// what could be picked for Today, what is slipping, what has stalled, what
+// is held up by other work, what is due soon, and what is still to do,
+// newest first. They are not rows, so they
 // cannot be forgotten; a filter saved under one of their names is used in
 // its place, and forgetting that brings the built-in one back.
 var builtins = []savedFilter{
+	{Name: "now", Query: "$doing | ^$doing $open", Builtin: true},
 	{Name: "suggest", Query: "( $doing | @week | $next ) -$today", Flat: true, Builtin: true},
 	{Name: "slipping", Query: "$missed | @overdue", Flat: true, Builtin: true},
 	{Name: "stuck", Query: "$doing -~7d | $waiting -~2w", Flat: true, Builtin: true},
@@ -1166,7 +1168,7 @@ func (m *Model) keepFilter(save bool, name string) {
 	switch {
 	case !m.do(ops...):
 	case save:
-		m.msg = "saved: /" + name + " is in the sidebar, and f opens it by name"
+		m.msg = "saved: /" + name + " is in the sidebar, and F opens it by name"
 	default:
 		m.msg = "forgot /" + name
 	}

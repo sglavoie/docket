@@ -50,7 +50,7 @@ func (m *Model) styler(surface string) func(string) []word {
 			style = row(w)
 			if name, ok := strings.CutPrefix(w, "%"); ok && name != "" {
 				style = m.colors().warn
-				if len(match(name, 2, m.targets(false))) > 0 {
+				if len(match(name, 2, m.targets(askMove))) > 0 {
 					style = m.colors().accent
 				}
 			}

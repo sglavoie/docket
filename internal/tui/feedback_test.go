@@ -185,7 +185,7 @@ func TestANewOutlineComesWithFiltersWorthKeeping(t *testing.T) {
 	if !slices.Equal(names, []string{"next=$next", "week=@week", "done=$done ~7d"}) || len(h.m.undo) != 1 {
 		t.Fatalf("filters %q, %d undo steps", names, len(h.m.undo))
 	}
-	h.press("f", `"/next"`, "enter")
+	h.press("F", `"/next"`, "enter")
 	if h.m.at.query != "$next" || !h.m.at.flat {
 		t.Fatalf("opened %q", h.m.at.query)
 	}

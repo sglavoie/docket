@@ -543,7 +543,7 @@ func TestMoveReachesAHeading(t *testing.T) {
 	t.Run("equal ranks prefer project then Down reaches heading", func(t *testing.T) {
 		h := start(t).wide()
 		h.pasteText("Cold Storage\nAlpha\n\tStorage:\n\tStray")
-		hits := match("storage", 3, h.m.targets(false))
+		hits := match("storage", 3, h.m.targets(askMove))
 		if len(hits) != 2 || hits[0].kind != kindProject || hits[1].kind != kindHeading {
 			t.Fatalf("matches = %+v", hits)
 		}

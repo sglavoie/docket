@@ -598,7 +598,7 @@ The status line becomes a prompt for three acts, named at its left edge:
   not a second route to `t`; `docket add` picks nothing. `Enter` keeps the line
   and asks for the next, saying where that one went, as `added to Alpha ›
   TUI`, or `added to Inbox · picked for Today`; a blank `Enter` or `Esc` closes, and `Esc` keeps what was typed.
-- `f` **Go to ›** opens a project, a heading, a list or a saved filter by
+- `f` **Go to ›** opens a project, a heading or a list by
   name. A heading opens inside its project: the sidebar stays on the
   project and `Esc` backs out to it. Once something is typed it reaches
   every other row too, by words of its text: the row is named with where
@@ -607,6 +607,11 @@ The status line becomes a prompt for three acts, named at its left edge:
   on. A row must hold what is typed, at its start, at the start of a word or
   inside; only a place answers to its letters in order. Places come before
   rows on equal match ranks. A blank `f` `Enter` opens the Inbox.
+- `F` **Filters ›** opens a saved or built-in filter by name, and lists
+  nothing else, so the filters are read together and never crowded out by
+  rows that share a word. The saved ones come first, in the order they were
+  saved, then the built-in ones; a blank `F` `Enter` opens the first. Go to
+  does not offer them: a filter is reached one way (rule 3).
 - `L` **Link to ›** points the cursor's row or selection at a row found the
   same way, as described under Links.
 - `m` **Move to ›** makes the cursor's row or selection the last children of
@@ -642,7 +647,7 @@ neither repeats the other (rule 3), and marks are still not needed.
 
 **The trail.** `Ctrl+O` goes back to the place the last jump left, and
 `Ctrl+I` forward again; a count goes that many places. A jump is a picker
-destination opened with `f` `Enter`, a project reached with `gf`, a link
+destination opened with `f` or `F` `Enter`, a project reached with `gf`, a link
 followed with `gl`, a change
 reached with `g;` or `g,` in another place, or a sidebar
 visit ending in a different place; walking several sidebar entries counts
@@ -684,7 +689,7 @@ nothing: there the arrows walk the matches.
 ### Links
 
 A row can point at one other row. `L` asks for it by name, as `f` does but
-without the lists, the Inbox and the saved filters, and sets it on the
+without the lists and the Inbox, and sets it on the
 cursor's row, a count of rows or the selection as one undo step. The row
 then shows `→` and the text of the row it points at, as that row reads now,
 or `→ gone` once that row is deleted. `gl` follows the link: it is a jump,
@@ -1179,7 +1184,7 @@ row are no delivery and say none of it.
 ### Saved filters and review
 
 `:save name` keeps the pane's filter, with the row it was made under and
-whether it was flat. It then appears in the `f` picker as `/name`, and
+whether it was flat. It then appears in the `F` picker as `/name`, and
 opens with the cursor on its first match unless the place remembers a row
 the filter still shows.
 `:forget name` drops it. It is also an entry in the sidebar, after the four
@@ -1188,14 +1193,18 @@ not a second route to a key (rule 3). Each is a row
 under a hidden top-level row with the fixed identity `filters`, so saving
 and forgetting are undone, backed up and synced like any other change.
 
-**Built-in filters.** Every outline also has six filters it never
-stores, for the passes a day and a week ask for, each flat over Projects:
+**Built-in filters.** Every outline also has seven filters it never
+stores, for the passes a day and a week ask for, each over Projects. The
+first is read in context: `/now` (`$doing | ^$doing $open`), the work in
+hand, each doing row where it lives with the steps still open under it, so
+the next step is read beside what it serves and nothing else competes for
+the eye. The rest are flat:
 `/suggest` (`( $doing | @week | $next ) -$today`), what could be picked
 for Today; `/slipping` (`$missed | @overdue`), what the days are leaving
 behind; `/stuck` (`$doing -~7d | $waiting -~2w`), what has stalled;
 `/blocked` (`$blocked`), what waits on other work; and `/deliveries`
 (`$open|doing|waiting @<+3d`), the near deliveries, soonest first; and
-`/recent` (`$open|doing|waiting ~`), what is left to do, newest first. The `f` picker offers
+`/recent` (`$open|doing|waiting ~`), what is left to do, newest first. The `F` picker offers
 them after the saved filters; the sidebar does not list them, so it holds
 only the user's places. Each pass is then the ordinary keys: `n`, `t`, a
 stamp, `Ctrl+A`. `:save name` over one puts the user's own in its place,
@@ -1483,6 +1492,7 @@ otherwise.
 | `^` | Pin, and unpin: drawn first among its siblings | 21 |
 | `t` | Pick for Today, and unpick, a pick carried from an earlier day too | 3, 19 |
 | `Tab` `f` | Sidebar focus, where `A` `I` `cc` `cw` rename the chosen project, `dd` deletes it and `u` `Ctrl+R` undo and redo; go to a project, heading, list or row by name | 3, 13 |
+| `F` | Open a saved or built-in filter by name | 32 |
 | `Ctrl+O` `Ctrl+I` | Back along the places jumps left, and forward | 13 |
 | `g;` `g,` | Back to the rows changed this session, and on again | 17 |
 | `a` `m` | Capture to the Inbox from anywhere; move to a project or heading | 3 |
@@ -2269,6 +2279,11 @@ a row unseen.
    starting another row, on taking one off `doing`, on quitting, and the
    next launch says what was left doing. Docket.app's Plan the day counts
    what is due today with no check. *Built.*
+
+32. **Now.** `/now` is a built-in filter of the work in hand: each doing
+   row in context, with the steps still open under it. `F` opens the
+   filters, saved and built in, by name, and Go to no longer lists them,
+   so each picker reads one kind of thing. *Built.*
 
 Not planned: a reminder for one row, or a time of day on one, attachments, a details panel (a body is read in the
 pane, not beside it), import from v1, any

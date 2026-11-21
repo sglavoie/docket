@@ -905,10 +905,18 @@ func (m *Model) sideReplay(from, to *[][]outline.Op, verb string) {
 }
 
 // targets are the destinations a picker offers: every top-level row, the
-// Inbox and the headings, and for a jump the lists and saved filters too.
-func (m *Model) targets(jump bool) []entry {
+// Inbox and the headings, and for a jump the lists too. The filters are a
+// picker of their own, so a name never has to be told from a filter's.
+func (m *Model) targets(kind string) []entry {
+	if kind == askFilters {
+		out := make([]entry, 0, len(m.filters))
+		for _, f := range m.filters {
+			out = append(out, entry{kind: kindFilter, id: f.Name, label: "/" + f.Name})
+		}
+		return out
+	}
 	out := []entry{{kind: kindInbox, label: "Inbox"}}
-	if jump {
+	if kind == askJump {
 		out = append(out,
 			entry{kind: kindToday, label: "Today"},
 			entry{kind: kindWaiting, label: "Waiting"},
@@ -920,25 +928,20 @@ func (m *Model) targets(jump bool) []entry {
 			out = append(out, entry{kind: kindProject, id: top, label: m.tree.Row(top).Text()})
 		}
 	}
-	if jump {
-		for _, f := range m.filters {
-			out = append(out, entry{kind: kindFilter, id: f.Name, label: "/" + f.Name})
-		}
-	}
 	return append(out, m.headings...)
 }
 
 // offers are the destinations a picker shows for what is typed: its matches,
 // with here for a blank move or none for a blank link before them.
 func (m *Model) offers(a *prompt, text string) []entry {
-	places := m.targets(a.kind == askJump)
+	places := m.targets(a.kind)
 	if a.kind == askLink {
 		places = places[1:] // a link points at a row, and the Inbox is a place
 	}
 	// A jump and a link reach every row by its text once something is typed;
 	// a row must hold the words, where a place may answer to its letters.
 	var hits []entry
-	if a.kind != askMove && text != "" {
+	if (a.kind == askJump || a.kind == askLink) && text != "" {
 		hits = match(text, 3, places, m.rowNames)
 	} else {
 		hits = match(text, 3, places)
@@ -955,7 +958,9 @@ func (m *Model) offers(a *prompt, text string) []entry {
 }
 
 // picker reports a prompt that lists matches to choose from.
-func picker(kind string) bool { return kind == askJump || kind == askMove || kind == askLink }
+func picker(kind string) bool {
+	return kind == askJump || kind == askFilters || kind == askMove || kind == askLink
+}
 
 // linkTo points rows at a row, or at none, as one undo step.
 func (m *Model) linkTo(rows []string, to entry) {
@@ -1189,7 +1194,7 @@ func (m *Model) route(line string) (entry, []string) {
 	var words []string
 	for _, w := range strings.Fields(line) {
 		if name, ok := strings.CutPrefix(w, "%"); ok && name != "" {
-			if hits := match(name, 2, m.targets(false)); len(hits) > 0 {
+			if hits := match(name, 2, m.targets(askMove)); len(hits) > 0 {
 				target = hits[0]
 				continue
 			}

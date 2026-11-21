@@ -177,11 +177,11 @@ func TestEditingMovesByWord(t *testing.T) {
 func TestPickerArrowsWalkTheMatches(t *testing.T) {
 	h := work(t)
 	h.press("f")
-	if !strings.HasPrefix(h.bottom(), "Go to ›    Inbox · Today · Waiting · Stale · Projects · Beta · Alpha · /suggest") {
+	if !strings.HasPrefix(h.bottom(), "Go to ›    Inbox · Today · Waiting · Stale · Projects · Beta · Alpha") {
 		t.Fatalf("picker = %q", h.bottom())
 	}
 	h.press("up", "down", "down")
-	if !strings.HasPrefix(h.bottom(), "Go to ›    ‹ Waiting · Stale · Projects · Beta · Alpha · /suggest") {
+	if !strings.HasPrefix(h.bottom(), "Go to ›    ‹ Waiting · Stale · Projects · Beta · Alpha") {
 		t.Fatalf("picker = %q", h.bottom())
 	}
 	h.press("enter")
@@ -192,6 +192,30 @@ func TestPickerArrowsWalkTheMatches(t *testing.T) {
 	h.press("f", "down", `"a"`, "down", "down", "down", "down", "down", "enter")
 	if h.header() != "Beta  · 1 to do" {
 		t.Fatalf("header = %q", h.header())
+	}
+}
+
+// Go to names places and rows; the filters are F's, so each list stays short.
+func TestFiltersHaveAPickerOfTheirOwn(t *testing.T) {
+	h := work(t)
+	h.press("f", `"/sugg"`)
+	if strings.Contains(h.bottom(), "/suggest") {
+		t.Fatalf("Go to offers a filter: %q", h.bottom())
+	}
+	h.press("esc", "F")
+	if !strings.HasPrefix(h.bottom(), "Filters ›    /now · /suggest · /slipping") {
+		t.Fatalf("picker = %q", h.bottom())
+	}
+	if strings.Contains(h.bottom(), "Inbox") || strings.Contains(h.bottom(), "Alpha") {
+		t.Fatalf("F offers a place: %q", h.bottom())
+	}
+	h.press(`"now"`, "enter")
+	if !strings.HasPrefix(h.header(), "Projects") {
+		t.Fatalf("header = %q", h.header())
+	}
+	h.press("esc", "tab", "F", `"stuck"`, "enter")
+	if !strings.HasPrefix(h.header(), "Projects") || !strings.Contains(h.header(), "$waiting -~2w") {
+		t.Fatalf("from the sidebar: %q", h.header())
 	}
 }
 
@@ -1012,7 +1036,7 @@ func TestAFilterLandsOnWhatItFound(t *testing.T) {
 	// A saved filter opens on its first match too.
 	h.press("esc", "/", `"#docs"`, "enter")
 	h.command("save docs")
-	h.press("esc", "g", "g", "f", `"/docs"`, "enter")
+	h.press("esc", "g", "g", "F", `"/docs"`, "enter")
 	h.want("  ▾ Alpha", "▌   ○ Write docs @fri #docs")
 }
 

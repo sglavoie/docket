@@ -68,7 +68,9 @@ typed into the row as sigils:
 | `%project` | On capture: where the row goes |
 
 The same sigils filter the outline with `/`, as `/#home $next`, `/@week` or
-`/$missed`, and `:save name` keeps a filter in the sidebar.
+`/$missed`, and `:save name` keeps a filter in the sidebar. `F` opens any
+filter by name, among them the built-in `/now`: what you are doing, with the
+steps still open under it.
 
 ## From a shell
 
