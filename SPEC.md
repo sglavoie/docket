@@ -563,7 +563,7 @@ The pane shows the rows under one row, or a list.
 Today is hand-picked, and a pick stays until it is dealt with: a row is in
 Today when its `today` field is the current day, or an earlier day while the
 row is still open, doing or waiting. So what a day left undone is still in
-Today the next morning, saying when it was picked as `· since Nov 15`, and
+Today the next morning, saying when it was picked as `· picked Nov 15`, and
 nothing goes out of sight by itself (rule 2); the sidebar counts it, so a
 day with leftovers is never shown as finished. A pick from an earlier day
 leaves when it is closed or when `t` unpicks it; one closed on an earlier
@@ -1996,7 +1996,7 @@ dimmed `done/total` after its text when it has tasks beneath it, at any depth,
 folded or not. Canceled and parked rows are left out of the total.
 A `doing` row says how long it has been doing after its fields, dimmed and
 led by a dot as an age is in a list: `· 1h40m` when it went doing today,
-from one minute up, and `· since Nov 18` when it went doing on an earlier
+from one minute up, and `· doing since Nov 18` when it went doing on an earlier
 day, so a row left overnight is not read as worked on for 19 hours. With a
 readable `#est`, a duration past it takes the warning colour. It is read
 from `changed` and the clock when drawn, redrawn each minute, and said in

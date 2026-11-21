@@ -257,7 +257,7 @@ func (m *Model) rowWords(r *outline.Row, onCursor, flat bool) []word {
 		case kindToday:
 			// A pick an earlier day left undone says when it was made.
 			if pick := r.Fields[sigil.FieldToday]; picked && pick != day {
-				also("since " + dayWords(pick, m.today()))
+				also("picked " + dayWords(pick, m.today()))
 			}
 		}
 		if m.colW == nil {

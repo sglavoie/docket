@@ -74,8 +74,12 @@ func TestDoingRowSaysHowLong(t *testing.T) {
 	// On a later day it says since when, not 19 hours.
 	h.clock = time.Date(2026, 11, 17, 9, 0, 0, 0, time.UTC)
 	h.tick()
-	if got := h.rowLine("Write"); !strings.Contains(got, "· since Nov 15") {
+	if got := h.rowLine("Write"); !strings.Contains(got, "· doing since Nov 15") {
 		t.Fatalf("a row doing since an earlier day = %q", got)
+	}
+	// Carried in Today as well, it says each of the two days by its own word.
+	if got := h.rowLine("Write"); !strings.Contains(got, "· doing since Nov 15 · picked Nov 15") {
+		t.Fatalf("a carried pick doing since an earlier day = %q", got)
 	}
 	// A closed or parked row says nothing of it.
 	h.press("f", `"Project"`, "enter")

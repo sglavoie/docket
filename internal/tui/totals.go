@@ -106,12 +106,12 @@ func duration(minutes float64) string {
 
 // doingAge is what a doing row says of how long it has been doing: `· 1h40m`
 // when it went doing today, from one minute up, in the warning colour once
-// past a readable #est, and `· since Nov 18` when it went doing on an
+// past a readable #est, and `· doing since Nov 18` when it went doing on an
 // earlier day. It is read from changed and the clock when drawn.
 func (m *Model) doingAge(id string, l sigil.Line) (word, bool) {
 	since := m.changedAt(id)
 	if day := m.dayOf(since); day != m.dayOf(m.now()) {
-		return word{m.colors().dim, "· since " + dayWords(day, m.today())}, true
+		return word{m.colors().dim, "· doing since " + dayWords(day, m.today())}, true
 	}
 	minutes := math.Floor(float64(m.now()-since) / 60000)
 	if minutes < 1 {

@@ -160,7 +160,7 @@ func TestTodayIsPickedAndKeepsWhatIsLeft(t *testing.T) {
 	if next.header() != "Today  · 1 to do · 1 unsized" {
 		t.Fatalf("launched on %q", next.header())
 	}
-	next.want("▌ ○ One @today · since Nov 15 · Alpha")
+	next.want("▌ ○ One @today · picked Nov 15 · Alpha")
 	next.wantSide(
 		"Inbox",
 		"▌ Today 1",
@@ -283,7 +283,7 @@ func TestTodayIsReordered(t *testing.T) {
 		// the day's own picks.
 		h.clock = h.clock.Add(24 * time.Hour)
 		h.press("f", `"alpha"`, "enter", "g", "g", "j", "j", "t", "f", `"today"`, "enter")
-		h.want("  ○ Three · Alpha", todayRule(h), "  ○ One · since Nov 15 · Alpha", "▌ ○ Two · since Nov 15 · Alpha")
+		h.want("  ○ Three · Alpha", todayRule(h), "  ○ One · picked Nov 15 · Alpha", "▌ ○ Two · picked Nov 15 · Alpha")
 		if h.m.tree.Row(threeID).Fields[fieldTodayPos] == old {
 			t.Fatal("new day retained the old position")
 		}
@@ -843,8 +843,8 @@ func TestTodayDrawsALineAboveWhatWasCarried(t *testing.T) {
 		"▌ ○ Three · Alpha",
 		"  ○ Four · Alpha",
 		todayRule(h),
-		"  ○ One · since Nov 15 · Alpha",
-		"  ○ Two · since Nov 15 · Alpha",
+		"  ○ One · picked Nov 15 · Alpha",
+		"  ○ Two · picked Nov 15 · Alpha",
 	)
 	// J and K keep each row on its side of the line, and say why.
 	h.press("j", "J")
@@ -860,8 +860,8 @@ func TestTodayDrawsALineAboveWhatWasCarried(t *testing.T) {
 		"  ○ Three · Alpha",
 		"  ○ Four · Alpha",
 		todayRule(h),
-		"▌ ○ Two · since Nov 15 · Alpha",
-		"  ○ One · since Nov 15 · Alpha",
+		"▌ ○ Two · picked Nov 15 · Alpha",
+		"  ○ One · picked Nov 15 · Alpha",
 	)
 	// Unpicked, a carried row keeps its place, dimmed; picked again for
 	// today it joins the day's own rows, after them.
@@ -871,7 +871,7 @@ func TestTodayDrawsALineAboveWhatWasCarried(t *testing.T) {
 		"  ○ Four · Alpha",
 		todayRule(h),
 		"▌ ○ Two · Alpha",
-		"  ○ One · since Nov 15 · Alpha",
+		"  ○ One · picked Nov 15 · Alpha",
 	)
 	h.press("t")
 	h.want(
@@ -879,14 +879,14 @@ func TestTodayDrawsALineAboveWhatWasCarried(t *testing.T) {
 		"  ○ Four · Alpha",
 		"▌ ○ Two · Alpha",
 		todayRule(h),
-		"  ○ One · since Nov 15 · Alpha",
+		"  ○ One · picked Nov 15 · Alpha",
 	)
 	// With nothing of the day's own, there is no line to draw.
 	h = start(t).wide()
 	h.press("o", `"Alpha"`, "enter", "tab", `"One"`, "esc", "t")
 	h.clock = h.clock.Add(24 * time.Hour)
 	h.press("f", `"today"`, "enter")
-	h.want("▌ ○ One · since Nov 15 · Alpha")
+	h.want("▌ ○ One · picked Nov 15 · Alpha")
 }
 
 // A project's sidebar entry is its top-level row, so its name is typed in
