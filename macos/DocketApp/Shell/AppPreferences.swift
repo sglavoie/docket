@@ -265,3 +265,44 @@ struct DocketBadgePlacement: Equatable {
         self.init(dock: policy.showsDockIcon ? shown : nil, statusItem: policy.showsDockIcon ? nil : shown)
     }
 }
+
+/// The sound Docket.app plays when a row is finished as done. Docket runs with
+/// `DOCKET_BELL=1`, so finishing rows rings the terminal's bell, and nothing else
+/// in Docket rings it; the bell plays this sound, or nothing while it is `.none`.
+/// Persisted in `UserDefaults` key `docketDoneSound`; absent or unknown reads as
+/// `.none`, so the sound is off until it is chosen.
+enum DocketDoneSound: String, CaseIterable {
+    case none
+    case glass = "Glass"
+    case hero = "Hero"
+    case pop = "Pop"
+    case purr = "Purr"
+    case tink = "Tink"
+
+    static let defaultsKey = "docketDoneSound"
+    static let `default`: DocketDoneSound = .none
+
+    static func load(from defaults: UserDefaults = .standard) -> DocketDoneSound {
+        defaults.string(forKey: defaultsKey).flatMap(DocketDoneSound.init(rawValue:)) ?? .default
+    }
+
+    func save(to defaults: UserDefaults = .standard) {
+        defaults.set(rawValue, forKey: Self.defaultsKey)
+    }
+
+    var label: String {
+        self == .none ? "None" : rawValue
+    }
+
+    /// The system sound of this name, or nil for `.none` or one macOS lacks.
+    var sound: NSSound? {
+        self == .none ? nil : NSSound(named: NSSound.Name(rawValue))
+    }
+
+    /// Plays the sound from the start, even while an earlier play still sounds.
+    func play() {
+        guard let sound else { return }
+        sound.stop()
+        sound.play()
+    }
+}

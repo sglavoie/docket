@@ -60,19 +60,44 @@ func (m *Model) weekBars() string {
 
 // closeFlashFor is how long a finished row is lit. Tests set it to nothing,
 // as they do a copy's flash, and turn it on where they look for it.
-var closeFlashFor = 200 * time.Millisecond
+var closeFlashFor = 300 * time.Millisecond
+
+// closeSweep is what a finished row's glyph is drawn as while it is lit, in
+// the accent, an equal share of the light each: its circle fills and turns
+// to the check. None of them is a state's own glyph, so no frame is read as
+// one; the check stays, dimmed, once the light is out.
+var closeSweep = []string{"◍", "◉", "✓"}
+
+// sweepMsg draws frame of closeSweep, from 1, unless a later light has
+// taken over.
+type sweepMsg struct{ gen, frame int }
 
 // lightClosed lights the rows a change the user made has just finished, for
-// as long as a copy lights what it took, so a row done is seen to be done.
-// An undo, a sync pass and the day turning over light nothing.
+// a moment, and sweeps their glyphs to the check, so a row done is seen to
+// be done. With Bell on it rings the terminal's bell once, which Docket.app
+// plays as a sound when its setting asks for one. An undo, a sync pass and
+// the day turning over light nothing and ring nothing.
 func (m *Model) lightClosed() {
-	if !m.recorded || len(m.closing.rows) == 0 || closeFlashFor == 0 {
+	if !m.recorded || len(m.closing.rows) == 0 {
+		return
+	}
+	if m.Bell {
+		m.pendingCmd = tea.Batch(m.pendingCmd, tea.Raw("\a"))
+	}
+	if closeFlashFor == 0 {
 		return
 	}
 	m.flashed = m.closing.rows
 	m.flashGen++
+	m.closeFrame = 1
 	gen := m.flashGen
-	m.pendingCmd = tea.Batch(m.pendingCmd, tea.Tick(closeFlashFor, func(time.Time) tea.Msg { return flashMsg{gen} }))
+	step := closeFlashFor / time.Duration(len(closeSweep))
+	cmds := []tea.Cmd{m.pendingCmd}
+	for frame := 2; frame <= len(closeSweep); frame++ {
+		cmds = append(cmds, tea.Tick(step*time.Duration(frame-1), func(time.Time) tea.Msg { return sweepMsg{gen, frame} }))
+	}
+	cmds = append(cmds, tea.Tick(closeFlashFor, func(time.Time) tea.Msg { return flashMsg{gen} }))
+	m.pendingCmd = tea.Batch(cmds...)
 }
 
 // doingSays names the work in hand, led by lead, as `doing: Draft report ·

@@ -376,7 +376,15 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
   pick says so too, once, as `today is done: every pick is closed · 4
   done today`. The rows such a change finished as done are lit for a
   moment, as a copy lights what it took, wherever they are drawn, so a row
-  done is seen to be done; canceling, an undo or a sync pass lights none. A change that takes one row from `doing` to `done` first
+  done is seen to be done: for 300 ms, while its glyph sweeps from a
+  circle filling, `◍` then `◉`, to the check, in the accent, a third of
+  the light each, and the check stays dimmed once the light is out. No
+  frame is a state's own glyph, so none is read as one, and a copy's
+  light sweeps nothing. With `DOCKET_BELL` set to `1` the same change rings
+  the terminal's bell once, which Docket.app plays as a sound when its
+  setting asks for one (see Docket.app); unset, as it is by default, it
+  rings nothing. Canceling, an undo or a sync pass lights none and rings
+  nothing. A change that takes one row from `doing` to `done` first
   says what it took, wall-clock time from when it went doing: `done in
   1h40m`, or `done in 1h40m · est 30m` with a readable `#est`, and `done ·
   doing since Nov 18` when it went doing on an earlier day; several rows
@@ -2115,6 +2123,10 @@ Its Today widget draws what `docket ls '$today'` and `docket ls '@overdue'`
 print, and Spotlight finds the open rows `docket ls` prints; choosing one
 types `Esc`, `f`, the row's text and `Enter`, so Go to shows it and nothing
 changes.
+A row finished as done can be heard as well as seen: Docket.app runs
+`docket` with `DOCKET_BELL=1`, and plays the bell that rings as a short
+sound when Settings asks for one, off by default, and as nothing
+otherwise; nothing else in Docket rings it.
 Two notices say it is time to look, each at most once a day at the first
 minute's read at or after its time, caught up later that day if the Mac slept,
 and silent with nothing to say: Plan the day, 09:00 by default, when `docket
@@ -2376,6 +2388,12 @@ a row unseen.
    10 minutes it reads the work in hand back, and a launch after days away
    says how long and what slipped. Stale names the way to set itself down.
    Nothing is stored in the outline and no key is added. *Built.*
+
+36. **Ta-da.** A row closed as done sweeps its glyph from a filling circle
+   to the check while it is lit. With `DOCKET_BELL=1` finishing rings the
+   terminal's bell, which Docket.app plays as a sound when its setting,
+   off by default, asks for one. Nothing is stored in the outline and no
+   key is added. *Built.*
 
 35. **Weight.** The sidebar draws the Inbox's and Today's counts in the
    text colour and Waiting's and Stale's dim, saying `99+` past 99. `/small`

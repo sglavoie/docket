@@ -161,7 +161,7 @@ final class DocketBinaryResolverTests: XCTestCase {
             forwarded: ["DOCKET_DB": "/data/docket.db", "HOME": "/elsewhere", "PATH": "/nope"]
         )
         XCTAssertEqual(env.commandEnvironment, [
-            "HOME": "/Users/me", "PATH": "/bin", "DOCKET_DB": "/data/docket.db",
+            "HOME": "/Users/me", "PATH": "/bin", "DOCKET_DB": "/data/docket.db", "DOCKET_BELL": "1",
         ])
     }
 

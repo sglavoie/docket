@@ -216,3 +216,84 @@ func TestStaleNamesTheWayToSetItDown(t *testing.T) {
 		t.Fatalf("status = %q", got)
 	}
 }
+
+func TestAFinishedRowSweepsItsGlyphToTheCheck(t *testing.T) {
+	lit(t)
+	h := project(t).wide()
+	accent := h.m.colors().accent
+	h.press("x")
+	id := h.m.current()
+	// The circle fills, then turns to the check, each frame in the accent.
+	for frame, glyph := range closeSweep {
+		if frame > 0 {
+			h.m.Update(sweepMsg{h.m.flashGen, frame + 1})
+		}
+		if raw := h.raw(); !strings.Contains(raw, accent+glyph) {
+			t.Fatalf("frame %d does not draw %s in the accent:\n%q", frame+1, glyph, raw)
+		}
+	}
+	// Once the light is out the check stays, dimmed, as any done row's.
+	h.m.Update(flashMsg{h.m.flashGen})
+	raw := h.raw()
+	if h.m.closeFrame != 0 || strings.Contains(raw, accent+"✓") || strings.Contains(raw, "◉") {
+		t.Fatalf("the sweep outlived the light:\n%q", raw)
+	}
+	if !strings.Contains(raw, h.m.colors().dim+"✓") || h.m.tree.Row(id).Fields["state"] != "done" {
+		t.Fatalf("the row is not drawn done:\n%q", raw)
+	}
+	// A frame from an earlier light, arriving late, draws nothing.
+	h.m.Update(sweepMsg{h.m.flashGen, 2})
+	if strings.Contains(h.raw(), "◉") {
+		t.Fatal("a late frame swept a row no longer lit")
+	}
+	// A copy lights what it took and sweeps no glyph.
+	h.press("yy")
+	if h.m.closeFrame != 0 {
+		t.Fatal("a copy swept a glyph")
+	}
+}
+
+// rings reports whether a command, run through its batches, rings the
+// terminal's bell. Ticks are left unrun, so nothing waits on a timer.
+func rings(cmd tea.Cmd) bool {
+	if cmd == nil {
+		return false
+	}
+	switch msg := cmd().(type) {
+	case tea.BatchMsg:
+		for _, child := range msg {
+			if rings(child) {
+				return true
+			}
+		}
+	case tea.RawMsg:
+		return msg.Msg == "\a"
+	}
+	return false
+}
+
+func TestFinishingARowRingsTheBellOnlyWhenAsked(t *testing.T) {
+	h := project(t).wide()
+	finish := func() bool {
+		_, cmd := h.m.Update(key("x"))
+		h.settle()
+		h.m.View()
+		return rings(cmd)
+	}
+	if finish() {
+		t.Fatal("the bell rang with DOCKET_BELL unset")
+	}
+	h.press("u")
+	h.m.Bell = true
+	if !finish() {
+		t.Fatal("finishing a row did not ring the bell")
+	}
+	// Reopening, undoing and canceling ring nothing.
+	if finish() {
+		t.Fatal("reopening a row rang the bell")
+	}
+	_, cmd := h.m.Update(key("u"))
+	if rings(cmd) {
+		t.Fatal("an undo rang the bell")
+	}
+}

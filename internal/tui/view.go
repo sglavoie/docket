@@ -1214,6 +1214,10 @@ func (m *Model) paneLines(w, h int) ([]string, *tea.Cursor) {
 			state = sigil.Parse(string(e.buf), notes, m.today()).State
 		}
 		glyph := m.stateGlyph(state, kids, m.isFolded(v.id))
+		if m.closeFrame > 0 && m.flashed[v.id] && state == sigil.Done {
+			// A row just finished draws its circle filling to a check.
+			glyph = m.colors().accent + closeSweep[m.closeFrame-1] + sgrReset
+		}
 		if m.at.list == kindReview && state == "" {
 			// Every row in review is a project, so a note's dot says nothing;
 			// one parked or closed during the review keeps its glyph.

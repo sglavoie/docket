@@ -307,6 +307,20 @@ permission the first time a notice has something to say, not at launch.
 Refused, the switches say so and name System Settings › Notifications. Off,
 nothing more is run than the badge already runs.
 
+### Sound when a row is done
+
+Docket runs with `DOCKET_BELL=1`, so a row closed as done rings the terminal's
+bell once, as its glyph sweeps to the check; nothing else in Docket rings it,
+and an undo or a sync pass rings nothing. Settings › General › Sound when a row
+is done picks what the bell plays: None, the default, plays nothing, or one of
+the system sounds Glass, Hero, Pop, Purr and Tink. Choosing one plays it, and
+the choice applies at once, with no relaunch. It is stored as `docketDoneSound`:
+
+```bash
+defaults write io.github.sglavoie.docket docketDoneSound Pop
+defaults delete io.github.sglavoie.docket docketDoneSound   # back to none
+```
+
 ### Appearance
 
 With Settings › General › Match macOS appearance on (`docketFollowAppearance`,

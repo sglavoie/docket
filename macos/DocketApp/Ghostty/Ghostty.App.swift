@@ -289,13 +289,11 @@ extension Ghostty {
                 return true
 
             case GHOSTTY_ACTION_RING_BELL:
-                // A bell from a hidden or background Docket cannot be heard as
-                // Docket's, so it bounces the Dock icon once instead.
-                if NSApp.isActive {
-                    NSSound.beep()
-                } else {
-                    NSApp.requestUserAttention(.informationalRequest)
-                }
+                // Docket rings the bell only when a row is finished as done,
+                // since it runs with DOCKET_BELL=1: the bell plays the sound
+                // Settings chose, read now so a change applies at once, and
+                // nothing while none is chosen, as by default.
+                DocketDoneSound.load().play()
                 return true
 
             default:

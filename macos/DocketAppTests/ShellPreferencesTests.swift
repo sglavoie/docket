@@ -119,7 +119,7 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
         let shell = LaunchEnvironment(home: "/Users/me", path: "/bin", forwarded: ["DOCKET_DB": "/shell.db"])
         let applied = shell.applying(["PATH": "/opt/bin:/bin", "HOME": "/x", "EDITOR": "hx"])
         XCTAssertEqual(applied.commandEnvironment, [
-            "HOME": "/Users/me", "PATH": "/opt/bin:/bin", "DOCKET_DB": "/shell.db",
+            "HOME": "/Users/me", "PATH": "/opt/bin:/bin", "DOCKET_DB": "/shell.db", "DOCKET_BELL": "1",
         ])
         XCTAssertEqual(applied.value(of: "PATH"), "/opt/bin:/bin")
         XCTAssertEqual(shell.applying(["DOCKET_DB": "/mine.db"]).value(of: "DOCKET_DB"), "/mine.db")
@@ -127,10 +127,12 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
     }
 
     /// Only the database override is forwarded, and nothing is given a value
-    /// neither the shell nor Settings set.
+    /// neither the shell nor Settings set; the bell Docket rings on a row done is
+    /// always asked for, since Settings decides what it plays.
     func testTheDatabaseOverrideIsForwardedAndNothingIsDefaulted() {
         XCTAssertEqual(LaunchEnvironment.forwardedNames, ["DOCKET_DB"])
-        XCTAssertEqual(LaunchEnvironment(home: "/h", path: "/bin").commandEnvironment, ["HOME": "/h", "PATH": "/bin"])
+        XCTAssertEqual(LaunchEnvironment(home: "/h", path: "/bin").commandEnvironment,
+                       ["HOME": "/h", "PATH": "/bin", "DOCKET_BELL": "1"])
         XCTAssertEqual(
             LaunchEnvironment.current(processEnvironment: ["HOME": "/h", "SHELL": "/usr/bin/false", "DOCKET_DB": "/x.db"])
                 .commandEnvironment["DOCKET_DB"],
@@ -407,6 +409,24 @@ final class ShellPreferenceDefaultsTests: XCTestCase {
         model.followAppearance = true
         XCTAssertEqual(changes, [false, true])
         XCTAssertTrue(DocketFollowAppearancePreference.load(from: defaults))
+    }
+
+    func testTheDoneSoundDefaultsOffAndSavesEachChange() {
+        XCTAssertEqual(DocketDoneSound.load(from: defaults), .none)
+        XCTAssertNil(DocketDoneSound.none.sound, "none plays nothing")
+        let model = PreferencesModel(defaults: defaults)
+        XCTAssertEqual(model.doneSound, .none)
+
+        model.doneSound = .glass
+        XCTAssertEqual(DocketDoneSound.load(from: defaults), .glass)
+        XCTAssertEqual(PreferencesModel(defaults: defaults).doneSound, .glass, "the next launch starts from it")
+
+        defaults.set("Sosumi?", forKey: DocketDoneSound.defaultsKey)
+        XCTAssertEqual(DocketDoneSound.load(from: defaults), .none, "an unknown value reads as off")
+        XCTAssertEqual(DocketDoneSound.allCases.map(\.label), ["None", "Glass", "Hero", "Pop", "Purr", "Tink"])
+        for choice in DocketDoneSound.allCases where choice != .none {
+            XCTAssertNotNil(choice.sound, "macOS has \(choice.rawValue)")
+        }
     }
 
     func testTheOverdueBadgeDefaultsOnAndSavesEachChange() {

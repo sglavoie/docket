@@ -253,6 +253,8 @@ type Model struct {
 	copied       string              // what y last took, which a delete does not replace
 	flashed      map[string]bool     // the rows y last took, lit while they flash
 	flashGen     int                 // which copy is flashing
+	closeFrame   int                 // the frame of closeSweep a finished row's glyph is drawn in, from 1; 0 when none
+	Bell         bool                // ring the terminal's bell when a change finishes rows as done (DOCKET_BELL)
 	blurred      int64               // when the window last lost focus, 0 while it has it
 	seen         string              // the day markSeen last noted
 	lookedBack   string              // the Monday whose week lookBack has said
@@ -2081,6 +2083,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.unflash()
 		}
 		return m, nil
+	case sweepMsg:
+		if msg.gen == m.flashGen && m.closeFrame > 0 {
+			m.closeFrame = msg.frame
+		}
+		return m, nil
 	case copyDoneMsg:
 		m.copyDone(msg.done)
 	case syncDoneMsg:
@@ -3682,6 +3689,7 @@ func (e *editor) insert(text []rune) {
 // startFlash lights a copy until its own timer ends it; a copy made sooner
 // takes the light over.
 func (m *Model) startFlash() tea.Cmd {
+	m.closeFrame = 0 // a copy lights what it took, and sweeps no glyph
 	m.flashGen++
 	gen := m.flashGen
 	return tea.Tick(flashFor, func(time.Time) tea.Msg { return flashMsg{gen} })
@@ -3690,6 +3698,7 @@ func (m *Model) startFlash() tea.Cmd {
 // unflash puts out whatever a copy lit, in the outline and on the line.
 func (m *Model) unflash() {
 	m.flashed = nil
+	m.closeFrame = 0
 	if m.edit != nil {
 		m.edit.flash = [2]int{}
 	}

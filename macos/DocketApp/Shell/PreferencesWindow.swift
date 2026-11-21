@@ -73,6 +73,16 @@ final class PreferencesModel: ObservableObject {
         }
     }
 
+    /// The sound a row finished as done plays; `.none`, the default, plays none.
+    /// Choosing one plays it, so it is heard before it is kept.
+    @Published var doneSound: DocketDoneSound {
+        didSet {
+            guard doneSound != oldValue else { return }
+            doneSound.save(to: defaults)
+            doneSound.play()
+        }
+    }
+
     /// The Dock icon, or the menu-bar icon without one, carries the overdue count.
     @Published var dockBadge: Bool {
         didSet {
@@ -314,6 +324,7 @@ final class PreferencesModel: ObservableObject {
         noticePlan = DocketNoticePreference.load(.plan, from: defaults)
         noticeCheckIn = DocketNoticePreference.load(.checkIn, from: defaults)
         followAppearance = DocketFollowAppearancePreference.load(from: defaults)
+        doneSound = DocketDoneSound.load(from: defaults)
         binaryOverride = defaults.string(forKey: DocketBinaryResolver.overrideDefaultsKey) ?? ""
         environmentOverrides = DocketEnvironmentOverrides.load(from: defaults)
         resolveNextBinary = { [defaults] searchPath in
@@ -561,6 +572,13 @@ struct PreferencesView: View {
                         + "system. Off, the choice for the appearance at launch stays."
                     : "The terminal turns light or dark with the system, and Docket paints the palette that "
                         + "suits it at once.")
+            }
+
+            Section {
+                Picker("Sound when a row is done", selection: $model.doneSound) {
+                    ForEach(DocketDoneSound.allCases, id: \.self) { Text($0.label).tag($0) }
+                }
+                note("Plays as a row is closed as done, as its check is drawn. None, the default, plays nothing.")
             }
 
             Section {

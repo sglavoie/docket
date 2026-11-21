@@ -127,6 +127,7 @@ func run() error {
 		return err
 	}
 	m := tui.Launch(tree, st, folds, now)
+	m.Bell = os.Getenv("DOCKET_BELL") == "1"
 	if st.Renamed() {
 		m.Notice("this database was copied from another place: it now syncs under a name of its own")
 	}

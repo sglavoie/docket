@@ -21,9 +21,11 @@ struct LaunchEnvironment: Equatable {
     var forwarded: [String: String] = [:]
 
     /// Variables the surface's command receives on top of its inherited ones.
+    /// `DOCKET_BELL=1` has Docket ring the bell when a row is finished as done,
+    /// which plays the sound Settings chose, or nothing (`DocketDoneSound`).
     var commandEnvironment: [String: String] {
         Self.defaultValues.merging(forwarded) { _, set in set }
-            .merging(["HOME": home, "PATH": path]) { _, fixed in fixed }
+            .merging(["HOME": home, "PATH": path, "DOCKET_BELL": "1"]) { _, fixed in fixed }
     }
 
     /// The value Docket receives for one of `PATH` and the forwarded names.

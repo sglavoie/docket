@@ -40,6 +40,11 @@ the newest 14 are kept. A copy also goes to `Docket Backups` in iCloud Drive,
 when there is one, every hour the outline has changed: `:backup` makes one
 now, `:backup folder` sends them elsewhere and `:backup off` stops them.
 
+A row closed as done is lit and its glyph sweeps to a check. To hear it as
+well, set `DOCKET_BELL=1` and Docket rings the terminal's bell as each change
+finishes rows; in Docket.app, pick a sound under Settings › General › Sound
+when a row is done. Both are off by default.
+
 ## How it works
 
 Six rules shape everything, and [`SPEC.md`](SPEC.md) holds them in full:
