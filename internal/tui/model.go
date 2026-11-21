@@ -255,6 +255,7 @@ type Model struct {
 	flashGen     int                 // which copy is flashing
 	blurred      int64               // when the window last lost focus, 0 while it has it
 	seen         string              // the day markSeen last noted
+	lookedBack   string              // the Monday whose week lookBack has said
 	past         map[string][]string // lines kept on each recalling prompt, oldest first
 	centre       bool                // the cursor has landed somewhere: show it mid-pane if off screen
 	scroll       byte                // zt zz zb: draw the cursor's row at the top, middle or bottom

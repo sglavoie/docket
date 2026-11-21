@@ -171,12 +171,14 @@ F	open a saved or built-in filter by name; blank `Enter` the first
 /blocked	built in: tasks whose link points at a task still to do
 /deliveries	built in: tasks due within 3 days or overdue, soonest first
 /recent	built in: tasks left to do, newest first
+/small	built in: open tasks of `#est=15m` or less, or `#quick`, to start cold
 Held rows	edits never remove matches; change the query to read again
 Closed last	flat results and Today put done and canceled rows at the foot
 
 == Fields
 # $ @	any tag, task, deadline; `-#` untagged, `-$` notes
 #est #est=2h	any value, exact; `#est<3` `#est>3` at most, at least
+	a value with a unit is a length of time: `#est<15m` holds `5m`, not `1h`
 @overdue @week	deadlines, as `@<fri` `@>+1w`; flat results soonest first
 @@later	starts later
 ~7d	state changed (or row made) in the last week

@@ -142,20 +142,20 @@ func TestStartHereNamesOneRow(t *testing.T) {
 	h.pasteText("Project\n\tLater $open\n\tAsked $waiting @+1d\n\tPicked $open\n\tTax report $open @+2d")
 	// The soonest near delivery still open comes first; one waiting on
 	// someone else is passed over.
-	if got := h.m.startHere(); got != "start here: Tax report, due Tue" {
+	if got := h.m.startHere(false); got != "start here: Tax report, due Tue" {
 		t.Fatalf("a delivery: %q", got)
 	}
 	h.press("G", "x")
 	h.press("k", "t")
-	if got := h.m.startHere(); got != "start here: Picked, first in Today" {
+	if got := h.m.startHere(false); got != "start here: Picked, first in Today" {
 		t.Fatalf("a pick: %q", got)
 	}
 	h.press("x")
-	if got := h.m.startHere(); got != "start here: Later · /suggest lists more" {
+	if got := h.m.startHere(false); got != "start here: Later · /suggest lists more" {
 		t.Fatalf("a suggestion: %q", got)
 	}
 	h.press("gg", "j", "x")
-	if got := h.m.startHere(); got != "" {
+	if got := h.m.startHere(false); got != "" {
 		t.Fatalf("nothing open named %q", got)
 	}
 }

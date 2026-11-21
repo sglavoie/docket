@@ -545,15 +545,23 @@ func compareValues(a, b string) int {
 	x, errA := strconv.ParseFloat(a, 64)
 	y, errB := strconv.ParseFloat(b, 64)
 	if errA == nil && errB == nil {
-		switch {
-		case x < y:
-			return -1
-		case x > y:
-			return 1
+		return cmp.Compare(x, y)
+	}
+	// A value with a unit is a length of time, as #est reads it, so 5m is
+	// less than 15m and 3 is three hours.
+	if timed(a) || timed(b) {
+		if x, ok := estimateMinutes(a); ok {
+			if y, ok := estimateMinutes(b); ok {
+				return cmp.Compare(x, y)
+			}
 		}
-		return 0
 	}
 	return strings.Compare(strings.ToLower(a), strings.ToLower(b))
+}
+
+// timed is whether a value ends in a unit of time: m, h or d.
+func timed(v string) bool {
+	return v != "" && strings.ContainsRune("mhd", rune(v[len(v)-1]))
 }
 
 // underSets answers a query's below terms for every row at once: for each
@@ -1104,8 +1112,9 @@ type savedFilter struct {
 // builtins are the filters every outline has, for the passes a day and a
 // week ask for: what is being done, with the steps still open under it,
 // what could be picked for Today, what is slipping, what has stalled, what
-// is held up by other work, what is due soon, and what is still to do,
-// newest first. They are not rows, so they
+// is held up by other work, what is due soon, what is still to do, newest
+// first, and what is small enough to start on cold. They are not rows, so
+// they
 // cannot be forgotten; a filter saved under one of their names is used in
 // its place, and forgetting that brings the built-in one back.
 var builtins = []savedFilter{
@@ -1116,6 +1125,7 @@ var builtins = []savedFilter{
 	{Name: "blocked", Query: "$blocked", Flat: true, Builtin: true},
 	{Name: "deliveries", Query: "$open|doing|waiting @<+3d", Flat: true, Builtin: true},
 	{Name: "recent", Query: "$open|doing|waiting ~", Flat: true, Builtin: true},
+	{Name: "small", Query: "$open ( #est<15m | #quick ) -@@later", Flat: true, Builtin: true},
 }
 
 const (

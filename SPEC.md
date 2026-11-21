@@ -384,7 +384,11 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
   say, and an undo, a sync pass or the day turning over says nothing. Waiting counts
   rows in that state; Stale counts open
   and doing rows untouched for 14 days, leaving out rows whose start day is
-  still ahead.
+  still ahead. The counts read in two weights: the Inbox's and Today's are
+  the user's to do, so they are in the text colour; Waiting's and Stale's
+  are not, so they are dim, and past 99 they say only `99+`, since a number
+  that large reads as a debt and not as a count. The list's own header
+  gives it exactly, as `374 waiting`.
 - **Saved filters** follow the four lists, each as `/name`, in the order
   they were saved, set apart from the lists by a blank line, since they are
   the user's places and the lists are every outline's. The built-in
@@ -763,7 +767,9 @@ Three more acts use the same line:
   match fields; a leading `-` excludes. `#name` holds whatever value the tag
   carries and `#name=value` only that one; `#name<value` holds for a value at most that
   and `#name>value` for one at least that, compared as numbers when both
-  are and else as text ignoring case, so `#est<3` and `#who>m` both read.
+  are, as lengths of time when either ends in `m`, `h` or `d` and both read
+  as `#est` does, and else as text ignoring case, so `#est<15m` holds `5m`
+  and not `1h`, `#est<3` reads three hours, and `#who>m` reads.
   `##name` holds a row with that context, `##` alone any context, and `-##`
   a row with none; `##home|town` reads either.
   `#` alone is any tag, `$` alone is any state (a task),
@@ -1176,16 +1182,19 @@ hand it names one row to start on. Each is said on the status line until
 the next key; nothing is stored in the outline and no key is added.
 
 - **Start here.** With no row doing, one row is named: the soonest near
-  delivery still open, as `start here: Tax report, due Wed`, else the
-  first pick still open in Today's order, as `start here: Draft report,
+  delivery still open, as `start here: Tax report, due Wed`, else, after
+  time away (a launch after two days or more, or coming back to the window
+  after a day or more), the first row `/small` finds, as `start here: Email
+  Ana, a small one · /small lists more`, since a cold start stalls least
+  on a small step, else the first pick still open in Today's order, as `start here: Draft report,
   first in Today`, else the first row `/suggest` finds, as `start here:
   Call the bank · /suggest lists more`. A row waiting on someone else is
   never the one named. Choosing among many is where a start stalls, so it
   names one; it moves nothing (rule 2).
 - **Opening the outline** says what was left doing, as Left off has it,
   or, with nothing doing, where to start. After two or more days without
-  the outline open on this machine it says first how long, and what
-  slipped meanwhile: `away 6 days · 3 picks carried · 5 slipping:
+  the outline open on this machine it says how long, and what slipped
+  meanwhile, after only the week behind (below): `away 6 days · 3 picks carried · 5 slipping:
   /slipping lists them`, each part left out at none. The last day the
   outline was open is kept on this machine beside the folds, written at
   launch and as each day turns over in a session left open; it is not
@@ -1198,6 +1207,16 @@ the next key; nothing is stored in the outline and no key is added.
   start. With nothing to take up it says nothing, and it never covers a
   message that something was not written. A terminal that reports no
   focus says none of it.
+- **The week behind.** The first launch of a week, Monday to Sunday, or
+  the first coming back to a window left open into one, says first what
+  the week before finished, as `last week: 23 done in 9 projects · busiest
+  Tue`: the rows done in it by the day `changed` names, the projects they
+  are filed in (the Inbox is none), and the day that finished most, said
+  only when more than one day finished anything, ties to the earlier. It
+  is said once a week, noted on this machine beside the folds as the
+  week's Monday; a week that finished nothing says nothing, and nothing
+  counts weeks in a row, as the week's bars count no days. A finished week
+  is soon forgotten, and seeing it is what makes the next one start.
 
 ### Deliveries
 
@@ -1247,7 +1266,7 @@ not a second route to a key (rule 3). Each is a row
 under a hidden top-level row with the fixed identity `filters`, so saving
 and forgetting are undone, backed up and synced like any other change.
 
-**Built-in filters.** Every outline also has seven filters it never
+**Built-in filters.** Every outline also has eight filters it never
 stores, for the passes a day and a week ask for, each over Projects. The
 first is read in context: `/now` (`$doing | ^$doing $open`), the work in
 hand, each doing row where it lives with the steps still open under it, so
@@ -1258,7 +1277,9 @@ for Today; `/slipping` (`$missed | @overdue`), what the days are leaving
 behind; `/stuck` (`$doing -~7d | $waiting -~2w`), what has stalled;
 `/blocked` (`$blocked`), what waits on other work; and `/deliveries`
 (`$open|doing|waiting @<+3d`), the near deliveries, soonest first; and
-`/recent` (`$open|doing|waiting ~`), what is left to do, newest first. The `F` picker offers
+`/recent` (`$open|doing|waiting ~`), what is left to do, newest first; and
+`/small` (`$open ( #est<15m | #quick ) -@@later`), what is small enough to
+start on cold, since a start after time away goes best on a small step. The `F` picker offers
 them after the saved filters; the sidebar does not list them, so it holds
 only the user's places. Each pass is then the ordinary keys: `n`, `t`, a
 stamp, `Ctrl+A`. `:save name` over one puts the user's own in its place,
@@ -2354,6 +2375,13 @@ a row unseen.
    row to start on, at launch and on coming back to the window; back after
    10 minutes it reads the work in hand back, and a launch after days away
    says how long and what slipped. Stale names the way to set itself down.
+   Nothing is stored in the outline and no key is added. *Built.*
+
+35. **Weight.** The sidebar draws the Inbox's and Today's counts in the
+   text colour and Waiting's and Stale's dim, saying `99+` past 99. `/small`
+   is built in, what can be started cold, and after time away start here
+   names its first row. A tag value with a unit compares as a length of
+   time. The first launch of a week says what the week before finished.
    Nothing is stored in the outline and no key is added. *Built.*
 
 Not planned: a reminder for one row, or a time of day on one, attachments, a details panel (a body is read in the

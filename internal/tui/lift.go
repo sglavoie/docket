@@ -110,10 +110,11 @@ func (m *Model) doingSays(lead string) string {
 }
 
 // startHere names one row to begin with when nothing is in hand: the
-// soonest near delivery still open, else the first pick still open in
-// Today's order, else the first row /suggest finds. A row waiting on
-// someone else is never the one named.
-func (m *Model) startHere() string {
+// soonest near delivery still open, else, after time away, the first row
+// /small finds, since a cold start goes best on a small step, else the
+// first pick still open in Today's order, else the first row /suggest
+// finds. A row waiting on someone else is never the one named.
+func (m *Model) startHere(away bool) string {
 	m.scan()
 	open := func(id string) bool {
 		r := m.tree.Row(id)
@@ -122,6 +123,13 @@ func (m *Model) startHere() string {
 	for _, id := range m.near {
 		if open(id) {
 			return "start here: " + m.named(id) + ", due " + byDay(m.tree.Row(id).Fields[sigil.FieldDue], m.today())
+		}
+	}
+	if away {
+		for _, id := range m.found(builtinQuery("small")) {
+			if open(id) {
+				return "start here: " + m.named(id) + ", a small one · /small lists more"
+			}
 		}
 	}
 	for _, id := range m.lists[kindToday] {
@@ -168,7 +176,11 @@ func (m *Model) found(query string) []string {
 // nothing in hand, where to start.
 func (m *Model) sayOpening() {
 	var said []string
-	if days := m.awayDays(); days >= awayFrom {
+	if back := m.lookBack(); back != "" {
+		said = append(said, back)
+	}
+	days := m.awayDays()
+	if days >= awayFrom {
 		said = append(said, "away "+strconv.Itoa(days)+" days")
 		if n := len(m.missed); n == 1 {
 			said = append(said, "1 pick carried")
@@ -181,7 +193,7 @@ func (m *Model) sayOpening() {
 	}
 	if doing := m.doingSays("left doing"); doing != "" {
 		said = append(said, doing)
-	} else if start := m.startHere(); start != "" {
+	} else if start := m.startHere(days >= awayFrom); start != "" {
 		said = append(said, start)
 	}
 	m.msg = strings.Join(said, " · ")
@@ -223,14 +235,92 @@ func (m *Model) welcomeBack() {
 		return
 	}
 	m.blurred = 0
-	said := m.doingSays("doing")
-	if said == "" {
-		said = m.startHere()
+	var said []string
+	if back := m.lookBack(); back != "" {
+		said = append(said, back)
 	}
-	if said == "" {
+	if doing := m.doingSays("doing"); doing != "" {
+		said = append(said, doing)
+	} else if start := m.startHere(away >= 24*time.Hour); start != "" {
+		said = append(said, start)
+	}
+	if len(said) == 0 {
 		return
 	}
-	m.msg = "back after " + awayFor(away) + " · " + said
+	m.msg = "back after " + awayFor(away) + " · " + strings.Join(said, " · ")
+}
+
+// metaLookedBack is the Monday of the week whose look back was last said
+// on this machine, so it is said once a week.
+const metaLookedBack = "looked-back"
+
+// lookBack says, once a week, what the week before finished: `last week:
+// 23 done in 9 projects · busiest Tue`. It is said at the first launch of
+// the week, or on first coming back to a window left open into it. A week
+// that finished nothing says nothing, and nothing counts weeks in a row.
+func (m *Model) lookBack() string {
+	today := m.today()
+	monday := today.AddDate(0, 0, -((int(today.Weekday()) + 6) % 7))
+	week := monday.Format("2006-01-02")
+	if m.lookedBack == week {
+		return ""
+	}
+	m.lookedBack = week
+	if said, err := m.backend.Meta(metaLookedBack); err != nil || said == week {
+		return ""
+	}
+	if m.backend.SetMeta(metaLookedBack, week) != nil {
+		return ""
+	}
+	from := monday.AddDate(0, 0, -7).Format("2006-01-02")
+	done := 0
+	var onDay [7]int
+	projects := map[string]bool{}
+	var walk func(id string)
+	walk = func(id string) {
+		for _, kid := range m.tree.Children(id) {
+			r := m.tree.Row(kid)
+			if r.Deleted() || kid == filtersID {
+				continue
+			}
+			if r.Fields[sigil.FieldState] == sigil.Done {
+				if on := m.dayOf(m.changedAt(kid)); on >= from && on < week {
+					done++
+					day, _ := time.ParseInLocation("2006-01-02", on, today.Location())
+					onDay[(int(day.Weekday())+6)%7]++
+					if p := m.projectOf(kid); p != nil && p.ID != inboxID && p.ID != kid {
+						projects[p.ID] = true
+					}
+				}
+			}
+			walk(kid)
+		}
+	}
+	walk("")
+	if done == 0 {
+		return ""
+	}
+	said := "last week: " + strconv.Itoa(done) + " done"
+	switch n := len(projects); n {
+	case 0:
+	case 1:
+		said += " in 1 project"
+	default:
+		said += " in " + strconv.Itoa(n) + " projects"
+	}
+	busiest, days := 0, 0
+	for i, n := range onDay {
+		if n > 0 {
+			days++
+		}
+		if n > onDay[busiest] {
+			busiest = i
+		}
+	}
+	if days > 1 {
+		said += " · busiest " + monday.AddDate(0, 0, busiest).Format("Mon")
+	}
+	return said
 }
 
 // awayFor spells a time away as 25m, 2h10m or, from a day, 3d.

@@ -1444,12 +1444,33 @@ func (m *Model) sideInfo(e entry, cols projectCols) string {
 		info += strings.Repeat(" ", cols.age-ansi.StringWidth(age)) + age
 		return strings.TrimLeft(info, " ")
 	case e.count > 0:
-		return m.colors().dim + strconv.Itoa(e.count) + sgrReset
+		return sideCount(m.colors(), e)
 	case e.done:
 		// A finished day is told from one with nothing picked.
 		return m.colors().dim + "✓" + sgrReset
 	}
 	return ""
+}
+
+// countFrom is the count past which Waiting and Stale say only that they
+// hold more than it, as `99+`.
+const countFrom = 99
+
+// sideCount is a list's count. The Inbox and Today hold what is the user's
+// to do, so theirs are in the text colour; Waiting and Stale hold what is
+// not, so theirs are dim, and past countFrom say only `99+`, since a
+// number that large is read as a debt and not as a count. The list's own
+// header gives it exactly.
+func sideCount(c palette, e entry) string {
+	switch e.kind {
+	case kindWaiting, kindStale:
+		n := strconv.Itoa(e.count)
+		if e.count > countFrom {
+			n = strconv.Itoa(countFrom) + "+"
+		}
+		return c.dim + n + sgrReset
+	}
+	return c.text + strconv.Itoa(e.count) + sgrReset
 }
 
 // ageStyle draws an age against the oldest beside it: the text colour for
