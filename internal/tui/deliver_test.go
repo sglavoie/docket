@@ -195,7 +195,8 @@ func TestLaunchSaysWhatWasLeftDoing(t *testing.T) {
 		h.wide()
 		return h.status()
 	}
-	if got := launch(); got != "" {
+	// Nothing in hand names where to start instead.
+	if got := launch(); got != "start here: First · /suggest lists more" {
 		t.Fatalf("nothing doing said %q", got)
 	}
 	h.press("G", "$", `"doing"`, "enter")

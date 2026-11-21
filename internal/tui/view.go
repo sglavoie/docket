@@ -548,10 +548,11 @@ func (m *Model) paneHeader(w int, ruler string) string {
 			summary = state
 		}
 	}
+	allDone := false
 	if done := m.paneTotal.done; m.at.list == kindToday && done > 0 {
 		// Today is the list that is finished, so it says how far along it is.
 		if summary == "" {
-			summary = "all " + strconv.Itoa(done) + " done"
+			summary, allDone = "all "+strconv.Itoa(done)+" done", true
 		} else {
 			summary += " · " + strconv.Itoa(done) + " done"
 		}
@@ -571,7 +572,11 @@ func (m *Model) paneHeader(w int, ruler string) string {
 		summary += strconv.Itoa(m.unsized) + " unsized"
 	}
 	tail := ""
-	if summary != "" {
+	switch {
+	case allDone:
+		// A finished day is the one thing the header says in the accent.
+		tail += c.dim + "  · " + sgrReset + c.accent + summary + sgrReset
+	case summary != "":
 		tail += c.dim + "  · " + summary + sgrReset
 	}
 	if usual := m.usualDay; m.at.list == kindToday && usual > 0 {
@@ -588,7 +593,7 @@ func (m *Model) paneHeader(w int, ruler string) string {
 		}
 	}
 	// Deliveries that compete are named with the soonest of them. It is
-	// the first thing a narrow line gives up.
+	// given up on a narrow line after the week's bars.
 	at, collide := len(tail), ""
 	if due := m.colliding(); due != "" {
 		lead := " · "
@@ -596,6 +601,16 @@ func (m *Model) paneHeader(w int, ruler string) string {
 			lead = "  · "
 		}
 		collide = c.dim + lead + due + sgrReset
+	}
+	// The week's bars follow, and a narrow line gives them up before the
+	// deliveries.
+	week := ""
+	if bars := m.weekBars(); bars != "" && m.at.list == kindToday {
+		lead := " · "
+		if tail == "" && collide == "" {
+			lead = "  · "
+		}
+		week = c.dim + lead + sgrReset + bars
 	}
 	if m.at.query != "" {
 		tail += "  " + c.accent + "/ " + m.at.query + sgrReset
@@ -632,14 +647,17 @@ func (m *Model) paneHeader(w int, ruler string) string {
 		return above + place + tail
 	}
 	header := line(0)
-	if collide != "" {
+	for _, more := range []string{collide + week, collide} {
+		if more == "" {
+			continue
+		}
 		held := tail
-		tail = tail[:at] + collide + tail[at:]
+		tail = tail[:at] + more + tail[at:]
 		if full := line(0); ansi.StringWidth(full) <= w {
 			header = full
-		} else {
-			tail = held
+			break
 		}
+		tail = held
 	}
 	if gap := w - ansi.StringWidth(header) - ansi.StringWidth(ruler); ruler != "" && gap >= 2 {
 		return header + strings.Repeat(" ", gap) + c.dim + ruler + sgrReset
@@ -886,6 +904,9 @@ func (m *Model) statusLine(w int) (string, int) {
 		// Where the row's work was left off, what to check before it is
 		// delivered, and a first step too big or not written yet.
 		left = m.rowSays()
+	case !m.sideFocus && m.at.list == kindStale && m.at.query == "" && len(m.vis) > 0 && len(m.picked) == 0 && m.sweep == "" && m.pending() == "":
+		// A long Stale list is a weight, so it names the way to set it down.
+		left = staleHint
 	case m.sideFocus:
 		left = "j k choose · Enter work in it"
 		if m.sel.kind == kindProject {

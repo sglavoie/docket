@@ -193,35 +193,3 @@ func (m *Model) sayDue() {
 	}
 	m.msg += " due by " + m.nearBy() + ": /deliveries lists them"
 }
-
-// sayLeftDoing says, on opening the outline, what was left doing and where.
-func (m *Model) sayLeftDoing() {
-	m.scan()
-	if m.doing > 1 {
-		m.msg = strconv.Itoa(m.doing) + " rows left doing: /$doing lists them"
-		return
-	}
-	var find func(id string) string
-	find = func(id string) string {
-		for _, kid := range m.tree.Children(id) {
-			if m.tree.Row(kid).Fields[sigil.FieldState] == sigil.Doing {
-				return kid
-			}
-			if got := find(kid); got != "" {
-				return got
-			}
-		}
-		return ""
-	}
-	if m.doing == 0 {
-		return
-	}
-	id := find("")
-	if id == "" {
-		return
-	}
-	m.msg = "left doing: " + m.named(id)
-	if note := m.tree.Row(id).Fields[fieldResume]; note != "" {
-		m.msg += " · left off: " + note
-	}
-}

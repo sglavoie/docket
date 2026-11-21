@@ -218,6 +218,7 @@ type Model struct {
 	parked     int
 	doneToday  int                 // rows closed as done today, derived in scan
 	usualDay   int                 // the median done on the days before today that did any, 0 with too few, derived in scan
+	week       [7]int              // rows done on each of the last seven days, today last, derived in scan
 	doing      int                 // rows doing, derived in scan
 	bare       []string            // rows doing with no left-off note, in outline order, derived in scan
 	near       []string            // deliveries due within nearDays or overdue, soonest first, derived in scan
@@ -252,6 +253,8 @@ type Model struct {
 	copied       string              // what y last took, which a delete does not replace
 	flashed      map[string]bool     // the rows y last took, lit while they flash
 	flashGen     int                 // which copy is flashing
+	blurred      int64               // when the window last lost focus, 0 while it has it
+	seen         string              // the day markSeen last noted
 	past         map[string][]string // lines kept on each recalling prompt, oldest first
 	centre       bool                // the cursor has landed somewhere: show it mid-pane if off screen
 	scroll       byte                // zt zz zb: draw the cursor's row at the top, middle or bottom
@@ -2048,7 +2051,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.BackgroundColorMsg:
 		m.paint(msg.Color, msg.IsDark())
 		return m, nil
+	case tea.BlurMsg:
+		m.blurred = m.now()
+		return m, nil
 	case tea.FocusMsg:
+		m.welcomeBack()
 		// The terminal may have changed its colours while away, as Docket.app
 		// does when macOS turns dark or light.
 		return m, tea.RequestBackgroundColor
@@ -2059,6 +2066,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.RequestBackgroundColor
 	case tickMsg:
 		m.backup()
+		m.markSeen()
 		if m.now()-m.copiedAt >= copyEvery.Milliseconds() {
 			m.copyStart(false, false)
 		}
@@ -2135,6 +2143,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.sayPutDown()
 		m.sayDue()
 		m.sayDayDone(left, done)
+		m.lightClosed()
 		if m.quit {
 			m.syncQuit()
 			m.copyQuit()

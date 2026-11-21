@@ -473,6 +473,10 @@ func (m *Model) scan() {
 
 	m.totals[""] = rowTotals{under: all}
 	m.usualDay = usual(doneOn)
+	for i := range m.week {
+		m.week[i] = doneOn[today.AddDate(0, 0, i-6).Format("2006-01-02")]
+	}
+	m.week[6] = m.doneToday
 	m.sortToday(lists[kindToday], m.missed, m.closedOf(lists[kindToday]))
 	m.inToday = make(map[string]bool, len(lists[kindToday]))
 	for _, id := range lists[kindToday] {
@@ -1284,7 +1288,7 @@ func Launch(tree *outline.Tree, backend Backend, folds map[string]bool, now func
 	m := newModel(tree, backend, folds, now)
 	for _, id := range tree.Children("") {
 		if !hiddenTop(id) {
-			m.sayLeftDoing()
+			m.sayOpening()
 			return m
 		}
 	}

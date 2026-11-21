@@ -256,19 +256,25 @@ An outline counts every such row under its root, folded or not; a list counts
 its held rows and a filter its held matches, excluding context ancestors.
 Zero tasks says nothing. Today is the list that gets finished, so it alone
 goes on to count its done rows, as `3 to do · 2 done`, and says `all 5 done`
-when nothing is left. Beside that, Today names the usual day, read from the
+when nothing is left, in the accent colour, since a finished day is worth
+seeing. Beside that, Today names the usual day, read from the
 outline's own record: the median of the rows done on each of the 28 days
 before today that finished anything, by the day `changed` names, the lower
 of the middle two when there is an even number of them. It is said once
 five such days exist, as `7 to do · 2 done · usually 3 a day`, in the
 warning colour while the picks still to do exceed it and dim otherwise; it
-informs and refuses no pick. Before it Today counts the picks still to do
+informs and refuses no pick. Beside the usual day, and only while it is
+said, Today draws the last seven days as bars, today last, as `7d ▂▅ ▃▇▁`:
+each day's done rows against the busiest of the seven, a day that finished
+nothing a blank. It is dim, with today's bar in the text colour, so the day
+is seen growing as it is finished. It counts no days in a row: a streak
+punishes the day that broke it, and the bars do not. Before it Today counts the picks still to do
 that have no readable `#est` and no task under them, as `2 unsized`, since
 a block with no size has no defined end. After it, while two or more
 deliveries are near (see Deliveries), it counts them, says the day the
 last of them is due by and names the soonest, ties in outline order, as
-`3 due by Wed · first: Tax report`; that is the first thing a narrow line
-gives up. None of Waiting is the user's to do, so it counts its
+`3 due by Wed · first: Tax report`. A narrow line gives up the week's bars
+first, then the deliveries. None of Waiting is the user's to do, so it counts its
 rows still waiting instead, as `270 waiting`. The Inbox is emptied by
 filing, so it counts what the sidebar counts beside it, every row in it not
 yet done or canceled, notes included, as `24 to file`; one number is never
@@ -368,7 +374,9 @@ Everything in it is derived by one pass over the tree. Nothing is stored.
   user makes that finishes rows says how many the day has finished,
   wherever they are, as `3 done today`; one that closes the last open
   pick says so too, once, as `today is done: every pick is closed · 4
-  done today`. A change that takes one row from `doing` to `done` first
+  done today`. The rows such a change finished as done are lit for a
+  moment, as a copy lights what it took, wherever they are drawn, so a row
+  done is seen to be done; canceling, an undo or a sync pass lights none. A change that takes one row from `doing` to `done` first
   says what it took, wall-clock time from when it went doing: `done in
   1h40m`, or `done in 1h40m · est 30m` with a readable `#est`, and `done ·
   doing since Nov 18` when it went doing on an earlier day; several rows
@@ -472,7 +480,11 @@ The pane shows the rows under one row, or a list.
   led by its dot, and the row being typed gives up its column while it is.
   A list read by its ages names a project dim, whatever its colour, so no
   hue beside a row competes with the heat of the column; Today, review and
-  a flat filter name it in its colour.
+  a flat filter name it in its colour. A Stale list is a weight, so when
+  the cursor's row has nothing to say, Stale's status line names, dimmed,
+  the way to set it down: `:all, then $p parks every row here · u brings
+  them back`. It is a hint, not a second route: the keys are the ordinary
+  ones.
   Each thing
   said after a row is led by a dot that stays with it when the row wraps.
   Nothing folds in a flat view, so a note there shows `·` whatever it holds
@@ -1151,10 +1163,41 @@ of putting work down says which row has none, and names `R`:
   note`, or how many rows are.
 - Opening the outline says what was left doing and where, as `left doing:
   Draft report · left off: Next: reproduce it with an expired token`, or
-  `3 rows left doing: /$doing lists them`.
+  `3 rows left doing: /$doing lists them`. See Coming back.
 
 Each is said only when the key has nothing of its own to say; an undo or a
 sync pass says none.
+
+### Coming back
+
+Work is lost less at the interruption than at the return, so the outline
+takes the user back in when they come back to it, and when nothing is in
+hand it names one row to start on. Each is said on the status line until
+the next key; nothing is stored in the outline and no key is added.
+
+- **Start here.** With no row doing, one row is named: the soonest near
+  delivery still open, as `start here: Tax report, due Wed`, else the
+  first pick still open in Today's order, as `start here: Draft report,
+  first in Today`, else the first row `/suggest` finds, as `start here:
+  Call the bank · /suggest lists more`. A row waiting on someone else is
+  never the one named. Choosing among many is where a start stalls, so it
+  names one; it moves nothing (rule 2).
+- **Opening the outline** says what was left doing, as Left off has it,
+  or, with nothing doing, where to start. After two or more days without
+  the outline open on this machine it says first how long, and what
+  slipped meanwhile: `away 6 days · 3 picks carried · 5 slipping:
+  /slipping lists them`, each part left out at none. The last day the
+  outline was open is kept on this machine beside the folds, written at
+  launch and as each day turns over in a session left open; it is not
+  logged and does not sync.
+- **Coming back to the window.** The terminal reports when the window
+  loses and regains focus. Back after 10 minutes or more, the status line
+  reads the work in hand back, as `back after 25m · doing: Draft report ·
+  left off: Next: reproduce it with an expired token`, or `back after 1d ·
+  3 rows doing: /$doing lists them`, or with nothing doing names where to
+  start. With nothing to take up it says nothing, and it never covers a
+  message that something was not written. A terminal that reports no
+  focus says none of it.
 
 ### Deliveries
 
@@ -2303,6 +2346,15 @@ a row unseen.
    so a row holding a link and an address reaches both. On the filter line
    `Tab` only completes and `Ctrl+T` switches flat and in context. A key
    that finds nothing names the others that would act. *Built.*
+
+34. **Lift.** Finishing is seen and coming back is easy. A row closed as
+   done is lit for a moment; a finished day says `all 5 done` in the
+   accent, and Today draws the last seven days as bars beside the usual
+   day, with no streak to break. With nothing doing the outline names one
+   row to start on, at launch and on coming back to the window; back after
+   10 minutes it reads the work in hand back, and a launch after days away
+   says how long and what slipped. Stale names the way to set itself down.
+   Nothing is stored in the outline and no key is added. *Built.*
 
 Not planned: a reminder for one row, or a time of day on one, attachments, a details panel (a body is read in the
 pane, not beside it), import from v1, any
