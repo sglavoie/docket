@@ -1218,8 +1218,10 @@ it.
 ### Selection
 
 `v` selects the cursor's row and steps down; again on a selected row it
-deselects. While rows are selected, `x`, `!`, `^`, `t`, `dd`, `m`, `L`, `>>`, `<<`,
-`J`, `K` and a stamp act on the selection, in one undo step. `x`, `!`, `^` and `t` set
+deselects. While rows are selected, `x`, `!`, `^`, `t`, `dd`, `m`, `L`, `>`, `<`,
+`J`, `K` and a stamp act on the selection, in one undo step. `>` and `<` need
+no second key on a selection, as in Vim's visual mode: `Vj>` indents two rows,
+and each press shifts them again. `x`, `!`, `^` and `t` set
 their value on every row unless all already hold it, in which case they
 clear it. The keys that work on one row (`A`, `I`, `cc`, `R`, `o`, `O`, `Enter`,
 `gf`, `gl`, `gn`, `gN` and the word motions that step into a row) are refused and say so. The status line counts the selection, in the accent colour its
@@ -1263,10 +1265,10 @@ nothing to select. It is not a second route to `v` (rule 3): `v` selects one
 row, `:all` the pane. Filter, `:all`, then one stamp or key acts on every
 match: `/#old`, `:all`, `-#old #new` retags.
 
-For `>>`, `<<`, `J` and `K`, a selected row with a selected ancestor travels
+For `>`, `<`, `J` and `K`, a selected row with a selected ancestor travels
 with that ancestor. The remaining rows must be adjacent children of one
-parent; otherwise the move is refused and nothing changes. `>>` appends the
-block under the sibling above it and unfolds that sibling; `<<` places it
+parent; otherwise the move is refused and nothing changes. `>` appends the
+block under the sibling above it and unfolds that sibling; `<` places it
 just after its parent. The rows `>` or `<` takes with a motion or a count
 are a block under the same rule. `J` moves it past the sibling below; `K` moves it
 before the sibling above. Order within the block, the selection and the
@@ -1386,13 +1388,14 @@ find. A row inside a fold is not shown and so not found. `/` narrows the
 pane and `n` moves within it, so neither is a second route to the other
 (rule 3).
 
-An operator waits for a doubled key or a motion. `dd`, `yy`, `>>` and `<<`
-act on the selection, else the cursor's row; a count takes shown rows down
+An operator waits for a doubled key or a motion, except `>` and `<` on a
+selection, which act at once. `dd`, `yy`, `>>` and `<<` act on the cursor's
+row, and `dd` and `yy` on the selection when there is one; a count takes shown rows down
 from there.
 With a motion they take every shown row from the cursor to its destination,
 both included, leaving dimmed ancestors out. Counts before the operator
 and before the motion multiply: `d3j` and `3dj` both delete four rows.
-An operator with a motion is refused while rows are selected: double the
+`d` or `y` with a motion is refused while rows are selected: double the
 key instead. `Esc` or any other key cancels the pending operator and does
 nothing. `y` alone waits; a completed copy keeps the cursor where it was.
 Every copy and delete writes whole subtrees to the session's text register

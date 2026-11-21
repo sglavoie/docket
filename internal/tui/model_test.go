@@ -311,11 +311,11 @@ func TestStructureKeysMoveASelectedBlock(t *testing.T) {
 		t.Run(tc.key, func(t *testing.T) {
 			h := block(t)
 			if tc.key == "<" {
-				h.press(">", ">")
+				h.press(">")
 			}
 			before, cur, steps := h.rows(), h.m.current(), len(h.m.undo)
 			ids := h.m.acting()
-			h.act(tc.key)
+			h.press(tc.key) // On a selection one key shifts.
 			h.want(tc.want...)
 			if h.m.current() != cur || len(h.m.picked) != 3 || len(h.m.undo) != steps+1 {
 				t.Fatal("move lost the cursor or selection, or was not one undo step")

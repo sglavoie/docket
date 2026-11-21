@@ -149,7 +149,7 @@ gv	select again the rows last cleared; swaps with a standing selection
 
 == Act on it
 x ! t dd yy m L	and stamps act on the selection in one step
->> << J K	move adjacent selected siblings together
+> < J K	move adjacent selected siblings together
 m Enter	with a blank query, move selected rows here, where `o` would add
 	`/#old` `:all` `-#old #new` filters, selects and retags with one stamp
 

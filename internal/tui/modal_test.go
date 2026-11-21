@@ -369,12 +369,22 @@ func TestIndentAndOutdentAreOperators(t *testing.T) {
 	if h.m.tree.Gen() != gen || h.m.operator != "" {
 		t.Fatal("a canceled operator acted")
 	}
-	h.press("V", "j", ">", "j")
-	if !strings.HasPrefix(h.status(), "a motion cannot act on a selection") {
+	// On a selection one key shifts, as in Vim's visual mode, and is one
+	// undo step.
+	h.press("2", "<", "<", "j", "V", "j")
+	h.want("  ○ Task 00", "  ○ Task 01", " ┃○ Task 02", "▌┃○ Task 03", "  ○ Task 04")
+	steps = len(h.m.undo)
+	h.press(">")
+	h.want("  ○ Task 00", "  ○ Task 01", " ┃  ○ Task 02", "▌┃  ○ Task 03", "  ○ Task 04")
+	if h.m.operator != "" || h.m.sweep != "" || len(h.m.undo) != steps+1 {
+		t.Fatal("> on a selection waited for a second key or was not one undo step")
+	}
+	h.press("<")
+	h.want("  ○ Task 00", "  ○ Task 01", " ┃○ Task 02", "▌┃○ Task 03", "  ○ Task 04")
+	h.press("2", ">")
+	if !strings.HasPrefix(h.status(), "a count cannot act on a selection") || h.m.operator != "" {
 		t.Fatalf("status = %q", h.status())
 	}
-	h.press("<", "<")
-	h.want("  ○ Task 00", " ┃○ Task 01", "▌┃○ Task 02", "  ○ Task 03", "  ○ Task 04")
 }
 
 func places(t *testing.T) *harness {

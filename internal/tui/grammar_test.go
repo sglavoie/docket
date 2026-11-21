@@ -107,7 +107,7 @@ func TestACountRepeatsOrTakesRows(t *testing.T) {
 		if !strings.Contains(h.status(), "2 selected") {
 			t.Fatal(h.status())
 		}
-		for _, act := range []string{"x", "!", "t", "dd", "yy", "m", ">>", "<<", ".", "#", "@", "$", "*", "-", "v"} {
+		for _, act := range []string{"x", "!", "t", "dd", "yy", "m", ">", "<", ".", "#", "@", "$", "*", "-", "v"} {
 			gen, undos := h.m.tree.Gen(), len(h.m.undo)
 			h.press("2", `"`+act+`"`)
 			if !strings.Contains(h.status(), "a count cannot act on a selection") || h.m.tree.Gen() != gen || len(h.m.undo) != undos || len(h.m.picked) != 2 || h.m.ask != nil {

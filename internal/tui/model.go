@@ -2717,6 +2717,14 @@ func (m *Model) normalKey(k string) {
 	}
 	if m.prefix != "" {
 		k, m.prefix = m.prefix+k, ""
+	} else if (k == ">" || k == "<") && len(m.picked) > 0 {
+		// On a selection the shift needs no second key, as in Vim's visual
+		// mode, so pressing it again shifts the rows one more level.
+		m.endSweep()
+		count := m.count
+		m.count = 0
+		m.operate(k, k, count)
+		return
 	} else if k == "d" || k == "y" || k == "c" || k == ">" || k == "<" {
 		m.endSweep()
 		m.operator, m.opCount, m.count = k, m.count, 0
