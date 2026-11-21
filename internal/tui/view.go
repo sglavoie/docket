@@ -563,6 +563,13 @@ func (m *Model) paneHeader(w int, ruler string) string {
 			summary = "1 project"
 		}
 	}
+	if m.at.list == kindToday && m.unsized > 0 {
+		// A pick with no estimate and no step under it has no defined size.
+		if summary != "" {
+			summary += " · "
+		}
+		summary += strconv.Itoa(m.unsized) + " unsized"
+	}
 	tail := ""
 	if summary != "" {
 		tail += c.dim + "  · " + summary + sgrReset
@@ -579,6 +586,16 @@ func (m *Model) paneHeader(w int, ruler string) string {
 		} else {
 			tail += c.dim + "  · " + sgrReset + color + said + sgrReset
 		}
+	}
+	// Deliveries that compete are named with the soonest of them. It is
+	// the first thing a narrow line gives up.
+	at, collide := len(tail), ""
+	if due := m.colliding(); due != "" {
+		lead := " · "
+		if tail == "" {
+			lead = "  · "
+		}
+		collide = c.dim + lead + due + sgrReset
 	}
 	if m.at.query != "" {
 		tail += "  " + c.accent + "/ " + m.at.query + sgrReset
@@ -615,6 +632,15 @@ func (m *Model) paneHeader(w int, ruler string) string {
 		return above + place + tail
 	}
 	header := line(0)
+	if collide != "" {
+		held := tail
+		tail = tail[:at] + collide + tail[at:]
+		if full := line(0); ansi.StringWidth(full) <= w {
+			header = full
+		} else {
+			tail = held
+		}
+	}
 	if gap := w - ansi.StringWidth(header) - ansi.StringWidth(ruler); ruler != "" && gap >= 2 {
 		return header + strings.Repeat(" ", gap) + c.dim + ruler + sgrReset
 	}
@@ -775,7 +801,7 @@ func (m *Model) statusLine(w int) (string, int) {
 				hint = " · " + tags
 			}
 			line += "   " + m.colors().dim + ansi.Truncate(note+hint, room, "…") + sgrReset
-		case a.kind == askResume:
+		case a.kind == askResume || a.kind == askCheck:
 			note := "Enter keeps it · a blank line takes it off · Esc leaves it"
 			line += "   " + m.colors().dim + ansi.Truncate(note, room, "…") + sgrReset
 		case a.kind == askCommand && len(a.menu) > 0:
@@ -856,13 +882,10 @@ func (m *Model) statusLine(w int) (string, int) {
 		// A body is reached from the first row. Only one that is there is
 		// named: a hint on every first row would soon go unread.
 		left = "k edits its body"
-	case !m.sideFocus && len(m.picked) == 0 && m.sweep == "" && m.pending() == "" && m.resumeNote() != "":
-		// Where the row's work was left off, read whenever the cursor is on it.
-		left = "left off: " + m.resumeNote()
-	case !m.sideFocus && len(m.picked) == 0 && m.sweep == "" && m.pending() == "" && m.stuckPick() > 0:
-		// A pick carried for days with nothing under it is most often a
-		// first step too big to take.
-		left = "picked " + strconv.Itoa(m.stuckPick()) + " days ago: Enter, then o writes a smaller first step"
+	case !m.sideFocus && len(m.picked) == 0 && m.sweep == "" && m.pending() == "" && m.rowSays() != "":
+		// Where the row's work was left off, what to check before it is
+		// delivered, and a first step too big or not written yet.
+		left = m.rowSays()
 	case m.sideFocus:
 		left = "j k choose · Enter work in it"
 		if m.sel.kind == kindProject {
@@ -912,19 +935,8 @@ func (m *Model) statusLine(w int) (string, int) {
 	return left + strings.Repeat(" ", gap) + sgrBold + pend + sgrReset + tail, -1
 }
 
-// resumeNote is the left-off note of the cursor's row, or nothing.
-func (m *Model) resumeNote() string {
-	if m.cursor < 0 || m.cursor >= len(m.vis) {
-		return ""
-	}
-	if r := m.tree.Row(m.vis[m.cursor].id); r != nil {
-		return r.Fields[fieldResume]
-	}
-	return ""
-}
-
 // stuckPick is how many days ago the cursor's row was picked, when Today
-// shows it, it was carried three days or more, and no task is under it;
+// shows it, it was carried from an earlier day, and no task is under it;
 // 0 otherwise.
 func (m *Model) stuckPick() int {
 	if m.at.list != kindToday || m.cursor < 0 || m.cursor >= len(m.vis) {
@@ -942,7 +954,7 @@ func (m *Model) stuckPick() int {
 	}
 	midnight := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 	days := int(math.Round(midnight.Sub(pick).Hours() / 24))
-	if days < 3 || m.taskUnder(id) {
+	if days < 1 || m.taskUnder(id) {
 		return 0
 	}
 	return days

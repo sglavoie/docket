@@ -65,7 +65,7 @@ func (g *group) holds(leaf func(int) bool) bool {
 
 // cond is one reading of a term.
 type cond struct {
-	kind  byte // t text, ! flag, # tag, c context, l g tag value range, $ state, S any state, n next action, f first sibling, T in Today, M missed, B blocked, P project, @ deadline, < > deadline range, s start, * repeat, ~ changed, e edited, & link
+	kind  byte // t text, ! flag, # tag, c context, l g tag value range, $ state, S any state, n next action, f first sibling, T in Today, M missed, U unchecked, B blocked, P project, @ deadline, < > deadline range, s start, * repeat, ~ changed, e edited, & link
 	value string
 	arg   string          // the value a tag range compares with
 	rows  map[string]bool // the rows a link term asks for, read by terms
@@ -303,6 +303,8 @@ func parseCond(w string, today time.Time) cond {
 			c.kind = '^'
 		} else if strings.ToLower(w) == "$blocked" {
 			c.kind = 'B'
+		} else if strings.ToLower(w) == "$unchecked" {
+			c.kind = 'U'
 		} else if state, ok := sigil.ParseState(w[1:]); ok {
 			c.kind, c.value = '$', state
 		}
@@ -472,6 +474,9 @@ func (m *Model) holds(r *outline.Row, l sigil.Line, c cond, today time.Time) boo
 		return m.missed[r.ID]
 	case 'B':
 		return m.blocked(r, l)
+	case 'U':
+		// A delivery with nothing written to check before it goes.
+		return delivery(l) && r.Fields[fieldCheck] == ""
 	case 'P':
 		// A project is a top-level row: neither the Inbox nor the row
 		// that holds the saved filters is one.
@@ -1105,6 +1110,7 @@ var builtins = []savedFilter{
 	{Name: "slipping", Query: "$missed | @overdue", Flat: true, Builtin: true},
 	{Name: "stuck", Query: "$doing -~7d | $waiting -~2w", Flat: true, Builtin: true},
 	{Name: "blocked", Query: "$blocked", Flat: true, Builtin: true},
+	{Name: "deliveries", Query: "$open|doing|waiting @<+3d", Flat: true, Builtin: true},
 }
 
 const (

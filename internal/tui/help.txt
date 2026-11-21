@@ -82,7 +82,9 @@ Esc  j	back to the rows, from anywhere or past the last line; one undo
 !	flag; `-!` removes it on the stamp line
 ^	pin rows first among their siblings, and unpin; `-^` on the stamp line
 R	note where the row's work was left off; read back on the row and on `$doing`
-$doing again	with another row already doing, says how many are: `/$doing` lists them
+C	note what to check before the row is delivered; read back as its deadline nears and on `$doing`
+$doing again	with another row already doing, says how many are, and which has no left-off note
+$doing off	a row put down to wait or for later with no left-off note says so; so does the line left on quitting
 -#tag -@ -@@ -*	remove fields on the stamp line; `-~` the colour, `-##` the context
 
 == Days
@@ -101,7 +103,11 @@ $state	`$open` `$doing` `$waiting` `$done` `$canceled` `$parked` `$note`
 //	leading the line, makes the row a note wherever it is; `\//` stays text
 · 1h40m	after a doing row: how long since it went doing, warning past its #est; closing it says what it took
 usually 3 a day	in Today's header: the median done on the 28 days before, warning while more is left to do
-picked … ago	on a pick carried three days or more with no task under it: `Enter`, then `o` writes a smaller first step
+picked … ago	on a pick carried from an earlier day with no task under it: `Enter`, then `o` writes a smaller first step
+est 4h …	on a pick or a doing row estimated past 2h with no task under it: the same way to a smaller step
+2 unsized	in Today's header: picks with no `#est` and no task under them
+due Wed, …	on a task due within 3 days: its check, or that none is written, and that its first step is not
+3 due by Wed	in Today's header: the tasks due within 3 days, and the soonest of them; stamping one among others says so
 ~teal ~#3fa7c4	a project's colour, by name or hex, in its entry, row and header
 
 == Defaults
@@ -161,6 +167,7 @@ gn gN	step into the text on what the filter found: `gn cw new Esc n .`
 /slipping	built in: carried picks and overdue rows
 /stuck	built in: doing a week, waiting two; `:save` one to replace it
 /blocked	built in: tasks whose link points at a task still to do
+/deliveries	built in: tasks due within 3 days or overdue, soonest first
 Held rows	edits never remove matches; change the query to read again
 Closed last	flat results and Today put done and canceled rows at the foot
 
@@ -183,6 +190,7 @@ $first -<$	next action under each heading and project
 $today	picked or starting today
 $missed	carried into Today from an earlier day, still open
 $blocked	a task still to do whose link points at a task still to do
+$unchecked	a task still to do with a deadline and no check written
 
 == Combine
 a|b	either: `$open|doing` `#home|!` `milk|#food`

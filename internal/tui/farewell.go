@@ -20,6 +20,13 @@ func (m *Model) Farewell() string {
 	if left := m.todayLeft(); left > 0 {
 		parts = append(parts, strconv.Itoa(left)+" still in Today")
 	}
+	// Work left doing with no note of where it stands is named, so it is
+	// seen before the window is gone.
+	if n := len(m.bare); n == 1 {
+		parts = append(parts, m.named(m.bare[0])+" left doing without a note")
+	} else if n > 1 {
+		parts = append(parts, strconv.Itoa(n)+" left doing without a note")
+	}
 	return strings.Join(parts, " · ")
 }
 

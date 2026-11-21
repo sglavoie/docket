@@ -31,6 +31,27 @@ final class NoticeTests: XCTestCase {
         XCTAssertEqual(DocketNoticePlan.body(picked: [], carried: [], dueToday: [], overdue: []), "Nothing picked for Today")
     }
 
+    func testPlanTheDayCountsWhatIsDueTodayWithNoCheck() {
+        XCTAssertEqual(DocketNoticePlan.filters.last, "@today $unchecked -$today")
+        XCTAssertEqual(DocketNotice.plan.filters.count, 5)
+        XCTAssertEqual(
+            DocketNoticePlan.body(
+                picked: [], carried: [], dueToday: Self.rows(2), overdue: Self.rows(1), unchecked: Self.rows(1)),
+            "Nothing picked for Today · 2 due today · 1 without a check · 1 overdue"
+        )
+        XCTAssertEqual(
+            DocketNoticePlan.body(
+                picked: Self.rows(3), carried: [], dueToday: Self.rows(1), overdue: [], unchecked: Self.rows(1)),
+            "1 due today · 1 without a check"
+        )
+        // Nothing due today, nothing to check before it goes.
+        XCTAssertNil(
+            DocketNoticePlan.body(picked: Self.rows(3), carried: [], dueToday: [], overdue: [], unchecked: Self.rows(1)))
+        // The monitor hands the fifth listing through.
+        let answers = [[], [], Self.rows(1), [], Self.rows(1)]
+        XCTAssertEqual(DocketNotice.plan.body(answers), "Nothing picked for Today · 1 due today · 1 without a check")
+    }
+
     func testPlanTheDayWithADayPickedSaysOnlyWhatIsDueOrOverdue() {
         let picked = Self.rows(3)
         XCTAssertNil(DocketNoticePlan.body(picked: picked, carried: Self.rows(2), dueToday: [], overdue: []))
@@ -52,7 +73,7 @@ final class NoticeTests: XCTestCase {
         XCTAssertEqual(DocketNotice.plan.filters.first, "$today -$missed")
         XCTAssertEqual(DocketNotice.checkIn.filters, ["$today"])
         XCTAssertEqual(
-            DocketNotice.plan.body([[], Self.rows(4), Self.rows(2), Self.rows(1)]),
+            DocketNotice.plan.body([[], Self.rows(4), Self.rows(2), Self.rows(1), []]),
             "Nothing picked for Today · 2 due today · 1 overdue · 4 carried"
         )
         XCTAssertNil(DocketNotice.plan.body([[]]), "a short answer says nothing")

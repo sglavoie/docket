@@ -33,7 +33,8 @@ enum DocketNotice: String, CaseIterable {
         guard answers.count == filters.count else { return nil }
         switch self {
         case .plan:
-            return DocketNoticePlan.body(picked: answers[0], carried: answers[1], dueToday: answers[2], overdue: answers[3])
+            return DocketNoticePlan.body(
+                picked: answers[0], carried: answers[1], dueToday: answers[2], overdue: answers[3], unchecked: answers[4])
         case .checkIn:
             return DocketNoticeCheckIn.body(today: answers[0])
         }
@@ -77,18 +78,25 @@ enum DocketNotice: String, CaseIterable {
 /// Plan the day: said when nothing is picked for today, that is when
 /// `docket ls '$today -$missed'` prints nothing, with what applies of what is
 /// due today, overdue and carried. With a day already picked it says only
-/// what is due or overdue outside Today, and is silent when nothing is.
+/// what is due or overdue outside Today, and is silent when nothing is. What
+/// is due today with nothing written to check before it goes is counted after
+/// what is due today, as `2 due today · 1 without a check`.
 enum DocketNoticePlan {
     static let filters = [
         "$today -$missed",
         "$missed",
         "@today $open|doing|waiting -$today",
         "@overdue -$today",
+        "@today $unchecked -$today",
     ]
 
-    static func body(picked: [DocketRow], carried: [DocketRow], dueToday: [DocketRow], overdue: [DocketRow]) -> String? {
+    static func body(
+        picked: [DocketRow], carried: [DocketRow], dueToday: [DocketRow], overdue: [DocketRow],
+        unchecked: [DocketRow] = []
+    ) -> String? {
         var parts: [String] = []
         if !dueToday.isEmpty { parts.append("\(dueToday.count) due today") }
+        if !dueToday.isEmpty && !unchecked.isEmpty { parts.append("\(unchecked.count) without a check") }
         if !overdue.isEmpty { parts.append("\(overdue.count) overdue") }
         if picked.isEmpty {
             if !carried.isEmpty { parts.append("\(carried.count) carried") }

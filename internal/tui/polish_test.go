@@ -632,11 +632,11 @@ func TestOverdueIsBoldAndTodayCountsWhatIsDone(t *testing.T) {
 		t.Fatalf("overdue mark is not bold:\n%q", raw)
 	}
 	h.press("f", `"Today"`, "enter")
-	if h.header() != "Today  · 2 to do" {
+	if h.header() != "Today  · 2 to do · 2 unsized" {
 		t.Fatalf("header = %q", h.header())
 	}
 	h.press("x")
-	if h.header() != "Today  · 1 to do · 1 done" {
+	if h.header() != "Today  · 1 to do · 1 done · 1 unsized" {
 		t.Fatalf("header = %q", h.header())
 	}
 	h.press("j", "x")

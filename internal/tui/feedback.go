@@ -31,13 +31,14 @@ var fieldWords = map[string]string{
 	fieldLink:          "link",
 	fieldQuery:         "saved filter",
 	fieldResume:        "left-off note",
+	fieldCheck:         "check",
 }
 
 // fieldOrder is the order fields are named in, most telling first.
 var fieldOrder = []string{
 	sigil.FieldText, fieldBody, sigil.FieldState, sigil.FieldFlag, sigil.FieldPin, sigil.FieldDue,
 	sigil.FieldStart, sigil.FieldTags, sigil.FieldContext, sigil.FieldRepeat, sigil.FieldToday,
-	fieldTodayPos, fieldLink, fieldResume, fieldQuery,
+	fieldTodayPos, fieldLink, fieldResume, fieldCheck, fieldQuery,
 }
 
 func rowCount(n int) string {
@@ -546,7 +547,6 @@ var strayKeys = map[string]string{
 	"i": "I types at the start, A at the end; w steps into the text",
 	"s": "cc retypes the row, keeping its fields; w steps into the text",
 	"S": "cc retypes the row, keeping its fields",
-	"C": "cc retypes the row, keeping its fields; A types at the end",
 	"r": "w steps into the text, where r replaces a character",
 	"X": "dd deletes the row; x marks it done",
 	"D": "dd deletes the row with what is under it",

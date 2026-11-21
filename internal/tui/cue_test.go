@@ -145,14 +145,14 @@ func TestTodayNamesTheUsualDay(t *testing.T) {
 	h.doneOn(3, 4)
 	h.doneOn(4, 4)
 	h.press("gg", "t", "j", "t", "f", `"Today"`, "enter")
-	if got := h.header(); got != "Today  · 2 to do" {
+	if got := h.header(); got != "Today  · 2 to do · 2 unsized" {
 		t.Fatalf("too little history: %q", got)
 	}
 	// A fifth day: the median of 1, 2, 2, 4, 4.
 	h.press("f", `"Projects"`, "enter")
 	h.doneOn(28, 1)
 	h.press("f", `"Today"`, "enter")
-	if got := h.header(); got != "Today  · 2 to do · usually 2 a day" {
+	if got := h.header(); got != "Today  · 2 to do · 2 unsized · usually 2 a day" {
 		t.Fatalf("five days: %q", got)
 	}
 	if raw := h.raw(); !strings.Contains(raw, darkPalette.dim+"usually 2 a day") {
@@ -160,7 +160,7 @@ func TestTodayNamesTheUsualDay(t *testing.T) {
 	}
 	// More picked than a day usually holds is said in the warning colour.
 	h.press("f", `"Projects"`, "enter", "gg", "j", "j", "j", "t", "j", "t", "j", "t", "f", `"Today"`, "enter")
-	if got := h.header(); got != "Today  · 5 to do · usually 2 a day" {
+	if got := h.header(); got != "Today  · 5 to do · 5 unsized · usually 2 a day" {
 		t.Fatalf("over: %q", got)
 	}
 	if raw := h.raw(); !strings.Contains(raw, darkPalette.warn+"usually 2 a day") {
@@ -168,7 +168,7 @@ func TestTodayNamesTheUsualDay(t *testing.T) {
 	}
 	// Closing picks brings it back under.
 	h.press("gg", "x", "j", "x", "j", "x")
-	if got := h.header(); got != "Today  · 2 to do · 3 done · usually 2 a day" {
+	if got := h.header(); got != "Today  · 2 to do · 3 done · 2 unsized · usually 2 a day" {
 		t.Fatalf("under again: %q", got)
 	}
 	if raw := h.raw(); !strings.Contains(raw, darkPalette.dim+"usually 2 a day") {
@@ -178,7 +178,7 @@ func TestTodayNamesTheUsualDay(t *testing.T) {
 	h.clock = h.clock.AddDate(0, 0, 1)
 	h.tick()
 	h.press("f", `"Today"`, "enter")
-	if got := h.header(); got != "Today  · 2 to do · usually 3 a day" {
+	if got := h.header(); got != "Today  · 2 to do · 2 unsized · usually 3 a day" {
 		t.Fatalf("the next day: %q", got)
 	}
 }
@@ -193,7 +193,7 @@ func TestSecondDoingRowIsCounted(t *testing.T) {
 	}
 	// A second one says how many are.
 	h.press("j", "$", `"doing"`, "enter")
-	h.wantStatus("2 rows doing: /$doing lists them")
+	h.wantStatus("2 rows doing · First has no left-off note: R writes one")
 	if got := h.rows(); !strings.Contains(got, "Second") || !strings.Contains(got, "Third") {
 		t.Fatalf("a row moved:\n%s", got)
 	}
@@ -204,9 +204,9 @@ func TestSecondDoingRowIsCounted(t *testing.T) {
 	}
 	// After a left-off note, and from an edited line too.
 	h.press("R", `"Next: the tests"`, "enter", "$", `"doing"`, "enter")
-	h.wantStatus("left off: Next: the tests · 2 rows doing: /$doing lists them")
+	h.wantStatus("left off: Next: the tests · 2 rows doing · First has no left-off note: R writes one")
 	h.press("j", "A", `" $doing"`, "esc")
-	h.wantStatus("3 rows doing: /$doing lists them")
+	h.wantStatus("3 rows doing · First has no left-off note: R writes one")
 	// A change that sets no row doing says nothing of the rows in hand.
 	h.press("k", "#", `"home"`, "enter")
 	if got := h.status(); strings.Contains(got, "rows doing") {
@@ -220,13 +220,16 @@ func TestCarriedPickNamesASmallerStep(t *testing.T) {
 	h.clock = day.AddDate(0, 0, -3)
 	h.press("o", `"Project"`, "enter", "tab", `"Big"`, "enter", `"Split"`, "enter", "tab", `"A step $open"`, "esc")
 	h.press("gg", "j", "t", "j", "t")
-	// Carried two days, it says nothing.
-	h.clock = day.AddDate(0, 0, -1)
-	h.tick()
+	// Picked today, it says nothing.
 	h.press("f", `"Today"`, "enter", "gg")
 	if h.on() != "Big" || h.status() != "" {
-		t.Fatalf("two days on %q said %q", h.on(), h.status())
+		t.Fatalf("a pick made today, %q, said %q", h.on(), h.status())
 	}
+	// Carried one day, it names a smaller first step.
+	h.clock = day.AddDate(0, 0, -2)
+	h.tick()
+	h.press("f", `"Today"`, "enter", "gg")
+	h.wantStatus("picked yesterday: Enter, then o writes a smaller first step")
 	// Three days, it names a smaller first step.
 	h.clock = day
 	h.tick()
@@ -244,5 +247,5 @@ func TestCarriedPickNamesASmallerStep(t *testing.T) {
 	}
 	// Where its work was left off is said first.
 	h.press("R", `"Next: call them"`, "enter", "f", `"Today"`, "enter", "gg")
-	h.wantStatus("left off: Next: call them")
+	h.wantStatus("left off: Next: call them · picked 3 days ago: Enter, then o writes a smaller first step")
 }

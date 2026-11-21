@@ -150,14 +150,14 @@ func TestTodayIsPickedAndKeepsWhatIsLeft(t *testing.T) {
 	}
 	t.Cleanup(func() { st.Close() })
 	again := resume(t, h.path, st, h.clock).wide()
-	if again.header() != "Today  · 1 to do · 1 done" {
+	if again.header() != "Today  · 1 to do · 1 done · 1 unsized" {
 		t.Fatalf("launched on %q", again.header())
 	}
 
 	// The next morning the pick left undone is still in Today and says
 	// since when; the one closed yesterday is not. Nothing was written.
 	next := resume(t, h.path, st, h.clock.Add(24*time.Hour)).wide()
-	if next.header() != "Today  · 1 to do" {
+	if next.header() != "Today  · 1 to do · 1 unsized" {
 		t.Fatalf("launched on %q", next.header())
 	}
 	next.want("▌ ○ One @today · since Nov 15 · Alpha")

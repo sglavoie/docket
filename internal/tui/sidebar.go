@@ -32,6 +32,7 @@ const (
 	fixedPos      = "0"
 	fieldTodayPos = "todaypos"
 	fieldResume   = "resume" // where the row's work was left off, written with R
+	fieldCheck    = "check"  // what to verify before the row is delivered, written with C
 )
 
 // hiddenTop reports a top-level row that is never drawn among the projects.
@@ -323,6 +324,8 @@ func (m *Model) scan() {
 	contextUse := map[string]int{}
 	picked := 0
 	m.parked, m.doneToday, m.overdue, m.doing = 0, 0, 0, 0
+	m.near, m.bare, m.unsized = m.near[:0], m.bare[:0], 0
+	nearDay := today.AddDate(0, 0, nearDays).Format("2006-01-02")
 	// The usual day is read from the days before today that finished
 	// anything, by the day each row's changed names.
 	before := make(map[string]int, usualDays)
@@ -367,6 +370,9 @@ func (m *Model) scan() {
 		}
 		if l.State == sigil.Doing {
 			m.doing++
+			if r.Fields[fieldResume] == "" {
+				m.bare = append(m.bare, id)
+			}
 		}
 		for _, tag := range l.Tags {
 			tagUse[tag]++
@@ -392,6 +398,11 @@ func (m *Model) scan() {
 		hidden = hidden || l.State == sigil.Parked
 		if !hidden && l.State != "" && !l.Closed() && l.Due != "" && l.Due < day {
 			m.overdue++
+		}
+		// A delivery is a task still to do with a deadline; near, it is
+		// one of the demands the day has to order.
+		if !hidden && delivery(l) && l.Due <= nearDay {
+			m.near = append(m.near, id)
 		}
 		if !hidden {
 			switch l.State {
@@ -466,7 +477,16 @@ func (m *Model) scan() {
 	m.inToday = make(map[string]bool, len(lists[kindToday]))
 	for _, id := range lists[kindToday] {
 		m.inToday[id] = true
+		// A pick with no estimate and no step under it has no defined size.
+		l := sigil.FromFields(m.tree.Row(id).Fields)
+		if _, sized := estimateOf(l); !sized && todo(l) && !m.taskUnder(id) {
+			m.unsized++
+		}
 	}
+	// The soonest delivery leads, ties in outline order.
+	sort.SliceStable(m.near, func(i, j int) bool {
+		return m.tree.Row(m.near[i]).Fields[sigil.FieldDue] < m.tree.Row(m.near[j]).Fields[sigil.FieldDue]
+	})
 
 	// Longest waiting and longest untouched first: the top is what to chase.
 	sort.SliceStable(lists[kindWaiting], func(i, j int) bool {
@@ -1216,6 +1236,7 @@ func Launch(tree *outline.Tree, backend Backend, folds map[string]bool, now func
 	m := newModel(tree, backend, folds, now)
 	for _, id := range tree.Children("") {
 		if !hiddenTop(id) {
+			m.sayLeftDoing()
 			return m
 		}
 	}

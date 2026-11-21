@@ -81,6 +81,7 @@ a rule here changes this file first.
 | `pin` | 21 | The row is drawn before its unpinned siblings |
 | `body` | 23 | Free text under the row's line, lines and blanks kept as typed; never read for sigils |
 | `resume` | 28 | Where the row's work was left off: one line, written with `R` (see Left off) |
+| `check` | 31 | What to verify before the row is delivered: one line, written with `C` (see Deliveries) |
 
 ## Storage
 
@@ -261,7 +262,13 @@ before today that finished anything, by the day `changed` names, the lower
 of the middle two when there is an even number of them. It is said once
 five such days exist, as `7 to do · 2 done · usually 3 a day`, in the
 warning colour while the picks still to do exceed it and dim otherwise; it
-informs and refuses no pick. None of Waiting is the user's to do, so it counts its
+informs and refuses no pick. Before it Today counts the picks still to do
+that have no readable `#est` and no task under them, as `2 unsized`, since
+a block with no size has no defined end. After it, while two or more
+deliveries are near (see Deliveries), it counts them, says the day the
+last of them is due by and names the soonest, ties in outline order, as
+`3 due by Wed · first: Tax report`; that is the first thing a narrow line
+gives up. None of Waiting is the user's to do, so it counts its
 rows still waiting instead, as `270 waiting`. The Inbox is emptied by
 filing, so it counts what the sidebar counts beside it, every row in it not
 yet done or canceled, notes included, as `24 to file`; one number is never
@@ -565,10 +572,15 @@ since the act is the user's. `J` and `K` do not cross the rule and say so,
 as `carried picks stay below the line: t t picks it for today`.
 
 A pick that will not start is most often a first step too big. While the
-cursor in Today is on a pick carried three days or more with no task under
+cursor in Today is on a pick carried from an earlier day with no task under
 it, at any depth, and nothing else is to be said, the status line says it
-dimmed, as `picked 5 days ago: Enter, then o writes a smaller first step`;
-a row's left-off note is said before it. Nothing moves and nothing is
+dimmed, as `picked yesterday: Enter, then o writes a smaller first step`
+or `picked 5 days ago: …`. A task that is too big is told sooner: wherever
+the cursor is on a pick still to do, or on a `doing` row, whose `#est` is
+past 2 hours with no task under it, the line says `est 4h and no step
+under it: Enter, then o writes a smaller first step`. Whatever else the
+row has to say comes before it, each part set off by a dot: its left-off
+note, then its check (see Deliveries). Nothing moves and nothing is
 stored.
 
 ### Bottom line
@@ -803,6 +815,9 @@ Three more acts use the same line:
   at a task that is not done or canceled: work held up by other work. A
   note that links to a task is a reference, not a wait, and is not
   blocked. It is read like `$next`.
+  `$unchecked` holds for a delivery with no check note (see Deliveries),
+  near or not, so `@today $unchecked` is what goes out today unverified.
+  It is read like `$next`.
   `$project` holds for a project, a top-level row other than the Inbox,
   and is read like `$next`, so `$parked $project` is the parked projects
   the sidebar counts. `$pinned` holds for a row pinned with `^` (see Pins)
@@ -1103,6 +1118,63 @@ another is already doing says how many are, after any note, as `3 rows
 doing: /$doing lists them`; it asks nothing and changes nothing. `R` is the only way to write it (rule 3);
 the body is for what the row is, the note for where its work stands.
 
+**Work put down is named when nothing says where it stands.** The note is
+only worth what is written at the moment of the interruption, so each way
+of putting work down says which row has none, and names `R`:
+
+- Setting a row `doing` while others are says, of the others, `2 rows
+  doing · Draft report has no left-off note: R writes one` when one has no
+  note, and `3 rows doing: /$doing lists them · 2 have no left-off note: R
+  writes one` when several do.
+- A change that takes a row from `doing` to `open`, `waiting` or `parked`
+  with no note says `put down with no left-off note: R writes one`, or how
+  many rows were. Finishing or canceling a row puts nothing down.
+- The line left in the shell on quitting names it after the day's counts,
+  as `4 done today · 2 still in Today · Draft report left doing without a
+  note`, or how many rows are.
+- Opening the outline says what was left doing and where, as `left doing:
+  Draft report · left off: Next: reproduce it with an expired token`, or
+  `3 rows left doing: /$doing lists them`.
+
+Each is said only when the key has nothing of its own to say; an undo or a
+sync pass says none.
+
+### Deliveries
+
+A delivery is a task still to do, open, doing or waiting, with a deadline.
+It is near when it is due within 3 days, or overdue, and not parked or
+under a parked row. Near deliveries are what the day has to put in order,
+so the outline says three things of them, each derived in the scan and
+none stored.
+
+- **Which comes first.** Today's header counts them and names the soonest
+  (see Screen). A change that writes a deadline landing a row among other
+  near deliveries says so when it is made, as `2 others due by Wed:
+  /deliveries lists them`, and `/deliveries` is the pass that orders them.
+- **Its first step.** While the cursor is on a near delivery with no task
+  under it that is not `doing`, the status line says `due Wed, first step
+  not written: Enter, then o`.
+- **Its check.** `C` writes what to verify before the row is delivered, a
+  line such as `totals, names, the attachment`. It opens a `Check ›` line
+  holding the note as it stands, and is kept, taken off and left as the
+  left-off note is: `Enter` keeps it as one undo step, a blank line takes
+  it off, `Esc` leaves it, blanks are folded and nothing in it is read as
+  a sigil. It is the field `check`, so it is undone, backed up and synced;
+  copy, export and `docket ls` do not carry it. It works in lists and
+  filters; a selection refuses it and a count is dropped. Any row may have
+  one. It is read back, never drawn on the row (rule 6): while the cursor
+  is on a near delivery the status line says it dimmed, as `check: totals,
+  names, the attachment`, and a change that sets a row `doing` says it
+  once, after any left-off note. A near delivery with none says `due Wed,
+  no check written: C writes one`. `C` is the only way to write it
+  (rule 3).
+
+The cursor's line says these in one order, each part set off by a dot:
+the left-off note, the check or that none is written, then the first step.
+The day is said once, before the first thing the delivery lacks, and a
+deadline already past is `due today`. A closed row, a note and a parked
+row are no delivery and say none of it.
+
 ### Saved filters and review
 
 `:save name` keeps the pane's filter, with the row it was made under and
@@ -1115,12 +1187,13 @@ not a second route to a key (rule 3). Each is a row
 under a hidden top-level row with the fixed identity `filters`, so saving
 and forgetting are undone, backed up and synced like any other change.
 
-**Built-in filters.** Every outline also has four filters it never
+**Built-in filters.** Every outline also has five filters it never
 stores, for the passes a day and a week ask for, each flat over Projects:
 `/suggest` (`( $doing | @week | $next ) -$today`), what could be picked
 for Today; `/slipping` (`$missed | @overdue`), what the days are leaving
-behind; `/stuck` (`$doing -~7d | $waiting -~2w`), what has stalled; and
-`/blocked` (`$blocked`), what waits on other work. The `f` picker offers
+behind; `/stuck` (`$doing -~7d | $waiting -~2w`), what has stalled;
+`/blocked` (`$blocked`), what waits on other work; and `/deliveries`
+(`$open|doing|waiting @<+3d`), the near deliveries, soonest first. The `f` picker offers
 them after the saved filters; the sidebar does not list them, so it holds
 only the user's places. Each pass is then the ordinary keys: `n`, `t`, a
 stamp, `Ctrl+A`. `:save name` over one puts the user's own in its place,
@@ -1410,13 +1483,14 @@ otherwise.
 | `a` `m` | Capture to the Inbox from anywhere; move to a project or heading | 3 |
 | `gf` | Go to the whole project the row is filed in, the cursor on the row; a jump | 22 |
 | `R` | Write where the row's work was left off, read back when it is taken up | 28 |
+| `C` | Write what to check before the row is delivered, read back as its deadline nears | 31 |
 | `L` `gl` | Link the row to another; follow the link, else open its first web address, Mail link or file, else go back to the row linking here | 13, 16, 19 |
 | `v` `V` | Pick a row; sweep with motions; `o` while sweeping swaps its ends | 4, 11, 24 |
 | `gv` | Select again the rows last cleared | 24 |
 | `/` `:` | Filter, command | 4 |
 | `#` `@` `$` `*` `-` `~` | Stamp sigils on rows; `~` a colour, so selected projects take one at once | 4, 19 |
 
-A Vim key the outline does not bind (`i`, `s`, `S`, `C`, `r`, `X`,
+A Vim key the outline does not bind (`i`, `s`, `S`, `r`, `X`,
 `D`, `Y`, `U`, `q`) changes nothing and names the outline's way to do
 what it means, as `i` says `I types at the start, A at the end; w steps
 into the text`. So do the keys other programs taught: `?` names `:help`,
@@ -1954,7 +2028,9 @@ minute's read at or after its time, caught up later that day if the Mac slept,
 and silent with nothing to say: Plan the day, 09:00 by default, when `docket
 ls '$today -$missed'` prints nothing, as `Nothing picked for Today · 2 due
 today · 1 overdue · 4 carried` (with a day picked, only what is due or overdue
-outside Today, if anything); and Check in, 14:00 by default, while Today holds
+outside Today, if anything; what is due today outside Today with no check
+note, `docket ls '@today $unchecked -$today'`, is counted after what is due
+today, as `2 due today · 1 without a check`); and Check in, 14:00 by default, while Today holds
 open picks, as `3 of 5 picks still open`. Each has its own switch and time in
 Docket.app's Settings, and choosing one types `Esc`, `f`, `today`, `Enter`.
 A `docket://capture` link, the Services and Share menus, and `⌘K` in quick
@@ -2173,6 +2249,21 @@ a row unseen.
    it names the way to a smaller first step. Docket.app posts Plan the day
    and Check in, each once a day at its time and silent with nothing to say.
    Nothing is stored and no key is added. *Built.*
+
+31. **Deliver.** Work is kept in blocks, in order, and picked up where it
+   was left. A task still to do with a deadline is a delivery, near when
+   due within 3 days. `C` notes what to check before one is delivered,
+   read back as its deadline nears and when it is taken up; a near one
+   with no check, or no first step under it, says so. Today's header
+   counts the near deliveries and names the soonest, and a deadline
+   stamped among them says so; `/deliveries` lists them and `$unchecked`
+   finds those with no check. A pick or a `doing` row estimated past 2
+   hours with no task under it names a smaller first step at once, a
+   carried pick after one day instead of three, and Today's header counts
+   its unsized picks. Work put down with no left-off note is named: on
+   starting another row, on taking one off `doing`, on quitting, and the
+   next launch says what was left doing. Docket.app's Plan the day counts
+   what is due today with no check. *Built.*
 
 Not planned: a reminder for one row, or a time of day on one, attachments, a details panel (a body is read in the
 pane, not beside it), import from v1, any

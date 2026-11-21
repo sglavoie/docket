@@ -219,8 +219,11 @@ type Model struct {
 	doneToday  int                 // rows closed as done today, derived in scan
 	usualDay   int                 // the median done on the days before today that did any, 0 with too few, derived in scan
 	doing      int                 // rows doing, derived in scan
+	bare       []string            // rows doing with no left-off note, in outline order, derived in scan
+	near       []string            // deliveries due within nearDays or overdue, soonest first, derived in scan
+	unsized    int                 // Today picks to do with no #est and no task under them, derived in scan
 	closing    closing             // what this key closed as done, said once the key is done
-	resumed    string              // the left-off note of a row this key set doing, said once the key is done
+	resumed    string              // the left-off and check notes of a row this key set doing, said once the key is done
 	overdue    int                 // tasks still to do past their deadline, out of parked work, derived in scan
 	next       map[string]bool     // each active project's next action, derived in scan
 	first      map[string]bool     // each parent's first workable child, derived in scan
@@ -695,6 +698,13 @@ func (m *Model) sayDoing() {
 		return
 	}
 	said := strconv.Itoa(m.doing) + " rows doing: /$doing lists them"
+	// The work put down for it is named when nothing says where it stands.
+	// One such row is named in place of the way to list them all.
+	if bare := m.bareBut(m.closing.starts); len(bare) == 1 {
+		said = strconv.Itoa(m.doing) + " rows doing · " + m.named(bare[0]) + " has no left-off note: R writes one"
+	} else if len(bare) > 1 {
+		said += " · " + strconv.Itoa(len(bare)) + " have no left-off note: R writes one"
+	}
 	if m.msg != "" {
 		said = m.msg + " · " + said
 	}
@@ -710,6 +720,9 @@ type closing struct {
 	since   int64
 	line    sigil.Line
 	started bool
+	starts  map[string]bool // the rows set doing that were not
+	put     map[string]bool // the rows taken off doing, to wait or for later
+	dued    map[string]bool // the rows given a deadline, or another one
 }
 
 // note reads one recorded group: a row set done that was not done before.
@@ -729,6 +742,24 @@ func (c *closing) note(m *Model, ops, inv []outline.Op) {
 		state, ok := before[[2]string{op.Row, sigil.FieldState}]
 		if op.Kind == outline.Set && op.Field == sigil.FieldState && op.Value == sigil.Doing && ok && state != sigil.Doing {
 			c.started = true
+			if c.starts == nil {
+				c.starts = map[string]bool{}
+			}
+			c.starts[op.Row] = true
+		}
+		if op.Kind == outline.Set && op.Field == sigil.FieldState && ok && state == sigil.Doing &&
+			(op.Value == sigil.Open || op.Value == sigil.Waiting || op.Value == sigil.Parked) {
+			if c.put == nil {
+				c.put = map[string]bool{}
+			}
+			c.put[op.Row] = true
+		}
+		if was, had := before[[2]string{op.Row, sigil.FieldDue}]; op.Kind == outline.Set && op.Field == sigil.FieldDue &&
+			op.Value != "" && had && was != op.Value {
+			if c.dued == nil {
+				c.dued = map[string]bool{}
+			}
+			c.dued[op.Row] = true
 		}
 		if op.Kind != outline.Set || op.Field != sigil.FieldState || op.Value != sigil.Done || !ok || state == sigil.Done || c.rows[op.Row] {
 			continue
@@ -1226,12 +1257,22 @@ func (m *Model) record(ops, inv []outline.Op) bool {
 }
 
 func (m *Model) do(ops ...outline.Op) bool {
-	// A row taken up again reads back where its work was left off.
+	// A row taken up again reads back where its work was left off, and
+	// what to check before it is delivered.
 	note := ""
 	for _, op := range ops {
 		if r := m.tree.Row(op.Row); op.Kind == outline.Set && op.Field == sigil.FieldState && op.Value == sigil.Doing &&
-			r != nil && r.Fields[sigil.FieldState] != sigil.Doing && r.Fields[fieldResume] != "" {
-			note = r.Fields[fieldResume]
+			r != nil && r.Fields[sigil.FieldState] != sigil.Doing {
+			var said []string
+			if left := r.Fields[fieldResume]; left != "" {
+				said = append(said, "left off: "+left)
+			}
+			if check := r.Fields[fieldCheck]; check != "" {
+				said = append(said, "check: "+check)
+			}
+			if len(said) > 0 {
+				note = strings.Join(said, " · ")
+			}
 		}
 	}
 	inv, err := m.apply(ops)
@@ -2086,11 +2127,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.resumed != "" {
 			if m.msg == "" {
-				m.msg = "left off: " + m.resumed
+				m.msg = m.resumed
 			}
 			m.resumed = ""
 		}
 		m.sayDoing()
+		m.sayPutDown()
+		m.sayDue()
 		m.sayDayDone(left, done)
 		if m.quit {
 			m.syncQuit()
@@ -2129,6 +2172,7 @@ const (
 	askFilter  = "filter"  // a query narrowing the pane, live
 	askStamp   = "stamp"   // sigils to set on rows
 	askResume  = "resume"  // the note of where a row's work was left off
+	askCheck   = "check"   // the note of what to verify before a row is delivered
 	askCommand = "command"
 )
 
@@ -2140,6 +2184,7 @@ var askLabels = map[string]string{
 	askFilter:  "Filter › ",
 	askStamp:   "Stamp › ",
 	askResume:  "Left off › ",
+	askCheck:   "Check › ",
 	askCommand: ": ",
 }
 
@@ -2226,6 +2271,9 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 		case askResume:
 			m.ask = nil
 			m.writeResume(a.rows[0], text)
+		case askCheck:
+			m.ask = nil
+			m.writeCheck(a.rows[0], text)
 		case askCommand:
 			m.ask = nil
 			m.remember(askCommand, text)
@@ -3334,6 +3382,13 @@ func (m *Model) normalAct(k string, count int) {
 		if m.single() {
 			note := []rune(m.tree.Row(cur).Fields[fieldResume])
 			m.ask = &prompt{kind: askResume, ed: editor{buf: note, caret: len(note)}, rows: []string{cur}}
+		}
+	case "C":
+		// What to verify before the row is delivered, read back as its
+		// deadline nears and when it is taken up.
+		if m.single() {
+			note := []rune(m.tree.Row(cur).Fields[fieldCheck])
+			m.ask = &prompt{kind: askCheck, ed: editor{buf: note, caret: len(note)}, rows: []string{cur}}
 		}
 	case "gl":
 		if m.single() {

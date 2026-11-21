@@ -52,7 +52,7 @@ func TestCtrlOGoesBackAlongTheTrailOfJumps(t *testing.T) {
 		}
 		h.press("esc", "esc")
 		// One gained a child, so its flat rendering now includes +1.
-		if h.header() != "Today  · 2 to do" || h.rows() != strings.Replace(today, "@tomorrow", "@tomorrow +1", 1) {
+		if h.header() != "Today  · 2 to do · 1 unsized" || h.rows() != strings.Replace(today, "@tomorrow", "@tomorrow +1", 1) {
 			t.Fatalf("Esc lost the held list or its cursor: %q\n%s", h.header(), h.rows())
 		}
 		h.press("ctrl+i")
@@ -211,7 +211,7 @@ func TestHShowsAListsRowWhereItLives(t *testing.T) {
 		}
 		h.want("▌ ○ One @tomorrow", "  ◔ Two ★")
 		h.press("j", "esc")
-		if h.header() != "Today  · 2 to do" || h.rows() != before {
+		if h.header() != "Today  · 2 to do · 1 unsized" || h.rows() != before {
 			t.Fatalf("return = %q\n%s; want\n%s", h.header(), h.rows(), before)
 		}
 	})
@@ -343,7 +343,7 @@ func TestGfGoesToTheRowsProject(t *testing.T) {
 		h.press("g", "f")
 		h.wantStatus("already in Alpha")
 		h.press("ctrl+o")
-		if h.header() != "Today  · 1 to do" || h.rows() != before {
+		if h.header() != "Today  · 1 to do · 1 unsized · 2 due by tomorrow · first: One" || h.rows() != before {
 			t.Fatalf("back = %q\n%s", h.header(), h.rows())
 		}
 	})

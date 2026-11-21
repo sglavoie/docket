@@ -279,7 +279,9 @@ notifications, each at most once a day and silent when it has nothing to say:
   overdue` (`docket ls '@overdue -$today'`) and `4 carried` (`docket ls
   '$missed'`). With a day already picked it says only what is due today or
   overdue outside Today, as `1 due today · 2 overdue`, and is not posted when
-  nothing is.
+  nothing is. What is due today with nothing written to check before it
+  goes (`docket ls '@today $unchecked -$today'`) is counted after what is due
+  today, as `2 due today · 1 without a check`.
 - **Check in**, 14:00 by default, while Today still holds open picks: `3 of 5
   picks still open`, read from `docket ls '$today'`. With none open, it is not
   posted.
