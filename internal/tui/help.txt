@@ -154,8 +154,8 @@ m Enter	with a blank query, move selected rows here, where `o` would add
 	`/#old` `:all` `-#old #new` filters, selects and retags with one stamp
 
 ## Filter
-/	text and sigils; `Enter` keeps, `Esc` clears; `Tab` flat or context
-	after a sigil, `Tab` completes its values instead; `Shift+Tab` walks back
+/	text and sigils; `Enter` keeps, `Esc` clears; `Ctrl+T` flat or context
+	after a sigil, `Tab` completes its values; `Shift+Tab` walks back
 	the values are listed above the line while `Tab` walks them
 	the status line reads the filter back in words as it is typed
 "a phrase"	match words together, ignoring case; `-"a phrase"` excludes
@@ -216,8 +216,8 @@ Tab	sidebar focus; `j` `k` and paging keys visit; `Enter` works there
 
 == Links and trails
 L gl	link to a row, follow it; blank `L` `Enter` removes the link
-	with no row link, `gl` opens the first web address, Mail link or
-	file path in the text, else goes back to the row that links here (`←`)
+gx	open the first web address, Mail link or file path in the text
+gL	go back to the row that links here (`←`)
 gf	go to the whole project the row is filed in, cursor on the row
 Ctrl+O Ctrl+I	back, forward along jumps (`f`, `F`, `gf`, sidebar visits, row links)
 	a terminal unable to distinguish `Ctrl+I` from `Tab` gives `Tab`

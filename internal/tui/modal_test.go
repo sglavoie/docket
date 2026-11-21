@@ -465,8 +465,8 @@ func TestARowLinksToAnother(t *testing.T) {
 	if h.header() != "Alpha › Heading  · 2 to do" {
 		t.Fatalf("header = %q", h.header())
 	}
-	// Two rows link here, so gl names the filter that lists them.
-	h.press("g", "l")
+	// Two rows link here, so gL names the filter that lists them.
+	h.press("g", "L")
 	if h.status() != "2 rows link here: /&. lists them" {
 		t.Fatalf("status = %q", h.status())
 	}
@@ -504,6 +504,10 @@ func TestALinkedRowLeadsBack(t *testing.T) {
 	h.want("▌ ○ Buy milk ← Buy bread", "  ○ Sell milk")
 	steps := len(h.m.undo)
 	h.press("g", "l")
+	if h.status() != "this row has no link: L makes one · gL goes back to the row linking here" {
+		t.Fatalf("gl without a link = %q", h.status())
+	}
+	h.press("g", "L")
 	h.want("▌ ○ Buy bread → Buy milk")
 	if len(h.m.undo) != steps {
 		t.Fatal("going back made an undo step")
@@ -511,17 +515,20 @@ func TestALinkedRowLeadsBack(t *testing.T) {
 	// Going back was a jump.
 	h.press("ctrl+o")
 	h.want("▌ ○ Buy milk ← Buy bread", "  ○ Sell milk")
-	// A row's own link wins over the way back.
+	// A row with its own link and a way back reaches both.
 	h.press("L", `"call"`, "enter", "g", "l")
 	if h.header() != "Alpha  · 3 to do" {
 		t.Fatalf("header = %q", h.header())
 	}
+	h.press("ctrl+o", "g", "L")
+	h.want("▌ ○ Buy bread → Buy milk")
+	h.press("ctrl+o")
 	// Once the link is gone, so is the way back.
-	h.press("ctrl+o", "L", "enter", "f", `"bread"`, "enter", "L", "enter")
+	h.press("L", "enter", "f", `"bread"`, "enter", "L", "enter")
 	h.press("f", `"buy m"`, "enter")
 	h.want("▌ ○ Buy milk", "  ○ Sell milk")
-	h.press("g", "l")
-	if h.status() != "this row has no link: L makes one" {
+	h.press("g", "L")
+	if h.status() != "no row links here: L on another row makes one" {
 		t.Fatalf("status = %q", h.status())
 	}
 }
@@ -559,7 +566,7 @@ func TestNumbersCountFromTheCursor(t *testing.T) {
 
 func TestAFilterTestsTheRowsBelow(t *testing.T) {
 	h := work(t)
-	h.press("/", `"_#bug"`, "tab", "enter")
+	h.press("/", `"_#bug"`, "ctrl+t", "enter")
 	h.want("▌ · Beta +1", "  · Alpha +3")
 	h.press("/", "ctrl+u", `"_@"`, "enter")
 	h.want("▌ · Alpha +3")
@@ -570,7 +577,7 @@ func TestAFilterTestsTheRowsBelow(t *testing.T) {
 	h.press("/", `"_#docs|bug -_!"`, "enter")
 	h.want("▌ · Beta +1", "  ○ Refactor auth #bug +1 · Alpha")
 	// In context a match keeps its ancestors, and n finds it afterwards.
-	h.press("/", "ctrl+u", `"_#docs alpha"`, "tab", "enter", "esc", "g", "g", "n")
+	h.press("/", "ctrl+u", `"_#docs alpha"`, "ctrl+t", "enter", "esc", "g", "g", "n")
 	if h.on() != "Alpha" {
 		t.Fatalf("n landed on %q", h.on())
 	}

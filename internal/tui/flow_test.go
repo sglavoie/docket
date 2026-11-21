@@ -9,7 +9,7 @@ import (
 // filters reads each query flat against the pane and compares the rows.
 func (h *harness) filters(cases map[string]string) {
 	h.t.Helper()
-	h.press("/", "tab", "esc") // flat from here
+	h.press("/", "ctrl+t", "esc") // flat from here
 	for query, want := range cases {
 		h.press("/", `"`+query+`"`)
 		if got := h.shown(); got != want {
@@ -109,7 +109,7 @@ func TestFilterReadsMissedPicks(t *testing.T) {
 		"$missed": "",
 		"$today":  "Write docs",
 	} {
-		h.press("/", `"`+query+`"`, "tab")
+		h.press("/", `"`+query+`"`, "ctrl+t")
 		if got := h.shown(); got != want {
 			t.Errorf("filter %q = %q, want %q", query, got, want)
 		}
@@ -258,7 +258,7 @@ func TestFoldingABranchAllTheWayDown(t *testing.T) {
 	if folds, _ := h.st.Folds(); len(folds) != 2 || len(h.m.at.folds) == 0 {
 		t.Fatalf("stored folds = %v, filter folds = %v", folds, h.m.at.folds)
 	}
-	h.press("esc", "/", `"a"`, "tab", "enter", "z", "c")
+	h.press("esc", "/", `"a"`, "ctrl+t", "enter", "z", "c")
 	if !strings.HasPrefix(h.status(), "nothing to fold") {
 		t.Fatalf("status = %q", h.status())
 	}

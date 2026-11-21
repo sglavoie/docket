@@ -32,7 +32,7 @@ Welcome
 		This task closes together with the row above in the sweep.
 	Filter:
 		Press / then practice and Enter to keep a text filter; Esc shows the outline again. #practice
-		Type /#practice then Enter to find this tagged row; Tab switches flat and context views, or completes a sigil being typed. #practice
+		Type /#practice then Enter to find this tagged row; Ctrl+T switches flat and context views, and Tab completes a sigil being typed. #practice
 		Type /$next then Enter for this project's first workable task; Esc returns to all rows.
 		Type /$first then Enter for the first workable sibling under every parent; Esc returns.
 		Press / then "first workable" and Enter to match that phrase; Esc returns, then n and N walk its matches.

@@ -324,7 +324,7 @@ func TestAKeystrokePaintsWithinAFrame(t *testing.T) {
 	frame(m, "/")
 	frame(m, "esc")
 	frame(m, "/")
-	frame(m, "tab")
+	frame(m, "ctrl+t")
 	filter("@<+30d")
 	if !m.at.flat || len(m.at.hits) < 1000 {
 		t.Fatalf("sorted flat timing needs a flat list of many matches, have %d (flat %v)", len(m.at.hits), m.at.flat)

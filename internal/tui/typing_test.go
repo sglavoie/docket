@@ -119,7 +119,8 @@ func TestPromptsColourAndCompleteInTheirOwnGrammar(t *testing.T) {
 	h.press("esc")
 
 	// Tab walks the values a sigil could become, and back to what was typed;
-	// with nothing to complete it switches the shape, as on a blank line.
+	// with nothing to complete it does nothing. Ctrl+T alone switches the
+	// shape, so a Tab pressed once too often never flattens the pane.
 	walk := func(keys []string, want string, switched bool) {
 		t.Helper()
 		was := h.m.at.flat
@@ -135,9 +136,12 @@ func TestPromptsColourAndCompleteInTheirOwnGrammar(t *testing.T) {
 	walk([]string{`"$d"`, "tab", "tab", "tab"}, "$d", false)
 	walk([]string{`"$d"`, "shift+tab"}, "$done", false)
 	walk([]string{`"$next|w"`, "tab"}, "$next|waiting", false) // the only value, finished at once
-	walk([]string{`"$next|w"`, "tab", "tab"}, "$next|waiting", true)
+	walk([]string{`"$next|w"`, "tab", "tab"}, "$next|waiting", false)
+	walk([]string{`"$next|w"`, "tab", "ctrl+t"}, "$next|waiting", true)
+	walk([]string{`"$d"`, "ctrl+t"}, "$d", true)                       // the switch, even mid-sigil
 	walk([]string{`"$d"`, "tab", "backspace", "tab"}, "$doing", false) // typing ends the walk
 	walk([]string{"tab", `"word"`, "tab"}, "word", false)
+	walk([]string{"ctrl+t", `"word"`}, "word", true)
 	h.press("/", `"@to"`)
 	if !strings.Contains(h.bottom(), "Tab completes") {
 		t.Fatalf("hint = %q", h.bottom())

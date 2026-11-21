@@ -1054,7 +1054,9 @@ func existingFile(path string) string {
 	return ""
 }
 
-// follow jumps to the linked row, or opens the first address in its text.
+// follow goes to the row the cursor's row links to, as a jump. It is the one
+// thing gl does: an address in the text is gx's and the way back is gL's,
+// so a row holding a link and an address reaches both.
 func (m *Model) follow() {
 	cur := m.current()
 	if cur == "" {
@@ -1062,33 +1064,74 @@ func (m *Model) follow() {
 	}
 	switch dest := m.tree.Row(cur).Fields[fieldLink]; {
 	case dest == "":
-		address, missing := addressIn(m.tree.Row(cur).Fields[sigil.FieldText])
-		if address != "" {
-			if err := m.openURL(address); err != nil {
-				m.msg = err.Error()
-			} else {
-				m.msg = "opened " + address
-			}
-			return
-		}
-		// The way back: a row with no way out of its own goes to the row
-		// that links to it.
-		m.scan()
-		switch from := m.pointers[cur]; {
-		case len(from) == 0 && missing != "":
-			m.msg = "no file at " + missing
-		case len(from) == 0:
-			m.msg = "this row has no link: L makes one"
-		case len(from) == 1:
-			m.jump(entry{kind: kindRow, id: from[0]})
-		default:
-			m.msg = strconv.Itoa(len(from)) + " rows link here: /&. lists them"
-		}
+		m.msg = "this row has no link: L makes one" + m.otherWays(cur, "gl")
 	case !m.live(dest):
 		m.msg = "the linked row is gone"
 	default:
 		m.jump(entry{kind: kindRow, id: dest})
 	}
+}
+
+// openAddress starts the system opener on the first address in the cursor's
+// row's text: a web address, a Mail message, a file URL or a path.
+func (m *Model) openAddress() {
+	cur := m.current()
+	if cur == "" {
+		return
+	}
+	address, missing := addressIn(m.tree.Row(cur).Fields[sigil.FieldText])
+	switch {
+	case address != "":
+		if err := m.openURL(address); err != nil {
+			m.msg = err.Error()
+		} else {
+			m.msg = "opened " + address
+		}
+	case missing != "":
+		m.msg = "no file at " + missing
+	default:
+		m.msg = "no web address, Mail link or file in this row" + m.otherWays(cur, "gx")
+	}
+}
+
+// goBack goes to the one row that links to the cursor's row, as a jump.
+func (m *Model) goBack() {
+	cur := m.current()
+	if cur == "" {
+		return
+	}
+	m.scan()
+	switch from := m.pointers[cur]; len(from) {
+	case 0:
+		m.msg = "no row links here: L on another row makes one" + m.otherWays(cur, "gL")
+	case 1:
+		m.jump(entry{kind: kindRow, id: from[0]})
+	default:
+		m.msg = strconv.Itoa(len(from)) + " rows link here: /&. lists them"
+	}
+}
+
+// otherWays names, after a key that found nothing on the row, the keys of
+// gl, gx and gL that would act on it.
+func (m *Model) otherWays(cur, key string) string {
+	var ways []string
+	row := m.tree.Row(cur)
+	if key != "gl" && row.Fields[fieldLink] != "" {
+		ways = append(ways, "gl follows its link")
+	}
+	if address, _ := addressIn(row.Fields[sigil.FieldText]); key != "gx" && address != "" {
+		ways = append(ways, "gx opens "+address)
+	}
+	if key != "gL" {
+		m.scan()
+		if len(m.pointers[cur]) > 0 {
+			ways = append(ways, "gL goes back to the row linking here")
+		}
+	}
+	if len(ways) == 0 {
+		return ""
+	}
+	return " · " + strings.Join(ways, " · ")
 }
 
 // canMoveHere reports whether the selection can land at the cursor: an

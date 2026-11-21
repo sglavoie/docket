@@ -772,17 +772,17 @@ func (m *Model) statusLine(w int) (string, int) {
 			}
 			// The line read back in words, so its marks need not be remembered.
 			found := matchCount(len(m.at.matched))
-			// Tab completes a sigil that has values to take, and otherwise
-			// switches the shape, so the hint names which it will do.
+			// Tab completes a sigil that has values to take, so the hint
+			// names it only while there is one; Ctrl+T switches the shape.
 			completes := a.choice > 0 || m.suggest(&a.ed, a.kind) != ""
-			note := found + " · " + shape + " · Tab switches"
+			note := found + " · " + shape + " · Ctrl+T switches"
 			if completes {
 				note = found + " · " + shape + " · Tab completes"
 			}
 			if strings.TrimSpace(string(a.ed.buf)) == "" {
 				// A blank line hides nothing, so it counts nothing and names
 				// what it reads instead.
-				note = shape + " · Tab switches · words, #tag, $state, @date, ! · - excludes"
+				note = shape + " · Ctrl+T switches · words, #tag, $state, @date, ! · - excludes"
 			} else if tags != "" {
 				note = found + " · " + tags
 			} else if reads := readBack(string(a.ed.buf), m.today()); reads != "" && completes {

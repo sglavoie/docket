@@ -63,10 +63,10 @@ func TestCtrlOGoesBackAlongTheTrailOfJumps(t *testing.T) {
 
 	t.Run("filters sharing a root retain separate hits and cursors", func(t *testing.T) {
 		h := fixture(t)
-		h.press("f", `"alpha"`, "enter", "/", `"First|Second"`, "tab", "enter", "j")
+		h.press("f", `"alpha"`, "enter", "/", `"First|Second"`, "ctrl+t", "enter", "j")
 		h.command("save pair")
 		pair, heading := h.rows(), h.header()
-		h.press("f", `"alpha"`, "enter", "/", `"First"`, "tab", "enter")
+		h.press("f", `"alpha"`, "enter", "/", `"First"`, "ctrl+t", "enter")
 		first, firstHeading := h.rows(), h.header()
 		h.press("ctrl+o")
 		if h.rows() != pair || h.header() != heading {
@@ -87,7 +87,7 @@ func TestCtrlOGoesBackAlongTheTrailOfJumps(t *testing.T) {
 
 	t.Run("held filter matches survive edits and jumping away", func(t *testing.T) {
 		h := work(t)
-		h.press("/", `"#bug"`, "tab", "enter", "j", "-", `"#bug"`, "enter")
+		h.press("/", `"#bug"`, "ctrl+t", "enter", "j", "-", `"#bug"`, "enter")
 		before, heading := h.rows(), h.header()
 		h.press("f", `"beta"`, "enter", "ctrl+o")
 		if h.rows() != before || h.header() != heading {
@@ -99,7 +99,7 @@ func TestCtrlOGoesBackAlongTheTrailOfJumps(t *testing.T) {
 		h := two(t)
 		h.press("G", "x")
 		h.command("closed")
-		h.press("/", `"$done"`, "tab", "enter", "h")
+		h.press("/", `"$done"`, "ctrl+t", "enter", "h")
 		before := h.rows()
 		h.press("f", `"beta"`, "enter", "ctrl+o")
 		if h.rows() != before {
@@ -218,13 +218,13 @@ func TestHShowsAListsRowWhereItLives(t *testing.T) {
 
 	t.Run("flat filter holds its query hits and cursor", func(t *testing.T) {
 		h := work(t)
-		h.press("/", `"#bug"`, "tab", "enter", "j", "-", `"#bug"`, "enter")
+		h.press("/", `"#bug"`, "ctrl+t", "enter", "j", "-", `"#bug"`, "enter")
 		before, header := h.rows(), h.header()
 		h.press("h")
 		h.want("▌ ○ Fix login !", "  ○ Write docs @fri #docs", "  ○ Refactor auth #bug")
 		// Nest a second reach from a filter whose root is the same as the
 		// parent it opens. Each zoom must retain its own return row.
-		h.press("/", `"auth"`, "tab", "enter", "h", "enter", "esc", "k", "esc")
+		h.press("/", `"auth"`, "ctrl+t", "enter", "h", "enter", "esc", "k", "esc")
 		h.want("▌ ○ Refactor auth #bug")
 		h.press("esc", "g", "g", "esc")
 		if h.header() != header || h.rows() != before {
@@ -237,7 +237,7 @@ func TestHShowsAListsRowWhereItLives(t *testing.T) {
 			h := two(t)
 			h.press("G", "$", `"`+state+`"`, "enter")
 			h.command("closed")
-			h.press("/", `"$`+state+`"`, "tab", "enter", "h")
+			h.press("/", `"$`+state+`"`, "ctrl+t", "enter", "h")
 			glyph := "✓"
 			if state == "canceled" {
 				glyph = "✕"
@@ -267,7 +267,7 @@ func TestHShowsAListsRowWhereItLives(t *testing.T) {
 				if source == "list" {
 					h.press("f", `"today"`, "enter")
 				} else {
-					h.press("/", `"Two"`, "tab", "enter")
+					h.press("/", `"Two"`, "ctrl+t", "enter")
 				}
 				before := h.rows()
 				h.press("l", "right")
@@ -358,7 +358,7 @@ func TestGfGoesToTheRowsProject(t *testing.T) {
 		h := deep(t)
 		h.press("l", "j", "x")
 		h.command("closed")
-		h.press("/", `"deep"`, "tab", "enter", "g", "f")
+		h.press("/", `"deep"`, "ctrl+t", "enter", "g", "f")
 		h.want("  ○ One @tomorrow", "  ◔ Two", "  ▾ TUI: 1/1", "▌   ✓ Deep ★ @tomorrow")
 	})
 
@@ -412,7 +412,7 @@ func TestFilterReadsAnyTagAnyStateAndMixedAlternatives(t *testing.T) {
 				h := fixture(t)
 				h.press("/")
 				if !h.m.at.flat {
-					h.press("tab")
+					h.press("ctrl+t")
 				}
 				h.press(`"` + tc.query + `"`)
 				h.want(tc.rows...)
@@ -485,14 +485,14 @@ func TestAFilterTermReachesTheRowsAbove(t *testing.T) {
 	})
 	t.Run("flat excludes the tagged heading itself and negates ancestry", func(t *testing.T) {
 		h := fixture(t)
-		h.press("/", `"^#work"`, "tab")
+		h.press("/", `"^#work"`, "ctrl+t")
 		h.want("▌ ○ First · Docket", "  ◔ Nested: 0/1 #work +1 · Docket", "  ○ Deep · Docket")
 		h.press("esc", "/", `"-^#work"`)
 		h.want("▌ · Docket #office +3", "  · Work: 0/3 #work · Docket", "  · Home: 0/1 #home · Docket", "  ○ Second · Docket", "  ○ Plain · Docket", "  · Elsewhere +1", "  ○ Other · Elsewhere")
 	})
 	t.Run("project name scopes next action from Projects", func(t *testing.T) {
 		h := fixture(t)
-		h.press("/", `"^docket $next"`, "tab")
+		h.press("/", `"^docket $next"`, "ctrl+t")
 		h.want("▌ ○ First · Docket")
 	})
 	t.Run("project tag counts above the pane root", func(t *testing.T) {
@@ -504,7 +504,7 @@ func TestAFilterTermReachesTheRowsAbove(t *testing.T) {
 	})
 	t.Run("Today tests parents of held rows", func(t *testing.T) {
 		h := fixture(t)
-		h.press("/", `"$open"`, "tab", "enter")
+		h.press("/", `"$open"`, "ctrl+t", "enter")
 		h.command("all")
 		h.press("t", "f", `"today"`, "enter", "/", `"^#work"`)
 		h.want("▌ ○ First · Docket", "  ○ Deep · Docket")
@@ -526,7 +526,7 @@ func TestAFilterTermReachesTheRowsAbove(t *testing.T) {
 		} {
 			t.Run(tc.query, func(t *testing.T) {
 				h := fixture(t)
-				h.press("/", "tab", `"`+tc.query+`"`, "enter")
+				h.press("/", "ctrl+t", `"`+tc.query+`"`, "enter")
 				h.command("all")
 				if got := h.selected(); got != tc.names {
 					t.Fatalf("selected %q, want %q", got, tc.names)
@@ -537,7 +537,7 @@ func TestAFilterTermReachesTheRowsAbove(t *testing.T) {
 	t.Run("doubled prefix and unreadable alternatives are literal", func(t *testing.T) {
 		h := start(t).wide()
 		h.pasteText("^^marker\nLiteral $open|@nope\n\tChild $open")
-		h.press("/", `"^^marker"`, "tab")
+		h.press("/", `"^^marker"`, "ctrl+t")
 		h.want("▌ · ^^marker")
 		h.press("esc", "/", `"^$open|@nope"`)
 		h.want("▌ ○ Child · Literal $open|@nope")
@@ -657,7 +657,7 @@ func TestSortPutsSiblingsInOrder(t *testing.T) {
 			case "filter", "flat filter":
 				h.press("/", `"a"`)
 				if place == "flat filter" {
-					h.press("tab")
+					h.press("ctrl+t")
 				}
 				h.press("enter")
 				message = "clear the filter first"
@@ -838,7 +838,7 @@ func TestDotRepeatsTheLastStampOrMove(t *testing.T) {
 				} else {
 					h.press("/", `"First|Second|Third"`)
 					if view == "flat filter" {
-						h.press("tab")
+						h.press("ctrl+t")
 					}
 					h.press("enter")
 				}

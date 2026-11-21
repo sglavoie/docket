@@ -147,11 +147,11 @@ func TestAFilterFindsTheRowsThatLinkHere(t *testing.T) {
 		for h.on() != step.on {
 			h.press("j")
 		}
-		h.press("/", `"`+step.query+`"`, "tab")
+		h.press("/", `"`+step.query+`"`, "ctrl+t")
 		if got := h.shown(); got != step.want {
 			t.Fatalf("on %s, /%s showed %q, want %q", step.on, step.query, got, step.want)
 		}
-		h.press("tab", "esc")
+		h.press("ctrl+t", "esc")
 	}
 	// n walks the same rows once the filter is dropped.
 	h.press("g", "g", "7", "j", "/", `"&."`, "enter", "esc", "g", "g", "n")

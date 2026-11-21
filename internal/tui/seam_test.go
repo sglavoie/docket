@@ -89,13 +89,13 @@ func TestAChangedFilterSaysWhenAndReadsNewestFirst(t *testing.T) {
 	h := work(t)
 	h.press("x")
 	h.clock = h.clock.Add(3 * 24 * time.Hour)
-	h.press("G", "x", "/", `"$done ~1w"`, "tab")
+	h.press("G", "x", "/", `"$done ~1w"`, "ctrl+t")
 	h.want(
 		"▌ ✓ Refactor auth #bug ~today · Alpha",
 		"  ✓ Fix cache #bug ~Nov 15 · Beta",
 	)
 	// In context the order is the outline's, and each match still says when.
-	h.press("tab")
+	h.press("ctrl+t")
 	h.want(
 		"  ▾ Beta",
 		"▌   ✓ Fix cache #bug ~Nov 15",
@@ -103,7 +103,7 @@ func TestAChangedFilterSaysWhenAndReadsNewestFirst(t *testing.T) {
 		"    ✓ Refactor auth #bug ~today",
 	)
 	// A deadline the filter asks about still orders the list.
-	h.press("esc", "/", `"@ ~1m"`, "tab")
+	h.press("esc", "/", `"@ ~1m"`, "ctrl+t")
 	h.want("▌ ○ Write docs @fri #docs ~Nov 15 · Alpha")
 }
 

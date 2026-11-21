@@ -398,7 +398,7 @@ func TestVSweepsASelection(t *testing.T) {
 		h := countOutline(t, 4)
 		h.press("4", "t", "f", `"Today"`, "enter", "V", "2", "j")
 		picks(h, 0, 1, 2)
-		h.press("/", `"Task"`, "tab", "enter", "V", "j")
+		h.press("/", `"Task"`, "ctrl+t", "enter", "V", "j")
 		picks(h, 0, 1)
 		h.press("f", "enter", "j") // Back to the project.
 		picks(h)
@@ -725,7 +725,7 @@ func TestPPutsTheRegister(t *testing.T) {
 				case "filter", "flat filter":
 					h.press("/", `"Task"`)
 					if place == "flat filter" {
-						h.press("tab")
+						h.press("ctrl+t")
 					}
 					h.press("enter")
 					message = "clear the filter first"
@@ -898,7 +898,7 @@ func TestIAndAOpenTypingAndCcRetypes(t *testing.T) {
 				} else {
 					h.press("/", `"Task"`)
 					if place == "flat filter" {
-						h.press("tab")
+						h.press("ctrl+t")
 					}
 					h.press("enter")
 				}

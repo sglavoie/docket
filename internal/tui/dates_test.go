@@ -20,7 +20,7 @@ func TestAStartDateDimsARowUntilItsDayThenPutsItInToday(t *testing.T) {
 	if !strings.Contains(h.m.View().Content, darkPalette.dim+"Renew"+sgrReset) {
 		t.Fatal("a row that cannot start yet is not dimmed")
 	}
-	h.press("/", `"@@later"`, "tab")
+	h.press("/", `"@@later"`, "ctrl+t")
 	h.want(
 		"▌ ○ Renew passport @@fri · Project",
 		"  ○ Far off @@Jan 14 2027 · Project",
@@ -99,7 +99,7 @@ func TestARepeatingRowIsMovedOnNotClosed(t *testing.T) {
 	)
 
 	// Stamps set and clear the interval, and the filter finds it.
-	h.press("-", `"*"`, "enter", "x", "k", "k", "*", `"2w"`, "enter", "/", `"*"`, "tab")
+	h.press("-", `"*"`, "enter", "x", "k", "k", "*", `"2w"`, "enter", "/", `"*"`, "ctrl+t")
 	h.want(
 		"▌ ○ Water plants *2w · Project",
 		"  ○ Pay rent @Dec 1 @@Nov 28 *1m · Project",
@@ -112,7 +112,7 @@ func TestAFilterCanBeSavedAndReopened(t *testing.T) {
 	if h.m.msg != "filter an outline first (/), then save it" {
 		t.Fatalf("msg = %q", h.m.msg)
 	}
-	h.press("/", `"#bug -$done"`, "tab", "enter", ":", `"save open bugs"`, "enter")
+	h.press("/", `"#bug -$done"`, "ctrl+t", "enter", ":", `"save open bugs"`, "enter")
 	if h.m.msg != "saved: /open bugs is in the sidebar, and F opens it by name" {
 		t.Fatalf("msg = %q", h.m.msg)
 	}

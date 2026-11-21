@@ -46,7 +46,7 @@ func TestFilterNarrowsAsItIsTypedAndKeepsContext(t *testing.T) {
 	if h.bottom() != "Filter › #bug   3 matches · in context · #bug" {
 		t.Fatalf("prompt = %q", h.bottom())
 	}
-	h.press("tab")
+	h.press("ctrl+t")
 	h.want(
 		"▌ ○ Fix cache #bug · Beta",
 		"  ○ Fix login ! #bug · Alpha",
@@ -95,7 +95,7 @@ func TestFilterNarrowsAsItIsTypedAndKeepsContext(t *testing.T) {
 
 func TestFilterGrammar(t *testing.T) {
 	h := work(t)
-	h.press("x", "/", "tab", "esc") // Fix cache is done; filters are flat from here
+	h.press("x", "/", "ctrl+t", "esc") // Fix cache is done; filters are flat from here
 	cases := map[string][]string{
 		"fix":          {"Fix login", "Fix cache"}, // a closed row goes last
 		"FIX -cache":   {"Fix login"},
@@ -384,7 +384,7 @@ func TestNextIsTheFirstWorkableRowOfEachProject(t *testing.T) {
 		"    ▾ Spec: 0/1",
 		"      ○ Draft spec",
 	)
-	h.press("tab")
+	h.press("ctrl+t")
 	h.want(
 		"▌ ● Fix login #home · Alpha",
 		"  ○ Draft spec · Beta",
@@ -414,7 +414,7 @@ func TestNextIsTheFirstWorkableRowOfEachProject(t *testing.T) {
 
 func TestClosingTheNextActionKeepsItUntilTheQueryIsRead(t *testing.T) {
 	h := projectsWithNext(t)
-	h.press("/", `"$next"`, "tab", "enter", "x")
+	h.press("/", `"$next"`, "ctrl+t", "enter", "x")
 	h.want(
 		"▌ ✓ Fix login #home · Alpha",
 		"  ○ Draft spec · Beta",
@@ -466,7 +466,7 @@ func (h *harness) shown() string {
 
 func TestDeadlineRangesHoldForOpenRowsSoonestFirst(t *testing.T) {
 	h := deadlines(t)
-	h.press("/", "tab", "esc") // flat from here
+	h.press("/", "ctrl+t", "esc") // flat from here
 	byFri := "Past, Now, Soon, Also fri"
 	cases := map[string]string{
 		"@<fri":           byFri,
@@ -497,7 +497,7 @@ func TestDeadlineRangesHoldForOpenRowsSoonestFirst(t *testing.T) {
 	}
 
 	// In context the order is the outline's, ancestors kept.
-	h.press("/", `"@<fri"`, "tab")
+	h.press("/", `"@<fri"`, "ctrl+t")
 	if got := h.shown(); got != "Alpha, Soon, Now, Also fri, Beta, Past" {
 		t.Errorf("in context = %q", got)
 	}
@@ -532,7 +532,7 @@ func TestAListFilterKeepsTheListOrder(t *testing.T) {
 
 func TestASavedDeadlineFilterReopensSorted(t *testing.T) {
 	h := deadlines(t)
-	h.press("/", `"@>fri"`, "tab", "enter", ":", `"save ahead"`, "enter", "esc")
+	h.press("/", `"@>fri"`, "ctrl+t", "enter", ":", `"save ahead"`, "enter", "esc")
 	again := reopen(t, h)
 	again.press("F", `"/ahead"`, "enter")
 	if got := again.shown(); got != "Soon, Also fri, Week, Late" {
@@ -619,7 +619,7 @@ func TestAllSelectsEveryRowThePaneShows(t *testing.T) {
 	t.Run("flat filter replaces an earlier selection", func(t *testing.T) {
 		h := work(t)
 		h.press("j", "j", "j", "v") // Write docs
-		h.press("/", `"#bug"`, "tab", "enter")
+		h.press("/", `"#bug"`, "ctrl+t", "enter")
 		h.command("all")
 		if got := h.selected(); got != "Fix cache, Fix login, Refactor auth" {
 			t.Fatalf("selected = %q", got)
@@ -659,7 +659,7 @@ func TestAllSelectsEveryRowThePaneShows(t *testing.T) {
 // while it shows stays where it is until the query is read again.
 func TestAFlatFilterSinksClosedRows(t *testing.T) {
 	h := work(t)
-	h.press("/", "tab", `"#bug"`, "enter")
+	h.press("/", "ctrl+t", `"#bug"`, "enter")
 	h.want(
 		"▌ ○ Fix cache #bug · Beta",
 		"  ○ Fix login ! #bug · Alpha",

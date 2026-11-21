@@ -264,8 +264,8 @@ func (m *Model) sigilValues(e *editor, surface string) (string, []string) {
 // could become: Tab writes the first and again the next, Shift+Tab walks
 // back, and past either end the line is as it was typed. While the values
 // are listed, the arrows walk them too. A sigil only one value finishes is
-// finished at once. It reports false when there is nothing to complete,
-// where Tab switches between flat and in context instead.
+// finished at once. It reports false when there is nothing to complete;
+// Ctrl+T, not Tab, switches between flat and in context.
 func (m *Model) completeFilter(a *prompt, k string) bool {
 	by := 1
 	listed := len(a.menu) > 0

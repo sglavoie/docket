@@ -93,7 +93,7 @@ func TestFilterAlternativesAndChangedSince(t *testing.T) {
 		t.Helper()
 		h.press("esc", "/", `"`+q+`"`)
 		if !h.m.at.flat {
-			h.press("tab")
+			h.press("ctrl+t")
 		}
 		h.want(rows...)
 		h.press("esc")

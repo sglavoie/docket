@@ -10,7 +10,7 @@ import (
 
 // gl opens what quick capture puts in a row: a Mail message, a file by its
 // URL, or a file by its path, as well as a web address.
-func TestGlOpensMailAndFiles(t *testing.T) {
+func TestGxOpensMailAndFiles(t *testing.T) {
 	dir := t.TempDir()
 	file := filepath.Join(dir, "notes.txt")
 	if err := os.WriteFile(file, nil, 0o600); err != nil {
@@ -29,7 +29,7 @@ func TestGlOpensMailAndFiles(t *testing.T) {
 		{"home", "Read ~/plan.md", filepath.Join(home, "plan.md"), ""},
 		{"missing path passed over", "See /no/such/file then https://example.com", "https://example.com", ""},
 		{"missing path said", "See /no/gone.txt", "", "no file at /no/gone.txt"},
-		{"slash in a word is prose", "and/or 3/4", "", "this row has no link: L makes one"},
+		{"slash in a word is prose", "and/or 3/4", "", "no web address, Mail link or file in this row"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -42,7 +42,7 @@ func TestGlOpensMailAndFiles(t *testing.T) {
 				return nil
 			}
 			steps := len(h.m.undo)
-			h.press("g", "l")
+			h.press("g", "x")
 			if c.opened == "" {
 				if len(opened) != 0 || h.status() != c.status {
 					t.Fatalf("opened %v, status %q", opened, h.status())

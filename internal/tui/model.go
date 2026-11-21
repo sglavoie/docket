@@ -2221,7 +2221,9 @@ func (m *Model) askKey(msg tea.KeyPressMsg) {
 		case "esc":
 			m.ask = nil
 			m.at.query = ""
-		case "tab":
+		case "tab", "shift+tab":
+			// Tab only completes; with nothing to complete it does nothing.
+		case "ctrl+t":
 			m.at.flat = !m.at.flat
 		case "":
 			m.at.query = text
@@ -3407,6 +3409,14 @@ func (m *Model) normalAct(k string, count int) {
 	case "gl":
 		if m.single() {
 			m.follow()
+		}
+	case "gx":
+		if m.single() {
+			m.openAddress()
+		}
+	case "gL":
+		if m.single() {
+			m.goBack()
 		}
 	case "gf":
 		if m.single() {

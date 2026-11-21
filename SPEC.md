@@ -648,7 +648,7 @@ neither repeats the other (rule 3), and marks are still not needed.
 **The trail.** `Ctrl+O` goes back to the place the last jump left, and
 `Ctrl+I` forward again; a count goes that many places. A jump is a picker
 destination opened with `f` or `F` `Enter`, a project reached with `gf`, a link
-followed with `gl`, a change
+followed with `gl` or taken back with `gL`, a change
 reached with `g;` or `g,` in another place, or a sidebar
 visit ending in a different place; walking several sidebar entries counts
 once, from where `Tab` was pressed. `Enter` zooming, `Esc` backing out, `h`
@@ -699,26 +699,36 @@ The link is the field `link`, so it is undone, backed up and synced like any
 other change; copy and export do not carry it, since a pasted row is a new
 row.
 
-With no row link, `gl` opens the first address in the row's text,
+`gx` opens the first address in the row's text,
 dropping trailing sentence punctuation as the drawn hyperlink does: a web
 address, a Mail message (`message://`, as quick capture's `⌘K` writes one),
 a file by its URL (`file://`), or a file by its path, absolute or from the
 home folder (`/tmp/a.pdf`, `~/notes.txt`). A path may end in `:line` or
 `:line:column`, as a compiler names a place, and opens the file. A path
 naming no file is passed over, and when nothing else answers the status line
-says `no file at /that/path`; only `gl` reads the disk, never drawing. It
+says `no file at /that/path`; only `gx` reads the disk, never drawing. It
 starts the system opener (`open` on macOS, `xdg-open` elsewhere) without
 waiting; the status line says `opened <address>` or the error starting the
 opener. This changes no row, makes no undo step or log entry, leaves `.`
 unchanged and is not a jump. It works in lists and filters; a selection
-refuses it. A row link wins even when its destination is gone.
+refuses it. A row with no address says `no web address, Mail link or file
+in this row`.
 
 A row that live rows link to shows `←` and the row that links to it, as
 that row reads now, or how many do, as `← 3`; the answer comes from the
-scan, so drawing it walks nothing. With neither a link nor an address,
-`gl` on such a row goes back to the one row that links to it, as a jump.
-When several do, the status line says `3 rows link here: /&. lists them`.
-With none of these, it says `this row has no link: L makes one`.
+scan, so drawing it walks nothing. `gL` goes back to the one row that
+links to it, as a jump. When several do, the status line says `3 rows link
+here: /&. lists them`, and with none, `no row links here: L on another row
+makes one`.
+
+**Three keys, one act each.** `gl` follows the row link, `gx` opens the
+address and `gL` goes back, so a row holding a link, an address and a row
+linking to it reaches all three, and what a key does never hangs on what
+else the row holds. A row without a link says `this row has no link: L
+makes one`. When one of the three finds nothing, the status line goes on
+to name the others that would act on the row, as `this row has no link: L
+makes one · gx opens https://example.com · gL goes back to the row linking
+here`.
 
 Three more acts use the same line:
 
@@ -838,19 +848,20 @@ Three more acts use the same line:
   finds every such row. A saved filter and `n` read `&.` as the cursor's
   row when the filter was opened. In an
   outline a match keeps its
-  ancestors, dimmed, so it is read where it lives; `Tab` switches to a flat
-  list of matches and back. While the line ends in a sigil that has values
-  to take (`$`, `$d`, `#ho`, `@to`, `$next|w`), `Tab` completes it instead:
+  ancestors, dimmed, so it is read where it lives; `Ctrl+T` switches to a
+  flat list of matches and back, wherever the caret stands. `Tab` only
+  completes, so a `Tab` pressed once too often never changes what the pane
+  shows: while the line ends in a sigil that has values to take (`$`,
+  `$d`, `#ho`, `@to`, `$next|w`), `Tab` completes it:
   it writes the first value the suggestion offers, again the next, and past
   the last the sigil as typed; `Shift+Tab` walks back. A sigil only one
-  value finishes is finished at once, and then `Tab` switches the shape
-  again. While the walk lasts, every value is listed one above another over
+  value finishes is finished at once, and then `Tab` does nothing. While the walk lasts, every value is listed one above another over
   the rows, under the letters it completes or at the pane's left edge when
   those stand under the sidebar, with the one written reversed;
   a list longer than ten, or than the pane, scrolls to keep it in view, and
   `Down`, `Ctrl+N`, `Up` and `Ctrl+P` walk the list as `Tab` and
   `Shift+Tab` do. Any other key ends the walk and closes the list. The status line says `Tab completes`
-  or `Tab switches`, whichever `Tab` will do. A match is drawn with what was found in it:
+  while `Tab` has something to complete, and `Ctrl+T switches` otherwise. A match is drawn with what was found in it:
   each word of its text that a looked-for word or phrase touches, and each
   tag the query names, in the accent colour and underlined. A term that
   excludes, one read on other rows (`^ _ < >`) and one inside `-(` mark
@@ -1235,7 +1246,7 @@ no second key on a selection, as in Vim's visual mode: `Vj>` indents two rows,
 and each press shifts them again. `x`, `!`, `^` and `t` set
 their value on every row unless all already hold it, in which case they
 clear it. The keys that work on one row (`A`, `I`, `cc`, `R`, `o`, `O`, `Enter`,
-`gf`, `gl`, `gn`, `gN` and the word motions that step into a row) are refused and say so. The status line counts the selection, in the accent colour its
+`gf`, `gl`, `gx`, `gL`, `gn`, `gN` and the word motions that step into a row) are refused and say so. The status line counts the selection, in the accent colour its
 marks are drawn in since the keys now act on those rows, and `Esc` clears it.
 
 `V` starts a sweep at the cursor's row. Each motion, with or without a
@@ -1436,7 +1447,7 @@ presses of `v` would, stopping at the last row. With rows already selected,
 a count before an act on rows (including `v`) is refused and says so.
 The word motions that step into a row take the count as theirs, and
 `Ctrl+O` and `Ctrl+I` go that many places. Every other key, including `o`,
-`O`, `A`, `I`, `cc`, `R`, `Enter`, `h`, `l`, `f`, `gf`, `gl`, `gn`, `gN`, `p`, `P`, `gp`, `gP`,
+`O`, `A`, `I`, `cc`, `R`, `Enter`, `h`, `l`, `f`, `F`, `gf`, `gl`, `gx`, `gL`, `gn`, `gN`, `p`, `P`, `gp`, `gP`,
 `zt`, `zz`, `zb`, `a`, `/`, `:`, `gv`, `gi` and `Tab`, drops the count and acts as usual, as do `zM` and `zR`.
 `zm` and `zr` take the count as levels, and `Ctrl+A` and `Ctrl+X` as days.
 
@@ -1499,10 +1510,12 @@ otherwise.
 | `gf` | Go to the whole project the row is filed in, the cursor on the row; a jump | 22 |
 | `R` | Write where the row's work was left off, read back when it is taken up | 28 |
 | `C` | Write what to check before the row is delivered, read back as its deadline nears | 31 |
-| `L` `gl` | Link the row to another; follow the link, else open its first web address, Mail link or file, else go back to the row linking here | 13, 16, 19 |
+| `L` `gl` | Link the row to another; follow the link | 13 |
+| `gx` | Open the row's first web address, Mail link or file | 16, 33 |
+| `gL` | Go back to the row linking here | 19, 33 |
 | `v` `V` | Pick a row; sweep with motions; `o` while sweeping swaps its ends | 4, 11, 24 |
 | `gv` | Select again the rows last cleared | 24 |
-| `/` `:` | Filter, command | 4 |
+| `/` `:` | Filter, command; on the filter line `Tab` completes and `Ctrl+T` switches flat and in context | 4, 33 |
 | `#` `@` `$` `*` `-` `~` | Stamp sigils on rows; `~` a colour, so selected projects take one at once | 4, 19 |
 
 A Vim key the outline does not bind (`i`, `s`, `S`, `r`, `X`,
@@ -1950,8 +1963,8 @@ warning colour: the alert colour is kept for an overdue deadline and what
 was not written, so a list of flagged rows raises no alarm. A word starting `http://`,
 `https://`, `message://` or `file://` is written as a terminal hyperlink, without the punctuation a
 sentence leaves after it; every piece of an address broken across lines
-carries the whole of it, so it opens wherever it is clicked. `gl` opens the
-first address, or file path, from the keyboard when the row has no row link.
+carries the whole of it, so it opens wherever it is clicked. `gx` opens the
+first address, or file path, from the keyboard.
 
 **Parked** is "not now" for any row: a project leaves the active list, and a
 parked row and everything under it is in no computed list however long it
@@ -2284,6 +2297,12 @@ a row unseen.
    row in context, with the steps still open under it. `F` opens the
    filters, saved and built in, by name, and Go to no longer lists them,
    so each picker reads one kind of thing. *Built.*
+
+33. **One act a key.** `gl` only follows a row link: `gx` opens the
+   address in the row's text and `gL` goes back to the row linking here,
+   so a row holding a link and an address reaches both. On the filter line
+   `Tab` only completes and `Ctrl+T` switches flat and in context. A key
+   that finds nothing names the others that would act. *Built.*
 
 Not planned: a reminder for one row, or a time of day on one, attachments, a details panel (a body is read in the
 pane, not beside it), import from v1, any

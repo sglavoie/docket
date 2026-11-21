@@ -398,7 +398,7 @@ func TestFoldCommandsAndHalfPages(t *testing.T) {
 		if len(h.m.vis) != shown || len(h.m.folded) != 0 || len(h.m.at.folds) != 0 {
 			t.Fatalf("filter unfold: %s", h.rows())
 		}
-		h.press("/", "tab", "enter")
+		h.press("/", "ctrl+t", "enter")
 		before := h.rows()
 		for _, keys := range [][]string{{"z", "M"}, {":", `"fold 2"`, "enter"}, {"z", "R"}} {
 			h.press(keys...)
@@ -427,7 +427,7 @@ func TestFoldCommandsAndHalfPages(t *testing.T) {
 			case "filter", "flat filter":
 				h.press("/", `"Item"`)
 				if place == "flat filter" {
-					h.press("tab")
+					h.press("ctrl+t")
 				}
 				h.press("enter")
 			}
@@ -625,9 +625,9 @@ func TestTheTypedRowShowsWhatItWillBe(t *testing.T) {
 func TestAFlatRowNamesWhatTheHeaderDoesNot(t *testing.T) {
 	h := work(t)
 	h.press("G", "o", `"Later:"`, "enter", "tab", `"Ship it"`, "esc")
-	h.press("/", `"$open"`, "tab", "enter")
+	h.press("/", `"$open"`, "ctrl+t", "enter")
 	h.want("▌ ○ Fix cache #bug · Beta", "  ○ Fix login ! #bug · Alpha", "  ○ Write docs @fri #docs · Alpha", "  ○ Refactor auth #bug · Alpha", "  ○ Ship it · Alpha")
-	h.press("esc", "g", "g", "}", "enter", "/", `"$open"`, "tab", "enter")
+	h.press("esc", "g", "g", "}", "enter", "/", `"$open"`, "ctrl+t", "enter")
 	h.want("▌ ○ Fix login ! #bug", "  ○ Write docs @fri #docs", "  ○ Refactor auth #bug", "  ○ Ship it · Later")
 	h.press("/", "ctrl+u", `"-$"`, "enter")
 	h.want("▌ · Later: 0/1")
@@ -843,10 +843,10 @@ func TestAPickForTodayIsSeenOnItsRow(t *testing.T) {
 func TestBlankPromptsNameWhatTheyRead(t *testing.T) {
 	h := work(t)
 	h.press("/")
-	if got, want := h.bottom(), "Filter ›    in context · Tab switches · words, #tag, $state, @date, ! · - excludes"; got != want {
+	if got, want := h.bottom(), "Filter ›    in context · Ctrl+T switches · words, #tag, $state, @date, ! · - excludes"; got != want {
 		t.Fatalf("filter = %q, want %q", got, want)
 	}
-	h.press("tab")
+	h.press("ctrl+t")
 	if !strings.HasPrefix(h.bottom(), "Filter ›    flat · ") {
 		t.Fatalf("flat = %q", h.bottom())
 	}

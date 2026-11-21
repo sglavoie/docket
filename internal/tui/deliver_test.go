@@ -220,7 +220,7 @@ func TestUncheckedFindsDeliveriesWithNoCheck(t *testing.T) {
 	if got := h.status(); !strings.Contains(got, "1 match · in context · a task with a deadline and no check written") {
 		t.Fatalf("read back = %q", got)
 	}
-	h.press("tab", "enter")
+	h.press("ctrl+t", "enter")
 	h.want("▌ ○ Far away @fri · Project")
 	if got := List(h.m.tree, h.st, "$unchecked", h.now); len(got) != 1 || !strings.HasPrefix(got[0], "Far away") {
 		t.Fatalf("docket ls = %q", got)

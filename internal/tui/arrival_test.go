@@ -145,7 +145,7 @@ func TestTutorCommand(t *testing.T) {
 			case "list":
 				h.press("f", `"Today"`, "enter")
 			case "filter":
-				h.press("/", `"Task"`, "tab", "enter")
+				h.press("/", `"Task"`, "ctrl+t", "enter")
 			case "selection":
 				h.press("v")
 			case "sidebar":
@@ -342,7 +342,7 @@ func TestFilterPhrase(t *testing.T) {
 			h.press(string(r))
 		}
 	}
-	h.press("/", "tab", "esc")
+	h.press("/", "ctrl+t", "esc")
 	for query, want := range map[string]string{
 		`"per the spec"`:                        "Per the spec:, Work PER THE SPEC today",
 		`"PER THE SPEC"`:                        "Per the spec:, Work PER THE SPEC today",
@@ -400,7 +400,7 @@ func TestFilterPhraseEmptyPassedOver(t *testing.T) {
 	for _, flat := range []bool{false, true} {
 		h.press("/")
 		if flat {
-			h.press("tab")
+			h.press("ctrl+t")
 		}
 		h.press("$")
 		want := h.rows()
@@ -569,7 +569,7 @@ func (b *observeCommits) Commit(ops []outline.Op, now int64) error {
 	return b.Backend.Commit(ops, now)
 }
 
-func TestGlOpensAddress(t *testing.T) {
+func TestGxOpensAddress(t *testing.T) {
 	const address = "https://example.com/first"
 	fixture := func(t *testing.T) (*harness, *[]string) {
 		t.Helper()
@@ -590,7 +590,7 @@ func TestGlOpensAddress(t *testing.T) {
 			case "list":
 				h.press("t", "f", `"Today"`, "enter")
 			case "filter":
-				h.press("/", `"Read"`, "tab", "enter")
+				h.press("/", `"Read"`, "ctrl+t", "enter")
 			}
 			// Leave both a remembered change and redo history to preserve.
 			h.press("!", "u")
@@ -599,7 +599,7 @@ func TestGlOpensAddress(t *testing.T) {
 			older, newer, repeat := slices.Clone(h.m.older), slices.Clone(h.m.newer), h.m.repeat
 			backend := &observeCommits{Backend: h.m.backend}
 			h.m.backend = backend
-			h.press("g", "l")
+			h.press("g", "x")
 			if !slices.Equal(*opened, []string{address}) || h.status() != "opened "+address {
 				t.Fatalf("opened = %v, status = %q", *opened, h.status())
 			}
@@ -621,13 +621,13 @@ func TestGlOpensAddress(t *testing.T) {
 			return errors.New("opener unavailable")
 		}
 		rows, steps, gen := h.rows(), len(h.m.undo), h.m.tree.Gen()
-		h.press("g", "l")
+		h.press("g", "x")
 		if !slices.Equal(*opened, []string{address}) || h.status() != "opener unavailable" ||
 			h.rows() != rows || len(h.m.undo) != steps || h.m.tree.Gen() != gen {
 			t.Fatalf("failed opener changed rows or lost its error: %q", h.status())
 		}
 	})
-	t.Run("row link wins even when gone", func(t *testing.T) {
+	t.Run("a row with a link and an address reaches both", func(t *testing.T) {
 		h, opened := fixture(t)
 		h.press("L", `"Destination"`, "enter")
 		rows, steps := h.rows(), len(h.m.undo)
@@ -640,8 +640,12 @@ func TestGlOpensAddress(t *testing.T) {
 		if h.rows() != rows {
 			t.Fatal("the row link did not leave a jump back")
 		}
+		h.press("g", "x")
+		if !slices.Equal(*opened, []string{address}) || h.rows() != rows {
+			t.Fatalf("gx on a linked row = %v, %q", *opened, h.status())
+		}
 		h.press("g", "l", "d", "d", "ctrl+o", "g", "l")
-		if len(*opened) != 0 || h.status() != "the linked row is gone" {
+		if len(*opened) != 1 || h.status() != "the linked row is gone" {
 			t.Fatalf("gone link fell through to the address: %q", h.status())
 		}
 	})
@@ -649,13 +653,13 @@ func TestGlOpensAddress(t *testing.T) {
 		h, opened := fixture(t)
 		h.press("v")
 		rows, steps := h.rows(), len(h.m.undo)
-		h.press("g", "l")
+		h.press("g", "x")
 		if !strings.HasPrefix(h.status(), "that works on one row: press Esc to clear the selection") ||
 			h.rows() != rows || len(h.m.undo) != steps || len(*opened) != 0 {
 			t.Fatalf("selection was not refused: %q", h.status())
 		}
-		h.press("esc", "j", "g", "l")
-		if h.status() != "this row has no link: L makes one" || len(*opened) != 0 {
+		h.press("esc", "j", "g", "x")
+		if h.status() != "no web address, Mail link or file in this row" || len(*opened) != 0 {
 			t.Fatalf("row without a link or address = %q", h.status())
 		}
 	})
@@ -827,7 +831,7 @@ func TestHeaderCountsAndSums(t *testing.T) {
 	wantHeader("Today  · all 2 done") // Held closed rows add no estimate; Today counts them as done.
 	h.press("f", `"Projects"`, "enter", "/", `"#est"`, "enter")
 	wantHeader("Projects  · 3 to do · 18h  / #est")
-	h.press("/", `" "`, "tab", "enter") // after a space Tab completes nothing
+	h.press("/", `" "`, "ctrl+t", "enter") // after a space Tab completes nothing
 	wantHeader("Projects  · 3 to do · 18h  / #est  (flat)")
 	h.press("esc", "/", `"Unreadable"`, "enter")
 	wantHeader("Projects  · 1 to do  / Unreadable  (flat)")
