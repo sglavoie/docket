@@ -807,6 +807,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, GhosttyAppDelegate, St
             let visible = action.action.mouse_visibility == GHOSTTY_MOUSE_VISIBLE
             onMain { [weak self] in self?.terminal?.surfaceView?.setCursorVisibility(visible) }
             return true
+        case GHOSTTY_ACTION_CONFIG_CHANGE:
+            guard let background = TerminalWindowController.background(of: action.action.config_change) else { return true }
+            onMain { [weak self] in self?.terminal?.setTerminalBackground(background) }
+            return true
         case GHOSTTY_ACTION_COLOR_CHANGE:
             let change = action.action.color_change
             onMain { [weak self] in self?.terminal?.colorChanged(change) }

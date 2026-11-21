@@ -70,6 +70,11 @@ extension Ghostty {
             }
         }
 
+        /// The default background of the config in force. Ghostty resolves a
+        /// light and dark theme pair against the appearance, which the config
+        /// as loaded does not: that one always reads as its light theme.
+        private(set) var appliedBackground: NSColor?
+
         private(set) var app: ghostty_app_t? {
             didSet {
                 guard let old = oldValue else { return }
@@ -236,6 +241,13 @@ extension Ghostty {
                 return false
             }
 
+            // A surface's applied config, after a reload or a light/dark theme
+            // swap, carries the background the window's title bar shows.
+            if action.tag == GHOSTTY_ACTION_CONFIG_CHANGE, target.tag == GHOSTTY_TARGET_SURFACE {
+                guard let state = appState(from: app), let delegate = state.delegate else { return false }
+                return delegate.ghosttyApp(state, perform: action, target: target)
+            }
+
             switch Ghostty.disposition(of: action.tag) {
             case .ignored:
                 Ghostty.logger.debug("ignored action=\(action.tag.rawValue)")
@@ -268,8 +280,12 @@ extension Ghostty {
                 return true
 
             case GHOSTTY_ACTION_CONFIG_CHANGE:
-                // Only an app-targeted change replaces the app config; a
-                // surface's own change is that surface's business.
+                // Only an app-targeted change comes here; a surface's own
+                // goes to the delegate. Read now: the config is lent.
+                if let config = action.action.config_change.config,
+                   let background = Ghostty.backgroundColor(of: config) {
+                    appState(from: app)?.appliedBackground = background
+                }
                 return true
 
             case GHOSTTY_ACTION_RING_BELL:

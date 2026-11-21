@@ -227,6 +227,14 @@ extension Ghostty {
 }
 
 extension Ghostty {
+    /// The default background of a config Ghostty lends for the call's length.
+    static func backgroundColor(of config: ghostty_config_t) -> NSColor? {
+        var value = ghostty_config_color_s()
+        let key = "background"
+        guard ghostty_config_get(config, &value, key, UInt(key.utf8.count)) else { return nil }
+        return color(value)
+    }
+
     static func color(_ c: ghostty_config_color_s) -> NSColor {
         NSColor(srgbRed: CGFloat(c.r) / 255, green: CGFloat(c.g) / 255, blue: CGFloat(c.b) / 255, alpha: 1)
     }

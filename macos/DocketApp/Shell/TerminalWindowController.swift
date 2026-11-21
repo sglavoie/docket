@@ -129,7 +129,7 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
         // The title bar shows the window's background, which follows the
         // terminal's; Docket announces its theme's, so the window reads as one surface.
         window.titlebarAppearsTransparent = true
-        if let background = ghostty.config.backgroundColor {
+        if let background = ghostty.appliedBackground ?? ghostty.config.backgroundColor {
             setTerminalBackground(background)
         }
 
@@ -296,6 +296,13 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
         setTerminalBackground(Ghostty.color(ghostty_config_color_s(r: change.r, g: change.g, b: change.b)))
     }
 
+    /// The default background of the surface's applied config, after a reload
+    /// or a light/dark theme swap. Read during the action: the config is
+    /// Ghostty's, lent only for the call.
+    static func background(of change: ghostty_action_config_change_s) -> NSColor? {
+        change.config.flatMap(Ghostty.backgroundColor(of:))
+    }
+
     /// The title bar takes the background, with the appearance whose title
     /// text reads on it.
     func setTerminalBackground(_ color: NSColor) {
@@ -338,7 +345,7 @@ final class TerminalWindowController: NSObject, NSWindowDelegate {
         // The config was just reloaded for this session, perhaps under another
         // appearance than the one the window was made in, and the last session
         // may have left its own background behind.
-        if let background = ghostty.config.backgroundColor {
+        if let background = ghostty.appliedBackground ?? ghostty.config.backgroundColor {
             setTerminalBackground(background)
         }
 

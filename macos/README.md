@@ -324,7 +324,8 @@ when following was turned off, stays. With following off and no theme, the
 Ghostty config's colours stand.
 
 The title bar takes the terminal's background, with light or dark title text to
-match, so the window reads as one surface.
+match, so the window reads as one surface. It follows the background through
+an appearance change, a theme change and a config reload.
 
 ### Terminal config
 

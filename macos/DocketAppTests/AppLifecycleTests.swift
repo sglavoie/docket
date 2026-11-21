@@ -286,7 +286,9 @@ final class TerminalWindowControllerTests: XCTestCase {
         return script
     }
 
-    private func start(hidesApp: Bool = false) throws {
+    private func start(
+        hidesApp: Bool = false, theme: String? = nil, background: @escaping () -> String? = { nil }
+    ) throws {
         let script = try writeFake()
 
         let launcher = try XCTUnwrap(DocketLauncher.script())
@@ -296,7 +298,12 @@ final class TerminalWindowControllerTests: XCTestCase {
             arguments: DocketLauncher.arguments(script: launcher, statusFile: statusFile) + [script.path],
             waitAfterCommand: true
         )
-        ghostty = Ghostty.App { Ghostty.Config(userConfig: nil, overrides: overrides) }
+        ghostty = Ghostty.App {
+            var current = overrides
+            current.background = background()
+            current.theme = theme
+            return Ghostty.Config(userConfig: nil, overrides: current)
+        }
         let delegate = Delegate()
         ghostty.delegate = delegate
         self.delegate = delegate
@@ -323,6 +330,9 @@ final class TerminalWindowControllerTests: XCTestCase {
             case GHOSTTY_ACTION_COLOR_CHANGE:
                 let change = action.action.color_change
                 DispatchQueue.main.async { [weak self] in self?.controller?.colorChanged(change) }
+            case GHOSTTY_ACTION_CONFIG_CHANGE:
+                guard let background = TerminalWindowController.background(of: action.action.config_change) else { return true }
+                DispatchQueue.main.async { [weak self] in self?.controller?.setTerminalBackground(background) }
             case GHOSTTY_ACTION_CELL_SIZE:
                 DispatchQueue.main.async { [weak self] in self?.controller?.cellSizeChanged() }
             default:
@@ -392,6 +402,35 @@ final class TerminalWindowControllerTests: XCTestCase {
         type("bg #1a1b26")
         try wait("a dark background") { controller.window.backgroundColor.usingColorSpace(.sRGB)?.redComponent ?? 1 < 0.2 }
         XCTAssertEqual(controller.window.appearance?.name, .darkAqua)
+    }
+
+    /// macOS turning light or dark reloads the terminal's colors; the title bar
+    /// follows the reloaded background, as no program announces it.
+    func testTheWindowTakesTheBackgroundAReloadApplies() throws {
+        var background = "#1a1b26"
+        try start(background: { background })
+        try wait("a dark background") { controller.window.backgroundColor.usingColorSpace(.sRGB)?.redComponent ?? 1 < 0.2 }
+
+        background = "#f6f6f0"
+        ghostty.reloadConfig()
+        try wait("a light background") { controller.window.backgroundColor.usingColorSpace(.sRGB)?.redComponent ?? 0 > 0.9 }
+        XCTAssertEqual(controller.window.appearance?.name, .aqua)
+    }
+
+    /// A light and dark theme pair opens on the theme for the appearance in
+    /// use, title bar included.
+    func testAThemePairOpensOnTheAppearanceInUse() throws {
+        let before = NSApp.appearance
+        defer { NSApp.appearance = before }
+        NSApp.appearance = NSAppearance(named: .darkAqua)
+        try start(theme: "light:Catppuccin Latte,dark:Catppuccin Mocha")
+        try wait("a dark background") { controller.window.backgroundColor.usingColorSpace(.sRGB)?.redComponent ?? 1 < 0.3 }
+        XCTAssertEqual(controller.window.appearance?.name, .darkAqua)
+
+        NSApp.appearance = NSAppearance(named: .aqua)
+        controller.surfaceView?.syncColorScheme()
+        try wait("a light background") { controller.window.backgroundColor.usingColorSpace(.sRGB)?.redComponent ?? 0 > 0.8 }
+        XCTAssertEqual(controller.window.appearance?.name, .aqua)
     }
 
     func testHideAndShowKeepTheSameSession() throws {
