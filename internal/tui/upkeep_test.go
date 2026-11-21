@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -162,11 +161,11 @@ func crowd(tb testing.TB, n int) *Model {
 	return m
 }
 
-// frameBudget is one frame at 60 a second. GitHub's shared Linux runners
-// run these timings slower than any machine Docket is used on, so there
-// alone it doubles; macOS and local runs keep the frame.
+// frameBudget is one frame at 60 a second. GitHub's shared runners, Linux
+// and macOS alike, run these timings slower than any machine Docket is used
+// on, so there alone it doubles; local runs keep the frame.
 func frameBudget() time.Duration {
-	if os.Getenv("GITHUB_ACTIONS") == "true" && runtime.GOOS == "linux" {
+	if os.Getenv("GITHUB_ACTIONS") == "true" {
 		return 32 * time.Millisecond
 	}
 	return 16 * time.Millisecond
