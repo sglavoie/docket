@@ -6,10 +6,10 @@ go 1.26.0
 toolchain go1.26.6
 
 require (
-	charm.land/bubbletea/v2 v2.1.1
+	charm.land/bubbletea/v2 v2.1.2
 	github.com/charmbracelet/ultraviolet v0.0.0-20261008173134-6b8d4baf91b4
-	github.com/charmbracelet/x/ansi v0.11.9
-	modernc.org/sqlite v1.62.0
+	github.com/charmbracelet/x/ansi v0.11.10
+	modernc.org/sqlite v1.63.0
 )
 
 require (
